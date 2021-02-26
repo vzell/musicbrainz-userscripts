@@ -32,7 +32,7 @@ $(document).ready(function () {
 function retrieveReleaseInfo(release_url) {
     let releaseDate = $('#firstHeading').text().split('-');
     const name = `${releaseDate[0]}-${releaseDate[1]}-${releaseDate[2]}: BBC Radio 1 Essential Mix, ${releaseDate[3].trim()}`;
-    const artists = releaseDate[3].trim();
+    const artists = releaseDate[3].trim().split(/[,&]/);
 
     // Release information global to all Beatport releases
     let release = {
@@ -95,7 +95,7 @@ function insertLink(release, release_url) {
         )}${MBImport.buildSearchButton(release)}</li>`
     ).hide();
 
-    $('#appendBelowBodyContent').append(mbUI);
+    $('#mw-content-text').prepend(mbUI);
     $('form.musicbrainz_import').css({ display: 'inline-block', 'margin-left': '5px' });
     $('form.musicbrainz_import button').css({ width: '120px' });
     mbUI.slideDown();
