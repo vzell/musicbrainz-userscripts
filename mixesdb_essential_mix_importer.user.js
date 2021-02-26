@@ -3,7 +3,7 @@
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2022.02.22.1
+// @version        2022.02.22.2
 // @downloadURL    https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @updateURL      https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @include        http://www.mixesdb.com/w/*
@@ -89,14 +89,9 @@ function insertLink(release, release_url) {
     let edit_note = MBImport.makeEditNote(release_url, 'mixesdb');
     let parameters = MBImport.buildFormParameters(release, edit_note);
 
-    let mbUI = $(
-        `<li class="interior-release-chart-content-item musicbrainz-import">${MBImport.buildFormHTML(
-            parameters
-        )}${MBImport.buildSearchButton(release)}</li>`
-    ).hide();
+    let mbUI = $(`${MBImport.buildFormHTML(parameters)}${MBImport.buildSearchButton(release)}`).hide();
 
     $('#mw-content-text').prepend(mbUI);
     $('form.musicbrainz_import').css({ display: 'inline-block', 'margin-left': '5px' });
-    $('form.musicbrainz_import button').css({ width: '120px' });
     mbUI.slideDown();
 }
