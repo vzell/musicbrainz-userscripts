@@ -3,16 +3,16 @@
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2019.12.21.1
-// @downloadURL    https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/master/mixesdb_essential_mix_importer.user.js
-// @updateURL      https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/master/mixesdb_essential_mix_importer.user.js
+// @version        2022.02.22.1
+// @downloadURL    https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_mixesdb/mixesdb_essential_mix_importer.user.js
+// @updateURL      https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @include        http://www.mixesdb.com/w/*
 // @include        https://www.mixesdb.com/w/*
 // @require        https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js
 // @require        lib/mbimport.js
 // @require        lib/logger.js
 // @require        lib/mbimportstyle.js
-// @icon           https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/master/assets/images/Musicbrainz_import_logo.png
+// @icon           https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_mixesdb/assets/images/Musicbrainz_import_logo.png
 // @grant          unsafeWindow
 // ==/UserScript==
 
