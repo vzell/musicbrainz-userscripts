@@ -3,7 +3,7 @@
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2022.02.22.6
+// @version        2022.02.22.7
 // @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @include        http://www.mixesdb.com/w/*
@@ -60,8 +60,8 @@ function retrieveReleaseInfo(release_url) {
     let release = {
         artist_credit: [],
         title: name,
-        type: 'broadcast',
-        secondary_types: ['dj-mix'],
+        type: '',
+        secondary_types: [],
         year: releaseDate[0],
         month: releaseDate[1],
         day: releaseDate[2],
@@ -70,6 +70,7 @@ function retrieveReleaseInfo(release_url) {
         status: 'official',
         language: 'eng',
         script: 'Latn',
+        barcode: 'none',
         urls: [],
         labels: [],
         discs: [],
@@ -128,7 +129,8 @@ function generateTracklistForAnnotation() {
 
 // Insert button into page under label information
 function insertLink(release, release_url) {
-    let edit_note = MBImport.makeEditNote(release_url, 'mixesdb');
+    let edit_note =
+        'Added to match style guidelines: https://community.metabrainz.org/t/style-guidelines-for-bbc-radio-1-essential-mix/515760.';
     let parameters = MBImport.buildFormParameters(release, edit_note);
 
     let mbUI = $(`${MBImport.buildFormHTML(parameters)}${MBImport.buildSearchButton(release)}`).hide();
