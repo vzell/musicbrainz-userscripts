@@ -3,7 +3,7 @@
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2022.02.22.2
+// @version        2022.02.22.4
 // @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @include        http://www.mixesdb.com/w/*
@@ -30,14 +30,35 @@ $(document).ready(function () {
 });
 
 function retrieveReleaseInfo(release_url) {
-    let releaseDate = $('#firstHeading').text().split('-');
-    const name = `${releaseDate[0]}-${releaseDate[1]}-${releaseDate[2]}: BBC Radio 1 Essential Mix, ${releaseDate[3].trim()}`;
-    const artists = releaseDate[3].trim().split(/[,&]/);
+    const title = $('#firstHeading').text();
+    const releaseDate = title.match(/(\d{1,4}([.\-/])\d{1,2}([.\-/])\d{1,4})/g)[0].split('-');
+    const cleanedTitle = $('#firstHeading')
+        .text()
+        .replace(/\(?Essential Mix(, \d{1,4}-\d{2}-\d{2})?\)?/, '');
+
+    const titleSplit = cleanedTitle.split(/(( - )|@)/);
+    let artists = titleSplit[1].trim().split(/[,&@]/);
+    let location = cleanedTitle.split('@');
+    const name = `${releaseDate[0]}-${releaseDate[1]}-${releaseDate[2]}: BBC Radio 1 Essential Mix, ${titleSplit[1].trim()}${
+        location.length > 1 ? `: ${location[location.length - 1].trim()}` : ''
+    }`;
+    const tracklist = generateTracklistForAnnotation();
+
+    if (artists.length === 1 && artists[0] === 'VA') {
+        artists = $('dl')
+            .map(function () {
+                const name = $(this).text();
+                return $.trim(name.replace('(Live PA)', ''));
+            })
+            .get();
+    }
 
     // Release information global to all Beatport releases
     let release = {
         artist_credit: [],
         title: name,
+        type: 'broadcast',
+        secondary_types: ['dj-mix'],
         year: releaseDate[0],
         month: releaseDate[1],
         day: releaseDate[2],
@@ -46,10 +67,10 @@ function retrieveReleaseInfo(release_url) {
         status: 'official',
         language: 'eng',
         script: 'Latn',
-        type: '',
         urls: [],
         labels: [],
         discs: [],
+        annotation: tracklist,
     };
     release.artist_credit = MBImport.makeArtistCredits(artists);
 
@@ -69,7 +90,7 @@ function retrieveReleaseInfo(release_url) {
     // Tracks
     let tracks = [
         {
-            title: name + ': Continuous Mix',
+            title: `${name}: Continuous Mix`,
             artist_credit: release.artist_credit,
             duration: '2:00:00',
         },
@@ -82,6 +103,24 @@ function retrieveReleaseInfo(release_url) {
 
     LOGGER.info('Parsed release: ', release);
     return release;
+}
+
+function generateTracklistForAnnotation() {
+    let tracklist = 'Tracklist: \n\n';
+
+    let nextSibling = $('#Tracklist').next();
+    while (nextSibling.get()[0].id !== 'bodyBottom') {
+        const tagName = nextSibling.get()[0].tagName;
+        if (tagName == 'OL') {
+            $('li', nextSibling).each(function (index) {
+                tracklist += `${index}.  ${this.innerText}\n`;
+            });
+        } else if (tagName == 'DL') {
+            tracklist += `\n== ${nextSibling.text()} ==\n`;
+        }
+        nextSibling = nextSibling.next();
+    }
+    return tracklist.replace(/\[([^\]]*)\]/g, '&#91;$1&#93;');
 }
 
 // Insert button into page under label information
