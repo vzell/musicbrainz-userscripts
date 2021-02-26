@@ -3,7 +3,7 @@
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2022.02.22.5
+// @version        2022.02.22.6
 // @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @include        http://www.mixesdb.com/w/*
@@ -36,11 +36,14 @@ function retrieveReleaseInfo(release_url) {
         .text()
         .replace(/\(?Essential Mix(, \d{1,4}-\d{2}-\d{2})?\)?/, '');
 
-    const titleSplit = cleanedTitle.split(/(( - )|@)/).filter(s => s.trim() !== '' && s.trim() !== '-');
-    let artists = titleSplit[1].trim().split(/[,&@]/);
+    const titleSplit = cleanedTitle.split(/(( - )|@)/).filter(s => s && s.trim() !== '' && s.trim() !== '-');
+    let artists = titleSplit[1]
+        .trim()
+        .split(/[,&@]/)
+        .map(a => a.trim());
     let location = cleanedTitle.split('@');
     const name = `${releaseDate[0]}-${releaseDate[1]}-${releaseDate[2]}: BBC Radio 1 Essential Mix, ${titleSplit[1].trim()}${
-        location.length > 1 ? `: ${location[location.length - 1].trim()}` : ''
+        location.length > 1 ? `: ${location[location.length - 1].replace(' - ', '').trim()}` : ''
     }`;
     const tracklist = generateTracklistForAnnotation();
 
@@ -80,7 +83,7 @@ function retrieveReleaseInfo(release_url) {
         link_type: 729, // show notes
     });
     const playerurls = $('[data-playerurl]');
-    playerurls.each(function (el) {
+    playerurls.each(function () {
         release.urls.push({
             url: this.dataset.playerurl,
             link_type: 85, // stream for free
