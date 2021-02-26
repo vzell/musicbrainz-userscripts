@@ -3,7 +3,7 @@
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2022.02.22.4
+// @version        2022.02.22.5
 // @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @include        http://www.mixesdb.com/w/*
@@ -36,7 +36,7 @@ function retrieveReleaseInfo(release_url) {
         .text()
         .replace(/\(?Essential Mix(, \d{1,4}-\d{2}-\d{2})?\)?/, '');
 
-    const titleSplit = cleanedTitle.split(/(( - )|@)/);
+    const titleSplit = cleanedTitle.split(/(( - )|@)/).filter(s => s.trim() !== '' && s.trim() !== '-');
     let artists = titleSplit[1].trim().split(/[,&@]/);
     let location = cleanedTitle.split('@');
     const name = `${releaseDate[0]}-${releaseDate[1]}-${releaseDate[2]}: BBC Radio 1 Essential Mix, ${titleSplit[1].trim()}${
