@@ -3,7 +3,7 @@
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2022.02.22.8
+// @version        2022.02.27.1
 // @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @include        http://www.mixesdb.com/w/*
@@ -42,7 +42,7 @@ function retrieveReleaseInfo(release_url) {
         .split(/[,&@]/)
         .map(a => a.trim());
     let location = cleanedTitle.split('@');
-    const name = `${releaseDate[0]}-${releaseDate[1]}-${releaseDate[2]}: BBC Radio 1 Essential Mix, ${titleSplit[1].trim()}${
+    const name = `${releaseDate[0]}-${releaseDate[1]}-${releaseDate[2]}: BBC Radio 1 Essential Mix${
         location.length > 1 ? `: ${location[location.length - 1].replace(' - ', '').trim()}` : ''
     }`;
     const tracklist = generateTracklistForAnnotation();
@@ -67,7 +67,7 @@ function retrieveReleaseInfo(release_url) {
         day: releaseDate[2],
         format: 'Digital Media',
         country: 'GB',
-        status: 'official',
+        status: 'bootleg',
         language: 'eng',
         script: 'Latn',
         barcode: 'none',
@@ -94,7 +94,7 @@ function retrieveReleaseInfo(release_url) {
     // Tracks
     let tracks = [
         {
-            title: `${name}: Continuous Mix`,
+            title: name,
             artist_credit: release.artist_credit,
             duration: '2:00:00',
         },
