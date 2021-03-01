@@ -117,7 +117,7 @@ function generateTracklistForAnnotation() {
         const tagName = nextSibling.get()[0].tagName;
         if (tagName == 'OL') {
             $('li', nextSibling).each(function (index) {
-                tracklist += `${index}.  ${this.innerText}\n`;
+                tracklist += `${index + 1}.  ${this.innerText}\n`;
             });
         } else if (tagName == 'DL') {
             tracklist += `\n== ${nextSibling.text()} ==\n`;
