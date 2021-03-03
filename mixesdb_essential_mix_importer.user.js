@@ -3,7 +3,7 @@
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2022.03.03.1
+// @version        2022.03.03.2
 // @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @include        http://www.mixesdb.com/w/*
@@ -111,11 +111,7 @@ function retrieveReleaseInfo(release_url) {
 
 function generateTracklistForAnnotation() {
     let tracklist = 'Tracklist: \n\n';
-    let nextSibling = $('.list-track > *');
-
-    if (!nextSibling || nextSibling.length === 0) {
-        nextSibling = $('#Tracklist').next();
-    }
+    let nextSibling = $('#Tracklist').next();
     while (nextSibling.get()[0] && nextSibling.get()[0].id !== 'bodyBottom') {
         const tagName = nextSibling.get()[0].tagName;
         if (tagName == 'OL') {
@@ -124,6 +120,8 @@ function generateTracklistForAnnotation() {
             });
         } else if (tagName == 'DL') {
             tracklist += `\n== ${nextSibling.text()} ==\n`;
+        } else if (tagName == 'DIV' && nextSibling.get()[0].classList.contains('list')) {
+            nextSibling = $(nextSibling.parent().children()[0]);
         }
         nextSibling = nextSibling.next();
     }
