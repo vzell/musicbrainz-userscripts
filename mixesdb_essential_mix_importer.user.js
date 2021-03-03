@@ -3,7 +3,7 @@
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2022.03.03.2
+// @version        2022.03.03.3
 // @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @include        http://www.mixesdb.com/w/*
@@ -122,8 +122,9 @@ function generateTracklistForAnnotation() {
             tracklist += `\n== ${nextSibling.text()} ==\n`;
         } else if (tagName == 'DIV' && nextSibling.get()[0].classList.contains('list')) {
             nextSibling = $(nextSibling.parent().children()[0]);
+        } else {
+            nextSibling = nextSibling.next();
         }
-        nextSibling = nextSibling.next();
     }
     return tracklist.replace(/\[([^\]]*)\]/g, '&amp;#91;$1&amp;#93;');
 }
