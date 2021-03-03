@@ -3,7 +3,7 @@
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2022.02.27.1
+// @version        2022.03.03.1
 // @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @include        http://www.mixesdb.com/w/*
@@ -111,9 +111,12 @@ function retrieveReleaseInfo(release_url) {
 
 function generateTracklistForAnnotation() {
     let tracklist = 'Tracklist: \n\n';
+    let nextSibling = $('.list-track > *');
 
-    let nextSibling = $('#Tracklist').next();
-    while (nextSibling.get()[0].id !== 'bodyBottom') {
+    if (!nextSibling || nextSibling.length === 0) {
+        nextSibling = $('#Tracklist').next();
+    }
+    while (nextSibling.get()[0] && nextSibling.get()[0].id !== 'bodyBottom') {
         const tagName = nextSibling.get()[0].tagName;
         if (tagName == 'OL') {
             $('li', nextSibling).each(function (index) {
