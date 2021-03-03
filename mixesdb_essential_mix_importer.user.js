@@ -122,9 +122,9 @@ function generateTracklistForAnnotation() {
             tracklist += `\n== ${nextSibling.text()} ==\n`;
         } else if (tagName == 'DIV' && nextSibling.get()[0].classList.contains('list')) {
             nextSibling = $(nextSibling.children()[0]);
-        } else {
-            nextSibling = nextSibling.next();
+            continue;
         }
+        nextSibling = nextSibling.next();
     }
     return tracklist.replace(/\[([^\]]*)\]/g, '&amp;#91;$1&amp;#93;');
 }
