@@ -13,7 +13,7 @@
 // @require        lib/mbimport.js
 // @require        lib/logger.js
 // @require        lib/mbimportstyle.js
-// @icon           hhttps://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/assets/images/Musicbrainz_import_logo.png
+// @icon           https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/assets/images/Musicbrainz_import_logo.png
 // @grant          unsafeWindow
 // ==/UserScript==
 
