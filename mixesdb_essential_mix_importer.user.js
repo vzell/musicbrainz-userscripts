@@ -3,7 +3,7 @@
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2022.03.04.2
+// @version        2022.03.04.3
 // @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @include        http://www.mixesdb.com/w/*
@@ -215,7 +215,7 @@ function makeKeyDownEvent(keyCode) {
         'keydown', // event type: keydown, keyup, keypress
         true, // bubbles
         true, // cancelable
-        window, // view: should be window
+        unsafeWindow, // view: should be window
         false, // ctrlKey
         false, // altKey
         false, // shiftKey
