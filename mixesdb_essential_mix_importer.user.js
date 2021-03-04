@@ -194,7 +194,7 @@ function makeAddArtistPromise(artistURL) {
 
 function addSeriesPromise() {
     return new Promise(resolve => {
-        $('release-group-rels .add-rel')[0].dispatchEvent(makeClickEvent());
+        $('.release-group-rels .add-rel')[0].dispatchEvent(makeClickEvent());
 
         const groupType = $('.ui-dialog .release-group-rels')[0];
         groupType.value = 'series';
