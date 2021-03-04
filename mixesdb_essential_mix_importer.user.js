@@ -3,7 +3,7 @@
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2022.03.04.4
+// @version        2022.03.04.5
 // @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @include        http://www.mixesdb.com/w/*
@@ -167,7 +167,7 @@ function performARUpdate() {
     });
 
     promise.then(addSeriesPromise()).then(() => {
-        $('.submit.positive').click();
+        $('.submit.positive').dispatchEvent(makeClickEvent());
     });
 }
 
@@ -186,7 +186,7 @@ function makeAddArtistPromise(artistURL) {
         input.dispatchEvent(makeKeyDownEvent(13));
 
         setTimeout(() => {
-            $('.ui-dialog .positive').click();
+            $('.ui-dialog .positive').dispatchEvent(makeClickEvent());
             resolve();
         }, 250);
     });
@@ -194,7 +194,7 @@ function makeAddArtistPromise(artistURL) {
 
 function addSeriesPromise() {
     return new Promise(resolve => {
-        $('release-group-rels .add-rel');
+        $('release-group-rels .add-rel').dispatchEvent(makeClickEvent());
 
         const groupType = $('.ui-dialog .release-group-rels')[0];
         groupType.value = 'series';
@@ -207,7 +207,7 @@ function addSeriesPromise() {
         input.dispatchEvent(makeKeyDownEvent(13));
 
         setTimeout(() => {
-            $('.ui-dialog .positive').click();
+            $('.ui-dialog .positive').dispatchEvent(makeClickEvent());
             resolve();
         }, 250);
     });
