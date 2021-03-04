@@ -3,7 +3,7 @@
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2022.03.04.3
+// @version        2022.03.04.4
 // @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @include        http://www.mixesdb.com/w/*
@@ -161,9 +161,18 @@ function insertARLink() {
 }
 
 function performARUpdate() {
+    let promise = Promise.resolve();
     $('.subheader>a').each(function () {
-        const artistURL = this.href;
+        promise = promise.then(makeAddArtistPromise(this.href));
+    });
 
+    promise.then(addSeriesPromise()).then(() => {
+        $('.submit.positive').click();
+    });
+}
+
+function makeAddArtistPromise(artistURL) {
+    return new Promise(resolve => {
         $('#release-rels .add-rel')[0].dispatchEvent(makeClickEvent());
 
         const type = $('.ui-dialog .link-type')[0];
@@ -176,24 +185,32 @@ function performARUpdate() {
         input.value = artistURL;
         input.dispatchEvent(makeKeyDownEvent(13));
 
-        $('.ui-dialog .positive').click();
+        setTimeout(() => {
+            $('.ui-dialog .positive').click();
+            resolve();
+        }, 250);
     });
+}
 
-    $('release-group-rels .add-rel');
+function addSeriesPromise() {
+    return new Promise(resolve => {
+        $('release-group-rels .add-rel');
 
-    const groupType = $('.ui-dialog .release-group-rels')[0];
-    groupType.value = 'series';
-    groupType.dispatchEvent(makeChangeEvent());
+        const groupType = $('.ui-dialog .release-group-rels')[0];
+        groupType.value = 'series';
+        groupType.dispatchEvent(makeChangeEvent());
 
-    const input = $('.name.ui-autocomplete-input')[0];
+        const input = $('.name.ui-autocomplete-input')[0];
 
-    input.dispatchEvent(makeClickEvent());
-    input.value = 'https://musicbrainz.org/series/10efa767-57d6-404a-abfb-47a3d8fef520';
-    input.dispatchEvent(makeKeyDownEvent(13));
+        input.dispatchEvent(makeClickEvent());
+        input.value = 'https://musicbrainz.org/series/10efa767-57d6-404a-abfb-47a3d8fef520';
+        input.dispatchEvent(makeKeyDownEvent(13));
 
-    $('.ui-dialog .positive').click();
-
-    $('.submit.positive').click();
+        setTimeout(() => {
+            $('.ui-dialog .positive').click();
+            resolve();
+        }, 250);
+    });
 }
 
 function makeClickEvent() {
