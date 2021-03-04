@@ -3,7 +3,7 @@
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2022.03.04.1
+// @version        2022.03.04.2
 // @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @include        http://www.mixesdb.com/w/*
@@ -157,11 +157,11 @@ function insertARLink() {
         },
         false
     );
-    $('#batch-tools').before(button);
+    $('#relationship-editor-form').before(button);
 }
 
 function performARUpdate() {
-    $('.subheader>a').forEach(function () {
+    $('.subheader>a').each(function () {
         const artistURL = this.href;
 
         $('#release-rels .add-rel')[0].dispatchEvent(makeClickEvent());
