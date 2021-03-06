@@ -3,13 +3,14 @@
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2022.03.04.6
+// @version        2022.03.06.1
 // @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @include        http://www.mixesdb.com/w/*
 // @include        https://www.mixesdb.com/w/*
 // @include        https://musicbrainz.org/release/*/edit-relationships
 // @require        https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js
+// @require        lib/essentialmixes.js
 // @require        lib/mbimport.js
 // @require        lib/logger.js
 // @require        lib/mbimportstyle.js
@@ -83,9 +84,11 @@ function retrieveReleaseInfo(release_url) {
     };
     release.artist_credit = MBImport.makeArtistCredits(artists);
 
+    const existingBBCLink = getEssentialMix(`${releaseDate[0]}-${releaseDate[1]}-${releaseDate[2]}`);
+
     // URLs
     release.urls.push({
-        url: release_url,
+        url: existingBBCLink ? existingBBCLink.Link : release_url,
         link_type: 729, // show notes
     });
     const playerurls = $('[data-playerurl]');
@@ -163,12 +166,19 @@ function insertARLink() {
 function performARUpdate() {
     let promise = Promise.resolve();
     $('.subheader>a').each(function () {
-        promise = promise.then(makeAddArtistPromise(this.href));
+        const artistUrl = this.href;
+        promise = promise.then(() => {
+            return makeAddArtistPromise(artistUrl);
+        });
     });
 
-    promise.then(addSeriesPromise()).then(() => {
-        $('.submit.positive')[0].dispatchEvent(makeClickEvent());
-    });
+    promise
+        .then(() => {
+            return addSeriesPromise();
+        })
+        .then(() => {
+            $('.submit.positive')[0].dispatchEvent(makeClickEvent());
+        });
 }
 
 function makeAddArtistPromise(artistURL) {
@@ -194,9 +204,9 @@ function makeAddArtistPromise(artistURL) {
 
 function addSeriesPromise() {
     return new Promise(resolve => {
-        $('.release-group-rels .add-rel')[0].dispatchEvent(makeClickEvent());
+        $('#release-group-rels .add-rel')[0].dispatchEvent(makeClickEvent());
 
-        const groupType = $('.ui-dialog .release-group-rels')[0];
+        const groupType = $('.ui-dialog .entity-type')[0];
         groupType.value = 'series';
         groupType.dispatchEvent(makeChangeEvent());
 
