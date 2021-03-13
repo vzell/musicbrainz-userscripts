@@ -3,15 +3,17 @@
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2022.03.06.1
+// @version        2022.03.13.1
 // @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
 // @include        http://www.mixesdb.com/w/*
 // @include        https://www.mixesdb.com/w/*
 // @include        https://musicbrainz.org/release/*/edit-relationships
+// @include        https://beta.musicbrainz.org/release/*/edit-relationships
 // @require        https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js
 // @require        lib/essentialmixes.js
 // @require        lib/mbimport.js
+// @require        lib/mblinks.js
 // @require        lib/logger.js
 // @require        lib/mbimportstyle.js
 // @icon           https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/assets/images/Musicbrainz_import_logo.png
@@ -26,18 +28,21 @@ if (!unsafeWindow) unsafeWindow = window;
 $(document).ready(function () {
     MBImportStyle();
 
+    var mblinks = new MBLinks('ESSENTIAL_MIX_MBLINKS_CACHE', 7 * 24 * 60);
+
     let release_url = window.location.href.replace('/?.*$/', '').replace(/#.*$/, '');
     if (/mixesdb/.test(window.location.hostname)) {
-        let release = retrieveReleaseInfo(release_url);
+        let release = retrieveReleaseInfo(release_url, mblinks);
         insertLink(release, release_url);
     } else if (/musicbrainz/.test(window.location.hostname)) {
         insertARLink();
     }
 });
 
-function retrieveReleaseInfo(release_url) {
+function retrieveReleaseInfo(release_url, mblinks) {
     const title = $('#firstHeading').text();
-    const releaseDate = title.match(/(\d{1,4}([.\-/])\d{1,2}([.\-/])\d{1,4})/g)[0].split('-');
+    const releaseDates = title.match(/(\d{1,4}([.\-/])\d{1,2}([.\-/])\d{1,4})/g);
+    const releaseDate = releaseDates[releaseDates.length - 1].split('-');
     const cleanedTitle = $('#firstHeading')
         .text()
         .replace(/\(?Essential Mix(, \d{1,4}-\d{2}-\d{2})?\)?/, '');
@@ -51,6 +56,7 @@ function retrieveReleaseInfo(release_url) {
     const name = `${releaseDate[0]}-${releaseDate[1]}-${releaseDate[2]}: BBC Radio 1 Essential Mix${
         location.length > 1 ? `: ${location[location.length - 1].replace(' - ', '').trim()}` : ''
     }`;
+    const isLive = location.length > 1;
     const tracklist = generateTracklistForAnnotation();
 
     if (artists.length === 1 && artists[0] === 'VA') {
@@ -66,8 +72,8 @@ function retrieveReleaseInfo(release_url) {
     let release = {
         artist_credit: [],
         title: name,
-        type: '',
-        secondary_types: [],
+        type: 'broadcast',
+        secondary_types: ['dj-mix'].concat(isLive ? ['live'] : []),
         year: releaseDate[0],
         month: releaseDate[1],
         day: releaseDate[2],
@@ -83,6 +89,13 @@ function retrieveReleaseInfo(release_url) {
         annotation: tracklist,
     };
     release.artist_credit = MBImport.makeArtistCredits(artists);
+    if (isLive) {
+        release.artist_credit.forEach(credit => {
+            if (credit.joinphrase) {
+                credit.joinphrase = ' b2b ';
+            }
+        });
+    }
 
     const existingBBCLink = getEssentialMix(`${releaseDate[0]}-${releaseDate[1]}-${releaseDate[2]}`);
 
