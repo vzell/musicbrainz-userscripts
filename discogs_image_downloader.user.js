@@ -2,8 +2,8 @@
 // @name           Download all images for a release from Discogs to disk
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
-// @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2022.03.18.1
+// @description    One-click downloading of all images on discogs release.
+// @version        2022.03.20.1
 // @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/discogs_image_downloader.user.js
 // @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/discogs_image_downloader.user.js
 // @include        http://www.discogs.com/*/release/*
@@ -11,18 +11,31 @@
 // @icon           https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/assets/images/Musicbrainz_import_logo.png
 // ==/UserScript==
 
-$(document).ready(function () {
+document.addEventListener('ready', function () {
     let release_url = window.location.href.replace('/?.*$/', '').replace(/#.*$/, '');
-    downloadImages(release_url);
+    addDownloadImagesButton(release_url);
 });
 
-// Insert button into page under label information
-function downloadImages() {
+// Insert button into page
+function addDownloadImagesButton() {
     const images = JSON.parse(document.querySelector('[data-images]').getAttribute('data-images'));
-    images.forEach(image => {
-        const link = document.createElement('a');
-        link.download = image.full;
-        link.href = image.full;
-        link.click();
-    });
+
+    const button = document.createElement('a');
+    button.innerText = 'Download all';
+    button.addEventListener(
+        'click',
+        event => {
+            event.preventDefault();
+            images.foreach(image => {
+                const link = document.createElement('a');
+                link.download = image.full;
+                link.href = image.full;
+                link.click();
+            });
+        },
+        false
+    );
+
+    const more = document.querySelector('.image_gallery_more');
+    more.appendChild(button);
 }
