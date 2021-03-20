@@ -3,7 +3,7 @@
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click downloading of all images on discogs release.
-// @version        2022.03.20.3
+// @version        2022.03.20.4
 // @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/discogs_image_downloader.user.js
 // @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/discogs_image_downloader.user.js
 // @include        http://www.discogs.com/*/release/*
@@ -31,6 +31,7 @@ function addDownloadImagesButton() {
                 const link = document.createElement('a');
                 link.download = image.full;
                 link.href = image.full;
+                link.target = 'blank';
                 link.click();
             });
         },
