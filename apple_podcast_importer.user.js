@@ -3,11 +3,10 @@
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2022.03.18.1
+// @version        2022.08.21.1
 // @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/apple_podcast_importer.user.js
 // @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/apple_podcast_importer.user.js
-// @include        http://podcasts.apple.com/bt/podcast/*
-// @include        https://podcasts.apple.com/bt/podcast/*
+// @include        https://podcasts.apple.com/bt/podcast/*/*
 // @include        https://musicbrainz.org/release/*/edit-relationships
 // @include        https://beta.musicbrainz.org/release/*/edit-relationships
 // @require        https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js
@@ -30,7 +29,7 @@ $(document).ready(function () {
     var mblinks = new MBLinks('APPLE_PODCASTS_CACHE', 7 * 24 * 60);
 
     let release_url = window.location.href.replace('/?.*$/', '').replace(/#.*$/, '');
-    if (/podcast.apple.com/.test(window.location.hostname)) {
+    if (/podcasts.apple.com/.test(window.location.hostname)) {
         let release = retrieveReleaseInfo(release_url, mblinks);
         insertLink(release, release_url);
     } else if (/musicbrainz/.test(window.location.hostname)) {
@@ -42,15 +41,14 @@ function retrieveReleaseInfo(release_url, mblinks) {
     const podcastEpisode = JSON.parse($('[name="schema:podcast-episode"]').text());
 
     const title = podcastEpisode.name;
-    const releaseDates = podcastEpisode.datePublished;
-    const releaseDate = releaseDates[releaseDates.length - 1].split(' ');
+    const releaseDate = podcastEpisode.datePublished.split(' ');
 
     const titleSplit = title.split(/(( - )|@)/).filter(s => s && s.trim() !== '' && s.trim() !== '-');
-    let artists = titleSplit[1]
+    let artists = titleSplit[0]
         .trim()
         .split(/[,&@]/)
         .map(a => a.trim());
-    const name = `${releaseDate[2]}-${releaseDate[1]}-${releaseDate[1]}: ${podcastEpisode.isPartOf}: ${title}`;
+    const name = `${releaseDate[2]}-${getMonth(releaseDate[1])}-${releaseDate[0]}: ${podcastEpisode.isPartOf}: ${title}`;
     const tracklist = generateTracklistForAnnotation();
 
     if (artists.length === 1 && artists[0] === 'VA') {
@@ -69,8 +67,8 @@ function retrieveReleaseInfo(release_url, mblinks) {
         type: 'broadcast',
         secondary_types: ['dj-mix'],
         year: releaseDate[2],
-        month: releaseDate[1],
-        day: releaseDate[1],
+        month: getMonth(releaseDate[1]),
+        day: releaseDate[0],
         format: 'Digital Media',
         status: 'bootleg',
         language: 'eng',
@@ -90,15 +88,15 @@ function retrieveReleaseInfo(release_url, mblinks) {
     });
 
     // Tracks
-    const baseDuration = podcastEpisode.duraration.replace('PT', '');
+    const baseDuration = podcastEpisode.duration.replace('PT', '');
     let tracks = [
         {
             title: name,
             artist_credit: release.artist_credit,
             duration: `${baseDuration.substring(0, baseDuration.indexOf('H'))}:${baseDuration.substring(
-                baseDuration.indexOf('H'),
+                baseDuration.indexOf('H') + 1,
                 baseDuration.indexOf('M')
-            )}:${baseDuration.substring(baseDuration.indexOf('M'), baseDuration.indexOf('S'))}`,
+            )}:${baseDuration.substring(baseDuration.indexOf('M') + 1, baseDuration.indexOf('S'))}`,
         },
     ];
 
@@ -124,9 +122,11 @@ function insertLink(release, release_url) {
 
     let mbUI = $(`${MBImport.buildFormHTML(parameters)}${MBImport.buildSearchButton(release)}`).hide();
 
-    $('.product-header__routes__cta').prepend(mbUI);
-    $('form.musicbrainz_import').css({ display: 'inline-block', 'margin-left': '5px' });
-    mbUI.slideDown();
+    setTimeout(() => {
+        $('.we-localnav__title').prepend(mbUI);
+        $('form.musicbrainz_import').css({ display: 'inline-block', 'margin-left': '5px' });
+        mbUI.slideDown();
+    }, 1000);
 }
 
 function insertARLink() {
@@ -230,4 +230,33 @@ function makeKeyDownEvent(keyCode) {
         0 // charCode: unsigned long - the Unicode character associated with the depressed key, else 0
     );
     return keyboardEvent;
+}
+
+function getMonth(str) {
+    switch (str.toUpperCase()) {
+        case 'JAN':
+            return '01';
+        case 'FEB':
+            return '02';
+        case 'MAR':
+            return '03';
+        case 'APR':
+            return '04';
+        case 'MAY':
+            return '05';
+        case 'JUN':
+            return '06';
+        case 'JUL':
+            return '07';
+        case 'AUG':
+            return '08';
+        case 'SEP':
+            return '09';
+        case 'OCT':
+            return '10';
+        case 'NOV':
+            return '11';
+        case 'DEV':
+            return '12';
+    }
 }
