@@ -124,7 +124,7 @@ function insertLink(release, release_url) {
 
     let mbUI = $(`${MBImport.buildFormHTML(parameters)}${MBImport.buildSearchButton(release)}`).hide();
 
-    $('#mw-content-text').prepend(mbUI);
+    $('.product-header__routes__cta').prepend(mbUI);
     $('form.musicbrainz_import').css({ display: 'inline-block', 'margin-left': '5px' });
     mbUI.slideDown();
 }
