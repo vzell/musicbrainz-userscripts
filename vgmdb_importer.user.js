@@ -2,7 +2,7 @@
 // @name           Import VGMdb releases into MusicBrainz
 // @namespace      https://github.com/murdos/musicbrainz-userscripts/
 // @description    One-click importing of releases from vgmdb.net into MusicBrainz
-// @version        2020.9.26.1
+// @version        2021.7.13.1
 // @downloadURL    https://raw.githubusercontent.com/murdos/musicbrainz-userscripts/master/vgmdb_importer.user.js
 // @updateURL      https://raw.githubusercontent.com/murdos/musicbrainz-userscripts/master/vgmdb_importer.user.js
 // @include        /^https://vgmdb.net/(album|artist|org)/\d+
@@ -98,7 +98,7 @@ function mapStatus(publishFormat) {
 function mapDate(releaseDate) {
     const d = new Date(releaseDate);
 
-    return { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDay() };
+    return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
 }
 
 /*
@@ -127,22 +127,61 @@ function mapUrls(vgmdbLink, stores, websites) {
 
     if (stores) {
         for (const store of stores) {
-            // Filter out links to internal marketplace
-            if (store['link'].startsWith('http')) {
-                // Assumes mail order
-                urls.push({ url: store['link'], link_type: MBImport.URL_TYPES.purchase_for_mail_order });
+            const linkTypes = mapLinkTypes(store['name']);
+
+            for (const linkType of linkTypes) {
+                // Filter out links to internal marketplace
+                if (store['link'].startsWith('http')) {
+                    urls.push({ url: store['link'], link_type: linkType });
+                }
             }
         }
     }
 
     if (websites) {
-        for (const commercial in websites['Commercial']) {
+        for (const commercial of websites['Commercial']) {
             // Seems to fill same purpose as stores for albums
-            urls.push({ url: commercial['link'], link_type: MBImport.URL_TYPES.purchase_for_mail_order });
+            urls.push({ url: commercial['link'] });
         }
     }
 
     return urls;
+}
+
+/**
+ * Returns an array of appropriate link_types given storeName from the VGMdb API.
+ */
+function mapLinkTypes(storeName) {
+    const amazonAsin = 77;
+    const purchaseForMailOrder = 79;
+    const purchaseForDownload = 74;
+    const freeStreaming = 85;
+
+    const linkTypes = [];
+    switch (storeName) {
+        case 'Amazon':
+        case 'Amazon.co.jp':
+            linkTypes.push(amazonAsin);
+            break;
+        case 'iTunes':
+        case 'e-onkyo':
+        case 'OTOTOY':
+            linkTypes.push(purchaseForDownload);
+            break;
+        case 'CDJapan':
+        case 'Play-Asia':
+        case 'YesAsia':
+            linkTypes.push(purchaseForMailOrder);
+            break;
+        case 'Spotify':
+            linkTypes.push(freeStreaming);
+            break;
+        default:
+            linkTypes.push(null);
+            break;
+    }
+
+    return linkTypes;
 }
 
 /*
