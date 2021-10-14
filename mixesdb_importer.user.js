@@ -1,11 +1,11 @@
 // ==UserScript==
-// @name           Import Essential Mixes from MixesDB to MusicBrainz
+// @name           Import Mixes from MixesDB to MusicBrainz
 // @author         mattgoldspink
 // @namespace      https://github.com/mattgoldspink/musicbrainz-userscripts/
 // @description    One-click importing of releases from beatport.com/release pages into MusicBrainz
-// @version        2022.03.18.1
-// @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
-// @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_essential_mix_importer.user.js
+// @version        2022.09.14.1
+// @downloadURL    https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_importer.user.js
+// @updateURL      https://github.com/mattgoldspink/musicbrainz-userscripts/raw/mgoldspink/feature_mixesdb/mixesdb_importer.user.js
 // @include        http://www.mixesdb.com/w/*
 // @include        https://www.mixesdb.com/w/*
 // @include        https://musicbrainz.org/release/*/edit-relationships
@@ -28,7 +28,7 @@ if (!unsafeWindow) unsafeWindow = window;
 $(document).ready(function () {
     MBImportStyle();
 
-    var mblinks = new MBLinks('ESSENTIAL_MIX_MBLINKS_CACHE', 7 * 24 * 60);
+    var mblinks = new MBLinks('MIXES_MBLINKS_CACHE', 7 * 24 * 60);
 
     let release_url = window.location.href.replace('/?.*$/', '').replace(/#.*$/, '');
     if (/mixesdb/.test(window.location.hostname)) {
@@ -40,23 +40,35 @@ $(document).ready(function () {
 });
 
 function retrieveReleaseInfo(release_url, mblinks) {
+    let name, isLive, artists;
     const title = $('#firstHeading').text();
-    const releaseDates = title.match(/(\d{1,4}([.\-/])\d{1,2}([.\-/])\d{1,4})/g);
-    const releaseDate = releaseDates[releaseDates.length - 1].split('-');
-    const cleanedTitle = $('#firstHeading')
-        .text()
-        .replace(/\(?Essential Mix(, \d{1,4}-\d{2}-\d{2})?\)?/, '');
+    if (/Essential Mix/.test(title)) {
+        const releaseDates = title.match(/(\d{1,4}([.\-/])\d{1,2}?([.\-/])\d{1,4})?/g);
+        const releaseDate = releaseDates[releaseDates.length - 1].split('-');
+        const cleanedTitle = $('#firstHeading')
+            .text()
+            .replace(/\(?Essential Mix(, \d{1,4}-\d{2}-\d{2})?\)?/, '');
 
-    const titleSplit = cleanedTitle.split(/(( - )|@)/).filter(s => s && s.trim() !== '' && s.trim() !== '-');
-    let artists = titleSplit[1]
-        .trim()
-        .split(/[,&@]/)
-        .map(a => a.trim());
-    let location = cleanedTitle.split('@');
-    const name = `${releaseDate[0]}-${releaseDate[1]}-${releaseDate[2]}: BBC Radio 1 Essential Mix${
-        location.length > 1 ? `: ${location[location.length - 1].replace(' - ', '').trim()}` : ''
-    }`;
-    const isLive = location.length > 1;
+        const titleSplit = cleanedTitle.split(/(( - )|@)/).filter(s => s && s.trim() !== '' && s.trim() !== '-');
+        artists = titleSplit[1]
+            .trim()
+            .split(/[,&@]/)
+            .map(a => a.trim());
+        let location = cleanedTitle.split('@');
+        name = `${releaseDate[0]}-${releaseDate[1]}-${releaseDate[2]}: BBC Radio 1 Essential Mix${
+            location.length > 1 ? `: ${location[location.length - 1].replace(' - ', '').trim()}` : ''
+        }`;
+        isLive = location.length > 1;
+    } else {
+        name = $('#firstHeading').text();
+        const titleSplit = cleanedTitle.split(/(( - )|@)/).filter(s => s && s.trim() !== '' && s.trim() !== '-');
+        artists = titleSplit[1]
+            .trim()
+            .split(/[,&@]/)
+            .map(a => a.trim());
+        let location = cleanedTitle.split('@');
+        isLive = location.length > 1;
+    }
     const tracklist = generateTracklistForAnnotation();
 
     if (artists.length === 1 && artists[0] === 'VA') {
@@ -73,7 +85,7 @@ function retrieveReleaseInfo(release_url, mblinks) {
         artist_credit: [],
         title: name,
         type: 'broadcast',
-        secondary_types: ['dj-mix'].concat(isLive ? ['live'] : []),
+        secondary_types: ['dj-mix', 'compilation'].concat(isLive ? ['live'] : []),
         year: releaseDate[0],
         month: releaseDate[1],
         day: releaseDate[2],
@@ -97,11 +109,9 @@ function retrieveReleaseInfo(release_url, mblinks) {
         });
     }
 
-    const existingBBCLink = getEssentialMix(`${releaseDate[0]}-${releaseDate[1]}-${releaseDate[2]}`);
-
     // URLs
     release.urls.push({
-        url: existingBBCLink ? existingBBCLink.Link : release_url,
+        url: release_url,
         link_type: 729, // show notes
     });
     const playerurls = $('[data-playerurl]');
@@ -112,12 +122,14 @@ function retrieveReleaseInfo(release_url, mblinks) {
         });
     });
 
+    const trackInfo = $('.filedetails tr:nth-child(2) td:first-child');
+
     // Tracks
     let tracks = [
         {
             title: name,
             artist_credit: release.artist_credit,
-            duration: '2:00:00',
+            duration: trackInfo?.text().trim(),
         },
     ];
 
@@ -155,7 +167,7 @@ function generateTracklistForAnnotation() {
 // Insert button into page under label information
 function insertLink(release, release_url) {
     let edit_note =
-        'Added to match style guidelines: https://community.metabrainz.org/t/style-guidelines-for-bbc-radio-1-essential-mix/515760.';
+        'Imported from MixesDB. Aiming to match style guidelines based on: https://community.metabrainz.org/t/style-guidelines-for-bbc-radio-1-essential-mix/515760.';
     let parameters = MBImport.buildFormParameters(release, edit_note);
 
     let mbUI = $(`${MBImport.buildFormHTML(parameters)}${MBImport.buildSearchButton(release)}`).hide();

@@ -65,10 +65,10 @@ function retrieveReleaseInfo(release_url, mblinks) {
         artist_credit: [],
         title: name,
         type: 'broadcast',
-        secondary_types: ['dj-mix'],
+        secondary_types: ['dj-mix', 'compilation'],
         year: releaseDate[2],
         month: getMonth(releaseDate[1]),
-        day: releaseDate[0],
+        day: releaseDate[0].length > 2 ? `0${releaseDate[0]}` : releaseDate[0],
         format: 'Digital Media',
         status: 'bootleg',
         language: 'eng',
@@ -89,14 +89,22 @@ function retrieveReleaseInfo(release_url, mblinks) {
 
     // Tracks
     const baseDuration = podcastEpisode.duration.replace('PT', '');
+
+    let hour = baseDuration.substring(0, baseDuration.indexOf('H'));
+    let minute;
+    if (baseDuration.indexOf('H') == -1) {
+        hour = '0';
+        minute = baseDuration.substring(0, baseDuration.indexOf('M'));
+    } else {
+        minute = baseDuration.substring(baseDuration.indexOf('H') + 1, baseDuration.indexOf('M'));
+    }
+    let second = baseDuration.substring(baseDuration.indexOf('M') + 1, baseDuration.indexOf('S'));
+
     let tracks = [
         {
             title: name,
             artist_credit: release.artist_credit,
-            duration: `${baseDuration.substring(0, baseDuration.indexOf('H'))}:${baseDuration.substring(
-                baseDuration.indexOf('H') + 1,
-                baseDuration.indexOf('M')
-            )}:${baseDuration.substring(baseDuration.indexOf('M') + 1, baseDuration.indexOf('S'))}`,
+            duration: `${hour}:${minute}:${second}`,
         },
     ];
 
@@ -122,9 +130,18 @@ function insertLink(release, release_url) {
 
     let mbUI = $(`${MBImport.buildFormHTML(parameters)}${MBImport.buildSearchButton(release)}`).hide();
 
+    const imageArray = document.querySelector('.we-artwork__source[type="image/jpeg"]').srcset.split(' ');
+
     setTimeout(() => {
         $('.we-localnav__title').prepend(mbUI);
         $('form.musicbrainz_import').css({ display: 'inline-block', 'margin-left': '5px' });
+
+        if (imageArray.length > 2) {
+            const img = document.createElement('img');
+            img.src = imageArray[2];
+            img.style = 'width: 30px; display: inline-block;margin-top: -14px;';
+            $('.we-localnav__title').prepend(img);
+        }
         mbUI.slideDown();
     }, 1000);
 }
@@ -192,7 +209,7 @@ function addSeriesPromise() {
         const input = $('.name.ui-autocomplete-input')[0];
 
         input.dispatchEvent(makeClickEvent());
-        //input.value = 'https://musicbrainz.org/series/10efa767-57d6-404a-abfb-47a3d8fef520';
+        input.value = 'https://musicbrainz.org/series/aceb1c04-b2ff-4b30-acbf-f424fde42667';
         input.dispatchEvent(makeKeyDownEvent(13));
 
         setTimeout(() => {
@@ -233,7 +250,7 @@ function makeKeyDownEvent(keyCode) {
 }
 
 function getMonth(str) {
-    switch (str.toUpperCase()) {
+    switch (str.toUpperCase().substring(0, 3)) {
         case 'JAN':
             return '01';
         case 'FEB':
@@ -256,7 +273,7 @@ function getMonth(str) {
             return '10';
         case 'NOV':
             return '11';
-        case 'DEV':
+        case 'DEC':
             return '12';
     }
 }
