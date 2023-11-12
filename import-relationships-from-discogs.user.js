@@ -888,7 +888,7 @@ const ENTITY_TYPE_MAP = {
     },
     'Licensed To': {
         entityType: 'label',
-        linkType: 'licensed fto',
+        linkType: 'licensed to',
     },
     'Licensed Through': null,
     'Distributed By': {
