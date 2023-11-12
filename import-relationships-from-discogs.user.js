@@ -904,6 +904,14 @@ const ENTITY_TYPE_MAP = {
         entityType: 'label',
         linkType: 'phonographic copyright by',
     },
+    'Copyright ©': {
+        entityType: 'label',
+        linkType: 'copyrighted by',
+    },
+    'Phonographic Copyright ℗': {
+        entityType: 'label',
+        linkType: 'phonographic copyright by',
+    },
     'Licensed From': {
         entityType: 'label',
         linkType: 'licensed from',
