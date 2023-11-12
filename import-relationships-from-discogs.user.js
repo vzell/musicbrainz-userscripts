@@ -91,7 +91,7 @@ $(document).ready(function () {
                     padding: 2rem;
                     grid-template-columns: 200px 1fr 1fr 200px;
                     grid-template-rows: auto;
-                    grid-template-areas: 
+                    grid-template-areas:
                         "logo header header header"
                         "logo description description description"
                         ". button label ."
