@@ -91,7 +91,7 @@ $(document).ready(function () {
                     padding: 2rem;
                     grid-template-columns: 200px 1fr 1fr 200px;
                     grid-template-rows: auto;
-                    grid-template-areas: 
+                    grid-template-areas:
                         "logo header header header"
                         "logo description description description"
                         ". button label ."
@@ -475,6 +475,16 @@ function getArtistRoles(artist) {
                     artist: artist,
                 });
             }
+            if (/Cover Design/.test(rolePart[1]) && actualRole === 'Artwork') {
+                return Object.assign({}, ENTITY_TYPE_MAP['Design'], {
+                    artist: artist,
+                });
+            }
+            if (/Design/.test(rolePart[1]) && actualRole === 'Cover') {
+                return Object.assign({}, ENTITY_TYPE_MAP['Design'], {
+                    artist: artist,
+                });
+            }
             if (/Additional/.test(rolePart[1])) {
                 additionalAttributes.push('additional');
             }
@@ -483,6 +493,18 @@ function getArtistRoles(artist) {
             }
             if (/Co /.test(rolePart[1])) {
                 additionalAttributes.push('co');
+            }
+            if (/Executive/.test(rolePart[1])) {
+                additionalAttributes.push('executive');
+            }
+            if (/Associate/.test(rolePart[1])) {
+                additionalAttributes.push('associate');
+            }
+            if (/Guest/.test(rolePart[1])) {
+                additionalAttributes.push('guest');
+            }
+            if (/Solo/.test(rolePart[1])) {
+                additionalAttributes.push('solo');
             }
             const mapping = ENTITY_TYPE_MAP[actualRole];
             if (!mapping && INSTRUMENTS[actualRole] !== undefined) {
@@ -882,13 +904,21 @@ const ENTITY_TYPE_MAP = {
         entityType: 'label',
         linkType: 'phonographic copyright by',
     },
+    'Copyright ©': {
+        entityType: 'label',
+        linkType: 'copyrighted by',
+    },
+    'Phonographic Copyright ℗': {
+        entityType: 'label',
+        linkType: 'phonographic copyright by',
+    },
     'Licensed From': {
         entityType: 'label',
         linkType: 'licensed from',
     },
     'Licensed To': {
         entityType: 'label',
-        linkType: 'licensed fto',
+        linkType: 'licensed to',
     },
     'Licensed Through': null,
     'Distributed By': {
@@ -1065,6 +1095,10 @@ const ENTITY_TYPE_MAP = {
         linkType: 'producer',
         attributes: ['co'],
     },
+    'Post Production': {
+        entityType: 'artist',
+        linkType: 'producer',
+    },
     Engineer: {
         entityType: 'artist',
         linkType: 'engineer',
@@ -1157,7 +1191,7 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'photography',
     },
-    'instruments technician': {
+    'Technician': {
         entityType: 'artist',
         linkType: 'instruments technician',
     },
@@ -1165,9 +1199,33 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'publisher',
     },
-    'liner notes': {
+    'Liner Notes': {
         entityType: 'artist',
         linkType: 'liner notes',
+    },
+    'Contractor': {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
+    },
+    'Coordinator': {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
+    },
+    'Management': {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
+    },
+    'Tour Manager': {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
+    },
+    'Public Relations': {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
+    },
+    'Promotion': {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
     },
 };
 
