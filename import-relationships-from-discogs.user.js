@@ -130,11 +130,22 @@ $(document).ready(function () {
 
                 document.head.appendChild(style);
 
-                document.getElementById('release-rels').insertAdjacentElement('afterend', divWrapper);
+                registerButton(divWrapper);
             }
         });
     }
 });
+
+function registerButton(divWrapper) {
+    const releaseRelsBtn = document.getElementById('release-rels');
+    if (!releaseRelsBtn) {
+        setTimeout(() => {
+            registerButton(divWrapper);
+        }, 500);
+    } else {
+        releaseRelsBtn.insertAdjacentElement('afterend', divWrapper);
+    }
+}
 
 function addLogLine(message) {
     const li = document.createElement('li');
@@ -207,7 +218,7 @@ function startImportRels(discogsUrl, processTracklist) {
                 addRelationshipsForTracklist(tracklistRels),
             ]);
         })
-        .then(() => {});
+        .then(() => { });
 }
 
 function convertPotentialDJMixers(json) {
@@ -424,7 +435,7 @@ function addRelationshipsForTracklist(tracklistRels) {
                         return Promise.resolve();
                     }
                     if (WORK_ONLY_ARTIST_RELS.includes(role.linkType)) {
-                        addRelButton = $(trackRowEl.querySelector('.works')).find('.add-rel.btn').get(0);
+                        addRelButton = $(trackRowEl.querySelector('.works')).find('button.add-relationship').get(0);
                         if (!addRelButton) {
                             addLogLine(
                                 `<span style="color: orange">You need to create a Work for track ${role.track.position} - ${role.track.title}: ${role.artist.name} - ${role.entityType} - ${role.linkType}</span>`
@@ -432,7 +443,7 @@ function addRelationshipsForTracklist(tracklistRels) {
                             return Promise.resolve();
                         }
                     } else {
-                        addRelButton = $(trackRowEl.querySelector(`.recording`)).find('.add-rel.btn').get(0);
+                        addRelButton = $(trackRowEl.querySelector(`.recording`)).find('button.add-relationship').get(0);
                     }
                     return addRelationship(
                         addRelButton,
@@ -555,15 +566,13 @@ function getArtistRoles(artist) {
 }
 
 function addReleaseRelationship(entityType, linkType, mbidUrl, extraAttributes, creditedAsName) {
-    addRelationship('#release-rels [data-click="openAddDialog"]', entityType, linkType, mbidUrl, extraAttributes, creditedAsName);
+    addRelationship('#release-rels button.add-relationship', entityType, linkType, mbidUrl, extraAttributes, creditedAsName);
 }
 
 function updateSummary() {
-    summary.innerHTML = `<p>Summary</p><p>Added ${
-        document.querySelectorAll('#release-rels .rel-add').length
-    } release relationships<br/>Added/Edited ${
-        document.querySelectorAll('#tracklist .rel-add').length + document.querySelectorAll('#tracklist .rel-edit').length
-    } track relationships</p>`;
+    summary.innerHTML = `<p>Summary</p><p>Added ${document.querySelectorAll('#release-rels .rel-add').length
+        } release relationships<br/>Added/Edited ${document.querySelectorAll('#tracklist .rel-add').length + document.querySelectorAll('#tracklist .rel-edit').length
+        } track relationships</p>`;
 }
 
 function addRelationship(targetQuerySelector, entityType, linkType, mbidUrl, extraAttributes, creditedAsName) {
@@ -576,36 +585,40 @@ function addRelationship(targetQuerySelector, entityType, linkType, mbidUrl, ext
         }
         if (!addRelButton) {
             addLogLine(`<span style="color: red">Could find Add Relationship button for ${targetQuerySelector}</span>`);
-            return doNext(() => {});
+            return doNext(() => { });
         }
         addRelButton.scrollIntoView();
         addRelButton.click();
         return doNext(() => {
             // choose the entity, e.g. artist, label, place
-            $('#dialog .entity-type').find(`option[value="${entityType}"]`).prop('selected', true).trigger('change');
+            const input = $('#add-relationship-dialog-root .entity-type').get(0);
+            selectValue(input, entityType);
         })
             .then(() => {
                 return doNext(() => {
-                    // choose the link type e.g. writer, recorded at, publisher
-                    $(
-                        Array.from(document.querySelectorAll('#dialog .link-type option')).find(option => {
-                            return option.textContent.trim() === linkType;
-                        })
-                    )
-                        .prop('selected', true)
-                        .trigger('change');
-                });
-            })
-            .then(() => {
-                return doNext(() => {
-                    // now set the mbid url to choose the entity
-                    const input = $('.ui-autocomplete-input').get(0);
-                    input.dispatchEvent(makeClickEvent());
-                    input.value = mbidUrl;
+                    const input = $('#add-relationship-dialog-root input.relationship-type').get(0);
+                    setNativeValue(input, linkType);
                     input.dispatchEvent(makeKeyDownEvent(13));
                     return new Promise(resolve => {
                         function isComplete() {
-                            if (input.classList.contains('ui-autocomplete-loading')) {
+                            if (!input.classList.contains('lookup-performed')) {
+                                setTimeout(isComplete, 50);
+                            } else {
+                                resolve();
+                            }
+                        }
+                        isComplete();
+                    });
+                });
+            })
+            .then(() => {
+                return doNext(function () {
+                    // now set the mbid url to choose the entity
+                    const input = $('#add-relationship-dialog-root input.relationship-target').get(0);
+                    setNativeValue(input, mbidUrl);
+                    return new Promise(resolve => {
+                        function isComplete() {
+                            if (!input.classList.contains('lookup-performed')) {
                                 setTimeout(isComplete, 50);
                             } else {
                                 resolve();
@@ -623,10 +636,9 @@ function addRelationship(targetQuerySelector, entityType, linkType, mbidUrl, ext
                 else
                     return doNext(() => {
                         // let's ignore case here because Discogs doesn't respect case
-                        if ($('.ui-autocomplete-input').val().toLowerCase() !== creditedAsName.toLowerCase()) {
-                            const creditedAsElement = getElementByLabel('#dialog tr:nth-child(3)>td:nth-child(2) label', 'Credited as:');
-                            creditedAsElement.firstElementChild.value = creditedAsName;
-                            $(creditedAsElement.firstElementChild).trigger('change');
+                        if ($('#add-relationship-dialog-root input.relationship-target').val().toLowerCase() !== creditedAsName.toLowerCase()) {
+                            const input = $('#add-relationship-dialog-root input.entity-credit').get(0);
+                            setNativeValue(input, creditedAsName);
                         }
                     });
             })
@@ -643,23 +655,9 @@ function addRelationship(targetQuerySelector, entityType, linkType, mbidUrl, ext
                 return previousPromise;
             })
             .then(() => {
-                // this is a safety feature to ensure we let
-                // everything finish loading.
-                return new Promise(resolve => {
-                    function isComplete() {
-                        if ($('ui-autocomplete-loading').length > 0) {
-                            setTimeout(isComplete, 50);
-                        } else {
-                            resolve();
-                        }
-                    }
-                    isComplete();
-                });
-            })
-            .then(() => {
                 return doNext(() => {
                     // if we're all done then close it
-                    $('.ui-dialog .positive')[0].dispatchEvent(makeClickEvent());
+                    makeClickEvent($('#add-relationship-dialog-root .buttons button.positive')[0]);
                 });
             })
             .then(() => {
@@ -671,7 +669,7 @@ function addRelationship(targetQuerySelector, entityType, linkType, mbidUrl, ext
                 return doNext(() => {
                     // cancel if necessary
                     try {
-                        $('.ui-dialog .negative')[0].dispatchEvent(makeClickEvent());
+                        makeClickEvent($('#add-relationship-dialog-root .buttons button.negative')[0]);
                     } catch (err) {
                         // ignore error
                     }
@@ -770,8 +768,7 @@ function scheduleRequest(discogsEntity, entityType) {
                         });
                         if (mb_links.length > 1) {
                             addLogLine(
-                                `Warning ${mb_links.length} Musicbrainz entries for ${entityType} called ${
-                                    discogsEntity.name
+                                `Warning ${mb_links.length} Musicbrainz entries for ${entityType} called ${discogsEntity.name
                                 }: ${mb_links.map(link => {
                                     return `<a href="${link}" rel="noopener noreferrer nofolow" target="_blank">${link}</a>, `;
                                 })}`
@@ -943,7 +940,7 @@ const ENTITY_TYPE_MAP = {
     },
     'Marketed By': {
         entityType: 'label',
-        linkType: 'marketed by',
+        linkType: 'marketed / marketed by',
     },
     'Printed By': {
         entityType: 'label',
@@ -1251,40 +1248,66 @@ function getActiveAutocompleteMenu() {
 }
 
 function doNext(fn) {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
         setTimeout(() => {
-            const response = fn();
-            if (response && typeof response.then === 'function') {
-                response.then(resolve);
-            } else {
-                resolve();
+            try {
+                const response = fn();
+                if (response && typeof response.then === 'function') {
+                    response.then(resolve);
+                } else {
+                    resolve();
+                }
+            } catch (e) {
+                reject(e);
             }
         }, 400);
     });
 }
 
-function makeKeyDownEvent(keyCode) {
-    const keyboardEvent = document.createEvent('KeyboardEvent');
-    const initMethod = typeof keyboardEvent.initKeyboardEvent !== 'undefined' ? 'initKeyboardEvent' : 'initKeyEvent';
-    keyboardEvent[initMethod](
-        'keydown', // event type: keydown, keyup, keypress
-        true, // bubbles
-        true, // cancelable
-        unsafeWindow, // view: should be window
-        false, // ctrlKey
-        false, // altKey
-        false, // shiftKey
-        false, // metaKey
-        keyCode, // keyCode: unsigned long - the virtual key code, else 0
-        0 // charCode: unsigned long - the Unicode character associated with the depressed key, else 0
-    );
-    return keyboardEvent;
+function setNativeValue(element, value) {
+    let lastValue = element.value;
+    element.value = value;
+    let event = new Event('input', { target: element, bubbles: true });
+    // React 15
+    event.simulated = true;
+    // React 16
+    let tracker = element._valueTracker;
+    if (tracker) {
+        tracker.setValue(lastValue);
+    }
+    element.dispatchEvent(event);
 }
 
-function makeClickEvent() {
-    const evt = document.createEvent('HTMLEvents');
-    evt.initEvent('click', true, true);
-    return evt;
+function selectValue(element, value) {
+    let lastValue = element.value;
+    element.value = value;
+    let event = new Event('change', { target: element, bubbles: true });
+    // React 15
+    event.simulated = true;
+    // React 16
+    let tracker = element._valueTracker;
+    if (tracker) {
+        tracker.setValue(lastValue);
+    }
+    element.dispatchEvent(event);
+}
+
+function makeKeyDownEvent(keyCode) {
+    return new KeyboardEvent('keydown', {
+        key: 'Enter', bubbles: true, cancelable: true, keyCode: 13,
+    });
+}
+
+function makeClickEvent(element) {
+    const clickEvent = new PointerEvent('click', {
+        pointerType: 'mouse',
+        type: 'click',
+        isTrusted: true,
+        view: unsafeWindow,
+        bubbles: true, // You can set this to true to make the event bubble up the DOM tree
+        cancelable: true, // You can set this to true to make the event cancelable
+    });
+    element.dispatchEvent(clickEvent);
 }
 
 const INSTRUMENTS = {
