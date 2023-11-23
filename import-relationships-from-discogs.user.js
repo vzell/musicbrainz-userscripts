@@ -2,7 +2,7 @@
 
 // @name           Import relationships from a discogs release in to a MusicBrainz release
 // @description    Add a button to import Discogs release relationships to MusicBrainz
-// @version        2021.12.2.1
+// @version        2023.11.23.1
 // @namespace      http://userscripts.org/users/22504
 // @downloadURL    https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
 // @updateURL      https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
@@ -34,13 +34,14 @@ let lastUiItem;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-let logs, summary;
+let logs, summary, discogsUrl;
 
 $(document).ready(function () {
     const re = new RegExp('musicbrainz.org/release/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/edit-relationships', 'i');
     let m;
     if ((m = window.location.href.match(re))) {
-        hasDiscogsLinkDefined(m[1]).then(discogsUrl => {
+        hasDiscogsLinkDefined(m[1]).then(discogsUrlParam => {
+            discogsUrl = discogsUrlParam;
             console.log(`Got it: ${discogsUrl}`);
             if (discogsUrl) {
                 const createrelsbutton = document.createElement('button');
@@ -260,8 +261,8 @@ function convertPotentialDJMixers(json) {
                         () => {
                             for (let j = mediums.length - 1; j >= 0; j--) {
                                 if (mediums[j].length === 0) {
-                                    $('.multiselect-input').click();
-                                    $($('.multiselect-input + .menu a').get(j)).click();
+                                    $(SELECTORS.MediumsInput).click();
+                                    $($(SELECTORS.MediumsInputOptions).get(j)).click();
                                 }
                             }
                         },
@@ -533,27 +534,16 @@ function getArtistRoles(artist) {
                     artist: artist,
                     attributes: [
                         () => {
-                            $('.attribute-container:nth-child(2) input').click();
-                            $('.attribute-container:nth-child(2) input').val(instrumentName).trigger('keydown');
-                            return new Promise((resolve, reject) => {
-                                setTimeout(() => {
-                                    getActiveAutocompleteMenu()
-                                        .then(el => {
-                                            $(el.firstElementChild).click();
-                                            resolve();
-                                        })
-                                        .catch(err => {
-                                            // autocomplete menu wasn't found, so let's reject
-                                            reject('Autocomplete menu not found');
-                                        });
-                                }, 500);
-                            });
+                            return setValueOnAutocomplete(SELECTORS.InstrumentsInput, instrumentName);
                         },
                     ],
                 });
             }
             if (!mapping) {
                 return null;
+            }
+            if (Array.isArray(mapping.attributes)) {
+                additionalAttributes = additionalAttributes.concat(mapping.attributes);
             }
             return Object.assign({}, mapping, {
                 artist: artist,
@@ -566,13 +556,18 @@ function getArtistRoles(artist) {
 }
 
 function addReleaseRelationship(entityType, linkType, mbidUrl, extraAttributes, creditedAsName) {
-    addRelationship('#release-rels button.add-relationship', entityType, linkType, mbidUrl, extraAttributes, creditedAsName);
+    addRelationship(SELECTORS.AddReleaseRelationshipButton, entityType, linkType, mbidUrl, extraAttributes, creditedAsName);
 }
 
 function updateSummary() {
-    summary.innerHTML = `<p>Summary</p><p>Added ${document.querySelectorAll('#release-rels .rel-add').length
-        } release relationships<br/>Added/Edited ${document.querySelectorAll('#tracklist .rel-add').length + document.querySelectorAll('#tracklist .rel-edit').length
-        } track relationships</p>`;
+    const trackRelationshipUpdateCount = document.querySelectorAll('#tracklist .rel-add').length + document.querySelectorAll('#tracklist .rel-edit').length;
+    const releaseRelationshipUpdateCount = document.querySelectorAll('#release-rels .rel-add').length;
+    summary.innerHTML = `<p>Summary</p><p>Added ${releaseRelationshipUpdateCount} release relationships<br/>Added/Edited ${trackRelationshipUpdateCount} track relationships</p>`;
+    selectValue(
+        $(SELECTORS.EditNote).get(0),
+        `${releaseRelationshipUpdateCount} release relationships imported from ${discogsUrl}.${trackRelationshipUpdateCount > 0 ?
+            `\n\nAdded/Edited ${trackRelationshipUpdateCount} track relationships.` : ``}`
+    );
 }
 
 function addRelationship(targetQuerySelector, entityType, linkType, mbidUrl, extraAttributes, creditedAsName) {
@@ -584,48 +579,25 @@ function addRelationship(targetQuerySelector, entityType, linkType, mbidUrl, ext
             addRelButton = targetQuerySelector;
         }
         if (!addRelButton) {
-            addLogLine(`<span style="color: red">Could find Add Relationship button for ${targetQuerySelector}</span>`);
+            addLogLine(`< span style = "color: red" > Could find Add Relationship button for ${targetQuerySelector}</span > `);
             return doNext(() => { });
         }
         addRelButton.scrollIntoView();
         addRelButton.click();
         return doNext(() => {
             // choose the entity, e.g. artist, label, place
-            const input = $('#add-relationship-dialog-root .entity-type').get(0);
+            const input = $(SELECTORS.AddRelationshipsDialogEntityType).get(0);
             selectValue(input, entityType);
         })
             .then(() => {
                 return doNext(() => {
-                    const input = $('#add-relationship-dialog-root input.relationship-type').get(0);
-                    setNativeValue(input, linkType);
-                    input.dispatchEvent(makeKeyDownEvent(13));
-                    return new Promise(resolve => {
-                        function isComplete() {
-                            if (!input.classList.contains('lookup-performed')) {
-                                setTimeout(isComplete, 50);
-                            } else {
-                                resolve();
-                            }
-                        }
-                        isComplete();
-                    });
+                    return setValueOnAutocomplete(SELECTORS.AddRelationshipsDialogRelationshipType, linkType);
                 });
             })
             .then(() => {
                 return doNext(function () {
                     // now set the mbid url to choose the entity
-                    const input = $('#add-relationship-dialog-root input.relationship-target').get(0);
-                    setNativeValue(input, mbidUrl);
-                    return new Promise(resolve => {
-                        function isComplete() {
-                            if (!input.classList.contains('lookup-performed')) {
-                                setTimeout(isComplete, 50);
-                            } else {
-                                resolve();
-                            }
-                        }
-                        isComplete();
-                    });
+                    return setValueOnAutocomplete(SELECTORS.AddRelationshipsDialogRelationshipTarget, mbidUrl);
                 });
             })
             .then(() => {
@@ -636,8 +608,8 @@ function addRelationship(targetQuerySelector, entityType, linkType, mbidUrl, ext
                 else
                     return doNext(() => {
                         // let's ignore case here because Discogs doesn't respect case
-                        if ($('#add-relationship-dialog-root input.relationship-target').val().toLowerCase() !== creditedAsName.toLowerCase()) {
-                            const input = $('#add-relationship-dialog-root input.entity-credit').get(0);
+                        if ($(SELECTORS.AddRelationshipsDialogRelationshipTarget).val().toLowerCase() !== creditedAsName.toLowerCase()) {
+                            const input = $(SELECTORS.AddRelationshipsDialogEntityCredit).get(0);
                             setNativeValue(input, creditedAsName);
                         }
                     });
@@ -657,7 +629,7 @@ function addRelationship(targetQuerySelector, entityType, linkType, mbidUrl, ext
             .then(() => {
                 return doNext(() => {
                     // if we're all done then close it
-                    makeClickEvent($('#add-relationship-dialog-root .buttons button.positive')[0]);
+                    makeClickEvent($(SELECTORS.AddRelationshipsDialogDoneButton)[0]);
                 });
             })
             .then(() => {
@@ -669,7 +641,7 @@ function addRelationship(targetQuerySelector, entityType, linkType, mbidUrl, ext
                 return doNext(() => {
                     // cancel if necessary
                     try {
-                        makeClickEvent($('#add-relationship-dialog-root .buttons button.negative')[0]);
+                        makeClickEvent($(SELECTORS.AddRelationshipsDialogCancelButton)[0]);
                     } catch (err) {
                         // ignore error
                     }
@@ -816,6 +788,22 @@ function scheduleRequest(discogsEntity, entityType) {
     });
 }
 
+function setValueOnAutocomplete(selector, value) {
+    const input = $(selector).get(0);
+    setNativeValue(input, value);
+    input.dispatchEvent(makeKeyDownEvent(13));
+    return new Promise(resolve => {
+        function isComplete() {
+            if (!input.classList.contains('lookup-performed')) {
+                setTimeout(isComplete, 50);
+            } else {
+                resolve();
+            }
+        }
+        isComplete();
+    });
+}
+
 // contains infos for each link key
 const link_infos = {};
 
@@ -837,6 +825,21 @@ function getDiscogsLinkKey(url) {
     }
     return false;
 }
+
+const SELECTORS = {
+    MediumsInput: '.multiselect-input',
+    MediumsInputOptions: '.multiselect-input + .menu a',
+    InstrumentsInput: '#add-relationship-dialog-root .multiselect.instrument input[aria-autocomplete]',
+    VocalsTypeInput: '#add-relationship-dialog-root .multiselect.vocal input[aria-autocomplete]',
+    AddRelationshipsDialogEntityType: '#add-relationship-dialog-root .entity-type',
+    AddRelationshipsDialogRelationshipType: '#add-relationship-dialog-root input.relationship-type',
+    AddRelationshipsDialogRelationshipTarget: '#add-relationship-dialog-root input.relationship-target',
+    AddRelationshipsDialogEntityCredit: '#add-relationship-dialog-root input.entity-credit',
+    AddRelationshipsDialogDoneButton: '#add-relationship-dialog-root .buttons button.positive',
+    AddRelationshipsDialogCancelButton: '#add-relationship-dialog-root .buttons button.negative',
+    AddReleaseRelationshipButton: '#release-rels button.add-relationship',
+    EditNote: '#edit-note-text',
+};
 
 const ENTITY_TYPE_MAP = {
     // Places
@@ -997,9 +1000,7 @@ const ENTITY_TYPE_MAP = {
         linkType: 'vocals',
         attributes: [
             () => {
-                $('.attribute-container:nth-child(2) input').click();
-                $('.attribute-container:nth-child(2) .menu a:nth-child(14)').get(0).click();
-                return Promise.resolve();
+                return setValueOnAutocomplete(SELECTORS.VocalsTypeInput, 'background vocals');
             },
         ],
     },
@@ -1226,34 +1227,13 @@ const ENTITY_TYPE_MAP = {
     },
 };
 
-function getActiveAutocompleteMenu() {
-    let count = 10;
-    return new Promise((resolve, reject) => {
-        function findActiveAutocomplete() {
-            const activeAutoComplete = Array.from(document.querySelectorAll('.ui-autocomplete.ui-menu')).find(node => {
-                return node.style.display !== 'none';
-            });
-            if (!activeAutoComplete) {
-                if (count-- > 0) {
-                    setTimeout(findActiveAutocomplete, 100);
-                } else {
-                    reject('No active autocomplete menu found');
-                }
-            } else {
-                resolve(activeAutoComplete);
-            }
-        }
-        findActiveAutocomplete();
-    });
-}
-
 function doNext(fn) {
     return new Promise((resolve, reject) => {
         setTimeout(() => {
             try {
                 const response = fn();
                 if (response && typeof response.then === 'function') {
-                    response.then(resolve);
+                    response.then(resolve).catch(e => reject(e));
                 } else {
                     resolve();
                 }
