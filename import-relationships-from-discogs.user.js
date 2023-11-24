@@ -2,7 +2,7 @@
 
 // @name           Import relationships from a discogs release in to a MusicBrainz release
 // @description    Add a button to import Discogs release relationships to MusicBrainz
-// @version        2023.11.23.1
+// @version        2023.11.24.1
 // @namespace      http://userscripts.org/users/22504
 // @downloadURL    https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
 // @updateURL      https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
@@ -480,7 +480,7 @@ function getArtistRoles(artist) {
     return rawRoles
         .map(role => {
             let additionalAttributes = [];
-            const rolePart = role.trim().split('[');
+            let rolePart = role.trim().split('[');
             const actualRole = rolePart[0].trim();
             if (/Recording Engineer/.test(rolePart[1]) && actualRole === 'Engineer') {
                 return Object.assign({}, ENTITY_TYPE_MAP['Recording Engineer'], {
@@ -519,6 +519,11 @@ function getArtistRoles(artist) {
                 additionalAttributes.push('solo');
             }
             const mapping = ENTITY_TYPE_MAP[actualRole];
+            if (mapping && mapping.linkType == 'miscellaneous support' && rolePart[1]) {
+                additionalAttributes.push(() => {
+                    return setNativeValue(SELECTORS.TaskInput, rolePart[1].replace(']', '').trim());
+                });
+            }
             if (!mapping && INSTRUMENTS[actualRole] !== undefined) {
                 // check if it's an instrument
                 let instrumentName = actualRole;
@@ -534,7 +539,7 @@ function getArtistRoles(artist) {
                     artist: artist,
                     attributes: [
                         () => {
-                            return setValueOnAutocomplete(SELECTORS.InstrumentsInput, instrumentName);
+                            return setValueOnAutocomplete(SELECTORS.InstrumentsInput, instrumentName.toLowerCase());
                         },
                     ],
                 });
@@ -628,8 +633,12 @@ function addRelationship(targetQuerySelector, entityType, linkType, mbidUrl, ext
             })
             .then(() => {
                 return doNext(() => {
-                    // if we're all done then close it
-                    makeClickEvent($(SELECTORS.AddRelationshipsDialogDoneButton)[0]);
+                    if ($(SELECTORS.AddRelationshipsDialogError).length > 0) {
+                        makeClickEvent($(SELECTORS.AddRelationshipsDialogCancelButton)[0]);
+                    } else {
+                        // if we're all done then close it
+                        makeClickEvent($(SELECTORS.AddRelationshipsDialogDoneButton)[0]);
+                    }
                 });
             })
             .then(() => {
@@ -836,9 +845,11 @@ const SELECTORS = {
     AddRelationshipsDialogRelationshipTarget: '#add-relationship-dialog-root input.relationship-target',
     AddRelationshipsDialogEntityCredit: '#add-relationship-dialog-root input.entity-credit',
     AddRelationshipsDialogDoneButton: '#add-relationship-dialog-root .buttons button.positive',
+    AddRelationshipsDialogError: '#add-relationship-dialog-root .error',
     AddRelationshipsDialogCancelButton: '#add-relationship-dialog-root .buttons button.negative',
     AddReleaseRelationshipButton: '#release-rels button.add-relationship',
     EditNote: '#edit-note-text',
+    TaskInput: '#add-relationship-dialog-root .attribute-container.task input',
 };
 
 const ENTITY_TYPE_MAP = {
@@ -1001,6 +1012,15 @@ const ENTITY_TYPE_MAP = {
         attributes: [
             () => {
                 return setValueOnAutocomplete(SELECTORS.VocalsTypeInput, 'background vocals');
+            },
+        ],
+    },
+    'Lead Vocals': {
+        entityType: 'artist',
+        linkType: 'vocals',
+        attributes: [
+            () => {
+                return setValueOnAutocomplete(SELECTORS.VocalsTypeInput, 'lead vocals');
             },
         ],
     },
@@ -1189,7 +1209,7 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'photography',
     },
-    'Technician': {
+    Technician: {
         entityType: 'artist',
         linkType: 'instruments technician',
     },
@@ -1201,15 +1221,15 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'liner notes',
     },
-    'Contractor': {
+    Contractor: {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
-    'Coordinator': {
+    Coordinator: {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
-    'Management': {
+    Management: {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
@@ -1221,7 +1241,7 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
-    'Promotion': {
+    Promotion: {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
@@ -1245,6 +1265,9 @@ function doNext(fn) {
 }
 
 function setNativeValue(element, value) {
+    if (typeof element === 'string') {
+        element = $(element).get(0);
+    }
     let lastValue = element.value;
     element.value = value;
     let event = new Event('input', { target: element, bubbles: true });
@@ -1259,6 +1282,9 @@ function setNativeValue(element, value) {
 }
 
 function selectValue(element, value) {
+    if (typeof element === 'string') {
+        element = $(element).get(0);
+    }
     let lastValue = element.value;
     element.value = value;
     let event = new Event('change', { target: element, bubbles: true });
