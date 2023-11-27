@@ -2,7 +2,7 @@
 
 // @name           Import relationships from a discogs release in to a MusicBrainz release
 // @description    Add a button to import Discogs release relationships to MusicBrainz
-// @version        2023.11.24.1
+// @version        2023.11.26.1
 // @namespace      http://userscripts.org/users/22504
 // @downloadURL    https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
 // @updateURL      https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
@@ -633,12 +633,7 @@ function addRelationship(targetQuerySelector, entityType, linkType, mbidUrl, ext
             })
             .then(() => {
                 return doNext(() => {
-                    if ($(SELECTORS.AddRelationshipsDialogError).length > 0) {
-                        makeClickEvent($(SELECTORS.AddRelationshipsDialogCancelButton)[0]);
-                    } else {
-                        // if we're all done then close it
-                        makeClickEvent($(SELECTORS.AddRelationshipsDialogDoneButton)[0]);
-                    }
+                    makeClickEvent($(SELECTORS.AddRelationshipsDialogDoneButton)[0]);
                 });
             })
             .then(() => {
