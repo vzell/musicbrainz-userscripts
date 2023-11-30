@@ -2,7 +2,7 @@
 
 // @name           Import relationships from a discogs release in to a MusicBrainz release
 // @description    Add a button to import Discogs release relationships to MusicBrainz
-// @version        2023.11.26.1
+// @version        2023.11.29.2
 // @namespace      http://userscripts.org/users/22504
 // @downloadURL    https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
 // @updateURL      https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
@@ -587,12 +587,16 @@ function addRelationship(targetQuerySelector, entityType, linkType, mbidUrl, ext
             addLogLine(`< span style = "color: red" > Could find Add Relationship button for ${targetQuerySelector}</span > `);
             return doNext(() => { });
         }
-        addRelButton.scrollIntoView();
+        addRelButton.scrollIntoViewIfNeeded ? addRelButton.scrollIntoViewIfNeeded() : addRelButton.scrollIntoView();
         addRelButton.click();
         return doNext(() => {
             // choose the entity, e.g. artist, label, place
             const input = $(SELECTORS.AddRelationshipsDialogEntityType).get(0);
-            selectValue(input, entityType);
+            if (input) {
+                selectValue(input, entityType);
+            } else {
+                throw new Error(`Input not found: ${SELECTORS.AddRelationshipsDialogEntityType}. Is modal open?`);
+            }
         })
             .then(() => {
                 return doNext(() => {
@@ -633,7 +637,15 @@ function addRelationship(targetQuerySelector, entityType, linkType, mbidUrl, ext
             })
             .then(() => {
                 return doNext(() => {
-                    makeClickEvent($(SELECTORS.AddRelationshipsDialogDoneButton)[0]);
+                    const doneButton = $(SELECTORS.AddRelationshipsDialogDoneButton)[0];
+                    if (doneButton.disabled) {
+                        addLogLine(
+                            `Failed to add relationship  ${entityType}: <a href="${mbidUrl}>${creditedAsName}</a> ${entityType} - ${linkType}<br />Relationship potentially already exists`
+                        );
+                        makeClickEvent($(SELECTORS.AddRelationshipsDialogCancelButton)[0]);
+                    } else {
+                        makeClickEvent(doneButton);
+                    }
                 });
             })
             .then(() => {
@@ -700,7 +712,7 @@ function getMbId(discogsEntity, entityType) {
         };
         request.onsuccess = function () {
             // Do something with the request.result!
-            if (request.result) {
+            if (request?.result?.mb_links?.length > 0) {
                 resolve(request.result.mb_links[0]);
             } else {
                 scheduleRequest(discogsEntity, entityType)
