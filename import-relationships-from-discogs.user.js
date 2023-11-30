@@ -640,7 +640,7 @@ function addRelationship(targetQuerySelector, entityType, linkType, mbidUrl, ext
                     const doneButton = $(SELECTORS.AddRelationshipsDialogDoneButton)[0];
                     if (doneButton.disabled) {
                         addLogLine(
-                            `Failed to add relationship  ${entityType}: <a href="${mbidUrl}>${creditedAsName}</a> ${entityType} - ${linkType}<br />Relationship potentially already exists`
+                            `Failed to add relationship  ${entityType}: <a href="${mbidUrl}">${creditedAsName}</a> ${entityType} - ${linkType}<br />Relationship potentially already exists`
                         );
                         makeClickEvent($(SELECTORS.AddRelationshipsDialogCancelButton)[0]);
                     } else {
