@@ -1120,6 +1120,11 @@ const ENTITY_TYPE_MAP = {
         linkType: 'producer',
         attributes: ['co'],
     },
+    'Executive-Producer': {
+        entityType: 'artist',
+        linkType: 'producer',
+        attributes: ['executive'],
+    },
     'Post Production': {
         entityType: 'artist',
         linkType: 'producer',
