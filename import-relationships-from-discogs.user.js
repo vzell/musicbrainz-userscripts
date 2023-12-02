@@ -1245,6 +1245,10 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
+    'Musical Assistance': {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
+    },
     'Tour Manager': {
         entityType: 'artist',
         linkType: 'miscellaneous support',
@@ -1254,6 +1258,10 @@ const ENTITY_TYPE_MAP = {
         linkType: 'miscellaneous support',
     },
     Promotion: {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
+    },
+    'Supervised By': {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
