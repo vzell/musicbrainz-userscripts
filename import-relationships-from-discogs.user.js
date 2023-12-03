@@ -519,9 +519,14 @@ function getArtistRoles(artist) {
                 additionalAttributes.push('solo');
             }
             const mapping = ENTITY_TYPE_MAP[actualRole];
+            if (mapping && mapping.linkType == 'miscellaneous support' && !rolePart[1]) {
+                additionalAttributes.push(() => {
+                    return setNativeValue(SELECTORS.TaskInput, actualRole.trim().toLowerCase());
+                });
+            }
             if (mapping && mapping.linkType == 'miscellaneous support' && rolePart[1]) {
                 additionalAttributes.push(() => {
-                    return setNativeValue(SELECTORS.TaskInput, rolePart[1].replace(']', '').trim());
+                    return setNativeValue(SELECTORS.TaskInput, rolePart[1].replace(']', '').trim().toLowerCase());
                 });
             }
             if (!mapping && INSTRUMENTS[actualRole] !== undefined) {
