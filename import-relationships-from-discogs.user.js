@@ -519,9 +519,19 @@ function getArtistRoles(artist) {
                 additionalAttributes.push('solo');
             }
             const mapping = ENTITY_TYPE_MAP[actualRole];
+            if (mapping && mapping.linkType == 'miscellaneous support' && !rolePart[1]) {
+                additionalAttributes.push(() => {
+                    return setNativeValue(SELECTORS.TaskInput, actualRole.trim().toLowerCase());
+                });
+            }
             if (mapping && mapping.linkType == 'miscellaneous support' && rolePart[1]) {
                 additionalAttributes.push(() => {
-                    return setNativeValue(SELECTORS.TaskInput, rolePart[1].replace(']', '').trim());
+                    return setNativeValue(SELECTORS.TaskInput, rolePart[1].replace(']', '').trim().toLowerCase());
+                });
+            }
+            if (mapping && mapping.linkType == 'producer' && rolePart[1]) {
+                additionalAttributes.push(() => {
+                    return setNativeValue(SELECTORS.TaskInput, rolePart[1].replace(']', '').trim().toLowerCase());
                 });
             }
             if (!mapping && INSTRUMENTS[actualRole] !== undefined) {
@@ -1169,6 +1179,10 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'editor',
     },
+    'Edited By': {
+        entityType: 'artist',
+        linkType: 'editor',
+    },
     'balance engineer': {
         entityType: 'artist',
         linkType: 'balance engineer',
@@ -1232,6 +1246,10 @@ const ENTITY_TYPE_MAP = {
     'Liner Notes': {
         entityType: 'artist',
         linkType: 'liner notes',
+    },
+    'A&R': {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
     },
     Contractor: {
         entityType: 'artist',
