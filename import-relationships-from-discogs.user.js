@@ -1179,6 +1179,10 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'editor',
     },
+    'Edited By': {
+        entityType: 'artist',
+        linkType: 'editor',
+    },
     'balance engineer': {
         entityType: 'artist',
         linkType: 'balance engineer',
@@ -1242,6 +1246,10 @@ const ENTITY_TYPE_MAP = {
     'Liner Notes': {
         entityType: 'artist',
         linkType: 'liner notes',
+    },
+    'A&R': {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
     },
     Contractor: {
         entityType: 'artist',
