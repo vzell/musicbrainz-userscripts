@@ -2,7 +2,7 @@
 
 // @name           Import relationships from a discogs release in to a MusicBrainz release
 // @description    Add a button to import Discogs release relationships to MusicBrainz
-// @version        2023.12.04.1
+// @version        2023.12.04.2
 // @namespace      http://userscripts.org/users/22504
 // @downloadURL    https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
 // @updateURL      https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
@@ -537,6 +537,21 @@ function getArtistRoles(artist) {
             if (mapping && mapping.linkType == 'producer' && rolePart[1]) {
                 additionalAttributes.push(() => {
                     return setNativeValue(SELECTORS.TaskInput, rolePart[1].replace(']', '').trim().toLowerCase());
+                });
+            }
+            if (mapping && mapping.linkType == 'photography' && rolePart[1]) {
+                additionalAttributes.push(() => {
+                    return setNativeValue(SELECTORS.TaskInput, rolePart[1].replace(']', '').trim().toLowerCase());
+                });
+            }
+            if (mapping && mapping.linkType == 'artwork' && rolePart[1]) {
+                additionalAttributes.push(() => {
+                    return setNativeValue(SELECTORS.TaskInput, rolePart[1].replace(']', '').trim().toLowerCase());
+                });
+            }
+            if (mapping && mapping.linkType == 'producer' && actualRole == 'Post Production') {
+                additionalAttributes.push(() => {
+                    return setNativeValue(SELECTORS.TaskInput, actualRole.toLowerCase());
                 });
             }
             if (!mapping && INSTRUMENTS[actualRole] !== undefined) {
@@ -1255,6 +1270,10 @@ const ENTITY_TYPE_MAP = {
         linkType: 'liner notes',
     },
     'A&R': {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
+    },
+    Advisor: {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
