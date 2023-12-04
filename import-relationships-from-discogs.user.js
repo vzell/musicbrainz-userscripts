@@ -549,6 +549,11 @@ function getArtistRoles(artist) {
                     return setNativeValue(SELECTORS.TaskInput, rolePart[1].replace(']', '').trim().toLowerCase());
                 });
             }
+            if (mapping == 'Post Production' && mapping.linkType == 'producer') {
+                additionalAttributes.push(() => {
+                    return setNativeValue(SELECTORS.TaskInput, mapping.toLowerCase());
+                });
+            }
             if (!mapping && INSTRUMENTS[actualRole] !== undefined) {
                 // check if it's an instrument
                 let instrumentName = actualRole;
