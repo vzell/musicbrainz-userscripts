@@ -487,6 +487,11 @@ function getArtistRoles(artist) {
                     artist: artist,
                 });
             }
+            if (/Mastering Engineer/.test(rolePart[1]) && actualRole === 'Engineer') {
+                return Object.assign({}, ENTITY_TYPE_MAP['Mastered By'], {
+                    artist: artist,
+                });
+            }
             if (/Cover Design/.test(rolePart[1]) && actualRole === 'Artwork') {
                 return Object.assign({}, ENTITY_TYPE_MAP['Design'], {
                     artist: artist,
