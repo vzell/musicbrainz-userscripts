@@ -2,7 +2,7 @@
 
 // @name           Import relationships from a discogs release in to a MusicBrainz release
 // @description    Add a button to import Discogs release relationships to MusicBrainz
-// @version        2023.11.29.2
+// @version        2023.12.04.1
 // @namespace      http://userscripts.org/users/22504
 // @downloadURL    https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
 // @updateURL      https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
@@ -580,12 +580,14 @@ function addReleaseRelationship(entityType, linkType, mbidUrl, extraAttributes, 
 }
 
 function updateSummary() {
+    const script_name = GM_info.script.name;
+    const script_version = GM_info.script.version;
     const trackRelationshipUpdateCount = document.querySelectorAll('#tracklist .rel-add').length + document.querySelectorAll('#tracklist .rel-edit').length;
     const releaseRelationshipUpdateCount = document.querySelectorAll('#release-rels .rel-add').length;
     summary.innerHTML = `<p>Summary</p><p>Added ${releaseRelationshipUpdateCount} release relationships<br/>Added/Edited ${trackRelationshipUpdateCount} track relationships</p>`;
     selectValue(
         $(SELECTORS.EditNote).get(0),
-        `${releaseRelationshipUpdateCount} release relationships imported from ${discogsUrl}.${trackRelationshipUpdateCount > 0 ?
+        `${releaseRelationshipUpdateCount} release relationships imported from ${discogsUrl}.\n---\nGM script: "${script_name}" (${script_version})${trackRelationshipUpdateCount > 0 ?
             `\n\nAdded/Edited ${trackRelationshipUpdateCount} track relationships.` : ``}`
     );
 }
