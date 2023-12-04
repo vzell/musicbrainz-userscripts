@@ -539,6 +539,11 @@ function getArtistRoles(artist) {
                     return setNativeValue(SELECTORS.TaskInput, rolePart[1].replace(']', '').trim().toLowerCase());
                 });
             }
+            if (mapping && mapping.linkType == 'photography' && rolePart[1]) {
+                additionalAttributes.push(() => {
+                    return setNativeValue(SELECTORS.TaskInput, rolePart[1].replace(']', '').trim().toLowerCase());
+                });
+            }
             if (!mapping && INSTRUMENTS[actualRole] !== undefined) {
                 // check if it's an instrument
                 let instrumentName = actualRole;
