@@ -1258,6 +1258,10 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
+    Advisor: {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
+    },
     Contractor: {
         entityType: 'artist',
         linkType: 'miscellaneous support',
