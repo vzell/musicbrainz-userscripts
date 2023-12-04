@@ -549,9 +549,9 @@ function getArtistRoles(artist) {
                     return setNativeValue(SELECTORS.TaskInput, rolePart[1].replace(']', '').trim().toLowerCase());
                 });
             }
-            if (mapping == 'Post Production' && mapping.linkType == 'producer') {
+            if (mapping && mapping.linkType == 'producer' && actualRole == 'Post Production') {
                 additionalAttributes.push(() => {
-                    return setNativeValue(SELECTORS.TaskInput, mapping.toLowerCase());
+                    return setNativeValue(SELECTORS.TaskInput, actualRole.toLowerCase());
                 });
             }
             if (!mapping && INSTRUMENTS[actualRole] !== undefined) {
