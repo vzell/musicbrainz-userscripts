@@ -2,7 +2,7 @@
 
 // @name           Import relationships from a discogs release in to a MusicBrainz release
 // @description    Add a button to import Discogs release relationships to MusicBrainz
-// @version        2023.12.04.2
+// @version        2023.12.06.1
 // @namespace      http://userscripts.org/users/22504
 // @downloadURL    https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
 // @updateURL      https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
@@ -530,6 +530,11 @@ function getArtistRoles(artist) {
                 });
             }
             if (mapping && mapping.linkType == 'miscellaneous support' && rolePart[1]) {
+                additionalAttributes.push(() => {
+                    return setNativeValue(SELECTORS.TaskInput, rolePart[1].replace(']', '').trim().toLowerCase());
+                });
+            }
+            if (mapping && mapping.linkType == 'engineer' && rolePart[1]) {
                 additionalAttributes.push(() => {
                     return setNativeValue(SELECTORS.TaskInput, rolePart[1].replace(']', '').trim().toLowerCase());
                 });
