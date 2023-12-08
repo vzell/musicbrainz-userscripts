@@ -2,7 +2,7 @@
 
 // @name           Import relationships from a discogs release in to a MusicBrainz release
 // @description    Add a button to import Discogs release relationships to MusicBrainz
-// @version        2023.12.06.1
+// @version        2023.12.08.1
 // @namespace      http://userscripts.org/users/22504
 // @downloadURL    https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
 // @updateURL      https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
@@ -767,10 +767,12 @@ function getMbId(discogsEntity, entityType) {
 function scheduleRequest(discogsEntity, entityType) {
     const key = getDiscogsLinkKey(discogsEntity.resource_url);
     return new Promise((resolve, reject) => {
+        let query = `//musicbrainz.org/ws/2/url?resource=${encodeURIComponent(link_infos[key].clean_url)}&inc=${entityType}-rels&fmt=json`;
         if (!link_infos[key]) {
             reject(`${key} for ${discogsEntity.name} not found in link_infos map`);
+        } if (entityType === 'place') {
+            query = `//musicbrainz.org/ws/2/url?resource=${encodeURIComponent(link_infos[key].clean_url)}&inc=place-rels+label-rels&fmt=json`
         }
-        let query = `//musicbrainz.org/ws/2/url?resource=${encodeURIComponent(link_infos[key].clean_url)}&inc=${entityType}-rels&fmt=json`;
         let mbRequest = () => {
             fetch(query)
                 .then(body => {
@@ -780,7 +782,7 @@ function scheduleRequest(discogsEntity, entityType) {
                     return body.json();
                 })
                 .then(json => {
-                    if (Array.isArray(json.relations)) {
+                    if (Array.isArray(json.relations) && json.relations.length > 0) {
                         const mb_links = [];
                         json.relations.forEach(relation => {
                             if (relation[entityType]) {
@@ -789,6 +791,13 @@ function scheduleRequest(discogsEntity, entityType) {
                                     // prevent dupes
                                     mb_links.push(mb_url);
                                 }
+                            } else if (entityType === 'place' && relation['label']) {
+                                let mb_url = `//musicbrainz.org/label/${relation['label'].id}`;
+                                if (!mb_links.includes(mb_url)) {
+                                    // prevent dupes
+                                    mb_links.push(mb_url);
+                                }
+
                             }
                         });
                         if (mb_links.length > 1) {
