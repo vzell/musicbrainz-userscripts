@@ -1323,6 +1323,15 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
+    'Director Of Photography': {
+        entityType: 'artist',
+        linkType: 'photography',
+        attributes: [
+            () => {
+                return setNativeValue(SELECTORS.TaskInput, 'director of photography');
+            },
+        ],
+    }
 };
 
 function doNext(fn) {
