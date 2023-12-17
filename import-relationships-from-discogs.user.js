@@ -1187,6 +1187,11 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'mastering',
     },
+    'Remastered By': {
+        entityType: 'artist',
+        linkType: 'mastering',
+        attributes: ['re'],
+    },
     'Lacquer Cut By': {
         entityType: 'artist',
         linkType: 'lacquer cut',
