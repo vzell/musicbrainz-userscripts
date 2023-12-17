@@ -2,7 +2,7 @@
 
 // @name           Import relationships from a discogs release in to a MusicBrainz release
 // @description    Add a button to import Discogs release relationships to MusicBrainz
-// @version        2023.12.08.1
+// @version        2023.12.17.1
 // @namespace      http://userscripts.org/users/22504
 // @downloadURL    https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
 // @updateURL      https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
@@ -1187,6 +1187,11 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'mastering',
     },
+    'Remastered By': {
+        entityType: 'artist',
+        linkType: 'mastering',
+        attributes: ['re'],
+    },
     'Lacquer Cut By': {
         entityType: 'artist',
         linkType: 'lacquer cut',
@@ -1323,6 +1328,15 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
+    'Director Of Photography': {
+        entityType: 'artist',
+        linkType: 'photography',
+        attributes: [
+            () => {
+                return setNativeValue(SELECTORS.TaskInput, 'director of photography');
+            },
+        ],
+    }
 };
 
 function doNext(fn) {
