@@ -1324,6 +1324,10 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
+    Crew: {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
+    },
     'Supervised By': {
         entityType: 'artist',
         linkType: 'miscellaneous support',
