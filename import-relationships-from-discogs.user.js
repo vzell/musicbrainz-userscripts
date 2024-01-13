@@ -1321,6 +1321,10 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
+    Other: {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
+    },
     'Public Relations': {
         entityType: 'artist',
         linkType: 'miscellaneous support',
