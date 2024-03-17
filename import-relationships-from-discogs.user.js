@@ -1301,6 +1301,10 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
+    'Concept By': {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
+    },
     Contractor: {
         entityType: 'artist',
         linkType: 'miscellaneous support',
@@ -1318,6 +1322,10 @@ const ENTITY_TYPE_MAP = {
         linkType: 'miscellaneous support',
     },
     'Tour Manager': {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
+    },
+    Other: {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
