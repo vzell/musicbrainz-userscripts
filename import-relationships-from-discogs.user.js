@@ -2,7 +2,7 @@
 
 // @name           Import relationships from a discogs release in to a MusicBrainz release
 // @description    Add a button to import Discogs release relationships to MusicBrainz
-// @version        2023.12.08.1
+// @version        2024.05.01.1
 // @namespace      http://userscripts.org/users/22504
 // @downloadURL    https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
 // @updateURL      https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
@@ -891,18 +891,18 @@ function getDiscogsLinkKey(url) {
 const SELECTORS = {
     MediumsInput: '.multiselect-input',
     MediumsInputOptions: '.multiselect-input + .menu a',
-    InstrumentsInput: '#add-relationship-dialog-root .multiselect.instrument input[aria-autocomplete]',
-    VocalsTypeInput: '#add-relationship-dialog-root .multiselect.vocal input[aria-autocomplete]',
-    AddRelationshipsDialogEntityType: '#add-relationship-dialog-root .entity-type',
-    AddRelationshipsDialogRelationshipType: '#add-relationship-dialog-root input.relationship-type',
-    AddRelationshipsDialogRelationshipTarget: '#add-relationship-dialog-root input.relationship-target',
-    AddRelationshipsDialogEntityCredit: '#add-relationship-dialog-root input.entity-credit',
-    AddRelationshipsDialogDoneButton: '#add-relationship-dialog-root .buttons button.positive',
-    AddRelationshipsDialogError: '#add-relationship-dialog-root .error',
-    AddRelationshipsDialogCancelButton: '#add-relationship-dialog-root .buttons button.negative',
+    InstrumentsInput: '#add-relationship-dialog .multiselect.instrument input[aria-autocomplete]',
+    VocalsTypeInput: '#add-relationship-dialog .multiselect.vocal input[aria-autocomplete]',
+    AddRelationshipsDialogEntityType: '#add-relationship-dialog .entity-type',
+    AddRelationshipsDialogRelationshipType: '#add-relationship-dialog input.relationship-type',
+    AddRelationshipsDialogRelationshipTarget: '#add-relationship-dialog input.relationship-target',
+    AddRelationshipsDialogEntityCredit: '#add-relationship-dialog input.entity-credit',
+    AddRelationshipsDialogDoneButton: '#add-relationship-dialog .buttons button.positive',
+    AddRelationshipsDialogError: '#add-relationship-dialog .error',
+    AddRelationshipsDialogCancelButton: '#add-relationship-dialog .buttons button.negative',
     AddReleaseRelationshipButton: '#release-rels button.add-relationship',
     EditNote: '#edit-note-text',
-    TaskInput: '#add-relationship-dialog-root .attribute-container.task input',
+    TaskInput: '#add-relationship-dialog .attribute-container.task input',
 };
 
 const ENTITY_TYPE_MAP = {
