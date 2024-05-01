@@ -539,6 +539,11 @@ function getArtistRoles(artist) {
                     return setNativeValue(SELECTORS.TaskInput, rolePart[1].replace(']', '').trim().toLowerCase());
                 });
             }
+            if (mapping && mapping.linkType == 'mixer' && rolePart[1]) {
+                additionalAttributes.push(() => {
+                    return setNativeValue(SELECTORS.TaskInput, rolePart[1].replace(']', '').trim().toLowerCase());
+                });
+            }
             if (mapping && mapping.linkType == 'producer' && rolePart[1]) {
                 additionalAttributes.push(() => {
                     return setNativeValue(SELECTORS.TaskInput, rolePart[1].replace(']', '').trim().toLowerCase());
@@ -1187,6 +1192,11 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'mastering',
     },
+    'Remastered By': {
+        entityType: 'artist',
+        linkType: 'mastering',
+        attributes: ['re'],
+    },
     'Lacquer Cut By': {
         entityType: 'artist',
         linkType: 'lacquer cut',
@@ -1291,6 +1301,10 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
+    'Concept By': {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
+    },
     Contractor: {
         entityType: 'artist',
         linkType: 'miscellaneous support',
@@ -1311,6 +1325,10 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
+    Other: {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
+    },
     'Public Relations': {
         entityType: 'artist',
         linkType: 'miscellaneous support',
@@ -1319,10 +1337,23 @@ const ENTITY_TYPE_MAP = {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
+    Crew: {
+        entityType: 'artist',
+        linkType: 'miscellaneous support',
+    },
     'Supervised By': {
         entityType: 'artist',
         linkType: 'miscellaneous support',
     },
+    'Director Of Photography': {
+        entityType: 'artist',
+        linkType: 'photography',
+        attributes: [
+            () => {
+                return setNativeValue(SELECTORS.TaskInput, 'director of photography');
+            },
+        ],
+    }
 };
 
 function doNext(fn) {
