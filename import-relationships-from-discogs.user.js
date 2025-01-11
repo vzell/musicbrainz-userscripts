@@ -2,7 +2,7 @@
 
 // @name           Import relationships from a discogs release in to a MusicBrainz release
 // @description    Add a button to import Discogs release relationships to MusicBrainz
-// @version        2024.05.01.1
+// @version        2025.01.10.1
 // @namespace      http://userscripts.org/users/22504
 // @downloadURL    https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
 // @updateURL      https://raw.githubusercontent.com/mattgoldspink/musicbrainz-userscripts/feature_fix_always_render_button/import-relationships-from-discogs.user.js
@@ -172,7 +172,7 @@ function hasDiscogsLinkDefined(mbid) {
 function startImportRels(discogsUrl, processTracklist) {
     return getDiscogsReleaseData(discogsUrl)
         .then(json => {
-            let artistRoles = convertDiscogsArtistsToRolesRelationships(json.extraartists.filter(artist => artist.tracks === ''));
+            let artistRoles = convertDiscogsArtistsToRolesRelationships(json.extraartists?.filter(artist => artist.tracks === ''));
             addLogLine(`Found ${json.companies.length + artistRoles.length} release relationships`);
             // handle potential dj mixes - if the tracks are the full medium then assign it to the release/medium else leave it as individual tracks
             artistRoles = artistRoles.concat(convertPotentialDJMixers(json));
@@ -192,7 +192,7 @@ function startImportRels(discogsUrl, processTracklist) {
                             })
                         );
                     }, []);
-                const releaseLevelTracklistRels = json.extraartists.filter(artist => artist.tracks !== '');
+                const releaseLevelTracklistRels = json.extraartists?.filter(artist => artist.tracks !== '') || [];
                 if (releaseLevelTracklistRels.length > 0) {
                     tracklistRels = tracklistRels.concat(
                         releaseLevelTracklistRels.reduce((array, artist) => {
@@ -223,7 +223,7 @@ function startImportRels(discogsUrl, processTracklist) {
 }
 
 function convertPotentialDJMixers(json) {
-    let djmixers = json.extraartists.filter(artist => artist.role === 'DJ Mix');
+    let djmixers = json.extraartists?.filter(artist => artist.role === 'DJ Mix') || [];
     djmixers = djmixers
         .map(artist => {
             const tracks = getAllArtistTracks(json.tracklist, artist.tracks);
@@ -252,9 +252,9 @@ function convertPotentialDJMixers(json) {
             let mediumsDjAppearsOn = mediums.filter(medium => medium.length === 0);
             if (mediumsDjAppearsOn.length !== mediums.length) {
                 // remove them from the extraartists list
-                json.extraartists = json.extraartists.filter(a => {
+                json.extraartists = json.extraartists?.filter(a => {
                     return a !== artist;
-                });
+                }) || [];
                 return Object.assign({}, ENTITY_TYPE_MAP['DJ Mix'], {
                     artist: artist,
                     attributes: [
@@ -270,9 +270,9 @@ function convertPotentialDJMixers(json) {
                 });
             } else if (mediumsDjAppearsOn.length === mediums.length) {
                 // they're on all tracks so remove
-                json.extraartists = json.extraartists.filter(a => {
+                json.extraartists = json.extraartists?.filter(a => {
                     return a !== artist;
-                });
+                }) || [];
                 return Object.assign({}, ENTITY_TYPE_MAP['DJ Mix'], {
                     artist: artist,
                 });
@@ -322,13 +322,13 @@ function getAllArtistTracks(tracklist, artistTracks) {
 }
 
 function convertDiscogsArtistsToRolesRelationships(artists) {
-    return artists.reduce((rolesArr, artist) => {
+    return artists?.reduce((rolesArr, artist) => {
         const roles = getArtistRoles(artist);
         if (Array.isArray(roles) && roles.length > 0) {
             return rolesArr.concat(roles);
         }
         return rolesArr;
-    }, []);
+    }, []) || [];
 }
 
 function getDiscogsReleaseData(url) {
