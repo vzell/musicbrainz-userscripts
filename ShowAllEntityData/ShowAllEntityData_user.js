@@ -5463,7 +5463,6 @@
                     columnExtractors: [
 			{ sourceColumn: 'Event',    extractor: 'Name_Date_Comment', syntheticColumns: ['Name', 'Date', 'Comment'] },
                         { sourceColumn: 'Event',    extractor: 'cancelledEvent',    syntheticColumns: ['Cancelled'] },
-                        { sourceColumn: 'Location', extractor: 'splitLocation',     syntheticColumns: ['Place', 'Area', 'Country'] },
                         { sourceColumn: 'Event',    extractor: 'primaryAlias',      syntheticColumns: ['Primary Alias'] },
 		    ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
@@ -5535,7 +5534,6 @@
                     columnExtractors: [
 			{ sourceColumn: 'Event',    extractor: 'Name_Date_Comment', syntheticColumns: ['Name', 'Date', 'Comment'] },
                         { sourceColumn: 'Event',    extractor: 'cancelledEvent',    syntheticColumns: ['Cancelled'] },
-                        { sourceColumn: 'Location', extractor: 'splitLocation',     syntheticColumns: ['Place', 'Area', 'Country'] },
                         { sourceColumn: 'Event',    extractor: 'primaryAlias',      syntheticColumns: ['Primary Alias'] },
 		    ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
@@ -5619,7 +5617,11 @@
                     columnExtractors: [ { sourceColumn: 'Artist', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
                 },
                 'Events': {
-                    columnExtractors: [ { sourceColumn: 'Event', extractor: 'Name_Date_Comment', syntheticColumns: ['Name', 'Date', 'Comment'] } ],
+                    columnExtractors: [
+			{ sourceColumn: 'Event',    extractor: 'Name_Date_Comment', syntheticColumns: ['Name', 'Date', 'Comment'] },
+                        { sourceColumn: 'Event',    extractor: 'cancelledEvent',    syntheticColumns: ['Cancelled'] },
+                        { sourceColumn: 'Event',    extractor: 'primaryAlias',      syntheticColumns: ['Primary Alias'] },
+		    ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
                     addEAA: 'Event',
