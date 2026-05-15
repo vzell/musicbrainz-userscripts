@@ -19,8 +19,8 @@
 // @match        *://*.musicbrainz.org/user/*/subscriptions/*
 // @match        *://*.musicbrainz.org/user/*/subscribers
 // @match        *://*.musicbrainz.org/user/*/collections
-// @match        *://*.musicbrainz.org/user/*/ratings
 // @match        *://*.musicbrainz.org/user/*/ratings/*
+// @match        *://*.musicbrainz.org/user/*/ratings
 // @match        *://*.musicbrainz.org/user/*/tags*
 // @match        *://*.musicbrainz.org/tags*
 // @match        *://*.musicbrainz.org/user/*/tag/*
