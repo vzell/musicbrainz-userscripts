@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.587+2026-05-11
+// @version      9.99.588+2026-05-15
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -19,6 +19,7 @@
 // @match        *://*.musicbrainz.org/user/*/subscriptions/*
 // @match        *://*.musicbrainz.org/user/*/subscribers
 // @match        *://*.musicbrainz.org/user/*/collections
+// @match        *://*.musicbrainz.org/user/*/ratings
 // @match        *://*.musicbrainz.org/user/*/tags*
 // @match        *://*.musicbrainz.org/tags*
 // @match        *://*.musicbrainz.org/user/*/tag/*
@@ -4168,6 +4169,136 @@
                     return; // Structure E handled all h3+ul pairs for this entry
                 }
 
+                // ── Structure H: user-ratings /user/<username>/ratings ────────────────
+                // Triggered for pageType 'user-ratings'.
+                // renameH2ToH3 has already demoted the original <h2> section headings
+                // ("Artist ratings", "Recording ratings", etc.) to <h3>.
+                // Each <h3>+<ul> pair is converted to either:
+                //   2-col table — Ratings | <EntityType>
+                //     for sections with no "by" in the list (e.g. Artists, Works)
+                //   3-col table — Ratings | <EntityType> | Artist
+                //     for sections where any <li> has "</span> by" or "</a> by"
+                //     (e.g. Recordings, Release groups)
+                // The trailing "View all ratings" <li> is preserved as the last row
+                // so that renderGroupedTable can detect it and convert it into an
+                // overflow button in the h3 header.
+                // dataset.mbColHeaders (JSON) stores the column names for this group
+                // so renderGroupedTable can build a per-group thead of the correct width.
+                if (pageType === 'user-ratings') {
+                    Array.from(_root.querySelectorAll('h3, h2')).forEach(_h3 => {
+                        let _next = _h3.nextElementSibling, _steps = 0, _ul = null;
+                        while (_next && _steps < 5) {
+                            if (_next.tagName === 'UL') { _ul = _next; break; }
+                            _next = _next.nextElementSibling;
+                            _steps++;
+                        }
+                        if (!_ul) return;
+
+                        const _h3Text     = _h3.textContent.trim();
+                        // "Artist ratings" → "Artist", "Release group ratings" → "Release group"
+                        const _entityType = _h3Text.replace(/\s+ratings$/i, '').trim() || _h3Text;
+                        // 3-col when any li html contains "</span> by" or "</a> by"
+                        const _has3Cols   = /(<\/span>|<\/a>)\s+by\b/i.test(_ul.innerHTML);
+                        const _colHeaders = _has3Cols
+                            ? ['Ratings', _entityType, 'Artist']
+                            : ['Ratings', _entityType];
+
+                        const _table = docContext.createElement('table');
+                        _table.className = 'tbl';
+                        _table.dataset.mbOriginalColName = _entityType;
+                        _table.dataset.mbColHeaders = JSON.stringify(_colHeaders);
+
+                        // thead
+                        const _thead = docContext.createElement('thead');
+                        const _hr    = docContext.createElement('tr');
+                        _colHeaders.forEach(label => {
+                            const _th = docContext.createElement('th');
+                            _th.textContent = label;
+                            _hr.appendChild(_th);
+                        });
+                        _thead.appendChild(_hr);
+                        _table.appendChild(_thead);
+
+                        // tbody — one row per <li>
+                        const _tbody = docContext.createElement('tbody');
+                        Array.from(_ul.querySelectorAll(':scope > li')).forEach(li => {
+                            const _tr         = docContext.createElement('tr');
+                            if (li.className) _tr.className = li.className;
+
+                            const _ratingSpan = li.querySelector('span.inline-rating');
+                            // "View all ratings" li: no inline-rating, text starts with "View all"
+                            const _isViewAll  = !_ratingSpan
+                                && /^\s*view all ratings/i.test(li.textContent.trim());
+
+                            if (_isViewAll) {
+                                // Put the link in the first cell; pad remaining cells empty
+                                const _td0 = docContext.createElement('td');
+                                Array.from(li.childNodes).forEach(n => _td0.appendChild(n.cloneNode(true)));
+                                _tr.appendChild(_td0);
+                                _colHeaders.slice(1).forEach(() =>
+                                    _tr.appendChild(docContext.createElement('td')));
+                            } else {
+                                // Rating cell: numeric value from .current-user-rating
+                                const _td0      = docContext.createElement('td');
+                                const _ratingEl = _ratingSpan
+                                    ? _ratingSpan.querySelector('.current-user-rating')
+                                    : null;
+                                _td0.textContent = _ratingEl ? _ratingEl.textContent.trim() : '';
+                                _tr.appendChild(_td0);
+
+                                // Collect child nodes after the inline-rating span and separator
+                                const _afterNodes = [];
+                                let _pastRating = !_ratingSpan;
+                                let _pastSep    = !_ratingSpan;
+                                for (const node of li.childNodes) {
+                                    if (!_pastRating) {
+                                        if (node === _ratingSpan) _pastRating = true;
+                                        continue;
+                                    }
+                                    if (!_pastSep) {
+                                        // Skip the " - " separator text node
+                                        if (node.nodeType === Node.TEXT_NODE) {
+                                            _pastSep = true;
+                                            continue;
+                                        }
+                                    }
+                                    _afterNodes.push(node);
+                                }
+
+                                if (!_has3Cols) {
+                                    // 2-column: entity cell gets all remaining content
+                                    const _td1 = docContext.createElement('td');
+                                    _afterNodes.forEach(n => _td1.appendChild(n.cloneNode(true)));
+                                    _tr.appendChild(_td1);
+                                } else {
+                                    // 3-column: split on the " by " text node
+                                    const _td1 = docContext.createElement('td');
+                                    const _td2 = docContext.createElement('td');
+                                    let _inArtist = false;
+                                    for (const node of _afterNodes) {
+                                        if (!_inArtist && node.nodeType === Node.TEXT_NODE
+                                                && /\bby\b/i.test(node.textContent)) {
+                                            _inArtist = true;
+                                            continue; // skip the "by" text itself
+                                        }
+                                        (_inArtist ? _td2 : _td1).appendChild(node.cloneNode(true));
+                                    }
+                                    _tr.appendChild(_td1);
+                                    _tr.appendChild(_td2);
+                                }
+                            }
+                            _tbody.appendChild(_tr);
+                        });
+                        _table.appendChild(_tbody);
+
+                        _ul.parentNode.replaceChild(_table, _ul);
+                        Lib.debug('init',
+                            `applyListToTable: user-ratings: converted h3="${_h3Text}" ul → table` +
+                            ` (${_tbody.rows.length} rows, cols="${_colHeaders.join(' | ')}", structure="user-ratings").`);
+                    });
+                    return; // Structure H handled all h3+ul pairs
+                }
+
                 // ── Structure F: artist-credit overview pages ────────────────────────
                 // Triggered for pageType 'artist-credit' (/artist-credit/<id>).
                 // Each <h3> under <h2>Uses</h2> (e.g. "Release groups", "Releases",
@@ -5298,6 +5429,37 @@
                 // Remove the vote/sort form (style="margin-top:1em") after rendering
                 // since the two buttons above replace its function.
                 removeSelector: 'form[style*="margin-top"]'
+            },
+            tableMode: 'multi'
+        },
+        // User ratings pages (/user/<username>/ratings e.g. /user/vzell/ratings)
+        // Page structure (after renameH2ToH3 + insertH2):
+        //   <h2>Ratings</h2>  ← inserted by insertH2
+        //   <h3>Artist ratings</h3>  → 2-col table: Ratings | Artist
+        //   <h3>Recording ratings</h3>  → 3-col table: Ratings | Recording | Artist
+        //   <h3>Release group ratings</h3>  → 3-col table: Ratings | Release group | Artist
+        //   <h3>Work ratings</h3>  → 2-col table: Ratings | Work
+        //   (any section containing "</span> by" or "</a> by" gets 3 columns)
+        //
+        // Processing pipeline:
+        //   1. renameH2ToH3 — demotes existing <h2> section headings to <h3>
+        //   2. insertH2     — inserts new <h2>Ratings</h2> anchor after .tabs
+        //   3. listToTable  — Structure H: walks <h3>+<ul> pairs, builds 2-col or
+        //                     3-col tables; "View all ratings" li becomes an overflow
+        //                     button in renderGroupedTable
+        {
+            type: 'user-ratings',
+            match: (path, params) => path.match(/\/user\/[^/]+\/ratings$/),
+            buttons: [
+                { label: 'Show Ratings' }
+            ],
+            features: {
+                renameH2ToH3: true,
+                insertH2: 'Ratings',
+                listToTable: [ '' ],
+                integerColumns: [ { sourceColumn: 'Ratings', align: 'R' } ],
+                extractMainColumn: null,
+                stickyColumn: null,
             },
             tableMode: 'multi'
         },
@@ -24955,7 +25117,10 @@ a { color: #1565c0; }`;
                         // hidden externally by another userscript (display:none on <th>)
                         // even when sa_remove_rating is disabled, to keep index tracking
                         // aligned with what cleanupHeaders will remove from the thead.
+                        // Exception: user-ratings creates its own "Ratings" column that
+                        // must never be treated as the native MB "Rating" column.
                         for (const [headerPrefix, settingKey] of Object.entries(removalMap)) {
+                            if (pageType === 'user-ratings') break;
                             if (txt.startsWith(headerPrefix)) {
                                 const _settingOn = Lib.settings[settingKey];
                                 const _extHidden =
@@ -25427,6 +25592,12 @@ a { color: #1565c0; }`;
                             const _lastGroup = groupedRows[groupedRows.length - 1];
                             if (activeDefinition.entityFeatures) {
                                 _lastGroup.entityFeatures = resolveEntityFeaturesFromH3(category, activeDefinition);
+                            }
+                            // For user-ratings, store per-group column headers (from
+                            // applyListToTable Structure H) so renderGroupedTable can
+                            // build the correct per-group thead width (2-col vs 3-col).
+                            if (pageType === 'user-ratings' && table.dataset.mbColHeaders) {
+                                try { _lastGroup.colHeaders = JSON.parse(table.dataset.mbColHeaders); } catch (_e) {}
                             }
                         }
                         const currentGroup = groupedRows[groupedRows.length - 1];
@@ -28121,7 +28292,22 @@ a { color: #1565c0; }`;
                 table.style.width = 'calc(100% - 1.5em)';
                 if (templateHead) {
                     let _theadForGroup;
-                    if ((pageType === 'tag-value' || pageType === 'user-tag-value') && rawTemplateHead) {
+                    if (pageType === 'user-ratings') {
+                        // ── Per-group thead for user-ratings ──────────────────────────
+                        // Each group may have a different column count (2-col for entity
+                        // types without artist credit, 3-col for those with "by …").
+                        // Build the thead from the stored colHeaders array rather than
+                        // cloning the shared templateHead (which always reflects the
+                        // first section's column layout).
+                        _theadForGroup = document.createElement('thead');
+                        const _hRow = document.createElement('tr');
+                        (group.colHeaders || ['Ratings', categoryName]).forEach(name => {
+                            const _th = document.createElement('th');
+                            _th.textContent = name;
+                            _hRow.appendChild(_th);
+                        });
+                        _theadForGroup.appendChild(_hRow);
+                    } else if ((pageType === 'tag-value' || pageType === 'user-tag-value') && rawTemplateHead) {
                         // ── Per-group thead for tag-value multi-table mode ────────────
                         // Each group has a different entity-type column and therefore
                         // different synthetic columns.  Resolve extractors from the group's
@@ -28406,6 +28592,90 @@ a { color: #1565c0; }`;
 
                             Lib.debug('render',
                                 `${pageType}: added "Show all ${_count} rows" button to h3 "${categoryName}"; ` +
+                                `patched mbTotalRows to ${_realCount}.`);
+                        }
+                    }
+                }
+
+                // ── "View all ratings" button for user-ratings pages ──────────────
+                // On user-ratings pages the rendered table may have a trailing row
+                // whose first cell contains an <a href="/user/.../ratings/<type>">
+                // "View all ratings" link (converted from the native <li> by
+                // applyListToTable Structure H).
+                // When found:
+                //   • A button is inserted in the h3 (after the filter container)
+                //     that opens the full entity ratings list in a new tab.
+                //   • The trailing row is removed from the table.
+                //   • table.dataset.mbTotalRows and the mb-row-count-stat span are
+                //     patched to reflect the real (post-removal) row count.
+                if (pageType === 'user-ratings') {
+                    const _lastRow = tbody.lastElementChild;
+                    if (_lastRow) {
+                        const _viewAllLink = _lastRow.querySelector(
+                            'td a[href*="/user/"][href*="/ratings/"]'
+                        );
+                        if (_viewAllLink &&
+                                /^\s*view all ratings\s*$/i.test(_viewAllLink.textContent)) {
+                            const _href = _viewAllLink.getAttribute('href');
+
+                            const _viewAllBtn = document.createElement('button');
+                            _viewAllBtn.type      = 'button';
+                            _viewAllBtn.className = 'mb-show-all-subtable-btn';
+                            _viewAllBtn.textContent = 'View all ratings';
+                            _viewAllBtn.title =
+                                `Click to view all ratings in a new browser tab ` +
+                                `for this sub-section (MusicBrainz Ratings pages show only ` +
+                                `the top-rated items per entity type)`;
+                            const _initBg    = Lib.settings.sa_ui_show_all_subtable_btn_bg         || '#FFE0B2';
+                            const _clickedBg = Lib.settings.sa_ui_show_all_subtable_btn_bg_clicked || '#CCFFCC';
+                            _viewAllBtn.style.background = _initBg;
+                            _viewAllBtn.onclick = (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                window.open(new URL(_href, window.location.origin).href, '_blank');
+                                _viewAllBtn.style.background = _clickedBg;
+                            };
+
+                            // Insert after filter container (or toggle icon if absent)
+                            const _insertAfter =
+                                h3.querySelector('.mb-subtable-filter-container') ||
+                                h3.querySelector('.mb-subtable-filter-toggle-icon');
+                            if (_insertAfter) {
+                                _insertAfter.after(_viewAllBtn);
+                            } else {
+                                h3.appendChild(_viewAllBtn);
+                            }
+
+                            // Remove the trailing "View all ratings" row
+                            _lastRow.remove();
+
+                            // Splice out of in-memory row arrays so re-filter
+                            // does not re-insert the removed row.
+                            const _splice = (arr) => {
+                                if (!Array.isArray(arr)) return;
+                                const _si = arr.indexOf(_lastRow);
+                                if (_si !== -1) arr.splice(_si, 1);
+                            };
+                            _splice(group.rows);
+                            _splice(group.originalRows);
+                            if (typeof groupedRows !== 'undefined' && groupedRows[index]) {
+                                if (groupedRows[index].rows !== group.rows)
+                                    _splice(groupedRows[index].rows);
+                                if (groupedRows[index].originalRows)
+                                    _splice(groupedRows[index].originalRows);
+                            }
+
+                            // Patch mbTotalRows to the real (post-removal) count
+                            const _realCount = tbody.rows.length;
+                            table.dataset.mbTotalRows = String(_realCount);
+                            const _statSpan = h3.querySelector('.mb-row-count-stat');
+                            if (_statSpan) {
+                                _statSpan.textContent = `(${_realCount})`;
+                                _statSpan.removeAttribute('data-mbtt');
+                            }
+
+                            Lib.debug('render',
+                                `user-ratings: added "View all ratings" button to h3 "${categoryName}"; ` +
                                 `patched mbTotalRows to ${_realCount}.`);
                         }
                     }

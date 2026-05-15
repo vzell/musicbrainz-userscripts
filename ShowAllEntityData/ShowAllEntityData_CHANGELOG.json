@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.588",
+    "date": "2026-05-15",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Add pageType 'user-ratings' for /user/<username>/ratings pages: new @match directive, page definition with renameH2ToH3 + insertH2 'Ratings' features, and Structure H in applyListToTable that walks h3+ul pairs and builds 2-column tables (Ratings | EntityType) for sections without artist credit (e.g. Artist ratings, Work ratings) and 3-column tables (Ratings | EntityType | Artist) for sections containing '</span> by' or '</a> by' (e.g. Recording ratings, Release group ratings). The trailing 'View all ratings' list item becomes a mb-show-all-subtable-btn overflow button in the h3 header via a new renderGroupedTable block. Per-group thead width is driven by dataset.mbColHeaders (JSON) propagated from applyListToTable through the fetch-loop group object. The sa_remove_rating exclusion is guarded to avoid incorrectly stripping the custom 'Ratings' column on user-ratings pages."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.587",
     "date": "2026-05-11",
     "sections": [

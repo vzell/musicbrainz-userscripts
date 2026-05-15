@@ -6,7 +6,7 @@
 MusicBrainz. It consolidates paginated and non-paginated entity table lists into a single
 view with real-time multi-column filtering and sorting.
 
-**Current version:** `9.99.587+2026-05-11`
+**Current version:** `9.99.588+2026-05-15`
 **Changelog:** `ShowAllEntityData_CHANGELOG.json` (JSON, lives alongside the script)
 **Library dependency:** `VZ_MBLibrary.user.js` (external `@require`; provides `Lib.*`)
 **External dependencies:** `iro` (colour picker), `pako` (compression)
@@ -19,8 +19,6 @@ view with real-time multi-column filtering and sorting.
 - Add a changelog entry to `ShowAllEntityData_CHANGELOG.json` in the same session
 - 4-space indentation, no tabs, no trailing whitespace
 - All functions must have JSDoc `/** … */` blocks
-- Use `str_replace` for edits — never rewrite large sections wholesale
-- Read the exact current text immediately before any `str_replace`
 
 ---
 
@@ -218,9 +216,10 @@ Enable via the `sa_enable_debug_logging` setting or the Tampermonkey menu.
 ---
 
 ## Debug material
-
-- `debug/` folder is gitignored — HTML snapshots and console logs live there
-- **Always read the relevant `debug/*.html` snapshot before proposing any DOM fix**
+- HTML snapshots and console logs live in `debug/` subdirectories
+- `debug/` folders are gitignored
+- Always read `debug/NOTES.md` if it exists before starting work
+- Always read the relevant `debug/*.html` before proposing any DOM fix
 - Document snapshots in `debug/NOTES.md` with date and what they show
 
 ---
