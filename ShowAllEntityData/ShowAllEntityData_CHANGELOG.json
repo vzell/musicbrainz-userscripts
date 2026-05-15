@@ -1,5 +1,42 @@
 [
   {
+    "version": "9.99.594",
+    "date": "2026-05-15",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fix user-ratings-type list-to-table conversion: entity-specific ratings pages (/user/<username>/ratings/<entity>) use the same <h2>+<ul> DOM structure as the overview page, not a native table.tbl. Add listToTable: [''] to user-ratings-type features and extend the Structure H trigger from 'user-ratings'-only to 'user-ratings' || 'user-ratings-type' so applyListToTable converts the single <h2>+<ul> pair into a table.tbl before renderFinalTable runs. Also replace the hardcoded 'user-ratings' string in the Structure H debug log with the pageType variable."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.593",
+    "date": "2026-05-15",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Add missing @match directive for user-ratings-type pages (*://*.musicbrainz.org/user/*/ratings/*) so Tampermonkey injects the script on entity-specific ratings URLs (e.g. /user/vzell/ratings/recording).",
+          "Remove unused 'params' parameter from the user-ratings match function signature (body only tests the path regex, consistent with other path-only matchers)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.592",
+    "date": "2026-05-15",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Complete user-ratings-type pageType for /user/<username>/ratings/<entity> pages (e.g. /user/vzell/ratings/event, /user/vzell/ratings/work): fix match regex (was requiring an extra path segment, now correctly matches /user/[^/]+/ratings/[^/]+$); add features.integerColumns for the Ratings column; add resolveEntityFeaturesFromH2 [user-ratings-type] block that maps the singular URL slug (recording, event, release-group, …) to the plural entityFeatures key (Recordings, Events, Release groups, …), giving each entity page the same column structure as the corresponding sub-table on the user-ratings overview page; extend both Ratings-column removal guards to also cover user-ratings-type so the script's own Ratings column is never treated as a native MB Rating column."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.591",
     "date": "2026-05-15",
     "sections": [

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.591+2026-05-15
+// @version      9.99.594+2026-05-15
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -20,6 +20,7 @@
 // @match        *://*.musicbrainz.org/user/*/subscribers
 // @match        *://*.musicbrainz.org/user/*/collections
 // @match        *://*.musicbrainz.org/user/*/ratings
+// @match        *://*.musicbrainz.org/user/*/ratings/*
 // @match        *://*.musicbrainz.org/user/*/tags*
 // @match        *://*.musicbrainz.org/tags*
 // @match        *://*.musicbrainz.org/user/*/tag/*
@@ -4170,21 +4171,25 @@
                 }
 
                 // ── Structure H: user-ratings /user/<username>/ratings ────────────────
-                // Triggered for pageType 'user-ratings'.
-                // renameH2ToH3 has already demoted the original <h2> section headings
-                // ("Artist ratings", "Recording ratings", etc.) to <h3>.
-                // Each <h3>+<ul> pair is converted to either:
+                // Triggered for pageType 'user-ratings' and 'user-ratings-type'.
+                // Both page types share the same <h2>+<ul> DOM structure:
+                //   user-ratings      — multiple h2+ul pairs (one per entity type);
+                //                       renameH2ToH3 has already demoted them to <h3>
+                //   user-ratings-type — single <h2>+<ul> pair (one entity type, no
+                //                       renameH2ToH3 needed; Structure H handles both
+                //                       h2 and h3 via its querySelector)
+                // Each <h3>+<ul> (or <h2>+<ul>) pair is converted to either:
                 //   2-col table — Ratings | <EntityType>
                 //     for sections with no "by" in the list (e.g. Artists, Works)
                 //   3-col table — Ratings | <EntityType> | Artist
                 //     for sections where any <li> has "</span> by" or "</a> by"
                 //     (e.g. Recordings, Release groups)
-                // The trailing "View all ratings" <li> is preserved as the last row
-                // so that renderGroupedTable can detect it and convert it into an
-                // overflow button in the h3 header.
+                // The trailing "View all ratings" <li> (overview page only) is preserved
+                // as the last row so renderGroupedTable can convert it into an overflow
+                // button; entity-specific pages have no such row.
                 // dataset.mbColHeaders (JSON) stores the column names for this group
                 // so renderGroupedTable can build a per-group thead of the correct width.
-                if (pageType === 'user-ratings') {
+                if (pageType === 'user-ratings' || pageType === 'user-ratings-type') {
                     Array.from(_root.querySelectorAll('h3, h2')).forEach(_h3 => {
                         let _next = _h3.nextElementSibling, _steps = 0, _ul = null;
                         while (_next && _steps < 5) {
@@ -4295,7 +4300,7 @@
 
                         _ul.parentNode.replaceChild(_table, _ul);
                         Lib.debug('init',
-                            `applyListToTable: user-ratings: converted h3="${_h3Text}" ul → table` +
+                            `applyListToTable: ${pageType}: converted h3="${_h3Text}" ul → table` +
                             ` (${_tbody.rows.length} rows, cols="${_colHeaders.join(' | ')}", structure="user-ratings").`);
                     });
                     return; // Structure H handled all h3+ul pairs
@@ -5434,6 +5439,57 @@
             },
             tableMode: 'multi'
         },
+        // Entity-specific user ratings pages (/user/<username>/ratings/<entity>)
+        // Triggered by the "View all ratings" overflow button on user-ratings sub-tables.
+        // URL examples: /user/vzell/ratings/recording, /user/vzell/ratings/event
+        // The entity slug (last path segment, singular) is mapped to the plural
+        // entityFeatures key via resolveEntityFeaturesFromH2 [user-ratings-type].
+        // Column structure mirrors the corresponding sub-table on the user-ratings page.
+        {
+            type: 'user-ratings-type',
+            match: (path) => path.match(/\/user\/[^/]+\/ratings\/[^/]+$/),
+            buttons: [
+                { label: 'Show Ratings' }
+            ],
+            features: {
+                listToTable: [ '' ],
+                integerColumns: [ { sourceColumn: 'Ratings', align: 'R' } ]
+            },
+            entityFeatures: {
+                'Artists': {
+                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                },
+                'Events': {
+                    columnExtractors: [ { sourceColumn: 'Event', extractor: 'Name_Date_Comment', syntheticColumns: ['Name', 'Date', 'Comment'] } ],
+                    syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
+                    integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
+                    addEAA: 'Event',
+                    tooltipColumns: [ 'Name', ['(', 'Comment', ')'], '---', 'Date' ]
+                },
+                'Labels': {
+                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                },
+                'Places': {
+                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                },
+                'Release groups': {
+                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ],
+                    injectedColumns: [ 'Relationships' ],
+                    addCAA: 'Release group',
+                    tooltipColumns: [ 'Name', 'Artist' ]
+                },
+                'Recordings': {
+                    columnExtractors: [
+                        { sourceColumn: 'Recording', extractor: 'video',         syntheticColumns: ['Video'] },
+                        { sourceColumn: 'Recording', extractor: 'Name_Comment',  syntheticColumns: ['Name', 'Comment'] }
+                    ]
+                },
+                'Works': {
+                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                }
+            },
+            tableMode: 'single'
+        },
         // User ratings pages (/user/<username>/ratings e.g. /user/vzell/ratings)
         // Page structure (after renameH2ToH3 + insertH2):
         //   <h2>Ratings</h2>  ← inserted by insertH2
@@ -5451,7 +5507,7 @@
         //                     button in renderGroupedTable
         {
             type: 'user-ratings',
-            match: (path, params) => path.match(/\/user\/[^/]+\/ratings$/),
+            match: (path) => path.match(/\/user\/[^/]+\/ratings$/),
             buttons: [
                 { label: 'Show Ratings' }
             ],
@@ -23856,9 +23912,9 @@ a { color: #1565c0; }`;
 
             // Setting-gated columns (Rating)
             for (const [headerPrefix, settingKey] of Object.entries(removalMapSetting)) {
-                // user-ratings creates its own "Ratings" column — never remove it
-                // as the native MB Rating column (sa_remove_rating would match the prefix).
-                if (pageType === 'user-ratings') break;
+                // user-ratings / user-ratings-type create their own "Ratings" column —
+                // never remove it as the native MB Rating column.
+                if (pageType === 'user-ratings' || pageType === 'user-ratings-type') break;
                 if (txt.startsWith(headerPrefix)) {
                     const isEnabled = Lib.settings[settingKey];
 
@@ -24360,6 +24416,32 @@ a { color: #1565c0; }`;
             }
             Lib.debug('init',
                 `resolveEntityFeaturesFromH2 [artist-credit-entity]: ` +
+                `no match for "${_plural}" in entityFeatures — returning {}`);
+            return {};
+        }
+
+        // ── user-ratings-type pageType: resolve from URL path segment ────────
+        // URL: /user/<username>/ratings/<entity> — last segment is singular entity
+        // (e.g. "recording", "event", "release-group").  Same slug-to-plural
+        // conversion as artist-credit-entity; no "series" special case needed
+        // (MusicBrainz does not have a series ratings page).
+        if (def.type === 'user-ratings-type') {
+            const _parts      = window.location.pathname.split('/').filter(Boolean);
+            const _entitySlug = _parts[_parts.length - 1] || '';
+            const _singular   = _entitySlug
+                .replace(/-/g, ' ')
+                .replace(/^\w/, c => c.toUpperCase());
+            const _plural     = _singular + 's';
+            Lib.debug('init',
+                `resolveEntityFeaturesFromH2 [user-ratings-type]: ` +
+                `entitySlug="${_entitySlug}" → singular="${_singular}" → key="${_plural}"`);
+            if (_plural && def.entityFeatures[_plural]) {
+                Lib.debug('init',
+                    `resolveEntityFeaturesFromH2 [user-ratings-type]: matched key "${_plural}"`);
+                return def.entityFeatures[_plural];
+            }
+            Lib.debug('init',
+                `resolveEntityFeaturesFromH2 [user-ratings-type]: ` +
                 `no match for "${_plural}" in entityFeatures — returning {}`);
             return {};
         }
@@ -25155,10 +25237,11 @@ a { color: #1565c0; }`;
                         // hidden externally by another userscript (display:none on <th>)
                         // even when sa_remove_rating is disabled, to keep index tracking
                         // aligned with what cleanupHeaders will remove from the thead.
-                        // Exception: user-ratings creates its own "Ratings" column that
-                        // must never be treated as the native MB "Rating" column.
+                        // Exception: user-ratings / user-ratings-type create their own
+                        // "Ratings" column that must never be treated as the native MB
+                        // "Rating" column.
                         for (const [headerPrefix, settingKey] of Object.entries(removalMap)) {
-                            if (pageType === 'user-ratings') break;
+                            if (pageType === 'user-ratings' || pageType === 'user-ratings-type') break;
                             if (txt.startsWith(headerPrefix)) {
                                 const _settingOn = Lib.settings[settingKey];
                                 const _extHidden =
