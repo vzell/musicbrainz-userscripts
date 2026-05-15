@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.588+2026-05-15
+// @version      9.99.591+2026-05-15
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -4189,6 +4189,7 @@
                         let _next = _h3.nextElementSibling, _steps = 0, _ul = null;
                         while (_next && _steps < 5) {
                             if (_next.tagName === 'UL') { _ul = _next; break; }
+                            if (_next.tagName === 'H3' || _next.tagName === 'H2') break;
                             _next = _next.nextElementSibling;
                             _steps++;
                         }
@@ -4206,6 +4207,7 @@
                         const _table = docContext.createElement('table');
                         _table.className = 'tbl';
                         _table.dataset.mbOriginalColName = _entityType;
+                        _table.dataset.mbEntityFeaturesKey = _entityType + 's';
                         _table.dataset.mbColHeaders = JSON.stringify(_colHeaders);
 
                         // thead
@@ -5460,6 +5462,39 @@
                 integerColumns: [ { sourceColumn: 'Ratings', align: 'R' } ],
                 extractMainColumn: null,
                 stickyColumn: null,
+            },
+            entityFeatures: {
+                'Artists': {
+                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                },
+                'Events': {
+                    columnExtractors: [ { sourceColumn: 'Event', extractor: 'Name_Date_Comment', syntheticColumns: ['Name', 'Date', 'Comment'] } ],
+                    syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
+                    integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
+                    addEAA: 'Event',
+                    tooltipColumns: [ 'Name', ['(', 'Comment', ')'], '---', 'Date' ]
+                },
+                'Labels': {
+                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                },
+                'Places': {
+                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                },
+                'Release groups': {
+                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ],
+                    injectedColumns: [ 'Relationships' ],
+                    addCAA: 'Release group',
+                    tooltipColumns: [ 'Name', 'Artist' ]
+                },
+                'Recordings': {
+                    columnExtractors: [
+                        { sourceColumn: 'Recording', extractor: 'video',         syntheticColumns: ['Video'] },
+                        { sourceColumn: 'Recording', extractor: 'Name_Comment',  syntheticColumns: ['Name', 'Comment'] }
+                    ]
+                },
+                'Works': {
+                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                }
             },
             tableMode: 'multi'
         },
@@ -23821,6 +23856,9 @@ a { color: #1565c0; }`;
 
             // Setting-gated columns (Rating)
             for (const [headerPrefix, settingKey] of Object.entries(removalMapSetting)) {
+                // user-ratings creates its own "Ratings" column — never remove it
+                // as the native MB Rating column (sa_remove_rating would match the prefix).
+                if (pageType === 'user-ratings') break;
                 if (txt.startsWith(headerPrefix)) {
                     const isEnabled = Lib.settings[settingKey];
 
@@ -25591,7 +25629,13 @@ a { color: #1565c0; }`;
                             // so renderGroupedTable can drive per-group cleanupHeaders correctly.
                             const _lastGroup = groupedRows[groupedRows.length - 1];
                             if (activeDefinition.entityFeatures) {
-                                _lastGroup.entityFeatures = resolveEntityFeaturesFromH3(category, activeDefinition);
+                                // user-ratings: category is "Artist ratings" but entityFeatures
+                                // keys are plural entity types ("Artists"). Use the key stored by
+                                // Structure H (mbEntityFeaturesKey = _entityType + 's').
+                                const _efKey = (pageType === 'user-ratings' && table.dataset.mbEntityFeaturesKey)
+                                    ? table.dataset.mbEntityFeaturesKey
+                                    : category;
+                                _lastGroup.entityFeatures = resolveEntityFeaturesFromH3(_efKey, activeDefinition);
                             }
                             // For user-ratings, store per-group column headers (from
                             // applyListToTable Structure H) so renderGroupedTable can
@@ -25608,7 +25652,7 @@ a { color: #1565c0; }`;
                         // activeColumnExtractors must be re-resolved against the CURRENT
                         // table's headers — otherwise previous tables' resolved colIdx
                         // values linger and cause multiple extractors to fire on every row.
-                        if (pageType === 'tag-value' || pageType === 'user-tag-value') {
+                        if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings') {
                             // If this group has entity-specific features (from entityFeatures map),
                             // rebuild the active extractors and integer columns from that feature set,
                             // merged with the base features (listToTable, removeSelector, etc.).
@@ -28307,6 +28351,39 @@ a { color: #1565c0; }`;
                             _hRow.appendChild(_th);
                         });
                         _theadForGroup.appendChild(_hRow);
+                        // If this group has entity-specific features, rebuild active
+                        // extractors, resolve colIdx from the freshly built thead cells,
+                        // then call cleanupHeaders to inject synthetic <th>s (e.g. Name,
+                        // Comment) — mirrors the tag-value per-group thead path.
+                        const _urGroupEF = group.entityFeatures || {};
+                        if (Object.keys(_urGroupEF).length > 0) {
+                            const _urMf = { ...(activeDefinition.features || {}), ..._urGroupEF };
+                            const _urTd = { ...activeDefinition, features: _urMf };
+                            activeColumnExtractors          = buildActiveColumnExtractors(_urTd);
+                            activeSyntheticColumnExtractors = buildActiveSyntheticColumnExtractors(_urTd);
+                            activeInjectedColumnExtractors  = buildActiveInjectedColumnExtractors(_urTd);
+                            activeIntegerColumns            = buildActiveIntegerColumns(_urTd);
+                            if (_urGroupEF.tooltipColumns) {
+                                table.dataset.mbEntityTooltipColumns =
+                                    JSON.stringify(_urGroupEF.tooltipColumns);
+                            } else {
+                                delete table.dataset.mbEntityTooltipColumns;
+                            }
+                            if (_urGroupEF.extractMainColumn) {
+                                table.dataset.mbEntityExtractMainColumn = _urGroupEF.extractMainColumn;
+                            } else {
+                                delete table.dataset.mbEntityExtractMainColumn;
+                            }
+                            // Resolve colIdx for each extractor by scanning the thead cells.
+                            activeColumnExtractors.forEach(e => { e.colIdx = -1; });
+                            Array.from(_hRow.cells).forEach((th, idx) => {
+                                const _txt = (th.dataset.colName || th.textContent).trim().replace(/\s+/g, ' ');
+                                activeColumnExtractors.forEach(ext => {
+                                    if (ext.colIdx === -1 && ext.sourceColumn === _txt) ext.colIdx = idx;
+                                });
+                            });
+                            cleanupHeaders(_theadForGroup);
+                        }
                     } else if ((pageType === 'tag-value' || pageType === 'user-tag-value') && rawTemplateHead) {
                         // ── Per-group thead for tag-value multi-table mode ────────────
                         // Each group has a different entity-type column and therefore

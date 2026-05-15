@@ -1,5 +1,41 @@
 [
   {
+    "version": "9.99.591",
+    "date": "2026-05-15",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fix video icon appearing in an extra phantom column on user-ratings Recordings rows: the 'Recordings' entityFeatures was using Name_Comment_Artists (syntheticColumns: ['Name','Comment','Artist']), which appended a redundant Artist <td> even though 'Artist' already exists as an original column in the recording-ratings table. Changed to Name_Comment (syntheticColumns: ['Name','Comment']) so no duplicate Artist cell is emitted; moved the video extractor first so the column order is Ratings | Recording | Artist | Video | Name | Comment."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.590",
+    "date": "2026-05-15",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Wire up entityFeatures on user-ratings pages to work like tag-value: (1) Structure H stores mbEntityFeaturesKey (_entityType+'s') so the fetch loop can resolve entityFeatures by plural key ('Artists', 'Events', etc.) even though the h3 category text is 'Artist ratings'; (2) the per-group extractor rebuild (tag-value path) now also runs for user-ratings, re-resolving activeColumnExtractors/integerColumns from the group's entity-specific feature set; (3) the user-ratings per-group thead builder in renderGroupedTable now also rebuilds extractors from group.entityFeatures, resolves colIdx from the freshly built thead cells, and calls cleanupHeaders to inject synthetic <th>s (Name, Comment, Date, etc.); (4) cleanupHeaders gains a user-ratings guard on the sa_remove_rating loop so the custom 'Ratings' column is never removed."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.589",
+    "date": "2026-05-15",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fix one-position column name shift on user-ratings pages: the Structure H while loop in applyListToTable now stops traversal when it encounters an H3 or H2 heading, preventing the injected <h2>Ratings</h2> from crossing past 'Artist ratings' h3 to steal its UL. Previously every section received the previous section's entity type as column 2 (e.g. 'Artist ratings' showed col2='Ratings', 'Event ratings' showed col2='Artist')."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.588",
     "date": "2026-05-15",
     "sections": [
