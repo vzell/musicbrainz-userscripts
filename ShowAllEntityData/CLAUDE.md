@@ -2,7 +2,7 @@
 
 ## Project overview
 
-`ShowAllEntityData_user.js` is a Tampermonkey userscript (~44,000 lines, ~2.4 MB) for
+`ShowAllEntityData.user.js` is a Tampermonkey userscript (~44,000 lines, ~2.4 MB) for
 MusicBrainz. It consolidates paginated and non-paginated entity table lists into a single
 view with real-time multi-column filtering and sorting.
 
