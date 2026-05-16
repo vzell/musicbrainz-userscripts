@@ -1,5 +1,18 @@
 [
   {
+    "version": "9.99.599",
+    "date": "2026-05-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "editor-subscribers: fix 'Plus N other anonymous users' row reappearing after sort — the row was removed from the DOM in finalCleanup but not from the in-memory allRows / originalAllRows arrays; sort rebuilt the tbody from those arrays, re-inserting the row. Added splice calls (same pattern as the 'View all ratings' fix) to remove it from both arrays immediately after DOM removal.",
+          "editor-subscribers: rename column header from 'Subscribers' (plural h2 text) to 'Subscriber' (singular) by applying _toSingular() in Structure C column-name derivation, consistent with how tag-value-entity and user-tag-value-entity pages singularise their column names."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.598",
     "date": "2026-05-16",
     "sections": [

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.598+2026-05-16
+// @version      9.99.599+2026-05-16
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -4013,6 +4013,7 @@
 
                         // Column name derivation:
                         //   area-users:       full h2 text (e.g. "Users")
+                        //   subscribers:      singular of h2 text (e.g. "Subscribers" → "Subscriber")
                         //   tag-value-entity: first word before "tagged" in the h2 text
                         //                     e.g. "Labels tagged as «country»" → "Labels"
                         const _h2Text = _h2.textContent.trim();
@@ -4030,6 +4031,9 @@
                             // → everything before "tagged", then singularise: "Release groups" → "Release group".
                             const _beforeTagged = _h2Text.split(/\s+tagged\b/i)[0].trim();
                             _colName = _toSingular(_beforeTagged || _h2Text);
+                        } else if (_isSubscribers) {
+                            // "Subscribers" → "Subscriber"
+                            _colName = _toSingular(_h2Text);
                         } else {
                             _colName = _h2Text;
                         }
@@ -33457,8 +33461,17 @@ a { color: #1565c0; }`;
             }
 
             if (_anonCount > 0 && _lastRow) {
-                // 1. Remove the anonymous-users row.
+                // 1. Remove the anonymous-users row from the DOM.
                 _lastRow.remove();
+
+                // Splice out of in-memory row arrays so sort/filter never re-inserts it.
+                const _spliceAnon = (arr) => {
+                    if (!Array.isArray(arr)) return;
+                    const _si = arr.indexOf(_lastRow);
+                    if (_si !== -1) arr.splice(_si, 1);
+                };
+                _spliceAnon(allRows);
+                _spliceAnon(originalAllRows);
 
                 // 2. Patch table.dataset.mbTotalRows and the h2 row-count stat.
                 if (_tbl) {
