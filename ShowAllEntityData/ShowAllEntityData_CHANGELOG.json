@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.602",
+    "date": "2026-05-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fix makeH2sCollapsible(): bare text nodes between an <h2> and the next <h2> (e.g. 'No one has reviewed … yet.' in the Reviews section on ratings-entity pages) were not captured by the nextElementSibling walk and therefore not hidden on collapse. Changed to walk nextSibling instead, wrapping non-empty text nodes in a <span> in-place so they participate in the same show/hide mechanism as element siblings."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.601",
     "date": "2026-05-16",
     "sections": [

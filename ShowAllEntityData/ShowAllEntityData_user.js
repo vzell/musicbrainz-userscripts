@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.601+2026-05-16
+// @version      9.99.602+2026-05-16
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -30224,12 +30224,26 @@ a { color: #1565c0; }`;
             h2.style.cursor = 'pointer'; // Make entire H2 header indicate clickability
             h2.style.userSelect = 'none'; // Prevent text selection when clicking
 
-            // Find elements between this H2 and the next H2
+            // Find nodes between this H2 and the next H2.
+            // Walk nextSibling (not nextElementSibling) so that bare text nodes
+            // (e.g. "No one has reviewed … yet." in the Reviews section on
+            // ratings-entity pages) are also captured.  Non-empty text nodes are
+            // wrapped in a <span> in-place so they can be shown/hidden via the
+            // same style.display mechanism as element siblings.
             const contentNodes = [];
-            let next = h2.nextElementSibling;
-            while (next && next.tagName !== 'H2') {
-                contentNodes.push(next);
-                next = next.nextElementSibling;
+            let _cur = h2.nextSibling;
+            while (_cur) {
+                const _nxt = _cur.nextSibling; // save before any DOM mutation
+                if (_cur.nodeType === Node.ELEMENT_NODE && _cur.tagName === 'H2') break;
+                if (_cur.nodeType === Node.TEXT_NODE && _cur.textContent.trim()) {
+                    const _wrap = document.createElement('span');
+                    _cur.parentNode.insertBefore(_wrap, _cur);
+                    _wrap.appendChild(_cur);
+                    contentNodes.push(_wrap);
+                } else if (_cur.nodeType === Node.ELEMENT_NODE) {
+                    contentNodes.push(_cur);
+                }
+                _cur = _nxt;
             }
 
             // Identify if this is the target H2 with row-count stat
