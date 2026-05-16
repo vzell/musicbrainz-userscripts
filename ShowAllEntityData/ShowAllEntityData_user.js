@@ -5453,7 +5453,7 @@
             ],
             features: {
                 listToTable: [ '' ],
-                integerColumns: [ { sourceColumn: 'Ratings', align: 'R' } ]
+                integerColumns: [ { sourceColumn: 'Ratings', align: 'C' } ]
             },
             entityFeatures: {
                 'Artists': {
@@ -5522,7 +5522,7 @@
                 renameH2ToH3: true,
                 insertH2: 'Ratings',
                 listToTable: [ '' ],
-                integerColumns: [ { sourceColumn: 'Ratings', align: 'R' } ],
+                integerColumns: [ { sourceColumn: 'Ratings', align: 'C' } ],
                 extractMainColumn: null,
                 stickyColumn: null,
             },
@@ -5537,7 +5537,7 @@
                         { sourceColumn: 'Event',    extractor: 'primaryAlias',      syntheticColumns: ['Primary Alias'] },
 		    ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
-                    integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
+                    integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, { sourceColumn: 'Ratings', align: 'C' } ],
                     addEAA: 'Event',
                     tooltipColumns: [ 'Name', ['(', 'Comment', ')'], '---', 'Date' ]
                 },
