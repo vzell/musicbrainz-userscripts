@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.601",
+    "date": "2026-05-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Rename first column from 'Ratings' (plural) to 'Rating' (singular) for pageTypes 'user-ratings' (all sub-tables) and 'user-ratings-type' (single table): updated Structure H _colHeaders array, both pageType integerColumns sourceColumn references, the Events entityFeatures integerColumns entry, and all related comments."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.600",
     "date": "2026-05-16",
     "sections": [

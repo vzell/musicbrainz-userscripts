@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.600+2026-05-16
+// @version      9.99.601+2026-05-16
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -4190,9 +4190,9 @@
                 //                       renameH2ToH3 needed; Structure H handles both
                 //                       h2 and h3 via its querySelector)
                 // Each <h3>+<ul> (or <h2>+<ul>) pair is converted to either:
-                //   2-col table — Ratings | <EntityType>
+                //   2-col table — Rating | <EntityType>
                 //     for sections with no "by" in the list (e.g. Artists, Works)
-                //   3-col table — Ratings | <EntityType> | Artist
+                //   3-col table — Rating | <EntityType> | Artist
                 //     for sections where any <li> has "</span> by" or "</a> by"
                 //     (e.g. Recordings, Release groups)
                 // The trailing "View all ratings" <li> (overview page only) is preserved
@@ -4217,8 +4217,8 @@
                         // 3-col when any li html contains "</span> by" or "</a> by"
                         const _has3Cols   = /(<\/span>|<\/a>)\s+by\b/i.test(_ul.innerHTML);
                         const _colHeaders = _has3Cols
-                            ? ['Ratings', _entityType, 'Artist']
-                            : ['Ratings', _entityType];
+                            ? ['Rating', _entityType, 'Artist']
+                            : ['Rating', _entityType];
 
                         const _table = docContext.createElement('table');
                         _table.className = 'tbl';
@@ -5571,7 +5571,7 @@
             ],
             features: {
                 listToTable: [ '' ],
-                integerColumns: [ { sourceColumn: 'Ratings', align: 'C' } ]
+                integerColumns: [ { sourceColumn: 'Rating', align: 'C' } ]
             },
             entityFeatures: {
                 'Artists': {
@@ -5618,10 +5618,10 @@
         // User ratings pages (/user/<username>/ratings e.g. /user/vzell/ratings)
         // Page structure (after renameH2ToH3 + insertH2):
         //   <h2>Ratings</h2>  ← inserted by insertH2
-        //   <h3>Artist ratings</h3>  → 2-col table: Ratings | Artist
-        //   <h3>Recording ratings</h3>  → 3-col table: Ratings | Recording | Artist
-        //   <h3>Release group ratings</h3>  → 3-col table: Ratings | Release group | Artist
-        //   <h3>Work ratings</h3>  → 2-col table: Ratings | Work
+        //   <h3>Artist ratings</h3>  → 2-col table: Rating | Artist
+        //   <h3>Recording ratings</h3>  → 3-col table: Rating | Recording | Artist
+        //   <h3>Release group ratings</h3>  → 3-col table: Rating | Release group | Artist
+        //   <h3>Work ratings</h3>  → 2-col table: Rating | Work
         //   (any section containing "</span> by" or "</a> by" gets 3 columns)
         //
         // Processing pipeline:
@@ -5640,7 +5640,7 @@
                 renameH2ToH3: true,
                 insertH2: 'Ratings',
                 listToTable: [ '' ],
-                integerColumns: [ { sourceColumn: 'Ratings', align: 'C' } ],
+                integerColumns: [ { sourceColumn: 'Rating', align: 'C' } ],
                 extractMainColumn: null,
                 stickyColumn: null,
             },
@@ -5655,7 +5655,7 @@
                         { sourceColumn: 'Event',    extractor: 'primaryAlias',      syntheticColumns: ['Primary Alias'] },
 		    ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
-                    integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, { sourceColumn: 'Ratings', align: 'C' } ],
+                    integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, { sourceColumn: 'Rating', align: 'C' } ],
                     addEAA: 'Event',
                     tooltipColumns: [ 'Name', ['(', 'Comment', ')'], '---', 'Date' ]
                 },
@@ -24089,7 +24089,7 @@ a { color: #1565c0; }`;
 
             // Setting-gated columns (Rating)
             for (const [headerPrefix, settingKey] of Object.entries(removalMapSetting)) {
-                // user-ratings / user-ratings-type create their own "Ratings" column —
+                // user-ratings / user-ratings-type create their own "Rating" column —
                 // never remove it as the native MB Rating column.
                 if (pageType === 'user-ratings' || pageType === 'user-ratings-type') break;
                 if (txt.startsWith(headerPrefix)) {
@@ -25415,8 +25415,8 @@ a { color: #1565c0; }`;
                         // even when sa_remove_rating is disabled, to keep index tracking
                         // aligned with what cleanupHeaders will remove from the thead.
                         // Exception: user-ratings / user-ratings-type create their own
-                        // "Ratings" column that must never be treated as the native MB
-                        // "Rating" column.
+                        // "Rating" column that must never be treated as the native MB
+                        // "Rating" column removal candidate.
                         for (const [headerPrefix, settingKey] of Object.entries(removalMap)) {
                             if (pageType === 'user-ratings' || pageType === 'user-ratings-type') break;
                             if (txt.startsWith(headerPrefix)) {
@@ -28605,7 +28605,7 @@ a { color: #1565c0; }`;
                         // first section's column layout).
                         _theadForGroup = document.createElement('thead');
                         const _hRow = document.createElement('tr');
-                        (group.colHeaders || ['Ratings', categoryName]).forEach(name => {
+                        (group.colHeaders || ['Rating', categoryName]).forEach(name => {
                             const _th = document.createElement('th');
                             _th.textContent = name;
                             _hRow.appendChild(_th);
