@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.599+2026-05-16
+// @version      9.99.600+2026-05-16
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -14,7 +14,7 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
 // @require      https://raw.githubusercontent.com/vzell/mb-userscripts/master/lib/VZ_MBLibrary.user.js
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.org\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\?.*)?$/
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.org\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections)(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.org\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings)(?:\?.*)?$/
 // @match        *://*.musicbrainz.org/search?query=*
 // @match        *://*.musicbrainz.org/user/*/subscriptions/*
 // @match        *://*.musicbrainz.org/user/*/subscribers
@@ -4317,6 +4317,93 @@
                     return; // Structure H handled all h3+ul pairs
                 }
 
+                // ── Structure I: ratings-entity /<entity>/<mbid>/ratings ─────────────
+                // Triggered for pageType 'ratings-entity'.
+                // Finds <h2>Ratings</h2> and the immediately following <ul>, converts
+                // each <li> to a two-column row: Rating | User.
+                //   Rating — numeric value from <span class="current-rating">
+                //   User   — <a href="/user/…"> link (with avatar img and bdi name)
+                // After list→table replacement, moves any trailing private-rating
+                // paragraph and average-rating widget (if present) from after the
+                // table to between the <h2> and the <table> so they appear as a
+                // caption-like block above the data rows.
+                if (pageType === 'ratings-entity') {
+                    Array.from(_root.querySelectorAll('h2')).forEach(_h2 => {
+                        if (_h2.textContent.trim().toLowerCase() !== 'ratings') return;
+
+                        let _next = _h2.nextElementSibling, _steps = 0, _ul = null;
+                        while (_next && _steps < 5) {
+                            if (_next.tagName === 'UL') { _ul = _next; break; }
+                            if (_next.tagName === 'H2') break;
+                            _next = _next.nextElementSibling;
+                            _steps++;
+                        }
+                        if (!_ul) return;
+
+                        // Build 2-column table: Rating | User
+                        const _table = docContext.createElement('table');
+                        _table.className = 'tbl';
+
+                        const _thead = docContext.createElement('thead');
+                        const _hr    = docContext.createElement('tr');
+                        ['Rating', 'User'].forEach(col => {
+                            const _th = docContext.createElement('th');
+                            _th.textContent = col;
+                            _hr.appendChild(_th);
+                        });
+                        _thead.appendChild(_hr);
+                        _table.appendChild(_thead);
+
+                        const _tbody = docContext.createElement('tbody');
+                        Array.from(_ul.querySelectorAll(':scope > li')).forEach(li => {
+                            const _tr = docContext.createElement('tr');
+
+                            // Rating cell: numeric value from .current-rating
+                            const _td0      = docContext.createElement('td');
+                            const _ratingEl = li.querySelector('.current-rating');
+                            _td0.textContent = _ratingEl ? _ratingEl.textContent.trim() : '';
+                            _tr.appendChild(_td0);
+
+                            // User cell: the /user/ link (avatar + bdi username)
+                            const _td1      = docContext.createElement('td');
+                            const _userLink = li.querySelector('a[href*="/user/"]');
+                            if (_userLink) _td1.appendChild(_userLink.cloneNode(true));
+                            _tr.appendChild(_td1);
+
+                            _tbody.appendChild(_tr);
+                        });
+                        _table.appendChild(_tbody);
+
+                        // Replace <ul> with <table>
+                        _ul.parentNode.replaceChild(_table, _ul);
+
+                        // Move the private-rating notice and average-rating widget (if
+                        // present) from after the table to between <h2> and <table>.
+                        // Collect sibling nodes after the table until the next <h2>.
+                        // Stop after the first <span class="inline-rating"> found
+                        // (that is the average-rating widget — the last element of the block).
+                        const _infoNodes = [];
+                        let _cur = _table.nextSibling;
+                        while (_cur) {
+                            const _nextCur = _cur.nextSibling;
+                            if (_cur.nodeType === Node.ELEMENT_NODE && _cur.tagName === 'H2') break;
+                            _infoNodes.push(_cur);
+                            if (_cur.nodeType === Node.ELEMENT_NODE &&
+                                    _cur.classList && _cur.classList.contains('inline-rating')) {
+                                break; // average-rating span — last node of the block
+                            }
+                            _cur = _nextCur;
+                        }
+                        _infoNodes.forEach(n => _table.parentNode.insertBefore(n, _table));
+
+                        Lib.debug('init',
+                            `applyListToTable: ${pageType}: converted h2="Ratings" ul → table ` +
+                            `(${_tbody.rows.length} rows, cols="Rating | User", ` +
+                            `${_infoNodes.length} info node(s) moved before table).`);
+                    });
+                    return; // Structure I handled
+                }
+
                 // ── Structure F: artist-credit overview pages ────────────────────────
                 // Triggered for pageType 'artist-credit' (/artist-credit/<id>).
                 // Each <h3> under <h2>Uses</h2> (e.g. "Release groups", "Releases",
@@ -5449,6 +5536,26 @@
                 removeSelector: 'form[style*="margin-top"]'
             },
             tableMode: 'multi'
+        },
+        // Entity ratings pages (/<entity>/<mbid>/ratings e.g. /work/<mbid>/ratings)
+        // DOM structure (Structure I):
+        //   <h2>Ratings</h2>
+        //   <ul>
+        //     <li><span class="inline-rating">…5…</span> - <a href="/user/…">…</a></li>
+        //   </ul>
+        //   [<p>N private rating not listed.</p> Average rating: <!-- --> <span.inline-rating>]
+        //
+        // The private-rating/average-rating block (if present) is moved by Structure I
+        // to appear between the <h2> and the rendered table.
+        {
+            type: 'ratings-entity',
+            match: (path) => path.match(/\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\/ratings$/),
+            buttons: [ { label: 'Show all Ratings', labelFromPathEntity: true } ],
+            features: {
+                listToTable: [ '' ],
+                integerColumns: [ { sourceColumn: 'Rating', align: 'C' } ]
+            },
+            tableMode: 'single'
         },
         // Entity-specific user ratings pages (/user/<username>/ratings/<entity>)
         // Triggered by the "View all ratings" overflow button on user-ratings sub-tables.
@@ -16939,6 +17046,25 @@ a { color: #1565c0; }`;
                 const _base = conf.label.replace(/\s+for\s+.*$/, '').trim();
                 conf = Object.assign({}, conf, {
                     label: `${_base} for ${_plural}`
+                });
+            }
+        }
+
+        // ── Dynamic label from URL entity-type path segment (labelFromPathEntity) ─
+        // When a button definition carries `labelFromPathEntity: true`, read the
+        // FIRST URL path segment (the entity type, e.g. "work", "release-group"),
+        // capitalise and de-hyphenate it, and append it to the base label as
+        // "… for <EntityType>".
+        // Example: /work/<mbid>/ratings → slug="work" → entity="Work"
+        //          → label="Show all Ratings for Work"
+        if (conf.labelFromPathEntity) {
+            const _parts  = window.location.pathname.split('/').filter(Boolean);
+            const _slug   = _parts[0] || '';
+            const _entity = _slug.replace(/-/g, ' ').replace(/^\w/, c => c.toUpperCase());
+            if (_entity) {
+                const _base = conf.label.replace(/\s+for\s+.*$/, '').trim();
+                conf = Object.assign({}, conf, {
+                    label: `${_base} for ${_entity}`
                 });
             }
         }

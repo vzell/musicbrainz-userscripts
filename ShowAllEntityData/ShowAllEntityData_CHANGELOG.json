@@ -1,5 +1,19 @@
 [
   {
+    "version": "9.99.600",
+    "date": "2026-05-16",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Add pageType 'ratings-entity' for /<entity>/<mbid>/ratings pages (e.g. /work/<mbid>/ratings): Structure I in applyListToTable converts the <h2>Ratings</h2>+<ul> to a 2-column table (Rating | User); the optional private-rating paragraph and average-rating widget are moved from after the list to between the h2 and the rendered table; integerColumns center-aligns the Rating column; button label is dynamically set to 'Show all Ratings for <Entity>' via a new labelFromPathEntity flag that reads the first URL path segment.",
+          "Add 'ratings' to the @include sub-path directive so Tampermonkey injects the script on entity ratings URLs.",
+          "Add labelFromPathEntity: true button flag and rendering block (parallel to labelFromPath / labelFromH2 / labelFromType) that reads the first URL path segment as the entity type (e.g. 'work' → 'Work', 'release-group' → 'Release group')."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.599",
     "date": "2026-05-16",
     "sections": [
