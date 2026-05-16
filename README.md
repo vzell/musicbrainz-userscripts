@@ -17,5 +17,5 @@ Enhance Release Page with show all cover art images on the page itself, collapsi
 Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting.
 
 [![Source](https://github.com/jerone/UserScripts/blob/master/_resources/Source-button.png)](https://github.com/vzell/musicbrainz-userscripts/blob/main/ShowAllEntityData/ShowAllEntityData_user.js)
-[![Install](https://raw.github.com/jerone/UserScripts/master/_resources/Install-button.png)](https://raw.githubusercontent.com/vzell/musicbrainz-userscripts/master/ShowAllEntityData/ShowAllEntityData_user.js)
+[![Install](https://raw.github.com/jerone/UserScripts/master/_resources/Install-button.png)](https://raw.githubusercontent.com/vzell/musicbrainz-userscripts/main/ShowAllEntityData/ShowAllEntityData_user.js)
 
