@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.596+2026-05-16
+// @version      9.99.597+2026-05-16
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -23793,7 +23793,8 @@ a { color: #1565c0; }`;
                     case 'Event-Venue-Detail': return `Derived from '${src}': venue sub-detail (e.g. hall or stage name), parsed from the Comment field.`;
                     case 'Event-City':         return `Derived from '${src}': the city name, parsed from the location segment of the Comment field.`;
                     case 'Event-State':        return `Derived from '${src}': the state or province (used for USA / Canada / UK), parsed from the Comment field.`;
-                    case 'Event-Country':      return `Derived from '${src}': the country name, parsed from the location segment of the Comment field.`;
+                    case 'Event-Country':         return `Derived from '${src}': the country name, parsed from the location segment of the Comment field.`;
+                    case 'Event-Additional-Info': return `Derived from '${src}': extra text following a ';' in the last location segment (e.g. 'USA; intro' → 'intro'), parsed from the Comment field.`;
                 }
                 break;
             case 'extractMainColumn':

@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.597",
+    "date": "2026-05-16",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Add column-header tooltip for the 'Event-Additional-Info' synthetic column in the eventParts tooltip switch, consistent with the existing tooltips for Event-Type, Event-Date, Event-Detail, Event-Venue, Event-Venue-Detail, Event-City, Event-State, and Event-Country."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.596",
     "date": "2026-05-16",
     "sections": [
