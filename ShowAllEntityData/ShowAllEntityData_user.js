@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.597+2026-05-16
+// @version      9.99.598+2026-05-16
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -5456,7 +5456,7 @@
             type: 'user-ratings-type',
             match: (path) => path.match(/\/user\/[^/]+\/ratings\/[^/]+$/),
             buttons: [
-                { label: 'Show Ratings' }
+                { label: 'Show Ratings', labelFromPath: true }
             ],
             features: {
                 listToTable: [ '' ],
@@ -5523,7 +5523,7 @@
             type: 'user-ratings',
             match: (path) => path.match(/\/user\/[^/]+\/ratings$/),
             buttons: [
-                { label: 'Show Ratings' }
+                { label: 'Show Ratings for User' }
             ],
             features: {
                 renameH2ToH3: true,
@@ -16914,6 +16914,27 @@ a { color: #1565c0; }`;
                 const _base = conf.label.replace(/\s+for\s+\S.*$/, '').trim();
                 conf = Object.assign({}, conf, {
                     label: `${_base} for ${_typeLabel}`
+                });
+            }
+        }
+
+        // ── Dynamic label from URL path segment (labelFromPath: true) ────────
+        // When a button definition carries `labelFromPath: true`, read the last
+        // URL path segment, apply the same slug-to-plural conversion used by
+        // resolveEntityFeaturesFromH2 [user-ratings-type], and append the result
+        // to the base label as "… for <Plural>" (replacing any existing suffix).
+        // Example: /user/vzell/ratings/recording → slug="recording"
+        //          → singular="Recording" → plural="Recordings"
+        //          → label="Show Ratings for Recordings"
+        if (conf.labelFromPath) {
+            const _parts  = window.location.pathname.split('/').filter(Boolean);
+            const _slug   = _parts[_parts.length - 1] || '';
+            const _singular = _slug.replace(/-/g, ' ').replace(/^\w/, c => c.toUpperCase());
+            const _plural   = _singular ? _singular + 's' : '';
+            if (_plural) {
+                const _base = conf.label.replace(/\s+for\s+.*$/, '').trim();
+                conf = Object.assign({}, conf, {
+                    label: `${_base} for ${_plural}`
                 });
             }
         }

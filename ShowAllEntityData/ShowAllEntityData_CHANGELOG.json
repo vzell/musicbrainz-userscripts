@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.598",
+    "date": "2026-05-16",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "user-ratings-type: action button label is now dynamic — the last URL path segment (e.g. 'recording') is converted to its plural entityFeatures key ('Recordings') and the button reads 'Show Ratings for Recordings' instead of a hardcoded string. Implemented via a new labelFromPath: true button flag and a corresponding rendering block (parallel to the existing labelFromH2 / labelFromType mechanisms)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.597",
     "date": "2026-05-16",
     "sections": [
