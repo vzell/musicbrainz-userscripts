@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.603",
+    "date": "2026-05-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fix saveTableDataToDisk(): when the user saves at the render-threshold dialog without rendering, the serialized headers now reflect the final rendered column layout instead of the native pre-render DOM structure. Detection: absence of mb-original-column class on any <th> (stamped by cleanupHeaders() only after rendering). Fix: clone the native thead and run cleanupHeaders() on the detached clone — this removes checkbox/Relationships/Tagger/Rating columns and injects all synthetic headers (CAA, Country, Date, Total Tracks, DD/MM/YYYY/Day/Month, MB-Name, Comment, injected Relationships) that the active column pipeline would produce, so that the stored headers are aligned with the already-correctly-processed row data in allRows."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.602",
     "date": "2026-05-16",
     "sections": [

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.602+2026-05-16
+// @version      9.99.603+2026-05-16
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -36617,10 +36617,44 @@ a { color: #1565c0; }`;
                     : null,
             };
 
-            // Serialize table headers (exclude the filter row)
+            // Serialize table headers (exclude the filter row).
+            //
+            // Pre-render detection: cleanupHeaders() stamps every surviving native <th>
+            // with the class mb-original-column.  If that class is absent from the
+            // first table's thead the user chose "Save to Disk" at the render-threshold
+            // dialog without rendering — the DOM thead still reflects the native
+            // MusicBrainz structure (checkbox column, foreign Relationships/Tagger
+            // columns, no synthetic columns such as CAA/Country/MB-Name/Comment).
+            //
+            // In the pre-render path we clone the native thead and run cleanupHeaders()
+            // on the clone so the stored headers match the final rendered column layout:
+            //   • removes checkbox (if sa_remove_checkbox_cell + checkbox-cell class)
+            //   • removes Relationships, Tagger, Performance Attributes (always)
+            //   • removes Rating column if sa_remove_rating is on
+            //   • injects synthetic headers from activeColumnExtractors (colIdx resolved
+            //     during the fetch loop — already set correctly for each extractor)
+            //   • injects derived headers from activeSyntheticColumnExtractors
+            //   • injects MB-Name / Comment when extractMainColumn is configured
+            //   • injects injectedColumns headers (Relationships, Release events)
+            //
+            // The clone is detached from the document, so getComputedStyle() returns
+            // only inline styles — no false-positive externally-hidden detection.
             const firstTable = document.querySelector('table.tbl');
             if (firstTable && firstTable.tHead) {
-                const headerRows = Array.from(firstTable.tHead.querySelectorAll('tr'))
+                const _theadRow = firstTable.tHead.querySelector('tr');
+                const _isPreRender = allRows.length > 0 &&
+                    !!_theadRow && !_theadRow.querySelector('th.mb-original-column');
+
+                let _theadToSerialize = firstTable.tHead;
+                if (_isPreRender) {
+                    Lib.debug('cache',
+                        'saveTableDataToDisk: pre-render state detected — cloning thead ' +
+                        'and running cleanupHeaders() to produce correct serialized headers.');
+                    _theadToSerialize = firstTable.tHead.cloneNode(true);
+                    cleanupHeaders(_theadToSerialize);
+                }
+
+                const headerRows = Array.from(_theadToSerialize.querySelectorAll('tr'))
                     .filter(row => !row.classList.contains('mb-col-filter-row')); // Exclude filter row
                 dataToSave.headers = headerRows.map(row => {
                     return Array.from(row.cells)
