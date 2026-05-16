@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.594+2026-05-15
+// @version      9.99.596+2026-05-16
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -199,7 +199,7 @@
             label: "Enable 'Event Parts' synthetic column extractor",
             type: "checkbox",
             default: true,
-            description: "Parse the recording 'Comment' field as structured live-performance metadata, splitting it into synthetic columns: Event-Type, Event-Date, Event-Detail, Event-Venue, Event-Venue-Detail, Event-City, Event-State, Event-Country. Only active on pages that declare the 'eventParts' extractor (e.g. Work-Recordings pages). Disable to suppress these extra columns entirely."
+            description: "Parse the recording 'Comment' field as structured live-performance metadata, splitting it into synthetic columns: Event-Type, Event-Date, Event-Detail, Event-Venue, Event-Venue-Detail, Event-City, Event-State, Event-Country, Event-Additional-Info. Event-Additional-Info captures any text after a ';' in the last location segment (e.g. 'USA; intro' → Country='USA', Additional-Info='intro'). Only active on pages that declare the 'eventParts' extractor (e.g. Work-Recordings pages). Disable to suppress these extra columns entirely."
         },
 
         // ============================================================
@@ -3186,19 +3186,22 @@
         /**
          * eventParts — parses a MusicBrainz recording "Comment" field that encodes
          * live-performance metadata as a free-form comma/colon-delimited string and
-         * splits it into eight dedicated synthetic columns.
+         * splits it into nine dedicated synthetic columns.
          *
          * Expected source format (all segments are optional):
-         * [Event-Type][, Event-Date][, Event-Detail][: Venue[, Venue-Detail][, City][, State][, Country]]
+         * [Event-Type][, Event-Date][, Event-Detail][: Venue[, Venue-Detail][, City][, State][, Country[; Additional-Info]]]
          *
          * Location Parsing Rules:
          * - USA / Canada / UK:
          * - 5 parts: [Venue, Venue-Detail, City, State, Country]
          * - 4 parts: [Venue, City, State, Country] (Venue-Detail empty)
          * - Default: Right-to-Left fallback (Country, City, Venue, Venue-Detail)
+         * Additional-Info: if the last location segment contains '; extra text',
+         * the country is split at the first ';' — the trimmed left part goes into
+         * Event-Country, the trimmed right part into Event-Additional-Info.
          */
         eventParts(sourceCell) {
-            const tds = Array.from({ length: 8 }, () => document.createElement('td'));
+            const tds = Array.from({ length: 9 }, () => document.createElement('td'));
 
             if (!sourceCell) return tds;
 
@@ -3228,7 +3231,10 @@
             if (postPart) {
                 const loc = postPart.split(', ').map(s => s.trim()).filter(s => s.length > 0);
                 const n = loc.length;
-                const country = n >= 1 ? loc[n - 1] : '';
+                const countryRaw     = n >= 1 ? loc[n - 1] : '';
+                const _semiIdx       = countryRaw.indexOf(';');
+                const country        = _semiIdx !== -1 ? countryRaw.slice(0, _semiIdx).trim() : countryRaw;
+                const additionalInfo = _semiIdx !== -1 ? countryRaw.slice(_semiIdx + 1).trim() : '';
 
                 if (country === 'USA' || country === 'Canada' || country === 'UK') {
                     tds[7].textContent = country; // Country
@@ -3244,11 +3250,12 @@
                     }
                 } else {
                     // Default Right-to-Left fallback
-                    if (n >= 1) tds[7].textContent = loc[n - 1]; // Country
+                    if (n >= 1) tds[7].textContent = country; // Country (stripped of '; …' suffix)
                     if (n >= 2) tds[5].textContent = loc[n - 2]; // City
                     if (n >= 3) tds[3].textContent = loc[n - 3]; // Event-Venue
                     if (n >= 4) tds[4].textContent = loc[n - 4]; // Event-Venue-Detail
                 }
+                if (additionalInfo) tds[8].textContent = additionalInfo; // Event-Additional-Info
             }
 
             return tds;
@@ -5169,7 +5176,7 @@
                         { sourceColumn: 'Recording', extractor: 'video', syntheticColumns: ['Video'] }
                     ],
                     syntheticColumnExtractors: [
-                        { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country'] }
+                        { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                     ],
                     extractMainColumn: 'Recording',
                     stickyColumn: 'Recording'
@@ -5211,7 +5218,7 @@
                         { sourceColumn: 'Recording', extractor: 'video', syntheticColumns: ['Video'] }
                     ],
                     syntheticColumnExtractors: [
-                        { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country'] }
+                        { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                     ],
                     extractMainColumn: 'Recording',
                     stickyColumn: 'Recording'
@@ -5488,7 +5495,7 @@
                         { sourceColumn: 'Recording', extractor: 'Name_Comment',  syntheticColumns: ['Name', 'Comment'] }
                     ],
                     syntheticColumnExtractors: [
-                        { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country'] }
+                        { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                     ],
                 },
                 'Works': {
@@ -5559,7 +5566,7 @@
                         { sourceColumn: 'Recording', extractor: 'Name_Comment',  syntheticColumns: ['Name', 'Comment'] }
                     ],
                     syntheticColumnExtractors: [
-                        { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country'] }
+                        { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                     ],
                 },
                 'Works': {
@@ -6260,7 +6267,7 @@
                     { sourceColumn: 'Name', extractor: 'video', syntheticColumns: ['Video'] }
                 ],
                 syntheticColumnExtractors: [
-                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country'] }
+                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
                 collapsableColumns: [ 'ISRCs' ],
                 integerColumns: [
@@ -6482,7 +6489,7 @@
                     { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
                 ],
                 syntheticColumnExtractors: [
-                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country'] }
+                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
                 integerColumns: [
 		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
@@ -6503,7 +6510,7 @@
                     { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
                 ],
                 syntheticColumnExtractors: [
-                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country'] }
+                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
                 integerColumns: [
 		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
@@ -6863,7 +6870,7 @@
                     { sourceColumn: 'Title', extractor: 'video',     syntheticColumns: ['Video'] }
                 ],
                 syntheticColumnExtractors: [
-                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country'] }
+                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'Length', align: ':'} ],
                 extractMainColumn: 'Title',
@@ -6881,7 +6888,7 @@
                     { sourceColumn: 'Title', extractor: 'video',     syntheticColumns: ['Video'] }
                 ],
                 syntheticColumnExtractors: [
-                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country'] }
+                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'Length', align: ':'} ],
                 extractMainColumn: 'Title',
@@ -7054,7 +7061,7 @@
                     { sourceColumn: 'Name', extractor: 'video', syntheticColumns: ['Video'] }
                 ],
                 syntheticColumnExtractors: [
-                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country'] }
+                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
                 integerColumns: [ {sourceColumn: 'Length', align: ':'} ],
                 collapsableColumns: [ 'Release groups', 'CAA' ],

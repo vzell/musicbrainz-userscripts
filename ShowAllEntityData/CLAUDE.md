@@ -6,10 +6,17 @@
 MusicBrainz. It consolidates paginated and non-paginated entity table lists into a single
 view with real-time multi-column filtering and sorting.
 
-**Current version:** `9.99.591+2026-05-15`
 **Changelog:** `ShowAllEntityData_CHANGELOG.json` (JSON, lives alongside the script)
+**Help:** `ShowAllEntityData_HELP.txt` (TEXT, lives alongside the script)
 **Library dependency:** `VZ_MBLibrary.user.js` (external `@require`; provides `Lib.*`)
 **External dependencies:** `iro` (colour picker), `pako` (compression)
+
+---
+
+## Versioning
+
+Always read the current `// @version` from the userscript header and the latest entry in `_CHANGELOG.json` 
+before making any changes. Never assume a version - always derive it from the source files.
 
 ---
 

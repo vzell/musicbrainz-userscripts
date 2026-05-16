@@ -1,5 +1,30 @@
 [
   {
+    "version": "9.99.596",
+    "date": "2026-05-16",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "eventParts extractor: split 'Event-Country' on the first ';' to capture trailing text (e.g. 'USA; intro' → Country='USA', Additional-Info='intro') into a new ninth synthetic column 'Event-Additional-Info'. Updated all nine syntheticColumnExtractors declarations across pageType definitions, the JSDoc, the array length (8→9), and the sa_enable_event_parts_extractor settings description."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.595",
+    "date": "2026-05-16",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+            "Add missing extractors to rating pages.",
+	    "Center align the 'Ratings' integer column."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.594",
     "date": "2026-05-15",
     "sections": [
