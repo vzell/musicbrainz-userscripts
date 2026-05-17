@@ -1,5 +1,58 @@
 [
   {
+    "version": "9.99.607",
+    "date": "2026-05-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fix row hover highlight regressing to sticky-column-only after the MutationObserver scope fix in 9.99.604: the MusicBrainz native `tr:hover > td` CSS rule is silently defeated by inline style.background values on <td> elements (sticky cell, mb-re-cell, mb-rel-cell, mb-ice-cell injected cells all receive inline backgrounds), and the broad body-level observer had been incidentally propping up Vivaldi's hover-state evaluation via continuous reflows. Fix: extend applyStickyColumn's existing JS hover approach from the sticky cell only to every <td> in each row — at _apply() time, every non-sticky cell's inline background is cleared so CSS zebra striping drives the colour and the computed rest-state is snapshotted into dataset.mbRestBg; the shared _enter handler sets hoverBgColor (default #e2e2e2, configurable via sa_ui_row_hover_bg) on all cells; _leave restores sticky cells to dataset.mbStickyBg and non-sticky cells to '' so CSS zebra takes over. hoverBgColor is evaluated once per _apply() call outside the forEach loop."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.606",
+    "date": "2026-05-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fix SyntaxError 'Unexpected token )' at line 18738 (installed): the str_replace that rewrote the subtable toggleSubTableAutoResize measurement loop in 9.99.604 left an orphaned tail fragment — a duplicate measureDiv.appendChild(liClone) and closing }); pair after the correctly-closed querySelectorAll('ul > li').forEach block, producing an unmatched closing parenthesis. Removed the two orphaned lines. Node.js --input-type=module parse confirms file is syntax-clean."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.605",
+    "date": "2026-05-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fix colStyleCache construction in toggleAutoResizeColumns (global loop) calling Array.prototype.indexOf.call(headers, th) on a NodeList — NodeList is not an Array, making indexOf unreliable across engines, and the index was already available as the second parameter of the .map() callback. Changed map(th => ...) to map((th, i) => ...) and replaced the indexOf call with the i parameter directly."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.604",
+    "date": "2026-05-17",
+    "sections": [
+      {
+        "label": "⚡ Performance",
+        "items": [
+          "Column resize drag: throttle onMouseMove writes to one requestAnimationFrame per frame via a _dragRafPending flag, capping col.style.width DOM writes to 60 fps regardless of mouse-event rate and eliminating the per-pixel synchronous reflow storm during drag.",
+          "Column resize drag: cache the target <col> element in _targetCol at mousedown time so onMouseMove never re-queries the DOM; table.style.tableLayout='fixed' is also set once at mousedown instead of on every mousemove. _targetCol falls back to setColumnWidth() if the element is detached by a concurrent re-render.",
+          "Auto-resize measurement loops (toggleAutoResizeColumns and toggleSubTableAutoResize): hoist getComputedStyle reads outside the row loop into a colStyleCache array built once per column header, reducing getComputedStyle calls from O(rows×cols) to O(cols).",
+          "Auto-resize measurement loops: replace per-element measureDiv.querySelectorAll('*').forEach(el => el.style.setProperty(...)) loops (a micro-reflow per cloned element per cell) with a single .mb-measure-nowrap CSS class on the measureDiv. The class is injected into the sticky-header stylesheet with white-space:nowrap !important, overflow-wrap:normal !important, word-break:normal !important covering the div and all its descendants, eliminating all per-element style loops in both the global and subtable measurement paths including the CAA/EAA art-li section.",
+          "Sidebar MutationObserver: change observe target from document.body (childList+subtree — fired on every DOM mutation anywhere on the page, including every cell clone appended during auto-resize) to sidebar (childList+subtree+attributes, attributeFilter:['class','style']). Add _sidebarRafPending deduplication guard so bursts of sidebar mutations only queue one getBoundingClientRect() read per animation frame.",
+          "window.scroll listener on sidebar handle: throttle with _scrollRafPending rAF guard (same pattern) to cap getBoundingClientRect() reads to one per paint cycle during scroll."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.603",
     "date": "2026-05-16",
     "sections": [
@@ -105,8 +158,8 @@
       {
         "label": "✨ Improve",
         "items": [
-            "Add missing extractors to rating pages.",
-	    "Center align the 'Ratings' integer column."
+          "Add missing extractors to rating pages.",
+          "Center align the 'Ratings' integer column."
         ]
       }
     ]

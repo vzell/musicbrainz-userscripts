@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.603+2026-05-16
+// @version      9.99.607+2026-05-17
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -7979,6 +7979,20 @@
             table.tbl thead th {
                 will-change: transform;
             }
+
+            /*
+             * Measurement sandbox class used by the auto-resize measurement loops.
+             * Applied once to the measureDiv so that all cloned descendants inherit
+             * non-wrapping text layout without needing per-element querySelectorAll
+             * style writes (which trigger micro-reflows for every cell measured).
+             * !important beats MusicBrainz stylesheet rules such as .wrap-anywhere.
+             */
+            .mb-measure-nowrap,
+            .mb-measure-nowrap * {
+                white-space:   nowrap  !important;
+                overflow-wrap: normal  !important;
+                word-break:    normal  !important;
+            }
         `;
 
         document.head.appendChild(style);
@@ -8134,21 +8148,57 @@
             // on leave we restore the original zebra background stored in
             // data-mb-sticky-bg.  The attribute is refreshed on every _apply() call
             // so re-runs after zebra re-striping always have the current rest colour.
+            // Row hover highlight colour — read once, shared by all row handlers.
+            const hoverBgColor = Lib.settings.sa_ui_row_hover_bg || '#e2e2e2';
+
             table.querySelectorAll('tbody tr').forEach(tr => {
                 const cell = tr.cells[stickyIdx];
                 if (!cell) return;
                 cell.style.position  = 'sticky';
                 cell.style.left      = leftPx;
                 cell.style.zIndex    = '1';
-                // Clear inline background so CSS class applies, then snapshot the result.
+
+                // ── Snapshot rest-state backgrounds for every cell in this row ──
+                //
+                // MusicBrainz's native `tr:hover > td` CSS rule is frequently
+                // defeated by inline style.background values on <td> elements:
+                //   • The sticky column cell itself gets an explicit inline background
+                //     (restBg below) so it paints opaquely over scrolled content.
+                //   • Injected cells (mb-re-cell, mb-rel-cell, mb-ice-cell) get an
+                //     inline backgroundColor set when they are created.
+                //   • Inline styles win the CSS cascade unconditionally, even against
+                //     !important rules in a stylesheet.
+                //
+                // Instead of relying on CSS :hover, we snapshot the rest-state
+                // background of every <td> in the row at _apply() time and swap all
+                // of them in the shared mouseenter/mouseleave handlers.  This gives
+                // reliable full-row highlighting regardless of inline backgrounds,
+                // compositing layer hit-testing quirks, or browser-specific :hover
+                // propagation issues.
+                //
+                // The sticky cell must keep an opaque inline background so it paints
+                // over scrolled content — it gets both mbStickyBg and mbRestBg.
+                // Non-sticky cells just get mbRestBg (stored for leave restore) and
+                // their inline style is cleared so CSS zebra striping drives the colour.
+
+                // Snapshot the sticky cell first (needs inline bg for opacity).
                 cell.style.background = '';
                 const cellBg = getComputedStyle(cell).backgroundColor;
                 const restBg = (cellBg === 'rgba(0, 0, 0, 0)' || cellBg === 'transparent')
                     ? '#ffffff' : cellBg;
                 cell.style.background = restBg;
-                // Persist rest-state colour for the hover handlers.
                 cell.dataset.mbStickyBg = restBg;
+                cell.dataset.mbRestBg   = restBg;
                 cell.classList.add('mb-sticky-col');
+
+                // Snapshot all non-sticky cells (clear inline bg so CSS zebra wins).
+                Array.from(tr.cells).forEach(td => {
+                    if (td === cell) return;
+                    td.style.background = '';
+                    const bg = getComputedStyle(td).backgroundColor;
+                    td.dataset.mbRestBg = (bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent')
+                        ? '#ffffff' : bg;
+                });
 
                 // Wire hover handlers — always rewire, because after sort/filter
                 // renderFinalTable/renderGroupedTable inserts cloneNode(true) copies of
@@ -8165,35 +8215,23 @@
                 // _apply() call, regardless of how many times the row was cloned or
                 // re-inserted.
                 const _enter = () => {
-                    const c = tr.cells[stickyIdx];
-                    if (!c || !c.classList.contains('mb-sticky-col')) return;
-                    // Read the hover colour from the first non-sticky sibling td.
-                    // At mouseenter time the browser has already applied :hover rules
-                    // to the sibling tds, so getComputedStyle reflects the hover bg.
-                    let hoverBg = '';
-                    for (let i = 0; i < tr.cells.length; i++) {
-                        const sib = tr.cells[i];
-                        if (sib !== c && !sib.classList.contains('mb-sticky-col')) {
-                            hoverBg = getComputedStyle(sib).backgroundColor;
-                            break;
-                        }
-                    }
-                    // Fall back to MusicBrainz's known hover tint (#e2e2e2) if the
-                    // sibling's computed bg is transparent or still equals our own
-                    // rest colour (can happen when there is only one column or when
-                    // the browser hasn't painted the :hover state yet).
-                    const ownRest = c.dataset.mbStickyBg || '#ffffff';
-                    if (!hoverBg || hoverBg === ownRest ||
-                            hoverBg === 'rgba(0, 0, 0, 0)' || hoverBg === 'transparent') {
-                        hoverBg = '#e2e2e2';
-                    }
-                    c.style.background = hoverBg;
+                    // Apply hover colour to every cell in the row.  Covers sticky
+                    // and non-sticky cells alike, bypassing the CSS :hover cascade.
+                    Array.from(tr.cells).forEach(td => {
+                        td.style.background = hoverBgColor;
+                    });
                 };
                 const _leave = () => {
-                    const c = tr.cells[stickyIdx];
-                    if (c && c.classList.contains('mb-sticky-col')) {
-                        c.style.background = c.dataset.mbStickyBg || '#ffffff';
-                    }
+                    // Restore each cell to its individual rest-state background.
+                    // Sticky cell: restore opaque inline bg.
+                    // Non-sticky cells: clear inline bg so CSS zebra takes over.
+                    Array.from(tr.cells).forEach(td => {
+                        if (td.classList.contains('mb-sticky-col')) {
+                            td.style.background = td.dataset.mbStickyBg || '#ffffff';
+                        } else {
+                            td.style.background = '';
+                        }
+                    });
                 };
                 // Remove any previously attached listener on this exact node, then add fresh ones.
                 if (tr._mbStickyEnter) tr.removeEventListener('mouseenter', tr._mbStickyEnter);
@@ -15621,6 +15659,14 @@ a { color: #1565c0; }`;
             });
 
             let startX, startWidth, colIndex;
+            // Cached reference to the specific <col> element being dragged.
+            // Resolved once at mousedown so onMouseMove never re-queries the DOM.
+            let _targetCol = null;
+            // rAF gate: ensures at most one col.style.width write per animation
+            // frame regardless of how fast mousemove fires (up to 200 Hz on some
+            // devices).  Eliminates the per-pixel reflow storm during drag.
+            let _dragRafPending = false;
+            let _dragPendingWidth = 0;
 
             resizer.addEventListener('mousedown', (e) => {
                 e.preventDefault();
@@ -15651,6 +15697,24 @@ a { color: #1565c0; }`;
                 // sub-table's ↔️ resize button (and the global "Resize*" hint).
                 markSubTableAsManuallyResized(table);
 
+                // ── Cache the target <col> once so onMouseMove never queries DOM ──
+                // Ensure a colgroup exists (setColumnWidth would create it lazily,
+                // but we need the reference now for the cached fast path).
+                let _cg = table.querySelector('colgroup');
+                if (!_cg) {
+                    _cg = document.createElement('colgroup');
+                    table.insertBefore(_cg, table.firstChild);
+                    const _firstRow = table.querySelector('tbody tr');
+                    const _colCount = _firstRow ? _firstRow.cells.length : 0;
+                    for (let _ci = 0; _ci < _colCount; _ci++) {
+                        _cg.appendChild(document.createElement('col'));
+                    }
+                }
+                // Switch to fixed layout now (once) so subsequent width writes are cheap.
+                table.style.tableLayout = 'fixed';
+                _targetCol = _cg.querySelectorAll('col')[colIndex] || null;
+                _dragRafPending = false;
+
                 document.addEventListener('mousemove', onMouseMove);
                 document.addEventListener('mouseup', onMouseUp);
 
@@ -15660,12 +15724,32 @@ a { color: #1565c0; }`;
                 Lib.debug('resize', `Started resizing column ${colIndex} from width ${startWidth}px`);
             });
 
+            /**
+             * Mouse-move handler for column drag resize.
+             *
+             * Writes are throttled to one per animation frame via a pending-flag
+             * guard so that high-frequency mousemove events (up to ~200 Hz) do not
+             * trigger a layout reflow on every pixel of movement.  The most recent
+             * target width is always applied — no intermediate frames are skipped
+             * visually because rAF fires before the next paint.
+             *
+             * @param {MouseEvent} e
+             */
             function onMouseMove(e) {
-                const delta = e.pageX - startX;
-                const newWidth = Math.max(30, startWidth + delta); // Min width 30px
-
-                // Apply width to the column
-                setColumnWidth(table, colIndex, newWidth);
+                _dragPendingWidth = Math.max(30, startWidth + (e.pageX - startX));
+                if (_dragRafPending) return;
+                _dragRafPending = true;
+                requestAnimationFrame(() => {
+                    _dragRafPending = false;
+                    // Fast path: write directly to the cached <col> element.
+                    // Falls back to setColumnWidth when the cache is unavailable
+                    // (e.g. if a concurrent re-render replaced the colgroup).
+                    if (_targetCol && _targetCol.isConnected) {
+                        _targetCol.style.width = `${_dragPendingWidth}px`;
+                    } else {
+                        setColumnWidth(table, colIndex, _dragPendingWidth);
+                    }
+                });
             }
 
             function onMouseUp(e) {
@@ -15677,6 +15761,9 @@ a { color: #1565c0; }`;
 
                 // Re-enable text selection
                 document.body.style.userSelect = '';
+
+                _targetCol = null;
+                _dragRafPending = false;
 
                 const finalWidth = th.offsetWidth;
                 Lib.debug('resize', `Finished resizing column ${colIndex} to ${finalWidth}px`);
@@ -15889,28 +15976,44 @@ a { color: #1565c0; }`;
             const columnWidths = new Array(columnCount).fill(0);
 
             // ── Measurement div ───────────────────────────────────────────────
+            // The `.mb-measure-nowrap` CSS class (injected during sticky-header
+            // initialisation) applies white-space:nowrap, overflow-wrap:normal, and
+            // word-break:normal with !important to the div and all its descendants,
+            // replacing the previous per-element querySelectorAll style loop that
+            // triggered a micro-reflow for every cloned cell child.
             const measureDiv = document.createElement('div');
             measureDiv.style.cssText = 'position:absolute;visibility:hidden;top:-9999px;left:-9999px;display:inline-block;font-size:inherit;padding:4px 8px;';
-            measureDiv.style.setProperty('white-space',   'nowrap',  'important');
-            measureDiv.style.setProperty('overflow-wrap', 'normal',  'important');
-            measureDiv.style.setProperty('word-break',    'normal',  'important');
+            measureDiv.classList.add('mb-measure-nowrap');
             document.body.appendChild(measureDiv);
+
+            // ── Hoist getComputedStyle reads outside the row loop ─────────────
+            // getComputedStyle() forces a style recalculation on every call.
+            // All <td>s in the same column share the same font/padding as their
+            // <th>, so we read each column's styles exactly once here.
+            const colStyleCache = Array.from(headers).map((th, i) => {
+                if (!columnVisible[i]) return null;
+                const s = window.getComputedStyle(th);
+                return {
+                    fontSize:   s.fontSize,
+                    fontWeight: s.fontWeight,
+                    padding:    s.padding,
+                    fontFamily: s.fontFamily
+                };
+            });
 
             // Measure header widths
             headers.forEach((th, colIndex) => {
                 if (!columnVisible[colIndex]) return;
-                const styles = window.getComputedStyle(th);
-                measureDiv.style.fontSize   = styles.fontSize;
-                measureDiv.style.fontWeight = styles.fontWeight;
-                measureDiv.style.padding    = styles.padding;
-                measureDiv.style.fontFamily = styles.fontFamily;
+                const cs = colStyleCache[colIndex];
+                if (cs) {
+                    measureDiv.style.fontSize   = cs.fontSize;
+                    measureDiv.style.fontWeight = cs.fontWeight;
+                    measureDiv.style.padding    = cs.padding;
+                    measureDiv.style.fontFamily = cs.fontFamily;
+                }
                 measureDiv.innerHTML = '';
                 Array.from(th.childNodes).forEach(n => measureDiv.appendChild(n.cloneNode(true)));
-                measureDiv.querySelectorAll('*').forEach(el => {
-                    el.style.setProperty('white-space',   'nowrap',  'important');
-                    el.style.setProperty('overflow-wrap', 'normal',  'important');
-                    el.style.setProperty('word-break',    'normal',  'important');
-                });
+                // .mb-measure-nowrap covers all descendants — no per-element loop needed.
                 columnWidths[colIndex] = Math.max(columnWidths[colIndex], measureDiv.offsetWidth);
             });
 
@@ -15921,18 +16024,16 @@ a { color: #1565c0; }`;
                 if (row.style.display === 'none') continue;
                 Array.from(row.cells).forEach((cell, colIndex) => {
                     if (colIndex >= columnCount || !columnVisible[colIndex]) return;
-                    const styles = window.getComputedStyle(cell);
-                    measureDiv.style.fontSize   = styles.fontSize;
-                    measureDiv.style.fontWeight = styles.fontWeight;
-                    measureDiv.style.padding    = styles.padding;
-                    measureDiv.style.fontFamily = styles.fontFamily;
+                    const cs = colStyleCache[colIndex];
+                    if (cs) {
+                        measureDiv.style.fontSize   = cs.fontSize;
+                        measureDiv.style.fontWeight = cs.fontWeight;
+                        measureDiv.style.padding    = cs.padding;
+                        measureDiv.style.fontFamily = cs.fontFamily;
+                    }
                     measureDiv.innerHTML = '';
                     Array.from(cell.childNodes).forEach(n => measureDiv.appendChild(n.cloneNode(true)));
-                    measureDiv.querySelectorAll('*').forEach(el => {
-                        el.style.setProperty('white-space',   'nowrap',  'important');
-                        el.style.setProperty('overflow-wrap', 'normal',  'important');
-                        el.style.setProperty('word-break',    'normal',  'important');
-                    });
+                    // .mb-measure-nowrap covers all descendants — no per-element loop needed.
                     columnWidths[colIndex] = Math.max(columnWidths[colIndex], measureDiv.offsetWidth);
 
                     // Also measure each <li> individually (hidden or visible) so that
@@ -15941,15 +16042,8 @@ a { color: #1565c0; }`;
                     cell.querySelectorAll('ul > li').forEach(li => {
                         if (li.classList.contains('mb-caa-art-li')) return;
                         const liClone = li.cloneNode(true);
-                        liClone.style.display     = 'inline-block';
-                        liClone.style.setProperty('white-space',   'nowrap',  'important');
-                        liClone.style.setProperty('overflow-wrap', 'normal',  'important');
-                        liClone.style.setProperty('word-break',    'normal',  'important');
-                        liClone.querySelectorAll('*').forEach(el => {
-                            el.style.setProperty('white-space',   'nowrap',  'important');
-                            el.style.setProperty('overflow-wrap', 'normal',  'important');
-                            el.style.setProperty('word-break',    'normal',  'important');
-                        });
+                        liClone.style.display = 'inline-block';
+                        // .mb-measure-nowrap on the parent div covers all descendants.
                         measureDiv.innerHTML = '';
                         measureDiv.appendChild(liClone);
                         columnWidths[colIndex] = Math.max(columnWidths[colIndex], measureDiv.offsetWidth);
@@ -15978,9 +16072,9 @@ a { color: #1565c0; }`;
                                 // We measure the li clone with display:'' and white-space:nowrap.
                                 const liClone = li.cloneNode(true);
                                 liClone.style.display     = '';
-                                liClone.style.whiteSpace  = 'nowrap';
-                                liClone.style.setProperty('overflow-wrap', 'normal', 'important');
-                                liClone.style.wordBreak   = 'normal';
+                                // .mb-measure-nowrap on the parent div covers white-space,
+                                // overflow-wrap, and word-break for the clone and all its
+                                // descendants — no per-element querySelectorAll loop needed.
                                 // Strip the <img> thumbnail itself — it has a fixed width and
                                 // its natural-width is not what determines column width.
                                 const thumbImg = liClone.querySelector('img');
@@ -15991,11 +16085,7 @@ a { color: #1565c0; }`;
 
                                 measureDiv.innerHTML = '';
                                 measureDiv.appendChild(liClone);
-                                measureDiv.querySelectorAll('*').forEach(el => {
-                                    el.style.setProperty('white-space',   'nowrap',  'important');
-                                    el.style.setProperty('overflow-wrap', 'normal',  'important');
-                                    el.style.setProperty('word-break',    'normal',  'important');
-                                });
+                                // .mb-measure-nowrap covers all descendants.
                                 columnWidths[colIndex] = Math.max(columnWidths[colIndex], measureDiv.offsetWidth);
                             });
                         }
@@ -16298,15 +16388,37 @@ a { color: #1565c0; }`;
             //      context this can break text.  Explicitly reset it on the div.
             //
             //   3. word-break: same — reset to normal so no mid-word breaks occur.
+            //
+            // The `.mb-measure-nowrap` CSS class (injected into the page stylesheet
+            // during sticky-header initialisation) applies white-space:nowrap,
+            // overflow-wrap:normal, and word-break:normal with !important to the
+            // div and all its descendants.  This replaces the previous approach of
+            // calling measureDiv.querySelectorAll('*').forEach(el => el.style.setProperty(...))
+            // on every cell clone, which triggered a micro-reflow for each element.
             const measureDiv = document.createElement('div');
             // Use !important on text-wrap properties so that MusicBrainz stylesheet
             // rules (including any with !important, e.g. .wrap-anywhere) cannot
             // override them and cause wrapping inside the measureDiv.
             measureDiv.style.cssText = 'position:absolute;visibility:hidden;font-family:inherit;font-size:inherit;padding:4px 8px;';
-            measureDiv.style.setProperty('white-space',   'nowrap',  'important');
-            measureDiv.style.setProperty('overflow-wrap', 'normal',  'important');
-            measureDiv.style.setProperty('word-break',    'normal',  'important');
+            measureDiv.classList.add('mb-measure-nowrap');
             document.body.appendChild(measureDiv);
+
+            // ── Hoist getComputedStyle reads outside the row loop ─────────────
+            // getComputedStyle() forces a style recalculation on every call.
+            // All <td>s in the same column share the same font/padding as their
+            // <th>, so we read each column's styles exactly once here and cache
+            // them.  The inner loops then apply from the cache instead of
+            // re-calling getComputedStyle for every cell.
+            const colStyleCache = Array.from(headers).map((th, i) => {
+                if (!columnVisible[i]) return null;
+                const s = window.getComputedStyle(th);
+                return {
+                    fontSize:   s.fontSize,
+                    fontWeight: s.fontWeight,
+                    padding:    s.padding,
+                    fontFamily: s.fontFamily
+                };
+            });
 
             // Measure header widths (ONLY for visible columns)
             headers.forEach((th, colIndex) => {
@@ -16321,28 +16433,24 @@ a { color: #1565c0; }`;
                 // DO NOT remove sort icons - they need to be measured as they're always present in headers
                 // The sorting symbols (⇅, ▲, ▼) take up space and must be included in width calculation
 
-                // Copy styles for accurate measurement
-                const styles = window.getComputedStyle(th);
-                measureDiv.style.fontSize = styles.fontSize;
-                measureDiv.style.fontWeight = styles.fontWeight;
-                measureDiv.style.padding = styles.padding;
-                measureDiv.style.fontFamily = styles.fontFamily;
+                // Apply cached styles (no getComputedStyle call in the hot path)
+                const cs = colStyleCache[colIndex];
+                if (cs) {
+                    measureDiv.style.fontSize   = cs.fontSize;
+                    measureDiv.style.fontWeight = cs.fontWeight;
+                    measureDiv.style.padding    = cs.padding;
+                    measureDiv.style.fontFamily = cs.fontFamily;
+                }
 
                 // Clone the th's CHILDREN directly into measureDiv (not the <th> itself).
                 // Appending an orphaned <th> triggers browser table-fixup which wraps
                 // it in anonymous table/table-row boxes that carry white-space:normal,
                 // defeating the white-space:nowrap set on measureDiv.
+                // The .mb-measure-nowrap CSS class already enforces nowrap on all
+                // descendants via the injected stylesheet rule, so no per-element
+                // style loop is needed here.
                 measureDiv.innerHTML = '';
                 Array.from(th.childNodes).forEach(n => measureDiv.appendChild(n.cloneNode(true)));
-                // Force every cloned descendant to not wrap.  CSS inheritance only
-                // fills values that are not explicitly set — it does NOT override
-                // explicit stylesheet rules like .wrap-anywhere{overflow-wrap:anywhere}.
-                // Setting the inline style on each element beats any stylesheet rule.
-                measureDiv.querySelectorAll('*').forEach(el => {
-                    el.style.setProperty('white-space',   'nowrap',  'important');
-                    el.style.setProperty('overflow-wrap', 'normal',  'important');
-                    el.style.setProperty('word-break',    'normal',  'important');
-                });
 
                 const width = measureDiv.offsetWidth;
 
@@ -16367,21 +16475,19 @@ a { color: #1565c0; }`;
                     // Skip hidden columns
                     if (!columnVisible[colIndex]) return;
 
-                    // Copy styles for accurate measurement
-                    const styles = window.getComputedStyle(cell);
-                    measureDiv.style.fontSize = styles.fontSize;
-                    measureDiv.style.fontWeight = styles.fontWeight;
-                    measureDiv.style.padding = styles.padding;
-                    measureDiv.style.fontFamily = styles.fontFamily;
+                    // Apply cached per-column styles (no getComputedStyle in hot path)
+                    const cs = colStyleCache[colIndex];
+                    if (cs) {
+                        measureDiv.style.fontSize   = cs.fontSize;
+                        measureDiv.style.fontWeight = cs.fontWeight;
+                        measureDiv.style.padding    = cs.padding;
+                        measureDiv.style.fontFamily = cs.fontFamily;
+                    }
 
                     // Clone the cell's CHILDREN directly into measureDiv (not the <td> itself).
+                    // The .mb-measure-nowrap CSS class enforces nowrap on all descendants.
                     measureDiv.innerHTML = '';
                     Array.from(cell.childNodes).forEach(n => measureDiv.appendChild(n.cloneNode(true)));
-                    measureDiv.querySelectorAll('*').forEach(el => {
-                        el.style.setProperty('white-space',   'nowrap',  'important');
-                        el.style.setProperty('overflow-wrap', 'normal',  'important');
-                        el.style.setProperty('word-break',    'normal',  'important');
-                    });
                     columnWidths[colIndex] = Math.max(columnWidths[colIndex], measureDiv.offsetWidth);
 
                     // Also measure each <li> individually (including hidden ones from
@@ -16392,15 +16498,9 @@ a { color: #1565c0; }`;
                     cell.querySelectorAll('ul > li').forEach(li => {
                         if (li.classList.contains('mb-caa-art-li')) return; // handled separately
                         const liClone = li.cloneNode(true);
-                        liClone.style.display     = 'inline-block';
-                        liClone.style.setProperty('white-space',   'nowrap',  'important');
-                        liClone.style.setProperty('overflow-wrap', 'normal',  'important');
-                        liClone.style.setProperty('word-break',    'normal',  'important');
-                        liClone.querySelectorAll('*').forEach(el => {
-                            el.style.setProperty('white-space',   'nowrap',  'important');
-                            el.style.setProperty('overflow-wrap', 'normal',  'important');
-                            el.style.setProperty('word-break',    'normal',  'important');
-                        });
+                        liClone.style.display = 'inline-block';
+                        // .mb-measure-nowrap on the parent div covers all descendants,
+                        // so no per-element style loop is needed on the clone.
                         measureDiv.innerHTML = '';
                         measureDiv.appendChild(liClone);
                         columnWidths[colIndex] = Math.max(columnWidths[colIndex], measureDiv.offsetWidth);
@@ -16774,21 +16874,54 @@ a { color: #1565c0; }`;
         }
 
         // Keep handle flush against the sidebar on every scroll / resize.
-        // Scroll events fire very frequently, so no throttling overhead is
-        // added here — updateHandlePosition() is a simple rect read + style set.
-        window.addEventListener('scroll', () => updateHandlePosition(handle), { passive: true });
+        // Scroll events can fire at very high frequency; throttle writes to one
+        // rAF per frame so we never force more than one getBoundingClientRect()
+        // layout read between paints.
+        let _scrollRafPending = false;
+        window.addEventListener('scroll', () => {
+            if (!_scrollRafPending) {
+                _scrollRafPending = true;
+                requestAnimationFrame(() => {
+                    _scrollRafPending = false;
+                    updateHandlePosition(handle);
+                });
+            }
+        }, { passive: true });
         window.addEventListener('resize', () => updateHandlePosition(handle), { passive: true });
 
         // Observer to handle dynamic content replacement by the "Show All" logic
+        // and layout changes caused by toggleAutoResizeColumns altering
+        // sidebar.style.position.
+        //
+        // Scope: watch only the sidebar element itself (childList + attributes),
+        // NOT document.body with subtree:true.  The original broad observer fired
+        // on every DOM mutation anywhere on the page — including every cell clone
+        // appended during auto-resize measurement — and each callback scheduled a
+        // getBoundingClientRect() rAF, causing a reflow storm during table render.
+        //
+        // The rAF call is deduplicated with a pending-flag so that bursts of rapid
+        // mutations (e.g. toggling many CSS classes at once) only schedule one
+        // layout read per animation frame.
+        let _sidebarRafPending = false;
         const observer = new MutationObserver(() => {
             if (sidebar.classList.contains('sidebar-collapsed')) {
                 applyStretching(true);
             }
-            // Re-evaluate handle position whenever the DOM changes (e.g. after
-            // toggleAutoResizeColumns alters sidebar.style.position).
-            requestAnimationFrame(() => updateHandlePosition(handle));
+            if (!_sidebarRafPending) {
+                _sidebarRafPending = true;
+                requestAnimationFrame(() => {
+                    _sidebarRafPending = false;
+                    updateHandlePosition(handle);
+                });
+            }
         });
-        observer.observe(document.body, { childList: true, subtree: true });
+        // childList catches child additions/removals inside the sidebar (e.g. the
+        // script injecting elements); attributes + attributeFilter catches class and
+        // style changes on the sidebar root itself (collapse toggle, position change).
+        observer.observe(sidebar, {
+            childList: true, subtree: true,
+            attributes: true, attributeFilter: ['class', 'style']
+        });
     }
 
     // --- Initialization Logic ---
