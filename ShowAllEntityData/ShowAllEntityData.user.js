@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.607+2026-05-17
+// @version      9.99.608+2026-05-17
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -7188,7 +7188,7 @@
             match: (path) => path.includes('/works'),
             buttons: [ { label: 'Show all Works for Artist' } ],
             features: {
-                collapsableColumns: [ 'Authors', 'Recording artists', 'Other artists', 'ISWC', 'Attributes' ],
+                collapsableColumns: [ 'Authors', 'Recording artists', 'Other artists', 'ISWC', 'Lyrics languages', 'Attributes' ],
                 extractMainColumn: 'Work',
                 stickyColumn: 'Work'
             },

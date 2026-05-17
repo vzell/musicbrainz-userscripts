@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.608",
+    "date": "2026-05-17",
+    "sections": [
+      {
+        "label": "✨ Enhancement",
+        "items": [
+          "Make 'Lyrics languages'column collapsable in pageType 'artist-works'"
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.607",
     "date": "2026-05-17",
     "sections": [
