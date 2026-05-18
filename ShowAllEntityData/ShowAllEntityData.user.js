@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.616+2026-05-18
+// @version      9.99.618+2026-05-18
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -27289,6 +27289,7 @@ a { color: #1565c0; }`;
 
             const pageLabel = (pagesProcessed === 1) ? 'page' : 'pages';
             globalStatusDisplay.innerHTML = '';
+            _caaGlobalStatusDone = false;  // allow the first CAA completion to append its segment
             const _sdLoaded = document.createElement('span');
             _sdLoaded.textContent = `Loaded ${pagesProcessed} ${pageLabel} (${totalRows} rows)`;
             _sdLoaded.title = 'Pages and rows loaded from the MusicBrainz database.';
@@ -36618,14 +36619,25 @@ a { color: #1565c0; }`;
                 : `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}s`;
             const _rCellSuffix = allCells.length !== 1 ? 's' : '';
             const _rMbidSuffix = uniqueMbids.length !== 1 ? 's' : '';
-            const _tierStr = `📦:${_tierInfo.idb}·💾:${_tierInfo.cache}·🌐:${_tierInfo.net}`;
+            // Compact: only non-zero tiers, emoji+count slash-separated
+            const _relTierParts = [
+                { emoji: '📦', count: _tierInfo.idb   },
+                { emoji: '💾', count: _tierInfo.cache },
+                { emoji: '🌐', count: _tierInfo.net   },
+            ].filter(t => t.count > 0).map(t => `${t.emoji}${t.count}`);
+            const _tierStr = _relTierParts.length ? _relTierParts.join('/') : '—';
+            // Tooltip: always all 3 tiers with same emojis as compact display
+            const _relTipTiers = [
+                { emoji: '📦', label: 'IDB',   desc: 'IndexedDB browser cache (cross-session)', count: _tierInfo.idb   },
+                { emoji: '💾', label: 'cache', desc: 'memory cache (same session)',              count: _tierInfo.cache },
+                { emoji: '🌐', label: 'net',   desc: 'live WS2 API fetch (throttled 1 req/s)',  count: _tierInfo.net   },
+            ].map(t => `${t.emoji} ${t.label}: ${t.count} — ${t.desc}`)
+             .join('\n');
             _sdAppend(
-                `🔗Rels: ${uniqueMbids.length} entities·${allCells.length} cell${_rCellSuffix}·${_tierStr} · ${_fmtT(_relElapsed)}`,
+                `🔗Rels: ${uniqueMbids.length}/${allCells.length}·${_tierStr}·${_fmtT(_relElapsed)}`,
                 ', ',
-                `Relationship icons loaded for ${uniqueMbids.length} unique MBID${_rMbidSuffix} across ${allCells.length} cell${_rCellSuffix}.\n` +
-                `📦 IDB: ${_tierInfo.idb} — IndexedDB browser cache (cross-session)\n` +
-                `💾 cache: ${_tierInfo.cache} — memory cache (same session)\n` +
-                `🌐 net: ${_tierInfo.net} — live WS2 API fetch (throttled 1 req/s)\n` +
+                `Relationship icons: ${uniqueMbids.length} unique MBID${_rMbidSuffix} / ${allCells.length} cell${_rCellSuffix}\n` +
+                _relTipTiers + '\n' +
                 `Total load time: ${_fmtT(_relElapsed)}`
             );
         });
@@ -39347,6 +39359,8 @@ a { color: #1565c0; }`;
         icon:   { memory: 0, idb: 0, network: 0, browser: 0 },
         inline: { memory: 0, idb: 0, network: 0, browser: 0 },
     };
+    /** True once the CAA segment has been appended to globalStatusDisplay for the current load. */
+    let _caaGlobalStatusDone = false;
 
 
     // ── Art Archive (CAA / EAA) shared feature engine ─────────────────────────
@@ -45139,6 +45153,45 @@ a { color: #1565c0; }`;
         if (infoDisplay) {
             infoDisplay.textContent = `🎨 CAA/EAA: ${totalLabel} in ${timeStr}`;
             infoDisplay.style.color = 'green';
+        }
+        // ── Append compact CAA summary to global status display (initial load only) ─
+        if (!_caaGlobalStatusDone) {
+            _caaGlobalStatusDone = true;
+            const _m  = s.icon.memory  + s.inline.memory;
+            const _d  = s.icon.idb     + s.inline.idb;
+            const _n  = s.icon.network + s.inline.network;
+            const _b  = s.icon.browser + s.inline.browser;
+            // Compact: only non-zero tiers
+            const _caasdParts = [
+                { emoji: '🟢', count: _m },
+                { emoji: '🗄️', count: _d },
+                { emoji: '🔵', count: _n },
+                { emoji: '🌐', count: _b },
+            ].filter(t => t.count > 0).map(t => `${t.emoji}${t.count}`);
+            const _caasdTierStr = _caasdParts.length ? _caasdParts.join('/') : '—';
+            // Tooltip: always all 4 tiers (zero counts shown explicitly)
+            const _caasdTip = tiers
+                .map(({ key, emoji, label }) => {
+                    const ic = s.icon[key];
+                    const il = s.inline[key];
+                    const parts = [];
+                    if (ic > 0) parts.push(`${ic} icon`);
+                    if (il > 0) parts.push(`${il} inline`);
+                    const tot = ic + il;
+                    const breakdown = tot === 0 ? '0'
+                        : parts.length === 2
+                            ? `${parts[0]} + ${parts[1]} = ${tot}`
+                            : `${tot}`;
+                    return `${emoji} ${label}: ${breakdown}`;
+                })
+                .join('\n');
+            _sdAppend(
+                `🎨CAA: ${iconTotal}/${inlineTotal}·${_caasdTierStr}·${timeStr}`,
+                ', ',
+                `CAA/EAA artwork: ${iconTotal} icon + ${inlineTotal} inline = ${grandTotal} total\n` +
+                _caasdTip + '\n' +
+                `Total load time: ${timeStr}`
+            );
         }
 
         // ── Show toast ────────────────────────────────────────────────────────

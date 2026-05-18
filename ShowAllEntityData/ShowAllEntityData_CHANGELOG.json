@@ -1,5 +1,34 @@
 [
   {
+    "version": "9.99.618",
+    "date": "2026-05-18",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "CAA/EAA segment in mb-global-status-display was appended after every filter re-render because _showCaaCompletionToast fires on every _caaQueue.onIdle(). Fix: add _caaGlobalStatusDone flag; only the first call per page load appends to globalStatusDisplay. Flag resets when globalStatusDisplay.innerHTML is cleared at load start.",
+          "Rels tooltip was using CAA-style emojis (🟢/🗄️/🔵) instead of the compact-display emojis (📦/💾/🌐). Fixed to use consistent 📦 IDB / 💾 cache / 🌐 net throughout.",
+          "Compact status display segments (🔗Rels and 🎨CAA) showed all tier counts including zeros. Now only non-zero tiers are included in the compact string.",
+          "Tooltips for both 🔗Rels and 🎨CAA segments now always show all tiers (zero-count tiers explicitly shown as ':0' rather than suppressed)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.617",
+    "date": "2026-05-18",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Compact Rels status display: remove 'entities'/'cells' labels and spacing; format is now '🔗Rels: N/N·📦N/💾N/🌐N·Xms' (entities/cells · tier counts · time).",
+          "Rels tooltip now uses the 4-tier CAA convention (🟢 Memory cache / 🗄️ IndexedDB cache / 🔵 Network fetch) with zero-count tiers suppressed, replacing the previous 📦/💾/🌐 labels.",
+          "Add CAA/EAA artwork segment to mb-global-status-display after 📐Measuring (and before 🔗Rels), in a mirrored compact format '🎨CAA: icon/inline·🟢N/🗄️N/🔵N/🌐N·Xms', with a multi-line tooltip showing the full per-tier icon+inline breakdown. The mb-info-display '🎨 CAA/EAA: N images in Xms' line is unchanged."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.616",
     "date": "2026-05-18",
     "sections": [
