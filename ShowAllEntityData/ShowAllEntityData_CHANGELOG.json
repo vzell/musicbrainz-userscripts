@@ -1,5 +1,32 @@
 [
   {
+    "version": "9.99.613",
+    "date": "2026-05-18",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fix batch measurement producing identical widths for every column (bugs 1–3): the previous <table>+<tr><td> approach placed all cells in a single table column, so the browser collapsed every offsetWidth to the same value — the maximum across the entire table. Replace with a plain <div> container holding display:inline-block wrappers; each wrapper is independently sized to its own content, giving correct per-column maximum widths.",
+          "Empty columns now correctly take the header width (sort icons, collapse button, CAA/EAA flex header) since headers are measured in the same batch and no longer share their width with data-row cells."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.612",
+    "date": "2026-05-18",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Replace per-cell reflow measurement with a single-reflow batch approach: all cells are cloned into a DocumentFragment (zero reflows during build), identical content is deduplicated per column via a per-column Set, the entire fragment is appended to a shared offscreen <table> in one call, and all offsetWidth values are read in a single pass (one layout recalculation for the whole table). Eliminates O(N) forced layouts — previously 375s on an 8 000-row table.",
+          "Remove the per-100-row await yield (no longer needed); yield once before the loop starts so the overlay renders, then run the batch measurement synchronously.",
+          "Clean up the shared offscreen measurement table in the finally block."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.611",
     "date": "2026-05-18",
     "sections": [

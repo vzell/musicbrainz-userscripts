@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.611+2026-05-18
+// @version      9.99.613+2026-05-18
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -16337,6 +16337,21 @@ a { color: #1565c0; }`;
         const _resizeHeading  = _resizeOverlay.querySelector('#mb-resize-heading');
         const _resizeProgress = _resizeOverlay.querySelector('#mb-resize-progress');
 
+        // Offscreen measurement container — shared across all source tables.
+        // A plain <div> is used, not a <table>: in a table every cell in the same
+        // column position shares the column width (the browser sets it to the max
+        // of all cells in that column), so measuring all source columns in one
+        // table column would make every measured width identical — the max across
+        // the entire table.  By contrast, each inline-block <div> child sizes to
+        // its OWN content, giving independent per-cell widths.
+        // Table-fixup (anonymous table boxes carrying white-space:normal) is not
+        // an issue here because we clone cell *children* (not the <td>/<th>
+        // elements themselves) — no orphaned table elements are ever appended.
+        const _measureContainer = document.createElement('div');
+        _measureContainer.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;font-family:inherit;font-size:inherit;';
+        _measureContainer.classList.add('mb-measure-nowrap');
+        document.body.appendChild(_measureContainer);
+
         try {
 
         Lib.debug('resize', `Auto-resizing ${tables.length} table(s)...`);
@@ -16380,10 +16395,8 @@ a { color: #1565c0; }`;
             Lib.debug('resize', 'Enabled horizontal scrolling at window level to preserve sticky headers');
         }
 
-        // Pre-compute total row count across all tables for the ETA shown in the overlay.
-        const _totalRowsToMeasure = Array.from(tables).reduce(
-            (sum, t) => sum + t.querySelectorAll('tbody tr').length, 0);
-        let _prevTablesRowCount = 0;
+        // Yield once so the overlay renders before the (now synchronous) batch pass.
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         for (const [tableIndex, table] of Array.from(tables).entries()) {
             // Remove any existing width constraints
@@ -16415,45 +16428,8 @@ a { color: #1565c0; }`;
                 columnVisible[colIndex] = th.style.display !== 'none';
             });
 
-            // Create temporary measurement container.
-            //
-            // IMPORTANT – white-space / word-break / overflow-wrap:
-            //   We must ensure the cloned content is measured as a single,
-            //   non-wrapping line.  Three pitfalls prevented here:
-            //
-            //   1. Table-fixup: appending an orphaned <td>/<th> to a plain <div>
-            //      makes the browser wrap it in anonymous table/table-row boxes.
-            //      Those anonymous boxes carry the UA-stylesheet default of
-            //      white-space:normal, silently overriding the measureDiv's
-            //      white-space:nowrap and causing content to wrap.  Fix: clone
-            //      only the *children* of each cell directly into the measureDiv
-            //      so no <td>/<th> is ever appended (no fixup triggered).
-            //
-            //   2. .wrap-anywhere (overflow-wrap:anywhere): even outside a table
-            //      context this can break text.  Explicitly reset it on the div.
-            //
-            //   3. word-break: same — reset to normal so no mid-word breaks occur.
-            //
-            // The `.mb-measure-nowrap` CSS class (injected into the page stylesheet
-            // during sticky-header initialisation) applies white-space:nowrap,
-            // overflow-wrap:normal, and word-break:normal with !important to the
-            // div and all its descendants.  This replaces the previous approach of
-            // calling measureDiv.querySelectorAll('*').forEach(el => el.style.setProperty(...))
-            // on every cell clone, which triggered a micro-reflow for each element.
-            const measureDiv = document.createElement('div');
-            // Use !important on text-wrap properties so that MusicBrainz stylesheet
-            // rules (including any with !important, e.g. .wrap-anywhere) cannot
-            // override them and cause wrapping inside the measureDiv.
-            measureDiv.style.cssText = 'position:absolute;visibility:hidden;font-family:inherit;font-size:inherit;padding:4px 8px;';
-            measureDiv.classList.add('mb-measure-nowrap');
-            document.body.appendChild(measureDiv);
-
-            // ── Hoist getComputedStyle reads outside the row loop ─────────────
-            // getComputedStyle() forces a style recalculation on every call.
-            // All <td>s in the same column share the same font/padding as their
-            // <th>, so we read each column's styles exactly once here and cache
-            // them.  The inner loops then apply from the cache instead of
-            // re-calling getComputedStyle for every cell.
+            // Hoist getComputedStyle reads — one call per visible column.
+            // Applied to measurement <td>s so they render with the correct font metrics.
             const colStyleCache = Array.from(headers).map((th, i) => {
                 if (!columnVisible[i]) return null;
                 const s = window.getComputedStyle(th);
@@ -16465,115 +16441,97 @@ a { color: #1565c0; }`;
                 };
             });
 
-            // Measure header widths (ONLY for visible columns)
-            headers.forEach((th, colIndex) => {
-                if (colIndex >= columnCount) return;
-
-                // Skip hidden columns
-                if (!columnVisible[colIndex]) {
-                    Lib.debug('resize', `Header ${colIndex}: Skipped (hidden)`);
-                    return;
-                }
-
-                // DO NOT remove sort icons - they need to be measured as they're always present in headers
-                // The sorting symbols (⇅, ▲, ▼) take up space and must be included in width calculation
-
-                // Apply cached styles (no getComputedStyle call in the hot path)
-                const cs = colStyleCache[colIndex];
-                if (cs) {
-                    measureDiv.style.fontSize   = cs.fontSize;
-                    measureDiv.style.fontWeight = cs.fontWeight;
-                    measureDiv.style.padding    = cs.padding;
-                    measureDiv.style.fontFamily = cs.fontFamily;
-                }
-
-                // Clone the th's CHILDREN directly into measureDiv (not the <th> itself).
-                // Appending an orphaned <th> triggers browser table-fixup which wraps
-                // it in anonymous table/table-row boxes that carry white-space:normal,
-                // defeating the white-space:nowrap set on measureDiv.
-                // The .mb-measure-nowrap CSS class already enforces nowrap on all
-                // descendants via the injected stylesheet rule, so no per-element
-                // style loop is needed here.
-                measureDiv.innerHTML = '';
-                Array.from(th.childNodes).forEach(n => measureDiv.appendChild(n.cloneNode(true)));
-
-                const width = measureDiv.offsetWidth;
-
-                columnWidths[colIndex] = Math.max(columnWidths[colIndex], width);
-
-                Lib.debug('resize', `Header ${colIndex}: "${th.textContent.trim()}" = ${width}px`);
-            });
-
-            // Measure ALL data rows — no sampling.  Sampling caused long cells at
-            // odd/skipped indices to be missed, resulting in under-sized columns.
-            const rows = table.querySelectorAll('tbody tr');
-
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-
-                // Skip hidden rows
-                if (row.style.display === 'none') continue;
-
-                Array.from(row.cells).forEach((cell, colIndex) => {
-                    if (colIndex >= columnCount) return;
-
-                    // Skip hidden columns
-                    if (!columnVisible[colIndex]) return;
-
-                    // Apply cached per-column styles (no getComputedStyle in hot path)
-                    const cs = colStyleCache[colIndex];
-                    if (cs) {
-                        measureDiv.style.fontSize   = cs.fontSize;
-                        measureDiv.style.fontWeight = cs.fontWeight;
-                        measureDiv.style.padding    = cs.padding;
-                        measureDiv.style.fontFamily = cs.fontFamily;
-                    }
-
-                    // Clone the cell's CHILDREN directly into measureDiv (not the <td> itself).
-                    // The .mb-measure-nowrap CSS class enforces nowrap on all descendants.
-                    measureDiv.innerHTML = '';
-                    Array.from(cell.childNodes).forEach(n => measureDiv.appendChild(n.cloneNode(true)));
-                    columnWidths[colIndex] = Math.max(columnWidths[colIndex], measureDiv.offsetWidth);
-
-                    // Also measure each <li> individually (including hidden ones from
-                    // collapsed multi-row cells and single-li synthetic columns like
-                    // 'Primary Alias').  Block <ul>/<li> elements inside the inline
-                    // measureDiv may not expand to their full text width, so measuring
-                    // each li as a standalone inline block gives a reliable maximum.
-                    cell.querySelectorAll('ul > li').forEach(li => {
-                        if (li.classList.contains('mb-caa-art-li')) return; // handled separately
-                        const liClone = li.cloneNode(true);
-                        liClone.style.display = 'inline-block';
-                        // .mb-measure-nowrap on the parent div covers all descendants,
-                        // so no per-element style loop is needed on the clone.
-                        measureDiv.innerHTML = '';
-                        measureDiv.appendChild(liClone);
-                        columnWidths[colIndex] = Math.max(columnWidths[colIndex], measureDiv.offsetWidth);
-                    });
-                });
-
-                // Yield to the browser every 100 rows to keep the page responsive
-                // and avoid a Chrome "page unresponsive" dialog on large tables.
-                if ((i + 1) % 100 === 0) {
-                    const _processedRows = _prevTablesRowCount + (i + 1);
-                    const _elapsed = (performance.now() - startTime) / 1000;
-                    const _rate = _elapsed > 0 ? _processedRows / _elapsed : 0;
-                    const _left = _rate > 0 ? (_totalRowsToMeasure - _processedRows) / _rate : 0;
-                    if (_resizeHeading) {
-                        _resizeHeading.textContent =
-                            `📐 Measuring column widths… ${_elapsed.toFixed(1)}s (${Math.max(0, _left).toFixed(1)}s left)`;
-                    }
-                    if (_resizeProgress) {
-                        _resizeProgress.textContent =
-                            `Table ${tableIndex + 1} / ${tables.length}: row ${(i + 1).toLocaleString()} / ${rows.length.toLocaleString()}`;
-                    }
-                    await new Promise(resolve => setTimeout(resolve, 0));
-                }
+            // Update overlay for this table
+            if (_resizeProgress) {
+                _resizeProgress.textContent = tables.length > 1
+                    ? `Table ${tableIndex + 1} / ${tables.length}: building batch…`
+                    : 'Building batch…';
             }
 
-            // Clean up measurement div
-            document.body.removeChild(measureDiv);
-            _prevTablesRowCount += rows.length;
+            // ── BATCH PHASE ────────────────────────────────────────────────────
+            // All cells are cloned into a DocumentFragment — no layout is triggered
+            // during this phase because the fragment is detached from the DOM.
+            // Identical content (same innerHTML / outerHTML) is deduplicated per column
+            // so each unique pattern is measured exactly once.
+            const _frag = document.createDocumentFragment();
+            const _jobs = []; // { colIndex, _td } for every queued cell
+
+            // Per-column Set of already-seen HTML strings — skip duplicates.
+            const _colSeen = Array.from({length: columnCount}, (_, i) =>
+                columnVisible[i] ? new Set() : null);
+
+            const _enqueue = (colIndex, sourceNode, isLiMode) => {
+                const _seen = _colSeen[colIndex];
+                if (!_seen) return;
+                const _key = isLiMode ? sourceNode.outerHTML : sourceNode.innerHTML;
+                if (_seen.has(_key)) return; // identical content already queued
+                _seen.add(_key);
+
+                // display:inline-block gives each wrapper its OWN intrinsic width.
+                // A shared-column table would collapse all cells to the same width
+                // (the column maximum), defeating per-column measurement entirely.
+                const _div = document.createElement('div');
+                _div.style.display = 'inline-block';
+                const cs = colStyleCache[colIndex];
+                if (cs) {
+                    _div.style.fontSize   = cs.fontSize;
+                    _div.style.fontWeight = cs.fontWeight;
+                    _div.style.padding    = cs.padding;
+                    _div.style.fontFamily = cs.fontFamily;
+                }
+                if (isLiMode) {
+                    // Measure the <li> as inline-block to get its natural unwrapped width.
+                    const _liClone = sourceNode.cloneNode(true);
+                    _liClone.style.display = 'inline-block';
+                    _div.appendChild(_liClone);
+                } else {
+                    Array.from(sourceNode.childNodes).forEach(n => _div.appendChild(n.cloneNode(true)));
+                }
+                _frag.appendChild(_div);
+                _jobs.push({ colIndex, _div });
+            };
+
+            // Queue header cells (sort icons included — they are always visible)
+            headers.forEach((th, colIndex) => {
+                if (colIndex < columnCount && columnVisible[colIndex]) {
+                    _enqueue(colIndex, th, false);
+                }
+            });
+
+            // Queue all data row cells and individual <li>s.
+            // No row sampling — sampling caused under-sized columns for cells at skipped indices.
+            const rows = table.querySelectorAll('tbody tr');
+            for (const row of rows) {
+                if (row.style.display === 'none') continue;
+                Array.from(row.cells).forEach((cell, colIndex) => {
+                    if (colIndex >= columnCount || !columnVisible[colIndex]) return;
+                    _enqueue(colIndex, cell, false);
+                    // Also measure each <li> individually: block <ul>/<li> elements inside
+                    // a <td> may not expand to their full text width, so measuring each
+                    // li as inline-block gives the reliable per-item maximum.
+                    cell.querySelectorAll('ul > li').forEach(li => {
+                        if (li.classList.contains('mb-caa-art-li')) return;
+                        _enqueue(colIndex, li, true);
+                    });
+                });
+            }
+
+            // ── SINGLE INSERT ───────────────────────────────────────────────────
+            // One appendChild is the only DOM mutation on the live offscreen container.
+            _measureContainer.appendChild(_frag);
+
+            // ── SINGLE REFLOW READ PASS ─────────────────────────────────────────
+            // The first offsetWidth read triggers exactly one layout recalculation;
+            // subsequent reads are served from the cached layout because no DOM
+            // mutations occur between reads.
+            for (const { colIndex, _div } of _jobs) {
+                columnWidths[colIndex] = Math.max(columnWidths[colIndex], _div.offsetWidth);
+            }
+
+            // Reset container for the next source table
+            _measureContainer.innerHTML = '';
+
+            Lib.debug('resize', `Table ${tableIndex}: ${_jobs.length} unique cells measured in single reflow`);
 
             // Apply widths to table columns
             // Use colgroup for better performance
@@ -16669,6 +16627,9 @@ a { color: #1565c0; }`;
             if (resizeBtn) resizeBtn.disabled = false;
             if (_resizeOverlay && _resizeOverlay.parentNode) {
                 _resizeOverlay.parentNode.removeChild(_resizeOverlay);
+            }
+            if (_measureContainer && _measureContainer.parentNode) {
+                _measureContainer.parentNode.removeChild(_measureContainer);
             }
         }
     }
