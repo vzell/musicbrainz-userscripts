@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.609+2026-05-18
+// @version      9.99.610+2026-05-18
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -16240,7 +16240,7 @@ a { color: #1565c0; }`;
      * Second click: restores original column widths.
      * Manual column resizing also resets the auto-resize state.
      */
-    function toggleAutoResizeColumns() {
+    async function toggleAutoResizeColumns() {
         const tables = document.querySelectorAll('table.tbl');
 
         if (tables.length === 0) {
@@ -16310,6 +16310,34 @@ a { color: #1565c0; }`;
         }
 
         // First click: Auto-resize columns
+
+        // Disable the resize button and show a fixed-centre progress overlay while
+        // the chunked measurement pass runs, preventing a "page unresponsive" dialog.
+        if (resizeBtn) resizeBtn.disabled = true;
+
+        const _resizeOverlay = document.createElement('div');
+        _resizeOverlay.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 8px;
+            z-index: 9999;
+            font-size: 16px;
+            text-align: center;
+        `;
+        _resizeOverlay.innerHTML = `
+            <div style="margin-bottom: 10px;">📐 Measuring column widths…</div>
+            <div id="mb-resize-progress" style="font-size: 14px;">Preparing…</div>
+        `;
+        document.body.appendChild(_resizeOverlay);
+        const _resizeProgress = _resizeOverlay.querySelector('#mb-resize-progress');
+
+        try {
+
         Lib.debug('resize', `Auto-resizing ${tables.length} table(s)...`);
 
         const startTime = performance.now();
@@ -16351,7 +16379,7 @@ a { color: #1565c0; }`;
             Lib.debug('resize', 'Enabled horizontal scrolling at window level to preserve sticky headers');
         }
 
-        tables.forEach((table, tableIndex) => {
+        for (const [tableIndex, table] of Array.from(tables).entries()) {
             // Remove any existing width constraints
             table.style.width = 'auto';
             table.style.tableLayout = 'auto';
@@ -16360,7 +16388,7 @@ a { color: #1565c0; }`;
             const firstRow = table.querySelector('tbody tr');
             if (!firstRow) {
                 Lib.warn('resize', `Table ${tableIndex} has no data rows, skipping`);
-                return;
+                continue;
             }
 
             const columnCount = firstRow.cells.length;
@@ -16517,6 +16545,16 @@ a { color: #1565c0; }`;
                         columnWidths[colIndex] = Math.max(columnWidths[colIndex], measureDiv.offsetWidth);
                     });
                 });
+
+                // Yield to the browser every 100 rows to keep the page responsive
+                // and avoid a Chrome "page unresponsive" dialog on large tables.
+                if ((i + 1) % 100 === 0) {
+                    if (_resizeProgress) {
+                        _resizeProgress.textContent =
+                            `Table ${tableIndex + 1} / ${tables.length}: row ${(i + 1).toLocaleString()} / ${rows.length.toLocaleString()}`;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
             }
 
             // Clean up measurement div
@@ -16588,7 +16626,7 @@ a { color: #1565c0; }`;
             }
 
             Lib.debug('resize', `Table ${tableIndex}: Resized ${columnCount} columns, total width: ${totalWidth}px`);
-        });
+        }
 
         const duration = (performance.now() - startTime).toFixed(0);
 
@@ -16611,6 +16649,13 @@ a { color: #1565c0; }`;
         }
 
         Lib.debug('resize', `Auto-resize complete: ${totalColumnsResized} visible columns across ${tableCount} table(s) in ${duration}ms`);
+
+        } finally {
+            if (resizeBtn) resizeBtn.disabled = false;
+            if (_resizeOverlay && _resizeOverlay.parentNode) {
+                _resizeOverlay.parentNode.removeChild(_resizeOverlay);
+            }
+        }
     }
 
     /**
@@ -27081,10 +27126,10 @@ a { color: #1565c0; }`;
                     const _arThreshold = Lib.settings.sa_auto_resize_columns_threshold ?? 2000;
                     const _arBelowThreshold = _arThreshold === 0 || totalRows <= _arThreshold;
                     if (_arBelowThreshold) {
-                        setTimeout(() => {
+                        setTimeout(async () => {
                             Lib.debug('resize', `sa_auto_resize_columns: triggering auto-resize on load (${totalRows} rows ≤ threshold ${_arThreshold})`);
                             const _arStart = performance.now();
-                            toggleAutoResizeColumns();
+                            await toggleAutoResizeColumns();
                             const _arSeconds = ((performance.now() - _arStart) / 1000).toFixed(2);
                             Lib.debug('resize', `sa_auto_resize_columns: completed in ${_arSeconds}s`);
                             const _sd = document.getElementById('mb-global-status-display');

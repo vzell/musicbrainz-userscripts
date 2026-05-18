@@ -1,5 +1,19 @@
 [
   {
+    "version": "9.99.610",
+    "date": "2026-05-18",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Make toggleAutoResizeColumns() async: show a fixed-centre overlay (📐 Measuring column widths…) matching the renderRowsChunked style; chunk the inner row measurement loop at 100 rows with a yield between chunks to keep the page responsive and prevent a Chrome 'page unresponsive' dialog on large tables.",
+          "Disable the Resize button during the measurement pass and re-enable it in a finally block so it is always restored even if an error occurs.",
+          "Update the auto-resize-on-load setTimeout callback to async/await so the column-size timing measurement captures the full async duration correctly."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.609",
     "date": "2026-05-18",
     "sections": [
