@@ -1,5 +1,18 @@
 [
   {
+    "version": "9.99.611",
+    "date": "2026-05-18",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Column resize overlay: heading line now updates every 100 rows to show elapsed time and estimated time remaining — '📐 Measuring column widths… 2.3s (5.1s left)'.",
+          "Change auto-resize duration display from milliseconds to seconds (2 decimal places) in the info-display status message and the resize debug log line."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.610",
     "date": "2026-05-18",
     "sections": [

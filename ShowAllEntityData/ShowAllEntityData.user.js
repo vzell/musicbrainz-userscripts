@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.610+2026-05-18
+// @version      9.99.611+2026-05-18
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -16330,10 +16330,11 @@ a { color: #1565c0; }`;
             text-align: center;
         `;
         _resizeOverlay.innerHTML = `
-            <div style="margin-bottom: 10px;">📐 Measuring column widths…</div>
+            <div id="mb-resize-heading" style="margin-bottom: 10px;">📐 Measuring column widths…</div>
             <div id="mb-resize-progress" style="font-size: 14px;">Preparing…</div>
         `;
         document.body.appendChild(_resizeOverlay);
+        const _resizeHeading  = _resizeOverlay.querySelector('#mb-resize-heading');
         const _resizeProgress = _resizeOverlay.querySelector('#mb-resize-progress');
 
         try {
@@ -16378,6 +16379,11 @@ a { color: #1565c0; }`;
 
             Lib.debug('resize', 'Enabled horizontal scrolling at window level to preserve sticky headers');
         }
+
+        // Pre-compute total row count across all tables for the ETA shown in the overlay.
+        const _totalRowsToMeasure = Array.from(tables).reduce(
+            (sum, t) => sum + t.querySelectorAll('tbody tr').length, 0);
+        let _prevTablesRowCount = 0;
 
         for (const [tableIndex, table] of Array.from(tables).entries()) {
             // Remove any existing width constraints
@@ -16549,6 +16555,14 @@ a { color: #1565c0; }`;
                 // Yield to the browser every 100 rows to keep the page responsive
                 // and avoid a Chrome "page unresponsive" dialog on large tables.
                 if ((i + 1) % 100 === 0) {
+                    const _processedRows = _prevTablesRowCount + (i + 1);
+                    const _elapsed = (performance.now() - startTime) / 1000;
+                    const _rate = _elapsed > 0 ? _processedRows / _elapsed : 0;
+                    const _left = _rate > 0 ? (_totalRowsToMeasure - _processedRows) / _rate : 0;
+                    if (_resizeHeading) {
+                        _resizeHeading.textContent =
+                            `📐 Measuring column widths… ${_elapsed.toFixed(1)}s (${Math.max(0, _left).toFixed(1)}s left)`;
+                    }
                     if (_resizeProgress) {
                         _resizeProgress.textContent =
                             `Table ${tableIndex + 1} / ${tables.length}: row ${(i + 1).toLocaleString()} / ${rows.length.toLocaleString()}`;
@@ -16559,6 +16573,7 @@ a { color: #1565c0; }`;
 
             // Clean up measurement div
             document.body.removeChild(measureDiv);
+            _prevTablesRowCount += rows.length;
 
             // Apply widths to table columns
             // Use colgroup for better performance
@@ -16628,7 +16643,7 @@ a { color: #1565c0; }`;
             Lib.debug('resize', `Table ${tableIndex}: Resized ${columnCount} columns, total width: ${totalWidth}px`);
         }
 
-        const duration = (performance.now() - startTime).toFixed(0);
+        const duration = ((performance.now() - startTime) / 1000).toFixed(2);
 
         // Mark as resized
         isAutoResized = true;
@@ -16643,12 +16658,12 @@ a { color: #1565c0; }`;
             if (tableCount > 1) {
                 message += ` across ${tableCount} tables`;
             }
-            message += ` in ${duration}ms (drag column edges to adjust)`;
+            message += ` in ${duration}s (drag column edges to adjust)`;
             infoDisplay.textContent = message;
             infoDisplay.style.color = 'green';
         }
 
-        Lib.debug('resize', `Auto-resize complete: ${totalColumnsResized} visible columns across ${tableCount} table(s) in ${duration}ms`);
+        Lib.debug('resize', `Auto-resize complete: ${totalColumnsResized} visible columns across ${tableCount} table(s) in ${duration}s`);
 
         } finally {
             if (resizeBtn) resizeBtn.disabled = false;
@@ -27133,7 +27148,7 @@ a { color: #1565c0; }`;
                             const _arSeconds = ((performance.now() - _arStart) / 1000).toFixed(2);
                             Lib.debug('resize', `sa_auto_resize_columns: completed in ${_arSeconds}s`);
                             const _sd = document.getElementById('mb-global-status-display');
-                            if (_sd) _sd.textContent += `, Columnsize measuring time: ${_arSeconds}s`;
+                            if (_sd) _sd.textContent += `, 📐Columnsize measuring time: ${_arSeconds}s`;
                         }, 0);
                     } else {
                         Lib.debug('resize',
