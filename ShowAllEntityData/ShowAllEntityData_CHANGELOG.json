@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.614",
+    "date": "2026-05-18",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fix Relationship column correctness when the user types in the filter while the Phase-2 fetch queue is still mid-flight (race condition between the throttled MBID queue and runFilter's DOM rebuild). Three-part fix: (1) _populateCells now syncs icon HTML to source-row cells (groupedRows/allRows) immediately after each MBID completes, so runFilter clones already carry the correct content; the premature relDone='1' stamp on source cells (before icons were built) is removed and moved to the correct position after the sync. (2) runFilter calls initRelationshipsColumn() after renderFinalTable/renderGroupedTable whenever any td.mb-rel-cell without data-rel-done='1' is found, so cells cloned from not-yet-processed MBIDs are populated in the freshly rendered DOM. (3) The queue.then() bulk sync is kept as a safety net but skips source cells whose innerHTML already matches the DOM cell, avoiding redundant work."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.613",
     "date": "2026-05-18",
     "sections": [

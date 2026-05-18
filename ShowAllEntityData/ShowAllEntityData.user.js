@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.613+2026-05-18
+// @version      9.99.614+2026-05-18
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -23703,6 +23703,11 @@ a { color: #1565c0; }`;
             // where runFilter fires BEFORE initRelationshipsColumn — in that case source
             // rows have no picard_td yet and inserting it here would create wrong order.
             initPicardTaggerColumn(/* rewireOnly */ true);
+            // Re-populate any rel cells that were not yet done when runFilter rebuilt
+            // the DOM (race: Phase-2 fetch queue was mid-flight when the user typed).
+            if (document.querySelector('td.mb-rel-cell:not([data-rel-done="1"])')) {
+                initRelationshipsColumn();
+            }
         } else {
             const totalAbsolute = allRows.length;
             // Pass isExclude so that f.isExclude in every filter object reflects the
@@ -23801,6 +23806,11 @@ a { color: #1565c0; }`;
             // after initCaaPics() (so _caaQueue is initialised).
             initCaaInlinePics();
             initEaaInlinePics();
+            // Re-populate any rel cells that were not yet done when runFilter rebuilt
+            // the DOM (race: Phase-2 fetch queue was mid-flight when the user typed).
+            if (document.querySelector('td.mb-rel-cell:not([data-rel-done="1"])')) {
+                initRelationshipsColumn();
+            }
         }
         // Maintain scroll position after filtering or sorting.
         // __scrollX preserves any horizontal offset the user reached via the
@@ -36410,9 +36420,9 @@ a { color: #1565c0; }`;
                     if (td && !cells.includes(td)) _srcCells.push(td);
                 });
             }
-            _srcCells.forEach(td => { td.style.backgroundColor = ''; td.dataset.relDone = '1'; });
             if (!data) {
                 _relDbg(`_populateCells: no data for ${mbid}`);
+                _srcCells.forEach(td => { td.style.backgroundColor = ''; td.dataset.relDone = '1'; });
                 return;
             }
             // WS2 JSON format: data.relations[] filtered by target-type
@@ -36500,6 +36510,14 @@ a { color: #1565c0; }`;
                 _relDbg(`_populateCells: non-url rel type='${relType}' href='${href}' title='${_entityTitle}' ended=${ended}`);
                 cells.forEach(td => _relAppendIcon(td, href, iconUrl, ended, _tooltip));
             }
+            // Immediately sync icon HTML to source-row cells so runFilter clones
+            // carry the correct content even when the Phase-2 queue is still mid-flight.
+            const _srcHtml = cells.length ? cells[0].innerHTML : '';
+            _srcCells.forEach(td => {
+                td.innerHTML = _srcHtml;
+                td.style.backgroundColor = '';
+                td.dataset.relDone = '1';
+            });
         }
 
         // ── Two-phase fetch: IDB hits in parallel, misses throttled (1 req/s) ───
@@ -36538,8 +36556,9 @@ a { color: #1565c0; }`;
         const _relStartMs = performance.now();
         queue.then(() => {
             _relRetryActive = false;  // reset retry flag from _relRetryMbids
-            // Sync populated icon HTML from DOM cells to source-row cells
-            // so runFilter clones carry the icons.
+            // Safety-net: sync any source-row cells that _populateCells did not already
+            // sync (e.g. cells added to source rows after _populateCells ran).
+            // Skip cells whose innerHTML already matches the DOM cell (already synced).
             if (typeof groupedRows !== 'undefined' || typeof allRows !== 'undefined') {
                 document.querySelectorAll('td.mb-rel-cell[data-rel-done="1"]').forEach(domTd => {
                     const _mid = domTd.dataset.mbid;
@@ -36547,7 +36566,7 @@ a { color: #1565c0; }`;
                     const _html = domTd.innerHTML;
                     const _sync = rows => rows.forEach(r => {
                         const srcTd = r.querySelector(`td.mb-rel-cell[data-mbid='${_mid}']`);
-                        if (srcTd && srcTd !== domTd) {
+                        if (srcTd && srcTd !== domTd && srcTd.innerHTML !== _html) {
                             srcTd.innerHTML = _html;
                             srcTd.dataset.relDone = '1';
                             srcTd.style.backgroundColor = '';
