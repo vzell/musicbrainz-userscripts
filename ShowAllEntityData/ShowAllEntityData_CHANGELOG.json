@@ -1,5 +1,19 @@
 [
   {
+    "version": "9.99.609",
+    "date": "2026-05-18",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Add setting 'sa_auto_resize_columns_threshold' (default 2000): auto-resize on load is now skipped when the rendered row count exceeds this threshold, preventing slow measurement passes on large datasets. Set to 0 to always resize regardless of row count.",
+          "Auto-resize on load now appends 'Columnsize measuring time: N.NNs' to the global status display (after 'Rendering time') so the measurement cost is visible in the timing summary.",
+          "Auto-resize on load debug log now includes the row count and threshold for easier diagnosis."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.608",
     "date": "2026-05-17",
     "sections": [

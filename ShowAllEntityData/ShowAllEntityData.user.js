@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.608+2026-05-17
+// @version      9.99.609+2026-05-18
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -1219,6 +1219,17 @@
             description: 'When enabled, automatically triggers the "↔️ Resize" button ' +
                          '(same as clicking it manually) immediately after the table is rendered, ' +
                          'so columns are fitted to their content on every page load without manual clicks.'
+        },
+
+        sa_auto_resize_columns_threshold: {
+            label: 'Auto-resize columns threshold (rows)',
+            type: 'number',
+            default: 2000,
+            description: 'Maximum number of rows for which the auto-resize-on-load feature ' +
+                         'will run. When the final rendered table contains more rows than this ' +
+                         'value, auto-resize is skipped to avoid a slow measurement pass on large ' +
+                         'datasets. Set to 0 to disable the threshold (always resize). ' +
+                         'Only has effect when "Auto-resize columns on load" is enabled.'
         },
 
         // ============================================================
@@ -27064,11 +27075,25 @@ a { color: #1565c0; }`;
                 // sa_auto_resize_columns: emulate pressing the Resize button on load.
                 // Uses setTimeout(0) so the button and column widths are fully set up
                 // before the auto-resize measurement pass runs.
+                // Skipped when totalRows exceeds sa_auto_resize_columns_threshold (default
+                // 2000) to avoid a slow measurement pass on large datasets.
                 if (Lib.settings.sa_auto_resize_columns && !isAutoResized) {
-                    setTimeout(() => {
-                        Lib.debug('resize', 'sa_auto_resize_columns: triggering auto-resize on load');
-                        toggleAutoResizeColumns();
-                    }, 0);
+                    const _arThreshold = Lib.settings.sa_auto_resize_columns_threshold ?? 2000;
+                    const _arBelowThreshold = _arThreshold === 0 || totalRows <= _arThreshold;
+                    if (_arBelowThreshold) {
+                        setTimeout(() => {
+                            Lib.debug('resize', `sa_auto_resize_columns: triggering auto-resize on load (${totalRows} rows ≤ threshold ${_arThreshold})`);
+                            const _arStart = performance.now();
+                            toggleAutoResizeColumns();
+                            const _arSeconds = ((performance.now() - _arStart) / 1000).toFixed(2);
+                            Lib.debug('resize', `sa_auto_resize_columns: completed in ${_arSeconds}s`);
+                            const _sd = document.getElementById('mb-global-status-display');
+                            if (_sd) _sd.textContent += `, Columnsize measuring time: ${_arSeconds}s`;
+                        }, 0);
+                    } else {
+                        Lib.debug('resize',
+                            `sa_auto_resize_columns: skipped — ${totalRows} rows exceeds threshold ${_arThreshold}`);
+                    }
                 }
             }
 
