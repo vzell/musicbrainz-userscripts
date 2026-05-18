@@ -1,5 +1,32 @@
 [
   {
+    "version": "9.99.616",
+    "date": "2026-05-18",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Redesign mb-global-status-display as structured tooltip-aware spans. Each segment (Loaded, Fetching, Rendering, Measuring, Rels) is now a separate <span title='…'> child, making the text more compact and adding hover tooltips: 'Loaded N pages (M rows)' explains the source is the MusicBrainz database; 'Fetching' and 'Rendering' explain the timing stages; '📐Measuring' explains sa_auto_resize_columns; '🔗Rels' shows a multi-line tooltip breaking down 📦 IDB / 💾 memory cache / 🌐 live WS2 API fetch counts.",
+          "Condense status display text: 'from MusicBrainz' moved to tooltip; separators changed to '; ' / ', '; labels shortened to 'Fetching:', 'Rendering:', '📐Measuring:', '🔗Rels:'; tier emojis 📦/💾/🌐 replace verbose 'IDB:'/'cache:'/'net:' labels.",
+          "Add _sdAppend(text, sep, tip) helper to globalStatusDisplay creation scope for appending structured segments from any call site."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.615",
+    "date": "2026-05-18",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Relationship load-complete toast now shows a per-tier fetch breakdown: 📦 IDB (Phase-1 IndexedDB hits), 💾 cache (L1 memory cache hits during Phase-2), and 🌐 net (live network fetches during Phase-2). The tier line is omitted when all counts are zero.",
+          "When all relationships have finished loading, append a condensed summary to the mb-global-status-display status line after 'Columnsize measuring time', e.g. '🔗 Rels: 50 entities · 50 cells · IDB:35·cache:2·net:13 · 55.2s'."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.614",
     "date": "2026-05-18",
     "sections": [

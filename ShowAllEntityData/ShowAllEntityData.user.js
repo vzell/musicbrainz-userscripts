@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.614+2026-05-18
+// @version      9.99.616+2026-05-18
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -17511,6 +17511,22 @@ a { color: #1565c0; }`;
     globalStatusDisplay.id = 'mb-global-status-display';
     globalStatusDisplay.style.cssText = 'font-size:0.95em; color:#333; font-weight:bold; vertical-align:middle;';
 
+    /**
+     * Appends a labelled segment to globalStatusDisplay, preceded by a separator span.
+     * @param {string} text     Visible text for this segment.
+     * @param {string} [sep]    Separator prepended before the segment (default ', ').
+     * @param {string} [tip]    Tooltip text (title attribute) for this segment.
+     */
+    function _sdAppend(text, sep, tip) {
+        const sepEl = document.createElement('span');
+        sepEl.textContent = sep !== undefined ? sep : ', ';
+        globalStatusDisplay.appendChild(sepEl);
+        const segEl = document.createElement('span');
+        segEl.textContent = text;
+        if (tip) segEl.title = tip;
+        globalStatusDisplay.appendChild(segEl);
+    }
+
     const infoDisplay = document.createElement('span');
     infoDisplay.id = 'mb-info-display';
     infoDisplay.style.cssText = 'font-size:0.95em; color:#333; font-weight:bold; vertical-align:middle;';
@@ -27118,8 +27134,8 @@ a { color: #1565c0; }`;
                             await toggleAutoResizeColumns();
                             const _arSeconds = ((performance.now() - _arStart) / 1000).toFixed(2);
                             Lib.debug('resize', `sa_auto_resize_columns: completed in ${_arSeconds}s`);
-                            const _sd = document.getElementById('mb-global-status-display');
-                            if (_sd) _sd.textContent += `, 📐Columnsize measuring time: ${_arSeconds}s`;
+                            _sdAppend(`📐Measuring: ${_arSeconds}s`, ', ',
+                                'Time to auto-measure and set per-column widths (sa_auto_resize_columns).');
                         }, 0);
                     } else {
                         Lib.debug('resize',
@@ -27272,7 +27288,15 @@ a { color: #1565c0; }`;
             const renderSeconds = (totalRenderingTime / 1000).toFixed(2);
 
             const pageLabel = (pagesProcessed === 1) ? 'page' : 'pages';
-            globalStatusDisplay.textContent = `Loaded ${pagesProcessed} ${pageLabel} (${totalRows} rows) from MusicBrainz, Fetching time: ${fetchSeconds}s, Rendering time: ${renderSeconds}s`;
+            globalStatusDisplay.innerHTML = '';
+            const _sdLoaded = document.createElement('span');
+            _sdLoaded.textContent = `Loaded ${pagesProcessed} ${pageLabel} (${totalRows} rows)`;
+            _sdLoaded.title = 'Pages and rows loaded from the MusicBrainz database.';
+            globalStatusDisplay.appendChild(_sdLoaded);
+            _sdAppend(`Fetching: ${fetchSeconds}s`, '; ',
+                'Time to fetch all pages from the MusicBrainz server.');
+            _sdAppend(`Rendering: ${renderSeconds}s`, ', ',
+                'Time to build and insert the fetched rows into the DOM.');
             fetchProgressWrap.style.display = 'none';
 
             Lib.debug('success', `Process complete. Final Row Count: ${totalRowsAccumulated}. Total Time: ${((performance.now() - startTime) / 1000).toFixed(2)}s`);
@@ -36547,9 +36571,12 @@ a { color: #1565c0; }`;
 
         // Phase 2: throttled network queue for misses only
         let queue = Promise.resolve();
+        let _p2CacheHits = 0, _p2NetFetches = 0;
         _missMbids.forEach((mbid, i) => {
             queue = queue.then(async () => {
                 if (i > 0) await new Promise(r => setTimeout(r, 1100));
+                if (_relWs2Cache.has(`${entityType}:${mbid}`)) _p2CacheHits++;
+                else _p2NetFetches++;
                 await _populateCells(mbid, await _relFetchWs2(mbid, entityType, incOptions));
             });
         });
@@ -36580,7 +36607,27 @@ a { color: #1565c0; }`;
             _relDbg('initRelationshipsColumn: complete');
             _relCreateRetryButtons();
             const _relElapsed = performance.now() - _relStartMs;
-            _showRelCompletionToast(allCells.length, uniqueMbids.length, _relElapsed);
+            const _tierInfo = {
+                idb:   _hitFlags.filter(Boolean).length,
+                cache: _p2CacheHits,
+                net:   _p2NetFetches,
+            };
+            _showRelCompletionToast(allCells.length, uniqueMbids.length, _relElapsed, _tierInfo);
+            const _fmtT = ms => ms < 1000 ? `${Math.round(ms)}ms`
+                : ms < 60000 ? `${(ms / 1000).toFixed(1)}s`
+                : `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}s`;
+            const _rCellSuffix = allCells.length !== 1 ? 's' : '';
+            const _rMbidSuffix = uniqueMbids.length !== 1 ? 's' : '';
+            const _tierStr = `📦:${_tierInfo.idb}·💾:${_tierInfo.cache}·🌐:${_tierInfo.net}`;
+            _sdAppend(
+                `🔗Rels: ${uniqueMbids.length} entities·${allCells.length} cell${_rCellSuffix}·${_tierStr} · ${_fmtT(_relElapsed)}`,
+                ', ',
+                `Relationship icons loaded for ${uniqueMbids.length} unique MBID${_rMbidSuffix} across ${allCells.length} cell${_rCellSuffix}.\n` +
+                `📦 IDB: ${_tierInfo.idb} — IndexedDB browser cache (cross-session)\n` +
+                `💾 cache: ${_tierInfo.cache} — memory cache (same session)\n` +
+                `🌐 net: ${_tierInfo.net} — live WS2 API fetch (throttled 1 req/s)\n` +
+                `Total load time: ${_fmtT(_relElapsed)}`
+            );
         });
     }
 
@@ -36590,8 +36637,9 @@ a { color: #1565c0; }`;
      * @param {number} cellCount   Total number of .mb-rel-cell elements processed.
      * @param {number} mbidCount   Number of unique MBIDs fetched.
      * @param {number} elapsedMs   Elapsed time since initRelationshipsColumn() started.
+     * @param {{idb:number, cache:number, net:number}} [tierInfo]  Per-tier fetch counts.
      */
-    function _showRelCompletionToast(cellCount, mbidCount, elapsedMs) {
+    function _showRelCompletionToast(cellCount, mbidCount, elapsedMs, tierInfo) {
         const secs = Lib.settings.sa_rel_completion_toast_duration;
         if (typeof secs === 'number' && secs <= 0) return;
         const duration = (typeof secs === 'number' ? secs : 8) * 1000;
@@ -36601,12 +36649,18 @@ a { color: #1565c0; }`;
             if (s < 60) return `${s.toFixed(1)}s`;
             return `${Math.floor(s/60)}m ${Math.round(s%60)}s`;
         };
+        const _ti = tierInfo || {};
+        const _tierParts = [];
+        if (_ti.idb)   _tierParts.push(`📦 IDB: ${_ti.idb}`);
+        if (_ti.cache) _tierParts.push(`💾 cache: ${_ti.cache}`);
+        if (_ti.net)   _tierParts.push(`🌐 net: ${_ti.net}`);
         const lines = [
             `🔗 All Relationships loaded`,
             `   ${mbidCount} entities in ${_fmtMs(elapsedMs)}`,
             `   ${cellCount} cell${cellCount !== 1 ? 's' : ''} populated`,
-            `   (click to dismiss)`,
         ];
+        if (_tierParts.length) lines.push(`   ${_tierParts.join('  ')}`);
+        lines.push(`   (click to dismiss)`);
         const toast = document.createElement('div');
         toast.textContent = lines.join('\n');
         toast.style.cssText =
