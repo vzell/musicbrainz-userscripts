@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.618+2026-05-18
+// @version      9.99.619+2026-05-18
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -23191,8 +23191,11 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Tests whether a single (already-cloned) row passes the current global + column filters.
-     * Resets previous highlight markup, applies fresh highlights on a hit, and returns the result.
+     * Tests whether a row passes the current global + column filters.
+     * When `matchOnly` is false (default): resets previous highlight markup and applies
+     * fresh highlights on a hit — intended for cloned rows going into the DOM.
+     * When `matchOnly` is true: pure boolean test with no DOM mutation — safe to call
+     * on source rows before cloning so that cloneNode() is skipped for non-matching rows.
      *
      * @param {HTMLTableRowElement} row
      * @param {{
@@ -23204,18 +23207,23 @@ a { color: #1565c0; }`;
      *   isExclude:      boolean,
      *   colFilters:     { val: string, idx: number }[]
      * }} ctx
+     * @param {boolean} [matchOnly=false] - When true, skip all DOM mutations (highlight
+     *   reset and highlight application). Use on source rows; call again on the clone with
+     *   matchOnly=false to apply highlights after cloning.
      * @returns {boolean}
      */
-    function testRowMatch(row, ctx) {
+    function testRowMatch(row, ctx, matchOnly = false) {
         const { globalQuery, globalQueryRaw, globalRegex,
                 isCaseSensitive, isRegExp, isExclude, colFilters } = ctx;
 
-        // Reset previous highlights (critical for correct re-filtering)
-        row.querySelectorAll('.mb-global-filter-highlight, .mb-column-filter-highlight')
-            .forEach(n => n.replaceWith(document.createTextNode(n.textContent)));
-        // Reset relationship icon match-boxes from any previous filter pass.
-        row.querySelectorAll('.mb-rel-icon-match')
-            .forEach(a => a.classList.remove('mb-rel-icon-match'));
+        if (!matchOnly) {
+            // Reset previous highlights (critical for correct re-filtering)
+            row.querySelectorAll('.mb-global-filter-highlight, .mb-column-filter-highlight')
+                .forEach(n => n.replaceWith(document.createTextNode(n.textContent)));
+            // Reset relationship icon match-boxes from any previous filter pass.
+            row.querySelectorAll('.mb-rel-icon-match')
+                .forEach(a => a.classList.remove('mb-rel-icon-match'));
+        }
 
         // --- Global filter ---
         let globalHit = !globalQuery;
@@ -23381,7 +23389,7 @@ a { color: #1565c0; }`;
         }
 
         const finalHit = globalHit && colHit;
-        if (finalHit) {
+        if (finalHit && !matchOnly) {
             // Highlighting on excluded matches would be misleading, so skip it
             if (globalQuery && !isExclude) highlightText(row, globalQueryRaw, isCaseSensitive, -1, isRegExp);
             // Multi-row state filters operate on DOM structure, not on text → skip highlight.
@@ -23614,7 +23622,7 @@ a { color: #1565c0; }`;
                     _sourceRows = _combined;
                 }
 
-                const matches = _sourceRows.map(r => {
+                const matches = _sourceRows.filter(r => testRowMatch(r, matchCtx, true)).map(r => {
                     const clone = r.cloneNode(true);
                     // Strip CAA/EAA enrichment markers from every cell in the clone.
                     //
@@ -23642,8 +23650,9 @@ a { color: #1565c0; }`;
                     // [data-caa-expand-btn] span; without this call any cells the user
                     // had expanded would snap back to collapsed on every filter keystroke.
                     _restoreArtExpandState(clone);
+                    testRowMatch(clone, matchCtx);
                     return clone;
-                }).filter(r => testRowMatch(r, matchCtx));
+                });
 
                 // Always push to filteredArray, even if matches.length is 0, to maintain the table count and restoration capability.
                 // Spread the full group object so that colName, entityFeatures, key, originalRows etc.
@@ -23742,7 +23751,7 @@ a { color: #1565c0; }`;
             // here; _singleColRxErrors is declared in the outer scope so the status-update
             // block at the bottom of runFilter() can always reach it.
             _singleColRxErrors = matchCtx.colFilters._rxErrors || [];
-            const filteredRows = allRows.map(row => {
+            const filteredRows = allRows.filter(row => testRowMatch(row, matchCtx, true)).map(row => {
                 const clone = row.cloneNode(true);
                 // Strip CAA/EAA enrichment markers from every cell in the clone.
                 //
@@ -23766,8 +23775,9 @@ a { color: #1565c0; }`;
                 // state, so expandedCells is the only way to replay the user's
                 // expand/collapse choices onto clones after every filter re-render.
                 _restoreArtExpandState(clone);
+                testRowMatch(clone, matchCtx);
                 return clone;
-            }).filter(row => testRowMatch(row, matchCtx));
+            });
             singleTableFilteredCount = filteredRows.length; // capture before async render
             // Finalize colon-aligned columns on the filtered subset before re-render
             if (Lib.settings.sa_enable_numeric_alignment !== false) {

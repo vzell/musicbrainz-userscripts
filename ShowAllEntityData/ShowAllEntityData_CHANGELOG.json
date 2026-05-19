@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.619",
+    "date": "2026-05-18",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "perf: test-before-clone in runFilter() — source rows are now matched with testRowMatch(matchOnly=true) before cloneNode(), so only passing rows are cloned. testRowMatch gains a matchOnly parameter that skips all DOM mutations (highlight reset and application) for use on source rows; highlights are applied on the clone in a second call."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.618",
     "date": "2026-05-18",
     "sections": [
