@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.619+2026-05-18
+// @version      9.99.620+2026-05-19
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -19162,6 +19162,10 @@ a { color: #1565c0; }`;
     // Updated by every toggle click; read by initCollapsableColumns, testRowMatch,
     // and openUniqDrop so they all agree even after renderFinalTable+init resets the DOM.
     const expandedCells = new Map();
+    // Sparse text cache for source rows, keyed by TR element.
+    // Populated lazily by _cachedFullText / _cachedColText on matchOnly=true passes.
+    // Entries are GC'd automatically when allRows / groupedRows are replaced.
+    const _rowTextCache = new WeakMap();
     // Global row-index counter — incremented for EVERY row pushed to allRows or
     // groupedRows (both live-fetch and disk-load), regardless of tableMode.
     // Stored as data-mb-row-idx on the TR element so cloneNode(true) propagates
@@ -23190,6 +23194,30 @@ a { color: #1565c0; }`;
         }
     }
 
+    /** Returns (creating if absent) the sparse cache entry for a source row. */
+    function _getOrCreateRowCache(row) {
+        let c = _rowTextCache.get(row);
+        if (!c) { c = { full: null, cols: [] }; _rowTextCache.set(row, c); }
+        return c;
+    }
+
+    /** Cached getCleanVisibleText for a source row. */
+    function _cachedFullText(row) {
+        const c = _getOrCreateRowCache(row);
+        if (c.full === null) c.full = getCleanVisibleText(row);
+        return c.full;
+    }
+
+    /**
+     * Cached getCleanColumnText(row.cells[idx]) for a source row.
+     * Only valid when called on the same TR element that lives in allRows / groupedRows.
+     */
+    function _cachedColText(row, idx) {
+        const c = _getOrCreateRowCache(row);
+        if (c.cols[idx] === undefined) c.cols[idx] = getCleanColumnText(row.cells[idx]);
+        return c.cols[idx];
+    }
+
     /**
      * Tests whether a row passes the current global + column filters.
      * When `matchOnly` is false (default): resets previous highlight markup and applies
@@ -23231,11 +23259,11 @@ a { color: #1565c0; }`;
             let matchFound = false;
             if (isRegExp && globalRegex) {
                 // Test each cell individually so anchored patterns like ^Thunder Road work correctly
-                matchFound = Array.from(row.cells).some(cell =>
-                    globalRegex.test(getCleanColumnText(cell))
+                matchFound = Array.from(row.cells).some((cell, i) =>
+                    globalRegex.test(matchOnly ? _cachedColText(row, i) : getCleanColumnText(cell))
                 );
             } else {
-                const text = getCleanVisibleText(row);
+                const text = matchOnly ? _cachedFullText(row) : getCleanVisibleText(row);
                 matchFound = isCaseSensitive
                     ? text.includes(globalQuery)
                     : text.toLowerCase().includes(globalQuery);
@@ -23248,9 +23276,9 @@ a { color: #1565c0; }`;
                 // .mb-rel-cell via getCleanColumnText, mirroring the same targeted
                 // rel-cell fallback already applied to the regexp path.
                 if (!matchFound) {
-                    matchFound = Array.from(row.cells).some(cell => {
+                    matchFound = Array.from(row.cells).some((cell, i) => {
                         if (!cell.classList.contains('mb-rel-cell')) return false;
-                        const relText = getCleanColumnText(cell);
+                        const relText = matchOnly ? _cachedColText(row, i) : getCleanColumnText(cell);
                         return isCaseSensitive
                             ? relText.includes(globalQuery)
                             : relText.toLowerCase().includes(globalQuery);
@@ -23291,7 +23319,7 @@ a { color: #1565c0; }`;
                 // lis.length === 0 is always true regardless of whether the cell is
                 // empty or contains plain text — without the text check every row in a
                 // non-collapsable column would be matched by the 'empty' filter mode.
-                const hasEmpty      = lis.length === 0 && !getCleanColumnText(cell);
+                const hasEmpty      = lis.length === 0 && !(matchOnly ? _cachedColText(row, f.idx) : getCleanColumnText(cell));
                 const hasMultiRow   = lis.length >= 2;
                 const hasSingleRow  = lis.length === 1;
                 const rowIdx = row.dataset ? row.dataset.mbRowIdx : undefined;
@@ -23320,7 +23348,7 @@ a { color: #1565c0; }`;
             const _fIsCase    = f.isCaseSensitive !== undefined ? f.isCaseSensitive : isCaseSensitive;
             const _fIsExclude = f.isExclude       !== undefined ? f.isExclude       : isExclude;
 
-            const cellText = getCleanColumnText(row.cells[f.idx]);
+            const cellText = matchOnly ? _cachedColText(row, f.idx) : getCleanColumnText(row.cells[f.idx]);
             let match = false;
 
             // ── Inline-art sort-key bypass ──────────────────────────────────────

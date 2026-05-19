@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.620",
+    "date": "2026-05-19",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "perf: WeakMap text cache for source rows in testRowMatch() — getCleanVisibleText and getCleanColumnText results are now cached per source row in a WeakMap (_rowTextCache) and reused across filter keystrokes. Cache entries are populated lazily (_cachedFullText / _cachedColText) on the matchOnly=true pass and are GC'd automatically when allRows / groupedRows are replaced on a new fetch."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.619",
     "date": "2026-05-18",
     "sections": [
