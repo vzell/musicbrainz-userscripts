@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.621+2026-05-19
+// @version      9.99.622+2026-05-19
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -705,7 +705,7 @@
             default: 300,
             min: 0,
             max: 2000,
-            description: "Delay before applying filter after typing stops"
+            description: "Minimum delay before applying filter after typing stops. For large row sets the actual delay scales automatically with row count (0.05 ms/row above 500 rows, capped at 1000 ms) so this setting acts as a floor, not a fixed override."
         },
 
         sa_sort_chunk_size: {
@@ -7742,7 +7742,8 @@
      * Debounce utility function - delays execution until after wait milliseconds have elapsed
      * since the last time the debounced function was invoked.
      * @param {Function} func - The function to debounce
-     * @param {number} wait - The number of milliseconds to delay
+     * @param {number|()=>number} wait - Milliseconds to delay, or a factory function called on
+     *   each invocation to get the current delay (enables adaptive/dynamic debounce intervals).
      * @param {boolean} immediate - If true, trigger the function on the leading edge instead of trailing
      * @returns {Function} The debounced function
      */
@@ -7750,13 +7751,14 @@
         let timeout;
         return function executedFunction(...args) {
             const context = this;
+            const delay = typeof wait === 'function' ? wait() : wait;
             const later = function() {
                 timeout = null;
                 if (!immediate) func.apply(context, args);
             };
             const callNow = immediate && !timeout;
             clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
+            timeout = setTimeout(later, delay);
             if (callNow) func.apply(context, args);
         };
     }
@@ -22948,7 +22950,7 @@ a { color: #1565c0; }`;
             const debouncedColumnFilter = debounce(() => {
                 Lib.debug('filter', `Column filter updated on column ${idx}: "${stripFilterPrefix(input.value)}"`);
                 runFilter();
-            }, Lib.settings.sa_filter_debounce_delay || 300);
+            }, _adaptiveFilterDelay);
 
             input.addEventListener('input', (e) => {
                 e.stopPropagation();
@@ -24062,8 +24064,28 @@ a { color: #1565c0; }`;
         stopBtn.textContent = 'Stopping...';
     });
 
-    // Create debounced version of runFilter based on user configuration
-    const debouncedRunFilter = debounce(runFilter, Lib.settings.sa_filter_debounce_delay || 300);
+    /**
+     * Returns the debounce delay to use for the current filter pass.
+     * The user-configured `sa_filter_debounce_delay` is the floor (minimum).
+     * For large row sets an additional delay of 0.05 ms/row (above 500 rows, capped at
+     * 1000 ms) is added so that rapid keystrokes on huge tables do not queue many
+     * expensive filter runs.  A user setting of 0 means "no minimum" — the adaptive
+     * component still scales for large tables.
+     * @returns {number} Debounce delay in milliseconds.
+     */
+    function _adaptiveFilterDelay() {
+        const floor = Lib.settings.sa_filter_debounce_delay != null
+            ? Math.max(0, Lib.settings.sa_filter_debounce_delay)
+            : 300;
+        const n = (activeDefinition && activeDefinition.tableMode === 'multi')
+            ? groupedRows.reduce((s, g) => s + g.rows.length, 0)
+            : allRows.length;
+        const adaptive = n > 500 ? Math.min(1000, (n - 500) * 0.05) : 0;
+        return Math.max(floor, adaptive);
+    }
+
+    // Create debounced version of runFilter — delay adapts to current row count.
+    const debouncedRunFilter = debounce(runFilter, _adaptiveFilterDelay);
 
     // ── Global filter: the focus prefix is ALWAYS present in the value ───────────────────
     // Unlike column filters (where the prefix appears only while focused), the global filter
@@ -28256,7 +28278,7 @@ a { color: #1565c0; }`;
         });
 
         // ── Event wiring ─────────────────────────────────────────────────────
-        const debouncedApply = debounce(applySubFilter, Lib.settings.sa_filter_debounce_delay || 300);
+        const debouncedApply = debounce(applySubFilter, _adaptiveFilterDelay);
         filterInput.addEventListener('input', () => {
             _syncStfClearBtn();
             debouncedApply();

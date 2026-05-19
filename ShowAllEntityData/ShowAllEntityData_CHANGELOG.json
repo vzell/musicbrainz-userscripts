@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.622",
+    "date": "2026-05-19",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "perf: adaptive debounce delay — _adaptiveFilterDelay() computes the debounce interval as max(floor, 0.05 ms × rows_above_500, capped at 1000 ms). The user-configured sa_filter_debounce_delay becomes the floor (minimum), not a fixed value. debounce() now accepts a factory function for its wait argument so the delay is re-evaluated on every keystroke. All three filter debounce sites (global, column, sub-table) use the adaptive delay."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.621",
     "date": "2026-05-19",
     "sections": [
