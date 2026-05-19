@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.620+2026-05-19
+// @version      9.99.621+2026-05-19
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -23305,7 +23305,8 @@ a { color: #1565c0; }`;
 
         // --- Column filters ---
         let colHit = true;
-        for (const f of colFilters) {
+        // Skip per-column checks when the global filter already rejected this row.
+        for (const f of (globalHit ? colFilters : [])) {
             // ── Multi-row state filter: match by expandedCells state, not by DOM toggle ──
             // Using expandedCells (keyed "rowIdx:colIdx") instead of toggle.textContent
             // ensures correctness across renderFinalTable+initCollapsableColumns cycles:
@@ -23351,64 +23352,64 @@ a { color: #1565c0; }`;
             const cellText = matchOnly ? _cachedColText(row, f.idx) : getCleanColumnText(row.cells[f.idx]);
             let match = false;
 
-            // ── Inline-art sort-key bypass ──────────────────────────────────────
-            // .mb-inline-art-sort-key spans are stripped from getCleanColumnText
-            // (they are now in _CLEAN_STRIP_SEL) to prevent sentinel text like
-            // "caa-inline-yes" from leaking into general filter matching.
-            // The applyUniqVal('caa-inline-yes') / applyUniqVal('caa-inline-no')
-            // column-filter path must still work, so we check the span directly
-            // and OR the result into `match` before falling through to the normal
-            // text comparison.  This is intentionally skipped for regexp filters
-            // (which would be odd for these sentinel values) and for exclude mode
-            // (the negation is applied later via _fIsExclude).
-            if (!_fIsRegExp) {
-                const cell = row.cells[f.idx];
-                const sk = cell ? cell.querySelector('.mb-inline-art-sort-key') : null;
-                if (sk) {
-                    const skVal = sk.textContent.trim();
-                    match = _fIsCase
-                        ? skVal === f.val
-                        : skVal.toLowerCase() === f.val.toLowerCase();
-                }
-            }
-
-            // ── CAA/EAA sort-key bypass ─────────────────────────────────────────
-            // .mb-caa-sort-key (and .mb-eaa-sort-key) hold 'yes' or 'no' — the
-            // artwork-presence sentinel stamped by _artBuildMultiRowArtCell /
-            // initRelGroupings.  These spans are now in _CLEAN_STRIP_SEL so
-            // getCleanColumnText never sees them, preventing filter strings like 'no'
-            // from matching 'not readable', 'known', etc. in the visible cell text.
-            // applyUniqVal('yes') / applyUniqVal('no') (via makeArtItem in the
-            // CAA column unique-values dropdown) must still filter correctly, so we
-            // check the span directly with an exact-match test — same pattern as
-            // the mb-inline-art-sort-key bypass above.
-            if (!_fIsRegExp && !match) {
-                const _cell = row.cells[f.idx];
-                const _csk  = _cell
-                    ? (_cell.querySelector('.mb-caa-sort-key') ||
-                       _cell.querySelector('.mb-eaa-sort-key'))
-                    : null;
-                if (_csk) {
-                    const _skVal = _csk.textContent.trim();
-                    match = _fIsCase
-                        ? _skVal === f.val
-                        : _skVal.toLowerCase() === f.val.toLowerCase();
-                }
-            }
-
-            if (!match) {
-                if (_fIsRegExp) {
-                    try {
-                        match = new RegExp(f.val, _fIsCase ? '' : 'i').test(cellText);
-                    } catch (e) {
-                        match = _fIsCase
-                            ? cellText.includes(f.val)
-                            : cellText.toLowerCase().includes(f.val);
-                    }
-                } else {
+            if (_fIsRegExp) {
+                // Regexp mode — always run the full test; a plain includes pre-check
+                // is not reliable for patterns containing anchors or special chars.
+                try {
+                    match = new RegExp(f.val, _fIsCase ? '' : 'i').test(cellText);
+                } catch (e) {
                     match = _fIsCase
                         ? cellText.includes(f.val)
                         : cellText.toLowerCase().includes(f.val);
+                }
+            } else {
+                // Phase 1 (cheap): plain-text substring check on the cached column text.
+                // For the vast majority of filter values this is the only check needed.
+                match = _fIsCase
+                    ? cellText.includes(f.val)
+                    : cellText.toLowerCase().includes(f.val);
+
+                if (!match) {
+                    // Phase 2 (expensive): querySelector for sentinel values that are
+                    // intentionally stripped from cellText by _CLEAN_STRIP_SEL and
+                    // therefore invisible to the plain-text check above.
+                    const cell = row.cells[f.idx];
+                    // ── Inline-art sort-key bypass ──────────────────────────────────
+                    // .mb-inline-art-sort-key spans are stripped from getCleanColumnText
+                    // (they are now in _CLEAN_STRIP_SEL) to prevent sentinel text like
+                    // "caa-inline-yes" from leaking into general filter matching.
+                    // The applyUniqVal('caa-inline-yes') / applyUniqVal('caa-inline-no')
+                    // column-filter path must still work, so we check the span directly.
+                    // This is intentionally skipped for regexp filters (which would be
+                    // odd for these sentinel values) and for exclude mode (the negation
+                    // is applied later via _fIsExclude).
+                    const sk = cell ? cell.querySelector('.mb-inline-art-sort-key') : null;
+                    if (sk) {
+                        const skVal = sk.textContent.trim();
+                        match = _fIsCase
+                            ? skVal === f.val
+                            : skVal.toLowerCase() === f.val.toLowerCase();
+                    }
+                    // ── CAA/EAA sort-key bypass ─────────────────────────────────────
+                    // .mb-caa-sort-key (and .mb-eaa-sort-key) hold 'yes' or 'no' — the
+                    // artwork-presence sentinel stamped by _artBuildMultiRowArtCell /
+                    // initRelGroupings.  These spans are now in _CLEAN_STRIP_SEL so
+                    // getCleanColumnText never sees them, preventing filter strings like
+                    // 'no' from matching 'not readable', 'known', etc.
+                    // applyUniqVal('yes') / applyUniqVal('no') must still filter
+                    // correctly, so we check the span with an exact-match test.
+                    if (!match) {
+                        const _csk = cell
+                            ? (cell.querySelector('.mb-caa-sort-key') ||
+                               cell.querySelector('.mb-eaa-sort-key'))
+                            : null;
+                        if (_csk) {
+                            const _skVal = _csk.textContent.trim();
+                            match = _fIsCase
+                                ? _skVal === f.val
+                                : _skVal.toLowerCase() === f.val.toLowerCase();
+                        }
+                    }
                 }
             }
             // Respect per-filter exclude flag (may differ from global isExclude on

@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.621",
+    "date": "2026-05-19",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "perf: two-phase column filter matching in testRowMatch() — plain-text cellText.includes() (cheap, cached) is now checked first; querySelector for sentinel sort-key spans (.mb-inline-art-sort-key, .mb-caa-sort-key, .mb-eaa-sort-key) only runs when the plain check misses. Regexp filters bypass phase 1 and go directly to regexp.test(). Also adds a global short-circuit: the column filter loop is skipped entirely when the global filter has already rejected the row."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.620",
     "date": "2026-05-19",
     "sections": [
