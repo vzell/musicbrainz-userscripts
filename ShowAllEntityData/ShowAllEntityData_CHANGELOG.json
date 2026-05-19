@@ -1,5 +1,29 @@
 [
   {
+    "version": "9.99.626",
+    "date": "2026-05-20",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "fix: eliminate forced synchronous layout (FSL) reflows in initCollapsableColumns — the inner multiRowCells.forEach loop previously did write(whiteSpace=nowrap) → read(scrollWidth) → write(whiteSpace=prevWS) per cell, causing one full-table layout reflow per multi-row cell (thousands of reflows = 100–200 s freeze on 8 k+ row tables). Now all DOM writes are completed first, then a single batch pass sets whiteSpace:nowrap on all first-<li> elements, reads all scrollWidths in one pass (triggering exactly one layout flush per column instead of one per cell), then resets whiteSpace. Reduces O(cells) FSLs to O(columns) FSLs, eliminating the Chrome 'Page Unresponsive' freeze."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.625",
+    "date": "2026-05-20",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "fix: initCollapsableColumns perf — three targeted changes eliminate the 30–120 s post-render freeze on 8 k+ row tables: (1) both _updateAllColHeaderCounts(table) call sites deferred via setTimeout(0) so the O(rows × columns) getCleanColumnText scan runs after the browser paints the rendered rows instead of blocking the event loop; (2) five separate querySelectorAll cleanup passes consolidated into one combined selector walk, saving ~4 full DOM traversals (≈ 2–8 s on 65 k+ element tables); (3) Array.from(table.querySelectorAll('tbody tr')) hoisted above collapsableColumns.forEach so the tbody snapshot is computed once instead of once per collapsable column, eliminating O(N × C) redundant DOM walks. Chrome 'Page Unresponsive' dialog no longer appears and reported rendering time drops to reflect only actual row-insertion cost."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.624",
     "date": "2026-05-20",
     "sections": [

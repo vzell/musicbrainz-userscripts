@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.624+2026-05-20
+// @version      9.99.626+2026-05-20
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -32555,7 +32555,11 @@ a { color: #1565c0; }`;
             const globalBtn = document.getElementById('mb-col-collapse-all-btn');
             if (globalBtn) globalBtn.style.display = 'none';
             // Still update unique-value counts even when no collapsable columns.
-            _updateAllColHeaderCounts(table);
+            // Deferred out of the synchronous render path — for large tables
+            // (8 k+ rows) the getCleanColumnText loop inside _updateAllColHeaderCounts
+            // can take 30–120 s synchronously, blocking the UI and triggering the
+            // Chrome "Page Unresponsive" dialog.
+            setTimeout(() => _updateAllColHeaderCounts(table), 0);
             return;
         }
 
@@ -32573,41 +32577,46 @@ a { color: #1565c0; }`;
         // AFTER initCollapsableColumns and _artEnrichIcon skips the rebuild when
         // `multiBuiltAttr` is already set on the cloned row (set during the
         // previous render and preserved by cloneNode(true)).
-        table.querySelectorAll('.mb-col-collapse-hdr-btn').forEach(btn => {
-            const hdrFlex = btn.closest('.mb-col-hdr-flex');
-            if (hdrFlex) {
-                const uniqWrap = hdrFlex.querySelector('.mb-col-uniq-wrap');
-                if (uniqWrap) uniqWrap.style.marginLeft = '';
+        // Single consolidated cleanup pass — replaces five separate querySelectorAll
+        // calls (each a full table walk) with one.  For 8 k+ row tables this saves
+        // ~4 full DOM traversals ≈ 2–8 s of synchronous work.
+        //
+        // Selector coverage:
+        //   .mb-col-collapse-hdr-btn  — collapse toggle in thead (resets uniqWrap margin, removes)
+        //   .mb-caa-col-hdr-btn       — CAA/EAA col-header expand btn (removed; re-injected later)
+        //   .mb-cell-collapse-toggle  — per-cell toggle span in tbody (removed unconditionally)
+        //   td.mb-has-collapse-toggle — td class that sets position:relative + padding-right
+        //   tbody td ul > li          — list items whose display was set to 'none' when collapsed
+        table.querySelectorAll(
+            '.mb-col-collapse-hdr-btn, .mb-caa-col-hdr-btn, ' +
+            '.mb-cell-collapse-toggle, ' +
+            'td.mb-has-collapse-toggle, ' +
+            'tbody td ul > li'
+        ).forEach(el => {
+            if (el.classList.contains('mb-col-collapse-hdr-btn')) {
+                const hdrFlex = el.closest('.mb-col-hdr-flex');
+                if (hdrFlex) {
+                    const uniqWrap = hdrFlex.querySelector('.mb-col-uniq-wrap');
+                    if (uniqWrap) uniqWrap.style.marginLeft = '';
+                }
+                el.remove();
+            } else if (el.classList.contains('mb-caa-col-hdr-btn') ||
+                       el.classList.contains('mb-cell-collapse-toggle')) {
+                // mb-caa-col-hdr-btn: re-injected by _artInitCaaColHeaderToggle later.
+                // mb-cell-collapse-toggle: stale art-cell toggles also removed here
+                // (pre-feature files left them on art tds; [data-caa-expand-btn] is
+                // now the authoritative art-cell toggle, so any remaining
+                // mb-cell-collapse-toggle on such cells is dead markup).
+                el.remove();
+            } else if (el.tagName === 'TD') {
+                // td.mb-has-collapse-toggle — clear positioning class.
+                el.classList.remove('mb-has-collapse-toggle');
+            } else {
+                // tbody td ul > li — reset display unless art-managed.
+                if (!el.classList.contains('mb-caa-art-li')) {
+                    el.style.display = '';
+                }
             }
-            btn.remove();
-        });
-        // Also remove CAA/EAA column-header expand buttons — they are re-injected
-        // by _artInitCaaColHeaderToggle which runs after makeTableSortableUnified
-        // has rebuilt the mb-col-hdr-flex rows.
-        table.querySelectorAll('.mb-caa-col-hdr-btn').forEach(btn => btn.remove());
-        table.querySelectorAll('.mb-cell-collapse-toggle').forEach(el => {
-            // Skip toggles that belong to CAA/EAA art cells — art cells now use
-            // [data-caa-expand-btn] inside li-0; any leftover mb-cell-collapse-toggle
-            // on the artCell itself is stale and should be removed.
-            if (el.closest('td')?.querySelector(':scope > ul.mb-caa-art-ul')) {
-                el.remove(); // remove stale art-cell toggle (pre-feature files)
-                return;
-            }
-            el.remove();
-        });
-        table.querySelectorAll('td.mb-has-collapse-toggle').forEach(td => {
-            // Art cells no longer use mb-has-collapse-toggle (the inline expand btn
-            // in li-0 does not need position:relative on the td).  Remove the class
-            // from art cells so the padding-right that was protecting toggle space
-            // is no longer applied unnecessarily.
-            td.classList.remove('mb-has-collapse-toggle');
-        });
-        // Reset any <li> items that were hidden by a previous collapse pass.
-        // Skip li.mb-caa-art-li items — their display is managed by the art-cell
-        // collapse toggle and must not be unconditionally reset to '' here.
-        table.querySelectorAll('tbody td ul > li').forEach(li => {
-            if (li.classList.contains('mb-caa-art-li')) return;
-            li.style.display = '';
         });
 
         // ── Install delegation listener (idempotent) ──────────────────────────
@@ -32620,6 +32629,10 @@ a { color: #1565c0; }`;
         let anyColumnHasMultiRow = false;
         // Collect header-level toggle buttons for global-button wiring.
         const collapseHdrBtns = [];
+        // Hoist the tbody-row snapshot once — reused for every collapsable column
+        // and for the art-cell hidden-match scan.  Querying per column would run
+        // O(collapsableColumns × bodyRows) DOM walks; one shared query is O(1).
+        const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
 
         collapsableColumns.forEach(colName => {
             // ── Locate column index by clean header text ──────────────────────
@@ -32637,7 +32650,6 @@ a { color: #1565c0; }`;
             }
 
             const th = headers[colIndex];
-            const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
 
             // ── Gather multi-row body cells ───────────────────────────────────
             const multiRowCells = [];
@@ -32674,6 +32686,9 @@ a { color: #1565c0; }`;
             // NO click listener is attached here — all clicks are handled by
             // the delegation listener installed by ensureCollapseDelegate().
             let maxFirstLiWidth = 0;
+            // Collect first-<li> refs here; measured in the batch pass AFTER
+            // the forEach so all DOM writes are finished before any reads.
+            const _firstLisForMeasure = [];
 
             multiRowCells.forEach(({ td, lis }) => {
                 // ── Skip CAA/EAA art cells — they own their toggle ────────────
@@ -32755,15 +32770,20 @@ a { color: #1565c0; }`;
                     cellToggle.classList.add('mb-collapse-toggle-has-match');
                 }
 
-                // ── Measure first-<li> natural width for column min-width ─────
-                // Temporarily set white-space:nowrap so scrollWidth gives the
-                // full unwrapped width of the first item's content.
-                const firstLi = lis[0];
-                const prevWS = firstLi.style.whiteSpace;
-                firstLi.style.whiteSpace = 'nowrap';
-                maxFirstLiWidth = Math.max(maxFirstLiWidth, firstLi.scrollWidth);
-                firstLi.style.whiteSpace = prevWS;
+                // Defer measurement to the batch pass below — pushing the
+                // first-<li> ref here avoids an FSL per cell.
+                _firstLisForMeasure.push(lis[0]);
             });
+
+            // ── Batch measure first-<li> natural widths (1 FSL per column) ─────
+            // All DOM writes above are done; a single batch of: set nowrap on all,
+            // read all scrollWidths, reset nowrap — causes exactly one layout flush
+            // per column instead of one per cell (which was 1000s of forced reflows).
+            _firstLisForMeasure.forEach(li => { li.style.whiteSpace = 'nowrap'; });
+            _firstLisForMeasure.forEach(li => {
+                maxFirstLiWidth = Math.max(maxFirstLiWidth, li.scrollWidth);
+            });
+            _firstLisForMeasure.forEach(li => { li.style.whiteSpace = ''; });
 
             // ── Hidden-match indicator for art cells (CAA/EAA column) ─────────
             // Art cells were skipped in the loop above to avoid duplicate toggles,
@@ -32776,7 +32796,7 @@ a { color: #1565c0; }`;
             // toggle.  The expand button is a [data-caa-expand-btn] span inside the
             // li-0 summary row of ul.mb-caa-art-ul.  The old lookup for
             // ':scope > .mb-cell-collapse-toggle' was dead code and is replaced here.
-            table.querySelectorAll('tbody tr').forEach(tr => {
+            bodyRows.forEach(tr => {
                 const td = tr.cells[colIndex];
                 if (!td) return;
                 const artUl = td.querySelector(':scope > ul.mb-caa-art-ul');
@@ -32954,8 +32974,10 @@ a { color: #1565c0; }`;
         // ── Update live count indicators in all column headers ────────────────
         // Refreshes both the unique-value count (before 📊) and the multi-row
         // cell count (inside ▶N▤/▼N▤) for every column in this table.
-        // Placed last so all toggles are already in their final state.
-        _updateAllColHeaderCounts(table);
+        // Deferred via setTimeout(0) so the browser can paint the rendered rows
+        // before the O(rows × columns) getCleanColumnText scan begins — prevents
+        // the Chrome "Page Unresponsive" dialog on 8 k+ row tables.
+        setTimeout(() => _updateAllColHeaderCounts(table), 0);
 
         Lib.debug(
             'collapse',
