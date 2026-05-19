@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.623",
+    "date": "2026-05-19",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "perf: filter result cache — _filterResultCache (Map, max 50 entries, oldest evicted) caches the set of source TR elements that pass each unique filter configuration. On cache hit the O(N) testRowMatch(matchOnly=true) pass is skipped; cloning, highlighting, and rendering always run fresh. Cache is keyed on normalised query + flags + per-column filter specs (JSON). Invalidated on fetch start, disk-load, and sort completion via _invalidateFilterCache(). Both single-table and per-group multi-table paths are covered."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.622",
     "date": "2026-05-19",
     "sections": [

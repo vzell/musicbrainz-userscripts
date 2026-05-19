@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.622+2026-05-19
+// @version      9.99.623+2026-05-19
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -19160,6 +19160,13 @@ a { color: #1565c0; }`;
     let allRows = [];
     let originalAllRows = [];
     let groupedRows = [];
+    // Filter result cache: Map<string key → TR[]> for single-table,
+    // Map<string key → TR[]> per-group for multi-table.
+    // Keyed on normalised query + flags + column-filter state.
+    // Max 50 entries; oldest evicted on overflow.
+    // Cleared on fetch start, disk-load, and sort completion.
+    const _filterResultCache = new Map();
+    const _FILTER_CACHE_MAX  = 50;
     // Source-of-truth for per-cell expand/collapse state, keyed "rowIdx:colIdx".
     // Updated by every toggle click; read by initCollapsableColumns, testRowMatch,
     // and openUniqDrop so they all agree even after renderFinalTable+init resets the DOM.
@@ -23474,6 +23481,44 @@ a { color: #1565c0; }`;
      * Executes the filtering logic across all table rows based on global and column-specific filters
      * Handles both single-table and multi-table page modes, applies highlighting, and updates row visibility
      */
+
+    /** Clears the filter result cache. Call on fetch start, disk-load, and sort. */
+    function _invalidateFilterCache() { _filterResultCache.clear(); }
+
+    /**
+     * Builds a stable string key from the current filter context for use in
+     * _filterResultCache.  Includes global query, flags, and per-column filter
+     * specs.  Multi-table callers prepend a group-specific prefix.
+     * @param {object} matchCtx
+     * @param {string} prefix - 's' for single-table; 'm:<dvState>:<groupIdx>' for multi.
+     * @returns {string}
+     */
+    function _buildFilterKey(matchCtx, prefix) {
+        return prefix + '|' + JSON.stringify({
+            g: matchCtx.globalQuery,
+            c: matchCtx.isCaseSensitive,
+            r: matchCtx.isRegExp,
+            x: matchCtx.isExclude,
+            f: matchCtx.colFilters.map(f => f.isMultiRowFilter
+                ? { i: f.idx, m: f.multiRowMode }
+                : { i: f.idx, v: f.val,
+                    c: f.isCaseSensitive, r: f.isRegExp, x: f.isExclude })
+        });
+    }
+
+    /**
+     * Stores rows in _filterResultCache, evicting the oldest entry when the
+     * cache has reached _FILTER_CACHE_MAX entries.
+     * @param {string}  key
+     * @param {TR[]} rows
+     */
+    function _filterCacheSet(key, rows) {
+        if (_filterResultCache.size >= _FILTER_CACHE_MAX) {
+            _filterResultCache.delete(_filterResultCache.keys().next().value);
+        }
+        _filterResultCache.set(key, rows);
+    }
+
     function runFilter() {
         const filterStartTime = performance.now();
 
@@ -23653,7 +23698,15 @@ a { color: #1565c0; }`;
                     _sourceRows = _combined;
                 }
 
-                const matches = _sourceRows.filter(r => testRowMatch(r, matchCtx, true)).map(r => {
+                const _mk = _buildFilterKey(matchCtx, `m:${discographyViewState}:${groupIdx}`);
+                let _matchingSrc = _filterResultCache.get(_mk);
+                if (_matchingSrc) {
+                    Lib.debug('filter', `runFilter: cache hit group ${groupIdx}`);
+                } else {
+                    _matchingSrc = _sourceRows.filter(r => testRowMatch(r, matchCtx, true));
+                    _filterCacheSet(_mk, _matchingSrc);
+                }
+                const matches = _matchingSrc.map(r => {
                     const clone = r.cloneNode(true);
                     // Strip CAA/EAA enrichment markers from every cell in the clone.
                     //
@@ -23782,7 +23835,15 @@ a { color: #1565c0; }`;
             // here; _singleColRxErrors is declared in the outer scope so the status-update
             // block at the bottom of runFilter() can always reach it.
             _singleColRxErrors = matchCtx.colFilters._rxErrors || [];
-            const filteredRows = allRows.filter(row => testRowMatch(row, matchCtx, true)).map(row => {
+            const _sk = _buildFilterKey(matchCtx, 's');
+            let _matchingSrc = _filterResultCache.get(_sk);
+            if (_matchingSrc) {
+                Lib.debug('filter', 'runFilter: cache hit single-table');
+            } else {
+                _matchingSrc = allRows.filter(row => testRowMatch(row, matchCtx, true));
+                _filterCacheSet(_sk, _matchingSrc);
+            }
+            const filteredRows = _matchingSrc.map(row => {
                 const clone = row.cloneNode(true);
                 // Strip CAA/EAA enrichment markers from every cell in the clone.
                 //
@@ -25432,6 +25493,7 @@ a { color: #1565c0; }`;
         }
 
         stopRequested = false;
+        _invalidateFilterCache();
         allRows = [];
         originalAllRows = [];
         groupedRows = [];
@@ -33185,6 +33247,7 @@ a { color: #1565c0; }`;
                                 allRows = sortedData;
                             }
 
+                            _invalidateFilterCache();
                             runFilter();
 
                             // Apply or clear column tints AFTER runFilter() so the fresh tbody
@@ -37274,6 +37337,7 @@ a { color: #1565c0; }`;
                 };
 
                 // Reconstruct rows from serialized data with Filtering
+                _invalidateFilterCache();
                 if (data.tableMode === 'multi' && data.groups) {
                     groupedRows = [];
                     expandedCells.clear();
