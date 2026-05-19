@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.624",
+    "date": "2026-05-20",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "fix: render-generation abort token — adds module-level _renderGeneration counter incremented at the start of every renderFinalTable and renderGroupedTable call. renderRowsChunked accepts a generation parameter and checks _renderGeneration after each setTimeout(0) yield; if superseded it removes the progress overlay and returns immediately. Fixes a race where comfortable-speed typing produced interleaved highlights: runFilter('cook') rendered 27 correct rows via the fast synchronous path, but an older renderRowsChunked continuation (from runFilter('c'), ~1500 rows → chunked) was still queued and kept appending stale rows with 'c' highlights to the same tbody after its first setTimeout(0) yielded. renderGroupedTable also increments the counter (so any concurrent single-table renderRowsChunked aborts) and guards its post-render hook block (initExpandRGsFeature, initBarcodeHighlight, initCaaPics, initEaaPics, etc.) behind a generation check for future-proofing."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.623",
     "date": "2026-05-19",
     "sections": [

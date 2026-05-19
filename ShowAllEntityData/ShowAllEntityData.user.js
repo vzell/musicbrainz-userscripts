@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.623+2026-05-19
+// @version      9.99.624+2026-05-20
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -19167,6 +19167,12 @@ a { color: #1565c0; }`;
     // Cleared on fetch start, disk-load, and sort completion.
     const _filterResultCache = new Map();
     const _FILTER_CACHE_MAX  = 50;
+    // Monotonically-increasing counter incremented at the start of every
+    // renderFinalTable / renderGroupedTable call.  renderRowsChunked checks
+    // this after each setTimeout(0) yield and aborts if its captured generation
+    // no longer matches — preventing stale chunks from a superseded render from
+    // being appended to a tbody that has already been claimed by a newer render.
+    let _renderGeneration = 0;
     // Source-of-truth for per-cell expand/collapse state, keyed "rowIdx:colIdx".
     // Updated by every toggle click; read by initCollapsableColumns, testRowMatch,
     // and openUniqDrop so they all agree even after renderFinalTable+init resets the DOM.
@@ -27616,8 +27622,13 @@ a { color: #1565c0; }`;
      * @returns {Promise<void>}
      */
     async function renderFinalTable(rows) {
+        // Claim this render's generation slot.  Any renderRowsChunked continuation
+        // from a previous call that is still yielding in setTimeout(0) will see
+        // _renderGeneration !== its captured generation and abort without appending
+        // further stale rows to the tbody.
+        const generation = ++_renderGeneration;
         const rowCount = Array.isArray(rows) ? rows.length : 0;
-        Lib.debug('render', `Starting renderFinalTable with ${rowCount} rows.`);
+        Lib.debug('render', `Starting renderFinalTable with ${rowCount} rows (generation=${generation}).`);
 
         const tbody = document.querySelector('table.tbl tbody');
         if (!tbody) {
@@ -27650,7 +27661,14 @@ a { color: #1565c0; }`;
             Lib.debug('render', `Fast render: Injected ${rowCount} rows into DOM.`);
         } else {
             // For large datasets, use chunked async rendering with progress
-            await renderRowsChunked(tbody, rows, 'single');
+            await renderRowsChunked(tbody, rows, 'single', generation);
+            // If a newer renderFinalTable or renderGroupedTable fired while we
+            // were chunking, skip the post-render hooks — they already ran for
+            // the winning render.
+            if (_renderGeneration !== generation) {
+                Lib.debug('render', `renderFinalTable: generation ${generation} superseded — skipping post-render hooks.`);
+                return;
+            }
         }
 
         // Show the save button now that data is rendered
@@ -27673,11 +27691,15 @@ a { color: #1565c0; }`;
 
     /**
      * Renders rows in batches to avoid blocking the UI thread
-     * @param {HTMLTableSectionElement} tbody - The table body element to render into
-     * @param {Array<HTMLTableRowElement>} rows - Array of table row elements to render
-     * @param {string} mode - Rendering mode: 'single' for single table or 'multi' for grouped tables
+     * @param {HTMLTableSectionElement} tbody      - The table body element to render into
+     * @param {Array<HTMLTableRowElement>} rows    - Array of table row elements to render
+     * @param {string} mode                        - Rendering mode: 'single' or 'multi'
+     * @param {number} [generation=0]              - Render-generation token from renderFinalTable.
+     *   After each setTimeout(0) yield the function checks whether _renderGeneration still
+     *   matches the captured token; if not, it aborts so stale rows from a superseded render
+     *   are never appended to a tbody that a newer render has already claimed.
      */
-    async function renderRowsChunked(tbody, rows, mode = 'single') {
+    async function renderRowsChunked(tbody, rows, mode = 'single', generation = 0) {
         const totalRows = rows.length;
         const chunkSize = 500; // Render 500 rows at a time
         const chunks = Math.ceil(totalRows / chunkSize);
@@ -27725,6 +27747,14 @@ a { color: #1565c0; }`;
 
             // Yield to browser to keep UI responsive
             await new Promise(resolve => setTimeout(resolve, 0));
+            // Abort if a newer render has started since this chunk was queued.
+            // Without this guard, old renderRowsChunked continuations append rows
+            // with the wrong-query highlight to a tbody claimed by a newer render.
+            if (generation !== 0 && _renderGeneration !== generation) {
+                progressMsg.remove();
+                Lib.debug('render', `renderRowsChunked: generation ${generation} superseded by ${_renderGeneration} — aborting.`);
+                return;
+            }
         }
 
         // Remove progress indicator
@@ -28640,7 +28670,14 @@ a { color: #1565c0; }`;
      * @returns {Promise<void>}
      */
     async function renderGroupedTable(dataArray, isArtistMain, query = '') {
-        Lib.debug('render', `Starting renderGroupedTable with ${dataArray.length} categories. Query: "${query}"`);
+        // Increment the global render-generation counter.  This causes any
+        // in-flight renderRowsChunked continuation from a concurrent single-table
+        // render to detect it has been superseded and abort.  renderGroupedTable
+        // itself is currently synchronous (no internal await), so the generation
+        // guard at the end of this function is proactive — it protects the
+        // post-render hooks if await points are added in the future.
+        const generation = ++_renderGeneration;
+        Lib.debug('render', `Starting renderGroupedTable with ${dataArray.length} categories. Query: "${query}" (generation=${generation})`);
 
         // `let` (not `const`) so we can re-root to targetHeader.parentNode on pages
         // that have no div#content and wrap the initial tables in a sub-element
@@ -29609,6 +29646,17 @@ a { color: #1565c0; }`;
         // .mb-col-collapse-hdr-btn elements into the DOM.
         if (activeDefinition && activeDefinition.tableMode === 'multi') {
             rewireGlobalCollapseButtonMulti();
+        }
+
+        // Generation guard: if a newer renderFinalTable or renderGroupedTable
+        // call started while we were in the forEach loop above, skip the
+        // post-render hooks — they will run (or already ran) for the winning
+        // render.  renderGroupedTable is currently synchronous so this guard
+        // cannot trigger in practice; it is here so the hooks remain protected
+        // if await points are added inside the forEach loop in the future.
+        if (_renderGeneration !== generation) {
+            Lib.debug('render', `renderGroupedTable: generation ${generation} superseded — skipping post-render hooks.`);
+            return;
         }
 
         // Re-inject erg expand buttons across all freshly rendered sub-table rows.
