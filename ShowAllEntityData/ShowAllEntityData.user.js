@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.626+2026-05-20
+// @version      9.99.629+2026-05-20
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -8236,11 +8236,16 @@
                 };
                 const _leave = () => {
                     // Restore each cell to its individual rest-state background.
-                    // Sticky cell: restore opaque inline bg.
-                    // Non-sticky cells: clear inline bg so CSS zebra takes over.
+                    // Sticky cell: restore opaque inline bg from mbStickyBg.
+                    // Non-sticky cells: restore from mbRestBg when present (covers
+                    // barcode-highlighted cells whose color would be lost by clearing
+                    // the background shorthand), otherwise clear inline bg so CSS
+                    // zebra striping takes over.
                     Array.from(tr.cells).forEach(td => {
                         if (td.classList.contains('mb-sticky-col')) {
                             td.style.background = td.dataset.mbStickyBg || '#ffffff';
+                        } else if (td.dataset.mbRestBg) {
+                            td.style.background = td.dataset.mbRestBg;
                         } else {
                             td.style.background = '';
                         }
@@ -15134,6 +15139,8 @@ a { color: #1565c0; }`;
             td.style.removeProperty('padding');
             td.style.removeProperty('border-radius');
             td.style.removeProperty('cursor');
+            // Clear mbRestBg so _leave restores CSS zebra rather than the old color.
+            delete td.dataset.mbRestBg;
             td.removeEventListener('click', barcodeToggleMergeCheckbox);
         });
     }
@@ -15208,7 +15215,7 @@ a { color: #1565c0; }`;
         // because the absence is fully expected on non-release page types.
         const hasBarcodeColumn =
             Array.from(document.querySelectorAll('table.tbl th')).some(
-                th => th.textContent.trim() === 'Barcode'
+                th => _cleanColHeaderText(th) === 'Barcode'
             ) ||
             document.querySelector('td.barcode-cell') !== null;
 
@@ -19169,10 +19176,20 @@ a { color: #1565c0; }`;
     const _FILTER_CACHE_MAX  = 50;
     // Monotonically-increasing counter incremented at the start of every
     // renderFinalTable / renderGroupedTable call.  renderRowsChunked checks
-    // this after each setTimeout(0) yield and aborts if its captured generation
-    // no longer matches — preventing stale chunks from a superseded render from
-    // being appended to a tbody that has already been claimed by a newer render.
+    // this after each rAF yield and aborts if its captured generation no longer
+    // matches — preventing stale chunks from a superseded render from being
+    // appended to a tbody that has already been claimed by a newer render.
     let _renderGeneration = 0;
+    // Incremental-filter narrowing state — single-table mode only.
+    // On each full testRowMatch scan the query string, partial key (flags +
+    // column filters), and the resulting match set are saved here.  The next
+    // runFilter() call can narrow: if the new globalQuery is a plain-text
+    // extension of _incrLastGlobalQuery and all flags/colFilters are unchanged,
+    // only the previous match set is re-tested instead of all of allRows.
+    // Cleared by _invalidateFilterCache() on fetch, sort, and disk-load.
+    let _incrLastGlobalQuery = '';
+    let _incrLastPartialKey  = '';
+    let _incrMatchSet        = null;
     // Source-of-truth for per-cell expand/collapse state, keyed "rowIdx:colIdx".
     // Updated by every toggle click; read by initCollapsableColumns, testRowMatch,
     // and openUniqDrop so they all agree even after renderFinalTable+init resets the DOM.
@@ -23488,8 +23505,13 @@ a { color: #1565c0; }`;
      * Handles both single-table and multi-table page modes, applies highlighting, and updates row visibility
      */
 
-    /** Clears the filter result cache. Call on fetch start, disk-load, and sort. */
-    function _invalidateFilterCache() { _filterResultCache.clear(); }
+    /** Clears the filter result cache and incremental-filter state. Call on fetch start, disk-load, and sort. */
+    function _invalidateFilterCache() {
+        _filterResultCache.clear();
+        _incrLastGlobalQuery = '';
+        _incrLastPartialKey  = '';
+        _incrMatchSet        = null;
+    }
 
     /**
      * Builds a stable string key from the current filter context for use in
@@ -23523,6 +23545,28 @@ a { color: #1565c0; }`;
             _filterResultCache.delete(_filterResultCache.keys().next().value);
         }
         _filterResultCache.set(key, rows);
+    }
+
+    /**
+     * Builds a partial filter key covering everything EXCEPT globalQuery.
+     * Used by the incremental-filter optimisation to detect whether flags or
+     * column filters changed between two consecutive runFilter() calls.
+     * If the partial key matches the previous scan's key AND the new globalQuery
+     * is a plain-text extension of the previous one, we narrow the candidate set
+     * to the previous match set instead of re-scanning all of allRows.
+     * @param {object} matchCtx
+     * @returns {string}
+     */
+    function _buildIncrPartialKey(matchCtx) {
+        return JSON.stringify({
+            c: matchCtx.isCaseSensitive,
+            r: matchCtx.isRegExp,
+            x: matchCtx.isExclude,
+            f: matchCtx.colFilters.map(f => f.isMultiRowFilter
+                ? { i: f.idx, m: f.multiRowMode }
+                : { i: f.idx, v: f.val,
+                    c: f.isCaseSensitive, r: f.isRegExp, x: f.isExclude })
+        });
     }
 
     function runFilter() {
@@ -23846,8 +23890,31 @@ a { color: #1565c0; }`;
             if (_matchingSrc) {
                 Lib.debug('filter', 'runFilter: cache hit single-table');
             } else {
-                _matchingSrc = allRows.filter(row => testRowMatch(row, matchCtx, true));
+                // Incremental narrowing: if the new globalQuery is a plain-text
+                // extension of the previous scan's query, and no flags or column
+                // filters changed, narrow the candidate set to the previous match
+                // set instead of re-scanning all of allRows.
+                // Unsafe for regex (semantics change non-monotonically) and for
+                // exclude mode (extending a NOT-query widens, not narrows, results).
+                const _partialKey = _buildIncrPartialKey(matchCtx);
+                const _canNarrow  =
+                    _incrMatchSet        !== null &&
+                    !isRegExp && !isExclude &&
+                    _partialKey          === _incrLastPartialKey &&
+                    globalQuery.length   >  _incrLastGlobalQuery.length &&
+                    globalQuery.startsWith(_incrLastGlobalQuery);
+                const _candidateRows = _canNarrow ? _incrMatchSet : allRows;
+                Lib.debug('filter',
+                    _canNarrow
+                        ? `runFilter: incremental scan (${_candidateRows.length} candidates of ${allRows.length})`
+                        : `runFilter: full scan (${allRows.length} rows)`
+                );
+                _matchingSrc = _candidateRows.filter(row => testRowMatch(row, matchCtx, true));
                 _filterCacheSet(_sk, _matchingSrc);
+                // Update incremental state so the next keystroke can narrow further.
+                _incrLastGlobalQuery = globalQuery;
+                _incrLastPartialKey  = _partialKey;
+                _incrMatchSet        = _matchingSrc;
             }
             const filteredRows = _matchingSrc.map(row => {
                 const clone = row.cloneNode(true);
@@ -23907,9 +23974,6 @@ a { color: #1565c0; }`;
             // initExpandRGsFeature() removes stale [data-erg-btn] clones and re-injects
             // a fresh live button into each qualifying <td>.
             initExpandRGsFeature();
-
-            // Re-apply barcode highlights after every filter / sort re-render.
-            initBarcodeHighlight();
 
             // CDtoc: re-inject tracklist sub-rows and re-wire toggle links after
             // every re-render (cloneNode(true) strips event listeners).
@@ -24113,6 +24177,11 @@ a { color: #1565c0; }`;
         if (Lib.settings.sa_enable_sticky_columns !== false) {
             document.querySelectorAll('table.tbl').forEach(applyStickyColumn);
         }
+        // Re-apply barcode highlights AFTER applyStickyColumn — applyStickyColumn
+        // calls td.style.background = '' on every non-sticky cell, which clears any
+        // inline background-color set by barcodeProcessTable.  Running barcode
+        // highlighting last ensures its backgroundColor survives.
+        initBarcodeHighlight();
 
         Lib.debug('filter', `Filter completed in ${filterDuration}ms`);
 
@@ -27410,6 +27479,11 @@ a { color: #1565c0; }`;
             if (Lib.settings.sa_enable_sticky_columns !== false) {
                 document.querySelectorAll('table.tbl').forEach(applyStickyColumn);
             }
+            // Re-apply barcode highlights after this final applyStickyColumn pass.
+            // applyStickyColumn calls td.style.background = '' on every non-sticky cell,
+            // which clears any inline background-color.  Running last ensures the
+            // barcode cell colors survive for both single-table and multi-table renders.
+            initBarcodeHighlight();
 
             Lib.debug('render', `DOM rendering finished in ${totalRenderingTime.toFixed(2)}ms`);
 
@@ -27745,8 +27819,11 @@ a { color: #1565c0; }`;
             // Update progress
             progressText.textContent = `${rowsRendered.toLocaleString()} / ${totalRows.toLocaleString()}`;
 
-            // Yield to browser to keep UI responsive
-            await new Promise(resolve => setTimeout(resolve, 0));
+            // Yield to browser before next chunk — rAF guarantees a paint
+            // between chunks so the progress counter is always visible on screen
+            // and the tab stays responsive.  The timestamp argument passed by
+            // rAF to its callback is intentionally ignored.
+            await new Promise(resolve => requestAnimationFrame(() => resolve()));
             // Abort if a newer render has started since this chunk was queued.
             // Without this guard, old renderRowsChunked continuations append rows
             // with the wrong-query highlight to a tbody claimed by a newer render.
@@ -29665,9 +29742,6 @@ a { color: #1565c0; }`;
         // stale [data-erg-btn] clones and re-injects live ▶ buttons.
         initExpandRGsFeature();
 
-        // Re-apply barcode highlights across all freshly rendered sub-table rows.
-        initBarcodeHighlight();
-
         // NOTE: initPicardTaggerColumn() is intentionally NOT called here.
         // It is called from each external call site (startFetchingProcess,
         // runFilter multi-table, loadTableDataFromDisk) AFTER initRelationshipsColumn,
@@ -29783,6 +29857,10 @@ a { color: #1565c0; }`;
         if (Lib.settings.sa_enable_sticky_columns !== false) {
             document.querySelectorAll('table.tbl').forEach(applyStickyColumn);
         }
+        // Re-apply barcode highlights AFTER applyStickyColumn for the same reason
+        // as in runFilter: applyStickyColumn clears td.style.background on non-sticky
+        // cells, which removes any backgroundColor set by barcodeProcessTable.
+        initBarcodeHighlight();
 
         Lib.debug('render', 'Finished renderGroupedTable.');
 
@@ -39305,7 +39383,7 @@ a { color: #1565c0; }`;
 
         if (headerRow) {
             Array.from(headerRow.children).forEach((th, i) => {
-                const txt = th.textContent.trim();
+                const txt = _cleanColHeaderText(th);
                 if (txt === 'Barcode') barcodeColIdx = i;
                 if (txt === 'Format')  formatColIdx  = i;
             });
@@ -39359,6 +39437,8 @@ a { color: #1565c0; }`;
                     cell.style.removeProperty('padding');
                     cell.style.removeProperty('border-radius');
                     cell.style.removeProperty('cursor');
+                    // Clear mbRestBg so the _leave hover handler reverts to CSS zebra.
+                    delete cell.dataset.mbRestBg;
                     cell.removeEventListener('click', barcodeToggleMergeCheckbox);
                 });
                 return;
@@ -39374,6 +39454,9 @@ a { color: #1565c0; }`;
 
             cells.forEach(cell => {
                 cell.style.backgroundColor = color;
+                // Update mbRestBg so the applyStickyColumn _leave handler restores
+                // the barcode color after hover rather than clearing it to transparent.
+                cell.dataset.mbRestBg = color;
                 cell.style.fontWeight      = 'bold';
                 cell.style.padding         = '2px 4px';
                 cell.style.borderRadius    = '3px';
@@ -39435,14 +39518,17 @@ a { color: #1565c0; }`;
     function makeCaaQueue(maxConcurrent) {
         let running = 0;
         const pending = [];
-        let _onIdleCb = null; // called once when queue drains to idle (running=0 and pending=[])
+        let _onIdleCb  = null;  // called once when queue drains to idle (running=0 and pending=[])
+        let _cancelled = false; // set by cancel() — _next() becomes a no-op
 
         /**
          * Internal pump: starts as many queued tasks as the concurrency budget allows.
          * When the queue drains completely (running reaches 0 with nothing pending) the
          * registered onIdle callback fires once, then is cleared.
+         * A no-op after cancel() is called.
          */
         function _next() {
+            if (_cancelled) return;
             while (running < maxConcurrent && pending.length > 0) {
                 running++;
                 const { fn, resolve, reject } = pending.shift();
@@ -39488,6 +39574,18 @@ a { color: #1565c0; }`;
                 } else {
                     _onIdleCb = cb;
                 }
+            },
+            /**
+             * Cancels all queued-but-not-yet-started tasks and prevents new ones
+             * from starting.  Currently-running tasks are allowed to run to
+             * completion (their in-flight network requests cannot be recalled).
+             * After cancel() the queue is permanently inert — do not reuse it.
+             */
+            cancel() {
+                const dropped = pending.length;
+                _cancelled    = true;
+                pending.length = 0;
+                Lib.debug('caa', `_caaQueue: cancel() — dropped ${dropped} pending task(s), ${running} still running`);
             },
             /** Number of tasks waiting for a free slot. */
             get pendingCount() { return pending.length; },
@@ -40027,6 +40125,7 @@ a { color: #1565c0; }`;
                 method:       'GET',
                 url:          url,
                 responseType: 'blob',
+                timeout:      30000,
                 onload:       (resp) => {
                     if (resp.status >= 200 && resp.status < 300) {
                         resolve(resp.response);
@@ -40034,8 +40133,9 @@ a { color: #1565c0; }`;
                         reject(new Error(`HTTP ${resp.status} for ${url}`));
                     }
                 },
-                onerror:  (err) => reject(new Error('GM_xhr network error: ' + url)),
-                ontimeout: ()  => reject(new Error('GM_xhr timeout: ' + url)),
+                onerror:   (err) => reject(new Error('GM_xhr network error: ' + url)),
+                ontimeout: ()   => reject(new Error('GM_xhr timeout: ' + url)),
+                onabort:   ()   => reject(new Error('GM_xhr aborted: ' + url)),
             });
         });
     }
@@ -42211,13 +42311,23 @@ a { color: #1565c0; }`;
         }
 
         // ── Fallback: native img element path (IDB disabled or cacheBust=true) ─
+        // A 30-second watchdog timer ensures the queue task always settles even
+        // if the browser silently drops the request (e.g. when many detached
+        // <img> elements are competing for connection slots after a filter run
+        // replaced the DOM while old queue tasks were still in-flight).
         return new Promise(resolve => {
-            const img = document.createElement('img');
+            const img    = document.createElement('img');
+            const _timer = setTimeout(() => {
+                Lib.debug(ctx.key, `${ctx.key}LoadIcon: img load watchdog fired (30 s) — ${imgurl}`);
+                resolve();
+            }, 30000);
             img.addEventListener('load', function() {
+                clearTimeout(_timer);
                 _onIconLoaded(this.src, false);
                 resolve();
             });
             img.addEventListener('error', function() {
+                clearTimeout(_timer);
                 _onIconError();
                 resolve();
             });
@@ -45502,10 +45612,18 @@ a { color: #1565c0; }`;
     function initCaaPics() {
         if (!Lib.settings.sa_enable_caa_pics) return;
 
+        // Cancel the old queue before replacing it so its pending tasks are
+        // discarded immediately.  Without this, the previous queue (possibly
+        // processing thousands of images from the pre-filter render) keeps
+        // running in the background, saturating the browser's connection pool
+        // and causing the new queue's requests to stall or never complete.
+        // Currently-running tasks (at most sa_caa_fetch_concurrency) are
+        // allowed to finish naturally — their in-flight requests cannot be
+        // recalled once submitted to the browser.
+        if (_caaQueue) _caaQueue.cancel();
+
         // (Re-)create the shared request queue so the current sa_caa_fetch_concurrency
-        // setting is picked up on every render pass.  Any previously queued requests
-        // from a prior render are abandoned — their DOM nodes no longer exist after
-        // renderFinalTable rebuilds the tbody.
+        // setting is picked up on every render pass.
         const concurrency = Math.max(1, Math.min(20, Lib.settings.sa_caa_fetch_concurrency || 4));
         _caaQueue = makeCaaQueue(concurrency);
         Lib.debug('caa', `initCaaPics: request queue created (concurrency=${concurrency})`);

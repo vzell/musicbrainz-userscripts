@@ -1,5 +1,42 @@
 [
   {
+    "version": "9.99.629",
+    "date": "2026-05-20",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "fix: barcode highlighting — cells appeared only bold (no background color). Four root causes fixed: (1) barcodeProcessTable used th.textContent.trim() === 'Barcode' to find the Barcode column index; after makeTableSortableUnified wraps headers in .mb-col-hdr-flex with sort icons and a count badge, textContent includes '⇅▲▼📊' so the match always failed (barcodeColIdx = -1). Fixed by using _cleanColHeaderText(th) which reads th.dataset.colName. Same fix applied to addBarcodeHighlightToggleButton's hasBarcodeColumn check. (2) In runFilter and renderGroupedTable, initBarcodeHighlight ran before applyStickyColumn; applyStickyColumn calls td.style.background = '' on non-sticky cells which clears any inline background-color. Fixed by moving initBarcodeHighlight to after applyStickyColumn in both call sites. (3) startFetchingProcess has a second 'RENDERING END' applyStickyColumn pass (shared by both table modes) that ran after initBarcodeHighlight in the individual mode paths, wiping barcode colors on every initial render. Fixed by adding initBarcodeHighlight() after this final sticky pass. (4) The applyStickyColumn _leave hover handler did td.style.background = '' on non-sticky cells, which wiped barcode backgroundColor after any hover-out. Fixed: _leave now restores from td.dataset.mbRestBg when set; barcodeProcessTable updates mbRestBg to the barcode color when highlighting and deletes it when un-highlighting, so _leave correctly restores barcode colors after hover."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.628",
+    "date": "2026-05-20",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "fix: CAA/EAA image loading stalls after column filter — root cause: initCaaPics() recreated _caaQueue on every filter run but left the old queue (from the initial 8100-row render) running in the background, saturating the browser connection pool and causing the new queue's img.load events to be silently dropped by the browser. Fix: makeCaaQueue() gains a cancel() method that drops all pending tasks and marks the queue inert; initCaaPics() now calls _caaQueue.cancel() before replacing the queue, limiting the old queue to at most sa_caa_fetch_concurrency in-flight requests at the moment of cancellation. Additionally: _artGmFetchBlob gains timeout:30000 and an onabort handler so GM_xmlhttpRequest aborts/hangs reject the promise instead of deadlocking the queue; native img load path gains a 30-second watchdog timer that resolves the task if the browser silently drops the request."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.627",
+    "date": "2026-05-20",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "perf: incremental filter narrowing (Pattern 1) — single-table mode now tracks the last full testRowMatch scan result; when the new globalQuery is a plain-text extension of the previous query and all flags/column-filters are unchanged, only the previous match set is re-tested instead of all of allRows. Reduces O(8100) scan to O(prev_matches) for each additional character typed. Disabled automatically for regex and exclude modes (non-monotonic semantics). Invalidated by fetch, sort, disk-load, and any flag or column-filter change.",
+          "perf: rAF chunked render (Pattern 4) — renderRowsChunked now yields between chunks via requestAnimationFrame instead of setTimeout(0), guaranteeing one browser paint per chunk so the progress counter is always visible on screen. The abort-token generation check runs immediately after each rAF yield as before."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.626",
     "date": "2026-05-20",
     "sections": [
