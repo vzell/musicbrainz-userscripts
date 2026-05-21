@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.632",
+    "date": "2026-05-22",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "status line: add meaningful tooltips to all #mb-info-display-generic write sites — auto-resize (column measurement details, toggle hint), manual column resize (size + resize-button hint), restore widths, table density (cycle hint), export (format + row count), serialized to disk (load-from-disk hint), load from disk (pre-filter context or explore hint). showDownloadNotification gains a statusTip parameter so showExportNotification can pass a format-aware tooltip."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.631",
     "date": "2026-05-22",
     "sections": [

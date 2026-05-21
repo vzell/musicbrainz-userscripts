@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.631+2026-05-22
+// @version      9.99.632+2026-05-22
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -10746,10 +10746,11 @@ ${sections.join('\n')}
      *
      * @param {string}      message        - Text to display inside the popup body.
      * @param {string|null} statusText     - When non-null, written to the #mb-info-display bar.
+     * @param {string|null} statusTip      - Optional tooltip for the status bar entry.
      */
-    function showDownloadNotification(message, statusText = null) {
+    function showDownloadNotification(message, statusText = null, statusTip = null) {
         if (statusText !== null) {
-            _setInfoSub('mb-info-display-generic', statusText);
+            _setInfoSub('mb-info-display-generic', statusText, statusTip || '');
         }
 
         const infoPopup = document.createElement('div');
@@ -10840,7 +10841,8 @@ ${sections.join('\n')}
 
         showDownloadNotification(
             `${format} export complete: ${rowSummary}. Please monitor your browser for the file download.`,
-            `✓ Exported ${rowSummary} to ${filename}`
+            `✓ Exported ${rowSummary} to ${filename}`,
+            `${format} format — ${rowSummary}. File saved to your browser's download folder.`
         );
     }
 
@@ -11186,7 +11188,8 @@ ${sections.join('\n')}
             const _rs = isFiltered
                 ? `${rowsExported.toLocaleString()} of ${rowsTotal.toLocaleString()} rows`
                 : `${rowsExported.toLocaleString()} rows`;
-            _setInfoSub('mb-info-display-generic', `✓ Exported ${_rs} to ${chosenFilename}`);
+            _setInfoSub('mb-info-display-generic', `✓ Exported ${_rs} to ${chosenFilename}`,
+                `${format} format — ${_rs}. File saved to your browser's download folder.`);
 
             statusDiv.innerHTML     = `\u2705 Download initiated for <em>"${chosenFilename}"</em>. Monitor your browser for the file.`;
             statusDiv.style.color   = '#2e7d32';
@@ -15316,7 +15319,8 @@ a { color: #1565c0; }`;
         currentDensity = densityKey;
 
         // Update status display
-        _setInfoSub('mb-info-display-generic', `✓ Table density: ${config.label}`);
+        _setInfoSub('mb-info-display-generic', `✓ Table density: ${config.label}`,
+            'Click the density button again to cycle through available density levels.');
 
         Lib.debug('density', `Applied ${config.label} density to ${tables.length} table(s)`);
     }
@@ -15777,7 +15781,8 @@ a { color: #1565c0; }`;
                 Lib.debug('resize', `Finished resizing column ${colIndex} to ${finalWidth}px`);
 
                 // Update status
-                _setInfoSub('mb-info-display-generic', `✓ Column ${colIndex + 1} resized to ${finalWidth}px`);
+                _setInfoSub('mb-info-display-generic', `✓ Column ${colIndex + 1} resized to ${finalWidth}px`,
+                    `Column ${colIndex + 1} manually set to ${finalWidth}px. Click the auto-resize button (📐) to refit all columns to content.`);
             }
 
             // Make th positioned for absolute positioning of the resizer handle.
@@ -16292,7 +16297,8 @@ a { color: #1565c0; }`;
             updateResizeButtonState(false);
 
             // Update status display
-            _setInfoSub('mb-info-display-generic', '✓ Restored original column widths');
+            _setInfoSub('mb-info-display-generic', '✓ Restored original column widths',
+                'All columns reset to auto-fitted widths. Drag column edges to resize manually.');
 
             Lib.debug('resize', 'Original column widths restored');
             return;
@@ -16602,7 +16608,9 @@ a { color: #1565c0; }`;
         let _resizeMsg = `✓ Auto-resized ${totalColumnsResized} visible column${totalColumnsResized !== 1 ? 's' : ''}`;
         if (tableCount > 1) _resizeMsg += ` across ${tableCount} tables`;
         _resizeMsg += ` in ${duration}s (drag column edges to adjust)`;
-        _setInfoSub('mb-info-display-generic', _resizeMsg);
+        _setInfoSub('mb-info-display-generic', _resizeMsg,
+            `Each visible column was measured and fitted to its widest content. ` +
+            `Drag column edges to adjust manually, or click the resize button again to restore original widths.`);
 
         Lib.debug('resize', `Auto-resize complete: ${totalColumnsResized} visible columns across ${tableCount} table(s) in ${duration}s`);
 
@@ -19609,7 +19617,8 @@ a { color: #1565c0; }`;
 
             Lib.debug('cache', `Save dialog: download triggered for "${chosenFilename}"`);
 
-            _setInfoSub('mb-info-display-generic', `✓ Serialized ${totalRows.toLocaleString()} rows to ${chosenFilename}`);
+            _setInfoSub('mb-info-display-generic', `✓ Serialized ${totalRows.toLocaleString()} rows to ${chosenFilename}`,
+                `Use '📂 Load from Disk' to restore this data without re-fetching from the MusicBrainz server.`);
 
             statusDiv.innerHTML     = `\u2705 Download initiated for <em>"${chosenFilename}"</em>. Monitor your browser for the file.`;
             statusDiv.style.color   = '#2e7d32';
@@ -38129,7 +38138,11 @@ a { color: #1565c0; }`;
 
                 const rowLabel = loadedRowCount === 1 ? 'row' : 'rows';
                 Lib.debug('cache', `Successfully loaded ${loadedRowCount} ${rowLabel} from disk!`);
-                _setInfoSub('mb-info-display-generic', `✓ Loaded ${loadedRowCount} ${rowLabel} from file ${file.name} | Active Pre-Filter: ${!!filterQueryRaw}`);
+                _setInfoSub('mb-info-display-generic',
+                    `✓ Loaded ${loadedRowCount} ${rowLabel} from file ${file.name} | Active Pre-Filter: ${!!filterQueryRaw}`,
+                    filterQueryRaw
+                        ? `Pre-filter '${filterQueryRaw}' applied. Adjust the filter controls to show more or fewer results.`
+                        : `Use the filter and sort controls to explore the ${loadedRowCount} ${rowLabel}. Click '📂' again to load a different file.`);
 
                 // ── Auto-resize columns after disk-load ───────────────────────────
                 // Deferred by one task (setTimeout 0) so the browser has had a chance
