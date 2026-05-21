@@ -246,7 +246,7 @@ Enable via the `sa_enable_debug_logging` setting or the Tampermonkey menu.
 
 ## Adding a new column extractor — checklist
 
-1. Add extractor function to `ColumnDataExtractor` (line ~2064) with JSDoc
+1. Add extractor function to `ColumnDataExtractor` with JSDoc
 2. Reference by function-name string in `features.columnExtractors` of the page definition
 3. Add corresponding header name strings to `syntheticColumns`
 4. If the extractor produces a sort-key span, add its class to `_CLEAN_STRIP_SEL`
