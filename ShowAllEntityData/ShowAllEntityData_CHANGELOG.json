@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.633",
+    "date": "2026-05-22",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "status line: add a muted '|' divider (#mb-status-divider) between #mb-global-status-display and #mb-info-display; automatically shown/hidden by _setInfoSub() whenever any info sub-span becomes visible or is cleared."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.632",
     "date": "2026-05-22",
     "sections": [

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.632+2026-05-22
+// @version      9.99.633+2026-05-22
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -17560,6 +17560,13 @@ a { color: #1565c0; }`;
             tip ? (el.title = tip) : el.removeAttribute('title');
             el.style.display = 'inline-block';
         }
+        // Show the divider only when at least one sub-span is visible.
+        const divider = document.getElementById('mb-status-divider');
+        if (divider) {
+            const hasContent = ['mb-info-display-caa', 'mb-info-display-rel', 'mb-info-display-generic']
+                .some(sid => { const s = document.getElementById(sid); return s && s.style.display !== 'none'; });
+            divider.style.display = hasContent ? 'inline-block' : 'none';
+        }
     }
 
     const filterContainer = document.createElement('span');
@@ -19122,6 +19129,11 @@ a { color: #1565c0; }`;
     statusDisplaysContainer.id = 'mb-status-displays-container';
     statusDisplaysContainer.style.cssText = 'display:inline-flex; align-items:center; gap:8px; line-height:1; vertical-align:middle;';
     statusDisplaysContainer.appendChild(globalStatusDisplay);
+    const _statusDivider = document.createElement('span');
+    _statusDivider.id = 'mb-status-divider';
+    _statusDivider.textContent = '|';
+    _statusDivider.style.cssText = 'display:none; color:#bbb; font-weight:normal; user-select:none;';
+    statusDisplaysContainer.appendChild(_statusDivider);
     statusDisplaysContainer.appendChild(infoDisplay);
 
     // A zero-width sentinel span is injected immediately before statusDisplaysContainer in the
