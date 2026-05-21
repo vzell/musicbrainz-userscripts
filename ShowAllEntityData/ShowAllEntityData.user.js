@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.630+2026-05-21
+// @version      9.99.631+2026-05-22
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -10749,11 +10749,7 @@ ${sections.join('\n')}
      */
     function showDownloadNotification(message, statusText = null) {
         if (statusText !== null) {
-            const infoDisplay = document.getElementById('mb-info-display');
-            if (infoDisplay) {
-                infoDisplay.textContent = statusText;
-                infoDisplay.style.color = 'green';
-            }
+            _setInfoSub('mb-info-display-generic', statusText);
         }
 
         const infoPopup = document.createElement('div');
@@ -11187,14 +11183,10 @@ ${sections.join('\n')}
 
             Lib.debug('export', `Export dialog: download triggered — "${chosenFilename}"`);
 
-            const infoDisp = document.getElementById('mb-info-display');
-            if (infoDisp) {
-                const rs = isFiltered
-                    ? `${rowsExported.toLocaleString()} of ${rowsTotal.toLocaleString()} rows`
-                    : `${rowsExported.toLocaleString()} rows`;
-                infoDisp.textContent = `✓ Exported ${rs} to ${chosenFilename}`;
-                infoDisp.style.color = 'green';
-            }
+            const _rs = isFiltered
+                ? `${rowsExported.toLocaleString()} of ${rowsTotal.toLocaleString()} rows`
+                : `${rowsExported.toLocaleString()} rows`;
+            _setInfoSub('mb-info-display-generic', `✓ Exported ${_rs} to ${chosenFilename}`);
 
             statusDiv.innerHTML     = `\u2705 Download initiated for <em>"${chosenFilename}"</em>. Monitor your browser for the file.`;
             statusDiv.style.color   = '#2e7d32';
@@ -15324,11 +15316,7 @@ a { color: #1565c0; }`;
         currentDensity = densityKey;
 
         // Update status display
-        const infoDisplay = document.getElementById('mb-info-display');
-        if (infoDisplay) {
-            infoDisplay.textContent = `✓ Table density: ${config.label}`;
-            infoDisplay.style.color = 'green';
-        }
+        _setInfoSub('mb-info-display-generic', `✓ Table density: ${config.label}`);
 
         Lib.debug('density', `Applied ${config.label} density to ${tables.length} table(s)`);
     }
@@ -15789,11 +15777,7 @@ a { color: #1565c0; }`;
                 Lib.debug('resize', `Finished resizing column ${colIndex} to ${finalWidth}px`);
 
                 // Update status
-                const infoDisplay = document.getElementById('mb-info-display');
-                if (infoDisplay) {
-                    infoDisplay.textContent = `✓ Column ${colIndex + 1} resized to ${finalWidth}px`;
-                    infoDisplay.style.color = 'green';
-                }
+                _setInfoSub('mb-info-display-generic', `✓ Column ${colIndex + 1} resized to ${finalWidth}px`);
             }
 
             // Make th positioned for absolute positioning of the resizer handle.
@@ -16308,11 +16292,7 @@ a { color: #1565c0; }`;
             updateResizeButtonState(false);
 
             // Update status display
-            const infoDisplay = document.getElementById('mb-info-display');
-            if (infoDisplay) {
-                infoDisplay.textContent = '✓ Restored original column widths';
-                infoDisplay.style.color = 'green';
-            }
+            _setInfoSub('mb-info-display-generic', '✓ Restored original column widths');
 
             Lib.debug('resize', 'Original column widths restored');
             return;
@@ -16619,16 +16599,10 @@ a { color: #1565c0; }`;
         updateResizeButtonState(true);
 
         // Update status display
-        const infoDisplay = document.getElementById('mb-info-display');
-        if (infoDisplay) {
-            let message = `✓ Auto-resized ${totalColumnsResized} visible column${totalColumnsResized !== 1 ? 's' : ''}`;
-            if (tableCount > 1) {
-                message += ` across ${tableCount} tables`;
-            }
-            message += ` in ${duration}s (drag column edges to adjust)`;
-            infoDisplay.textContent = message;
-            infoDisplay.style.color = 'green';
-        }
+        let _resizeMsg = `✓ Auto-resized ${totalColumnsResized} visible column${totalColumnsResized !== 1 ? 's' : ''}`;
+        if (tableCount > 1) _resizeMsg += ` across ${tableCount} tables`;
+        _resizeMsg += ` in ${duration}s (drag column edges to adjust)`;
+        _setInfoSub('mb-info-display-generic', _resizeMsg);
 
         Lib.debug('resize', `Auto-resize complete: ${totalColumnsResized} visible columns across ${tableCount} table(s) in ${duration}s`);
 
@@ -17538,7 +17512,47 @@ a { color: #1565c0; }`;
 
     const infoDisplay = document.createElement('span');
     infoDisplay.id = 'mb-info-display';
-    infoDisplay.style.cssText = 'font-size:0.95em; color:#333; font-weight:bold; vertical-align:middle;';
+    infoDisplay.style.cssText = 'display:inline-flex; align-items:center; gap:6px; font-size:0.95em; font-weight:bold; vertical-align:middle;';
+
+    // Three independent sub-spans so CAA/EAA, Rels, and generic messages
+    // can coexist without overwriting each other.
+    const _infoSubCss = 'display:none; color:green;';
+
+    const infoDisplayCaa = document.createElement('span');
+    infoDisplayCaa.id = 'mb-info-display-caa';
+    infoDisplayCaa.style.cssText = _infoSubCss;
+    infoDisplay.appendChild(infoDisplayCaa);
+
+    const infoDisplayRel = document.createElement('span');
+    infoDisplayRel.id = 'mb-info-display-rel';
+    infoDisplayRel.style.cssText = _infoSubCss;
+    infoDisplay.appendChild(infoDisplayRel);
+
+    const infoDisplayGeneric = document.createElement('span');
+    infoDisplayGeneric.id = 'mb-info-display-generic';
+    infoDisplayGeneric.style.cssText = _infoSubCss;
+    infoDisplay.appendChild(infoDisplayGeneric);
+
+    /**
+     * Sets the text (and optional tooltip) of one of the three mb-info-display
+     * sub-spans, or hides it when text is empty.
+     * @param {string} id   'mb-info-display-caa' | 'mb-info-display-rel' | 'mb-info-display-generic'
+     * @param {string} text Visible text. Pass '' to hide the sub-container.
+     * @param {string} [tip] Optional tooltip (title attribute).
+     */
+    function _setInfoSub(id, text, tip) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (!text) {
+            el.textContent = '';
+            el.removeAttribute('title');
+            el.style.display = 'none';
+        } else {
+            el.textContent = text;
+            tip ? (el.title = tip) : el.removeAttribute('title');
+            el.style.display = 'inline-block';
+        }
+    }
 
     const filterContainer = document.createElement('span');
     filterContainer.id = 'mb-filter-container';
@@ -19595,8 +19609,7 @@ a { color: #1565c0; }`;
 
             Lib.debug('cache', `Save dialog: download triggered for "${chosenFilename}"`);
 
-            infoDisplay.textContent = `✓ Serialized ${totalRows.toLocaleString()} rows to ${chosenFilename}`;
-            infoDisplay.style.color = 'green';
+            _setInfoSub('mb-info-display-generic', `✓ Serialized ${totalRows.toLocaleString()} rows to ${chosenFilename}`);
 
             statusDiv.innerHTML     = `\u2705 Download initiated for <em>"${chosenFilename}"</em>. Monitor your browser for the file.`;
             statusDiv.style.color   = '#2e7d32';
@@ -25562,7 +25575,7 @@ a { color: #1565c0; }`;
                 activeBtn.style.backgroundColor = '';
                 activeBtn.style.color = '';
                 activeBtn.disabled = false;
-                infoDisplay.textContent = '';
+                _setInfoSub('mb-info-display-generic', '');
                 return;
             }
         }
@@ -27494,6 +27507,9 @@ a { color: #1565c0; }`;
             globalStatusDisplay.innerHTML = '';
             _caaGlobalStatusDone = false;  // allow the first CAA completion to append its segment
             _relGlobalStatusDone = false;  // allow the first Rels completion to append its segment
+            _setInfoSub('mb-info-display-caa', '');
+            _setInfoSub('mb-info-display-rel', '');
+            _setInfoSub('mb-info-display-generic', '');
             const _sdLoaded = document.createElement('span');
             _sdLoaded.textContent = `Loaded ${pagesProcessed} ${pageLabel} (${totalRows} rows)`;
             _sdLoaded.title = 'Pages and rows loaded from the MusicBrainz database.';
@@ -36924,9 +36940,6 @@ a { color: #1565c0; }`;
      * @param {{idb:number, cache:number, net:number}} [tierInfo]  Per-tier fetch counts.
      */
     function _showRelCompletionToast(cellCount, mbidCount, elapsedMs, tierInfo) {
-        const secs = Lib.settings.sa_rel_completion_toast_duration;
-        if (typeof secs === 'number' && secs <= 0) return;
-        const duration = (typeof secs === 'number' ? secs : 8) * 1000;
         const _fmtMs = ms => {
             if (ms < 1000) return `${Math.round(ms)}ms`;
             const s = ms / 1000;
@@ -36934,6 +36947,23 @@ a { color: #1565c0; }`;
             return `${Math.floor(s/60)}m ${Math.round(s%60)}s`;
         };
         const _ti = tierInfo || {};
+        // ── Update the Rels info sub-display (always, even when toast is disabled) ──
+        const _relInfoTipTiers = [
+            { emoji: '📦', label: 'IDB',   desc: 'IndexedDB browser cache (cross-session)', count: _ti.idb   || 0 },
+            { emoji: '💾', label: 'cache', desc: 'memory cache (same session)',              count: _ti.cache || 0 },
+            { emoji: '🌐', label: 'net',   desc: 'live WS2 API fetch (throttled 1 req/s)',  count: _ti.net   || 0 },
+        ].map(t => `${t.emoji} ${t.label}: ${t.count} — ${t.desc}`)
+         .join('\n');
+        _setInfoSub(
+            'mb-info-display-rel',
+            `🔗Rels: ${_fmtMs(elapsedMs)}`,
+            `Relationship icons: ${mbidCount} unique MBID${mbidCount !== 1 ? 's' : ''} / ${cellCount} cell${cellCount !== 1 ? 's' : ''}\n` +
+            _relInfoTipTiers + '\n' +
+            `Total load time: ${_fmtMs(elapsedMs)}`
+        );
+        const secs = Lib.settings.sa_rel_completion_toast_duration;
+        if (typeof secs === 'number' && secs <= 0) return;
+        const duration = (typeof secs === 'number' ? secs : 8) * 1000;
         const _tierParts = [];
         if (_ti.idb)   _tierParts.push(`📦 IDB: ${_ti.idb}`);
         if (_ti.cache) _tierParts.push(`💾 cache: ${_ti.cache}`);
@@ -38099,8 +38129,7 @@ a { color: #1565c0; }`;
 
                 const rowLabel = loadedRowCount === 1 ? 'row' : 'rows';
                 Lib.debug('cache', `Successfully loaded ${loadedRowCount} ${rowLabel} from disk!`);
-                infoDisplay.textContent = `✓ Loaded ${loadedRowCount} ${rowLabel} from file ${file.name} | Active Pre-Filter: ${!!filterQueryRaw}`;
-                infoDisplay.style.color = 'green';
+                _setInfoSub('mb-info-display-generic', `✓ Loaded ${loadedRowCount} ${rowLabel} from file ${file.name} | Active Pre-Filter: ${!!filterQueryRaw}`);
 
                 // ── Auto-resize columns after disk-load ───────────────────────────
                 // Deferred by one task (setTimeout 0) so the browser has had a chance
@@ -45453,39 +45482,36 @@ a { color: #1565c0; }`;
         ];
         const toastText = lines.join('\n');
 
-        // ── Update the global info area (compact single-line summary) ─────────
-        const infoDisplay = document.getElementById('mb-info-display');
-        if (infoDisplay) {
-            infoDisplay.textContent = `🎨 CAA/EAA: ${totalLabel} in ${timeStr}`;
-            infoDisplay.style.color = 'green';
-        }
+        // ── Build tooltip and label (shared by info sub-display and global segment) ─
+        // Tooltip: always all 4 tiers (zero counts shown explicitly)
+        const _caasdTip = tiers
+            .map(({ key, emoji, label }) => {
+                const ic = s.icon[key];
+                const il = s.inline[key];
+                const parts = [];
+                if (ic > 0) parts.push(`${ic} icon`);
+                if (il > 0) parts.push(`${il} inline`);
+                const tot = ic + il;
+                const breakdown = tot === 0 ? '0'
+                    : parts.length === 2
+                        ? `${parts[0]} + ${parts[1]} = ${tot}`
+                        : `${tot}`;
+                return `${emoji} ${label}: ${breakdown}`;
+            })
+            .join('\n');
+        const _artLabel = _getActiveArtCtx().column;  // 'CAA' or 'EAA'
+        const _caasdTipFull =
+            `CAA/EAA artwork: ${iconTotal} icon + ${inlineTotal} inline = ${grandTotal} total\n` +
+            _caasdTip + '\n' +
+            `Total load time: ${timeStr}`;
+
+        // ── Update the CAA/EAA info sub-display ──────────────────────────────
+        _setInfoSub('mb-info-display-caa', `🎨${_artLabel}: ${timeStr}`, _caasdTipFull);
+
         // ── Append compact CAA/EAA summary to global status display (initial load only) ─
         if (!_caaGlobalStatusDone) {
             _caaGlobalStatusDone = true;
-            // Tooltip: always all 4 tiers (zero counts shown explicitly)
-            const _caasdTip = tiers
-                .map(({ key, emoji, label }) => {
-                    const ic = s.icon[key];
-                    const il = s.inline[key];
-                    const parts = [];
-                    if (ic > 0) parts.push(`${ic} icon`);
-                    if (il > 0) parts.push(`${il} inline`);
-                    const tot = ic + il;
-                    const breakdown = tot === 0 ? '0'
-                        : parts.length === 2
-                            ? `${parts[0]} + ${parts[1]} = ${tot}`
-                            : `${tot}`;
-                    return `${emoji} ${label}: ${breakdown}`;
-                })
-                .join('\n');
-            const _artLabel = _getActiveArtCtx().column;  // 'CAA' or 'EAA'
-            _sdAppend(
-                `🎨${_artLabel}: ${timeStr}`,
-                ', ',
-                `CAA/EAA artwork: ${iconTotal} icon + ${inlineTotal} inline = ${grandTotal} total\n` +
-                _caasdTip + '\n' +
-                `Total load time: ${timeStr}`
-            );
+            _sdAppend(`🎨${_artLabel}: ${timeStr}`, ', ', _caasdTipFull);
         }
 
         // ── Show toast ────────────────────────────────────────────────────────

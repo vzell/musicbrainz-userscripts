@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.631",
+    "date": "2026-05-22",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "status line: split #mb-info-display into three independent sub-spans — #mb-info-display-caa (CAA/EAA artwork completion), #mb-info-display-rel (Relationships completion), #mb-info-display-generic (everything else). All three can coexist without overwriting each other. Added _setInfoSub(id, text, tip) helper to manage visibility (display:none when empty). CAA and Rels sub-displays use the same compact format and tooltips as the global status segments. All sub-displays are cleared on each new render start."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.630",
     "date": "2026-05-21",
     "sections": [
