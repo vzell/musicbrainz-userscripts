@@ -1,5 +1,23 @@
 [
   {
+    "version": "9.99.630",
+    "date": "2026-05-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "status line: simplify 🔗Rels and 🎨CAA/EAA segments to show only the elapsed time (e.g. '🔗Rels: 11s', '🎨CAA: 9s') — detailed tier breakdown moved to tooltip only. CAA label now reflects the active archive ('CAA' or 'EAA') via _getActiveArtCtx()."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "fix: 🔗Rels segment was appended to the global status line multiple times when repeating a filter operation. Added _relGlobalStatusDone guard (mirroring the existing _caaGlobalStatusDone pattern) so the segment is only appended once per load."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.629",
     "date": "2026-05-20",
     "sections": [
