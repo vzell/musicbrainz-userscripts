@@ -1,5 +1,44 @@
 [
   {
+    "version": "9.99.635",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "keyboard shortcuts (bug 1): make Ctrl+K ('Show keyboard shortcuts help') configurable — replaced the hard-wired e.key==='K' check with isShortcutEvent(e, 'sa_shortcut_show_shortcuts_help', 'Ctrl+K'); new setting sa_shortcut_show_shortcuts_help (default: Ctrl+K) added before sa_shortcut_open_settings in the configurable-direct-shortcuts block.",
+          "keyboard shortcuts (bug 4): apply the direct-Ctrl+letter guard inside the column-filter-focused shortcuts section too — Ctrl+O, Ctrl+Q, Ctrl+A, Ctrl+R, and Ctrl+V are now blocked when sa_enable_direct_ctrl_char_shortcuts is false (the target is an INPUT, so the same rule that applies globally applies in the column filter context). Ctrl+ArrowUp, Ctrl+ArrowDown, and Ctrl+# are non-letter keys and remain unaffected.",
+          "keyboard shortcuts popup (bug 4): annotate column-filter-focused shortcuts Ctrl+O/Q/A/R/V with '— blocked when direct Ctrl+letter shortcuts are disabled' to match the actual runtime behaviour."
+        ]
+      },
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "keyboard shortcuts (bug 2): add sa_toggle_barcode_highlighting (default: Ctrl+B) — new configurable shortcut that emulates clicking the #mb-barcode-highlight-btn button to toggle barcode row highlighting. Added before sa_shortcut_open_density in the configurable-direct-shortcuts block and handled in initKeyboardShortcuts.",
+          "keyboard shortcuts (bug 3): add 'b' → Toggle Barcode Highlighting to ctrlMFunctionMap so the action is also reachable via the prefix key followed by B.",
+          "keyboard shortcuts popup: add Ctrl+B (barcode toggle) to the 'View & Layout' section; update the prefix-mode sub-key list to include B."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.634",
+    "date": "2026-05-22",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "keyboard shortcuts: suppress direct Ctrl+<letter> (a–z) shortcuts while an input field has focus or a UI dialog is open (default new behaviour) — prevents conflicts with well-known browser/OS shortcuts and avoids accidental triggers while typing in filter fields. Ctrl+M (prefix key) and Ctrl+U (unicode picker) are explicitly excluded from this guard. Non-letter shortcuts (Ctrl+,, Ctrl+2, Ctrl+3, Ctrl+Shift+G, etc.) and column-filter-focused shortcuts are also unaffected.",
+          "keyboard shortcuts: add new boolean setting 'Enable Direct Ctrl+Letter Shortcuts' (sa_enable_direct_ctrl_char_shortcuts, default: false) in the KEYBOARD SHORTCUTS section to restore the previous unrestricted behaviour.",
+          "keyboard shortcuts: add G (focus global filter) and C (cycle column filter) to the prefix-mode function map (ctrlMFunctionMap) so these actions are always reachable via Ctrl+M, G / Ctrl+M, C even when direct Ctrl+<letter> shortcuts are suppressed.",
+          "keyboard shortcuts: move _colFilterTableIndex to module scope (renamed from local currentTableIndex) so the column-filter cycling state is accessible to both the keydown handler and the new prefix-mode entry.",
+          "keyboard shortcuts: add isSpecialDialogOpen() helper that detects whether any of the script's modal dialogs (shortcuts help, app help, stats panel, export/save/load dialogs, settings overlay) is currently in the DOM.",
+          "keyboard shortcuts: update the 'Show Keyboard Shortcuts' popup — note at the bottom now reflects the active mode; 'Filter & Search' and 'View & Layout' entries annotate which shortcuts are blocked while typing and list their prefix-mode equivalents; a new 'Keyboard Shortcuts' entry lists all prefix-mode letter sub-keys."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.633",
     "date": "2026-05-22",
     "sections": [
