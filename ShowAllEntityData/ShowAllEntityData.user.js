@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.635+2026-05-27
+// @version      9.99.637+2026-05-27
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -14486,6 +14486,142 @@ ${sections.join('\n')}
         _globalHead.appendChild(fsWrap);
         body.appendChild(_globalHead);
         body.appendChild(_mkTbl(globalRows));
+
+        // ── § IndexedDB Cache section (async) ─────────────────────────────────
+        // Queries IDB store counts asynchronously; renders a placeholder row that
+        // is filled in once the Promises resolve.  Safe to call even when IDB is
+        // disabled — _artIdbCountStore resolves to 0 in that case.
+        {
+            const _idbHead = _mkSectionHead('🗄️', 'IndexedDB Cache');
+            body.appendChild(_idbHead);
+
+            const _idbEnabled    = !!Lib.settings.sa_art_idb_enable;
+            const _relIdbEnabled = !!Lib.settings.sa_rels_idb_enable;
+            const _fmtTs = (ts) => {
+                if (!ts) return '—';
+                const d = new Date(ts);
+                return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            };
+
+            // Placeholder rows rendered synchronously; values filled in on Promise resolution.
+            const _idbPlaceholderRows = [
+                {
+                    stat:    `🖼️ Art images store (IDB)`,
+                    value:   '<em style="color:#aaa">querying…</em>',
+                    comment: _idbEnabled
+                        ? `TTL: ${Lib.settings.sa_art_idb_image_ttl_days || 30} days — blob cache (sa_art_idb_enable)`
+                        : '⚠️ IDB art cache disabled (sa_art_idb_enable = false)',
+                    _id:     'mb-stats-idb-images',
+                },
+                {
+                    stat:    `📋 Art metadata store (IDB)`,
+                    value:   '<em style="color:#aaa">querying…</em>',
+                    comment: _idbEnabled
+                        ? `TTL: ${Lib.settings.sa_art_idb_metadata_ttl_days || 7} days — archive JSON metadata`
+                        : '⚠️ IDB art cache disabled',
+                    _id:     'mb-stats-idb-metadata',
+                },
+                {
+                    stat:    `🔗 Rel WS2 store (IDB)`,
+                    value:   '<em style="color:#aaa">querying…</em>',
+                    comment: _relIdbEnabled
+                        ? 'TTL: 7 days — relationship WS2 JSON responses (sa_rels_idb_enable)'
+                        : '⚠️ IDB rel cache disabled (sa_rels_idb_enable = false)',
+                    _id:     'mb-stats-idb-relws2',
+                },
+                {
+                    stat:    '💡 L1 memory — art images (this session)',
+                    value:   String(_artIdbMemCache.size),
+                    comment: 'Per-session in-memory blob: URL Map; cleared on page unload',
+                    _id:     null,
+                },
+                {
+                    stat:    '💡 L1 memory — rel WS2 (this session)',
+                    value:   String(_relWs2Cache.size),
+                    comment: 'Per-session in-memory Map of resolved fetch() Promises',
+                    _id:     null,
+                },
+                {
+                    stat:    '🧹 Last idle sweep — expired records removed',
+                    value:   _artIdbLastSweep.ts !== null
+                        ? String(_artIdbLastSweep.deleted)
+                        : '— (not yet run this session)',
+                    comment: _artIdbLastSweep.ts !== null
+                        ? `Ran at ${_fmtTs(_artIdbLastSweep.ts)} — images, metadata, rel-ws2 stores`
+                        : 'Scheduled after first render (idle callback)',
+                    _id:     null,
+                },
+                {
+                    stat:    '⏱️ Rel WS2 TTL evictions (this session)',
+                    value:   String(_relIdbTtlEvictCount),
+                    comment: _relIdbTtlEvictCount > 0
+                        ? `${_relIdbTtlEvictCount} rel-ws2 record(s) found expired during reads and deleted`
+                        : 'Records silently removed when a cached record is read after its 7-day TTL',
+                    _id:     null,
+                },
+                {
+                    stat:    '🔄 Rel WS2 retry evictions (this session)',
+                    value:   String(_relIdbRetryEvictCount),
+                    comment: _relIdbRetryEvictCount > 0
+                        ? `${_relIdbRetryEvictCount} rel-ws2 record(s) evicted by user-initiated retry`
+                        : 'Records explicitly evicted when the user clicks a Retry Relationships button',
+                    _id:     null,
+                },
+            ];
+
+            const _idbTbl = _mkTbl(_idbPlaceholderRows);
+            body.appendChild(_idbTbl);
+
+            // Tag placeholder <td> cells with their data-id so we can fill them in.
+            _idbPlaceholderRows.forEach(row => {
+                if (!row._id) return;
+                const tds = _idbTbl.querySelectorAll('tbody tr td:nth-child(2)');
+                const tr = Array.from(_idbTbl.querySelectorAll('tbody tr')).find(
+                    r => r.querySelector('td') && r.querySelector('td').textContent.includes(
+                        row.stat.replace(/[🖼️📋🔗]/g, '').trim().substring(0, 10)
+                    )
+                );
+                if (tr) tr.dataset.idbPlaceholder = row._id;
+            });
+
+            // Async: fill in the live counts.
+            if (_idbEnabled || _relIdbEnabled) {
+                Promise.all([
+                    _artIdbCountStore('images'),
+                    _artIdbCountStore('metadata'),
+                    _artIdbCountStore('rel-ws2'),
+                ]).then(([imgCount, metaCount, relCount]) => {
+                    // Panel may have been closed by the time the counts arrive.
+                    if (!document.getElementById('mb-stats-panel')) return;
+
+                    // Walk the table rows and update the three async cells.
+                    const _allRows = Array.from(_idbTbl.querySelectorAll('tbody tr'));
+                    const _rowFor = (statFragment) =>
+                        _allRows.find(r =>
+                            r.querySelector('td') &&
+                            r.querySelector('td').textContent.includes(statFragment));
+
+                    const _setVal = (row, html) => {
+                        if (!row) return;
+                        const td = row.querySelectorAll('td')[1];
+                        if (td) td.innerHTML = `<strong>${html}</strong>`;
+                    };
+
+                    _setVal(_rowFor('Art images store'), `${imgCount.toLocaleString()} entries`);
+                    _setVal(_rowFor('Art metadata store'), `${metaCount.toLocaleString()} entries`);
+                    _setVal(_rowFor('Rel WS2 store'), `${relCount.toLocaleString()} entries`);
+                }).catch(e => {
+                    Lib.warn('idb', 'showStatsPanel: IDB count query failed:', e);
+                });
+            } else {
+                // Both disabled — replace all three "querying…" cells immediately.
+                const _allRows = Array.from(_idbTbl.querySelectorAll('tbody tr'));
+                [0, 1, 2].forEach(i => {
+                    const td = _allRows[i] && _allRows[i].querySelectorAll('td')[1];
+                    if (td) td.innerHTML = '<em style="color:#aaa">disabled</em>';
+                });
+            }
+        }
 
         // ── § Per-table section ───────────────────────────────────────────────
         const _tdLabel = (tableMode === 'multi' && _tableData.length > 1)
@@ -35717,6 +35853,7 @@ a { color: #1565c0; }`;
                 if (!rec) return null;
                 if (Date.now() - (rec.ts || 0) > _REL_IDB_TTL_MS) {
                     _artIdbDelete('rel-ws2', ckey).catch(() => {});
+                    _relIdbTtlEvictCount++;
                     return null;
                 }
                 return rec.data;
@@ -37117,6 +37254,10 @@ a { color: #1565c0; }`;
             await Promise.all(mbids.map(mbid =>
                 _artIdbDelete('rel-ws2', `${entityType}:${mbid}`).catch(() => {})
             ));
+            _relIdbRetryEvictCount += mbids.length;
+            _setInfoSub('mb-info-display-rel',
+                `🔗 Retry: evicted ${mbids.length} IDB record${mbids.length === 1 ? '' : 's'}`,
+                `Force-retry cleared ${mbids.length} rel-ws2 IDB record(s) for ${entityType}; fetching fresh from network`);
         }
         mbids.forEach(mbid => {
             document.querySelectorAll(`td.mb-rel-cell[data-mbid='${mbid}']`)
@@ -40098,6 +40239,27 @@ a { color: #1565c0; }`;
     let _artIdbPromise = null;
 
     /**
+     * Written by _artIdbSweepExpired() after each background sweep.
+     * Exposed in the Stats panel "IndexedDB Cache" section.
+     * @type {{ deleted: number, ts: number|null }}
+     */
+    let _artIdbLastSweep = { deleted: 0, ts: null };
+
+    /**
+     * Number of rel-ws2 records silently evicted by _relIdbGet() due to TTL
+     * expiry during this page session.  Exposed in the Stats panel.
+     * @type {number}
+     */
+    let _relIdbTtlEvictCount = 0;
+
+    /**
+     * Number of rel-ws2 records explicitly evicted by _relRetryMbids() during
+     * this page session (user-initiated retry).  Exposed in the Stats panel.
+     * @type {number}
+     */
+    let _relIdbRetryEvictCount = 0;
+
+    /**
      * Per-session in-memory image cache (Tier 1).
      * Maps canonical URL string → object URL string (blob:…).
      * Object URLs are revoked when the page unloads via a 'pagehide' listener.
@@ -40238,6 +40400,26 @@ a { color: #1565c0; }`;
                 reject(e);
             }
         }));
+    }
+
+    /**
+     * Returns the number of records currently in one IDB object store.
+     * Resolves to 0 when IDB is unavailable or the store does not exist.
+     *
+     * @param   {string} storeName  'images' | 'metadata' | 'rel-ws2'
+     * @returns {Promise<number>}
+     */
+    function _artIdbCountStore(storeName) {
+        return _artOpenIdb()
+            .then(db => new Promise(resolve => {
+                try {
+                    const tx  = db.transaction(storeName, 'readonly');
+                    const req = tx.objectStore(storeName).count();
+                    req.onsuccess = () => resolve(req.result || 0);
+                    req.onerror   = () => resolve(0);
+                } catch (_) { resolve(0); }
+            }))
+            .catch(() => 0);
     }
 
     /**
@@ -40431,11 +40613,19 @@ a { color: #1565c0; }`;
                     }
                 });
 
+                const relTtlMs = _REL_IDB_TTL_MS;
                 Promise.all([
                     sweepStore('images',   imgTtlMs),
                     sweepStore('metadata', metaTtlMs),
+                    sweepStore('rel-ws2',  relTtlMs),
                 ]).then(() => {
+                    _artIdbLastSweep = { deleted, ts: Date.now() };
                     Lib.debug('idb', `_artIdbSweepExpired: sweep complete — deleted ${deleted} expired record(s)`);
+                    if (deleted > 0) {
+                        _setInfoSub('mb-info-display-generic',
+                            `🗄️ IDB sweep: removed ${deleted} expired entr${deleted === 1 ? 'y' : 'ies'}`,
+                            `Background IndexedDB sweep deleted ${deleted} expired record(s) from images, metadata, and rel-ws2 stores`);
+                    }
                 }).catch(e => {
                     Lib.warn('idb', '_artIdbSweepExpired: sweep error:', e);
                 });

@@ -1,5 +1,33 @@
 [
   {
+    "version": "9.99.637",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Removed auto-clearing `setTimeout` calls from the retry-eviction (`mb-info-display-rel`) and IDB-sweep (`mb-info-display-generic`) toasts. Messages now persist in their sub-container until overwritten by the next message in the same slot, instead of disappearing after a fixed delay."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.636",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added async 'IndexedDB Cache' section (🗄️) to the Stats panel between Global Statistics and Table Details, showing: record counts for all three IDB stores (`images`, `metadata`, `rel-ws2`) fetched via `IDBObjectStore.count()`; L1 art memory cache size; L1 rel WS2 memory cache size; last sweep timestamp and deleted-record count; TTL eviction count (read-time); retry eviction count (user-initiated).",
+          "Added `_artIdbCountStore(storeName)` helper: opens the shared IDB and returns `objectStore.count()` as a Promise, resolving to 0 on any error.",
+          "Extended `_artIdbSweepExpired()` to also sweep the `rel-ws2` store (using `_REL_IDB_TTL_MS`); records the total deleted count and timestamp in module-level `_artIdbLastSweep`; fires a `mb-info-display-generic` toast ('🗄️ Sweep: removed N expired IDB records') cleared after 6 s when any records were deleted.",
+          "Added module-level `_relIdbTtlEvictCount` counter: incremented in `_relIdbGet()` whenever a record fails the TTL check and is deleted.",
+          "Added module-level `_relIdbRetryEvictCount` counter: incremented in `_relRetryMbids()` by the number of MBIDs whose IDB records were force-deleted; fires a `mb-info-display-rel` toast ('🔗 Retry: evicted N IDB records') cleared after 5 s."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.635",
     "date": "2026-05-27",
     "sections": [
