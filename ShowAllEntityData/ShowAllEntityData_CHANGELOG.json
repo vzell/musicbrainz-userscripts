@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.638",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Single-column sorts now show the same value-change shade banding as multi-column sorts: `applyMultiSortColumnTints()` synthesises a one-entry column list from `state.lastSortIndex` / `state.sortState` when `multiSortColumns` is empty, so the amber alternating tint (classes `mb-mscol-0a` / `mb-mscol-0b`) is applied to the sorted column and the column header is tinted whenever any single column is sorted. Tints are cleared on sort restore. The re-apply path after re-renders also covers the single-sort case."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.637",
     "date": "2026-05-27",
     "sections": [

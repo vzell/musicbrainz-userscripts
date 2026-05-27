@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.637+2026-05-27
+// @version      9.99.638+2026-05-27
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -33408,7 +33408,16 @@ a { color: #1565c0; }`;
         const applyMultiSortColumnTints = () => {
             // Clear any existing tint classes first so a re-apply starts clean
             clearMultiSortColumnTints();
-            if (state.multiSortColumns.length === 0) return;
+
+            // Build the column list to paint.
+            // Multi-sort: use the registered chain.
+            // Single-sort: synthesise a one-entry list so the same shade-flip
+            //   logic marks value-change boundaries in the sorted column.
+            let columnsToPaint = state.multiSortColumns;
+            if (columnsToPaint.length === 0) {
+                if (state.lastSortIndex < 0 || state.sortState === 0) return;
+                columnsToPaint = [{ colIndex: state.lastSortIndex, direction: state.sortState }];
+            }
 
             // Two-shade pairs per priority (light / slightly-darker of the same hue)
             // Index 0 = first shade (run starts), index 1 = second shade (run changes)
@@ -33430,7 +33439,7 @@ a { color: #1565c0; }`;
             const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
             const mainHeaderRow = table.querySelector('thead tr:first-child');
 
-            state.multiSortColumns.forEach((sortCol, priorityIdx) => {
+            columnsToPaint.forEach((sortCol, priorityIdx) => {
                 const colIdx = sortCol.colIndex;
                 const pair   = bodyPairs[priorityIdx % bodyPairs.length];
                 const hdrCls = hdrClasses[priorityIdx % hdrClasses.length];
@@ -33663,7 +33672,7 @@ a { color: #1565c0; }`;
 
                             // Apply or clear column tints AFTER runFilter() so the fresh tbody
                             // rows are already in the DOM when we paint.
-                            if (state.multiSortColumns.length > 0) {
+                            if (state.multiSortColumns.length > 0 || state.sortState !== 0) {
                                 applyMultiSortColumnTints();
                             } else {
                                 clearMultiSortColumnTints();
@@ -33811,10 +33820,13 @@ a { color: #1565c0; }`;
             th.appendChild(hdrFlex);
         });
 
-        // Restore multi-sort visuals and column tints if state already has columns in the chain
-        // (called on every re-render triggered by renderGroupedTable after a sort on multi-table pages)
+        // Restore sort visuals and column tints on every re-render (e.g. after renderGroupedTable).
+        // Multi-sort: restore chain visuals + tints.
+        // Single-sort: restore value-change tints for the active column.
         if (state.multiSortColumns.length > 0) {
             updateMultiSortVisuals();
+            applyMultiSortColumnTints();
+        } else if (state.lastSortIndex >= 0 && state.sortState !== 0) {
             applyMultiSortColumnTints();
         } else {
             clearMultiSortColumnTints();
