@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.638+2026-05-27
+// @version      9.99.641+2026-05-27
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -1685,6 +1685,19 @@
                          'connection limit (6) and avoids triggering CDN rate-limiting. Increase if your ' +
                          'network is fast and you see thumbnails loading slowly on very large tables; ' +
                          'decrease if CORS errors still appear in the console.'
+        },
+
+        sa_caa_io_threshold: {
+            label: 'Lazy-load art threshold (rows)',
+            type: 'number',
+            default: 500,
+            min: 0,
+            max: 50000,
+            description: 'When the number of data rows meets or exceeds this value, CAA/EAA artwork ' +
+                         'icons and JSON-API enrichment are loaded lazily via IntersectionObserver: ' +
+                         'only cells that scroll into the viewport trigger a request. For tables ' +
+                         'smaller than the threshold all artwork is loaded eagerly (existing ' +
+                         'behaviour). Set to 0 to always use eager loading regardless of table size.'
         },
 
         sa_caa_hover_preview: {
@@ -24175,86 +24188,50 @@ a { color: #1565c0; }`;
                 _incrLastPartialKey  = _partialKey;
                 _incrMatchSet        = _matchingSrc;
             }
-            const filteredRows = _matchingSrc.map(row => {
-                const clone = row.cloneNode(true);
-                // Strip CAA/EAA enrichment markers from every cell in the clone.
-                //
-                // Single-table source rows in allRows carry data-caa-enriched / data-eaa-enriched
-                // markers stamped by _artEnrichIcon during the initial render.  cloneNode(true)
-                // copies those markers to the filtered clone.  When initCaaPics() / initEaaPics()
-                // runs after renderFinalTable(), _artEnrichIcon sees the copied marker on each
-                // art anchor and returns early without calling _artBuildMultiRowArtCell — so
-                // the clone keeps the li elements from the source row but never calls
-                // _artHighlightImageLi, leaving art li items un-highlighted after every filter.
-                //
-                // Stripping the markers here ensures _artBuildMultiRowArtCell is called fresh
-                // for each rendered clone, which triggers _artHighlightImageLi to apply the
-                // active filter highlights.  The source rows in allRows keep their markers, so
-                // subsequent runFilter calls (user typing) are still served from the IDB/memory
-                // cache without redundant network calls — exactly the same approach used in the
-                // multi-table path's groupedRows.forEach clone loop.
-                Array.from(clone.cells).forEach(td => _stripTransientCellState(td));
-                // Restore art-cell expand state from the authoritative expandedCells
-                // map.  allRows are detached source rows that never carry live expand
-                // state, so expandedCells is the only way to replay the user's
-                // expand/collapse choices onto clones after every filter re-render.
-                _restoreArtExpandState(clone);
-                testRowMatch(clone, matchCtx);
-                return clone;
-            });
-            singleTableFilteredCount = filteredRows.length; // capture before async render
-            // Finalize colon-aligned columns on the filtered subset before re-render
-            if (Lib.settings.sa_enable_numeric_alignment !== false) {
-                finalizeSplitAlignedColumns(filteredRows, activeIntegerColumns);
-                finalizeRLCColumnWidths(filteredRows, activeIntegerColumns);
+            // In-place filter: show/hide allRows directly — no cloning, no re-render.
+            // allRows are the live DOM rows; the hook chain (CAA/EAA, ERG, collapsable,
+            // Picard, CDtoc) runs once at initial load and is preserved across filter
+            // passes because row identity never changes.
+            //
+            // For matched rows: testRowMatch(row, matchCtx) strips any stale highlight
+            // spans and re-applies new ones for the current query.
+            // For non-matched rows: highlight spans are stripped manually and the row is
+            // hidden with display:none (it remains in the DOM so sort order is stable).
+            const _matchSet = new Set(_matchingSrc);
+            const _filterTbody = document.querySelector('table.tbl tbody');
+            if (_filterTbody) {
+                allRows.forEach(row => {
+                    if (_matchSet.has(row)) {
+                        testRowMatch(row, matchCtx); // strips old highlights, adds new
+                        row.style.display = '';
+                    } else {
+                        // Strip stale highlights without running the full match scan.
+                        row.querySelectorAll('.mb-global-filter-highlight, .mb-column-filter-highlight')
+                            .forEach(n => n.replaceWith(document.createTextNode(n.textContent)));
+                        row.querySelectorAll('.mb-rel-icon-match')
+                            .forEach(a => a.classList.remove('mb-rel-icon-match'));
+                        row.style.display = 'none';
+                    }
+                });
+                // Sync the CAA/EAA bigbox: hide images for hidden rows, show for
+                // visible rows, and update the toggle-button badge count.
+                // Before Fix C, initCaaPics() rebuilt the bigbox from scratch on
+                // every filter pass (only matching rows were re-rendered).  Now that
+                // initCaaPics() runs once at initial load, the bigbox must be synced
+                // explicitly after each show/hide pass.
+                const _bbTable = _filterTbody.closest('table');
+                if (_bbTable) {
+                    _artUpdateBigBoxForTable(CAA_CTX, _bbTable, 0);
+                    _artUpdateBigBoxForTable(EAA_CTX, _bbTable, 0);
+                }
             }
-            renderFinalTable(filteredRows);
-            updateH2Count(filteredRows.length, totalAbsolute);
-
-            // Re-apply collapsable-column toggles on the freshly rendered DOM rows.
-            //
-            // Background: renderFinalTable() inserts *clones* of allRows into the DOM
-            // and leaves the originals in allRows (detached).  initCollapsableColumns()
-            // adds toggle spans and hides extra <li> items only on the rows that are in
-            // the DOM at the time it runs.  Because runFilter() is called from many
-            // places — user typing, column-filter changes, disk-load reset — the
-            // toggle state must be re-established here so that every re-render produces
-            // a fully functional collapsable-column table.
-            //
-            // initCollapsableColumns() is idempotent (cleans up stale state first) and
-            // returns immediately when the active page has no collapsableColumns, so
-            // this call is a cheap no-op on non-collapsable pages.
-            const _collapseTable = document.querySelector('table.tbl');
-            if (_collapseTable) initCollapsableColumns(_collapseTable);
-
-            // Re-inject erg expand buttons into the freshly rendered DOM rows.
-            // renderFinalTable() inserts cloneNode(true) copies — event listeners are
-            // not cloned, so ▶ buttons become inert after every sort or filter re-render.
-            // initExpandRGsFeature() removes stale [data-erg-btn] clones and re-injects
-            // a fresh live button into each qualifying <td>.
-            initExpandRGsFeature();
-
-            // CDtoc: re-inject tracklist sub-rows and re-wire toggle links after
-            // every re-render (cloneNode(true) strips event listeners).
-            _cdtocInitTracklistToggles();
-
-            // Refresh the Picard tagger column after every filter / sort re-render.
-            // rewireOnly=true: only re-attach listeners on existing picard cells;
-            // never append new tds.  During load-from-disk runFilter fires before
-            // initRelationshipsColumn — full injection there would append picard_td
-            // before rel_td, corrupting column order.  After the initial render,
-            // allRows source rows already carry picard_td so rewire-only is sufficient.
-            initPicardTaggerColumn(/* rewireOnly */ true);
-            // initCaaPics() MUST run before initEaaPics() and initCaaInlinePics() /
-            // initEaaInlinePics() — it creates _caaQueue used by all three.
-            initCaaPics();
-            initEaaPics();
-            // Inline CAA/EAA thumbnails must run after ERG (▶ button already present) and
-            // after initCaaPics() (so _caaQueue is initialised).
-            initCaaInlinePics();
-            initEaaInlinePics();
-            // Re-populate any rel cells that were not yet done when runFilter rebuilt
-            // the DOM (race: Phase-2 fetch queue was mid-flight when the user typed).
+            singleTableFilteredCount = _matchingSrc.length;
+            if (Lib.settings.sa_enable_numeric_alignment !== false) {
+                finalizeSplitAlignedColumns(_matchingSrc, activeIntegerColumns);
+                finalizeRLCColumnWidths(_matchingSrc, activeIntegerColumns);
+            }
+            updateH2Count(_matchingSrc.length, totalAbsolute);
+            // Re-populate any rel cells not yet enriched (Phase-2 fetch race).
             if (document.querySelector('td.mb-rel-cell:not([data-rel-done="1"])')) {
                 initRelationshipsColumn();
             }
@@ -33665,6 +33642,12 @@ a { color: #1565c0; }`;
                                 targetGroup.rows = sortedData;
                             } else {
                                 allRows = sortedData;
+                                // Reorder DOM rows to match the new sorted allRows so the
+                                // subsequent runFilter show/hide pass exposes them in the
+                                // correct sequence.  (Filter no longer re-renders the tbody;
+                                // it only toggles display:none on the existing DOM nodes.)
+                                const _sTbody = document.querySelector('table.tbl tbody');
+                                if (_sTbody) allRows.forEach(tr => _sTbody.appendChild(tr));
                             }
 
                             _invalidateFilterCache();
@@ -38124,13 +38107,12 @@ a { color: #1565c0; }`;
                     if (mainTable) {
                         addColumnFilterRow(mainTable);
                         makeTableSortableUnified(mainTable, 'main_table');
-                        // Note: initCollapsableColumns() is intentionally NOT called here.
-                        // The runFilter() call below re-renders the table (possibly with a
-                        // pre-filter applied) and its single-table branch calls
-                        // initCollapsableColumns() on the final DOM rows.  Calling it here
-                        // would operate on allRows before runFilter() clones and replaces
-                        // them, so all modifications would be discarded — and the global
-                        // collapse button would not yet have filterContainer in the DOM.
+                        // initCollapsableColumns runs here now that runFilter no longer
+                        // re-renders: the show/hide filter path keeps allRows as live DOM
+                        // rows, so collapse toggles are set up once and persist across
+                        // filter passes.  filterContainer is already in the DOM at this
+                        // point (addColumnFilterRow just ran above).
+                        initCollapsableColumns(mainTable);
                     }
                 }
 
@@ -38315,26 +38297,26 @@ a { color: #1565c0; }`;
                 if (_diskLoadFilterTable) addColumnFilterRow(_diskLoadFilterTable);
 
                 // CAA / EAA art thumbnails and big-pic strip:
-                // Do NOT call initCaaPics / initEaaPics / initCaaInlinePics /
-                // initEaaInlinePics here.
                 //
-                // For multi-table pages renderGroupedTable() calls them at its own
-                // tail — once for the initial `await renderGroupedTable(groupedRows)`
-                // above, and once more inside the `runFilter()` call below (which
-                // also calls renderGroupedTable).  Any additional explicit call here
-                // would create a third set of pending img.onload closures; because
-                // all three sets are async (browser image loads are never synchronous
-                // even for cache hits) they all fire after JS yields, incrementing
-                // the badge three times over — tripling the displayed count.
+                // Multi-table pages: renderGroupedTable() already called initCaaPics /
+                // initEaaPics etc. at its own tail (via the `runFilter()` call below
+                // which invokes renderGroupedTable).  Any additional explicit call here
+                // would double or triple badge counts — do NOT call them for multi.
                 //
-                // For single-table pages the runFilter() call below takes the
-                // single-table branch of runFilter(), which calls initCaaPics() /
-                // initEaaPics() / initCaaInlinePics() / initEaaInlinePics()
-                // directly.  An extra call here would double the badge count for
-                // the same reason.
-                //
-                // In both cases runFilter() (or renderGroupedTable via runFilter)
-                // is the authoritative and sufficient call site.
+                // Single-table pages: runFilter() no longer calls initCaaPics / EAA
+                // (the new show/hide filter path avoids re-render entirely), so they
+                // MUST be initialised here for disk-load.
+                if (activeDefinition.tableMode !== 'multi') {
+                    // initCaaPics() MUST run first — it creates _caaQueue consumed by
+                    // the others.
+                    initCaaPics();
+                    initEaaPics();
+                    initCaaInlinePics();
+                    initEaaInlinePics();
+                    if (_caaQueue && Lib.settings.sa_enable_caa_pics) {
+                        _caaQueue.onIdle(_showCaaCompletionToast);
+                    }
+                }
 
                 // Explicitly place the CAA/EAA global toggle buttons in the h2
                 // after the count stat has been created.
@@ -39894,6 +39876,14 @@ a { color: #1565c0; }`;
     // pass so the concurrency setting is always picked up fresh.
     // Null before the first render; never accessed outside the CAA feature block.
     let _caaQueue = null;
+
+    // IntersectionObserver instances for lazy CAA/EAA artwork loading.
+    // Created by _artInitLazyPics when allRows.length >= sa_caa_io_threshold.
+    // Each observer fires once per icon span (unobserved on first intersection)
+    // and persists for the table lifetime — never recreated by filter passes.
+    // Disconnected and nulled by initCaaPics() on every fresh initialisation.
+    let _caaArtIO = null;
+    let _eaaArtIO = null;
 
     /**
      * Active filter highlight context, set by runFilter() before the filter pass
@@ -42924,6 +42914,50 @@ a { color: #1565c0; }`;
 
 
     /**
+     * Lazy counterpart of `_artInitSmallPics` + `_artEnrichTable`.
+     *
+     * Creates (or reuses) a per-ctx IntersectionObserver stored in `_caaArtIO` /
+     * `_eaaArtIO` and observes every artwork-icon span in `table`.  When a span
+     * scrolls into the viewport the observer fires once (then unobserves the
+     * element) and enqueues both the icon background-image load (if
+     * `sa_caa_pics_small` is enabled) and the JSON-API enrichment call.
+     *
+     * Called from `_artInitPics` when `allRows.length >= sa_caa_io_threshold`.
+     * The observer persists across filter passes because, after Fix C, allRows
+     * are the live DOM rows — the observer is never recreated by runFilter().
+     *
+     * @param {ArtCtx}           ctx
+     * @param {HTMLTableElement} table
+     */
+    function _artInitLazyPics(ctx, table) {
+        let io = ctx.key === 'caa' ? _caaArtIO : _eaaArtIO;
+        if (!io) {
+            io = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    const icon   = entry.target;
+                    io.unobserve(icon);
+                    const anchor = icon.closest('a[href]');
+                    if (Lib.settings.sa_caa_pics_small) {
+                        if (_caaQueue) _caaQueue.enqueue(() => _artLoadIcon(ctx, icon));
+                        else           _artLoadIcon(ctx, icon);
+                    }
+                    if (anchor) {
+                        if (_caaQueue) _caaQueue.enqueue(() => _artEnrichIcon(ctx, anchor));
+                        else           _artEnrichIcon(ctx, anchor);
+                    }
+                });
+            }, { rootMargin: '200px 0px' });
+            if (ctx.key === 'caa') _caaArtIO = io;
+            else                   _eaaArtIO = io;
+        }
+        const icons = table.querySelectorAll(ctx.iconSel);
+        icons.forEach(icon => io.observe(icon));
+        Lib.debug(ctx.key,
+            `${ctx.key}InitLazyPics: observing ${icons.length} icon(s) via IntersectionObserver`);
+    }
+
+    /**
      * Loads thumbnails into all artwork-icon spans in `table` that are wrapped in
      * art-anchor elements.
      *
@@ -44458,14 +44492,27 @@ a { color: #1565c0; }`;
                 return;
             }
 
-            // Small-pic icon loading only applies when there is a dedicated column
-            // containing artwork-icon spans inside art-anchor elements.
+            // Small-pic icon loading and JSON-API enrichment.
+            // For large tables (allRows.length >= sa_caa_io_threshold) both are
+            // deferred to an IntersectionObserver that fires as rows scroll into
+            // the viewport, keeping the initial render fast and the request queue
+            // empty until artwork cells are actually visible.
+            // For small tables (or when IO is unavailable / threshold = 0) both
+            // run eagerly as before.
             if (hasColumn) {
-                _artInitSmallPics(ctx, table);
-                // Enrichment (count badges + multi-row cell build) is always done
-                // regardless of the sa_caa_pics_small setting.  _artEnrichIcon's
-                // own idempotency guard prevents double-work when both paths fire.
-                _artEnrichTable(ctx, table);
+                const _ioThreshold = Lib.settings.sa_caa_io_threshold ?? 500;
+                const _useIO = typeof IntersectionObserver !== 'undefined' &&
+                               _ioThreshold > 0 &&
+                               allRows.length >= _ioThreshold;
+                if (_useIO) {
+                    _artInitLazyPics(ctx, table);
+                } else {
+                    _artInitSmallPics(ctx, table);
+                    // Enrichment (count badges + multi-row cell build) is always done
+                    // regardless of the sa_caa_pics_small setting.  _artEnrichIcon's
+                    // own idempotency guard prevents double-work when both paths fire.
+                    _artEnrichTable(ctx, table);
+                }
             }
 
             // Single-pass strategy: scan links first (read-only), create the
@@ -45952,6 +45999,13 @@ a { color: #1565c0; }`;
         // allowed to finish naturally — their in-flight requests cannot be
         // recalled once submitted to the browser.
         if (_caaQueue) _caaQueue.cancel();
+
+        // Disconnect any lazy-load IntersectionObservers from a previous
+        // initialisation (e.g. disk-load after initial fetch, or page re-use).
+        // Observed elements from the old DOM set are discarded so the new call
+        // to _artInitLazyPics starts fresh with the current table rows.
+        if (_caaArtIO) { _caaArtIO.disconnect(); _caaArtIO = null; }
+        if (_eaaArtIO) { _eaaArtIO.disconnect(); _eaaArtIO = null; }
 
         // (Re-)create the shared request queue so the current sa_caa_fetch_concurrency
         // setting is picked up on every render pass.
