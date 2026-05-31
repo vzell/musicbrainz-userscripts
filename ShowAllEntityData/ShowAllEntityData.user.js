@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.638+2026-05-27
+// @version      9.99.649+2026-05-27
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -8048,6 +8048,7 @@
                 overflow-wrap: normal  !important;
                 word-break:    normal  !important;
             }
+
         `;
 
         document.head.appendChild(style);
@@ -8075,6 +8076,144 @@
      *
      * @param {HTMLTableElement} table
      */
+    /**
+     * Normalise every `<span class="comment">` in `table` and lock disambiguation
+     * text against line-wrapping.
+     *
+     * **Strategy**
+     *
+     * Instead of restructuring the DOM (which conflicts with ERG / CAA injectors
+     * that run before or after this function), we:
+     *
+     *   1. Clean up the interior of every `span.comment` so its `<bdi>` child
+     *      contains all text with no surrounding whitespace-only text nodes or
+     *      orphan `(` / `)` siblings (Variant A / B normalisation).
+     *   2. Set `white-space: nowrap` on every `span.comment` and its `<bdi>`.
+     *   3. Set `white-space: nowrap` on every **inline container** (`<td>` or `<li>`)
+     *      that directly holds `<a> + <span.comment>` siblings.  This prevents the
+     *      browser from breaking between the title anchor and the comment block.
+     *      Block-level children (`<ul>`, `<li>`) are unaffected by nowrap on their
+     *      parent when they establish their own block formatting context — but a
+     *      `<li>` that contains inline `<a>+<span.comment>` content benefits
+     *      directly from having `white-space: nowrap` set on itself.
+     *
+     * **Why not DOM wrapping?**
+     * Wrapping `<a>+<span.comment>` in an extra `<span>` is fragile: ERG injection
+     * (`initExpandRGsFeature`) locates the `<a>` and prepends a `▶` button before
+     * it — if the `<a>` is already inside a wrapper span, the button ends up inside
+     * the wrapper too, doubling the `▶` and breaking layout.
+     *
+     * **Why `white-space: nowrap` on the container is safe**
+     * The column measurement sandbox already runs with `white-space: nowrap !important`
+     * (via `.mb-measure-nowrap`), so measured widths already equal the single-line
+     * width of all content.  Setting nowrap on the live container just makes the
+     * live cell match what was measured — no min-content change, no re-layout.
+     * For `<td>` cells that contain `<ul>` lists (country, date columns), we do NOT
+     * set nowrap on the `<td>` — we only set it on the `<li>` elements that directly
+     * hold inline anchor+comment pairs.
+     *
+     * Idempotent.  Also called in `toggleAutoResizeColumns` before measurement.
+     *
+     * @param {HTMLTableElement} table
+     */
+    function normalizeCommentSpans(table) {
+        if (!table) return;
+
+        // ── Part A: normalise span.comment interiors ──────────────────────────
+        //
+        // For each span.comment:
+        //   • Remove pure-whitespace text-node children (\\n    around <bdi>).
+        //   • Move a leading non-empty text node (Variant A's "(") into <bdi>.
+        //   • Move a trailing non-empty text node (Variant A's ")") into <bdi>.
+        //   • Apply white-space:nowrap to span.comment and its <bdi>.
+
+        table.querySelectorAll('td span.comment').forEach(commentSpan => {
+
+            // Snapshot children; DOM is mutated inside the loop.
+            Array.from(commentSpan.childNodes).forEach(node => {
+                if (node.nodeType !== Node.TEXT_NODE) return;
+
+                if (node.textContent.trim() === '') {
+                    // Pure whitespace before/after <bdi> → remove.
+                    node.remove();
+                    return;
+                }
+
+                // Non-empty leading text (Variant A "(") before a <bdi>:
+                // prepend into <bdi> then remove.
+                const nextEl = node.nextSibling;
+                if (
+                    nextEl &&
+                    nextEl.nodeType === Node.ELEMENT_NODE &&
+                    nextEl.tagName   === 'BDI'
+                ) {
+                    const trimmed = node.textContent.trim();
+                    if (
+                        nextEl.firstChild &&
+                        nextEl.firstChild.nodeType === Node.TEXT_NODE
+                    ) {
+                        nextEl.firstChild.textContent =
+                            trimmed + nextEl.firstChild.textContent;
+                    } else {
+                        nextEl.insertBefore(
+                            document.createTextNode(trimmed),
+                            nextEl.firstChild
+                        );
+                    }
+                    node.remove();
+                }
+            });
+
+            // Non-empty trailing text node after </bdi> (Variant A ")"):
+            // append into <bdi> to kill the bidi-boundary break.
+            const bdi = commentSpan.querySelector(':scope > bdi');
+            if (bdi) {
+                const afterBdi = bdi.nextSibling;
+                if (
+                    afterBdi &&
+                    afterBdi.nodeType === Node.TEXT_NODE &&
+                    afterBdi.textContent.trim() !== ''
+                ) {
+                    bdi.appendChild(afterBdi);
+                }
+                bdi.style.whiteSpace = 'nowrap';
+            }
+
+            commentSpan.style.whiteSpace = 'nowrap';
+        });
+
+        // ── Part B: set white-space:nowrap on each inline container that
+        //           directly holds <a>+<span.comment> siblings ────────────────
+        //
+        // The break between </a> and <span class="comment"> occurs in the inline
+        // formatting context of their shared parent (a <td> or a <li>).  We set
+        // white-space:nowrap on that parent so the browser cannot break there.
+        //
+        // Rules:
+        //   • If the <td> itself directly contains <a>+<span.comment> (no <ul>
+        //     wrapper), set nowrap on the <td>.
+        //   • If the content is inside <li> elements, set nowrap on each <li>
+        //     that contains at least one span.comment child.
+        //   • We do NOT set nowrap on a <td> whose primary content is a <ul>
+        //     list — only on the individual <li>s that need it.
+        //
+        // Detection: a container "needs nowrap" when it has at least one
+        // span.comment as a direct child (querySelector ':scope > span.comment').
+
+        table.querySelectorAll('td').forEach(td => {
+            // Case 1: span.comment is a direct child of <td>.
+            if (td.querySelector(':scope > span.comment')) {
+                td.style.whiteSpace = 'nowrap';
+            }
+            // Case 2: span.comment is inside <li> children.
+            td.querySelectorAll('li').forEach(li => {
+                if (li.querySelector(':scope > span.comment')) {
+                    li.style.whiteSpace = 'nowrap';
+                }
+            });
+        });
+    }
+
     /**
      * Resets the MusicBrainz `even`/`odd` CSS class on every visible `<tbody>` row
      * in `table` according to the row's current visual position.
@@ -8245,6 +8384,9 @@
                 cell.dataset.mbStickyBg = restBg;
                 cell.dataset.mbRestBg   = restBg;
                 cell.classList.add('mb-sticky-col');
+
+                // span.comment </bdi>) bidi-boundary wrap is handled globally by
+                // normalizeCommentSpans(), called after every render pass.
 
                 // Snapshot all non-sticky cells (clear inline bg so CSS zebra wins).
                 Array.from(tr.cells).forEach(td => {
@@ -16668,6 +16810,14 @@ a { color: #1565c0; }`;
                     : 'Building batch…';
             }
 
+            // ── PRE-MEASUREMENT DOM NORMALISATION ──────────────────────────
+            // Normalise span.comment nodes in the source table BEFORE cloning into
+            // the measurement sandbox.  This ensures the cloned content is identical
+            // to what the live cell will look like after the post-render
+            // normalizeCommentSpans() pass, so the measured column width exactly
+            // matches the width the live cell needs to render without wrapping.
+            normalizeCommentSpans(table);
+
             // ── BATCH PHASE ────────────────────────────────────────────────────
             // All cells are cloned into a DocumentFragment — no layout is triggered
             // during this phase because the fragment is detached from the DOM.
@@ -16797,9 +16947,18 @@ a { color: #1565c0; }`;
                 }
             });
 
-            // Calculate total table width (only from visible columns)
+            // Calculate total table width as the sum of the ceiled per-column
+            // min-widths.  MUST use Math.ceil here — th.style.minWidth is set to
+            // Math.ceil(w + 20) above, so the table width must equal the sum of
+            // those ceiled values exactly.  Using raw (w + 20) produces a total
+            // that is smaller than the sum of the th minWidths (by up to
+            // numColumns px due to fractional rounding), causing table-layout:auto
+            // to be unable to satisfy all minWidth constraints within the given
+            // table width and silently shrink the widest columns — exactly the
+            // Title / Release / Label columns that have the longest content —
+            // making them narrower than their content and causing line wrapping.
             const totalWidth = columnWidths.reduce((sum, w, idx) => {
-                return columnVisible[idx] ? sum + w + 20 : sum;
+                return columnVisible[idx] ? sum + Math.ceil(w + 20) : sum;
             }, 0);
             table.style.width = `${totalWidth}px`;
             table.style.minWidth = `${totalWidth}px`;
@@ -24433,6 +24592,9 @@ a { color: #1565c0; }`;
         // Reapply zebra striping after every filter/sort: row order may have changed
         // and hidden rows shift the visible index sequence.
         document.querySelectorAll('table.tbl').forEach(applyZebraStriping);
+        // Normalise span.comment DOM: move orphan ")" text nodes after </bdi> into
+        // the <bdi> to prevent bidi-boundary soft-wrap at the </bdi>→")" boundary.
+        document.querySelectorAll('table.tbl').forEach(normalizeCommentSpans);
         if (Lib.settings.sa_enable_sticky_columns !== false) {
             document.querySelectorAll('table.tbl').forEach(applyStickyColumn);
         }
@@ -27735,6 +27897,9 @@ a { color: #1565c0; }`;
                 t.style.borderSpacing  = '0';
             });
             document.querySelectorAll('table.tbl').forEach(applyZebraStriping);
+            // Normalise span.comment DOM: move orphan ")" text nodes after </bdi> into
+            // the <bdi> to prevent bidi-boundary soft-wrap at the </bdi>→")" boundary.
+            document.querySelectorAll('table.tbl').forEach(normalizeCommentSpans);
             if (Lib.settings.sa_enable_sticky_columns !== false) {
                 document.querySelectorAll('table.tbl').forEach(applyStickyColumn);
             }
@@ -30117,6 +30282,9 @@ a { color: #1565c0; }`;
             t.style.borderSpacing  = '0';
         });
         document.querySelectorAll('table.tbl').forEach(applyZebraStriping);
+        // Normalise span.comment DOM: move orphan ")" text nodes after </bdi> into
+        // the <bdi> to prevent bidi-boundary soft-wrap at the </bdi>→")" boundary.
+        document.querySelectorAll('table.tbl').forEach(normalizeCommentSpans);
         if (Lib.settings.sa_enable_sticky_columns !== false) {
             document.querySelectorAll('table.tbl').forEach(applyStickyColumn);
         }

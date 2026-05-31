@@ -1,5 +1,138 @@
 [
   {
+    "version": "9.99.649",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Three regressions from v9.99.648's DOM-wrapping approach: (1) double '▶' button — `normalizeCommentSpans` wrapped `<a>+<span.comment>` in `mb-nowrap-pair` before ERG injection ran; ERG then found the `<a>` inside the wrapper and prepended another `▶` inside it, producing two buttons; (2) `<a>+<span.comment>` pairs inside `<ul><li>` were not wrapped because Part A only walked direct `<td>` children; (3) `mb-nowrap-pair` wrapper boundaries between multiple pairs in the same cell were still wrap points. Replaced DOM-wrapping entirely with a container `white-space: nowrap` approach: Part A normalises `span.comment` interiors (same as before); Part B sets `white-space: nowrap` on each `<td>` that directly contains a `span.comment` child, and on each `<li>` that directly contains a `span.comment` child. This is safe because the measurement sandbox already uses `white-space: nowrap !important` — `th.style.minWidth` is already the full single-line width — so setting nowrap on the live container makes it match the measurement exactly, with no min-content change or re-layout."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.648",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Comment-span wrap still occurring after v9.99.647 in two new ways: (1) wrap between `</a>` and `<span class=\"comment\">` — the `\\n    ` text node between them was not being removed reliably (Step 1's guard was too strict), causing the entire comment block to drop to a new row after the title anchor; (2) cells with multiple `<a>+<span.comment>` pairs separated by `,` text nodes (e.g. Label column with CBS, Columbia, Legacy, Sony Music) — Step 1 never fires for those pairs because the preceding sibling of each `<span.comment>` is the `,\\n  ` text node (not pure-whitespace), leaving every comment wrappable. Rewrote `normalizeCommentSpans` with a new Part A: walks each `<td>`'s direct children and wraps each `<a>` + its immediately-following `<span class=\"comment\">` (plus any pure-whitespace text nodes between them) in a `<span class=\"mb-nowrap-pair\" style=\"white-space:nowrap\">`. This robustly prevents the break between any anchor and its comment, handles multiple pairs per cell, and is idempotent (guards on the `mb-nowrap-pair` class). Part B (interior normalisation of `span.comment`) is retained: removes whitespace-only child text nodes, consolidates Variant-A `(` / `)` into `<bdi>`, and applies `white-space:nowrap` to `span.comment` and `<bdi>`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.647",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Comment-span wrap still occurring after v9.99.646: debug HTML revealed that `normalizeCommentSpans` was not handling the second MusicBrainz DOM variant for `span.comment`. Variant A (assumed so far) has `(` and `)` as separate text-node siblings of `<bdi>`. Variant B (the actual failing cases) has all content already inside `<bdi>`, with only pure-whitespace text nodes (`\\n      `) surrounding it — these collapse to spaces and create wrap opportunities before and after the `<bdi>`. Steps 2–4 were guarded by `node.textContent.trim() !== ''` which correctly skipped pure-whitespace nodes but left them in place, causing the browser to still break there. Rewrote `normalizeCommentSpans` to explicitly remove ALL pure-whitespace text-node children of `span.comment` (Step 2), handle Variant A leading/trailing text (Steps 3–4), and then apply `white-space: nowrap` to both `span.comment` and its `<bdi>` child (Step 5). The `white-space: nowrap` is now safe because: (a) all whitespace-only text nodes have been removed so no wrap opportunities remain internally, and (b) the `<bdi>` content's min-content width is unchanged — only surrounding whitespace nodes were removed. Also fixed `totalWidth` rounding in `toggleAutoResizeColumns`: the reduce now uses `Math.ceil(w + 20)` to match `th.style.minWidth`, preventing the table from being set narrower than the sum of its column `minWidth` constraints."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.646",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Syntax error in v9.99.645: a Python string `\\n` in the inline comment for Step 2 of `normalizeCommentSpans` was written as a literal newline into the JS source, splitting the `//` comment across two lines and leaving a bare string token that the JS parser rejected. Fixed by escaping to `\\\\n` in the comment text.",
+          "Step 2 of `normalizeCommentSpans` improved: instead of merely stripping trailing whitespace from the `(\\n    ` text node preceding `<bdi>` (which left `(` as a standalone text sibling still able to create a break at the span boundary), Step 2 now moves the trimmed `(` content into the front of the `<bdi>` and removes the text node entirely. The resulting structure is `<span class=\"comment\"><bdi>(disambiguation text)</bdi></span>` — the entire comment content is inside a single `<bdi>`, with no text nodes outside it and no break opportunities remaining inside `span.comment`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.645",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Comment-span wrap still occurring after v9.99.644: the provided post-normalisation HTML revealed a third break point that was not being fixed. The full MusicBrainz `span.comment` source structure contains three independent soft-wrap opportunities: (A) a pure-whitespace text node between `</a>` and `<span class=\"comment\">` — fixed in v9.99.644 Pass 1; (B) whitespace inside `span.comment` between the opening `(` text node and the `<bdi>` child, i.e. `(\\n    <bdi>` — the newline+spaces collapse to a space giving a break between `(` and the text; (C) the `</bdi>)` bidi-boundary from earlier fixes. `normalizeCommentSpans` is now rewritten as a single consolidated per-span loop handling all three: Step 1 removes (A) as before; Step 2 strips trailing whitespace from any text node immediately preceding a `<bdi>` inside `span.comment` (turning `(\\n    ` into `(`), eliminating break point (B); Step 3 moves non-empty text after `</bdi>` into the `<bdi>`, eliminating (C). The function is still idempotent and still called before the measurement batch in `toggleAutoResizeColumns`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.644",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Column wrap still occurring after v9.99.643: `normalizeCommentSpans` only fixed the `</bdi>)` bidi-boundary break inside `span.comment`, but a second independent break point remained — the whitespace-only text node (`\\n    `) between `</a>` and `<span class=\"comment\">`, which collapses to a space and gives the browser a valid line-break opportunity before the entire comment block. Added Pass 1 to `normalizeCommentSpans`: for every `span.comment` whose immediately preceding sibling is a pure-whitespace text node preceded by an element, that text node is removed, making `</a>` and `<span class=\"comment\">` adjacent with no intervening break point. Also added a `normalizeCommentSpans(table)` call inside `toggleAutoResizeColumns` before the measurement batch phase, so the source DOM is normalised before nodes are cloned into the measurement sandbox — ensuring the measured column width exactly matches the width the live cell needs after normalisation."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.643",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Infinite loop / 100% CPU hang introduced in v9.99.642: `normalizeCommentSpans()` used `Array.from(commentSpan.childNodes)` to snapshot child nodes, then decremented the loop index `i--` after moving a text node into its preceding `<bdi>`. Because `children` is a static array, the already-moved text node remained at `children[i+1]` after `appendChild`; the `i--` caused the same `<bdi>`/text-node pair to be re-evaluated on every iteration, looping forever. Fixed by removing the `i--`: after `node.appendChild(next)` the loop's own `i++` advances to `children[i+1]` (the now-detached text node), which cannot match `tagName === 'BDI'`, so the condition is safely false and the loop continues to `children[i+2]`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.642",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Bidi-boundary `</bdi>)` wrap — third and final fix (supersedes v9.99.639–641): the CSS approach used in v9.99.641 (`table.tbl td span.comment { white-space: nowrap }`) was fundamentally flawed: applying `white-space: nowrap` to `span.comment` in the live table changes those spans' min-content width to their full single-line text width, causing `table-layout: auto` to re-redistribute column widths on every layout pass — squeezing other columns or leaving the comment column too narrow, so the entire comment block dropped to a new row. Replaced with DOM normalisation: a new `normalizeCommentSpans(table)` function walks every `td span.comment`, finds any non-empty text node that immediately follows a `<bdi>` child (the orphan `)`), and moves it inside the preceding `<bdi>`. This removes the inter-element boundary that the browser's bidi-isolate algorithm treats as a soft wrap opportunity, without altering any inline metrics or triggering layout recalculation side-effects. Called at all three post-render sites (filter/sort path, main render end, grouped-table/CAA path) alongside `applyZebraStriping`. The CSS rule from v9.99.641 and the per-cell JS from v9.99.640 were both removed."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.641",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Bidi-boundary `</bdi>)` wrap in non-sticky columns (e.g. 'Release title') — the fix from v9.99.639/640 only covered sticky column `<td>` cells via JS in `applyStickyColumn._apply()`. Non-sticky cells (e.g. Release title on recording pages) suffered the same `</bdi>)` wrap: the closing \")\" after the `<bdi>` in `<span class=\"comment\">` broke to a new visual row because `<bdi>`'s `unicode-bidi:isolate` UA-stylesheet property terminates the bidi run and creates a soft wrap opportunity before the \")\" text node. Fixed by replacing the per-cell JS approach with a single global CSS rule injected in `applyStickyHeaders()`: `table.tbl td span.comment { white-space: nowrap }`. This covers all cells — sticky and non-sticky — in one declaration. The column measurement sandbox already uses `white-space:nowrap` via `.mb-measure-nowrap`, so measured column widths already account for the full single-line comment width; the CSS rule makes the live cell match. The obsolete `cell.style.whiteSpace = 'nowrap'` statement on sticky `<td>` cells (v9.99.640) was removed."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.640",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Sticky column content wrap — second fix (supersedes v9.99.639): the v9.99.639 fix applied `white-space: nowrap` only to `span.comment` elements, which stopped the `</bdi>)` bidi-boundary break but exposed a second, outer wrap point: the whitespace text node between `</a>` and `<span class=\"comment\">` allowed the entire comment block to drop to a new visual row. Root cause: two independent wrap opportunities exist in sticky Title/Name/Recording cells — (1) the inter-element whitespace between the title anchor and the comment span, and (2) the `unicode-bidi: isolate` bidi-boundary inside `span.comment` before the trailing `)`. The measurement div correctly captures the full single-line width under `white-space: nowrap`, but the live `<td>` had no such constraint. Fix: apply `white-space: nowrap` directly to the sticky `<td>` cell in `applyStickyColumn._apply()`, eliminating all wrap opportunities in one declaration. Safe because sticky column cells contain only inline content (anchors, bdi, span.comment) and never block-level elements."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.639",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Sticky column (Title/Name/etc.) optimal width not properly calculated for cells containing `<span class=\"comment\">(<bdi>…text…</bdi>)</span>`: the closing \")\" text node after `</bdi>` was wrapping to a new visual line due to the browser treating the `unicode-bidi: isolate` boundary of `<bdi>` as a soft wrap opportunity. Fixed by applying `white-space: nowrap` to every `span.comment` element inside sticky body cells in `applyStickyColumn._apply()`, preventing the `</bdi>)` bidi-boundary line-break in the live table. Affects all multi-table relationship pages (e.g. artist/relationships) where recording titles include live-event disambiguation comments."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.638",
     "date": "2026-05-27",
     "sections": [
