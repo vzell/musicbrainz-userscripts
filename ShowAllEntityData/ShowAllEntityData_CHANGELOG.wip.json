@@ -1,0 +1,38 @@
+[
+  {
+    "version": "WIP.3",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed regression (WIP.1): the CAA/EAA big-picture strip above single-table pages always showed all images regardless of the active filter. Root cause: before Fix C, `runFilter()` called `initCaaPics()` on every keystroke which rebuilt the bigbox from only the matching rows; after Fix C, `initCaaPics()` runs once at initial load so the bigbox contained every row. Fix: after the new show/hide pass in `runFilter()`, call `_artUpdateBigBoxForTable(CAA_CTX/EAA_CTX, table, 0)` — which was already used by sub-table filters — to hide wrappers for hidden rows and update the toggle-button badge count."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Lazy CAA/EAA artwork loading via IntersectionObserver for large tables. Added `sa_caa_io_threshold` setting (default 500 rows): when the data-row count meets or exceeds the threshold, a persistent `IntersectionObserver` (stored in `_caaArtIO` / `_eaaArtIO`) is created once by `_artInitLazyPics` and defers both icon background-image loading (`_artLoadIcon`) and JSON-API enrichment (`_artEnrichIcon`) until each art-icon cell scrolls within 200 px of the viewport. Below the threshold, all artwork loads eagerly as before. Setting to 0 disables the observer entirely. The observer persists across filter passes because, after WIP.1, `allRows` rows are the live DOM rows — `initCaaPics()` is never called by `runFilter()`, so the observer is never recreated per keystroke. `initCaaPics()` disconnects any previous `_caaArtIO` / `_eaaArtIO` on fresh initialisation."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Filter performance fix (single-table mode): `runFilter()` no longer clones matching rows, replaces the tbody, or re-runs the hook chain (CAA/EAA, ERG, collapsable columns, Picard, CDtoc) on every keystroke. Instead, `allRows` are kept as live DOM rows throughout the session; each filter pass strips stale highlight spans and applies `display:none` / `display:''` directly on those rows. Sort reorders the tbody in-place (`appendChild` loop) before the show/hide pass so visible rows appear in sorted order. `initCollapsableColumns` runs once after initial render (fetch and disk-load) rather than on every filter invocation. `initCaaPics` / `initEaaPics` / `initCaaInlinePics` / `initEaaInlinePics` are similarly hoisted to the disk-load single-table path where they were previously deferred to `runFilter()`."
+        ]
+      }
+    ]
+  }
+]
