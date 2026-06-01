@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.649+2026-05-27
+// @version      9.99.652+2026-06-01
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -16470,6 +16470,44 @@ a { color: #1565c0; }`;
             }
             document.body.removeChild(measureDiv);
 
+            // ── collapse-toggle extra space ───────────────────────────────────────
+            // .mb-cell-collapse-toggle is position:absolute (right:4px) and invisible
+            // to the measurement pass above.  Widen any column that contains
+            // td.mb-has-collapse-toggle cells so the toggle never overlaps text.
+            {
+                const _colToggleSample = {};
+                table.querySelectorAll('tbody td.mb-has-collapse-toggle').forEach(cell => {
+                    const row = cell.parentElement;
+                    if (!row || row.style.display === 'none') return;
+                    const colIndex = cell.cellIndex;
+                    if (colIndex < 0 || colIndex >= columnCount || !columnVisible[colIndex]) return;
+                    if (_colToggleSample[colIndex]) return;
+                    const toggle = cell.querySelector(':scope > .mb-cell-collapse-toggle');
+                    if (toggle) _colToggleSample[colIndex] = { toggle, th: headers[colIndex] };
+                });
+
+                for (const [colIndexStr, { toggle, th }] of Object.entries(_colToggleSample)) {
+                    const colIndex = +colIndexStr;
+                    const _tDiv = document.createElement('div');
+                    _tDiv.style.cssText = 'position:absolute;left:-9999px;top:0;display:inline-block;visibility:hidden;';
+                    const _tClone = toggle.cloneNode(true);
+                    _tClone.style.position = 'static';
+                    _tDiv.appendChild(_tClone);
+                    document.body.appendChild(_tDiv);
+                    const toggleWidth = _tDiv.offsetWidth;
+                    document.body.removeChild(_tDiv);
+
+                    const thPaddingRight = th
+                        ? (parseFloat(window.getComputedStyle(th).paddingRight) || 0)
+                        : 0;
+                    const extra = Math.max(0, toggleWidth + 16 - thPaddingRight);
+                    if (extra > 0) {
+                        columnWidths[colIndex] += extra;
+                        Lib.debug('resize', `Sub-table "${categoryName}", Column ${colIndex}: +${extra}px for collapse-toggle (toggle=${toggleWidth}px, thPaddingRight=${thPaddingRight}px)`);
+                    }
+                }
+            }
+
             // Apply widths via colgroup
             let colgroup = table.querySelector('colgroup');
             if (!colgroup) {
@@ -16900,6 +16938,53 @@ a { color: #1565c0; }`;
 
             // Reset container for the next source table
             _measureContainer.innerHTML = '';
+
+            // ── PASS 2: collapse-toggle extra space ──────────────────────────────
+            // .mb-cell-collapse-toggle spans are position:absolute (right:4px) and are
+            // excluded from the normal flow, so Pass 1 above never accounts for their
+            // width.  When auto-resize sizes a column to the text-content minimum the
+            // toggle widget visually overlaps the rightmost characters.
+            // Fix: measure each toggle once per column and widen columnWidths so there
+            // is a clear gap between the content right edge and the toggle left edge.
+            {
+                const _colToggleSample = {};
+                table.querySelectorAll('tbody td.mb-has-collapse-toggle').forEach(cell => {
+                    const row = cell.parentElement;
+                    if (!row || row.style.display === 'none') return;
+                    const colIndex = cell.cellIndex;
+                    if (colIndex < 0 || colIndex >= columnCount || !columnVisible[colIndex]) return;
+                    if (_colToggleSample[colIndex]) return;
+                    const toggle = cell.querySelector(':scope > .mb-cell-collapse-toggle');
+                    if (toggle) _colToggleSample[colIndex] = { cell, toggle };
+                });
+
+                for (const [colIndexStr, { cell, toggle }] of Object.entries(_colToggleSample)) {
+                    const colIndex = +colIndexStr;
+                    // Render toggle as static so its layout width is measurable
+                    const _tDiv = document.createElement('div');
+                    _tDiv.style.cssText = 'display:inline-block;';
+                    const _tClone = toggle.cloneNode(true);
+                    _tClone.style.position = 'static';
+                    _tDiv.appendChild(_tClone);
+                    _measureContainer.appendChild(_tDiv);
+                    const toggleWidth = _tDiv.offsetWidth;
+                    _measureContainer.innerHTML = '';
+
+                    // The measurement _div uses the <th> padding, not the <td> padding.
+                    // extra = space the toggle needs from the right edge
+                    //         (toggleWidth + right:4px offset + 12px safety buffer)
+                    //         minus what the th's right padding already "pays for".
+                    const th = headers[colIndex];
+                    const thPaddingRight = th
+                        ? (parseFloat(window.getComputedStyle(th).paddingRight) || 0)
+                        : 0;
+                    const extra = Math.max(0, toggleWidth + 16 - thPaddingRight);
+                    if (extra > 0) {
+                        columnWidths[colIndex] += extra;
+                        Lib.debug('resize', `Table ${tableIndex}, Column ${colIndex}: +${extra}px for collapse-toggle (toggle=${toggleWidth}px, thPaddingRight=${thPaddingRight}px)`);
+                    }
+                }
+            }
 
             Lib.debug('resize', `Table ${tableIndex}: ${_jobs.length} unique cells measured in single reflow`);
 

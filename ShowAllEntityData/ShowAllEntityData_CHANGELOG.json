@@ -1,5 +1,29 @@
 [
   {
+    "version": "9.99.652",
+    "date": "2026-06-01",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Auto-resize: collapse-toggle reservation increased — the offset constant in `extra = max(0, toggleWidth + offset − thPaddingRight)` was raised from 4px (the toggle's CSS `right` value) to 16px (+12px safety buffer). v9.99.651's 4px offset left ≈1–3px of visual overlap with the closing character of long disambiguation comments; the larger offset ensures a ≥12px gap between the text right edge and the toggle left edge even with sub-pixel font rendering differences between the measurement context and the live page."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.651",
+    "date": "2026-06-01",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Auto-resize: collapse-toggle overlap in collapsable columns — corrected formula and added fix to sub-table resize path. v9.99.650 computed `extra = toggleWidth + 4 − cellPaddingRight` (subtracting the td's 22px), but the measurement `_div` uses the `<th>` padding, so the correct baseline is `extra = toggleWidth + 4 − thPaddingRight`. With a typical th right-padding of ~5px this raises the extra from 12px to ~29px, providing a 20px safety margin between text and toggle. The same fix is now also applied in `toggleSubTableAutoResize` (per-sub-table ↔ button on multi-table pages), which previously had no toggle compensation at all."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.649",
     "date": "2026-05-27",
     "sections": [
