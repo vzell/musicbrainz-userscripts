@@ -1,5 +1,29 @@
 [
   {
+    "version": "9.99.654",
+    "date": "2026-06-01",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`applyRenderMultiRowCells` did not split the 'Relationship types' column on instrument-* pages (instrument-releases, instrument-artists, instrument-recordings). Root cause: the splitting loop only recognised standalone comma text nodes (`/^\\s*,\\s*$/`) as separators — correct for element-separated columns like Catalog# whose HTML has `<span>…</span>,<span>…</span>` — but MusicBrainz renders Relationship types as a single plain text node (`instrument (as \"lead guitar\"), instrument (as \"rhythm guitar\")`), so no standalone comma node exists. Fixed by replacing the simple `if`/`else` check with a depth-aware top-level-comma finder: for every text node the loop now finds all comma positions at parenthesis depth 0 and splits there, creating one synthetic text node per part. Commas inside parentheses (e.g. `vocal (as \"soprano, alto\")`) are left intact."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.653",
+    "date": "2026-06-01",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Adjust 'Auto-resize columns threshold' to 10000 now that we have a much faster implementation."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.652",
     "date": "2026-06-01",
     "sections": [

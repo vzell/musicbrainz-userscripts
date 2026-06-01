@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.652+2026-06-01
+// @version      9.99.654+2026-06-01
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -1247,7 +1247,7 @@
         sa_auto_resize_columns_threshold: {
             label: 'Auto-resize columns threshold (rows)',
             type: 'number',
-            default: 2000,
+            default: 10000,
             description: 'Maximum number of rows for which the auto-resize-on-load feature ' +
                          'will run. When the final rendered table contains more rows than this ' +
                          'value, auto-resize is skipped to avoid a slow measurement pass on large ' +
@@ -5110,11 +5110,23 @@
      *
      * Splitting strategy:
      *   The function walks the top-level child nodes of each target <td>.
-     *   A text node whose content matches /^\s*,\s*$/ (i.e. only a comma with
-     *   optional surrounding whitespace) is treated as a separator between
-     *   logical rows.  All other nodes between two separators are collected into
-     *   a single <li> item.  Leading and trailing whitespace-only text nodes
-     *   within each group are dropped before appending to the <li>.
+     *   Separators are detected in two complementary ways:
+     *
+     *   1. Element-separated cells (e.g. Catalog#): a text node whose entire
+     *      content matches /^\s*,\s*$/ (only a comma with optional surrounding
+     *      whitespace) is a separator.  Nodes between two such separators are
+     *      collected into a single <li> item.
+     *
+     *   2. Plain-text cells (e.g. Relationship types): MusicBrainz renders some
+     *      columns as a single text node — e.g. `instrument (as "lead guitar"),
+     *      instrument (as "rhythm guitar")`.  Here no standalone comma text node
+     *      exists.  The function finds every comma that sits at parenthesis
+     *      depth 0 (not inside `(…)`) and splits on those positions, creating
+     *      one synthetic text node per part.  Commas inside parentheses — e.g.
+     *      `vocal (as "soprano, alto")` — are left intact.
+     *
+     *   Leading and trailing whitespace-only text nodes within each group are
+     *   dropped before appending to the <li>.
      *
      *   - Cells with zero logical rows (empty cells) are left unchanged.
      *   - All non-empty cells — including those with exactly one logical row —
@@ -5158,12 +5170,35 @@
             let current    = [];
 
             for (const node of children) {
-                if (node.nodeType === Node.TEXT_NODE && /^\s*,\s*$/.test(node.textContent)) {
-                    // Comma separator — flush current group
-                    groups.push(current);
-                    current = [];
-                } else {
+                if (node.nodeType !== Node.TEXT_NODE) {
                     current.push(node);
+                    continue;
+                }
+                // Text node: locate every top-level comma (not inside parentheses)
+                const text   = node.textContent;
+                let   depth  = 0;
+                const splits = [];
+                for (let i = 0; i < text.length; i++) {
+                    const ch = text[i];
+                    if      (ch === '(') depth++;
+                    else if (ch === ')') depth--;
+                    else if (ch === ',' && depth === 0) splits.push(i);
+                }
+                if (splits.length === 0) {
+                    // No top-level commas — ordinary text node
+                    current.push(node);
+                } else {
+                    // Split into groups at each top-level comma
+                    let s = 0;
+                    for (const sp of splits) {
+                        const part = text.slice(s, sp);
+                        if (part.trim()) current.push(document.createTextNode(part));
+                        groups.push(current);
+                        current = [];
+                        s = sp + 1;
+                    }
+                    const tail = text.slice(s);
+                    if (tail.trim()) current.push(document.createTextNode(tail));
                 }
             }
             groups.push(current);
@@ -6151,7 +6186,8 @@
                     ],
                     injectedColumns: [ 'Relationships' ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'Total Tracks', align: 'R'} ],
-                    collapsableColumns: [ 'Country/Date', 'Country', 'Date', 'CAA' ],
+                    renderMultiRowCell: [ 'Label', 'Catalog#' ],
+                    collapsableColumns: [ 'Country/Date', 'Country', 'Date', 'Label', 'Catalog#', 'CAA' ],
                     tooltipColumns: [ 'MB-Name', 'italic:Comment', 'Artist', '---', ['Format', '(', 'Tracks', ')'], 'Country/Date', ['Label', '-', 'Catalog#'], 'Barcode' ],
                     addCAA: 'Release',
                     extractMainColumn: 'Release',
@@ -6370,6 +6406,8 @@
                 columnExtractors: [
                     { sourceColumn: 'Area', extractor: 'splitArea', syntheticColumns: ['MB-Area', 'Country'] }
                 ],
+                renderMultiRowCell: [ 'Relationship types' ],
+                collapsableColumns: [ 'Relationship types' ],
                 extractMainColumn: 'Artist', // Specific header
                 stickyColumn: 'Artist'
             },
@@ -6396,7 +6434,8 @@
 		    {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'},
 		    {sourceColumn: 'Total Tracks', align: 'R'}
 		],
-                collapsableColumns: [ 'Country/Date' ,'Country', 'Date', 'Label', 'Catalog#' ],
+                renderMultiRowCell: [ 'Label', 'Catalog#', 'Relationship types' ],
+                collapsableColumns: [ 'Country/Date' ,'Country', 'Date', 'Label', 'Catalog#', 'Relationship types' ],
                 addCAA: 'Release',
                 extractMainColumn: 'Release',
                 stickyColumn: 'Release'
@@ -6414,7 +6453,8 @@
                 syntheticColumnExtractors: [
                     { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
-                collapsableColumns: [ 'ISRCs' ],
+                renderMultiRowCell: [ 'Relationship types' ],
+                collapsableColumns: [ 'ISRCs', 'Relationship types' ],
                 integerColumns: [
                     { sourceColumn: 'Length', align: ':' }
                 ],
@@ -7342,7 +7382,8 @@
                 ],
                 injectedColumns: [ 'Relationships' ],
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'Length', align: ':'}, {sourceColumn: '#', align: '.'} ],
-                collapsableColumns: [ 'Country/Date' ,'Country', 'Date', 'CAA' ],
+                renderMultiRowCell: [ 'Label', 'Catalog#' ],
+                collapsableColumns: [ 'Country/Date' ,'Country', 'Date', 'Label', 'Catalog#', 'CAA' ],
                 tooltipColumns: [ 'Release title', 'italic:Comment', 'Release Artist', 'Release group type', '---', ['#', 'Title', '(', 'Length', ')'], 'Track artist', 'Country/Date', ['Label', '-', 'Catalog#'] ],
                 addCAA: 'Release title',
                 extractMainColumn: 'Release title',
