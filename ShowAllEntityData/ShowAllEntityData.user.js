@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.654+2026-06-01
+// @version      9.99.655+2026-06-15
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -410,9 +410,11 @@
             label: 'Enable Direct Ctrl+Letter Shortcuts',
             type: 'checkbox',
             default: false,
-            description: 'When enabled, direct Ctrl+<letter> shortcuts (Ctrl+S, Ctrl+L, Ctrl+R, etc.) fire even while typing in filter fields or when a UI dialog is open. ' +
-                         'When disabled (default), these shortcuts are suppressed while an input field has focus or a UI dialog is open — ' +
-                         'use the Keyboard Shortcut Prefix (default: Ctrl+M) and a second key instead.'
+            description: 'When enabled, direct Ctrl+<letter> shortcuts (Ctrl+S, Ctrl+L, Ctrl+R, etc.) fire globally at all times. ' +
+                         'When disabled (default), ALL Ctrl+<a-z> shortcuts are suppressed everywhere — ' +
+                         'Ctrl+2 and Ctrl+3 (number keys, not letters) are never affected. ' +
+                         'When a column filter is focused, Ctrl+↑/↓ and Ctrl+# are also never affected. ' +
+                         'Use the Keyboard Shortcut Prefix (default: Ctrl+M) and a second key instead of blocked Ctrl+letter shortcuts.'
         },
 
         // ---- Configurable direct shortcuts ----
@@ -7441,6 +7443,7 @@
     let ctrlMFunctionMap = {}; // Will be populated after functions are defined
     let ctrlMTooltipElement = null;
     let _colFilterTableIndex = -1; // module-level cycling state for focus-column-filter shortcut
+    let _lastFocusedColFilterInput = null; // last .mb-col-filter-input that received focus — used by prefix-mode o/q/a shortcuts
 
     /**
      * Returns true when one of the script's modal dialogs is currently in the DOM.
@@ -7700,7 +7703,7 @@
                         Lib.debug('shortcuts', `  ${key}: ${btn.textContent.trim()}`);
                     });
                 }
-                Lib.debug('shortcuts', 'Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, k=Shortcuts Help, h=App Help, ,=Settings' + (ctrlMFunctionMap['o'] ? ', o=Stop' : ''));
+                Lib.debug('shortcuts', 'Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, k=Shortcuts Help, h=App Help, ,=Settings, o=' + (ctrlMFunctionMap['o'] && ctrlMFunctionMap['o'].description === 'Stop fetching' ? 'Stop' : 'Toggle Multi-Row Collapse') + ', q=Unique Values Dropdown, a=CAA Toggle');
                 Lib.debug('shortcuts', 'Press any key or Escape to cancel');
             } else {
                 if (buttonKeys.length > 0) {
@@ -7710,7 +7713,7 @@
                         console.log(`[VZ-${SCRIPT_BASE_NAME}]   ${key}: ${btn.textContent.trim()}`);
                     });
                 }
-                console.log('[VZ-${SCRIPT_BASE_NAME}] Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, k=Shortcuts Help, h=App Help, ,=Settings' + (ctrlMFunctionMap['o'] ? ', o=Stop' : ''));
+                console.log(`[VZ-${SCRIPT_BASE_NAME}] Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, k=Shortcuts Help, h=App Help, ,=Settings, o=` + (ctrlMFunctionMap['o'] && ctrlMFunctionMap['o'].description === 'Stop fetching' ? 'Stop' : 'Toggle Multi-Row Collapse') + `, q=Unique Values Dropdown, a=CAA Toggle`);
             }
 
             // Auto-exit after 5 seconds
@@ -12879,18 +12882,18 @@ ${sections.join('\n')}
                     { keys: getShortcutDisplay('sa_shortcut_col_sort_asc',        'Ctrl+↑'),        desc: 'Sort column ascending (emulates clicking ▲ in the column header)' },
                     { keys: getShortcutDisplay('sa_shortcut_col_sort_desc',       'Ctrl+↓'),        desc: 'Sort column descending (emulates clicking ▼ in the column header)' },
                     { keys: getShortcutDisplay('sa_shortcut_col_unsort',          'Ctrl+#'),        desc: 'Restore original sort order (emulates clicking ⇅ in the column header)' },
-                    { keys: getShortcutDisplay('sa_shortcut_col_toggle_collapse', 'Ctrl+O'),        desc: 'Toggle collapse / expand multi-row cells in this column (emulates ▶/◀ header icon) — blocked when direct Ctrl+letter shortcuts are disabled' },
-                    { keys: getShortcutDisplay('sa_shortcut_col_unique_dropdown', 'Ctrl+Q'),        desc: 'Open unique-values dropdown for this column (emulates 📊 header icon) — blocked when direct Ctrl+letter shortcuts are disabled' },
-                    { keys: getShortcutDisplay('sa_shortcut_col_toggle_caa',      'Ctrl+A'),        desc: 'Toggle CAA cover art images for the enclosing table (emulates the CAA toggle button) — blocked when direct Ctrl+letter shortcuts are disabled' },
-                    { keys: getShortcutDisplay('sa_shortcut_auto_resize',         'Ctrl+R'),        desc: 'Resize columns of the enclosing sub-table (falls back to global resize in single-table mode) — blocked when direct Ctrl+letter shortcuts are disabled' },
-                    { keys: getShortcutDisplay('sa_shortcut_open_visible_columns','Ctrl+V'),        desc: 'Open the per-sub-table visible-columns menu (mb-stf-…-vis-btn in the h3 header); falls back to global visible-columns menu in single-table mode — blocked when direct Ctrl+letter shortcuts are disabled' }
+                    { keys: getShortcutDisplay('sa_shortcut_col_toggle_collapse', 'Ctrl+O'),        desc: 'Toggle collapse / expand multi-row cells in this column (emulates ▶/◀ header icon) — use prefix-mode o when direct Ctrl+letter shortcuts are disabled' },
+                    { keys: getShortcutDisplay('sa_shortcut_col_unique_dropdown', 'Ctrl+Q'),        desc: 'Open unique-values dropdown for this column (emulates 📊 header icon) — use prefix-mode q when direct Ctrl+letter shortcuts are disabled' },
+                    { keys: getShortcutDisplay('sa_shortcut_col_toggle_caa',      'Ctrl+A'),        desc: 'Toggle CAA cover art images for the enclosing table (emulates the CAA toggle button) — use prefix-mode a when direct Ctrl+letter shortcuts are disabled' },
+                    { keys: getShortcutDisplay('sa_shortcut_auto_resize',         'Ctrl+R'),        desc: 'Resize columns of the enclosing sub-table (falls back to global resize in single-table mode) — use prefix-mode r when direct Ctrl+letter shortcuts are disabled' },
+                    { keys: getShortcutDisplay('sa_shortcut_open_visible_columns','Ctrl+V'),        desc: 'Open the per-sub-table visible-columns menu (mb-stf-…-vis-btn in the h3 header); falls back to global visible-columns menu in single-table mode — use prefix-mode v when direct Ctrl+letter shortcuts are disabled' }
                 ]
             },
             {
                 title: 'Filter & Search',
                 shortcuts: [
-                    { keys: getShortcutDisplay('sa_shortcut_focus_global_filter', 'Ctrl+G'), desc: 'Focus global filter (blocked while typing unless direct shortcuts enabled; use prefix mode then G)' },
-                    { keys: getShortcutDisplay('sa_shortcut_focus_column_filter', 'Ctrl+C'), desc: 'Focus first column filter — cycles through tables (blocked while typing; use prefix mode then C)' },
+                    { keys: getShortcutDisplay('sa_shortcut_focus_global_filter', 'Ctrl+G'), desc: 'Focus global filter (use prefix mode then G when direct Ctrl+letter shortcuts are disabled)' },
+                    { keys: getShortcutDisplay('sa_shortcut_focus_column_filter', 'Ctrl+C'), desc: 'Focus first column filter — cycles through tables (use prefix mode then C when direct Ctrl+letter shortcuts are disabled)' },
                     { keys: `${getPrefixDisplay()}, then G`, desc: 'Focus global filter (prefix mode — always available)' },
                     { keys: `${getPrefixDisplay()}, then C`, desc: 'Focus next column filter (prefix mode — always available)' },
                     { keys: getShortcutDisplay('sa_shortcut_clear_filters', 'Ctrl+Shift+G'), desc: 'Clear all filters' },
@@ -12901,11 +12904,11 @@ ${sections.join('\n')}
             {
                 title: 'View & Layout',
                 shortcuts: [
-                    { keys: getShortcutDisplay('sa_shortcut_auto_resize', 'Ctrl+R'), desc: 'Toggle resize columns (blocked while typing; use prefix mode then R)' },
-                    { keys: getShortcutDisplay('sa_shortcut_open_visible_columns', 'Ctrl+V'), desc: 'Open "Visible" menu (blocked while typing; use prefix mode then V)' },
-                    { keys: getShortcutDisplay('sa_shortcut_open_density', 'Ctrl+D'), desc: 'Open "Density" menu (blocked while typing; use prefix mode then D)' },
-                    { keys: getShortcutDisplay('sa_shortcut_open_statistics', 'Ctrl+I'), desc: 'Open "Statistics" panel (blocked while typing; use prefix mode then I)' },
-                    { keys: getShortcutDisplay('sa_toggle_barcode_highlighting', 'Ctrl+B'), desc: 'Toggle barcode row highlighting (blocked while typing; use prefix mode then B)' },
+                    { keys: getShortcutDisplay('sa_shortcut_auto_resize', 'Ctrl+R'), desc: 'Toggle resize columns (use prefix mode then R when direct Ctrl+letter shortcuts are disabled)' },
+                    { keys: getShortcutDisplay('sa_shortcut_open_visible_columns', 'Ctrl+V'), desc: 'Open "Visible" menu (use prefix mode then V when direct Ctrl+letter shortcuts are disabled)' },
+                    { keys: getShortcutDisplay('sa_shortcut_open_density', 'Ctrl+D'), desc: 'Open "Density" menu (use prefix mode then D when direct Ctrl+letter shortcuts are disabled)' },
+                    { keys: getShortcutDisplay('sa_shortcut_open_statistics', 'Ctrl+I'), desc: 'Open "Statistics" panel (use prefix mode then I when direct Ctrl+letter shortcuts are disabled)' },
+                    { keys: getShortcutDisplay('sa_toggle_barcode_highlighting', 'Ctrl+B'), desc: 'Toggle barcode row highlighting (use prefix mode then B when direct Ctrl+letter shortcuts are disabled)' },
                     { keys: getShortcutDisplay('sa_shortcut_toggle_h2', 'Ctrl+2'), desc: 'Toggle collapse all h2 headers' },
                     { keys: getShortcutDisplay('sa_shortcut_toggle_h3', 'Ctrl+3'), desc: 'Toggle collapse all h3 headers (types)' }
                 ]
@@ -12913,9 +12916,9 @@ ${sections.join('\n')}
             {
                 title: 'Data Export & Management',
                 shortcuts: [
-                    { keys: getShortcutDisplay('sa_shortcut_save_to_disk', 'Ctrl+S'), desc: 'Save to disk (JSON) (blocked while typing; use prefix mode then S)' },
-                    { keys: getShortcutDisplay('sa_shortcut_load_from_disk', 'Ctrl+L'), desc: 'Load from disk (blocked while typing; use prefix mode then L)' },
-                    { keys: getShortcutDisplay('sa_shortcut_open_export', 'Ctrl+E'), desc: 'Open export menu (CSV, JSON, Org-Mode) (blocked while typing; use prefix mode then E)' }
+                    { keys: getShortcutDisplay('sa_shortcut_save_to_disk', 'Ctrl+S'), desc: 'Save to disk (JSON) (use prefix mode then S when direct Ctrl+letter shortcuts are disabled)' },
+                    { keys: getShortcutDisplay('sa_shortcut_load_from_disk', 'Ctrl+L'), desc: 'Load from disk (use prefix mode then L when direct Ctrl+letter shortcuts are disabled)' },
+                    { keys: getShortcutDisplay('sa_shortcut_open_export', 'Ctrl+E'), desc: 'Open export menu (CSV, JSON, Org-Mode) (use prefix mode then E when direct Ctrl+letter shortcuts are disabled)' }
                 ]
             },
             {
@@ -12949,8 +12952,11 @@ ${sections.join('\n')}
             {
                 title: 'Keyboard Shortcuts',
                 shortcuts: [
-                    { keys: getPrefixDisplay(), desc: 'Enter prefix mode (then a second key selects action / function)' },
-                    { keys: `${getPrefixDisplay()}, then S/L/R/V/D/I/E/B/K/,/H/G/C`, desc: 'Prefix-mode alternatives — always available, even while typing in filter fields' }
+                    { keys: getPrefixDisplay(), desc: 'Enter prefix mode (then a second key selects action / function) — always available, never suppressed' },
+                    { keys: `${getPrefixDisplay()}, then S/L/R/V/D/I/E/B/K/,/H/G/C`, desc: 'Prefix-mode alternatives — always available even when direct Ctrl+letter shortcuts are disabled' },
+                    { keys: `${getPrefixDisplay()}, then O`, desc: 'Toggle Multi-Row Cell Collapse for last focused column (prefix mode — requires a column filter to have been focused)' },
+                    { keys: `${getPrefixDisplay()}, then Q`, desc: 'Show Unique Values Dropdown for last focused column (prefix mode — requires a column filter to have been focused)' },
+                    { keys: `${getPrefixDisplay()}, then A`, desc: 'Toggle CAA Cover Art Images for the enclosing table of the last focused column (prefix mode)' }
                 ]
             },
             {
@@ -12964,7 +12970,7 @@ ${sections.join('\n')}
                 title: 'Help',
                 shortcuts: [
                     { keys: '? or /', desc: 'Show this shortcuts help' },
-                    { keys: getShortcutDisplay('sa_shortcut_show_shortcuts_help', 'Ctrl+K'), desc: 'Show keyboard shortcuts help (blocked while typing; use prefix mode then K)' },
+                    { keys: getShortcutDisplay('sa_shortcut_show_shortcuts_help', 'Ctrl+K'), desc: 'Show keyboard shortcuts help (use prefix mode then K when direct Ctrl+letter shortcuts are disabled)' },
                     { keys: `${getPrefixDisplay()}, then K`, desc: 'Show shortcuts help (prefix mode)' },
                     { keys: `${getPrefixDisplay()}, then H`, desc: 'Show app help (prefix mode)' }
                 ]
@@ -13009,14 +13015,16 @@ ${sections.join('\n')}
         note.innerHTML =
             '<strong>Note:</strong> ' +
             (directCtrlOn
-                ? 'Direct Ctrl+letter shortcuts are enabled globally (fire even while typing in filter fields).'
-                : 'Direct Ctrl+letter shortcuts (Ctrl+S, Ctrl+L, Ctrl+R, etc.) are <strong>suppressed</strong> while an ' +
-                  'input field has focus or a UI dialog is open. ' +
-                  'Use the Keyboard Shortcut Prefix (<strong>' + getPrefixDisplay() + '</strong>) followed by the letter key as an alternative. ' +
-                  'Enable "Direct Ctrl+Letter Shortcuts" in Settings to restore the old behaviour.') +
+                ? 'Direct Ctrl+letter shortcuts are enabled globally (fire at all times).'
+                : 'Direct Ctrl+<strong>letter</strong> shortcuts (Ctrl+S, Ctrl+L, Ctrl+R, etc.) are <strong>suppressed everywhere</strong> — ' +
+                  'Ctrl+2 and Ctrl+3 (number keys) are never affected. ' +
+                  'The Keyboard Shortcut Prefix (<strong>' + getPrefixDisplay() + '</strong>) always works and is never suppressed. ' +
+                  'Use it followed by the letter key as an alternative to any blocked Ctrl+letter shortcut. ' +
+                  'Enable "Direct Ctrl+Letter Shortcuts" in Settings to restore direct shortcuts.') +
             '<br>' +
             '? and / only work when not typing in input fields.<br>' +
-            'Column filter shortcuts (Ctrl+↑/↓, Ctrl+#, Ctrl+O, Ctrl+Q, Ctrl+A) are only active when a column filter field has focus.<br>' +
+            'Column filter shortcuts (Ctrl+↑/↓, Ctrl+#) are only active when a column filter field has focus and are never suppressed.<br>' +
+            'Ctrl+O, Ctrl+Q, Ctrl+A (column filter focused) are also only active when a column filter has focus; use prefix-mode O/Q/A as alternatives.<br>' +
             'Ctrl+R and Ctrl+V target the per-sub-table resize / visible-columns buttons when focus is in a sub-table column filter (fall back to global buttons in single-table mode).';
         scrollArea.appendChild(note);
 
@@ -13382,14 +13390,15 @@ ${sections.join('\n')}
             }
             // ── End column-filter-focused shortcuts ──────────────────────────────────────
 
-            // Block direct Ctrl+<letter> (a–z) shortcuts while an input field has focus
-            // or a UI dialog is open, unless sa_enable_direct_ctrl_char_shortcuts is on.
-            // Ctrl+M (prefix key) and Ctrl+U (unicode picker) are handled in the
-            // capture-phase listener above and are intentionally NOT affected here.
-            // Non-letter shortcuts (Ctrl+,  Ctrl+2  Ctrl+3  Ctrl+Shift+G  etc.) and
-            // column-filter-focused shortcuts (returned above) are also unaffected.
+            // Block ALL direct Ctrl+<letter> (a–z) shortcuts when
+            // sa_enable_direct_ctrl_char_shortcuts is off — regardless of whether an
+            // input has focus or a dialog is open.
+            // • Ctrl+M (prefix key) and Ctrl+U (unicode picker) are handled in the
+            //   capture-phase listener above (stopImmediatePropagation) and never reach here.
+            // • Non-letter shortcuts (Ctrl+,  Ctrl+2  Ctrl+3  Ctrl+Shift+G  etc.) are
+            //   not matched by the a–z range check and always fire normally.
+            // • Column-filter-focused Ctrl+↑/↓ and Ctrl+# were already returned above.
             if (!Lib.settings.sa_enable_direct_ctrl_char_shortcuts &&
-                (isTyping || isSpecialDialogOpen()) &&
                 e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey &&
                 e.key.length === 1 &&
                 e.key.toLowerCase() >= 'a' && e.key.toLowerCase() <= 'z') {
@@ -13760,6 +13769,79 @@ ${sections.join('\n')}
                 return;
             }
         }, true); // capture phase
+
+        // Track the last focused column filter so prefix-mode o/q/a can resolve
+        // the column context even after Ctrl+M has been pressed (which doesn't blur the input).
+        document.addEventListener('focusin', (e) => {
+            if (e.target.matches('.mb-col-filter-input')) {
+                _lastFocusedColFilterInput = e.target;
+            }
+        }, true);
+
+        // ── Permanent prefix-mode function shortcuts for column-context actions ────
+        // o/q/a mirror the column-filter-focused Ctrl+O/Q/A shortcuts but are
+        // available via prefix mode (sa_keyboard_shortcut_prefix → o/q/a) so they
+        // work even when sa_enable_direct_ctrl_char_shortcuts is off.
+        // During an active fetch, ctrlMFunctionMap['o'] is temporarily overwritten
+        // with "Stop fetching" and restored here when the fetch ends.
+
+        /**
+         * Helper: resolve the column filter input for prefix-mode column-context shortcuts.
+         * Prefers document.activeElement (still focused after Ctrl+M), falls back to
+         * the last element that received focusin on .mb-col-filter-input.
+         * @returns {HTMLInputElement|null}
+         */
+        const _resolveColFilter = () => {
+            if (document.activeElement && document.activeElement.matches('.mb-col-filter-input')) {
+                return document.activeElement;
+            }
+            return _lastFocusedColFilterInput;
+        };
+
+        ctrlMFunctionMap['o'] = {
+            fn: () => {
+                const cfInput = _resolveColFilter();
+                if (!cfInput) { Lib.warn('shortcuts', 'No column filter context for multi-row collapse (focus a column filter first)'); return; }
+                const cfTable    = cfInput.closest('table.tbl');
+                const cfColIdx   = cfTable ? parseInt(cfInput.dataset.colIdx, 10) : -1;
+                const cfHdrRow   = cfTable ? cfTable.querySelector('thead tr:first-child') : null;
+                const cfTh       = (cfHdrRow && cfColIdx >= 0) ? cfHdrRow.cells[cfColIdx] : null;
+                const collapseBtn = cfTh ? cfTh.querySelector('.mb-col-collapse-hdr-btn') : null;
+                if (collapseBtn) { collapseBtn.click(); Lib.debug('shortcuts', 'Multi-row collapse toggled via prefix-mode o'); }
+                else { Lib.warn('shortcuts', 'No collapse-toggle button found in column header'); }
+            },
+            description: 'Toggle Multi-Row Cell Collapse'
+        };
+
+        ctrlMFunctionMap['q'] = {
+            fn: () => {
+                const cfInput = _resolveColFilter();
+                if (!cfInput) { Lib.warn('shortcuts', 'No column filter context for unique-values dropdown (focus a column filter first)'); return; }
+                const cfTable   = cfInput.closest('table.tbl');
+                const cfColIdx  = cfTable ? parseInt(cfInput.dataset.colIdx, 10) : -1;
+                const cfHdrRow  = cfTable ? cfTable.querySelector('thead tr:first-child') : null;
+                const cfTh      = (cfHdrRow && cfColIdx >= 0) ? cfHdrRow.cells[cfColIdx] : null;
+                const uniqWrap  = cfTh ? cfTh.querySelector('.mb-col-uniq-wrap') : null;
+                if (uniqWrap) { uniqWrap.click(); Lib.debug('shortcuts', 'Unique-values dropdown opened via prefix-mode q'); }
+                else { Lib.warn('shortcuts', 'No unique-values (📊) button found in column header'); }
+            },
+            description: 'Show Unique Values Dropdown'
+        };
+
+        ctrlMFunctionMap['a'] = {
+            fn: () => {
+                const cfInput = _resolveColFilter();
+                if (!cfInput) { Lib.warn('shortcuts', 'No column filter context for CAA toggle (focus a column filter first)'); return; }
+                const cfTable  = cfInput.closest('table.tbl');
+                if (!cfTable)  { Lib.warn('shortcuts', 'No table found for CAA toggle'); return; }
+                const allTbls  = Array.from(document.querySelectorAll('table.tbl'));
+                const tblIdx   = allTbls.indexOf(cfTable);
+                const caaBtn   = document.getElementById('mb-caa-toggle-btn-' + tblIdx);
+                if (caaBtn) { caaBtn.click(); Lib.debug('shortcuts', `CAA images toggled via prefix-mode a (table index ${tblIdx})`); }
+                else { Lib.warn('shortcuts', `No CAA toggle button found for table index ${tblIdx}`); }
+            },
+            description: 'Toggle CAA Cover Art Images'
+        };
 
         document._mbKeyboardShortcutsInitialized = true;
         Lib.debug('shortcuts', 'Keyboard shortcuts initialized');
@@ -26142,6 +26224,7 @@ a { color: #1565c0; }`;
 
         stopBtn.style.display = 'inline-block';
         stopBtn.disabled = false;
+        const _prevCtrlMO = ctrlMFunctionMap['o']; // preserve permanent 'o' entry (Toggle Multi-Row Collapse)
         ctrlMFunctionMap['o'] = { fn: () => stopBtn.click(), description: 'Stop fetching' };
         globalStatusDisplay.textContent = 'Loading…';
         globalStatusDisplay.style.color = '#999';
@@ -27530,7 +27613,7 @@ a { color: #1565c0; }`;
                     activeBtn.classList.remove('mb-show-all-btn-loading');
                     allActionButtons.forEach(b => b.disabled = false);
                     stopBtn.style.display = 'none';
-                    delete ctrlMFunctionMap['o'];
+                    if (_prevCtrlMO) ctrlMFunctionMap['o'] = _prevCtrlMO; else delete ctrlMFunctionMap['o'];
 
                     const fetchSeconds = (totalFetchingTime / 1000).toFixed(2);
                     const pageLabel = (pagesProcessed === 1) ? 'page' : 'pages';
@@ -27547,7 +27630,7 @@ a { color: #1565c0; }`;
                     activeBtn.classList.remove('mb-show-all-btn-loading');
                     allActionButtons.forEach(b => b.disabled = false);
                     stopBtn.style.display = 'none';
-                    delete ctrlMFunctionMap['o'];
+                    if (_prevCtrlMO) ctrlMFunctionMap['o'] = _prevCtrlMO; else delete ctrlMFunctionMap['o'];
                     globalStatusDisplay.textContent = 'Operation cancelled';
                     fetchProgressWrap.style.display = 'none';
                     return;
@@ -27574,7 +27657,7 @@ a { color: #1565c0; }`;
                     activeBtn.classList.remove('mb-show-all-btn-loading');
                     allActionButtons.forEach(b => b.disabled = false);
                     stopBtn.style.display = 'none';
-                    delete ctrlMFunctionMap['o'];
+                    if (_prevCtrlMO) ctrlMFunctionMap['o'] = _prevCtrlMO; else delete ctrlMFunctionMap['o'];
                     globalStatusDisplay.textContent = `Render cancelled (${totalRows.toLocaleString()} rows fetched — use "Load from disk" to render later)`;
                     globalStatusDisplay.style.color = 'orange';
                     fetchProgressWrap.style.display = 'none';
@@ -27643,7 +27726,7 @@ a { color: #1565c0; }`;
             activeBtn.classList.remove('mb-show-all-btn-loading');
             allActionButtons.forEach(b => b.disabled = false);
             stopBtn.style.display = 'none';
-            delete ctrlMFunctionMap['o'];
+            if (_prevCtrlMO) ctrlMFunctionMap['o'] = _prevCtrlMO; else delete ctrlMFunctionMap['o'];
             fetchProgressWrap.style.display = 'none';
 
             // Only show filter container if it wasn't already appended to H2 (handled in updateH2Count or renderGroupedTable)

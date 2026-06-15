@@ -1,5 +1,21 @@
 [
   {
+    "version": "9.99.655",
+    "date": "2026-06-15",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Extended `sa_enable_direct_ctrl_char_shortcuts=false` (the default) to suppress ALL `Ctrl+<a–z>` shortcuts everywhere — not just while an input field has focus or a UI dialog is open. `Ctrl+2` and `Ctrl+3` (number keys, not letters) are never affected. When a column filter is focused, `Ctrl+↑`, `Ctrl+↓`, and `Ctrl+#` are also never affected.",
+          "The configured `sa_keyboard_shortcut_prefix` (default `Ctrl+M`) is handled in the capture phase with `stopImmediatePropagation` and therefore always works — it is never suppressed regardless of the `sa_enable_direct_ctrl_char_shortcuts` setting.",
+          "Added permanent `ctrlMFunctionMap` entries for `o` (Toggle Multi-Row Cell Collapse), `q` (Show Unique Values Dropdown), and `a` (Toggle CAA Cover Art Images) — available via prefix mode (`Ctrl+M` → `o`/`q`/`a`). These operate on the last focused column filter (tracked via a `focusin` listener on `.mb-col-filter-input`). The `o` entry is temporarily overwritten by 'Stop fetching' during an active fetch and restored afterwards.",
+          "Updated the Keyboard Shortcuts help dialog and the bottom note to reflect the new global suppression behaviour, removed 'blocked while typing' wording, and added prefix-mode entries for `O`, `Q`, `A`.",
+          "Updated debug log strings in prefix-mode entry to list `o`/`q`/`a` function shortcuts with their current descriptions."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.654",
     "date": "2026-06-01",
     "sections": [
