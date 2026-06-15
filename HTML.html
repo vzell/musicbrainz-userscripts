@@ -1,3 +1,109 @@
+
+Enable Direct Ctrl+Letter Shortcuts: [x]
+
+<input id="mb-global-filter-input" placeholder="Global Filter… works across all sub-tables" title="Enter global filter string (focus with 'Ctrl+G', use 'Ctrl+M then U' or 'Ctrl+U' for unicode character map)" style="font-size: 1em; padding: 2px 6px; border-width: 2px medium 2px 2px; border-style: solid none solid solid; border-color: rgb(0, 0, 0) currentcolor rgb(0, 0, 0) rgb(0, 0, 0); border-image: initial; border-radius: 3px 0px 0px 3px; width: 500px; height: 24px; box-sizing: border-box; transition: box-shadow 0.2s; outline: none;">
+
+<input type="text" placeholder="…" title="Enter column filter string (first column in table focusable with 'Ctrl+C', use 'Ctrl+M then U' or 'Ctrl+U' for unicode character map)" class="mb-col-filter-input" data-col-idx="4">
+
+
+<button id="mb-visible-btn" title="Show/hide table columns (Ctrl+M, then V)" type="button" style="font-size: 0.8em; padding: 2px 8px; height: 24px; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;"><span>👁️ <span style="text-decoration:underline">V</span>isible</span></button>
+
+<button id="mb-barcode-highlight-btn" type="button" title="Toggle barcode highlightning off (Ctrl+M then B, or Ctrl+B)" style="font-size: 0.65em; padding: 2px 4px; height: 24px; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;"><span>▌█▌▐█▐▌██▐▌█</span></button>
+
+------
+
+Enable Direct Ctrl+Letter Shortcuts: [ ]
+
+<input id="mb-global-filter-input" placeholder="Global Filter… works across all sub-tables" title="Enter global filter string (focus with 'Ctrl+M then G' (or enable Direct Ctrl+Letter Shortcuts for 'Ctrl+G'), use 'Ctrl+M then U' or 'Ctrl+U' for unicode character map)" style="font-size: 1em; padding: 2px 6px; border-width: 2px; border-style: solid none solid solid; border-color: rgb(0, 0, 0); border-image: initial; border-radius: 3px 0px 0px 3px; width: 500px; height: 24px; box-sizing: border-box; transition: box-shadow 0.2s; outline: none;">
+
+<input type="text" placeholder="…" title="Enter column filter string (first column in table focusable with 'Ctrl+M then C' (or enable Direct Ctrl+Letter Shortcuts for 'Ctrl+C'), use 'Ctrl+M then U' or 'Ctrl+U' for unicode character map)" class="mb-col-filter-input" data-col-idx="0" style="">
+
+
+<button id="mb-visible-btn" title="Show/hide table columns (Ctrl+M, then V)" type="button" style="font-size: 0.8em; padding: 2px 8px; height: 24px; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;"><span>👁️ <span style="text-decoration:underline">V</span>isible</span></button>
+
+<button id="mb-barcode-highlight-btn" type="button" title="Toggle barcode highlightning off (Ctrl+M then B, or Ctrl+B)" style="font-size: 0.65em; padding: 2px 4px; height: 24px; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;"><span>▌█▌▐█▐▌██▐▌█</span></button>
+
+--------
+
+
+https://musicbrainz.org/release-group/4b443e66-52a7-3cc9-a522-0dc64a6a51dc in the "Country/Date" column:
+
+<td data-mb-rest-bg="rgba(255, 200, 80, 0.44)" class="mb-mscol-0b" style="background: rgba(255, 200, 80, 0.44);">
+  <script type="application/json">{"events":[{"date":{"year":1973,"day":null,"month":11},"country":{"ended":false,"iso_3166_3_codes":[],"iso_3166_1_codes":["US"],"iso_3166_2_codes":[],"typeID":1,"gid":"489ce91b-6658-3307-9877-795b68554c98","entityType":"area","last_updated":"2013-06-15T18:06:39Z","end_date":null,"primary_code":"US","editsPending":false,"comment":"","country_code":"US","id":222,"begin_date":null,"name":"United States"}}]}
+  </script>
+  <div class="release-events-container">
+    <ul aria-label="Release events" class="release-events abbreviated">
+      <li aria-label="Release event" class="release-event">
+	<span class="flag flag-US release-country">
+	  <a href="/area/489ce91b-6658-3307-9877-795b68554c98">
+	    <abbr title="United States">US
+	    </abbr>
+	  </a>
+	</span>
+	<span class="release-date">1973-11
+	</span>
+      </li>
+    </ul>
+  </div>
+</td>
+<td data-mb-rest-bg="rgba(255, 200, 80, 0.22)" class="mb-mscol-0a" style="background: rgba(255, 200, 80, 0.22);">
+  <script type="application/json">{"events":[{"country":{"iso_3166_3_codes":[],"ended":false,"iso_3166_1_codes":["US"],"typeID":1,"gid":"489ce91b-6658-3307-9877-795b68554c98","iso_3166_2_codes":[],"end_date":null,"entityType":"area","last_updated":"2013-06-15T18:06:39Z","id":222,"country_code":"US","editsPending":false,"comment":"","primary_code":"US","name":"United States","begin_date":null},"date":{"year":1973,"day":null,"month":11}}]}
+  </script>
+  <div class="release-events-container">
+    <ul aria-label="Release events" class="release-events abbreviated">
+      <li aria-label="Release event" class="release-event">
+	<span class="flag flag-US release-country">
+	  <a href="/area/489ce91b-6658-3307-9877-795b68554c98">
+	    <abbr title="United States">US
+	    </abbr>
+	  </a>
+	</span>
+	<span class="release-date">1973-11
+	</span>
+      </li>
+    </ul>
+  </div>
+</td>
+<td data-mb-rest-bg="rgba(255, 200, 80, 0.44)" class="mb-mscol-0b" style="background: rgba(255, 200, 80, 0.44);">
+  <script type="application/json">{"events":[{"date":{"month":11,"day":null,"year":1973},"country":{"entityType":"area","last_updated":"2013-06-15T18:06:39Z","end_date":null,"gid":"489ce91b-6658-3307-9877-795b68554c98","typeID":1,"iso_3166_2_codes":[],"name":"United States","begin_date":null,"comment":"","editsPending":false,"primary_code":"US","id":222,"country_code":"US","ended":false,"iso_3166_3_codes":[],"iso_3166_1_codes":["US"]}}]}
+  </script>
+  <div class="release-events-container">
+    <ul aria-label="Release events" class="release-events abbreviated">
+      <li aria-label="Release event" class="release-event">
+	<span class="flag flag-US release-country">
+	  <a href="/area/489ce91b-6658-3307-9877-795b68554c98">
+	    <abbr title="United States">US
+	    </abbr>
+	  </a>
+	</span>
+	<span class="release-date">1973-11
+	</span>
+      </li>
+    </ul>
+  </div>
+</td>
+<td data-mb-rest-bg="rgba(255, 200, 80, 0.22)" class="mb-mscol-0a" style="background: rgba(255, 200, 80, 0.22);">
+  <script type="application/json">{"events":[{"country":{"iso_3166_3_codes":[],"ended":false,"iso_3166_1_codes":["US"],"end_date":null,"entityType":"area","last_updated":"2013-06-15T18:06:39Z","typeID":1,"gid":"489ce91b-6658-3307-9877-795b68554c98","iso_3166_2_codes":[],"name":"United States","begin_date":null,"id":222,"country_code":"US","editsPending":false,"comment":"","primary_code":"US"},"date":{"month":11,"year":1973,"day":null}}]}
+  </script>
+  <div class="release-events-container">
+    <ul aria-label="Release events" class="release-events abbreviated">
+      <li aria-label="Release event" class="release-event">
+	<span class="flag flag-US release-country">
+	  <a href="/area/489ce91b-6658-3307-9877-795b68554c98">
+	    <abbr title="United States">US
+	    </abbr>
+	  </a>
+	</span>
+	<span class="release-date">1973-11
+	</span>
+      </li>
+    </ul>
+  </div>
+</td>
+
+-----------------
+
+
 <tr class="even">
   <td>
     <input type="checkbox" name="add-to-merge" value="531458">
