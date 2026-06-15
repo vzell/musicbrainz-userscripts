@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.659+2026-06-16
+// @version      9.99.660+2026-06-16
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -38300,19 +38300,34 @@ a { color: #1565c0; }`;
                         });
 
                         // ── Derive colName and entityFeatures ─────────────────────
-                        // startFetchingProcess sets both on each groupedRows entry;
-                        // disk-load must mirror the same logic so that:
-                        //   (a) renderGroupedTable patches the first <th> of each
+                        // startFetchingProcess sets colName on each groupedRows entry
+                        // only when the page goes through the listToTable / groupByH3
+                        // fetch branch (the `else if` at the outer fetch-loop level that
+                        // guards on `activeDefinition.features?.listToTable ||
+                        // activeDefinition.features?.groupByH3`).  Standard multi-table
+                        // pages like `releasegroup-releases` use the `else` branch and
+                        // leave group.colName undefined.
+                        //
+                        // disk-load must mirror this exactly:
+                        //   (a) listToTable/groupByH3 pages  — set colName so that
+                        //       renderGroupedTable patches the first <th> of each
                         //       sub-table to the correct (singular) column name
                         //       (fixes: all sub-tables showing the first group's name)
-                        //   (b) the per-group inline-thumbnail loop in renderGroupedTable
-                        //       finds group.entityFeatures.addCAA/addEAA and calls
-                        //       _artInitInlinePics with the correct column name per table
-                        //       (fixes: inline CAA/EAA thumbnails absent on disk-load)
+                        //   (b) all other multi-table pages — leave colName undefined
+                        //       so renderGroupedTable does NOT patch the first <th>.
+                        //       Without this guard, `releasegroup-releases` would have
+                        //       its first <th> changed from "Release" to "Official
+                        //       release", causing caaFindColumnByName('Release') to
+                        //       return -1 and skipping all inline art injection.
+                        //
+                        // entityFeatures is derived independently of colName and is
+                        // always set when the definition carries an entityFeatures map.
                         const _grpCat = group.category || group.key;
-                        const _grpColName = _diskSingularTypes.has(pageType)
-                            ? _toSingular(_grpCat)
-                            : _grpCat;
+                        const _usesColNamePath = !!(activeDefinition.features?.listToTable ||
+                                                    activeDefinition.features?.groupByH3);
+                        const _grpColName = _usesColNamePath
+                            ? (_diskSingularTypes.has(pageType) ? _toSingular(_grpCat) : _grpCat)
+                            : undefined;
                         const _grpEntityFeatures = (activeDefinition.entityFeatures && _grpCat)
                             ? resolveEntityFeaturesFromH3(_grpCat, activeDefinition)
                             : null;
@@ -38320,10 +38335,12 @@ a { color: #1565c0; }`;
                         const _grpEntry = {
                             key: group.key,
                             category: _grpCat,
-                            colName: _grpColName,
                             rows: reconstructedRows,
                             originalRows: [...reconstructedRows]
                         };
+                        if (_grpColName !== undefined) {
+                            _grpEntry.colName = _grpColName;
+                        }
                         if (_grpEntityFeatures && Object.keys(_grpEntityFeatures).length > 0) {
                             _grpEntry.entityFeatures = _grpEntityFeatures;
                         }

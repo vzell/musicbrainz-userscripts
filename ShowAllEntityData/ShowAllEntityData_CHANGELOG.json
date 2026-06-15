@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.660",
+    "date": "2026-06-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On `releasegroup-releases` pages, inline cover art thumbnails in the first (sticky) column were absent after loading data from disk. Root cause: the disk-load path unconditionally set `group.colName = category` (e.g. `\"Official release\"`) for every multi-table group, but the network fetch path only sets `colName` for `listToTable`/`groupByH3` page types. For standard multi-table pages (`releasegroup-releases` uses the generic `else` fetch branch), `group.colName` is left `undefined`. When `colName` was incorrectly set on disk-load, `renderGroupedTable` patched the first `<th>` of each sub-table from `\"Release\"` to `\"Official release\"`, causing `caaFindColumnByName('Release')` to return `-1` and `_artInitInlinePics` to skip all sub-tables. Fixed by guarding the `colName` derivation behind a check for `activeDefinition.features.listToTable || activeDefinition.features.groupByH3`, mirroring the network-path condition exactly."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.659",
     "date": "2026-06-16",
     "sections": [
