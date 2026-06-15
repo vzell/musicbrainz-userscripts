@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.657+2026-06-15
+// @version      9.99.658+2026-06-16
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -13353,20 +13353,21 @@ ${sections.join('\n')}
                     return;
                 }
 
-                // Toggle CAA cover art images for the enclosing table: Ctrl+A
+                // Toggle CAA/EAA cover art images for the enclosing table: Ctrl+A
                 // (configurable via sa_shortcut_col_toggle_caa)
                 if (isShortcutEvent(e, 'sa_shortcut_col_toggle_caa', 'Ctrl+A')) {
                     e.preventDefault();
                     e.stopPropagation();
                     if (_cfTable) {
-                        const _allTbls = Array.from(document.querySelectorAll('table.tbl'));
-                        const _tblIdx  = _allTbls.indexOf(_cfTable);
-                        const _caaBtn  = document.getElementById('mb-caa-toggle-btn-' + _tblIdx);
-                        if (_caaBtn) {
-                            _caaBtn.click();
-                            Lib.debug('shortcuts', `CAA images toggled via ${getShortcutDisplay('sa_shortcut_col_toggle_caa', 'Ctrl+A')} (table index ${_tblIdx})`);
+                        const _allTbls  = Array.from(document.querySelectorAll('table.tbl'));
+                        const _tblIdx   = _allTbls.indexOf(_cfTable);
+                        const _artBtn   = document.getElementById('mb-caa-toggle-btn-' + _tblIdx)
+                                       || document.getElementById('mb-eaa-toggle-btn-' + _tblIdx);
+                        if (_artBtn) {
+                            _artBtn.click();
+                            Lib.debug('shortcuts', `Art images toggled via ${getShortcutDisplay('sa_shortcut_col_toggle_caa', 'Ctrl+A')} (table index ${_tblIdx})`);
                         } else {
-                            Lib.warn('shortcuts', `No CAA toggle button found for table index ${_tblIdx}`);
+                            Lib.warn('shortcuts', `No CAA/EAA toggle button found for table index ${_tblIdx}`);
                         }
                     }
                     return;
@@ -13874,16 +13875,17 @@ ${sections.join('\n')}
         ctrlMFunctionMap['a'] = {
             fn: () => {
                 const cfInput = _resolveColFilter();
-                if (!cfInput) { Lib.warn('shortcuts', 'No column filter context for CAA toggle (focus a column filter first)'); return; }
+                if (!cfInput) { Lib.warn('shortcuts', 'No column filter context for art toggle (focus a column filter first)'); return; }
                 const cfTable  = cfInput.closest('table.tbl');
-                if (!cfTable)  { Lib.warn('shortcuts', 'No table found for CAA toggle'); return; }
+                if (!cfTable)  { Lib.warn('shortcuts', 'No table found for art toggle'); return; }
                 const allTbls  = Array.from(document.querySelectorAll('table.tbl'));
                 const tblIdx   = allTbls.indexOf(cfTable);
-                const caaBtn   = document.getElementById('mb-caa-toggle-btn-' + tblIdx);
-                if (caaBtn) { caaBtn.click(); Lib.debug('shortcuts', `CAA images toggled via prefix-mode a (table index ${tblIdx})`); }
-                else { Lib.warn('shortcuts', `No CAA toggle button found for table index ${tblIdx}`); }
+                const artBtn   = document.getElementById('mb-caa-toggle-btn-' + tblIdx)
+                              || document.getElementById('mb-eaa-toggle-btn-' + tblIdx);
+                if (artBtn) { artBtn.click(); Lib.debug('shortcuts', `Art images toggled via prefix-mode a (table index ${tblIdx})`); }
+                else { Lib.warn('shortcuts', `No CAA/EAA toggle button found for table index ${tblIdx}`); }
             },
-            description: 'Toggle CAA Cover Art Images',
+            description: 'Toggle Cover Art Images (CAA/EAA)',
             colContext: true
         };
 
@@ -18132,7 +18134,7 @@ a { color: #1565c0; }`;
     stopBtn.innerHTML = makeButtonHTML('Stop', 'o');
     stopBtn.type = 'button';
     stopBtn.style.cssText = uiStopBtnCSS();
-    stopBtn.title = 'Stop the current data fetching process from the MusicBrainz backend database';
+    stopBtn.title = `Stop the current data fetching process from the MusicBrainz backend database (${getPrefixDisplay()}, then O)`;
 
     const globalStatusDisplay = document.createElement('span');
     globalStatusDisplay.id = 'mb-global-status-display';

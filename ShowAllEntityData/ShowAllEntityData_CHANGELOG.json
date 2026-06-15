@@ -1,5 +1,18 @@
 [
   {
+    "version": "9.99.658",
+    "date": "2026-06-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Prefix-mode `A` (and column-filter `Ctrl+A`) now also finds EAA per-table toggle buttons (`mb-eaa-toggle-btn-N`) in addition to CAA (`mb-caa-toggle-btn-N`). Previously, on pages that show EAA event art (e.g. place/events), pressing `Ctrl+M` then `A` had no effect. Updated `ctrlMFunctionMap['a']` description to 'Toggle Cover Art Images (CAA/EAA)'.",
+          "Stop button tooltip now mentions the `Ctrl+M, then O` prefix-mode shortcut."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.657",
     "date": "2026-06-15",
     "sections": [
