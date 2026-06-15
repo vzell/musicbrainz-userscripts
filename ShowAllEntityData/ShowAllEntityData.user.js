@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.655+2026-06-15
+// @version      9.99.656+2026-06-15
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -7602,10 +7602,28 @@
             tooltipHTML += '<br/>';
         }
 
-        // Function shortcuts
+        // Split entries: column-context functions (o/q/a with colContext:true) vs regular
+        const _colCtxEntries     = Object.entries(ctrlMFunctionMap).filter(([, e]) => e.colContext);
+        const _regularEntries    = Object.entries(ctrlMFunctionMap).filter(([, e]) => !e.colContext);
+        const _colFilterFocused  = !!(
+            (document.activeElement && document.activeElement.matches('.mb-col-filter-input')) ||
+            _lastFocusedColFilterInput
+        );
+
+        // Regular function shortcuts
         tooltipHTML += '<strong>Functions:</strong><br/>';
-        for (const [key, entry] of Object.entries(ctrlMFunctionMap)) {
+        for (const [key, entry] of _regularEntries) {
             tooltipHTML += `<div style="margin-left: 4px;"><strong>${key}</strong>: ${entry.description}</div>`;
+        }
+
+        // Column-context shortcuts (o/q/a) — shown separately with focus status
+        if (_colCtxEntries.length > 0) {
+            const _ccColor  = _colFilterFocused ? '#006600' : '#999999';
+            const _ccStatus = _colFilterFocused ? '✓ col filter active' : '⚠ focus col filter first';
+            tooltipHTML += `<br/><strong style="color:${_ccColor}">Col-filter context (${_ccStatus}):</strong><br/>`;
+            for (const [key, entry] of _colCtxEntries) {
+                tooltipHTML += `<div style="margin-left: 4px; color:${_ccColor};"><strong>${key}</strong>: ${entry.description}</div>`;
+            }
         }
 
         ctrlMTooltipElement.innerHTML = tooltipHTML;
@@ -13810,7 +13828,8 @@ ${sections.join('\n')}
                 if (collapseBtn) { collapseBtn.click(); Lib.debug('shortcuts', 'Multi-row collapse toggled via prefix-mode o'); }
                 else { Lib.warn('shortcuts', 'No collapse-toggle button found in column header'); }
             },
-            description: 'Toggle Multi-Row Cell Collapse'
+            description: 'Toggle Multi-Row Cell Collapse',
+            colContext: true
         };
 
         ctrlMFunctionMap['q'] = {
@@ -13825,7 +13844,8 @@ ${sections.join('\n')}
                 if (uniqWrap) { uniqWrap.click(); Lib.debug('shortcuts', 'Unique-values dropdown opened via prefix-mode q'); }
                 else { Lib.warn('shortcuts', 'No unique-values (📊) button found in column header'); }
             },
-            description: 'Show Unique Values Dropdown'
+            description: 'Show Unique Values Dropdown',
+            colContext: true
         };
 
         ctrlMFunctionMap['a'] = {
@@ -13840,7 +13860,8 @@ ${sections.join('\n')}
                 if (caaBtn) { caaBtn.click(); Lib.debug('shortcuts', `CAA images toggled via prefix-mode a (table index ${tblIdx})`); }
                 else { Lib.warn('shortcuts', `No CAA toggle button found for table index ${tblIdx}`); }
             },
-            description: 'Toggle CAA Cover Art Images'
+            description: 'Toggle CAA Cover Art Images',
+            colContext: true
         };
 
         document._mbKeyboardShortcutsInitialized = true;
@@ -15645,12 +15666,12 @@ a { color: #1565c0; }`;
             btn.style.background  = '';
             btn.style.borderColor = '';
             btn.style.color       = '';
-            btn.title = 'Toggle barcode highlightning off';
+            btn.title = `Toggle barcode highlightning off (${getPrefixDisplay()} then B, or ${getShortcutDisplay('sa_toggle_barcode_highlighting', 'Ctrl+B')})`;
         } else {
             btn.style.background  = '#555555';
             btn.style.borderColor = '#333333';
             btn.style.color       = '#ffffff';
-            btn.title = 'Toggle barcode highlightning on';
+            btn.title = `Toggle barcode highlightning on (${getPrefixDisplay()} then B, or ${getShortcutDisplay('sa_toggle_barcode_highlighting', 'Ctrl+B')})`;
         }
     }
 
@@ -18187,7 +18208,14 @@ a { color: #1565c0; }`;
     filterInput.placeholder = activeDefinition && activeDefinition.tableMode === 'multi'
         ? `Global Filter… works across all sub-tables`
         : `Global Filter…`;
-    filterInput.title = `Enter global filter string (focus this field with '${getShortcutDisplay('sa_shortcut_focus_global_filter', 'Ctrl+G')}', use 'Ctrl+U' for unicode character map)`;
+    filterInput.title = (() => {
+        const _directOn = typeof Lib !== 'undefined' && Lib.settings && Lib.settings.sa_enable_direct_ctrl_char_shortcuts;
+        const _gKey = getShortcutDisplay('sa_shortcut_focus_global_filter', 'Ctrl+G');
+        const _focusHint = _directOn
+            ? `focus with '${_gKey}'`
+            : `focus with '${getPrefixDisplay()} then G' (or enable Direct Ctrl+Letter Shortcuts for '${_gKey}')`;
+        return `Enter global filter string (${_focusHint}, use '${getPrefixDisplay()} then U' or 'Ctrl+U' for unicode character map)`;
+    })();
     filterInput.style.cssText = uiGlobalFilterInputCSS();
 
     // ── Clear (✕) button — absolutely positioned inside the input ───────────
@@ -23571,7 +23599,14 @@ a { color: #1565c0; }`;
             const input = document.createElement('input');
             input.type = 'text';
             input.placeholder = '…';
-            input.title = `Enter column filter string (the first column in a table can be focused by '${getShortcutDisplay('sa_shortcut_focus_column_filter', 'Ctrl+C')}', use 'Ctrl+U' for unicode character map`;
+            input.title = (() => {
+                const _directOn = typeof Lib !== 'undefined' && Lib.settings && Lib.settings.sa_enable_direct_ctrl_char_shortcuts;
+                const _cKey = getShortcutDisplay('sa_shortcut_focus_column_filter', 'Ctrl+C');
+                const _focusHint = _directOn
+                    ? `first column in table focusable with '${_cKey}'`
+                    : `first column in table focusable with '${getPrefixDisplay()} then C' (or enable Direct Ctrl+Letter Shortcuts for '${_cKey}')`;
+                return `Enter column filter string (${_focusHint}, use '${getPrefixDisplay()} then U' or 'Ctrl+U' for unicode character map)`;
+            })();
             input.className = 'mb-col-filter-input';
             input.dataset.colIdx = idx;
 
@@ -33167,9 +33202,14 @@ a { color: #1565c0; }`;
                 // wherever the user hovers within the clickable unit.
                 const uniqWrap = uniqCountSpan.closest('.mb-col-uniq-wrap');
                 if (uniqWrap) {
+                    const _directOn = typeof Lib !== 'undefined' && Lib.settings && Lib.settings.sa_enable_direct_ctrl_char_shortcuts;
+                    const _qKey = getShortcutDisplay('sa_shortcut_col_unique_dropdown', 'Ctrl+Q');
+                    const _kbHint = _directOn
+                        ? `keyboard: ${_qKey} or ${getPrefixDisplay()} then Q when a column filter is focused`
+                        : `keyboard: ${getPrefixDisplay()} then Q when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for ${_qKey})`;
                     const tip = n > 0
-                        ? `Show the ${n} different unique values in this column, with the ability to quick filter by either clicking or selecting with the keyboard and pressing "Enter" on an entry`
-                        : 'Show unique values for this column';
+                        ? `Show the ${n} different unique values in this column, with the ability to quick filter by either clicking or selecting with the keyboard and pressing "Enter" on an entry — ${_kbHint}`
+                        : `Show unique values for this column — ${_kbHint}`;
                     uniqWrap.title      = tip;
                     uniqWrap.setAttribute('aria-label', tip);
                 }
@@ -33556,7 +33596,12 @@ a { color: #1565c0; }`;
             const collapseHdrBtn = document.createElement('span');
             collapseHdrBtn.className = 'mb-col-collapse-hdr-btn';
             collapseHdrBtn.dataset.colIndex = String(colIndex);
-            collapseHdrBtn.title = `Expand ALL multi-row "${colName}" cells (${multiRowCells.length}) in this table column`;
+            const _collapseDirectOn = typeof Lib !== 'undefined' && Lib.settings && Lib.settings.sa_enable_direct_ctrl_char_shortcuts;
+            const _collapseKey = getShortcutDisplay('sa_shortcut_col_toggle_collapse', 'Ctrl+O');
+            const _collapseKbHint = _collapseDirectOn
+                ? `keyboard: ${_collapseKey} or ${getPrefixDisplay()} then O when a column filter is focused`
+                : `keyboard: ${getPrefixDisplay()} then O when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for ${_collapseKey})`;
+            collapseHdrBtn.title = `Expand ALL multi-row "${colName}" cells (${multiRowCells.length}) in this table column — ${_collapseKbHint}`;
             collapseHdrBtn.setAttribute('role', 'button');
             collapseHdrBtn.setAttribute('aria-expanded', 'false');
             collapseHdrBtn.setAttribute('aria-label', `Expand all collapsed cells in: ${colName}`);
@@ -33595,8 +33640,8 @@ a { color: #1565c0; }`;
                 _glyphSpan.textContent = targetExpand ? '▼' : '▶';
                 const _count = _countSpan.textContent;
                 collapseHdrBtn.title = targetExpand
-                    ? `Collapse ALL multi-row ${colName} cells (${_count}) in this table column`
-                    : `Expand ALL multi-row ${colName} cells (${_count}) in this table column`;
+                    ? `Collapse ALL multi-row ${colName} cells (${_count}) in this table column — ${_collapseKbHint}`
+                    : `Expand ALL multi-row ${colName} cells (${_count}) in this table column — ${_collapseKbHint}`;
                 collapseHdrBtn.setAttribute('aria-expanded', targetExpand ? 'true' : 'false');
                 collapseHdrBtn.setAttribute(
                     'aria-label',
@@ -33894,10 +33939,16 @@ a { color: #1565c0; }`;
                 const span = document.createElement('span');
                 span.className = 'sort-icon-btn';
 
-                // Tooltips reflect the Ctrl+Click multi-sort model on all page types
-                if (char === '⇅') span.title = 'Restore original sort order (clears multi-sort columns)';
-                else if (char === '▲') span.title = 'Sort ascending — Ctrl+Click to add to multi-column sort';
-                else if (char === '▼') span.title = 'Sort descending — Ctrl+Click to add to multi-column sort';
+                // Tooltips reflect the Ctrl+Click multi-sort model and keyboard shortcuts
+                if (char === '⇅') span.title =
+                    'Restore original sort order (clears multi-sort columns)' +
+                    ` — keyboard: ${getShortcutDisplay('sa_shortcut_col_unsort', 'Ctrl+#')} when a column filter is focused`;
+                else if (char === '▲') span.title =
+                    'Sort ascending — Ctrl+Click to add to multi-column sort' +
+                    ` — keyboard: ${getShortcutDisplay('sa_shortcut_col_sort_asc', 'Ctrl+↑')} when a column filter is focused`;
+                else if (char === '▼') span.title =
+                    'Sort descending — Ctrl+Click to add to multi-column sort' +
+                    ` — keyboard: ${getShortcutDisplay('sa_shortcut_col_sort_desc', 'Ctrl+↓')} when a column filter is focused`;
 
                 // Restore active indicator for single-column state after re-render
                 // (multi-sort visuals are restored by the updateMultiSortVisuals call at the end)
@@ -44745,11 +44796,13 @@ a { color: #1565c0; }`;
                 const nowVisible = !visible;
                 liveBox.style.display        = nowVisible ? 'flex' : 'none';
                 liveBox.dataset[ctx.visAttr] = nowVisible ? 'true' : 'false';
-                btn.title = nowVisible
-                    ? 'Hide ' + ctx.stripeLabel +
-                        (activeDefinition && activeDefinition.tableMode === 'multi' ? ' for this sub-section' : ' for this section')
-                    : 'Show ' + ctx.stripeLabel +
-                        (activeDefinition && activeDefinition.tableMode === 'multi' ? ' for this sub-section' : ' for this section');
+                const _caaSection = activeDefinition && activeDefinition.tableMode === 'multi' ? ' for this sub-section' : ' for this section';
+                const _caaDirectOn = typeof Lib !== 'undefined' && Lib.settings && Lib.settings.sa_enable_direct_ctrl_char_shortcuts;
+                const _caaKey = getShortcutDisplay('sa_shortcut_col_toggle_caa', 'Ctrl+A');
+                const _caaKbHint = _caaDirectOn
+                    ? `keyboard: ${_caaKey} or ${getPrefixDisplay()} then A when a column filter is focused`
+                    : `keyboard: ${getPrefixDisplay()} then A when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for ${_caaKey})`;
+                btn.title = (nowVisible ? 'Hide ' : 'Show ') + ctx.stripeLabel + _caaSection + ' — ' + _caaKbHint;
                 Lib.debug(ctx.key, `${ctx.key} toggle btn ${btnId}: strip ${nowVisible ? 'shown' : 'hidden'}`);
             });
 
@@ -44795,11 +44848,13 @@ a { color: #1565c0; }`;
         const visible = liveBoxForTitle
             ? liveBoxForTitle.dataset[ctx.visAttr] !== 'false'
             : false;
-        btn.title = visible
-            ? 'Hide ' + ctx.stripeLabel +
-                (activeDefinition && activeDefinition.tableMode === 'multi' ? ' for this sub-section' : ' for this section')
-            : 'Show ' + ctx.stripeLabel +
-                (activeDefinition && activeDefinition.tableMode === 'multi' ? ' for this sub-section' : ' for this section');
+        const _caaSection = activeDefinition && activeDefinition.tableMode === 'multi' ? ' for this sub-section' : ' for this section';
+        const _caaDirectOn = typeof Lib !== 'undefined' && Lib.settings && Lib.settings.sa_enable_direct_ctrl_char_shortcuts;
+        const _caaKey = getShortcutDisplay('sa_shortcut_col_toggle_caa', 'Ctrl+A');
+        const _caaKbHint = _caaDirectOn
+            ? `keyboard: ${_caaKey} or ${getPrefixDisplay()} then A when a column filter is focused`
+            : `keyboard: ${getPrefixDisplay()} then A when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for ${_caaKey})`;
+        btn.title = (visible ? 'Hide ' : 'Show ') + ctx.stripeLabel + _caaSection + ' — ' + _caaKbHint;
 
         Lib.debug(ctx.key, `${ctx.key}CreateOrUpdateToggleButton: ${isNew ? 'created' : 'updated'} btn ${btnId} (${count} link(s))`);
         return btnId;
@@ -46852,13 +46907,13 @@ a { color: #1565c0; }`;
         'l': { fn: () => showLoadFilterDialog(document.getElementById('mb-load-from-disk-btn')), description: 'Load from Disk' },
         'r': { fn: toggleAutoResizeColumns, description: 'Auto Resize Columns' },
         'v': { fn: openVisibleColumnsMenu, description: 'Open Visible Columns Menu' },
+        'b': { fn: () => document.getElementById('mb-barcode-highlight-btn')?.click(), description: 'Toggle Barcode Highlighting' },
         'd': { fn: openDensityMenu, description: 'Open Density Menu' },
         'i': { fn: showStatsPanel, description: 'Show Statistics Panel' },
         'e': { fn: openExportMenu, description: 'Open Export Menu' },
         'k': { fn: showShortcutsHelp, description: 'Show Keyboard Shortcuts Help' },
         ',': { fn: () => openSettingsWithConfigButtons(), description: 'Open Settings' },
         'h': { fn: showAppHelp, description: 'Show App Help' },
-        'b': { fn: () => document.getElementById('mb-barcode-highlight-btn')?.click(), description: 'Toggle Barcode Highlighting' },
         'g': {
             fn: () => {
                 const fi = document.getElementById('mb-global-filter-input');

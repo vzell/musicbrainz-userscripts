@@ -1,5 +1,25 @@
 [
   {
+    "version": "9.99.656",
+    "date": "2026-06-15",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Prefix-mode tooltip (`showCtrlMTooltip`): split the Functions list into a regular section and a 'Col-filter context' section for `o`/`q`/`a`. The column-context section is shown in green when a column filter is currently focused and grey with a '⚠ focus col filter first' warning otherwise. Added `colContext: true` flag to the `o`/`q`/`a` entries in `ctrlMFunctionMap` to enable this split.",
+          "Moved 'b — Toggle Barcode Highlighting' to appear immediately after 'v — Open Visible Columns Menu' in the prefix-mode function map (and therefore in the tooltip), matching the visual order in the controls bar.",
+          "Barcode highlight button tooltip now includes the prefix shortcut (`Ctrl+M` then `B`) and the configured direct shortcut (`Ctrl+B`) in both active and inactive states.",
+          "Global filter input tooltip now honours `sa_enable_direct_ctrl_char_shortcuts`: when the setting is off, shows the prefix-mode alternative (`Ctrl+M` then `G`) and mentions that the direct `Ctrl+G` can be re-enabled in Settings.",
+          "Column filter input tooltip similarly honours `sa_enable_direct_ctrl_char_shortcuts`: shows `Ctrl+M` then `C` prefix-mode hint when direct shortcuts are off.",
+          "Sort-icon tooltips for ⇅, ▲, ▼ now mention the keyboard shortcuts `Ctrl+#`, `Ctrl+↑`, `Ctrl+↓` (column filter focused) using `getShortcutDisplay` so they reflect any user-configured bindings.",
+          "Unique-values (📊) wrapper tooltip now mentions `Ctrl+M` then `Q` and, when direct shortcuts are enabled, also `Ctrl+Q` (col filter focused).",
+          "Multi-row collapse header button (▤) tooltip now mentions `Ctrl+M` then `O` and, when direct shortcuts are enabled, also `Ctrl+O` (col filter focused); hint is kept in sync on both creation and toggle.",
+          "Per-table CAA toggle button tooltip now mentions `Ctrl+M` then `A` (col filter focused) and, when direct shortcuts are enabled, also `Ctrl+A`; hint is kept in sync on both creation and click-toggle."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.655",
     "date": "2026-06-15",
     "sections": [
