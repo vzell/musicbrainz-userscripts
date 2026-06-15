@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.659",
+    "date": "2026-06-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`applyMultiSortColumnTints` used `cell.textContent.trim()` to compare successive cell values when determining shade-flip boundaries. Cells that embed a `<script type=\"application/json\">` block (e.g. the Country/Date column on release-group pages) produced different `textContent` strings for visually identical values because the embedded JSON uses varying property-key order, causing the shade to flip on every row even when the visible value was unchanged. Fixed by replacing `cell.textContent.trim()` with `getCleanColumnText(cell)`, which already skips `<script>` and `<style>` nodes via its TreeWalker filter."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.658",
     "date": "2026-06-16",
     "sections": [

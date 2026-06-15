@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.658+2026-06-16
+// @version      9.99.659+2026-06-16
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -33891,13 +33891,16 @@ a { color: #1565c0; }`;
                 const pair   = bodyPairs[priorityIdx % bodyPairs.length];
                 const hdrCls = hdrClasses[priorityIdx % hdrClasses.length];
 
-                // Walk rows, flip shade each time the cell text value changes
+                // Walk rows, flip shade each time the cell text value changes.
+                // getCleanColumnText skips <script>/<style> nodes so cells that
+                // embed JSON data (e.g. Country/Date release-events) compare equal
+                // when their visible text is the same despite differing property order.
                 let shadeIdx  = 0;
                 let lastValue = null;
                 bodyRows.forEach(tr => {
                     const cell = tr.cells[colIdx];
                     if (!cell) return;
-                    const cellValue = cell.textContent.trim();
+                    const cellValue = getCleanColumnText(cell);
                     if (lastValue !== null && cellValue !== lastValue) {
                         shadeIdx = 1 - shadeIdx; // toggle between 0 and 1
                     }
