@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.656+2026-06-15
+// @version      9.99.657+2026-06-15
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -7549,6 +7549,29 @@
     }
 
     /**
+     * Builds a keyboard shortcut hint string for button tooltips.
+     * Always includes the prefix-mode form (e.g. "Ctrl+M, then S").
+     * Appends the direct shortcut (e.g. "or Ctrl+S") only when
+     * `sa_enable_direct_ctrl_char_shortcuts` is on, or when the shortcut is not
+     * a Ctrl+<a–z> key (e.g. Ctrl+,) and is therefore never suppressed.
+     * @param {string} settingKey  configSchema key for the direct shortcut
+     * @param {string} fallback    default direct shortcut string
+     * @param {string} prefixKey   single key label used after the prefix (e.g. 'S', ',')
+     * @returns {string}  e.g. "Ctrl+M, then S" or "Ctrl+M, then S, or Ctrl+S"
+     */
+    function buildShortcutHint(settingKey, fallback, prefixKey) {
+        const directKey = getShortcutDisplay(settingKey, fallback);
+        const prefixHint = `${getPrefixDisplay()}, then ${prefixKey}`;
+        const p = parsePrefixShortcut(directKey);
+        const isBlockedLetter = p.ctrl && !p.alt && !p.shift
+                             && p.key.length === 1
+                             && p.key.toLowerCase() >= 'a' && p.key.toLowerCase() <= 'z';
+        const directOn = typeof Lib !== 'undefined' && Lib.settings
+                      && Lib.settings.sa_enable_direct_ctrl_char_shortcuts;
+        return (!isBlockedLetter || directOn) ? `${prefixHint}, or ${directKey}` : prefixHint;
+    }
+
+    /**
      * Displays a floating tooltip listing all Ctrl+M prefix-mode shortcuts.
      * Shows numbered button shortcuts (1–9 / a–z) and named function shortcuts
      * from ctrlMFunctionMap. Positions the tooltip in the upper-right corner of the
@@ -9537,7 +9560,7 @@
         const toggleBtn = document.createElement('button');
         toggleBtn.id = 'mb-visible-btn';
         toggleBtn.innerHTML = makeButtonHTML('Visible', 'V', '👁️');
-        toggleBtn.title = `Show/hide table columns (${getPrefixDisplay()}, then V)`;
+        toggleBtn.title = `Show/hide table columns (${buildShortcutHint('sa_shortcut_open_visible_columns', 'Ctrl+V', 'V')})`;
         toggleBtn.style.cssText = uiActionBtnBaseCSS();
         toggleBtn.type = 'button';
 
@@ -11489,7 +11512,7 @@ ${sections.join('\n')}
         const exportBtn = document.createElement('button');
         exportBtn.id = 'mb-export-btn';
         exportBtn.innerHTML = makeButtonHTML('Export', 'E', '💾');
-        exportBtn.title = `Export visible rows and columns to various formats (${getPrefixDisplay()}, then E)`;
+        exportBtn.title = `Export visible rows and columns to various formats (${buildShortcutHint('sa_shortcut_open_export', 'Ctrl+E', 'E')})`;
         exportBtn.style.cssText = uiActionBtnBaseCSS();
         exportBtn.type = 'button';
 
@@ -13887,7 +13910,7 @@ ${sections.join('\n')}
         const helpBtn = document.createElement('button');
         helpBtn.id = 'mb-shortcuts-help-btn';
         helpBtn.textContent = '🎹';
-        helpBtn.title = `Show keyboard shortcuts (or press ? / ${getPrefixDisplay()}, then K)`;
+        helpBtn.title = `Show keyboard shortcuts (or press ? / ${buildShortcutHint('sa_shortcut_show_shortcuts_help', 'Ctrl+K', 'K')})`;
         helpBtn.style.cssText = uiActionBtnBaseCSS();
         helpBtn.type = 'button';
         helpBtn.onclick = showShortcutsHelp;
@@ -15619,7 +15642,7 @@ a { color: #1565c0; }`;
         const statsBtn = document.createElement('button');
         statsBtn.id = 'mb-stats-btn';
         statsBtn.innerHTML = makeButtonHTML('Statistics', 'i', '📊');
-        statsBtn.title = `Show table statistics (${getPrefixDisplay()}, then I)`;
+        statsBtn.title = `Show table statistics (${buildShortcutHint('sa_shortcut_open_statistics', 'Ctrl+I', 'I')})`;
         statsBtn.style.cssText = uiActionBtnBaseCSS();
         statsBtn.type = 'button';
         statsBtn.onclick = showStatsPanel;
@@ -15666,12 +15689,12 @@ a { color: #1565c0; }`;
             btn.style.background  = '';
             btn.style.borderColor = '';
             btn.style.color       = '';
-            btn.title = `Toggle barcode highlightning off (${getPrefixDisplay()} then B, or ${getShortcutDisplay('sa_toggle_barcode_highlighting', 'Ctrl+B')})`;
+            btn.title = `Toggle barcode highlightning off (${buildShortcutHint('sa_toggle_barcode_highlighting', 'Ctrl+B', 'B')})`;
         } else {
             btn.style.background  = '#555555';
             btn.style.borderColor = '#333333';
             btn.style.color       = '#ffffff';
-            btn.title = `Toggle barcode highlightning on (${getPrefixDisplay()} then B, or ${getShortcutDisplay('sa_toggle_barcode_highlighting', 'Ctrl+B')})`;
+            btn.title = `Toggle barcode highlightning on (${buildShortcutHint('sa_toggle_barcode_highlighting', 'Ctrl+B', 'B')})`;
         }
     }
 
@@ -15857,7 +15880,7 @@ a { color: #1565c0; }`;
         const densityBtn = document.createElement('button');
         densityBtn.id = 'mb-density-btn';
         densityBtn.innerHTML = makeButtonHTML('Density', 'D', '📏');
-        densityBtn.title = `Change table density (spacing) (${getPrefixDisplay()}, then D)`;
+        densityBtn.title = `Change table density (spacing) (${buildShortcutHint('sa_shortcut_open_density', 'Ctrl+D', 'D')})`;
         densityBtn.style.cssText = uiActionBtnBaseCSS();
         densityBtn.type = 'button';
 
@@ -16352,7 +16375,7 @@ a { color: #1565c0; }`;
 
         if (isResized) {
             resizeBtn.innerHTML = makeButtonHTML('Restore', 'R', '↔️');
-            resizeBtn.title = `Restore original column widths (click to toggle / ${getPrefixDisplay()}, then R)`;
+            resizeBtn.title = `Restore original column widths (click to toggle / ${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`;
             resizeBtn.style.background = '#e8f5e9';
             resizeBtn.style.borderColor = '#4CAF50';
         } else {
@@ -16361,12 +16384,12 @@ a { color: #1565c0; }`;
             const anySubResized = Array.from(subTableResizedStates.values()).some(Boolean);
             if (anySubResized) {
                 resizeBtn.innerHTML = makeButtonHTML('Resize*', 'R', '↔️');
-                resizeBtn.title = `One or more sub-tables are auto-resized. Click to auto-resize all (${getPrefixDisplay()}, then R)`;
+                resizeBtn.title = `One or more sub-tables are auto-resized. Click to auto-resize all (${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`;
                 resizeBtn.style.background = '#fff3e0';
                 resizeBtn.style.borderColor = '#FF9800';
             } else {
                 resizeBtn.innerHTML = makeButtonHTML('Resize', 'R', '↔️');
-                resizeBtn.title = `Auto-resize columns to optimal width (click to toggle / ${getPrefixDisplay()}, then R)`;
+                resizeBtn.title = `Auto-resize columns to optimal width (click to toggle / ${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`;
                 resizeBtn.style.background = '';
                 resizeBtn.style.borderColor = '';
             }
@@ -17258,7 +17281,7 @@ a { color: #1565c0; }`;
         const resizeBtn = document.createElement('button');
         resizeBtn.id = 'mb-resize-btn';
         resizeBtn.innerHTML = makeButtonHTML('Resize', 'R', '↔️');
-        resizeBtn.title = `Auto-resize columns to optimal width (${getPrefixDisplay()}, then R)`;
+        resizeBtn.title = `Auto-resize columns to optimal width (${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`;
         resizeBtn.style.cssText = uiActionBtnBaseCSS();
         resizeBtn.type = 'button';
         resizeBtn.onclick = toggleAutoResizeColumns;
@@ -17910,7 +17933,7 @@ a { color: #1565c0; }`;
     saveToDiskBtn.onmouseover = () => { saveToDiskBtn.style.backgroundColor = _saveStyle.hoverBg; };
     saveToDiskBtn.onmouseout  = () => { saveToDiskBtn.style.backgroundColor = _saveStyle.normalBg; };
     saveToDiskBtn.type = 'button';
-    saveToDiskBtn.title = `Save current table data to disk in a serialized format as Gzipped JSON (${getPrefixDisplay()}, then S)`;
+    saveToDiskBtn.title = `Save current table data to disk in a serialized format as Gzipped JSON (${buildShortcutHint('sa_shortcut_save_to_disk', 'Ctrl+S', 'S')})`;
     saveToDiskBtn.onclick = () => saveTableDataToDisk();
     saveToDiskBtn.style.display = 'none';
 
@@ -17927,7 +17950,7 @@ a { color: #1565c0; }`;
     loadFromDiskBtn.onmouseover = () => { loadFromDiskBtn.style.backgroundColor = _loadStyle.hoverBg; };
     loadFromDiskBtn.onmouseout  = () => { loadFromDiskBtn.style.backgroundColor = _loadStyle.normalBg; };
     loadFromDiskBtn.type = 'button';
-    loadFromDiskBtn.title = `Load table data from disk (serialized JSON file in Gzipped format) (${getPrefixDisplay()}, then L)`;
+    loadFromDiskBtn.title = `Load table data from disk (serialized JSON file in Gzipped format) (${buildShortcutHint('sa_shortcut_load_from_disk', 'Ctrl+L', 'L')})`;
 
     const fileInput = document.createElement('input');
     fileInput.id = 'mb-file-input';
@@ -17959,7 +17982,7 @@ a { color: #1565c0; }`;
     settingsBtn.id = 'mb-settings-btn';
     settingsBtn.textContent = '⚙️';
     settingsBtn.type = 'button';
-    settingsBtn.title = `Open userscript settings manager to configure script behavior (${getPrefixDisplay()}, then ,)`;
+    settingsBtn.title = `Open userscript settings manager to configure script behavior (${buildShortcutHint('sa_shortcut_open_settings', 'Ctrl+,', ',')})`;
     settingsBtn.onclick = () => {
         openSettingsWithConfigButtons();
     };
@@ -17969,7 +17992,7 @@ a { color: #1565c0; }`;
         const shortcutsBtn = document.createElement('button');
         shortcutsBtn.id = 'mb-shortcuts-help-btn';
         shortcutsBtn.textContent = '🎹';
-        shortcutsBtn.title = `Show keyboard shortcuts (or press ? / ${getPrefixDisplay()}, then K)`;
+        shortcutsBtn.title = `Show keyboard shortcuts (or press ? / ${buildShortcutHint('sa_shortcut_show_shortcuts_help', 'Ctrl+K', 'K')})`;
         shortcutsBtn.style.cssText = uiActionBtnBaseCSS();
         shortcutsBtn.type = 'button';
         shortcutsBtn.onclick = showShortcutsHelp;
@@ -17990,7 +18013,7 @@ a { color: #1565c0; }`;
     const appHelpBtn = document.createElement('button');
     appHelpBtn.id = 'mb-app-help-btn';
     appHelpBtn.textContent = '❓';
-    appHelpBtn.title = `Show application help and feature overview (${getPrefixDisplay()}, then H)`;
+    appHelpBtn.title = `Show application help and feature overview (${getPrefixDisplay()}, then H)`; // H has no direct Ctrl+H shortcut — prefix mode only
     appHelpBtn.style.cssText = uiHelpBtnCSS();
     appHelpBtn.type = 'button';
     appHelpBtn.onclick = showAppHelp;
@@ -18214,7 +18237,7 @@ a { color: #1565c0; }`;
         const _focusHint = _directOn
             ? `focus with '${_gKey}'`
             : `focus with '${getPrefixDisplay()} then G' (or enable Direct Ctrl+Letter Shortcuts for '${_gKey}')`;
-        return `Enter global filter string (${_focusHint}, use '${getPrefixDisplay()} then U' or 'Ctrl+U' for unicode character map)`;
+        return `Enter global filter string (${_focusHint}, use '${getShortcutDisplay('sa_shortcut_unicode_chars', 'Ctrl+U')}' for unicode character map)`;
     })();
     filterInput.style.cssText = uiGlobalFilterInputCSS();
 
@@ -23605,7 +23628,7 @@ a { color: #1565c0; }`;
                 const _focusHint = _directOn
                     ? `first column in table focusable with '${_cKey}'`
                     : `first column in table focusable with '${getPrefixDisplay()} then C' (or enable Direct Ctrl+Letter Shortcuts for '${_cKey}')`;
-                return `Enter column filter string (${_focusHint}, use '${getPrefixDisplay()} then U' or 'Ctrl+U' for unicode character map)`;
+                return `Enter column filter string (${_focusHint}, use '${getShortcutDisplay('sa_shortcut_unicode_chars', 'Ctrl+U')}' for unicode character map)`;
             })();
             input.className = 'mb-col-filter-input';
             input.dataset.colIdx = idx;

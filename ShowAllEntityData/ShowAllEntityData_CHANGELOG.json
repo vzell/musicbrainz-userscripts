@@ -1,5 +1,20 @@
 [
   {
+    "version": "9.99.657",
+    "date": "2026-06-15",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Global and column filter input tooltips incorrectly mentioned 'Ctrl+M then U' as an alternative for the unicode character map shortcut. The unicode picker (`Ctrl+U`) is handled in the capture phase and is never suppressed, so the tooltip now simply shows the configured `sa_shortcut_unicode_chars` shortcut (default `Ctrl+U`) without a prefix-mode alternative.",
+          "Barcode highlight button tooltip no longer shows the direct `Ctrl+B` shortcut when `sa_enable_direct_ctrl_char_shortcuts` is off. It now uses the new `buildShortcutHint` helper (same as other action buttons).",
+          "Added `buildShortcutHint(settingKey, fallback, prefixKey)` utility: always emits the prefix-mode form (`Ctrl+M, then X`); appends the direct shortcut (`or Ctrl+X`) only when `sa_enable_direct_ctrl_char_shortcuts` is on, or when the shortcut key is not a `Ctrl+<a–z>` letter (e.g. `Ctrl+,`) and is therefore never suppressed.",
+          "All action-button tooltips (Save, Load, Resize/Restore, Visible, Density, Statistics, Export, Keyboard Shortcuts, Settings) now use `buildShortcutHint` so the direct `Ctrl+X` shortcut is shown only when enabled. `Ctrl+,` (Settings) is always shown because it is not a letter shortcut. App Help shows prefix-mode only (no direct `Ctrl+H` shortcut exists)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.656",
     "date": "2026-06-15",
     "sections": [
