@@ -80006,6 +80006,1476 @@ be omitted, so that they last information is display as long as not a new messag
 Is it possible to apply the same highlight pattern when sorting just on one column, to visually show the enduser when a
 column value actually changes. Actually what we already do in multi column sort mode.
 
+* DONE enhance splitting of comment columns (function "eventParts") with event data
+
+specifically the "Country" when it has the form "<country>; <additional info>"
+
+* DONE Relationship column correctness bug
+** DONE initial
+
+Relationship column correctness bug: Three-part fix (race condition between fetch queue and runFilter DOM rebuild):
+
+What the intended flow is:
+
+#+begin_example
+Initial render
+  → initRelationshipsColumn()
+      Phase 1: IDB hits → populate immediately
+      Phase 2: throttled queue, 1 cell per 1100ms
+        → _populateCells(mbid, data)
+            → stamps icons into DOM cells        (live td.mb-rel-cell in table)
+            → stamps relDone='1' into src cells  (allRows / groupedRows)
+      queue.then()
+        → final bulk sync: DOM → source rows
+        → _relCreateRetryButtons()
+#+end_example
+
+What actually happens when you filter mid-fetch:
+
+#+begin_example
+Phase 2 still running (e.g. cell 3 of 50 done, cells 4-50 pending at 1100ms intervals)
+
+User types in filter input
+  → runFilter() fires (debounced 300ms)
+      → allRows.map(r => cloneNode(true))   ← clones source rows
+                                               source row cells 4-50 still have
+                                               relDone='' and innerHTML=''
+      → renderFinalTable(filteredRows)
+          → tbody.innerHTML = ''            ← DESTROYS all DOM cells including
+                                               cells 1-3 that were populated
+          → appends clones of matching rows ← these clones have empty cells 4-50
+                                               AND cells 1-3 are empty too
+                                               (source rows weren't synced yet —
+                                               that only happens in queue.then())
+#+end_example
+
+What the fix needs to do:
+
+1. After renderFinalTable/renderGroupedTable in runFilter: call
+   initRelationshipsColumn() if any td.mb-rel-cell[data-rel-done!="1"] exist
+2. Sync source rows immediately in _populateCells after each MBID
+   completes — not only in queue.then()
+3. queue.then() bulk sync becomes safety net, skip already-synced cells
+
+** add status info
+
+1.)
+
+adjust the current information about "🔗 All Relationships loaded" in the "Relationships load-complete toast" popup
+
+#+begin_example
+        const lines = [
+            `🔗 All Relationships loaded`,
+            `   ${mbidCount} entities in ${_fmtMs(elapsedMs)}`,
+            `   ${cellCount} cell${cellCount !== 1 ? 's' : ''} populated`,
+            `   (click to dismiss)`,
+        ];
+#+end_example
+
+to include information from which tier the relationships are fetched (network, cache, indexdDB)
+add the information about "🔗 All Relationships loaded"
+
+2.)
+
+when ALL rows of a table are processed, also include the information in a condensed format in the "mb-global-status-display"
+
+#+begin_example
+<span id="mb-global-status-display" style="font-size: 0.95em; color: rgb(153, 153, 153); font-weight: bold; vertical-align: middle;">Loaded 2 pages (199 rows) from MusicBrainz, Fetching time: 0.65s, Rendering time: 0.19s, 📐Columnsize measuring time: 0.10s</span>
+#+end_example
+
+after the "📐Columnsize measuring time" info
+
+** change format
+
+1.)
+
+are the "entities" and "cell(s)" number ever different from each other
+
+2.)
+
+change the current format line
+
+#+begin_example
+<span id="mb-global-status-display" style="font-size: 0.95em; color: rgb(153, 153, 153); font-weight: bold; vertical-align: middle;">Loaded 2 pages (124 rows) from MusicBrainz, Fetching time: 0.78s, Rendering time: 0.12s, 📐Columnsize measuring time: 0.07s, 🔗 Rels: 124 entities · 124 cells · IDB:124·cache:0·net:0 · 5ms</span>
+#+end_example
+
+to the following format
+
+#+begin_example
+<span id="mb-global-status-display" style="font-size: 0.95em; color: rgb(153, 153, 153); font-weight: bold; vertical-align: middle;">Loaded 2 pages (124 rows); Fetching: 0.78s, Rendering: 0.12s, 📐Measuring: 0.07s, 🔗Rels: 124 entities·124 cells·📦:124·💾:0·🌐:0 · 5ms</span>
+#+end_example
+
+and add tooltip support when hovering over the different parts of the "mb-global-status-display" line:
+
+- explain the loading comes from the MusicBrainz database
+- explain the different parts in "📦:124·💾:0·🌐:0"
+- etc.
+
+** redesign
+
+1.)
+
+change the following span text from the following format
+
+#+begin_example
+🔗Rels: 124 entities·124 cells·📦:124·💾:0·🌐:0 · 5ms
+#+end_example
+
+to
+
+#+begin_example
+🔗Rels: 124/124·📦124/💾0/🌐0·5ms
+#+end_example
+
+2.)
+
+when ALL rows of a table are processed, also include the information about loaded CAA/EAA images in a condensed format in the "mb-global-status-display"
+after the "📐Measuring:" and before the "🔗Rels:" info in a format which mirrors the "🔗Rels:" info.
+
+3.)
+
+in the tooltip include all the following tier information:
+
+#+begin_example
+        const tiers = [
+            { key: 'memory',  emoji: '🟢', label: 'Memory cache' },
+            { key: 'idb',     emoji: '🗄️', label: 'IndexedDB cache' },
+            { key: 'network', emoji: '🔵', label: 'Network fetch' },
+            { key: 'browser', emoji: '🌐', label: 'Browser cache' },
+        ];
+#+end_example
+
+4.)
+
+leave the info after filtering in
+
+#+begin_example
+<span id="mb-info-display" style="font-size: 0.95em; color: green; font-weight: bold; vertical-align: middle;">🎨 CAA/EAA: 40 images in 140ms</span>
+#+end_example
+
+** DONE bugs
+
+1.)
+
+there is a bug that after every filtering operation the new CAA info is appended in the "mb-global-status-display", see e.g.
+
+#+begin_example
+<span id="mb-global-status-display" style="font-size: 0.95em; color: rgb(153, 153, 153); font-weight: bold; vertical-align: middle;"><span title="Pages and rows loaded from the MusicBrainz database.">Loaded 2 pages (124 rows)</span><span>; </span><span title="Time to fetch all pages from the MusicBrainz server.">Fetching: 0.52s</span><span>, </span><span title="Time to build and insert the fetched rows into the DOM.">Rendering: 0.13s</span><span>, </span><span title="Relationship icons: 124 unique MBIDs / 124 cells
+🗄️ IndexedDB cache: 124
+Total load time: 5ms">🔗Rels: 124/124·📦124/💾0/🌐0·5ms</span><span>, </span><span title="Time to auto-measure and set per-column widths (sa_auto_resize_columns).">📐Measuring: 0.08s</span><span>, </span><span title="CAA/EAA artwork: 119 icon + 119 inline = 238 total
+🌐 Browser cache: 119 icon + 119 inline = 238
+Total load time: 51.6s">🎨CAA: 119/119·🟢0/🗄️0/🔵0/🌐238·51.6s</span><span>, </span><span title="CAA/EAA artwork: 61 icon + 61 inline = 122 total
+🌐 Browser cache: 61 icon + 61 inline = 122
+Total load time: 333ms">🎨CAA: 61/61·🟢0/🗄️0/🔵0/🌐122·333ms</span><span>, </span><span title="CAA/EAA artwork: 56 icon + 56 inline = 112 total
+🌐 Browser cache: 56 icon + 56 inline = 112
+Total load time: 296ms">🎨CAA: 56/56·🟢0/🗄️0/🔵0/🌐112·296ms</span><span>, </span><span title="CAA/EAA artwork: 119 icon + 119 inline = 238 total
+🌐 Browser cache: 119 icon + 119 inline = 238
+Total load time: 692ms">🎨CAA: 119/119·🟢0/🗄️0/🔵0/🌐238·692ms</span></span>
+#+end_example
+
+It should be there only when the final page is initially rendered AND all rows are processed for images.
+
+The CAA/EAA info after filtering should ONLY go to the "mb-info-display"
+
+2.)
+
+the tooltips should always display ALL tier information for relationships and CAA/EAA images
+
+3.)
+
+the condensed format in the "mb-global-status-display" should only display information for non zero count instead
+
+4.)
+
+the relationship tooltip should use the same icons as in the condensed status display and not the ones used for the CAA/EAA info
+
+* DONE same for CAA/EAA images
+
+#+begin_example
+        // ── Assemble the full multiline message ───────────────────────────────
+        const timeStr    = _fmtMs(elapsedMs);
+        const totalLabel = grandTotal === 1 ? '1 image' : `${grandTotal} images`;
+        const lines = [
+            `🎨 All CAA/EAA artwork loaded`,
+            `   ${totalLabel} in ${timeStr}`,
+            ...tierLines,
+            `   (click to dismiss)`,
+        ];
+        const toastText = lines.join('\n');
+
+        // ── Update the global info area (compact single-line summary) ─────────
+        const infoDisplay = document.getElementById('mb-info-display');
+        if (infoDisplay) {
+            infoDisplay.textContent = `🎨 CAA/EAA: ${totalLabel} in ${timeStr}`;
+            infoDisplay.style.color = 'green';
+        }
+#+end_example
+
+* DONE Filter performance (do in order, each builds on previous)
+** DONE initial
+
+Filter performance (do in order, each builds on previous)
+
+- Fix A: test-before-clone — reverse map/filter order in runFilter(),
+  separate highlight from match in testRowMatch()
+- Fix B: pre-cache extracted text — WeakMap keyed on source rows,
+  populated at render time, invalidated on new fetch
+- Pattern 2: two-phase matching — cheap global string.includes first,
+  expensive querySelector/regexp only on survivors
+
+Start with fix A, tell me how I can test it, then let me test.
+
+** DONE test Fix A
+
+How to test Fix A
+
+1. Install/reload the updated script in Tampermonkey.
+   
+2. Golden-path filter test — go to any large list page (e.g. a label's releases with 200+ rows). Type a term that matches ~10 % of rows. Verify:
+   - Matching rows appear with correct yellow/blue highlights.
+   - Non-matching rows are hidden.
+   - Clearing the filter restores all rows with no stale highlights.
+
+3. Exclude mode — tick the "Ex" checkbox, type the same term. Verify matching rows are now hidden and no highlights
+   appear (excluded rows are never highlighted — that guard is still inside !matchOnly).
+
+4. Column filter — type something in a column filter box. Verify matching rows show column-level (blue) highlights.
+
+5. Performance sanity — open the browser DevTools Performance tab, record while typing a multi-character filter on a
+   500-row table. The "Scripting" flame chart should show fewer/narrower cloneNode stacks compared to v9.99.618,
+   particularly when the filter is narrow (few matches).
+
+6. Regexp filter — tick "Rx", enter a valid pattern. Confirm correct match/highlight behaviour. Enter an invalid pattern
+   and confirm the error state still shows and no filter runs.
+
+** DONE now do "Fix B"
+
+now do "Fix B" and tell me how to test it
+
+** DONE test Fix B
+
+How to test Fix B
+
+Correctness (same as Fix A tests — nothing should change visually):
+
+1. Plain-text global filter → matching rows highlighted, non-matching hidden.
+2. Regexp global filter → correct per-cell matching.
+3. Column filter → correct column-level highlights.
+4. Rel-cell URL filter → matching relationship icons outlined.
+5. Multi-row state filter (empty / any / single) → correct row visibility.
+6. Clear filter → all rows restored, no stale highlights.
+7. Exclude mode → matching rows hidden, no highlights.
+
+Cache invalidation:
+
+8. Load a list, filter to a few rows, then click the button again to re-fetch. Type the same filter. Results must be identical to the first pass — confirms stale WeakMap entries from the old allRows do not leak into the new fetch.
+
+Performance (the point of Fix B — observable from the second keystroke onwards):
+
+1. Load a large list (200+ rows). Type a narrow filter (1-3 matches). Open DevTools → Performance, start recording, type a character that keeps the same narrow result. Stop recording. In the flame chart, getCleanVisibleText and getCleanColumnText should appear on only the first
+ keypress; on subsequent keystrokes with the same result set they should be absent or nearly absent in the testRowMatch → matchOnly=true stack.
+2. Alternatively: add console.time('filter') / console.timeEnd('filter') around the runFilter call in the browser console and compare keystroke timing for a narrow filter (few matches → many cache hits) vs. a broad filter (all rows match → cache miss only on first keystroke).
+
+** DONE now do Pattern 2
+
+test ok, commit
+
+now do Pattern 2 and tell me how to test it
+
+** DONE test Pattern 2
+
+How to test Pattern 2
+
+Correctness — golden path (all existing filter types must still work):
+
+1. Plain-text column filter: type a word that appears in a column. Matching rows show blue highlights in that column. Clearing restores all rows.
+2. Regexp column filter: tick "Rx" on a column filter, enter /^[A-Z]/. Only rows starting with a capital letter in that column match. (This tests the regexp branch that bypasses the two-phase logic.)
+3. Sentinel filters via unique-values dropdown:
+  - Open a column with CAA artwork → click the unique-values button → pick "✓ has artwork" ('yes') or "✗ no artwork" ('no'). Rows must filter correctly. This exercises phase 2 (.mb-caa-sort-key bypass).
+  - Same for a column with inline thumbnails: pick "caa-inline-yes" / "caa-inline-no". This exercises the .mb-inline-art-sort-key bypass.
+4. Global + column filter combined: set a global filter that narrows to ~10 rows, then add a column filter on top. Only rows passing BOTH should be visible. This tests the global short-circuit (column loop is skipped for rows the global filter already rejected).
+5. Column filter + no global filter: clear global filter, keep column filter. All rows that match the column must appear. (Verifies the short-circuit doesn't fire when globalHit = true because there is no global query.)
+6. Exclude mode: tick "Ex" with a column filter value. Rows containing that value in the column must be hidden.
+
+Phase 2 performance (observable in DevTools):
+
+7. On a large release table with column filters set to normal text (not sentinels): record a Performance trace while typing in a column filter. The querySelector('.mb-inline-art-sort-key') and querySelector('.mb-caa-sort-key') calls should be absent from the flame chart — they
+only fire for the rare sentinel values that miss phase 1.
+
+** DONE test ok, commit
+
+test ok, commit
+
+Committed as ee66859. All three optimizations are now in:
+
+  ┌─────────┬───────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────┐
+  │ Commit  │            Change             │                                        Benefit                                        │
+  ├─────────┼───────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
+  │ cb8b549 │ Fix A: test-before-clone      │ cloneNode only on matching rows (N→M)                                                 │
+  ├─────────┼───────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
+  │ 000c70a │ Fix B: WeakMap text cache     │ getCleanVisibleText/getCleanColumnText computed once per row                          │
+  ├─────────┼───────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
+  │ ee66859 │ Pattern 2: two-phase matching │ querySelector bypasses only for sentinel values; column loop skipped on global reject │
+  └─────────┴───────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────┘
+
+** DONE now do the following patterns
+
+next the following patterns:
+
+- Pattern 3: adaptive debounce — scale delay to row count, user setting
+  becomes a floor not an override
+- Pattern 6: result cache — Map keyed on normalised query, max 50
+  entries, evict oldest; invalidate on fetch/sort/settings change
+
+** DONE start with Pattern 3
+
+start with Pattern 3, and tell me how to test
+
+** DONE test Pattern 3
+
+How to test Pattern 3
+
+Correctness (debounce still fires and filter still works):
+
+1. Load any list page, type in the global filter — results should update after the delay (same as before). No regressions on the filter itself.
+2. Type in a column filter — same check.
+3. Type in a sub-table filter (multi-table page) — same check.
+4. Set sa_filter_debounce_delay = 0 in settings and type — filter should respond immediately (floor = 0, adaptive = 0 for small tables). Verify no delay-related freeze.
+
+Adaptive scaling (the actual new behaviour):
+
+5. Small table (≤500 rows): Load a page with few rows. Open DevTools → Console and paste:
+// call _adaptiveFilterDelay from console isn't directly possible, but
+// log it inside: add a console.log(_adaptiveFilterDelay()) to the input handler
+5. Alternatively: set sa_filter_debounce_delay = 0 and verify typing feels instant.
+6. Large table (>6500 rows with default 300ms floor): Load a large releases/recordings page. Set sa_filter_debounce_delay = 0. Type rapidly. The delay should now be noticeably larger than 0ms because the adaptive component kicks in (e.g. 10 000 rows → max(0, 475) = 475 ms).
+Compare against a small table with the same setting: small table stays near 0ms.
+7. Floor semantics: Set sa_filter_debounce_delay = 1000. On any table size the delay should never drop below 1000ms. On a 10 000-row table: max(1000, 475) = 1000ms — the user setting wins.
+8. Formula breakpoint check: With default floor=300, load a table with ~7000 rows. Delay should be slightly above 300ms (max(300, (7000-500)*0.05) = max(300, 325) = 325ms). With ~5000 rows: max(300, 225) = 300ms (floor still wins).
+
+** DONE test ok commit
+
+test ok, commit
+
+** DONE Pattern 6
+
+now do Pattern 6 and tell me how to test it
+
+** DONE test Pattern 6
+
+How to test Pattern 6
+
+Correctness:
+
+1. Load a list page, type a filter — correct rows shown with highlights.
+2. Backspace through the query: type "Beatles", then delete one character at a time back to empty. At each step the correct rows for that query must appear — verifying cache hits give the right source row set.
+3. Re-type a previous query: type "Beatles", clear, type "Beatles" again. Second time must show identical results.
+4. Sort a column, then filter. Sort changes row order; the filter after sort must respect the new order (cache was invalidated by sort).
+5. Click the fetch button again (re-fetch). Then filter. Must show fresh results, not stale entries from the previous load.
+6. Disk-load: load a page, let it save to disk (green indicator), reload the page, click the button again to load from disk. Filter should work correctly — cache was invalidated at disk-load start.
+
+Cache behaviour (observable with debug logging):
+
+7. Enable sa_enable_debug_logging and open the browser console with the filter channel. Type a query — first keystroke logs nothing about cache. Backspace to a previous query — should log "runFilter: cache hit single-table" (or the multi-table equivalent). Confirm the hit
+appears on the second visit to a query but not the first.
+8. Eviction: type 51 distinct queries (each 1–2 chars, all different). The 51st miss should evict the oldest entry. The first query should now be a miss again (it was evicted). Confirm by re-typing query #1 and checking no cache-hit log appears.
+
+Performance (the point of Pattern 6):
+
+9. On a large table (1 000+ rows), type a narrow filter so few rows match. Backspace one character — the second visit to the shorter query should feel noticeably faster than the first (the O(N) testRowMatch scan is skipped; only O(M) clone+render runs).
+
+** DONE test ok commit
+
+test ok, commit
+
+* DONE Filtering and highlightning bug depending on typing speed
+** initial
+
+for e.g. on a 1588 row table (https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works) with lots of
+multi-row columns each with a massive amount of rows per cell (sometimes in the range between 20 and 300) there is a
+filtering bug when using the global filter but also when using the column filter on the column "Authors" (also
+multi-column cells) depending on the typing speed of the filter string.
+
+1.)
+
+a.)
+
+when typing in comfortable the string "cook", the initial 27 filtered rows show the right filter string "cook"
+highlighted, but suddenly the rest of the filtered rows only show the character "c" highlighted in each row/cell.
+
+b.)
+
+the same happens with the string " cook", the initial 26 filtered rows show the right filter string " cook"
+highlighted, but suddenly the rest of the filtered rows only show the character " " highlighted in each row/cell.
+
+2.)
+
+when entering the same filter string very fast, the same initial <n> filtered rows show the right filter string
+highlighted, but all the rest of the filtered rows are the same as in case 1.) but do NO show any highlightning at all
+
+3.)
+
+when pasting the filter strings or entering them very slowly, only rows with the complete filter string are correctly highlighted and filtered (actually the expected result)
+
+Does the current code explains this behaviour ?
+
+** fix
+
+This is a precise race condition — the code explains the behaviour exactly.
+
+Root cause: concurrent async renders with per-render highlight state
+The race has three components working together:
+
+Component 1: renderGroupedTable / renderFinalTable are not awaited
+In runFilter():
+javascriptrenderGroupedTable(filteredArray, _isReleaseGroupsMultiMode(), globalQuery || 're-run');
+// execution continues immediately — no await
+updateH2Count(totalFiltered, totalAbsolute);
+runFilter() fires the render and returns. renderGroupedTable starts executing asynchronously via its internal await renderRowsChunked(...) yields. Multiple runFilter() invocations can have their renders executing concurrently.
+
+Component 2: Highlights are baked into clones at match time
+javascript// Inside testRowMatch, called synchronously inside runFilter():
+if (finalHit) {
+    highlightText(row, globalQueryRaw, isCaseSensitive, -1, isRegExp);
+}
+globalQueryRaw is captured once at the top of runFilter() from filterInput.value. Each clone's highlights are frozen at the query value at the moment that specific runFilter() call started. They cannot be updated after the fact.
+
+Component 3: Works page rows are extremely expensive to clone
+Each row on the works page has Authors/Recording/Release cells with 20–300 <li> items. cloneNode(true) on such a row is very slow. The synchronous allRows.map(r => cloneNode(true)).filter(testRowMatch) loop for 1588 rows with massive cells takes several seconds. During this frozen execution, all user keystrokes are queued but not processed.
+
+How the three symptoms arise
+Case 3 (paste or very slow typing — correct behaviour)
+Paste fires one input event. Debounce fires once. One runFilter("cook") runs to completion. One renderGroupedTable starts and finishes without any concurrent render. All rows cloned and highlighted with "cook". ✅
+
+Case 1 (comfortable typing — partial correct highlight then wrong)
+Timeline for "c" → "o" → "o" → "k" at ~150ms per key, debounce 300ms:
+t=0ms    type "c"   → debounce timer starts (fires at t=300ms)
+t=150ms  type "o"   → debounce resets (fires at t=450ms)
+t=300ms  type "o"   → debounce resets (fires at t=600ms)
+t=450ms  type "k"   → debounce resets (fires at t=750ms)
+t=750ms  debounce fires → runFilter() called with filterInput.value = "cook"
+runFilter("cook") runs synchronously. The clone+testRowMatch loop for 1588 rows with 300-li cells takes ~3–8 seconds. Browser is frozen throughout. All clones get "cook" highlights correctly at this point.
+Then renderGroupedTable(filteredArray, ..., "cook") is called — NOT awaited — and returns. renderGroupedTable starts chunking rows into the tbody.
+Between chunks (each await yields to the event loop), the user has typed more characters. The queued input events fire → debouncedRunFilter() triggered → 300ms later another runFilter() fires with the NEW filterInput.value, e.g. "cook " or whatever was typed during the frozen period.
+This second runFilter() runs its own synchronous clone+highlight loop. Its clones are highlighted with "cook " (or the new query). It calls renderGroupedTable(filteredArray2, ..., "cook ") — again not awaited.
+Now two renderGroupedTable calls are running concurrently, both chunking rows into the same tbody elements:
+
+RGT1 ("cook"): inserted first N rows with "cook" highlights, yielding between chunks
+RGT2 ("cook "): starts, clears the tbody (or begins overwriting), inserts its own rows
+
+When RGT2 clears the tbody and starts its chunks, RGT1's remaining chunks resume and append their "cook"-highlighted rows after RGT2's "cook "-highlighted rows.
+Result: first rows show "cook " highlights (RGT2's output), then remaining rows show "cook" highlights (RGT1's stale chunks). Or vice versa depending on exact timing — which is why you see "initial N rows correct, rest wrong".
+The character "c" being the highlight for the remainder: this matches runFilter being called at some point when only "c" was in the input (before debounce reset), so RGT1 is actually the "c" render, not the "cook" render.
+
+Case 2 (fast typing — initial correct rows, rest no highlighting)
+Fast typing means the debounce fires multiple times in rapid succession. A third or fourth concurrent renderGroupedTable starts, clears the tbody, inserts rows that matched the query but were cloned during testRowMatch before the highlight call path completed — or clones from a runFilter where the query had already changed between the testRowMatch match check and the highlightText call.
+More precisely: when typing is fast enough, a runFilter() fires with a partial query (e.g. "co"), makes clones highlighted with "co", calls renderGroupedTable. A later runFilter("cook") clears the tbody and starts fresh. The "co" render's remaining chunks then continue appending their rows with no highlight visible for "cook" (because they were highlighted with "co", which doesn't match the current display query, but ALSO the first "cook" render is now orphaned).
+
+Why the works page specifically
+On a releases or recordings page the clone loop for 1588 rows is fast — a few hundred milliseconds. renderRowsChunked inserts all rows before the debounce fires again. Concurrent renders don't overlap because the render completes before the next runFilter fires.
+On the works page, a single cloneNode(true) on a row with a 300-li Authors cell takes ~5–20ms. For 1588 rows: 8–30 seconds of frozen execution. The browser queues multiple keystrokes during this freeze, which all fire as input events when runFilter() finally returns, triggering multiple rapid debouncedRunFilter() calls in quick succession. Concurrent renders are almost certain.
+
+The fix
+Three interlocking changes:
+1. Abort token in renderRowsChunked / renderGroupedTable — this already exists structurally but needs to be applied at renderGroupedTable level, not just inside individual renderRowsChunked calls. A single module-level counter:
+
+#+begin_example
+_renderGeneration = 0;
+
+async function renderGroupedTable(dataArray, ...) {
+    const generation = ++_renderGeneration;
+    // ... between every await:
+    if (_renderGeneration !== generation) return; // superseded
+}
+#+end_example
+
+When a new runFilter fires, _renderGeneration increments, and all older renders self-abort at their next yield point. Only the most recent render runs to completion.
+2. Fix A (test-before-clone) — separates the synchronous clone cost from the match test. With the cache in place (Fix B), the match test on source rows costs ~1ms per row. Cloning only happens for matching rows (~27 out of 1588 for "cook"). The frozen period drops from 8–30 seconds to under 100ms, which largely prevents the debounce overlap from occurring in the first place.
+3. Adaptive debounce — a 600ms debounce for 1588 rows means the user has finished typing before runFilter fires at all for typical typing speeds. Eliminates the race entirely for normal typing.
+Fix 1 is the correct fix — it makes concurrent renders safe regardless of row count or typing speed. Fixes 2 and 3 reduce the probability of the race occurring. All three together make it effectively impossible to trigger.
+
+** do
+
+for e.g. on a 1588 row table (https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works) with lots of
+multi-row columns each with a massive amount of rows per cell (sometimes in the range between 20 and 300) there is a
+filtering bug when using the global filter but also when using the column filter on the column "Authors" (also
+multi-column cells) depending on the typing speed of the filter string.
+
+1.)
+
+a.)
+
+when typing in comfortable the string "cook", the initial 27 filtered rows show the right filter string "cook"
+highlighted, but suddenly the rest of the filtered rows only show the character "c" highlighted in each row/cell.
+
+b.)
+
+the same happens with the string " cook", the initial 26 filtered rows show the right filter string " cook"
+highlighted, but suddenly the rest of the filtered rows only show the character " " highlighted in each row/cell.
+
+2.)
+
+when entering the same filter string very fast, the same initial <n> filtered rows show the right filter string
+highlighted, but all the rest of the filtered rows are the same as in case 1.) but do NO show any highlightning at all
+
+3.)
+
+when pasting the filter strings or entering them very slowly, only rows with the complete filter string are correctly highlighted and filtered (actually the expected result)
+
+
+Root cause of the race condition: concurrent async renders with per-render highlight state
+
+Fix with something like:
+
+Abort token in renderRowsChunked / renderGroupedTable — this already exists structurally but needs to be applied at
+renderGroupedTable level, not just inside individual renderRowsChunked calls. A single module-level counter:
+
+#+begin_example
+_renderGeneration = 0;
+
+async function renderGroupedTable(dataArray, ...) {
+    const generation = ++_renderGeneration;
+    // ... between every await:
+    if (_renderGeneration !== generation) return; // superseded
+}
+#+end_example
+
+** test
+
+How to test:
+1. Load the works page and click "Show all Works for Artist" — wait for all 1588 rows to render
+2. Type "cook" at a comfortable character-by-character pace in the global filter
+3. Before fix: first 27 rows show "cook" highlighted, then stale rows from the "c" render appear with only "c" highlighted
+4. After fix: only the 27 correctly highlighted "cook" rows appear; no stale rows ever follow them
+5. Also test typing quickly: same result — only correct rows, no stale chunks
+
+** test ok, commit
+
+test ok, commit
+
+* DONE rendering time and browser "Page unresponsive"
+** initial
+
+## problem
+
+For e.g. on https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases with 8099 rows
+
+the "🎨 Rendering rows..." stays at 8099 for a very long time and the chrome browser still now an then shows the "Page unresponsive" dialog window.
+
+The final status line looks like: 'Loaded 81 pages (8099 rows) from MusicBrainz, Fetching time: 75.94s, Rendering time: 247.98s'
+
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
+Loaded 16 pages (1588 rows); Fetching: 34.07s, Rendering: 141.15s, 🎨CAA: 0/0·—·697ms, 📐Measuring: 2.02s ✓ Auto-resized 11 visible columns in 2.01s (drag column edges to adjust)
+
+## answer from you in web session
+
+Why it stays at 8099 for a very long time after chunked render completes
+renderRowsChunked finishes quickly — 8099 rows at 500/chunk is ~17 chunks, each yielding once. The progress overlay disappears. But the rendering time clock is still running because the timing block wraps everything after renderRowsChunked returns, including a chain of synchronous operations that are far more expensive than the actual row insertion.
+The post-render pipeline for 8099 rows, in execution order:
+
+1. finalizeSplitAlignedColumns + finalizeRLCColumnWidths — before render
+These run on allRows (8099 source rows) before renderFinalTable is called. Pure JavaScript iteration with textContent.length reads — no layout reflows. For 8099 rows × several integer/split columns: ~50–100ms. Acceptable.
+
+2. tbody.innerHTML = '' — inside renderFinalTable
+Destroying 8099 live DOM rows forces a full layout recalculation. For a complex releases table this alone can take 2–5 seconds — the browser must garbage-collect all the detached nodes and their event listeners. This happens synchronously before renderRowsChunked even starts.
+
+3. renderRowsChunked — the part with the progress bar
+Inserting 8099 rows in 17 × 500-row chunks with yields between. Each tbody.appendChild(fragment) of 500 rows triggers a layout recalculation. For the release page row structure (8 cells, nested spans, bdi elements, flag icons): ~200–400ms per chunk × 17 = 3–7 seconds. Progress bar visible and updating throughout.
+
+4. cleanupHeaders — synchronous DOM mutation
+Iterates all thead elements, removes certain nodes. Cheap: ~10ms.
+
+5. addColumnFilterRow — synchronous DOM mutation
+Clones the header row, replaces cells with filter inputs. For 20 columns: ~20ms.
+
+6. makeTableSortableUnified — synchronous, O(columns)
+Wires sort click handlers on header cells. Pure event listener attachment — no row iteration. ~5ms.
+
+7. initCollapsableColumns — the dominant post-render cost
+This is where the long freeze after "8099" happens. For each collapsable column it:
+Cleanup pass — table.querySelectorAll('.mb-col-collapse-hdr-btn'), .mb-cell-collapse-toggle, td.mb-has-collapse-toggle, tbody td ul > li — four full table scans. For 8099 rows × 8 cells each = ~65,000 elements walked per selector. At 4 selectors: ~260,000 element visits just for cleanup. Cost: 3–8 seconds.
+Per-column body scan — Array.from(table.querySelectorAll('tbody tr')) then per row td.querySelectorAll('ul > li') — another full scan per collapsable column. For 3 collapsable columns on a releases page: 3 × 8099 = 24,000 querySelector calls. Cost: 2–4 seconds.
+_updateAllColHeaderCounts — called at the end of initCollapsableColumns. For each column header with a unique-value count span: iterates all tbody.rows, calls getCleanColumnText(cell) per row (TreeWalker walk, possibly with cell clone if strip selectors match). For 20 columns × 8099 rows: 161,980 getCleanColumnText calls. This is the single most expensive operation in the entire post-render pipeline. Cost: 30–120 seconds depending on how many columns have .mb-col-uniq-count spans and how complex the cell content is.
+
+8. Remaining hooks — mostly async or fast
+initBarcodeHighlight, initReleaseEventsColumn, initRelationshipsColumn, initPicardTaggerColumn — all either fast or immediately async. Not the problem.
+
+The actual breakdown for your 247-second render time
+PhaseEstimated costChrome dialog risktbody.innerHTML = '' (destroy 8099 rows)2–5sNo (single operation)renderRowsChunked (insert 8099 rows)3–7sNo (chunked with yields)initCollapsableColumns cleanup passes3–8sYes (synchronous, no yield)initCollapsableColumns per-column scans2–4sYes_updateAllColHeaderCounts (161,980 getCleanColumnText calls)30–120sYes — this is the primary culpritOther post-render hooks1–3sNoTotal~41–147s
+The 247-second total includes the fetch time measurement overlap and likely the toggleAutoResizeColumns call (451s on first visit) firing in the setTimeout(0) which overlaps with the rendering time window.
+
+Why the Chrome dialog still appears despite chunked render
+renderRowsChunked yields correctly — that part is fixed. But initCollapsableColumns and especially _updateAllColHeaderCounts run entirely synchronously after renderRowsChunked returns. A 30–120 second synchronous getCleanColumnText loop on 161,980 cells is exactly the kind of operation Chrome's watchdog fires on.
+
+## proposed fix
+
+Three targeted changes, all independent:
+
+1. _updateAllColHeaderCounts — defer or cache
+
+The unique-value counts don't need to be computed synchronously at render time. Either:
+
+Wrap in setTimeout(0) to defer out of the render timing block entirely, or
+Use the pre-built text cache from Fix B (once implemented) so getCleanColumnText hits the cache instead of walking the TreeWalker 161,980 times
+
+The deferred approach is trivial and immediately effective regardless of whether Fix B is implemented:
+
+#+begin_example
+// At the end of initCollapsableColumns, replace:
+_updateAllColHeaderCounts(table);
+
+// With:
+setTimeout(() => _updateAllColHeaderCounts(table), 0);
+#+end_example
+
+2. initCollapsableColumns cleanup passes — consolidate into one scan
+
+Currently four separate querySelectorAll calls each walking the full table. Replace with one querySelectorAll('td, span, li') pass that handles all cleanup in a single walk.
+
+3. initCollapsableColumns per-column body scans — single shared scan
+Currently Array.from(table.querySelectorAll('tbody tr')) runs once per collapsable column. Hoist it above the collapsableColumns.forEach loop so it runs once total:
+
+#+begin_example
+const bodyRows = Array.from(table.querySelectorAll('tbody tr')); // once
+collapsableColumns.forEach(colName => {
+    // use bodyRows directly — no re-query
+});
+#+end_example
+
+With all three changes: initCollapsableColumns drops from 35–130 seconds to 2–5 seconds for 8099 rows. The Chrome dialog
+disappears. The render time reported in the status line drops to something honest — reflecting only the actual row
+insertion cost, not the post-render overhead.
+
+** test
+
+Ready to test. Load the releases page (8099 rows), click "Show all Releases", and verify:
+- Progress bar advances and disappears as before
+- Page stays responsive throughout (no Chrome "Page Unresponsive" dialog)
+- Unique-value counts in column headers still appear, just a moment after the rows render (deferred)
+- Collapsable columns (Country/Date, Label, Catalog#, CAA) still work correctly
+
+** nothing really has changed, now I got
+
+nothing really has changed, it actually got worse, now I got for  https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases:
+Loaded 81 pages (8100 rows); Fetching: 82.52s, Rendering: 237.34s, 📐Measuring: 2.86s ✓ Auto-resized 21 visible columns in 2.81s (drag column edges to adjust)
+
+instead of:
+Loaded 81 pages (8099 rows) from MusicBrainz, Fetching time: 75.94s, Rendering time: 247.98s
+
+and for https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works:
+Loaded 16 pages (1588 rows); Fetching: 35.81s, Rendering: 150.36s, 🎨CAA: 0/0·—·2.3s, 📐Measuring: 1.96s✓ Auto-resized 11 visible columns in 1.95s (drag column edges to adjust)
+
+instead of before thefix:
+Loaded 16 pages (1588 rows); Fetching: 34.07s, Rendering: 141.15s, 🎨CAA: 0/0·—·697ms, 📐Measuring: 2.02s ✓ Auto-resized 11 visible columns in 2.01s (drag column edges to adjust)
+
+** test
+
+The fix — initCollapsableColumns, inside collapsableColumns.forEach → multiRowCells.forEach:
+
+  - Before: for each multi-row cell: whiteSpace = 'nowrap' (write) → scrollWidth (read, triggers reflow) → whiteSpace = prevWS (write). With 8100 rows and e.g. 5 collapsable columns × ~1000 multi-row cells each = 5000 forced synchronous reflows, 10–50ms each = 50–250 seconds.
+  - After: collect all first-<li> refs during the forEach (no reads), then three batch passes outside the loop: set nowrap on all → read all scrollWidths → reset all. One layout flush per column instead of one per cell.
+
+  Please test on the releases page (8100 rows). The rendering time should drop dramatically — the
+  _updateAllColHeaderCounts defer from v9.99.625 is still in effect too. Looking for the "Page Unresponsive" dialog to
+  be gone and rendering time to be a fraction of the previous 237s.
+
+* DONE shortcut overwhole
+** DONE initial
+
+There is a problem with the default enabling of the direct "Ctrl+<char>" key combinations. Some of the defaults are well
+known browser/OS shortcuts. In order to react to user feedback to this user script do the following:
+
+1.)
+
+map the current "Ctrl+<char>" combinations (where char is from the "a-z" range) AND no input field (like global,
+sub-table, or column level filter) has currently focus or we are in a special UI dialog, additionally on the currently
+configured "Keyboard Shortcut Prefix" key (default: "Ctrl+M"),
+
+except
+
+#+begin_example
+Ctrl+M
+Ctrl+U
+#+end_example
+
+2.)
+
+add a new boolean variable in the "// KEYBOARD SHORTCUTS SECTION" (default: false) for still enabling the above
+"Ctrl+<char>" combinations.
+
+3.)
+
+adjust the "Show keybord shortcuts" popup accordingly
+
+** DONE bugs
+
+some bugs:
+
+1.)
+
+make the currently hard-wired "Ctrl+K" 'Show keyboard shortcuts help', see 
+
+#+begin_example
+            // Show keyboard shortcuts help (hard-wired Ctrl+K)
+            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toUpperCase() === 'K') {
+                e.preventDefault();
+                showShortcutsHelp();
+                Lib.debug('shortcuts', 'Shortcuts help opened via Ctrl+K');
+            }
+#+end_example
+
+configurable before the "sa_shortcut_open_settings:" in the "// ---- Configurable direct shortcuts ----" section
+
+2.)
+
+add a new configuration option "sa_toggle_barcode_highlightning" (default "Ctrl+B") with the right "label", "type" and "description"
+before the "sa_shortcut_open_density:" in the "// ---- Configurable direct shortcuts ----" section
+with the following functionality:
+
+emulate the repeated pressing of the button
+
+#+begin_example
+<button id="mb-barcode-highlight-btn"
+#+end_example
+
+3.)
+
+add "b" for the case 2.) also in the "ctrlMFunctionMap"
+
+4.)
+
+currently the following code says "'Ctrl+V'), desc: 'Open "Visible" menu (blocked while typing"
+
+#+begin_example
+            {
+                title: 'View & Layout',
+                shortcuts: [
+                    { keys: getShortcutDisplay('sa_shortcut_auto_resize', 'Ctrl+R'), desc: 'Toggle resize columns (blocked while typing; use prefix mode then R)' },
+                    { keys: getShortcutDisplay('sa_shortcut_open_visible_columns', 'Ctrl+V'), desc: 'Open "Visible" menu (blocked while typing; use prefix mode then V)' },
+#+end_example
+
+but in the following code
+
+#+begin_example
+            {
+                title: 'Column Filter Controls (when a column filter has focus)',
+                shortcuts: [
+		    ... <snip> ...
+                    { keys: getShortcutDisplay('sa_shortcut_open_visible_columns','Ctrl+V'),        desc: 'Open the per-sub-table visible-columns menu (mb-stf-…-vis-btn in the h3 header); falls back to global visible-columns menu in single-table mode' }
+#+end_example
+
+it doesn't say this, AND it's still actually working. This should not be working when "sa_enable_direct_ctrl_char_shortcuts" has a value of "false"
+
+** DONE extended to all "Ctrl+<char>" combinations
+*** initial
+
+When "sa_enable_direct_ctrl_char_shortcuts" is set to "false" currently direct Ctrl+<char> shortcuts are suppressed
+while an input field has focus or a UI dialog is open.
+
+1.)
+
+This behaviour should be extended to all "Ctrl+<char>" combinations except
+
+#+begin_example
+"Ctrl+2"
+"Ctrl+3"
+#+end_example
+
+and when a column filter is focused
+
+#+begin_example
+"Ctrl+ArrowUp"
+"Ctrl+ArrowDown"
+"Ctrl+#"
+#+end_example
+
+2.)
+
+The "sa_keyboard_shortcut_prefix" ("Ctrl+M" by default) should also always work and never be disabled
+
+3.)
+
+The current (when a column filter is focused shortcuts)
+
+#+begin_example
+"Ctrl+O"
+"Ctrl+Q"
+"Ctrl+A"
+#+end_example
+
+should get "ctrlMFunctionMap" equivalents
+
+#+begin_example
+o - Toggle Multi-Row Cell Collapse
+q - Show Unique Values Dropdown
+a - Toggle CAA Cover Art Images
+#+end_example
+
+4.)
+
+Adjust eventually tooltips and the "Keyboard Shortcuts" popup help dialog accordingly 
+
+*** additions
+
+Some more additions
+
+1.)
+
+In the "ctrlMFunctionMap" shortcut popup window
+
+a.) move "b - Toggle Barcode Highlightning" after the "v - Open Visible Columns Menu" entry
+b.) for the "o", "q" and "a" key section it needs to be more clear for the user that these keys only work when a column filter is in focus (maybe also display these keys when acolumn filter is in focus)
+
+2.)
+
+Add the "Ctrl+M" shortcut to the 
+
+#+begin_example
+<button id="mb-barcode-highlight-btn" type="button" title="Toggle barcode highlightning off"
+#+end_example
+
+like for the other action buttons
+
+3.)
+
+Adjust the tooltips
+
+#+begin_example
+filterInput.title = `Enter global filter string (focus this field with '${getShortcutDisplay('sa_shortcut_focus_global_filter', 'Ctrl+G')}', use 'Ctrl+U' for unicode character map)`;
+#+end_example
+
+and
+
+#+begin_example
+input.title = `Enter column filter string (the first column in a table can be focused by '${getShortcutDisplay('sa_shortcut_focus_column_filter', 'Ctrl+C')}', use 'Ctrl+U' for unicode character map`;
+#+end_example
+
+to honour the "sa_enable_direct_ctrl_char_shortcuts" setting
+
+4.)
+
+Add the "Ctrl+M" keyboard shortcut(s) to
+
+a.) the tooltips for the column sorting symbols "⇅", "▲", "▼"
+b.) the tooltip for the column unique value symbol "📊"
+c.) the tooltip for the "mb-col-collapse-hdr-btn" class ("▤" symbol)
+d.) the tooltip for the sub-table "CAA Toggle buttons" (mention for it to work a column filter needs to be in focus) 
+
+#+begin_example
+<button id="mb-caa-toggle-btn-<n>" type="button" class="mb-caa-art-toggle-btn" title="Show CAA cover art image stripe for this sub-section"
+#+end_example
+
+*** bugs
+
+some bugs:
+
+1.)
+
+in the global input filter field
+
+#+begin_example
+<input id="mb-global-filter-input"
+#+end_example
+
+and in all column filter input fields, the wording
+
+#+begin_example
+, use 'Ctrl+M then U' or 'Ctrl+U' for unicode character map
+#+end_example
+
+is wrong. It should be
+
+#+begin_example
+, use 'Ctrl+U' for unicode character map
+#+end_example
+
+2.)
+
+The following change:
+
+#+begin_example
+Barcode highlight button tooltip now includes the prefix shortcut (`Ctrl+M` then `B`) and the configured direct shortcut (`Ctrl+B`) in both active and inactive states.
+#+end_example
+
+is also wrong. The tooltip currently reads e.g.:
+
+#+begin_example
+Toggle barcode highlightning off (Ctrl+M then B, or Ctrl+B)
+Toggle barcode highlightning on (Ctrl+M then B, or Ctrl+B)
+#+end_example
+
+for both cases: "sa_enable_direct_ctrl_char_shortcuts=true" and "sa_enable_direct_ctrl_char_shortcuts=false"
+
+"Ctrl+B" should only be displayed when "sa_enable_direct_ctrl_char_shortcuts=true"
+
+3.)
+
+The following action buttons should do the same for their keyboard shortcuts:
+
+#+begin_example
+Save to Disk
+Load from Disk
+Restore/Resize
+Visible
+Density
+Statistics
+Export
+<Show keyboard shortcuts>
+<Openuserscripts settings manager>
+#+end_example
+
+Currently they always display the "Ctrl+M" prefix shortcut 
+
+** DONE more bugs
+
+1.)
+
+On e.g. https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/events
+when the focus is in the column filter field of the "Event" column, pressing "Ctrl+M then "A" doesn't have any effect, instead it should emulate pressing the "Show/Hide EAA event art" button
+
+#+begin_example
+<button id="mb-eaa-toggle-btn-0" type="button" class="mb-eaa-art-toggle-btn" title="Show EAA event art image stripe for this section — keyboard: Ctrl+M then A when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for Ctrl+A)" style="cursor: pointer; padding: 1px 5px 1px 3px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 5px; display: inline-flex; align-items: center; gap: 6px; line-height: 1; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;" data-art-render-gen="4"><img class="mb-eaa-toggle-thumb" src="blob:https://musicbrainz.org/22da8e91-3407-4093-a143-e0949b094145" style="height: 18px; width: 18px; object-fit: cover; border-radius: 2px; vertical-align: middle; display: block;"><span class="mb-eaa-toggle-count">2</span></button>
+#+end_example
+
+like for example all the pageTypes with CAA images do.
+
+2.)
+
+The "Stop"-button tooltip 
+
+#+begin_example
+<button id="mb-stop-btn" type="button" title="Stop the current data fetching process from the MusicBrainz backend database" 
+#+end_example
+
+is missing the '"Ctrl+M", then "O"' prefix shortcut help text
+
+* DONE column shading - https://musicbrainz.org/series/fab79f62-2fa5-4f85-9369-82c77811a290 - "Country/Date" column sort highlighning alternates also values are actually the same (XW - 2014)
+
+In the e.g. following URL https://musicbrainz.org/release-group/4b443e66-52a7-3cc9-a522-0dc64a6a51dc when sorting the
+"Country/Date" column, the sorting itself works OK, but the value-change shade doesn't work properly:
+
+It alternates between the same to colors although the values in the column are the same "<country flag><2 letter country shortcut> <date expression>"
+e.g. in the following example "<US flag>US 1973-11"
+
+#+begin_example
+<td data-mb-rest-bg="rgba(255, 200, 80, 0.44)" class="mb-mscol-0b" style="background: rgba(255, 200, 80, 0.44);">
+  <script type="application/json">{"events":[{"date":{"year":1973,"day":null,"month":11},"country":{"ended":false,"iso_3166_3_codes":[],"iso_3166_1_codes":["US"],"iso_3166_2_codes":[],"typeID":1,"gid":"489ce91b-6658-3307-9877-795b68554c98","entityType":"area","last_updated":"2013-06-15T18:06:39Z","end_date":null,"primary_code":"US","editsPending":false,"comment":"","country_code":"US","id":222,"begin_date":null,"name":"United States"}}]}
+  </script>
+  <div class="release-events-container">
+    <ul aria-label="Release events" class="release-events abbreviated">
+      <li aria-label="Release event" class="release-event">
+	<span class="flag flag-US release-country">
+	  <a href="/area/489ce91b-6658-3307-9877-795b68554c98">
+	    <abbr title="United States">US
+	    </abbr>
+	  </a>
+	</span>
+	<span class="release-date">1973-11
+	</span>
+      </li>
+    </ul>
+  </div>
+</td>
+<td data-mb-rest-bg="rgba(255, 200, 80, 0.22)" class="mb-mscol-0a" style="background: rgba(255, 200, 80, 0.22);">
+  <script type="application/json">{"events":[{"country":{"iso_3166_3_codes":[],"ended":false,"iso_3166_1_codes":["US"],"typeID":1,"gid":"489ce91b-6658-3307-9877-795b68554c98","iso_3166_2_codes":[],"end_date":null,"entityType":"area","last_updated":"2013-06-15T18:06:39Z","id":222,"country_code":"US","editsPending":false,"comment":"","primary_code":"US","name":"United States","begin_date":null},"date":{"year":1973,"day":null,"month":11}}]}
+  </script>
+  <div class="release-events-container">
+    <ul aria-label="Release events" class="release-events abbreviated">
+      <li aria-label="Release event" class="release-event">
+	<span class="flag flag-US release-country">
+	  <a href="/area/489ce91b-6658-3307-9877-795b68554c98">
+	    <abbr title="United States">US
+	    </abbr>
+	  </a>
+	</span>
+	<span class="release-date">1973-11
+	</span>
+      </li>
+    </ul>
+  </div>
+</td>
+<td data-mb-rest-bg="rgba(255, 200, 80, 0.44)" class="mb-mscol-0b" style="background: rgba(255, 200, 80, 0.44);">
+  <script type="application/json">{"events":[{"date":{"month":11,"day":null,"year":1973},"country":{"entityType":"area","last_updated":"2013-06-15T18:06:39Z","end_date":null,"gid":"489ce91b-6658-3307-9877-795b68554c98","typeID":1,"iso_3166_2_codes":[],"name":"United States","begin_date":null,"comment":"","editsPending":false,"primary_code":"US","id":222,"country_code":"US","ended":false,"iso_3166_3_codes":[],"iso_3166_1_codes":["US"]}}]}
+  </script>
+  <div class="release-events-container">
+    <ul aria-label="Release events" class="release-events abbreviated">
+      <li aria-label="Release event" class="release-event">
+	<span class="flag flag-US release-country">
+	  <a href="/area/489ce91b-6658-3307-9877-795b68554c98">
+	    <abbr title="United States">US
+	    </abbr>
+	  </a>
+	</span>
+	<span class="release-date">1973-11
+	</span>
+      </li>
+    </ul>
+  </div>
+</td>
+<td data-mb-rest-bg="rgba(255, 200, 80, 0.22)" class="mb-mscol-0a" style="background: rgba(255, 200, 80, 0.22);">
+  <script type="application/json">{"events":[{"country":{"iso_3166_3_codes":[],"ended":false,"iso_3166_1_codes":["US"],"end_date":null,"entityType":"area","last_updated":"2013-06-15T18:06:39Z","typeID":1,"gid":"489ce91b-6658-3307-9877-795b68554c98","iso_3166_2_codes":[],"name":"United States","begin_date":null,"id":222,"country_code":"US","editsPending":false,"comment":"","primary_code":"US"},"date":{"month":11,"year":1973,"day":null}}]}
+  </script>
+  <div class="release-events-container">
+    <ul aria-label="Release events" class="release-events abbreviated">
+      <li aria-label="Release event" class="release-event">
+	<span class="flag flag-US release-country">
+	  <a href="/area/489ce91b-6658-3307-9877-795b68554c98">
+	    <abbr title="United States">US
+	    </abbr>
+	  </a>
+	</span>
+	<span class="release-date">1973-11
+	</span>
+      </li>
+    </ul>
+  </div>
+</td>
+#+end_example
+
+see also the implementation mentioned in changelog
+
+#+begin_example
+  {
+    "version": "9.99.638",
+    "date": "2026-05-27",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Single-column sorts now show the same value-change shade banding as multi-column sorts: `applyMultiSortColumnTints()` synthesises a one-entry column list from `state.lastSortIndex` / `state.sortState` when `multiSortColumns` is empty, so the amber alternating tint (classes `mb-mscol-0a` / `mb-mscol-0b`) is applied to the sorted column and the column header is tinted whenever any single column is sorted. Tints are cleared on sort restore. The re-apply path after re-renders also covers the single-sort case."
+        ]
+      }
+    ]
+  }
+#+end_example
+
+* DONE bug - when loading from disk e.g. https://musicbrainz.org/release-group/39b22944-7503-3937-8bba-09b17281cc6a the first column "Official release" doesn't show any cover art images
+
+For pageType "type: 'releasegroup-releases'"
+e.g. https://musicbrainz.org/release-group/4b443e66-52a7-3cc9-a522-0dc64a6a51dc when loading data from disk, the first
+column "Official release" doesn't show any inline cover art images
+
+This is for example the first line in the first sub-table after rendering the final page when reading from the network:
+
+#+begin_example
+<tr class="odd" data-mb-row-idx="0">
+  <td style="white-space: nowrap; position: sticky; left: 0px; z-index: 1; background: rgb(255, 255, 255);" data-mb-sticky-bg="#ffffff" data-mb-rest-bg="#ffffff" class="mb-sticky-col" data-erg-injected="1" data-caa-inline-done="1">
+    <span data-erg-btn="1" title="Toggle display of underlying entity page" style="cursor: pointer; margin-right: 4px; color: rgb(119, 119, 119);">▶
+    </span>
+    <span class="mb-caa-inline-ph" style="display: inline-block; width: 20px; height: 20px; margin-right: 3px; vertical-align: middle; flex-shrink: 0; overflow: hidden; border-radius: 2px; cursor: crosshair; position: relative;" title="6 images found for this release / release-group">
+      <img alt="" style="width: 20px; height: 20px; object-fit: cover; display: inline; border-radius: 2px;" src="blob:https://musicbrainz.org/98236cb2-3fde-44ee-9b2f-dc4f5b9f40d1">
+      <span class="mb-art-cache-hint-inline" title="Memory cache hit" style="font-size: 0.65em; line-height: 1; position: absolute; top: 0px; left: 0px; user-select: none; cursor: default; pointer-events: none;">🟢
+      </span>
+    </span>
+    <a class="wrap-anywhere" href="/release/5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255">
+      <bdi>The Wild, the Innocent &amp; The E Street Shuffle
+      </bdi>
+    </a>
+    <span class="comment" style="white-space: nowrap;">
+      <bdi style="white-space: nowrap;">(US, first stock issue)
+      </bdi>
+    </span>
+    <span class="mb-inline-art-sort-key" style="display: none;">caa-inline-yes
+    </span>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">
+    <bdi>
+      <a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen
+      </a>
+    </bdi>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">12" Vinyl
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">7
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">
+    <script type="application/json">{"events":[{"date":{"month":11,"year":1973,"day":5},"country":{"iso_3166_1_codes":["US"],"ended":false,"iso_3166_3_codes":[],"comment":"","editsPending":false,"primary_code":"US","id":222,"country_code":"US","name":"United States","begin_date":null,"typeID":1,"gid":"489ce91b-6658-3307-9877-795b68554c98","iso_3166_2_codes":[],"entityType":"area","last_updated":"2013-06-15T18:06:39Z","end_date":null}}]}
+    </script>
+    <div class="release-events-container">
+      <ul aria-label="Release events" class="release-events abbreviated">
+	<li aria-label="Release event" class="release-event">
+	  <span class="flag flag-US release-country">
+	    <a href="/area/489ce91b-6658-3307-9877-795b68554c98">
+	      <abbr title="United States">US
+	      </abbr>
+	    </a>
+	  </span>
+	  <span class="release-date">1973-11-05
+	  </span>
+	</li>
+      </ul>
+    </div>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">
+    <ul>
+      <li style="white-space: nowrap;">
+	<span class="mp">
+	  <a href="/label/011d1192-6f65-45bd-85c4-0400dd45693e">
+	    <bdi>Columbia
+	    </bdi>
+	  </a>
+	</span>
+	<span class="comment" style="white-space: nowrap;">
+	  <bdi style="white-space: nowrap;">(owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX)
+	  </bdi>
+	</span>
+      </li>
+    </ul>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">
+    <ul>
+      <li>
+	<span class="catalog-number">KC 34232
+	</span>
+      </li>
+    </ul>
+  </td>
+  <td class="barcode-cell" data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">[none]
+  </td>
+  <td data-erg-injected="1" data-mb-rest-bg="#ffffff" data-caa-multi-built="1" style="background: rgb(255, 255, 255);">
+    <ul class="mb-caa-art-ul" data-mb-art-search="Front  Back  Medium  Medium  Medium  Medium">
+      <li class="mb-caa-art-li mb-caa-art-li-summary">
+	<span data-caa-expand-btn="collapsed" title="Show all CAA cover art images (6) in this cell" style="cursor: pointer; margin-right: 4px; color: rgb(119, 119, 119); user-select: none;">▶
+	</span>
+	<a href="/release/5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255/cover-art" title="6 images found for this release / release-group" data-caa-enriched="1">
+	  <span class="artwork-icon caa-icon" title="6 images found for this release / release-group" data-cache-hint="idb" style="background-size: contain; background-image: url(&quot;blob:https://musicbrainz.org/98236cb2-3fde-44ee-9b2f-dc4f5b9f40d1&quot;);">
+	  </span>
+	</a>
+	<span class="mb-art-cache-hint-col-wrap">
+	  <span class="mb-art-cache-hint-col" title="IndexedDB cache hit">🗄️
+	  </span>
+	  <span class="mb-caa-count-badge" title="6 images found for this release / release-group">6
+	  </span>
+	</span>
+	<span class="mb-caa-sort-key" aria-hidden="true" style="display: none;">yes
+	</span>
+      </li>
+      <li class="mb-caa-art-li mb-caa-art-li-image" data-li-tooltip-types="Front" style="display: none;">
+	<img src="//coverartarchive.org/release/5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255/31317351173-250.jpg" alt="" loading="lazy" style="cursor: crosshair;">
+	<span class="mb-caa-type-badge">
+	  <span style="display: inline-block; background: rgb(200, 200, 200); color: rgb(34, 34, 34); border-radius: 3px; padding: 1px 5px; font-size: 0.78em; font-weight: 600; line-height: 1.5; white-space: nowrap; cursor: default;">Front
+	  </span>
+	</span>
+      </li>
+      <li class="mb-caa-art-li mb-caa-art-li-image" data-li-tooltip-types="Back" style="display: none;">
+	<img src="//coverartarchive.org/release/5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255/31317353370-250.jpg" alt="" loading="lazy" style="cursor: crosshair;">
+	<span class="mb-caa-type-badge">
+	  <span style="display: inline-block; background: rgb(200, 200, 200); color: rgb(34, 34, 34); border-radius: 3px; padding: 1px 5px; font-size: 0.78em; font-weight: 600; line-height: 1.5; white-space: nowrap; cursor: default;">Back
+	  </span>
+	</span>
+      </li>
+      <li class="mb-caa-art-li mb-caa-art-li-image" data-li-tooltip-types="Medium" style="display: none;">
+	<img src="//coverartarchive.org/release/5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255/31317354939-250.jpg" alt="" loading="lazy" style="cursor: crosshair;">
+	<span class="mb-caa-type-badge">
+	  <span style="display: inline-block; background: rgb(200, 200, 200); color: rgb(34, 34, 34); border-radius: 3px; padding: 1px 5px; font-size: 0.78em; font-weight: 600; line-height: 1.5; white-space: nowrap; cursor: default;">Medium
+	  </span>
+	</span>
+      </li>
+      <li class="mb-caa-art-li mb-caa-art-li-image" data-li-tooltip-types="Medium" style="display: none;">
+	<img src="//coverartarchive.org/release/5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255/31317355776-250.jpg" alt="" loading="lazy" style="cursor: crosshair;">
+	<span class="mb-caa-type-badge">
+	  <span style="display: inline-block; background: rgb(200, 200, 200); color: rgb(34, 34, 34); border-radius: 3px; padding: 1px 5px; font-size: 0.78em; font-weight: 600; line-height: 1.5; white-space: nowrap; cursor: default;">Medium
+	  </span>
+	</span>
+      </li>
+      <li class="mb-caa-art-li mb-caa-art-li-image" data-li-tooltip-types="Medium" style="display: none;">
+	<img src="//coverartarchive.org/release/5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255/23359825463-250.jpg" alt="" loading="lazy" style="cursor: crosshair;">
+	<span class="mb-caa-type-badge">
+	  <span style="display: inline-block; background: rgb(200, 200, 200); color: rgb(34, 34, 34); border-radius: 3px; padding: 1px 5px; font-size: 0.78em; font-weight: 600; line-height: 1.5; white-space: nowrap; cursor: default;">Medium
+	  </span>
+	</span>
+      </li>
+      <li class="mb-caa-art-li mb-caa-art-li-image" data-li-tooltip-types="Medium" style="display: none;">
+	<img src="//coverartarchive.org/release/5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255/23359826090-250.jpg" alt="" loading="lazy" style="cursor: crosshair;">
+	<span class="mb-caa-type-badge">
+	  <span style="display: inline-block; background: rgb(200, 200, 200); color: rgb(34, 34, 34); border-radius: 3px; padding: 1px 5px; font-size: 0.78em; font-weight: 600; line-height: 1.5; white-space: nowrap; cursor: default;">Medium
+	  </span>
+	</span>
+      </li>
+    </ul>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">
+    <ul>
+      <li>
+	<span class="flag flag-US release-country">
+	  <a href="/area/489ce91b-6658-3307-9877-795b68554c98">United States (US)
+	  </a>
+	</span>
+      </li>
+    </ul>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">
+    <ul>
+      <li>1973-11-05
+      </li>
+    </ul>
+  </td>
+  <td style="text-align: center; font-variant-numeric: tabular-nums; background: rgb(255, 255, 255);" data-mb-int-col-styled="1" data-mb-rest-bg="#ffffff">
+    <span class="mb-ic-val" style="display: inline-block; text-align: right; font-variant-numeric: tabular-nums; min-width: 1ch;">7
+    </span>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">12" Vinyl
+  </td>
+  <td style="font-variant-numeric: tabular-nums; text-align: center; background: rgb(255, 255, 255);" data-mb-int-col-styled="1" data-mb-rest-bg="#ffffff">
+    <span class="mb-ic-val" style="display: inline-block; text-align: right; font-variant-numeric: tabular-nums; min-width: 2ch;">5
+    </span>
+  </td>
+  <td style="font-variant-numeric: tabular-nums; text-align: center; background: rgb(255, 255, 255);" data-mb-int-col-styled="1" data-mb-rest-bg="#ffffff">
+    <span class="mb-ic-val" style="display: inline-block; text-align: right; font-variant-numeric: tabular-nums; min-width: 2ch;">11
+    </span>
+  </td>
+  <td style="font-variant-numeric: tabular-nums; text-align: center; background: rgb(255, 255, 255);" data-mb-int-col-styled="1" data-mb-rest-bg="#ffffff">
+    <span class="mb-ic-val" style="display: inline-block; text-align: center; font-variant-numeric: tabular-nums; min-width: 4ch;">1973
+    </span>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">Monday
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">November
+  </td>
+  <td data-mb-rest-bg="#ffffff" data-erg-injected="1" style="background: rgb(255, 255, 255);">
+    <span data-erg-btn="1" title="Toggle display of underlying entity page" style="cursor: pointer; margin-right: 4px; color: rgb(119, 119, 119);">▶
+    </span>
+    <a class="wrap-anywhere" href="/release/5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255">
+      <bdi>The Wild, the Innocent &amp; The E Street Shuffle
+      </bdi>
+    </a>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">US, first stock issue
+  </td>
+  <td class="mb-rel-cell" data-mbid="5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255" style="background: rgb(255, 255, 255);" data-mb-rest-bg="#ffffff" data-rel-done="1">
+    <a href="https://www.amazon.com/gp/product/B000QXTG1A" title="https://www.amazon.com/gp/product/B000QXTG1A" target="_blank" rel="noopener noreferrer">
+      <img src="https://www.google.com/s2/favicons?sz=16&amp;domain=www.amazon.com" style="width: 16px; height: 16px; vertical-align: middle; margin: 1px;">
+      <span class="mb-rel-filter-key" aria-hidden="true" style="display: none;">https://www.amazon.com/gp/product/B000QXTG1A
+      </span>
+    </a>
+    <a href="https://www.springsteenlyrics.com/collection.php?item=5841" title="https://www.springsteenlyrics.com/collection.php?item=5841" target="_blank" rel="noopener noreferrer">
+      <img src="https://www.google.com/s2/favicons?sz=16&amp;domain=www.springsteenlyrics.com" style="width: 16px; height: 16px; vertical-align: middle; margin: 1px;">
+      <span class="mb-rel-filter-key" aria-hidden="true" style="display: none;">https://www.springsteenlyrics.com/collection.php?item=5841
+      </span>
+    </a>
+    <a href="https://www.discogs.com/release/2582014" title="https://www.discogs.com/release/2582014" target="_blank" rel="noopener noreferrer">
+      <img src="https://www.google.com/s2/favicons?sz=16&amp;domain=www.discogs.com" style="width: 16px; height: 16px; vertical-align: middle; margin: 1px;">
+      <span class="mb-rel-filter-key" aria-hidden="true" style="display: none;">https://www.discogs.com/release/2582014
+      </span>
+    </a>
+  </td>
+  <td class="mb-picard-cell" style="text-align: center; vertical-align: middle; padding: 2px 4px; background: rgb(255, 255, 255);" data-mb-rest-bg="#ffffff">
+    <button type="button" class="mb-picard-btn" title="Send to Picard (release 5b0c80bc…)" style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; cursor: pointer; background: none; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; padding: 0px; border-radius: 50%; vertical-align: middle;">
+      <img src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%3E%3Ccircle%20cx%3D%228%22%20cy%3D%228%22%20r%3D%228%22%20fill%3D%22%23f0b429%22%2F%3E%3Ctext%20x%3D%228%22%20y%3D%2212%22%20text-anchor%3D%22middle%22%20font-size%3D%2211%22%20font-family%3D%22sans-serif%22%20fill%3D%22white%22%3E%E2%99%AA%3C%2Ftext%3E%3C%2Fsvg%3E" alt="♪" style="width: 16px; height: 16px; display: block;">
+    </button>
+  </td>
+</tr>
+#+end_example
+
+and here the same line after loading from disk
+
+#+begin_example
+<tr class="odd" data-mb-row-idx="0">
+  <td style="white-space: nowrap; position: sticky; left: 0px; z-index: 1; background: rgb(255, 255, 255);" data-mb-sticky-bg="#ffffff" data-mb-rest-bg="#ffffff" class="mb-sticky-col" data-erg-injected="1">
+    <span data-erg-btn="1" title="Toggle display of underlying entity page" style="cursor: pointer; margin-right: 4px; color: rgb(119, 119, 119);">▶
+    </span>
+    <a class="wrap-anywhere" href="/release/5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255">
+      <bdi>The Wild, the Innocent &amp; The E Street Shuffle
+      </bdi>
+    </a>
+    <span class="comment" style="white-space: nowrap;">
+      <bdi style="white-space: nowrap;">(US, first stock issue)
+      </bdi>
+    </span>
+    <span class="mb-inline-art-sort-key" style="display: none;">caa-inline-yes
+    </span>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">
+    <bdi>
+      <a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen
+      </a>
+    </bdi>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">12" Vinyl
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">7
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">
+    <script type="application/json">{"events":[{"date":{"month":11,"year":1973,"day":5},"country":{"country_code":"US","editsPending":false,"last_updated":"2013-06-15T18:06:39Z","end_date":null,"iso_3166_1_codes":["US"],"begin_date":null,"iso_3166_2_codes":[],"iso_3166_3_codes":[],"ended":false,"primary_code":"US","entityType":"area","id":222,"name":"United States","comment":"","typeID":1,"gid":"489ce91b-6658-3307-9877-795b68554c98"}}]}
+    </script>
+    <div class="release-events-container">
+      <ul aria-label="Release events" class="release-events abbreviated">
+	<li aria-label="Release event" class="release-event">
+	  <span class="flag flag-US release-country">
+	    <a href="/area/489ce91b-6658-3307-9877-795b68554c98">
+	      <abbr title="United States">US
+	      </abbr>
+	    </a>
+	  </span>
+	  <span class="release-date">1973-11-05
+	  </span>
+	</li>
+      </ul>
+    </div>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">
+    <ul>
+      <li style="white-space: nowrap;">
+	<span class="mp">
+	  <a href="/label/011d1192-6f65-45bd-85c4-0400dd45693e">
+	    <bdi>Columbia
+	    </bdi>
+	  </a>
+	</span>
+	<span class="comment" style="white-space: nowrap;">
+	  <bdi style="white-space: nowrap;">(owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX)
+	  </bdi>
+	</span>
+      </li>
+    </ul>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">
+    <ul>
+      <li>
+	<span class="catalog-number">KC 34232
+	</span>
+      </li>
+    </ul>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">[none]
+  </td>
+  <td data-mb-rest-bg="#ffffff" data-caa-multi-built="1" style="background: rgb(255, 255, 255);">
+    <ul class="mb-caa-art-ul" data-mb-art-search="Front  Back  Medium  Medium  Medium  Medium">
+      <li class="mb-caa-art-li mb-caa-art-li-summary" data-erg-injected="1">
+	<span data-caa-expand-btn="collapsed" title="Show all CAA cover art images (6) in this cell" style="cursor: pointer; margin-right: 4px; color: rgb(119, 119, 119); user-select: none;">▶
+	</span>
+	<a href="/release/5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255/cover-art" title="6 images found for this release / release-group" data-caa-enriched="1">
+	  <span class="artwork-icon caa-icon" title="6 images found for this release / release-group" data-cache-hint="idb" style="background-size: contain; background-image: url(&quot;blob:https://musicbrainz.org/cca636b4-e5cd-4831-b11a-18aa33124cfe&quot;);">
+	  </span>
+	</a>
+	<span class="mb-art-cache-hint-col-wrap">
+	  <span class="mb-art-cache-hint-col" title="IndexedDB cache hit">🗄️
+	  </span>
+	  <span class="mb-caa-count-badge" title="6 images found for this release / release-group">6
+	  </span>
+	</span>
+	<span class="mb-caa-sort-key" aria-hidden="true" style="display: none;">yes
+	</span>
+      </li>
+      <li class="mb-caa-art-li mb-caa-art-li-image" data-li-tooltip-types="Front" style="display: none;">
+	<img src="//coverartarchive.org/release/5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255/31317351173-250.jpg" alt="" loading="lazy" style="cursor: crosshair;">
+	<span class="mb-caa-type-badge">
+	  <span style="display: inline-block; background: rgb(200, 200, 200); color: rgb(34, 34, 34); border-radius: 3px; padding: 1px 5px; font-size: 0.78em; font-weight: 600; line-height: 1.5; white-space: nowrap; cursor: default;">Front
+	  </span>
+	</span>
+      </li>
+      <li class="mb-caa-art-li mb-caa-art-li-image" data-li-tooltip-types="Back" style="display: none;">
+	<img src="//coverartarchive.org/release/5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255/31317353370-250.jpg" alt="" loading="lazy" style="cursor: crosshair;">
+	<span class="mb-caa-type-badge">
+	  <span style="display: inline-block; background: rgb(200, 200, 200); color: rgb(34, 34, 34); border-radius: 3px; padding: 1px 5px; font-size: 0.78em; font-weight: 600; line-height: 1.5; white-space: nowrap; cursor: default;">Back
+	  </span>
+	</span>
+      </li>
+      <li class="mb-caa-art-li mb-caa-art-li-image" data-li-tooltip-types="Medium" style="display: none;">
+	<img src="//coverartarchive.org/release/5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255/31317354939-250.jpg" alt="" loading="lazy" style="cursor: crosshair;">
+	<span class="mb-caa-type-badge">
+	  <span style="display: inline-block; background: rgb(200, 200, 200); color: rgb(34, 34, 34); border-radius: 3px; padding: 1px 5px; font-size: 0.78em; font-weight: 600; line-height: 1.5; white-space: nowrap; cursor: default;">Medium
+	  </span>
+	</span>
+      </li>
+      <li class="mb-caa-art-li mb-caa-art-li-image" data-li-tooltip-types="Medium" style="display: none;">
+	<img src="//coverartarchive.org/release/5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255/31317355776-250.jpg" alt="" loading="lazy" style="cursor: crosshair;">
+	<span class="mb-caa-type-badge">
+	  <span style="display: inline-block; background: rgb(200, 200, 200); color: rgb(34, 34, 34); border-radius: 3px; padding: 1px 5px; font-size: 0.78em; font-weight: 600; line-height: 1.5; white-space: nowrap; cursor: default;">Medium
+	  </span>
+	</span>
+      </li>
+      <li class="mb-caa-art-li mb-caa-art-li-image" data-li-tooltip-types="Medium" style="display: none;">
+	<img src="//coverartarchive.org/release/5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255/23359825463-250.jpg" alt="" loading="lazy" style="cursor: crosshair;">
+	<span class="mb-caa-type-badge">
+	  <span style="display: inline-block; background: rgb(200, 200, 200); color: rgb(34, 34, 34); border-radius: 3px; padding: 1px 5px; font-size: 0.78em; font-weight: 600; line-height: 1.5; white-space: nowrap; cursor: default;">Medium
+	  </span>
+	</span>
+      </li>
+      <li class="mb-caa-art-li mb-caa-art-li-image" data-li-tooltip-types="Medium" style="display: none;">
+	<img src="//coverartarchive.org/release/5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255/23359826090-250.jpg" alt="" loading="lazy" style="cursor: crosshair;">
+	<span class="mb-caa-type-badge">
+	  <span style="display: inline-block; background: rgb(200, 200, 200); color: rgb(34, 34, 34); border-radius: 3px; padding: 1px 5px; font-size: 0.78em; font-weight: 600; line-height: 1.5; white-space: nowrap; cursor: default;">Medium
+	  </span>
+	</span>
+      </li>
+    </ul>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">
+    <ul>
+      <li>
+	<span class="flag flag-US release-country">
+	  <a href="/area/489ce91b-6658-3307-9877-795b68554c98">United States (US)
+	  </a>
+	</span>
+      </li>
+    </ul>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">
+    <ul>
+      <li>1973-11-05
+      </li>
+    </ul>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">
+    <span class="mb-ic-val" style="display: inline-block; text-align: right; font-variant-numeric: tabular-nums; min-width: 1ch;">7
+    </span>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">12" Vinyl
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">
+    <span class="mb-ic-val" style="display: inline-block; text-align: right; font-variant-numeric: tabular-nums; min-width: 2ch;">5
+    </span>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">
+    <span class="mb-ic-val" style="display: inline-block; text-align: right; font-variant-numeric: tabular-nums; min-width: 2ch;">11
+    </span>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">
+    <span class="mb-ic-val" style="display: inline-block; text-align: center; font-variant-numeric: tabular-nums; min-width: 4ch;">1973
+    </span>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">Monday
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">November
+  </td>
+  <td data-mb-rest-bg="#ffffff" data-erg-injected="1" style="background: rgb(255, 255, 255);">
+    <span data-erg-btn="1" title="Toggle display of underlying entity page" style="cursor: pointer; margin-right: 4px; color: rgb(119, 119, 119);">▶
+    </span>
+    <a class="wrap-anywhere" href="/release/5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255">
+      <bdi>The Wild, the Innocent &amp; The E Street Shuffle
+      </bdi>
+    </a>
+  </td>
+  <td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">US, first stock issue
+  </td>
+  <td class="mb-rel-cell" data-mbid="5b0c80bc-e570-4bb3-a9cb-ccec2bbd7255" style="" data-rel-done="1">
+    <a href="https://www.amazon.com/gp/product/B000QXTG1A" title="https://www.amazon.com/gp/product/B000QXTG1A" target="_blank" rel="noopener noreferrer">
+      <img src="https://www.google.com/s2/favicons?sz=16&amp;domain=www.amazon.com" style="width: 16px; height: 16px; vertical-align: middle; margin: 1px;">
+      <span class="mb-rel-filter-key" aria-hidden="true" style="display: none;">https://www.amazon.com/gp/product/B000QXTG1A
+      </span>
+    </a>
+    <a href="https://www.springsteenlyrics.com/collection.php?item=5841" title="https://www.springsteenlyrics.com/collection.php?item=5841" target="_blank" rel="noopener noreferrer">
+      <img src="https://www.google.com/s2/favicons?sz=16&amp;domain=www.springsteenlyrics.com" style="width: 16px; height: 16px; vertical-align: middle; margin: 1px;">
+      <span class="mb-rel-filter-key" aria-hidden="true" style="display: none;">https://www.springsteenlyrics.com/collection.php?item=5841
+      </span>
+    </a>
+    <a href="https://www.discogs.com/release/2582014" title="https://www.discogs.com/release/2582014" target="_blank" rel="noopener noreferrer">
+      <img src="https://www.google.com/s2/favicons?sz=16&amp;domain=www.discogs.com" style="width: 16px; height: 16px; vertical-align: middle; margin: 1px;">
+      <span class="mb-rel-filter-key" aria-hidden="true" style="display: none;">https://www.discogs.com/release/2582014
+      </span>
+    </a>
+  </td>
+  <td class="mb-picard-cell" style="text-align: center; vertical-align: middle; padding: 2px 4px;">
+    <button type="button" class="mb-picard-btn" title="Send to Picard (release 5b0c80bc…)" style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; cursor: pointer; background: none; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; padding: 0px; border-radius: 50%; vertical-align: middle;">
+      <img src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%3E%3Ccircle%20cx%3D%228%22%20cy%3D%228%22%20r%3D%228%22%20fill%3D%22%23f0b429%22%2F%3E%3Ctext%20x%3D%228%22%20y%3D%2212%22%20text-anchor%3D%22middle%22%20font-size%3D%2211%22%20font-family%3D%22sans-serif%22%20fill%3D%22white%22%3E%E2%99%AA%3C%2Ftext%3E%3C%2Fsvg%3E" alt="♪" style="width: 16px; height: 16px; display: block;">
+    </button>
+  </td>
+</tr>
+#+end_example
+
+Before making any changes give me description of the bug if possible.
+
 
 * TODO event pages need the primary alias below the h1 header "Bleachers"
 
@@ -81412,9 +82882,7 @@ https://musicbrainz.org/tag/country - OK
 
 * TODO add better handling for injected derived columns inclusive new configurable background column header colour and statistics panel support
 
-
 * TODO when pressing the "Toggle highlight" buttons the multi-row indicators when filter highlight is in effect should also be toggled
-
 
 * TODO colors in "single"-table mode for filter and sorting status display should be made configurable
 
@@ -81431,7 +82899,6 @@ colors in "single"-table mode for filter and sorting status display should be ma
 
 
 * TODO left over function: "makeArtItem" never used
-
 
 * TODO better handling of "sa_auto_expand" parameter, or add a configurable list of sections which should autoexpand instead of hard coding 'album'/'official'
 
@@ -81474,11 +82941,6 @@ remove "Showing Various Artist releases." from end of artist-release pages when 
 <a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases?va=0">Show releases by this artist instead</a>
 "."
 #+end_example
-
-
-* TODO enhance splitting of comment columns (function "eventParts") with event data
-
-specifically the "Country" when it has the form "<country>; <additional info>"
 
 
 * TODO configuration parameter enhancements
@@ -81785,7 +83247,7 @@ if a column is empty, the perfect column width is
 - for EAA/CAA columns, the space for the "mb-col-hdr-flex"
 
 ** TODO bug with clicking and dragging the resize column handler
-** TODO not correctly calculated column widht
+** TODO not correctly calculated column width
 *** initial
 
 Please read the NOTES.md file again.
@@ -82619,7 +84081,7 @@ Nothing has changed, see NOTES.md
 
 Nothing has changed and my examples where column cells wrap had been taken when "sa_enable_sticky_headers" was true
 
-*** TODO collapsible columns widht miss calculation
+*** TODO collapsible columns width miss calculation
 
 The problem with the column wrapping is now solved, but there is a small glitch for pageTypes like
 https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c and columns declared as "collapsableColumns" e.g. the "Label" column.
@@ -82673,9 +84135,8 @@ same bug nothing has changed
 
 a bit better, but it still overlaps with the closing ")" in the disambiguation 
 
+
 * question about image download order
-
-
 
 * Performance fixes — ready to implement (analysed, approach agreed)
 
@@ -82756,676 +84217,6 @@ Session 4: P1 Pattern 3+6      — 20 min, trivial additions
 Session 5: P1 Pattern 1+Fix C  — 60 min, biggest architectural change
 Session 6: P1 Pattern 4+5      — 45 min, polish
 Each session ends with a working, tested, committed state. If any session produces a regression you git checkout -- . and lose nothing.
-
-
-* DONE Relationship column correctness bug
-** DONE initial
-
-Relationship column correctness bug: Three-part fix (race condition between fetch queue and runFilter DOM rebuild):
-
-What the intended flow is:
-
-#+begin_example
-Initial render
-  → initRelationshipsColumn()
-      Phase 1: IDB hits → populate immediately
-      Phase 2: throttled queue, 1 cell per 1100ms
-        → _populateCells(mbid, data)
-            → stamps icons into DOM cells        (live td.mb-rel-cell in table)
-            → stamps relDone='1' into src cells  (allRows / groupedRows)
-      queue.then()
-        → final bulk sync: DOM → source rows
-        → _relCreateRetryButtons()
-#+end_example
-
-What actually happens when you filter mid-fetch:
-
-#+begin_example
-Phase 2 still running (e.g. cell 3 of 50 done, cells 4-50 pending at 1100ms intervals)
-
-User types in filter input
-  → runFilter() fires (debounced 300ms)
-      → allRows.map(r => cloneNode(true))   ← clones source rows
-                                               source row cells 4-50 still have
-                                               relDone='' and innerHTML=''
-      → renderFinalTable(filteredRows)
-          → tbody.innerHTML = ''            ← DESTROYS all DOM cells including
-                                               cells 1-3 that were populated
-          → appends clones of matching rows ← these clones have empty cells 4-50
-                                               AND cells 1-3 are empty too
-                                               (source rows weren't synced yet —
-                                               that only happens in queue.then())
-#+end_example
-
-What the fix needs to do:
-
-1. After renderFinalTable/renderGroupedTable in runFilter: call
-   initRelationshipsColumn() if any td.mb-rel-cell[data-rel-done!="1"] exist
-2. Sync source rows immediately in _populateCells after each MBID
-   completes — not only in queue.then()
-3. queue.then() bulk sync becomes safety net, skip already-synced cells
-
-** add status info
-
-1.)
-
-adjust the current information about "🔗 All Relationships loaded" in the "Relationships load-complete toast" popup
-
-#+begin_example
-        const lines = [
-            `🔗 All Relationships loaded`,
-            `   ${mbidCount} entities in ${_fmtMs(elapsedMs)}`,
-            `   ${cellCount} cell${cellCount !== 1 ? 's' : ''} populated`,
-            `   (click to dismiss)`,
-        ];
-#+end_example
-
-to include information from which tier the relationships are fetched (network, cache, indexdDB)
-add the information about "🔗 All Relationships loaded"
-
-2.)
-
-when ALL rows of a table are processed, also include the information in a condensed format in the "mb-global-status-display"
-
-#+begin_example
-<span id="mb-global-status-display" style="font-size: 0.95em; color: rgb(153, 153, 153); font-weight: bold; vertical-align: middle;">Loaded 2 pages (199 rows) from MusicBrainz, Fetching time: 0.65s, Rendering time: 0.19s, 📐Columnsize measuring time: 0.10s</span>
-#+end_example
-
-after the "📐Columnsize measuring time" info
-
-** change format
-
-1.)
-
-are the "entities" and "cell(s)" number ever different from each other
-
-2.)
-
-change the current format line
-
-#+begin_example
-<span id="mb-global-status-display" style="font-size: 0.95em; color: rgb(153, 153, 153); font-weight: bold; vertical-align: middle;">Loaded 2 pages (124 rows) from MusicBrainz, Fetching time: 0.78s, Rendering time: 0.12s, 📐Columnsize measuring time: 0.07s, 🔗 Rels: 124 entities · 124 cells · IDB:124·cache:0·net:0 · 5ms</span>
-#+end_example
-
-to the following format
-
-#+begin_example
-<span id="mb-global-status-display" style="font-size: 0.95em; color: rgb(153, 153, 153); font-weight: bold; vertical-align: middle;">Loaded 2 pages (124 rows); Fetching: 0.78s, Rendering: 0.12s, 📐Measuring: 0.07s, 🔗Rels: 124 entities·124 cells·📦:124·💾:0·🌐:0 · 5ms</span>
-#+end_example
-
-and add tooltip support when hovering over the different parts of the "mb-global-status-display" line:
-
-- explain the loading comes from the MusicBrainz database
-- explain the different parts in "📦:124·💾:0·🌐:0"
-- etc.
-
-** redesign
-
-1.)
-
-change the following span text from the following format
-
-#+begin_example
-🔗Rels: 124 entities·124 cells·📦:124·💾:0·🌐:0 · 5ms
-#+end_example
-
-to
-
-#+begin_example
-🔗Rels: 124/124·📦124/💾0/🌐0·5ms
-#+end_example
-
-2.)
-
-when ALL rows of a table are processed, also include the information about loaded CAA/EAA images in a condensed format in the "mb-global-status-display"
-after the "📐Measuring:" and before the "🔗Rels:" info in a format which mirrors the "🔗Rels:" info.
-
-3.)
-
-in the tooltip include all the following tier information:
-
-#+begin_example
-        const tiers = [
-            { key: 'memory',  emoji: '🟢', label: 'Memory cache' },
-            { key: 'idb',     emoji: '🗄️', label: 'IndexedDB cache' },
-            { key: 'network', emoji: '🔵', label: 'Network fetch' },
-            { key: 'browser', emoji: '🌐', label: 'Browser cache' },
-        ];
-#+end_example
-
-4.)
-
-leave the info after filtering in
-
-#+begin_example
-<span id="mb-info-display" style="font-size: 0.95em; color: green; font-weight: bold; vertical-align: middle;">🎨 CAA/EAA: 40 images in 140ms</span>
-#+end_example
-
-** DONE bugs
-
-1.)
-
-there is a bug that after every filtering operation the new CAA info is appended in the "mb-global-status-display", see e.g.
-
-#+begin_example
-<span id="mb-global-status-display" style="font-size: 0.95em; color: rgb(153, 153, 153); font-weight: bold; vertical-align: middle;"><span title="Pages and rows loaded from the MusicBrainz database.">Loaded 2 pages (124 rows)</span><span>; </span><span title="Time to fetch all pages from the MusicBrainz server.">Fetching: 0.52s</span><span>, </span><span title="Time to build and insert the fetched rows into the DOM.">Rendering: 0.13s</span><span>, </span><span title="Relationship icons: 124 unique MBIDs / 124 cells
-🗄️ IndexedDB cache: 124
-Total load time: 5ms">🔗Rels: 124/124·📦124/💾0/🌐0·5ms</span><span>, </span><span title="Time to auto-measure and set per-column widths (sa_auto_resize_columns).">📐Measuring: 0.08s</span><span>, </span><span title="CAA/EAA artwork: 119 icon + 119 inline = 238 total
-🌐 Browser cache: 119 icon + 119 inline = 238
-Total load time: 51.6s">🎨CAA: 119/119·🟢0/🗄️0/🔵0/🌐238·51.6s</span><span>, </span><span title="CAA/EAA artwork: 61 icon + 61 inline = 122 total
-🌐 Browser cache: 61 icon + 61 inline = 122
-Total load time: 333ms">🎨CAA: 61/61·🟢0/🗄️0/🔵0/🌐122·333ms</span><span>, </span><span title="CAA/EAA artwork: 56 icon + 56 inline = 112 total
-🌐 Browser cache: 56 icon + 56 inline = 112
-Total load time: 296ms">🎨CAA: 56/56·🟢0/🗄️0/🔵0/🌐112·296ms</span><span>, </span><span title="CAA/EAA artwork: 119 icon + 119 inline = 238 total
-🌐 Browser cache: 119 icon + 119 inline = 238
-Total load time: 692ms">🎨CAA: 119/119·🟢0/🗄️0/🔵0/🌐238·692ms</span></span>
-#+end_example
-
-It should be there only when the final page is initially rendered AND all rows are processed for images.
-
-The CAA/EAA info after filtering should ONLY go to the "mb-info-display"
-
-2.)
-
-the tooltips should always display ALL tier information for relationships and CAA/EAA images
-
-3.)
-
-the condensed format in the "mb-global-status-display" should only display information for non zero count instead
-
-4.)
-
-the relationship tooltip should use the same icons as in the condensed status display and not the ones used for the CAA/EAA info
-
-* DONE same for CAA/EAA images
-
-#+begin_example
-        // ── Assemble the full multiline message ───────────────────────────────
-        const timeStr    = _fmtMs(elapsedMs);
-        const totalLabel = grandTotal === 1 ? '1 image' : `${grandTotal} images`;
-        const lines = [
-            `🎨 All CAA/EAA artwork loaded`,
-            `   ${totalLabel} in ${timeStr}`,
-            ...tierLines,
-            `   (click to dismiss)`,
-        ];
-        const toastText = lines.join('\n');
-
-        // ── Update the global info area (compact single-line summary) ─────────
-        const infoDisplay = document.getElementById('mb-info-display');
-        if (infoDisplay) {
-            infoDisplay.textContent = `🎨 CAA/EAA: ${totalLabel} in ${timeStr}`;
-            infoDisplay.style.color = 'green';
-        }
-#+end_example
-
-* DONE Filter performance (do in order, each builds on previous)
-** DONE initial
-
-Filter performance (do in order, each builds on previous)
-
-- Fix A: test-before-clone — reverse map/filter order in runFilter(),
-  separate highlight from match in testRowMatch()
-- Fix B: pre-cache extracted text — WeakMap keyed on source rows,
-  populated at render time, invalidated on new fetch
-- Pattern 2: two-phase matching — cheap global string.includes first,
-  expensive querySelector/regexp only on survivors
-
-Start with fix A, tell me how I can test it, then let me test.
-
-** DONE test Fix A
-
-How to test Fix A
-
-1. Install/reload the updated script in Tampermonkey.
-   
-2. Golden-path filter test — go to any large list page (e.g. a label's releases with 200+ rows). Type a term that matches ~10 % of rows. Verify:
-   - Matching rows appear with correct yellow/blue highlights.
-   - Non-matching rows are hidden.
-   - Clearing the filter restores all rows with no stale highlights.
-
-3. Exclude mode — tick the "Ex" checkbox, type the same term. Verify matching rows are now hidden and no highlights
-   appear (excluded rows are never highlighted — that guard is still inside !matchOnly).
-
-4. Column filter — type something in a column filter box. Verify matching rows show column-level (blue) highlights.
-
-5. Performance sanity — open the browser DevTools Performance tab, record while typing a multi-character filter on a
-   500-row table. The "Scripting" flame chart should show fewer/narrower cloneNode stacks compared to v9.99.618,
-   particularly when the filter is narrow (few matches).
-
-6. Regexp filter — tick "Rx", enter a valid pattern. Confirm correct match/highlight behaviour. Enter an invalid pattern
-   and confirm the error state still shows and no filter runs.
-
-** DONE now do "Fix B"
-
-now do "Fix B" and tell me how to test it
-
-** DONE test Fix B
-
-How to test Fix B
-
-Correctness (same as Fix A tests — nothing should change visually):
-
-1. Plain-text global filter → matching rows highlighted, non-matching hidden.
-2. Regexp global filter → correct per-cell matching.
-3. Column filter → correct column-level highlights.
-4. Rel-cell URL filter → matching relationship icons outlined.
-5. Multi-row state filter (empty / any / single) → correct row visibility.
-6. Clear filter → all rows restored, no stale highlights.
-7. Exclude mode → matching rows hidden, no highlights.
-
-Cache invalidation:
-
-8. Load a list, filter to a few rows, then click the button again to re-fetch. Type the same filter. Results must be identical to the first pass — confirms stale WeakMap entries from the old allRows do not leak into the new fetch.
-
-Performance (the point of Fix B — observable from the second keystroke onwards):
-
-1. Load a large list (200+ rows). Type a narrow filter (1-3 matches). Open DevTools → Performance, start recording, type a character that keeps the same narrow result. Stop recording. In the flame chart, getCleanVisibleText and getCleanColumnText should appear on only the first
- keypress; on subsequent keystrokes with the same result set they should be absent or nearly absent in the testRowMatch → matchOnly=true stack.
-2. Alternatively: add console.time('filter') / console.timeEnd('filter') around the runFilter call in the browser console and compare keystroke timing for a narrow filter (few matches → many cache hits) vs. a broad filter (all rows match → cache miss only on first keystroke).
-
-** DONE now do Pattern 2
-
-test ok, commit
-
-now do Pattern 2 and tell me how to test it
-
-** DONE test Pattern 2
-
-How to test Pattern 2
-
-Correctness — golden path (all existing filter types must still work):
-
-1. Plain-text column filter: type a word that appears in a column. Matching rows show blue highlights in that column. Clearing restores all rows.
-2. Regexp column filter: tick "Rx" on a column filter, enter /^[A-Z]/. Only rows starting with a capital letter in that column match. (This tests the regexp branch that bypasses the two-phase logic.)
-3. Sentinel filters via unique-values dropdown:
-  - Open a column with CAA artwork → click the unique-values button → pick "✓ has artwork" ('yes') or "✗ no artwork" ('no'). Rows must filter correctly. This exercises phase 2 (.mb-caa-sort-key bypass).
-  - Same for a column with inline thumbnails: pick "caa-inline-yes" / "caa-inline-no". This exercises the .mb-inline-art-sort-key bypass.
-4. Global + column filter combined: set a global filter that narrows to ~10 rows, then add a column filter on top. Only rows passing BOTH should be visible. This tests the global short-circuit (column loop is skipped for rows the global filter already rejected).
-5. Column filter + no global filter: clear global filter, keep column filter. All rows that match the column must appear. (Verifies the short-circuit doesn't fire when globalHit = true because there is no global query.)
-6. Exclude mode: tick "Ex" with a column filter value. Rows containing that value in the column must be hidden.
-
-Phase 2 performance (observable in DevTools):
-
-7. On a large release table with column filters set to normal text (not sentinels): record a Performance trace while typing in a column filter. The querySelector('.mb-inline-art-sort-key') and querySelector('.mb-caa-sort-key') calls should be absent from the flame chart — they
-only fire for the rare sentinel values that miss phase 1.
-
-** DONE test ok, commit
-
-test ok, commit
-
-Committed as ee66859. All three optimizations are now in:
-
-  ┌─────────┬───────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────┐
-  │ Commit  │            Change             │                                        Benefit                                        │
-  ├─────────┼───────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
-  │ cb8b549 │ Fix A: test-before-clone      │ cloneNode only on matching rows (N→M)                                                 │
-  ├─────────┼───────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
-  │ 000c70a │ Fix B: WeakMap text cache     │ getCleanVisibleText/getCleanColumnText computed once per row                          │
-  ├─────────┼───────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
-  │ ee66859 │ Pattern 2: two-phase matching │ querySelector bypasses only for sentinel values; column loop skipped on global reject │
-  └─────────┴───────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────┘
-
-** DONE now do the following patterns
-
-next the following patterns:
-
-- Pattern 3: adaptive debounce — scale delay to row count, user setting
-  becomes a floor not an override
-- Pattern 6: result cache — Map keyed on normalised query, max 50
-  entries, evict oldest; invalidate on fetch/sort/settings change
-
-** DONE start with Pattern 3
-
-start with Pattern 3, and tell me how to test
-
-** DONE test Pattern 3
-
-How to test Pattern 3
-
-Correctness (debounce still fires and filter still works):
-
-1. Load any list page, type in the global filter — results should update after the delay (same as before). No regressions on the filter itself.
-2. Type in a column filter — same check.
-3. Type in a sub-table filter (multi-table page) — same check.
-4. Set sa_filter_debounce_delay = 0 in settings and type — filter should respond immediately (floor = 0, adaptive = 0 for small tables). Verify no delay-related freeze.
-
-Adaptive scaling (the actual new behaviour):
-
-5. Small table (≤500 rows): Load a page with few rows. Open DevTools → Console and paste:
-// call _adaptiveFilterDelay from console isn't directly possible, but
-// log it inside: add a console.log(_adaptiveFilterDelay()) to the input handler
-5. Alternatively: set sa_filter_debounce_delay = 0 and verify typing feels instant.
-6. Large table (>6500 rows with default 300ms floor): Load a large releases/recordings page. Set sa_filter_debounce_delay = 0. Type rapidly. The delay should now be noticeably larger than 0ms because the adaptive component kicks in (e.g. 10 000 rows → max(0, 475) = 475 ms).
-Compare against a small table with the same setting: small table stays near 0ms.
-7. Floor semantics: Set sa_filter_debounce_delay = 1000. On any table size the delay should never drop below 1000ms. On a 10 000-row table: max(1000, 475) = 1000ms — the user setting wins.
-8. Formula breakpoint check: With default floor=300, load a table with ~7000 rows. Delay should be slightly above 300ms (max(300, (7000-500)*0.05) = max(300, 325) = 325ms). With ~5000 rows: max(300, 225) = 300ms (floor still wins).
-
-** DONE test ok commit
-
-test ok, commit
-
-** DONE Pattern 6
-
-now do Pattern 6 and tell me how to test it
-
-** DONE test Pattern 6
-
-How to test Pattern 6
-
-Correctness:
-
-1. Load a list page, type a filter — correct rows shown with highlights.
-2. Backspace through the query: type "Beatles", then delete one character at a time back to empty. At each step the correct rows for that query must appear — verifying cache hits give the right source row set.
-3. Re-type a previous query: type "Beatles", clear, type "Beatles" again. Second time must show identical results.
-4. Sort a column, then filter. Sort changes row order; the filter after sort must respect the new order (cache was invalidated by sort).
-5. Click the fetch button again (re-fetch). Then filter. Must show fresh results, not stale entries from the previous load.
-6. Disk-load: load a page, let it save to disk (green indicator), reload the page, click the button again to load from disk. Filter should work correctly — cache was invalidated at disk-load start.
-
-Cache behaviour (observable with debug logging):
-
-7. Enable sa_enable_debug_logging and open the browser console with the filter channel. Type a query — first keystroke logs nothing about cache. Backspace to a previous query — should log "runFilter: cache hit single-table" (or the multi-table equivalent). Confirm the hit
-appears on the second visit to a query but not the first.
-8. Eviction: type 51 distinct queries (each 1–2 chars, all different). The 51st miss should evict the oldest entry. The first query should now be a miss again (it was evicted). Confirm by re-typing query #1 and checking no cache-hit log appears.
-
-Performance (the point of Pattern 6):
-
-9. On a large table (1 000+ rows), type a narrow filter so few rows match. Backspace one character — the second visit to the shorter query should feel noticeably faster than the first (the O(N) testRowMatch scan is skipped; only O(M) clone+render runs).
-
-** DONE test ok commit
-
-test ok, commit
-
-* DONE Filtering and highlightning bug depending on typing speed
-** initial
-
-for e.g. on a 1588 row table (https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works) with lots of
-multi-row columns each with a massive amount of rows per cell (sometimes in the range between 20 and 300) there is a
-filtering bug when using the global filter but also when using the column filter on the column "Authors" (also
-multi-column cells) depending on the typing speed of the filter string.
-
-1.)
-
-a.)
-
-when typing in comfortable the string "cook", the initial 27 filtered rows show the right filter string "cook"
-highlighted, but suddenly the rest of the filtered rows only show the character "c" highlighted in each row/cell.
-
-b.)
-
-the same happens with the string " cook", the initial 26 filtered rows show the right filter string " cook"
-highlighted, but suddenly the rest of the filtered rows only show the character " " highlighted in each row/cell.
-
-2.)
-
-when entering the same filter string very fast, the same initial <n> filtered rows show the right filter string
-highlighted, but all the rest of the filtered rows are the same as in case 1.) but do NO show any highlightning at all
-
-3.)
-
-when pasting the filter strings or entering them very slowly, only rows with the complete filter string are correctly highlighted and filtered (actually the expected result)
-
-Does the current code explains this behaviour ?
-
-** fix
-
-This is a precise race condition — the code explains the behaviour exactly.
-
-Root cause: concurrent async renders with per-render highlight state
-The race has three components working together:
-
-Component 1: renderGroupedTable / renderFinalTable are not awaited
-In runFilter():
-javascriptrenderGroupedTable(filteredArray, _isReleaseGroupsMultiMode(), globalQuery || 're-run');
-// execution continues immediately — no await
-updateH2Count(totalFiltered, totalAbsolute);
-runFilter() fires the render and returns. renderGroupedTable starts executing asynchronously via its internal await renderRowsChunked(...) yields. Multiple runFilter() invocations can have their renders executing concurrently.
-
-Component 2: Highlights are baked into clones at match time
-javascript// Inside testRowMatch, called synchronously inside runFilter():
-if (finalHit) {
-    highlightText(row, globalQueryRaw, isCaseSensitive, -1, isRegExp);
-}
-globalQueryRaw is captured once at the top of runFilter() from filterInput.value. Each clone's highlights are frozen at the query value at the moment that specific runFilter() call started. They cannot be updated after the fact.
-
-Component 3: Works page rows are extremely expensive to clone
-Each row on the works page has Authors/Recording/Release cells with 20–300 <li> items. cloneNode(true) on such a row is very slow. The synchronous allRows.map(r => cloneNode(true)).filter(testRowMatch) loop for 1588 rows with massive cells takes several seconds. During this frozen execution, all user keystrokes are queued but not processed.
-
-How the three symptoms arise
-Case 3 (paste or very slow typing — correct behaviour)
-Paste fires one input event. Debounce fires once. One runFilter("cook") runs to completion. One renderGroupedTable starts and finishes without any concurrent render. All rows cloned and highlighted with "cook". ✅
-
-Case 1 (comfortable typing — partial correct highlight then wrong)
-Timeline for "c" → "o" → "o" → "k" at ~150ms per key, debounce 300ms:
-t=0ms    type "c"   → debounce timer starts (fires at t=300ms)
-t=150ms  type "o"   → debounce resets (fires at t=450ms)
-t=300ms  type "o"   → debounce resets (fires at t=600ms)
-t=450ms  type "k"   → debounce resets (fires at t=750ms)
-t=750ms  debounce fires → runFilter() called with filterInput.value = "cook"
-runFilter("cook") runs synchronously. The clone+testRowMatch loop for 1588 rows with 300-li cells takes ~3–8 seconds. Browser is frozen throughout. All clones get "cook" highlights correctly at this point.
-Then renderGroupedTable(filteredArray, ..., "cook") is called — NOT awaited — and returns. renderGroupedTable starts chunking rows into the tbody.
-Between chunks (each await yields to the event loop), the user has typed more characters. The queued input events fire → debouncedRunFilter() triggered → 300ms later another runFilter() fires with the NEW filterInput.value, e.g. "cook " or whatever was typed during the frozen period.
-This second runFilter() runs its own synchronous clone+highlight loop. Its clones are highlighted with "cook " (or the new query). It calls renderGroupedTable(filteredArray2, ..., "cook ") — again not awaited.
-Now two renderGroupedTable calls are running concurrently, both chunking rows into the same tbody elements:
-
-RGT1 ("cook"): inserted first N rows with "cook" highlights, yielding between chunks
-RGT2 ("cook "): starts, clears the tbody (or begins overwriting), inserts its own rows
-
-When RGT2 clears the tbody and starts its chunks, RGT1's remaining chunks resume and append their "cook"-highlighted rows after RGT2's "cook "-highlighted rows.
-Result: first rows show "cook " highlights (RGT2's output), then remaining rows show "cook" highlights (RGT1's stale chunks). Or vice versa depending on exact timing — which is why you see "initial N rows correct, rest wrong".
-The character "c" being the highlight for the remainder: this matches runFilter being called at some point when only "c" was in the input (before debounce reset), so RGT1 is actually the "c" render, not the "cook" render.
-
-Case 2 (fast typing — initial correct rows, rest no highlighting)
-Fast typing means the debounce fires multiple times in rapid succession. A third or fourth concurrent renderGroupedTable starts, clears the tbody, inserts rows that matched the query but were cloned during testRowMatch before the highlight call path completed — or clones from a runFilter where the query had already changed between the testRowMatch match check and the highlightText call.
-More precisely: when typing is fast enough, a runFilter() fires with a partial query (e.g. "co"), makes clones highlighted with "co", calls renderGroupedTable. A later runFilter("cook") clears the tbody and starts fresh. The "co" render's remaining chunks then continue appending their rows with no highlight visible for "cook" (because they were highlighted with "co", which doesn't match the current display query, but ALSO the first "cook" render is now orphaned).
-
-Why the works page specifically
-On a releases or recordings page the clone loop for 1588 rows is fast — a few hundred milliseconds. renderRowsChunked inserts all rows before the debounce fires again. Concurrent renders don't overlap because the render completes before the next runFilter fires.
-On the works page, a single cloneNode(true) on a row with a 300-li Authors cell takes ~5–20ms. For 1588 rows: 8–30 seconds of frozen execution. The browser queues multiple keystrokes during this freeze, which all fire as input events when runFilter() finally returns, triggering multiple rapid debouncedRunFilter() calls in quick succession. Concurrent renders are almost certain.
-
-The fix
-Three interlocking changes:
-1. Abort token in renderRowsChunked / renderGroupedTable — this already exists structurally but needs to be applied at renderGroupedTable level, not just inside individual renderRowsChunked calls. A single module-level counter:
-
-#+begin_example
-_renderGeneration = 0;
-
-async function renderGroupedTable(dataArray, ...) {
-    const generation = ++_renderGeneration;
-    // ... between every await:
-    if (_renderGeneration !== generation) return; // superseded
-}
-#+end_example
-
-When a new runFilter fires, _renderGeneration increments, and all older renders self-abort at their next yield point. Only the most recent render runs to completion.
-2. Fix A (test-before-clone) — separates the synchronous clone cost from the match test. With the cache in place (Fix B), the match test on source rows costs ~1ms per row. Cloning only happens for matching rows (~27 out of 1588 for "cook"). The frozen period drops from 8–30 seconds to under 100ms, which largely prevents the debounce overlap from occurring in the first place.
-3. Adaptive debounce — a 600ms debounce for 1588 rows means the user has finished typing before runFilter fires at all for typical typing speeds. Eliminates the race entirely for normal typing.
-Fix 1 is the correct fix — it makes concurrent renders safe regardless of row count or typing speed. Fixes 2 and 3 reduce the probability of the race occurring. All three together make it effectively impossible to trigger.
-
-** do
-
-for e.g. on a 1588 row table (https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works) with lots of
-multi-row columns each with a massive amount of rows per cell (sometimes in the range between 20 and 300) there is a
-filtering bug when using the global filter but also when using the column filter on the column "Authors" (also
-multi-column cells) depending on the typing speed of the filter string.
-
-1.)
-
-a.)
-
-when typing in comfortable the string "cook", the initial 27 filtered rows show the right filter string "cook"
-highlighted, but suddenly the rest of the filtered rows only show the character "c" highlighted in each row/cell.
-
-b.)
-
-the same happens with the string " cook", the initial 26 filtered rows show the right filter string " cook"
-highlighted, but suddenly the rest of the filtered rows only show the character " " highlighted in each row/cell.
-
-2.)
-
-when entering the same filter string very fast, the same initial <n> filtered rows show the right filter string
-highlighted, but all the rest of the filtered rows are the same as in case 1.) but do NO show any highlightning at all
-
-3.)
-
-when pasting the filter strings or entering them very slowly, only rows with the complete filter string are correctly highlighted and filtered (actually the expected result)
-
-
-Root cause of the race condition: concurrent async renders with per-render highlight state
-
-Fix with something like:
-
-Abort token in renderRowsChunked / renderGroupedTable — this already exists structurally but needs to be applied at
-renderGroupedTable level, not just inside individual renderRowsChunked calls. A single module-level counter:
-
-#+begin_example
-_renderGeneration = 0;
-
-async function renderGroupedTable(dataArray, ...) {
-    const generation = ++_renderGeneration;
-    // ... between every await:
-    if (_renderGeneration !== generation) return; // superseded
-}
-#+end_example
-
-** test
-
-How to test:
-1. Load the works page and click "Show all Works for Artist" — wait for all 1588 rows to render
-2. Type "cook" at a comfortable character-by-character pace in the global filter
-3. Before fix: first 27 rows show "cook" highlighted, then stale rows from the "c" render appear with only "c" highlighted
-4. After fix: only the 27 correctly highlighted "cook" rows appear; no stale rows ever follow them
-5. Also test typing quickly: same result — only correct rows, no stale chunks
-
-** test ok, commit
-
-test ok, commit
-
-* DONE rendering time and browser "Page unresponsive"
-** initial
-
-## problem
-
-For e.g. on https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases with 8099 rows
-
-the "🎨 Rendering rows..." stays at 8099 for a very long time and the chrome browser still now an then shows the "Page unresponsive" dialog window.
-
-The final status line looks like: 'Loaded 81 pages (8099 rows) from MusicBrainz, Fetching time: 75.94s, Rendering time: 247.98s'
-
-https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
-Loaded 16 pages (1588 rows); Fetching: 34.07s, Rendering: 141.15s, 🎨CAA: 0/0·—·697ms, 📐Measuring: 2.02s ✓ Auto-resized 11 visible columns in 2.01s (drag column edges to adjust)
-
-## answer from you in web session
-
-Why it stays at 8099 for a very long time after chunked render completes
-renderRowsChunked finishes quickly — 8099 rows at 500/chunk is ~17 chunks, each yielding once. The progress overlay disappears. But the rendering time clock is still running because the timing block wraps everything after renderRowsChunked returns, including a chain of synchronous operations that are far more expensive than the actual row insertion.
-The post-render pipeline for 8099 rows, in execution order:
-
-1. finalizeSplitAlignedColumns + finalizeRLCColumnWidths — before render
-These run on allRows (8099 source rows) before renderFinalTable is called. Pure JavaScript iteration with textContent.length reads — no layout reflows. For 8099 rows × several integer/split columns: ~50–100ms. Acceptable.
-
-2. tbody.innerHTML = '' — inside renderFinalTable
-Destroying 8099 live DOM rows forces a full layout recalculation. For a complex releases table this alone can take 2–5 seconds — the browser must garbage-collect all the detached nodes and their event listeners. This happens synchronously before renderRowsChunked even starts.
-
-3. renderRowsChunked — the part with the progress bar
-Inserting 8099 rows in 17 × 500-row chunks with yields between. Each tbody.appendChild(fragment) of 500 rows triggers a layout recalculation. For the release page row structure (8 cells, nested spans, bdi elements, flag icons): ~200–400ms per chunk × 17 = 3–7 seconds. Progress bar visible and updating throughout.
-
-4. cleanupHeaders — synchronous DOM mutation
-Iterates all thead elements, removes certain nodes. Cheap: ~10ms.
-
-5. addColumnFilterRow — synchronous DOM mutation
-Clones the header row, replaces cells with filter inputs. For 20 columns: ~20ms.
-
-6. makeTableSortableUnified — synchronous, O(columns)
-Wires sort click handlers on header cells. Pure event listener attachment — no row iteration. ~5ms.
-
-7. initCollapsableColumns — the dominant post-render cost
-This is where the long freeze after "8099" happens. For each collapsable column it:
-Cleanup pass — table.querySelectorAll('.mb-col-collapse-hdr-btn'), .mb-cell-collapse-toggle, td.mb-has-collapse-toggle, tbody td ul > li — four full table scans. For 8099 rows × 8 cells each = ~65,000 elements walked per selector. At 4 selectors: ~260,000 element visits just for cleanup. Cost: 3–8 seconds.
-Per-column body scan — Array.from(table.querySelectorAll('tbody tr')) then per row td.querySelectorAll('ul > li') — another full scan per collapsable column. For 3 collapsable columns on a releases page: 3 × 8099 = 24,000 querySelector calls. Cost: 2–4 seconds.
-_updateAllColHeaderCounts — called at the end of initCollapsableColumns. For each column header with a unique-value count span: iterates all tbody.rows, calls getCleanColumnText(cell) per row (TreeWalker walk, possibly with cell clone if strip selectors match). For 20 columns × 8099 rows: 161,980 getCleanColumnText calls. This is the single most expensive operation in the entire post-render pipeline. Cost: 30–120 seconds depending on how many columns have .mb-col-uniq-count spans and how complex the cell content is.
-
-8. Remaining hooks — mostly async or fast
-initBarcodeHighlight, initReleaseEventsColumn, initRelationshipsColumn, initPicardTaggerColumn — all either fast or immediately async. Not the problem.
-
-The actual breakdown for your 247-second render time
-PhaseEstimated costChrome dialog risktbody.innerHTML = '' (destroy 8099 rows)2–5sNo (single operation)renderRowsChunked (insert 8099 rows)3–7sNo (chunked with yields)initCollapsableColumns cleanup passes3–8sYes (synchronous, no yield)initCollapsableColumns per-column scans2–4sYes_updateAllColHeaderCounts (161,980 getCleanColumnText calls)30–120sYes — this is the primary culpritOther post-render hooks1–3sNoTotal~41–147s
-The 247-second total includes the fetch time measurement overlap and likely the toggleAutoResizeColumns call (451s on first visit) firing in the setTimeout(0) which overlaps with the rendering time window.
-
-Why the Chrome dialog still appears despite chunked render
-renderRowsChunked yields correctly — that part is fixed. But initCollapsableColumns and especially _updateAllColHeaderCounts run entirely synchronously after renderRowsChunked returns. A 30–120 second synchronous getCleanColumnText loop on 161,980 cells is exactly the kind of operation Chrome's watchdog fires on.
-
-## proposed fix
-
-Three targeted changes, all independent:
-
-1. _updateAllColHeaderCounts — defer or cache
-
-The unique-value counts don't need to be computed synchronously at render time. Either:
-
-Wrap in setTimeout(0) to defer out of the render timing block entirely, or
-Use the pre-built text cache from Fix B (once implemented) so getCleanColumnText hits the cache instead of walking the TreeWalker 161,980 times
-
-The deferred approach is trivial and immediately effective regardless of whether Fix B is implemented:
-
-#+begin_example
-// At the end of initCollapsableColumns, replace:
-_updateAllColHeaderCounts(table);
-
-// With:
-setTimeout(() => _updateAllColHeaderCounts(table), 0);
-#+end_example
-
-2. initCollapsableColumns cleanup passes — consolidate into one scan
-
-Currently four separate querySelectorAll calls each walking the full table. Replace with one querySelectorAll('td, span, li') pass that handles all cleanup in a single walk.
-
-3. initCollapsableColumns per-column body scans — single shared scan
-Currently Array.from(table.querySelectorAll('tbody tr')) runs once per collapsable column. Hoist it above the collapsableColumns.forEach loop so it runs once total:
-
-#+begin_example
-const bodyRows = Array.from(table.querySelectorAll('tbody tr')); // once
-collapsableColumns.forEach(colName => {
-    // use bodyRows directly — no re-query
-});
-#+end_example
-
-With all three changes: initCollapsableColumns drops from 35–130 seconds to 2–5 seconds for 8099 rows. The Chrome dialog
-disappears. The render time reported in the status line drops to something honest — reflecting only the actual row
-insertion cost, not the post-render overhead.
-
-** test
-
-Ready to test. Load the releases page (8099 rows), click "Show all Releases", and verify:
-- Progress bar advances and disappears as before
-- Page stays responsive throughout (no Chrome "Page Unresponsive" dialog)
-- Unique-value counts in column headers still appear, just a moment after the rows render (deferred)
-- Collapsable columns (Country/Date, Label, Catalog#, CAA) still work correctly
-
-** nothing really has changed, now I got
-
-nothing really has changed, it actually got worse, now I got for  https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases:
-Loaded 81 pages (8100 rows); Fetching: 82.52s, Rendering: 237.34s, 📐Measuring: 2.86s ✓ Auto-resized 21 visible columns in 2.81s (drag column edges to adjust)
-
-instead of:
-Loaded 81 pages (8099 rows) from MusicBrainz, Fetching time: 75.94s, Rendering time: 247.98s
-
-and for https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works:
-Loaded 16 pages (1588 rows); Fetching: 35.81s, Rendering: 150.36s, 🎨CAA: 0/0·—·2.3s, 📐Measuring: 1.96s✓ Auto-resized 11 visible columns in 1.95s (drag column edges to adjust)
-
-instead of before thefix:
-Loaded 16 pages (1588 rows); Fetching: 34.07s, Rendering: 141.15s, 🎨CAA: 0/0·—·697ms, 📐Measuring: 2.02s ✓ Auto-resized 11 visible columns in 2.01s (drag column edges to adjust)
-
-** test
-
-The fix — initCollapsableColumns, inside collapsableColumns.forEach → multiRowCells.forEach:
-
-  - Before: for each multi-row cell: whiteSpace = 'nowrap' (write) → scrollWidth (read, triggers reflow) → whiteSpace = prevWS (write). With 8100 rows and e.g. 5 collapsable columns × ~1000 multi-row cells each = 5000 forced synchronous reflows, 10–50ms each = 50–250 seconds.
-  - After: collect all first-<li> refs during the forEach (no reads), then three batch passes outside the loop: set nowrap on all → read all scrollWidths → reset all. One layout flush per column instead of one per cell.
-
-  Please test on the releases page (8100 rows). The rendering time should drop dramatically — the
-  _updateAllColHeaderCounts defer from v9.99.625 is still in effect too. Looking for the "Page Unresponsive" dialog to
-  be gone and rendering time to be a fraction of the previous 237s.
 
 
 * question about ordering
@@ -83689,98 +84480,7 @@ There seems to be a bug now with the "function _artInitBigPics".
 The big picture stripe above "singe"-table pageTypes always shows all images even when filtering.
 
 
-* TODO shortcut overwhole
-** DONE initial
-
-There is a problem with the default enabling of the direct "Ctrl+<char>" key combinations. Some of the defaults are well
-known browser/OS shortcuts. In order to react to user feedback to this user script do the following:
-
-1.)
-
-map the current "Ctrl+<char>" combinations (where char is from the "a-z" range) AND no input field (like global,
-sub-table, or column level filter) has currently focus or we are in a special UI dialog, additionally on the currently
-configured "Keyboard Shortcut Prefix" key (default: "Ctrl+M"),
-
-except
-
-#+begin_example
-Ctrl+M
-Ctrl+U
-#+end_example
-
-2.)
-
-add a new boolean variable in the "// KEYBOARD SHORTCUTS SECTION" (default: false) for still enabling the above
-"Ctrl+<char>" combinations.
-
-3.)
-
-adjust the "Show keybord shortcuts" popup accordingly
-
-** DONE bugs
-
-some bugs:
-
-1.)
-
-make the currently hard-wired "Ctrl+K" 'Show keyboard shortcuts help', see 
-
-#+begin_example
-            // Show keyboard shortcuts help (hard-wired Ctrl+K)
-            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toUpperCase() === 'K') {
-                e.preventDefault();
-                showShortcutsHelp();
-                Lib.debug('shortcuts', 'Shortcuts help opened via Ctrl+K');
-            }
-#+end_example
-
-configurable before the "sa_shortcut_open_settings:" in the "// ---- Configurable direct shortcuts ----" section
-
-2.)
-
-add a new configuration option "sa_toggle_barcode_highlightning" (default "Ctrl+B") with the right "label", "type" and "description"
-before the "sa_shortcut_open_density:" in the "// ---- Configurable direct shortcuts ----" section
-with the following functionality:
-
-emulate the repeated pressing of the button
-
-#+begin_example
-<button id="mb-barcode-highlight-btn"
-#+end_example
-
-3.)
-
-add "b" for the case 2.) also in the "ctrlMFunctionMap"
-
-4.)
-
-currently the following code says "'Ctrl+V'), desc: 'Open "Visible" menu (blocked while typing"
-
-#+begin_example
-            {
-                title: 'View & Layout',
-                shortcuts: [
-                    { keys: getShortcutDisplay('sa_shortcut_auto_resize', 'Ctrl+R'), desc: 'Toggle resize columns (blocked while typing; use prefix mode then R)' },
-                    { keys: getShortcutDisplay('sa_shortcut_open_visible_columns', 'Ctrl+V'), desc: 'Open "Visible" menu (blocked while typing; use prefix mode then V)' },
-#+end_example
-
-but in the following code
-
-#+begin_example
-            {
-                title: 'Column Filter Controls (when a column filter has focus)',
-                shortcuts: [
-		    ... <snip> ...
-                    { keys: getShortcutDisplay('sa_shortcut_open_visible_columns','Ctrl+V'),        desc: 'Open the per-sub-table visible-columns menu (mb-stf-…-vis-btn in the h3 header); falls back to global visible-columns menu in single-table mode' }
-#+end_example
-
-it doesn't say this, AND it's still actually working. This should not be working when "sa_enable_direct_ctrl_char_shortcuts" has a value of "false"
-
-** TODO bug
-
-ctrl+[a-z] should also disabled when not on input fields or UI dialogs
 
 
-* TODO bug - when loading from disk e.g. https://musicbrainz.org/release-group/39b22944-7503-3937-8bba-09b17281cc6a the first column "Official release" doesn't show any cover art images
 
 

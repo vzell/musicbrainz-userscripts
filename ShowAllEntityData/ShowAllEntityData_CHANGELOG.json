@@ -1,5 +1,117 @@
 [
   {
+    "version": "9.99.660",
+    "date": "2026-06-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On `releasegroup-releases` pages, inline cover art thumbnails in the first (sticky) column were absent after loading data from disk. Root cause: the disk-load path unconditionally set `group.colName = category` (e.g. `\"Official release\"`) for every multi-table group, but the network fetch path only sets `colName` for `listToTable`/`groupByH3` page types. For standard multi-table pages (`releasegroup-releases` uses the generic `else` fetch branch), `group.colName` is left `undefined`. When `colName` was incorrectly set on disk-load, `renderGroupedTable` patched the first `<th>` of each sub-table from `\"Release\"` to `\"Official release\"`, causing `caaFindColumnByName('Release')` to return `-1` and `_artInitInlinePics` to skip all sub-tables. Fixed by guarding the `colName` derivation behind a check for `activeDefinition.features.listToTable || activeDefinition.features.groupByH3`, mirroring the network-path condition exactly."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.659",
+    "date": "2026-06-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`applyMultiSortColumnTints` used `cell.textContent.trim()` to compare successive cell values when determining shade-flip boundaries. Cells that embed a `<script type=\"application/json\">` block (e.g. the Country/Date column on release-group pages) produced different `textContent` strings for visually identical values because the embedded JSON uses varying property-key order, causing the shade to flip on every row even when the visible value was unchanged. Fixed by replacing `cell.textContent.trim()` with `getCleanColumnText(cell)`, which already skips `<script>` and `<style>` nodes via its TreeWalker filter."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.658",
+    "date": "2026-06-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Prefix-mode `A` (and column-filter `Ctrl+A`) now also finds EAA per-table toggle buttons (`mb-eaa-toggle-btn-N`) in addition to CAA (`mb-caa-toggle-btn-N`). Previously, on pages that show EAA event art (e.g. place/events), pressing `Ctrl+M` then `A` had no effect. Updated `ctrlMFunctionMap['a']` description to 'Toggle Cover Art Images (CAA/EAA)'.",
+          "Stop button tooltip now mentions the `Ctrl+M, then O` prefix-mode shortcut."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.657",
+    "date": "2026-06-15",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Global and column filter input tooltips incorrectly mentioned 'Ctrl+M then U' as an alternative for the unicode character map shortcut. The unicode picker (`Ctrl+U`) is handled in the capture phase and is never suppressed, so the tooltip now simply shows the configured `sa_shortcut_unicode_chars` shortcut (default `Ctrl+U`) without a prefix-mode alternative.",
+          "Barcode highlight button tooltip no longer shows the direct `Ctrl+B` shortcut when `sa_enable_direct_ctrl_char_shortcuts` is off. It now uses the new `buildShortcutHint` helper (same as other action buttons).",
+          "Added `buildShortcutHint(settingKey, fallback, prefixKey)` utility: always emits the prefix-mode form (`Ctrl+M, then X`); appends the direct shortcut (`or Ctrl+X`) only when `sa_enable_direct_ctrl_char_shortcuts` is on, or when the shortcut key is not a `Ctrl+<a–z>` letter (e.g. `Ctrl+,`) and is therefore never suppressed.",
+          "All action-button tooltips (Save, Load, Resize/Restore, Visible, Density, Statistics, Export, Keyboard Shortcuts, Settings) now use `buildShortcutHint` so the direct `Ctrl+X` shortcut is shown only when enabled. `Ctrl+,` (Settings) is always shown because it is not a letter shortcut. App Help shows prefix-mode only (no direct `Ctrl+H` shortcut exists)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.656",
+    "date": "2026-06-15",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Prefix-mode tooltip (`showCtrlMTooltip`): split the Functions list into a regular section and a 'Col-filter context' section for `o`/`q`/`a`. The column-context section is shown in green when a column filter is currently focused and grey with a '⚠ focus col filter first' warning otherwise. Added `colContext: true` flag to the `o`/`q`/`a` entries in `ctrlMFunctionMap` to enable this split.",
+          "Moved 'b — Toggle Barcode Highlighting' to appear immediately after 'v — Open Visible Columns Menu' in the prefix-mode function map (and therefore in the tooltip), matching the visual order in the controls bar.",
+          "Barcode highlight button tooltip now includes the prefix shortcut (`Ctrl+M` then `B`) and the configured direct shortcut (`Ctrl+B`) in both active and inactive states.",
+          "Global filter input tooltip now honours `sa_enable_direct_ctrl_char_shortcuts`: when the setting is off, shows the prefix-mode alternative (`Ctrl+M` then `G`) and mentions that the direct `Ctrl+G` can be re-enabled in Settings.",
+          "Column filter input tooltip similarly honours `sa_enable_direct_ctrl_char_shortcuts`: shows `Ctrl+M` then `C` prefix-mode hint when direct shortcuts are off.",
+          "Sort-icon tooltips for ⇅, ▲, ▼ now mention the keyboard shortcuts `Ctrl+#`, `Ctrl+↑`, `Ctrl+↓` (column filter focused) using `getShortcutDisplay` so they reflect any user-configured bindings.",
+          "Unique-values (📊) wrapper tooltip now mentions `Ctrl+M` then `Q` and, when direct shortcuts are enabled, also `Ctrl+Q` (col filter focused).",
+          "Multi-row collapse header button (▤) tooltip now mentions `Ctrl+M` then `O` and, when direct shortcuts are enabled, also `Ctrl+O` (col filter focused); hint is kept in sync on both creation and toggle.",
+          "Per-table CAA toggle button tooltip now mentions `Ctrl+M` then `A` (col filter focused) and, when direct shortcuts are enabled, also `Ctrl+A`; hint is kept in sync on both creation and click-toggle."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.655",
+    "date": "2026-06-15",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Extended `sa_enable_direct_ctrl_char_shortcuts=false` (the default) to suppress ALL `Ctrl+<a–z>` shortcuts everywhere — not just while an input field has focus or a UI dialog is open. `Ctrl+2` and `Ctrl+3` (number keys, not letters) are never affected. When a column filter is focused, `Ctrl+↑`, `Ctrl+↓`, and `Ctrl+#` are also never affected.",
+          "The configured `sa_keyboard_shortcut_prefix` (default `Ctrl+M`) is handled in the capture phase with `stopImmediatePropagation` and therefore always works — it is never suppressed regardless of the `sa_enable_direct_ctrl_char_shortcuts` setting.",
+          "Added permanent `ctrlMFunctionMap` entries for `o` (Toggle Multi-Row Cell Collapse), `q` (Show Unique Values Dropdown), and `a` (Toggle CAA Cover Art Images) — available via prefix mode (`Ctrl+M` → `o`/`q`/`a`). These operate on the last focused column filter (tracked via a `focusin` listener on `.mb-col-filter-input`). The `o` entry is temporarily overwritten by 'Stop fetching' during an active fetch and restored afterwards.",
+          "Updated the Keyboard Shortcuts help dialog and the bottom note to reflect the new global suppression behaviour, removed 'blocked while typing' wording, and added prefix-mode entries for `O`, `Q`, `A`.",
+          "Updated debug log strings in prefix-mode entry to list `o`/`q`/`a` function shortcuts with their current descriptions."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.654",
+    "date": "2026-06-01",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`applyRenderMultiRowCells` did not split the 'Relationship types' column on instrument-* pages (instrument-releases, instrument-artists, instrument-recordings). Root cause: the splitting loop only recognised standalone comma text nodes (`/^\\s*,\\s*$/`) as separators — correct for element-separated columns like Catalog# whose HTML has `<span>…</span>,<span>…</span>` — but MusicBrainz renders Relationship types as a single plain text node (`instrument (as \"lead guitar\"), instrument (as \"rhythm guitar\")`), so no standalone comma node exists. Fixed by replacing the simple `if`/`else` check with a depth-aware top-level-comma finder: for every text node the loop now finds all comma positions at parenthesis depth 0 and splits there, creating one synthetic text node per part. Commas inside parentheses (e.g. `vocal (as \"soprano, alto\")`) are left intact."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.653",
+    "date": "2026-06-01",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Adjust 'Auto-resize columns threshold' to 10000 now that we have a much faster implementation."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.652",
     "date": "2026-06-01",
     "sections": [
