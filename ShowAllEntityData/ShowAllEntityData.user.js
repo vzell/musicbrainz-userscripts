@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.660+2026-06-16
+// @version      9.99.661+2026-06-16
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -24672,14 +24672,13 @@ a { color: #1565c0; }`;
             // before rel_td, corrupting column order.  After the initial render,
             // allRows source rows already carry picard_td so rewire-only is sufficient.
             initPicardTaggerColumn(/* rewireOnly */ true);
-            // initCaaPics() MUST run before initEaaPics() and initCaaInlinePics() /
-            // initEaaInlinePics() — it creates _caaQueue used by all three.
-            initCaaPics();
-            initEaaPics();
-            // Inline CAA/EAA thumbnails must run after ERG (▶ button already present) and
-            // after initCaaPics() (so _caaQueue is initialised).
+            // Inline thumbnails first — _artInitQueue creates _caaQueue so they
+            // land ahead of small icons and the big strip in the fetch queue.
+            _artInitQueue();
             initCaaInlinePics();
             initEaaInlinePics();
+            initCaaPics();
+            initEaaPics();
             // Re-populate any rel cells that were not yet done when runFilter rebuilt
             // the DOM (race: Phase-2 fetch queue was mid-flight when the user typed).
             if (document.querySelector('td.mb-rel-cell:not([data-rel-done="1"])')) {
@@ -28130,13 +28129,13 @@ a { color: #1565c0; }`;
             //             Without this block the CAA/EAA bigboxes and inline thumbnails are
             //             never initialised on the initial load of any single-table page.
             if (activeDefinition.tableMode !== 'multi') {
-                // initCaaPics() MUST run first — it creates _caaQueue consumed by the others.
-                initCaaPics();
-                initEaaPics();
-                // Inline thumbnails after ERG (▶ button already present) and after
-                // initCaaPics() (so _caaQueue is initialised).
+                // Inline thumbnails first — _artInitQueue creates _caaQueue so they
+                // land ahead of small icons and the big strip in the fetch queue.
+                _artInitQueue();
                 initCaaInlinePics();
                 initEaaInlinePics();
+                initCaaPics();
+                initEaaPics();
                 // One-shot toast when all artwork finishes loading on single-table pages.
                 if (_caaQueue && Lib.settings.sa_enable_caa_pics) {
                     _caaQueue.onIdle(_showCaaCompletionToast);
@@ -30446,8 +30445,6 @@ a { color: #1565c0; }`;
         // the column order matches the thead order.
 
         // Re-apply CAA/EAA illustrated discography across all freshly rendered sub-table rows.
-        // initCaaPics() MUST run before initEaaPics() and the inline variants —
-        // it creates _caaQueue used by all three.
         //
         // ── Multi-table tag pages: per-group addCAA/addEAA exposure ─────────────
         // For tag-value/user-tag-value, addCAA/addEAA live inside per-group
@@ -30456,10 +30453,11 @@ a { color: #1565c0; }`;
         // set on the global definition.
         const _origFeaturesPreCaa = activeDefinition.features;
         let _tagHasEntityFeatureCaa = false;
+        let _anyAddCAA, _anyAddEAA;
         if (activeDefinition.entityFeatures) {
-            const _anyAddCAA = Object.values(activeDefinition.entityFeatures)
+            _anyAddCAA = Object.values(activeDefinition.entityFeatures)
                 .map(f => f.addCAA).filter(Boolean)[0];
-            const _anyAddEAA = Object.values(activeDefinition.entityFeatures)
+            _anyAddEAA = Object.values(activeDefinition.entityFeatures)
                 .map(f => f.addEAA).filter(Boolean)[0];
             if (_anyAddCAA || _anyAddEAA) {
                 // Temporarily expose any addCAA/addEAA so _artInitPics doesn't
@@ -30477,9 +30475,13 @@ a { color: #1565c0; }`;
                 _tagHasEntityFeatureCaa = true;
             }
         }
-        initCaaPics();
-        initEaaPics();
 
+        // Create a fresh _caaQueue before any art function runs.
+        _artInitQueue();
+
+        // ── Inline thumbnails first ─────────────────────────────────────────────
+        // Enqueue inline thumbnails before small icons and the big picture strip
+        // so they appear in the entity-name column as soon as possible.
         if (_tagHasEntityFeatureCaa) {
             // ── Per-group inline thumbnails ─────────────────────────────────────
             // _artInitInlinePics reads activeDefinition.features.addCAA/addEAA to
@@ -30525,6 +30527,17 @@ a { color: #1565c0; }`;
                 initCaaInlinePics();
                 initEaaInlinePics();
             }
+
+            // Re-apply the any-CAA/any-EAA exposure so initCaaPics/initEaaPics
+            // do not skip tables whose addCAA/addEAA live only in entityFeatures.
+            activeDefinition = {
+                ...activeDefinition,
+                features: {
+                    ..._origFeaturesPreCaa,
+                    ...(_anyAddCAA ? { addCAA: _anyAddCAA } : {}),
+                    ...(_anyAddEAA ? { addEAA: _anyAddEAA } : {})
+                }
+            };
         } else if (_isReleaseGroupsMultiMode()) {
             // artist-releasegroups has no entityFeatures on its definition, so
             // _tagHasEntityFeatureCaa is false and we reach here.  addCAA is already
@@ -30535,6 +30548,15 @@ a { color: #1565c0; }`;
             // Standard single-feature pages.
             initCaaInlinePics();
             initEaaInlinePics();
+        }
+
+        // ── Small icons + big strip (pass 1), enrichment (pass 2) ────────────────
+        initCaaPics();
+        initEaaPics();
+
+        // Restore activeDefinition to the original base after initCaaPics/initEaaPics.
+        if (_tagHasEntityFeatureCaa) {
+            activeDefinition = { ...activeDefinition, features: _origFeaturesPreCaa };
         }
 
         // Register a one-shot toast for when the full queue drains (all artwork loaded).
@@ -31285,7 +31307,7 @@ a { color: #1565c0; }`;
         //   unexpected ways (e.g. IDB cache hits fire synchronously inside the task
         //   body, advancing state before the caller expects it).
         //
-        //   initCaaPics() creates a BRAND-NEW _caaQueue.  The old queue object is
+        //   _artInitQueue() creates a BRAND-NEW _caaQueue.  The old queue object is
         //   abandoned: pending tasks are never started (the old pending[] array is
         //   unreferenced and GC'd), and the few tasks that are already running will
         //   complete but their _onBigLoaded callbacks will fail the gen-check and
@@ -31295,6 +31317,7 @@ a { color: #1565c0; }`;
         //   initCaaPics()/initEaaPics() also call _artCreateOrUpdateGlobalToggleButton
         //   internally, so we skip the separate call in this branch.
         if (_tablesToRebuild.length > 0) {
+            _artInitQueue();
             initCaaPics();
             initEaaPics();
         } else {
@@ -40451,10 +40474,11 @@ a { color: #1565c0; }`;
     //   caaUpdateBigBoxForTable  eaaUpdateBigBoxForTable   (called from STF)
     //
     // Call-order contract (enforced at all 4 render-completion call sites):
-    //   1. initCaaPics()         — creates _caaQueue first.
-    //   2. initEaaPics()         — consumes _caaQueue.
-    //   3. initCaaInlinePics()   — consumes _caaQueue.
-    //   4. initEaaInlinePics()   — consumes _caaQueue.
+    //   1. _artInitQueue()       — creates _caaQueue first.
+    //   2. initCaaInlinePics()   — enqueues inline thumbnails first (most visible).
+    //   3. initEaaInlinePics()   — enqueues EAA inline thumbnails.
+    //   4. initCaaPics()         — enqueues small icons + big strip.
+    //   5. initEaaPics()         — enqueues EAA small icons + big strip.
     //
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -44939,10 +44963,6 @@ a { color: #1565c0; }`;
             // containing artwork-icon spans inside art-anchor elements.
             if (hasColumn) {
                 _artInitSmallPics(ctx, table);
-                // Enrichment (count badges + multi-row cell build) is always done
-                // regardless of the sa_caa_pics_small setting.  _artEnrichIcon's
-                // own idempotency guard prevents double-work when both paths fire.
-                _artEnrichTable(ctx, table);
             }
 
             // Single-pass strategy: scan links first (read-only), create the
@@ -44974,6 +44994,17 @@ a { color: #1565c0; }`;
         });
 
         Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}Pics: processed ${processed} table(s) with ${ctx.column} column`);
+
+        // Pass 2: enqueue JSON-API enrichment after all image fetches so that
+        // small icons and big-strip loads have priority in _caaQueue.  Users who
+        // start filtering immediately will see visual feedback before count badges
+        // and multi-row art cells arrive.  _artEnrichIcon's own idempotency guard
+        // prevents double-work on re-renders.
+        tables.forEach(table => {
+            if (caaFindColumnByName(table, ctx.column) !== -1) {
+                _artEnrichTable(ctx, table);
+            }
+        });
 
         // For multi-table pages, create/refresh the global art toggle button that
         // sits in the h2 header and controls all sub-table bigboxes at once.
@@ -46406,18 +46437,17 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Entry point for the CAA Illustrated Discography feature.
+     * Cancels the current `_caaQueue` (if any) and creates a fresh one with the
+     * configured concurrency.  Also resets per-session fetch telemetry.
      *
-     * (Re-)creates the shared `_caaQueue` — which is also consumed by
-     * initEaaPics / initCaaInlinePics / initEaaInlinePics — so this MUST be called
-     * before any of those functions at every render-completion site.
+     * Must be called once per render pass, before any art init function.
+     * Separating queue creation from `initCaaPics` allows `initCaaInlinePics` /
+     * `initEaaInlinePics` to be enqueued first so inline thumbnails appear before
+     * small icons and the big picture strip.
      *
      * Guards: `Lib.settings.sa_enable_caa_pics` must be true.
-     *
-     * Called from: main fetch pipeline, runFilter() single-table branch,
-     *              renderGroupedTable() multi-table re-renders, load-from-disk pipeline.
      */
-    function initCaaPics() {
+    function _artInitQueue() {
         if (!Lib.settings.sa_enable_caa_pics) return;
 
         // Cancel the old queue before replacing it so its pending tasks are
@@ -46434,7 +46464,7 @@ a { color: #1565c0; }`;
         // setting is picked up on every render pass.
         const concurrency = Math.max(1, Math.min(20, Lib.settings.sa_caa_fetch_concurrency || 4));
         _caaQueue = makeCaaQueue(concurrency);
-        Lib.debug('caa', `initCaaPics: request queue created (concurrency=${concurrency})`);
+        Lib.debug('caa', `_artInitQueue: request queue created (concurrency=${concurrency})`);
 
         // Reset per-session fetch telemetry so every render pass gets a fresh
         // count and elapsed-time measurement.  _caaFetchStats counters are
@@ -46446,12 +46476,29 @@ a { color: #1565c0; }`;
             inline: { memory: 0, idb: 0, network: 0, browser: 0 },
         };
 
-        _artInitPics(CAA_CTX);
-
         // Schedule a background IDB sweep to evict expired image blobs and metadata
         // records after the render completes.  Runs in browser idle time so it never
         // competes with the image load queue.
         _artIdbSweepExpired();
+    }
+
+    /**
+     * Entry point for the CAA Illustrated Discography feature.
+     *
+     * Enqueues small-icon loads and the big picture strip for all tables via
+     * `_artInitPics`.  Queue creation is handled by `_artInitQueue`, which call
+     * sites invoke before the first inline-thumbnail function so that inline pics
+     * are enqueued ahead of small icons and the big strip.
+     *
+     * Guards: `Lib.settings.sa_enable_caa_pics` must be true.
+     *
+     * Called from: main fetch pipeline, runFilter() single-table branch,
+     *              renderGroupedTable() multi-table re-renders, load-from-disk pipeline.
+     */
+    function initCaaPics() {
+        if (!Lib.settings.sa_enable_caa_pics) return;
+        if (!_caaQueue) _artInitQueue();
+        _artInitPics(CAA_CTX);
     }
 
     /**

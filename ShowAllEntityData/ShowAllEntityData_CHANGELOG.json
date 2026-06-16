@@ -1,5 +1,18 @@
 [
   {
+    "version": "9.99.661",
+    "date": "2026-06-16",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Reordered cover-art fetch queue so inline thumbnails (entity title column) are enqueued first, small CAA/EAA column icons second, the big-picture hover strip third, and JSON-API enrichment (count badges, multi-row art cells) last. Users who start filtering immediately now see visual feedback sooner because the most visible images load first. Implemented by extracting queue creation from `initCaaPics` into a new `_artInitQueue()` helper; all four render-completion call sites (`runFilter` single-table, `startFetchingProcess` single-table, `renderGroupedTable` tail, `_artRebuildBigPicsForTable` drain) now call `_artInitQueue()` → `initCaaInlinePics()` / `initEaaInlinePics()` → `initCaaPics()` / `initEaaPics()`.",
+          "Moved `_artEnrichTable` (JSON-API enrichment) from the first `tables.forEach` pass inside `_artInitPics` to a dedicated second pass that runs after all image-fetch tasks are enqueued. This ensures small icons, inline thumbnails, and the big-picture strip always have priority in `_caaQueue` over count-badge and multi-row-cell population."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.660",
     "date": "2026-06-16",
     "sections": [
