@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.670+2026-06-17
+// @version      9.99.671+2026-06-18
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -17186,18 +17186,17 @@ a { color: #1565c0; }`;
                     const toggleWidth = _tDiv.offsetWidth;
                     _measureContainer.innerHTML = '';
 
-                    // columnWidths[colIndex] = th.offsetWidth from the live-table nowrap pass.
-                    // extra = space the toggle needs from the right edge
-                    //         (toggleWidth + right:4px offset + 12px safety buffer)
-                    //         minus what the th's right padding already "pays for".
-                    const th = headers[colIndex];
-                    const thPaddingRight = th
-                        ? (parseFloat(window.getComputedStyle(th).paddingRight) || 0)
+                    // columnWidths[colIndex] = th.offsetWidth from the live-table nowrap pass,
+                    // which already includes actual TD padding.  The toggle sits at right:4px
+                    // from the TD's padding box edge, so tdPaddingRight is the correct baseline
+                    // (not thPaddingRight, which is smaller and would over-estimate extra).
+                    const tdPaddingRight = cell
+                        ? (parseFloat(window.getComputedStyle(cell).paddingRight) || 0)
                         : 0;
-                    const extra = Math.max(0, toggleWidth + 16 - thPaddingRight);
+                    const extra = Math.max(0, toggleWidth + 16 - tdPaddingRight);
                     if (extra > 0) {
                         columnWidths[colIndex] += extra;
-                        Lib.debug('resize', `Table ${tableIndex}, Column ${colIndex}: +${extra}px for collapse-toggle (toggle=${toggleWidth}px, thPaddingRight=${thPaddingRight}px)`);
+                        Lib.debug('resize', `Table ${tableIndex}, Column ${colIndex}: +${extra}px for collapse-toggle (toggle=${toggleWidth}px, tdPaddingRight=${tdPaddingRight}px)`);
                     }
                 }
             }

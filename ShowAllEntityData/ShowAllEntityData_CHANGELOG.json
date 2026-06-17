@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.671",
+    "date": "2026-06-18",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed collapse-toggle extra-space over-estimation in `toggleAutoResizeColumns` PASS 2. The formula `extra = max(0, toggleWidth + 16 − thPaddingRight)` subtracted the `<th>` right padding as the baseline, but since v9.99.668 `columnWidths[colIndex]` is set to `th.offsetWidth` from the live-table nowrap pass — which already includes the actual `<td>` right padding (≈22px), not the `<th>` right padding (≈5px). Subtracting the smaller `thPaddingRight` over-estimated `extra` by roughly `tdPaddingRight − thPaddingRight ≈ 17px`, making columns with collapse-toggle widgets unnecessarily wider. Fix: read `getComputedStyle(cell).paddingRight` from the sampled `<td>` cell (already available in `_colToggleSample`) and use that as the baseline (`tdPaddingRight`) instead."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.670",
     "date": "2026-06-17",
     "sections": [
