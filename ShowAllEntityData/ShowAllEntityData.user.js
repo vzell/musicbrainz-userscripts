@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.669+2026-06-17
+// @version      9.99.670+2026-06-17
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -8007,12 +8007,18 @@
      * @param {number} index - Column index
      * @param {boolean} isAscending - Sort direction
      * @param {boolean} isNumeric - Whether to use numeric comparison
+     * @param {boolean} [byLength=false] - When true, sort by visible text length instead of value
      * @returns {Function} Comparison function
      */
-    function createSortComparator(index, isAscending, isNumeric) {
+    function createSortComparator(index, isAscending, isNumeric, byLength = false) {
         return (a, b) => {
             const valA = getCleanVisibleText(a.cells[index]).trim().toLowerCase() || '';
             const valB = getCleanVisibleText(b.cells[index]).trim().toLowerCase() || '';
+
+            if (byLength) {
+                const result = valA.length - valB.length;
+                return isAscending ? result : -result;
+            }
 
             if (isNumeric) {
                 const numA = parseFloat(valA.replace(/[^0-9.-]/g, '')) || 0;
@@ -33876,7 +33882,8 @@ a { color: #1565c0; }`;
             multiTableSortStates.set(sortKey, {
                 lastSortIndex: -1,
                 sortState: 0,
-                multiSortColumns: []
+                multiSortColumns: [],
+                sortByLength: false
             });
         }
         const state = multiTableSortStates.get(sortKey);
@@ -34035,10 +34042,10 @@ a { color: #1565c0; }`;
                     'Restore original sort order (clears multi-sort columns)' +
                     ` — keyboard: ${getShortcutDisplay('sa_shortcut_col_unsort', 'Ctrl+#')} when a column filter is focused`;
                 else if (char === '▲') span.title =
-                    'Sort ascending — Ctrl+Click to add to multi-column sort' +
+                    'Sort ascending — Ctrl+Click to add to multi-column sort / Alt+Click to sort by column length' +
                     ` — keyboard: ${getShortcutDisplay('sa_shortcut_col_sort_asc', 'Ctrl+↑')} when a column filter is focused`;
                 else if (char === '▼') span.title =
-                    'Sort descending — Ctrl+Click to add to multi-column sort' +
+                    'Sort descending — Ctrl+Click to add to multi-column sort / Alt+Click to sort by column length' +
                     ` — keyboard: ${getShortcutDisplay('sa_shortcut_col_sort_desc', 'Ctrl+↓')} when a column filter is focused`;
 
                 // Restore active indicator for single-column state after re-render
@@ -34070,9 +34077,19 @@ a { color: #1565c0; }`;
                     const rowCount = targetRows.length;
                     const showWaitCursor = rowCount > 1000;
                     const isCtrl = e.ctrlKey || e.metaKey;
+                    const isAlt  = e.altKey;
 
                     // === Update sort state ===
-                    if (isCtrl && targetState !== 0) {
+                    if (isAlt && targetState !== 0) {
+                        // Alt+Click on ▲ or ▼: single-column sort by visible text length.
+                        // Clears any multi-sort chain; does not participate in Ctrl chain.
+                        state.multiSortColumns = [];
+                        clearMultiSortColumnTints();
+                        state.lastSortIndex = index;
+                        state.sortState     = targetState;
+                        state.sortByLength  = true;
+                        Lib.debug('sort', `Alt-sort by length: column ${index} dir=${targetState}`);
+                    } else if (isCtrl && targetState !== 0) {
                         // Ctrl+Click on ▲ or ▼: add / update / remove from multi-sort chain.
                         //
                         // Special case: if we are entering multi-sort from a plain single-sort
@@ -34105,14 +34122,16 @@ a { color: #1565c0; }`;
                             Lib.debug('sort', `Added column ${index} to multi-sort (position ${state.multiSortColumns.length})`);
                         }
                         state.lastSortIndex = index;
-                        state.sortState = targetState;
+                        state.sortState     = targetState;
+                        state.sortByLength  = false;
                     } else {
-                        // Plain click (no Ctrl), or ⇅ clicked:
+                        // Plain click (no Ctrl/Alt), or ⇅ clicked:
                         // always single-sort mode — clear the multi-sort chain.
                         state.multiSortColumns = [];
                         clearMultiSortColumnTints();
                         state.lastSortIndex = targetState === 0 ? -1 : index;
-                        state.sortState = targetState;
+                        state.sortState     = targetState;
+                        state.sortByLength  = false;
                     }
 
                     // === Debug log ===
@@ -34171,9 +34190,9 @@ a { color: #1565c0; }`;
                                     const cn = getCleanColName(headers[col.colIndex]);
                                     compareFn = createSortComparator(col.colIndex, col.direction === 1, isNumericCol(cn));
                                 } else {
-                                    // Plain single-column sort
+                                    // Plain or Alt+Click single-column sort
                                     const cn = getCleanColName(headers[index]);
-                                    compareFn = createSortComparator(index, state.sortState === 1, isNumericCol(cn));
+                                    compareFn = createSortComparator(index, state.sortState === 1, isNumericCol(cn), state.sortByLength);
                                 }
 
                                 await sortLargeArray(sortedData, compareFn, null);
@@ -34223,7 +34242,8 @@ a { color: #1565c0; }`;
                                                 const dispIdx  = col ? col.colIndex : index;
                                                 const dispIcon = col ? (col.direction === 1 ? '▲' : '▼')
                                                                      : (state.sortState === 1 ? '▲' : '▼');
-                                                subSortStatus.textContent = `✓ Sorted by: '${getCleanColName(headers[dispIdx])}'${dispIcon} (${rowCount} rows in ${durationMs}ms)`;
+                                                const lenSuffix = state.sortByLength ? ' (by length)' : '';
+                                                subSortStatus.textContent = `✓ Sorted by: '${getCleanColName(headers[dispIdx])}'${dispIcon}${lenSuffix} (${rowCount} rows in ${durationMs}ms)`;
                                                 subSortStatus.style.color = colorByDuration;
                                             }
                                         }
@@ -34240,13 +34260,14 @@ a { color: #1565c0; }`;
                                     sortStatusDisplay.textContent = `✓ Multi-sorted by: ${colNames} (${rowCount} rows in ${durationMs}ms)`;
                                     sortStatusDisplay.style.color = colorByDuration;
                                 } else {
-                                    // Single-column (including the single-entry Ctrl+Click chain).
+                                    // Single-column (including the single-entry Ctrl+Click chain, or Alt+Click by length).
                                     // Format mirrors multi-sort: "✓ Sorted by: "Col"▲ (N rows in Xms)"
                                     const col = state.multiSortColumns.length === 1 ? state.multiSortColumns[0] : null;
                                     const dispIdx  = col ? col.colIndex : index;
                                     const dispIcon = col ? (col.direction === 1 ? '▲' : '▼')
                                                          : (state.sortState === 1 ? '▲' : '▼');
-                                    sortStatusDisplay.textContent = `✓ Sorted by: '${getCleanColName(headers[dispIdx])}'${dispIcon} (${rowCount} rows in ${durationMs}ms)`;
+                                    const lenSuffix = state.sortByLength ? ' (by length)' : '';
+                                    sortStatusDisplay.textContent = `✓ Sorted by: '${getCleanColName(headers[dispIdx])}'${dispIcon}${lenSuffix} (${rowCount} rows in ${durationMs}ms)`;
                                     sortStatusDisplay.style.color = colorByDuration;
                                 }
                             }

@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.670",
+    "date": "2026-06-17",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Sort by column value length: Alt+Click on the ▲ or ▼ sort icon now sorts the column by the visible text length of each cell (ascending or descending) instead of by the text value. This is a single-column sort and clears any active multi-sort chain. The sort-icon tooltips for ▲ and ▼ have been updated to document the Alt+Click modifier alongside the existing Ctrl+Click multi-sort hint. The sort-status display appends '(by length)' when a length-sort is active."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.669",
     "date": "2026-06-17",
     "sections": [
