@@ -1,5 +1,103 @@
 [
   {
+    "version": "9.99.669",
+    "date": "2026-06-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed auto-resize not applying to initially-collapsed sub-tables in multi-table mode. The v9.99.668 live-table measurement reads `th.offsetWidth` directly from the live table, but a table with `style.display = 'none'` returns `offsetWidth = 0` for all cells — giving every column a 20px minimum instead of the true content width. The symptom: after the initial auto-resize, the resize button showed 'Restore' (resize appeared to succeed) but collapsed sub-tables had useless 20px column widths; expanding them produced mis-sized columns, and toggling Restore/Resize while they remained collapsed could not fix them. Fix: in the measurement loop, if `table.style.display === 'none'`, temporarily set it to `''` before adding `mb-measure-nowrap`, read `th.offsetWidth`, then restore `display: none` immediately after removing `mb-measure-nowrap`. Both mutations are synchronous with no `await` between them, so the browser never paints the intermediate visible state. This applies both to the initial `sa_auto_resize_columns` auto-trigger and to subsequent manual Resize button clicks."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.668",
+    "date": "2026-06-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed persistent line break before the last word of disambiguation comments in auto-resize mode (Bug 1) — final root cause. The v9.99.667 NBSP-outside-anchor approach correctly eliminated the `overflow-wrap:anywhere` interaction, but the bug persisted because the column minimum-width computed by the old offscreen-div measurement was too narrow. The old PASS 1 applied `getComputedStyle(th).padding` to the measurement div so that `div.offsetWidth = th_pad_left + content + th_pad_right`; it then set `th.style.minWidth` to that value. In the live table, however, `<td>` padding is larger than `<th>` padding, so `td_available_content = th.minWidth - td_pad_left - td_pad_right` was narrower than the measured content width, leaving insufficient room and forcing a wrap. Fix: replace the offscreen-div PASS 1 entirely with a live-table measurement — add class `mb-measure-nowrap` (`white-space:nowrap !important; overflow-wrap:normal !important; word-break:normal !important`) to the table itself so the browser expands every column to its single-line natural width, then read `th.offsetWidth` (border-box, includes actual TD padding from the widest cell in each column). Because `th.offsetWidth` in nowrap mode equals the max border-box width across all cells in the column, the resulting `minWidth` is always sufficient to hold the widest cell without wrapping. All mutations are synchronous (no `await` between `classList.add` and `classList.remove`), so the browser never paints the intermediate full-width state. The unused `colStyleCache` variable (a relic of the offscreen approach) was removed."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.667",
+    "date": "2026-06-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed persistent line break before the last word of disambiguation comments in auto-resize mode (Bug 1). Previous fix (v9.99.666) placed U+00A0 (NBSP) inside the anchor's `<bdi>` to prevent the soft-wrap between anchor text and comment. However, `<a class=\"wrap-anywhere\">` carries `overflow-wrap:anywhere`, which Chrome can use to allow a break at any code-point boundary inside the element — including at a NBSP inside `<bdi>` at a bidi-run boundary. The root fix: move the NBSP outside `<a>` entirely. `normalizeCommentSpans` now REPLACES the whitespace text node between `</a>` and `<span class=\"comment\">` with a single U+00A0 text node (or INSERTS one if none exists, covering Variant A). Because this NBSP is a sibling of `<a>` in the `<td>` — not inside any `overflow-wrap:anywhere` element — only the standard Unicode GL rule applies: no break before or after U+00A0. The GL SP-exception (\"no break before GL unless preceded by SP\") is neutralised by the companion trimEnd on the anchor `<bdi>`, which removes any trailing U+0020 SPACE so the character directly before the NBSP is always a letter or punctuation. Together these two operations guarantee that anchor text and comment remain on the same line at the auto-resize minimum width."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.666",
+    "date": "2026-06-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed column resize minimum creeping upward after each drag (Bug 2). The drag-minimum width (`_minWidth`) was previously recomputed on every `mousedown` from `_hdrFlex.scrollWidth + 8`. After the user dragged a column wider, `_hdrFlex` had stretched to fill the enlarged column, so `scrollWidth` returned the CURRENT (wider) column width instead of the original header-content minimum — making it impossible to drag the column narrower again. The fix moves the computation to `makeColumnsResizable` initialisation time (before any drag has occurred), when the column is still at its natural layout width and `scrollWidth` correctly reflects the intrinsic minimum of the header widget (colName + sort icons + unique-values button + optional extras). The value is cached in `th.dataset.mbResizeMin` so that subsequent `makeColumnsResizable` calls (e.g. the re-call inside `toggleAutoResizeColumns` after auto-resize has already modified column widths, and the re-call after the Restore button removes and re-adds handles) reuse the pre-resize minimum rather than recomputing from a stretched layout.",
+          "Fixed line break before the last word of disambiguation comments in auto-resize mode (Bug 1) and residual anchor→comment line break (Bug 3). After v9.99.665 removed the whitespace text node between `</a>` and `<span class=\"comment\">`, the visual gap between title and comment was still provided by the trailing `\\n  ` whitespace at the end of the `<bdi>` element inside `<a class=\"wrap-anywhere\">`. That trailing whitespace collapsed to a regular space, which — being inside the anchor's `<bdi>` boundary with `overflow-wrap:anywhere` active — was still a soft-wrap opportunity. The browser could break there, pushing the comment to a new line and potentially causing the comment text to wrap internally. The fix: `normalizeCommentSpans` now replaces any trailing whitespace in the last text node of such `<bdi>` elements with a single U+00A0 (NON-BREAKING SPACE). U+00A0 has Unicode line-break class GL (Glue) — it is prohibited as a break point even under `overflow-wrap:anywhere` — so the anchor text and immediately-following comment are guaranteed to remain on the same line at the auto-resize minimum width. The visual gap is preserved (U+00A0 renders with the same metrics as a regular space). Only `<a>` elements whose next element sibling is `<span class=\"comment\">` are affected. The operation is idempotent because ECMAScript `trimEnd()` treats U+00A0 as whitespace and strips it, so a second pass re-applies exactly one U+00A0."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.665",
+    "date": "2026-06-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed two remaining soft-wrap break points in `normalizeCommentSpans` that were exposed after the nowrap-style removal in v9.99.664. (1) Trailing whitespace inside `<bdi>` content: MusicBrainz emits a `\\n      ` sequence before `</bdi>` (Variant B), which collapses to a single space in rendering and creates a wrap opportunity at the end of the bdi text — causing the last word of a disambiguation comment (e.g. `reissue)`) to break to a new line in narrower columns. The fix trims trailing whitespace from the last text node inside `<bdi>` after all other normalization steps. (2) Whitespace between `</a>` and `<span class=\"comment\">`: MusicBrainz emits a `\\n    ` text node as a sibling between the closing `</a>` and the opening `<span class=\"comment\">` at the `<td>` level. That text node collapses to a space and, combined with `overflow-wrap:anywhere` on `.wrap-anywhere` anchors, created a break opportunity between the anchor text and the leading `(` of the comment — the \"magic minimum column width\" that prevented resize below the anchor-plus-first-word width. The fix removes that inter-element whitespace text node from every `<td>` as a second pass in `normalizeCommentSpans`. Both fixes are pure DOM mutations with no style mutations on live elements."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.664",
+    "date": "2026-06-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Removed all `white-space: nowrap` style mutations from `normalizeCommentSpans`. Previous versions (introduced progressively in v9.99.639–9.99.651) applied `white-space: nowrap` as inline styles to live DOM elements — `span.comment`, `<bdi>`, and the containing `<td>` or `<li>` — to prevent disambiguation text from breaking away from its anchor. This forced the min-content width of every affected cell to the full single-line text width of the longest comment, making columns such as Release and Label unexpectedly wide in `table-layout:auto` even without auto-resize, and also made it impossible to drag those columns narrower than their longest single-line content (text overflowed instead of wrapping). The function now performs only the interior DOM normalisation it originally set out to do: removing pure-whitespace text nodes around `<bdi>`, consolidating Variant-A `(` / `)` orphans into `<bdi>`, and moving any trailing text node after `</bdi>` into `<bdi>` to eliminate the bidi-boundary soft-wrap point. No style properties are mutated on any live element. The auto-resize measurement sandbox is unaffected (it uses `white-space:nowrap !important` via `.mb-measure-nowrap`). At the auto-resize minimum width the full content fits on one line so the browser inserts no unnecessary breaks; if the user drags a column narrower, the browser's natural line-breaking applies — which is the intended behaviour."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.663",
+    "date": "2026-06-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed minimum drag width for the Picard tagger column. The Picard `<th>` is injected by `initPicardTaggerColumn` after `makeTableSortableUnified` runs and therefore carries no `.mb-col-hdr-flex` element. The previous fallback was 30 px, which allowed the column to be dragged to a width where the word \"Picard\" was completely clipped. The fallback now uses `th.scrollWidth` — the cell's natural content width including its padding — so the column name stays fully visible at minimum width."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.662",
+    "date": "2026-06-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed manual column resize breaking all column widths on mousedown. Switching to `table-layout:fixed` without first locking every `<col>` to its current rendered width caused the browser to redistribute all column widths equally, making all columns jump to the same size at the moment of click. The fix snapshots every `th.offsetWidth` before any style mutation, writes those values to all `<col>` elements, clears `th.style.minWidth` (set by auto-resize) so cell constraints cannot override the explicit col widths, and removes the fixed `table.style.width`/`table.style.minWidth` set by auto-resize so the table is free to grow when a column is widened. This eliminates both the sudden jump-on-click and the zero-sum behavior where widening one column compressed all others. The fix applies equally whether auto-resize is active or not.",
+          "Replaced the hardcoded 30 px minimum drag width with a per-column header content minimum. At `mousedown`, `hdrFlex.scrollWidth + 8` is measured from the live `.mb-col-hdr-flex` element (colName + ⇅▲▼ sort icons + unique-values widget + optional collapse-toggle + optional CAA/EAA column-header button). The +8 accounts for the 8 px resizer handle. A column can no longer be dragged narrower than its own header requires. For columns without `.mb-col-hdr-flex` (e.g. the Picard tagger column, which is injected after the sort UI is built and carries only plain text), `th.scrollWidth` is used as the floor instead, ensuring the column name remains fully visible."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.661",
     "date": "2026-06-16",
     "sections": [

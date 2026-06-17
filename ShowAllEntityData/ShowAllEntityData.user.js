@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.661+2026-06-16
+// @version      9.99.669+2026-06-17
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -8162,40 +8162,50 @@
      * @param {HTMLTableElement} table
      */
     /**
-     * Normalise every `<span class="comment">` in `table` and lock disambiguation
-     * text against line-wrapping.
+     * Normalise the interior of every `<span class="comment">` in `table`.
      *
-     * **Strategy**
+     * **What this does (DOM structure only — no style mutations)**
      *
-     * Instead of restructuring the DOM (which conflicts with ERG / CAA injectors
-     * that run before or after this function), we:
+     * For each `span.comment`:
+     *   1. Remove pure-whitespace text-node children (`\n    ` around `<bdi>`).
+     *   2. Move a leading non-empty text node (Variant A's `(`) into `<bdi>`.
+     *   3. Move a trailing non-empty text node (Variant A's `)`) into `<bdi>`,
+     *      eliminating the bidi-boundary soft-wrap opportunity after `</bdi>`.
+     *   4. Trim trailing whitespace from the last text node inside `<bdi>` (Variant B
+     *      emits `\n      ` before `</bdi>`; that collapses to a space and creates a
+     *      wrap point within the bdi content, e.g. "reissue)" breaking to a new line).
      *
-     *   1. Clean up the interior of every `span.comment` so its `<bdi>` child
-     *      contains all text with no surrounding whitespace-only text nodes or
-     *      orphan `(` / `)` siblings (Variant A / B normalisation).
-     *   2. Set `white-space: nowrap` on every `span.comment` and its `<bdi>`.
-     *   3. Set `white-space: nowrap` on every **inline container** (`<td>` or `<li>`)
-     *      that directly holds `<a> + <span.comment>` siblings.  This prevents the
-     *      browser from breaking between the title anchor and the comment block.
-     *      Block-level children (`<ul>`, `<li>`) are unaffected by nowrap on their
-     *      parent when they establish their own block formatting context — but a
-     *      `<li>` that contains inline `<a>+<span.comment>` content benefits
-     *      directly from having `white-space: nowrap` set on itself.
+     * For each `<td>`:
+     *   5. Replace the text node immediately between `</a>` and `<span class="comment">`
+     *      with U+00A0 (NBSP), inserting one if none exists.  Placing the NBSP OUTSIDE
+     *      `<a>` is critical: `<a class="wrap-anywhere">` carries `overflow-wrap:anywhere`,
+     *      which can allow a break at any code-point boundary inside the element —
+     *      including a NBSP inside `<bdi>` at a bidi-run boundary.  A NBSP that lives
+     *      as a sibling text node of `<a>` is governed only by the standard Unicode
+     *      Line Break Algorithm.  Unicode GL class (NBSP) prohibits a break point both
+     *      before AND after it, with one exception: "no break before GL unless preceded
+     *      by SP" (U+0020).  Step 6 ensures no trailing space is present, so the GL
+     *      rule is always in full effect.
+     *   6. Trim trailing whitespace from the last text node of `<a>`'s `<bdi>`.  A
+     *      trailing U+0020 SPACE would trigger the GL SP-exception, allowing a break
+     *      between the anchor text and the NBSP.  Pure trimming is sufficient — the
+     *      NBSP text node outside `<a>` provides the visual gap.
      *
-     * **Why not DOM wrapping?**
-     * Wrapping `<a>+<span.comment>` in an extra `<span>` is fragile: ERG injection
-     * (`initExpandRGsFeature`) locates the `<a>` and prepends a `▶` button before
-     * it — if the `<a>` is already inside a wrapper span, the button ends up inside
-     * the wrapper too, doubling the `▶` and breaking layout.
+     * **What this intentionally does NOT do**
+     * No `white-space: nowrap` is written to any live DOM element (`span.comment`,
+     * `<bdi>`, `<td>`, `<li>`).  Previous versions set nowrap on containers to
+     * prevent the anchor→comment line break, but that forced the min-content width
+     * of every cell in `table-layout:auto` to the full single-line text width of
+     * the longest disambiguation comment — making columns like Release and Label
+     * unexpectedly wide even without auto-resize, and preventing manual drag-resize
+     * from allowing text to wrap at narrower widths.
      *
-     * **Why `white-space: nowrap` on the container is safe**
-     * The column measurement sandbox already runs with `white-space: nowrap !important`
-     * (via `.mb-measure-nowrap`), so measured widths already equal the single-line
-     * width of all content.  Setting nowrap on the live container just makes the
-     * live cell match what was measured — no min-content change, no re-layout.
-     * For `<td>` cells that contain `<ul>` lists (country, date columns), we do NOT
-     * set nowrap on the `<td>` — we only set it on the `<li>` elements that directly
-     * hold inline anchor+comment pairs.
+     * The auto-resize measurement sandbox uses `white-space:nowrap !important` via
+     * `.mb-measure-nowrap`, so measured column widths are unaffected by this change.
+     * At the auto-resize minimum width the full content fits on one line and the
+     * browser will not insert unnecessary breaks.  If the user drags a column
+     * narrower than that minimum, the browser's natural line-breaking takes over —
+     * which is the desired behaviour.
      *
      * Idempotent.  Also called in `toggleAutoResizeColumns` before measurement.
      *
@@ -8204,13 +8214,13 @@
     function normalizeCommentSpans(table) {
         if (!table) return;
 
-        // ── Part A: normalise span.comment interiors ──────────────────────────
+        // ── Normalise span.comment interiors ─────────────────────────────────
         //
         // For each span.comment:
-        //   • Remove pure-whitespace text-node children (\\n    around <bdi>).
+        //   • Remove pure-whitespace text-node children (\n    around <bdi>).
         //   • Move a leading non-empty text node (Variant A's "(") into <bdi>.
-        //   • Move a trailing non-empty text node (Variant A's ")") into <bdi>.
-        //   • Apply white-space:nowrap to span.comment and its <bdi>.
+        //   • Move a trailing non-empty text node (Variant A's ")") into <bdi>,
+        //     eliminating the bidi-boundary soft-wrap point after </bdi>.
 
         table.querySelectorAll('td span.comment').forEach(commentSpan => {
 
@@ -8261,41 +8271,70 @@
                 ) {
                     bdi.appendChild(afterBdi);
                 }
-                bdi.style.whiteSpace = 'nowrap';
-            }
 
-            commentSpan.style.whiteSpace = 'nowrap';
+                // Trim trailing whitespace from the last text node inside <bdi>
+                // (Variant B: MusicBrainz emits `\n      ` before </bdi> which
+                // collapses to a single space and creates a soft-wrap point at the
+                // end of the bdi content — e.g. "reissue)" breaking to a new line).
+                if (bdi.lastChild && bdi.lastChild.nodeType === Node.TEXT_NODE) {
+                    bdi.lastChild.textContent = bdi.lastChild.textContent.trimEnd();
+                }
+            }
         });
 
-        // ── Part B: set white-space:nowrap on each inline container that
-        //           directly holds <a>+<span.comment> siblings ────────────────
+        // ── Place NBSP between </a> and <span.comment> ──────────────────────────
         //
-        // The break between </a> and <span class="comment"> occurs in the inline
-        // formatting context of their shared parent (a <td> or a <li>).  We set
-        // white-space:nowrap on that parent so the browser cannot break there.
+        // MusicBrainz emits a `\n    ` text node between </a> and <span.comment>.
+        // We REPLACE that text node with U+00A0 (NBSP), or INSERT one if absent.
         //
-        // Rules:
-        //   • If the <td> itself directly contains <a>+<span.comment> (no <ul>
-        //     wrapper), set nowrap on the <td>.
-        //   • If the content is inside <li> elements, set nowrap on each <li>
-        //     that contains at least one span.comment child.
-        //   • We do NOT set nowrap on a <td> whose primary content is a <ul>
-        //     list — only on the individual <li>s that need it.
+        // The NBSP is placed OUTSIDE <a> intentionally.  <a class="wrap-anywhere">
+        // carries `overflow-wrap:anywhere`, which Chrome can use to allow a break
+        // at any code-point boundary inside the element — including at a NBSP inside
+        // `<bdi>` at a bidi-run boundary.  A NBSP that lives as a sibling text node
+        // of <a> is not inside any `overflow-wrap:anywhere` element, so only the
+        // standard Unicode GL rule applies: no break before or after it, provided
+        // the preceding character is not U+0020 SPACE (ensured by trimEnd below).
         //
-        // Detection: a container "needs nowrap" when it has at least one
-        // span.comment as a direct child (querySelector ':scope > span.comment').
-
+        // Idempotent: on a second pass the NBSP text node is already present;
+        // setting its textContent to '\u00A0' again is a no-op.
         table.querySelectorAll('td').forEach(td => {
-            // Case 1: span.comment is a direct child of <td>.
-            if (td.querySelector(':scope > span.comment')) {
-                td.style.whiteSpace = 'nowrap';
-            }
-            // Case 2: span.comment is inside <li> children.
-            td.querySelectorAll('li').forEach(li => {
-                if (li.querySelector(':scope > span.comment')) {
-                    li.style.whiteSpace = 'nowrap';
+            td.querySelectorAll('span.comment').forEach(commentSpan => {
+                const prevEl = commentSpan.previousElementSibling;
+                if (!prevEl || prevEl.tagName !== 'A') return;
+
+                const prev = commentSpan.previousSibling;
+                if (prev && prev.nodeType === Node.TEXT_NODE) {
+                    // Variant B: whitespace text node present — replace with NBSP.
+                    prev.textContent = '\u00A0';
+                } else if (prev === prevEl) {
+                    // Variant A: no text node — insert a NBSP text node.
+                    prevEl.after(document.createTextNode('\u00A0'));
                 }
             });
+        });
+
+        // ── Trim trailing whitespace from <a><bdi> ────────────────────────────────
+        //
+        // With NBSP now OUTSIDE <a>, the anchor's <bdi> must NOT end with U+0020
+        // SPACE.  The Unicode GL rule has an SP-exception: "no break before GL
+        // unless preceded by SP" — a trailing space inside <bdi> would allow a
+        // line break between that space and the NBSP text node.  Pure trimEnd()
+        // removes any trailing whitespace without adding a new character; the
+        // visual gap is provided by the NBSP outside <a>.
+        table.querySelectorAll('td a').forEach(anchor => {
+            if (
+                !anchor.nextElementSibling ||
+                !anchor.nextElementSibling.classList.contains('comment')
+            ) return;
+            const bdi = anchor.querySelector(':scope > bdi');
+            if (!bdi) return;
+            const last = bdi.lastChild;
+            if (last && last.nodeType === Node.TEXT_NODE) {
+                const trimmed = last.textContent.trimEnd();
+                if (trimmed !== last.textContent) {
+                    last.textContent = trimmed;
+                }
+            }
         });
     }
 
@@ -16216,6 +16255,33 @@ a { color: #1565c0; }`;
             let _dragRafPending = false;
             let _dragPendingWidth = 0;
 
+            // ── Per-column minimum drag width ──────────────────────────────
+            // Computed ONCE here (at set-up time, before any drag has occurred),
+            // when the column is still at its natural/initial width and
+            // _hdrFlex.scrollWidth reflects the true intrinsic minimum of the
+            // header widget (colName + sort icons + unique-values button +
+            // optional collapse-toggle / CAA/EAA header button + 8 px resizer).
+            //
+            // Recomputing inside mousedown is wrong: after the user has dragged
+            // a column wider, _hdrFlex.scrollWidth equals the CURRENT (wider)
+            // column width, raising the effective floor on every drag and making
+            // it impossible to narrow the column again.
+            //
+            // th.dataset.mbResizeMin caches the value across calls to
+            // makeColumnsResizable (e.g. the re-call inside toggleAutoResizeColumns
+            // which happens AFTER column widths are already modified by auto-resize,
+            // and the re-call when the Restore button removes and re-adds handles).
+            // The data attribute is only SET on the first call — the initial
+            // makeColumnsResizable invocation during page render — so the cached
+            // value always reflects the pre-resize header-content minimum.
+            if (!th.dataset.mbResizeMin) {
+                const _initHdrFlex = th.querySelector('.mb-col-hdr-flex');
+                th.dataset.mbResizeMin = String(
+                    _initHdrFlex ? (_initHdrFlex.scrollWidth + 8) : th.scrollWidth
+                );
+            }
+            const _minWidth = Number(th.dataset.mbResizeMin) || 30;
+
             resizer.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -16245,9 +16311,15 @@ a { color: #1565c0; }`;
                 // sub-table's ↔️ resize button (and the global "Resize*" hint).
                 markSubTableAsManuallyResized(table);
 
-                // ── Cache the target <col> once so onMouseMove never queries DOM ──
-                // Ensure a colgroup exists (setColumnWidth would create it lazily,
-                // but we need the reference now for the cached fast path).
+                // ── Snapshot every column's current rendered width ─────────────
+                // Read all th.offsetWidth values NOW, before any style mutation,
+                // so they reflect the current visual layout (auto or fixed).
+                // These values are written to <col> elements below to lock each
+                // column in place before switching to table-layout:fixed, which
+                // would otherwise redistribute all column widths equally.
+                const _allWidths = Array.from(headers).map(h => h.offsetWidth);
+
+                // ── Ensure colgroup exists with the correct number of <col>s ───
                 let _cg = table.querySelector('colgroup');
                 if (!_cg) {
                     _cg = document.createElement('colgroup');
@@ -16258,9 +16330,30 @@ a { color: #1565c0; }`;
                         _cg.appendChild(document.createElement('col'));
                     }
                 }
-                // Switch to fixed layout now (once) so subsequent width writes are cheap.
+
+                // ── Lock every column at its current rendered width ────────────
+                // Setting an explicit px width on every <col> before switching to
+                // table-layout:fixed prevents the browser from redistributing all
+                // widths equally (its default when no <col> widths are present).
+                // Also clear th.style.minWidth (set by auto-resize) so that
+                // fixed-layout column widths are not floored by cell constraints.
+                const _allCols = _cg.querySelectorAll('col');
+                Array.from(headers).forEach((hdr, i) => {
+                    if (_allCols[i]) _allCols[i].style.width = `${_allWidths[i]}px`;
+                    if (hdr.style.minWidth) hdr.style.minWidth = '';
+                });
+
+                // ── Free the table's total-width constraint ────────────────────
+                // With all <col> widths explicit and table-layout:fixed, the table
+                // sizes to exactly the sum of its column widths.  Removing the
+                // fixed pixel total (set by auto-resize) means widening one column
+                // expands the table instead of compressing all other columns.
+                table.style.width = '';
+                table.style.minWidth = '';
+
+                // Switch to fixed layout (once) so subsequent width writes are cheap.
                 table.style.tableLayout = 'fixed';
-                _targetCol = _cg.querySelectorAll('col')[colIndex] || null;
+                _targetCol = _allCols[colIndex] || null;
                 _dragRafPending = false;
 
                 document.addEventListener('mousemove', onMouseMove);
@@ -16269,7 +16362,7 @@ a { color: #1565c0; }`;
                 // Prevent text selection during resize
                 document.body.style.userSelect = 'none';
 
-                Lib.debug('resize', `Started resizing column ${colIndex} from width ${startWidth}px`);
+                Lib.debug('resize', `Started resizing column ${colIndex} from width ${startWidth}px (min: ${_minWidth}px)`);
             });
 
             /**
@@ -16284,7 +16377,7 @@ a { color: #1565c0; }`;
              * @param {MouseEvent} e
              */
             function onMouseMove(e) {
-                _dragPendingWidth = Math.max(30, startWidth + (e.pageX - startX));
+                _dragPendingWidth = Math.max(_minWidth, startWidth + (e.pageX - startX));
                 if (_dragRafPending) return;
                 _dragRafPending = true;
                 requestAnimationFrame(() => {
@@ -16997,19 +17090,6 @@ a { color: #1565c0; }`;
                 columnVisible[colIndex] = th.style.display !== 'none';
             });
 
-            // Hoist getComputedStyle reads — one call per visible column.
-            // Applied to measurement <td>s so they render with the correct font metrics.
-            const colStyleCache = Array.from(headers).map((th, i) => {
-                if (!columnVisible[i]) return null;
-                const s = window.getComputedStyle(th);
-                return {
-                    fontSize:   s.fontSize,
-                    fontWeight: s.fontWeight,
-                    padding:    s.padding,
-                    fontFamily: s.fontFamily
-                };
-            });
-
             // Update overlay for this table
             if (_resizeProgress) {
                 _resizeProgress.textContent = tables.length > 1
@@ -17018,99 +17098,60 @@ a { color: #1565c0; }`;
             }
 
             // ── PRE-MEASUREMENT DOM NORMALISATION ──────────────────────────
-            // Normalise span.comment nodes in the source table BEFORE cloning into
-            // the measurement sandbox.  This ensures the cloned content is identical
-            // to what the live cell will look like after the post-render
-            // normalizeCommentSpans() pass, so the measured column width exactly
-            // matches the width the live cell needs to render without wrapping.
+            // Normalise span.comment nodes in the source table BEFORE the live-table
+            // nowrap pass.  This ensures the measured column width reflects the actual
+            // cell content after the post-render normalizeCommentSpans() call, so the
+            // auto-resize minimum matches what the live cell needs to render without
+            // wrapping.
             normalizeCommentSpans(table);
 
-            // ── BATCH PHASE ────────────────────────────────────────────────────
-            // All cells are cloned into a DocumentFragment — no layout is triggered
-            // during this phase because the fragment is detached from the DOM.
-            // Identical content (same innerHTML / outerHTML) is deduplicated per column
-            // so each unique pattern is measured exactly once.
-            const _frag = document.createDocumentFragment();
-            const _jobs = []; // { colIndex, _td } for every queued cell
+            // ── LIVE-TABLE COLUMN MEASUREMENT ──────────────────────────────────────
+            // Apply white-space:nowrap to the TABLE ITSELF so the browser computes
+            // each column's natural single-line content width in the real table
+            // context.  Reading th.offsetWidth gives the exact column width, including
+            // actual TD cell padding, borders, and font rendering.  The previous
+            // offscreen-div approach applied th-padding to the measurement div and then
+            // used th.style.minWidth as the floor — but because td.padding differs from
+            // th.padding in the live table, the content area available to cell content
+            // was narrower than measured, causing long cells (e.g. Release + comment)
+            // to wrap even at the auto-resize minimum width.
+            //
+            // All mutations here are synchronous (no await between add and remove),
+            // so the browser never paints the intermediate expanded-table or
+            // temporarily-revealed collapsed-table state.
 
-            // Per-column Set of already-seen HTML strings — skip duplicates.
-            const _colSeen = Array.from({length: columnCount}, (_, i) =>
-                columnVisible[i] ? new Set() : null);
+            // If the table is currently collapsed (display:none), temporarily show it.
+            // A hidden table returns offsetWidth = 0 for all cells, which would give
+            // every column a 20px minimum instead of the true content width.  The
+            // show/hide pair is synchronous with no await in between, so the browser
+            // never paints the intermediate visible state.
+            const _tableWasHidden = table.style.display === 'none';
+            if (_tableWasHidden) table.style.display = '';
 
-            const _enqueue = (colIndex, sourceNode, isLiMode) => {
-                const _seen = _colSeen[colIndex];
-                if (!_seen) return;
-                const _key = isLiMode ? sourceNode.outerHTML : sourceNode.innerHTML;
-                if (_seen.has(_key)) return; // identical content already queued
-                _seen.add(_key);
+            // Clear any existing minWidths so the table lays out freely.
+            headers.forEach(th => { th.style.minWidth = ''; });
 
-                // display:inline-block gives each wrapper its OWN intrinsic width.
-                // A shared-column table would collapse all cells to the same width
-                // (the column maximum), defeating per-column measurement entirely.
-                const _div = document.createElement('div');
-                _div.style.display = 'inline-block';
-                const cs = colStyleCache[colIndex];
-                if (cs) {
-                    _div.style.fontSize   = cs.fontSize;
-                    _div.style.fontWeight = cs.fontWeight;
-                    _div.style.padding    = cs.padding;
-                    _div.style.fontFamily = cs.fontFamily;
-                }
-                if (isLiMode) {
-                    // Measure the <li> as inline-block to get its natural unwrapped width.
-                    const _liClone = sourceNode.cloneNode(true);
-                    _liClone.style.display = 'inline-block';
-                    _div.appendChild(_liClone);
-                } else {
-                    Array.from(sourceNode.childNodes).forEach(n => _div.appendChild(n.cloneNode(true)));
-                }
-                _frag.appendChild(_div);
-                _jobs.push({ colIndex, _div });
-            };
+            // Nowrap → browser expands each column to single-line content width.
+            table.classList.add('mb-measure-nowrap');
 
-            // Queue header cells (sort icons included — they are always visible)
+            // Single reflow read: first offsetWidth access triggers layout;
+            // subsequent reads in this block are cache-served (no DOM mutations).
             headers.forEach((th, colIndex) => {
-                if (colIndex < columnCount && columnVisible[colIndex]) {
-                    _enqueue(colIndex, th, false);
-                }
+                if (colIndex >= columnCount || !columnVisible[colIndex]) return;
+                columnWidths[colIndex] = th.offsetWidth;
             });
 
-            // Queue all data row cells and individual <li>s.
-            // No row sampling — sampling caused under-sized columns for cells at skipped indices.
-            const rows = table.querySelectorAll('tbody tr');
-            for (const row of rows) {
-                if (row.style.display === 'none') continue;
-                Array.from(row.cells).forEach((cell, colIndex) => {
-                    if (colIndex >= columnCount || !columnVisible[colIndex]) return;
-                    _enqueue(colIndex, cell, false);
-                    // Also measure each <li> individually: block <ul>/<li> elements inside
-                    // a <td> may not expand to their full text width, so measuring each
-                    // li as inline-block gives the reliable per-item maximum.
-                    cell.querySelectorAll('ul > li').forEach(li => {
-                        if (li.classList.contains('mb-caa-art-li')) return;
-                        _enqueue(colIndex, li, true);
-                    });
-                });
-            }
+            // Restore normal wrapping before any further DOM work.
+            table.classList.remove('mb-measure-nowrap');
 
-            // ── SINGLE INSERT ───────────────────────────────────────────────────
-            // One appendChild is the only DOM mutation on the live offscreen container.
-            _measureContainer.appendChild(_frag);
+            // Restore collapsed state immediately after measurement.
+            if (_tableWasHidden) table.style.display = 'none';
 
-            // ── SINGLE REFLOW READ PASS ─────────────────────────────────────────
-            // The first offsetWidth read triggers exactly one layout recalculation;
-            // subsequent reads are served from the cached layout because no DOM
-            // mutations occur between reads.
-            for (const { colIndex, _div } of _jobs) {
-                columnWidths[colIndex] = Math.max(columnWidths[colIndex], _div.offsetWidth);
-            }
-
-            // Reset container for the next source table
-            _measureContainer.innerHTML = '';
+            Lib.debug('resize', `Table ${tableIndex}: ${columnCount} columns measured from live table in nowrap pass${_tableWasHidden ? ' (was hidden — temporarily shown)' : ''}`);
 
             // ── PASS 2: collapse-toggle extra space ──────────────────────────────
             // .mb-cell-collapse-toggle spans are position:absolute (right:4px) and are
-            // excluded from the normal flow, so Pass 1 above never accounts for their
+            // excluded from the normal flow, so the nowrap pass above never accounts for their
             // width.  When auto-resize sizes a column to the text-content minimum the
             // toggle widget visually overlaps the rightmost characters.
             // Fix: measure each toggle once per column and widen columnWidths so there
@@ -17139,7 +17180,7 @@ a { color: #1565c0; }`;
                     const toggleWidth = _tDiv.offsetWidth;
                     _measureContainer.innerHTML = '';
 
-                    // The measurement _div uses the <th> padding, not the <td> padding.
+                    // columnWidths[colIndex] = th.offsetWidth from the live-table nowrap pass.
                     // extra = space the toggle needs from the right edge
                     //         (toggleWidth + right:4px offset + 12px safety buffer)
                     //         minus what the th's right padding already "pays for".
@@ -17155,7 +17196,6 @@ a { color: #1565c0; }`;
                 }
             }
 
-            Lib.debug('resize', `Table ${tableIndex}: ${_jobs.length} unique cells measured in single reflow`);
 
             // Apply widths to table columns
             // Use colgroup for better performance
