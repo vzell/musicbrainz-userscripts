@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.671+2026-06-18
+// @version      9.99.674+2026-06-18
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -8378,6 +8378,73 @@
     }
 
     /**
+     * RGBA components for each sort-tint class, matching the CSS `mb-mscol-*`
+     * `background-color` definitions.  Declared at module scope so both
+     * `applyStickyColumn` (which may run after `applyTints` placed tint classes on
+     * fresh clone rows) and `applyMultiSortColumnTints` (which runs from the sort
+     * handler) can share the same data without duplicating it.
+     * @type {Object.<string, [number,number,number,number]>}
+     */
+    const _MSCOL_TINT_RGBA = {
+        'mb-mscol-0a': [255, 200,  80, 0.22], 'mb-mscol-0b': [255, 200,  80, 0.44],
+        'mb-mscol-1a': [ 80, 180, 255, 0.22], 'mb-mscol-1b': [ 80, 180, 255, 0.44],
+        'mb-mscol-2a': [120, 230, 120, 0.22], 'mb-mscol-2b': [120, 230, 120, 0.44],
+        'mb-mscol-3a': [230, 120, 230, 0.22], 'mb-mscol-3b': [230, 120, 230, 0.44],
+        'mb-mscol-4a': [255, 160, 100, 0.22], 'mb-mscol-4b': [255, 160, 100, 0.44],
+        'mb-mscol-5a': [100, 230, 210, 0.22], 'mb-mscol-5b': [100, 230, 210, 0.44],
+        'mb-mscol-6a': [180, 160, 255, 0.22], 'mb-mscol-6b': [180, 160, 255, 0.44],
+        'mb-mscol-7a': [255, 220, 180, 0.22], 'mb-mscol-7b': [255, 220, 180, 0.44],
+    };
+
+    /**
+     * RGBA components for the header sort-tint classes (`mb-mscol-hdr-*`), matching
+     * the CSS definitions (alpha = 0.60).  Used by `applyStickyColumn` and
+     * `applyMultiSortColumnTints` to compute opaque blended backgrounds for the
+     * sticky column header cell, for the same reason as `_MSCOL_TINT_RGBA`.
+     * @type {Object.<string, [number,number,number,number]>}
+     */
+    const _MSCOL_HDR_TINT_RGBA = {
+        'mb-mscol-hdr-0': [255, 200,  80, 0.60],
+        'mb-mscol-hdr-1': [ 80, 180, 255, 0.60],
+        'mb-mscol-hdr-2': [120, 230, 120, 0.60],
+        'mb-mscol-hdr-3': [230, 120, 230, 0.60],
+        'mb-mscol-hdr-4': [255, 160, 100, 0.60],
+        'mb-mscol-hdr-5': [100, 230, 210, 0.60],
+        'mb-mscol-hdr-6': [180, 160, 255, 0.60],
+        'mb-mscol-hdr-7': [255, 220, 180, 0.60],
+    };
+
+    /**
+     * Alpha-blends a sort-tint colour onto an opaque base background and returns
+     * an opaque `rgb()` string suitable for use as an inline style on a sticky cell.
+     *
+     * The CSS `mb-mscol-*` classes use `rgba() !important` which overrides the
+     * inline opaque background that `applyStickyColumn` sets, making the sticky
+     * cell semi-transparent so scrolled content shows through.  Calling this
+     * function and applying the result via `setProperty('background-color', …,
+     * 'important')` produces an opaque colour that wins the cascade while still
+     * visually matching the translucent tint class.
+     *
+     * @param {[number,number,number,number]} tint - `[R, G, B, alpha]` of the tint.
+     * @param {string} restBg - Opaque CSS colour string (`#rrggbb` or `rgb(r,g,b)`).
+     * @returns {string} Opaque `rgb(r,g,b)` result.
+     */
+    function _blendSortTint(tint, restBg) {
+        let rb = 255, gb = 255, bb = 255;
+        const hm = restBg.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+        if (hm) {
+            rb = parseInt(hm[1], 16);
+            gb = parseInt(hm[2], 16);
+            bb = parseInt(hm[3], 16);
+        } else {
+            const rm = restBg.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+            if (rm) { rb = +rm[1]; gb = +rm[2]; bb = +rm[3]; }
+        }
+        const [r, g, b, a] = tint;
+        return `rgb(${Math.round(r * a + rb * (1 - a))},${Math.round(g * a + gb * (1 - a))},${Math.round(b * a + bb * (1 - a))})`;
+    }
+
+    /**
      * Applies CSS `position:sticky; left:0` to one column of `table` so it remains
      * visible while the user scrolls horizontally.
      *
@@ -8452,7 +8519,29 @@
                 cell.style.position  = 'sticky';
                 cell.style.left      = leftPx;
                 cell.style.zIndex    = '101';
-                cell.style.background = isFilter ? bgFilter : bgHeader;
+
+                const headerBg = isFilter ? bgFilter : bgHeader;
+
+                // Main header only: detect any active hdr-tint class, temporarily
+                // remove it so we can set the true base background uncontested, then
+                // restore it with an opaque blended colour (same pattern as the body
+                // row fix — the class uses rgba() !important which beats the inline
+                // background shorthand and makes the sticky header cell see-through).
+                const _activeHdrTint = isFilter ? null
+                    : Object.keys(_MSCOL_HDR_TINT_RGBA).find(cls => cell.classList.contains(cls));
+                if (_activeHdrTint) {
+                    cell.classList.remove(_activeHdrTint);
+                    cell.style.removeProperty('background-color');
+                }
+                cell.style.background   = headerBg;
+                cell.dataset.mbStickyBg = headerBg;
+                if (_activeHdrTint) {
+                    cell.classList.add(_activeHdrTint);
+                    const blended = _blendSortTint(_MSCOL_HDR_TINT_RGBA[_activeHdrTint], headerBg);
+                    cell.dataset.mbStickyBg     = blended;
+                    cell.dataset.mbStickyRestBg = headerBg;
+                    cell.style.setProperty('background-color', blended, 'important');
+                }
                 cell.classList.add('mb-sticky-col');
             });
 
@@ -8506,13 +8595,46 @@
                 // their inline style is cleared so CSS zebra striping drives the colour.
 
                 // Snapshot the sticky cell first (needs inline bg for opacity).
+                //
+                // Problem: renderFinalTable calls applyTints() on fresh cloned rows
+                // before runFilter() calls applyStickyColumn.  When we arrive here,
+                // a sort-tint class (mb-mscol-*) may already be on the cell with
+                // `background-color: rgba(…) !important`.  Clearing the inline
+                // background shorthand (cell.style.background = '') does NOT remove
+                // that — the class rule still wins.  getComputedStyle then returns
+                // the semi-transparent tint colour instead of the true zebra/base bg,
+                // which we would store as mbStickyBg and later use as the blend base
+                // in applyMultiSortColumnTints, producing a compounded wrong colour.
+                //
+                // Fix: find and temporarily remove any active tint class (and any
+                // prior inline !important bg-color) before reading getComputedStyle,
+                // so the true rest background is exposed.  Restore the tint class
+                // immediately after and apply the correct opaque blended colour.
+                const _activeTintClass = Object.keys(_MSCOL_TINT_RGBA).find(
+                    cls => cell.classList.contains(cls)
+                );
+                if (_activeTintClass) {
+                    cell.classList.remove(_activeTintClass);
+                    cell.style.removeProperty('background-color');
+                }
                 cell.style.background = '';
                 const cellBg = getComputedStyle(cell).backgroundColor;
-                const restBg = (cellBg === 'rgba(0, 0, 0, 0)' || cellBg === 'transparent')
+                const trueRestBg = (cellBg === 'rgba(0, 0, 0, 0)' || cellBg === 'transparent')
                     ? '#ffffff' : cellBg;
-                cell.style.background = restBg;
-                cell.dataset.mbStickyBg = restBg;
-                cell.dataset.mbRestBg   = restBg;
+                cell.dataset.mbRestBg = trueRestBg;
+                if (_activeTintClass) {
+                    // Tint was already applied (renderFinalTable path): restore the
+                    // class and set an opaque blended colour via inline !important so
+                    // it wins the cascade over the class's rgba() !important rule.
+                    cell.classList.add(_activeTintClass);
+                    const blended = _blendSortTint(_MSCOL_TINT_RGBA[_activeTintClass], trueRestBg);
+                    cell.dataset.mbStickyBg     = blended;
+                    cell.dataset.mbStickyRestBg = trueRestBg;
+                    cell.style.setProperty('background-color', blended, 'important');
+                } else {
+                    cell.dataset.mbStickyBg = trueRestBg;
+                    cell.style.background   = trueRestBg;
+                }
                 cell.classList.add('mb-sticky-col');
 
                 // span.comment </bdi>) bidi-boundary wrap is handled globally by
@@ -8542,10 +8664,18 @@
                 // _apply() call, regardless of how many times the row was cloned or
                 // re-inserted.
                 const _enter = () => {
-                    // Apply hover colour to every cell in the row.  Covers sticky
-                    // and non-sticky cells alike, bypassing the CSS :hover cascade.
+                    // Apply hover colour to every cell in the row, bypassing the
+                    // CSS :hover cascade (inline styles win over author :hover rules).
+                    //
+                    // For sticky cells that have an active sort tint (mbStickyRestBg
+                    // is set), the tint class uses `rgba() !important` which beats a
+                    // non-important inline background shorthand, making the sticky cell
+                    // semi-transparent during hover.  Applying via setProperty wins.
                     Array.from(tr.cells).forEach(td => {
                         td.style.background = hoverBgColor;
+                        if (td.classList.contains('mb-sticky-col') && td.dataset.mbStickyRestBg) {
+                            td.style.setProperty('background-color', hoverBgColor, 'important');
+                        }
                     });
                 };
                 const _leave = () => {
@@ -8555,9 +8685,19 @@
                     // barcode-highlighted cells whose color would be lost by clearing
                     // the background shorthand), otherwise clear inline bg so CSS
                     // zebra striping takes over.
+                    //
+                    // When a sort tint is active on a sticky cell (mbStickyRestBg set),
+                    // mbStickyBg holds the opaque blended colour.  The tint class's
+                    // `rgba() !important` would beat the non-important shorthand we set
+                    // via `background`, making the cell see-through.  Use setProperty
+                    // to ensure the opaque blended colour wins the cascade.
                     Array.from(tr.cells).forEach(td => {
                         if (td.classList.contains('mb-sticky-col')) {
-                            td.style.background = td.dataset.mbStickyBg || '#ffffff';
+                            const restoreBg = td.dataset.mbStickyBg || '#ffffff';
+                            td.style.background = restoreBg;
+                            if (td.dataset.mbStickyRestBg) {
+                                td.style.setProperty('background-color', restoreBg, 'important');
+                            }
                         } else if (td.dataset.mbRestBg) {
                             td.style.background = td.dataset.mbRestBg;
                         } else {
@@ -33921,6 +34061,7 @@ a { color: #1565c0; }`;
         // Within each sorted column the tint alternates between two shades whenever the cell
         // value changes, making equal-value runs visually obvious.
         // Semi-transparent colours overlay the existing even/odd zebra striping.
+
         const applyMultiSortColumnTints = () => {
             // Clear any existing tint classes first so a re-apply starts clean
             clearMultiSortColumnTints();
@@ -33974,13 +34115,54 @@ a { color: #1565c0; }`;
                         shadeIdx = 1 - shadeIdx; // toggle between 0 and 1
                     }
                     lastValue = cellValue;
-                    cell.classList.add(pair[shadeIdx]);
+                    const tintClass = pair[shadeIdx];
+                    cell.classList.add(tintClass);
+
+                    // ── Sticky-cell opacity fix ──────────────────────────────────
+                    // The mscol CSS uses `background-color: rgba() !important` which
+                    // overrides the inline opaque background set by applyStickyColumn,
+                    // making the sticky cell semi-transparent so scrolled content shows
+                    // through.  Fix: alpha-blend the tint onto the cell's rest
+                    // background (mbStickyBg, which applyStickyColumn now always stores
+                    // as the true opaque zebra/base colour) and apply the resulting
+                    // opaque colour via inline setProperty('important'), which wins over
+                    // class !important.
+                    if (cell.classList.contains('mb-sticky-col')) {
+                        const tint = _MSCOL_TINT_RGBA[tintClass];
+                        if (tint) {
+                            const restBg = cell.dataset.mbStickyBg || '#ffffff';
+                            const blended = _blendSortTint(tint, restBg);
+                            // Save original rest bg so clearMultiSortColumnTints can restore it.
+                            if (!cell.dataset.mbStickyRestBg) {
+                                cell.dataset.mbStickyRestBg = restBg;
+                            }
+                            cell.dataset.mbStickyBg = blended;
+                            cell.style.setProperty('background-color', blended, 'important');
+                        }
+                    }
                 });
 
                 // Tint the header cell
                 if (mainHeaderRow) {
                     const th = mainHeaderRow.cells[colIdx];
-                    if (th) th.classList.add(hdrCls);
+                    if (th) {
+                        th.classList.add(hdrCls);
+                        // Sticky header fix: same opacity problem as body cells.
+                        // The hdr-tint class uses rgba() !important which beats the
+                        // inline background shorthand set by applyStickyColumn.
+                        if (th.classList.contains('mb-sticky-col')) {
+                            const tint = _MSCOL_HDR_TINT_RGBA[hdrCls];
+                            if (tint) {
+                                const restBg = th.dataset.mbStickyBg || '#e8e8e8';
+                                const blended = _blendSortTint(tint, restBg);
+                                if (!th.dataset.mbStickyRestBg) {
+                                    th.dataset.mbStickyRestBg = restBg;
+                                }
+                                th.dataset.mbStickyBg = blended;
+                                th.style.setProperty('background-color', blended, 'important');
+                            }
+                        }
+                    }
                 }
             });
         };
@@ -33997,6 +34179,13 @@ a { color: #1565c0; }`;
             ];
             table.querySelectorAll('tbody td, thead tr:first-child th').forEach(cell => {
                 cell.classList.remove(...allTintClasses);
+                // Restore sticky cell to its original opaque rest background.
+                if (cell.classList.contains('mb-sticky-col') && cell.dataset.mbStickyRestBg) {
+                    cell.style.removeProperty('background-color');
+                    cell.dataset.mbStickyBg = cell.dataset.mbStickyRestBg;
+                    cell.style.background   = cell.dataset.mbStickyRestBg;
+                    delete cell.dataset.mbStickyRestBg;
+                }
             });
         };
 

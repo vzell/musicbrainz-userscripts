@@ -1,5 +1,41 @@
 [
   {
+    "version": "9.99.674",
+    "date": "2026-06-18",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed sticky column header cell remaining see-through when sort value-change shading is active (follow-up to v9.99.673 which fixed the body rows). The `mb-mscol-hdr-*` header tint classes also use `rgba() !important` (at alpha 0.60), which overrides the inline `background` shorthand set by `applyStickyColumn`'s header loop, making the sticky column header see-through on horizontal scroll. Fix: added module-level `_MSCOL_HDR_TINT_RGBA` lookup (alpha 0.60 for each of the 8 hues). In `applyStickyColumn`'s header-row loop, store `dataset.mbStickyBg = headerBg` and apply the same detect-remove-read-restore pattern as the body-row fix: if a hdr-tint class is already active, temporarily remove it, set the true header background, restore the class, compute an opaque blended colour via `_blendSortTint`, apply it with `setProperty('background-color', …, 'important')`, and record `dataset.mbStickyRestBg`. In `applyMultiSortColumnTints`, after adding `hdrCls` to the main header `<th>`, if the cell is `mb-sticky-col`, blend the header tint onto `mbStickyBg` and apply the opaque result the same way. `clearMultiSortColumnTints` already queries `thead tr:first-child th` and restores from `mbStickyRestBg`, so no change there."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.673",
+    "date": "2026-06-18",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed sticky column remaining see-through after sort tints are applied (complete rewrite of v9.99.672 fix). Root cause: `renderFinalTable` calls `applyTints()` on freshly cloned rows before `runFilter()` calls `applyStickyColumn`. When `applyStickyColumn` then reads `getComputedStyle(cell).backgroundColor`, the sort-tint class's `rgba() !important` rule is already winning the cascade — the browser returns the semi-transparent tint colour as the computed background, which `applyStickyColumn` stores as `mbStickyBg`. When the sort handler later calls `applyMultiSortColumnTints()`, it blends the tint onto the already-tinted rgba value, producing a doubly-wrong result, and the sticky cell stays see-through. Additionally, the `mouseleave` handler set `cell.style.background = mbStickyBg` (non-important shorthand), which cleared the cascade-winning `!important` flag previously set by `applyMultiSortColumnTints`, allowing the tint class to win again and make the cell see-through on every hover-out. Fix: (1) Move the tint RGBA lookup table to module scope as `_MSCOL_TINT_RGBA` and add a shared `_blendSortTint(tint, restBg)` helper so both `applyStickyColumn` and `applyMultiSortColumnTints` use the same data. (2) In `applyStickyColumn`'s body-row loop, detect any active tint class, temporarily remove it and any inline `background-color !important`, read the true opaque zebra background via `getComputedStyle`, then restore the tint class; if a tint was present, apply the opaque blended colour via `setProperty` and record `mbStickyRestBg`. (3) In the `mouseleave` handler, when `mbStickyRestBg` is set (tint is active), re-apply the blended colour via `setProperty('background-color', …, 'important')` after setting the background shorthand so the opaque value wins over the tint class. (4) In `mouseenter`, same treatment for the hover colour on tinted sticky cells. (5) `applyMultiSortColumnTints` now uses the shared `_MSCOL_TINT_RGBA` / `_blendSortTint` instead of its former local copies."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.672",
+    "date": "2026-06-18",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed sticky column becoming see-through when sort value-change shading is active. The `mb-mscol-*` tint classes use `background-color: rgba(…) !important`, which overrides the inline opaque `background` applied by `applyStickyColumn`. On a `position:sticky` cell, the browser composites that semi-transparent background against the scrolled content behind the cell (not against the DOM parent), making columns behind the sticky one visible through it. Fix: in `applyMultiSortColumnTints`, when adding a tint class to a `mb-sticky-col` cell, alpha-blend the tint's RGBA values (from a new precomputed `_tintRGBA` lookup table matching the CSS definitions) onto the cell's current opaque rest background, and apply the resulting opaque `rgb()` colour via `cell.style.setProperty('background-color', …, 'important')`. An inline `!important` declaration wins over class `!important` at the same specificity level, ensuring the sticky cell always paints opaquely. The original rest background is preserved in `dataset.mbStickyRestBg`; `dataset.mbStickyBg` is updated to the blended colour so the `mouseleave` handler continues to restore the correct tinted colour on hover-out. `clearMultiSortColumnTints` is extended to remove the inline important `background-color` and restore the original rest background for sticky cells when tints are cleared."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.671",
     "date": "2026-06-18",
     "sections": [
