@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - MB Page Enhancer
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      1.0.8+2026-06-19
+// @version      1.0.9+2026-06-19
 // @description  Enhances MusicBrainz pages with additional features
 // @author       vzell
 // @tag          AI generated
@@ -94,6 +94,13 @@
             type: "checkbox",
             default: true,
             description: "Add click-to-collapse behaviour to all native MusicBrainz h2 section headers on the page"
+        },
+
+        pe_combine_medium_buttons: {
+            label: "Combine Expand/Collapse Buttons",
+            type: "checkbox",
+            default: true,
+            description: "Replace the separate 'Expand all mediums' and 'Collapse all mediums' buttons with a single toggle button"
         },
 
         // ============================================================
@@ -192,9 +199,9 @@
 
     // ============================================================
     // BEGIN: SECTION TOGGLING
-    // Config key : pe_enable_section_toggling
+    // Config keys: pe_enable_section_toggling, pe_combine_medium_buttons
     // Functions  : makeTooltip, applyGalleryState, attachHeaderBehavior, initPageHeaders,
-    //              watchTracklistReactUpdate
+    //              watchTracklistReactUpdate, areMediumsExpanded, installMediumToggle
     // ============================================================
 
     /**
@@ -448,14 +455,95 @@
                 delete h2._sectionLabel;
             });
 
+            // Undo medium-toggle: remove our combined button, un-hide the originals so
+            // React's reconciliation finds the DOM it expects.  React will also restore
+            // the " | " text node we deleted (it's in the VDOM), so no manual restoration.
+            container.querySelectorAll('[data-vz-medium-toggle]').forEach(b => b.remove());
+            container.querySelector('#expand-all-mediums')?.removeAttribute('hidden');
+            container.querySelector('#collapse-all-mediums')?.removeAttribute('hidden');
+
             // Re-apply after React has synchronously committed its DOM update.
             setTimeout(() => {
                 Lib.debug('toggle', `🔄 [watchTracklistReactUpdate] Re-applying section toggling after React re-render.`);
                 initPageHeaders();
+                installMediumToggle();
             }, 0);
         }, true); // capture phase: fires before React's bubble-phase onClick dispatch
 
         Lib.debug('init', `👁️  [watchTracklistReactUpdate] Watching .tracklist-and-credits for #toggle-credits clicks (capture phase).`);
+    }
+
+    /**
+     * Return true if medium track rows are currently expanded (visible).
+     * Checks the computed display of the first medium table's tbody.
+     * @returns {boolean}
+     */
+    function areMediumsExpanded() {
+        const tbody = document.querySelector('table.tbl.medium tbody');
+        return tbody ? window.getComputedStyle(tbody).display !== 'none' : true;
+    }
+
+    /**
+     * Replace the "Expand all mediums" and "Collapse all mediums" buttons with a
+     * single toggle button inserted at the same DOM position.
+     * Controlled by the pe_combine_medium_buttons setting.
+     *
+     * The originals are hidden (not removed) so MB's own expand/collapse logic can
+     * still be invoked via .click(). The " | " text node between the two original
+     * buttons is removed — text nodes always render even when adjacent elements are
+     * hidden, which would otherwise leave a dangling double-separator visible.
+     *
+     * The toggle button carries data-vz-medium-toggle="1" so watchTracklistReactUpdate()
+     * can locate and remove it before React reconciles the tracklist container.
+     */
+    function installMediumToggle() {
+        if (!Lib.settings.pe_combine_medium_buttons) {
+            Lib.debug('init', `🚫 [installMediumToggle] Combine medium buttons is disabled via pe_combine_medium_buttons setting — skipping.`);
+            return;
+        }
+
+        const expandBtn   = document.querySelector('#expand-all-mediums');
+        const collapseBtn = document.querySelector('#collapse-all-mediums');
+        if (!expandBtn || !collapseBtn) {
+            Lib.debug('init', `⏭️  [installMediumToggle] #expand-all-mediums / #collapse-all-mediums not found — skipping (event page or not yet rendered).`);
+            return;
+        }
+
+        let mediumsExpanded = areMediumsExpanded();
+
+        const toggle = document.createElement('button');
+        toggle.classList.add('btn-link');
+        toggle.type = 'button';
+        toggle.dataset.vzMediumToggle = '1';
+        toggle.textContent = mediumsExpanded ? 'Collapse all mediums' : 'Expand all mediums';
+
+        toggle.addEventListener('click', () => {
+            if (mediumsExpanded) {
+                collapseBtn.click();
+                toggle.textContent = 'Expand all mediums';
+                mediumsExpanded = false;
+            } else {
+                expandBtn.click();
+                toggle.textContent = 'Collapse all mediums';
+                mediumsExpanded = true;
+            }
+        });
+
+        // Place the toggle where the expand button was.
+        expandBtn.before(toggle);
+
+        // Hide both originals; they must stay in the DOM so .click() still works.
+        expandBtn.hidden = true;
+        collapseBtn.hidden = true;
+
+        // Remove the " | " text node between the two now-hidden buttons.
+        const sepBetween = collapseBtn.previousSibling;
+        if (sepBetween && sepBetween.nodeType === Node.TEXT_NODE &&
+                sepBetween.textContent.trim() === '|') {
+            sepBetween.remove();
+        }
+
+        Lib.info('init', `✅ [installMediumToggle] Medium expand/collapse buttons combined into one toggle.`);
     }
 
     // ============================================================
@@ -653,6 +741,7 @@
             // reconciliation runs, preventing the container from being emptied.
             // --------------------------------------------------------
             initPageHeaders();
+            installMediumToggle();
             watchTracklistReactUpdate();
 
             const mbid          = mbidMatch[0];

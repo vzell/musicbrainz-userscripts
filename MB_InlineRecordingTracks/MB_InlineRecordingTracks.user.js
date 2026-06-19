@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         VZ: MB: Inline Recording Tracks Toggle
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      1.0.1+2026-06-19
-// @description  Toggle buttons to show/hide inline recording track info and to expand/collapse all mediums. Based on ROpdebee's mb_qol_inline_recording_tracks.
+// @version      1.0.0+2026-06-19
+// @description  Toggle button to show or hide which tracks and releases each recording appears on, from the MusicBrainz release page. Based on ROpdebee's mb_qol_inline_recording_tracks.
 // @author       vzell
 // @license      MIT
 // @homepageURL  https://github.com/vzell/musicbrainz-userscripts
@@ -254,68 +254,6 @@
     }
 
     // -----------------------------------------------------------------------
-    // Medium expand/collapse toggle
-    // -----------------------------------------------------------------------
-
-    /**
-     * Return true if medium track rows are currently expanded (visible).
-     * Checks the computed display of the first medium table's tbody.
-     * @returns {boolean}
-     */
-    function areMediumsExpanded() {
-        const tbody = document.querySelector('table.tbl.medium tbody');
-        return tbody ? window.getComputedStyle(tbody).display !== 'none' : true;
-    }
-
-    /**
-     * Replace the "Expand all mediums" and "Collapse all mediums" buttons with a
-     * single toggle button at the same DOM position.
-     *
-     * The originals are hidden (not removed) so MB's own expand/collapse logic
-     * can still be invoked via .click(). The " | " text node that separated the
-     * two original buttons is removed — a text node between two hidden elements
-     * still renders, which would produce a dangling double-separator.
-     */
-    function installMediumToggle() {
-        const expandBtn   = document.querySelector('#expand-all-mediums');
-        const collapseBtn = document.querySelector('#collapse-all-mediums');
-        if (!expandBtn || !collapseBtn) return;
-
-        let mediumsExpanded = areMediumsExpanded();
-
-        const toggle = document.createElement('button');
-        toggle.classList.add('btn-link');
-        toggle.type = 'button';
-        toggle.textContent = mediumsExpanded ? 'Collapse all mediums' : 'Expand all mediums';
-
-        toggle.addEventListener('click', () => {
-            if (mediumsExpanded) {
-                collapseBtn.click();
-                toggle.textContent = 'Expand all mediums';
-                mediumsExpanded = false;
-            } else {
-                expandBtn.click();
-                toggle.textContent = 'Collapse all mediums';
-                mediumsExpanded = true;
-            }
-        });
-
-        // Place the toggle at the expand button's position.
-        expandBtn.before(toggle);
-
-        // Hide both originals; they must remain in the DOM so .click() still works.
-        expandBtn.hidden = true;
-        collapseBtn.hidden = true;
-
-        // Remove the " | " text node that separated the two now-hidden buttons.
-        const sepBetween = collapseBtn.previousSibling;
-        if (sepBetween && sepBetween.nodeType === Node.TEXT_NODE &&
-                sepBetween.textContent.trim() === '|') {
-            sepBetween.remove();
-        }
-    }
-
-    // -----------------------------------------------------------------------
     // React hydration guard (unchanged from ROpdebee's original)
     // -----------------------------------------------------------------------
 
@@ -356,8 +294,6 @@
 
         document.querySelector('span#medium-toolbox')
             .firstChild.before(button, ' | ');
-
-        installMediumToggle();
     });
 
     // -----------------------------------------------------------------------

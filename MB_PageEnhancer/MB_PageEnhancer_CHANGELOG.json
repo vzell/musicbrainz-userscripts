@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.9",
+    "date": "2026-06-19",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Added pe_combine_medium_buttons setting (default: true). When enabled, installMediumToggle() replaces the separate 'Expand all mediums' and 'Collapse all mediums' buttons in span#medium-toolbox with a single toggle button. The originals are hidden (not removed) and delegated to via .click() so MB's own expand/collapse logic is reused unchanged. The orphan ' | ' text node between the two hidden buttons is removed to prevent a double-separator. Initial label reflects actual state via getComputedStyle on the first medium tbody. watchTracklistReactUpdate() is extended to undo the medium toggle before React reconciles the tracklist container (removes the combined button, un-hides the originals), and to re-apply installMediumToggle() after the re-render."
+        ]
+      }
+    ]
+  },
+  {
     "version": "1.0.8",
     "date": "2026-06-19",
     "sections": [
