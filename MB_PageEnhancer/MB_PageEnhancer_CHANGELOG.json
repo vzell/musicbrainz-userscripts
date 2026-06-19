@@ -1,0 +1,153 @@
+[
+  {
+    "version": "1.0.5",
+    "date": "2026-06-19",
+    "sections": [
+      {
+        "label": "🐛 Bug Fixes",
+        "items": [
+          "Fixed tracklist content being cut off on large releases (e.g. multi-LP box sets). Root cause: applyGalleryState() and the initial wrapper/gallery state both used a hard-coded max-height of 5000 px for the expanded state. On a 5-LP release the tracklist content exceeds that limit and the overflow is hidden, so the last medium's tracks were invisible. Fix: (1) initial expanded wrappers now carry no max-height constraint (maxHeight: ''); (2) when expanding, applyGalleryState() reads the element's actual scrollHeight and animates from 0 to that value, then clears max-height on transitionend so the section can resize freely; (3) when collapsing from an unconstrained state, the function snapshots scrollHeight and forces a reflow (void el.offsetHeight) before animating to 0, giving the browser a concrete start value for the CSS transition.",
+          "Fixed annotation section: (1) The 'Annotation' h2 was never made collapsible because div.annotation-body (its first sibling) contains a Markdown-rendered h2 ('Barcode and Other Identifiers') that triggered the old sibling-collection stop guard (el.querySelector('h2')), leaving the annotation h2 with no collected siblings. (2) That same annotation-content h2 was incorrectly enhanced as an independent collapsible section header. Root cause: querySelectorAll('h2') collected all h2 elements including Markdown headings inside div.annotation-body, and the sibling-stop guard halted at any descendant h2 rather than only at candidate section-header h2s. Fix: added .filter(h2 => !h2.closest('.annotation-body')) to exclude annotation prose h2s from the candidate list; changed the sibling-collection loop guard from !el.querySelector('h2') to !nativeH2s.some(nh2 => el.contains(nh2)) so it only stops at elements that contain a genuine candidate section header. Result: 'Annotation' h2 is correctly made collapsible (its siblings div.annotation-body, 'Show more' link, and annotation-details are all included), and annotation-body content h2s are never touched."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "1.0.4",
+    "date": "2026-04-18",
+    "sections": [
+      {
+        "label": "🐛 Bug Fixes",
+        "items": [
+          "Fixed event-bubbling clash with GenerateRecordingCommentForRelease (and any other userscript that appends interactive controls inside a native MB h2). Root cause: attachHeaderBehavior() installed a click listener on the h2 element; because the 'Edit recording comments' button is appended *inside* h2.tracklist via .appendTo($header), clicking it caused the click event to bubble up to the h2 and trigger the collapse/expand logic, which hid the wrapper div containing the tracklist table. Fix: added an early-return guard at the top of the h2 click handler — if the event originated from an interactive descendant (button, a, input, select, or textarea) and the event target is not the h2 itself, the handler returns immediately without toggling the section."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "1.0.3",
+    "date": "2026-04-18",
+    "sections": [
+      {
+        "label": "🐛 Bug Fixes",
+        "items": [
+          "Fixed a bug in initPageHeaders() where clicking a section header (e.g. 'Tracklist') would also collapse a logically independent sibling section (e.g. 'Credits') whose h2 lived inside a wrapper div rather than directly in the same parent. Root cause: the sibling-collection while-loop only stopped at a direct h2 sibling (el.tagName === 'H2'), so a wrapper element such as div#bottom-credits — which contains its own h2 — was swept wholesale into the outer section's collapsible div. Fix: extended the loop guard to also stop when the current sibling contains a descendant h2 (!el.querySelector('h2')), ensuring wrapper elements that house their own section headers are never included in another section's collapsible group and remain independently collapsible."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "1.0.2",
+    "date": "2026-04-18",
+    "sections": [
+      {
+        "label": "⚙️ Internal",
+        "items": [
+          "Added visual BEGIN/END block comments around every function group that implements a specific configuration section. The three groups are now each enclosed in matching '// BEGIN: <SECTION NAME>' / '// END: <SECTION NAME>' banner comments: SHARED UTILITIES (isOverviewTabActive, ART_HEADER_CLASS / ART_GALLERY_CLASS constants), SECTION TOGGLING (makeTooltip, applyGalleryState, attachHeaderBehavior, initPageHeaders — controlled by pe_enable_section_toggling), and CAA / EAA ILLUSTRATED DISCOGRAPHY (displayArtGallery — controlled by pe_enable_caa_eaa / pe_image_size / pe_collapsed_by_default). Each banner also lists the config keys and function names it owns.",
+          "Reordered functions to match logical config-section grouping: initPageHeaders() moved before displayArtGallery() so that all SECTION TOGGLING functions (makeTooltip, applyGalleryState, attachHeaderBehavior, initPageHeaders) are contiguous within their BEGIN/END block, followed by the CAA / EAA ILLUSTRATED DISCOGRAPHY block (displayArtGallery).",
+          "Labeled the two execution steps in the main dispatch block with 'STEP 1/2 — SECTION TOGGLING' and 'STEP 2/2 — CAA / EAA ILLUSTRATED DISCOGRAPHY' inline comments, making it immediately clear which feature is running at each point and repeating the relevant feature-flag guard for quick reference."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "1.0.1",
+    "date": "2026-03-23",
+    "sections": [
+      {
+        "label": "🐛 Bug Fixes",
+        "items": [
+          "Fixed indentation of the pe_enable_debug_logging return statement inside the VZ_MBLibrary constructor callback — the line was two levels under-indented relative to the surrounding arrow function body.",
+          "Fixed inaccurate performance timer: Lib.time(timerLabel) / Lib.timeEnd(timerLabel) previously bracketed only the synchronous Promise creation of displayArtGallery(), not the actual async fetch+render work, so the timer always reported ~0 ms. The execution block now wraps the call in a small async IIFE and awaits displayArtGallery(), so Lib.timeEnd() fires only after the full gallery render cycle completes."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "1.0.0",
+    "date": "2026-03-23",
+    "sections": [
+      {
+        "label": "✨ New Features / Changes",
+        "items": [
+          "Renamed all configSchema keys from the generic 'ca_' prefix to 'pe_' (Page Enhancer) to better reflect the script's identity and avoid potential key collisions with other userscripts sharing the same VZ_MBLibrary storage backend. Affected keys: ca_enable_debug_logging → pe_enable_debug_logging, ca_image_size → pe_image_size, ca_collapsed_by_default → pe_collapsed_by_default.",
+          "Added new boolean setting 'pe_enable_caa_eaa' (default: true) in the CAA/EAA ILLUSTRATED DISCOGRAPHY config section. When set to false, the entire CAA/EAA art gallery feature is skipped at runtime without any DOM changes.",
+          "Added new config section 'SECTION TOGGLING' with boolean setting 'pe_enable_section_toggling' (default: true). When set to false, the collapsible h2 header behaviour is completely disabled and initPageHeaders() exits immediately.",
+          "Added comprehensive debug/warning logging with icons/glyphs throughout all major code paths: startup (🚀), MBID/DOM detection (🔎), feature-flag guards (🚫), HTTP fetch lifecycle (🌐📡📦), gallery DOM construction (🖼️🏷️🔽🔼), per-image rendering details, section toggling events (🖱️), skipped/empty state warnings (⚠️), and success confirmations (✅). All debug messages are gated behind pe_enable_debug_logging and routed through Lib.debug()/Lib.warn()/Lib.error()."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.9.9",
+    "date": "2026-03-23",
+    "sections": [
+      {
+        "label": "🐛 Bug Fixes",
+        "items": [
+          "ChangeLog entry missing from Tampermonkey browser menu — root cause: VZ_MBLibrary.fetchRemoteText() uses GM_xmlhttpRequest to fetch the remote changelog JSON, but ReleasePageEnhancer did not declare @grant GM_xmlhttpRequest in its userscript header. Without that grant GM_xmlhttpRequest is undefined at runtime; fetchCachedText() therefore returned {data:null} immediately, initRemoteContent() exited early, and GM_registerMenuCommand('📜 ChangeLog', …) was never reached. Fix: added @grant GM_xmlhttpRequest to the ==UserScript== header. ShowAllEntityData already carried this grant (which is why its ChangeLog menu entry worked)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.9.8",
+    "date": "2026-03-23",
+    "sections": [
+      {
+        "label": "✨ New Features / Changes",
+        "items": [
+          "Extended collapsible header behaviour (light-orange background, Click to toggle, Ctrl+Click to toggle all) to all native MusicBrainz h2 section headers on the page (e.g. 'Track listing', 'Additional details', 'Relationships'), not just the script-added CAA/EAA art gallery headers. Each h2's sibling content is wrapped in a collapsible div. The new shared attachHeaderBehavior() helper is called by both initPageHeaders() and displayArtGallery(), keeping the implementation DRY."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.9.7",
+    "date": "2026-03-23",
+    "sections": [
+      {
+        "label": "✨ New Features / Changes",
+        "items": [
+          "Enhanced gallery headers: archive-aware tooltips now read 'Click to show/hide CAA Art Images' or 'Click to show/hide EAA Art Images' (two-line tooltip, second line explains Ctrl+Click). Added light-orange background (#FFE4B5 / moccasin), padding, and border-radius to all art gallery h2 headers. Ctrl+Click on any art gallery header now collapses or expands all script-managed galleries at once."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.9.6",
+    "date": "2026-03-23",
+    "sections": [
+      {
+        "label": "✨ New Features / Changes",
+        "items": [
+          "Added event art support for MusicBrainz event pages. On event pages, artwork is now fetched from the Event Art Archive (eventartarchive.org/event/<mbid>) instead of the Cover Art Archive. The displayArtGallery() function is generalised with archiveUrl and artLabel parameters; the execution block detects the page type (release vs. event) and passes the correct archive URL, human-readable label ('Cover art' / 'Event art'), and short acronym ('CAA' / 'EAA') accordingly."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.9.5",
+    "date": "2026-02-01",
+    "sections": [
+      {
+        "label": "⚙️ Internal",
+        "items": [
+          "Refactored settings, logging and changelog handling to an external shared library (VZ_MBLibrary)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.9.0",
+    "date": "2026-02-01",
+    "sections": [
+      {
+        "label": "🎉 Release",
+        "items": [
+          "First official release version."
+        ]
+      }
+    ]
+  }
+]
