@@ -1,0 +1,14 @@
+[
+  {
+    "version": "1.0.0",
+    "date": "2026-06-19",
+    "sections": [
+      {
+        "label": "🎉 Release",
+        "items": [
+          "Initial release. Based on ROpdebee's mb_qol_inline_recording_tracks (v2025.5.3). Adds a toggle button in span#medium-toolbox: first click fetches and displays 'appears on' track info for all recordings on the page (div.ars.ROpdebee_inline_tracks blocks); subsequent clicks alternately hide and show the already-fetched data without re-fetching. Button label switches between 'Display track info for recordings' and 'Hide track info for recordings'."
+        ]
+      }
+    ]
+  }
+]
