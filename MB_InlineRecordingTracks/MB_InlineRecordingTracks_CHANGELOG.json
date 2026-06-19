@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.1",
+    "date": "2026-06-19",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Replaced the separate 'Expand all mediums' and 'Collapse all mediums' buttons with a single toggle button. The two originals are hidden (not removed) and delegated to via .click() so MB's own expand/collapse logic is reused unchanged. The orphan ' | ' text node between the two hidden buttons is removed to prevent a double-separator from appearing. Initial label ('Collapse all mediums' / 'Expand all mediums') reflects the actual expansion state via getComputedStyle on the first medium tbody."
+        ]
+      }
+    ]
+  },
+  {
     "version": "1.0.0",
     "date": "2026-06-19",
     "sections": [
