@@ -6,6 +6,11 @@ Root directory for Tampermonkey userscripts.
 
 ---
 
+## Commit message conventions
+When writing a Git commit message prepend with the name of the project in brackets like e.g. "[ShowAllEntityData] <commit message text>
+
+---
+
 ## Shell command conventions
 When writing and running Python (or other scripts) to analyze files, always save the code to a `.py` file first and execute it with a plain command like `python3 script.py`. Never use inline `python3 -c "..."`, pipes, command substitution (`$(...)`), or embedded quotes directly in the Bash command — these trigger Claude Code's static-analysis permission check and force a manual approval every time.
 
