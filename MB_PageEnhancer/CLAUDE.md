@@ -63,7 +63,7 @@ The source is divided into four named blocks:
 
 Both CSS class constants are scoped with `SCRIPT_ID` (`vz-mb-page-enhancer`) so they don't collide with other scripts and can be used to `querySelectorAll` all script-managed elements for Ctrl+Click all-toggle.
 
-**SECTION TOGGLING** — `makeTooltip`, `applyGalleryState`, `attachHeaderBehavior`, `initPageHeaders`
+**SECTION TOGGLING** — `makeTooltip`, `applyGalleryState`, `attachHeaderBehavior`, `initPageHeaders`, `watchTracklistReactUpdate`
 
 `initPageHeaders()` is synchronous. It builds the candidate `nativeH2s` list by querying all h2 elements in `#content`, then applying two filters: (1) exclude already-managed headers (have `ART_HEADER_CLASS`); (2) exclude h2 elements inside `.annotation-body` — MusicBrainz renders Markdown headings in annotation text as real h2 DOM nodes, which must not be treated as section headers.
 
@@ -72,6 +72,8 @@ For each candidate h2, siblings are collected until the loop hits another h2 tag
 `attachHeaderBehavior()` is reused for both native MB headers and the script-created art gallery header. The click handler has an early-return guard for interactive descendants (`button, a, input, select, textarea`) to avoid conflicts when other userscripts (e.g. GenerateRecordingCommentForRelease) append controls inside an `h2`.
 
 Ctrl+Click on any managed header collapses/expands all sections with class `ART_HEADER_CLASS` together.
+
+**React reconciliation guard — `watchTracklistReactUpdate()`**: `div.tracklist-and-credits` is a React-managed component. MB fires an `mb-hydration` custom event on it when React first hydrates it; subsequent state updates (e.g. toggling credits inline vs. at bottom via `#toggle-credits`) trigger synchronous React reconciliation. Because our wrapper `<div>` elements inside the container don't match React's expected VDOM tree, reconciliation fails and empties the container. Fix: `watchTracklistReactUpdate()` attaches a `mousedown` listener on the container (fires before React's `click` handler). When the event target is `#toggle-credits`, it immediately (a) moves every wrapper's children back to their original position and removes the wrapper, and (b) strips `ART_HEADER_CLASS` and our inline styles from the managed `h2`. React then reconciles cleanly against the restored DOM. A `setTimeout(0)` callback re-runs `initPageHeaders()` after React has synchronously committed its update.
 
 **`applyGalleryState` max-height strategy**: initial expanded wrappers carry no `max-height` constraint (`maxHeight: ""`). On expand, the function reads `scrollHeight` and animates to that exact value, then clears `max-height` on `transitionend` so content can resize freely. On collapse from an unconstrained state, it snapshots `scrollHeight` and forces a reflow (`void el.offsetHeight`) before setting `max-height: 0px`, giving CSS a concrete start value. The collapsed state sentinel is `style.maxHeight === "0px"`; the unconstrained expanded state (`""`) is correctly read as "not collapsed" by the same check.
 
@@ -93,7 +95,7 @@ The call is wrapped in an async IIFE at the bottom so `Lib.timeEnd()` fires only
 
 ## Conventions specific to this script
 
-- Execution order: annotation expand (STEP 1) → section toggling (STEP 2) → art gallery (STEP 3, async)
+- Execution order: annotation expand (STEP 1) → section toggling + React guard (STEP 2) → art gallery (STEP 3, async)
 - Both features are guarded by their own `Lib.settings.*` flag at the very top of their function — return early if disabled, log the skip at `debug` level
 - DOM manipulation uses `document.createDocumentFragment()` + `Element.after()` to insert the gallery in a single reflow
 - CSS transitions (`max-height`, `opacity`, `margin`) are used for collapse/expand animation; `max-height: 0` is the collapsed state sentinel checked in click handlers

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - MB Page Enhancer
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      1.0.6+2026-06-19
+// @version      1.0.8+2026-06-19
 // @description  Enhances MusicBrainz pages with additional features
 // @author       vzell
 // @tag          AI generated
@@ -193,7 +193,8 @@
     // ============================================================
     // BEGIN: SECTION TOGGLING
     // Config key : pe_enable_section_toggling
-    // Functions  : makeTooltip, applyGalleryState, attachHeaderBehavior, initPageHeaders
+    // Functions  : makeTooltip, applyGalleryState, attachHeaderBehavior, initPageHeaders,
+    //              watchTracklistReactUpdate
     // ============================================================
 
     /**
@@ -270,6 +271,11 @@
         h2.title = makeTooltip(sectionLabel, startCollapsed);
 
         h2.addEventListener("click", (event) => {
+            // Guard against stale handlers left over after watchTracklistReactUpdate unwraps
+            // and re-inits: the wrapper div (contentEl) is detached from the DOM while a new
+            // one is created.  Firing on a detached wrapper has no visible effect but would
+            // corrupt h2.title via makeTooltip.
+            if (!contentEl.isConnected) return;
             // Ignore clicks that bubbled up from an interactive descendant (button, anchor,
             // input, select, textarea).  Other userscripts (e.g. GenerateRecordingCommentForRelease)
             // legitimately append controls *inside* an h2; without this guard their clicks would
@@ -383,6 +389,73 @@
         });
 
         Lib.info('init', `✅ [initPageHeaders] Section toggling applied to ${count} h2 header(s)${skipped > 0 ? `, ${skipped} skipped (no siblings)` : ""}.`);
+    }
+
+    /**
+     * Prevents section-toggling wrappers from breaking MB's React-managed
+     * "Display credits inline / at bottom" toggle button.
+     *
+     * Root cause: initPageHeaders() inserts extra wrapper <div> elements inside
+     * div.tracklist-and-credits, which is a React-managed component. When
+     * #toggle-credits is clicked, React reconciles its VDOM against the live DOM,
+     * finds our wrapper divs where it expects direct children, and the mismatch
+     * causes it to empty the container entirely.
+     *
+     * Fix: listen for click on #toggle-credits in CAPTURE phase (fires before
+     * React's bubble-phase onClick dispatch, but only after the browser has confirmed
+     * the full click — unlike mousedown, which fires before mouseup and causes the
+     * browser to cancel the subsequent click if the target element moves).
+     * React batches its state update and flushes AFTER all event handlers return, so
+     * unwrapping here gives React a clean DOM to reconcile against. Re-apply
+     * initPageHeaders() via setTimeout(0) after React has synchronously committed.
+     */
+    function watchTracklistReactUpdate() {
+        if (!Lib.settings.pe_enable_section_toggling) return;
+
+        const container = document.querySelector('.tracklist-and-credits');
+        if (!container) {
+            Lib.debug('init', `⏭️  [watchTracklistReactUpdate] No .tracklist-and-credits found — skipping.`);
+            return;
+        }
+
+        // Use click in CAPTURE phase (fires before React's bubble-phase onClick dispatch,
+        // but only after the browser has already confirmed the click — unlike mousedown,
+        // which fires before mouseup and can prevent the click if the target moves).
+        // React batches its state update and only flushes AFTER all event handlers return,
+        // so unwrapping here lets React reconcile against the original DOM structure.
+        container.addEventListener('click', function(e) {
+            if (!e.target.closest('#toggle-credits')) return;
+
+            Lib.debug('toggle', `🔄 [watchTracklistReactUpdate] #toggle-credits clicked (capture) — unwrapping before React reconciles.`);
+
+            // Move each wrapper's children back to their original position, then
+            // remove the now-empty wrapper div.
+            container.querySelectorAll('.' + ART_GALLERY_CLASS).forEach(wrapper => {
+                while (wrapper.firstChild) {
+                    wrapper.before(wrapper.firstChild);
+                }
+                wrapper.remove();
+            });
+
+            // Strip ART_HEADER_CLASS and our inline styles so React's reconciliation
+            // finds a clean h2 matching its VDOM.
+            container.querySelectorAll('h2.' + ART_HEADER_CLASS).forEach(h2 => {
+                h2.classList.remove(ART_HEADER_CLASS);
+                h2.removeAttribute('title');
+                ['cursor', 'user-select', 'background-color', 'padding', 'border-radius'].forEach(p => {
+                    h2.style.removeProperty(p);
+                });
+                delete h2._sectionLabel;
+            });
+
+            // Re-apply after React has synchronously committed its DOM update.
+            setTimeout(() => {
+                Lib.debug('toggle', `🔄 [watchTracklistReactUpdate] Re-applying section toggling after React re-render.`);
+                initPageHeaders();
+            }, 0);
+        }, true); // capture phase: fires before React's bubble-phase onClick dispatch
+
+        Lib.debug('init', `👁️  [watchTracklistReactUpdate] Watching .tracklist-and-credits for #toggle-credits clicks (capture phase).`);
     }
 
     // ============================================================
@@ -575,8 +648,12 @@
             // STEP 2/3 — SECTION TOGGLING
             // Enhance all existing native MB h2 headers (synchronous).
             // Feature-flag guard: pe_enable_section_toggling (inside initPageHeaders).
+            // watchTracklistReactUpdate() registers a mousedown guard so that
+            // clicking #toggle-credits unwraps our modifications before React's
+            // reconciliation runs, preventing the container from being emptied.
             // --------------------------------------------------------
             initPageHeaders();
+            watchTracklistReactUpdate();
 
             const mbid          = mbidMatch[0];
             const isEventPage   = location.pathname.startsWith("/event/");

@@ -1,5 +1,29 @@
 [
   {
+    "version": "1.0.8",
+    "date": "2026-06-19",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed: watchTracklistReactUpdate() used mousedown to intercept #toggle-credits before React reconciled, but moving DOM nodes between mousedown and mouseup caused the browser to cancel the click event (the button shifts screen position during the unwrap, so mouseup no longer lands on it). Changed to click with capture: true instead. The click event is already confirmed by the time capture fires; React batches its state update and only flushes after all handlers return, so unwrapping in the capture phase gives React a clean DOM to reconcile against while still allowing the toggle to work. Added an isConnected guard to the attachHeaderBehavior click handler so stale closures over detached wrapper divs (left by the unwrap/re-init cycle) silently return instead of corrupting h2.title."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "1.0.7",
+    "date": "2026-06-19",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed: clicking 'Display credits inline / at bottom' (#toggle-credits) caused div.tracklist-and-credits to become permanently empty. Root cause: initPageHeaders() wraps the tracklist siblings in extra <div> elements inside div.tracklist-and-credits, a React-managed component. When #toggle-credits is clicked, React reconciles its VDOM against the live DOM, finds the unexpected wrapper divs, and the mismatch empties the container. Fix: added watchTracklistReactUpdate(), which listens for a click on #toggle-credits in capture phase and unwraps our modifications — restoring wrapper children to their original positions and stripping ART_HEADER_CLASS / inline styles from the managed h2 — so React's reconciliation succeeds. initPageHeaders() is then re-applied via setTimeout(0) after React has synchronously committed its re-render."
+        ]
+      }
+    ]
+  },
+  {
     "version": "1.0.6",
     "date": "2026-06-19",
     "sections": [
