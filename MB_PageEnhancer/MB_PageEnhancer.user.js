@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - MB Page Enhancer
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      1.0.5+2026-06-19
+// @version      1.0.6+2026-06-19
 // @description  Enhances MusicBrainz pages with additional features
 // @author       vzell
 // @tag          AI generated
@@ -123,6 +123,21 @@
             type: "checkbox",
             default: false,
             description: "Art gallery starts hidden by default"
+        },
+
+        // ============================================================
+        // ANNOTATION
+        // ============================================================
+        divider_annotation: {
+            type: 'divider',
+            label: '📝 ANNOTATION'
+        },
+
+        pe_auto_expand_annotation: {
+            label: "Auto-expand Annotation",
+            type: "checkbox",
+            default: true,
+            description: "Automatically click 'Show more…' to reveal the full annotation text on page load"
         }
     };
 
@@ -500,6 +515,37 @@
 
 
     // ============================================================
+    // BEGIN: ANNOTATION
+    // Config key : pe_auto_expand_annotation
+    // Functions  : expandAnnotation
+    // ============================================================
+
+    /**
+     * Auto-click the MusicBrainz annotation "Show more…" toggle to reveal the full
+     * annotation text on page load.
+     * Controlled by the pe_auto_expand_annotation setting; exits immediately if disabled
+     * or if no toggle link is present on the page.
+     */
+    function expandAnnotation() {
+        if (!Lib.settings.pe_auto_expand_annotation) {
+            Lib.debug('init', `🚫 [expandAnnotation] Auto-expand annotation is disabled via pe_auto_expand_annotation setting — skipping.`);
+            return;
+        }
+        const toggle = document.querySelector('div.annotation p a.annotation-toggle');
+        if (!toggle) {
+            Lib.debug('init', `⏭️  [expandAnnotation] No annotation "Show more…" link found on this page — skipping.`);
+            return;
+        }
+        toggle.click();
+        Lib.info('init', `✅ [expandAnnotation] Annotation "Show more…" clicked — full annotation text now visible.`);
+    }
+
+    // ============================================================
+    // END: ANNOTATION
+    // ============================================================
+
+
+    // ============================================================
     // EXECUTION
     // Entry point: validates URL/DOM preconditions, then dispatches
     // each feature section in order.
@@ -517,7 +563,16 @@
             Lib.debug('init', `📄 [main] Overview tab is active — proceeding with page enhancements.`);
 
             // --------------------------------------------------------
-            // STEP 1/2 — SECTION TOGGLING
+            // STEP 1/3 — ANNOTATION
+            // Auto-click "Show more…" to reveal the full annotation (synchronous).
+            // Feature-flag guard: pe_auto_expand_annotation (inside expandAnnotation).
+            // Runs before section toggling so the annotation body is fully visible
+            // when the h2 wrappers are constructed.
+            // --------------------------------------------------------
+            expandAnnotation();
+
+            // --------------------------------------------------------
+            // STEP 2/3 — SECTION TOGGLING
             // Enhance all existing native MB h2 headers (synchronous).
             // Feature-flag guard: pe_enable_section_toggling (inside initPageHeaders).
             // --------------------------------------------------------
@@ -534,7 +589,7 @@
             Lib.debug('init', `🌐 [main] Archive URL resolved to: ${archiveUrl}`);
 
             // --------------------------------------------------------
-            // STEP 2/2 — CAA / EAA ILLUSTRATED DISCOGRAPHY
+            // STEP 3/3 — CAA / EAA ILLUSTRATED DISCOGRAPHY
             // Fetch and inject the art gallery (asynchronous).
             // Wrapped in an async IIFE so that Lib.timeEnd() fires only
             // *after* the async gallery rendering resolves, giving an

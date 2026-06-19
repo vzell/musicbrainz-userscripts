@@ -53,10 +53,11 @@ Config keys:
 | `pe_enable_caa_eaa` | checkbox | true | Fetch and inject art gallery |
 | `pe_image_size` | number | 250 | Art thumbnail size in px |
 | `pe_collapsed_by_default` | checkbox | false | Gallery starts hidden |
+| `pe_auto_expand_annotation` | checkbox | true | Auto-click "Show more…" to reveal full annotation |
 
 ### Feature sections (BEGIN/END blocks in source)
 
-The source is divided into three named blocks:
+The source is divided into four named blocks:
 
 **SHARED UTILITIES** — `isOverviewTabActive()`, `ART_HEADER_CLASS`, `ART_GALLERY_CLASS`
 
@@ -74,6 +75,10 @@ Ctrl+Click on any managed header collapses/expands all sections with class `ART_
 
 **`applyGalleryState` max-height strategy**: initial expanded wrappers carry no `max-height` constraint (`maxHeight: ""`). On expand, the function reads `scrollHeight` and animates to that exact value, then clears `max-height` on `transitionend` so content can resize freely. On collapse from an unconstrained state, it snapshots `scrollHeight` and forces a reflow (`void el.offsetHeight`) before setting `max-height: 0px`, giving CSS a concrete start value. The collapsed state sentinel is `style.maxHeight === "0px"`; the unconstrained expanded state (`""`) is correctly read as "not collapsed" by the same check.
 
+**ANNOTATION** — `expandAnnotation`
+
+`expandAnnotation()` is synchronous. It queries `div.annotation p a.annotation-toggle` and calls `.click()` if found, triggering MB's own JS to remove the `annotation-collapsed` class and reveal the full annotation body. Runs as STEP 1/3 in the execution block — before `initPageHeaders()` — so the annotation body is fully expanded when the h2 collapsible wrappers are constructed.
+
 **CAA / EAA ILLUSTRATED DISCOGRAPHY** — `displayArtGallery`
 
 `displayArtGallery()` is async. It fetches from `coverartarchive.org` or `eventartarchive.org` depending on whether the URL starts with `/event/`. A 404 response is silently ignored (no art available). Images are rendered into a flex-wrap gallery `div` inserted after `div.tabs`. Thumbnail priority: `thumbnails["250"]` → `thumbnails.small` → `image` (full size).
@@ -88,7 +93,7 @@ The call is wrapped in an async IIFE at the bottom so `Lib.timeEnd()` fires only
 
 ## Conventions specific to this script
 
-- Section toggling always runs before the art gallery (synchronous first, async second)
+- Execution order: annotation expand (STEP 1) → section toggling (STEP 2) → art gallery (STEP 3, async)
 - Both features are guarded by their own `Lib.settings.*` flag at the very top of their function — return early if disabled, log the skip at `debug` level
 - DOM manipulation uses `document.createDocumentFragment()` + `Element.after()` to insert the gallery in a single reflow
 - CSS transitions (`max-height`, `opacity`, `margin`) are used for collapse/expand animation; `max-height: 0` is the collapsed state sentinel checked in click handlers
