@@ -2,7 +2,7 @@
 // @name         VZ: Springsteen Cover Art Uploader
 // @namespace    https://github.com/vzell/mb-userscripts
 // @description  ArtStation plugin: imports cover art from SpringsteenLyrics.com and Jungleland.it, keyed off the release's external links on MusicBrainz.
-// @version      1.01.000+2026-06-20
+// @version      1.01.001+2026-06-20
 // @author       vzell
 // @tag          AI generated
 // @homepageURL  https://github.com/vzell/mb-userscripts
@@ -110,10 +110,11 @@
     /**
      * Fetch a URL via GM and return the response body as a Blob.
      * @param {string} url
+     * @param {object} [headers] - Optional request headers (e.g. { Referer: '...' })
      * @returns {Promise<Blob>}
      */
-    async function gmFetchBlob(url) {
-        const r = await gmRequest('GET', url, { responseType: 'blob' });
+    async function gmFetchBlob(url, headers = {}) {
+        const r = await gmRequest('GET', url, { responseType: 'blob', headers });
         return r.response;
     }
 
@@ -133,25 +134,6 @@
             doc.head.insertAdjacentElement('beforeend', base);
         }
         return doc;
-    }
-
-    // ── MusicBrainz API ──────────────────────────────────────────────────────
-
-    /**
-     * Return all non-ended URL relationships attached to a release via the MB Web Service.
-     * @param {string} mbid - Release MBID
-     * @returns {Promise<string[]>} - Array of external URL strings
-     */
-    async function getMBExternalURLs(mbid) {
-        const response = await fetch(
-            `https://musicbrainz.org/ws/2/release/${mbid}?inc=url-rels&fmt=json`,
-            { headers: { Accept: 'application/json' } }
-        );
-        if (!response.ok) throw new Error(`MB API returned ${response.status}`);
-        const data = await response.json();
-        return (data.relations ?? [])
-            .filter(rel => !rel.ended)
-            .map(rel => rel.url.resource);
     }
 
     // ── Image extractors ─────────────────────────────────────────────────────
@@ -331,31 +313,25 @@
 
     /**
      * Register both providers with ArtStation's plugin API.
-     * Each provider's run(ctx) keys off the release's external links to find the
-     * source page, then fetches and returns the images in ArtStation format.
+     * ArtStation resolves the release's external links itself using the `match` field,
+     * then passes the matched URL as ctx.link into run(). No MB API call needed here.
      */
     function registerProviders() {
         const springsteenProvider = {
             id: 'springsteenlyrics',
             name: 'SpringsteenLyrics',
             icon: 'https://www.springsteenlyrics.com/favicon.ico',
+            /** ArtStation only shows this button when the release links springsteenlyrics.com. */
+            match: 'springsteenlyrics.com',
 
             /**
-             * @param {{ mbid: string }} ctx
+             * @param {{ mbid: string, link: string }} ctx
              * @returns {Promise<Array<{dataUrl?: string, url?: string, types: string[], comment: string, source: string}>>}
              */
             async run(ctx) {
-                dbg.info(`SpringsteenLyrics provider run: mbid="${ctx.mbid}"`);
+                dbg.info(`SpringsteenLyrics provider run: link="${ctx.link}"`);
 
-                const externalUrls = await getMBExternalURLs(ctx.mbid);
-                dbg.info(`SpringsteenLyrics: ${externalUrls.length} external URL(s)`, externalUrls);
-
-                const slUrl = externalUrls.find(u => /springsteenlyrics\.com\/collection\.php/i.test(u));
-                if (!slUrl) throw new Error('No SpringsteenLyrics link on this release.');
-
-                dbg.info(`SpringsteenLyrics: found source page → ${slUrl}`);
-                const images = await fetchImagesViaPopup(slUrl, ctx.mbid);
-
+                const images = await fetchImagesViaPopup(ctx.link, ctx.mbid);
                 if (!images.length) throw new Error('No images found on the SpringsteenLyrics page.');
 
                 return images.map(img => ({
@@ -372,29 +348,25 @@
             id: 'jungleland',
             name: 'Jungleland.it',
             icon: 'https://www.jungleland.it/favicon.ico',
+            /** ArtStation only shows this button when the release links jungleland.it. */
+            match: 'jungleland.it',
 
             /**
-             * @param {{ mbid: string }} ctx
+             * @param {{ mbid: string, link: string }} ctx
              * @returns {Promise<Array<{blob: Blob, types: string[], comment: string, source: string}>>}
              */
             async run(ctx) {
-                dbg.info(`Jungleland provider run: mbid="${ctx.mbid}"`);
+                dbg.info(`Jungleland provider run: link="${ctx.link}"`);
 
-                const externalUrls = await getMBExternalURLs(ctx.mbid);
-                dbg.info(`Jungleland: ${externalUrls.length} external URL(s)`, externalUrls);
-
-                const jlUrl = externalUrls.find(u => /jungleland\.it\/html\/[^/]+\.htm/i.test(u));
-                if (!jlUrl) throw new Error('No Jungleland.it link on this release.');
-
-                dbg.info(`Jungleland: found source page → ${jlUrl}`);
-                const html = await gmFetch(jlUrl);
-                const images = extractJunglelandImages(html, jlUrl);
-
+                const html = await gmFetch(ctx.link);
+                const images = extractJunglelandImages(html, ctx.link);
                 if (!images.length) throw new Error('No images found on the Jungleland.it page.');
 
                 dbg.info(`Jungleland: fetching ${images.length} image blob(s)…`);
                 return Promise.all(images.map(async img => {
-                    const blob = await gmFetchBlob(img.url);
+                    // Pass Referer to satisfy any hotlink protection on jungleland.it.
+                    const blob = await gmFetchBlob(img.url, { Referer: ctx.link });
+                    dbg.info(`Jungleland blob: type="${blob.type}" size=${blob.size} url="${img.url}"`);
                     return {
                         blob,
                         types: img.types,

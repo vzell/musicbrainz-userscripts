@@ -23,26 +23,31 @@ Called on `musicbrainz.org/release/*/cover-art`. Registers both providers via:
 
 #### Provider contract
 
-Each provider object has `{ id, name, icon, run(ctx) }`. ArtStation calls `run(ctx)` when the user clicks "Import
-from …". `ctx` contains `{ mbid, entity, artist, title, url }`.
+Each provider object has `{ id, name, icon, match, run(ctx) }`. The `match` field (string hostname, string[],
+RegExp, or `(url) => bool`) tells ArtStation which releases to show the button for. ArtStation queries
+`/ws/2/release/<MBID>?inc=url-rels` itself, filters the release's external links against `match`, and only renders
+"Import from …" when there is at least one hit. The matched URL is passed to `run(ctx)` as `ctx.link`
+(`ctx.links` = all matches). `ctx` also carries `{ mbid, entity, artist, title, url }`.
 
 `run(ctx)` returns an array of image descriptors: `{ blob?, dataUrl?, url?, types: string[], comment, source }`.
 ArtStation converts any format to a Blob and stages the images in its gallery for review before the user commits.
 
 #### Supported source sites
 
-Both providers start by calling `getMBExternalURLs(ctx.mbid)` — the MB Web Service
-(`/ws/2/release/<MBID>?inc=url-rels`) — to find the site's URL among the release's external links. No hardcoded
-per-release mapping is needed.
+Both providers declare a `match` hostname; ArtStation resolves the external link and supplies it as `ctx.link`.
+No MB API call in `run()` is needed.
 
-- **springsteenlyrics.com** (`springsteenlyrics` provider) — finds the `collection.php` URL linked on the release,
-  then opens it in a real browser popup (CloudFlare bypass; see below). The popup extracts full-resolution `.jpg`
-  links from the live DOM and fetches each as a `dataUrl` (same-origin, CF cookie valid). Returns
-  `{ dataUrl, types: [], source }` — ArtStation resolves `dataUrl` to a Blob via `fetch()`.
-- **jungleland.it** (`jungleland` provider) — finds the `.htm` artwork page URL, fetches its HTML via
+- **springsteenlyrics.com** (`springsteenlyrics` provider, `match: 'springsteenlyrics.com'`) — opens `ctx.link`
+  in a real browser popup (CloudFlare bypass; see below). The popup extracts full-resolution `.jpg` links from the
+  live DOM and fetches each as a `dataUrl` (same-origin, CF cookie valid). Returns `{ dataUrl, types: [], source }`
+  — ArtStation resolves `dataUrl` to a Blob via `fetch()`.
+- **jungleland.it** (`jungleland` provider, `match: 'jungleland.it'`) — fetches `ctx.link` HTML via
   `GM.xmlHttpRequest` (no CF protection), extracts image links (jpg/jpeg/png, skipping `_tn`/`thumb/`), infers
   artwork type strings (`'Front'`, `'Back'`, `'Booklet'`, `'Medium'`) from filename suffixes
-  (e.g. `19670916_front.jpg`), then fetches each image as a Blob via `gmFetchBlob`. Returns `{ blob, types, source }`.
+  (e.g. `19670916_front.jpg`), then fetches each image as a Blob via `gmFetchBlob` with
+  `Referer: ctx.link` (guards against hotlink protection). Logs `blob.type` and `blob.size` for each image to
+  help diagnose cases where the server returns an HTML error page instead of image bytes. Returns
+  `{ blob, types, source }`.
 
 #### CloudFlare bypass for SpringsteenLyrics (`fetchImagesViaPopup` + `runAsSpringsteenPopup`)
 

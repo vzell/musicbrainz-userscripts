@@ -1,5 +1,19 @@
 [
     {
+        "version": "1.01.001+2026-06-20",
+        "date": "2026-06-20",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Add match field to both providers ('springsteenlyrics.com' and 'jungleland.it'): ArtStation now resolves external links and filters provider buttons itself — 'Import from …' only appears when the release actually links that site. ctx.link supplies the matched URL to run(), removing the need for a getMBExternalURLs() call inside run().",
+                    "Jungleland.it: pass Referer: ctx.link on image blob fetches to satisfy potential hotlink protection.",
+                    "Jungleland.it: log blob.type and blob.size for each fetched image to diagnose cases where the server returns an HTML error page instead of image bytes."
+                ]
+            }
+        ]
+    },
+    {
         "version": "1.01.000+2026-06-20",
         "date": "2026-06-20",
         "sections": [
