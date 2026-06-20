@@ -2,7 +2,7 @@
 // @name         VZ: Springsteen Cover Art Uploader
 // @namespace    https://github.com/vzell/mb-userscripts
 // @description  ArtStation plugin: imports cover art from SpringsteenLyrics.com and Jungleland.it, keyed off the release's external links on MusicBrainz.
-// @version      1.01.001+2026-06-20
+// @version      1.01.002+2026-06-20
 // @author       vzell
 // @tag          AI generated
 // @homepageURL  https://github.com/vzell/mb-userscripts
@@ -13,6 +13,8 @@
 // @match        *://*.musicbrainz.org/release/*/cover-art
 // @match        *://www.springsteenlyrics.com/collection.php*
 // @match        *://springsteenlyrics.com/collection.php*
+// @match        *://www.springsteenlyrics.com/bootlegs.php*
+// @match        *://springsteenlyrics.com/bootlegs.php*
 // @run-at       document-end
 // @connect      musicbrainz.org
 // @connect      www.springsteenlyrics.com
@@ -139,14 +141,15 @@
     // ── Image extractors ─────────────────────────────────────────────────────
 
     /**
-     * Extract full-resolution artwork URLs from a springsteenlyrics.com collection page.
+     * Extract full-resolution artwork URLs from a springsteenlyrics.com collection or bootleg page.
      *
-     * The page lists thumbnails as:
-     *   <a href="collection/.../10028_01.jpg" target="_blank">
-     *     <img src="collection/.../10028_01_tn.jpg">
+     * Both page types use the same thumbnail link structure:
+     *   <a href="collection/.../10028_01.jpg" target="_blank">   ← collection
+     *   <a href="bootlegs/.../6679_artwork_01.jpg" target="_blank">  ← bootleg
+     *     <img src="..._tn.jpg">
      *   </a>
      *
-     * @param {string} html - Raw HTML of the collection page
+     * @param {string} html - Raw HTML of the page
      * @param {string} pageUrl - Absolute URL of the page (for resolving relative hrefs)
      * @returns {Array<{url: string, types: string[], comment: string}>}
      */
@@ -260,7 +263,10 @@
      * Waits for the userscript running inside it to postMessage back the extracted image
      * data (including pre-fetched data URLs), then closes the popup.
      *
-     * @param {string} url - SpringsteenLyrics collection page URL
+     * Works for both collection pages (collection.php?item=…) and bootleg pages
+     * (bootlegs.php?item=…) — the image extraction logic is identical for both.
+     *
+     * @param {string} url - SpringsteenLyrics collection or bootleg page URL
      * @param {string} mbid - Release MBID (cross-check)
      * @returns {Promise<Array<{url: string, types: string[], comment: string, dataUrl?: string}>>}
      */

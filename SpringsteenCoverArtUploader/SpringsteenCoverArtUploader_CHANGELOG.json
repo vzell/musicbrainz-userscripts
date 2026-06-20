@@ -1,5 +1,17 @@
 [
     {
+        "version": "1.01.002+2026-06-20",
+        "date": "2026-06-20",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "SpringsteenLyrics: add support for bootleg releases (bootlegs.php?item=<id>) alongside the existing collection releases (collection.php?item=<id>). Both page types share the same thumbnail link structure so no extractor change is needed — only @match entries for bootlegs.php are added to the userscript header."
+                ]
+            }
+        ]
+    },
+    {
         "version": "1.01.001+2026-06-20",
         "date": "2026-06-20",
         "sections": [

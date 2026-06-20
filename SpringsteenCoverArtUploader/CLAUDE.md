@@ -38,8 +38,12 @@ Both providers declare a `match` hostname; ArtStation resolves the external link
 No MB API call in `run()` is needed.
 
 - **springsteenlyrics.com** (`springsteenlyrics` provider, `match: 'springsteenlyrics.com'`) — opens `ctx.link`
-  in a real browser popup (CloudFlare bypass; see below). The popup extracts full-resolution `.jpg` links from the
-  live DOM and fetches each as a `dataUrl` (same-origin, CF cookie valid). Returns `{ dataUrl, types: [], source }`
+  in a real browser popup (CloudFlare bypass; see below). Supports both URL types on the site:
+  - `collection.php?item=<id>` — official releases
+  - `bootlegs.php?item=<id>` — bootleg releases
+  Both use the same HTML structure (`<a target="_blank" href="*.jpg"><img src="*_tn.jpg"></a>`), so a single
+  `extractSpringsteenImages` function handles both. The popup extracts full-resolution `.jpg` links from the live
+  DOM and fetches each as a `dataUrl` (same-origin, CF cookie valid). Returns `{ dataUrl, types: [], source }`
   — ArtStation resolves `dataUrl` to a Blob via `fetch()`.
 - **jungleland.it** (`jungleland` provider, `match: 'jungleland.it'`) — fetches `ctx.link` HTML via
   `GM.xmlHttpRequest` (no CF protection), extracts image links (jpg/jpeg/png, skipping `_tn`/`thumb/`), infers
