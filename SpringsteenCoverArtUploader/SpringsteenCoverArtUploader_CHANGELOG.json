@@ -1,5 +1,17 @@
 [
     {
+        "version": "1.01.005+2026-06-21",
+        "date": "2026-06-21",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Jungleland.it: images now render in the ArtStation gallery. The previous approach (gmFetchDataUrl → data URL string) produced blobs that passed ArtStation's off-DOM test but failed to display in the in-DOM gallery img element. Reverted to returning plain { url } objects so ArtStation's own providerBlob → gmFetch downloads the bytes in its own realm — the documented robust default for non-CloudFlare-protected sites. Removes gmFetchDataUrl, which is no longer needed."
+                ]
+            }
+        ]
+    },
+    {
         "version": "1.01.004+2026-06-20",
         "date": "2026-06-20",
         "sections": [

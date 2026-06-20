@@ -2,7 +2,7 @@
 // @name         VZ: Springsteen Cover Art Uploader
 // @namespace    https://github.com/vzell/mb-userscripts
 // @description  ArtStation plugin: imports cover art from SpringsteenLyrics.com and Jungleland.it, keyed off the release's external links on MusicBrainz.
-// @version      1.01.004+2026-06-20
+// @version      1.01.005+2026-06-21
 // @author       vzell
 // @tag          AI generated
 // @homepageURL  https://github.com/vzell/mb-userscripts
@@ -107,25 +107,6 @@
     async function gmFetch(url) {
         const r = await gmRequest('GET', url);
         return r.responseText ?? '';
-    }
-
-    /**
-     * Fetch a URL via GM and return it as a data URL string.
-     * Uses GM.xmlHttpRequest (CORS-free) to retrieve the bytes, then converts via
-     * FileReader so the result is a plain string that crosses the userscript sandbox
-     * boundary cleanly — unlike a Blob object, which may not be usable across sandboxes.
-     * @param {string} url
-     * @param {object} [headers] - Optional request headers (e.g. { Referer: '...' })
-     * @returns {Promise<string>} data URL (e.g. "data:image/jpeg;base64,…")
-     */
-    async function gmFetchDataUrl(url, headers = {}) {
-        const r = await gmRequest('GET', url, { responseType: 'blob', headers });
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(/** @type {string} */ (reader.result));
-            reader.onerror = reject;
-            reader.readAsDataURL(r.response);
-        });
     }
 
     // ── DOM helpers ──────────────────────────────────────────────────────────
@@ -369,7 +350,7 @@
 
             /**
              * @param {{ mbid: string, link: string }} ctx
-             * @returns {Promise<Array<{dataUrl: string, types: string[], comment: string, source: string}>>}
+             * @returns {Promise<Array<{url: string, types: string[], comment: string, source: string}>>}
              */
             async run(ctx) {
                 dbg.info(`Jungleland provider run: link="${ctx.link}"`);
@@ -378,18 +359,14 @@
                 const images = extractJunglelandImages(html, ctx.link);
                 if (!images.length) throw new Error('No images found on the Jungleland.it page.');
 
-                dbg.info(`Jungleland: fetching ${images.length} image(s) as data URLs…`);
-                return Promise.all(images.map(async img => {
-                    // GM.xmlHttpRequest bypasses CORS; FileReader converts the blob to a
-                    // plain string so it crosses the userscript sandbox boundary cleanly.
-                    const dataUrl = await gmFetchDataUrl(img.url, { Referer: ctx.link });
-                    dbg.info(`Jungleland dataUrl: ${dataUrl.length} chars url="${img.url}"`);
-                    return {
-                        dataUrl,
-                        types: img.types,
-                        comment: img.comment,
-                        source: img.url,
-                    };
+                // Return plain URLs — ArtStation's own providerBlob → gmFetch downloads
+                // the image bytes in its own realm, which is the robust default for sites
+                // not protected by CloudFlare.
+                return images.map(img => ({
+                    url: img.url,
+                    types: img.types,
+                    comment: img.comment,
+                    source: img.url,
                 }));
             },
         };
