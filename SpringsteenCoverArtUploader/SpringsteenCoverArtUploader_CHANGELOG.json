@@ -1,5 +1,22 @@
 [
     {
+        "version": "1.01.000+2026-06-20",
+        "date": "2026-06-20",
+        "sections": [
+            {
+                "label": "🔧 Refactor",
+                "items": [
+                    "Rewrite as an ArtStation plugin: register two providers (SpringsteenLyrics and Jungleland.it) via window.ArtStation.registerProvider() / artstation:register-provider CustomEvent instead of injecting standalone upload buttons.",
+                    "Each provider's run(ctx) keys off the release's external links (MB Web Service url-rels) to discover its source page — no hardcoded URL mapping needed.",
+                    "Remove the GM-storage queue, /add-cover-art page handler, and all upload machinery (dropFile, setImageParameters, processUploadQueue, dataUrlToFile) — ArtStation owns the staging and upload flow.",
+                    "Change Jungleland.it type inference to return ArtStation string names ('Front', 'Back', 'Booklet', 'Medium') instead of numeric MB type IDs.",
+                    "Retain the popup strategy for SpringsteenLyrics (CloudFlare bypass): the popup fetches image binaries as data URLs and postMessages them back; ArtStation resolves dataUrl to a Blob via fetch().",
+                    "Remove @match for /add-cover-art, and all GM_setValue / GM_getValue / GM_deleteValue grants — no longer needed."
+                ]
+            }
+        ]
+    },
+    {
         "version": "1.00.004+2026-06-19",
         "date": "2026-06-19",
         "sections": [
