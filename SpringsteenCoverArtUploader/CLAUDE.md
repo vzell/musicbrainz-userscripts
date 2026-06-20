@@ -48,10 +48,10 @@ No MB API call in `run()` is needed.
 - **jungleland.it** (`jungleland` provider, `match: 'jungleland.it'`) — fetches `ctx.link` HTML via
   `GM.xmlHttpRequest` (no CF protection), extracts image links (jpg/jpeg/png, skipping `_tn`/`thumb/`), infers
   artwork type strings (`'Front'`, `'Back'`, `'Booklet'`, `'Medium'`) from filename suffixes
-  (e.g. `19670916_front.jpg`), then fetches each image as a Blob via `gmFetchBlob` with
-  `Referer: ctx.link` (guards against hotlink protection). Logs `blob.type` and `blob.size` for each image to
-  help diagnose cases where the server returns an HTML error page instead of image bytes. Returns
-  `{ blob, types, source }`.
+  (e.g. `19670916_front.jpg`), then fetches each image via `gmFetchDataUrl` — `GM.xmlHttpRequest`
+  (CORS-free, `Referer: ctx.link` for hotlink protection) followed by `FileReader.readAsDataURL()`. Returns
+  `{ dataUrl, types, source }`. Using `dataUrl` rather than a raw `Blob` ensures the value crosses the
+  userscript sandbox boundary cleanly; ArtStation resolves it via `fetch(dataUrl).then(r => r.blob())`.
 
 #### CloudFlare bypass for SpringsteenLyrics (`fetchImagesViaPopup` + `runAsSpringsteenPopup`)
 

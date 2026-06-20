@@ -1,5 +1,17 @@
 [
     {
+        "version": "1.01.004+2026-06-20",
+        "date": "2026-06-20",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Jungleland.it: return dataUrl strings instead of Blob objects so images cross the userscript sandbox boundary cleanly and render correctly in ArtStation. Replaces gmFetchBlob with gmFetchDataUrl which pipes GM.xmlHttpRequest (CORS-free, Referer header retained) through FileReader.readAsDataURL()."
+                ]
+            }
+        ]
+    },
+    {
         "version": "1.01.003+2026-06-20",
         "date": "2026-06-20",
         "sections": [
