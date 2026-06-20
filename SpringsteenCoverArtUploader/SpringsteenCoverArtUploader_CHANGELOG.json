@@ -1,5 +1,17 @@
 [
     {
+        "version": "1.01.003+2026-06-20",
+        "date": "2026-06-20",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "SpringsteenLyrics popup: fix postMessage silently discarded when the external link is stored as http:// but the site redirects to https://. The origin check now compares hostnames instead of full origins, so the http→https redirect no longer causes a mismatch."
+                ]
+            }
+        ]
+    },
+    {
         "version": "1.01.002+2026-06-20",
         "date": "2026-06-20",
         "sections": [

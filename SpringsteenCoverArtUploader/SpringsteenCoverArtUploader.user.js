@@ -2,7 +2,7 @@
 // @name         VZ: Springsteen Cover Art Uploader
 // @namespace    https://github.com/vzell/mb-userscripts
 // @description  ArtStation plugin: imports cover art from SpringsteenLyrics.com and Jungleland.it, keyed off the release's external links on MusicBrainz.
-// @version      1.01.002+2026-06-20
+// @version      1.01.003+2026-06-20
 // @author       vzell
 // @tag          AI generated
 // @homepageURL  https://github.com/vzell/mb-userscripts
@@ -298,7 +298,9 @@
 
             /** @param {MessageEvent} event */
             function onMessage(event) {
-                if (event.origin !== new URL(url).origin) {
+                // Compare hostnames, not full origins: the external link may be http:// but
+                // the site redirects to https://, so the popup's postMessage origin is https://.
+                if (new URL(event.origin).hostname !== new URL(url).hostname) {
                     dbg.warn(`fetchImagesViaPopup: ignoring message from unexpected origin "${event.origin}"`);
                     return;
                 }
