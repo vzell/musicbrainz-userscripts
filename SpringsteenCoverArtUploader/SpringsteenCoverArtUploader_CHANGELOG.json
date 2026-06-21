@@ -1,5 +1,17 @@
 [
     {
+        "version": "1.02.003+2026-06-21",
+        "date": "2026-06-21",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Add icons for BruceBase and Jungeland.it."
+                ]
+            }
+        ]
+    },
+    {
         "version": "1.02.002+2026-06-21",
         "date": "2026-06-21",
         "sections": [

@@ -531,6 +531,7 @@
         const junglelandProvider = {
             id: 'jungleland',
             name: 'Jungleland.it',
+            icon: 'https://volkerzell.de/favicons/jungleland-it.png',
             /** ArtStation only shows this button when the release links jungleland.it. */
             match: 'jungleland.it',
 
@@ -560,6 +561,7 @@
         const brucebaseProvider = {
             id: 'brucebase',
             name: 'BruceBase',
+            icon: 'https://volkerzell.de/favicons/brucebase.png',
             /** ArtStation only shows this button when the event links brucebase.wikidot.com with a year+anchor URL. */
             match: url => /^https?:\/\/brucebase\.wikidot\.com\/\d{4}#\w/.test(url),
 
