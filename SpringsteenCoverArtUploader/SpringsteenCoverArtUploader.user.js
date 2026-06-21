@@ -2,7 +2,7 @@
 // @name         VZ: Springsteen Cover Art Uploader
 // @namespace    https://github.com/vzell/mb-userscripts
 // @description  ArtStation plugin: imports cover art from SpringsteenLyrics.com and Jungleland.it, keyed off the release's external links on MusicBrainz.
-// @version      1.01.006+2026-06-21
+// @version      1.02.000+2026-06-21
 // @author       vzell
 // @tag          AI generated
 // @homepageURL  https://github.com/vzell/mb-userscripts
@@ -11,6 +11,7 @@
 // @updateURL    https://raw.githubusercontent.com/vzell/mb-userscripts/master/SpringsteenCoverArtUploader.user.js
 // @icon         https://volkerzell.de/favicons/springsteenlyrics.ico
 // @match        *://*.musicbrainz.org/release/*/cover-art
+// @match        *://*.musicbrainz.org/event/*/event-art
 // @match        *://www.springsteenlyrics.com/collection.php*
 // @match        *://springsteenlyrics.com/collection.php*
 // @match        *://www.springsteenlyrics.com/bootlegs.php*
@@ -21,6 +22,7 @@
 // @connect      springsteenlyrics.com
 // @connect      www.jungleland.it
 // @connect      jungleland.it
+// @connect      brucebase.wikidot.com
 // @grant        GM_xmlhttpRequest
 // @grant        GM.xmlHttpRequest
 // @license      MIT
@@ -239,6 +241,86 @@
             });
     }
 
+    // ── BruceBase helpers ────────────────────────────────────────────────────
+
+    /**
+     * Given the HTML of a BruceBase year overview page and a date anchor (e.g. "150924c"),
+     * find the href of the event entry that follows the named anchor and return the
+     * corresponding "news:" URL (replacing the original category prefix).
+     *
+     * Year page structure:
+     *   <p><a name="150924c"></a><br>
+     *     <strong><a href="http://brucebase.wikidot.com/gig:2024-09-15c-…">…</a></strong>
+     *   </p>
+     *
+     * @param {string} html    - Raw HTML of the year page
+     * @param {string} anchor  - The anchor id from the URL fragment (e.g. "150924c")
+     * @param {string} pageUrl - Absolute URL of the year page (for base-tag resolution)
+     * @returns {string|null}  - Absolute "news:" URL, or null if not found
+     */
+    function extractBrucebaseNewsUrl(html, anchor, pageUrl) {
+        const doc = parseDOM(html, pageUrl);
+        const anchorEl = doc.querySelector(`a[name="${anchor}"]`);
+        if (!anchorEl) {
+            dbg.warn(`extractBrucebaseNewsUrl: anchor "${anchor}" not found`);
+            return null;
+        }
+        const para = anchorEl.closest('p') ?? anchorEl.parentElement;
+        const link = para?.querySelector('a[href*="brucebase.wikidot.com/"]');
+        if (!link) {
+            dbg.warn(`extractBrucebaseNewsUrl: no wikidot link near anchor "${anchor}"`);
+            return null;
+        }
+        const href = link.getAttribute('href') ?? '';
+        // Replace the category prefix (gig:, nogig:, rehearsal:, promo:, …) with "news:"
+        const newsUrl = href.replace(/(https?:\/\/brucebase\.wikidot\.com\/)([^:]+):/, '$1news:');
+        dbg.log(`extractBrucebaseNewsUrl: "${anchor}" → ${newsUrl}`);
+        return newsUrl;
+    }
+
+    /**
+     * Extract full-resolution image URLs from a BruceBase news (event) page.
+     *
+     * Two link patterns are used by BruceBase:
+     *   1. Direct files:    http://brucebase.wdfiles.com/local--files/{page}/{file}.jpg
+     *      (identified by class="with-lb" on the <a>; used for candid/pass/setlist images)
+     *   2. Resized images:  http://brucebase.wdfiles.com/local--resized-images/{page}/{file}/medium.jpg
+     *      (used for posters, banners, merchandise, etc.)
+     *      Full-res URL = replace "local--resized-images" with "local--files" and strip "/medium.jpg"
+     *
+     * @param {string} html    - Raw HTML of the news page
+     * @param {string} newsUrl - Absolute URL of the news page (for base-tag resolution)
+     * @returns {Array<{url: string, types: string[], comment: string}>}
+     */
+    function extractBrucebaseImages(html, newsUrl) {
+        const doc = parseDOM(html, newsUrl);
+        const seen = new Set();
+        const images = [];
+
+        doc.querySelectorAll('a[href*="brucebase.wdfiles.com"]').forEach(a => {
+            const href = a.getAttribute('href') ?? '';
+            let url;
+            if (href.includes('/local--files/')) {
+                if (!/\.(jpg|jpeg|png|gif)$/i.test(href)) return;
+                url = href;
+            } else if (href.includes('/local--resized-images/')) {
+                url = href
+                    .replace('/local--resized-images/', '/local--files/')
+                    .replace(/\/medium\.jpg$/, '');
+            } else {
+                return;
+            }
+            url = new URL(url, newsUrl).href;
+            if (seen.has(url)) return;
+            seen.add(url);
+            dbg.log(`  → ${url}`);
+            images.push({ url, types: [], comment: '' });
+        });
+
+        dbg.info(`extractBrucebaseImages: found ${images.length} image(s)`);
+        return images;
+    }
+
     // ── Popup strategy (SpringsteenLyrics — CloudFlare bypass) ───────────────
 
     /**
@@ -306,11 +388,11 @@
         });
     }
 
-    // ── ArtStation provider registration (runs on /release/*/cover-art) ──────
+    // ── ArtStation provider registration (runs on cover-art and event-art pages) ──
 
     /**
-     * Register both providers with ArtStation's plugin API.
-     * ArtStation resolves the release's external links itself using the `match` field,
+     * Register all providers with ArtStation's plugin API.
+     * ArtStation resolves the entity's external links itself using the `match` field,
      * then passes the matched URL as ctx.link into run(). No MB API call needed here.
      */
     function registerProviders() {
@@ -370,14 +452,54 @@
             },
         };
 
+        const brucebaseProvider = {
+            id: 'brucebase',
+            name: 'BruceBase',
+            /** ArtStation only shows this button when the event links brucebase.wikidot.com with a year+anchor URL. */
+            match: url => /^https?:\/\/brucebase\.wikidot\.com\/\d{4}#\w/.test(url),
+
+            /**
+             * @param {{ mbid: string, link: string }} ctx
+             *   ctx.link = "http://brucebase.wikidot.com/<year>#<anchor>"
+             * @returns {Promise<Array<{url: string, types: string[], comment: string, source: string}>>}
+             */
+            async run(ctx) {
+                dbg.info(`BruceBase provider run: link="${ctx.link}"`);
+
+                const hashIdx = ctx.link.indexOf('#');
+                if (hashIdx === -1) throw new Error(
+                    'BruceBase link has no anchor — expected http://brucebase.wikidot.com/<year>#<anchor>'
+                );
+                const yearPageUrl = ctx.link.slice(0, hashIdx);
+                const anchor = ctx.link.slice(hashIdx + 1);
+
+                const yearHtml = await gmFetch(yearPageUrl);
+                const newsUrl = extractBrucebaseNewsUrl(yearHtml, anchor, yearPageUrl);
+                if (!newsUrl) throw new Error(`No event link found for anchor "${anchor}" on ${yearPageUrl}`);
+
+                const newsHtml = await gmFetch(newsUrl);
+                const images = extractBrucebaseImages(newsHtml, newsUrl);
+                if (!images.length) throw new Error('No images found on the BruceBase event page.');
+
+                return images.map(img => ({
+                    url: img.url,
+                    types: img.types,
+                    comment: img.comment,
+                    source: img.url,
+                }));
+            },
+        };
+
         // Both registration paths are safe to fire — ArtStation de-dupes by id,
         // and a late registration refreshes an open Source popover.
         window.ArtStation?.registerProvider(springsteenProvider);
         window.ArtStation?.registerProvider(junglelandProvider);
+        window.ArtStation?.registerProvider(brucebaseProvider);
         document.dispatchEvent(new CustomEvent('artstation:register-provider', { detail: springsteenProvider }));
         document.dispatchEvent(new CustomEvent('artstation:register-provider', { detail: junglelandProvider }));
+        document.dispatchEvent(new CustomEvent('artstation:register-provider', { detail: brucebaseProvider }));
 
-        dbg.info('registerProviders: SpringsteenLyrics and Jungleland providers registered');
+        dbg.info('registerProviders: SpringsteenLyrics, Jungleland and BruceBase providers registered');
     }
 
     // ── Popup-side runner (springsteenlyrics.com) ────────────────────────────
@@ -469,8 +591,8 @@
     if (host === 'springsteenlyrics.com') {
         dbg.info('init: springsteenlyrics.com → runAsSpringsteenPopup()');
         runAsSpringsteenPopup();
-    } else if (/\/release\/[a-f0-9-]+\/cover-art$/.test(path)) {
-        dbg.info('init: cover-art page → registerProviders()');
+    } else if (/\/(release|event)\/[a-f0-9-]+\/(cover|event)-art$/.test(path)) {
+        dbg.info('init: art page → registerProviders()');
         registerProviders();
     } else {
         dbg.warn(`init: host+path matched no handler`);

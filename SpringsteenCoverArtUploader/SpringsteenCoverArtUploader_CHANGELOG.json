@@ -1,5 +1,18 @@
 [
     {
+        "version": "1.02.000+2026-06-21",
+        "date": "2026-06-21",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Add BruceBase provider for MusicBrainz event-art pages. Matches external links of the form http://brucebase.wikidot.com/<year>#<anchor>. run() fetches the year overview page, locates the named anchor, extracts the href of the event entry (gig:/nogig:/rehearsal:/… prefix), rewrites it to news:, fetches the news page, and returns all gallery images. Two URL patterns are supported: local--files links (direct full-res JPEGs, class=with-lb) and local--resized-images links (medium thumbnails transformed to full-res by replacing the path prefix and stripping /medium.jpg). Types are left empty for the user to assign.",
+                    "Add @match for /event/*/event-art and @connect brucebase.wikidot.com to the userscript header. Update entry-point path regex to activate registerProviders() on both cover-art and event-art pages."
+                ]
+            }
+        ]
+    },
+    {
         "version": "1.01.006+2026-06-21",
         "date": "2026-06-21",
         "sections": [
