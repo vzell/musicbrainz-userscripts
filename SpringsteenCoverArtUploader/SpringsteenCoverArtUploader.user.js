@@ -2,7 +2,7 @@
 // @name         VZ: Springsteen Cover Art Uploader
 // @namespace    https://github.com/vzell/mb-userscripts
 // @description  ArtStation plugin: imports cover art from SpringsteenLyrics.com and Jungleland.it, keyed off the release's external links on MusicBrainz.
-// @version      1.01.005+2026-06-21
+// @version      1.01.006+2026-06-21
 // @author       vzell
 // @tag          AI generated
 // @homepageURL  https://github.com/vzell/mb-userscripts
@@ -344,7 +344,6 @@
         const junglelandProvider = {
             id: 'jungleland',
             name: 'Jungleland.it',
-            icon: 'https://www.jungleland.it/favicon.ico',
             /** ArtStation only shows this button when the release links jungleland.it. */
             match: 'jungleland.it',
 

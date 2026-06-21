@@ -23,7 +23,8 @@ Called on `musicbrainz.org/release/*/cover-art`. Registers both providers via:
 
 #### Provider contract
 
-Each provider object has `{ id, name, icon, match, run(ctx) }`. The `match` field (string hostname, string[],
+Each provider object has `{ id, name, match, run(ctx) }`. **Do not set `icon`** — see
+[Known ArtStation quirks](#known-artstation-quirks) below. The `match` field (string hostname, string[],
 RegExp, or `(url) => bool`) tells ArtStation which releases to show the button for. ArtStation queries
 `/ws/2/release/<MBID>?inc=url-rels` itself, filters the release's external links against `match`, and only renders
 "Import from …" when there is at least one hit. The matched URL is passed to `run(ctx)` as `ctx.link`
@@ -48,10 +49,9 @@ No MB API call in `run()` is needed.
 - **jungleland.it** (`jungleland` provider, `match: 'jungleland.it'`) — fetches `ctx.link` HTML via
   `GM.xmlHttpRequest` (no CF protection), extracts image links (jpg/jpeg/png, skipping `_tn`/`thumb/`), infers
   artwork type strings (`'Front'`, `'Back'`, `'Booklet'`, `'Medium'`) from filename suffixes
-  (e.g. `19670916_front.jpg`), then fetches each image via `gmFetchDataUrl` — `GM.xmlHttpRequest`
-  (CORS-free, `Referer: ctx.link` for hotlink protection) followed by `FileReader.readAsDataURL()`. Returns
-  `{ dataUrl, types, source }`. Using `dataUrl` rather than a raw `Blob` ensures the value crosses the
-  userscript sandbox boundary cleanly; ArtStation resolves it via `fetch(dataUrl).then(r => r.blob())`.
+  (e.g. `19670916_front.jpg`). Returns `{ url, types, source }` with plain image URLs — no byte fetching
+  in the provider. ArtStation's own `providerBlob → gmFetch` downloads the bytes in its own realm,
+  which is the robust default for sites without CloudFlare protection.
 
 #### CloudFlare bypass for SpringsteenLyrics (`fetchImagesViaPopup` + `runAsSpringsteenPopup`)
 
@@ -67,9 +67,27 @@ fingerprint mismatch). The fix:
 
 #### GM compatibility
 
-Wraps `GM.xmlHttpRequest` / `GM_xmlhttpRequest` in thin Promise-based helpers (`gmRequest`, `gmFetch`,
-`gmFetchBlob`) so the script works with both the legacy and modern Greasemonkey/Tampermonkey APIs. GM storage
+Wraps `GM.xmlHttpRequest` / `GM_xmlhttpRequest` in thin Promise-based helpers (`gmRequest`, `gmFetch`)
+so the script works with both the legacy and modern Greasemonkey/Tampermonkey APIs. GM storage
 grants (`setValue`/`getValue`/`deleteValue`) are **not** used — ArtStation owns the staging flow entirely.
+
+### Known ArtStation quirks
+
+#### Do not set `icon` on providers — it breaks gallery thumbnails
+
+ArtStation's `wire()` runs **before** `hydrateImgs()` on every `render()` call. It does
+`th.querySelector('img')` inside each `.as-thumb` to locate the gallery image. For `_new` items,
+`thumbImg()` emits `<span class="as-imghost">` (not an `<img>`), so there is no gallery image in
+`.as-thumb` at `wire()` time.
+
+If a provider sets `icon`, ArtStation injects `<span class="as-prov"><img src="${icon}"></span>`
+inside `.as-thumb`. That badge `<img>` is the **first — and only — img** `wire()` finds. It assigns
+the gallery-image `onerror` handler to the favicon instead. When the favicon URL returns 404, that
+handler fires `th.classList.add('na')`, and the CSS rule `.as-thumb.na img { display:none }` hides
+**all** imgs inside `.as-thumb` — including the gallery JPEG that `hydrateImgs()` subsequently
+inserts. The gallery card appears with correct dimensions but a blank thumbnail.
+
+**Rule: omit `icon` from every provider object.**
 
 ### Changelog and versioning
 

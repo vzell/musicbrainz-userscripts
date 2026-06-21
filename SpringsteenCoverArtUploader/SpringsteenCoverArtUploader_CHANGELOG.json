@@ -1,5 +1,17 @@
 [
     {
+        "version": "1.01.006+2026-06-21",
+        "date": "2026-06-21",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Jungleland.it: remove the provider icon field. ArtStation's wire() function runs before hydrateImgs() and calls th.querySelector('img') to find the gallery image inside .as-thumb. For new provider-sourced items, thumbImg() returns an <span> placeholder (not an <img>), but the provider-badge favicon <img> is already present inside .as-thumb. wire() therefore misassigns the gallery-image onerror handler to the favicon: when www.jungleland.it/favicon.ico returns 404 that handler fires th.classList.add('na'), and the CSS rule .as-thumb.na img { display:none } hides the gallery JPEG that hydrateImgs() later inserts. Removing the icon property omits the badge entirely, leaves no stray <img> in .as-thumb at wire() time, and lets the gallery thumbnail render correctly."
+                ]
+            }
+        ]
+    },
+    {
         "version": "1.01.005+2026-06-21",
         "date": "2026-06-21",
         "sections": [
