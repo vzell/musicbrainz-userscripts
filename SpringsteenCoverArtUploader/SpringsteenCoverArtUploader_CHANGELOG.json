@@ -1,5 +1,17 @@
 [
     {
+        "version": "1.02.001+2026-06-21",
+        "date": "2026-06-21",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "BruceBase: extractBrucebaseNewsUrl: replace DOMParser-based anchor lookup with a bounded regex on the raw HTML string. The rendered debug file and the live HTTP response differ in DOM structure (the anchor is outside a <p> in the raw response), causing closest('p') to return null and the link search to silently short-circuit. The regex matches <a name=\"…\"> followed within 150 characters by <strong><a href>, then extracts the category:slug to build the news: URL — works for both absolute and relative href forms."
+                ]
+            }
+        ]
+    },
+    {
         "version": "1.02.000+2026-06-21",
         "date": "2026-06-21",
         "sections": [

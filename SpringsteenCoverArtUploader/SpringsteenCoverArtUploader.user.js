@@ -2,7 +2,7 @@
 // @name         VZ: Springsteen Cover Art Uploader
 // @namespace    https://github.com/vzell/mb-userscripts
 // @description  ArtStation plugin: imports cover art from SpringsteenLyrics.com and Jungleland.it, keyed off the release's external links on MusicBrainz.
-// @version      1.02.000+2026-06-21
+// @version      1.02.001+2026-06-21
 // @author       vzell
 // @tag          AI generated
 // @homepageURL  https://github.com/vzell/mb-userscripts
@@ -248,32 +248,40 @@
      * find the href of the event entry that follows the named anchor and return the
      * corresponding "news:" URL (replacing the original category prefix).
      *
-     * Year page structure:
-     *   <p><a name="150924c"></a><br>
-     *     <strong><a href="http://brucebase.wikidot.com/gig:2024-09-15c-…">…</a></strong>
-     *   </p>
+     * Year page structure in the raw HTTP response:
+     *   <a name="150924c"></a><br>
+     *   <strong><a href="/gig:2024-09-15c-…">…</a></strong>
      *
-     * @param {string} html    - Raw HTML of the year page
-     * @param {string} anchor  - The anchor id from the URL fragment (e.g. "150924c")
-     * @param {string} pageUrl - Absolute URL of the year page (for base-tag resolution)
-     * @returns {string|null}  - Absolute "news:" URL, or null if not found
+     * Note: DOMParser is not used here because the saved/rendered HTML differs from the
+     * raw HTTP response in ways that break closest('p') lookups. A bounded regex on the
+     * raw string is simpler and avoids those structural differences entirely.
+     *
+     * @param {string} html   - Raw HTML of the year page
+     * @param {string} anchor - The anchor id from the URL fragment (e.g. "150924c")
+     * @returns {string|null} - Absolute "news:" URL, or null if not found
      */
-    function extractBrucebaseNewsUrl(html, anchor, pageUrl) {
-        const doc = parseDOM(html, pageUrl);
-        const anchorEl = doc.querySelector(`a[name="${anchor}"]`);
-        if (!anchorEl) {
-            dbg.warn(`extractBrucebaseNewsUrl: anchor "${anchor}" not found`);
+    function extractBrucebaseNewsUrl(html, anchor) {
+        const escaped = anchor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Match the named anchor followed within ~150 chars by the title <strong><a href>
+        const re = new RegExp(
+            `<a[^>]*\\bname=["']?${escaped}["']?[^>]*>[\\s\\S]{0,150}` +
+            `<strong[^>]*>\\s*<a[^>]+href=["']([^"']+)["']`,
+            'i'
+        );
+        const m = html.match(re);
+        if (!m) {
+            dbg.warn(`extractBrucebaseNewsUrl: anchor "${anchor}" or title link not found`);
             return null;
         }
-        const para = anchorEl.closest('p') ?? anchorEl.parentElement;
-        const link = para?.querySelector('a[href*="brucebase.wikidot.com/"]');
-        if (!link) {
-            dbg.warn(`extractBrucebaseNewsUrl: no wikidot link near anchor "${anchor}"`);
+        const href = m[1];
+        // href may be absolute ("http://brucebase.wikidot.com/gig:slug")
+        // or relative ("/gig:slug") — extract the slug after the colon.
+        const slugMatch = href.match(/\/([^/:]+):([^?#\s"']+)/);
+        if (!slugMatch) {
+            dbg.warn(`extractBrucebaseNewsUrl: unrecognised href format "${href}"`);
             return null;
         }
-        const href = link.getAttribute('href') ?? '';
-        // Replace the category prefix (gig:, nogig:, rehearsal:, promo:, …) with "news:"
-        const newsUrl = href.replace(/(https?:\/\/brucebase\.wikidot\.com\/)([^:]+):/, '$1news:');
+        const newsUrl = `http://brucebase.wikidot.com/news:${slugMatch[2]}`;
         dbg.log(`extractBrucebaseNewsUrl: "${anchor}" → ${newsUrl}`);
         return newsUrl;
     }
@@ -474,7 +482,7 @@
                 const anchor = ctx.link.slice(hashIdx + 1);
 
                 const yearHtml = await gmFetch(yearPageUrl);
-                const newsUrl = extractBrucebaseNewsUrl(yearHtml, anchor, yearPageUrl);
+                const newsUrl = extractBrucebaseNewsUrl(yearHtml, anchor);
                 if (!newsUrl) throw new Error(`No event link found for anchor "${anchor}" on ${yearPageUrl}`);
 
                 const newsHtml = await gmFetch(newsUrl);
