@@ -2,7 +2,7 @@
 // @name         VZ: Springsteen Cover Art Uploader
 // @namespace    https://github.com/vzell/mb-userscripts
 // @description  ArtStation plugin: imports cover art from SpringsteenLyrics.com and Jungleland.it, keyed off the release's external links on MusicBrainz.
-// @version      1.02.001+2026-06-21
+// @version      1.02.002+2026-06-21
 // @author       vzell
 // @tag          AI generated
 // @homepageURL  https://github.com/vzell/mb-userscripts
@@ -287,6 +287,102 @@
     }
 
     /**
+     * Infer MusicBrainz event-art type(s) and comment from a BruceBase image URL.
+     *
+     * BruceBase filename convention (basename without extension):
+     *   YYYYMMDD[char]_Category_Number[_Qualifier…]
+     *
+     * Qualifier capitalisation: all-ASCII-uppercase tokens (GA, VIP, SHN) keep
+     * their case; all others are lowercased.  For Wristband images consecutive
+     * non-all-caps qualifiers are space-joined into one phrase so that
+     * GA_Sun_Pass becomes "wristband, GA, sun pass" rather than
+     * "wristband, GA, sun, pass".
+     *
+     * Valid event-art types (ArtStation EVENT_TYPES):
+     *   Poster, Flyer, Banner, Program, Setlist, Schedule, Ticket,
+     *   Map, Logo, Merchandise, Raw/Unedited, Watermark
+     *
+     * @param {string} url - Full image URL (filename extracted from last path segment)
+     * @returns {{ types: string[], comment: string }}
+     */
+    function inferBrucebaseTypesAndComment(url) {
+        const basename = (url.split('/').pop() ?? '').replace(/\.[^.]+$/, '');
+        const parts = basename.split('_');
+        if (parts.length < 2) return { types: [], comment: '' };
+
+        const category = parts[1];
+        const rawQualifiers = parts.slice(3);
+
+        const isAllCaps = q => /^[A-Z0-9-]+$/.test(q);
+        const norm = q => isAllCaps(q) ? q : q.toLowerCase();
+        const catLower = category.toLowerCase();
+
+        if (catLower === 'pass') {
+            return { types: ['Ticket'], comment: '' };
+        }
+
+        if (catLower === 'wristband') {
+            // All-caps zone tokens (GA, VIP) each become their own comma item;
+            // consecutive non-caps tokens are space-joined into one phrase.
+            const commentParts = ['wristband'];
+            const nonCaps = [];
+            for (const q of rawQualifiers) {
+                if (isAllCaps(q)) {
+                    if (nonCaps.length) { commentParts.push(nonCaps.join(' ')); nonCaps.length = 0; }
+                    commentParts.push(q);
+                } else {
+                    nonCaps.push(q.toLowerCase());
+                }
+            }
+            if (nonCaps.length) commentParts.push(nonCaps.join(' '));
+            return { types: ['Ticket'], comment: commentParts.join(', ') };
+        }
+
+        if (catLower === 'setlist') {
+            return { types: ['Setlist'], comment: rawQualifiers.map(norm).join(', ') };
+        }
+
+        if (catLower === 'banner') {
+            const types = ['Banner'];
+            const comment = rawQualifiers
+                .filter(q => { if (q.toLowerCase() === 'merchandise') { types.push('Merchandise'); return false; } return true; })
+                .map(norm)
+                .join(', ');
+            return { types, comment };
+        }
+
+        if (catLower === 'merchandise') {
+            return { types: ['Merchandise'], comment: rawQualifiers.map(norm).join(', ') };
+        }
+
+        if (catLower === 'adposter' || catLower === 'poster') {
+            return { types: ['Poster'], comment: '' };
+        }
+
+        if (catLower === 'flyer') {
+            return { types: ['Flyer'], comment: '' };
+        }
+
+        if (catLower === 'schedule') {
+            return { types: ['Schedule'], comment: '' };
+        }
+
+        if (catLower === 'program' || catLower === 'programme') {
+            return { types: ['Program'], comment: '' };
+        }
+
+        if (catLower === 'map') {
+            return { types: ['Map'], comment: '' };
+        }
+
+        if (catLower === 'logo') {
+            return { types: ['Logo'], comment: '' };
+        }
+
+        return { types: [], comment: '' };
+    }
+
+    /**
      * Extract full-resolution image URLs from a BruceBase news (event) page.
      *
      * Two link patterns are used by BruceBase:
@@ -321,8 +417,9 @@
             url = new URL(url, newsUrl).href;
             if (seen.has(url)) return;
             seen.add(url);
-            dbg.log(`  → ${url}`);
-            images.push({ url, types: [], comment: '' });
+            const { types, comment } = inferBrucebaseTypesAndComment(url);
+            dbg.log(`  → ${url}  types=${JSON.stringify(types)}${comment ? `  comment="${comment}"` : ''}`);
+            images.push({ url, types, comment });
         });
 
         dbg.info(`extractBrucebaseImages: found ${images.length} image(s)`);

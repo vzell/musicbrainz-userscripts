@@ -1,5 +1,17 @@
 [
     {
+        "version": "1.02.002+2026-06-21",
+        "date": "2026-06-21",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "BruceBase: infer event-art type(s) and comment from the image filename via inferBrucebaseTypesAndComment(). Filename convention YYYYMMDD[char]_Category_Number[_Qualifier…] maps to ArtStation EVENT_TYPES: Pass→Ticket; Wristband→Ticket (comment: wristband, zone, ticket-class); Setlist→Setlist (qualifiers: handwritten/printed/work); Banner→Banner (qualifier Merchandise adds a second type); Merchandise→Merchandise; AdPoster/Poster→Poster; Flyer→Flyer; Schedule→Schedule; Program/Programme→Program; Map→Map; Logo→Logo. All-ASCII-uppercase qualifier tokens (GA, VIP, SHN) keep their case; others are lowercased. For Wristband, consecutive non-caps qualifiers are space-joined into one phrase so GA_Sun_Pass yields wristband, GA, sun pass."
+                ]
+            }
+        ]
+    },
+    {
         "version": "1.02.001+2026-06-21",
         "date": "2026-06-21",
         "sections": [
