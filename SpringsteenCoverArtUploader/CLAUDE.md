@@ -4,19 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-`SpringsteenCoverArtUploader.user.js` is a single-file Tampermonkey userscript that uploads cover art images from
-Bruce Springsteen fan sites directly to MusicBrainz. No build, lint, or test tooling — changes are tested by
-installing directly in Tampermonkey and loading the target page in a browser.
+`SpringsteenCoverArtUploader.user.js` is a single-file Tampermonkey userscript that uploads cover art and
+event-art images from Bruce Springsteen fan sites directly to MusicBrainz. No build, lint, or test tooling —
+changes are tested by installing directly in Tampermonkey and loading the target page in a browser.
 
 ### What it does
 
-This script is an **ArtStation plugin** (see `debug/art_station.user.js`, `debug/discussion.txt`). It registers two
-cover-art providers with ArtStation's plugin API; ArtStation then shows "Import from SpringsteenLyrics" and
-"Import from Jungleland.it" buttons in its Source popover on the MusicBrainz cover-art page.
+This script is an **ArtStation plugin** (see `debug/ArtStation.user.js`, `debug/discussion.txt`). It registers
+three providers with ArtStation's plugin API; ArtStation then shows "Import from …" buttons in its Source
+popover on the MusicBrainz cover-art and event-art pages.
 
 #### Provider registration (`registerProviders`)
 
-Called on `musicbrainz.org/release/*/cover-art`. Registers both providers via:
+Called on `musicbrainz.org/release/*/cover-art` and `musicbrainz.org/event/*/event-art`. Registers all three
+providers via:
 - `window.ArtStation?.registerProvider(provider)` — direct call if ArtStation is already loaded
 - `document.dispatchEvent(new CustomEvent('artstation:register-provider', { detail: provider }))` — CustomEvent
   fallback for load-order safety (ArtStation listens for this even when the plugin script runs first)
@@ -25,18 +26,19 @@ Called on `musicbrainz.org/release/*/cover-art`. Registers both providers via:
 
 Each provider object has `{ id, name, match, run(ctx) }`. **Do not set `icon`** — see
 [Known ArtStation quirks](#known-artstation-quirks) below. The `match` field (string hostname, string[],
-RegExp, or `(url) => bool`) tells ArtStation which releases to show the button for. ArtStation queries
-`/ws/2/release/<MBID>?inc=url-rels` itself, filters the release's external links against `match`, and only renders
-"Import from …" when there is at least one hit. The matched URL is passed to `run(ctx)` as `ctx.link`
-(`ctx.links` = all matches). `ctx` also carries `{ mbid, entity, artist, title, url }`.
+RegExp, or `(url) => bool`) tells ArtStation which releases/events to show the button for. ArtStation queries
+`/ws/2/release/<MBID>?inc=url-rels` (or the equivalent event endpoint) itself, filters the entity's external
+links against `match`, and only renders "Import from …" when there is at least one hit. The matched URL is
+passed to `run(ctx)` as `ctx.link` (`ctx.links` = all matches). `ctx` also carries
+`{ mbid, entity, artist, title, url }`.
 
 `run(ctx)` returns an array of image descriptors: `{ blob?, dataUrl?, url?, types: string[], comment, source }`.
 ArtStation converts any format to a Blob and stages the images in its gallery for review before the user commits.
 
 #### Supported source sites
 
-Both providers declare a `match` hostname; ArtStation resolves the external link and supplies it as `ctx.link`.
-No MB API call in `run()` is needed.
+Providers declare a `match` predicate; ArtStation resolves the entity's external links and supplies the matched
+URL as `ctx.link`. No MB API call in `run()` is needed.
 
 - **springsteenlyrics.com** (`springsteenlyrics` provider, `match: 'springsteenlyrics.com'`) — opens `ctx.link`
   in a real browser popup (CloudFlare bypass; see below). Supports both URL types on the site:
@@ -46,12 +48,55 @@ No MB API call in `run()` is needed.
   `extractSpringsteenImages` function handles both. The popup extracts full-resolution `.jpg` links from the live
   DOM and fetches each as a `dataUrl` (same-origin, CF cookie valid). Returns `{ dataUrl, types: [], source }`
   — ArtStation resolves `dataUrl` to a Blob via `fetch()`.
+
 - **jungleland.it** (`jungleland` provider, `match: 'jungleland.it'`) — fetches `ctx.link` HTML via
   `GM.xmlHttpRequest` (no CF protection), extracts image links (jpg/jpeg/png, skipping `_tn`/`thumb/`), infers
   artwork type strings (`'Front'`, `'Back'`, `'Booklet'`, `'Medium'`) from filename suffixes
   (e.g. `19670916_front.jpg`). Returns `{ url, types, source }` with plain image URLs — no byte fetching
   in the provider. ArtStation's own `providerBlob → gmFetch` downloads the bytes in its own realm,
   which is the robust default for sites without CloudFlare protection.
+
+- **brucebase.wikidot.com** (`brucebase` provider,
+  `match: url => /^https?:\/\/brucebase\.wikidot\.com\/\d{4}#\w/.test(url)`) — used on MusicBrainz
+  **event-art** pages. External links have the form `http://brucebase.wikidot.com/<year>#<anchor>`
+  where `<anchor>` is `DDMMYY[char]` (e.g. `150924c` = 15 Sep 2024, event c).
+
+  Two-step fetch:
+  1. `gmFetch(yearPageUrl)` — fetches the BruceBase year overview page (raw HTTP, not rendered DOM).
+     `extractBrucebaseNewsUrl(html, anchor)` locates the named anchor with a bounded regex
+     (`<a name="…">` followed within 150 chars by `<strong><a href>`), extracts the event slug from
+     the href (category prefix `gig:`, `nogig:`, `rehearsal:`, etc.), and rewrites it to
+     `http://brucebase.wikidot.com/news:<slug>`. A regex is used because the raw HTTP response
+     differs structurally from the browser-rendered DOM (Wikidot's ListPages module rewrites the page
+     client-side), making `closest('p')` unreliable.
+  2. `gmFetch(newsUrl)` — fetches the event news page.
+     `extractBrucebaseImages(html, newsUrl)` parses it with DOMParser and collects all
+     `a[href*="brucebase.wdfiles.com"]` links, converting two URL patterns to full-resolution:
+     - `local--files/{page}/{file}.jpg` — used as-is
+     - `local--resized-images/{page}/{file}/medium.jpg` → replace path prefix + strip `/medium.jpg`
+
+  `inferBrucebaseTypesAndComment(url)` derives the ArtStation event-art type(s) and comment from
+  the filename. BruceBase convention: `YYYYMMDD[char]_Category_Number[_Qualifier…].ext`.
+  Qualifier normalisation: all-ASCII-uppercase tokens (GA, VIP, SHN) keep their case; others are
+  lowercased. For Wristband, consecutive non-caps qualifiers are space-joined per run so that
+  `GA_Sun_Pass` yields `wristband, GA, sun pass` rather than `wristband, GA, sun, pass`.
+
+  | Category token | ArtStation type(s) | Comment |
+  |---|---|---|
+  | `Pass` | `Ticket` | — |
+  | `Wristband` | `Ticket` | `wristband, <zone>, <ticket-class>` |
+  | `Setlist` | `Setlist` | qualifiers comma-joined, normalised |
+  | `Banner` | `Banner` (+ `Merchandise` if qualifier present) | remaining qualifiers |
+  | `Merchandise` | `Merchandise` | qualifiers comma-joined, normalised |
+  | `AdPoster` / `Poster` | `Poster` | — |
+  | `Flyer` | `Flyer` | — |
+  | `Schedule` | `Schedule` | — |
+  | `Program` / `Programme` | `Program` | — |
+  | `Map` | `Map` | — |
+  | `Logo` | `Logo` | — |
+
+  Returns `{ url, types, comment, source }` with plain image URLs — ArtStation downloads the bytes
+  via its own `providerBlob → gmFetch`.
 
 #### CloudFlare bypass for SpringsteenLyrics (`fetchImagesViaPopup` + `runAsSpringsteenPopup`)
 
@@ -95,4 +140,3 @@ inserts. The gallery card appears with correct dimensions but a blank thumbnail.
 - Current version is at line 5 of the userscript header: `// @version M.MM.NNN+YYYY-MM-DD`
 - Always read both files before making changes; never assume the version number
 - Follow the parent `CLAUDE.md` for changelog JSON schema and branch/WIP conventions
-
