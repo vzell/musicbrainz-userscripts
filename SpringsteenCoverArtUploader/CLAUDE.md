@@ -116,24 +116,6 @@ Wraps `GM.xmlHttpRequest` / `GM_xmlhttpRequest` in thin Promise-based helpers (`
 so the script works with both the legacy and modern Greasemonkey/Tampermonkey APIs. GM storage
 grants (`setValue`/`getValue`/`deleteValue`) are **not** used — ArtStation owns the staging flow entirely.
 
-### Known ArtStation quirks
-
-#### Do not set `icon` on providers — it breaks gallery thumbnails
-
-ArtStation's `wire()` runs **before** `hydrateImgs()` on every `render()` call. It does
-`th.querySelector('img')` inside each `.as-thumb` to locate the gallery image. For `_new` items,
-`thumbImg()` emits `<span class="as-imghost">` (not an `<img>`), so there is no gallery image in
-`.as-thumb` at `wire()` time.
-
-If a provider sets `icon`, ArtStation injects `<span class="as-prov"><img src="${icon}"></span>`
-inside `.as-thumb`. That badge `<img>` is the **first — and only — img** `wire()` finds. It assigns
-the gallery-image `onerror` handler to the favicon instead. When the favicon URL returns 404, that
-handler fires `th.classList.add('na')`, and the CSS rule `.as-thumb.na img { display:none }` hides
-**all** imgs inside `.as-thumb` — including the gallery JPEG that `hydrateImgs()` subsequently
-inserts. The gallery card appears with correct dimensions but a blank thumbnail.
-
-**Rule: omit `icon` from every provider object.**
-
 ### Changelog and versioning
 
 - Changelog file: `SpringsteenCoverArtUploader_CHANGELOG.json`
