@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.675",
+    "date": "2026-07-01",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added support for MusicBrainz report pages: the /reports index (all 117 reports across 14 categories, rendered as a filterable multi-table view) and individual /report/<ReportName> pages (paginated, with buttons to switch between all results and results limited to your subscribed entities). Column sets are report-specific and auto-detected generically; the DuplicateArtists-style 'merge queue' checkbox column renders but is non-functional (known limitation — the table is detached from its native <form>)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.674",
     "date": "2026-06-18",
     "sections": [

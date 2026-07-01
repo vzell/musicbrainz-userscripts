@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.674+2026-06-18
+// @version      9.99.675+2026-07-01
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -28,6 +28,8 @@
 // @match        *://*.musicbrainz.org/cdtoc/*
 // @match        *://*.musicbrainz.org/taglookup*
 // @match        *://*.musicbrainz.org/artist-credit/*
+// @match        *://*.musicbrainz.org/reports*
+// @match        *://*.musicbrainz.org/report/*
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -3997,10 +3999,17 @@
      *                              a one-column table whose header is derived from
      *                              the URL last path segment (e.g. "release-group"
      *                              → "Release group").
+     *   J) h3+ul (reports-index) — /reports page after renameH2ToH3 has renamed
+     *                              the 14 native category h2 headings (Artists,
+     *                              Events, …) to h3; column header is the fixed
+     *                              literal "Report" (rows are report links, not
+     *                              singular entities of the category name).
      *
      * Structures A and B produce two-column tables (Name | Tag count).
      * Structures C, D, E, F, and G produce single-column tables whose header is the
      * singular form of the section heading (via `_toSingular()` or URL derivation).
+     * Structure J also produces a single-column table, but with a fixed literal
+     * header ("Report") instead of a derived one.
      *
      * Must run AFTER `applyRenameH2ToH3` / `applyInsertH2` and BEFORE maxPage
      * determination so that `parseDocumentForTables` finds the resulting
@@ -4104,6 +4113,57 @@
                             + ` (${_tbody.rows.length} rows, structure="h2-ul").`);
                     });
                     return; // Structure C handled all h2+ul pairs for this entry
+                }
+
+                // ── Structure J: reports index (/reports) ────────────────────────
+                // Triggered for pageType 'reports-index'. renameH2ToH3 has already
+                // demoted the 14 native category <h2> headings (Artists, Events, …)
+                // to <h3>; walk each and convert its sibling <ul> of report links
+                // into a single-column table. Column header is the fixed literal
+                // "Report" (not derived from the h3 text) because the h3 text is a
+                // category label ("Release groups"), not the entity type of the
+                // rows (which are report links, not release groups).
+                if (pageType === 'reports-index') {
+                    Array.from(_root.querySelectorAll('h3, h2')).forEach(_h3 => {
+                        let _next = _h3.nextElementSibling, _steps = 0, _ul = null;
+                        while (_next && _steps < 5) {
+                            if (_next.tagName === 'UL') { _ul = _next; break; }
+                            if (_next.tagName === 'H3' || _next.tagName === 'H2') break;
+                            _next = _next.nextElementSibling;
+                            _steps++;
+                        }
+                        if (!_ul) return;
+
+                        const _colName = 'Report';
+                        const _table = docContext.createElement('table');
+                        _table.className = 'tbl';
+                        _table.dataset.mbOriginalColName = _colName;
+
+                        const _thead = docContext.createElement('thead');
+                        const _hr = docContext.createElement('tr');
+                        const _th = docContext.createElement('th');
+                        _th.textContent = _colName;
+                        _hr.appendChild(_th);
+                        _thead.appendChild(_hr);
+                        _table.appendChild(_thead);
+
+                        const _tbody = docContext.createElement('tbody');
+                        Array.from(_ul.querySelectorAll(':scope > li')).forEach(li => {
+                            const _tr = docContext.createElement('tr');
+                            if (li.className) _tr.className = li.className;
+                            const _td = docContext.createElement('td');
+                            Array.from(li.childNodes).forEach(n => _td.appendChild(n.cloneNode(true)));
+                            _tr.appendChild(_td);
+                            _tbody.appendChild(_tr);
+                        });
+                        _table.appendChild(_tbody);
+
+                        _ul.parentNode.replaceChild(_table, _ul);
+                        Lib.debug('init',
+                            `applyListToTable: converted h3="${_h3.textContent.trim()}" ul → table`
+                            + ` (${_tbody.rows.length} rows, col="${_colName}", structure="reports-index").`);
+                    });
+                    return; // Structure J handled all h3+ul pairs for this entry
                 }
 
                 // ── Structure D: h3+ul sections on one-segment tag pages ─────────
@@ -5787,6 +5847,37 @@
                 removeSelector: 'a[href*="tags?show_list"]'
             },
             tableMode: 'multi'
+        },
+        // Reports index (/reports) — 14 category sections (Artists, Events, Labels,
+        // Release groups, …), each a static <h2>+<ul> list of report links. No
+        // pagination (complete single-page list) → non_paginated: true.
+        {
+            type: 'reports-index',
+            match: (path) => path.match(/^\/reports\/?$/),
+            buttons: [ { label: 'Show all Reports' } ],
+            features: {
+                renameH2ToH3: true,
+                insertH2: 'Reports',
+                listToTable: [ '' ]
+            },
+            tableMode: 'multi',
+            non_paginated: true
+        },
+        // Individual report (/report/<ReportName>?filter=0|1) — native paginated
+        // table.tbl, already in the exact DOM shape renderFinalTable expects, so no
+        // listToTable / columnExtractors are needed. Column sets vary per report
+        // (117 distinct reports across 14 categories) — MVP is column-agnostic.
+        // filter=0 (all) / filter=1 (my subscribed entities only) render identical
+        // markup with different row counts; one definition handles both via the two
+        // buttons' params override (mirrors 'user-tags' show_downvoted pattern).
+        {
+            type: 'report-detail',
+            match: (path) => path.match(/^\/report\/[^/]+\/?$/),
+            buttons: [
+                { label: 'Show all (unfiltered)', params: { filter: '0' } },
+                { label: 'Show all (subscribed only)', params: { filter: '1' } }
+            ],
+            tableMode: 'single'
         },
         // User tag value entity pages (/user/<username>/tag/<tag>/<entity>
         // e.g. /user/vzell/tag/gig/event) — must come before user-tag-value
@@ -27143,9 +27234,15 @@ a { color: #1565c0; }`;
                                 'series-tags', 'place-tags', 'area-tags', 'instrument-tags',
                                 'artist-credit'
                             ]);
-                            const _colName = _singularPageTypes.has(pageType)
-                                ? _toSingular(category)
-                                : category;
+                            // reports-index always uses the fixed literal "Report"
+                            // column header, regardless of the category label
+                            // (Artists, Release groups, …) since rows are report
+                            // links, not entities of that category.
+                            const _colName = (pageType === 'reports-index')
+                                ? 'Report'
+                                : _singularPageTypes.has(pageType)
+                                    ? _toSingular(category)
+                                    : category;
                             groupedRows.push({ category: category, colName: _colName, rows: [] });
                             lastCategorySeenAcrossPages = category;
                             // Store the per-entity feature set (resolved from entityFeatures map)
@@ -38598,7 +38695,7 @@ a { color: #1565c0; }`;
                         const _usesColNamePath = !!(activeDefinition.features?.listToTable ||
                                                     activeDefinition.features?.groupByH3);
                         const _grpColName = _usesColNamePath
-                            ? (_diskSingularTypes.has(pageType) ? _toSingular(_grpCat) : _grpCat)
+                            ? (pageType === 'reports-index' ? 'Report' : (_diskSingularTypes.has(pageType) ? _toSingular(_grpCat) : _grpCat))
                             : undefined;
                         const _grpEntityFeatures = (activeDefinition.entityFeatures && _grpCat)
                             ? resolveEntityFeaturesFromH3(_grpCat, activeDefinition)
