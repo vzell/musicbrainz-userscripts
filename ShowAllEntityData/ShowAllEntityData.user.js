@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.677+2026-07-19
+// @version      9.99.678+2026-07-19
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -5883,7 +5883,10 @@
                 ],
                 collapsableColumns: [ 'Artists', 'Authors', 'Recording artists', 'Annotation' ],
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
-                addCAA: 'Release',
+                // report-detail is column-agnostic (117 differently-shaped reports —
+                // see debug/NOTES.md); a given report's table only ever carries ONE
+                // of these candidate columns, so array form picks whichever is present.
+                addCAA: [ 'Release', 'Release group' ],
                 addEAA: 'Event'
             },
             tableMode: 'single'
@@ -41574,7 +41577,9 @@ a { color: #1565c0; }`;
      * @property {string}   inlineDoneAttr dataset key name for the per-cell idempotency marker.
      * @property {string}   enrichedAttr   dataset key name for the per-anchor enrichment marker.
      * @property {string}   addFeature     activeDefinition.features key that names the inline
-     *                                     thumbnail column (e.g. 'addCAA', 'addEAA').
+     *                                     thumbnail column (e.g. 'addCAA', 'addEAA'). The
+     *                                     feature's value may be a single column name or an
+     *                                     array of candidate names (see caaFindColumnByName).
      * @property {string}   iconSel        Selector for artwork-icon spans inside art anchors.
      * @property {string}   inlineLinkSel  Selector for the primary entity link per row (inline pics).
      * @property {string}   boxPrefix      ID prefix for the per-table bigbox element.
@@ -41680,6 +41685,14 @@ a { color: #1565c0; }`;
      * Returns the 0-based column index of the first column whose name matches
      * `name` in `table`'s header row, or -1 when not found.
      *
+     * `name` may be a single string or an array of candidate names — this
+     * supports column-agnostic page types (e.g. `report-detail`, which covers
+     * 117 differently-shaped reports) where `features.addCAA`/`addEAA` names
+     * several possible source columns but only one of them is ever actually
+     * present on a given table. Candidates are tried in array order; the first
+     * one found in the table's headers wins (tables never carry more than one
+     * of the candidates, so there is no "combine" case to worry about).
+     *
      * Detection uses (in priority order):
      *   1. `th.dataset.colName` — stamped by makeTableSortableUnified and the
      *      cleanupHeaders() synthetic-header injectors.  Reliable even after the
@@ -41691,20 +41704,35 @@ a { color: #1565c0; }`;
      * caaFindCaaColumnIndex / eaaFindEaaColumnIndex, which were each just
      * caaFindColumnByName(table, 'CAA'/'EAA') in disguise).
      *
-     * @param  {HTMLTableElement} table
-     * @param  {string}           name  — e.g. 'CAA', 'EAA', 'Release', 'Title'
+     * @param  {HTMLTableElement}   table
+     * @param  {string|string[]}    name  — e.g. 'CAA', 'EAA', 'Release', 'Title',
+     *                                     or ['Release', 'Release group']
      * @returns {number}
      */
     function caaFindColumnByName(table, name) {
         const headerRow = table.querySelector('thead tr') ||
                           table.querySelector('tr:has(th)');
         if (!headerRow) return -1;
+        const candidates = Array.isArray(name) ? name : [name];
         return Array.from(headerRow.children).findIndex(th => {
             const named = th.dataset && th.dataset.colName;
-            if (named) return named === name;
+            if (named) return candidates.includes(named);
             const txt = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
-            return txt === name;
+            return candidates.includes(txt);
         });
+    }
+
+    /**
+     * Formats a `features[ctx.addFeature]` value for debug-log display —
+     * `caaFindColumnByName` accepts either a single column name or a candidate
+     * array (see its JSDoc), so log lines that interpolate the raw value need
+     * a readable form for the array case rather than the default `toString()`.
+     *
+     * @param  {string|string[]} colName
+     * @returns {string}
+     */
+    function caaFormatColNameForLog(colName) {
+        return Array.isArray(colName) ? colName.join(' / ') : colName;
     }
 
     /**
@@ -46014,8 +46042,9 @@ a { color: #1565c0; }`;
      *            archiveBase: string }} ctx
      *   Context descriptor — `key` is the log category ("caa" or "eaa"),
      *   `addFeature` is the `features` property name whose value gives the
-     *   target column name, `fetchUrl` builds the archive API URL for a GUID,
-     *   and `archiveBase` is the archive hostname used for thumbnail `src`.
+     *   target column name (or an array of candidate names — see
+     *   `caaFindColumnByName`), `fetchUrl` builds the archive API URL for a
+     *   GUID, and `archiveBase` is the archive hostname used for thumbnail `src`.
      * @param {boolean} [cacheBust=false]
      *   When `true`, bypasses the IndexedDB and memory caches and forces a
      *   fresh network fetch for every thumbnail (used by the ⟳ retry button).
@@ -46035,7 +46064,7 @@ a { color: #1565c0; }`;
             return;
         }
 
-        Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: ${ctx.addFeature} column = "${colName}"`);
+        Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: ${ctx.addFeature} column = "${caaFormatColNameForLog(colName)}"`);
 
         const tables = document.querySelectorAll('table.tbl');
         if (!tables.length) {
@@ -46056,11 +46085,11 @@ a { color: #1565c0; }`;
 
             const colIdx = caaFindColumnByName(table, colName);
             if (colIdx === -1) {
-                Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: column "${colName}" not found in table ${tblIdx} — skipping table`);
+                Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: column "${caaFormatColNameForLog(colName)}" not found in table ${tblIdx} — skipping table`);
                 return;
             }
 
-            Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: processing table ${tblIdx}, column "${colName}" at index ${colIdx}`);
+            Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: processing table ${tblIdx}, column "${caaFormatColNameForLog(colName)}" at index ${colIdx}`);
 
             table.querySelectorAll('tbody tr').forEach(tr => {
                 const td = tr.cells[colIdx];

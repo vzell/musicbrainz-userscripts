@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.678",
+    "date": "2026-07-19",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "`addCAA`/`addEAA` page-definition features now accept an array of candidate column names (e.g. `addCAA: ['Release', 'Release group']`), so column-agnostic page types like `report-detail` (117 differently-shaped reports) can render inline cover/event-art thumbnails regardless of which of several possible columns a given report table actually has. `report-detail`'s `addCAA` now uses `['Release', 'Release group']`."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.677",
     "date": "2026-07-19",
     "sections": [
