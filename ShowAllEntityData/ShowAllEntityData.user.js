@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.675+2026-07-01
+// @version      9.99.676+2026-07-19
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -25481,6 +25481,14 @@ a { color: #1565c0; }`;
                 Lib.debug('cleanup', `Marking column ${idx} for removal: checkbox-cell (sa_remove_checkbox_cell enabled).`);
                 indicesToRemove.push(idx);
             }
+
+            // Unconditionally remove the "MusicBrainz Nuclear Tags" bulk-tag column
+            // (foreign userscript injection; has no header text, so it can't be
+            // matched via removalMapAlways — matched by CSS class instead).
+            if (th.classList.contains('elephant-tag-col')) {
+                Lib.debug('cleanup', `Marking column ${idx} for removal: elephant-tag-col (foreign userscript column).`);
+                indicesToRemove.push(idx);
+            }
         });
 
         if (indicesToRemove.length > 0) {
@@ -26788,6 +26796,13 @@ a { color: #1565c0; }`;
                         // Setting-gated exclusion: checkbox-cell column (identified by CSS class)
                         if (Lib.settings.sa_remove_checkbox_cell && th.classList.contains('checkbox-cell')) {
                             Lib.debug('cleanup', `Excluding column ${idx} from index tracking: checkbox-cell (sa_remove_checkbox_cell enabled).`);
+                            indicesToExclude.push(idx);
+                        }
+
+                        // Unconditionally exclude the "MusicBrainz Nuclear Tags" bulk-tag column
+                        // from index tracking (foreign userscript injection, no header text).
+                        if (th.classList.contains('elephant-tag-col')) {
+                            Lib.debug('cleanup', `Excluding column ${idx} from index tracking: elephant-tag-col (foreign userscript column).`);
                             indicesToExclude.push(idx);
                         }
 

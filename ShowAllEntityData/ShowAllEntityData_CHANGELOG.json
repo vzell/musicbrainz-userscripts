@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.676",
+    "date": "2026-07-19",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Unconditionally remove the bulk-tag checkbox column injected by the third-party \"MusicBrainz Nuclear Tags\" userscript (`<th class=\"elephant-tag-col\">`) before rendering the consolidated table, so it no longer shifts column alignment on pages like series releases."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.675",
     "date": "2026-07-01",
     "sections": [
