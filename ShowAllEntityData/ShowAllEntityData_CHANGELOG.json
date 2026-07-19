@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.677",
+    "date": "2026-07-19",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Add feature support for pageType 'report-detail'."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.676",
     "date": "2026-07-19",
     "sections": [

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.676+2026-07-19
+// @version      9.99.677+2026-07-19
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -5877,6 +5877,15 @@
                 { label: 'Show all (unfiltered)', params: { filter: '0' } },
                 { label: 'Show all (subscribed only)', params: { filter: '1' } }
             ],
+            features: {
+                columnExtractors: [
+                    { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
+                ],
+                collapsableColumns: [ 'Artists', 'Authors', 'Recording artists', 'Annotation' ],
+                integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
+                addCAA: 'Release',
+                addEAA: 'Event'
+            },
             tableMode: 'single'
         },
         // User tag value entity pages (/user/<username>/tag/<tag>/<entity>
