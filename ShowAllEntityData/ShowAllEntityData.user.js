@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.678+2026-07-19
+// @version      9.99.679+2026-07-19
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -5883,6 +5883,13 @@
                 ],
                 collapsableColumns: [ 'Artists', 'Authors', 'Recording artists', 'Annotation' ],
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
+                // Report pages have a native <h1> but no native <h2>, so the
+                // collapsible-header / filter-bar / CAA-EAA-toggle infrastructure has
+                // nothing to attach to without a synthetic one (see applyInsertH2).
+                // The specific report name is already shown in the native <h1> above,
+                // so a generic label (mirrors reports-index's insertH2: 'Reports') is
+                // enough here.
+                insertH2: 'Report',
                 // report-detail is column-agnostic (117 differently-shaped reports —
                 // see debug/NOTES.md); a given report's table only ever carries ONE
                 // of these candidate columns, so array form picks whichever is present.

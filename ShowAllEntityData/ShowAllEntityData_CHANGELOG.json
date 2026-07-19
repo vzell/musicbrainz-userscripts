@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.679",
+    "date": "2026-07-19",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "report-detail pages now get a collapsible \"Report\" <h2> section header (row-count badge, global filter bar) matching other single-table page types, which also unlocks the CAA/EAA cover-art/event-art toggle button and big-picture image stripe above the table when a report has a Release/Release group or Event column."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.678",
     "date": "2026-07-19",
     "sections": [
