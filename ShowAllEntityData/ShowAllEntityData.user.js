@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.685+2026-07-21
+// @version      9.99.686+2026-07-21
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -2172,6 +2172,13 @@
          * Area    ← links whose href contains '/area/' but NOT wrapped in a .flag span
          * Country ← links whose href contains '/area/' wrapped in a .flag span
          *
+         * Canadian province flags: the "MusicBrainz: Canadian Province Flags
+         * Everywhere" userscript (@Lotheric) injects a `<span class="area-icon">`
+         * containing the province `<img class="flag flag-XX-prov">` immediately
+         * before the province's `<a href="/area/…">` link (sibling, not a wrapper —
+         * unlike the country `.flag` span). When present, that icon span is cloned
+         * into the Area cell alongside its link so the flag survives the split.
+         *
          * Multi-row aware: when the source cell contains a <ul><li> structure (i.e.
          * the Location column was already wrapped by renderMultiRowCell or inherited
          * a multi-row layout from MusicBrainz), each <li> is processed independently
@@ -2217,6 +2224,14 @@
                             containerC.appendChild(span);
                         } else {
                             if (containerA.hasChildNodes()) containerA.appendChild(document.createTextNode(', '));
+                            // Canadian-province flag icon (Lotheric userscript) sits as a
+                            // sibling <span class="area-icon"> immediately before the area
+                            // link — carry it along so it isn't dropped by the split.
+                            const iconSpan = a.previousElementSibling;
+                            if (iconSpan && iconSpan.matches('span.area-icon')) {
+                                containerA.appendChild(iconSpan.cloneNode(true));
+                                containerA.appendChild(document.createTextNode(' '));
+                            }
                             containerA.appendChild(clonedA);
                         }
                     }

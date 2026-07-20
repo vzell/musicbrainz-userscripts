@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.686",
+    "date": "2026-07-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "splitLocation: the synthetic 'Area' column now preserves the Canadian-province flag icon injected by the 'MusicBrainz: Canadian Province Flags Everywhere' userscript (@Lotheric), instead of dropping it during the Location → Place/Area/Country split."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.685",
     "date": "2026-07-21",
     "sections": [
