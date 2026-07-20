@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.687",
+    "date": "2026-07-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Split 'Location' column in 'report-detail' pageTypes."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.686",
     "date": "2026-07-21",
     "sections": [
