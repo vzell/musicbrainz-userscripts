@@ -20252,6 +20252,13 @@ a { color: #1565c0; }`;
     let multiTableSortStates = new Map();
     // Registry of per-table tint functions so renderFinalTable can re-apply tints after re-render
     let multiSortTintRegistry = new Map(); // sortKey → { applyTints, clearTints }
+    // Registry of per-table comparator getters, keyed the same way as multiTableSortStates.
+    // Lets runFilter()/_applyDiscographyViewFilter('merged') re-sort a category's combined
+    // row set (rows pulled from several groupedRows entries) using the sort currently active
+    // on the visible (first-occurrence) table for that category, instead of leaving
+    // non-resorted contributor groups' rows in their original concatenation order.
+    // sortKey → () => compareFn|null (null = no active sort, keep insertion order)
+    let mergedSortComparatorRegistry = new Map();
 
     // Track highlight toggle states separately
     let prefilterHighlightEnabled = true;
@@ -22986,34 +22993,44 @@ a { color: #1565c0; }`;
 
     /**
      * Extracts all visible text from `element`, skipping script/style/head
-     * subtrees, and returns a normalised filter-ready string.
+     * subtrees, and returns a normalised filter-ready string. Used by
+     * createSortComparator()/createMultiColumnComparator() to build sort
+     * keys, and by the non-regex global filter's whole-row text match.
+     *
+     * Strips the same structural noise `_CLEAN_STRIP_SEL` strips for
+     * getCleanColumnText() — inline CAA/EAA thumbnail placeholders,
+     * cache-hint emoji, count badges, the collapse-toggle widget — plus
+     * its own `.mb-rel-filter-key` exclusion. Without this, whether a row's
+     * inline-art cache-hint span happened to resolve by render time leaks
+     * into the sort key ahead of the real text, splitting otherwise-correct
+     * rows into wrongly-ordered clusters. `ul.dataset.mbArtSearch` (the
+     * CAA/EAA per-image search-index string) is intentionally NOT appended
+     * here as it is in getCleanColumnText() — sort/global-filter keys must
+     * stay free of that metadata.
      *
      * @param {Element} element - DOM element to extract text from.
      * @returns {string} Normalised visible text content.
      */
     function getCleanVisibleText(element) {
+        const _STRIP_SEL = _CLEAN_STRIP_SEL + ',.mb-rel-filter-key';
+        let root = element;
+        if (element.querySelector(_STRIP_SEL)) {
+            root = element.cloneNode(true);
+            root.querySelectorAll(_STRIP_SEL).forEach(el => el.remove());
+        }
+
         let textParts = [];
-        const walker = document.createTreeWalker(element, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
             acceptNode: (node) => {
                 if (node.nodeType === Node.ELEMENT_NODE) {
                     const tag = node.tagName.toLowerCase();
                     if (tag === 'script' || tag === 'style' || tag === 'head') return NodeFilter.FILTER_REJECT;
-                    // Skip per-image CAA/EAA rows and rel filter key spans.
+                    // Secondary guard (belt-and-braces — should already have
+                    // been stripped by the clone pass above).
                     if (node.classList && (
                         node.classList.contains('mb-caa-art-li-image') ||
                         node.classList.contains('mb-rel-filter-key') ||
-                        // .mb-inline-art-sort-key carries the invisible sentinel text
-                        // 'caa-inline-yes' / 'caa-inline-no' (see _artSetInlineSortKey).
-                        // It is excluded here for the same reason it is in _CLEAN_STRIP_SEL:
-                        // without this guard, any plain-text global filter string that
-                        // happens to be a substring of those sentinels (e.g. "nl" from
-                        // "caa-i[nl]ine-yes") matches every row that has a loaded inline
-                        // thumbnail, producing wholesale false-positive hits.
                         node.classList.contains('mb-inline-art-sort-key') ||
-                        // .mb-caa-sort-key / .mb-eaa-sort-key hold 'yes'/'no' — artwork-
-                        // presence sentinels for the CAA/EAA column quick-filter entries.
-                        // Must be excluded to prevent 'no' (from '✗ no artwork') from
-                        // highlighting inside sort-key spans or matching visible cell text.
                         node.classList.contains('mb-caa-sort-key') ||
                         node.classList.contains('mb-eaa-sort-key')
                     )) return NodeFilter.FILTER_REJECT;
@@ -23024,7 +23041,12 @@ a { color: #1565c0; }`;
 
         let node;
         while (node = walker.nextNode()) {
-            if (node.nodeType === Node.TEXT_NODE) textParts.push(node.nodeValue);
+            if (node.nodeType === Node.TEXT_NODE) {
+                const trimmed = node.nodeValue.trim();
+                if (trimmed && !isDecorativeIcon(trimmed)) {
+                    textParts.push(node.nodeValue);
+                }
+            }
         }
         return normalizeExtractedText(textParts.join(' '));
     }
@@ -24726,6 +24748,17 @@ a { color: #1565c0; }`;
                             : (_g.category || _g.key || 'Other');
                         if (_gCat === _cat) _combined.push(..._g.rows);
                     });
+                    // Only the FIRST-occurrence group (this one — groupIdx) has an
+                    // interactive, visible sort header; other same-category groups just
+                    // contributed rows above without ever being resorted themselves.
+                    // Re-sort the combined set using the sort currently active on this
+                    // visible table so the merged view reflects it, instead of leaving
+                    // non-resorted contributors' rows in their original concatenation
+                    // position (see mergedSortComparatorRegistry doc comment).
+                    const _selfSortKey = `${group.category || group.key || 'Unknown'}_${groupIdx}`;
+                    const _getMergedCmp = mergedSortComparatorRegistry.get(_selfSortKey);
+                    const _mergedCmp = _getMergedCmp ? _getMergedCmp() : null;
+                    if (_mergedCmp) _combined.sort(_mergedCmp);
                     _sourceRows = _combined;
                 }
 
@@ -31462,6 +31495,21 @@ a { color: #1565c0; }`;
                     _mergedRowsByName.get(_cat).push(...groupedRows[_idx].rows);
                 }
             });
+
+            // Re-sort each category's combined rows using the sort currently active
+            // on its first-occurrence (visible) table — see mergedSortComparatorRegistry
+            // doc comment. Without this, switching into merged view on an
+            // already-sorted table would show non-first-occurrence contributors'
+            // rows in their original concatenation order instead of the active sort.
+            _mergedRowsByName.forEach((_rows, _cat) => {
+                const _firstIdx = _mergedFirstIdxByName.get(_cat);
+                const _firstGroup = groupedRows[_firstIdx];
+                if (!_firstGroup) return;
+                const _selfSortKey = `${_firstGroup.category || _firstGroup.key || 'Unknown'}_${_firstIdx}`;
+                const _getMergedCmp = mergedSortComparatorRegistry.get(_selfSortKey);
+                const _mergedCmp = _getMergedCmp ? _getMergedCmp() : null;
+                if (_mergedCmp) _rows.sort(_mergedCmp);
+            });
         }
 
         // ── Show / hide each h3 + its bigboxes + its table ───────────────────
@@ -34343,6 +34391,26 @@ a { color: #1565c0; }`;
                    name.includes('Track') || name.includes('Length') ||
                    name.includes('#');
         };
+
+        // Register this table's current-sort comparator getter so runFilter()/
+        // _applyDiscographyViewFilter('merged') can re-sort a merged category's
+        // combined row set (pulled from several groupedRows entries) the same
+        // way the "=== Perform sort ===" block below does for a live click —
+        // mirrors that block's branching. Returns null when no sort is active
+        // (mirrors the isRestore check there), so unsorted tables are untouched.
+        mergedSortComparatorRegistry.set(sortKey, () => {
+            if (state.multiSortColumns.length > 1) {
+                return createMultiColumnComparator(state.multiSortColumns, headers);
+            }
+            if (state.multiSortColumns.length === 1) {
+                const col = state.multiSortColumns[0];
+                const cn = getCleanColName(headers[col.colIndex]);
+                return createSortComparator(col.colIndex, col.direction === 1, isNumericCol(cn));
+            }
+            if (state.lastSortIndex < 0 || state.sortState === 0) return null;
+            const cn = getCleanColName(headers[state.lastSortIndex]);
+            return createSortComparator(state.lastSortIndex, state.sortState === 1, isNumericCol(cn), state.sortByLength);
+        });
 
         // -----------------------------------------------------------------------
         headers.forEach((th, index) => {
