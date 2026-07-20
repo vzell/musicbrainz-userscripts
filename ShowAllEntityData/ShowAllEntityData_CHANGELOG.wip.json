@@ -1,0 +1,51 @@
+[
+    {
+        "version": "WIP.4",
+        "date": "2026-07-20",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "report-detail pages: removed the native 'Show only results that are in my subscribed entities.' list item from the report description block — redundant with the existing 'Show all (subscribed only)' button."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.3",
+        "date": "2026-07-20",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "report-detail pages: applyInsertH2() no longer picks an <h3> nested inside table.tbl cells (e.g. wiki-rendered '=== Heading ===' markup in an Annotation-column cell on the report's native first page, before any DOM pre-processing runs) as the insertion anchor for the synthetic 'Report' <h2>. Confirmed via live debug logs (WIP.3 fix) as the root cause of AnnotationsPlaces/AnnotationsReleases rendering with no discoverable page-level heading: the <h2> was actually being created, but nested deep inside a table cell after the data table instead of before it, so updateH2Count's 'table follows h2' search never found it. The report-detail-scoped self-heal added in WIP.1 remains in place as a defensive backstop."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.2",
+        "date": "2026-07-20",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "_relocateTrailingH2Sections() no longer treats <h2> headings nested inside table.tbl cells (e.g. wiki-rendered '== Heading ==' markup in Annotation-column text) as page-level trailing sections — previously every matching row's cell content was physically relocated out of the table to just before the page header, corrupting Annotation columns on report-detail's AnnotationsEvents/AnnotationsReleaseGroups reports and on 'search' pages for entity type Annotation."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.1",
+        "date": "2026-07-20",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "report-detail pages ('/report/<Name>'): CAA/EAA cover-/event-art detection now scans only the specific Release/Release group/Event column designated by the report's addCAA/addEAA feature instead of the whole row — fixes missing big-picture stripes when that column happened to become the sticky column (ReleasedTooEarlyForLabel, ReleasesWithUnlikelyLanguageScript, SetInDifferentRG, EventSequenceNotInSeries), and fixes wrong/spurious CAA or EAA indicators picked up from incidental entity links inside free-text Annotation cells (AnnotationsEvents, AnnotationsReleaseGroups). Scoped strictly to the report-detail page type; no other page definition's artwork detection changes.",
+                    "report-detail pages: the 'Report' <h2> heading (and the row-count/filter-bar infrastructure anchored to it) is now defensively re-asserted if missing, mitigating a rendering issue that left some sub-reports (AnnotationsPlaces, AnnotationsReleases) without any heading at all. Scoped strictly to the report-detail page type. Root cause identified and fixed in WIP.3; this self-heal remains as a backstop."
+                ]
+            }
+        ]
+    }
+]

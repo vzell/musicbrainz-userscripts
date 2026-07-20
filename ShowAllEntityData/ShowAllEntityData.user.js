@@ -4799,10 +4799,21 @@
         // an intro <p>) should remain ABOVE the new <h2> anchor — inserting
         // beforebegin the first <h3> achieves this regardless of how many such nodes
         // exist.  Falls through to the after-h1 path when no <h3> is present yet.
+        //
+        // h3 elements nested inside table.tbl cells are excluded from this search
+        // (e.g. wiki-rendered "=== Heading ===" markup inside an Annotation-column
+        // cell on report-detail pages, present on the page's native first table
+        // before any DOM pre-processing runs). Picking one of those up would insert
+        // the new <h2> as a sibling deep inside that <td> instead of at the page
+        // level — the h2 still "exists" (idempotency/querySelectorAll checks still
+        // find it) but is positioned after the table, breaking updateH2Count's
+        // "table follows h2" search and everything anchored to it. See
+        // debug/report-detail.org (AnnotationsPlaces/AnnotationsReleases).
         const _contentRoot = document.getElementById('content') ||
                              document.getElementById('page') ||
                              document.body;
-        const _firstH3 = _contentRoot.querySelector('h3');
+        const _firstH3 = Array.from(_contentRoot.querySelectorAll('h3'))
+            .find(h => !h.closest('table.tbl'));
         if (_firstH3) {
             _firstH3.insertAdjacentElement('beforebegin', _h2);
             Lib.debug('init', `applyInsertH2: inserted <h2>"${_text}"</h2> before first <h3> in content area.`);
@@ -5894,7 +5905,11 @@
                 // see debug/NOTES.md); a given report's table only ever carries ONE
                 // of these candidate columns, so array form picks whichever is present.
                 addCAA: [ 'Release', 'Release group' ],
-                addEAA: 'Event'
+                addEAA: 'Event',
+                // The native description block includes "Show only results that are
+                // in my subscribed entities." — redundant with the "Show all
+                // (subscribed only)" button above, so remove it if present.
+                removeSelector: 'li:has(a[href*="?filter=1"])'
             },
             tableMode: 'single'
         },
@@ -22745,6 +22760,22 @@ a { color: #1565c0; }`;
     function updateH2Count(filteredCount, totalCount, absoluteTotal = null) {
         Lib.debug('render', `Starting updateH2Count: filtered=${filteredCount}, total=${totalCount}, absoluteTotal=${absoluteTotal}`);
 
+        // ── Group-3 self-heal (defensive mitigation, not a confirmed root-cause
+        // fix — see debug/report-detail.org). Scoped to report-detail only. ────
+        // On some report-detail sub-reports (AnnotationsPlaces,
+        // AnnotationsReleases) the applyInsertH2()-injected "Report" <h2> is
+        // absent from the DOM by the time this function — the earliest consumer
+        // of that h2 — runs, even though static code reading says
+        // applyInsertH2() should always succeed for these pages. Root cause
+        // unconfirmed (needs live reproduction). Re-invoking applyInsertH2()
+        // here is a no-op whenever the h2 is already present (its own
+        // idempotency guard handles that), so this is safe to run
+        // unconditionally on every report-detail call.
+        if (activeDefinition && activeDefinition.type === 'report-detail' &&
+            activeDefinition.features && activeDefinition.features.insertH2) {
+            applyInsertH2(activeDefinition);
+        }
+
         const table = document.querySelector('table.tbl');
         if (!table) {
             Lib.debug('render', 'Aborting updateH2Count: No table.tbl found on page.');
@@ -35062,6 +35093,13 @@ a { color: #1565c0; }`;
      * already created the stat; during a disk load this function must be called
      * explicitly after updateH2Count().
      *
+     * h2 elements nested inside table.tbl cells (e.g. wiki-rendered
+     * "== Heading ==" markup inside Annotation-column text) are intentionally
+     * excluded from the candidate set — they are row content, not page-level
+     * sections, and including them physically relocated every matching row's
+     * cell content out of the table. See debug/report-detail.org and
+     * debug/search-annotation-*.html.
+     *
      * Controlled by sa_enable_h2_section_relocation_on_final_page (default: true).
      */
     function _relocateTrailingH2Sections() {
@@ -35069,7 +35107,8 @@ a { color: #1565c0; }`;
         try {
             const _content = document.getElementById('content');
             if (!_content) return;
-            const _allH2s = Array.from(_content.querySelectorAll('h2'));
+            const _allH2s = Array.from(_content.querySelectorAll('h2'))
+                .filter(h => !h.closest('table.tbl'));
             const _dataH2 = _allH2s.find(h => h.querySelector('.mb-row-count-stat'));
             if (!_dataH2) return;  // count stat not yet in DOM — caller must retry later
             const _trailing = _allH2s.filter(h =>
@@ -41798,6 +41837,47 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Returns the tbody-<td> anchor selector _artCountLinks/_artInitBigPics
+     * should use to find `table`'s own entity links for `ctx`.
+     *
+     * Scoped deliberately to the 'report-detail' page type only (see
+     * debug/report-detail.org). For every other page definition this returns
+     * the original whole-row-minus-exclusions selector unchanged — those 50+
+     * other addCAA/addEAA page definitions already work correctly today and
+     * must not change behavior.
+     *
+     * For report-detail, the scan is restricted to exactly the column named
+     * by activeDefinition.features[ctx.addFeature] (e.g. addCAA: ['Release',
+     * 'Release group'], addEAA: 'Event'), resolved via caaFindColumnByName().
+     * This bypasses the :not(.mb-sticky-col):not(.mb-rel-cell) exclusion
+     * entirely for that column — that exclusion only approximates "the row's
+     * own entity column" when no single column name is known in advance;
+     * once addCAA/addEAA has told us precisely which column holds the row's
+     * own entity link, scanning the whole row (or excluding it for being
+     * sticky) is unnecessary and actively wrong.
+     *
+     * @param  {ArtCtx}           ctx
+     * @param  {HTMLTableElement} table
+     * @returns {string|null}  Selector string, or null when report-detail's
+     *                         addCAA/addEAA candidate column(s) are not
+     *                         present in `table` (caller must then treat the
+     *                         table as having zero entity links without
+     *                         querying at all — e.g. Place reports have no
+     *                         Release/Release group/Event column, so both
+     *                         CAA and EAA stay at 0).
+     */
+    function _artEntityAnchorSelector(ctx, table) {
+        const DEFAULT_SELECTOR = 'tbody td:not(.mb-sticky-col):not(.mb-rel-cell) a[href]';
+        if (!activeDefinition || activeDefinition.type !== 'report-detail') {
+            return DEFAULT_SELECTOR;
+        }
+        const addFeatureNames = activeDefinition.features && activeDefinition.features[ctx.addFeature];
+        if (!addFeatureNames) return DEFAULT_SELECTOR;
+        const colIdx = caaFindColumnByName(table, addFeatureNames);
+        return colIdx === -1 ? null : `tbody td:nth-child(${colIdx + 1}) a[href]`;
+    }
+
+    /**
      * Formats a `features[ctx.addFeature]` value for debug-log display —
      * `caaFindColumnByName` accepts either a single column name or a candidate
      * array (see its JSDoc), so log lines that interpolate the raw value need
@@ -43982,13 +44062,17 @@ a { color: #1565c0; }`;
         const seen = new Set();
         let firstImgUrl = null;
 
-        // Exclude mb-sticky-col cells (visual duplicate of the title column, added
-        // asynchronously by applyStickyColumn — would double-count every title link)
-        // and mb-rel-cell cells (Relationships column, whose entity links belong to
-        // related entities rather than the row's own cover art).
-        table.querySelectorAll(
-            'tbody td:not(.mb-sticky-col):not(.mb-rel-cell) a[href]'
-        ).forEach(a => {
+        // Default pages: exclude mb-sticky-col cells (visual duplicate of the
+        // title column, added asynchronously by applyStickyColumn — would
+        // double-count every title link) and mb-rel-cell cells (Relationships
+        // column, whose entity links belong to related entities rather than
+        // the row's own cover art). report-detail pages instead scan only the
+        // specific column named by features.addCAA/addEAA — see
+        // _artEntityAnchorSelector and debug/report-detail.org.
+        const anchorSelector = _artEntityAnchorSelector(ctx, table);
+        if (!anchorSelector) return { count: 0, firstImgUrl: null };
+
+        table.querySelectorAll(anchorSelector).forEach(a => {
             const href = a.getAttribute('href');
             for (const type of ctx.entityTypes) {
                 const m = href.match(
@@ -44154,16 +44238,18 @@ a { color: #1565c0; }`;
         }
 
         // ── 2. Collect unique entity links ────────────────────────────────────
-        // Exclude mb-sticky-col cells (visual duplicate of the title column injected
-        // asynchronously by applyStickyColumn — would double-count every title link)
-        // and mb-rel-cell cells (Relationships column — entity links there belong to
-        // related entities, not to the row's own cover-art subject).
+        // Default pages: exclude mb-sticky-col cells (visual duplicate of the
+        // title column injected asynchronously by applyStickyColumn — would
+        // double-count every title link) and mb-rel-cell cells (Relationships
+        // column — entity links there belong to related entities, not to the
+        // row's own cover-art subject). report-detail pages instead scan only
+        // the specific column named by features.addCAA/addEAA — see
+        // _artEntityAnchorSelector and debug/report-detail.org.
         const seen        = new Set();
         let   firstImgUrl = null;
 
-        table.querySelectorAll(
-            'tbody td:not(.mb-sticky-col):not(.mb-rel-cell) a[href]'
-        ).forEach(a => {
+        const anchorSelector = _artEntityAnchorSelector(ctx, table);
+        (anchorSelector ? table.querySelectorAll(anchorSelector) : []).forEach(a => {
             const href = a.getAttribute('href');
             for (const type of ctx.entityTypes) {
                 const m = href.match(
