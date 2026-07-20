@@ -1,5 +1,29 @@
 [
   {
+    "version": "9.99.681",
+    "date": "2026-07-20",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Merged discography view sub-tables (release-group pages) now stay fully sorted when their rows are combined from multiple underlying category groups — sorting the visible table previously only reordered one contributing group, leaving the others spliced in at their original position."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.680",
+    "date": "2026-07-20",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Sort keys (and the non-regex global filter) no longer include leaked inline CAA/EAA artwork markup — cache-hint emoji, thumbnail placeholders, count badges, the row-expand glyph. Whether a row's inline thumbnail had resolved from cache by render time previously determined its sort position ahead of the actual visible text, splitting otherwise-correctly-ordered rows into wrongly-ordered clusters on any table with inline cover-art/event-art thumbnails."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.679",
     "date": "2026-07-19",
     "sections": [
