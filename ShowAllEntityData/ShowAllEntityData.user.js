@@ -2000,6 +2000,19 @@
                          'column to a long paragraph\'s unwrapped single-line width. Always active ' +
                          'for these columns, independent of the "Enable collapsible Annotation ' +
                          'columns" setting above.'
+        },
+
+        sa_annotation_column_max_height_em: {
+            label: 'Annotation column collapsed height (em)',
+            type: 'number',
+            default: 5.6,
+            min: 1,
+            max: 30,
+            description: 'Height (in em, i.e. relative to the table\'s font size) that a ' +
+                         'collapsed free-text cell (e.g. "Annotation") is clamped to before its ' +
+                         '▶/▼ toggle appears — the default 5.6em is roughly 4 lines at this ' +
+                         'table\'s line-height. Only takes effect when "Enable collapsible ' +
+                         '\'Annotation\' columns" above is on.'
         }
 
     };
@@ -19702,7 +19715,7 @@ a { color: #1565c0; }`;
            background colour on the <td>, and a hardcoded gradient would not
            reliably match it — the ▶ more toggle alone signals truncation. */
         .mb-text-clamp-inner {
-            max-height: 5.6em; /* ~4 lines at this table's line-height */
+            max-height: ${Lib.settings.sa_annotation_column_max_height_em || 5.6}em; /* sa_annotation_column_max_height_em */
             overflow: hidden;
         }
         .mb-text-clamp-inner.mb-text-clamp-expanded {

@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-07-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Made the collapsed-cell clamp height of 'Annotation'-style columns configurable via a new `sa_annotation_column_max_height_em` setting (default 5.6em, ~4 lines — the same value used in WIP.1), instead of a hardcoded CSS value."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-07-21",
     "sections": [
