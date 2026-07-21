@@ -233,9 +233,22 @@ declared column — no separate feature key or page-definition change needed:
   first `<li>`; toggle shows an item count (`▶ 2 ▤`).
 - **Prose cells** — free-form content with no direct-child list (e.g.
   "Annotation" columns, which are wiki-rendered `<div>/<p>/<bdi>` text — see
-  `debug/annotation.html`). Wrapped in `.mb-text-clamp-inner` and height-
-  clamped (~4 lines); toggle shows a "more"/"less" label instead of a count.
-  Only cells that actually overflow the clamp get a toggle.
+  `debug/annotation.html`). Always wrapped in `.mb-text-clamp-marker`
+  (unconditionally — this is what `_isProseCollapseColumn` keys off, see
+  below). When the `sa_enable_annotation_collapse` setting (default `true`,
+  "📝 ANNOTATION COLUMNS" section in `configSchema`) is on, the wrapper also
+  gets `.mb-text-clamp-inner` and is height-clamped (~4 lines); toggle shows
+  a "more"/"less" label instead of a count. Only cells that actually overflow
+  the clamp get a toggle. When the setting is off, cells stay bare (full,
+  unclamped text, no toggle).
+
+Auto-resize (`toggleColumn`, `toggleColumnInTable`, `toggleSubTableAutoResize`,
+`toggleAutoResizeColumns`) caps prose columns' measured width via
+`_getProseColumnMaxWidth()` (reads `sa_annotation_column_max_width`, default
+`480`) instead of sizing them to a paragraph's unwrapped nowrap width. This
+cap is **always active** for any column `_isProseCollapseColumn` identifies
+(via the always-present `.mb-text-clamp-marker`) — independent of
+`sa_enable_annotation_collapse`.
 
 Both share the same `.mb-cell-collapse-toggle` DOM shape, the same
 `ensureCollapseDelegate` click delegate, `_applyCollapseState` (driven by the

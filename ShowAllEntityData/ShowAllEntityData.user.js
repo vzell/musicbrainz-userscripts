@@ -1964,6 +1964,42 @@
             default: '127.0.0.1',
             description: 'IP address or hostname where Picard is running.  Change this if ' +
                          'Picard runs on a different machine on your local network.'
+        },
+
+        // ============================================================
+        // ANNOTATION COLUMNS SECTION
+        // ============================================================
+        divider_annotation: {
+            type: 'divider',
+            label: '📝 ANNOTATION COLUMNS'
+        },
+
+        sa_enable_annotation_collapse: {
+            label: 'Enable collapsible "Annotation" columns',
+            type: 'checkbox',
+            default: true,
+            description: 'Height-clamp long free-text cells in columns declared in a page\'s ' +
+                         '`collapsableColumns` (e.g. the "Annotation" column on report-detail\'s ' +
+                         'AnnotationsPlaces/AnnotationsReleases sub-reports and the instrument ' +
+                         '"Annotations" report) behind a ▶/▼ "show more/less" toggle, ' +
+                         'the same way multi-row list columns (Catalog#, Label, …) already collapse. ' +
+                         'Only cells that actually overflow the clamp get a toggle; short annotations ' +
+                         'render unchanged either way. When disabled, these columns render full, ' +
+                         'unclamped text with no toggle — the "Annotation column max width" setting ' +
+                         'below still applies regardless of this setting.'
+        },
+
+        sa_annotation_column_max_width: {
+            label: 'Annotation column max width (px)',
+            type: 'number',
+            default: 480,
+            min: 200,
+            max: 2000,
+            description: 'Cap applied by the auto-resize ("↔️ Resize" / Ctrl+R) feature to ' +
+                         'free-text collapsable columns (e.g. "Annotation"), instead of sizing the ' +
+                         'column to a long paragraph\'s unwrapped single-line width. Always active ' +
+                         'for these columns, independent of the "Enable collapsible Annotation ' +
+                         'columns" setting above.'
         }
 
     };
@@ -8871,25 +8907,42 @@
     const subTableColVisRegistry = new Map();
 
     /**
+     * Fallback cap for `_getProseColumnMaxWidth()` — only used if the
+     * `sa_annotation_column_max_width` setting is somehow unavailable.
+     * Matches that setting's configSchema `default`.
+     * @type {number}
+     */
+    const PROSE_COLUMN_MAX_WIDTH_PX_FALLBACK = 480;
+
+    /**
      * Cap applied to auto-resize's measured width for "prose" collapsable
-     * columns (e.g. "Annotation") — see `_isProseCollapseColumn`.  Without
+     * columns (e.g. "Annotation") — see `_isProseCollapseColumn`. Without
      * this, measuring a long free-text cell's natural single-line width via
      * a `white-space: nowrap` clone can produce a multi-thousand-pixel
      * column, since `initCollapsableColumns`'s height-clamp only constrains
      * the live cell's vertical size, not the width of the detached
-     * measurement clone.
-     * @type {number}
+     * measurement clone. User-configurable via `sa_annotation_column_max_width`
+     * — always applied regardless of `sa_enable_annotation_collapse`.
+     * @returns {number}
      */
-    const PROSE_COLUMN_MAX_WIDTH_PX = 480;
+    function _getProseColumnMaxWidth() {
+        const configured = Number(Lib.settings.sa_annotation_column_max_width);
+        return Number.isFinite(configured) && configured > 0
+            ? configured
+            : PROSE_COLUMN_MAX_WIDTH_PX_FALLBACK;
+    }
 
     /**
      * True if `colIndex` in `table` is a "prose" collapsable column — i.e. its
-     * body cells were wrapped in `.mb-text-clamp-inner` by
+     * body cells were wrapped in `.mb-text-clamp-marker` by
      * `initCollapsableColumns` (all candidate cells in a declared
-     * `collapsableColumns` column get wrapped, whether or not they actually
-     * overflow the clamp — see initCollapsableColumns). Used by the
-     * auto-resize measurement paths to cap these columns' width instead of
-     * sizing them to a paragraph's unwrapped natural width.
+     * `collapsableColumns` column get this marker, whether or not the
+     * "Enable collapsible Annotation columns" setting is on, and whether or
+     * not they actually overflow the clamp when it is — see
+     * initCollapsableColumns). Used by the auto-resize measurement paths to
+     * cap these columns' width instead of sizing them to a paragraph's
+     * unwrapped natural width — this cap is intentionally independent of
+     * `sa_enable_annotation_collapse` (always active).
      * @param {HTMLTableElement} table
      * @param {number} colIndex
      * @returns {boolean}
@@ -8897,7 +8950,7 @@
     function _isProseCollapseColumn(table, colIndex) {
         return Array.from(table.querySelectorAll('tbody tr')).some(tr => {
             const td = tr.cells[colIndex];
-            return !!(td && td.querySelector(':scope > .mb-text-clamp-inner'));
+            return !!(td && td.querySelector(':scope > .mb-text-clamp-marker'));
         });
     }
 
@@ -8990,9 +9043,9 @@
 
                         // Prose collapsable columns (e.g. "Annotation"): cap the
                         // measured width instead of sizing to a paragraph's
-                        // unwrapped nowrap width — see PROSE_COLUMN_MAX_WIDTH_PX.
+                        // unwrapped nowrap width — see _getProseColumnMaxWidth().
                         if (_isProseCollapseColumn(currentTable, columnIndex)) {
-                            maxWidth = Math.min(maxWidth, PROSE_COLUMN_MAX_WIDTH_PX);
+                            maxWidth = Math.min(maxWidth, _getProseColumnMaxWidth());
                         }
 
                         // Set the measured width
@@ -9108,7 +9161,7 @@
                     }
                     document.body.removeChild(measureDiv);
                     if (_isProseCollapseColumn(table, columnIndex)) {
-                        maxWidth = Math.min(maxWidth, PROSE_COLUMN_MAX_WIDTH_PX);
+                        maxWidth = Math.min(maxWidth, _getProseColumnMaxWidth());
                     }
                     col.style.width   = `${Math.ceil(maxWidth + 20)}px`;
                     col.style.display = '';
@@ -17123,11 +17176,11 @@ a { color: #1565c0; }`;
             // produces its full unwrapped single-line width — the live cell's
             // initCollapsableColumns height-clamp only constrains vertical
             // size, not that detached clone's width. Cap instead of measuring
-            // these columns at their natural width. See PROSE_COLUMN_MAX_WIDTH_PX.
+            // these columns at their natural width. See _getProseColumnMaxWidth().
             for (let colIndex = 0; colIndex < columnCount; colIndex++) {
                 if (!columnVisible[colIndex]) continue;
                 if (_isProseCollapseColumn(table, colIndex)) {
-                    columnWidths[colIndex] = Math.min(columnWidths[colIndex], PROSE_COLUMN_MAX_WIDTH_PX);
+                    columnWidths[colIndex] = Math.min(columnWidths[colIndex], _getProseColumnMaxWidth());
                 }
             }
 
@@ -17561,11 +17614,11 @@ a { color: #1565c0; }`;
             // the widest single-line cell content — for a long free-text
             // paragraph that's its full unwrapped width. initCollapsableColumns's
             // height-clamp only constrains vertical size, not this nowrap
-            // measurement, so cap these columns instead. See PROSE_COLUMN_MAX_WIDTH_PX.
+            // measurement, so cap these columns instead. See _getProseColumnMaxWidth().
             for (let colIndex = 0; colIndex < columnCount; colIndex++) {
                 if (!columnVisible[colIndex]) continue;
                 if (_isProseCollapseColumn(table, colIndex)) {
-                    columnWidths[colIndex] = Math.min(columnWidths[colIndex], PROSE_COLUMN_MAX_WIDTH_PX);
+                    columnWidths[colIndex] = Math.min(columnWidths[colIndex], _getProseColumnMaxWidth());
                 }
             }
 
@@ -33999,14 +34052,17 @@ a { color: #1565c0; }`;
         //   .mb-cell-collapse-toggle  — per-cell toggle span in tbody (removed unconditionally)
         //   td.mb-has-collapse-toggle — td class that sets position:relative + padding-right
         //   tbody td ul > li          — list items whose display was set to 'none' when collapsed
-        //   .mb-text-clamp-inner      — prose-cell wrapper; kept (cheap to reuse) but its
-        //                               expanded state is reset so re-init always starts collapsed
+        //   .mb-text-clamp-marker     — prose-cell wrapper (kept, cheap to reuse); reset to bare
+        //                               (unclamped, uncollapsed) state — the per-column wiring
+        //                               pass below re-adds the clamp class only when both the
+        //                               cell is still a prose candidate AND
+        //                               sa_enable_annotation_collapse is on
         table.querySelectorAll(
             '.mb-col-collapse-hdr-btn, .mb-caa-col-hdr-btn, ' +
             '.mb-cell-collapse-toggle, ' +
             'td.mb-has-collapse-toggle, ' +
             'tbody td ul > li, ' +
-            '.mb-text-clamp-inner'
+            '.mb-text-clamp-marker'
         ).forEach(el => {
             if (el.classList.contains('mb-col-collapse-hdr-btn')) {
                 const hdrFlex = el.closest('.mb-col-hdr-flex');
@@ -34023,10 +34079,11 @@ a { color: #1565c0; }`;
                 // now the authoritative art-cell toggle, so any remaining
                 // mb-cell-collapse-toggle on such cells is dead markup).
                 el.remove();
-            } else if (el.classList.contains('mb-text-clamp-inner')) {
-                // Prose-cell wrapper — reset to collapsed; re-measured and
-                // re-wired (or left alone if short) later in this function.
-                el.classList.remove('mb-text-clamp-expanded');
+            } else if (el.classList.contains('mb-text-clamp-marker')) {
+                // Prose-cell wrapper — reset to bare (unclamped, uncollapsed)
+                // state; re-measured and re-wired (or left bare) later in
+                // this function depending on sa_enable_annotation_collapse.
+                el.classList.remove('mb-text-clamp-inner', 'mb-text-clamp-expanded');
             } else if (el.tagName === 'TD') {
                 // td.mb-has-collapse-toggle — clear positioning class.
                 el.classList.remove('mb-has-collapse-toggle');
@@ -34264,27 +34321,43 @@ a { color: #1565c0; }`;
             // "show more/less" toggle instead of the list-item hide/show
             // treatment used above. Only cells that actually overflow the
             // clamp get a toggle — short annotations render unchanged.
+            //
+            // Every candidate is ALWAYS wrapped in .mb-text-clamp-marker,
+            // regardless of sa_enable_annotation_collapse — that marker is
+            // what auto-resize's _isProseCollapseColumn() keys off, and the
+            // width cap must stay active even when collapsing is disabled
+            // (see _getProseColumnMaxWidth). The .mb-text-clamp-inner class
+            // (which actually clamps height) and the toggle are only added
+            // when the setting is on.
+            const _annotationCollapseEnabled = Lib.settings.sa_enable_annotation_collapse !== false;
             let proseOverflowCount = 0;
             if (proseCandidates.length > 0) {
-                // Pass 1: wrap (idempotent) + apply the collapsed clamp to ALL
-                // candidates — pure DOM writes, no reads yet.
+                // Pass 1: wrap (idempotent) — pure DOM writes, no reads yet.
                 const _proseWrapped = proseCandidates.map(td => {
-                    let inner = td.querySelector(':scope > .mb-text-clamp-inner');
+                    let inner = td.querySelector(':scope > .mb-text-clamp-marker');
                     if (!inner) {
                         inner = document.createElement('div');
-                        inner.className = 'mb-text-clamp-inner';
+                        inner.className = 'mb-text-clamp-marker';
                         while (td.firstChild) inner.appendChild(td.firstChild);
                         td.appendChild(inner);
                     }
-                    inner.classList.remove('mb-text-clamp-expanded');
                     return { td, inner };
                 });
 
-                // Pass 2: batch-read scrollHeight/clientHeight — one layout
-                // flush for the whole column instead of one per cell.
-                const _proseOverflowing = _proseWrapped.filter(({ inner }) =>
-                    inner.scrollHeight > inner.clientHeight + 1
-                );
+                // The top-of-function idempotent cleanup pass already reset every
+                // .mb-text-clamp-marker to bare state, so when the setting is off
+                // there is nothing further to do here — cells simply stay bare
+                // (full, unclamped text; no toggle).
+                const _proseOverflowing = _annotationCollapseEnabled
+                    ? (() => {
+                        _proseWrapped.forEach(({ inner }) => inner.classList.add('mb-text-clamp-inner'));
+                        // Pass 2: batch-read scrollHeight/clientHeight — one layout
+                        // flush for the whole column instead of one per cell.
+                        return _proseWrapped.filter(({ inner }) =>
+                            inner.scrollHeight > inner.clientHeight + 1
+                        );
+                    })()
+                    : [];
 
                 _proseOverflowing.forEach(({ td, inner }) => {
                     proseOverflowCount++;

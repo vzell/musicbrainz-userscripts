@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-07-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Added a new '📝 ANNOTATION COLUMNS' settings section: `sa_enable_annotation_collapse` (checkbox, default on) toggles the WIP.1 free-text collapse/height-clamp behaviour on/off for 'Annotation'-style columns, and `sa_annotation_column_max_width` (number, default 480) makes the auto-resize width cap configurable.",
+          "The auto-resize width cap for these columns is now always active, independent of `sa_enable_annotation_collapse` — even with collapsing disabled, a long annotation no longer stretches the column to its unwrapped width."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-07-21",
     "sections": [
