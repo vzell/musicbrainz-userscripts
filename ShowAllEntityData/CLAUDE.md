@@ -162,6 +162,9 @@ The native `<h2>Tags vzell upvoted</h2>` is already the correct targetHeader.
 | `.mb-inline-art-sort-key` | Hidden sort key for inline thumbnail presence |
 | `.mb-rel-cell` | Relationship icon cell |
 | `.mb-sticky-col` | Sticky first column |
+| `.mb-cell-collapse-toggle` | Per-cell ▶/▼ collapse toggle — drives BOTH list cells (`ul>li`) and prose cells (`.mb-text-clamp-inner`) |
+| `.mb-text-clamp-inner` | Wrapper around a "prose" collapsable cell's content (e.g. "Annotation"); height-clamped by default |
+| `.mb-text-clamp-expanded` | Toggled on `.mb-text-clamp-inner` to lift the height clamp |
 
 ---
 
@@ -216,6 +219,40 @@ Enable via the `sa_enable_debug_logging` setting or the Tampermonkey menu.
 3. Add corresponding header name strings to `syntheticColumns`
 4. If the extractor produces a sort-key span, add its class to `_CLEAN_STRIP_SEL`
    (so `getCleanColumnText` does not leak sentinel values into filter matching)
+
+---
+
+## `collapsableColumns`: list vs. prose cells
+
+`features.collapsableColumns` (an array of column-header names, see
+`initCollapsableColumns`) auto-detects two independent cell shapes per
+declared column — no separate feature key or page-definition change needed:
+
+- **List cells** — a direct-child `<ul><li>` with ≥2 items (script-generated
+  by `renderMultiRowCell`, `splitCountryDate`, `video`, …). Collapsed to the
+  first `<li>`; toggle shows an item count (`▶ 2 ▤`).
+- **Prose cells** — free-form content with no direct-child list (e.g.
+  "Annotation" columns, which are wiki-rendered `<div>/<p>/<bdi>` text — see
+  `debug/annotation.html`). Wrapped in `.mb-text-clamp-inner` and height-
+  clamped (~4 lines); toggle shows a "more"/"less" label instead of a count.
+  Only cells that actually overflow the clamp get a toggle.
+
+Both share the same `.mb-cell-collapse-toggle` DOM shape, the same
+`ensureCollapseDelegate` click delegate, `_applyCollapseState` (driven by the
+column-header and global mass-toggle buttons), `_syncCollapseHasMatchInTable`
+(filter-match tinting), and `expandedCells` state persistence — each has a
+branch keyed on whether the `<td>` contains a list or a
+`.mb-text-clamp-inner` wrapper. When adding a fourth cell kind (following the
+existing CAA/EAA `[data-caa-expand-btn]` precedent), extend all of: the
+gathering pass in `initCollapsableColumns`, its idempotent cleanup selector,
+`ensureCollapseDelegate`, `_applyCollapseState`, and
+`_syncCollapseHasMatchInTable`.
+
+Auto-resize (`toggleColumn`, `toggleColumnInTable`, `toggleSubTableAutoResize`,
+`toggleAutoResizeColumns`) caps prose columns at `PROSE_COLUMN_MAX_WIDTH_PX`
+(via `_isProseCollapseColumn`) instead of measuring a paragraph's unwrapped
+nowrap width — a plain `collapsableColumns` list-cell column is never capped
+this way, since its cells are short by construction.
 
 ---
 

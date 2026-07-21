@@ -8871,6 +8871,37 @@
     const subTableColVisRegistry = new Map();
 
     /**
+     * Cap applied to auto-resize's measured width for "prose" collapsable
+     * columns (e.g. "Annotation") — see `_isProseCollapseColumn`.  Without
+     * this, measuring a long free-text cell's natural single-line width via
+     * a `white-space: nowrap` clone can produce a multi-thousand-pixel
+     * column, since `initCollapsableColumns`'s height-clamp only constrains
+     * the live cell's vertical size, not the width of the detached
+     * measurement clone.
+     * @type {number}
+     */
+    const PROSE_COLUMN_MAX_WIDTH_PX = 480;
+
+    /**
+     * True if `colIndex` in `table` is a "prose" collapsable column — i.e. its
+     * body cells were wrapped in `.mb-text-clamp-inner` by
+     * `initCollapsableColumns` (all candidate cells in a declared
+     * `collapsableColumns` column get wrapped, whether or not they actually
+     * overflow the clamp — see initCollapsableColumns). Used by the
+     * auto-resize measurement paths to cap these columns' width instead of
+     * sizing them to a paragraph's unwrapped natural width.
+     * @param {HTMLTableElement} table
+     * @param {number} colIndex
+     * @returns {boolean}
+     */
+    function _isProseCollapseColumn(table, colIndex) {
+        return Array.from(table.querySelectorAll('tbody tr')).some(tr => {
+            const td = tr.cells[colIndex];
+            return !!(td && td.querySelector(':scope > .mb-text-clamp-inner'));
+        });
+    }
+
+    /**
      * Toggle visibility of a column across all tables
      * @param {HTMLTableElement} table - Reference table (not used, kept for compatibility)
      * @param {number} columnIndex - Index of the column to toggle
@@ -8956,6 +8987,13 @@
                         }
 
                         document.body.removeChild(measureDiv);
+
+                        // Prose collapsable columns (e.g. "Annotation"): cap the
+                        // measured width instead of sizing to a paragraph's
+                        // unwrapped nowrap width — see PROSE_COLUMN_MAX_WIDTH_PX.
+                        if (_isProseCollapseColumn(currentTable, columnIndex)) {
+                            maxWidth = Math.min(maxWidth, PROSE_COLUMN_MAX_WIDTH_PX);
+                        }
 
                         // Set the measured width
                         const finalWidth = Math.ceil(maxWidth + 20);
@@ -9069,6 +9107,9 @@
                         }
                     }
                     document.body.removeChild(measureDiv);
+                    if (_isProseCollapseColumn(table, columnIndex)) {
+                        maxWidth = Math.min(maxWidth, PROSE_COLUMN_MAX_WIDTH_PX);
+                    }
                     col.style.width   = `${Math.ceil(maxWidth + 20)}px`;
                     col.style.display = '';
                 } else {
@@ -9508,6 +9549,25 @@
             const artLis = Array.from(artUl.querySelectorAll(':scope > li.mb-caa-art-li-image'));
             const hasHiddenMatch = artLis.some(li => li.querySelector(_COLLAPSE_MATCH_SEL));
             expandBtn.classList.toggle('mb-collapse-toggle-has-match', hasHiddenMatch);
+        });
+
+        // ── Pass 3: prose (free-text) cells (.mb-text-clamp-inner) ──────────────
+        // Content isn't display:none-hidden per node here — just visually
+        // clamped — so (unlike Pass 1's "hidden lis only") a whole-wrapper
+        // check is the correct equivalent, not an approximation of it.
+        table.querySelectorAll('td.mb-has-collapse-toggle').forEach(td => {
+            const inner = td.querySelector(':scope > .mb-text-clamp-inner');
+            if (!inner) return;
+            const toggle = td.querySelector(':scope > .mb-cell-collapse-toggle');
+            if (!toggle) return;
+            if (toggle.getAttribute('aria-expanded') === 'true') {
+                toggle.classList.remove('mb-collapse-toggle-has-match');
+                return;
+            }
+            toggle.classList.toggle(
+                'mb-collapse-toggle-has-match',
+                !!inner.querySelector(_COLLAPSE_MATCH_SEL)
+            );
         });
     }
 
@@ -17057,6 +17117,20 @@ a { color: #1565c0; }`;
                 }
             }
 
+            // ── Cap prose collapsable columns (e.g. "Annotation") ──────────────
+            // The measurement pass above clones cell content into a
+            // white-space:nowrap div, which for a long free-text paragraph
+            // produces its full unwrapped single-line width — the live cell's
+            // initCollapsableColumns height-clamp only constrains vertical
+            // size, not that detached clone's width. Cap instead of measuring
+            // these columns at their natural width. See PROSE_COLUMN_MAX_WIDTH_PX.
+            for (let colIndex = 0; colIndex < columnCount; colIndex++) {
+                if (!columnVisible[colIndex]) continue;
+                if (_isProseCollapseColumn(table, colIndex)) {
+                    columnWidths[colIndex] = Math.min(columnWidths[colIndex], PROSE_COLUMN_MAX_WIDTH_PX);
+                }
+            }
+
             // Apply widths via colgroup
             let colgroup = table.querySelector('colgroup');
             if (!colgroup) {
@@ -17482,6 +17556,18 @@ a { color: #1565c0; }`;
                 }
             }
 
+            // ── Cap prose collapsable columns (e.g. "Annotation") ──────────────
+            // The live-table nowrap pass above expands each column's <th> to fit
+            // the widest single-line cell content — for a long free-text
+            // paragraph that's its full unwrapped width. initCollapsableColumns's
+            // height-clamp only constrains vertical size, not this nowrap
+            // measurement, so cap these columns instead. See PROSE_COLUMN_MAX_WIDTH_PX.
+            for (let colIndex = 0; colIndex < columnCount; colIndex++) {
+                if (!columnVisible[colIndex]) continue;
+                if (_isProseCollapseColumn(table, colIndex)) {
+                    columnWidths[colIndex] = Math.min(columnWidths[colIndex], PROSE_COLUMN_MAX_WIDTH_PX);
+                }
+            }
 
             // Apply widths to table columns
             // Use colgroup for better performance
@@ -19551,6 +19637,27 @@ a { color: #1565c0; }`;
         td.mb-has-collapse-toggle {
             position: relative !important;
             padding-right: 22px !important;
+        }
+
+        /* Prose (free-text) collapsable cells — e.g. "Annotation" columns.
+           Wraps a cell's existing content; height-clamped by default and
+           expanded via .mb-text-clamp-expanded (toggled by the same
+           .mb-cell-collapse-toggle used for list cells, see
+           initCollapsableColumns / ensureCollapseDelegate / _applyCollapseState).
+           No fade-out gradient at the clamp edge: some source cells (e.g.
+           Discogs-sourced release annotations) carry an explicit inline
+           background colour on the <td>, and a hardcoded gradient would not
+           reliably match it — the ▶ more toggle alone signals truncation. */
+        .mb-text-clamp-inner {
+            max-height: 5.6em; /* ~4 lines at this table's line-height */
+            overflow: hidden;
+        }
+        .mb-text-clamp-inner.mb-text-clamp-expanded {
+            max-height: none;
+        }
+        .mb-cell-collapse-label {
+            pointer-events: none;
+            user-select: none;
         }
 
         /* Per-column ▶▤/▼▤ toggle button inserted into the .mb-col-hdr-flex row
@@ -33326,6 +33433,46 @@ a { color: #1565c0; }`;
     function _applyCollapseState(toggle, expand) {
         const td = toggle.closest('td');
         if (!td) return;
+
+        // ── Prose (free-text) cell: height-clamp toggle ───────────────────────
+        const proseInner = td.querySelector(':scope > .mb-text-clamp-inner');
+        if (proseInner) {
+            const currentlyExpanded = toggle.getAttribute('aria-expanded') === 'true';
+            if (currentlyExpanded === expand) return; // already at target state
+
+            proseInner.classList.toggle('mb-text-clamp-expanded', expand);
+
+            const glyphEl = toggle.querySelector('.mb-cell-collapse-glyph');
+            if (glyphEl) glyphEl.textContent = expand ? '▼' : '▶';
+            const labelEl = toggle.querySelector('.mb-cell-collapse-label');
+            if (labelEl) labelEl.textContent = expand ? 'less' : 'more';
+            toggle.title = expand
+                ? 'Collapse this cell back to a short preview'
+                : 'Show the full text of this cell';
+            toggle.setAttribute('aria-expanded', expand ? 'true' : 'false');
+            toggle.setAttribute('aria-label',
+                expand ? 'Collapse: showing full text' : 'Expand: text is truncated');
+
+            const tr     = toggle.closest('tr');
+            const rowIdx = tr ? tr.dataset.mbRowIdx : undefined;
+            if (rowIdx !== undefined) {
+                const colIdx = Array.from(tr.cells).indexOf(td);
+                if (colIdx >= 0) {
+                    const key = `${rowIdx}:${colIdx}`;
+                    if (expand) expandedCells.set(key, true);
+                    else        expandedCells.delete(key);
+                }
+            }
+
+            const hasMatch = !expand && !!proseInner.querySelector(_COLLAPSE_MATCH_SEL);
+            toggle.classList.toggle('mb-collapse-toggle-has-match', hasMatch);
+
+            const tbl = td.closest('table.tbl');
+            if (tbl) updateSubTableCollapseButton(tbl);
+            updateGlobalCollapseButtonHighlight(tbl || null);
+            return;
+        }
+
         const ul = td.querySelector(':scope > ul') || td.querySelector('ul');
         if (!ul) return;
         const lis = Array.from(ul.querySelectorAll(':scope > li'));
@@ -33541,6 +33688,54 @@ a { color: #1565c0; }`;
 
             const td = toggle.closest('td');
             if (!td) return;
+
+            // ── Prose (free-text) cell: height-clamp toggle ───────────────────
+            // "Annotation"-style cells have no <ul> — an <inner> wrapper div is
+            // clamped/expanded via a CSS class instead of hiding <li> siblings.
+            const proseInner = td.querySelector(':scope > .mb-text-clamp-inner');
+            if (proseInner) {
+                const proseExpanding = toggle.getAttribute('aria-expanded') !== 'true';
+                proseInner.classList.toggle('mb-text-clamp-expanded', proseExpanding);
+
+                const _pGlyphEl = toggle.querySelector('.mb-cell-collapse-glyph');
+                if (_pGlyphEl) _pGlyphEl.textContent = proseExpanding ? '▼' : '▶';
+                const _pLabelEl = toggle.querySelector('.mb-cell-collapse-label');
+                if (_pLabelEl) _pLabelEl.textContent = proseExpanding ? 'less' : 'more';
+                toggle.title = proseExpanding
+                    ? 'Collapse this cell back to a short preview'
+                    : 'Show the full text of this cell';
+                toggle.setAttribute('aria-expanded', proseExpanding ? 'true' : 'false');
+                toggle.setAttribute('aria-label',
+                    proseExpanding ? 'Collapse: showing full text' : 'Expand: text is truncated'
+                );
+
+                const _pTr = toggle.closest('tr');
+                const _pRowIdx = _pTr ? _pTr.dataset.mbRowIdx : undefined;
+                if (_pRowIdx !== undefined) {
+                    const _pColIdx = Array.from(_pTr.cells).indexOf(td);
+                    if (_pColIdx >= 0) {
+                        const _pKey = `${_pRowIdx}:${_pColIdx}`;
+                        if (proseExpanding) expandedCells.set(_pKey, true);
+                        else                 expandedCells.delete(_pKey);
+                    }
+                }
+
+                if (proseExpanding) {
+                    toggle.classList.remove('mb-collapse-toggle-has-match');
+                } else {
+                    toggle.classList.toggle(
+                        'mb-collapse-toggle-has-match',
+                        !!proseInner.querySelector(_COLLAPSE_MATCH_SEL)
+                    );
+                }
+
+                const _pTbl = toggle.closest('table');
+                const _pScanScope = (activeDefinition && activeDefinition.tableMode === 'multi') ? null : _pTbl;
+                if (_pTbl) updateGlobalCollapseButtonHighlight(_pScanScope);
+                if (_pTbl) updateSubTableCollapseButton(_pTbl);
+                return;
+            }
+
             // Find the <ul> that is a direct child of the <td> — the multi-row list.
             const ul = td.querySelector(':scope > ul') || td.querySelector('ul');
             if (!ul) return;
@@ -33804,11 +33999,14 @@ a { color: #1565c0; }`;
         //   .mb-cell-collapse-toggle  — per-cell toggle span in tbody (removed unconditionally)
         //   td.mb-has-collapse-toggle — td class that sets position:relative + padding-right
         //   tbody td ul > li          — list items whose display was set to 'none' when collapsed
+        //   .mb-text-clamp-inner      — prose-cell wrapper; kept (cheap to reuse) but its
+        //                               expanded state is reset so re-init always starts collapsed
         table.querySelectorAll(
             '.mb-col-collapse-hdr-btn, .mb-caa-col-hdr-btn, ' +
             '.mb-cell-collapse-toggle, ' +
             'td.mb-has-collapse-toggle, ' +
-            'tbody td ul > li'
+            'tbody td ul > li, ' +
+            '.mb-text-clamp-inner'
         ).forEach(el => {
             if (el.classList.contains('mb-col-collapse-hdr-btn')) {
                 const hdrFlex = el.closest('.mb-col-hdr-flex');
@@ -33825,6 +34023,10 @@ a { color: #1565c0; }`;
                 // now the authoritative art-cell toggle, so any remaining
                 // mb-cell-collapse-toggle on such cells is dead markup).
                 el.remove();
+            } else if (el.classList.contains('mb-text-clamp-inner')) {
+                // Prose-cell wrapper — reset to collapsed; re-measured and
+                // re-wired (or left alone if short) later in this function.
+                el.classList.remove('mb-text-clamp-expanded');
             } else if (el.tagName === 'TD') {
                 // td.mb-has-collapse-toggle — clear positioning class.
                 el.classList.remove('mb-has-collapse-toggle');
@@ -33869,28 +34071,53 @@ a { color: #1565c0; }`;
             const th = headers[colIndex];
 
             // ── Gather multi-row body cells ───────────────────────────────────
+            // Scoped to `:scope > ul > li` (direct-child list only) — NOT the
+            // broader `td.querySelectorAll('ul > li')` used previously, which
+            // also matched wiki-rendered bullet/numbered lists (`* item`, `1.
+            // item`, …) buried inside free-text "Annotation" cells and would
+            // incorrectly list-collapse prose around them. Every script-
+            // generated multi-row column (Catalog#, Label, video, …) always
+            // places its <ul> as the <td>'s direct child, so this is a
+            // behaviour-preserving tightening for those, and is what makes it
+            // safe to also treat non-list free-text cells as "prose" below.
             const multiRowCells = [];
             bodyRows.forEach(tr => {
                 const td = tr.cells[colIndex];
                 if (!td) return;
-                const lis = Array.from(td.querySelectorAll('ul > li'));
+                const lis = Array.from(td.querySelectorAll(':scope > ul > li'));
                 if (lis.length >= 2) multiRowCells.push({ td, lis });
             });
 
-            if (multiRowCells.length === 0) {
+            // ── Gather prose (free-text) body cells ───────────────────────────
+            // Cells not claimed above (no direct-child <ul><li> list of ≥2
+            // items) but with real content — e.g. "Annotation" columns, which
+            // are free-form wiki-rendered <div>/<p>/<bdi> prose rather than a
+            // script-generated list. Wired up separately below with a height-
+            // clamp "show more/less" treatment instead of item hide/show.
+            const proseCandidates = [];
+            bodyRows.forEach(tr => {
+                const td = tr.cells[colIndex];
+                if (!td) return;
+                if (td.querySelector(':scope > ul.mb-caa-art-ul')) return; // art cell
+                const lis = Array.from(td.querySelectorAll(':scope > ul > li'));
+                if (lis.length >= 2) return; // already a list cell above
+                if (!td.textContent.trim()) return; // empty
+                proseCandidates.push(td);
+            });
+
+            if (multiRowCells.length === 0 && proseCandidates.length === 0) {
                 Lib.debug(
                     'collapse',
                     `initCollapsableColumns: "${colName}" (col ${colIndex}) — ` +
-                    `no multi-row cells found, skipping.`
+                    `no collapsable cells found, skipping.`
                 );
                 return;
             }
 
-            anyColumnHasMultiRow = true;
             Lib.debug(
                 'collapse',
                 `initCollapsableColumns: "${colName}" (col ${colIndex}) — ` +
-                `${multiRowCells.length} multi-row cell(s).`
+                `${multiRowCells.length} multi-row cell(s), ${proseCandidates.length} prose candidate(s).`
             );
 
             // ── Wire up each multi-row body cell ──────────────────────────────
@@ -34032,16 +34259,102 @@ a { color: #1565c0; }`;
                 expandBtn.classList.toggle('mb-collapse-toggle-has-match', hasHiddenMatch);
             });
 
+            // ── Wire up prose (free-text) body cells ───────────────────────────
+            // Height-clamp long free text (e.g. "Annotation") behind a ▶/▼
+            // "show more/less" toggle instead of the list-item hide/show
+            // treatment used above. Only cells that actually overflow the
+            // clamp get a toggle — short annotations render unchanged.
+            let proseOverflowCount = 0;
+            if (proseCandidates.length > 0) {
+                // Pass 1: wrap (idempotent) + apply the collapsed clamp to ALL
+                // candidates — pure DOM writes, no reads yet.
+                const _proseWrapped = proseCandidates.map(td => {
+                    let inner = td.querySelector(':scope > .mb-text-clamp-inner');
+                    if (!inner) {
+                        inner = document.createElement('div');
+                        inner.className = 'mb-text-clamp-inner';
+                        while (td.firstChild) inner.appendChild(td.firstChild);
+                        td.appendChild(inner);
+                    }
+                    inner.classList.remove('mb-text-clamp-expanded');
+                    return { td, inner };
+                });
+
+                // Pass 2: batch-read scrollHeight/clientHeight — one layout
+                // flush for the whole column instead of one per cell.
+                const _proseOverflowing = _proseWrapped.filter(({ inner }) =>
+                    inner.scrollHeight > inner.clientHeight + 1
+                );
+
+                _proseOverflowing.forEach(({ td, inner }) => {
+                    proseOverflowCount++;
+
+                    const tr     = td.closest('tr');
+                    const rowIdx = tr ? tr.dataset.mbRowIdx : undefined;
+                    const ecKey  = rowIdx !== undefined ? `${rowIdx}:${colIndex}` : undefined;
+                    const startExpanded = ecKey !== undefined && expandedCells.get(ecKey) === true;
+
+                    inner.classList.toggle('mb-text-clamp-expanded', startExpanded);
+                    td.classList.add('mb-has-collapse-toggle');
+
+                    // Same three-child-span shape as the list-cell toggle, but
+                    // with a text label instead of an item count — "N items"
+                    // doesn't apply to a clamped block of prose.
+                    const cellToggle = document.createElement('span');
+                    cellToggle.className = 'mb-cell-collapse-toggle';
+                    const _cg = document.createElement('span');
+                    _cg.className   = 'mb-cell-collapse-glyph';
+                    _cg.textContent = startExpanded ? '▼' : '▶';
+                    const _cl = document.createElement('span');
+                    _cl.className   = 'mb-cell-collapse-label';
+                    _cl.textContent = startExpanded ? 'less' : 'more';
+                    cellToggle.appendChild(_cg);
+                    cellToggle.appendChild(_cl);
+                    cellToggle.title = startExpanded
+                        ? 'Collapse this cell back to a short preview'
+                        : 'Show the full text of this cell';
+                    cellToggle.setAttribute('role', 'button');
+                    cellToggle.setAttribute('aria-expanded', startExpanded ? 'true' : 'false');
+                    cellToggle.setAttribute('aria-label',
+                        startExpanded ? 'Collapse: showing full text' : 'Expand: text is truncated'
+                    );
+                    td.appendChild(cellToggle);
+
+                    // ── Highlight toggle icon if the clamped text contains a
+                    // match ── prose content is never display:none-hidden per
+                    // node (just visually clamped), so a whole-cell check is
+                    // the correct equivalent of the list case's "hidden lis"
+                    // check, not an approximation of it.
+                    if (!startExpanded && inner.querySelector(_COLLAPSE_MATCH_SEL)) {
+                        cellToggle.classList.add('mb-collapse-toggle-has-match');
+                    }
+                });
+            }
+
+            const collapsibleCount = multiRowCells.length + proseOverflowCount;
+            if (collapsibleCount === 0) {
+                Lib.debug(
+                    'collapse',
+                    `initCollapsableColumns: "${colName}" (col ${colIndex}) — ` +
+                    `${proseCandidates.length} prose candidate(s), none overflowed — skipping toggle UI.`
+                );
+                return;
+            }
+            anyColumnHasMultiRow = true;
+
             // ── Set column minimum width ──────────────────────────────────────
             // Ensures the column is wide enough for the longest first-item
             // value across all rows + the toggle icon + its right padding,
             // preventing the first item from wrapping and pushing the toggle
-            // below the visible content area.
+            // below the visible content area.  List cells only — prose
+            // columns get their width capped separately during auto-resize.
             // 28 px = 18 px toggle icon width + 10 px margin / padding buffer.
-            const minPx = maxFirstLiWidth + 28;
-            const existingMin = parseFloat(th.style.minWidth) || 0;
-            if (minPx > existingMin) {
-                th.style.minWidth = minPx + 'px';
+            if (multiRowCells.length > 0) {
+                const minPx = maxFirstLiWidth + 28;
+                const existingMin = parseFloat(th.style.minWidth) || 0;
+                if (minPx > existingMin) {
+                    th.style.minWidth = minPx + 'px';
+                }
             }
 
             // ── Add true-toggle ▶N▤/▼N▤ button to column header ─────────────
@@ -34060,7 +34373,7 @@ a { color: #1565c0; }`;
             const _collapseKbHint = _collapseDirectOn
                 ? `keyboard: ${_collapseKey} or ${getPrefixDisplay()} then O when a column filter is focused`
                 : `keyboard: ${getPrefixDisplay()} then O when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for ${_collapseKey})`;
-            collapseHdrBtn.title = `Expand ALL multi-row "${colName}" cells (${multiRowCells.length}) in this table column — ${_collapseKbHint}`;
+            collapseHdrBtn.title = `Expand ALL multi-row "${colName}" cells (${collapsibleCount}) in this table column — ${_collapseKbHint}`;
             collapseHdrBtn.setAttribute('role', 'button');
             collapseHdrBtn.setAttribute('aria-expanded', 'false');
             collapseHdrBtn.setAttribute('aria-label', `Expand all collapsed cells in: ${colName}`);
@@ -34070,7 +34383,7 @@ a { color: #1565c0; }`;
             _glyphSpan.textContent = '▶';
             const _countSpan = document.createElement('span');
             _countSpan.className   = 'mb-col-collapse-count';
-            _countSpan.textContent = String(multiRowCells.length);
+            _countSpan.textContent = String(collapsibleCount);
             const _rackSpan = document.createElement('span');
             _rackSpan.className   = 'mb-col-collapse-rack';
             _rackSpan.textContent = '▤';

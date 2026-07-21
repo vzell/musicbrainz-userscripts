@@ -1,0 +1,16 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-07-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Annotation-style columns declared in `collapsableColumns` (report-detail's AnnotationsPlaces/AnnotationsReleases sub-reports, the instrument 'Annotations' report category) are now collapsible: free-text cells are height-clamped behind a ▶/▼ 'show more/less' toggle, sharing the same column-header and global mass-toggle buttons, filter-match highlighting, and expand-state persistence as existing list-type collapsable columns (Catalog#, Label, …).",
+          "Auto-resize (↔️ Resize / Ctrl+R) no longer sizes these free-text columns to a paragraph's unwrapped single-line width — their measured width is now capped, matching the new height-clamped rendering.",
+          "Tightened `collapsableColumns`' list-cell detection to only match a `<ul><li>` that is a direct child of the `<td>`, fixing a latent bug where a wiki-rendered bullet/numbered list embedded inside free-text annotation prose could be mistaken for a script-generated multi-row list and partially hidden."
+        ]
+      }
+    ]
+  }
+]
