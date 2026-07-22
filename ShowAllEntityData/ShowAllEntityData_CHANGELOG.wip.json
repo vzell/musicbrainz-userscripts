@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-07-22",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed wiki-rendered `<h2>` sub-headings inside 'Annotation'-style column cells (e.g. '== Known performances ==') becoming permanently non-collapsible after the first sort or filter. renderFinalTable()/renderGroupedTable() replace table rows with cloneNode(true) copies on every sort/filter re-render, which copies the collapsed-h2 marker classes and icon but not the click listener — makeH2sCollapsible() (which normally sets these up) only runs after the initial full-page render and a disk-load, never after a sort/filter, so the cloned headings looked processed but were inert. A new `_rewireNestedTableH2Toggles()` re-attaches working click handlers to these nested headings after every sort/filter re-render, without touching page-level h2 sections (Genres, Tags, Relationships, …) or resetting any section's manually-toggled state."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-07-21",
     "sections": [

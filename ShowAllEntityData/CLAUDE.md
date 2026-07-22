@@ -262,10 +262,11 @@ gathering pass in `initCollapsableColumns`, its idempotent cleanup selector,
 `_syncCollapseHasMatchInTable`.
 
 Auto-resize (`toggleColumn`, `toggleColumnInTable`, `toggleSubTableAutoResize`,
-`toggleAutoResizeColumns`) caps prose columns at `PROSE_COLUMN_MAX_WIDTH_PX`
-(via `_isProseCollapseColumn`) instead of measuring a paragraph's unwrapped
-nowrap width — a plain `collapsableColumns` list-cell column is never capped
-this way, since its cells are short by construction.
+`toggleAutoResizeColumns`) caps prose columns via `_getProseColumnMaxWidth()`
+(reads `sa_annotation_column_max_width`; `_isProseCollapseColumn` decides
+which columns qualify) instead of measuring a paragraph's unwrapped nowrap
+width — a plain `collapsableColumns` list-cell column is never capped this
+way, since its cells are short by construction.
 
 ---
 
@@ -289,3 +290,14 @@ this way, since its cells are short by construction.
 - `activeDefinition` is a module-level variable updated by `startFetchingProcess` —
   helper functions called during fetch see the merged definition, not `baseDefinition`
 - `sortLargeArray` is async — callers must `await` it before touching the sorted array
+- `renderFinalTable`/`renderGroupedTable` insert `cloneNode(true)` copies of rows on
+  every sort/filter re-render — any element with a direct `addEventListener` call or a
+  custom JS property (not a DOM attribute/class) loses it silently on the clone, even
+  though classes/attributes/inline styles survive and can make the clone *look* still
+  wired up. Existing re-wire-after-clone functions, all called from `runFilter()`'s
+  single-table branch and/or `renderGroupedTable()`: `initExpandRGsFeature()`,
+  `_cdtocInitTracklistToggles()`, `_rewireNestedTableH2Toggles()` (nested `<h2>`
+  headings inside table cells, e.g. wiki-rendered Annotation sub-sections — see
+  `makeH2sCollapsible()` for the page-level h2 mechanism this mirrors at a smaller
+  scale). A new interactive element injected into table cells needs the same
+  treatment if it uses `addEventListener` directly instead of event delegation.

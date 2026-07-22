@@ -25213,6 +25213,12 @@ a { color: #1565c0; }`;
             // every re-render (cloneNode(true) strips event listeners).
             _cdtocInitTracklistToggles();
 
+            // Re-wire wiki-rendered <h2> headings nested inside table cells
+            // (e.g. "Annotation" column sub-sections) — same
+            // cloneNode(true)-drops-listeners reason as initExpandRGsFeature()
+            // and _cdtocInitTracklistToggles() above.
+            _rewireNestedTableH2Toggles();
+
             // Refresh the Picard tagger column after every filter / sort re-render.
             // rewireOnly=true: only re-attach listeners on existing picard cells;
             // never append new tds.  During load-from-disk runFilter fires before
@@ -30990,6 +30996,16 @@ a { color: #1565c0; }`;
             rewireGlobalCollapseButtonMulti();
         }
 
+        // Re-wire wiki-rendered <h2> headings nested inside table cells
+        // (e.g. "Annotation" column sub-sections) across every sub-table —
+        // same cloneNode(true)-drops-listeners reason as
+        // initExpandRGsFeature() in runFilter()'s single-table branch. Safe
+        // to call here unconditionally (including on the true initial
+        // render): makeH2sCollapsible(), called once afterward by
+        // startFetchingProcess()/disk-load, resets and rebuilds whatever
+        // this wires up with its full page-level apparatus — no conflict.
+        _rewireNestedTableH2Toggles();
+
         // Generation guard: if a newer renderFinalTable or renderGroupedTable
         // call started while we were in the forEach loop above, skip the
         // post-render hooks — they will run (or already ran) for the winning
@@ -32218,6 +32234,129 @@ a { color: #1565c0; }`;
             // Attach event listener directly to the H2 container.
             // Store the reference on the element so makeH2sCollapsible() can remove it on
             // the next invocation (e.g. after "Load from Disk" on an already-rendered page).
+            h2._mbClickHandler = toggleFn;
+            h2.addEventListener('click', toggleFn);
+        });
+    }
+
+    /**
+     * Re-wires collapse/expand click handling for wiki-rendered `<h2>`
+     * headings nested inside `table.tbl` cells — e.g. a "== Known
+     * performances ==" heading inside an "Annotation" column cell (see
+     * `debug/collapsable.html` / `debug/non-collapsable.html`).
+     *
+     * Why this exists: `renderFinalTable()` / `renderGroupedTable()` insert
+     * `cloneNode(true)` copies of each row on every sort/filter re-render.
+     * `cloneNode(true)` copies DOM attributes — including the
+     * `mb-h2-processed`/`mb-toggle-h2` classes and the `.mb-toggle-icon` span
+     * that `makeH2sCollapsible()` added to the ORIGINAL node — but does NOT
+     * copy `addEventListener`-registered listeners or custom JS properties
+     * (`h2._mbClickHandler` / `h2._mbToggle`). A cloned nested h2 therefore
+     * LOOKS already processed (its marker classes would satisfy
+     * `makeH2sCollapsible()`'s idempotency guard) but is actually inert —
+     * clicking it does nothing. Since `makeH2sCollapsible()` itself only runs
+     * once after the initial full-page render and once after a disk-load
+     * (never after a sort/filter re-render — see its two call sites), it
+     * never gets a chance to notice and re-wire these clones.
+     *
+     * Deliberately does NOT touch page-level h2 sections (Genres, Tags,
+     * Relationships, the main data header, …): those live outside
+     * `table.tbl` and are never cloned by sort/filter, so re-running
+     * `makeH2sCollapsible()`'s full logic on them here would incorrectly
+     * reset any section a user had manually collapsed/expanded back to its
+     * default state. This function only ever looks at `table.tbl h2`, and
+     * skips any h2 that still has a live `_mbClickHandler` (i.e. is not a
+     * stale clone and needs no work).
+     *
+     * Also deliberately simpler than `makeH2sCollapsible()`'s per-h2 toggle
+     * logic: a nested h2's siblings are always plain content (`<p>`, text,
+     * a further nested `<h2>` starting the next wiki heading) — never
+     * `<h3>`/`<table>`/CAA-EAA-bigbox nodes, so none of
+     * `makeH2sCollapsible()`'s page-level special-casing (discography views,
+     * artwork strips, …) applies, and Ctrl+Click "toggle all peer sections"
+     * is intentionally not replicated here (its page-wide "peers" grouping
+     * doesn't have an obviously useful meaning for a single cell's heading).
+     *
+     * Safe to call unconditionally, including from the true initial render:
+     * if `makeH2sCollapsible()` runs afterward (as it always does on initial
+     * render), its own reset step tears down whatever this function wired up
+     * and rebuilds it with the full apparatus — no conflict either way.
+     *
+     * Call this after any render that may have replaced `table.tbl` rows
+     * with fresh clones — i.e. from `runFilter()`'s single-table branch and
+     * from `renderGroupedTable()` (covers the multi-table branch), the same
+     * places `initExpandRGsFeature()` / `_cdtocInitTracklistToggles()` are
+     * already called for the identical "cloneNode(true) drops listeners"
+     * reason.
+     */
+    function _rewireNestedTableH2Toggles() {
+        document.querySelectorAll('table.tbl h2').forEach(h2 => {
+            if (h2._mbClickHandler) return; // still wired — untouched original node
+
+            // isFreshH2: true for a genuinely first-seen nested h2 (no prior
+            // makeH2sCollapsible()/rewire pass ever touched it — e.g. a
+            // sub-table category that just reappeared after a filter
+            // change). false for a stale clone that already carries its
+            // last-known icon/classes — those are left as cloneNode(true)
+            // copied them (that already reflects the user's last toggle
+            // state) rather than being reset to a default.
+            const existingIcon = h2.querySelector(':scope > .mb-toggle-icon');
+            const isFreshH2 = !existingIcon;
+
+            h2.classList.add('mb-h2-processed', 'mb-toggle-h2');
+            h2.title = 'Click to collapse/uncollapse this section';
+            h2.style.cursor = 'pointer';
+            h2.style.userSelect = 'none';
+
+            const icon = existingIcon || document.createElement('span');
+            if (isFreshH2) {
+                icon.className = 'mb-toggle-icon';
+                icon.textContent = '▲'; // default collapsed, matches makeH2sCollapsible()
+                h2.prepend(icon);
+            }
+
+            // Collect sibling content nodes up to the next <h2> (or end of
+            // parent) — same walk makeH2sCollapsible() uses, wrapping bare
+            // non-empty text nodes in a <span> so they can be shown/hidden
+            // the same way as element siblings.
+            const contentNodes = [];
+            let _cur = h2.nextSibling;
+            while (_cur) {
+                const _nxt = _cur.nextSibling; // save before any DOM mutation
+                if (_cur.nodeType === Node.ELEMENT_NODE && _cur.tagName === 'H2') break;
+                if (_cur.nodeType === Node.TEXT_NODE && _cur.textContent.trim()) {
+                    const _wrap = document.createElement('span');
+                    _cur.parentNode.insertBefore(_wrap, _cur);
+                    _wrap.appendChild(_cur);
+                    contentNodes.push(_wrap);
+                } else if (_cur.nodeType === Node.ELEMENT_NODE) {
+                    contentNodes.push(_cur);
+                }
+                _cur = _nxt;
+            }
+
+            // Fresh h2: hide content by default (collapsed, matching
+            // makeH2sCollapsible()'s non-main-data-header default). Re-wired
+            // clone: leave each node's current display exactly as
+            // cloneNode(true) copied it.
+            if (isFreshH2) {
+                contentNodes.forEach(node => { node.style.display = 'none'; });
+            }
+
+            h2._mbToggle = (forceExpand) => {
+                const isCurrentlyExpanded = icon.textContent === '▼';
+                const shouldExpand = (forceExpand !== undefined) ? forceExpand : !isCurrentlyExpanded;
+                if (shouldExpand === isCurrentlyExpanded) return;
+                contentNodes.forEach(node => { node.style.display = shouldExpand ? '' : 'none'; });
+                icon.textContent = shouldExpand ? '▼' : '▲';
+            };
+
+            const toggleFn = (e) => {
+                if (['A', 'BUTTON', 'INPUT', 'LABEL', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+                e.preventDefault();
+                e.stopPropagation();
+                h2._mbToggle();
+            };
             h2._mbClickHandler = toggleFn;
             h2.addEventListener('click', toggleFn);
         });
