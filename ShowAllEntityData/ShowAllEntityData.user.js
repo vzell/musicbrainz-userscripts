@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.698+2026-07-22
+// @version      9.99.699+2026-07-22
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -13,24 +13,40 @@
 // @require      https://cdn.jsdelivr.net/npm/@jaames/iro@5
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
 // @require      https://raw.githubusercontent.com/vzell/mb-userscripts/master/lib/VZ_MBLibrary.user.js
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.org\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\?.*)?$/
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.org\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings)(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings)(?:\?.*)?$/
 // @match        *://*.musicbrainz.org/search?query=*
+// @match        *://*.musicbrainz.eu/search?query=*
 // @match        *://*.musicbrainz.org/account/applications
+// @match        *://*.musicbrainz.eu/account/applications
 // @match        *://*.musicbrainz.org/user/*/subscriptions/*
+// @match        *://*.musicbrainz.eu/user/*/subscriptions/*
 // @match        *://*.musicbrainz.org/user/*/subscribers
+// @match        *://*.musicbrainz.eu/user/*/subscribers
 // @match        *://*.musicbrainz.org/user/*/collections
+// @match        *://*.musicbrainz.eu/user/*/collections
 // @match        *://*.musicbrainz.org/user/*/ratings/*
+// @match        *://*.musicbrainz.eu/user/*/ratings/*
 // @match        *://*.musicbrainz.org/user/*/ratings
+// @match        *://*.musicbrainz.eu/user/*/ratings
 // @match        *://*.musicbrainz.org/user/*/tags*
+// @match        *://*.musicbrainz.eu/user/*/tags*
 // @match        *://*.musicbrainz.org/tags*
+// @match        *://*.musicbrainz.eu/tags*
 // @match        *://*.musicbrainz.org/user/*/tag/*
+// @match        *://*.musicbrainz.eu/user/*/tag/*
 // @match        *://*.musicbrainz.org/tag/*
+// @match        *://*.musicbrainz.eu/tag/*
 // @match        *://*.musicbrainz.org/cdtoc/*
+// @match        *://*.musicbrainz.eu/cdtoc/*
 // @match        *://*.musicbrainz.org/taglookup*
+// @match        *://*.musicbrainz.eu/taglookup*
 // @match        *://*.musicbrainz.org/artist-credit/*
+// @match        *://*.musicbrainz.eu/artist-credit/*
 // @match        *://*.musicbrainz.org/reports*
+// @match        *://*.musicbrainz.eu/reports*
 // @match        *://*.musicbrainz.org/report/*
+// @match        *://*.musicbrainz.eu/report/*
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -2655,8 +2671,9 @@
                             // IMPORTANT: use setAttribute (not the .href property) so the
                             // browser does NOT normalise the relative path to an absolute URL.
                             // Assigning syntheticAnchor.href = "/release-group/GUID/cover-art"
-                            // would store "https://musicbrainz.org/release-group/GUID/cover-art"
-                            // in the attribute, causing _artLoadIcon() to build a broken URL:
+                            // would store "https://<current MB domain, e.g. musicbrainz.org
+                            // or musicbrainz.eu>/release-group/GUID/cover-art" in the
+                            // attribute, causing _artLoadIcon() to build a broken URL:
                             //   //coverartarchive.orghttps://musicbrainz.org/…
                             syntheticAnchor.setAttribute('href', entityPath + '/cover-art');
                             syntheticAnchor.appendChild(bareIconSpan);
@@ -2695,8 +2712,8 @@
                         //
                         // IMPORTANT: use setAttribute (not .href) so the browser does NOT
                         // normalise the path to an absolute URL — assigning .href would
-                        // produce "https://musicbrainz.org/…" which breaks _artLoadIcon's
-                        // URL construction: //coverartarchive.orghttps://…
+                        // produce "https://<current MB domain>/…" which breaks
+                        // _artLoadIcon's URL construction: //coverartarchive.orghttps://…
                         const entityAnchorC = sourceCell.querySelector(
                             'a[href*="/release-group/"],' +
                             'a[href*="/release/"]:not([href$="/cover-art"])'
@@ -40768,7 +40785,9 @@ a { color: #1565c0; }`;
         // When the table is rendered, check whether it actually contains qualifying
         // release or release-group links (excluding cover-art links).
         const _relSel = ':is(#content,#page) table.tbl > tbody > tr > td a[href^="/release"]:not([href*="/cover-art"])';
-        const _absSel = ':is(#content,#page) table.tbl > tbody > tr > td a[href*="musicbrainz.org/release"]:not([href*="/cover-art"])';
+        const _absSel =
+            ':is(#content,#page) table.tbl > tbody > tr > td a[href*="musicbrainz.org/release"]:not([href*="/cover-art"]),' +
+            ':is(#content,#page) table.tbl > tbody > tr > td a[href*="musicbrainz.eu/release"]:not([href*="/cover-art"])';
         const _found = !!document.querySelector(_relSel) || !!document.querySelector(_absSel);
         return _found;
     }
@@ -41351,15 +41370,17 @@ a { color: #1565c0; }`;
         if (!Lib.settings.sa_enable_expand_rgs) return;
         if (!isExpandRGsPage()) return;
 
-        // Match both relative (/release/...) and absolute (https://musicbrainz.org/release/...) hrefs.
-        // The two-part selector covers:
+        // Match both relative (/release/...) and absolute (https://musicbrainz.org/release/...
+        // or https://musicbrainz.eu/release/...) hrefs. The selector covers:
         //   a[href^="/release"]                    — relative URLs (most pages)
-        //   a[href*="musicbrainz.org/release"]     — absolute URLs (some pages, e.g. taglookup)
+        //   a[href*="musicbrainz.org/release"]     — absolute URLs, .org (some pages, e.g. taglookup)
+        //   a[href*="musicbrainz.eu/release"]      — absolute URLs, .eu mirror
         // :is(#content,#page) covers both the standard div#content wrapper and the
         // div#page wrapper used on cdtoc, taglookup, and user-tag pages.
         const SELECTOR =
             ':is(#content,#page) table.tbl > tbody > tr > td a[href^="/release"],' +
-            ':is(#content,#page) table.tbl > tbody > tr > td a[href*="musicbrainz.org/release"]';
+            ':is(#content,#page) table.tbl > tbody > tr > td a[href*="musicbrainz.org/release"],' +
+            ':is(#content,#page) table.tbl > tbody > tr > td a[href*="musicbrainz.eu/release"]';
         const links    = document.querySelectorAll(SELECTOR);
 
         if (!links.length) {
@@ -48114,7 +48135,7 @@ a { color: #1565c0; }`;
      */
     function _picardBuildTaggerUrl(host, port, entityType, guid) {
         return `http://${host}:${port}/openalbum?id=${guid}&v=2&resource=${encodeURIComponent(
-            `https://musicbrainz.org/${entityType}/${guid}`
+            `${window.location.origin}/${entityType}/${guid}`
         )}`;
     }
 

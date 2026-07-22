@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.699",
+    "date": "2026-07-22",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added support for the `musicbrainz.eu` mirror domain alongside `musicbrainz.org`: both `@include` regex directives and all 18 `@match` directives in the userscript header now cover `.eu`; the Expand Release Groups feature's absolute-href selectors (`isExpandRGsPage()`, `initExpandRGsFeature()`) now also match `musicbrainz.eu/release` links; and `_picardBuildTaggerUrl()` now builds its resource URL from `window.location.origin` instead of a hardcoded `https://musicbrainz.org`, so the Picard tagger button sends the correct domain regardless of which MusicBrainz mirror the page was loaded from."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.698",
     "date": "2026-07-22",
     "sections": [
