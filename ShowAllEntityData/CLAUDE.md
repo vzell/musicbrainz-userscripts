@@ -261,12 +261,14 @@ gathering pass in `initCollapsableColumns`, its idempotent cleanup selector,
 `ensureCollapseDelegate`, `_applyCollapseState`, and
 `_syncCollapseHasMatchInTable`.
 
-Auto-resize (`toggleColumn`, `toggleColumnInTable`, `toggleSubTableAutoResize`,
-`toggleAutoResizeColumns`) caps prose columns via `_getProseColumnMaxWidth()`
-(reads `sa_annotation_column_max_width`; `_isProseCollapseColumn` decides
-which columns qualify) instead of measuring a paragraph's unwrapped nowrap
-width — a plain `collapsableColumns` list-cell column is never capped this
-way, since its cells are short by construction.
+Wiki-rendered `<h2>` sub-headings nested *inside* a prose cell (e.g.
+"== Known performances ==" inside an Annotation cell) are a separate concern
+from the cell-level clamp/toggle above — see `makeH2sCollapsible()` /
+`_rewireNestedTableH2Toggles()` and the "Common pitfalls" entry on
+`cloneNode(true)` dropping listeners. Their colors are `sa_annotation_h2_bg`
+/ `sa_annotation_h2_color` (CSS: `table.tbl h2.mb-toggle-h2`, scoped to
+out-specificity the page-level `.mb-toggle-h2` rule that uses `sa_ui_h2_bg`
+— these nested headings intentionally do NOT share the page-level H2 colors).
 
 ---
 

@@ -2013,6 +2013,34 @@
                          '▶/▼ toggle appears — the default 5.6em is roughly 4 lines at this ' +
                          'table\'s line-height. Only takes effect when "Enable collapsible ' +
                          '\'Annotation\' columns" above is on.'
+        },
+
+        sa_annotation_h2_bg: {
+            label: 'Annotation sub-heading background color',
+            type: 'color_picker',
+            default: '#e3f2fd',
+            description: 'Background color of wiki-rendered `<h2>` sub-headings inside table ' +
+                         'cells (e.g. "== Known performances ==" inside an "Annotation" column ' +
+                         'cell) — NOT the page-level H2 section headers (see "H2 section-header ' +
+                         'background color" above, a separate setting). Default is a pale blue ' +
+                         '(#e3f2fd, the same accent already used elsewhere in this script\'s UI) ' +
+                         'chosen to sit quietly against both the white and light-grey alternating ' +
+                         'row backgrounds inside a table, and to read as related to (rather than ' +
+                         'competing with) the standard blue hyperlink color rendered by MB inside ' +
+                         'the annotation text itself.'
+        },
+
+        sa_annotation_h2_color: {
+            label: 'Annotation sub-heading text color',
+            type: 'color_picker',
+            default: '#1565c0',
+            description: 'Text color of wiki-rendered `<h2>` sub-headings inside table cells ' +
+                         '(e.g. "== Known performances ==" inside an "Annotation" column cell) — ' +
+                         'NOT the page-level H2 section headers. Default is the same blue ' +
+                         '(#1565c0) used throughout this script\'s own UI accents, deliberately ' +
+                         'matching the standard blue of hyperlinks that commonly appear in ' +
+                         'annotation text, so the sub-heading reads as related without literally ' +
+                         'looking like a clickable link.'
         }
 
     };
@@ -19465,6 +19493,18 @@ a { color: #1565c0; }`;
         .mb-filter-status { font-family: 'Courier New', monospace; font-size: 1.0em; vertical-align: middle; margin-right: 4px; }
         .mb-sort-status { font-family: 'Arial', sans-serif; font-size: 1.0em; font-style: italic; vertical-align: middle; }
         .mb-toggle-h2 { cursor: pointer; user-select: none; background-color: ${Lib.settings.sa_ui_h2_bg || '#fff3e0'}; }
+        /* Wiki-rendered <h2> sub-headings nested inside table.tbl cells (e.g. an
+           "Annotation" column's "== Known performances ==") reuse the same
+           .mb-toggle-h2 class as page-level H2 sections (see makeH2sCollapsible() /
+           _rewireNestedTableH2Toggles()), but get their own colors — deliberately
+           different from sa_ui_h2_bg/sa_ui_h2_color so a table-cell sub-heading
+           never gets confused with a page-level section heading. Higher selector
+           specificity than the bare .mb-toggle-h2 rule above wins here without
+           needing !important. */
+        table.tbl h2.mb-toggle-h2 {
+            background-color: ${Lib.settings.sa_annotation_h2_bg || '#e3f2fd'};
+            color: ${Lib.settings.sa_annotation_h2_color || '#1565c0'};
+        }
         .mb-toggle-icon { font-size: 0.8em; margin-right: 8px; color: #666; width: 12px; display: inline-block; cursor: pointer; }
         .mb-master-toggle {
             cursor: pointer;

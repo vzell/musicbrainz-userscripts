@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-07-22",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Added `sa_annotation_h2_bg` / `sa_annotation_h2_color` settings for the text color of wiki-rendered `<h2>` sub-headings nested inside table cells (e.g. 'Annotation' column sub-sections like '== Known performances =='), separate from the existing page-level H2 section-header colors. Defaults (#e3f2fd background / #1565c0 text) are chosen to sit quietly against the grey/white alternating row backgrounds and to read as related to (rather than compete with) the standard blue hyperlink color that often appears in annotation text."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-07-22",
     "sections": [
