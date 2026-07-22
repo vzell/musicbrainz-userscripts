@@ -228,9 +228,20 @@ Enable via the `sa_enable_debug_logging` setting or the Tampermonkey menu.
 `initCollapsableColumns`) auto-detects two independent cell shapes per
 declared column — no separate feature key or page-definition change needed:
 
-- **List cells** — a direct-child `<ul><li>` with ≥2 items (script-generated
-  by `renderMultiRowCell`, `splitCountryDate`, `video`, …). Collapsed to the
-  first `<li>`; toggle shows an item count (`▶ 2 ▤`).
+- **List cells** — a `<ul><li>` with ≥2 items, found via `_findCellListItems()`
+  (near `_COLLAPSE_MATCH_SEL`), NOT a plain `:scope > ul > li` query. It
+  recognises both a direct-child `<ul>` (script-generated: `renderMultiRowCell`,
+  `splitCountryDate`, `video`, …) AND native MB markup that wraps its list one
+  level deeper behind non-competing `<script>`/`<div>` wrappers (e.g.
+  "Authors": `<td><script type="application/json">…</script><div
+  class="artist-roles-container"><ul class="artist-roles">…`) — while still
+  rejecting a wiki list *embedded inside* "Annotation" prose (real sibling
+  text at some level along the walk up to `<td>` disqualifies it). Collapsed
+  to the first `<li>`; toggle shows an item count (`▶ 2 ▤`). Every place that
+  needs "does this cell have a qualifying list" must go through
+  `_findCellListItems()` — a fresh `ul > li` (or `:scope > ul > li`) query at
+  a new call site is exactly how this regressed once already (see git log for
+  "Authors" column collapse-toggle fixes).
 - **Prose cells** — free-form content with no direct-child list (e.g.
   "Annotation" columns, which are wiki-rendered `<div>/<p>/<bdi>` text — see
   `debug/annotation.html`). Always wrapped in `.mb-text-clamp-marker`
@@ -283,16 +294,17 @@ column that has no headings to expand.
 
 **`_classifyCollapseCell(cell)`** (near `_COLLAPSE_MATCH_SEL`) is the single
 source of truth for "is this cell multi-row / single-row?", unifying list
-cells (`:scope > ul > li` ≥2) and prose cells (a `.mb-cell-collapse-toggle`
-present — i.e. it overflowed its clamp) under one concept. Every place that
-independently answers this question must go through it — it replaced several
-ad hoc, inconsistent `cell.querySelectorAll('ul > li')` checks (unscoped, so
-also matched a wiki list *embedded inside* Annotation prose, and blind to
-prose cells entirely) in `testRowMatch`'s multi-row column filter,
-`openUniqDrop`'s "Cell structure" counts, `_updateAllColHeaderCounts`'s
-`.mb-col-collapse-count`, and `showStatsPanel`'s per-column multi-row count.
-A new call site with its own hand-rolled `ul > li` count is exactly how this
-bug came back once already — don't reintroduce it.
+cells (via `_findCellListItems()`, ≥2 items) and prose cells (a
+`.mb-cell-collapse-toggle` present — i.e. it overflowed its clamp) under one
+concept. Every place that independently answers this question must go
+through it — it replaced several ad hoc, inconsistent
+`cell.querySelectorAll('ul > li')` checks (unscoped, so also matched a wiki
+list *embedded inside* Annotation prose, and blind to prose cells entirely)
+in `testRowMatch`'s multi-row column filter, `openUniqDrop`'s "Cell
+structure" counts, `_updateAllColHeaderCounts`'s `.mb-col-collapse-count`,
+and `showStatsPanel`'s per-column multi-row count. A new call site with its
+own hand-rolled `ul > li` count is exactly how this bug came back twice
+already — don't reintroduce it.
 
 ---
 

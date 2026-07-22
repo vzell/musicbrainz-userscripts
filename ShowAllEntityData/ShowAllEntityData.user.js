@@ -9580,12 +9580,64 @@
         '.mb-subtable-filter-highlight';
 
     /**
+     * Finds the `<li>` items that belong to a cell's "own" list, for
+     * collapse-toggle purposes — the `<li>` children of the first `<ul>`/`<ol>`
+     * in the cell, but ONLY when that list is (modulo non-competing wrapper
+     * markup) the cell's entire meaningful content.
+     *
+     * Correctly recognises two different real-world shapes as "list cells":
+     *   - Script-generated lists whose `<ul>` is a direct child of `<td>`
+     *     (Catalog#, Label, video, … via `renderMultiRowCell`).
+     *   - Native MusicBrainz markup that wraps its list one level deeper —
+     *     e.g. the "Authors" column on report-detail pages:
+     *     `<td><script type="application/json">…</script>
+     *     <div class="artist-roles-container"><ul class="artist-roles">…
+     *     </ul></div></td>` — the JSON `<script>` blob and the wrapper `<div>`
+     *     don't carry competing rendered text, so they're ignored while
+     *     walking from the `<ul>` up to the `<td>`.
+     *
+     * …while correctly REJECTING a wiki-rendered bullet/numbered list
+     * embedded inside free-text "Annotation" prose — e.g.
+     * `<td><div><p>Some text…</p><ul><li>a</li><li>b</li></ul>
+     * <p>more text…</p></div></td>` — the sibling `<p>` elements carry real
+     * text, so the list is not the cell's sole content and this returns `[]`,
+     * letting the cell be treated as "prose" (height-clamp) instead of
+     * "list" (item hide/show).
+     *
+     * A cell with no `<ul>`/`<ol>` at all, or where a sibling anywhere along
+     * that walk has non-trivial text, returns `[]`.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @returns {HTMLLIElement[]}
+     */
+    function _findCellListItems(cell) {
+        if (!cell) return [];
+        const list = cell.querySelector('ul, ol');
+        if (!list) return [];
+
+        let node = list;
+        while (node && node !== cell) {
+            const parent = node.parentNode;
+            if (!parent) return [];
+            for (const sib of parent.children) {
+                if (sib === node) continue;
+                // SCRIPT/STYLE never render; another UL/OL is still "just list
+                // content" — neither counts as competing prose.
+                const t = sib.tagName;
+                if (t === 'SCRIPT' || t === 'STYLE' || t === 'UL' || t === 'OL') continue;
+                if (sib.textContent && sib.textContent.trim()) return [];
+            }
+            node = parent;
+        }
+        return Array.from(list.querySelectorAll(':scope > li'));
+    }
+
+    /**
      * Classifies a table cell's "collapse structure" — unifies list cells
-     * (a direct-child `<ul><li>` with ≥2 items, e.g. Catalog#/Label) and
-     * prose cells (free-text columns like "Annotation" that overflow their
-     * height-clamp and get a `.mb-cell-collapse-toggle` — see
-     * `initCollapsableColumns`) under one "is this cell multi-row /
-     * single-row?" concept.
+     * (see `_findCellListItems`, e.g. Catalog#/Label/Authors) and prose cells
+     * (free-text columns like "Annotation" that overflow their height-clamp
+     * and get a `.mb-cell-collapse-toggle` — see `initCollapsableColumns`)
+     * under one "is this cell multi-row / single-row?" concept.
      *
      * Used by every place that needs to answer that question independently
      * of `initCollapsableColumns` itself: the multi-row state column filter
@@ -9593,24 +9645,18 @@
      * dropdown's "Cell structure" counts (`openUniqDrop`), and the
      * column-header `.mb-col-collapse-count` live count
      * (`_updateAllColHeaderCounts`). Keep this the single source of truth
-     * for that classification — do not re-implement `ul > li` counting
+     * for that classification — do not re-implement list-cell detection
      * ad hoc at a new call site.
-     *
-     * Scoped to `:scope > ul > li` (direct children only), NOT the broader
-     * `cell.querySelectorAll('ul > li')` — the broad form also matches a
-     * wiki-rendered bullet/numbered list embedded inside free-text
-     * "Annotation" prose (unrelated to the cell's own collapse structure),
-     * which is exactly the bug this function fixes at every call site.
      *
      * @param {HTMLTableCellElement} cell
      * @returns {{ isMultiRow: boolean, isSingleRow: boolean }}
      */
     function _classifyCollapseCell(cell) {
         if (!cell) return { isMultiRow: false, isSingleRow: false };
-        const lis = cell.querySelectorAll(':scope > ul > li');
+        const lis = _findCellListItems(cell);
         if (lis.length >= 2) return { isMultiRow: true,  isSingleRow: false };
         if (lis.length === 1) return { isMultiRow: false, isSingleRow: true  };
-        // No direct-child list: a prose cell counts as "multi-row" only once
+        // No qualifying list: a prose cell counts as "multi-row" only once
         // it actually overflowed its clamp and got a real toggle — a short,
         // never-clamped annotation is plain content, not a collapse state.
         const hasProseToggle = !!cell.querySelector(':scope > .mb-cell-collapse-toggle');
@@ -9654,9 +9700,8 @@
                 return;
             }
             // Collapsed: check hidden items (lis[1..n]) for any filter highlight.
-            const ul = td.querySelector(':scope > ul');
-            if (!ul) return;
-            const lis = Array.from(ul.querySelectorAll(':scope > li'));
+            const lis = _findCellListItems(td);
+            if (lis.length < 2) return;
             const hasHiddenMatch = lis.slice(1).some(li =>
                 li.querySelector(_COLLAPSE_MATCH_SEL)
             );
@@ -33798,9 +33843,7 @@ a { color: #1565c0; }`;
             return;
         }
 
-        const ul = td.querySelector(':scope > ul') || td.querySelector('ul');
-        if (!ul) return;
-        const lis = Array.from(ul.querySelectorAll(':scope > li'));
+        const lis = _findCellListItems(td);
         if (lis.length < 2) return;
 
         const currentExpanded = toggle.getAttribute('aria-expanded') === 'true';
@@ -34068,10 +34111,9 @@ a { color: #1565c0; }`;
                 return;
             }
 
-            // Find the <ul> that is a direct child of the <td> — the multi-row list.
-            const ul = td.querySelector(':scope > ul') || td.querySelector('ul');
-            if (!ul) return;
-            const lis = Array.from(ul.querySelectorAll(':scope > li'));
+            // Find this cell's "own" list — see _findCellListItems for why this
+            // is not simply the <ul> that is a direct child of the <td>.
+            const lis = _findCellListItems(td);
             if (lis.length < 2) return;
 
             const nowExpanding = toggle.getAttribute('aria-expanded') !== 'true';
@@ -34412,36 +34454,34 @@ a { color: #1565c0; }`;
             const th = headers[colIndex];
 
             // ── Gather multi-row body cells ───────────────────────────────────
-            // Scoped to `:scope > ul > li` (direct-child list only) — NOT the
-            // broader `td.querySelectorAll('ul > li')` used previously, which
-            // also matched wiki-rendered bullet/numbered lists (`* item`, `1.
-            // item`, …) buried inside free-text "Annotation" cells and would
-            // incorrectly list-collapse prose around them. Every script-
-            // generated multi-row column (Catalog#, Label, video, …) always
-            // places its <ul> as the <td>'s direct child, so this is a
-            // behaviour-preserving tightening for those, and is what makes it
-            // safe to also treat non-list free-text cells as "prose" below.
+            // _findCellListItems() recognises a cell's "own" list whether it's
+            // a direct-child <ul> (script-generated: Catalog#, Label, video, …)
+            // or one level deeper inside a wrapper <div>/<script> (native MB
+            // markup, e.g. "Authors": <script>…</script><div class=
+            // "artist-roles-container"><ul class="artist-roles">…) — while
+            // still correctly rejecting a wiki-rendered bullet/numbered list
+            // buried inside free-text "Annotation" prose, which is what makes
+            // it safe to also treat non-list free-text cells as "prose" below.
             const multiRowCells = [];
             bodyRows.forEach(tr => {
                 const td = tr.cells[colIndex];
                 if (!td) return;
-                const lis = Array.from(td.querySelectorAll(':scope > ul > li'));
+                const lis = _findCellListItems(td);
                 if (lis.length >= 2) multiRowCells.push({ td, lis });
             });
 
             // ── Gather prose (free-text) body cells ───────────────────────────
-            // Cells not claimed above (no direct-child <ul><li> list of ≥2
-            // items) but with real content — e.g. "Annotation" columns, which
-            // are free-form wiki-rendered <div>/<p>/<bdi> prose rather than a
-            // script-generated list. Wired up separately below with a height-
-            // clamp "show more/less" treatment instead of item hide/show.
+            // Cells not claimed above (no qualifying list of ≥2 items) but with
+            // real content — e.g. "Annotation" columns, which are free-form
+            // wiki-rendered <div>/<p>/<bdi> prose rather than a list. Wired up
+            // separately below with a height-clamp "show more/less" treatment
+            // instead of item hide/show.
             const proseCandidates = [];
             bodyRows.forEach(tr => {
                 const td = tr.cells[colIndex];
                 if (!td) return;
                 if (td.querySelector(':scope > ul.mb-caa-art-ul')) return; // art cell
-                const lis = Array.from(td.querySelectorAll(':scope > ul > li'));
-                if (lis.length >= 2) return; // already a list cell above
+                if (_findCellListItems(td).length >= 2) return; // already a list cell above
                 if (!td.textContent.trim()) return; // empty
                 proseCandidates.push(td);
             });
@@ -36864,9 +36904,9 @@ a { color: #1565c0; }`;
                 if (glyphEl) glyphEl.textContent = '▶';
                 else toggle.textContent = '▶'; // fallback for legacy toggles
                 toggle.setAttribute('aria-expanded', 'false');
-                const ul = toggle.closest('td')?.querySelector(':scope > ul');
-                if (ul) {
-                    const n = ul.querySelectorAll(':scope > li').length;
+                const _stripTd = toggle.closest('td');
+                const n = _stripTd ? _findCellListItems(_stripTd).length : 0;
+                if (n > 0) {
                     toggle.title = `Show all multi-row cell items (${n})`;
                     toggle.setAttribute('aria-label', `Expand: ${n} items are collapsed`);
                 }

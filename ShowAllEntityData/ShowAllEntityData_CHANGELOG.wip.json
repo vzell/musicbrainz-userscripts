@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.8",
+    "date": "2026-07-22",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the 'Authors' column on report-detail pages (e.g. https://musicbrainz.org/report/AnnotationsWorks) regressing to the prose-cell 'more'/'less' toggle instead of its correct count-based '▶ N ▤' list toggle. WIP.1's `:scope > ul > li` tightening assumed every script-generated multi-row column places its `<ul>` as a direct child of `<td>`, but native MusicBrainz 'Authors' markup wraps its list one level deeper (`<td><script type=\"application/json\">…</script><div class=\"artist-roles-container\"><ul class=\"artist-roles\">…`), so the tightened selector no longer found it and the cell fell through to being treated as free-form prose.",
+          "Replaced the direct-child-only list lookup everywhere with a new `_findCellListItems()` that walks from a cell's first `<ul>`/`<ol>` up to the `<td>`, treating `<script>`/`<style>` tags and sibling lists as non-competing, but still correctly rejecting a wiki-rendered list embedded inside actual 'Annotation' prose text (real sibling text anywhere along that walk disqualifies it)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.7",
     "date": "2026-07-22",
     "sections": [
