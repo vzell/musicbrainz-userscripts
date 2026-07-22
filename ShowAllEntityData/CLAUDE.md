@@ -270,6 +270,17 @@ from the cell-level clamp/toggle above — see `makeH2sCollapsible()` /
 out-specificity the page-level `.mb-toggle-h2` rule that uses `sa_ui_h2_bg`
 — these nested headings intentionally do NOT share the page-level H2 colors).
 
+Ctrl+Click on a prose cell's `.mb-cell-collapse-toggle`, or on the column
+header's `.mb-col-collapse-hdr-btn` (Ctrl+Click expanding the WHOLE column),
+always forces expand (never toggles to collapsed) and additionally calls
+`h2._mbToggle(true)` on every nested `<h2>` inside the affected cell(s) —
+see the `expandH2s` param on `_applyCollapseState()` and the `ev.ctrlKey`
+branches in `ensureCollapseDelegate()`. `_proseToggleTitle()` builds the
+per-cell tooltip text, mentioning the shortcut only when that specific cell
+actually contains a nested `<h2>` (`columnHasNestedH2` does the same for the
+column-header tooltip) — do not hardcode the Ctrl+Click hint into a cell/
+column that has no headings to expand.
+
 ---
 
 ## Things to check before any DOM-related fix

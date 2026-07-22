@@ -33662,6 +33662,28 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Builds the tooltip text for a prose cell's `.mb-cell-collapse-toggle`.
+     * Mentions the Ctrl+Click "also expand all wiki sub-headings" shortcut
+     * only when the cell actually contains a nested wiki `<h2>` — avoids a
+     * misleading hint on annotations that have no sub-headings.
+     *
+     * @param {boolean}     expand     - The state being described (true = expanded).
+     * @param {HTMLElement} proseInner - The cell's `.mb-text-clamp-inner` wrapper.
+     * @returns {string}
+     */
+    function _proseToggleTitle(expand, proseInner) {
+        const hasNestedH2 = !!proseInner.querySelector('h2');
+        if (expand) {
+            return hasNestedH2
+                ? 'Collapse this cell back to a short preview (Ctrl+Click to expand all wiki sub-headings inside it without collapsing)'
+                : 'Collapse this cell back to a short preview';
+        }
+        return hasNestedH2
+            ? 'Show the full text of this cell (Ctrl+Click to also expand all wiki sub-headings inside it)'
+            : 'Show the full text of this cell';
+    }
+
+    /**
      * _applyCollapseState — expand or collapse a single multi-row cell toggle
      * WITHOUT dispatching a synthetic click event.
      *
@@ -33672,10 +33694,15 @@ a { color: #1565c0; }`;
      * mass-collapse from column-header, sub-table, and global collapse buttons
      * works in all environments.
      *
-     * @param {HTMLSpanElement} toggle  - The `.mb-cell-collapse-toggle` span.
-     * @param {boolean}         expand  - true → expand; false → collapse.
+     * @param {HTMLSpanElement} toggle     - The `.mb-cell-collapse-toggle` span.
+     * @param {boolean}         expand     - true → expand; false → collapse.
+     * @param {boolean}         [expandH2s=false] - Prose cells only: also force-expand
+     *   every nested wiki `<h2>` sub-heading inside the cell (Ctrl+Click behaviour,
+     *   driven here by the column-header toggle's own Ctrl+Click handler). Runs even
+     *   when the cell is already at the target `expand` state — Ctrl+Click always
+     *   uncollapses nested headings regardless of the cell's own current state.
      */
-    function _applyCollapseState(toggle, expand) {
+    function _applyCollapseState(toggle, expand, expandH2s = false) {
         const td = toggle.closest('td');
         if (!td) return;
 
@@ -33683,38 +33710,45 @@ a { color: #1565c0; }`;
         const proseInner = td.querySelector(':scope > .mb-text-clamp-inner');
         if (proseInner) {
             const currentlyExpanded = toggle.getAttribute('aria-expanded') === 'true';
-            if (currentlyExpanded === expand) return; // already at target state
+            if (currentlyExpanded !== expand) {
+                proseInner.classList.toggle('mb-text-clamp-expanded', expand);
 
-            proseInner.classList.toggle('mb-text-clamp-expanded', expand);
+                const glyphEl = toggle.querySelector('.mb-cell-collapse-glyph');
+                if (glyphEl) glyphEl.textContent = expand ? '▼' : '▶';
+                const labelEl = toggle.querySelector('.mb-cell-collapse-label');
+                if (labelEl) labelEl.textContent = expand ? 'less' : 'more';
+                toggle.title = _proseToggleTitle(expand, proseInner);
+                toggle.setAttribute('aria-expanded', expand ? 'true' : 'false');
+                toggle.setAttribute('aria-label',
+                    expand ? 'Collapse: showing full text' : 'Expand: text is truncated');
 
-            const glyphEl = toggle.querySelector('.mb-cell-collapse-glyph');
-            if (glyphEl) glyphEl.textContent = expand ? '▼' : '▶';
-            const labelEl = toggle.querySelector('.mb-cell-collapse-label');
-            if (labelEl) labelEl.textContent = expand ? 'less' : 'more';
-            toggle.title = expand
-                ? 'Collapse this cell back to a short preview'
-                : 'Show the full text of this cell';
-            toggle.setAttribute('aria-expanded', expand ? 'true' : 'false');
-            toggle.setAttribute('aria-label',
-                expand ? 'Collapse: showing full text' : 'Expand: text is truncated');
-
-            const tr     = toggle.closest('tr');
-            const rowIdx = tr ? tr.dataset.mbRowIdx : undefined;
-            if (rowIdx !== undefined) {
-                const colIdx = Array.from(tr.cells).indexOf(td);
-                if (colIdx >= 0) {
-                    const key = `${rowIdx}:${colIdx}`;
-                    if (expand) expandedCells.set(key, true);
-                    else        expandedCells.delete(key);
+                const tr     = toggle.closest('tr');
+                const rowIdx = tr ? tr.dataset.mbRowIdx : undefined;
+                if (rowIdx !== undefined) {
+                    const colIdx = Array.from(tr.cells).indexOf(td);
+                    if (colIdx >= 0) {
+                        const key = `${rowIdx}:${colIdx}`;
+                        if (expand) expandedCells.set(key, true);
+                        else        expandedCells.delete(key);
+                    }
                 }
+
+                const hasMatch = !expand && !!proseInner.querySelector(_COLLAPSE_MATCH_SEL);
+                toggle.classList.toggle('mb-collapse-toggle-has-match', hasMatch);
+
+                const tbl = td.closest('table.tbl');
+                if (tbl) updateSubTableCollapseButton(tbl);
+                updateGlobalCollapseButtonHighlight(tbl || null);
             }
 
-            const hasMatch = !expand && !!proseInner.querySelector(_COLLAPSE_MATCH_SEL);
-            toggle.classList.toggle('mb-collapse-toggle-has-match', hasMatch);
-
-            const tbl = td.closest('table.tbl');
-            if (tbl) updateSubTableCollapseButton(tbl);
-            updateGlobalCollapseButtonHighlight(tbl || null);
+            // Ctrl+Click (column-header toggle): uncollapse every nested wiki
+            // <h2> sub-heading inside this cell, regardless of whether the
+            // cell's own expand state changed above.
+            if (expandH2s) {
+                proseInner.querySelectorAll('h2').forEach(h2 => {
+                    if (typeof h2._mbToggle === 'function') h2._mbToggle(true);
+                });
+            }
             return;
         }
 
@@ -33937,18 +33971,18 @@ a { color: #1565c0; }`;
             // ── Prose (free-text) cell: height-clamp toggle ───────────────────
             // "Annotation"-style cells have no <ul> — an <inner> wrapper div is
             // clamped/expanded via a CSS class instead of hiding <li> siblings.
+            // Ctrl+Click always expands (never toggles to collapsed) and also
+            // uncollapses every nested wiki <h2> sub-heading inside the cell.
             const proseInner = td.querySelector(':scope > .mb-text-clamp-inner');
             if (proseInner) {
-                const proseExpanding = toggle.getAttribute('aria-expanded') !== 'true';
+                const proseExpanding = ev.ctrlKey ? true : toggle.getAttribute('aria-expanded') !== 'true';
                 proseInner.classList.toggle('mb-text-clamp-expanded', proseExpanding);
 
                 const _pGlyphEl = toggle.querySelector('.mb-cell-collapse-glyph');
                 if (_pGlyphEl) _pGlyphEl.textContent = proseExpanding ? '▼' : '▶';
                 const _pLabelEl = toggle.querySelector('.mb-cell-collapse-label');
                 if (_pLabelEl) _pLabelEl.textContent = proseExpanding ? 'less' : 'more';
-                toggle.title = proseExpanding
-                    ? 'Collapse this cell back to a short preview'
-                    : 'Show the full text of this cell';
+                toggle.title = _proseToggleTitle(proseExpanding, proseInner);
                 toggle.setAttribute('aria-expanded', proseExpanding ? 'true' : 'false');
                 toggle.setAttribute('aria-label',
                     proseExpanding ? 'Collapse: showing full text' : 'Expand: text is truncated'
@@ -33972,6 +34006,13 @@ a { color: #1565c0; }`;
                         'mb-collapse-toggle-has-match',
                         !!proseInner.querySelector(_COLLAPSE_MATCH_SEL)
                     );
+                }
+
+                // Ctrl+Click: also uncollapse every nested wiki <h2> sub-heading.
+                if (ev.ctrlKey) {
+                    proseInner.querySelectorAll('h2').forEach(h2 => {
+                        if (typeof h2._mbToggle === 'function') h2._mbToggle(true);
+                    });
                 }
 
                 const _pTbl = toggle.closest('table');
@@ -34523,6 +34564,11 @@ a { color: #1565c0; }`;
             // when the setting is on.
             const _annotationCollapseEnabled = Lib.settings.sa_enable_annotation_collapse !== false;
             let proseOverflowCount = 0;
+            // True when at least one overflowing prose cell in this column
+            // contains a nested wiki <h2> — used to decide whether the
+            // column-header toggle's tooltip should mention its Ctrl+Click
+            // "also expand all wiki sub-headings" shortcut.
+            let columnHasNestedH2 = false;
             if (proseCandidates.length > 0) {
                 // Pass 1: wrap (idempotent) — pure DOM writes, no reads yet.
                 const _proseWrapped = proseCandidates.map(td => {
@@ -34553,6 +34599,7 @@ a { color: #1565c0; }`;
 
                 _proseOverflowing.forEach(({ td, inner }) => {
                     proseOverflowCount++;
+                    if (inner.querySelector('h2')) columnHasNestedH2 = true;
 
                     const tr     = td.closest('tr');
                     const rowIdx = tr ? tr.dataset.mbRowIdx : undefined;
@@ -34575,9 +34622,7 @@ a { color: #1565c0; }`;
                     _cl.textContent = startExpanded ? 'less' : 'more';
                     cellToggle.appendChild(_cg);
                     cellToggle.appendChild(_cl);
-                    cellToggle.title = startExpanded
-                        ? 'Collapse this cell back to a short preview'
-                        : 'Show the full text of this cell';
+                    cellToggle.title = _proseToggleTitle(startExpanded, inner);
                     cellToggle.setAttribute('role', 'button');
                     cellToggle.setAttribute('aria-expanded', startExpanded ? 'true' : 'false');
                     cellToggle.setAttribute('aria-label',
@@ -34638,7 +34683,13 @@ a { color: #1565c0; }`;
             const _collapseKbHint = _collapseDirectOn
                 ? `keyboard: ${_collapseKey} or ${getPrefixDisplay()} then O when a column filter is focused`
                 : `keyboard: ${getPrefixDisplay()} then O when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for ${_collapseKey})`;
-            collapseHdrBtn.title = `Expand ALL multi-row "${colName}" cells (${collapsibleCount}) in this table column — ${_collapseKbHint}`;
+            // Only mention the Ctrl+Click h2-expand shortcut when this column
+            // actually has cells containing a nested wiki <h2> — see
+            // columnHasNestedH2 above.
+            const _h2CtrlHint = columnHasNestedH2
+                ? ' — Ctrl+Click to also expand all wiki sub-headings inside every cell in this column'
+                : '';
+            collapseHdrBtn.title = `Expand ALL multi-row "${colName}" cells (${collapsibleCount}) in this table column${_h2CtrlHint} — ${_collapseKbHint}`;
             collapseHdrBtn.setAttribute('role', 'button');
             collapseHdrBtn.setAttribute('aria-expanded', 'false');
             collapseHdrBtn.setAttribute('aria-label', `Expand all collapsed cells in: ${colName}`);
@@ -34661,7 +34712,10 @@ a { color: #1565c0; }`;
 
                 // ▶▤ = currently collapsed → click to expand all cells.
                 // ▼▤ = currently expanded  → click to collapse all cells.
-                const targetExpand = collapseHdrBtn.getAttribute('aria-expanded') !== 'true';
+                // Ctrl+Click always expands (never collapses) and additionally
+                // uncollapses every nested wiki <h2> sub-heading in every cell
+                // of this column — see _applyCollapseState's expandH2s param.
+                const targetExpand = ev.ctrlKey ? true : collapseHdrBtn.getAttribute('aria-expanded') !== 'true';
 
                 // Drive every cell toggle in this column directly (avoids isTrusted
                 // synthetic-event suppression in some browsers / userscript managers).
@@ -34670,15 +34724,15 @@ a { color: #1565c0; }`;
                     if (!td) return;
                     const toggle = td.querySelector('.mb-cell-collapse-toggle');
                     if (!toggle) return;
-                    _applyCollapseState(toggle, targetExpand);
+                    _applyCollapseState(toggle, targetExpand, ev.ctrlKey);
                 });
 
                 // Flip header button glyph (child span) and tooltip.
                 _glyphSpan.textContent = targetExpand ? '▼' : '▶';
                 const _count = _countSpan.textContent;
                 collapseHdrBtn.title = targetExpand
-                    ? `Collapse ALL multi-row ${colName} cells (${_count}) in this table column — ${_collapseKbHint}`
-                    : `Expand ALL multi-row ${colName} cells (${_count}) in this table column — ${_collapseKbHint}`;
+                    ? `Collapse ALL multi-row ${colName} cells (${_count}) in this table column${_h2CtrlHint} — ${_collapseKbHint}`
+                    : `Expand ALL multi-row ${colName} cells (${_count}) in this table column${_h2CtrlHint} — ${_collapseKbHint}`;
                 collapseHdrBtn.setAttribute('aria-expanded', targetExpand ? 'true' : 'false');
                 collapseHdrBtn.setAttribute(
                     'aria-label',

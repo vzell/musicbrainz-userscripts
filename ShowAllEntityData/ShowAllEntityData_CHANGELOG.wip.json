@@ -1,5 +1,19 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-07-22",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Ctrl+Click on an 'Annotation'-style cell's ▶/▼ collapse toggle now also expands (uncollapses) every nested wiki `<h2>` sub-heading inside that cell, instead of just expanding the cell's own text preview.",
+          "Ctrl+Click on the 'Annotation' column's header collapse toggle now also expands every nested wiki `<h2>` sub-heading in every cell of the column, in addition to expanding all cells.",
+          "Both toggles' tooltips now explain the Ctrl+Click behaviour — shown only when the cell/column actually contains a nested wiki sub-heading, so the hint doesn't appear on plain annotations with no headings to expand."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.5",
     "date": "2026-07-22",
     "sections": [
