@@ -281,6 +281,19 @@ actually contains a nested `<h2>` (`columnHasNestedH2` does the same for the
 column-header tooltip) — do not hardcode the Ctrl+Click hint into a cell/
 column that has no headings to expand.
 
+**`_classifyCollapseCell(cell)`** (near `_COLLAPSE_MATCH_SEL`) is the single
+source of truth for "is this cell multi-row / single-row?", unifying list
+cells (`:scope > ul > li` ≥2) and prose cells (a `.mb-cell-collapse-toggle`
+present — i.e. it overflowed its clamp) under one concept. Every place that
+independently answers this question must go through it — it replaced several
+ad hoc, inconsistent `cell.querySelectorAll('ul > li')` checks (unscoped, so
+also matched a wiki list *embedded inside* Annotation prose, and blind to
+prose cells entirely) in `testRowMatch`'s multi-row column filter,
+`openUniqDrop`'s "Cell structure" counts, `_updateAllColHeaderCounts`'s
+`.mb-col-collapse-count`, and `showStatsPanel`'s per-column multi-row count.
+A new call site with its own hand-rolled `ul > li` count is exactly how this
+bug came back once already — don't reintroduce it.
+
 ---
 
 ## Things to check before any DOM-related fix

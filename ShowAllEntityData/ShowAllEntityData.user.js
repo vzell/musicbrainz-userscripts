@@ -9580,6 +9580,44 @@
         '.mb-subtable-filter-highlight';
 
     /**
+     * Classifies a table cell's "collapse structure" — unifies list cells
+     * (a direct-child `<ul><li>` with ≥2 items, e.g. Catalog#/Label) and
+     * prose cells (free-text columns like "Annotation" that overflow their
+     * height-clamp and get a `.mb-cell-collapse-toggle` — see
+     * `initCollapsableColumns`) under one "is this cell multi-row /
+     * single-row?" concept.
+     *
+     * Used by every place that needs to answer that question independently
+     * of `initCollapsableColumns` itself: the multi-row state column filter
+     * (`testRowMatch`'s `f.isMultiRowFilter` branch), the unique-values
+     * dropdown's "Cell structure" counts (`openUniqDrop`), and the
+     * column-header `.mb-col-collapse-count` live count
+     * (`_updateAllColHeaderCounts`). Keep this the single source of truth
+     * for that classification — do not re-implement `ul > li` counting
+     * ad hoc at a new call site.
+     *
+     * Scoped to `:scope > ul > li` (direct children only), NOT the broader
+     * `cell.querySelectorAll('ul > li')` — the broad form also matches a
+     * wiki-rendered bullet/numbered list embedded inside free-text
+     * "Annotation" prose (unrelated to the cell's own collapse structure),
+     * which is exactly the bug this function fixes at every call site.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @returns {{ isMultiRow: boolean, isSingleRow: boolean }}
+     */
+    function _classifyCollapseCell(cell) {
+        if (!cell) return { isMultiRow: false, isSingleRow: false };
+        const lis = cell.querySelectorAll(':scope > ul > li');
+        if (lis.length >= 2) return { isMultiRow: true,  isSingleRow: false };
+        if (lis.length === 1) return { isMultiRow: false, isSingleRow: true  };
+        // No direct-child list: a prose cell counts as "multi-row" only once
+        // it actually overflowed its clamp and got a real toggle — a short,
+        // never-clamped annotation is plain content, not a collapse state.
+        const hasProseToggle = !!cell.querySelector(':scope > .mb-cell-collapse-toggle');
+        return { isMultiRow: hasProseToggle, isSingleRow: false };
+    }
+
+    /**
      * Re-evaluates the `mb-collapse-toggle-has-match` class on every
      * `.mb-cell-collapse-toggle` span inside `table`.
      *
@@ -14795,7 +14833,9 @@ ${sections.join('\n')}
                     let n = 0;
                     tbl.querySelectorAll('tbody tr').forEach(row => {
                         const cell = row.cells[ci];
-                        if (cell && cell.querySelectorAll('ul > li').length > 1) n++;
+                        // _classifyCollapseCell unifies list cells and prose cells
+                        // (e.g. "Annotation") under one multi-row concept.
+                        if (_classifyCollapseCell(cell).isMultiRow) n++;
                     });
                     return n;
                 })();
@@ -24609,15 +24649,19 @@ a { color: #1565c0; }`;
             // always reflects the user's actual expand/collapse actions.
             if (f.isMultiRowFilter) {
                 const cell   = row.cells[f.idx];
-                const lis    = cell ? Array.from(cell.querySelectorAll('ul > li')) : [];
-                // hasEmpty: no ul>li structure AND no visible text content.
-                // Checking text content is essential for non-collapsable columns where
-                // lis.length === 0 is always true regardless of whether the cell is
-                // empty or contains plain text — without the text check every row in a
-                // non-collapsable column would be matched by the 'empty' filter mode.
-                const hasEmpty      = lis.length === 0 && !(matchOnly ? _cachedColText(row, f.idx) : getCleanColumnText(cell));
-                const hasMultiRow   = lis.length >= 2;
-                const hasSingleRow  = lis.length === 1;
+                // _classifyCollapseCell unifies list cells (direct-child <ul><li>,
+                // ≥2 items) and prose cells (e.g. "Annotation" — a
+                // .mb-cell-collapse-toggle from an overflowing height-clamp)
+                // under one multi-row/single-row concept.
+                const { isMultiRow: hasMultiRow, isSingleRow: hasSingleRow } = _classifyCollapseCell(cell);
+                // hasEmpty: neither multi- nor single-row structure AND no visible
+                // text content. Checking text content is essential for non-
+                // collapsable columns where hasMultiRow/hasSingleRow are always
+                // false regardless of whether the cell is empty or contains plain
+                // text — without the text check every row in a non-collapsable
+                // column would be matched by the 'empty' filter mode.
+                const hasEmpty = !hasMultiRow && !hasSingleRow &&
+                    !(matchOnly ? _cachedColText(row, f.idx) : getCleanColumnText(cell));
                 const rowIdx = row.dataset ? row.dataset.mbRowIdx : undefined;
                 const ecKey  = rowIdx !== undefined ? `${rowIdx}:${f.idx}` : undefined;
                 const isExpanded = ecKey !== undefined && expandedCells.get(ecKey) === true;
@@ -32580,19 +32624,21 @@ a { color: #1565c0; }`;
                 // Count cell-structure state using expandedCells as source of truth.
                 // Counting from DOM toggle.textContent would give wrong results after a
                 // runFilter() cycle because initCollapsableColumns resets all toggles to '▶'.
-                const lis = cell.querySelectorAll('ul > li');
+                // _classifyCollapseCell unifies list cells and prose cells (e.g.
+                // "Annotation") under one multi-row/single-row concept.
+                const { isMultiRow, isSingleRow } = _classifyCollapseCell(cell);
                 const rowIdx = row.dataset ? row.dataset.mbRowIdx : undefined;
-                if (lis.length >= 2) {
+                if (isMultiRow) {
                     const key = rowIdx !== undefined ? `${rowIdx}:${colIndex}` : null;
                     if (key !== null && expandedCells.get(key) === true) {
                         multiRowExpandedCount++;
                     } else {
                         multiRowCollapsedCount++;
                     }
-                } else if (lis.length === 1) {
+                } else if (isSingleRow) {
                     singleRowCount++;
                 } else {
-                    // lis.length === 0: no list structure at all.
+                    // Neither multi- nor single-row structure.
                     // Re-use the already-computed `v` (zero extra DOM work) to confirm
                     // the cell is genuinely empty (no hidden text, no spurious whitespace).
                     if (!v) emptyCellCount++;
@@ -34109,9 +34155,11 @@ a { color: #1565c0; }`;
      *      number in the header always matches the count shown in the dropdown.
      *
      *   2. `.mb-col-collapse-count` span (inside the ▶N▤/▼N▤ button) — number
-     *      of visible tbody rows whose cell in that column contains ≥2 ul>li
-     *      items (i.e. rows that actually have a collapse toggle).  Only present
-     *      on collapsable columns; other columns have no collapse button.
+     *      of visible tbody rows whose cell in that column actually has a
+     *      collapse toggle, per `_classifyCollapseCell()` (a direct-child
+     *      `ul>li` list with ≥2 items, OR a prose cell — e.g. "Annotation" —
+     *      that overflowed its height-clamp). Only present on collapsable
+     *      columns; other columns have no collapse button.
      *
      * Called at the tail of initCollapsableColumns() so it runs automatically
      * at every render-completion and filter-cycle site.
@@ -34160,12 +34208,15 @@ a { color: #1565c0; }`;
             if (collapseBtn) {
                 const countSpan = collapseBtn.querySelector('.mb-col-collapse-count');
                 if (countSpan) {
+                    // _classifyCollapseCell unifies list cells and prose cells
+                    // (e.g. "Annotation") under one multi-row concept — matches
+                    // the collapsibleCount computed by initCollapsableColumns.
                     let multiRowCount = 0;
                     Array.from(tbody.rows).forEach(row => {
                         if (row.style.display === 'none') return;
                         const cell = row.cells[colIndex];
                         if (!cell) return;
-                        if (cell.querySelectorAll('ul > li').length >= 2) multiRowCount++;
+                        if (_classifyCollapseCell(cell).isMultiRow) multiRowCount++;
                     });
                     countSpan.textContent = String(multiRowCount);
                 }

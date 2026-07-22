@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.7",
+    "date": "2026-07-22",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the 'Annotation' column header's collapse-toggle count (`.mb-col-collapse-count`, e.g. showing '5' while its own tooltip correctly said '496') and the unique-values dropdown's 'Cell structure' collapsed/expanded counts being wrong for prose (free-text) collapsable columns. Several places independently recomputed 'is this cell multi-row?' using an unscoped `cell.querySelectorAll('ul > li')` check with no awareness of prose cells at all — it only matched cells whose Annotation text happened to contain an embedded wiki bullet/numbered list, and otherwise ignored the actual (much larger) set of collapsed prose cells entirely. Also affected — and fixed — the same way: the multi-row state column filter ('collapsed'/'expanded'/'any' entries in the unique-values dropdown actually filtering the table) and the developer stats panel's per-column multi-row count.",
+          "Added `_classifyCollapseCell()` as the single shared implementation of this check (list cells via `:scope > ul > li`, prose cells via presence of a `.mb-cell-collapse-toggle`), replacing the four independent, inconsistent implementations."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.6",
     "date": "2026-07-22",
     "sections": [
