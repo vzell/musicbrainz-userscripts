@@ -162,6 +162,9 @@ The native `<h2>Tags vzell upvoted</h2>` is already the correct targetHeader.
 | `.mb-inline-art-sort-key` | Hidden sort key for inline thumbnail presence |
 | `.mb-rel-cell` | Relationship icon cell |
 | `.mb-sticky-col` | Sticky first column |
+| `.mb-cell-collapse-toggle` | Per-cell ▶/▼ collapse toggle — drives BOTH list cells (`ul>li`) and prose cells (`.mb-text-clamp-inner`) |
+| `.mb-text-clamp-inner` | Wrapper around a "prose" collapsable cell's content (e.g. "Annotation"); height-clamped by default |
+| `.mb-text-clamp-expanded` | Toggled on `.mb-text-clamp-inner` to lift the height clamp |
 
 ---
 
@@ -219,6 +222,106 @@ Enable via the `sa_enable_debug_logging` setting or the Tampermonkey menu.
 
 ---
 
+## `collapsableColumns`: list vs. prose cells
+
+`features.collapsableColumns` (an array of column-header names, see
+`initCollapsableColumns`) auto-detects two independent cell shapes per
+declared column — no separate feature key or page-definition change needed:
+
+- **List cells** — a `<ul><li>` with ≥2 items, found via `_findCellListItems()`
+  (near `_COLLAPSE_MATCH_SEL`), NOT a plain `:scope > ul > li` query. It
+  recognises both a direct-child `<ul>` (script-generated: `renderMultiRowCell`,
+  `splitCountryDate`, `video`, …) AND native MB markup that wraps its list one
+  level deeper behind non-competing `<script>`/`<div>` wrappers (e.g.
+  "Authors": `<td><script type="application/json">…</script><div
+  class="artist-roles-container"><ul class="artist-roles">…`) — while still
+  rejecting a wiki list *embedded inside* "Annotation" prose (real sibling
+  text at some level along the walk up to `<td>` disqualifies it). Collapsed
+  to the first `<li>`; toggle shows an item count (`▶ 2 ▤`). Every place that
+  needs "does this cell have a qualifying list" must go through
+  `_findCellListItems()` — a fresh `ul > li` (or `:scope > ul > li`) query at
+  a new call site is exactly how this regressed once already (see git log for
+  "Authors" column collapse-toggle fixes).
+  **`_findCellListItems()`'s sibling "competing text" check MUST exclude
+  everything matching `_CLEAN_STRIP_SEL`** (script/eaa/caa cache-hint spans,
+  sort-key sentinels, and critically `.mb-cell-collapse-toggle` itself) — the
+  toggle it builds is *itself* appended as a `<td>`-level sibling of the list,
+  so any later re-call of this function (a click, `_applyCollapseState` from
+  the column-header/global buttons) would otherwise see the toggle's own
+  glyph/count text ("▶3▤") as competing prose and wrongly return `[]`,
+  silently breaking that cell's collapse/expand for good the moment its
+  toggle is built. This exact regression happened once already — if you touch
+  this function's sibling-exclusion list, re-verify a multi-row cell's toggle
+  is still clickable *after* `initCollapsableColumns` has already run once.
+  Single-item list cells (`length === 1`) are excluded from prose-candidacy
+  too (not just `>= 2`) — a work with exactly one author is still a list cell
+  (no toggle, rendered untouched), never prose.
+- **Prose cells** — free-form content with no direct-child list (e.g.
+  "Annotation" columns, which are wiki-rendered `<div>/<p>/<bdi>` text — see
+  `debug/annotation.html`). Always wrapped in `.mb-text-clamp-marker`
+  (unconditionally — this is what `_isProseCollapseColumn` keys off, see
+  below). When the `sa_enable_annotation_collapse` setting (default `true`,
+  "📝 ANNOTATION COLUMNS" section in `configSchema`) is on, the wrapper also
+  gets `.mb-text-clamp-inner` and is height-clamped (~4 lines); toggle shows
+  a "more"/"less" label instead of a count. Only cells that actually overflow
+  the clamp get a toggle. When the setting is off, cells stay bare (full,
+  unclamped text, no toggle).
+
+Auto-resize (`toggleColumn`, `toggleColumnInTable`, `toggleSubTableAutoResize`,
+`toggleAutoResizeColumns`) caps prose columns' measured width via
+`_getProseColumnMaxWidth()` (reads `sa_annotation_column_max_width`, default
+`480`) instead of sizing them to a paragraph's unwrapped nowrap width. This
+cap is **always active** for any column `_isProseCollapseColumn` identifies
+(via the always-present `.mb-text-clamp-marker`) — independent of
+`sa_enable_annotation_collapse`.
+
+Both share the same `.mb-cell-collapse-toggle` DOM shape, the same
+`ensureCollapseDelegate` click delegate, `_applyCollapseState` (driven by the
+column-header and global mass-toggle buttons), `_syncCollapseHasMatchInTable`
+(filter-match tinting), and `expandedCells` state persistence — each has a
+branch keyed on whether the `<td>` contains a list or a
+`.mb-text-clamp-inner` wrapper. When adding a fourth cell kind (following the
+existing CAA/EAA `[data-caa-expand-btn]` precedent), extend all of: the
+gathering pass in `initCollapsableColumns`, its idempotent cleanup selector,
+`ensureCollapseDelegate`, `_applyCollapseState`, and
+`_syncCollapseHasMatchInTable`.
+
+Wiki-rendered `<h2>` sub-headings nested *inside* a prose cell (e.g.
+"== Known performances ==" inside an Annotation cell) are a separate concern
+from the cell-level clamp/toggle above — see `makeH2sCollapsible()` /
+`_rewireNestedTableH2Toggles()` and the "Common pitfalls" entry on
+`cloneNode(true)` dropping listeners. Their colors are `sa_annotation_h2_bg`
+/ `sa_annotation_h2_color` (CSS: `table.tbl h2.mb-toggle-h2`, scoped to
+out-specificity the page-level `.mb-toggle-h2` rule that uses `sa_ui_h2_bg`
+— these nested headings intentionally do NOT share the page-level H2 colors).
+
+Ctrl+Click on a prose cell's `.mb-cell-collapse-toggle`, or on the column
+header's `.mb-col-collapse-hdr-btn` (Ctrl+Click expanding the WHOLE column),
+always forces expand (never toggles to collapsed) and additionally calls
+`h2._mbToggle(true)` on every nested `<h2>` inside the affected cell(s) —
+see the `expandH2s` param on `_applyCollapseState()` and the `ev.ctrlKey`
+branches in `ensureCollapseDelegate()`. `_proseToggleTitle()` builds the
+per-cell tooltip text, mentioning the shortcut only when that specific cell
+actually contains a nested `<h2>` (`columnHasNestedH2` does the same for the
+column-header tooltip) — do not hardcode the Ctrl+Click hint into a cell/
+column that has no headings to expand.
+
+**`_classifyCollapseCell(cell)`** (near `_COLLAPSE_MATCH_SEL`) is the single
+source of truth for "is this cell multi-row / single-row?", unifying list
+cells (via `_findCellListItems()`, ≥2 items) and prose cells (a
+`.mb-cell-collapse-toggle` present — i.e. it overflowed its clamp) under one
+concept. Every place that independently answers this question must go
+through it — it replaced several ad hoc, inconsistent
+`cell.querySelectorAll('ul > li')` checks (unscoped, so also matched a wiki
+list *embedded inside* Annotation prose, and blind to prose cells entirely)
+in `testRowMatch`'s multi-row column filter, `openUniqDrop`'s "Cell
+structure" counts, `_updateAllColHeaderCounts`'s `.mb-col-collapse-count`,
+and `showStatsPanel`'s per-column multi-row count. A new call site with its
+own hand-rolled `ul > li` count is exactly how this bug came back twice
+already — don't reintroduce it.
+
+---
+
 ## Things to check before any DOM-related fix
 
 - Does the page have `div#content`? (Most do. `user/*/tags` does not.)
@@ -239,3 +342,14 @@ Enable via the `sa_enable_debug_logging` setting or the Tampermonkey menu.
 - `activeDefinition` is a module-level variable updated by `startFetchingProcess` —
   helper functions called during fetch see the merged definition, not `baseDefinition`
 - `sortLargeArray` is async — callers must `await` it before touching the sorted array
+- `renderFinalTable`/`renderGroupedTable` insert `cloneNode(true)` copies of rows on
+  every sort/filter re-render — any element with a direct `addEventListener` call or a
+  custom JS property (not a DOM attribute/class) loses it silently on the clone, even
+  though classes/attributes/inline styles survive and can make the clone *look* still
+  wired up. Existing re-wire-after-clone functions, all called from `runFilter()`'s
+  single-table branch and/or `renderGroupedTable()`: `initExpandRGsFeature()`,
+  `_cdtocInitTracklistToggles()`, `_rewireNestedTableH2Toggles()` (nested `<h2>`
+  headings inside table cells, e.g. wiki-rendered Annotation sub-sections — see
+  `makeH2sCollapsible()` for the page-level h2 mechanism this mirrors at a smaller
+  scale). A new interactive element injected into table cells needs the same
+  treatment if it uses `addEventListener` directly instead of event delegation.
