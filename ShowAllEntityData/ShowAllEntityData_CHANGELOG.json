@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.698",
+    "date": "2026-07-22",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added support for `/account/applications` (the editor's OAuth2 'Authorized applications' and 'Developer applications' page), modelled on the `user-collections` groupByH3 pattern — a 'Show all Applications' button consolidates both native h2-headed tables into one filterable/sortable view."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.697",
     "date": "2026-07-22",
     "sections": [

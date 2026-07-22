@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.697+2026-07-22
+// @version      9.99.698+2026-07-22
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -16,6 +16,7 @@
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.org\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.org\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings)(?:\?.*)?$/
 // @match        *://*.musicbrainz.org/search?query=*
+// @match        *://*.musicbrainz.org/account/applications
 // @match        *://*.musicbrainz.org/user/*/subscriptions/*
 // @match        *://*.musicbrainz.org/user/*/subscribers
 // @match        *://*.musicbrainz.org/user/*/collections
@@ -5675,6 +5676,27 @@
                 listToTable: [ '' ]
             },
             tableMode: 'single'
+        },
+        // Account applications page (/account/applications) — 'Authorized
+        // applications' (OAuth2 apps the editor granted access to) and
+        // 'Developer applications' (apps the editor registered) each render as
+        // a native <h2> immediately followed by a <table class="tbl"> — no
+        // listToTable conversion needed. There is no div#content wrapper (h1 is
+        // a direct child of div#page, same as user-tags), but unlike user-tags
+        // the table.tbl and its labelling h2 are siblings under div#page
+        // directly (no intermediate sub-wrapper), so renderGroupedTable's
+        // generic re-root logic is a no-op here — see debug/applications.html.
+        // groupByH3's backward-walk already accepts a native H2 directly
+        // (renameH2ToH3 is not required). Single static page, no pagination.
+        {
+            type: 'account-applications',
+            match: (path) => path.match(/\/account\/applications/),
+            buttons: [ { label: 'Show all Applications' } ],
+            features: {
+                groupByH3: true
+            },
+            tableMode: 'multi',
+            non_paginated: true
         },
         // Entity tags sub-pages (/<entity>/<mbid>/tags e.g. /artist/<mbid>/tags)
         // must come before the generic 'tags' entry because its match is narrower.

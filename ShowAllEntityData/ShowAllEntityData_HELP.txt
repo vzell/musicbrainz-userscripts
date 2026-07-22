@@ -15,6 +15,8 @@ SUPPORTED PAGES
   Instrument, Event pages — all supported sub-tabs
 • Collection pages (own collections, subscribed collections, entity sub-tabs
   including Release groups with native h3-grouped sub-tables)
+• Account pages (/account/applications — authorized and developer
+  applications)
 • Tag pages — entity tag pages (/tag/<value>, /tag/<value>/<entity>),
   user tag pages (/user/*/tags, /user/*/tag/*),
   and the MusicBrainz Most Popular Tags page (/tags)

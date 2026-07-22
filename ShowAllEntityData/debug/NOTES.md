@@ -100,6 +100,25 @@ user-supplied pair of `search`-page snapshots. Snapshots used:
   excluding `h.closest('table.tbl')` matches from the candidate set — not
   scoped to report-detail, since no page type intentionally has a
   legitimate page-level h2 living inside `table.tbl`.
+## 2026-07-22 — account-applications page type
+
+- `applications.html` (`/account/applications`): NO `div#content`. Flat
+  structure directly under `div#page.fullwidth`: `<h1>Applications</h1>`,
+  `<h2>Authorized applications</h2>`, intro `<p>`, native
+  `<table class="tbl"><thead>` (columns: Application / Access / Last granted
+  token / Actions, one row per authorized third-party app, "Actions" holding
+  a "Revoke access" link), then `<h2>Developer applications</h2>`, two intro
+  `<p>`s (one is "You do not have any registered applications." when the
+  editor has none — no table rendered in that case). Both `table.tbl` and
+  their labelling `<h2>` are direct siblings under `div#page` (no
+  intermediate sub-wrapper like `user-tags`' `div#all-tags`), so
+  `renderGroupedTable`'s generic re-root fix is a no-op for this page. Single
+  static page, no pagination markup observed. Snapshot captured with zero
+  registered developer applications — the "Developer applications" table's
+  column set (when the editor has registered apps) is unconfirmed; the
+  `account-applications` page definition intentionally carries no
+  `columnExtractors` so it stays column-agnostic like `user-collections`.
+
 - **RESOLVED (false alarm): `AnnotationsEvents` apparent CAA/EAA regression**
   — `debug/AnnotationsEvents.html` was captured against a stale, not-yet-reloaded
   copy of the userscript (tested without reloading after the WIP.1 fix
