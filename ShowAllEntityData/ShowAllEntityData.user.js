@@ -2984,6 +2984,85 @@
         },
 
         /**
+         * dateTimeParts — splits a "YYYY-MM-DD HH:MM[:SS]" timestamp (e.g. the
+         * native "Last edited" column on report-detail pages) into separate
+         * date and time synthetic columns.
+         *
+         * Input examples   →  Output examples
+         *   "2025-07-21 16:19"  →  date: "2025-07-21", time: "16:19"
+         *   "2025-07-21"        →  date: "2025-07-21", time: "" (no time part)
+         *   ""                  →  date: "", time: ""
+         *
+         * Splits on the first run of whitespace — everything before is the
+         * date part, everything after is the time part — rather than parsing
+         * or validating the timestamp, so any MusicBrainz-native
+         * "<date> <time>" formatting variant (with or without seconds) is
+         * handled without over-fitting to one exact pattern.
+         *
+         * Synthetic columns: two columns, date then time (names assigned by
+         * the page definition, e.g. ['Last edited date', 'Last edited time']
+         * — this extractor is not tied to the "Last edited" column specifically).
+         *
+         * @param   {HTMLTableCellElement} sourceCell  Original timestamp <td>.
+         * @returns {HTMLTableCellElement[]}            Two synthetic <td> elements: [date, time].
+         */
+        dateTimeParts(sourceCell) {
+            const tdDate = document.createElement('td');
+            const tdTime = document.createElement('td');
+
+            if (!sourceCell) return [tdDate, tdTime];
+
+            const rawText = sourceCell.textContent.trim();
+            if (!rawText) return [tdDate, tdTime];
+
+            const spaceIdx = rawText.search(/\s/);
+            if (spaceIdx === -1) {
+                tdDate.textContent = rawText;
+            } else {
+                tdDate.textContent = rawText.slice(0, spaceIdx).trim();
+                tdTime.textContent = rawText.slice(spaceIdx + 1).trim();
+            }
+            tdDate.style.fontVariantNumeric = 'tabular-nums';
+            tdTime.style.fontVariantNumeric = 'tabular-nums';
+
+            return [tdDate, tdTime];
+        },
+
+        /**
+         * numberOfChars — counts a source cell's visible-text length into a
+         * single right-aligned numeric synthetic column (e.g. an "Annotation
+         * chars" column next to the "Annotation" column, for sorting/filtering
+         * annotations by size).
+         *
+         * Whitespace is normalised (all runs of spaces/newlines/tabs collapsed
+         * to a single space, then trimmed) before counting, so the result
+         * reflects the cell's actual visible content length rather than
+         * incidental HTML source formatting (indentation, line breaks between
+         * tags, …) inflating the count.
+         *
+         * Not tied to any specific column — usable on any text-bearing source
+         * column where a length metric is useful.
+         *
+         * Synthetic columns: one numeric column (name assigned by the page
+         * definition, e.g. ['Annotation chars']).
+         *
+         * @param   {HTMLTableCellElement} sourceCell  Original source <td>.
+         * @returns {HTMLTableCellElement[]}            One synthetic <td> with the character count.
+         */
+        numberOfChars(sourceCell) {
+            const tdChars = document.createElement('td');
+
+            if (!sourceCell) return [tdChars];
+
+            const cleanText = sourceCell.textContent.replace(/\s+/g, ' ').trim();
+            tdChars.textContent               = String(cleanText.length);
+            tdChars.style.textAlign           = 'right';
+            tdChars.style.fontVariantNumeric  = 'tabular-nums';
+
+            return [tdChars];
+        },
+
+        /**
          * tagCount_Name_Comment — splits an entity row on tag-value entity pages
          * into three synthetic columns: Name, Tag count, and Comment.
          *
@@ -5983,10 +6062,15 @@
             features: {
                 columnExtractors: [
                     { sourceColumn: 'Location', extractor: 'splitLocation', syntheticColumns: ['Place', 'Area', 'Country'] },
-                    { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
+                    { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] },
+                    { sourceColumn: 'Last edited', extractor: 'dateTimeParts', syntheticColumns: ['Last edited date', 'Last edited time'] },
+                    { sourceColumn: 'Annotation', extractor: 'numberOfChars', syntheticColumns: ['Annotation chars'] }
                 ],
                 collapsableColumns: [ 'Artists', 'Authors', 'Recording artists', 'Annotation' ],
-                integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
+                integerColumns: [
+                    { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' },
+                    { sourceColumn: 'Annotation chars', align: 'R' }
+                ],
                 // Report pages have a native <h1> but no native <h2>, so the
                 // collapsible-header / filter-bar / CAA-EAA-toggle infrastructure has
                 // nothing to attach to without a synthetic one (see applyInsertH2).

@@ -1,5 +1,25 @@
 [
   {
+    "version": "WIP.10",
+    "date": "2026-07-22",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added `dateTimeParts` column extractor — splits a \"YYYY-MM-DD HH:MM\" timestamp (e.g. report-detail's native \"Last edited\" column) into separate date and time synthetic columns.",
+          "Added `numberOfChars` column extractor — counts a source cell's whitespace-normalised visible-text length into a single right-aligned numeric synthetic column (e.g. an \"Annotation chars\" column for sorting/filtering annotations by size).",
+          "report-detail now uses both: 'Last edited' → ['Last edited date', 'Last edited time'], 'Annotation' → ['Annotation chars'] (added to `integerColumns` for right-aligned numeric sorting)."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed a syntax error (missing comma) in report-detail's `integerColumns` array introduced by a manual edit, which broke the entire userscript."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.9",
     "date": "2026-07-22",
     "sections": [
