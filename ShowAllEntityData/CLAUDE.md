@@ -242,6 +242,20 @@ declared column — no separate feature key or page-definition change needed:
   `_findCellListItems()` — a fresh `ul > li` (or `:scope > ul > li`) query at
   a new call site is exactly how this regressed once already (see git log for
   "Authors" column collapse-toggle fixes).
+  **`_findCellListItems()`'s sibling "competing text" check MUST exclude
+  everything matching `_CLEAN_STRIP_SEL`** (script/eaa/caa cache-hint spans,
+  sort-key sentinels, and critically `.mb-cell-collapse-toggle` itself) — the
+  toggle it builds is *itself* appended as a `<td>`-level sibling of the list,
+  so any later re-call of this function (a click, `_applyCollapseState` from
+  the column-header/global buttons) would otherwise see the toggle's own
+  glyph/count text ("▶3▤") as competing prose and wrongly return `[]`,
+  silently breaking that cell's collapse/expand for good the moment its
+  toggle is built. This exact regression happened once already — if you touch
+  this function's sibling-exclusion list, re-verify a multi-row cell's toggle
+  is still clickable *after* `initCollapsableColumns` has already run once.
+  Single-item list cells (`length === 1`) are excluded from prose-candidacy
+  too (not just `>= 2`) — a work with exactly one author is still a list cell
+  (no toggle, rendered untouched), never prose.
 - **Prose cells** — free-form content with no direct-child list (e.g.
   "Annotation" columns, which are wiki-rendered `<div>/<p>/<bdi>` text — see
   `debug/annotation.html`). Always wrapped in `.mb-text-clamp-marker`

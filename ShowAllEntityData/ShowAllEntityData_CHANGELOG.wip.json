@@ -1,5 +1,19 @@
 [
   {
+    "version": "WIP.9",
+    "date": "2026-07-22",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed multi-row list cells' count-based '▶ N ▤' collapse toggle (Catalog#, Label, Authors, …) becoming permanently unresponsive to clicks right after it was first built — WIP.8's `_findCellListItems()` walked a cell's list up to the `<td>` checking for competing sibling text, but didn't exclude the toggle span it had itself just appended as a sibling of that list; the toggle's own glyph/count text (e.g. '▶3▤') was seen as competing prose on every subsequent call, so the very next click (or column-header/global mass-toggle) silently found zero list items and did nothing.",
+          "`_findCellListItems()` now excludes anything matching `_CLEAN_STRIP_SEL` (which already covers `.mb-cell-collapse-toggle` and other injected/decorative spans) from that sibling check, not just `<script>`/`<style>`/`<ul>`/`<ol>`.",
+          "Single-item list cells (e.g. a work with exactly one author) are no longer wrapped as a 'prose' cell — they render untouched with no toggle, as before this feature existed, instead of sometimes getting an incorrect 'more'/'less' toggle."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.8",
     "date": "2026-07-22",
     "sections": [

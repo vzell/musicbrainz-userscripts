@@ -9622,9 +9622,18 @@
             for (const sib of parent.children) {
                 if (sib === node) continue;
                 // SCRIPT/STYLE never render; another UL/OL is still "just list
-                // content" — neither counts as competing prose.
+                // content"; _CLEAN_STRIP_SEL covers every other injected/
+                // decorative UI element this script adds to a cell — critically
+                // including .mb-cell-collapse-toggle itself (the "▶ 3 ▤" span
+                // this very function's own gathering pass appends as a sibling
+                // of the list). Without this exclusion, calling this function
+                // AGAIN after the toggle exists (e.g. from ensureCollapseDelegate
+                // at click time) sees the toggle's own glyph/count text ("▶3▤")
+                // as competing sibling content and wrongly returns [] — the
+                // toggle renders correctly once, then clicking it does nothing.
                 const t = sib.tagName;
                 if (t === 'SCRIPT' || t === 'STYLE' || t === 'UL' || t === 'OL') continue;
+                if (sib.matches(_CLEAN_STRIP_SEL)) continue;
                 if (sib.textContent && sib.textContent.trim()) return [];
             }
             node = parent;
@@ -34471,17 +34480,24 @@ a { color: #1565c0; }`;
             });
 
             // ── Gather prose (free-text) body cells ───────────────────────────
-            // Cells not claimed above (no qualifying list of ≥2 items) but with
-            // real content — e.g. "Annotation" columns, which are free-form
-            // wiki-rendered <div>/<p>/<bdi> prose rather than a list. Wired up
-            // separately below with a height-clamp "show more/less" treatment
-            // instead of item hide/show.
+            // Cells not claimed above but with real content — e.g. "Annotation"
+            // columns, which are free-form wiki-rendered <div>/<p>/<bdi> prose
+            // rather than a list. Wired up separately below with a height-clamp
+            // "show more/less" treatment instead of item hide/show.
+            //
+            // Excludes ANY cell with a qualifying list (≥1 item, not just the
+            // ≥2 that counts as "multi-row" above) — a single-item list cell
+            // (e.g. a work with exactly one author) is still a list, not
+            // prose, and must be left exactly as before this feature existed:
+            // unwrapped, untouched, no toggle. Wrapping it in the prose clamp
+            // was harmless when short but would wrongly give it a "more"/"less"
+            // toggle if its one item happened to be long.
             const proseCandidates = [];
             bodyRows.forEach(tr => {
                 const td = tr.cells[colIndex];
                 if (!td) return;
                 if (td.querySelector(':scope > ul.mb-caa-art-ul')) return; // art cell
-                if (_findCellListItems(td).length >= 2) return; // already a list cell above
+                if (_findCellListItems(td).length >= 1) return; // a list cell (multi- or single-row)
                 if (!td.textContent.trim()) return; // empty
                 proseCandidates.push(td);
             });
