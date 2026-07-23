@@ -14431,6 +14431,7 @@ ${sections.join('\n')}
                         e.target.value = _pfx;
                         e.target.setSelectionRange(_pfx.length, _pfx.length);
                         delete e.target.dataset.mbMultirowMode;
+                        delete e.target.dataset.mbUniqValues;
                         runFilter();
                         Lib.debug('shortcuts', `${filterType} filter cleared via Escape (first press, focus kept)`);
                     }
@@ -19259,6 +19260,7 @@ a { color: #1565c0; }`;
             input.value = '';
             input.style.backgroundColor = '';
             delete input.dataset.mbMultirowMode;
+            delete input.dataset.mbUniqValues;
         });
 
         // Re-run filter to update display
@@ -19452,6 +19454,7 @@ a { color: #1565c0; }`;
             input.value = '';
             input.style.backgroundColor = '';
             delete input.dataset.mbMultirowMode;
+            delete input.dataset.mbUniqValues;
         });
 
         // Also clear the sub-table (STF) filter input for this table and restore
@@ -20088,6 +20091,23 @@ a { color: #1565c0; }`;
         .mb-col-uniq-multirow-item {
             background: #f0f4f8;
             font-style: italic;
+        }
+        /* Checkbox glyph (☑/☐) prefixed to each regular value item, enabling
+           multi-select. Not a native <input type="checkbox"> — see renderItems(). */
+        .mb-col-uniq-checkbox {
+            display: inline-block;
+            width: 1.1em;
+            margin-right: 5px;
+            text-align: center;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        /* Checked state: distinct resting background so multi-selected items
+           remain visually identifiable even when not hovered/focused. The
+           higher-specificity :hover / .mb-uniq-focused rules above still win. */
+        .mb-col-uniq-item.mb-col-uniq-checked {
+            background: #eaf7e6;
+            font-weight: 600;
         }
         .mb-col-uniq-empty {
             padding: 7px 12px;
@@ -24436,9 +24456,10 @@ a { color: #1565c0; }`;
             clear.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                // Drop any active multi-row state filter mode so the cleared field
-                // reverts to normal text-filter behaviour.
+                // Drop any active multi-row state filter mode / checkbox value-set
+                // so the cleared field reverts to normal text-filter behaviour.
                 delete input.dataset.mbMultirowMode;
+                delete input.dataset.mbUniqValues;
                 // Clicking ✕ is identical to pressing Escape the first time while
                 // the field is focused: clear any user-entered text, keep the field
                 // focused with the decorative prefix in place.
@@ -24464,10 +24485,14 @@ a { color: #1565c0; }`;
 
             input.addEventListener('input', (e) => {
                 e.stopPropagation();
-                // If the user manually edits a field that carried a multi-row state filter,
-                // drop the mode so subsequent key strokes act as a normal text filter.
+                // If the user manually edits a field that carried a multi-row state filter
+                // or a checkbox value-set, drop the special mode so subsequent key strokes
+                // act as a normal text filter.
                 if (input.dataset.mbMultirowMode) {
                     delete input.dataset.mbMultirowMode;
+                }
+                if (input.dataset.mbUniqValues) {
+                    delete input.dataset.mbUniqValues;
                 }
                 // If the user just started typing into a focused-but-empty field the prefix
                 // was deliberately kept out of the value (so the placeholder hint was visible).
@@ -24575,8 +24600,9 @@ a { color: #1565c0; }`;
             const raw = stripColFilterPrefix(inp.value);
 
             if (!raw) {
-                // Empty field: clear any stale multi-row mode and error styling, skip
+                // Empty field: clear any stale multi-row mode / value-set and error styling, skip
                 delete inp.dataset.mbMultirowMode;
+                delete inp.dataset.mbUniqValues;
                 inp.style.boxShadow   = '';
                 inp.style.borderColor = '';
                 inp.style.borderWidth = '';
@@ -24589,6 +24615,30 @@ a { color: #1565c0; }`;
             const colName = headers[colIdx]
                 ? headers[colIdx].textContent.replace(/[⇅▲▼⁰-⁹📊▶◀▤0-9]/g, '').trim()
                 : `Col ${colIdx}`;
+
+            // ── Value-set filter (set by applyUniqValueSet via uniq-drop checkboxes) ──
+            // Bypasses normal text matching; testRowMatch() checks cell-text set membership.
+            if (inp.dataset.mbUniqValues) {
+                inp.style.boxShadow   = '0 0 2px 2px green';
+                inp.style.borderColor = '';
+                inp.style.borderWidth = '';
+                let valueSet;
+                try {
+                    const arr = JSON.parse(inp.dataset.mbUniqValues);
+                    valueSet = new Set(isCaseSensitive ? arr : arr.map(v => v.toLowerCase()));
+                } catch (e) {
+                    valueSet = new Set(); // corrupt dataset — fail safe to "match nothing extra"
+                }
+                result.push({
+                    val:                raw,
+                    idx:                colIdx,
+                    isMultiValueFilter: true,
+                    valueSet,
+                    isCaseSensitive,
+                    isExclude
+                });
+                return;
+            }
 
             // ── Multi-row state filter (set by applyMultiRowStateFilter via uniq-drop) ──
             // Bypasses normal text matching; testRowMatch() checks the toggle DOM state.
@@ -24858,6 +24908,19 @@ a { color: #1565c0; }`;
                 continue; // no text highlight for state-based filters
             }
 
+            // ── Value-set filter (set by applyUniqValueSet via uniq-drop checkboxes) ──
+            // A row passes if its cell text matches ANY checked value (OR'd within
+            // the column). f.val is a human-readable summary label, not matchable
+            // text, so no highlight is produced (mirrors isMultiRowFilter above).
+            if (f.isMultiValueFilter) {
+                const cellText = matchOnly ? _cachedColText(row, f.idx) : getCleanColumnText(row.cells[f.idx]);
+                const probe = f.isCaseSensitive ? cellText : cellText.toLowerCase();
+                const isMember = f.valueSet.has(probe);
+                const match = f.isExclude ? !isMember : isMember;
+                if (!match) { colHit = false; break; }
+                continue;
+            }
+
             // Use per-filter flags embedded by getColFilters from the per-subtable
             // checkboxes, falling back to global ctx flags for single-table pages and
             // any filter objects that pre-date this change.
@@ -24940,7 +25003,7 @@ a { color: #1565c0; }`;
             // Multi-row state filters operate on DOM structure, not on text → skip highlight.
             // Use per-filter case/regexp flags so highlight patterns match what was actually tested.
             colFilters.forEach(f => {
-                if (!f.isMultiRowFilter) {
+                if (!f.isMultiRowFilter && !f.isMultiValueFilter) {
                     const _fIsExclude = f.isExclude       !== undefined ? f.isExclude       : isExclude;
                     const _fIsCase    = f.isCaseSensitive !== undefined ? f.isCaseSensitive : isCaseSensitive;
                     const _fIsRegExp  = f.isRegExp        !== undefined ? f.isRegExp        : isRegExp;
@@ -24968,7 +25031,7 @@ a { color: #1565c0; }`;
             // column rel-icon highlights work correctly when the sub-table Ex checkbox
             // differs from the global one.
             colFilters.forEach(f => {
-                if (!f.isMultiRowFilter) {
+                if (!f.isMultiRowFilter && !f.isMultiValueFilter) {
                     const _fIsExclude = f.isExclude       !== undefined ? f.isExclude       : isExclude;
                     const _fIsCase    = f.isCaseSensitive !== undefined ? f.isCaseSensitive : isCaseSensitive;
                     const _fIsRegExp  = f.isRegExp        !== undefined ? f.isRegExp        : isRegExp;
@@ -25013,6 +25076,8 @@ a { color: #1565c0; }`;
             x: matchCtx.isExclude,
             f: matchCtx.colFilters.map(f => f.isMultiRowFilter
                 ? { i: f.idx, m: f.multiRowMode }
+                : f.isMultiValueFilter
+                ? { i: f.idx, u: Array.from(f.valueSet).sort(), c: f.isCaseSensitive, x: f.isExclude }
                 : { i: f.idx, v: f.val,
                     c: f.isCaseSensitive, r: f.isRegExp, x: f.isExclude })
         });
@@ -25048,6 +25113,8 @@ a { color: #1565c0; }`;
             x: matchCtx.isExclude,
             f: matchCtx.colFilters.map(f => f.isMultiRowFilter
                 ? { i: f.idx, m: f.multiRowMode }
+                : f.isMultiValueFilter
+                ? { i: f.idx, u: Array.from(f.valueSet).sort(), c: f.isCaseSensitive, x: f.isExclude }
                 : { i: f.idx, v: f.val,
                     c: f.isCaseSensitive, r: f.isRegExp, x: f.isExclude })
         });
@@ -32772,6 +32839,20 @@ a { color: #1565c0; }`;
         _uniqDropOwner = btn;
         btn.classList.add('mb-col-uniq-active');
 
+        // ---- Restore prior checkbox selection (if any) --------------------------
+        // Read the column's filter input's dataset.mbUniqValues so re-opening the
+        // dropdown shows previously-checked values still checked.
+        const _uniqFilterRow = table.querySelector('thead tr.mb-col-filter-row');
+        const _uniqColInput  = _uniqFilterRow
+            ? _uniqFilterRow.querySelector(`.mb-col-filter-input[data-col-idx="${colIndex}"]`)
+            : null;
+        const checkedValues = new Set();
+        if (_uniqColInput && _uniqColInput.dataset.mbUniqValues) {
+            try {
+                JSON.parse(_uniqColInput.dataset.mbUniqValues).forEach(v => checkedValues.add(v));
+            } catch (e) { /* corrupt dataset — start with an empty selection */ }
+        }
+
         // ---- Collect distinct non-empty values with occurrence counts from visible tbody rows ----
         const valueCounts = new Map();
         // Counts for synthetic cell-structure entries (only shown for collapsable columns):
@@ -32898,12 +32979,23 @@ a { color: #1565c0; }`;
 
             matching.forEach(v => {
                 const item = document.createElement('div');
-                item.className = 'mb-col-uniq-item';
+                const isChecked = checkedValues.has(v);
+                item.className = isChecked ? 'mb-col-uniq-item mb-col-uniq-checked' : 'mb-col-uniq-item';
                 item.setAttribute('role', 'option');
+                item.setAttribute('aria-selected', String(isChecked));
                 // title holds the raw value only — used by the Enter-key handler
                 // and applyUniqVal() so the badge text is never copied into the
                 // filter input field.
                 item.title = v;
+
+                // ---- Checkbox glyph: ☑/☐, enables multi-select (OR'd within column) ----
+                // Not a native <input type="checkbox"> — the whole row is the click
+                // target, mirroring the rest of this dropdown's item interaction model.
+                const checkbox = document.createElement('span');
+                checkbox.className = 'mb-col-uniq-checkbox';
+                checkbox.setAttribute('aria-hidden', 'true');
+                checkbox.textContent = isChecked ? '☑' : '☐';
+                item.appendChild(checkbox);
 
                 // ---- Occurrence count badge: "(n) " prefix, display only ----
                 const count = valueCounts.get(v) || 0;
@@ -32970,8 +33062,20 @@ a { color: #1565c0; }`;
 
                 item.addEventListener('mousedown', ev => ev.preventDefault());
                 item.addEventListener('click', () => {
-                    applyUniqVal(v, table, colIndex);
-                    closeUniqDrop();
+                    // Toggle membership in the checked-value set and re-apply the
+                    // whole set as an OR'd column filter. Deliberately do NOT call
+                    // closeUniqDrop() here — multi-select requires the panel to
+                    // stay open so more values can be checked/unchecked.
+                    if (checkedValues.has(v)) {
+                        checkedValues.delete(v);
+                    } else {
+                        checkedValues.add(v);
+                    }
+                    const nowChecked = checkedValues.has(v);
+                    item.classList.toggle('mb-col-uniq-checked', nowChecked);
+                    item.setAttribute('aria-selected', String(nowChecked));
+                    checkbox.textContent = nowChecked ? '☑' : '☐';
+                    applyUniqValueSet(Array.from(checkedValues), table, colIndex);
                 });
                 listBox.appendChild(item);
             });
@@ -33650,15 +33754,11 @@ a { color: #1565c0; }`;
                         focused.click();
                         closeUniqDrop();
                     } else {
-                        // Regular value entry: apply as text filter, then keep the
-                        // column filter field focused with the cursor at the end.
-                        const colInput = applyUniqVal(focused.title, table, colIndex);
-                        closeUniqDrop();
-                        if (colInput) {
-                            colInput.focus();
-                            const len = colInput.value.length;
-                            colInput.setSelectionRange(len, len);
-                        }
+                        // Regular value entry: toggle its checkbox state via the
+                        // same click handler renderItems() wired up, keeping the
+                        // panel open for continued multi-select (mirrors the
+                        // mouse-click behavior — do NOT close the dropdown).
+                        focused.click();
                     }
                 }
             } else if (ev.key === 'Escape') {
@@ -33744,8 +33844,10 @@ a { color: #1565c0; }`;
         );
         if (!input) return;
 
-        // Clear any stale multi-row state filter mode so the text value takes effect
+        // Clear any stale multi-row state filter mode / checkbox value-set so the
+        // single text value takes effect (mutually exclusive with both).
         delete input.dataset.mbMultirowMode;
+        delete input.dataset.mbUniqValues;
         input.value = value;
 
         // Apply the "active" background tint so the field looks highlighted
@@ -33794,6 +33896,8 @@ a { color: #1565c0; }`;
 
         // Tag the input so getColFilters produces a multi-row state filter object.
         input.dataset.mbMultirowMode = mode;
+        // Mutually exclusive with the uniq-drop checkbox value-set filter.
+        delete input.dataset.mbUniqValues;
 
         // Store a human-readable display label so the field looks intentionally set.
         const label = mode === 'empty'    ? '○ empty cells'         :
@@ -33819,6 +33923,77 @@ a { color: #1565c0; }`;
         }
 
         Lib.debug('filter', `Uniq-drop: multi-row state filter "${mode}" applied to col ${colIndex}`);
+    }
+
+    /**
+     * Activates (or clears) a checkbox-driven multi-value filter on a single
+     * column, applying every currently-checked unique value as an OR'd set.
+     *
+     * Unlike `applyUniqVal()` (single value, replaces the filter, closes the
+     * dropdown) this supports selecting multiple values at once: a row passes
+     * the column filter if its cell text matches ANY checked value. An empty
+     * `selectedValues` array means "no constraint" — the column filter is fully
+     * cleared, not "match nothing."
+     *
+     * Mirrors `applyMultiRowStateFilter()`: state is stashed on
+     * `input.dataset.mbUniqValues` (JSON-encoded array), a human-readable
+     * summary label is written to `input.value` so existing "is this column
+     * filter active" checks elsewhere (which just test non-empty `input.value`)
+     * keep working unmodified, and `runFilter()` is called directly rather than
+     * dispatching a synthetic 'input' event — that event is caught by the
+     * column filter's own input handler, which unconditionally deletes
+     * `dataset.mbUniqValues` before `getColFilters()` can read it.
+     *
+     * @param {string[]}         selectedValues - Currently-checked raw values.
+     * @param {HTMLTableElement} table          - The table owning the column.
+     * @param {number}           colIndex       - Zero-based column index.
+     */
+    function applyUniqValueSet(selectedValues, table, colIndex) {
+        const filterRow = table.querySelector('thead tr.mb-col-filter-row');
+        if (!filterRow) return;
+        const input = filterRow.querySelector(
+            `.mb-col-filter-input[data-col-idx="${colIndex}"]`
+        );
+        if (!input) return;
+
+        const values = Array.from(new Set(selectedValues || []));
+
+        if (values.length === 0) {
+            // Empty checked-set = "no constraint" = fully clear this column filter.
+            delete input.dataset.mbUniqValues;
+            delete input.dataset.mbMultirowMode;
+            input.value = '';
+            input.style.backgroundColor = '';
+            input.style.boxShadow       = '';
+            input.style.borderColor     = '';
+            input.style.borderWidth     = '';
+            if (typeof runFilter === 'function') {
+                runFilter();
+            }
+            Lib.debug('filter', `Uniq-drop: value-set cleared on col ${colIndex}`);
+            return;
+        }
+
+        // Mutually exclusive with the multi-row state filter.
+        delete input.dataset.mbMultirowMode;
+        input.dataset.mbUniqValues = JSON.stringify(values);
+
+        // Human-readable summary label — the authoritative state always lives in
+        // dataset.mbUniqValues, never re-derived from this display string.
+        input.value = values.length === 1 ? values[0] : `${values.length} selected`;
+
+        const activeBg = Lib.settings.sa_col_filter_active_bg || '#fff9c4';
+        input.style.backgroundColor = activeBg;
+        input.style.boxShadow       = '0 0 2px 2px green';
+        input.style.borderColor     = '';
+        input.style.borderWidth     = '';
+
+        // Direct call, not a synthetic 'input' event — see comment above.
+        if (typeof runFilter === 'function') {
+            runFilter();
+        }
+
+        Lib.debug('filter', `Uniq-drop: value-set [${values.join(', ')}] applied to col ${colIndex}`);
     }
 
     // =========================================================================
@@ -44028,7 +44203,7 @@ a { color: #1565c0; }`;
 
         // Column-scoped filters — only apply when the filter targets this art column.
         for (const f of ctx.colFilters) {
-            if (f.isMultiRowFilter) continue;  // state filters carry no highlight text
+            if (f.isMultiRowFilter || f.isMultiValueFilter) continue;  // state/value-set filters carry no highlight text
             if (f.idx !== colIdx)   continue;  // different column — skip
             // Use per-filter flags (embedded by getColFilters from the per-subtable
             // checkboxes) with a fallback to the context-level flags for compatibility.
