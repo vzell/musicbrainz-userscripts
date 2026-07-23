@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.707",
+    "date": "2026-07-23",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Consolidated the 48 `@match` lines (24 path patterns × 2 domains) in the userscript header into 2 `@include` regex lines, mirroring the file's existing two `@include` lines used for MBID-entity pages. Also dropped `/cdstub/browse` as a `@match` entry since it was already a strict subset of `/cdstub/*`. No functional change — every page the script previously ran on, it still runs on."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.706",
     "date": "2026-07-23",
     "sections": [
