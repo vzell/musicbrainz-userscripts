@@ -1,5 +1,24 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-07-23",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed native column headers containing a leading digit (e.g. auto-elections' \"1st seconder\" / \"2nd seconder\") being mangled to \"st seconder\" / \"nd seconder\" in both the rendered header text and `data-col-name`. The shared icon-stripping regex in `makeTableSortableUnified` blindly stripped ASCII `0-9` from raw, undecorated header text — removed there (only decorative icon glyphs and Unicode superscript multi-sort-order digits are stripped now) and made `getCleanColName` prefer the already-correct `th.dataset.colName` over re-deriving from text that later also carries the live uniq-count badge digits."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "cd-stub (`/cdstub/browse`): the informational \"Added N years ago, last modified M years ago\" row that MusicBrainz renders after every real row is no longer silently dropped — it is now folded into the preceding row as a disambiguation comment (`<span class=\"comment\">(<bdi>…</bdi>)</span>`) appended to the Title cell, mirroring the existing `cdtoc` tracklist-row interception pattern in `startFetchingProcess`. `cd-stub` now also declares `extractMainColumn: 'Title'`, so the merged text populates dedicated MB-Name/Comment columns.",
+          "Instrument list (`/instruments`, WIP.1): added a new `Name_Comment_Description` extractor that splits each family's combined cell (name link, optional short comment, optional longer free-text description — which may itself contain nested instrument links) into separate Name / Comment / Description columns, wired per-family via `entityFeatures` (mirrors the `tag-value` per-group columnExtractor pattern). Required extending two pageType gates in `startFetchingProcess` / `renderGroupedTable` (row-level colIdx re-resolution, and per-group thead rebuild) to also cover `instrument-list`, alongside the existing `tag-value` / `user-tag-value` / `user-ratings` pageTypes."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-07-23",
     "sections": [

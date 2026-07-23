@@ -3300,6 +3300,48 @@
             }
 
             return [tdCollection, tdEditor];
+        },
+
+        /**
+         * Name_Comment_Description — splits an instrument-list family cell
+         * (built by applyListToTable's Structure J from a native <li>, see
+         * pageType 'instrument-list' / debug/instruments.html) into three
+         * columns. Source shape, all three trailing parts optional:
+         *   <a href="/instrument/UUID"><bdi>Name</bdi></a>
+         *   [<span class="comment">(<bdi>Comment</bdi>)</span>]
+         *   [— <!-- -->Description text, which may itself contain nested
+         *     <a> links (e.g. a family entry naming its member instruments)]
+         * Name and Comment reuse the same extraction _tagCountBase uses for
+         * every other entity-list cell. Description is everything found
+         * after the first "—" (em dash) text node — cloned verbatim (not
+         * reduced to plain text) so nested links survive — with the
+         * MusicBrainz `<!-- -->` marker-comment artifact that immediately
+         * follows the dash skipped.
+         * Synthetic columns: ['Name', 'Comment', 'Description']
+         */
+        Name_Comment_Description(sourceCell) {
+            const [tdName, , tdComment] = _tagCountBase(sourceCell);
+            const tdDescription = document.createElement('td');
+
+            if (sourceCell) {
+                let _dashSeen = false;
+                for (const node of sourceCell.childNodes) {
+                    if (!_dashSeen) {
+                        if (node.nodeType === Node.TEXT_NODE && node.nodeValue.includes('—')) {
+                            _dashSeen = true;
+                            // Handle the rare case where real content trails the dash
+                            // within the same text node (no intervening marker comment).
+                            const _after = node.nodeValue.split('—').slice(1).join('—').trim();
+                            if (_after) tdDescription.appendChild(document.createTextNode(_after));
+                        }
+                        continue;
+                    }
+                    if (node.nodeType === Node.COMMENT_NODE) continue; // skip <!-- --> artifact
+                    tdDescription.appendChild(node.cloneNode(true));
+                }
+            }
+
+            return [tdName, tdComment, tdDescription];
         }
     };
 
@@ -6207,11 +6249,15 @@
         // (Title / Artist / Lookup count / Modify count). Every data row is
         // immediately followed by an informational
         // <tr><td class="lastupdate" colspan="4">Added … ago, last modified …
-        // ago</td></tr> row; the existing generic single-table row-extraction
-        // already skips single-cell rows whose cell has colSpan > 1 (see the
-        // "Allow single-cell rows only when the cell does NOT span multiple
-        // columns" guard in startFetchingProcess), so no page-type-specific
-        // handling is needed for that. See debug/cd-stub.html.
+        // ago</td></tr> row; a colSpan=4 single cell already fails the generic
+        // single-table row-extraction's "allow single-cell rows only when the
+        // cell does NOT span multiple columns" guard, so this row is never
+        // added as a garbage row on its own. A pageType==='cd-stub'-scoped
+        // branch in startFetchingProcess (mirrors the existing 'cdtoc'
+        // tracklist-row interception) instead folds its text into the
+        // preceding row's Title cell as a disambiguation comment span, and
+        // into the synthetic Comment cell produced by extractMainColumn
+        // below. See debug/cd-stub.html.
         {
             type: 'cd-stub',
             match: (path) => path.match(/^\/cdstub\/browse\/?$/),
@@ -6222,6 +6268,10 @@
                     { sourceColumn: 'Lookup count', align: 'R' },
                     { sourceColumn: 'Modify count', align: 'R' }
                 ],
+                // Title never carries a native .comment span — Comment is
+                // populated exclusively from the merged "lastupdate" info row
+                // (see the pageType==='cd-stub' branch in startFetchingProcess).
+                extractMainColumn: 'Title',
                 stickyColumn: 'Title'
             },
             tableMode: 'single'
@@ -6254,15 +6304,49 @@
         // instrument, Percussion instrument, Electronic instrument, Other
         // instrument, Ensemble, Family, Unclassified instrument). Each <li> holds
         // a name link, an optional short comment span, and a longer free-text
-        // description — MVP keeps all three glommed into one cell (same generic
-        // li→td copy every other listToTable structure uses); splitting them into
-        // separate Name/Comment/Description columns would need a new extractor
-        // plus per-family entityFeatures wiring and was deferred. No pagination.
-        // See debug/instruments.html.
+        // description (see the Name_Comment_Description extractor for the exact
+        // shape). Structure J converts each family's <ul> into a table whose
+        // single native column is named after the family itself (e.g. "Wind
+        // instrument") — entityFeatures below is keyed by those exact family
+        // names so each group's table gets its own Name/Comment/Description
+        // columnExtractor re-resolved against ITS OWN header text (mirrors how
+        // 'tag-value' resolves a different columnExtractor per entity-type
+        // group — see the pageType === 'instrument-list' addition to the
+        // per-table extractor colIdx re-resolution gate in startFetchingProcess).
+        // The original family column is left in place alongside the three new
+        // ones (same convention as every other columnExtractor in this script,
+        // e.g. 'Location' staying next to its derived Place/Area/Country).
+        // No pagination. See debug/instruments.html.
         {
             type: 'instrument-list',
             match: (path) => path.match(/^\/instruments\/?$/),
             buttons: [ { label: 'Show all Instruments' } ],
+            entityFeatures: {
+                'Wind instrument': {
+                    columnExtractors: [ { sourceColumn: 'Wind instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
+                },
+                'String instrument': {
+                    columnExtractors: [ { sourceColumn: 'String instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
+                },
+                'Percussion instrument': {
+                    columnExtractors: [ { sourceColumn: 'Percussion instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
+                },
+                'Electronic instrument': {
+                    columnExtractors: [ { sourceColumn: 'Electronic instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
+                },
+                'Other instrument': {
+                    columnExtractors: [ { sourceColumn: 'Other instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
+                },
+                'Ensemble': {
+                    columnExtractors: [ { sourceColumn: 'Ensemble', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
+                },
+                'Family': {
+                    columnExtractors: [ { sourceColumn: 'Family', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
+                },
+                'Unclassified instrument': {
+                    columnExtractors: [ { sourceColumn: 'Unclassified instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
+                }
+            },
             features: {
                 // Same Structure J reuse as 'edit-types' — see comment there.
                 renameH2ToH3: true,
@@ -28032,11 +28116,12 @@ a { color: #1565c0; }`;
 
                         // ── Per-table extractor colIdx resolution ─────────────────────
                         // For multi-table pages where each group table has a different
-                        // entity-type column (e.g. 'tag-value': Area / Artist / Event /…),
+                        // entity-type column (e.g. 'tag-value': Area / Artist / Event /…;
+                        // 'instrument-list': Wind instrument / String instrument / …),
                         // activeColumnExtractors must be re-resolved against the CURRENT
                         // table's headers — otherwise previous tables' resolved colIdx
                         // values linger and cause multiple extractors to fire on every row.
-                        if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings') {
+                        if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list') {
                             // If this group has entity-specific features (from entityFeatures map),
                             // rebuild the active extractors and integer columns from that feature set,
                             // merged with the base features (listToTable, removeSelector, etc.).
@@ -28348,6 +28433,51 @@ a { color: #1565c0; }`;
                                         }
                                     }
                                     // Skip — do not add to allRows / groupedRows
+                                } else if (pageType === 'cd-stub' && node.cells.length === 1 && node.cells[0].classList.contains('lastupdate')) {
+                                    // ── cd-stub: "Added N years ago, last modified M years ago"
+                                    //    info row ────────────────────────────────────────────
+                                    // MusicBrainz renders one <tr><td class="lastupdate"
+                                    // colspan="4">…</td></tr> immediately after each real data
+                                    // row. A colSpan=4 single cell already fails the generic
+                                    // "allow single-cell rows only when the cell does NOT span
+                                    // multiple columns" guard below, so this row would otherwise
+                                    // be silently dropped. Instead, fold its text into the
+                                    // preceding data row's Title cell as a disambiguation comment
+                                    // — <span class="comment">(<bdi>…</bdi>)</span> — matching the
+                                    // native MB "Name <span class="comment">(disambiguation)
+                                    // </span>" convention, and mirror it into the row's synthetic
+                                    // Comment cell (see 'cd-stub' features.extractMainColumn).
+                                    const _lastRow = allRows.length > 0 ? allRows[allRows.length - 1] : null;
+                                    const _infoText = node.cells[0].textContent.trim();
+                                    if (_lastRow && _infoText) {
+                                        const _titleCell = _lastRow.cells[0];
+                                        if (_titleCell) {
+                                            const _commentSpan = document.createElement('span');
+                                            _commentSpan.className = 'comment';
+                                            _commentSpan.append('(');
+                                            const _bdi = document.createElement('bdi');
+                                            _bdi.textContent = _infoText;
+                                            _commentSpan.appendChild(_bdi);
+                                            _commentSpan.append(')');
+                                            _titleCell.appendChild(document.createTextNode(' '));
+                                            _titleCell.appendChild(_commentSpan);
+                                        }
+
+                                        // extractMainColumn already ran for this row (this info
+                                        // row is a later sibling in document order) and produced
+                                        // an empty Comment cell, since the Title cell had no
+                                        // native .comment span at extraction time — cd-stub's
+                                        // Comment column is populated exclusively from here. It
+                                        // is always the row's last cell for this page type (no
+                                        // injectedColumns/addCAA/addEAA configured on it).
+                                        if (mainColIdx !== -1) {
+                                            const _commentCell = _lastRow.cells[_lastRow.cells.length - 1];
+                                            if (_commentCell) _commentCell.textContent = _infoText;
+                                        }
+
+                                        Lib.debug('parse', `cd-stub: merged lastupdate info into preceding row: "${_infoText}"`);
+                                    }
+                                    // Skip — do not add to allRows
                                 } else if (
                                     (node.cells.length > 1 ||
                                      // Allow single-cell rows only when the cell does NOT span multiple
@@ -30837,12 +30967,14 @@ a { color: #1565c0; }`;
                             });
                             cleanupHeaders(_theadForGroup);
                         }
-                    } else if ((pageType === 'tag-value' || pageType === 'user-tag-value') && rawTemplateHead) {
-                        // ── Per-group thead for tag-value multi-table mode ────────────
-                        // Each group has a different entity-type column and therefore
-                        // different synthetic columns.  Resolve extractors from the group's
-                        // entity-specific features (entityFeatures map), rebuild active lists,
-                        // then call cleanupHeaders so it injects the correct headers.
+                    } else if ((pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'instrument-list') && rawTemplateHead) {
+                        // ── Per-group thead for tag-value / instrument-list multi-table
+                        //    mode ─────────────────────────────────────────────────────
+                        // Each group has a different entity-type (or, for instrument-list,
+                        // family) column and therefore different synthetic columns.
+                        // Resolve extractors from the group's entity-specific features
+                        // (entityFeatures map), rebuild active lists, then call
+                        // cleanupHeaders so it injects the correct headers.
                         const _groupEntityFeatures = group.entityFeatures || {};
                         if (Object.keys(_groupEntityFeatures).length > 0) {
                             const _mf = { ...(activeDefinition.features || {}), ..._groupEntityFeatures };
@@ -35600,8 +35732,16 @@ a { color: #1565c0; }`;
         multiSortTintRegistry.set(sortKey, { applyTints: applyMultiSortColumnTints, clearTints: clearMultiSortColumnTints });
 
         // --- Helper: derive clean column name from a th element ---------------
+        // Prefer th.dataset.colName — set once, exactly, when the header is
+        // first built (see the `headers.forEach` loop below) — over re-deriving
+        // from th.textContent, which by the time this runs also contains the
+        // live uniq-count badge digits (e.g. "94") injected into the header's
+        // flex layout. Stripping plain ASCII 0-9 from that combined text would
+        // be ambiguous whenever the real column name itself contains a digit
+        // (e.g. "1st seconder"), so the fallback path is only exercised for a
+        // th that predates dataset.colName being set.
         const getCleanColName = (th) =>
-            th ? th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim() : '';
+            th ? (th.dataset.colName || th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim()) : '';
 
         // --- Helper: is a column name numeric? ---------------------------------
         // Primary source: activeIntegerColumns declared in the page definition's
@@ -35644,7 +35784,19 @@ a { color: #1565c0; }`;
             if (th.querySelector('input[type="checkbox"]')) return;
             th.style.cursor = 'default';
 
-            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+            // th.textContent is always raw/undecorated here — this is the ONE
+            // point in the pipeline where a native or freshly-created synthetic
+            // <th>'s plain text is first read, immediately before th.innerHTML
+            // is cleared and rebuilt with the sort-icon / uniq-count layout
+            // below. No ASCII digits belonging to this script's own UI (the
+            // uniq-count badge, multi-sort superscript order) can be present
+            // yet, so plain 0-9 must NOT be stripped here — doing so mangled
+            // genuine numeric header text (e.g. auto-elections' "1st seconder"
+            // / "2nd seconder" columns rendered as "st seconder" / "nd
+            // seconder"). Only the decorative icon glyphs and Unicode
+            // superscript digits (used later for the multi-sort order badge,
+            // a distinct code point range from ASCII 0-9) are stripped.
+            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
             th.innerHTML = ''; // clear for new icon layout
 
             const createIcon = (char, targetState) => {

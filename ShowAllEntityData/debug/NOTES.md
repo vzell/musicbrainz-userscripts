@@ -183,3 +183,60 @@ user-supplied pair of `search`-page snapshots. Snapshots used:
   families) and was explicitly deferred by the user. Shares the same
   Structure J extension as `edit-types` above. `pageType: 'instrument-list'`,
   `tableMode: 'multi'`, `non_paginated: true`.
+
+## 2026-07-23 — follow-up fixes from debug/pt.org (same branch)
+
+- **Header-mangling bug (auto-elections)**: `debug/auto-editor-elections.html`'s
+  native "1st seconder" / "2nd seconder" `<th>` text rendered as "st seconder"
+  / "nd seconder" (both the visible header and `data-col-name`). Root cause:
+  `makeTableSortableUnified`'s `const colName = th.textContent.replace(/[…
+  0-9…]/g, '')` blindly strips plain ASCII digits from what is, at that exact
+  point in the pipeline, always raw/undecorated header text (native or
+  freshly-created synthetic `<th>`, immediately before `th.innerHTML` is
+  cleared and rebuilt) — the `0-9` was only ever needed to strip the
+  uniq-count badge digits (e.g. "94") that get injected into the SAME `<th>`
+  later, on a *subsequent* read of an already-decorated header (e.g.
+  `getCleanColName`, used for sort/numeric detection). Fixed by dropping
+  `0-9` from the one true "first read of raw text" site (colName derivation)
+  and making `getCleanColName` prefer the now-correct, immutable
+  `th.dataset.colName` over re-deriving from the live (badge-digit-carrying)
+  `textContent`. Left the ~20 other occurrences of the same
+  icon-stripping regex elsewhere in the file untouched — they operate in
+  different contexts (already-decorated text, or fetched-doc colIdx
+  matching) not implicated by this specific bug report.
+- **cd-stub lastupdate-row merge**: previously the "Added N years ago, last
+  modified M years ago" `<tr><td class="lastupdate" colspan="4">` row (see
+  `debug/cd-stub.html`, item 2 in `debug/pt.org`) was silently dropped by the
+  generic single-cell/colSpan>1 guard with no visible effect. Now an explicit
+  `pageType === 'cd-stub'` branch in `startFetchingProcess` (modeled directly
+  on the existing `pageType === 'cdtoc'` tracklist-row interception right
+  above it) intercepts it, appends `<span class="comment">(<bdi>…</bdi>)
+  </span>` to the preceding row's Title cell, and mirrors the same text into
+  that row's synthetic Comment cell (`cd-stub` now sets
+  `extractMainColumn: 'Title'`, so MB-Name/Comment columns exist to receive
+  it — Title never has a native `.comment` span of its own, so Comment is
+  populated exclusively from this merge).
+- **Instrument-list Name/Comment/Description split**: implemented the
+  extractor deferred in the entry above. New `Name_Comment_Description`
+  (`ColumnDataExtractor`) reuses `_tagCountBase` for Name/Comment and walks
+  the source cell's remaining child nodes for Description — splitting on the
+  first text node containing "—", skipping the `<!-- -->` marker-comment
+  artifact MusicBrainz emits right after the dash, and cloning (not
+  flattening to text) everything after it so a family entry's nested
+  instrument links (e.g. "akete" → "Three-parts drumset (`<a>`baandu`</a>`,
+  …)") survive. Wired per-family via `entityFeatures` keyed by the exact
+  8 family names (Wind instrument, String instrument, Percussion instrument,
+  Electronic instrument, Other instrument, Ensemble, Family, Unclassified
+  instrument) — each entry's `columnExtractors[0].sourceColumn` is that same
+  literal family name, since Structure J names each group's sole native
+  column after its category. This mirrors `tag-value`'s per-group
+  columnExtractor pattern exactly, and required extending two existing
+  `pageType === 'tag-value' || pageType === 'user-tag-value'`-gated code
+  paths to also cover `'instrument-list'`: the row-level extractor colIdx
+  re-resolution in `startFetchingProcess`, and the per-group thead rebuild
+  in `renderGroupedTable` (without the latter, extracted Name/Comment/
+  Description cells would have no corresponding `<th>`s). The original
+  per-family column (e.g. "Wind instrument", full glommed text) is left in
+  place alongside the three new ones — same convention as every other
+  columnExtractor in this script (e.g. "Location" staying next to its
+  derived Place/Area/Country).
