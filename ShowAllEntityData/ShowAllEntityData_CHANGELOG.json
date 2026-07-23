@@ -1,5 +1,96 @@
 [
   {
+    "version": "9.99.706",
+    "date": "2026-07-23",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added support for an eighth new page type: individual auto-editor election pages (`/election/<n>`), as `'auto-editor-election'`. Its \"Votes cast\" table is already native `table.tbl`-shaped with an existing `<h2>` label, so — like `cd-stub` — no `listToTable`/`insertH2` conversion is needed. The separate `<table class=\"properties\">` (election details) is left untouched."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.705",
+    "date": "2026-07-23",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "privileged-accounts (`/privileged`, 9.99.704): the relocated intro/count paragraphs now collapse and uncollapse together with their associated sub-table when clicking the h3 header, via a new shared `_syncGroupIntroVisibility()` helper wired into every sub-table visibility toggle path (per-h3 click, Ctrl+Click toggle-all, the master toggle button, and the Ctrl+3 keyboard shortcut)."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Renamed pageType `'cd-stub'` (`/cdstub/browse`) to `'top-cd-stub'` to free up the name for a new, more specific page type — see below."
+        ]
+      },
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added support for a seventh new page type: individual CD stub pages (`/cdstub/<disc-id>`), as `'cd-stub'`. Its Tracklist table is already native `table.tbl`-shaped with an existing `<h2>` label, so — unlike every other page type added this session — no `listToTable`/`insertH2` conversion is needed; the script just applies its filter/sort UI directly. The page's separate `<table class=\"details\">` (Disc ID information) and `div#sidebar` are left untouched."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.704",
+    "date": "2026-07-23",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "privileged-accounts (`/privileged`, 9.99.703): fixed each section's descriptive/count paragraphs (e.g. \"Auto-editors are trusted users who have been given …\") rendering bunched together after all 7 sub-tables instead of each staying right before its own table. `renderGroupedTable`'s cleanup pass only ever removed `h3`/`table.tbl` elements, leaving those `<p>`s orphaned in their original position while the rebuilt h3/table pairs were inserted as one contiguous block elsewhere. Structure K now stashes them on the table's `dataset.mbIntroHtml`, `startFetchingProcess` carries that onto `group.introHtml`, and `renderGroupedTable` re-inserts them in a `.mb-group-intro` wrapper directly between each `h3` and its `table`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.703",
+    "date": "2026-07-23",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added support for a sixth new page type: Privileged user accounts (`/privileged`). Its 7 category sections (Auto-editors, Relationship editors, Transclusion editors, Location editors, Banner message editors, Account administrators, Bots) render each editor list as a plain `<p>` of comma-glued `<a>` links rather than a `<ul>`, so a new Structure K was added to `applyListToTable` — it identifies the correct paragraph per section (the one containing `/user/` links, not by position) and converts it to a one-column \"Editor\" table, splitting by walking the `<a>` elements rather than parsing the \",\" separator text (at least one MusicBrainz username itself contains a literal comma)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.702",
+    "date": "2026-07-23",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed native column headers containing a leading digit (e.g. auto-elections' \"1st seconder\" / \"2nd seconder\") being mangled to \"st seconder\" / \"nd seconder\" in both the rendered header text and `data-col-name`. The shared icon-stripping regex in `makeTableSortableUnified` blindly stripped ASCII `0-9` from raw, undecorated header text — removed there (only decorative icon glyphs and Unicode superscript multi-sort-order digits are stripped now) and made `getCleanColName` prefer the already-correct `th.dataset.colName` over re-deriving from text that later also carries the live uniq-count badge digits."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "cd-stub (`/cdstub/browse`): the informational \"Added N years ago, last modified M years ago\" row that MusicBrainz renders after every real row is no longer silently dropped — it is now folded into the preceding row as a disambiguation comment (`<span class=\"comment\">(<bdi>…</bdi>)</span>`) appended to the Title cell, mirroring the existing `cdtoc` tracklist-row interception pattern in `startFetchingProcess`. `cd-stub` now also declares `extractMainColumn: 'Title'`, so the merged text populates dedicated MB-Name/Comment columns.",
+          "Instrument list (`/instruments`, 9.99.701): added a new `Name_Comment_Description` extractor that splits each family's combined cell (name link, optional short comment, optional longer free-text description — which may itself contain nested instrument links) into separate Name / Comment / Description columns, wired per-family via `entityFeatures` (mirrors the `tag-value` per-group columnExtractor pattern). Required extending two pageType gates in `startFetchingProcess` / `renderGroupedTable` (row-level colIdx re-resolution, and per-group thead rebuild) to also cover `instrument-list`, alongside the existing `tag-value` / `user-tag-value` / `user-ratings` pageTypes."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.701",
+    "date": "2026-07-23",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added support for five new page types: Auto-editor elections (`/elections`), Genre list (`/genres`), Top CD stubs (`/cdstub/browse`), Edit types (`/doc/Edit_Types`), and Instrument list (`/instruments`). All five reuse existing `applyListToTable` conversion structures — Structure G (bare `<ul>` → one-column table, extended for `genres-list`) and Structure J (repeated `<h2>+<ul>` category sections → one table per section, extended for `edit-types` and `instrument-list` with a per-section column name instead of `reports-index`'s fixed literal). `cd-stub`'s informational 'Added N years ago…' filler rows are skipped by the existing generic single-cell/colSpan>1 row-extraction guard with no new code."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.700",
     "date": "2026-07-23",
     "sections": [
