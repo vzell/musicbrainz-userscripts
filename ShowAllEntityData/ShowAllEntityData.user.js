@@ -49,14 +49,20 @@
 // @match        *://*.musicbrainz.eu/report/*
 // @match        *://*.musicbrainz.org/elections
 // @match        *://*.musicbrainz.eu/elections
+// @match        *://*.musicbrainz.org/election/*
+// @match        *://*.musicbrainz.eu/election/*
 // @match        *://*.musicbrainz.org/genres
 // @match        *://*.musicbrainz.eu/genres
 // @match        *://*.musicbrainz.org/cdstub/browse
 // @match        *://*.musicbrainz.eu/cdstub/browse
+// @match        *://*.musicbrainz.org/cdstub/*
+// @match        *://*.musicbrainz.eu/cdstub/*
 // @match        *://*.musicbrainz.org/doc/Edit_Types
 // @match        *://*.musicbrainz.eu/doc/Edit_Types
 // @match        *://*.musicbrainz.org/instruments
 // @match        *://*.musicbrainz.eu/instruments
+// @match        *://*.musicbrainz.org/privileged
+// @match        *://*.musicbrainz.eu/privileged
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -4253,12 +4259,25 @@
      *                              edit-types and instrument-list use the h3 text
      *                              itself (the category IS the entity type of every
      *                              row in that section).
+     *   K) h2+p (privileged-accounts) — /privileged; each native <h2> category is
+     *                              followed by 2-3 plain <p> siblings (intro,
+     *                              "The following N users are …:" count, and —
+     *                              always last, identified by containing /user/
+     *                              links rather than by position — the actual
+     *                              editor list as inline <a> links glued by ", "
+     *                              text nodes, NOT a <ul>). Converts just that one
+     *                              <p> into a one-column table, one row per <a>,
+     *                              fixed literal header "Editor". Splitting by
+     *                              walking the <a> elements (not the "," text)
+     *                              matters because some usernames themselves
+     *                              contain a literal comma.
      *
      * Structures A and B produce two-column tables (Name | Tag count).
      * Structures C, D, E, F, and G produce single-column tables whose header is the
      * singular form of the section heading (via `_toSingular()` or URL derivation).
-     * Structure J also produces a single-column table, with a header that is either
-     * a fixed literal ("Report") or the h3 text itself, depending on pageType.
+     * Structures J and K also produce single-column tables; J's header is either a
+     * fixed literal ("Report") or the h3 text itself depending on pageType, K's is
+     * always the fixed literal "Editor".
      *
      * Must run AFTER `applyRenameH2ToH3` / `applyInsertH2` and BEFORE maxPage
      * determination so that `parseDocumentForTables` finds the resulting
@@ -4879,6 +4898,86 @@
                         ` (${_tbody.rows.length} rows, col="${_colName}",` +
                         ` entity="${_entitySlug}", structure="artist-credit-entity-ul").`);
                     return; // Structure G handled
+                }
+
+                // ── Structure K: privileged accounts (/privileged) ───────────────────
+                // Triggered for pageType 'privileged-accounts'.
+                // Each <h2> category (Auto-editors, Relationship editors, …, Bots) is
+                // followed by 2-3 plain <p> elements: an intro/description paragraph,
+                // a "The following N users are …:" count paragraph, and — always last —
+                // a paragraph holding the actual editor list as inline
+                // <a href="/user/…"> links separated by ", " text nodes (NOT a <ul>,
+                // see debug/priviledged.html). Some usernames themselves contain a
+                // literal comma (e.g. "ApeKattQuest, MonkeyPython"), so splitting is
+                // done by walking the <p>'s direct child <a> elements — never by
+                // parsing the separator text — one row per anchor, ", " glue discarded.
+                // The editor-list <p> is identified generically as the LAST <p> before
+                // the next heading that contains at least one /user/ link (works
+                // whether a section has 2 or 3 intro paragraphs, e.g. 'Bots' has no
+                // description paragraph).
+                //
+                // The other (non-list) paragraphs are stashed as HTML on the new
+                // table's dataset.mbIntroHtml and then removed from this DOM entirely —
+                // renderGroupedTable's cleanup pass only ever removes h3/table.tbl
+                // elements, and the rebuilt h3/table pairs it inserts land as one
+                // contiguous block starting from the page's single target h2/h3, so
+                // any left-behind <p> would end up stranded after every sub-table
+                // instead of before its own. See group.introHtml in
+                // startFetchingProcess / renderGroupedTable for where they get
+                // reinserted right before their table on render.
+                if (pageType === 'privileged-accounts') {
+                    Array.from(_root.querySelectorAll('h2, h3')).forEach(_h2 => {
+                        let _next = _h2.nextElementSibling, _steps = 0;
+                        let _listP = null;
+                        const _introPs = [];
+                        while (_next && _steps < 10) {
+                            if (_next.tagName === 'H2' || _next.tagName === 'H3') break;
+                            if (_next.tagName === 'P') {
+                                if (_next.querySelector('a[href*="/user/"]')) {
+                                    _listP = _next; // keep overwriting — last match wins
+                                } else {
+                                    _introPs.push(_next);
+                                }
+                            }
+                            _next = _next.nextElementSibling;
+                            _steps++;
+                        }
+                        if (!_listP) return;
+
+                        const _colName = 'Editor';
+                        const _table = docContext.createElement('table');
+                        _table.className = 'tbl';
+                        _table.dataset.mbOriginalColName = _colName;
+                        if (_introPs.length > 0) {
+                            _table.dataset.mbIntroHtml = _introPs.map(p => p.outerHTML).join('');
+                        }
+
+                        const _thead = docContext.createElement('thead');
+                        const _hr = docContext.createElement('tr');
+                        const _th = docContext.createElement('th');
+                        _th.textContent = _colName;
+                        _hr.appendChild(_th);
+                        _thead.appendChild(_hr);
+                        _table.appendChild(_thead);
+
+                        const _tbody = docContext.createElement('tbody');
+                        Array.from(_listP.querySelectorAll(':scope > a[href]')).forEach(a => {
+                            const _tr = docContext.createElement('tr');
+                            const _td = docContext.createElement('td');
+                            _td.appendChild(a.cloneNode(true));
+                            _tr.appendChild(_td);
+                            _tbody.appendChild(_tr);
+                        });
+                        _table.appendChild(_tbody);
+
+                        _listP.parentNode.replaceChild(_table, _listP);
+                        _introPs.forEach(p => p.remove());
+                        Lib.debug('init',
+                            `applyListToTable: privileged-accounts: converted h2="${_h2.textContent.trim()}" ` +
+                            `editor-list p → table (${_tbody.rows.length} rows, col="${_colName}", ` +
+                            `${_introPs.length} intro paragraph(s) stashed, structure="privileged-accounts-p").`);
+                    });
+                    return; // Structure K handled all h2+p pairs for this entry
                 }
 
                 Lib.debug('init', `applyListToTable: sectionId='' but path "${_currentPath}" matches no known structure — skipping.`);
@@ -6252,14 +6351,16 @@
         // ago</td></tr> row; a colSpan=4 single cell already fails the generic
         // single-table row-extraction's "allow single-cell rows only when the
         // cell does NOT span multiple columns" guard, so this row is never
-        // added as a garbage row on its own. A pageType==='cd-stub'-scoped
+        // added as a garbage row on its own. A pageType==='top-cd-stub'-scoped
         // branch in startFetchingProcess (mirrors the existing 'cdtoc'
         // tracklist-row interception) instead folds its text into the
         // preceding row's Title cell as a disambiguation comment span, and
         // into the synthetic Comment cell produced by extractMainColumn
-        // below. See debug/cd-stub.html.
+        // below. Named 'top-cd-stub' (not 'cd-stub') to leave that name free
+        // for the individual CD stub detail page (/cdstub/<disc-id>).
+        // See debug/top-cd-stub.html.
         {
-            type: 'cd-stub',
+            type: 'top-cd-stub',
             match: (path) => path.match(/^\/cdstub\/browse\/?$/),
             buttons: [ { label: 'Show all CD Stubs' } ],
             features: {
@@ -6270,11 +6371,54 @@
                 ],
                 // Title never carries a native .comment span — Comment is
                 // populated exclusively from the merged "lastupdate" info row
-                // (see the pageType==='cd-stub' branch in startFetchingProcess).
+                // (see the pageType==='top-cd-stub' branch in startFetchingProcess).
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
             },
             tableMode: 'single'
+        },
+        // Individual CD stub page (/cdstub/<disc-id>, e.g.
+        // /cdstub/3p1LmJIWtNn4rzXGF4Xk.I7vh90-) — div#content, div.blankheader
+        // (h1 + subheader), native <h2>Tracklist</h2> immediately followed by
+        // an ALREADY tbl-shaped <table class="tbl"> (# / Title / Length) — no
+        // listToTable/insertH2 needed. A second <h2>Disc ID information</h2> +
+        // <table class="details"> (note: class "details", not "tbl") holds
+        // Disc ID / Total tracks / Total length / Full TOC — left untouched,
+        // since the generic table.tbl scan never matches it. No pagination —
+        // a stub's tracklist is fixed and already fully rendered. Must be
+        // excluded from matching /cdstub/browse (handled by 'top-cd-stub').
+        // See debug/cd-stub-pagetype.html.
+        {
+            type: 'cd-stub',
+            match: (path) => path.match(/^\/cdstub\/(?!browse(?:\/|$))[^/]+\/?$/),
+            buttons: [ { label: 'Show all Tracks' } ],
+            features: {
+                integerColumns: [ { sourceColumn: '#', align: 'R' } ]
+            },
+            tableMode: 'single',
+            non_paginated: true
+        },
+        // Individual auto-editor election page (/election/<n>, e.g.
+        // /election/473) — no div#content, native <h1>, a "Back to elections"
+        // <p>, <h2>Details</h2> + <table class="properties"> (Candidate /
+        // Proposer / 1st seconder / 2nd seconder / Total votes / Votes for /
+        // Votes against / Abstentions / Status — note: class "properties", not
+        // "tbl", so left completely untouched by the generic table.tbl scan),
+        // <h2>Voting</h2> + a status <p> ("Voting is closed." — no ballot form
+        // once closed), then native <h2>Votes cast</h2> immediately followed by
+        // an ALREADY tbl-shaped <table class="tbl"> (Voter / Vote / Date) — no
+        // listToTable/insertH2 needed, same minimal shape as 'cd-stub' above.
+        // No pagination — a closed election's vote list is fixed and already
+        // fully rendered. See debug/auto-editor.html.
+        {
+            type: 'auto-editor-election',
+            match: (path) => path.match(/^\/election\/\d+\/?$/),
+            buttons: [ { label: 'Show all Votes cast' } ],
+            features: {
+                stickyColumn: 'Voter'
+            },
+            tableMode: 'single',
+            non_paginated: true
         },
         // Edit types (/doc/Edit_Types) — div#content (class "wikicontent"), <h1>
         // directly followed by 17 native <h2>Category</h2><ul>…</ul> sections
@@ -6351,6 +6495,28 @@
                 // Same Structure J reuse as 'edit-types' — see comment there.
                 renameH2ToH3: true,
                 insertH2: 'Instrument list',
+                listToTable: [ '' ]
+            },
+            tableMode: 'multi',
+            non_paginated: true
+        },
+        // Privileged user accounts (/privileged) — div#content, <h1> directly
+        // followed by 7 native <h2>Category</h2> sections (Auto-editors,
+        // Relationship editors, Transclusion editors, Location editors, Banner
+        // message editors, Account administrators, Bots), each with 2-3 plain
+        // <p> siblings (an intro/description paragraph, a "The following N
+        // users are …:" count paragraph, and — always last — the actual editor
+        // list as inline <a href="/user/…"> links glued by ", " text nodes, NOT
+        // a <ul>). Structure K in applyListToTable converts just that one <p>
+        // per section into a one-column "Editor" table; the other paragraphs
+        // are left untouched. No pagination. See debug/priviledged.html.
+        {
+            type: 'privileged-accounts',
+            match: (path) => path.match(/^\/privileged\/?$/),
+            buttons: [ { label: 'Show all Privileged Accounts' } ],
+            features: {
+                renameH2ToH3: true,
+                insertH2: 'Privileged accounts',
                 listToTable: [ '' ]
             },
             tableMode: 'multi',
@@ -14549,7 +14715,7 @@ ${sections.join('\n')}
                     const tables = document.querySelectorAll('table.tbl');
                     if (isExpanding) {
                         // Show all
-                        tables.forEach(t => t.style.display = '');
+                        tables.forEach(t => { t.style.display = ''; _syncGroupIntroVisibility(t); });
                         h3s.forEach(h => {
                             const icon = h.querySelector('.mb-toggle-icon');
                             if (icon) icon.textContent = '▼';
@@ -14557,7 +14723,7 @@ ${sections.join('\n')}
                         Lib.debug('shortcuts', `All h3 headers (types) shown via ${getShortcutDisplay('sa_shortcut_toggle_h3', 'Ctrl+3')}`);
                     } else {
                         // Hide all
-                        tables.forEach(t => t.style.display = 'none');
+                        tables.forEach(t => { t.style.display = 'none'; _syncGroupIntroVisibility(t); });
                         h3s.forEach(h => {
                             const icon = h.querySelector('.mb-toggle-icon');
                             if (icon) icon.textContent = '▲';
@@ -28082,15 +28248,21 @@ a { color: #1565c0; }`;
                                 'series-tags', 'place-tags', 'area-tags', 'instrument-tags',
                                 'artist-credit'
                             ]);
-                            // reports-index always uses the fixed literal "Report"
-                            // column header, regardless of the category label
-                            // (Artists, Release groups, …) since rows are report
-                            // links, not entities of that category.
+                            // reports-index and privileged-accounts always use a fixed
+                            // literal column header ("Report" / "Editor"), regardless of
+                            // the category label (Artists, Release groups, … / Auto-editors,
+                            // Bots, …) — Structure J/K already built the group's <th> with
+                            // that same literal at conversion time, so this must match or
+                            // renderGroupedTable's per-group thead patch (which sets the
+                            // first <th> text to group.colName) would silently overwrite it
+                            // back to the category name.
                             const _colName = (pageType === 'reports-index')
                                 ? 'Report'
-                                : _singularPageTypes.has(pageType)
-                                    ? _toSingular(category)
-                                    : category;
+                                : (pageType === 'privileged-accounts')
+                                    ? 'Editor'
+                                    : _singularPageTypes.has(pageType)
+                                        ? _toSingular(category)
+                                        : category;
                             groupedRows.push({ category: category, colName: _colName, rows: [] });
                             lastCategorySeenAcrossPages = category;
                             // Store the per-entity feature set (resolved from entityFeatures map)
@@ -28110,6 +28282,17 @@ a { color: #1565c0; }`;
                             // build the correct per-group thead width (2-col vs 3-col).
                             if (pageType === 'user-ratings' && table.dataset.mbColHeaders) {
                                 try { _lastGroup.colHeaders = JSON.parse(table.dataset.mbColHeaders); } catch (_e) {}
+                            }
+                            // For privileged-accounts, carry over the intro/description
+                            // paragraphs Structure K stashed on the table (everything in
+                            // the section before the editor-list <p> it converted) so
+                            // renderGroupedTable can re-insert them between the h3 and
+                            // the table — otherwise they are left orphaned in their
+                            // original DOM position while the rebuilt h3/table pairs are
+                            // inserted as one contiguous block elsewhere, making them
+                            // appear after every sub-table instead of before their own.
+                            if (table.dataset.mbIntroHtml) {
+                                _lastGroup.introHtml = table.dataset.mbIntroHtml;
                             }
                         }
                         const currentGroup = groupedRows[groupedRows.length - 1];
@@ -28433,9 +28616,9 @@ a { color: #1565c0; }`;
                                         }
                                     }
                                     // Skip — do not add to allRows / groupedRows
-                                } else if (pageType === 'cd-stub' && node.cells.length === 1 && node.cells[0].classList.contains('lastupdate')) {
-                                    // ── cd-stub: "Added N years ago, last modified M years ago"
-                                    //    info row ────────────────────────────────────────────
+                                } else if (pageType === 'top-cd-stub' && node.cells.length === 1 && node.cells[0].classList.contains('lastupdate')) {
+                                    // ── top-cd-stub: "Added N years ago, last modified M years
+                                    //    ago" info row ────────────────────────────────────────
                                     // MusicBrainz renders one <tr><td class="lastupdate"
                                     // colspan="4">…</td></tr> immediately after each real data
                                     // row. A colSpan=4 single cell already fails the generic
@@ -28446,7 +28629,7 @@ a { color: #1565c0; }`;
                                     // — <span class="comment">(<bdi>…</bdi>)</span> — matching the
                                     // native MB "Name <span class="comment">(disambiguation)
                                     // </span>" convention, and mirror it into the row's synthetic
-                                    // Comment cell (see 'cd-stub' features.extractMainColumn).
+                                    // Comment cell (see 'top-cd-stub' features.extractMainColumn).
                                     const _lastRow = allRows.length > 0 ? allRows[allRows.length - 1] : null;
                                     const _infoText = node.cells[0].textContent.trim();
                                     if (_lastRow && _infoText) {
@@ -28466,7 +28649,7 @@ a { color: #1565c0; }`;
                                         // extractMainColumn already ran for this row (this info
                                         // row is a later sibling in document order) and produced
                                         // an empty Comment cell, since the Title cell had no
-                                        // native .comment span at extraction time — cd-stub's
+                                        // native .comment span at extraction time — top-cd-stub's
                                         // Comment column is populated exclusively from here. It
                                         // is always the row's last cell for this page type (no
                                         // injectedColumns/addCAA/addEAA configured on it).
@@ -28475,7 +28658,7 @@ a { color: #1565c0; }`;
                                             if (_commentCell) _commentCell.textContent = _infoText;
                                         }
 
-                                        Lib.debug('parse', `cd-stub: merged lastupdate info into preceding row: "${_infoText}"`);
+                                        Lib.debug('parse', `top-cd-stub: merged lastupdate info into preceding row: "${_infoText}"`);
                                     }
                                     // Skip — do not add to allRows
                                 } else if (
@@ -30612,6 +30795,31 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Mirrors a grouped sub-table's `display` onto its associated intro-paragraph
+     * wrapper (`.mb-group-intro`, see `group.introHtml` / Structure K in
+     * `applyListToTable`, e.g. privileged-accounts), so the two always
+     * collapse/expand together when the h3 header is clicked. Normally the
+     * wrapper sits directly at `table.previousElementSibling` (inserted via
+     * `h3.after(introEl); introEl.after(table);` in `renderGroupedTable`), but
+     * this walks back to the h3 boundary rather than assuming strict adjacency
+     * so it keeps working if something else (e.g. a CAA/EAA art bigbox, which
+     * also targets table.previousElementSibling) is ever inserted between them
+     * on a page that also carries an intro wrapper. No-op for every page
+     * without one (the vast majority).
+     * @param {HTMLTableElement} table
+     */
+    function _syncGroupIntroVisibility(table) {
+        let _sib = table.previousElementSibling;
+        while (_sib && _sib.tagName !== 'H3') {
+            if (_sib.classList.contains('mb-group-intro')) {
+                _sib.style.display = table.style.display;
+                return;
+            }
+            _sib = _sib.previousElementSibling;
+        }
+    }
+
+    /**
      * Renders multiple tables grouped by category (e.g., Official, Various Artists) with H3 headers
      * @param {Array} dataArray - Array of grouped data objects, each containing a label and rows
      * @param {boolean} isArtistMain - Whether this is the main artist page (affects rendering logic)
@@ -30681,7 +30889,9 @@ a { color: #1565c0; }`;
         if (!query) {
             Lib.debug('render', 'No query provided; performing initial cleanup of existing elements.');
             // Updated cleanup: remove H3s and tables, but NEVER remove H3s containing 'span.worklink'
-            container.querySelectorAll('h3, table.tbl, .mb-master-toggle').forEach(el => {
+            // .mb-group-intro: per-group intro paragraphs (see group.introHtml below) —
+            // removed and rebuilt alongside their h3/table pair on every re-render.
+            container.querySelectorAll('h3, table.tbl, .mb-master-toggle, .mb-group-intro').forEach(el => {
                 if (el.tagName === 'H3' && el.querySelector('span.worklink')) {
                     Lib.debug('render', 'Skipping removal of H3 containing worklink.');
                     return;
@@ -30748,6 +30958,7 @@ a { color: #1565c0; }`;
                         Lib.debug('render', 'Master toggle button: Showing all tables.');
                         container.querySelectorAll('table.tbl').forEach(t => {
                             t.style.display = '';
+                            _syncGroupIntroVisibility(t);
                             _artRestoreBigboxesForTable(t);
                         });
                         container.querySelectorAll('.mb-toggle-h3').forEach(h => {
@@ -30758,6 +30969,7 @@ a { color: #1565c0; }`;
                         Lib.debug('render', 'Master toggle button: Hiding all tables.');
                         container.querySelectorAll('table.tbl').forEach(t => {
                             t.style.display = 'none';
+                            _syncGroupIntroVisibility(t);
                             _artHideBigboxesForTable(t);
                         });
                         container.querySelectorAll('.mb-toggle-h3').forEach(h => {
@@ -31376,12 +31588,41 @@ a { color: #1565c0; }`;
                 const subCollapseBtn = createSubTableCollapseButton(table, categoryName);
                 h3.insertBefore(subCollapseBtn, subTableControls);
 
+                // ── Per-group intro paragraphs (e.g. privileged-accounts) ────────────
+                // group.introHtml (set from table.dataset.mbIntroHtml — see Structure K
+                // in applyListToTable) holds any descriptive <p>s that originally sat
+                // between this section's heading and its editor/report/etc. list, now
+                // stashed there because the cleanup pass above only removes h3/table.tbl
+                // elements, and the rebuilt h3/table pairs are inserted as one
+                // contiguous block starting from targetHeader — leaving such paragraphs
+                // orphaned after every sub-table instead of before their own. Rebuilding
+                // one small wrapper per group here keeps each paragraph pinned directly
+                // before the table it actually describes.
+                let introEl = null;
+                if (group.introHtml) {
+                    introEl = document.createElement('div');
+                    introEl.className = 'mb-group-intro';
+                    introEl.innerHTML = group.introHtml;
+                    // Match the table's just-decided initial collapsed/expanded state
+                    // (set above by the auto-expand logic) — every later toggle path
+                    // (h3 click, Ctrl+Click all, Ctrl+3, master toggle) re-syncs via
+                    // _syncGroupIntroVisibility(table), which relies on this element
+                    // already sitting at table.previousElementSibling.
+                    introEl.style.display = table.style.display;
+                }
+
                 if (lastInsertedElement) {
                     lastInsertedElement.after(h3);
-                    h3.after(table);
+                    if (introEl) {
+                        h3.after(introEl);
+                        introEl.after(table);
+                    } else {
+                        h3.after(table);
+                    }
                     lastInsertedElement = table; // Update pointer for the next group
                 } else {
                     container.appendChild(h3);
+                    if (introEl) container.appendChild(introEl);
                     container.appendChild(table);
                 }
                 // Propagate the disc-section stamp to the table element so
@@ -31451,6 +31692,7 @@ a { color: #1565c0; }`;
                             // own tracked visibility state (caaVisible / eaaVisible dataset attrs).
                             allTables.forEach(t => {
                                 t.style.display = '';
+                                _syncGroupIntroVisibility(t);
                                 _artRestoreBigboxesForTable(t);
                             });
                             allH3s.forEach(h => {
@@ -31464,6 +31706,7 @@ a { color: #1565c0; }`;
                             // they can be restored correctly when expanding again.
                             allTables.forEach(t => {
                                 t.style.display = 'none';
+                                _syncGroupIntroVisibility(t);
                                 _artHideBigboxesForTable(t);
                             });
                             allH3s.forEach(h => {
@@ -31477,6 +31720,7 @@ a { color: #1565c0; }`;
                         const isHidden = table.style.display === 'none';
                         Lib.debug('render', `Toggling table for "${categoryName}". New state: ${isHidden ? 'visible' : 'hidden'}`);
                         table.style.display = isHidden ? '' : 'none';
+                        _syncGroupIntroVisibility(table);
                         h3.querySelector('.mb-toggle-icon').textContent = isHidden ? '▼' : '▲';
 
                         // Mirror the table visibility on any art bigbox(es) (CAA / EAA) that

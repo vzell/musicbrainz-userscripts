@@ -1,5 +1,65 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-07-23",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added support for an eighth new page type: individual auto-editor election pages (`/election/<n>`), as `'auto-editor-election'`. Its \"Votes cast\" table is already native `table.tbl`-shaped with an existing `<h2>` label, so — like `cd-stub` — no `listToTable`/`insertH2` conversion is needed. The separate `<table class=\"properties\">` (election details) is left untouched."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.5",
+    "date": "2026-07-23",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "privileged-accounts (`/privileged`, WIP.4): the relocated intro/count paragraphs now collapse and uncollapse together with their associated sub-table when clicking the h3 header, via a new shared `_syncGroupIntroVisibility()` helper wired into every sub-table visibility toggle path (per-h3 click, Ctrl+Click toggle-all, the master toggle button, and the Ctrl+3 keyboard shortcut)."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Renamed pageType `'cd-stub'` (`/cdstub/browse`) to `'top-cd-stub'` to free up the name for a new, more specific page type — see below."
+        ]
+      },
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added support for a seventh new page type: individual CD stub pages (`/cdstub/<disc-id>`), as `'cd-stub'`. Its Tracklist table is already native `table.tbl`-shaped with an existing `<h2>` label, so — unlike every other page type added this session — no `listToTable`/`insertH2` conversion is needed; the script just applies its filter/sort UI directly. The page's separate `<table class=\"details\">` (Disc ID information) and `div#sidebar` are left untouched."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.4",
+    "date": "2026-07-23",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "privileged-accounts (`/privileged`, WIP.3): fixed each section's descriptive/count paragraphs (e.g. \"Auto-editors are trusted users who have been given …\") rendering bunched together after all 7 sub-tables instead of each staying right before its own table. `renderGroupedTable`'s cleanup pass only ever removed `h3`/`table.tbl` elements, leaving those `<p>`s orphaned in their original position while the rebuilt h3/table pairs were inserted as one contiguous block elsewhere. Structure K now stashes them on the table's `dataset.mbIntroHtml`, `startFetchingProcess` carries that onto `group.introHtml`, and `renderGroupedTable` re-inserts them in a `.mb-group-intro` wrapper directly between each `h3` and its `table`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-07-23",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added support for a sixth new page type: Privileged user accounts (`/privileged`). Its 7 category sections (Auto-editors, Relationship editors, Transclusion editors, Location editors, Banner message editors, Account administrators, Bots) render each editor list as a plain `<p>` of comma-glued `<a>` links rather than a `<ul>`, so a new Structure K was added to `applyListToTable` — it identifies the correct paragraph per section (the one containing `/user/` links, not by position) and converts it to a one-column \"Editor\" table, splitting by walking the `<a>` elements rather than parsing the \",\" separator text (at least one MusicBrainz username itself contains a literal comma)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-07-23",
     "sections": [

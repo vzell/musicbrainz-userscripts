@@ -240,3 +240,155 @@ user-supplied pair of `search`-page snapshots. Snapshots used:
   place alongside the three new ones — same convention as every other
   columnExtractor in this script (e.g. "Location" staying next to its
   derived Place/Area/Country).
+
+## 2026-07-23 — privileged-accounts page type (debug/priviledged.org, same branch)
+
+- `priviledged.html` (`/privileged`): HAS `div#content`. `<h1>Privileged user
+  accounts</h1>` followed by 7 native `<h2>Category</h2>` sections
+  (Auto-editors, Relationship editors, Transclusion editors, Location
+  editors, Banner message editors, Account administrators, Bots), no
+  pagination. Each section has 2-3 plain `<p>` siblings — NOT a `<ul>`:
+  typically an intro/description paragraph, a "The following N users are
+  …:" count paragraph, and always-last a paragraph holding the actual
+  editor list as inline `<a href="/user/…">` links glued together by ", "
+  text-node separators (`Bots` has only the count + list paragraphs, no
+  intro). Confirmed via a full per-section dump that the list paragraph is
+  reliably identifiable as "the one containing `/user/` links" regardless
+  of its position (2nd or 3rd `<p>`), so Structure K detects it that way
+  rather than assuming a fixed index. At least one username itself contains
+  a literal comma ("ApeKattQuest, MonkeyPython", in Relationship editors) —
+  confirmed this is a single `<a>` whose `<bdi>` text contains the comma,
+  not two separate entries — so Structure K splits by walking the `<p>`'s
+  direct-child `<a>` elements, never by parsing the "," separator text,
+  which would have wrongly split that one editor into two rows.
+- New Structure K in `applyListToTable`, gated on `pageType ===
+  'privileged-accounts'`: walks every `<h2>`/`<h3>` (post-`renameH2ToH3`),
+  finds the LAST sibling `<p>` before the next heading that contains an
+  `/user/` link, and replaces just that one `<p>` with a one-column
+  `<table class="tbl">` (fixed literal header "Editor", one row per
+  anchor) — the other paragraphs are left untouched. Since Structure K
+  (like `reports-index`) uses a fixed literal header rather than one
+  derived from the category name, also extended the `_colName` ternary in
+  `startFetchingProcess`'s multi-table grouping (used by
+  `renderGroupedTable` to patch each group's first `<th>` at render time)
+  to output `'Editor'` for `pageType === 'privileged-accounts'` — otherwise
+  the correct "Editor" header built by Structure K would have been
+  silently overwritten back to the category name (e.g. "Auto-editors") on
+  render, exactly as `reports-index` already guards against for "Report".
+  `pageType: 'privileged-accounts'`, `tableMode: 'multi'`,
+  `non_paginated: true`, `renameH2ToH3: true`, synthetic `insertH2`.
+
+## 2026-07-23 — privileged-accounts intro paragraphs landing after all sub-tables (follow-up, same branch)
+
+- **Symptom**: on the rendered page, every section's descriptive/count `<p>`
+  (e.g. "Auto-editors are trusted users who have been given …") ended up
+  bunched together AFTER all 7 h3/table sub-sections, instead of each
+  staying right before its own table.
+- **Root cause**: Structure K (above) only converts the LAST `<p>` per h2
+  section (the editor list) into a `table.tbl`; the other 1-2 intro/count
+  `<p>`s are left in the DOM untouched at that point. `renderGroupedTable`'s
+  cleanup pass (`container.querySelectorAll('h3, table.tbl, .mb-master-toggle')
+  ...remove()`) only ever removes h3 and table.tbl elements — the leftover
+  `<p>`s survive it, orphaned in their original position. The rebuilt
+  h3/table pairs are then inserted as ONE CONTIGUOUS BLOCK via
+  `lastInsertedElement.after(h3); h3.after(table);`, chained starting from
+  the single page-level target h2 — which lands them all near the top,
+  ahead of where the untouched `<p>`s still sit further down. Same
+  mechanism as the `_relocateTrailingH2Sections` / Structure-C h2-in-cell
+  bugs documented above in spirit (content silently separated from its
+  original structural anchor by a later cleanup/rebuild pass), though a
+  different code path.
+- **Fix**: Structure K now also collects those non-list `<p>` siblings per
+  section (`_introPs`), serializes them (`outerHTML`, preserving any
+  `<a href="doc/…">` links) onto the new table's `dataset.mbIntroHtml`, and
+  removes them from the DOM immediately — nothing is left orphaned.
+  `startFetchingProcess`'s multi-table grouping pass copies
+  `table.dataset.mbIntroHtml` onto `group.introHtml` (parallel to how
+  `group.colHeaders`/`group.entityFeatures` are already carried over from
+  other table dataset attributes). `renderGroupedTable` then wraps
+  `group.introHtml` in a `<div class="mb-group-intro">` and inserts it
+  between `h3` and `table` (`h3.after(introEl); introEl.after(table);`),
+  and the cleanup-pass selector was extended to also remove
+  `.mb-group-intro` so it gets cleanly rebuilt (not duplicated) on every
+  re-render. The wrapper is plain and NOT wired into the per-section
+  collapse/expand toggle (which only ever touches `table.style.display`) —
+  intro text stays visible regardless of collapse state, by design, since
+  the ask was positioning, not collapsibility.
+  `debug/priviledged-final.html` (captured by the user afterwards, 294767
+  bytes, mtime 14:01) independently confirms this exact symptom — every
+  `<table>` closes with `...yyoung_bot</bdi></a></td></tr></tbody></table>`
+  immediately followed by `<p>Auto-editors are trusted users…</p><p>The
+  following 257 users…</p><p>Relationship editors are…` — i.e. it's a
+  "before" snapshot of the bug described above, not evidence of a
+  regression in the fix.
+
+## 2026-07-23 — three follow-ups from debug/priviledged.org (same branch)
+
+1. **Intro paragraphs now collapse with their sub-table.** The fix above
+   (`.mb-group-intro` positioning) intentionally left the wrapper always
+   visible regardless of collapse state. Now wired into every place that
+   toggles a grouped sub-table's `table.style.display` — the per-h3 click
+   handler (both the plain-click single-table path and the Ctrl+Click
+   toggle-ALL path), the `.mb-master-toggle` "Show/Hide all sub-sections"
+   button, and the global Ctrl+3 "toggle all h3 headers" keyboard shortcut —
+   via one new shared helper, `_syncGroupIntroVisibility(table)`, plus
+   mirroring the table's just-decided initial collapsed/expanded state onto
+   `introEl` at creation time in `renderGroupedTable` (for the very first
+   render, before any user click has happened). The helper walks back from
+   `table` to the enclosing `<h3>` looking for a `.mb-group-intro` sibling
+   (rather than assuming strict adjacency) so it keeps working if something
+   else — e.g. a CAA/EAA art bigbox, which also targets
+   `table.previousElementSibling` — is ever inserted between them on a page
+   that also carries an intro wrapper (not the case for any page today).
+
+2. **Renamed pageType `'cd-stub'` → `'top-cd-stub'`** (still matches
+   `/cdstub/browse` only) to free up the `'cd-stub'` name for the new
+   individual-stub page type below. Renamed throughout: the page
+   definition, its `pageType === …` branch in `startFetchingProcess` (the
+   lastupdate-row merge), and all referencing comments. Also renamed
+   `debug/cd-stub.html` → `debug/top-cd-stub.html` to match.
+
+3. **New pageType `'cd-stub'`** for an individual CD stub's own page
+   (`/cdstub/<disc-id>`, e.g.
+   `/cdstub/3p1LmJIWtNn4rzXGF4Xk.I7vh90-`). `cd-stub-pagetype.html`: HAS
+   `div#content`; `div.blankheader` (h1 title-link-to-self + `p.subheader`
+   "CD stub by Artist"); native `<h2>Tracklist</h2>` immediately followed by
+   an ALREADY `table.tbl`-shaped table (`#` / Title / Length, 17 rows for
+   the captured example) — no `listToTable`/`insertH2` needed, unlike every
+   other page type added this session. A second `<h2>Disc ID
+   information</h2>` + `<table class="details">` (Disc ID / Total tracks /
+   Total length / Full TOC) sits right after — note the class is
+   `"details"`, not `"tbl"`, so the generic `table.tbl` scan never touches
+   it; left completely alone. A `div#sidebar` (sibling of `div#content`, not
+   nested inside it) holds a `dl.properties` (Added/Last modified/Lookup
+   count/Modify count/Barcode) and `ul.links` (Import as MusicBrainz
+   release / Add disc ID to existing release / Search the database) — also
+   untouched, out of scope. No pagination (a stub's tracklist is fixed and
+   already fully rendered) → `non_paginated: true`. Match regex uses a
+   negative lookahead (`/^\/cdstub\/(?!browse(?:\/|$))[^/]+\/?$/`) to
+   explicitly exclude `/cdstub/browse` regardless of `pageDefinitions`
+   array order, rather than relying on `top-cd-stub`'s entry happening to
+   come first.
+
+## 2026-07-23 — auto-editor-election page type (same branch)
+
+- `auto-editor.html` (`/election/<n>`, e.g. `/election/473`): NO
+  `div#content` — `div#page.fullwidth` directly. Native `<h1>Auto-editor
+  election #28</h1>`, a `<p><a href="/elections">Back to elections</a></p>`,
+  `<h2>Details</h2>` + `<table class="properties">` (Candidate / Proposer /
+  1st seconder / 2nd seconder / Total votes / Votes for / Votes against /
+  Abstentions / Status — note the class is `"properties"`, not `"tbl"`, so
+  the generic `table.tbl` scan never touches it; left completely alone),
+  `<h2>Voting</h2>` + a status `<p>` (just "Voting is closed." once the
+  election is over — no ballot form observed in this closed-election
+  snapshot), then native `<h2>Votes cast</h2>` immediately followed by an
+  ALREADY `table.tbl`-shaped table (Voter / Vote / Date, 9 rows in the
+  captured example) — no `listToTable`/`insertH2` needed, identical minimal
+  shape to `cd-stub` above (a single-entity detail page whose one
+  interesting sub-table is already native `table.tbl` with its own `<h2>`).
+  Every `Vote` cell reads "(private)" even for this already-`Accepted`
+  election — MB keeps individual ballots permanently secret, so no
+  vote-value extractor is needed; left as plain filterable text. No
+  pagination (a closed election's vote list is fixed and already fully
+  rendered) → `non_paginated: true`. `pageType: 'auto-editor-election'`,
+  `tableMode: 'single'`.
