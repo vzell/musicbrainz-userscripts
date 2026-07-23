@@ -47,6 +47,16 @@
 // @match        *://*.musicbrainz.eu/reports*
 // @match        *://*.musicbrainz.org/report/*
 // @match        *://*.musicbrainz.eu/report/*
+// @match        *://*.musicbrainz.org/elections
+// @match        *://*.musicbrainz.eu/elections
+// @match        *://*.musicbrainz.org/genres
+// @match        *://*.musicbrainz.eu/genres
+// @match        *://*.musicbrainz.org/cdstub/browse
+// @match        *://*.musicbrainz.eu/cdstub/browse
+// @match        *://*.musicbrainz.org/doc/Edit_Types
+// @match        *://*.musicbrainz.eu/doc/Edit_Types
+// @match        *://*.musicbrainz.org/instruments
+// @match        *://*.musicbrainz.eu/instruments
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -4183,22 +4193,30 @@
      *                              h3+ul pairs under <h2>Uses</h2> into one-column
      *                              tables (singular h3 text as column header).
      *                              The <ul id="artist-credit-artists"> is not touched.
-     *   G) bare-ul (artist-credit-entity) — /artist-credit/<id>/<entity> sub-page;
-     *                              a plain <ul> without id or class is converted to
-     *                              a one-column table whose header is derived from
-     *                              the URL last path segment (e.g. "release-group"
-     *                              → "Release group").
-     *   J) h3+ul (reports-index) — /reports page after renameH2ToH3 has renamed
-     *                              the 14 native category h2 headings (Artists,
-     *                              Events, …) to h3; column header is the fixed
+     *   G) bare-ul (artist-credit-entity, genres-list) — /artist-credit/<id>/<entity>
+     *                              sub-page, or /genres; a plain <ul> without id or
+     *                              class is converted to a one-column table.
+     *                              Header: artist-credit-entity derives it from the
+     *                              URL last path segment (e.g. "release-group" →
+     *                              "Release group"); genres-list uses the fixed
+     *                              literal "Genre".
+     *   J) h3+ul (reports-index, edit-types, instrument-list) — /reports,
+     *                              /doc/Edit_Types, /instruments pages after
+     *                              renameH2ToH3 has renamed their native category h2
+     *                              headings (Artists, Events, … / Area, Artist, … /
+     *                              Wind instrument, String instrument, …) to h3.
+     *                              Column header: reports-index uses the fixed
      *                              literal "Report" (rows are report links, not
-     *                              singular entities of the category name).
+     *                              singular entities of the category name);
+     *                              edit-types and instrument-list use the h3 text
+     *                              itself (the category IS the entity type of every
+     *                              row in that section).
      *
      * Structures A and B produce two-column tables (Name | Tag count).
      * Structures C, D, E, F, and G produce single-column tables whose header is the
      * singular form of the section heading (via `_toSingular()` or URL derivation).
-     * Structure J also produces a single-column table, but with a fixed literal
-     * header ("Report") instead of a derived one.
+     * Structure J also produces a single-column table, with a header that is either
+     * a fixed literal ("Report") or the h3 text itself, depending on pageType.
      *
      * Must run AFTER `applyRenameH2ToH3` / `applyInsertH2` and BEFORE maxPage
      * determination so that `parseDocumentForTables` finds the resulting
@@ -4304,15 +4322,24 @@
                     return; // Structure C handled all h2+ul pairs for this entry
                 }
 
-                // ── Structure J: reports index (/reports) ────────────────────────
-                // Triggered for pageType 'reports-index'. renameH2ToH3 has already
-                // demoted the 14 native category <h2> headings (Artists, Events, …)
-                // to <h3>; walk each and convert its sibling <ul> of report links
-                // into a single-column table. Column header is the fixed literal
-                // "Report" (not derived from the h3 text) because the h3 text is a
-                // category label ("Release groups"), not the entity type of the
-                // rows (which are report links, not release groups).
-                if (pageType === 'reports-index') {
+                // ── Structure J: reports index (/reports), edit types (/doc/Edit_Types),
+                //    instrument list (/instruments) ───────────────────────────────
+                // Triggered for pageTypes 'reports-index', 'edit-types', 'instrument-list'.
+                // All three render as N native <h2> category headings each immediately
+                // followed by a <ul> of links (reports: 14 categories; edit types: 17
+                // entity-type categories; instruments: 8 family categories).
+                // renameH2ToH3 has already demoted those <h2>s to <h3>; walk each and
+                // convert its sibling <ul> into a single-column table.
+                //
+                // Column header naming differs per pageType:
+                //   reports-index    — fixed literal "Report": the h3 text is a category
+                //                      label ("Release groups"), not the entity type of the
+                //                      rows (which are report links, not release groups).
+                //   edit-types /
+                //   instrument-list  — the h3 text itself (e.g. "Area", "Wind instrument"):
+                //                      here the category label IS the entity type of every
+                //                      row in that section, so it doubles as the column name.
+                if (pageType === 'reports-index' || pageType === 'edit-types' || pageType === 'instrument-list') {
                     Array.from(_root.querySelectorAll('h3, h2')).forEach(_h3 => {
                         let _next = _h3.nextElementSibling, _steps = 0, _ul = null;
                         while (_next && _steps < 5) {
@@ -4323,7 +4350,7 @@
                         }
                         if (!_ul) return;
 
-                        const _colName = 'Report';
+                        const _colName = (pageType === 'reports-index') ? 'Report' : _h3.textContent.trim();
                         const _table = docContext.createElement('table');
                         _table.className = 'tbl';
                         _table.dataset.mbOriginalColName = _colName;
@@ -4349,8 +4376,8 @@
 
                         _ul.parentNode.replaceChild(_table, _ul);
                         Lib.debug('init',
-                            `applyListToTable: converted h3="${_h3.textContent.trim()}" ul → table`
-                            + ` (${_tbody.rows.length} rows, col="${_colName}", structure="reports-index").`);
+                            `applyListToTable: ${pageType}: converted h3="${_h3.textContent.trim()}" ul → table`
+                            + ` (${_tbody.rows.length} rows, col="${_colName}", structure="h3-ul-category").`);
                     });
                     return; // Structure J handled all h3+ul pairs for this entry
                 }
@@ -4748,18 +4775,26 @@
                     return; // Structure F handled all h3+ul pairs for this entry
                 }
 
-                // ── Structure G: artist-credit entity sub-pages ──────────────────────
+                // ── Structure G: artist-credit entity sub-pages, genre list ──────────
                 // Triggered for pageType 'artist-credit-entity'
-                // (/artist-credit/<id>/<entity>, e.g. /artist-credit/1488075/recording).
-                // The page may present its full entity list as a plain <ul> without
-                // id or class attribute.  The column name is derived from the last
-                // URL path segment with hyphens replaced by spaces and the first
-                // character capitalised (e.g. "release-group" → "Release group").
-                if (pageType === 'artist-credit-entity') {
+                // (/artist-credit/<id>/<entity>, e.g. /artist-credit/1488075/recording)
+                // and pageType 'genres-list' (/genres).
+                // Both present their full entity list as a single plain <ul> without
+                // id or class attribute (see debug/genre-list.html — an <h1>, two intro
+                // <p>s, then one bare <ul> of genre links, no h2 sections).
+                // Column name:
+                //   artist-credit-entity — derived from the last URL path segment with
+                //                          hyphens replaced by spaces and the first
+                //                          character capitalised (e.g. "release-group"
+                //                          → "Release group").
+                //   genres-list           — fixed literal "Genre" (matches the singular
+                //                          column naming convention used elsewhere for
+                //                          genre/tag lists, e.g. Structure A/B, popular-tags).
+                if (pageType === 'artist-credit-entity' || pageType === 'genres-list') {
                     const _entitySlug = _currentPath.split('/').filter(Boolean).pop() || '';
-                    const _colName = _entitySlug
-                        .replace(/-/g, ' ')
-                        .replace(/^\w/, c => c.toUpperCase());
+                    const _colName = (pageType === 'genres-list')
+                        ? 'Genre'
+                        : _entitySlug.replace(/-/g, ' ').replace(/^\w/, c => c.toUpperCase());
 
                     // Find a plain <ul> that has neither an id nor a class —
                     // the artist-credit-artists list has an id and is on the
@@ -4768,7 +4803,7 @@
                         .find(u => !u.id && !u.className);
                     if (!_ul) {
                         Lib.debug('init',
-                            `applyListToTable: artist-credit-entity: no plain <ul> found` +
+                            `applyListToTable: ${pageType}: no plain <ul> found` +
                             ` for entity="${_colName}" — skipping (page may use` +
                             ` a native <table> already).`);
                         return;
@@ -4798,7 +4833,7 @@
 
                     _ul.parentNode.replaceChild(_table, _ul);
                     Lib.debug('init',
-                        `applyListToTable: artist-credit-entity: converted plain ul → table` +
+                        `applyListToTable: ${pageType}: converted plain ul → table` +
                         ` (${_tbody.rows.length} rows, col="${_colName}",` +
                         ` entity="${_entitySlug}", structure="artist-credit-entity-ul").`);
                     return; // Structure G handled
@@ -6128,6 +6163,114 @@
                 removeSelector: 'li:has(a[href*="?filter=1"])'
             },
             tableMode: 'single'
+        },
+        // Auto-editor elections (/elections) — native <h1> directly followed by a
+        // single native <table class="tbl"> (Candidate / Status / Start date /
+        // End date / Proposer / 1st seconder / 2nd seconder / Votes for / Votes
+        // against / blank "View details" column) — no div#content, no native h2,
+        // no pagination (complete single-page history of every election). See
+        // debug/auto-editor-elections.html.
+        {
+            type: 'auto-elections',
+            match: (path) => path.match(/^\/elections\/?$/),
+            buttons: [ { label: 'Show all Elections' } ],
+            features: {
+                insertH2: 'Auto-editor elections',
+                integerColumns: [
+                    { sourceColumn: 'Votes for', align: 'R' },
+                    { sourceColumn: 'Votes against', align: 'R' }
+                ],
+                stickyColumn: 'Candidate'
+            },
+            tableMode: 'single',
+            non_paginated: true
+        },
+        // Genre list (/genres) — div#content with <h1>, two intro <p>s, then a
+        // single bare <ul> (no id/class) of genre links — no h2 sections, no
+        // pagination. See debug/genre-list.html.
+        {
+            type: 'genres-list',
+            match: (path) => path.match(/^\/genres\/?$/),
+            buttons: [ { label: 'Show all Genres' } ],
+            features: {
+                // Empty sectionId triggers Structure G in applyListToTable: the
+                // plain <ul> (no id/class) is converted to a one-column table
+                // with the fixed literal column name "Genre".
+                insertH2: 'Genre list',
+                listToTable: [ '' ]
+            },
+            tableMode: 'single',
+            non_paginated: true
+        },
+        // Top CD stubs (/cdstub/browse) — native <h1> ("Top CD stubs"), no
+        // div#content, no native h2, native paginated <table class="tbl">
+        // (Title / Artist / Lookup count / Modify count). Every data row is
+        // immediately followed by an informational
+        // <tr><td class="lastupdate" colspan="4">Added … ago, last modified …
+        // ago</td></tr> row; the existing generic single-table row-extraction
+        // already skips single-cell rows whose cell has colSpan > 1 (see the
+        // "Allow single-cell rows only when the cell does NOT span multiple
+        // columns" guard in startFetchingProcess), so no page-type-specific
+        // handling is needed for that. See debug/cd-stub.html.
+        {
+            type: 'cd-stub',
+            match: (path) => path.match(/^\/cdstub\/browse\/?$/),
+            buttons: [ { label: 'Show all CD Stubs' } ],
+            features: {
+                insertH2: 'CD stubs',
+                integerColumns: [
+                    { sourceColumn: 'Lookup count', align: 'R' },
+                    { sourceColumn: 'Modify count', align: 'R' }
+                ],
+                stickyColumn: 'Title'
+            },
+            tableMode: 'single'
+        },
+        // Edit types (/doc/Edit_Types) — div#content (class "wikicontent"), <h1>
+        // directly followed by 17 native <h2>Category</h2><ul>…</ul> sections
+        // (Area, Artist, Event, …, Work, Historic), each <ul> immediately
+        // adjacent to its <h2> — no pagination. See debug/edit-types.html.
+        {
+            type: 'edit-types',
+            match: (path) => path.match(/^\/doc\/Edit_Types\/?$/),
+            buttons: [ { label: 'Show all Edit Types' } ],
+            features: {
+                // renameH2ToH3 demotes the 17 native category h2 headings to h3,
+                // insertH2 adds a synthetic top-level anchor, then the empty
+                // sectionId triggers Structure J in applyListToTable: each h3+ul
+                // pair becomes a one-column table named after the h3 text itself
+                // (e.g. "Area", "Artist", …) — reuses the same loop as
+                // 'reports-index' with a per-section column name instead of a
+                // fixed literal.
+                renameH2ToH3: true,
+                insertH2: 'Edit types',
+                listToTable: [ '' ]
+            },
+            tableMode: 'multi',
+            non_paginated: true
+        },
+        // Instrument list (/instruments) — div#content, <h1> directly followed by
+        // 8 native <h2>Family</h2><ul>…</ul> sections (Wind instrument, String
+        // instrument, Percussion instrument, Electronic instrument, Other
+        // instrument, Ensemble, Family, Unclassified instrument). Each <li> holds
+        // a name link, an optional short comment span, and a longer free-text
+        // description — MVP keeps all three glommed into one cell (same generic
+        // li→td copy every other listToTable structure uses); splitting them into
+        // separate Name/Comment/Description columns would need a new extractor
+        // plus per-family entityFeatures wiring and was deferred. No pagination.
+        // See debug/instruments.html.
+        {
+            type: 'instrument-list',
+            match: (path) => path.match(/^\/instruments\/?$/),
+            buttons: [ { label: 'Show all Instruments' } ],
+            features: {
+                // Same Structure J reuse as 'edit-types' — see comment there.
+                renameH2ToH3: true,
+                insertH2: 'Instrument list',
+                listToTable: [ '' ]
+            },
+            tableMode: 'multi',
+            non_paginated: true
         },
         // User tag value entity pages (/user/<username>/tag/<tag>/<entity>
         // e.g. /user/vzell/tag/gig/event) — must come before user-tag-value

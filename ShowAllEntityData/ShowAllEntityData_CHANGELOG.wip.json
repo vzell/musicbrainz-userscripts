@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-07-23",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added support for five new page types: Auto-editor elections (`/elections`), Genre list (`/genres`), Top CD stubs (`/cdstub/browse`), Edit types (`/doc/Edit_Types`), and Instrument list (`/instruments`). All five reuse existing `applyListToTable` conversion structures — Structure G (bare `<ul>` → one-column table, extended for `genres-list`) and Structure J (repeated `<h2>+<ul>` category sections → one table per section, extended for `edit-types` and `instrument-list` with a per-section column name instead of `reports-index`'s fixed literal). `cd-stub`'s informational 'Added N years ago…' filler rows are skipped by the existing generic single-cell/colSpan>1 row-extraction guard with no new code."
+        ]
+      }
+    ]
+  }
+]

@@ -125,3 +125,61 @@ user-supplied pair of `search`-page snapshots. Snapshots used:
   landed), not a real regression. Confirmed by the user on retest. The
   diagnostic `Lib.debug(ctx.key, ...)` logging temporarily added to
   `_artEntityAnchorSelector()` was removed again once this was confirmed.
+
+## 2026-07-23 — five new page types (branch feature/new-page-types-elections-genres-cdstub-edittypes-instruments)
+
+- `auto-editor-elections.html` (`/elections`): NO `div#content` — `div#page`
+  directly. `<h1>Auto-editor elections</h1>` immediately followed by a single
+  native `<table class="tbl">` (Candidate / Status / Start date / End date /
+  Proposer / 1st seconder / 2nd seconder / Votes for / Votes against / blank
+  "View details" column). No native h2, no pagination markup — 303 rows, the
+  complete election history on one page. `pageType: 'auto-elections'`,
+  `tableMode: 'single'`, `non_paginated: true`, synthetic `insertH2`.
+- `genre-list.html` (`/genres`): HAS `div#content`. `<h1>Genre list</h1>`, two
+  intro `<p>`s, then one bare `<ul>` (no id, no class) of 2176
+  `<li><a href="/genre/UUID"><bdi>name</bdi></a></li>` genre links. No h2
+  sections, no pagination. `pageType: 'genres-list'` reuses Structure G
+  (previously scoped only to `artist-credit-entity`'s "plain ul, no id/class"
+  detection) with a fixed literal column name `"Genre"` instead of a
+  URL-derived one. `tableMode: 'single'`, `non_paginated: true`.
+- `cd-stub.html` (`/cdstub/browse`): NO `div#content` — `div#page` directly.
+  `<h1>Top CD stubs</h1>`, native `<nav><ul class="pagination">` (2710 pages,
+  "Found 270,951 results"), then native `<table class="tbl">` (Title / Artist
+  / Lookup count / Modify count). Every real data row is immediately followed
+  by a second `<tr><td class="lastupdate" colspan="4">Added N years ago, last
+  modified M years ago</td></tr>` row — single cell, `colSpan=4`. Confirmed
+  this needs **no new code**: the generic single-table row-extraction in
+  `startFetchingProcess` (~line 28208) already guards with `(cells.length > 1
+  || (cells.length === 1 && cells[0].colSpan <= 1))`, so any single-cell row
+  with `colSpan > 1` is skipped automatically. `pageType: 'cd-stub'`,
+  `tableMode: 'single'`, paginated (native pagination present, no
+  `non_paginated` flag), synthetic `insertH2`.
+- `edit-types.html` (`/doc/Edit_Types`): HAS `div#content` (class
+  `"wikicontent"`). `<h1>Edit types</h1>` immediately followed by 17 native
+  `<h2>Category</h2><ul>…</ul>` sections (Area, Artist, Event, Genre,
+  Instrument, Label, Medium, Place, Recording, Relationship, Release, Release
+  group, Series, URL, Wiki documentation, Work, Historic) — every `<ul>` is
+  the immediate next sibling of its `<h2>`, no pagination. Structurally
+  identical to `reports-index`'s existing Structure J (repeated h2+ul
+  category sections after `renameH2ToH3`) except the column name should be
+  the h3 text itself (e.g. "Area") rather than `reports-index`'s fixed
+  literal `"Report"` — the category IS the entity type of every row in it.
+  Extended Structure J's `if (pageType === 'reports-index')` guard to also
+  accept `'edit-types'` and `'instrument-list'`, parameterizing the column
+  name instead of duplicating the loop. `pageType: 'edit-types'`,
+  `tableMode: 'multi'`, `non_paginated: true`.
+- `instruments.html` (`/instruments`): HAS `div#content`. `<h1>Instrument
+  list</h1>` immediately followed by 8 native `<h2>Family</h2><ul>…</ul>`
+  sections (Wind instrument, String instrument, Percussion instrument,
+  Electronic instrument, Other instrument, Ensemble, Family, Unclassified
+  instrument; 1081 `<li>` total), no pagination. Each `<li>` holds a name
+  link, an optional `<span class="comment">(short desc)</span>`, and a longer
+  free-text description after an em dash — e.g. `<a><bdi>accordina</bdi></a>
+  <span class="comment">(<bdi>harmonica/accordion hybrid</bdi>)</span> —
+  Harmonica/accordion hybrid where…`. MVP keeps all three glommed into one
+  cell via the same generic `li` → `td` child-node copy every Structure J/G
+  section already uses; splitting into separate Name/Comment/Description
+  columns would need a new extractor plus per-family `entityFeatures` (8
+  families) and was explicitly deferred by the user. Shares the same
+  Structure J extension as `edit-types` above. `pageType: 'instrument-list'`,
+  `tableMode: 'multi'`, `non_paginated: true`.
