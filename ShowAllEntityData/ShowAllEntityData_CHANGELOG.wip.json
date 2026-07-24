@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-07-25",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "`splitLocation`/`splitArea` now apply an optional country-specific override: if the area link that would become `Locality` (the first/most specific one) is decorated with a subdivision flag icon by a separately-installed userscript (e.g. \"MusicBrainz: More Flags Everywhere\" or \"MusicBrainz: Canadian Province Flags Everywhere\", @Lotheric) — meaning no city/locality was ever entered, only a bare state/province — it is routed to `Region` instead. New setting `sa_area_flag_region_countries` (🌍 AREA / LOCATION COLUMN SPLITTING section) lists which countries this applies to, matched against the row's resolved Country; defaults to `United States` only. Leave blank to disable entirely. Fixes e.g. a US artist whose only Area is \"Florida\" showing up under `MB-Locality` instead of `MB-Region` on `/area/<mbid>/artists`."
+        ]
+      }
+    ]
+  }
+]

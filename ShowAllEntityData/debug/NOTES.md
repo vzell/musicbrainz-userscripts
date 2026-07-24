@@ -436,3 +436,35 @@ user-supplied pair of `search`-page snapshots. Snapshots used:
   sibling) — extracted as a shared helper `_routeAreaLink`, also now used by
   `splitLocation`. Confirmed no other row in either 400/600-row sample has
   an `area-icon` span other than this one.
+
+## 2026-07-25 — Locality/Region override for flagged subdivisions (`florida.html`, `flags.org`)
+
+- `flags.org`: notes that the "MusicBrainz: More Flags Everywhere" userscript
+  (@Lotheric) now decorates subdivision-level area links (not just Canadian
+  provinces) for 19 countries — Australia, Belgium, Brazil, Canada, Czechia,
+  Denmark, Estonia, Finland, France, Germany, Italy, Japan, Netherlands,
+  Russia, Spain, Sweden, Switzerland, United Kingdom, United States — with
+  the same `<span class="area-icon"><img class="flag ..."></span>` sibling
+  shape as the Canadian-province decoration fixed in 9.99.710.
+- `florida.html` (already-rendered `/area/489ce91b-.../artists` snapshot): a
+  US artist row whose only `Area` link is "Florida" (`<span
+  class="area-icon"><img class="flag flag-custom-region" ...></span> <a
+  href="/area/d2918f1a-...">Florida</a>, <span class="flag
+  flag-US">...United States...</span>`) — confirms the "More Flags
+  Everywhere" state-flag class is `flag-custom-region` (not `flag-US-FL`),
+  but still wrapped in the same `span.area-icon` sibling shape our existing
+  icon-carry-along logic already recognizes. Since there's no city entered
+  for this artist, the existing positional rule (first link = Locality)
+  puts "Florida" in `MB-Locality` — technically correct by position, but
+  wrong conceptually, since Florida is a state/region, not a locality.
+  Cross-checked `area-US.html`'s "Chicago, Illinois" row: "Illinois" there
+  has **no** `area-icon` decoration, confirming that snapshot was captured
+  without the flags script active/installed — the icon is not guaranteed to
+  be present, so any fix must be a no-op when it's absent.
+- Added a country-specific override (see `sa_area_flag_region_countries`
+  setting): when the would-be-Locality link carries an `area-icon` AND the
+  row's Country is in the user-editable list (default: `United States`
+  only), route it to `Region` instead. Implemented by pre-resolving the
+  row's country name (`_findRowCountryName`, scans for the flag-wrapped
+  country anchor before the routing loop reaches it) and checking it inside
+  `_routeAreaLink`.

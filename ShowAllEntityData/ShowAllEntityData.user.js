@@ -2028,6 +2028,41 @@
                          'matching the standard blue of hyperlinks that commonly appear in ' +
                          'annotation text, so the sub-heading reads as related without literally ' +
                          'looking like a clickable link.'
+        },
+
+        // ============================================================
+        // AREA / LOCATION COLUMN SPLITTING SECTION
+        // ============================================================
+        divider_area_split: {
+            type: 'divider',
+            label: '🌍 AREA / LOCATION COLUMN SPLITTING'
+        },
+
+        sa_area_flag_region_countries: {
+            label: 'Countries where a flagged subdivision forces Region',
+            type: 'text',
+            default: 'United States',
+            description: 'Comma-separated list of country names — exactly as MusicBrainz renders ' +
+                         'them, e.g. "United States, Germany" — for which `splitLocation`/`splitArea` ' +
+                         '(used to split "Location"/"Area"/"Begin area"/"End area" columns into ' +
+                         'Locality/Region/Country) apply an extra rule: normally the first (most ' +
+                         'specific) area link becomes "Locality" and every subsequent one becomes ' +
+                         '"Region". But if that first link is decorated with a subdivision flag icon ' +
+                         '— added by a separately-installed userscript such as "MusicBrainz: More ' +
+                         'Flags Everywhere" or "MusicBrainz: Canadian Province Flags Everywhere" ' +
+                         '(@Lotheric) — it is routed to "Region" instead. This handles areas with no ' +
+                         'city/locality entered at all, only a bare state/province (e.g. a US artist ' +
+                         'whose only Area is "Florida", which would otherwise be misclassified as a ' +
+                         'Locality). Matching is case-insensitive and only applies to rows whose ' +
+                         'resolved Country matches one of these names; it also has no effect at all ' +
+                         'unless the flag-decorating userscript is actually installed and active (no ' +
+                         'icon in the page, no effect). Countries supported by "More Flags Everywhere" ' +
+                         'as of this writing: Australia, Belgium, Brazil, Canada, Czechia, Denmark, ' +
+                         'Estonia, Finland, France, Germany, Italy, Japan, Netherlands, Russia, Spain, ' +
+                         'Sweden, Switzerland, United Kingdom, United States — add any of these (using ' +
+                         'the exact MusicBrainz country name) once you\'ve verified it behaves as ' +
+                         'expected for that country\'s subdivision naming. Leave blank to disable the ' +
+                         'rule entirely.'
         }
 
     };
@@ -2166,6 +2201,42 @@
     }
 
     /**
+     * _flagRegionCountrySet — parses the user-editable
+     * `sa_area_flag_region_countries` setting into a lowercase Set of country
+     * names, for the membership check `_routeAreaLink` uses to decide whether
+     * a flagged subdivision link should be forced into Region (see below).
+     */
+    function _flagRegionCountrySet() {
+        const raw = (Lib.settings.sa_area_flag_region_countries || '').toString();
+        return new Set(raw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
+    }
+
+    /**
+     * _findRowCountryName — pre-scans a Location/Area cell node for its
+     * flag-wrapped country anchor and returns the resolved country name (from
+     * MusicBrainz's own `<abbr title="…">`), or null if none is found.
+     * `_routeAreaLink` processes anchors in document order, and the country
+     * anchor is normally last, so this lets it know the row's country before
+     * necessarily reaching that anchor.
+     *
+     * @param {HTMLElement} node - the same node `_processNode`/`splitArea` is
+     *   about to iterate (a single <li> or the whole flat cell)
+     * @returns {string|null}
+     */
+    function _findRowCountryName(node) {
+        let countryName = null;
+        node.querySelectorAll('a').forEach(a => {
+            if (countryName) return;
+            const flagSpan = a.closest('.flag');
+            if (flagSpan) {
+                const abbr = flagSpan.querySelector('abbr');
+                countryName = abbr?.getAttribute('title') || a.textContent.trim();
+            }
+        });
+        return countryName;
+    }
+
+    /**
      * _routeAreaLink — routes ONE already-found '/area/' anchor to the correct
      * output container, shared by `splitLocation` (Location cells, which also
      * carry a leading '/place/' link) and `splitArea` (Area/Begin area/End area
@@ -2173,12 +2244,14 @@
      *
      * The real country flag is always `a.closest('.flag')` — a
      * `<span class="flag flag-XX">` WRAPPING the anchor. This must not be
-     * confused with the Canadian-province decoration added by the
-     * "MusicBrainz: Canadian Province Flags Everywhere" userscript (@Lotheric):
-     * a SIBLING `<span class="area-icon"><img class="flag flag-XX-prov"></span>`
-     * immediately before the province's own (unwrapped) anchor. Because
+     * confused with subdivision-flag decorations added by separately-installed
+     * userscripts — e.g. "MusicBrainz: Canadian Province Flags Everywhere" or
+     * "MusicBrainz: More Flags Everywhere" (@Lotheric, see debug/flags.org for
+     * its full country list) — which render a SIBLING
+     * `<span class="area-icon"><img class="flag ..."></span>` immediately
+     * before the subdivision's own (unwrapped) anchor. Because
      * `a.closest('.flag')` only walks the anchor's own ancestor chain, that
-     * sibling icon never matches it, so the province anchor correctly falls
+     * sibling icon never matches it, so the subdivision anchor correctly falls
      * into the Locality/Region branch below, with its icon carried along.
      *
      * Non-flag (Locality/Region) links are positional, not semantic: the
@@ -2186,15 +2259,21 @@
      * (Locality — e.g. city/neighbourhood); every subsequent one is broader
      * (Region — e.g. county/state, comma-joined). MusicBrainz area links
      * carry no type information, and the chain depth varies per place rather
-     * than per country, so position is the only signal available.
+     * than per country, so position is the only signal available — EXCEPT
+     * when that first link itself carries a subdivision-flag icon (meaning no
+     * city/locality was ever entered, only a bare state/province) AND the
+     * row's country is in the user-editable `sa_area_flag_region_countries`
+     * list: that link is then forced into Region instead, since it's
+     * conceptually a Region-level entity even though it's positionally first.
      *
      * @param {HTMLAnchorElement} a - the '/area/' anchor to route
      * @param {HTMLElement} containerL - Locality output container (<li> or <td>)
      * @param {HTMLElement} containerR - Region output container (<li> or <td>)
      * @param {HTMLElement} containerC - Country output container (<li> or <td>)
-     * @param {{count: number}} areaState - mutable counter, fresh per source
-     *   cell / per-<li> (the caller creates one and reuses it across every
-     *   anchor found in that node)
+     * @param {{count: number, countryName: string|null}} areaState - mutable
+     *   state, fresh per source cell / per-<li> (the caller creates one,
+     *   populates `countryName` via `_findRowCountryName`, and reuses it
+     *   across every anchor found in that node)
      */
     function _routeAreaLink(a, containerL, containerR, containerC, areaState) {
         const clonedA   = a.cloneNode(true);
@@ -2214,14 +2293,19 @@
             }
             containerC.appendChild(span);
         } else {
-            const container = areaState.count === 0 ? containerL : containerR;
+            // Subdivision flag icon (Canadian Province / More Flags Everywhere
+            // userscripts) sits as a sibling <span class="area-icon">
+            // immediately before the area link — carry it along so it isn't
+            // dropped by the split, and use its presence to decide whether the
+            // "first link" slot should be forced into Region instead of Locality.
+            const iconSpan = a.previousElementSibling && a.previousElementSibling.matches('span.area-icon')
+                ? a.previousElementSibling : null;
+            const forceRegion = areaState.count === 0 && iconSpan && areaState.countryName &&
+                _flagRegionCountrySet().has(areaState.countryName.toLowerCase());
+            const container = (areaState.count === 0 && !forceRegion) ? containerL : containerR;
             areaState.count++;
             if (container.hasChildNodes()) container.appendChild(document.createTextNode(', '));
-            // Canadian-province flag icon (Lotheric userscript) sits as a
-            // sibling <span class="area-icon"> immediately before the area
-            // link — carry it along so it isn't dropped by the split.
-            const iconSpan = a.previousElementSibling;
-            if (iconSpan && iconSpan.matches('span.area-icon')) {
+            if (iconSpan) {
                 container.appendChild(iconSpan.cloneNode(true));
                 container.appendChild(document.createTextNode(' '));
             }
@@ -2342,7 +2426,7 @@
              * subsequent one to containerR.
              */
             const _processNode = (node, containerP, containerL, containerR, containerC) => {
-                const areaState = { count: 0 };
+                const areaState = { count: 0, countryName: _findRowCountryName(node) };
                 node.querySelectorAll('a').forEach(a => {
                     const href = a.getAttribute('href');
                     if (href && href.includes('/place/')) {
@@ -2412,7 +2496,7 @@
             const tdR = document.createElement('td');
             const tdC = document.createElement('td');
             if (sourceCell) {
-                const areaState = { count: 0 };
+                const areaState = { count: 0, countryName: _findRowCountryName(sourceCell) };
                 sourceCell.querySelectorAll('a').forEach(a => {
                     const href = a.getAttribute('href');
                     if (href && href.includes('/area/')) {
