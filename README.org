@@ -85200,117 +85200,52 @@ It enriches from @debug/without-flag.html to @debug/wit-flag.html
 
 Enhance the current "splitLocation(sourceCell)" function to also support the canadian province flags in the synthetic "Area" column
 
-* TODO further split "Area"
+* DONE plan: splitLocation
 
-https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/artists
-
-split "Area", "Begin area", "End area"
+Currently the 'splitLocation' function extracts the synthetic columns ['Place', 'Area', 'Country'] for a couple of pageTypes
 
 #+begin_example
-<td>
-  <a href="/area/b8a2776a-eedf-48ea-a6f3-1a9070f0b823">
-    <bdi>Köln
-    </bdi>
-  </a>
-  <span class="comment">(
-    <bdi>
-      <i title="Primary alias">Cologne
-      </i>
-    </bdi>)
-  </span>,
-  <a href="/area/1de7fa77-cb52-40a2-b82a-251c7818249d">
-    <bdi>Nordrhein-Westfalen
-    </bdi>
-  </a>
-  <span class="comment">(
-    <bdi>
-      <i title="Primary alias">North Rhine-Westphalia
-      </i>
-    </bdi>)
-  </span>,
-  <span class="flag flag-DE">
-    <a href="/area/85752fda-13c4-31a3-bee5-0e5cb1f51dad">
-      <bdi>Germany
-      </bdi>
-    </a>
-  </span>
-</td>
-
-<td>
-  <span class="flag flag-DE">
-    <a href="/area/85752fda-13c4-31a3-bee5-0e5cb1f51dad">
-      <bdi>Germany
-      </bdi>
-    </a>
-  </span>
-</td>
+{ sourceColumn: 'Location', extractor: 'splitLocation',  syntheticColumns: ['Place', 'Area', 'Country'] },
 #+end_example
 
-United States, Canada
+Make a suggestion to further split 'Area' in it's constituents, as far as it makes sense. Take into account the different
+formats for different countries.
+
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events
+
+* DONE "Place" extractor
+
+Add the 'splitLocation' function also to the "Place" column in pageType 'report-detail' e.g. https://musicbrainz.org/report/AnnotationsPlaces
+Maybe call the synthetic column for the actual "MB-Place" to not conflict with the "Place" column itself, which has also other constituents beside the actual place.
+See also @debug/place.html
+
+* DONE plan: further split "Area"
+** initial
+
+Currently the 'splitArea' function extracts the synthetic columns ['MB-<Begin/End>Area', 'Country'] for a couple of pageTypes
 
 #+begin_example
-<td>
-  <span class="flag flag-US">
-    <a href="/area/489ce91b-6658-3307-9877-795b68554c98">
-      <bdi>United States
-      </bdi>
-    </a>
-  </span>
-</td>
-
-<td>
-  <a href="/area/bf9353d8-da52-4fd9-8645-52b2349b4914">
-    <bdi>Arizona
-    </bdi>
-  </a>,
-  <span class="flag flag-US">
-    <a href="/area/489ce91b-6658-3307-9877-795b68554c98">
-      <bdi>United States
-      </bdi>
-    </a>
-  </span>
-</td>
-
-<td>
-  <a href="/area/58d2816b-daf9-4fc5-962c-06967f14a5e5">
-    <bdi>Austin
-    </bdi>
-  </a>,
-  <a href="/area/f934c8da-e40e-4056-8f8c-212e68fdcaec">
-    <bdi>Texas
-    </bdi>
-  </a>,
-  <span class="flag flag-US">
-    <a href="/area/489ce91b-6658-3307-9877-795b68554c98">
-      <bdi>United States
-      </bdi>
-    </a>
-  </span>
-</td>
-
-<td>
-  <a href="/area/bdcfe2e1-5647-4fa6-b978-f7c08ab3eddd">
-    <bdi>Greenwich Village
-    </bdi>
-  </a>,
-  <a href="/area/74e50e58-5deb-4b99-93a2-decbb365c07f">
-    <bdi>New York
-    </bdi>
-  </a>,
-  <a href="/area/75e398a3-5f3f-4224-9cd8-0fe44715bc95">
-    <bdi>New York
-    </bdi>
-  </a>,
-  <span class="flag flag-US">
-    <a href="/area/489ce91b-6658-3307-9877-795b68554c98">
-      <bdi>United States
-      </bdi>
-    </a>
-  </span>
-</td>
+{ sourceColumn: 'Area',       extractor: 'splitArea', syntheticColumns: ['MB-Area', 'Country'] },
+{ sourceColumn: 'Begin area', extractor: 'splitArea', syntheticColumns: ['MB-Begin area', 'Begin country'] },
+{ sourceColumn: 'End area',   extractor: 'splitArea', syntheticColumns: ['MB-End area', 'End country'] },
 #+end_example
 
+Make a suggestion to further split 'Area' in it's constituents, as far as it makes sense. Take into account the different
+formats for different countries. Probably the same algorithm like in 'splitLocation' 
 
+See the raw HTML in @debug/area-US.html (United States) or @debug/area-DE.html (Germany) for e.g. https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/artists
+
+There is also a problem with the row
+
+#+begin_example
+<tr class="odd" data-mb-row-idx="74"><td style="position: sticky; left: 0px; z-index: 1; background: rgb(255, 255, 255);" data-mb-rest-bg="#ffffff" data-mb-sticky-bg="#ffffff" class="mb-sticky-col"><a class="wrap-anywhere" href="/artist/cbf55e12-0a2c-4a5a-afd5-ec22d3692cc3" title=".G, Ben (American extreme metal and noise musician)"><bdi>Ben .G</bdi></a>&nbsp;<span class="comment"><bdi>(American extreme metal and noise musician)</bdi></span></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">Person</td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">Male</td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"><span class="area-icon"><img class="flag flag-CA-prov" src="https://upload.wikimedia.org/wikipedia/commons/f/fb/Flag_of_New_Brunswick.svg" alt="New Brunswick" title="New Brunswick"></span> <a href="/area/2391076e-8849-437c-b5cf-0b9c9c79b2c1" data-flag-processed="1"><bdi>New Brunswick</bdi></a>, <a href="/area/a36544c1-cb40-4f44-9e0e-7a5a69e403a8"><bdi>New Jersey</bdi></a>, <span class="flag flag-US"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><bdi>United States</bdi></a></span></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"><span class="flag flag-US"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><bdi>United States</bdi></a></span></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"></td><td class="c" data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"><span class="inline-rating"><span class="star-rating" tabindex="-1"><a class="stars-1 set-rating" href="/rating/rate/?entity_type=artist&amp;entity_id=2896294&amp;rating=20&amp;returnto=%2Farea%2F489ce91b-6658-3307-9877-795b68554c98%2Fartists" title="Rate: 1 star">1</a><a class="stars-2 set-rating" href="/rating/rate/?entity_type=artist&amp;entity_id=2896294&amp;rating=40&amp;returnto=%2Farea%2F489ce91b-6658-3307-9877-795b68554c98%2Fartists" title="Rate: 2 stars">2</a><a class="stars-3 set-rating" href="/rating/rate/?entity_type=artist&amp;entity_id=2896294&amp;rating=60&amp;returnto=%2Farea%2F489ce91b-6658-3307-9877-795b68554c98%2Fartists" title="Rate: 3 stars">3</a><a class="stars-4 set-rating" href="/rating/rate/?entity_type=artist&amp;entity_id=2896294&amp;rating=80&amp;returnto=%2Farea%2F489ce91b-6658-3307-9877-795b68554c98%2Fartists" title="Rate: 4 stars">4</a><a class="stars-5 set-rating" href="/rating/rate/?entity_type=artist&amp;entity_id=2896294&amp;rating=100&amp;returnto=%2Farea%2F489ce91b-6658-3307-9877-795b68554c98%2Fartists" title="Rate: 5 stars">5</a></span></span></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"><a href="/area/2391076e-8849-437c-b5cf-0b9c9c79b2c1" data-flag-processed="1"><bdi>New Brunswick</bdi></a>, <a href="/area/a36544c1-cb40-4f44-9e0e-7a5a69e403a8"><bdi>New Jersey</bdi></a>, <span class="flag flag-US"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><bdi>United States</bdi></a></span></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"><span class="area-icon"><img class="flag flag-CA-prov" src="https://upload.wikimedia.org/wikipedia/commons/f/fb/Flag_of_New_Brunswick.svg" alt="New Brunswick" title="New Brunswick"></span></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"><span class="flag flag-US"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><bdi>United States</bdi></a></span></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"></td><td data-mb-int-col-styled="1" style="text-align: center; background: rgb(255, 255, 255);" data-mb-rest-bg="#ffffff"><span class="mb-ic-val" style="display: inline-block; text-align: right; font-variant-numeric: tabular-nums; min-width: 2ch;"></span></td><td data-mb-int-col-styled="1" style="text-align: center; background: rgb(255, 255, 255);" data-mb-rest-bg="#ffffff"><span class="mb-ic-val" style="display: inline-block; text-align: right; font-variant-numeric: tabular-nums; min-width: 2ch;"></span></td><td data-mb-int-col-styled="1" style="text-align: center; background: rgb(255, 255, 255);" data-mb-rest-bg="#ffffff"><span class="mb-ic-val" style="display: inline-block; text-align: center; font-variant-numeric: tabular-nums; min-width: 4ch;"></span></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"></td><td data-mb-int-col-styled="1" style="text-align: center; background: rgb(255, 255, 255);" data-mb-rest-bg="#ffffff"><span class="mb-ic-val" style="display: inline-block; text-align: right; font-variant-numeric: tabular-nums; min-width: 2ch;"></span></td><td data-mb-int-col-styled="1" style="text-align: center; background: rgb(255, 255, 255);" data-mb-rest-bg="#ffffff"><span class="mb-ic-val" style="display: inline-block; text-align: right; font-variant-numeric: tabular-nums; min-width: 2ch;"></span></td><td data-mb-int-col-styled="1" style="text-align: center; background: rgb(255, 255, 255);" data-mb-rest-bg="#ffffff"><span class="mb-ic-val" style="display: inline-block; text-align: center; font-variant-numeric: tabular-nums; min-width: 4ch;"></span></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"><a class="wrap-anywhere" href="/artist/cbf55e12-0a2c-4a5a-afd5-ec22d3692cc3" title=".G, Ben (American extreme metal and noise musician)"><bdi>Ben .G</bdi></a></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">American extreme metal and noise musician</td></tr>
+#+end_example
+
+where the '<img class="flag flag-CA-prov"' should actually be attached to "New Brunswick" I guess
+
+** act on @debug/area.org
+
+act on @debug/area.org
 
 * DONE musicbrainz.org - musicbrainz.eu enhancements
 
@@ -85346,8 +85281,7 @@ There is also one mention in the code for "musicbrainz.org"
         }
 #+end_example
 
-
-* TODO Implement checkboxes in unique column value drop down like in the userscript ""
+* DONE Implement checkboxes in unique column value drop down like in the userscript "BruceBaseParser"
 
 Implement checkboxes in the unique column value drop-down menu of our userscript like in the userscript "BruceBaseParser"
 See the following code:
@@ -85361,6 +85295,40 @@ and the uploaded screenshot.
 
 If agreed on the implementation, do it on a branch
 
+#+begin_example
+Context
+
+ ShowAllEntityData.user.js already has a "unique column value" dropdown (opened via
+ the 📊 icon in a column header, see openUniqDrop()) that lists every distinct value
+ present in a column with an occurrence count, and a quickfilter search box. Today,
+ clicking a value replaces the column's text filter with that single value and
+ closes the dropdown — only one value can be filtered on at a time per column.
+
+ The user wants this dropdown to support checkboxes, so multiple values can be
+ selected at once (OR'd together within the column), matching a pattern already used
+ in a sibling project (springsteen-site-parser's smarttable.js, used by
+ BruceBaseParser.user.js). That reference implementation's semantics — which this
+ plan ports (not its code, since the architectures differ) — are:
+
+ - Checked values within one column are OR'd (row passes if its value is checked).
+ - An empty checked-set means no constraint (show all rows for that column), not
+ "match nothing."
+ - Selecting a checkbox in one column still ANDs against other active column
+ filters (unchanged, pre-existing behavior).
+ - Checkbox mode is mutually exclusive with plain-text filtering on the same column:
+ typing text cancels a checkbox selection, and vice versa (mirrors how the existing
+ mbMultirowMode "Cell structure" filters already behave).
+
+ The user confirmed (via clarifying questions) to keep this minimal:
+ - No bulk-select-all-visible-on-Enter bonus feature.
+ - No new in-panel "N selected / clear" UI — the existing per-column ✕ button
+ already fully clears everything once the plan's cleanup edits land.
+ - Column input summary label when 2+ values are checked: simply "N selected".
+
+ All work happens on a new feature branch. Per this repo's CLAUDE.md, version bumps
+ and ShowAllEntityData_CHANGELOG.json entries are main-only; this branch tracks
+ changes in ShowAllEntityData_CHANGELOG.wip.json with placeholder WIP.N versions.
+#+end_example
 
 * DONE make the "Annotation" collapsable by default
 ** DONE initial
@@ -85526,9 +85494,9 @@ I already added the new 'dateTimeParts' and 'numberOfChars' column extractor fun
                 ],
 #+end_example
 
-** DONE merge in main, commit and push
+** DONE merge current branch in main, commit and push
 
-merge in main, commit and push
+merge current branch in main, commit and push
 
 * DONE remove checkboxes from "MusicBrainz Nuclear Tags" userscript
 ** initial
@@ -85869,6 +85837,265 @@ actually AnnotationsEvents was always OK too, I tested without reloading the use
 add support for a new pageType "type: 'account-application'" https://musicbrainz.org/account/applications along the line of https://musicbrainz.org/user/vzell/collections
 @debug/applications.html
 
+* DONE add support for more new pageTypes
+** DONE initial
+
+add support for new pageTypes
+
+| pageType            | URL                                    | raw HTML code in @develop  |
+|---------------------+----------------------------------------+----------------------------|
+| auto-elections      | https://musicbrainz.org/elections      | auto-editor-elections.html |
+| genres-list         | https://musicbrainz.org/genres         | genre-list.html            |
+| cd-stub             | https://musicbrainz.org/cdstub/browse  | cd-stub.html               |
+| edit-types          | https://musicbrainz.org/doc/Edit_Types | edit-types.html            |
+| instument-list      | https://musicbrainz.org/instruments    | instruments.html           |
+
+check other pageTypes if logig can be reused.
+When approved do it in a branch.
+
+** DONE match
+
+The actual @match directives are missing
+
+** DONE render as disambiguation
+*** initial
+
+1.)
+
+For https://musicbrainz.org/elections the original headers look like
+
+#+begin_example
+<tr><th>Candidate</th><th>Status</th><th>Start date</th><th>End date</th><th>Proposer</th><th>1st seconder</th><th>2nd seconder</th><th>Votes for</th><th>Votes against</th><th>&nbsp;</th></tr>
+#+end_example
+
+but "<th>1st seconder</th><th>2nd seconder</th>" are renderd as
+
+#+begin_example
+<th class="mb-original-column" style="cursor: default; position: relative; min-width: 320px;" data-col-name="st seconder" data-mb-resize-min="239"><div class="mb-col-hdr-flex">st seconder <span class="sort-icon-btn" title="Restore original sort order (clears multi-sort columns) — keyboard: Ctrl+# when a column filter is focused">⇅</span><span class="sort-icon-btn" title="Sort ascending — Ctrl+Click to add to multi-column sort / Alt+Click to sort by column length — keyboard: Ctrl+ArrowUp when a column filter is focused">▲</span><span class="sort-icon-btn" title="Sort descending — Ctrl+Click to add to multi-column sort / Alt+Click to sort by column length — keyboard: Ctrl+ArrowDown when a column filter is focused">▼</span><span class="mb-col-uniq-wrap" tabindex="0" role="button" aria-label="Show the 94 different unique values in this column, with the ability to quick filter by either clicking or selecting with the keyboard and pressing &quot;Enter&quot; on an entry — keyboard: Ctrl+Q or Ctrl+M then Q when a column filter is focused" title="Show the 94 different unique values in this column, with the ability to quick filter by either clicking or selecting with the keyboard and pressing &quot;Enter&quot; on an entry — keyboard: Ctrl+Q or Ctrl+M then Q when a column filter is focused"><span class="mb-col-uniq-count">94</span><span class="mb-col-uniq-btn">📊</span></span></div><div class="column-resizer" style="position: absolute; right: 0px; top: 0px; width: 8px; height: 100%; cursor: col-resize; user-select: none; z-index: 1; background: transparent;"></div></th>
+<th class="mb-original-column" style="cursor: default; position: relative; min-width: 287px;" data-col-name="nd seconder" data-mb-resize-min="220"><div class="mb-col-hdr-flex">nd seconder <span class="sort-icon-btn" title="Restore original sort order (clears multi-sort columns) — keyboard: Ctrl+# when a column filter is focused">⇅</span><span class="sort-icon-btn" title="Sort ascending — Ctrl+Click to add to multi-column sort / Alt+Click to sort by column length — keyboard: Ctrl+ArrowUp when a column filter is focused">▲</span><span class="sort-icon-btn" title="Sort descending — Ctrl+Click to add to multi-column sort / Alt+Click to sort by column length — keyboard: Ctrl+ArrowDown when a column filter is focused">▼</span><span class="mb-col-uniq-wrap" tabindex="0" role="button" aria-label="Show the 107 different unique values in this column, with the ability to quick filter by either clicking or selecting with the keyboard and pressing &quot;Enter&quot; on an entry — keyboard: Ctrl+Q or Ctrl+M then Q when a column filter is focused" title="Show the 107 different unique values in this column, with the ability to quick filter by either clicking or selecting with the keyboard and pressing &quot;Enter&quot; on an entry — keyboard: Ctrl+Q or Ctrl+M then Q when a column filter is focused"><span class="mb-col-uniq-count">107</span><span class="mb-col-uniq-btn">📊</span></span></div><div class="column-resizer" style="position: absolute; right: 0px; top: 0px; width: 8px; height: 100%; cursor: col-resize; user-select: none; z-index: 1; background: transparent;"></div></th>
+#+end_example
+
+2.)
+
+On https://musicbrainz.org/cdstub/browse each real data row is followed by a '<td class="lastupdate" colspan="4">' e.g. for the first row
+
+#+begin_example
+<tr class="odd"><td><a href="/cdstub/XsbJwm0LkJCi4WXBVx9iXOXGhWk-"><bdi>D-E-AD</bdi></a></td><td>D-E-ADxF</td><td>2118</td><td>0</td></tr>
+<tr class="odd"><td class="lastupdate" colspan="4">Added 9 years ago, last modified 9 years ago</td></tr>
+#+end_example
+
+Currently ONLY the data row is rendered on the final rendered page.
+
+a.)
+
+render the data cell content of '<td class="lastupdate" colspan="4">' e.g. "Added 9 years ago, last modified 9 years ago" as a disambiguation comment with the following structure
+
+#+begin_example
+<span class="comment">(<bdi>Added 9 years ago, last modified 9 years ago</bdi>)</span>
+#+end_example
+
+to the previous row data in brackets
+
+b.)
+
+Also create the '"MB-Name" and "Comment" columns' for this case
+
+3.)
+
+Currently we have:
+
+#+begin_example
+Instrument-list rows currently glom the link + short comment + long description into one cell (reusing the existing
+generic list→table conversion as-is). Splitting them into separate Name/Comment/Description columns needs a
+brand-new extractor function plus per-family entityFeatures wiring
+#+end_example
+
+Additionally add a brand new extractor
+
+*** DONE act on pt.org
+
+act on @debug/pt.org
+
+** Auto-editor-elections has 'Start date' / 'End date' columns
+
+#+begin_example
+Auto-editor-elections has 'Start date' / 'End date' columns formatted like "2025-01-31 02:01 GMT+1". The existing dateTimeParts extractor can split these into date/time synthetic columns (like
+report-detail's 'Last edited' does), but the time part would retain the trailing "GMT+1" since the extractor only splits on the first space.
+#+end_example
+
+** DONE priviledged
+*** initial
+
+add support for new pageType
+
+| pageType            | URL                                    | raw HTML code in @develop  |
+|---------------------+----------------------------------------+----------------------------|
+| priviliged-accounts | https://musicbrainz.org/privileged     | priviledged.html           |
+
+First replace each comma separated list with a one-column table with column header name "Editor", e.g. the following list
+
+#+begin_example
+<p>
+  <a href="/user/ApeKattQuest%2C%20MonkeyPython">
+    <img alt="" class="avatar no-avatar" height="15" src="https://static.metabrainz.org/MB/editor-b055e61.svg" width="15">
+    <bdi>ApeKattQuest, MonkeyPython
+    </bdi>
+  </a>,
+  <a href="/user/Bitmap">
+    <img alt="" class="avatar no-avatar" height="15" src="https://static.metabrainz.org/MB/editor-b055e61.svg" width="15">
+    <bdi>Bitmap
+    </bdi>
+  </a>,
+  <a href="/user/dupuy">
+    <img alt="" class="avatar no-avatar" height="15" src="https://static.metabrainz.org/MB/editor-b055e61.svg" width="15">
+    <bdi>dupuy
+    </bdi>
+  </a>,
+  <a href="/user/lukz">
+    <img alt="" class="avatar no-avatar" height="15" src="https://static.metabrainz.org/MB/editor-b055e61.svg" width="15">
+    <bdi>lukz
+    </bdi>
+  </a>,
+  <a href="/user/murdos">
+    <img alt="" class="avatar no-avatar" height="15" src="https://static.metabrainz.org/MB/editor-b055e61.svg" width="15">
+    <bdi>murdos
+    </bdi>
+  </a>,
+  <a href="/user/navap">
+    <img alt="" class="avatar no-avatar" height="15" src="https://static.metabrainz.org/MB/editor-b055e61.svg" width="15">
+    <bdi>navap
+    </bdi>
+  </a>,
+  <a href="/user/reosarevok">
+    <img alt="" class="avatar no-avatar" height="15" src="https://static.metabrainz.org/MB/editor-b055e61.svg" width="15">
+    <bdi>reosarevok
+    </bdi>
+  </a>,
+  <a href="/user/rob">
+    <img alt="" class="avatar no-avatar" height="15" src="https://static.metabrainz.org/MB/editor-b055e61.svg" width="15">
+    <bdi>rob
+    </bdi>
+  </a>,
+  <a href="/user/Zas">
+    <img alt="" class="avatar no-avatar" height="15" src="https://static.metabrainz.org/MB/editor-b055e61.svg" width="15">
+    <bdi>Zas
+    </bdi>
+  </a>
+</p>
+#+end_example
+
+*** act on @debug/priviledged.org
+
+act on @debug/priviledged.org
+
+*** bug
+
+Currently paragraphs like e.g.
+
+#+begin_example
+<p>Auto-editors are trusted users who have been given <a href="doc/Editor">auto-editor</a> privileges. These privileges allow them to make select edits that are automatically approved without going through the normal voting process, as well as the ability to instantly approve other users' edits.</p>
+#+end_example
+
+which belong to a specific h2 like e.g.
+
+#+begin_example
+<h2>Auto-editors</h2>
+#+end_example
+
+are rendered after all the sub-tables. Please fix and put them right before each sub-table on the final rendered page 
+
+** DONE add support for cd-stub pages: https://musicbrainz.org/cdstub/3p1LmJIWtNn4rzXGF4Xk.I7vh90-
+
+1.)
+
+the just relocated intro/count paragraphs should collaps/uncollapse together with their associated sub-table when clicking the h3 header line 
+
+2.)
+
+rename the current pageType "cd-stub" to "top-cd-stub"
+
+3.)
+
+add support for new pageType
+
+| pageType | URL                                                              | raw HTML code in @develop |
+|----------+------------------------------------------------------------------+---------------------------|
+| cd-stub  | e.g. https://musicbrainz.org/cdstub/3p1LmJIWtNn4rzXGF4Xk.I7vh90- | cd-stub-pagetype.html     |
+
+** DONE auto editor election
+
+add support for new pageType
+
+| pageType             | URL                                  | raw HTML code in @develop |
+|----------------------+--------------------------------------+---------------------------|
+| auto-editor-election | https://musicbrainz.org/election/473 | auto-editor.html          |
+
+* DONE plan: rewrite @match directives
+
+Rewrite @match directives to a more compact form, maybe using @include
+
+Do this in a new branch.
+
+#+begin_example
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings)(?:\?.*)?$/
+// @match        *://*.musicbrainz.org/search?query=*
+// @match        *://*.musicbrainz.eu/search?query=*
+// @match        *://*.musicbrainz.org/account/applications
+// @match        *://*.musicbrainz.eu/account/applications
+// @match        *://*.musicbrainz.org/user/*/subscriptions/*
+// @match        *://*.musicbrainz.eu/user/*/subscriptions/*
+// @match        *://*.musicbrainz.org/user/*/subscribers
+// @match        *://*.musicbrainz.eu/user/*/subscribers
+// @match        *://*.musicbrainz.org/user/*/collections
+// @match        *://*.musicbrainz.eu/user/*/collections
+// @match        *://*.musicbrainz.org/user/*/ratings/*
+// @match        *://*.musicbrainz.eu/user/*/ratings/*
+// @match        *://*.musicbrainz.org/user/*/ratings
+// @match        *://*.musicbrainz.eu/user/*/ratings
+// @match        *://*.musicbrainz.org/user/*/tags*
+// @match        *://*.musicbrainz.eu/user/*/tags*
+// @match        *://*.musicbrainz.org/tags*
+// @match        *://*.musicbrainz.eu/tags*
+// @match        *://*.musicbrainz.org/user/*/tag/*
+// @match        *://*.musicbrainz.eu/user/*/tag/*
+// @match        *://*.musicbrainz.org/tag/*
+// @match        *://*.musicbrainz.eu/tag/*
+// @match        *://*.musicbrainz.org/cdtoc/*
+// @match        *://*.musicbrainz.eu/cdtoc/*
+// @match        *://*.musicbrainz.org/taglookup*
+// @match        *://*.musicbrainz.eu/taglookup*
+// @match        *://*.musicbrainz.org/artist-credit/*
+// @match        *://*.musicbrainz.eu/artist-credit/*
+// @match        *://*.musicbrainz.org/reports*
+// @match        *://*.musicbrainz.eu/reports*
+// @match        *://*.musicbrainz.org/report/*
+// @match        *://*.musicbrainz.eu/report/*
+// @match        *://*.musicbrainz.org/elections
+// @match        *://*.musicbrainz.eu/elections
+// @match        *://*.musicbrainz.org/election/*
+// @match        *://*.musicbrainz.eu/election/*
+// @match        *://*.musicbrainz.org/genres
+// @match        *://*.musicbrainz.eu/genres
+// @match        *://*.musicbrainz.org/cdstub/browse
+// @match        *://*.musicbrainz.eu/cdstub/browse
+// @match        *://*.musicbrainz.org/cdstub/*
+// @match        *://*.musicbrainz.eu/cdstub/*
+// @match        *://*.musicbrainz.org/doc/Edit_Types
+// @match        *://*.musicbrainz.eu/doc/Edit_Types
+// @match        *://*.musicbrainz.org/instruments
+// @match        *://*.musicbrainz.eu/instruments
+// @match        *://*.musicbrainz.org/privileged
+// @match        *://*.musicbrainz.eu/privileged
+#+end_example
+
+
+* TODO Auto-click "Show more..." in Annotations if present
+
+Auto-click "Show more..." in Annotations if present
+
+https://musicbrainz.eu/work/04e3c57d-3caa-461e-a525-74e2ba52f8b9
+
 
 * Performance fixes — ready to implement (analysed, approach agreed)
 
@@ -86189,6 +86416,10 @@ CAA (empty cells): it still reads also cells WITH images (no artwork - 342 in th
 I just switched to the "filter-performance-fix" feature branch. Merge the current "main" branch to the feature branch,
 so that all new fixes are also in the feature branch.
 
+* DONE merge current branch in main, commit and push
+
+merge current branch in main, commit and push
+
 
 * DONE BatchEditCoverart
 ** initial
@@ -86353,7 +86584,6 @@ Some updates since last version:
  - Created a spin-off of the Spotify import helper for Deezer
  - Fixed selectors for intl Spotify URL in my bookmarklets
  - Added icons to ListenBrainz Extended Controls for several players/services/clients
- - image
  - Added range-select to Batch Remove Cover Art by holding Shift
  - Hotkeys for selected entities can now be used directly on supported pages. (E.g. press e to edit the currently viewed release)
  - Some logic fixes in Editor Subscription Manager
@@ -86434,32 +86664,40 @@ New bullet (add after the auto-resize progress overlay one):
 
 ** final
 
+For my upcoming MusicBrainz article about the latest updates in my userscript, please generate a list of new
+features/fixes/enhancements.
+
+For this use the different tags in the git history of this whole project, but avoid using very technicals terms in the
+list like we use in the changelog, instead create a high level descriptions.
+
+Here is the last version as a example: 
+
 # [VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities](https://github.com/vzell/mb-userscripts/tree/master?tab=readme-ov-file#mb_show_all_entity_data)
 
 ## Changes since last version
 
 ### Enhancements
 
- * **Keyboard shortcuts** completely reworked --- direct Ctrl+ shortcuts are now disabled by default to avoid accidentally hijacking browser or OS key combinations. All actions are instead available through the Ctrl+M prefix menu: press Ctrl+M followed by a single letter to trigger any action. The prefix tooltip lists everything available. For users who prefer direct shortcuts, the old behaviour can be re-enabled in settings. The shortcuts for the keyboard help overlay and barcode highlight are now configurable.
- * **Rendering** doesn't show the "Page unresponsive" dialog anymore on large tables
- * **Auto-resize** columns got a progress overlay and is much faster on large tables --- when the script measures and fits column widths on large tables, it now shows a progress overlay with elapsed time and an estimated time remaining instead of just freezing the page (e.g. x15 on a 8100 rows table https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases )
- * **Filtering** is significantly faster on large tables --- several rounds of optimisation (caching, smarter matching order, adaptive typing delays) cut filter response times noticeably on tables with thousands of rows
- * **Status bar** completely redesigned --- the progress line at the top now has separate segments for cover art loading, relationship loading, and general info, each with its own hover tooltip showing detailed timing and counts
- * **Alternating shade banding** (the subtle colour striping that shows where sorted values change) now also works when *sorting by a single column*, not just multi-column sorts
- * **Cover-art thumbnails** load in a smarter order --- inline thumbnails in the title column are now fetched before the smaller icons in the CAA/EAA columns, so the most visible images appear first
- * **Collapsed artwork** cells show a "hidden match" hint --- if a row is hidden inside a collapsed cover-art stripe but matches your filter, the expand button turns yellow with a red marker so you know there's a match inside
- * **Sort by text length** --- Alt+clicking a sort arrow now sorts that column by the length of each cell's text, useful for spotting unusually long or short values
- * **Event columns** got smarter --- event entries now split out separate columns for Event Type, Event Country, and Additional Info, making it much easier to filter and sort large event lists
- * **Relationship icons** now show *rich tooltips* --- hovering over a relationship icon displays a proper popup with the full relationship details, highlighted to match your active filter
- * **Relationship icons** *highlight* when your filter matches --- if your filter finds a row because of something in the Relationships column, the specific matching icons are outlined in red so you can see exactly why the row matched
- * **IndexedDB cache statistics** added to the Stats panel --- shows how many relationship records are stored locally, how much space they use, and when they were last accessed
- * Added support for **Ratings pages** --- your /user//ratings pages (and per-entity variants like /ratings/recording) now load all entries at once with full filtering and sorting, including the editor name, entity type, and star rating columns
- * Added support for **entity-level Ratings pages** --- the /work//ratings and similar pages that list everyone who rated a specific entity are now supported as well
+* **Keyboard shortcuts** completely reworked --- direct Ctrl+ shortcuts are now disabled by default to avoid accidentally hijacking browser or OS key combinations. All actions are instead available through the Ctrl+M prefix menu: press Ctrl+M followed by a single letter to trigger any action. The prefix tooltip lists everything available. For users who prefer direct shortcuts, the old behaviour can be re-enabled in settings. The shortcuts for the keyboard help overlay and barcode highlight are now configurable.
+* **Rendering** doesn't show the "Page unresponsive" dialog anymore on large tables
+* **Auto-resize** columns got a progress overlay and is much faster on large tables --- when the script measures and fits column widths on large tables, it now shows a progress overlay with elapsed time and an estimated time remaining instead of just freezing the page (e.g. x15 on a 8100 rows table https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases )
+* **Filtering** is significantly faster on large tables --- several rounds of optimisation (caching, smarter matching order, adaptive typing delays) cut filter response times noticeably on tables with thousands of rows
+* **Status bar** completely redesigned --- the progress line at the top now has separate segments for cover art loading, relationship loading, and general info, each with its own hover tooltip showing detailed timing and counts
+* **Alternating shade banding** (the subtle colour striping that shows where sorted values change) now also works when *sorting by a single column*, not just multi-column sorts
+* **Cover-art thumbnails** load in a smarter order --- inline thumbnails in the title column are now fetched before the smaller icons in the CAA/EAA columns, so the most visible images appear first
+* **Collapsed artwork** cells show a "hidden match" hint --- if a row is hidden inside a collapsed cover-art stripe but matches your filter, the expand button turns yellow with a red marker so you know there's a match inside
+* **Sort by text length** --- Alt+clicking a sort arrow now sorts that column by the length of each cell's text, useful for spotting unusually long or short values
+* **Event columns** got smarter --- event entries now split out separate columns for Event Type, Event Country, and Additional Info, making it much easier to filter and sort large event lists
+* **Relationship icons** now show *rich tooltips* --- hovering over a relationship icon displays a proper popup with the full relationship details, highlighted to match your active filter
+* **Relationship icons** *highlight* when your filter matches --- if your filter finds a row because of something in the Relationships column, the specific matching icons are outlined in red so you can see exactly why the row matched
+* **IndexedDB cache statistics** added to the Stats panel --- shows how many relationship records are stored locally, how much space they use, and when they were last accessed
+* Added support for **Ratings pages** --- your /user//ratings pages (and per-entity variants like /ratings/recording) now load all entries at once with full filtering and sorting, including the editor name, entity type, and star rating columns
+* Added support for **entity-level Ratings pages** --- the /work//ratings and similar pages that list everyone who rated a specific entity are now supported as well
 
 ### Fixes
 
- * **"Save to disk"** now preserves the correct column headers when saving at the large-table render-threshold prompt --- previously the saved file could contain the wrong header names
- * **Column resize** is much more reliable --- a run of fixes addressed resize minimum creep, line breaks appearing in disambiguation comments during resize, and incorrect widths on initially-collapsed sub-tables
+* **"Save to disk"** now preserves the correct column headers when saving at the large-table render-threshold prompt --- previously the saved file could contain the wrong header names
+* **Column resize** is much more reliable --- a run of fixes addressed resize minimum creep, line breaks appearing in disambiguation comments during resize, and incorrect widths on initially-collapsed sub-tables
 
 
 * TODO Release page enhancer / MB page enhancer
