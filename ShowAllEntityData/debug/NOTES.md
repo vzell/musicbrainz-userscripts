@@ -409,3 +409,30 @@ user-supplied pair of `search`-page snapshots. Snapshots used:
   column, which is left untouched and still shows the full combined text.
   `Locality`/`Region`/`Country` synthetic names are shared with the existing
   `Location`-sourced entry — same extractor, same output shape.
+
+## 2026-07-24 — area-artists Locality/Region split + province-flag bug (`area-US.html`, `area-DE.html`, `area.org`)
+
+- `area-US.html`/`area-DE.html` (`/area/<mbid>/artists`, already-rendered
+  snapshots, 400/600 rows): native `Area`/`Begin area`/`End area` columns
+  have the same area-chain shape as `Location`'s area portion (0-4 `/area/`
+  links per row; US samples like `Chicago, Illinois`, `Brooklyn, New York,
+  New York`; DE samples like `Köln, Nordrhein-Westfalen`, `Bremen, Bremen`).
+  Split `splitArea`'s `MB-Area` output into `MB-Locality`/`MB-Region`
+  (and the `Begin`/`End`-prefixed equivalents), same positional rule as
+  `splitLocation`'s `Locality`/`Region` (9.99.708).
+- `area.org` row 74 (`area-US.html`, Ben .G, a Person artist whose home Area
+  is New Brunswick → New Jersey → United States): the "MusicBrainz: Canadian
+  Province Flags Everywhere" userscript (@Lotheric) decorates
+  `New Brunswick`'s link with a preceding sibling `<span
+  class="area-icon"><img class="flag flag-CA-prov"></span>`. `splitArea`'s
+  old whole-cell scan (`n.classList.contains('flag') || n.querySelector('.flag')`
+  over direct child nodes) picked this sibling icon as "the country" (its
+  `<img>` also carries the class `flag`), since it precedes the real
+  `<span class="flag flag-US">` in document order — so `Country` showed the
+  New Brunswick icon and `MB-Area` ended up with the real "United States"
+  text appended to it instead of it landing in `Country`. Fixed by rewriting
+  `splitArea` to route each `/area/` anchor individually via
+  `a.closest('.flag')` (only the anchor's own ancestor chain, never a
+  sibling) — extracted as a shared helper `_routeAreaLink`, also now used by
+  `splitLocation`. Confirmed no other row in either 400/600-row sample has
+  an `area-icon` span other than this one.

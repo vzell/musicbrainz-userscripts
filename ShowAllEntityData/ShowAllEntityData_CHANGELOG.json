@@ -1,5 +1,23 @@
 [
   {
+    "version": "9.99.710",
+    "date": "2026-07-24",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`splitArea` (used on `Area`/`Begin area`/`End area`, e.g. on `/area/<mbid>/artists`) mis-identified the country on rows decorated by the separately-installed \"Canadian Province Flags Everywhere\" userscript (@Lotheric): its whole-cell scan picked the first node whose subtree contained a `.flag` class as \"the country\", which wrongly matched the province's sibling `<span class=\"area-icon\"><img class=\"flag flag-XX-prov\"></span>` icon when it preceded the real `<span class=\"flag flag-XX\">` country span — so `Country` showed the province flag icon and `MB-Area` ended up with the real country text stuck in it instead. Fixed by rewriting `splitArea` to route each `/area/` link individually via the same per-anchor `a.closest('.flag')` check already used by `splitLocation` (only the anchor's own ancestor chain, never a sibling), extracted into a new shared helper `_routeAreaLink`."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "`splitArea`'s synthetic `MB-Area`/`MB-Begin area`/`MB-End area` columns are now further split into `MB-Locality`/`MB-Region` pairs (and `MB-Begin locality`/`MB-Begin region`, `MB-End locality`/`MB-End region`), mirroring the `Locality`/`Region` split added to `splitLocation` in 9.99.708: the first (most specific) `/area/` link is Locality, every subsequent one is Region, comma-joined. Same positional rationale as 9.99.708 — MusicBrainz area links carry no type information and the chain depth varies per place, not per country."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.709",
     "date": "2026-07-24",
     "sections": [

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.709+2026-07-24
+// @version      9.99.710+2026-07-24
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -2165,6 +2165,70 @@
         return [tdName, tdCount, tdComment];
     }
 
+    /**
+     * _routeAreaLink — routes ONE already-found '/area/' anchor to the correct
+     * output container, shared by `splitLocation` (Location cells, which also
+     * carry a leading '/place/' link) and `splitArea` (Area/Begin area/End area
+     * cells, which never do).
+     *
+     * The real country flag is always `a.closest('.flag')` — a
+     * `<span class="flag flag-XX">` WRAPPING the anchor. This must not be
+     * confused with the Canadian-province decoration added by the
+     * "MusicBrainz: Canadian Province Flags Everywhere" userscript (@Lotheric):
+     * a SIBLING `<span class="area-icon"><img class="flag flag-XX-prov"></span>`
+     * immediately before the province's own (unwrapped) anchor. Because
+     * `a.closest('.flag')` only walks the anchor's own ancestor chain, that
+     * sibling icon never matches it, so the province anchor correctly falls
+     * into the Locality/Region branch below, with its icon carried along.
+     *
+     * Non-flag (Locality/Region) links are positional, not semantic: the
+     * FIRST one seen (per `areaState.count === 0`) is the most specific
+     * (Locality — e.g. city/neighbourhood); every subsequent one is broader
+     * (Region — e.g. county/state, comma-joined). MusicBrainz area links
+     * carry no type information, and the chain depth varies per place rather
+     * than per country, so position is the only signal available.
+     *
+     * @param {HTMLAnchorElement} a - the '/area/' anchor to route
+     * @param {HTMLElement} containerL - Locality output container (<li> or <td>)
+     * @param {HTMLElement} containerR - Region output container (<li> or <td>)
+     * @param {HTMLElement} containerC - Country output container (<li> or <td>)
+     * @param {{count: number}} areaState - mutable counter, fresh per source
+     *   cell / per-<li> (the caller creates one and reuses it across every
+     *   anchor found in that node)
+     */
+    function _routeAreaLink(a, containerL, containerR, containerC, areaState) {
+        const clonedA   = a.cloneNode(true);
+        const flagSpan  = a.closest('.flag');
+        if (flagSpan) {
+            const flagImg     = flagSpan.querySelector('img')?.outerHTML || '';
+            const abbr        = flagSpan.querySelector('abbr');
+            const countryCode = abbr ? abbr.textContent.trim() : '';
+            const countryFull = abbr?.getAttribute('title') || '';
+            const countryHref = a.getAttribute('href') || '#';
+            const span        = document.createElement('span');
+            span.className    = flagSpan.className;
+            if (countryFull && countryCode) {
+                span.innerHTML = `${flagImg} <a href="${countryHref}">${countryFull} (${countryCode})</a>`;
+            } else {
+                span.innerHTML = flagSpan.innerHTML;
+            }
+            containerC.appendChild(span);
+        } else {
+            const container = areaState.count === 0 ? containerL : containerR;
+            areaState.count++;
+            if (container.hasChildNodes()) container.appendChild(document.createTextNode(', '));
+            // Canadian-province flag icon (Lotheric userscript) sits as a
+            // sibling <span class="area-icon"> immediately before the area
+            // link — carry it along so it isn't dropped by the split.
+            const iconSpan = a.previousElementSibling;
+            if (iconSpan && iconSpan.matches('span.area-icon')) {
+                container.appendChild(iconSpan.cloneNode(true));
+                container.appendChild(document.createTextNode(' '));
+            }
+            container.appendChild(clonedA);
+        }
+    }
+
     const ColumnDataExtractor = {
 
         /**
@@ -2278,42 +2342,13 @@
              * subsequent one to containerR.
              */
             const _processNode = (node, containerP, containerL, containerR, containerC) => {
-                let areaLinkIndex = 0;
+                const areaState = { count: 0 };
                 node.querySelectorAll('a').forEach(a => {
-                    const href    = a.getAttribute('href');
-                    const clonedA = a.cloneNode(true);
+                    const href = a.getAttribute('href');
                     if (href && href.includes('/place/')) {
-                        containerP.appendChild(clonedA);
+                        containerP.appendChild(a.cloneNode(true));
                     } else if (href && href.includes('/area/')) {
-                        const flagSpan = a.closest('.flag');
-                        if (flagSpan) {
-                            const flagImg     = flagSpan.querySelector('img')?.outerHTML || '';
-                            const abbr        = flagSpan.querySelector('abbr');
-                            const countryCode = abbr ? abbr.textContent.trim() : '';
-                            const countryFull = abbr?.getAttribute('title') || '';
-                            const countryHref = a.getAttribute('href') || '#';
-                            const span        = document.createElement('span');
-                            span.className    = flagSpan.className;
-                            if (countryFull && countryCode) {
-                                span.innerHTML = `${flagImg} <a href="${countryHref}">${countryFull} (${countryCode})</a>`;
-                            } else {
-                                span.innerHTML = flagSpan.innerHTML;
-                            }
-                            containerC.appendChild(span);
-                        } else {
-                            const container = areaLinkIndex === 0 ? containerL : containerR;
-                            areaLinkIndex++;
-                            if (container.hasChildNodes()) container.appendChild(document.createTextNode(', '));
-                            // Canadian-province flag icon (Lotheric userscript) sits as a
-                            // sibling <span class="area-icon"> immediately before the area
-                            // link — carry it along so it isn't dropped by the split.
-                            const iconSpan = a.previousElementSibling;
-                            if (iconSpan && iconSpan.matches('span.area-icon')) {
-                                container.appendChild(iconSpan.cloneNode(true));
-                                container.appendChild(document.createTextNode(' '));
-                            }
-                            container.appendChild(clonedA);
-                        }
+                        _routeAreaLink(a, containerL, containerR, containerC, areaState);
                     }
                 });
             };
@@ -2352,45 +2387,40 @@
         },
 
         /**
-         * splitArea — splits an "Area" cell into MB-Area and Country cells.
-         * The country is identified by a .flag span; all remaining sibling nodes go
-         * to MB-Area.  Leading/trailing comma separators adjacent to the country node
-         * are stripped from both output cells.
-         * Synthetic columns: ['MB-Area', 'Country']
+         * splitArea — splits an area-hierarchy cell (no place link — e.g. "Area",
+         * "Begin area", "End area", or the "Name" column on an Areas-entity
+         * listing) into three cells: Locality, Region, and Country (caller-named
+         * via `syntheticColumns`). Uses the same per-anchor routing as
+         * `splitLocation`'s area/country handling (`_routeAreaLink`): the first
+         * non-flag '/area/' anchor is the most specific entry (Locality), every
+         * subsequent one is broader (Region, comma-joined), and the flag-wrapped
+         * anchor is Country.
+         *
+         * Previously this used a whole-cell sibling-node scan that picked "the
+         * first node whose subtree contains .flag" as the country — which wrongly
+         * matched the Canadian-province decoration (`<span class="area-icon">`
+         * containing an `<img class="flag flag-XX-prov">`) when it preceded the
+         * real country's `<span class="flag flag-XX">`, corrupting both output
+         * cells (see debug/area.org). Routing per-anchor via `a.closest('.flag')`
+         * (only the anchor's own ancestor chain, never a sibling) fixes this.
+         *
+         * Synthetic columns: caller-defined 3-name array, e.g.
+         * ['MB-Locality', 'MB-Region', 'Country']
          */
         splitArea(sourceCell) {
-            const tdArea    = document.createElement('td');
-            const tdCountry = document.createElement('td');
-
-            /** Remove leading/trailing comma-or-whitespace text nodes from a cell. */
-            const trimCell = (cell) => {
-                const isTrimTarget = (n) =>
-                    n.nodeType === Node.TEXT_NODE &&
-                    (n.textContent.trim() === ',' || !n.textContent.trim());
-                while (cell.firstChild && isTrimTarget(cell.firstChild)) cell.removeChild(cell.firstChild);
-                while (cell.lastChild  && isTrimTarget(cell.lastChild))  cell.removeChild(cell.lastChild);
-            };
-
+            const tdL = document.createElement('td');
+            const tdR = document.createElement('td');
+            const tdC = document.createElement('td');
             if (sourceCell) {
-                const nodes            = Array.from(sourceCell.childNodes);
-                const countryNodeIndex = nodes.findIndex(n =>
-                    n.nodeType === Node.ELEMENT_NODE &&
-                    (n.classList.contains('flag') || n.querySelector('.flag'))
-                );
-                nodes.forEach((n, idx) => {
-                    if (idx === countryNodeIndex) {
-                        tdCountry.appendChild(n.cloneNode(true));
-                    } else {
-                        const isCommaSep = n.nodeType === Node.TEXT_NODE && n.textContent.trim() === ',';
-                        const isAdjacent = (idx === countryNodeIndex - 1 || idx === countryNodeIndex + 1);
-                        if (isCommaSep && isAdjacent) return; // skip dangling comma
-                        tdArea.appendChild(n.cloneNode(true));
+                const areaState = { count: 0 };
+                sourceCell.querySelectorAll('a').forEach(a => {
+                    const href = a.getAttribute('href');
+                    if (href && href.includes('/area/')) {
+                        _routeAreaLink(a, tdL, tdR, tdC, areaState);
                     }
                 });
-                trimCell(tdArea);
-                trimCell(tdCountry);
             }
-            return [tdArea, tdCountry];
+            return [tdL, tdR, tdC];
         },
 
         /**
@@ -3651,7 +3681,7 @@
             result.push({ sourceColumn: 'Location',     extractor: 'splitLocation',    syntheticColumns: ['Place', 'Locality', 'Region', 'Country'], colIdx: -1 });
         }
         if (features.splitArea && !result.some(e => e.sourceColumn === 'Area')) {
-            result.push({ sourceColumn: 'Area',         extractor: 'splitArea',        syntheticColumns: ['MB-Area', 'Country'], colIdx: -1 });
+            result.push({ sourceColumn: 'Area',         extractor: 'splitArea',        syntheticColumns: ['MB-Locality', 'MB-Region', 'Country'], colIdx: -1 });
         }
 
         return result;
@@ -6835,16 +6865,16 @@
             entityFeatures: {
                 'Areas': {
                     columnExtractors: [
-                        { sourceColumn: 'Area', extractor: 'splitArea', syntheticColumns: ['MB-Area', 'Country'] }
+                        { sourceColumn: 'Area', extractor: 'splitArea', syntheticColumns: ['MB-Locality', 'MB-Region', 'Country'] }
                     ],
                     extractMainColumn: 'Area',
                     stickyColumn: 'Area'
                 },
                 'Artists': {
                     columnExtractors: [
-                        { sourceColumn: 'Area',       extractor: 'splitArea', syntheticColumns: ['MB-Area', 'Country'] },
-                        { sourceColumn: 'Begin area', extractor: 'splitArea', syntheticColumns: ['MB-Begin area', 'Begin country'] },
-                        { sourceColumn: 'End area',   extractor: 'splitArea', syntheticColumns: ['MB-End area', 'End country'] },
+                        { sourceColumn: 'Area',       extractor: 'splitArea', syntheticColumns: ['MB-Locality', 'MB-Region', 'Country'] },
+                        { sourceColumn: 'Begin area', extractor: 'splitArea', syntheticColumns: ['MB-Begin locality', 'MB-Begin region', 'Begin country'] },
+                        { sourceColumn: 'End area',   extractor: 'splitArea', syntheticColumns: ['MB-End locality', 'MB-End region', 'End country'] },
                         { sourceColumn: 'Begin',      extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
                         { sourceColumn: 'End',        extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
                     ],
@@ -6877,7 +6907,7 @@
                 },
                 'Labels': {
                     columnExtractors: [
-                        { sourceColumn: 'Area',       extractor: 'splitArea', syntheticColumns: ['MB-Area', 'Country'] },
+                        { sourceColumn: 'Area',       extractor: 'splitArea', syntheticColumns: ['MB-Locality', 'MB-Region', 'Country'] },
                         { sourceColumn: 'Begin',      extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
                         { sourceColumn: 'End',        extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
                     ],
@@ -7048,7 +7078,7 @@
                 },
                 'Places': {
                     columnExtractors: [
-                        { sourceColumn: 'Area',  extractor: 'splitArea', syntheticColumns: ['MB-Area', 'Country'] },
+                        { sourceColumn: 'Area',  extractor: 'splitArea', syntheticColumns: ['MB-Locality', 'MB-Region', 'Country'] },
                         { sourceColumn: 'Begin', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
                         { sourceColumn: 'End',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
                     ],
@@ -7061,7 +7091,7 @@
                 },
                 'Areas': {
                     columnExtractors: [
-                        { sourceColumn: 'Name',  extractor: 'splitArea', syntheticColumns: ['Area', 'Country'] },
+                        { sourceColumn: 'Name',  extractor: 'splitArea', syntheticColumns: ['Locality', 'Region', 'Country'] },
                         { sourceColumn: 'Begin', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
                         { sourceColumn: 'End',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
                     ],
@@ -7123,7 +7153,7 @@
             buttons: [ { label: 'Show all Artists for Instrument' } ],
             features: {
                 columnExtractors: [
-                    { sourceColumn: 'Area', extractor: 'splitArea', syntheticColumns: ['MB-Area', 'Country'] }
+                    { sourceColumn: 'Area', extractor: 'splitArea', syntheticColumns: ['MB-Locality', 'MB-Region', 'Country'] }
                 ],
                 renderMultiRowCell: [ 'Relationship types' ],
                 collapsableColumns: [ 'Relationship types' ],
@@ -7213,9 +7243,9 @@
             buttons: [ { label: 'Show all Artists for Area' } ],
             features: {
                 columnExtractors: [
-                    { sourceColumn: 'Area',       extractor: 'splitArea', syntheticColumns: ['MB-Area', 'Country'] },
-                    { sourceColumn: 'Begin area', extractor: 'splitArea', syntheticColumns: ['MB-Begin area', 'Begin country'] },
-                    { sourceColumn: 'End area',   extractor: 'splitArea', syntheticColumns: ['MB-End area', 'End country'] },
+                    { sourceColumn: 'Area',       extractor: 'splitArea', syntheticColumns: ['MB-Locality', 'MB-Region', 'Country'] },
+                    { sourceColumn: 'Begin area', extractor: 'splitArea', syntheticColumns: ['MB-Begin locality', 'MB-Begin region', 'Begin country'] },
+                    { sourceColumn: 'End area',   extractor: 'splitArea', syntheticColumns: ['MB-End locality', 'MB-End region', 'End country'] },
                     { sourceColumn: 'Begin',      extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
                     { sourceColumn: 'End',        extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
                 ],
@@ -7252,7 +7282,7 @@
             buttons: [ { label: 'Show all Labels for Area' } ],
             features: {
                 columnExtractors: [
-                    { sourceColumn: 'Area',  extractor: 'splitArea', syntheticColumns: ['MB-Area', 'Country'] },
+                    { sourceColumn: 'Area',  extractor: 'splitArea', syntheticColumns: ['MB-Locality', 'MB-Region', 'Country'] },
                     { sourceColumn: 'Begin', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
                     { sourceColumn: 'End',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
                 ],
@@ -7360,7 +7390,7 @@
             buttons: [ { label: 'Show all Places for Area' } ],
             features: {
                 columnExtractors: [
-                    { sourceColumn: 'Area', extractor: 'splitArea', syntheticColumns: ['MB-Area', 'Country'] }
+                    { sourceColumn: 'Area', extractor: 'splitArea', syntheticColumns: ['MB-Locality', 'MB-Region', 'Country'] }
                 ],
                 extractMainColumn: 'Place',
                 stickyColumn: 'Place'
@@ -26246,10 +26276,12 @@ a { color: #1565c0; }`;
                     return `Extracted from '${src}': the country, split from the ${src} field.`;
                 break;
             case 'splitArea':
-                if (colName === 'MB-Area')
-                    return `Extracted from '${src}': the MusicBrainz area name (city/region), split from the Area cell.`;
-                if (colName === 'Country')
-                    return `Extracted from '${src}': the country code, split from the Area cell.`;
+                if (colName.endsWith('ocality'))
+                    return `Extracted from '${src}': the most specific area (city or neighbourhood), split from the ${src} field.`;
+                if (colName.endsWith('egion'))
+                    return `Extracted from '${src}': the broader administrative area (county, state/province, or equivalent), split from the ${src} field. May contain multiple comma-joined levels.`;
+                if (colName.endsWith('ountry'))
+                    return `Extracted from '${src}': the country, split from the ${src} field.`;
                 break;
             case 'caa':
                 if (colName === 'CAA')
