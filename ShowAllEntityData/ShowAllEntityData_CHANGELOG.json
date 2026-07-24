@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.709",
+    "date": "2026-07-24",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "`report-detail` (e.g. `/report/AnnotationsPlaces`) now also runs `splitLocation` on the `Place` column, not just `Location` — the native `Place` cell on Place-category reports has the same \"place in area-chain[, flag country]\" shape. The extracted place-name column is called `MB-Place` rather than `Place` so it doesn't collide with the native `Place` column (which still carries the full place name + area/country chain unchanged); `Locality`/`Region`/`Country` are shared with the existing `Location`-based split."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.708",
     "date": "2026-07-24",
     "sections": [

@@ -392,3 +392,20 @@ user-supplied pair of `search`-page snapshots. Snapshots used:
   pagination (a closed election's vote list is fixed and already fully
   rendered) → `non_paginated: true`. `pageType: 'auto-editor-election'`,
   `tableMode: 'single'`.
+
+## 2026-07-24 — AnnotationsPlaces Place column (`place.html`)
+
+- `place.html` (`/report/AnnotationsPlaces?filter=0`, already-rendered
+  snapshot): the sticky column 0 is native `data-col-name="Place"`, not
+  `"Location"`. Its cell shape is identical to the `Location` column on
+  Events pages: `<a href="/place/…">Name</a>` [optional `<span
+  class="comment">(disambiguation)</span>`] ` in ` + comma-joined
+  `<a href="/area/…">` chain, ending in a `.flag`-wrapped country link
+  (300-row sample: 0-6 area links per row, same "depth varies per place, not
+  per country" pattern as `debug/location.html`). Added a second
+  `columnExtractors` entry to `report-detail` targeting `sourceColumn:
+  'Place'` with `extractor: 'splitLocation'`, naming its first synthetic
+  column `MB-Place` (not `Place`) to avoid colliding with the native `Place`
+  column, which is left untouched and still shows the full combined text.
+  `Locality`/`Region`/`Country` synthetic names are shared with the existing
+  `Location`-sourced entry — same extractor, same output shape.

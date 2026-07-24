@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.708+2026-07-24
+// @version      9.99.709+2026-07-24
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -6251,6 +6251,15 @@
             features: {
                 columnExtractors: [
                     { sourceColumn: 'Location', extractor: 'splitLocation', syntheticColumns: ['Place', 'Locality', 'Region', 'Country'] },
+                    // 'Place' is itself a candidate source column on Place-category
+                    // reports (e.g. AnnotationsPlaces — see debug/place.html): its native
+                    // cell is "<place link> in <area chain>[, <flag country>]", the same
+                    // shape splitLocation already handles for 'Location'. The first
+                    // synthetic column is named 'MB-Place' (not 'Place') so it doesn't
+                    // collide with the source column name — the source 'Place' column is
+                    // kept as-is (it carries the place name plus the full area/country
+                    // chain), while 'MB-Place' isolates just the place name.
+                    { sourceColumn: 'Place', extractor: 'splitLocation', syntheticColumns: ['MB-Place', 'Locality', 'Region', 'Country'] },
                     { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] },
                     { sourceColumn: 'Last edited', extractor: 'dateTimeParts', syntheticColumns: ['Last edited date', 'Last edited time'] },
                     { sourceColumn: 'Annotation', extractor: 'numberOfChars', syntheticColumns: ['Annotation chars'] }
@@ -26226,13 +26235,15 @@ a { color: #1565c0; }`;
                 break;
             case 'splitLocation':
                 if (colName === 'Place')
-                    return `Extracted from '${src}': the venue or place name, split from the Location field.`;
+                    return `Extracted from '${src}': the venue or place name, split from the ${src} field.`;
+                if (colName === 'MB-Place')
+                    return `Extracted from '${src}': just the place name, split out of the combined ${src} cell (which also carries the area/country chain).`;
                 if (colName === 'Locality')
-                    return `Extracted from '${src}': the most specific area (city or neighbourhood), split from the Location field.`;
+                    return `Extracted from '${src}': the most specific area (city or neighbourhood), split from the ${src} field.`;
                 if (colName === 'Region')
-                    return `Extracted from '${src}': the broader administrative area (county, state/province, or equivalent), split from the Location field. May contain multiple comma-joined levels.`;
+                    return `Extracted from '${src}': the broader administrative area (county, state/province, or equivalent), split from the ${src} field. May contain multiple comma-joined levels.`;
                 if (colName === 'Country')
-                    return `Extracted from '${src}': the country, split from the Location field.`;
+                    return `Extracted from '${src}': the country, split from the ${src} field.`;
                 break;
             case 'splitArea':
                 if (colName === 'MB-Area')
