@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.707+2026-07-23
+// @version      9.99.708+2026-07-24
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -2231,40 +2231,54 @@
 
         /**
          * splitLocation — splits a "Location" cell (venue / city / country) into
-         * three separate cells: Place, Area, and Country.
-         * Place   ← links whose href contains '/place/'
-         * Area    ← links whose href contains '/area/' but NOT wrapped in a .flag span
-         * Country ← links whose href contains '/area/' wrapped in a .flag span
+         * four separate cells: Place, Locality, Region, and Country.
+         * Place    ← links whose href contains '/place/'
+         * Locality ← the first (most specific) link whose href contains '/area/'
+         *            and is NOT wrapped in a .flag span — e.g. a city or
+         *            neighbourhood
+         * Region   ← every subsequent '/area/' link (comma-joined, in existing
+         *            broad-to-specific order) — e.g. county/borough + state.
+         *            MusicBrainz area links carry no type information, and the
+         *            chain length between Place and Country varies per place
+         *            depending on how much of the hierarchy is filled in (not on
+         *            a fixed per-country format) — so "first link vs. the rest"
+         *            is a positional split, not a semantic City/County/State one.
+         * Country  ← links whose href contains '/area/' wrapped in a .flag span
          *
          * Canadian province flags: the "MusicBrainz: Canadian Province Flags
          * Everywhere" userscript (@Lotheric) injects a `<span class="area-icon">`
          * containing the province `<img class="flag flag-XX-prov">` immediately
          * before the province's `<a href="/area/…">` link (sibling, not a wrapper —
          * unlike the country `.flag` span). When present, that icon span is cloned
-         * into the Area cell alongside its link so the flag survives the split.
+         * alongside its link into whichever cell (Locality or Region) receives it,
+         * so the flag survives the split.
          *
          * Multi-row aware: when the source cell contains a <ul><li> structure (i.e.
          * the Location column was already wrapped by renderMultiRowCell or inherited
          * a multi-row layout from MusicBrainz), each <li> is processed independently
-         * and the results are placed into parallel <ul><li> lists in the three output
+         * and the results are placed into parallel <ul><li> lists in the four output
          * cells — one <li> per source <li> for each synthetic column.  This mirrors
-         * splitCountryDate's per-event <li> approach so that the three split columns
+         * splitCountryDate's per-event <li> approach so that the four split columns
          * stay row-aligned with the source.
          *
-         * Synthetic columns: ['Place', 'Area', 'Country']
+         * Synthetic columns: ['Place', 'Locality', 'Region', 'Country']
          */
         splitLocation(sourceCell) {
             const tdP = document.createElement('td');
-            const tdA = document.createElement('td');
+            const tdL = document.createElement('td');
+            const tdR = document.createElement('td');
             const tdC = document.createElement('td');
-            if (!sourceCell) return [tdP, tdA, tdC];
+            if (!sourceCell) return [tdP, tdL, tdR, tdC];
 
             /**
              * Process one DOM node (a single <li> content or the whole flat cell)
-             * and append the extracted Place / Area / Country fragments to the
-             * provided containers (either <li> or <td> elements).
+             * and append the extracted Place / Locality / Region / Country
+             * fragments to the provided containers (either <li> or <td> elements).
+             * The first non-flag '/area/' link found goes to containerL, every
+             * subsequent one to containerR.
              */
-            const _processNode = (node, containerP, containerA, containerC) => {
+            const _processNode = (node, containerP, containerL, containerR, containerC) => {
+                let areaLinkIndex = 0;
                 node.querySelectorAll('a').forEach(a => {
                     const href    = a.getAttribute('href');
                     const clonedA = a.cloneNode(true);
@@ -2287,16 +2301,18 @@
                             }
                             containerC.appendChild(span);
                         } else {
-                            if (containerA.hasChildNodes()) containerA.appendChild(document.createTextNode(', '));
+                            const container = areaLinkIndex === 0 ? containerL : containerR;
+                            areaLinkIndex++;
+                            if (container.hasChildNodes()) container.appendChild(document.createTextNode(', '));
                             // Canadian-province flag icon (Lotheric userscript) sits as a
                             // sibling <span class="area-icon"> immediately before the area
                             // link — carry it along so it isn't dropped by the split.
                             const iconSpan = a.previousElementSibling;
                             if (iconSpan && iconSpan.matches('span.area-icon')) {
-                                containerA.appendChild(iconSpan.cloneNode(true));
-                                containerA.appendChild(document.createTextNode(' '));
+                                container.appendChild(iconSpan.cloneNode(true));
+                                container.appendChild(document.createTextNode(' '));
                             }
-                            containerA.appendChild(clonedA);
+                            container.appendChild(clonedA);
                         }
                     }
                 });
@@ -2307,28 +2323,32 @@
             if (sourceLis.length > 0) {
                 // ── Multi-row path: build parallel <ul><li> lists ──────────────
                 const ulP = document.createElement('ul');
-                const ulA = document.createElement('ul');
+                const ulL = document.createElement('ul');
+                const ulR = document.createElement('ul');
                 const ulC = document.createElement('ul');
 
                 sourceLis.forEach(li => {
                     const liP = document.createElement('li');
-                    const liA = document.createElement('li');
+                    const liL = document.createElement('li');
+                    const liR = document.createElement('li');
                     const liC = document.createElement('li');
-                    _processNode(li, liP, liA, liC);
+                    _processNode(li, liP, liL, liR, liC);
                     ulP.appendChild(liP);
-                    ulA.appendChild(liA);
+                    ulL.appendChild(liL);
+                    ulR.appendChild(liR);
                     ulC.appendChild(liC);
                 });
 
                 if (ulP.querySelector('li a')) tdP.appendChild(ulP);
-                if (ulA.querySelector('li a')) tdA.appendChild(ulA);
+                if (ulL.querySelector('li a')) tdL.appendChild(ulL);
+                if (ulR.querySelector('li a')) tdR.appendChild(ulR);
                 if (ulC.querySelector('li a')) tdC.appendChild(ulC);
             } else {
                 // ── Flat path: original behaviour for non-multi-row cells ──────
-                _processNode(sourceCell, tdP, tdA, tdC);
+                _processNode(sourceCell, tdP, tdL, tdR, tdC);
             }
 
-            return [tdP, tdA, tdC];
+            return [tdP, tdL, tdR, tdC];
         },
 
         /**
@@ -3628,7 +3648,7 @@
             result.push({ sourceColumn: 'Country/Date', extractor: 'splitCountryDate', syntheticColumns: ['Country', 'Date'],    colIdx: -1 });
         }
         if (features.splitLocation && !result.some(e => e.sourceColumn === 'Location')) {
-            result.push({ sourceColumn: 'Location',     extractor: 'splitLocation',    syntheticColumns: ['Place', 'Area', 'Country'], colIdx: -1 });
+            result.push({ sourceColumn: 'Location',     extractor: 'splitLocation',    syntheticColumns: ['Place', 'Locality', 'Region', 'Country'], colIdx: -1 });
         }
         if (features.splitArea && !result.some(e => e.sourceColumn === 'Area')) {
             result.push({ sourceColumn: 'Area',         extractor: 'splitArea',        syntheticColumns: ['MB-Area', 'Country'], colIdx: -1 });
@@ -6230,7 +6250,7 @@
             ],
             features: {
                 columnExtractors: [
-                    { sourceColumn: 'Location', extractor: 'splitLocation', syntheticColumns: ['Place', 'Area', 'Country'] },
+                    { sourceColumn: 'Location', extractor: 'splitLocation', syntheticColumns: ['Place', 'Locality', 'Region', 'Country'] },
                     { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] },
                     { sourceColumn: 'Last edited', extractor: 'dateTimeParts', syntheticColumns: ['Last edited date', 'Last edited time'] },
                     { sourceColumn: 'Annotation', extractor: 'numberOfChars', syntheticColumns: ['Annotation chars'] }
@@ -6827,11 +6847,11 @@
                     columnExtractors: [
                         { sourceColumn: 'Event',    extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] },
                         { sourceColumn: 'Event',    extractor: 'caa',            syntheticColumns: ['EAA'] },
-                        { sourceColumn: 'Location', extractor: 'splitLocation',  syntheticColumns: ['Place', 'Area', 'Country'] },
+                        { sourceColumn: 'Location', extractor: 'splitLocation',  syntheticColumns: ['Place', 'Locality', 'Region', 'Country'] },
                         { sourceColumn: 'Event',    extractor: 'primaryAlias',   syntheticColumns: ['Primary Alias'] },
                         { sourceColumn: 'Date',     extractor: 'dateParts',      syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
                     ],
-                    collapsableColumns: [ 'Artists', 'Location', 'EAA', 'Place', 'Area', 'Country' ],
+                    collapsableColumns: [ 'Artists', 'Location', 'EAA', 'Place', 'Locality', 'Region', 'Country' ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
                     tooltipColumns: [ 'MB-Name', 'italic:Comment', 'Primary Alias', '---', 'Artists', 'Location', ['Date', '(', 'Time', ')'], 'Cancelled' ],
                     addEAA: 'Event',
@@ -6965,11 +6985,11 @@
                     columnExtractors: [
                         { sourceColumn: 'Name',     extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] },
                         { sourceColumn: 'Name',     extractor: 'caa',            syntheticColumns: ['EAA'] },
-                        { sourceColumn: 'Location', extractor: 'splitLocation',  syntheticColumns: ['Place', 'Area', 'Country'] },
+                        { sourceColumn: 'Location', extractor: 'splitLocation',  syntheticColumns: ['Place', 'Locality', 'Region', 'Country'] },
                         { sourceColumn: 'Name',     extractor: 'primaryAlias',   syntheticColumns: ['Primary Alias'] },
                         { sourceColumn: 'Name',     extractor: 'dateParts',      syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
                     ],
-                    collapsableColumns: [ 'Artists', 'Location', 'EAA', 'Place', 'Area', 'Country' ],
+                    collapsableColumns: [ 'Artists', 'Location', 'EAA', 'Place', 'Locality', 'Region', 'Country' ],
                     integerColumns: [
                         { sourceColumn: 'DD',   align: 'R' },
                         { sourceColumn: 'MM',   align: 'R' },
@@ -7204,11 +7224,11 @@
                 columnExtractors: [
                     { sourceColumn: 'Event',    extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] },
                     { sourceColumn: 'Event',    extractor: 'caa',            syntheticColumns: ['EAA'] },
-                    { sourceColumn: 'Location', extractor: 'splitLocation',  syntheticColumns: ['Place', 'Area', 'Country'] },
+                    { sourceColumn: 'Location', extractor: 'splitLocation',  syntheticColumns: ['Place', 'Locality', 'Region', 'Country'] },
                     { sourceColumn: 'Event',    extractor: 'primaryAlias',   syntheticColumns: ['Primary Alias'] },
                     { sourceColumn: 'Date',     extractor: 'dateParts',      syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
                 ],
-                collapsableColumns: [ 'Artists', 'Location', 'EAA', 'Place', 'Area', 'Country' ],
+                collapsableColumns: [ 'Artists', 'Location', 'EAA', 'Place', 'Locality', 'Region', 'Country' ],
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
                 tooltipColumns: [ 'MB-Name', 'italic:Comment', 'Primary Alias', 'Type', '---', 'Artists', 'Location', ['Date', '(', 'Time', ')'], 'Cancelled' ],
                 addEAA: 'Event',
@@ -7579,11 +7599,11 @@
                     columnExtractors: [
                         { sourceColumn: 'Event', extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] },
                         { sourceColumn: 'Event', extractor: 'caa', syntheticColumns: ['EAA'] },
-                        { sourceColumn: 'Location', extractor: 'splitLocation', syntheticColumns: ['Place', 'Area', 'Country'] },
+                        { sourceColumn: 'Location', extractor: 'splitLocation', syntheticColumns: ['Place', 'Locality', 'Region', 'Country'] },
                         { sourceColumn: 'Event', extractor: 'primaryAlias', syntheticColumns: ['Primary Alias'] },
                         { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
                     ],
-                    collapsableColumns: [ 'Artists', 'Location', 'EAA', 'Place', 'Area', 'Country' ],
+                    collapsableColumns: [ 'Artists', 'Location', 'EAA', 'Place', 'Locality', 'Region', 'Country' ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
                     tooltipColumns: [ 'MB-Name', 'italic:Comment', 'Primary Alias', '---', 'Artists', 'Location', ['Date', '(', 'Time', ')'], 'Cancelled' ],
                     addEAA: 'Event',
@@ -8107,11 +8127,11 @@
                 columnExtractors: [
                     { sourceColumn: 'Event',    extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] },
                     { sourceColumn: 'Event',    extractor: 'caa',            syntheticColumns: ['EAA'] },
-                    { sourceColumn: 'Location', extractor: 'splitLocation',  syntheticColumns: ['Place', 'Area', 'Country'] },
+                    { sourceColumn: 'Location', extractor: 'splitLocation',  syntheticColumns: ['Place', 'Locality', 'Region', 'Country'] },
                     { sourceColumn: 'Event',    extractor: 'primaryAlias',   syntheticColumns: ['Primary Alias'] },
                     { sourceColumn: 'Date',     extractor: 'dateParts',      syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
                 ],
-                collapsableColumns: [ 'Location', 'EAA', 'Place', 'Area', 'Country' ],
+                collapsableColumns: [ 'Location', 'EAA', 'Place', 'Locality', 'Region', 'Country' ],
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
                 tooltipColumns: [ 'MB-Name', 'italic:Comment', 'Primary Alias', 'Type', '---', 'Role', 'Location', ['Date', '(', 'Time', ')'], 'Cancelled' ],
                 addEAA: 'Event',
@@ -26207,8 +26227,10 @@ a { color: #1565c0; }`;
             case 'splitLocation':
                 if (colName === 'Place')
                     return `Extracted from '${src}': the venue or place name, split from the Location field.`;
-                if (colName === 'Area')
-                    return `Extracted from '${src}': the city or region, split from the Location field.`;
+                if (colName === 'Locality')
+                    return `Extracted from '${src}': the most specific area (city or neighbourhood), split from the Location field.`;
+                if (colName === 'Region')
+                    return `Extracted from '${src}': the broader administrative area (county, state/province, or equivalent), split from the Location field. May contain multiple comma-joined levels.`;
                 if (colName === 'Country')
                     return `Extracted from '${src}': the country, split from the Location field.`;
                 break;
