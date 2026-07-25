@@ -21139,6 +21139,13 @@ a { color: #1565c0; }`;
     // Updated by every toggle click; read by initCollapsableColumns, testRowMatch,
     // and openUniqDrop so they all agree even after renderFinalTable+init resets the DOM.
     const expandedCells = new Map();
+    // Tracks which "rowIdx:localityColIdx" pairs have already had their Locality
+    // value forced into Region by initAreaFlagRegionObserver() (see near
+    // initTreleasesObserver) — an idempotency guard so a row is never corrected
+    // twice. Applied directly to the master row (allRows / groupedRows), so
+    // unlike expandedCells no per-render replay is needed: cloneNode(true)
+    // carries the corrected DOM content forward automatically.
+    const _areaFlagRegionCorrected = new Set();
     // Sparse text cache for source rows, keyed by TR element.
     // Populated lazily by _cachedFullText / _cachedColText on matchOnly=true passes.
     // Entries are GC'd automatically when allRows / groupedRows are replaced.
@@ -27647,6 +27654,7 @@ a { color: #1565c0; }`;
         originalAllRows = [];
         groupedRows = [];
         expandedCells.clear();
+        _areaFlagRegionCorrected.clear();
         _mbRowIdxCounter = 0;
 
         // Reset the arrays that are populated by the MAIN fetch pass.
@@ -29835,6 +29843,167 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Finds the master row (in `allRows`, or nested inside `groupedRows[*].rows`)
+     * carrying the given `data-mb-row-idx` value.
+     *
+     * `renderFinalTable`/`renderGroupedTable` insert `cloneNode(true)` copies of
+     * these master rows into the live DOM (see the cloneNode-drops-listeners
+     * pitfall documented elsewhere) — mutating the master row directly, rather
+     * than only the live clone, is what lets `_forceLocalityToRegion` survive
+     * every subsequent sort/filter re-render without needing a separate replay
+     * step (unlike `expandedCells`, which exists precisely because THAT state
+     * can't be baked into the master row).
+     *
+     * @param {string} rowIdx
+     * @returns {HTMLTableRowElement|null}
+     */
+    function _findMasterRowByIdx(rowIdx) {
+        const fromSingle = allRows.find(r => r.dataset.mbRowIdx === rowIdx);
+        if (fromSingle) return fromSingle;
+        for (const group of groupedRows) {
+            const found = group.rows.find(r => r.dataset.mbRowIdx === rowIdx);
+            if (found) return found;
+        }
+        return null;
+    }
+
+    /**
+     * Scans one live table's header row for Locality/Region/Country column
+     * triplets produced by `splitLocation`/`splitArea` (via the shared
+     * `_routeAreaLink` helper) — these are always injected as adjacent
+     * synthetic columns in that exact order, so a name ending in "ocality"
+     * immediately followed by one ending in "egion" then one ending in
+     * "ountry" reliably identifies a triplet regardless of its caller-chosen
+     * prefix (`Locality`/`MB-Locality`/`MB-Begin locality`/…, see
+     * `sa_area_flag_region_countries`'s description for the full naming set).
+     *
+     * @param {HTMLTableElement} table
+     * @returns {Array<{localityIdx: number, regionIdx: number, countryIdx: number}>}
+     */
+    function _flagRegionColumnTrios(table) {
+        const headers = Array.from(table.querySelectorAll('thead tr:first-child th'));
+        const names = headers.map(th => th.dataset.colName ||
+            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' '));
+        const trios = [];
+        for (let i = 0; i < names.length - 2; i++) {
+            if (names[i].endsWith('ocality') && names[i + 1].endsWith('egion') && names[i + 2].endsWith('ountry')) {
+                trios.push({ localityIdx: i, regionIdx: i + 1, countryIdx: i + 2 });
+            }
+        }
+        return trios;
+    }
+
+    /**
+     * Moves a Locality cell's entire content into the Region cell of the same
+     * row, preserving narrow-to-broad order (the moved content is inserted
+     * BEFORE whatever Region already holds, since it was always the more
+     * specific entry). No-op if Locality is already empty.
+     *
+     * @param {HTMLTableRowElement} tr
+     * @param {{localityIdx: number, regionIdx: number}} trio
+     */
+    function _forceLocalityToRegion(tr, trio) {
+        const localityTd = tr.cells[trio.localityIdx];
+        const regionTd    = tr.cells[trio.regionIdx];
+        if (!localityTd || !regionTd || !localityTd.hasChildNodes()) return;
+        const movedNodes = Array.from(localityTd.childNodes);
+        localityTd.textContent = '';
+        if (regionTd.firstChild) {
+            const sep = document.createTextNode(', ');
+            regionTd.insertBefore(sep, regionTd.firstChild);
+            movedNodes.forEach(n => regionTd.insertBefore(n, sep));
+        } else {
+            movedNodes.forEach(n => regionTd.appendChild(n));
+        }
+    }
+
+    /**
+     * Checks one row against one Locality/Region/Country trio and, if its
+     * Locality cell has just been decorated with a subdivision flag icon
+     * (`a[data-flag-processed]`, set by the "MusicBrainz: More Flags
+     * Everywhere" / "Canadian Province Flags Everywhere" userscripts,
+     * @Lotheric) AND its resolved Country is in the user-editable
+     * `sa_area_flag_region_countries` list, moves that Locality value into
+     * Region — on both the live row (immediate visual feedback) and the
+     * master row (so the correction survives future re-renders; see
+     * `_findMasterRowByIdx`).
+     *
+     * This is the deferred counterpart to the same check `_routeAreaLink`
+     * already performs at extraction time: extraction only sees whatever the
+     * live DOM looked like at fetch time, which is accurate for the current
+     * page (page 1) but NOT for pages 2..Max, whose rows are parsed from a
+     * detached `DOMParser` document (see `fetchHtml`) that the flag-decorating
+     * userscript never touches. By the time this row is inserted into the
+     * live tbody and re-scanned by that userscript, the icon becomes
+     * available — this function is what reacts to it.
+     *
+     * @param {HTMLTableRowElement} tr
+     * @param {Array<{localityIdx: number, regionIdx: number, countryIdx: number}>} trios
+     */
+    function _maybeCorrectAreaFlagRegion(tr, trios) {
+        const rowIdx = tr.dataset.mbRowIdx;
+        if (rowIdx === undefined) return;
+        trios.forEach(trio => {
+            const key = `${rowIdx}:${trio.localityIdx}`;
+            if (_areaFlagRegionCorrected.has(key)) return;
+            const localityTd = tr.cells[trio.localityIdx];
+            if (!localityTd || !localityTd.querySelector('a[data-flag-processed]')) return;
+            const countryTd   = tr.cells[trio.countryIdx];
+            const countryName = (countryTd?.textContent || '')
+                .replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase();
+            if (!countryName || !_flagRegionCountrySet().has(countryName)) return;
+
+            _forceLocalityToRegion(tr, trio);
+            _areaFlagRegionCorrected.add(key);
+            const masterRow = _findMasterRowByIdx(rowIdx);
+            if (masterRow && masterRow !== tr) _forceLocalityToRegion(masterRow, trio);
+            Lib.debug('render', `_maybeCorrectAreaFlagRegion: moved Locality->Region for rowIdx=${rowIdx} (${countryName})`);
+        });
+    }
+
+    const _areaFlagObservedTbodies = new WeakSet();
+    /**
+     * Attaches a `MutationObserver` to every `<tbody>` of every `table.tbl`
+     * currently in the DOM, watching for `data-flag-processed` attributes
+     * appearing on area anchors — the signal that a flag-decorating userscript
+     * ("MusicBrainz: More Flags Everywhere" / "Canadian Province Flags
+     * Everywhere", @Lotheric) has just processed a link that was still
+     * undecorated when `splitLocation`/`splitArea` originally ran (always true
+     * for pages 2..Max — see `_maybeCorrectAreaFlagRegion`'s doc comment).
+     *
+     * No-ops entirely when `sa_area_flag_region_countries` is empty, or when a
+     * table has no Locality/Region/Country column triplet (see
+     * `_flagRegionColumnTrios`) — most pages pay zero overhead.
+     *
+     * Observed tbodies are tracked in `_areaFlagObservedTbodies` (a `WeakSet`)
+     * so repeated calls (e.g. after a filter re-render) do not attach
+     * duplicate observers — mirrors `initTreleasesObserver`'s pattern exactly.
+     */
+    function initAreaFlagRegionObserver() {
+        if (_flagRegionCountrySet().size === 0) return;
+        document.querySelectorAll('table.tbl tbody').forEach(tbody => {
+            if (_areaFlagObservedTbodies.has(tbody)) return;
+            const table = tbody.closest('table');
+            if (!table) return;
+            const trios = _flagRegionColumnTrios(table);
+            if (trios.length === 0) return;
+            _areaFlagObservedTbodies.add(tbody);
+
+            const observer = new MutationObserver(mutations => {
+                for (const mutation of mutations) {
+                    if (mutation.type !== 'attributes') continue;
+                    const tr = mutation.target.closest && mutation.target.closest('tr');
+                    if (tr) _maybeCorrectAreaFlagRegion(tr, trios);
+                }
+            });
+            observer.observe(tbody, {
+                attributes: true, subtree: true, attributeFilter: ['data-flag-processed']
+            });
+            Lib.debug('render', `initAreaFlagRegionObserver: watching tbody (${trios.length} Locality/Region/Country trio(s))`);
+        });
+    }
+
+    /**
      * Renders a flat array of collected data rows into the single `<table class="tbl">`
      * on the page (single-table mode).
      *
@@ -29919,6 +30088,11 @@ a { color: #1565c0; }`;
         if (Lib.settings.sa_enable_numeric_alignment !== false) {
             initTreleasesObserver();
         }
+
+        // Install (or re-confirm) the MutationObserver that corrects flagged
+        // subdivisions still sitting in Locality once a flag-decorating userscript
+        // processes them (no-ops when sa_area_flag_region_countries is empty).
+        initAreaFlagRegionObserver();
     }
 
     /**
@@ -32136,6 +32310,11 @@ a { color: #1565c0; }`;
         if (Lib.settings.sa_enable_numeric_alignment !== false) {
             initTreleasesObserver();
         }
+
+        // Install (or re-confirm) the MutationObserver that corrects flagged
+        // subdivisions still sitting in Locality once a flag-decorating userscript
+        // processes them (no-ops when sa_area_flag_region_countries is empty).
+        initAreaFlagRegionObserver();
     }
 
     /**
@@ -40443,6 +40622,7 @@ a { color: #1565c0; }`;
                 if (data.tableMode === 'multi' && data.groups) {
                     groupedRows = [];
                     expandedCells.clear();
+                    _areaFlagRegionCorrected.clear();
                     _mbRowIdxCounter = 0;
 
                     // PageTypes that use singular colName (same set as _singularPageTypes
@@ -40556,6 +40736,7 @@ a { color: #1565c0; }`;
                 } else if (data.rows) {
                     allRows = [];
                     expandedCells.clear();
+                    _areaFlagRegionCorrected.clear();
                     _mbRowIdxCounter = 0;
                     data.rows.forEach((rowCells, rowIndex) => {
                         const tr = document.createElement('tr');

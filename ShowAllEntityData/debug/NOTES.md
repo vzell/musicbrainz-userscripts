@@ -468,3 +468,31 @@ user-supplied pair of `search`-page snapshots. Snapshots used:
   row's country name (`_findRowCountryName`, scans for the flag-wrapped
   country anchor before the routing loop reaches it) and checking it inside
   `_routeAreaLink`.
+
+## 2026-07-25 — Locality/Region override only worked on page 1 (`flags2.org`)
+
+- `flags2.org`: user reported that the WIP.1 country-specific override
+  (Florida -> MB-Region) only worked for the current page's rows on a
+  paginated area-artists listing; rows from fetched pages 2..Max kept the
+  old (Locality-only) classification even with "More Flags Everywhere"
+  installed and visibly decorating every row's flag.
+- Root cause: `startFetchingProcess`'s fetch loop (see `fetchHtml`,
+  `ShowAllEntityData.user.js` ~37680) uses `new DOMParser().parseFromString()`
+  to parse every page except the current one (`doc = document` only when
+  `p === currentPageNum`) — a fully detached `Document`, never inserted into
+  the live page. Third-party userscripts that decorate the live DOM (via
+  their own MutationObserver or periodic rescan) never see these detached
+  documents, so their flag icons are absent at the exact moment
+  `splitLocation`/`splitArea` (via `_routeAreaLink`) run during row
+  extraction — only page 1's rows are extracted from the already-live,
+  already-decorated document.
+- Fix: added a post-render `MutationObserver` (`initAreaFlagRegionObserver`,
+  next to `initTreleasesObserver`) that watches every live `table.tbl tbody`
+  for the `data-flag-processed` attribute (confirmed present on both the
+  Canadian-province and "More Flags Everywhere" decorations — see
+  `debug/area.org` and `debug/florida.html`) appearing on an anchor sitting
+  in a Locality cell, and reactively moves it to Region at that point,
+  regardless of when/whether the decorating userscript gets to it. Applied
+  to both the live row and its master row (`allRows`/`groupedRows`, found via
+  `data-mb-row-idx`) so the fix persists across later sort/filter re-renders
+  without needing a separate per-clone replay step (unlike `expandedCells`).

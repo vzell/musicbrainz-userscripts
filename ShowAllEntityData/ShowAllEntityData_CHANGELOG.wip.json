@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-07-25",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The WIP.1 country-specific Locality/Region override only worked for the current page's rows: pages 2..Max are parsed from a detached `DOMParser` document (see `fetchHtml`) that flag-decorating userscripts (\"More Flags Everywhere\" / \"Canadian Province Flags Everywhere\", @Lotheric) never touch, so `splitLocation`/`splitArea` never saw the subdivision flag icon at extraction time for those rows — even though the userscript does correctly decorate them once they're inserted into the live table. Added a `MutationObserver` (`initAreaFlagRegionObserver`, installed after every `renderFinalTable`/`renderGroupedTable`, mirroring the existing jesus2099-treleases observer) that watches for the `data-flag-processed` attribute the flag userscripts stamp on processed anchors, and moves the Locality value to Region reactively the moment it's decorated — regardless of which page it came from. The correction is applied to both the visible row and its master row (`allRows`/`groupedRows`), so it also survives later sort/filter re-renders."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-07-25",
     "sections": [
