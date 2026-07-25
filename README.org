@@ -86030,6 +86030,65 @@ add support for new pageType
 |----------------------+--------------------------------------+---------------------------|
 | auto-editor-election | https://musicbrainz.org/election/473 | auto-editor.html          |
 
+* "MusicBrainz: More Flags Everywhere" by @Lotheric
+** initial
+
+Now that the userscript "MusicBrainz: More Flags Everywhere" by @Lotheric supports more flags of country subdivisions:
+
+#+begin_example
+Australia (States)
+Belgium (Regions, Provinces)
+Brazil (States, Federal District)
+Canada (Provinces, Territories)
+Czechia (Regions)
+Denmark (Regions)
+Estonia (Counties)
+Finland (Regions)
+France (Regions, State Private Property, Former Regions)
+Germany (States)
+Italy (Regions)
+Japan (Prefectures)
+Netherlands (Kingdom, Provinces, Special Municipalities)
+Russia (Oblasts, Republics, Autonomous Okrugs, Krais, Federal Cities)
+Spain (Autonomous Communities, Autonomous Cities)
+Sweden (Counties)
+Switzerland (Cantons)
+United Kingdom (Countries)
+United States (States, District)
+#+end_example
+
+Maybe we can refine the logic of the functions 'splitLocation' and 'splitArea' to better position area parts in the
+right column for specific countries.
+
+Lets start with United States. On e.g https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/artists
+in the following row @debug/florida.html "Florida" (together with its flag) is positioned in the "MB-Locality" instead of the "MB-Region" column.
+
+Introduce a country specific rule, so that when a value in the "MB-Locality" column has actually a flag icon, it should be extracted to the "MB-Region" column instead. 
+
+Make the country list user editable for future adjusments. For now start with United States.
+
+** act on @debug/flags.org
+
+It only works for the fist page of a paginated pageType like e.g. https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/artists
+
+On the final rendered page, all other rows from the paginated pages 2...Max still exhibit the same old behaviour, also
+when the userscript "MusicBrainz: More Flags Everywhere" by @Lotheric is installed the flags are still rendered for all
+rows. Is it possible to run the split functions after the final page is being rendered, so whenn all the flags are present
+
+** act on @debug/flags2.org
+
+** from the console
+
+from the console for https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/artists
+
+#+begin_example
+12:53:40.712 [VZ-ShowAllEntityData: area-artists] 🎨 initAreaFlagRegionObserver: no Locality/Region/Country trio found on this table. Headers: [, Artist, Type, Gender, Area, Begin, Begin area, End, End area, Rating] 
+#+end_example
+
+** works
+
+works now, leave the debug statements in, commit, push
+
 * DONE plan: rewrite @match directives
 
 Rewrite @match directives to a more compact form, maybe using @include
@@ -86096,6 +86155,69 @@ Auto-click "Show more..." in Annotations if present
 
 https://musicbrainz.eu/work/04e3c57d-3caa-461e-a525-74e2ba52f8b9
 
+* TODO add support for edit pages
+** initial
+
+add support for edit pages
+
+** separate org file
+
+Add a new pageType 'edits' for MusicBrainz edit pages (inclusive @include userscript directives)
+
+#+begin_example
+https://musicbrainz.org/search/edits?auto_edit_filter=&order=desc&negation=0&combinator=and&conditions.0.field=artist&conditions.0.operator=%3D&conditions.0.name=Bruce+Springsteen&conditions.0.args.0=813&conditions.1.field=status&conditions.1.operator=%3D&conditions.1.args=9
+https://musicbrainz.org/release/d0248ef6-b5c4-4cf6-a8e5-ff7db3c0517d/edits
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/edits
+https://musicbrainz.org/edit/subscribed
+https://musicbrainz.org/edit/subscribed_editors
+#+end_example
+
+So in general "https://musicbrainz.org/<entity>/<MBID>/edits" plus the other 3.
+
+Read the following example raw HTML pages:
+
+#+begin_example
+@debug/edits-search.html - https://musicbrainz.org/search/edits
+@debug/edits-release.html - https://musicbrainz.org/release/d0248ef6-b5c4-4cf6-a8e5-ff7db3c0517d/edits
+#+end_example
+
+and also an example edit from @debug/edit-list-item.html (pretty printed) - "Edit #139446083 - Remove relationship"
+
+1.)
+
+Parse each edit into a table row with the following columns extracted from the edit entry (leave hyperlinks intact)
+
+| Column       | Value                                                         | Comment                                                                  |
+|--------------+---------------------------------------------------------------+--------------------------------------------------------------------------|
+| Edit#        | #139446083                                                    |                                                                          |
+| Edit action  | Remove relationship                                           |                                                                          |
+| Edit by      | <icon> vzell                                                  |                                                                          |
+| My vote      | N/A                                                           |                                                                          |
+| Vote count   | 0 yes : 0 no / automatically applied                          | either yes/no or automatically applied                                   |
+| Closed       | 2026-01-14 11:54 GMT+1                                        |                                                                          |
+| Voting       | Closes in 1 day                                               |                                                                          |
+| Edit status  | Cancelled                                                     |                                                                          |
+| Entered from | 1975‐12‐31: Tower Theater, Upper Darby, Philadelphia, PA, USA | only present for relationship actions                                    |
+| By           | Bruce Springsteen & The E Street Band                         | only present for relationship actions                                    |
+| Edit details | <div class="edit-details">                                    | render as is, defined as collapsable column like the "Annotation" column |
+| Edit notes   | <div class="edit-notes">                                      | render as is, defined as collapsable column like the "Annotation" column |
+
+2.)
+
+Do everything in a new branch if plan OK
+
+** act on @debug/edit-pages.org
+
+act on @debug/edit-pages.org
+
+** notes-received.html
+
+@debug/notes-received.html
+
+https://musicbrainz.org/edit/notes-received
+https://musicbrainz.org/edit/notes-received?modbot_condition=
+https://musicbrainz.org/edit/notes-received?modbot_condition=%3D - 
+https://musicbrainz.org/edit/notes-received?modbot_condition=%21%3D - 
 
 * Performance fixes — ready to implement (analysed, approach agreed)
 
