@@ -496,3 +496,37 @@ user-supplied pair of `search`-page snapshots. Snapshots used:
   to both the live row and its master row (`allRows`/`groupedRows`, found via
   `data-mb-row-idx`) so the fix persists across later sort/filter re-renders
   without needing a separate per-clone replay step (unlike `expandedCells`).
+
+## 2026-07-25 — observer never found a Locality/Region/Country trio on any page (follow-up, same branch)
+
+- User reported the previous fix "doesn't work, same as before" even though
+  the flag icon was confirmed to visually render on page-2+ rows. First
+  attempt (childList-mutation watching + bounded 500/1500/3000/6000ms
+  re-scans + `sa_enable_debug_logging`-gated diagnostics at every bail-out
+  point) still failed, but the diagnostics did their job: console showed
+  `initAreaFlagRegionObserver: no Locality/Region/Country trio found on this
+  table. Headers: [, Artist, Type, Gender, Area, Begin, Begin area, End, End
+  area, Rating]` — i.e. the RAW native headers, not the split
+  `MB-Locality`/`MB-Region`/`Country` synthetic ones `splitArea` produces.
+- Root cause (real bug, unrelated to the flag userscript's DOM strategy):
+  for `tableMode: 'single'` pages, `startFetchingProcess()` calls
+  `await renderFinalTable(allRows)` and only calls its own
+  `document.querySelectorAll('table.tbl thead').forEach(cleanupHeaders)`
+  pass — the step that actually injects the synthetic `<th>`s — *after*
+  `renderFinalTable()` returns. But `renderFinalTable()` itself called
+  `initAreaFlagRegionObserver()` at its own tail end, i.e. strictly before
+  `cleanupHeaders()` ever ran. So the observer's trio-finder always scanned
+  a thead that still only had the original page's headers, on every page —
+  not a page-2+-specific issue at all, and the earlier
+  attributes-vs-childList-mutation theory was a red herring.
+- Fix: moved the `initAreaFlagRegionObserver()` call out of
+  `renderFinalTable()` (left a comment there explaining why) and into
+  `startFetchingProcess()`, immediately after its `cleanupHeaders()` pass.
+  `renderGroupedTable()`'s own call (for `tableMode: 'multi'` pages) was
+  already correctly ordered after its per-group `cleanupHeaders()` calls and
+  needed no change. **Confirmed working by the user** on the paginated
+  `/area/489ce91b-.../artists` page — page 2+ rows now correctly move
+  flagged Locality values to Region. Kept all the `sa_enable_debug_logging`-
+  gated diagnostic logging added during the investigation in place per the
+  user's explicit request, even though it's no longer needed to explain this
+  specific bug — useful if a similar issue resurfaces.
