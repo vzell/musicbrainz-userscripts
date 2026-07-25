@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-07-25",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The WIP.3 diagnostics revealed the real root cause of `initAreaFlagRegionObserver` never finding a Locality/Region/Country column trio: on `tableMode: 'single'` pages, `startFetchingProcess()` calls `renderFinalTable()` — which called `initAreaFlagRegionObserver()` at its very end — *before* its own subsequent `cleanupHeaders()` pass, the step that actually injects the `MB-Locality`/`MB-Region`/`Country` synthetic `<th>`s. So the observer's trio-finder always scanned a thead that still only had the raw native headers (e.g. 'Area', 'Begin area'), on every page, not just page 2+ — matching the console log exactly. Moved the `initAreaFlagRegionObserver()` call out of `renderFinalTable()` and into `startFetchingProcess()`, right after its `cleanupHeaders()` pass, so the synthetic headers reliably exist first. `renderGroupedTable()`'s own call (for `tableMode: 'multi'` pages) was already correctly ordered after its per-group `cleanupHeaders()` calls and needed no change."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-07-25",
     "sections": [

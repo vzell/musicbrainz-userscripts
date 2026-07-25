@@ -29301,6 +29301,11 @@ a { color: #1565c0; }`;
                 }
                 await renderFinalTable(allRows);
                 document.querySelectorAll('table.tbl thead').forEach(cleanupHeaders);
+                // Must run after the cleanupHeaders() pass above (so the
+                // MB-Locality/MB-Region/Country synthetic <th>s the observer's
+                // trio-finder scans for actually exist) — see the comment at
+                // the end of renderFinalTable() for why it can't live there.
+                initAreaFlagRegionObserver();
                 const mainTable = document.querySelector('table.tbl');
                 if (mainTable) addColumnFilterRow(mainTable);
 
@@ -30151,10 +30156,14 @@ a { color: #1565c0; }`;
             initTreleasesObserver();
         }
 
-        // Install (or re-confirm) the MutationObserver that corrects flagged
-        // subdivisions still sitting in Locality once a flag-decorating userscript
-        // processes them (no-ops when sa_area_flag_region_countries is empty).
-        initAreaFlagRegionObserver();
+        // NOTE: initAreaFlagRegionObserver() is intentionally NOT called here.
+        // For tableMode: 'single' pages, startFetchingProcess() calls
+        // cleanupHeaders() (which injects the MB-Locality/MB-Region/Country
+        // synthetic <th>s the observer's trio-finder depends on) AFTER
+        // renderFinalTable() returns — so calling it here would always scan a
+        // thead that still only has the raw native headers (e.g. 'Area',
+        // 'Begin area') and never find a trio. See the call in
+        // startFetchingProcess right after that cleanupHeaders() pass.
     }
 
     /**
