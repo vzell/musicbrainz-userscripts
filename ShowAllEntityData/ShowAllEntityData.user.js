@@ -29947,11 +29947,22 @@ a { color: #1565c0; }`;
             const key = `${rowIdx}:${trio.localityIdx}`;
             if (_areaFlagRegionCorrected.has(key)) return;
             const localityTd = tr.cells[trio.localityIdx];
-            if (!localityTd || !localityTd.querySelector('a[data-flag-processed]')) return;
+            if (!localityTd) {
+                Lib.debug('render', `_maybeCorrectAreaFlagRegion: rowIdx=${rowIdx} has no cell at localityIdx=${trio.localityIdx} (row has ${tr.cells.length} cells)`);
+                return;
+            }
+            if (!localityTd.querySelector('a[data-flag-processed]')) return; // not decorated yet — normal, not an error
             const countryTd   = tr.cells[trio.countryIdx];
             const countryName = (countryTd?.textContent || '')
                 .replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase();
-            if (!countryName || !_flagRegionCountrySet().has(countryName)) return;
+            if (!countryName) {
+                Lib.debug('render', `_maybeCorrectAreaFlagRegion: rowIdx=${rowIdx} localityIdx=${trio.localityIdx} is flagged but countryIdx=${trio.countryIdx} resolved to empty text (raw="${countryTd?.textContent}")`);
+                return;
+            }
+            if (!_flagRegionCountrySet().has(countryName)) {
+                Lib.debug('render', `_maybeCorrectAreaFlagRegion: rowIdx=${rowIdx} is flagged but country "${countryName}" is not in sa_area_flag_region_countries`);
+                return;
+            }
 
             _forceLocalityToRegion(tr, trio);
             _areaFlagRegionCorrected.add(key);
@@ -29963,13 +29974,43 @@ a { color: #1565c0; }`;
 
     const _areaFlagObservedTbodies = new WeakSet();
     /**
+     * Re-checks every row currently in `tbody` against `trios` — a full sweep,
+     * used both as the initial pass (in case a flag-decorating userscript
+     * already finished before this function was called) and as a bounded
+     * fallback safety net (see `initAreaFlagRegionObserver`) for whatever
+     * timing/DOM-replacement strategy that userscript happens to use, since we
+     * have no visibility into its internals.
+     *
+     * @param {HTMLTableSectionElement} tbody
+     * @param {Array<{localityIdx: number, regionIdx: number, countryIdx: number}>} trios
+     */
+    function _sweepAreaFlagRegionCorrections(tbody, trios) {
+        Array.from(tbody.rows).forEach(tr => _maybeCorrectAreaFlagRegion(tr, trios));
+    }
+
+    /**
      * Attaches a `MutationObserver` to every `<tbody>` of every `table.tbl`
-     * currently in the DOM, watching for `data-flag-processed` attributes
-     * appearing on area anchors — the signal that a flag-decorating userscript
+     * currently in the DOM, reacting to a flag-decorating userscript
      * ("MusicBrainz: More Flags Everywhere" / "Canadian Province Flags
-     * Everywhere", @Lotheric) has just processed a link that was still
-     * undecorated when `splitLocation`/`splitArea` originally ran (always true
-     * for pages 2..Max — see `_maybeCorrectAreaFlagRegion`'s doc comment).
+     * Everywhere", @Lotheric) processing a link that was still undecorated
+     * when `splitLocation`/`splitArea` originally ran (always true for pages
+     * 2..Max — see `_maybeCorrectAreaFlagRegion`'s doc comment).
+     *
+     * Watches BOTH `attributes` (the userscript sets `data-flag-processed` on
+     * the existing anchor — confirmed for both userscripts via debug/area.org
+     * and debug/florida.html) AND `childList` (in case it instead replaces the
+     * anchor/cell subtree wholesale, e.g. via `innerHTML`/`outerHTML`
+     * assignment, which fires no attribute-mutation event on the new node at
+     * all) — we have no source access to either userscript to know for
+     * certain which strategy applies, so both are covered defensively.
+     *
+     * Belt-and-suspenders: also runs `_sweepAreaFlagRegionCorrections`
+     * immediately (covers decoration that already completed before this
+     * function was called) and again on a few bounded delays (covers
+     * whatever asynchronous timing the decorating userscript uses that
+     * neither mutation type above happens to catch, e.g. a full re-render of
+     * an ancestor node that MutationObserver's subtree walk still SHOULD see,
+     * but the specific record shape wasn't anticipated here).
      *
      * No-ops entirely when `sa_area_flag_region_countries` is empty, or when a
      * table has no Locality/Region/Country column triplet (see
@@ -29977,7 +30018,7 @@ a { color: #1565c0; }`;
      *
      * Observed tbodies are tracked in `_areaFlagObservedTbodies` (a `WeakSet`)
      * so repeated calls (e.g. after a filter re-render) do not attach
-     * duplicate observers — mirrors `initTreleasesObserver`'s pattern exactly.
+     * duplicate observers — mirrors `initTreleasesObserver`'s pattern.
      */
     function initAreaFlagRegionObserver() {
         if (_flagRegionCountrySet().size === 0) return;
@@ -29986,20 +30027,41 @@ a { color: #1565c0; }`;
             const table = tbody.closest('table');
             if (!table) return;
             const trios = _flagRegionColumnTrios(table);
-            if (trios.length === 0) return;
+            if (trios.length === 0) {
+                const headerNames = Array.from(table.querySelectorAll('thead tr:first-child th'))
+                    .map(th => th.dataset.colName || th.textContent.trim());
+                Lib.debug('render', `initAreaFlagRegionObserver: no Locality/Region/Country trio found on this table. Headers: [${headerNames.join(', ')}]`);
+                return;
+            }
             _areaFlagObservedTbodies.add(tbody);
 
             const observer = new MutationObserver(mutations => {
+                const rowsToCheck = new Set();
                 for (const mutation of mutations) {
-                    if (mutation.type !== 'attributes') continue;
-                    const tr = mutation.target.closest && mutation.target.closest('tr');
-                    if (tr) _maybeCorrectAreaFlagRegion(tr, trios);
+                    if (mutation.type === 'attributes') {
+                        const tr = mutation.target.closest && mutation.target.closest('tr');
+                        if (tr) rowsToCheck.add(tr);
+                    } else if (mutation.type === 'childList') {
+                        mutation.addedNodes.forEach(node => {
+                            if (node.nodeType !== Node.ELEMENT_NODE) return;
+                            const tr = node.closest ? node.closest('tr')
+                                : (node.parentElement ? node.parentElement.closest('tr') : null);
+                            if (tr) rowsToCheck.add(tr);
+                        });
+                    }
                 }
+                rowsToCheck.forEach(tr => _maybeCorrectAreaFlagRegion(tr, trios));
             });
             observer.observe(tbody, {
-                attributes: true, subtree: true, attributeFilter: ['data-flag-processed']
+                childList: true, subtree: true,
+                attributes: true, attributeFilter: ['data-flag-processed']
             });
             Lib.debug('render', `initAreaFlagRegionObserver: watching tbody (${trios.length} Locality/Region/Country trio(s))`);
+
+            _sweepAreaFlagRegionCorrections(tbody, trios);
+            [500, 1500, 3000, 6000].forEach(delay => {
+                setTimeout(() => _sweepAreaFlagRegionCorrections(tbody, trios), delay);
+            });
         });
     }
 

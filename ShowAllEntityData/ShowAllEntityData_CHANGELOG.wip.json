@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-07-25",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "WIP.2's `initAreaFlagRegionObserver` still didn't correct page 2..Max rows even though the flag icon was confirmed to visually render for them. The observer only watched `attributes` mutations (the flag-decorating userscript setting `data-flag-processed` on the existing anchor); if it instead replaces the anchor/cell subtree wholesale (e.g. via `innerHTML`), that fires no attribute-mutation event on the new node at all, so no code path ever caught it. Now also watches `childList` mutations, and additionally runs a bounded set of full re-checks (immediately, then at 500/1500/3000/6000ms after render) as a belt-and-suspenders fallback independent of which DOM strategy the userscript uses. Also added `sa_enable_debug_logging`-gated diagnostics at each decision point (no trio found on a table, cell missing, country not resolved, country not in the list) so a next investigation has concrete evidence instead of another guess."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-07-25",
     "sections": [
