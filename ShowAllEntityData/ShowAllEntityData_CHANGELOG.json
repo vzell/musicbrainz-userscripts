@@ -1,5 +1,53 @@
 [
   {
+    "version": "9.99.714",
+    "date": "2026-07-25",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The 9.99.713 diagnostics revealed the real root cause of `initAreaFlagRegionObserver` never finding a Locality/Region/Country column trio: on `tableMode: 'single'` pages, `startFetchingProcess()` calls `renderFinalTable()` — which called `initAreaFlagRegionObserver()` at its very end — *before* its own subsequent `cleanupHeaders()` pass, the step that actually injects the `MB-Locality`/`MB-Region`/`Country` synthetic `<th>`s. So the observer's trio-finder always scanned a thead that still only had the raw native headers (e.g. 'Area', 'Begin area'), on every page, not just page 2+ — matching the console log exactly. Moved the `initAreaFlagRegionObserver()` call out of `renderFinalTable()` and into `startFetchingProcess()`, right after its `cleanupHeaders()` pass, so the synthetic headers reliably exist first. `renderGroupedTable()`'s own call (for `tableMode: 'multi'` pages) was already correctly ordered after its per-group `cleanupHeaders()` calls and needed no change."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.713",
+    "date": "2026-07-25",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "9.99.712's `initAreaFlagRegionObserver` still didn't correct page 2..Max rows even though the flag icon was confirmed to visually render for them. The observer only watched `attributes` mutations (the flag-decorating userscript setting `data-flag-processed` on the existing anchor); if it instead replaces the anchor/cell subtree wholesale (e.g. via `innerHTML`), that fires no attribute-mutation event on the new node at all, so no code path ever caught it. Now also watches `childList` mutations, and additionally runs a bounded set of full re-checks (immediately, then at 500/1500/3000/6000ms after render) as a belt-and-suspenders fallback independent of which DOM strategy the userscript uses. Also added `sa_enable_debug_logging`-gated diagnostics at each decision point (no trio found on a table, cell missing, country not resolved, country not in the list) so a next investigation has concrete evidence instead of another guess."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.712",
+    "date": "2026-07-25",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The 9.99.711 country-specific Locality/Region override only worked for the current page's rows: pages 2..Max are parsed from a detached `DOMParser` document (see `fetchHtml`) that flag-decorating userscripts (\"More Flags Everywhere\" / \"Canadian Province Flags Everywhere\", @Lotheric) never touch, so `splitLocation`/`splitArea` never saw the subdivision flag icon at extraction time for those rows — even though the userscript does correctly decorate them once they're inserted into the live table. Added a `MutationObserver` (`initAreaFlagRegionObserver`, installed after every `renderFinalTable`/`renderGroupedTable`, mirroring the existing jesus2099-treleases observer) that watches for the `data-flag-processed` attribute the flag userscripts stamp on processed anchors, and moves the Locality value to Region reactively the moment it's decorated — regardless of which page it came from. The correction is applied to both the visible row and its master row (`allRows`/`groupedRows`), so it also survives later sort/filter re-renders."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.711",
+    "date": "2026-07-25",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "`splitLocation`/`splitArea` now apply an optional country-specific override: if the area link that would become `Locality` (the first/most specific one) is decorated with a subdivision flag icon by a separately-installed userscript (e.g. \"MusicBrainz: More Flags Everywhere\" or \"MusicBrainz: Canadian Province Flags Everywhere\", @Lotheric) — meaning no city/locality was ever entered, only a bare state/province — it is routed to `Region` instead. New setting `sa_area_flag_region_countries` (🌍 AREA / LOCATION COLUMN SPLITTING section) lists which countries this applies to, matched against the row's resolved Country; defaults to `United States` only. Leave blank to disable entirely. Fixes e.g. a US artist whose only Area is \"Florida\" showing up under `MB-Locality` instead of `MB-Region` on `/area/<mbid>/artists`."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.710",
     "date": "2026-07-24",
     "sections": [
