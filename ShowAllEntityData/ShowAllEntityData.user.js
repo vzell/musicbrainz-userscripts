@@ -5239,6 +5239,26 @@
      */
     function _buildEditRow(block, docContext) {
         const tr = docContext.createElement('tr');
+
+        // Preserve MusicBrainz's own per-edit background colour (encodes edit
+        // type + status — e.g. khaki for an open merge, light green for an
+        // applied addition, beige for an applied plain edit, light grey for
+        // cancelled) from `.edit-header`'s inline style, applied to the whole
+        // row so it survives regardless of sort position. See debug/act.org.
+        // Stored as data-mb-edit-bg too: applyStickyColumn's "transparent →
+        // white" fallback (used to compute the sticky column's opaque
+        // background, the hover-restore snapshot, and the sort-tint blend
+        // base) is patched to prefer this over hardcoded white, so the
+        // sticky "Edit#" column, hover highlighting, and sort tinting all
+        // stay consistent with the row colour instead of one of them
+        // reverting to white.
+        const headerEl = block.querySelector('.edit-header');
+        const headerBg = headerEl ? headerEl.style.backgroundColor : '';
+        if (headerBg) {
+            tr.style.backgroundColor = headerBg;
+            tr.dataset.mbEditBg = headerBg;
+        }
+
         const addCell = (nodes) => {
             const td = docContext.createElement('td');
             if (nodes == null) {
@@ -9894,8 +9914,20 @@
                 }
                 cell.style.background = '';
                 const cellBg = getComputedStyle(cell).backgroundColor;
-                const trueRestBg = (cellBg === 'rgba(0, 0, 0, 0)' || cellBg === 'transparent')
-                    ? '#ffffff' : cellBg;
+                // A row carrying data-mb-edit-bg (the 'edits' pageType's
+                // preserved MusicBrainz edit-header colour — see
+                // _buildEditRow) always wins, regardless of what the cell's
+                // OWN computed background is. MusicBrainz's native zebra CSS
+                // targets `tr.even > td`/`tr.odd > td` directly (see the
+                // non-sticky loop's comment below), so getComputedStyle(cell)
+                // here is a real opaque zebra colour, never transparent — the
+                // "transparent → white" fallback this used to be gated behind
+                // never actually triggers in a real browser (only appeared to
+                // work under jsdom, which has no access to MusicBrainz's
+                // stylesheet and always computes transparent for anything
+                // un-styled). See debug/no-change.html.
+                const trueRestBg = tr.dataset.mbEditBg ||
+                    ((cellBg === 'rgba(0, 0, 0, 0)' || cellBg === 'transparent') ? '#ffffff' : cellBg);
                 cell.dataset.mbRestBg = trueRestBg;
                 if (_activeTintClass) {
                     // Tint was already applied (renderFinalTable path): restore the
@@ -9915,13 +9947,20 @@
                 // span.comment </bdi>) bidi-boundary wrap is handled globally by
                 // normalizeCommentSpans(), called after every render pass.
 
-                // Snapshot all non-sticky cells (clear inline bg so CSS zebra wins).
+                // Snapshot all non-sticky cells (clear inline bg so CSS zebra wins) —
+                // UNLESS this row carries data-mb-edit-bg, in which case that custom
+                // colour must win over MusicBrainz's native `tr.even > td`/`tr.odd > td`
+                // zebra rule, which targets <td> directly and would otherwise paint
+                // right over it. Inline styles beat class rules, so re-applying the
+                // colour here (not just clearing to '') is what actually makes it win —
+                // same reasoning as the sticky cell branch above.
+                const editBg = tr.dataset.mbEditBg;
                 Array.from(tr.cells).forEach(td => {
                     if (td === cell) return;
-                    td.style.background = '';
+                    td.style.background = editBg || '';
                     const bg = getComputedStyle(td).backgroundColor;
-                    td.dataset.mbRestBg = (bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent')
-                        ? '#ffffff' : bg;
+                    td.dataset.mbRestBg = editBg ||
+                        ((bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') ? '#ffffff' : bg);
                 });
 
                 // Wire hover handlers — always rewire, because after sort/filter

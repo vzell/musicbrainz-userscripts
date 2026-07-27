@@ -818,3 +818,94 @@ matches `/^(Closed|Approved):/i`. Column renamed `"Closed"` →
 `"Closed/Approved"` to reflect this. Verified via jsdom with both prefixes
 (and a `Closed:` regression check) against a synthetic `.edit-expiration`
 matching the exact markup given.
+
+## 2026-07-25 — preserve MusicBrainz's per-edit background colour
+
+Native edit pages colour the `.edit-header` bar by edit type + status
+(khaki for an open merge, light green for an applied addition, beige for
+an applied plain edit, light grey for cancelled, ...) — this was being
+discarded entirely by `applyEditsToTable`. Requested to preserve it on the
+final rendered row, called out specifically for the "Edit action" column.
+
+This isn't a simple "just set a background-color" change — this script
+has four interacting row/cell-background subsystems (native MB `.odd`/
+`.even` zebra CSS classes on `<tr>`, per-cell hover-restore snapshotting
+via `dataset.mbRestBg`, the sticky "Edit#" column's own opaque background
+via `dataset.mbStickyBg`, and sort-tint alpha-blending that uses
+`mbStickyBg` as its blend base). `applyStickyColumn` (`ShowAllEntityData.user.js`
+~line 9759) explicitly clears any inline `<td>` background before reading
+`getComputedStyle` specifically so CSS zebra striping wins — so setting a
+color directly on individual `<td>` elements would just get silently wiped
+on the very next render/sort/filter pass.
+
+Implementation: `_buildEditRow` reads `.edit-header`'s inline
+`background-color` and applies it as `tr.style.backgroundColor` (inline
+styles beat non-`!important` CSS class rules, so it stays stable across
+`applyZebraStriping`'s odd/even class reassignment on sort) plus a
+`data-mb-edit-bg` marker. Since MB's own `<td>` cells carry no explicit
+background of their own (zebra colour is purely a `<tr>`-level CSS rule
+showing through transparent cells), a `<td>`'s `getComputedStyle(...)
+.backgroundColor` reads back as `transparent` — which is exactly the case
+`applyStickyColumn`'s two "transparent → fallback" branches already
+special-case (previously hardcoded to `#ffffff`). Patched both to prefer
+`tr.dataset.mbEditBg` over the hardcoded white, so the sticky column's
+opaque background, the hover-restore colour, and the sort-tint blend base
+all pick up the row's custom colour automatically — zero change for any
+row without the marker (every other page type). No cell-specific handling
+needed for "Edit action" — it's just one of the row's cells, so the
+row-level colour already covers it.
+
+Verified via jsdom against `edits-search.html`/`willow.html`: colours
+extracted correctly and distinctly per edit type/status (khaki for "Merge
+works", light green for "Add relationship"/"Add disc ID"/etc., beige for
+"Edit medium"/"Edit release", light grey for cancelled edits) — actual
+visual behaviour under hover/sticky-scroll/sort-tint rests on the existing,
+already-battle-tested `applyStickyColumn` machinery this only patches two
+fallback branches of, not a from-scratch mechanism.
+
+## 2026-07-25 — row background colour fix didn't actually work (debug/no-change.html)
+
+`debug/no-change.html` shows every cell (sticky and non-sticky) with an
+explicit `style="background: rgb(255, 255, 255);"` / `data-mb-rest-bg="#ffffff"`
+— i.e. plain white everywhere, `data-mb-edit-bg` not present at all. The
+previous "transparent → fallback" patch was based on a wrong assumption I
+didn't catch because jsdom (no access to MusicBrainz's real stylesheet)
+masked it:
+
+- `applyStickyColumn`'s own comment (`ShowAllEntityData.user.js` ~line
+  9843, previously read past too quickly) says MusicBrainz's native zebra
+  CSS targets `tr.even > td`/`tr.odd > td` **directly**, not `<tr>`. That
+  means every `<td>` gets a real, opaque, non-transparent background
+  straight from that class rule — `getComputedStyle(td)` in an actual
+  browser is *never* `transparent`/`rgba(0,0,0,0)` for an ordinary cell, so
+  the "transparent → prefer data-mb-edit-bg" branch never actually
+  triggers there. It only *looked* like it worked under jsdom, which has
+  no stylesheet to compute from and always falls through to transparent
+  regardless.
+- Separately, even where that branch *would* apply: the non-sticky-cell
+  loop only ever *stored* the computed "rest" colour into
+  `dataset.mbRestBg` for later hover-*restore* use — it explicitly leaves
+  `td.style.background = ''` for the *initial* render, deliberately "so
+  CSS zebra striping wins" (per its own comment). So even a correct
+  fallback value would never have painted the cell by default, only after
+  a hover-then-leave cycle.
+
+Real fix, in the same two spots:
+1. Both `trueRestBg`/`mbRestBg` computations now check `tr.dataset.mbEditBg`
+   **unconditionally first**, before even looking at the cell's computed
+   background — not just as a fallback for the (in practice unreachable)
+   transparent case.
+2. The non-sticky-cell loop now sets `td.style.background = editBg` (an
+   inline style, which beats MusicBrainz's class-based zebra rule per
+   normal CSS cascade rules) whenever the row carries `data-mb-edit-bg`,
+   instead of always clearing to `''`. Rows without the marker are
+   completely unaffected (empty string, same as before — verified via a
+   regression check).
+
+Verified via jsdom by extracting and actually calling `applyStickyColumn`
+(not just `applyEditsToTable` in isolation, which is all the earlier,
+insufficient fix was tested against) on a real `mgv.html`-built table:
+both the sticky column and non-sticky cells now end up with the correct
+matching `style.background` for rows with a preserved edit colour, and a
+plain synthetic row without one still gets the original sticky-only/white
++ empty-non-sticky behaviour.
