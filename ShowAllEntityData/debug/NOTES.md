@@ -530,3 +530,280 @@ user-supplied pair of `search`-page snapshots. Snapshots used:
   gated diagnostic logging added during the investigation in place per the
   user's explicit request, even though it's no longer needed to explain this
   specific bug — useful if a similar issue resurfaces.
+
+## 2026-07-25 — new 'edits' pageType: DOM shape and unbounded pagination
+
+- `edits-search.html` (`/search/edits?...`) and `edits-release.html`
+  (`/release/<mbid>/edits`) both have `div#content > h1` (search:
+  "Search for edits"; release: `.releaseheader h1` "Edits for «title»" —
+  already covered by the existing `headerContainer` fallback chain, no init
+  changes needed), then a `<form action="/edit/enter_votes">` wrapping
+  `<nav><ul class="pagination">` followed directly by a sequence of
+  `<div class="edit-list">` blocks (50/page). No native `<table>` anywhere —
+  a genuinely new source shape for this script (every prior pageType has
+  either a native `<table>` or a `<ul>` convertible via `applyListToTable`).
+- `edit-list-item.html` (pretty-printed single block, "Edit #139446083 -
+  Remove relationship") shows each `div.edit-list` is fully self-contained:
+  `.edit-header` (h2 edit#/action link, `p.subheader` editor link, a small
+  vote-count `<table>`), a per-edit hidden vote `<input>`, `.edit-actions`
+  (`.edit-status` text present only for cancelled/error edits — absent for
+  open/applied), `.entered-from` (relationship edits only; glues the release
+  link, an optional "Add Cover Art" button, and the "by «artist(s)»" clause
+  into one text run), `.edit-details` (native `<table class="details ...">`;
+  merge-type edits embed a full second `<table class="tbl">` compare grid
+  inside it), `.edit-notes` (real notes plus a large hidden `.add-edit-note`
+  note-composer widget), and a trailing `.seperator` — all as children, not
+  siblings between blocks.
+- New `applyEditsToTable(def, docContext)` (mirrors `applyListToTable`)
+  converts this block sequence into one `<table class="tbl">`, one `<tr>`
+  per block, 12 columns per `debug/edit-pages.org`. **Every** edit's
+  `.edit-details` — not just merge-type ones — wraps its content in its own
+  native `<table class="details ...">`, discovered via a local jsdom
+  round-trip test against these two snapshots (`table.querySelectorAll('tbody
+  tr')` on the freshly-built outer table returned 232 rows instead of 52,
+  because it recurses through nested tables regardless of class). Renaming
+  the nested table's class (the first fix attempted) is not sufficient —
+  virtually every row-processing call site in this script does
+  `tbl.querySelectorAll('tbody tr')` unscoped by depth, so ANY nested
+  `<table>/<tbody>/<tr>` inside a cell gets swept up no matter its class.
+  Fixed with a new `_detableify(root)` helper that converts nested
+  `table/thead/tbody/tfoot/tr/th/td` into `<div>`s with the equivalent CSS
+  `display: table*` value (`.mb-dt-*` classes for styling) — same visual
+  grid, zero real table elements, so nothing can ever recurse into it.
+  Applied to both `.edit-details` (always) and `.edit-notes` (defensively,
+  in case a note's wiki formatting ever renders a table).
+- **Pagination has no discoverable last page.** Live-checked against
+  `/search/edits` (direct HTTP fetches, not through the userscript) before
+  MusicBrainz rate-limited further requests: page 1 said "Found at least
+  500 edits"; page 10 said "at least 950"; page 1000 *still* returned
+  HTTP 200 with 50 real `edit-list` blocks and said "at least 50,450". The
+  pagination widget is a sliding ±window around the current page with no
+  "last page" state — the `<a>` immediately before "Next" (what
+  `fetchMaxPageGeneric`/`determineMaxPageFromDOM` use as `maxPage` for every
+  other pageType) is just a nearby milestone, not the true total.
+  `edits-release.html` shows the identical "Found at least 500 edits"
+  wording and double-ellipsis widget on page 1, so this is likely a general
+  edit-listing behavior, not exclusive to `/search/edits` — not
+  independently confirmed live (blocked by the rate limit) before this was
+  implemented.
+- Fix, scoped via a new `features.unboundedPagination` flag (zero behavior
+  change for any other pageType, including `'search'`, since
+  `determineMaxPageFromDOM`/`fetchMaxPageGeneric` themselves are untouched):
+  skip maxPage detection entirely and use the existing `sa_max_page` safety
+  cap as the loop bound; inside the fetch loop, a fetched page with zero
+  `div.edit-list` blocks `break`s the loop immediately (the real "we're
+  done" signal) instead of falling through to the generic
+  `tablesToProcess.length === 0 → continue`, which would otherwise burn
+  through every remaining page up to the cap. User-approved after being
+  presented with three options (fetch-until-empty / probe-then-fetch /
+  warn-only); fetch-until-empty was chosen for correctness and simplicity.
+- Verified `applyEditsToTable`/`_buildEditRow`/`_detableify` end-to-end with a
+  local jsdom harness run directly against `edits-search.html` and
+  `edits-release.html` (extracted the functions, `eval`'d them under jsdom,
+  ran the real conversion, inspected the resulting table) since no live
+  browser/Tampermonkey session is available in this environment. Caught two
+  real bugs this way, both fixed before merge:
+  1. The `.edit-details` de-tableify fix above (found because the jsdom test
+     initially reported 232 `tbody tr` matches instead of 52 for
+     `edits-search.html`).
+  2. `edits-search.html` (search-results pages only) has a "bulk vote on all
+     unvoted edits" banner — Yes/No/Abstain/None buttons plus a "Reset
+     votes // Vote on all unvoted edits" line — that reuses the exact same
+     `div.edit-list` class as real edit blocks (`52` `div.edit-list`
+     matches vs. `50` real edits per page) but has no `<h2>` edit#/action
+     link. `applyEditsToTable` now filters blocks on
+     `b.querySelector('h2 a[href^="/edit/"]')` before building rows (and the
+     `unboundedPagination` empty-page check in the fetch loop was changed to
+     count `div.edit-list h2 a[href^="/edit/"]` for the same reason) so this
+     banner doesn't produce a garbage all-"N/A" row or get mistaken for "no
+     more data" on the rare page where it might otherwise be the only
+     `div.edit-list` present.
+  Also caught, smaller: edits with zero real notes still have a (now-empty)
+  `.edit-notes` element once the hidden note-composer widget is stripped —
+  rendered as a blank cell instead of "N/A" until `_buildEditRow` was
+  changed to check `clone.textContent.trim()` first.
+  Not independently verified: `/artist/<mbid>/edits` (or other non-release
+  entities), `/edit/subscribed`, `/edit/subscribed_editors` — no snapshot
+  exists for these; worth a quick manual check for the same banner quirk
+  and any other surprises before relying on them.
+- Initially missed: this script gates on Tampermonkey `@include` regex
+  directives in the `==UserScript==` header (not just the internal
+  `pageDefinitions` router) — without updating those, the script simply
+  never runs on the new URLs regardless of the pageDefinitions match logic.
+  Added `edits` to the existing entity-subpage `@include` alternation
+  (`.../<entity>/<mbid>/(?:aliases|releases|...|edits)`) and added
+  `search\/edits(?:\?.*)?` / `edit\/subscribed(?:_editors)?(?:\?.*)?` as new
+  alternatives to the misc-pages `@include` line. All five target URLs
+  (`/search/edits?...`, `/release/<mbid>/edits`, `/artist/<mbid>/edits`,
+  `/edit/subscribed`, `/edit/subscribed_editors`) verified to match via a
+  standalone node regex test.
+
+## 2026-07-25 — edits pageType follow-up fixes (debug/act.org)
+
+Four issues reported after using the branch, addressed in the same jsdom-tested way as before:
+
+1. **Pagination "no max page" assumption was wrong for smaller result sets.**
+   `debug/willow.html` (`/release/4e6fbd8f-.../edits`, 6 edits) has **no**
+   `ul.pagination` at all — "Found 6 edits" (exact, no "at least").
+   `debug/mgv.html` (`/artist/b3c01c39-.../edits`, 54 edits) has a real,
+   complete `Previous | 1 | 2 | Next` widget with **no ellipsis** — "Found 54
+   edits" (also exact) — and the existing `determineMaxPageFromDOM()`/
+   `fetchMaxPageGeneric()` heuristic already computes the correct `maxPage=2`
+   for it. Only the double-ellipsis milestone-window shape (`1 … 6 7 8 9 10
+   11 … Next`, seen in `edits-search.html`/`edits-release.html`, "Found at
+   least N edits") is actually ambiguous. New `_hasAmbiguousEditsPagination(doc)`
+   checks `ul.pagination` for an ellipsis placeholder (`<li><span>…</span></li>`);
+   the `isAmbiguousEditsPagination` runtime flag (computed once from the live
+   document, replacing the old blanket `features.unboundedPagination` check)
+   now gates both the maxPage branch and the fetch-loop empty-page break —
+   when false, `determineMaxPageFromDOM()` runs normally (accurate maxPage,
+   accurate progress bar, no extra confirmation dialog). Verified against
+   all 4 snapshots via jsdom: willow→false, mgv→false, edits-search→true,
+   edits-release→true (edits-release.html's own `ul.pagination` does contain
+   the ellipsis — confirmed by re-checking its raw markup — so `true` here is
+   correct, not a regression of the original finding).
+2. **Missing `<h2 class="mb-h2-processed mb-toggle-h2">` filterline.**
+   `applyEditsToTable` removes every `div.edit-list` block *including its own
+   `<h2>Edit #NNN - Action</h2>`*, and no edits page has a `div.tabs` either,
+   so zero `<h2>` elements survive for `makeH2sCollapsible()`/the
+   collapsible-section infrastructure to anchor to — confirmed via
+   `debug/no-h2-filterline.html` (a post-render snapshot: the table exists,
+   fully processed, with sort/filter icons in its headers, but no h2 sits
+   above it). Fixed with `features.insertH2: 'Edits'` — the exact same
+   `tableMode: 'single'` + `insertH2` combination already used by e.g.
+   `'taglookup'` (`insertH2: 'Releases'`). Runs before `applyEditsToTable` in
+   the pre-processing order, so it inserts a fresh `<h2>Edits</h2>` (after
+   `<h1>`, since there's no `.tabs`/`.h3` yet) while the per-block `<h2>`s are
+   still untouched — no interference between the two.
+3. **"Entered from"/"By" undercounted — hardcoded to `.entered-from` only.**
+   `debug/mgv.html` has an "Edit recording" edit
+   (`#110120748`) with no `.entered-from` div at all; the same "release-name
+   linked to artist-credit" information instead lives inside `.edit-details`'s
+   own table: `<th>Recording:</th><td><a href="/recording/...">Al lado de mi
+   cabana</a> by <bdi>MGV Drabenderhöhe</bdi></td>`. Per the user's
+   suggestion ("scan for them, then hardcode"), `_buildEditRow` now falls
+   back to scanning `.edit-details` for the first `<td>` with the same bare
+   `"by"` text-node split shape when no `.entered-from` div exists, reusing
+   `_splitEnteredFrom` unchanged (its label/cover-art stripping steps are
+   harmless no-ops on this shape). This is generic — not gated on edit-type
+   name — so it also picked up "Edit medium", "Edit release", "Add disc ID",
+   "Add medium", "Add release label", "Add release", "Add cover art", "Edit
+   release group" and others in testing, not just "Edit recording"; edit
+   types with no clean single-entity-by-artist description (e.g. "Merge
+   recordings", "Add ISWCs") still correctly render "N/A" for both columns —
+   confirmed via jsdom against all 4 debug snapshots (e.g. mgv.html went from
+   0 correctly-populated non-relationship rows to 38/50 rows populated,
+   including the "Edit recording" row).
+4. **Inline CAA + column renames.** Added `features.addCAA: 'Entered from
+   release'` (after the rename below) — reuses the existing generic
+   `CAA_CTX`/`addFeature` mechanism unchanged; its `entityGuard`/
+   `inlineLinkSel` already only match `/release/` or `/release-group/`
+   hrefs, so it's a correct no-op for rows whose entered-from link points to
+   a non-release entity (e.g. the "Edit recording" row above, which links to
+   `/recording/...`). Renamed columns `"Entered from"` → `"Entered from
+   release"`, `"By"` → `"By artist"` in the `headers` array (and the
+   `addCAA` value, since it targets by column name).
+
+## 2026-07-25 — edits pageType, second follow-up round (debug/act.org)
+
+Four more issues after using the previous round's fixes:
+
+1. **Still no h2 filterline** — a real, subtler bug in `applyInsertH2`
+   itself, not something specific to 'edits'. `debug/no-h2.html` shows an
+   `<h2 class="mb-h2-processed mb-toggle-h2">...Edits</h2>` — but it's
+   positioned *after* the table, nested inside one specific edit's
+   `<div class="edit-note" id="note-149972661-1">`, sitting right before
+   that note's own (now `display:none`) owner/date `<h3>`. That editor's
+   note literally contains wiki markup that renders a native `== Edits ==`
+   sub-heading (the same mechanism documented in this file's CLAUDE.md for
+   Annotation-cell nested headings) — which happens to collide, by pure
+   coincidence, with the literal string `'Edits'` chosen for
+   `features.insertH2`. `applyInsertH2`'s idempotency guard
+   (`document.querySelectorAll('h2').find(h => h.textContent.trim() === _text)`)
+   found this pre-existing *unrelated* nested heading, concluded a
+   page-level "Edits" h2 was already present, and skipped the real
+   insertion entirely — leaving zero page-level filterline. Fixed by adding
+   `&& !h.closest('table.tbl')` to the guard, mirroring the exact exclusion
+   `applyInsertH2`'s own "first h3" fallback already uses two branches
+   below for the identical reason. General fix, benefits every pageType
+   using `insertH2`, not just 'edits'.
+2. **`rowspan` broken** — `debug/relationship-original.html` (a "Dave
+   Hewitt" relationship edit) has a `<th rowspan="2">Relationship:</th>`
+   spanning two `<tr>`s (old value row, new value row).
+   `debug/relationship-final.html` shows old/new rendered on the same
+   visual row instead of stacked.
+3. **`colspan` broken** — a medium edit's tracklist compare table has
+   `<th colspan="4">Old tracklist</th><th colspan="4">New tracklist</th>`
+   grouping 4 sub-columns each; rendered output (also visible in
+   `debug/no-h2.html`) lost the grouping.
+   Both 2 and 3 share one root cause: `_detableify` was converting `<th>`/
+   `<td>` into `<div style="display:table-cell">`, but `rowspan`/`colspan`
+   are IDL properties (`HTMLTableCellElement.rowSpan`/`.colSpan`) that only
+   real `<td>`/`<th>` elements expose — a `<div rowspan="2">` is inert
+   regardless of its computed `display`. Fixed by leaving `<th>`/`<td>` as
+   real elements in `_detableify` (only `<table>`/`<thead>`/`<tbody>`/
+   `<tfoot>`/`<tr>` get converted to divs — those are the tags
+   `tbl.querySelectorAll('tbody tr')` actually requires, so the original
+   nested-table-corruption fix still holds); `<th>`/`<td>` just get
+   `.mb-dt-cell`/`.mb-dt-th` marker classes added for styling, and rely on
+   their UA-stylesheet-default `display: table-cell` (true regardless of
+   ancestor tag names). Verified structurally via jsdom: `rowSpan`/`colSpan`
+   IDL properties intact, zero nested `table`/`tbody`/`tr`/`thead` — actual
+   visual span behavior rests on well-established CSS table-layout
+   semantics (can't be verified in jsdom, which doesn't implement layout).
+4. **"By artist" included trailing description text.**
+   `debug/RG-relationship-initial.html`/`-final.html`: a release-group URL
+   relationship's `.edit-details` td is one long sentence — `<a>Lonesome
+   Day</a> by <bdi><a>Bruce Springsteen</a></bdi> has a discography entry
+   at <a>...</a> [<a>info</a>]` — `_splitEnteredFrom` was taking
+   *everything* after the "by" split as the "By artist" value, including
+   "has a discography entry at ... [info]". Same issue for release-URL
+   relationships ("... can be purchased for download at ... [info]").
+   Fixed: the artist-credit is always the first substantial element right
+   after "by" (a single `<bdi>` wrapping one-or-more `<a>` joined by "&", or
+   occasionally a bare `<a>`) — `_splitEnteredFrom` now stops right after
+   that first element instead of taking the rest of the sentence. Verified
+   via jsdom against the exact `RG-relationship-initial.html` td content,
+   the Qobuz-link example from this file, and the original multi-artist
+   "Bruce Springsteen & The E Street Band" case (regression check — still
+   captures both artists correctly, since they share one `<bdi>`).
+
+## 2026-07-25 — h2 filterline fix was incomplete (debug/still-no.html)
+
+The previous `!h.closest('table.tbl')` guard fix didn't actually work —
+`debug/still-no.html` shows the injected-looking `<h2>...Edits</h2>`
+(same note, `id="note-149972661-1"`) still landing inside the "Edit notes"
+table *cell*, not above the table. Root cause I'd missed: `applyInsertH2`
+runs during **pre-processing**, strictly *before* `applyEditsToTable` has
+built any `table.tbl` — at guard-check time the colliding wiki `<h2>` is
+just sitting inside a bare `div.edit-list`, so `!h.closest('table.tbl')`
+never actually excludes it (there's no `table.tbl` yet to be inside of).
+Worse, reproducing this in a minimal jsdom test surfaced a **second,
+independent instance of the exact same timing bug**: the "second
+preference: before first h3" placement search has the identical
+`table.tbl`-only exclusion, and every real edit note has its own native
+`<h3 class="owner">` — so on any edits page with at least one real note,
+`applyInsertH2` was inserting the new `<h2>` as a sibling *inside that
+note's own DOM*, which `applyEditsToTable` then dutifully clones into the
+"Edit notes" cell of that specific row. This was likely happening on
+*most* edits pages already (any page with ≥1 real note), not just the
+"Edits"-titled-note coincidence.
+
+Real fix, two parts:
+1. **Idempotency guard**: replaced the text-content match entirely with a
+   `data-mb-injected-h2="1"` marker stamped on the element `applyInsertH2`
+   itself creates. Position/timing-independent — no DOM-structure
+   assumption can fool it, unlike a text or ancestor-based check.
+2. **Placement search**: added `&& !h.closest('div.edit-list')` to the
+   `_firstH3` filter, alongside the existing `table.tbl` exclusion —
+   div.edit-list is the raw pre-table wrapper every edit note's owner h3
+   sits inside of at this point in the pipeline.
+
+Verified via a minimal jsdom reproduction of the exact bug shape (a
+matching-text wiki h2 nested inside `div.edit-list > .edit-note`, with its
+own owner `<h3>` right after it): injected h2 now lands correctly as a
+direct sibling of `<h1>` inside `#content`, `data-mb-injected-h2="1"`
+marker present, not nested inside `.edit-list`; a second `applyInsertH2`
+call (disk-load re-run scenario) correctly stays idempotent (no duplicate
+inserted). Also re-verified against `mgv.html` (has real notes with owner
+h3s) and `willow.html` directly.

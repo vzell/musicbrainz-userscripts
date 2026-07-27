@@ -14,8 +14,8 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
 // @require      https://raw.githubusercontent.com/vzell/mb-userscripts/master/lib/VZ_MBLibrary.user.js
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\?.*)?$/
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings)(?:\?.*)?$/
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|account\/applications(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections(?:\?.*)?|election\/.*|genres(?:\?.*)?|cdstub\/.*|doc\/Edit_Types(?:\?.*)?|instruments(?:\?.*)?|privileged(?:\?.*)?)$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits)(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits(?:\?.*)?|edit\/subscribed(?:_editors)?(?:\?.*)?|account\/applications(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections(?:\?.*)?|election\/.*|genres(?:\?.*)?|cdstub\/.*|doc\/Edit_Types(?:\?.*)?|instruments(?:\?.*)?|privileged(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers(?:\?.*)?|collections(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*)$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
@@ -5153,6 +5153,383 @@
     }
 
     /**
+     * Splits an "entity-credited-to-artist" element into its two logical
+     * parts. Two shapes share this same glued-together text-run pattern in
+     * MusicBrainz edit markup:
+     *   - `.entered-from` (relationship-type edits):
+     *     `Entered from: <a>Release name</a> [<a>Add Cover Art</a>] by <bdi>Artist(s)</bdi>`
+     *   - a `<td>` inside `.edit-details` for other edit types that reference
+     *     a single artist-credited entity (e.g. "Edit recording"):
+     *     `<a>Recording name</a> by <bdi>Artist(s)</bdi>` (no label prefix,
+     *     no cover-art link — those removal steps are simply no-ops here).
+     * The optional "Add Cover Art" button (present only for release edits
+     * missing cover art) is UI chrome, not data, and is dropped. The
+     * remaining nodes are split on the bare `"by"` text-node boundary.
+     *
+     * @param {Element} sourceEl - The `.entered-from` element, or a `<td>` with the same shape (not cloned by this function).
+     * @returns {{enteredFrom: (Node[]|null), by: (Node[]|null)}} Child-node arrays for
+     *   each cell, or `null` when that half is absent (caller renders "N/A").
+     */
+    function _splitEnteredFrom(sourceEl) {
+        const clone = sourceEl.cloneNode(true);
+        // Drop the leading "Entered from:" label text and any "Add Cover Art" link.
+        Array.from(clone.childNodes).forEach(n => {
+            if (n.nodeType === Node.TEXT_NODE && /^\s*Entered from:\s*$/i.test(n.textContent)) {
+                clone.removeChild(n);
+            } else if (n.nodeType === Node.ELEMENT_NODE && n.tagName === 'A' && /\/cover-art\b/.test(n.getAttribute('href') || '')) {
+                clone.removeChild(n);
+            }
+        });
+
+        const nodes = Array.from(clone.childNodes);
+        const byIdx = nodes.findIndex(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim() === 'by');
+        if (byIdx === -1) {
+            const trimmedLead = nodes.filter(n => !(n.nodeType === Node.TEXT_NODE && !n.textContent.trim()));
+            return { enteredFrom: trimmedLead.length ? trimmedLead : null, by: null };
+        }
+        const before = nodes.slice(0, byIdx).filter(n => !(n.nodeType === Node.TEXT_NODE && !n.textContent.trim()));
+
+        // The artist-credit is always the first substantial element right
+        // after "by" — a single <bdi> wrapping one or more artist <a> links
+        // joined by "&" (e.g. "Bruce Springsteen & The E Street Band"), or
+        // occasionally a bare <a>. For non-relationship edit types the
+        // sentence keeps going after that with relationship-attribute
+        // description that is NOT part of the artist value — e.g. "<bdi>
+        // Bruce Springsteen</bdi> has a discography entry at <url> [info]"
+        // or "<bdi>...</bdi> can be purchased for download at <url> [info]"
+        // (see debug/act.org 4.), debug/RG-relationship-initial.html). Stop
+        // right after that first element so trailing description text isn't
+        // included in the "By artist" column.
+        const afterAll = nodes.slice(byIdx + 1).filter(n => !(n.nodeType === Node.TEXT_NODE && !n.textContent.trim()));
+        const firstElIdx = afterAll.findIndex(n => n.nodeType === Node.ELEMENT_NODE);
+        const after = firstElIdx === -1 ? afterAll : afterAll.slice(0, firstElIdx + 1);
+
+        return {
+            enteredFrom: before.length ? before : null,
+            by: after.length ? after : null
+        };
+    }
+
+    /**
+     * Derives the human-readable "Edit status" label for one `div.edit-list` block.
+     * Prefers the explicit `.edit-status` text (present for cancelled/error/deleted
+     * edits); falls back to the 2nd class token of `.edit-header` for the two
+     * statuses that render no `.edit-status` text at all ("open", "applied").
+     *
+     * @param {Element} block - The `div.edit-list` block.
+     * @returns {string}
+     */
+    function _editStatusLabel(block) {
+        const statusEl = block.querySelector('.edit-status');
+        if (statusEl) return statusEl.textContent.trim();
+        const header = block.querySelector('.edit-header');
+        const token = header ? (header.className.split(/\s+/)[1] || '') : '';
+        if (token === 'open') return 'Open';
+        if (token === 'applied') return 'Applied';
+        return token ? token.charAt(0).toUpperCase() + token.slice(1) : 'N/A';
+    }
+
+    /**
+     * Builds one `<tr>` for a single `div.edit-list` block, matching the column
+     * order produced by `applyEditsToTable`.
+     *
+     * @param {Element} block - The `div.edit-list` block to extract.
+     * @param {Document} docContext - Document used to create the new elements.
+     * @returns {Element} The populated `<tr>`.
+     */
+    function _buildEditRow(block, docContext) {
+        const tr = docContext.createElement('tr');
+        const addCell = (nodes) => {
+            const td = docContext.createElement('td');
+            if (nodes == null) {
+                td.textContent = 'N/A';
+            } else if (typeof nodes === 'string') {
+                td.textContent = nodes;
+            } else if (nodes instanceof Node) {
+                td.appendChild(nodes);
+            } else {
+                nodes.forEach(n => td.appendChild(n));
+            }
+            tr.appendChild(td);
+            return td;
+        };
+
+        // Edit# / Edit action — parsed from the h2 bdi text "Edit #NNNNNN - Action".
+        const editLink = block.querySelector('h2 a[href^="/edit/"]');
+        const bdiText  = editLink ? (editLink.querySelector('bdi')?.textContent.trim() || editLink.textContent.trim()) : '';
+        const m = bdiText.match(/^Edit #(\d+)\s*-\s*(.+)$/);
+        if (editLink && m) {
+            const a = docContext.createElement('a');
+            a.setAttribute('href', editLink.getAttribute('href'));
+            a.textContent = `#${m[1]}`;
+            addCell(a);
+            addCell(m[2].trim());
+        } else {
+            addCell(null);
+            addCell(null);
+        }
+
+        // Edit by
+        const byLink = block.querySelector('p.subheader a[href^="/user/"]');
+        addCell(byLink ? byLink.cloneNode(true) : null);
+
+        // My vote
+        const myVoteEl = block.querySelector('.my-vote');
+        addCell(myVoteEl ? myVoteEl.textContent.replace(/^\s*My vote:\s*/i, '').trim() : null);
+
+        // Vote count
+        const voteCountEl = block.querySelector('.vote-count');
+        addCell(voteCountEl ? voteCountEl.textContent.replace(/\s+/g, ' ').trim() : null);
+
+        // Closed / Voting — mutually exclusive, both read from .edit-expiration
+        const expirationEl = block.querySelector('.edit-expiration');
+        let closedText = null, votingText = null;
+        if (expirationEl) {
+            const text = expirationEl.textContent.replace(/\s+/g, ' ').trim();
+            if (/^Closed:/i.test(text)) closedText = text.replace(/^Closed:\s*/i, '').trim();
+            else if (/^Voting:/i.test(text)) votingText = text.replace(/^Voting:\s*/i, '').trim();
+        }
+        addCell(closedText);
+        addCell(votingText);
+
+        // Edit status
+        addCell(_editStatusLabel(block));
+
+        // Entered from / By — first check the dedicated .entered-from block
+        // (relationship-type edits), then fall back to scanning .edit-details
+        // for the same "<link> by <bdi>" shape MusicBrainz embeds directly in
+        // a table cell for other edit types that reference a single
+        // artist-credited entity (e.g. "Edit recording": <th>Recording:</th>
+        // <td><a href="/recording/...">Name</a> by <bdi>Artist</bdi></td> —
+        // see debug/mgv.html). Scanning generically, rather than hardcoding a
+        // list of edit-type names, means any other type sharing this shape is
+        // picked up automatically too — see debug/act.org 3.).
+        const enteredFromEl = block.querySelector('.entered-from');
+        let enteredFromSource = enteredFromEl;
+        if (!enteredFromSource) {
+            const detailsElForScan = block.querySelector('.edit-details');
+            if (detailsElForScan) {
+                enteredFromSource = Array.from(detailsElForScan.querySelectorAll('td')).find(td =>
+                    Array.from(td.childNodes).some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim() === 'by')
+                ) || null;
+            }
+        }
+        if (enteredFromSource) {
+            const { enteredFrom, by } = _splitEnteredFrom(enteredFromSource);
+            addCell(enteredFrom ? enteredFrom.map(n => n.cloneNode(true)) : null);
+            addCell(by ? by.map(n => n.cloneNode(true)) : null);
+        } else {
+            addCell(null);
+            addCell(null);
+        }
+
+        // Edit details — rendered as-is; every edit type wraps this in its own
+        // native <table class="details ...">, so de-table-ify it (see
+        // _detableify's JSDoc) before it ends up nested inside a <td> of the
+        // outer edits table.
+        const detailsEl = block.querySelector('.edit-details');
+        if (detailsEl) {
+            const clone = detailsEl.cloneNode(true);
+            _detableify(clone);
+            addCell(clone);
+        } else {
+            addCell(null);
+        }
+
+        // Edit notes — rendered as-is, minus the hidden "add a note" composer
+        // widget. De-table-ify defensively too, in case a note's limited wiki
+        // formatting ever renders a table. Edits with zero real notes still
+        // have a (now-empty) .edit-notes element once the composer widget is
+        // stripped — render "N/A" rather than a blank cell, consistent with
+        // every other empty column.
+        const notesEl = block.querySelector('.edit-notes');
+        if (notesEl) {
+            const clone = notesEl.cloneNode(true);
+            clone.querySelectorAll('.add-edit-note').forEach(el => el.remove());
+            _detableify(clone);
+            addCell(clone.textContent.trim() ? clone : null);
+        } else {
+            addCell(null);
+        }
+
+        return tr;
+    }
+
+    /**
+     * Recursively converts real `<table>/<thead>/<tbody>/<tfoot>/<tr>`
+     * elements inside `root` into `<div>`s with the equivalent CSS
+     * `display: table*` value, preserving the visual grid layout without
+     * being real `<table>`/`<tbody>`/`<tr>` DOM nodes.
+     *
+     * MusicBrainz's native `.edit-details` markup wraps its content in its
+     * own `<table class="details ...">` for EVERY edit type, not just merges
+     * (which additionally embed a second compare-grid `<table class="tbl">`).
+     * Left as real `<table>` elements, this would sit nested inside a `<td>`
+     * of the outer edits table — and the dozens of `tbl.querySelectorAll('tbody tr')`
+     * calls throughout this script (sort, filter, zebra striping, export,
+     * statistics, ...) all recurse through nested tables regardless of their
+     * class, silently corrupting row counts/content for the whole edits
+     * table. Renaming the nested table's class is not sufficient; it must
+     * not be a `<table>`/`<tbody>`/`<tr>` at all — but `tbl.querySelectorAll('tbody tr')`
+     * requires a literal `<tbody>` *and* `<tr>` ancestor chain, so converting
+     * just those three tag types (plus `<thead>`/`<tfoot>`) is already
+     * sufficient; nothing in this script queries a bare `<td>`/`<th>` at the
+     * page level expecting it to belong to the outer table's row model.
+     *
+     * `<th>`/`<td>` are deliberately left as real elements (only tagged with
+     * `.mb-dt-cell`/`.mb-dt-th` marker classes for styling) rather than also
+     * being converted to `<div>`s: `rowspan`/`colspan` are IDL properties
+     * only `HTMLTableCellElement` (i.e. actual `<td>`/`<th>`) exposes, and
+     * the CSS table-layout algorithm only honours them on elements that
+     * still have that interface — a `<div colspan="4">` is inert. Converting
+     * them anyway was the original (wrong) approach and silently broke every
+     * `rowspan`/`colspan` in `.edit-details` (a `rowspan="2"` relationship
+     * diff's old/new values rendered side-by-side instead of stacked; a
+     * medium edit's "Old tracklist"/"New tracklist" `colspan="4"` group
+     * headers collapsed to one column each) — see debug/act.org 2.)/3.),
+     * debug/relationship-original.html vs. debug/relationship-final.html,
+     * and debug/no-h2.html for the "Old tracklist"/"New tracklist" case.
+     * Real `<th>`/`<td>` default to `display: table-cell` in every browser's
+     * UA stylesheet regardless of ancestor tag names, so no explicit style
+     * is needed for them here.
+     *
+     * @param {Element} root - Element to convert in place (mutated).
+     */
+    function _detableify(root) {
+        const DISPLAY_MAP = {
+            TABLE: ['table', 'mb-dt-table'],
+            THEAD: ['table-header-group', 'mb-dt-thead'],
+            TBODY: ['table-row-group', 'mb-dt-tbody'],
+            TFOOT: ['table-footer-group', 'mb-dt-tfoot'],
+            TR:    ['table-row', 'mb-dt-tr']
+        };
+        // Reverse of document order = innermost first, so each replaceWith()
+        // only ever touches an element still attached under its (possibly
+        // already-converted) parent.
+        Array.from(root.querySelectorAll('table, thead, tbody, tfoot, tr')).reverse().forEach(el => {
+            const mapping = DISPLAY_MAP[el.tagName];
+            if (!mapping) return;
+            const [display, extraClasses] = mapping;
+            const div = el.ownerDocument.createElement('div');
+            Array.from(el.attributes).forEach(attr => div.setAttribute(attr.name, attr.value));
+            extraClasses.split(' ').forEach(c => div.classList.add(c));
+            div.style.display = display;
+            while (el.firstChild) div.appendChild(el.firstChild);
+            el.replaceWith(div);
+        });
+        // <th>/<td> keep their tag (see JSDoc above) — just mark them for CSS.
+        Array.from(root.querySelectorAll('th, td')).forEach(el => {
+            el.classList.add('mb-dt-cell');
+            if (el.tagName === 'TH') el.classList.add('mb-dt-th');
+        });
+    }
+
+    /**
+     * Injects a minimal border/padding rule for the `.mb-dt-*` grid classes
+     * `_detableify()` produces (once per document) — replaces just enough of
+     * MusicBrainz's site-wide `table.tbl`/`.details` styling to stay readable
+     * now that this content is no longer real `<table>` markup.
+     */
+    function _ensureDetableifyStyle() {
+        if (document.getElementById('mb-detableify-style')) return;
+        const style = document.createElement('style');
+        style.id = 'mb-detableify-style';
+        style.textContent = `
+            .mb-dt-table {
+                border-collapse: collapse;
+                margin: 4px 0;
+            }
+            .mb-dt-cell {
+                border: 1px solid #ddd;
+                padding: 3px 6px;
+            }
+            .mb-dt-th {
+                font-weight: bold;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    /**
+     * Converts the native `<div class="edit-list">` block sequence found on
+     * MusicBrainz edit-listing pages (`/search/edits`, `/<entity>/<mbid>/edits`,
+     * `/edit/subscribed`, `/edit/subscribed_editors`) into a `<table class="tbl">`
+     * so the standard fetch/filter/sort/collapse pipeline can process it like
+     * any other page type. Each `div.edit-list` block with a real `<h2>`
+     * edit#/action link becomes one `<tr>` — MusicBrainz's "bulk vote on all
+     * unvoted edits" banner (search-results pages only) reuses the same
+     * `div.edit-list` class for an unrelated button row and is skipped, though
+     * still removed from the DOM along with the real blocks. See
+     * `debug/NOTES.md` for the annotated source DOM this was reverse-engineered
+     * from.
+     *
+     * This is a DOM pre-processing step for pageTypes that carry
+     * `features.editsToTable: true` (currently just `'edits'`). Must run in the
+     * same pre-processing slot as `applyListToTable` — after
+     * `applyRenameH2ToH3`/`applyInsertH2` and before maxPage determination —
+     * and, like `applyListToTable`, must be re-applied to each freshly fetched
+     * `Document` in the pagination loop (fetched docs never had this transform
+     * applied server-side).
+     *
+     * The surrounding `<nav class="pagination">` and the rest of the `<form>`
+     * are deliberately left untouched — only the `div.edit-list` blocks
+     * themselves are removed (each is a self-contained wrapper including its
+     * own hidden vote input and trailing `.seperator`), so pagination
+     * detection keeps working unchanged.
+     *
+     * @param {object}           def        - The active merged pageDefinition object.
+     * @param {Document|Element} [docContext=document] - DOM context to search; defaults
+     *   to the live document. Pass a fetched document for paginated XHR pages.
+     */
+    function applyEditsToTable(def, docContext = document) {
+        if (!def?.features?.editsToTable) return;
+        const blocks = Array.from(docContext.querySelectorAll('div.edit-list'));
+        if (blocks.length === 0) return;
+
+        // MusicBrainz's "bulk vote on all unvoted edits" banner (search-results
+        // pages only) reuses the exact same `div.edit-list` class for an
+        // unrelated Yes/No/Abstain/None button row — it has no `<h2>` edit#/
+        // action link, unlike every real edit block. Exclude it from row
+        // building (it would otherwise produce one garbage all-"N/A" row) but
+        // still remove it below along with the real blocks.
+        const editBlocks = blocks.filter(b => b.querySelector('h2 a[href^="/edit/"]'));
+
+        _ensureDetableifyStyle();
+
+        const headers = [
+            'Edit#', 'Edit action', 'Edit by', 'My vote', 'Vote count',
+            'Closed', 'Voting', 'Edit status', 'Entered from release', 'By artist',
+            'Edit details', 'Edit notes'
+        ];
+
+        const table = docContext.createElement('table');
+        table.className = 'tbl';
+
+        const thead = docContext.createElement('thead');
+        const hr = docContext.createElement('tr');
+        headers.forEach(h => {
+            const th = docContext.createElement('th');
+            th.textContent = h;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+
+        const tbody = docContext.createElement('tbody');
+        editBlocks.forEach(block => tbody.appendChild(_buildEditRow(block, docContext)));
+        table.appendChild(tbody);
+
+        // Each div.edit-list is a fully self-contained wrapper — the per-edit
+        // hidden vote input and the trailing .seperator are children of it,
+        // not siblings between blocks — so removing the block removes both.
+        const firstBlock = blocks[0];
+        firstBlock.parentNode.insertBefore(table, firstBlock);
+        blocks.forEach(block => block.remove());
+
+        Lib.debug('init', `applyEditsToTable: converted ${tbody.rows.length} edit-list block(s) → table.`);
+    }
+
+    /**
      * Renames every `<h2>` element in the page body to `<h3>`, preserving all
      * attributes and child nodes.
      *
@@ -5224,10 +5601,21 @@
         // allH2s sequence that renderGroupedTable uses to locate targetHeader,
         // which can cause targetHeader to resolve to the duplicate instead of
         // the intended anchor — breaking group insertion order.
-        // Guard: if any existing <h2> in the page already carries the exact
-        // same text, skip the insertion entirely.
-        const _existing = Array.from(document.querySelectorAll('h2'))
-            .find(h => h.textContent.trim() === _text.trim());
+        // Guard: matches on a `data-mb-injected-h2` marker this function
+        // stamps on its own output (checked below), not on text content or
+        // DOM position. A text-based guard (the original approach) is
+        // fooled by unrelated native headings that happen to carry the same
+        // text — e.g. a wiki-formatted Edit-note whose own content contains
+        // a "== Edits ==" sub-heading, colliding with an 'edits' pageType's
+        // insertH2: 'Edits' label. An ancestor-exclusion guard (e.g.
+        // `!h.closest('table.tbl')`, tried and found insufficient) doesn't
+        // work either: this function runs during PRE-PROCESSING, before
+        // applyEditsToTable has built the table.tbl the colliding heading
+        // will eventually end up inside of — at guard-check time it's just
+        // sitting in a bare div.edit-list, no table.tbl ancestor yet. A
+        // script-owned marker sidesteps DOM position/timing entirely. See
+        // debug/no-h2.html / debug/still-no.html / debug/act.org.
+        const _existing = document.querySelector(`h2[data-mb-injected-h2="1"]`);
         if (_existing) {
             Lib.debug('init', `applyInsertH2: <h2>"${_text}"</h2> already present — skipping (idempotency).`);
             return;
@@ -5235,6 +5623,7 @@
 
         const _h2 = document.createElement('h2');
         _h2.textContent = _text;
+        _h2.dataset.mbInjectedH2 = '1';
 
         // Prefer insertion right after the last <div class="tabs"> block.
         const _tabsDivs = document.querySelectorAll('div#page div.tabs, div#content div.tabs, div.tabs');
@@ -5262,11 +5651,22 @@
         // find it) but is positioned after the table, breaking updateH2Count's
         // "table follows h2" search and everything anchored to it. See
         // debug/report-detail.org (AnnotationsPlaces/AnnotationsReleases).
+        //
+        // Also excludes h3s nested inside div.edit-list — every real edit note
+        // has its own native <h3 class="owner"> (author + date), and this
+        // function runs BEFORE applyEditsToTable has converted those raw
+        // div.edit-list blocks into table.tbl rows, so the table.tbl
+        // exclusion above doesn't catch them yet. Without this, insertH2
+        // lands the new <h2> as a sibling inside the FIRST edit's own
+        // .edit-note — which then gets cloned into that edit's "Edit notes"
+        // table cell by applyEditsToTable, i.e. the filterline "disappears"
+        // into a data row instead of sitting above the table. See
+        // debug/still-no.html / debug/act.org.
         const _contentRoot = document.getElementById('content') ||
                              document.getElementById('page') ||
                              document.body;
         const _firstH3 = Array.from(_contentRoot.querySelectorAll('h3'))
-            .find(h => !h.closest('table.tbl'));
+            .find(h => !h.closest('table.tbl') && !h.closest('div.edit-list'));
         if (_firstH3) {
             _firstH3.insertAdjacentElement('beforebegin', _h2);
             Lib.debug('init', `applyInsertH2: inserted <h2>"${_text}"</h2> before first <h3> in content area.`);
@@ -7057,6 +7457,46 @@
                     extractMainColumn: 'Work',
                     stickyColumn: 'Work'
                 }
+            },
+            tableMode: 'single'
+        },
+        // Edit-listing pages ('/search/edits', '/<entity>/<mbid>/edits',
+        // '/edit/subscribed', '/edit/subscribed_editors'). Must be checked
+        // BEFORE 'search' below — routing is first-match-wins and
+        // '/search/edits' would otherwise be swallowed by 'search''s
+        // path.includes('/search') match.
+        {
+            type: 'edits',
+            match: (path) => {
+                if (path === '/search/edits') return true;
+                if (path === '/edit/subscribed' || path === '/edit/subscribed_editors') return true;
+                // Generic "/<entity>/<mbid>/edits" — e.g. /release/<mbid>/edits,
+                // /artist/<mbid>/edits, /work/<mbid>/edits, …
+                return /^\/[a-z-]+\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/edits$/.test(path);
+            },
+            buttons: [ { label: 'Show all Edits' } ],
+            features: {
+                editsToTable: true,
+                // Marks this pageType as edits-pagination-aware; the actual
+                // "is this listing's pagination ambiguous" check is dynamic
+                // (isAmbiguousEditsPagination / _hasAmbiguousEditsPagination),
+                // not a blanket assumption — see debug/act.org 1.).
+                unboundedPagination: true,
+                // No native <h2> survives applyEditsToTable (every div.edit-list
+                // block, including its own <h2>, is removed) and there's no
+                // div.tabs on any edits page, so without this the single-table
+                // filterline/collapsible-section header is missing entirely —
+                // see debug/act.org 2.) / debug/no-h2-filterline.html.
+                insertH2: 'Edits',
+                collapsableColumns: [ 'Edit details', 'Edit notes' ],
+                // Inline CAA cover-art thumbnails for any /release/ or
+                // /release-group/ link found in this column — see
+                // debug/act.org 4.) (numbered "3.)" in the source file).
+                // Harmless no-op for rows whose "Entered from release" cell
+                // links to a non-release entity (e.g. a recording, for
+                // "Edit recording" edits) — CAA_CTX.entityGuard only matches
+                // release/release-group hrefs.
+                addCAA: 'Entered from release'
             },
             tableMode: 'single'
         },
@@ -26778,6 +27218,33 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Detects whether a MusicBrainz edit-listing page's pagination widget is
+     * "ambiguous" — i.e. MusicBrainz could not compute an exact result count
+     * (see `debug/NOTES.md` / `debug/act.org`) and the widget shows a
+     * milestone-with-ellipsis window (`1 … 6 7 8 9 10 11 … Next`) instead of
+     * the true last page. True only when an ellipsis placeholder
+     * (`<li><span>…</span></li>`) appears anywhere inside `ul.pagination`.
+     *
+     * Returns `false` both when there is no pagination at all (small result
+     * sets render every edit on one page, no `ul.pagination` present at
+     * all — see `debug/willow.html`) and when the widget lists every page up
+     * to the real last one with no gaps (small-enough result sets that
+     * MusicBrainz *did* compute exactly, even when paginated — see
+     * `debug/mgv.html`, 54 edits / 2 pages, `1 2 Next`). In both of those
+     * cases `determineMaxPageFromDOM()`/`fetchMaxPageGeneric()` already
+     * compute the correct `maxPage`.
+     *
+     * @param {Document} doc
+     * @returns {boolean}
+     */
+    function _hasAmbiguousEditsPagination(doc) {
+        const pagination = doc.querySelector('ul.pagination');
+        if (!pagination) return false;
+        return Array.from(pagination.querySelectorAll('li > span'))
+            .some(s => { const t = s.textContent.trim(); return t === '…' || t === '...'; });
+    }
+
+    /**
      * Determines the maximum page number by parsing the pagination UI on the current page
      * @returns {number} The maximum page number found, defaults to 1 if no pagination is present
      */
@@ -27564,6 +28031,14 @@ a { color: #1565c0; }`;
             applyListToTable(activeDefinition);
         }
 
+        // ── editsToTable pre-processing ─────────────────────────────────────
+        // For the 'edits' pageType, convert the native div.edit-list block
+        // sequence into a proper <table class="tbl"> the same way listToTable
+        // does for <ul> lists above. Same ordering constraints apply.
+        if (activeDefinition.features?.editsToTable) {
+            applyEditsToTable(activeDefinition);
+        }
+
         // Clear existing highlights immediately from DOM for visual feedback
         document.querySelectorAll('.mb-global-filter-highlight, .mb-column-filter-highlight').forEach(n => {
             n.replaceWith(document.createTextNode(n.textContent));
@@ -27607,8 +28082,35 @@ a { color: #1565c0; }`;
             ? path.replace(/\/[^/]*$/, buttonConfig.virtualPath)
             : path;
 
+        // --- USERSCRIPT WARNING POPUP --- (hoisted above maxPage determination so
+        // the unboundedPagination branch below can use it directly)
+        const maxThreshold = Lib.settings.sa_max_page;
+
+        // For edits pageTypes, MusicBrainz's pagination is only ambiguous
+        // (no true last page discoverable — see debug/NOTES.md / debug/act.org)
+        // when the widget shows an ellipsis milestone window. Small result
+        // sets either have no pagination at all (debug/willow.html) or a
+        // complete, gap-free widget that already reveals the real last page
+        // (debug/mgv.html) — determineMaxPageFromDOM() is correct for both,
+        // so only fall back to the safety-cap + fetch-until-empty strategy
+        // when the ellipsis is actually present.
+        const isAmbiguousEditsPagination =
+            !!activeDefinition?.features?.unboundedPagination &&
+            _hasAmbiguousEditsPagination(document);
+
         // Determine maxPage based on context
-        if (activeDefinition && activeDefinition.non_paginated) {
+        if (isAmbiguousEditsPagination) {
+            // MusicBrainz edit-listing pagination never reveals a true last page
+            // (the widget is a sliding window around the current page, and
+            // "Found at least N edits" keeps growing the deeper you page — see
+            // debug/NOTES.md). determineMaxPageFromDOM()/fetchMaxPageGeneric()
+            // would silently undercount, so skip them entirely: use the
+            // configured safety cap as the loop bound, and rely on the
+            // empty-page break in the fetch loop below to stop at the real end.
+            Lib.debug('fetch', `Context: unboundedPagination page definition, ambiguous widget detected. Using safety cap as maxPage: ${maxThreshold}.`);
+            maxPage = maxThreshold;
+            globalStatusDisplay.textContent = `Getting number of pages to fetch... Unbounded pagination; capped at ${maxThreshold}`;
+        } else if (activeDefinition && activeDefinition.non_paginated) {
             // For non-paginated types, initially assume maxPage is 1
             Lib.debug('fetch', 'Context: Non-paginated page definition. Initially assuming maxPage = 1.');
             maxPage = 1;
@@ -27627,12 +28129,28 @@ a { color: #1565c0; }`;
             globalStatusDisplay.textContent = `Getting number of pages to fetch... Paginated page definition. Fetching maxPage from DOM: ${maxPage}`;
         }
 
-        // --- USERSCRIPT WARNING POPUP ---
-        const maxThreshold = Lib.settings.sa_max_page;
         Lib.debug('fetch', `Total pages to fetch: ${maxPage}`);
 
-        // If page count is above threshold, show modal
-        if (maxPage > maxThreshold) {
+        // Warn the user before committing to the fetch — the reason differs
+        // depending on whether maxPage is a real detected total (normal
+        // pageTypes, and edits pages with a non-ambiguous pagination widget)
+        // or just the configured safety cap standing in for an unknown total
+        // (edits pages with an ambiguous widget — see isAmbiguousEditsPagination above).
+        if (isAmbiguousEditsPagination) {
+            const proceedConfirmed = await Lib.showCustomConfirm(
+                `This MusicBrainz edit listing does not report an exact page count — MusicBrainz's pagination keeps going indefinitely for large result sets.\n\nFetching will stop automatically once no more edits are found, up to a safety cap of ${maxThreshold} pages (configurable in Settings).\n\nProceed?`,
+                'ℹ️ Unknown Page Count',
+                activeBtn
+            );
+            if (!proceedConfirmed) {
+                Lib.warn('warn', 'Unbounded-pagination fetch canceled by user.');
+                activeBtn.style.backgroundColor = '';
+                activeBtn.style.color = '';
+                activeBtn.disabled = false;
+                _setInfoSub('mb-info-display-generic', '');
+                return;
+            }
+        } else if (maxPage > maxThreshold) {
             const proceedConfirmed = await Lib.showCustomConfirm(
                 `Warning: This MusicBrainz entity has ${maxPage} pages. It's more than the configured maximum value (${maxThreshold}) and could result in severe performance, memory consumption and timing issues.\n\nProceed?`,
                 '⚠️ High Page Count',
@@ -27792,6 +28310,30 @@ a { color: #1565c0; }`;
                 // skipped: it was already converted in the pre-processing block.
                 if (doc !== document && Array.isArray(activeDefinition.features?.listToTable)) {
                     applyListToTable(activeDefinition, doc);
+                }
+
+                // ── editsToTable on fetched pages ────────────────────────────
+                // Mirrors the listToTable handling above. On pages where
+                // isAmbiguousEditsPagination is true, maxPage is just the
+                // configured safety cap (MusicBrainz's edit-listing pagination
+                // never reveals a true last page for large result sets — see
+                // debug/NOTES.md). The real "we're done" signal there is a
+                // fetched page with zero real edit blocks; stop the whole fetch
+                // loop right here rather than the generic
+                // tablesToProcess.length === 0 → continue below, which would
+                // otherwise burn through every remaining page up to the cap.
+                // Counts only div.edit-list blocks with a real h2 edit#/action
+                // link — MusicBrainz's "bulk vote on all unvoted edits" banner
+                // (search-results pages only) reuses the same div.edit-list
+                // class without one, so a page with only that banner must not
+                // be mistaken for "more data ahead".
+                if (doc !== document && activeDefinition.features?.editsToTable) {
+                    if (isAmbiguousEditsPagination &&
+                        doc.querySelectorAll('div.edit-list h2 a[href^="/edit/"]').length === 0) {
+                        Lib.debug('fetch', `edits: page ${p} has no edit-list blocks — reached the end of an unbounded listing, stopping.`);
+                        break;
+                    }
+                    applyEditsToTable(activeDefinition, doc);
                 }
 
                 // Use parseDocumentForTables to filter which tables we actually process

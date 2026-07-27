@@ -1,0 +1,23 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-07-25",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Added a new `edits` page type covering MusicBrainz edit-listing pages (`/search/edits`, `/<entity>/<mbid>/edits`, `/edit/subscribed`, `/edit/subscribed_editors`) — including the required `@include` header directives for all five URL shapes. Each `<div class=\"edit-list\">` block is converted into a table row with 12 columns (Edit#, Edit action, Edit by, My vote, Vote count, Closed, Voting, Edit status, Entered from release, By artist, Edit details, Edit notes) via a new `applyEditsToTable()` DOM pre-processing step, mirroring `applyListToTable()`'s pattern. `Edit details` and `Edit notes` are collapsable/height-clamped like the Annotation column; a fresh `Edits` `<h2>` filterline is injected so the single-table collapsible-section/filter-bar infrastructure has something to anchor to. `Entered from release`/`By artist` are populated by scanning for the entity-linked-to-artist-credit shape wherever it appears (not just the dedicated `.entered-from` block), so they cover far more edit types than just relationship edits (e.g. \"Edit recording\", \"Edit medium\", \"Add cover art\", ...), and get inline CAA cover-art thumbnails via `features.addCAA`.",
+                    "Handled MusicBrainz's edit-listing pagination not always exposing a true last page. Small result sets either have no pagination at all or a complete, gap-free widget that already reveals the real last page (both handled correctly by the existing DOM-based detection); only the double-ellipsis milestone-window widget MusicBrainz shows for large/uncounted result sets (\"Found at least N edits\", confirmed live to keep growing past page 1000) is actually ambiguous. A new `_hasAmbiguousEditsPagination()` check now decides dynamically, per page, whether to trust the normal detection or fall back to a safety-capped fetch-until-empty-page strategy (`features.unboundedPagination`, `sa_max_page` setting) — scoped entirely to `editsToTable` pages, no behavior change for any other page type."
+                ]
+            },
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fixed `applyInsertH2` failing to insert (or mis-placing) its page-level filterline heading whenever native content it runs before-processing (e.g. a wiki-formatted edit note, which can contain its own `== Edits ==` sub-heading and/or a native `<h3 class=\"owner\">`) happened to collide with the chosen label or heading level. The idempotency guard now stamps and checks a `data-mb-injected-h2` marker instead of matching by text content (position/timing-independent, can't be fooled by unrelated headings); the \"before first h3\" placement fallback now also excludes headings nested inside `div.edit-list`, alongside the existing `table.tbl` exclusion. General fix to shared insertH2 infrastructure, not specific to the `edits` page type.",
+                    "Fixed `rowspan`/`colspan` being silently dropped from `.edit-details` compare tables (a relationship diff's old/new values rendering side-by-side instead of stacked; a medium edit's \"Old tracklist\"/\"New tracklist\" 4-column group headers collapsing to one column each). `_detableify()` was converting `<th>`/`<td>` into `<div>`s, but `rowSpan`/`colSpan` are DOM properties only real table-cell elements expose. `<th>`/`<td>` are now left as real elements (only `<table>`/`<thead>`/`<tbody>`/`<tfoot>`/`<tr>` are converted, which is all the nested-table-corruption fix ever needed).",
+                    "Fixed the \"By artist\" column including trailing relationship-attribute description text after the artist credit (e.g. \"... has a discography entry at <url> [info]\", \"... can be purchased for download at <url> [info]\"). `_splitEnteredFrom` now stops right after the first element following \"by\" (the artist-credit `<bdi>`) instead of taking the rest of the sentence."
+                ]
+            }
+        ]
+    }
+]
