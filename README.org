@@ -86030,7 +86030,7 @@ add support for new pageType
 |----------------------+--------------------------------------+---------------------------|
 | auto-editor-election | https://musicbrainz.org/election/473 | auto-editor.html          |
 
-* "MusicBrainz: More Flags Everywhere" by @Lotheric
+* TODO "MusicBrainz: More Flags Everywhere" by @Lotheric
 ** initial
 
 Now that the userscript "MusicBrainz: More Flags Everywhere" by @Lotheric supports more flags of country subdivisions:
@@ -86088,6 +86088,10 @@ from the console for https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68
 ** works
 
 works now, leave the debug statements in, commit, push
+
+** TODO add "United Kingdom", "Canada" and "Australia" to the list
+
+add "United Kingdom", "Canada" and "Australia" to the list
 
 * DONE plan: rewrite @match directives
 
@@ -86210,7 +86214,140 @@ Do everything in a new branch if plan OK
 
 act on @debug/edit-pages.org
 
-** notes-received.html
+** pagination
+
+How do we deal with the paginated page list for pages e.g.
+@debug/pagination.html
+when the maxpage is not clear by looking at the initial/first page ?
+
+** you missed the @include userscript directives
+
+you missed the @include userscript directives
+
+** the columns "Entered from" and "By" could be present on more edit types
+
+1.)
+
+The current assumption that the pagination on "edits" pages has no max page is generally not right, see
+
+https://musicbrainz.org/release/4e6fbd8f-009c-40d8-934d-dd0da5b19c8e/edits - no pagination at all just one page - @debug/willow.html
+https://musicbrainz.org/artist/b3c01c39-429c-4b1e-8ad4-c7b04b601ca4/edits - with pagination and max page present - @debug/mgv.html
+
+So first check for these cases and then fall back to the current implementation
+
+2.)
+
+The '<h2 class="mb-h2-processed mb-toggle-h2"' "single"-table filterline is completely missing from the "edits"
+pageTypes. It should be positioned right before the table itself on the final rendered page.
+
+See @debug/no-h2-filterline.html
+
+2.)
+
+The columns "Entered from" and "By" could be present on more edit types, at least additionally for edit type
+
+#+begin_example
+Edit recording
+#+end_example
+
+they are there. It's probably better to somehow scan for them, then hardcode.
+
+3.)
+
+The "Entered from" column should get inline CAA cover links via a "addCAA" features flag
+
+4.)
+
+Rename the following columns
+
+#+begin_example
+"Entered from" => "Entered from release"
+"By" => "By artist"
+#+end_example
+
+** act on @debug/act.org
+
+act on @debug/act.org
+
+** no H2 filterline
+
+1.)
+
+Still NO H2 filterline present see @debug/no-h2.html
+
+2.)
+
+For the following original relationship edit @debug/relationship-original.html where the before/after "Dave Hewitt"
+edits are below each other, the final rendered page shows them beside each other @debug/relationship-final.html
+
+3.)
+
+For medium edits, the original table header rows
+
+#+begin_example
+<thead><tr><th colspan="4">Old tracklist</th><th colspan="4">New tracklist</th></tr><tr><th>#</th><th>Title</th><th>Artist</th><th>Length</th><th>#</th><th>Title</th><th>Artist</th><th>Length</th></tr></thead>
+#+end_example
+
+are getting rendered as
+
+#+begin_example
+<div class="mb-dt-thead" style="display: table-header-group;"><div class="mb-dt-tr" style="display: table-row;"><div colspan="4" class="mb-dt-cell mb-dt-th" style="display: table-cell;">Old tracklist</div><div colspan="4" class="mb-dt-cell mb-dt-th" style="display: table-cell;">New tracklist</div></div><div class="mb-dt-tr" style="display: table-row;"><div class="mb-dt-cell mb-dt-th" style="display: table-cell;">#</div><div class="mb-dt-cell mb-dt-th" style="display: table-cell;">Title</div><div class="mb-dt-cell mb-dt-th" style="display: table-cell;">Artist</div><div class="mb-dt-cell mb-dt-th" style="display: table-cell;">Length</div><div class="mb-dt-cell mb-dt-th" style="display: table-cell;">#</div><div class="mb-dt-cell mb-dt-th" style="display: table-cell;">Title</div><div class="mb-dt-cell mb-dt-th" style="display: table-cell;">Artist</div><div class="mb-dt-cell mb-dt-th" style="display: table-cell;">Length</div></div></div>
+#+end_example
+
+on the final rendered page, missing somehow the colspan attributes
+
+4.)
+
+The original release-group relationship edit @debug/RG-relationship-initial.html is rendered as @debug/RG-relationship-final.html 
+
+The "has a discography entry at https://www.last.fm/music/Bruce+Springsteen/Lonesome+Day[info]" should not be part of the "By artist" column, ONLY the anchored artist info itself
+
+The same is true for release edits, where some "By artist" column values have e.g. ' can be purchased for download at <a class="wrap-anywhere" href="https://www.qobuz.com/fr-fr/album/streets-of-minneapolis-bruce-springsteen/g18kp1lrj56h3"><bdi>https://www.qobuz.com/fr-fr/album/streets-of-minneapolis-bruce-springsteen/g18kp1lrj56h3</bdi></a><!-- -->[<a href="/url/b5c0668c-79dd-4a84-84e7-ac68c004db02">info'
+
+#+begin_example
+<td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></bdi> can be purchased for download at <a class="wrap-anywhere" href="https://www.qobuz.com/fr-fr/album/streets-of-minneapolis-bruce-springsteen/g18kp1lrj56h3"><bdi>https://www.qobuz.com/fr-fr/album/streets-of-minneapolis-bruce-springsteen/g18kp1lrj56h3</bdi></a><!-- -->[<a href="/url/b5c0668c-79dd-4a84-84e7-ac68c004db02">info</a>]<!-- --><!-- --></td>
+#+end_example
+
+** still NO H2 line, it looks like the H2 heading "Edits" landed in this row
+
+still NO H2 line, it looks like the H2 heading "Edits" landed in this row @debug/still-no.html
+
+** TODO "Approved" + date/time should be treated as "Closed"
+
+1.)
+
+"Approved" + date/time should be treated as "Closed" in an edit
+
+Approved:
+#+begin_example
+<tr><td class="edit-expiration" colspan="2"><strong>Approved:</strong> <!-- -->2026-07-19 21:47 GMT+2</td></tr>
+#+end_example
+
+Closed:
+#+begin_example
+<tr><td class="edit-expiration" colspan="2"><strong>Closed:</strong> <!-- -->2026-07-26 21:00 GMT+2</td></tr>
+#+end_example
+
+2.)
+
+Also rename the current "Closed" column to "Closed/Approved"
+
+** On the final rendered page, the background colors should be preserved e.g on relationship and label edit pages
+
+On the final rendered page, the background colors should be preserved e.g on relationship and label edit pages
+
+** add background colors to the column "Edit action" like on the initial page
+
+** no change in background colors: @debug/no-change.html
+
+no change in background colors: @debug/no-change.html
+
+** make "By artist" collapsable and render each artist on it on line
+
+make "By artist" collapsable and render each artist on it on line:
+Bruce Springsteen & The E Street Band with Jackson Browne (American singer-songwriter), Tom Petty & Rosemary Butler
+
+** TODO notes-received.html
 
 @debug/notes-received.html
 
@@ -86218,6 +86355,7 @@ https://musicbrainz.org/edit/notes-received
 https://musicbrainz.org/edit/notes-received?modbot_condition=
 https://musicbrainz.org/edit/notes-received?modbot_condition=%3D - 
 https://musicbrainz.org/edit/notes-received?modbot_condition=%21%3D - 
+
 
 * Performance fixes — ready to implement (analysed, approach agreed)
 
