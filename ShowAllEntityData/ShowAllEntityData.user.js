@@ -2066,24 +2066,47 @@
         },
 
         // ============================================================
-        // EDITS PAGE — "EDIT ACTION" COLUMN COLORS SECTION
+        // EDITS PAGE SECTION
         // ============================================================
         divider_edits_colors: {
             type: 'divider',
-            label: '🎨 EDITS PAGE COLORS'
+            label: '🎨 EDITS PAGE'
         },
 
         sa_enable_edits_type_colors: {
-            label: 'Enable "Edit action" column background colors',
+            label: 'Enable "Edit#"/"Edit action" column background colors',
             type: 'checkbox',
             default: true,
-            description: 'Color the "Edit action" column on the edits pageType ' +
+            description: 'Color the "Edit#" and "Edit action" columns on the edits pageType ' +
                          '(/search/edits, /<entity>/<mbid>/edits, /edit/subscribed, ' +
                          '/edit/subscribed_editors) by edit category and open-vs-closed state. ' +
                          'Category/shade is derived from the edit\'s own class list (the same ' +
                          'classification the well-known "MusicBrainz: Colourful edits" userscript ' +
                          'uses), independent of whether that script — or any other coloring script ' +
                          '— is installed. The colors below default to its palette.'
+        },
+
+        sa_edits_enable_details_collapse: {
+            label: 'Enable collapsible "Edit details" column',
+            type: 'checkbox',
+            default: false,
+            description: 'Height-clamp the "Edit details" column on the edits pageType behind a ' +
+                         '"more"/"less" toggle, the same way the "Annotation" column is clamped ' +
+                         'when `sa_enable_annotation_collapse` is on — but independently ' +
+                         'configurable, since "Edit details" (the relationship/attribute diff for ' +
+                         'the edit) is usually short and more useful shown in full. Off by ' +
+                         'default: cells render uncollapsed/unclamped initially.'
+        },
+
+        sa_edits_enable_notes_collapse: {
+            label: 'Enable collapsible "Edit notes" column',
+            type: 'checkbox',
+            default: false,
+            description: 'Height-clamp the "Edit notes" column on the edits pageType behind a ' +
+                         '"more"/"less" toggle, the same way the "Annotation" column is clamped ' +
+                         'when `sa_enable_annotation_collapse` is on — but independently ' +
+                         'configurable. Off by default: cells render uncollapsed/unclamped ' +
+                         'initially.'
         },
 
         sa_edits_color_add_open: {
@@ -36583,13 +36606,23 @@ a { color: #1565c0; }`;
             // clamp get a toggle — short annotations render unchanged.
             //
             // Every candidate is ALWAYS wrapped in .mb-text-clamp-marker,
-            // regardless of sa_enable_annotation_collapse — that marker is
+            // regardless of whether collapsing is enabled — that marker is
             // what auto-resize's _isProseCollapseColumn() keys off, and the
             // width cap must stay active even when collapsing is disabled
             // (see _getProseColumnMaxWidth). The .mb-text-clamp-inner class
             // (which actually clamps height) and the toggle are only added
             // when the setting is on.
-            const _annotationCollapseEnabled = Lib.settings.sa_enable_annotation_collapse !== false;
+            //
+            // "Edit details"/"Edit notes" (edits pageType) have their own
+            // independent sa_edits_enable_details_collapse /
+            // sa_edits_enable_notes_collapse settings instead of sharing the
+            // global sa_enable_annotation_collapse — both default to off
+            // (uncollapsed initially), unlike Annotation's default-on.
+            const _annotationCollapseEnabled = colName === 'Edit details'
+                ? Lib.settings.sa_edits_enable_details_collapse === true
+                : colName === 'Edit notes'
+                ? Lib.settings.sa_edits_enable_notes_collapse === true
+                : Lib.settings.sa_enable_annotation_collapse !== false;
             let proseOverflowCount = 0;
             // True when at least one overflowing prose cell in this column
             // contains a nested wiki <h2> — used to decide whether the

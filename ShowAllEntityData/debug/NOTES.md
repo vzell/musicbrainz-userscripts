@@ -992,3 +992,26 @@ now takes priority over the computed value. Verified via jsdom
 (`applyEditsToTable` + real `applyStickyColumn` against `mgv.html`):
 "Edit#" and "Edit action" now always match, every other cell still
 unaffected (regression check).
+
+## 2026-07-28 — independently configurable "Edit details"/"Edit notes" collapse
+
+Both columns previously shared the global `sa_enable_annotation_collapse`
+setting (default on, via `collapsableColumns: ['Edit details', 'Edit
+notes']`), same as the "Annotation" column. Split into two new,
+independent settings — `sa_edits_enable_details_collapse` /
+`sa_edits_enable_notes_collapse` — **defaulting to off** (uncollapsed
+initially), unlike Annotation's default-on. `initCollapsableColumns`'s
+`_annotationCollapseEnabled` computation (which gates whether a prose
+column's cells get the actual height-clamp + toggle, vs. staying bare —
+see the existing `.mb-text-clamp-marker`/`.mb-text-clamp-inner` split
+documented in this project's CLAUDE.md) now branches on `colName`: "Edit
+details"/"Edit notes" read their own setting, every other prose column
+(Annotation, and any future one) is completely unaffected and keeps
+reading the shared global setting exactly as before.
+
+Not testable end-to-end via jsdom (the overflow check compares
+`scrollHeight`/`clientHeight`, which jsdom never computes — it has no real
+layout engine, always returns 0). Verified the decision logic itself in
+isolation instead: extracted the exact ternary and ran it against 8 cases
+(both new settings unset/true/false, and an unrelated column to confirm
+zero effect on the existing global-setting behavior) — all correct.
