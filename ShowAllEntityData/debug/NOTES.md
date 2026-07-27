@@ -807,3 +807,14 @@ marker present, not nested inside `.edit-list`; a second `applyInsertH2`
 call (disk-load re-run scenario) correctly stays idempotent (no duplicate
 inserted). Also re-verified against `mgv.html` (has real notes with owner
 h3s) and `willow.html` directly.
+
+## 2026-07-25 — "Approved:" edits + column rename
+
+MusicBrainz uses `<strong>Approved:</strong> <date>` (not `Closed:`) for
+auto-editor edits that passed their voting period without ever being
+formally closed — same semantics (a final date, no more voting), just a
+different label. `_buildEditRow`'s `.edit-expiration` prefix check now
+matches `/^(Closed|Approved):/i`. Column renamed `"Closed"` →
+`"Closed/Approved"` to reflect this. Verified via jsdom with both prefixes
+(and a `Closed:` regression check) against a synthetic `.edit-expiration`
+matching the exact markup given.

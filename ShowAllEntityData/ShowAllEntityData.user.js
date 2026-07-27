@@ -5281,12 +5281,16 @@
         const voteCountEl = block.querySelector('.vote-count');
         addCell(voteCountEl ? voteCountEl.textContent.replace(/\s+/g, ' ').trim() : null);
 
-        // Closed / Voting — mutually exclusive, both read from .edit-expiration
+        // Closed/Approved / Voting — mutually exclusive, both read from
+        // .edit-expiration. "Approved:" is the prefix MusicBrainz uses for
+        // auto-editor edits that passed their voting period without ever
+        // being formally "Closed:" — same semantics (a final date, no more
+        // voting), so it's folded into the same column.
         const expirationEl = block.querySelector('.edit-expiration');
         let closedText = null, votingText = null;
         if (expirationEl) {
             const text = expirationEl.textContent.replace(/\s+/g, ' ').trim();
-            if (/^Closed:/i.test(text)) closedText = text.replace(/^Closed:\s*/i, '').trim();
+            if (/^(Closed|Approved):/i.test(text)) closedText = text.replace(/^(?:Closed|Approved):\s*/i, '').trim();
             else if (/^Voting:/i.test(text)) votingText = text.replace(/^Voting:\s*/i, '').trim();
         }
         addCell(closedText);
@@ -5498,7 +5502,7 @@
 
         const headers = [
             'Edit#', 'Edit action', 'Edit by', 'My vote', 'Vote count',
-            'Closed', 'Voting', 'Edit status', 'Entered from release', 'By artist',
+            'Closed/Approved', 'Voting', 'Edit status', 'Entered from release', 'By artist',
             'Edit details', 'Edit notes'
         ];
 
