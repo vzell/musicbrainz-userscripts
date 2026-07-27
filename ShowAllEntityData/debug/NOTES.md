@@ -976,3 +976,19 @@ cell); the non-sticky-cell snapshot loop now checks a generic
 (`applyEditsToTable` + real `applyStickyColumn` against `mgv.html`): only
 the "Edit action" cell ends up colored, the sticky "Edit#" cell and every
 other cell in the row are unaffected (regression check).
+
+## 2026-07-28 — extended to the "Edit#" column too
+
+Same `editActionBg` value now also applied to the "Edit#" cell (the one
+`addCell(a)` returns), with the same `data-mb-custom-cell-bg` marker.
+Since "Edit#" is the sticky column (index 0, `edits` sets no
+`stickyColumn` override), this needed one more change beyond
+`_buildEditRow`: `applyStickyColumn`'s sticky-cell branch unconditionally
+overwrites its cell's background from a fresh `getComputedStyle` read (to
+give it an opaque background for scroll-over-content purposes), which
+would otherwise silently discard the color set at build time. Patched the
+same way as the non-sticky loop already was: `cell.dataset.mbCustomCellBg`
+now takes priority over the computed value. Verified via jsdom
+(`applyEditsToTable` + real `applyStickyColumn` against `mgv.html`):
+"Edit#" and "Edit action" now always match, every other cell still
+unaffected (regression check).

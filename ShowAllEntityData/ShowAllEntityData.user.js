@@ -5440,13 +5440,17 @@
             const a = docContext.createElement('a');
             a.setAttribute('href', editLink.getAttribute('href'));
             a.textContent = `#${m[1]}`;
-            addCell(a);
-            const actionTd = addCell(m[2].trim());
+            const editNumTd = addCell(a);
+            const actionTd  = addCell(m[2].trim());
             if (editActionBg) {
-                actionTd.style.backgroundColor = editActionBg;
                 // Generic marker (not edits-specific) — see applyStickyColumn,
                 // which respects this on whichever cell carries it so the
-                // color survives its "clear inline bg so CSS zebra wins" pass.
+                // color survives its "clear inline bg so CSS zebra wins" pass
+                // (and, for Edit# specifically, its own sticky-column opaque-
+                // background computation).
+                editNumTd.style.backgroundColor = editActionBg;
+                editNumTd.dataset.mbCustomCellBg = editActionBg;
+                actionTd.style.backgroundColor = editActionBg;
                 actionTd.dataset.mbCustomCellBg = editActionBg;
             }
         } else {
@@ -10079,8 +10083,12 @@
                 }
                 cell.style.background = '';
                 const cellBg = getComputedStyle(cell).backgroundColor;
-                const trueRestBg = (cellBg === 'rgba(0, 0, 0, 0)' || cellBg === 'transparent')
-                    ? '#ffffff' : cellBg;
+                // A cell carrying its own data-mb-custom-cell-bg marker (e.g.
+                // the edits pageType's colored "Edit#" cell — see
+                // _buildEditRow) always wins over the computed zebra colour —
+                // same reasoning as the non-sticky-cell loop below.
+                const trueRestBg = cell.dataset.mbCustomCellBg ||
+                    ((cellBg === 'rgba(0, 0, 0, 0)' || cellBg === 'transparent') ? '#ffffff' : cellBg);
                 cell.dataset.mbRestBg = trueRestBg;
                 if (_activeTintClass) {
                     // Tint was already applied (renderFinalTable path): restore the
