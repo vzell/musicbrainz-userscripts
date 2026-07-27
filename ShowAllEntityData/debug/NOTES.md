@@ -909,3 +909,70 @@ both the sticky column and non-sticky cells now end up with the correct
 matching `style.background` for rows with a preserved edit colour, and a
 plain synthetic row without one still gets the original sticky-only/white
 + empty-non-sticky behaviour.
+
+## 2026-07-28 — "preserved colour" replaced with our own class-derived palette
+
+The whole premise of the previous 3 rounds of fixes was wrong. Every debug
+snapshot used to build/test this feature (`edits-search.html`, `mgv.html`,
+`willow.html`, ...) was captured from a browser with the third-party
+**"MusicBrainz: Colourful edits"** userscript installed
+(`debug/ColourfulEdits.user.js` — stamps `all[i].style.backgroundColor`
+onto every `.edit-header` via `document.getElementsByClassName`). Every
+color in every snapshot was that script's *output*, not native
+MusicBrainz markup, which is why reading `.style.backgroundColor` only
+ever worked in a browser that also happened to have it installed.
+Separately, the user confirmed a real MusicBrainz page *without* that
+script still visibly colors `.edit-header` — but its raw markup has *no*
+inline `style` attribute at all (just
+`class="edit-header applied edit-add add-relationship"`), meaning
+MusicBrainz colors it via its own class-based site CSS. Neither source
+(inline style from a possibly-absent userscript, or a stylesheet rule
+only resolvable via `getComputedStyle` on a live, currently-viewed page)
+is something the fetched-pages-2+ pipeline (detached `DOMParser`
+documents, no stylesheet) could ever reliably read anyway.
+
+Redesigned per two explicit decisions:
+1. Stop reading style from the DOM entirely. Derive the color **ourselves**
+   purely from `.edit-header`'s class list — always present in raw
+   HTML/DOM regardless of browser environment — via new
+   `_editActionBgColor(headerClassName)`, replicating Colourful Edits' own
+   5-category × open/closed classification, but as **configurable
+   `sa_edits_color_*` settings** (new "🎨 EDITS PAGE COLORS" `configSchema`
+   section, `sa_enable_edits_type_colors` master toggle) defaulting to its
+   palette — not hardcoded, not a dependency on that script being
+   installed.
+2. Color **only the "Edit action" column**, not the whole row (reverting
+   the whole-row approach entirely: `tr.style.backgroundColor`/
+   `tr.dataset.mbEditBg` removed from `_buildEditRow`).
+
+**Real bug caught by jsdom testing before landing**: Colourful Edits'
+own classification regex (`/edit-(?!header)/`, meant to catch plain "Edit
+…" edits while excluding the `edit-header` wrapper class) is only
+correct if MusicBrainz's category tokens are just `edit-` prefixed loosely
+— but `grep -o 'class="edit-header [^"]*"' debug/*.html | sort -u` across
+every snapshot confirms the real tokens are `edit-add`/`edit-edit`/
+`edit-remove`/`edit-merge`. Since `.test()` scans the whole string, not
+just the first "edit-" occurrence, `/edit-(?!header)/` *also* matches
+inside `edit-remove`/`edit-merge` (the "edit-" there isn't followed by
+"header" either) — silently recoloring every Remove/Merge edit as "Edit".
+This looks like a latent bug in the 2012 script itself that nobody
+noticed, not something worth replicating for "fidelity". Fixed with exact
+token matching (`/\bedit-add\b/`, `/\bedit-edit\b/`, etc.) instead of the
+loose substring/negative-lookahead regexes — verified against every real
+`edit-header` class combination found across all `debug/*.html` snapshots
+(11 cases: each category × open/closed, cancelled-wins-over-type, a
+fabricated unknown category falling through to "other", and the specific
+"Add ISWCs" edit that would have been misclassified under the old
+substring approach if the bug had gone the other direction).
+
+`applyStickyColumn`'s integration also had to change from row-level to
+**per-cell**: the earlier `tr.dataset.mbEditBg` check is gone entirely
+(reverted to the original hardcoded `'#ffffff'` sticky-cell fallback —
+irrelevant now since the sticky column is "Edit#", never the colored
+cell); the non-sticky-cell snapshot loop now checks a generic
+`td.dataset.mbCustomCellBg` marker set directly on the one "Edit action"
+`<td>` in `_buildEditRow`, deliberately not edits-specific so
+`applyStickyColumn` stays page-type-agnostic. Verified via jsdom
+(`applyEditsToTable` + real `applyStickyColumn` against `mgv.html`): only
+the "Edit action" cell ends up colored, the sticky "Edit#" cell and every
+other cell in the row are unaffected (regression check).

@@ -2063,6 +2063,122 @@
                          'the exact MusicBrainz country name) once you\'ve verified it behaves as ' +
                          'expected for that country\'s subdivision naming. Leave blank to disable the ' +
                          'rule entirely.'
+        },
+
+        // ============================================================
+        // EDITS PAGE — "EDIT ACTION" COLUMN COLORS SECTION
+        // ============================================================
+        divider_edits_colors: {
+            type: 'divider',
+            label: '🎨 EDITS PAGE COLORS'
+        },
+
+        sa_enable_edits_type_colors: {
+            label: 'Enable "Edit action" column background colors',
+            type: 'checkbox',
+            default: true,
+            description: 'Color the "Edit action" column on the edits pageType ' +
+                         '(/search/edits, /<entity>/<mbid>/edits, /edit/subscribed, ' +
+                         '/edit/subscribed_editors) by edit category and open-vs-closed state. ' +
+                         'Category/shade is derived from the edit\'s own class list (the same ' +
+                         'classification the well-known "MusicBrainz: Colourful edits" userscript ' +
+                         'uses), independent of whether that script — or any other coloring script ' +
+                         '— is installed. The colors below default to its palette.'
+        },
+
+        sa_edits_color_add_open: {
+            label: 'Edit action — Add (open)',
+            type: 'color_picker',
+            default: 'lightgreen',
+            description: 'Background color for an open (still voting) "Add …" edit ' +
+                         '(e.g. Add relationship, Add release, Add cover art). ' +
+                         'Default matches "MusicBrainz: Colourful edits".'
+        },
+
+        sa_edits_color_add_closed: {
+            label: 'Edit action — Add (closed/applied)',
+            type: 'color_picker',
+            default: '#D0EBD7',
+            description: 'Background color for a closed or applied "Add …" edit. ' +
+                         'Default matches "MusicBrainz: Colourful edits".'
+        },
+
+        sa_edits_color_edit_open: {
+            label: 'Edit action — Edit (open)',
+            type: 'color_picker',
+            default: 'khaki',
+            description: 'Background color for an open (still voting) "Edit …" edit ' +
+                         '(e.g. Edit relationship, Edit release, Edit medium) — not to be confused ' +
+                         'with the wrapper class "edit-header" itself, which is excluded from this ' +
+                         'match. Default matches "MusicBrainz: Colourful edits".'
+        },
+
+        sa_edits_color_edit_closed: {
+            label: 'Edit action — Edit (closed/applied)',
+            type: 'color_picker',
+            default: '#F1E3BF',
+            description: 'Background color for a closed or applied "Edit …" edit. ' +
+                         'Default matches "MusicBrainz: Colourful edits".'
+        },
+
+        sa_edits_color_remove_open: {
+            label: 'Edit action — Remove (open)',
+            type: 'color_picker',
+            default: 'pink',
+            description: 'Background color for an open (still voting) "Remove …" edit ' +
+                         '(e.g. Remove relationship, Remove release, Remove cover art). ' +
+                         'Default matches "MusicBrainz: Colourful edits".'
+        },
+
+        sa_edits_color_remove_closed: {
+            label: 'Edit action — Remove (closed/applied)',
+            type: 'color_picker',
+            default: '#FFE2E8',
+            description: 'Background color for a closed or applied "Remove …" edit. ' +
+                         'Default matches "MusicBrainz: Colourful edits".'
+        },
+
+        sa_edits_color_merge_open: {
+            label: 'Edit action — Merge (open)',
+            type: 'color_picker',
+            default: 'plum',
+            description: 'Background color for an open (still voting) "Merge …" edit ' +
+                         '(e.g. Merge works, Merge recordings, Merge releases). ' +
+                         'Default matches "MusicBrainz: Colourful edits".'
+        },
+
+        sa_edits_color_merge_closed: {
+            label: 'Edit action — Merge (closed/applied)',
+            type: 'color_picker',
+            default: '#DEC6D5',
+            description: 'Background color for a closed or applied "Merge …" edit. ' +
+                         'Default matches "MusicBrainz: Colourful edits".'
+        },
+
+        sa_edits_color_other_open: {
+            label: 'Edit action — Other (open)',
+            type: 'color_picker',
+            default: 'lightblue',
+            description: 'Background color for an open (still voting) edit that is neither ' +
+                         'Add/Edit/Remove/Merge/Cancelled (e.g. Add ISWCs, Set track lengths). ' +
+                         'Default matches "MusicBrainz: Colourful edits".'
+        },
+
+        sa_edits_color_other_closed: {
+            label: 'Edit action — Other (closed/applied)',
+            type: 'color_picker',
+            default: '#CFDDE0',
+            description: 'Background color for a closed or applied "Other" edit. ' +
+                         'Default matches "MusicBrainz: Colourful edits".'
+        },
+
+        sa_edits_color_cancelled: {
+            label: 'Edit action — Cancelled',
+            type: 'color_picker',
+            default: 'lightgrey',
+            description: 'Background color for a cancelled edit, regardless of category — takes ' +
+                         'priority over Add/Edit/Remove/Merge/Other. ' +
+                         'Default matches "MusicBrainz: Colourful edits".'
         }
 
     };
@@ -5230,6 +5346,58 @@
     }
 
     /**
+     * Derives the "Edit action" column background color for one edit, from
+     * `.edit-header`'s own class list — NOT from any inline or computed
+     * style. MusicBrainz does not set an inline background on `.edit-header`
+     * itself; any color visible on a live page comes from MusicBrainz's own
+     * class-based site CSS and/or a separately-installed userscript (e.g.
+     * "MusicBrainz: Colourful edits", `debug/ColourfulEdits.user.js`) —
+     * neither of which is readable from a detached `DOMParser` document
+     * (fetched pages 2+ have no stylesheet at all), and the latter obviously
+     * shouldn't be a hard dependency. Deriving the color ourselves from the
+     * class list works identically regardless of browser environment or
+     * which page was fetched how.
+     *
+     * Same 5 categories, same open-vs-closed shading, and same cancelled-wins
+     * priority as "Colourful edits" — but exact-token matching instead of
+     * its loose substring regexes (`/add-/`, `/edit-(?!header)/`, `/remove-/`,
+     * `/merge-/`), which turned out to be a real bug when tested against
+     * this script's own debug snapshots: MusicBrainz's actual category
+     * tokens are `edit-add`/`edit-edit`/`edit-remove`/`edit-merge` (confirmed
+     * via `grep` across every `debug/*.html` snapshot), so
+     * `/edit-(?!header)/` also matches inside `edit-remove`/`edit-merge`
+     * (any "edit-" not immediately followed by "header" — it doesn't stop
+     * at the token boundary), silently recoloring every Remove/Merge edit
+     * as "Edit". Matching the literal known tokens sidesteps this entirely.
+     * `open` = `/open/` found in the class list, else closed/applied. See
+     * `debug/act.org` and `debug/NOTES.md`.
+     *
+     * @param {string} headerClassName - `.edit-header`'s `className`.
+     * @returns {string|null} A CSS color value from the `sa_edits_color_*`
+     *   settings, or `null` when `sa_enable_edits_type_colors` is off.
+     */
+    function _editActionBgColor(headerClassName) {
+        if (Lib.settings.sa_enable_edits_type_colors === false) return null;
+        const isOpen = /open/.test(headerClassName);
+        if (/\bcancelled\b/.test(headerClassName)) {
+            return Lib.settings.sa_edits_color_cancelled;
+        }
+        if (/\bedit-add\b/.test(headerClassName)) {
+            return isOpen ? Lib.settings.sa_edits_color_add_open : Lib.settings.sa_edits_color_add_closed;
+        }
+        if (/\bedit-edit\b/.test(headerClassName)) {
+            return isOpen ? Lib.settings.sa_edits_color_edit_open : Lib.settings.sa_edits_color_edit_closed;
+        }
+        if (/\bedit-remove\b/.test(headerClassName)) {
+            return isOpen ? Lib.settings.sa_edits_color_remove_open : Lib.settings.sa_edits_color_remove_closed;
+        }
+        if (/\bedit-merge\b/.test(headerClassName)) {
+            return isOpen ? Lib.settings.sa_edits_color_merge_open : Lib.settings.sa_edits_color_merge_closed;
+        }
+        return isOpen ? Lib.settings.sa_edits_color_other_open : Lib.settings.sa_edits_color_other_closed;
+    }
+
+    /**
      * Builds one `<tr>` for a single `div.edit-list` block, matching the column
      * order produced by `applyEditsToTable`.
      *
@@ -5240,24 +5408,14 @@
     function _buildEditRow(block, docContext) {
         const tr = docContext.createElement('tr');
 
-        // Preserve MusicBrainz's own per-edit background colour (encodes edit
-        // type + status — e.g. khaki for an open merge, light green for an
-        // applied addition, beige for an applied plain edit, light grey for
-        // cancelled) from `.edit-header`'s inline style, applied to the whole
-        // row so it survives regardless of sort position. See debug/act.org.
-        // Stored as data-mb-edit-bg too: applyStickyColumn's "transparent →
-        // white" fallback (used to compute the sticky column's opaque
-        // background, the hover-restore snapshot, and the sort-tint blend
-        // base) is patched to prefer this over hardcoded white, so the
-        // sticky "Edit#" column, hover highlighting, and sort tinting all
-        // stay consistent with the row colour instead of one of them
-        // reverting to white.
+        // Color for the "Edit action" cell — derived from .edit-header's own
+        // class list, not any inline/computed style. See _editActionBgColor's
+        // JSDoc for why (MusicBrainz sets no inline background here at all;
+        // any color visible on a live page comes from its own class-based
+        // site CSS and/or a separately-installed userscript, neither of
+        // which this can or should depend on).
         const headerEl = block.querySelector('.edit-header');
-        const headerBg = headerEl ? headerEl.style.backgroundColor : '';
-        if (headerBg) {
-            tr.style.backgroundColor = headerBg;
-            tr.dataset.mbEditBg = headerBg;
-        }
+        const editActionBg = headerEl ? _editActionBgColor(headerEl.className) : null;
 
         const addCell = (nodes) => {
             const td = docContext.createElement('td');
@@ -5283,7 +5441,14 @@
             a.setAttribute('href', editLink.getAttribute('href'));
             a.textContent = `#${m[1]}`;
             addCell(a);
-            addCell(m[2].trim());
+            const actionTd = addCell(m[2].trim());
+            if (editActionBg) {
+                actionTd.style.backgroundColor = editActionBg;
+                // Generic marker (not edits-specific) — see applyStickyColumn,
+                // which respects this on whichever cell carries it so the
+                // color survives its "clear inline bg so CSS zebra wins" pass.
+                actionTd.dataset.mbCustomCellBg = editActionBg;
+            }
         } else {
             addCell(null);
             addCell(null);
@@ -9914,20 +10079,8 @@
                 }
                 cell.style.background = '';
                 const cellBg = getComputedStyle(cell).backgroundColor;
-                // A row carrying data-mb-edit-bg (the 'edits' pageType's
-                // preserved MusicBrainz edit-header colour — see
-                // _buildEditRow) always wins, regardless of what the cell's
-                // OWN computed background is. MusicBrainz's native zebra CSS
-                // targets `tr.even > td`/`tr.odd > td` directly (see the
-                // non-sticky loop's comment below), so getComputedStyle(cell)
-                // here is a real opaque zebra colour, never transparent — the
-                // "transparent → white" fallback this used to be gated behind
-                // never actually triggers in a real browser (only appeared to
-                // work under jsdom, which has no access to MusicBrainz's
-                // stylesheet and always computes transparent for anything
-                // un-styled). See debug/no-change.html.
-                const trueRestBg = tr.dataset.mbEditBg ||
-                    ((cellBg === 'rgba(0, 0, 0, 0)' || cellBg === 'transparent') ? '#ffffff' : cellBg);
+                const trueRestBg = (cellBg === 'rgba(0, 0, 0, 0)' || cellBg === 'transparent')
+                    ? '#ffffff' : cellBg;
                 cell.dataset.mbRestBg = trueRestBg;
                 if (_activeTintClass) {
                     // Tint was already applied (renderFinalTable path): restore the
@@ -9948,18 +10101,22 @@
                 // normalizeCommentSpans(), called after every render pass.
 
                 // Snapshot all non-sticky cells (clear inline bg so CSS zebra wins) —
-                // UNLESS this row carries data-mb-edit-bg, in which case that custom
-                // colour must win over MusicBrainz's native `tr.even > td`/`tr.odd > td`
-                // zebra rule, which targets <td> directly and would otherwise paint
-                // right over it. Inline styles beat class rules, so re-applying the
-                // colour here (not just clearing to '') is what actually makes it win —
-                // same reasoning as the sticky cell branch above.
-                const editBg = tr.dataset.mbEditBg;
+                // UNLESS the individual cell carries its own data-mb-custom-cell-bg
+                // marker (e.g. the edits pageType's colored "Edit action" cell — see
+                // _buildEditRow), in which case that custom colour must win over
+                // MusicBrainz's native `tr.even > td`/`tr.odd > td` zebra rule, which
+                // targets <td> directly and would otherwise paint right over it.
+                // Inline styles beat class rules, so re-applying the colour here (not
+                // just clearing to '') is what actually makes it win. Deliberately a
+                // per-cell, not per-row, check: this function stays page-type-agnostic
+                // and just respects whichever specific cell opted in, rather than
+                // knowing anything about 'edits'.
                 Array.from(tr.cells).forEach(td => {
                     if (td === cell) return;
-                    td.style.background = editBg || '';
+                    const customBg = td.dataset.mbCustomCellBg;
+                    td.style.background = customBg || '';
                     const bg = getComputedStyle(td).backgroundColor;
-                    td.dataset.mbRestBg = editBg ||
+                    td.dataset.mbRestBg = customBg ||
                         ((bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') ? '#ffffff' : bg);
                 });
 
