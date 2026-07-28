@@ -2207,6 +2207,40 @@
             description: 'Background color for a cancelled edit, regardless of category — takes ' +
                          'priority over Add/Edit/Remove/Merge/Other. ' +
                          'Default matches "MusicBrainz: Colourful edits".'
+        },
+
+        sa_enable_edits_diff_colors: {
+            label: 'Enable old/new value diff colors in "Edit details"',
+            type: 'checkbox',
+            default: true,
+            description: 'Colors old/new value diff cells inside the "Edit details" column\'s ' +
+                         'compare tables (e.g. a track title edit\'s "Al Lado de mi cabana" → ' +
+                         '"Al lado de mi cabana" row) — MusicBrainz\'s own site CSS does this ' +
+                         'natively via `table.details td.old`/`table.details td.new` selectors, ' +
+                         'but those require a real `<table>` ancestor, which "Edit details" no ' +
+                         'longer has after being de-tableified to avoid corrupting this script\'s ' +
+                         'own table-wide row-processing (see debug/NOTES.md) — so the colors below ' +
+                         'are applied independently instead of relying on MusicBrainz\'s stylesheet.'
+        },
+
+        sa_edits_color_diff_new: {
+            label: 'Edit details diff — new value',
+            type: 'color_picker',
+            default: '#e4fbe4',
+            description: 'Background color for a diff cell/span marking the NEW value in an ' +
+                         '"Edit details" compare table. Default matches MusicBrainz\'s own site ' +
+                         'CSS (`table.details td.new`/`span.new`, from ' +
+                         'static.metabrainz.org/MB/common-*.css).'
+        },
+
+        sa_edits_color_diff_old: {
+            label: 'Edit details diff — old value',
+            type: 'color_picker',
+            default: '#fbe3e4',
+            description: 'Background color for a diff cell/span marking the OLD value in an ' +
+                         '"Edit details" compare table. Default matches MusicBrainz\'s own site ' +
+                         'CSS (`table.details td.old`/`span.old`, from ' +
+                         'static.metabrainz.org/MB/common-*.css).'
         }
 
     };
@@ -5649,12 +5683,29 @@
      * Injects a minimal border/padding rule for the `.mb-dt-*` grid classes
      * `_detableify()` produces (once per document) — replaces just enough of
      * MusicBrainz's site-wide `table.tbl`/`.details` styling to stay readable
-     * now that this content is no longer real `<table>` markup.
+     * now that this content is no longer real `<table>` markup. Also
+     * replaces MusicBrainz's own old/new diff-cell highlighting
+     * (`table.details td.old`/`table.details td.new`, from
+     * static.metabrainz.org/MB/common-*.css) for the same reason: that
+     * selector requires a real `<table>` ancestor, which no longer exists
+     * once `.edit-details` has been de-tableified — the `.old`/`.new`
+     * classes survive the clone untouched, but nothing colors them anymore
+     * without this. The replacement rule needs `!important`: on zebra-striped
+     * "even" (grey) rows specifically, MusicBrainz's own zebra CSS reaches
+     * these deeply-nested cells too (a descendant selector, not just a
+     * direct-child one) and otherwise wins — a plain, non-`!important`
+     * declaration was confirmed to lose there even though its own selector
+     * is more specific ("odd"/white rows worked fine, since nothing
+     * conflicts with an unstyled/default background). See
+     * sa_enable_edits_diff_colors / debug/NOTES.md.
      */
     function _ensureDetableifyStyle() {
         if (document.getElementById('mb-detableify-style')) return;
         const style = document.createElement('style');
         style.id = 'mb-detableify-style';
+        const diffColorsEnabled = Lib.settings.sa_enable_edits_diff_colors !== false;
+        const diffNewColor = Lib.settings.sa_edits_color_diff_new || '#e4fbe4';
+        const diffOldColor = Lib.settings.sa_edits_color_diff_old || '#fbe3e4';
         style.textContent = `
             .mb-dt-table {
                 border-collapse: collapse;
@@ -5667,6 +5718,14 @@
             .mb-dt-th {
                 font-weight: bold;
             }
+            ${diffColorsEnabled ? `
+            .mb-dt-table td.new, .mb-dt-table td span.new {
+                background: ${diffNewColor} !important;
+            }
+            .mb-dt-table td.old, .mb-dt-table td span.old {
+                background: ${diffOldColor} !important;
+            }
+            ` : ''}
         `;
         document.head.appendChild(style);
     }

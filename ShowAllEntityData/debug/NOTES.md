@@ -1112,3 +1112,71 @@ helper-function dependency surface than `applyEditsToTable`/
 by careful manual trace of the exact variable flow instead — confirmed
 `_anyCellStartedExpanded`/`anyCellInAnyColumnStartedExpanded` scoping,
 assignment points, and every place each is read.
+
+## 2026-07-28 — old/new diff-cell highlighting in "Edit details"
+
+MusicBrainz's own site CSS (static.metabrainz.org/MB/common-*.css) colors
+old/new diff cells inside `.edit-details` compare tables:
+
+```css
+table.details td span.new, table.details td.new { background: #e4fbe4 }
+table.details td span.old, table.details td.old { background: #fbe3e4 }
+```
+
+Both selectors require a real `<table class="details">` ancestor. Since
+`_detableify()` converts that outer `<table>` into a `<div class="…
+mb-dt-table">` (necessary to avoid corrupting this script's own
+table-wide row-processing — see the earlier `rowspan`/`colspan` entry),
+the `.old`/`.new` classes still land intact on real `<td>`/`<span>`
+elements in the clone, but MusicBrainz's selector no longer matches
+anything — no CSS rule, no color, on either a live page (whose stylesheet
+is loaded) or a fetched one (which has none anyway).
+
+Fixed the same way as the "Edit#"/"Edit action" background colors:
+replicate the effect independently rather than depending on MusicBrainz's
+stylesheet. `_ensureDetableifyStyle()` (already the single place that
+patches in CSS `_detableify()`'s conversion broke) now also injects
+`.mb-dt-table td.new, .mb-dt-table td span.new` /
+`.mb-dt-table td.old, .mb-dt-table td span.old` rules — same descendant
+shape as MusicBrainz's own selector, just swapping the now-gone
+`table.details` ancestor requirement for the `.mb-dt-table` marker class
+`_detableify()` already stamps on the converted element. Configurable via
+new `sa_enable_edits_diff_colors` (default on) / `sa_edits_color_diff_new`
+(`#e4fbe4`) / `sa_edits_color_diff_old` (`#fbe3e4`) — defaults copied
+directly from MusicBrainz's CSS file, per the request.
+
+Verified via jsdom against the exact "Edit recording" example from
+`debug/mgv.html` (`<td class="old">`/`<td class="new">` diff cells): the
+injected `<style>` block (into the live `document`, not whichever
+fetched-page `docContext` triggered the call — only the live document's
+`<head>` is ever actually rendered) contains the correct default colors
+when enabled, contains neither rule at all when
+`sa_enable_edits_diff_colors` is off, and the nearest `.details`-derived
+ancestor of the diff cells is confirmed to be a `<div>` (not a `<table>`),
+matching what the new selector actually targets.
+
+## 2026-07-28 — diff colors lost on zebra-striped "even" (grey) rows only
+
+Reported: `.old`/`.new` diff cells inside "Edit details" colored correctly
+on white ("odd") rows but not on grey ("even") ones — same markup,
+`.mb-dt-table td.old`/`.mb-dt-table td.new` present either way, only the
+grey-row case failed to paint. Not a selector-matching bug (the class and
+DOM shape are identical in both quoted examples) — a CSS cascade fight:
+the new rule (`.mb-dt-table td.old`, specificity 2 classes + 1 type) has
+*higher* specificity than a plausible MusicBrainz zebra rule
+(`tr.even td`, 1 class + 1 type) and should still lose only if that rule
+carries `!important` — consistent with several existing comments elsewhere
+in this file about MusicBrainz's own zebra/tint CSS using `!important`
+and reaching cells at any depth (a descendant selector, not just direct
+children), and consistent with the observed asymmetry: "odd"/white rows
+have no such rule to conflict with (default/unstyled background), so nothing
+needed to win against there. Fixed by adding `!important` to both
+declarations in `_ensureDetableifyStyle()` — the same "must beat
+MusicBrainz's own `!important` zebra/tint rule" pattern this codebase
+already uses in `applyStickyColumn`'s sort-tint blending. Verified the
+literal `!important` is present in the injected CSS string for both
+colors via jsdom (can't verify actual cascade-winning against a live
+MusicBrainz stylesheet without a real browser — jsdom has no external
+stylesheet to conflict with in the first place, which is exactly why this
+particular failure mode was never visible in any of the earlier jsdom
+verification passes for this feature).
