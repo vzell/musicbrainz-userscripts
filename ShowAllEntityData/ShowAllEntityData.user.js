@@ -5735,16 +5735,24 @@
      * `_detableify()` preserves the original `odd`/`even` class on the
      * converted row `<div>`, MusicBrainz's own zebra CSS just can't reach it
      * anymore for the same real-`<table>`-ancestor reason as above) and a
-     * row-hover override (`tr:hover .mb-dt-table td/th`, reading the
+     * row-hover override (`tr:hover .mb-dt-table .mb-dt-cell`, reading the
      * general `sa_ui_row_hover_bg` setting) for the same class of content —
      * without it, hovering a row makes these deeply-nested cells' thin
      * `#ddd` borders nearly invisible against whatever MusicBrainz's own
      * native hover CSS darkens them to (same reaches-any-depth pattern as
-     * its zebra rule). Both `!important` for the same reason as the diff
-     * colors above; the hover rule's extra type selector (`tr`) gives it
-     * higher specificity than the zebra rule, so it wins during an actual
-     * hover without depending on source order, and rows correctly revert
-     * to their zebra color on mouse-leave.
+     * its zebra rule). The zebra rule sets background on both the row *and*
+     * its direct `.mb-dt-cell` children (not the row alone) — a row-only
+     * background relies on painting through cells with no background of
+     * their own, which silently fails to show on "even"/grey rows the
+     * moment anything sets an explicit competing background on the cell
+     * itself (see debug/NOTES.md, "row background colour fix didn't
+     * actually work"); MusicBrainz's own equivalent rule colors `<td>`
+     * directly for the same reason. All three rules use `!important` for
+     * the same defensive reason as the diff colors above; the hover rule's
+     * extra `.mb-dt-cell` class (plus `tr` type selector) gives it higher
+     * specificity than the now cell-targeting zebra rule, so it still wins
+     * during an actual hover without depending on source order, and rows
+     * correctly revert to their zebra color on mouse-leave.
      */
     function _ensureDetableifyStyle() {
         if (document.getElementById('mb-detableify-style')) return;
@@ -5776,13 +5784,13 @@
                 background: ${diffOldColor} !important;
             }
             ` : ''}
-            .mb-dt-tr.odd {
+            .mb-dt-tr.odd, .mb-dt-tr.odd > .mb-dt-cell {
                 background: ${zebraOdd} !important;
             }
-            .mb-dt-tr.even {
+            .mb-dt-tr.even, .mb-dt-tr.even > .mb-dt-cell {
                 background: ${zebraEven} !important;
             }
-            tr:hover .mb-dt-table td, tr:hover .mb-dt-table th {
+            tr:hover .mb-dt-table .mb-dt-cell {
                 background: ${rowHoverBg} !important;
             }
         `;

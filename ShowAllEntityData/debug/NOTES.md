@@ -1241,3 +1241,66 @@ As with the earlier `!important`/cascade fix, actual visual
 hover/cascade behavior against MusicBrainz's real stylesheet can't be
 verified without a live browser (jsdom has no external stylesheet to
 begin with).
+
+## 2026-07-28 — zebra striping still not showing on grey ("even") rows
+
+Reported after reloading the branch with the fix above installed: the
+nested "Old tracklist"/"New tracklist" compare grid still shows no zebra
+striping on grey rows — same symptom the `!important` fix for the old/new
+diff colors already solved once for a *different* rule in this same
+function, so this needed fresh investigation rather than assuming another
+`!important` gap.
+
+Root cause this time was different: the shipped rule
+(`.mb-dt-tr.even { background: ... !important; }`) sets the background on
+the **row** `<div>` and relies on it painting through to the real
+`<td>`/`<th>` children (`.mb-dt-cell`), which this script's own CSS gives
+no background of their own — so in principle it *should* show through a
+transparent cell. But this is the exact same lesson already documented
+above (2026-07-25, "row background colour fix didn't actually work"):
+
+> MusicBrainz's native zebra CSS targets `tr.even > td`/`tr.odd > td`
+> **directly**, not `<tr>`. That means every `<td>` gets a real, opaque,
+> non-transparent background straight from that class rule.
+
+MusicBrainz's stylesheet colors cells directly rather than relying on
+row-to-cell paint-through, and — same as before — that pattern can't be
+assumed absent just because the specific selector that broke it last time
+(`tr.even > td`, which requires a real `<tr>` ancestor `_detableify()`
+already removes) doesn't apply verbatim here. Whatever the actual
+conflicting rule is, depending on background paint-through at all is
+fragile: the "odd" row's color (`#ffffff`) is visually indistinguishable
+from "no background set", so that half of the rule was never actually
+confirmed to paint anything — only the "even"/grey case was falsifiable,
+and it failed.
+
+Fixed by moving the win condition, not chasing the specific conflicting
+rule: `.mb-dt-tr.odd`/`.mb-dt-tr.even` now also set `background` directly
+on their `> .mb-dt-cell` children (comma-combined with the existing
+row-level selector, not replacing it), using the same `.mb-dt-cell` marker
+class `_detableify()` already stamps on every real `<td>`/`<th>` — matching
+how MusicBrainz's own equivalent rule always colors the cell itself, so
+nothing can sit on top of it. `<td>`/`<th>` are always direct children of
+their row's converted `<div class="mb-dt-tr">` (`_detableify()` only
+retags `table`/`thead`/`tbody`/`tfoot`/`tr`, never moves cells relative to
+their immediate parent), so the child-combinator selector reaches every
+cell.
+
+This raised the zebra rule's specificity from 2 classes to 3
+(`.mb-dt-tr.even > .mb-dt-cell`), which tied/exceeded the row-hover rule's
+previous selector (`tr:hover .mb-dt-table td`, 2 classes + 2 elements) on
+the class digit alone — hover would have stopped winning against zebra on
+nested cells. Fixed by strengthening the hover rule to
+`tr:hover .mb-dt-table .mb-dt-cell` (3 classes + 1 element, still beats the
+zebra rule's 3 classes + 0 elements via the element-count tiebreak), which
+also simplifies it back to one selector instead of a `td, th` pair since
+`.mb-dt-cell` already covers both.
+
+Verified via jsdom (extended `test_zebra_hover.js`): the injected `<style>`
+contains both the row and `> .mb-dt-cell` selectors for `.odd`/`.even` with
+correct colors/`!important` for default and custom settings, the hover
+rule now targets `.mb-dt-cell` instead of `td, th`, and every zebra row's
+direct children in the synthetic "Edit medium" tracklist fixture do carry
+`.mb-dt-cell` (confirming the new selector actually reaches them). Real
+cascade-winning behavior still can't be verified without a live browser —
+asked the user to reload and confirm visually.
