@@ -2087,26 +2087,31 @@
         },
 
         sa_edits_enable_details_collapse: {
-            label: 'Enable collapsible "Edit details" column',
+            label: 'Start "Edit details" column collapsed',
             type: 'checkbox',
             default: false,
-            description: 'Height-clamp the "Edit details" column on the edits pageType behind a ' +
-                         '"more"/"less" toggle, the same way the "Annotation" column is clamped ' +
-                         'when `sa_enable_annotation_collapse` is on — but independently ' +
-                         'configurable, since "Edit details" (the relationship/attribute diff for ' +
-                         'the edit) is usually short and more useful shown in full. Off by ' +
-                         'default: cells render uncollapsed/unclamped initially.'
+            description: 'The "Edit details" column on the edits pageType always has a "▶/▼ ' +
+                         'more/less" collapse toggle per cell (plus a column-header "collapse ' +
+                         'all"/"expand all" button) for cells long enough to overflow — this ' +
+                         'setting only controls whether they start collapsed or expanded when the ' +
+                         'page first renders. Off by default (starts expanded, since "Edit ' +
+                         'details" — the relationship/attribute diff for the edit — is usually ' +
+                         'short and more useful shown in full); turn on to match the ' +
+                         '"Annotation" column\'s classic start-collapsed default instead. Either ' +
+                         'way, any cell can still be manually collapsed/expanded at any time.'
         },
 
         sa_edits_enable_notes_collapse: {
-            label: 'Enable collapsible "Edit notes" column',
+            label: 'Start "Edit notes" column collapsed',
             type: 'checkbox',
             default: false,
-            description: 'Height-clamp the "Edit notes" column on the edits pageType behind a ' +
-                         '"more"/"less" toggle, the same way the "Annotation" column is clamped ' +
-                         'when `sa_enable_annotation_collapse` is on — but independently ' +
-                         'configurable. Off by default: cells render uncollapsed/unclamped ' +
-                         'initially.'
+            description: 'The "Edit notes" column on the edits pageType always has a "▶/▼ ' +
+                         'more/less" collapse toggle per cell (plus a column-header "collapse ' +
+                         'all"/"expand all" button) for cells long enough to overflow — this ' +
+                         'setting only controls whether they start collapsed or expanded when the ' +
+                         'page first renders. Off by default (starts expanded); turn on to match ' +
+                         'the "Annotation" column\'s classic start-collapsed default instead. ' +
+                         'Either way, any cell can still be manually collapsed/expanded at any time.'
         },
 
         sa_edits_color_add_open: {
@@ -21817,6 +21822,15 @@ a { color: #1565c0; }`;
     // unlike expandedCells no per-render replay is needed: cloneNode(true)
     // carries the corrected DOM content forward automatically.
     const _areaFlagRegionCorrected = new Set();
+    // Tracks which "Edit details"/"Edit notes" columns (edits pageType) have
+    // already had their overflowing cells pre-populated into expandedCells
+    // for this fetch — see initCollapsableColumns. Ensures the "start
+    // expanded by default" behavior (sa_edits_enable_details_collapse /
+    // sa_edits_enable_notes_collapse off) only forces cells open ONCE, on
+    // the first render after a fetch; a user's subsequent manual collapse
+    // must stick across later sort/filter re-renders instead of being
+    // silently re-expanded every time initCollapsableColumns runs again.
+    const _editsProseDefaultExpandedCols = new Set();
     // Sparse text cache for source rows, keyed by TR element.
     // Populated lazily by _cachedFullText / _cachedColText on matchOnly=true passes.
     // Entries are GC'd automatically when allRows / groupedRows are replaced.
@@ -28404,6 +28418,7 @@ a { color: #1565c0; }`;
         groupedRows = [];
         expandedCells.clear();
         _areaFlagRegionCorrected.clear();
+        _editsProseDefaultExpandedCols.clear();
         _mbRowIdxCounter = 0;
 
         // Reset the arrays that are populated by the MAIN fetch pass.
@@ -36381,6 +36396,12 @@ a { color: #1565c0; }`;
 
         const headers = Array.from(table.querySelectorAll('thead tr:first-child th'));
         let anyColumnHasMultiRow = false;
+        // True when ANY column's cells started expanded (see
+        // _anyCellStartedExpanded per-column below) — drives the GLOBAL
+        // collapse/expand button's own initial state the same way, so it
+        // doesn't stay hardcoded to "▶ Expand all" when e.g. "Edit
+        // details"/"Edit notes" defaulted their cells open.
+        let anyCellInAnyColumnStartedExpanded = false;
         // Collect header-level toggle buttons for global-button wiring.
         const collapseHdrBtns = [];
         // Hoist the tbody-row snapshot once — reused for every collapsable column
@@ -36414,6 +36435,16 @@ a { color: #1565c0; }`;
             // still correctly rejecting a wiki-rendered bullet/numbered list
             // buried inside free-text "Annotation" prose, which is what makes
             // it safe to also treat non-list free-text cells as "prose" below.
+            // True when at least one cell in this column starts expanded —
+            // either because the user manually expanded it on a previous
+            // render (expandedCells), or because it was pre-populated as
+            // expanded by the "Edit details"/"Edit notes" default-expand
+            // step below. Drives the column-header collapse/expand button's
+            // OWN initial glyph/aria-expanded/title (built further down),
+            // which used to be unconditionally hardcoded to the collapsed
+            // state regardless of the cells' actual starting state. See
+            // debug/NOTES.md.
+            let _anyCellStartedExpanded = false;
             const multiRowCells = [];
             bodyRows.forEach(tr => {
                 const td = tr.cells[colIndex];
@@ -36495,6 +36526,7 @@ a { color: #1565c0; }`;
                 const rowIdx = tr ? tr.dataset.mbRowIdx : undefined;
                 const ecKey  = rowIdx !== undefined ? `${rowIdx}:${colIndex}` : undefined;
                 const startExpanded = ecKey !== undefined && expandedCells.get(ecKey) === true;
+                if (startExpanded) _anyCellStartedExpanded = true;
 
                 // Collapse or expand: hide/show extra <li> items.
                 lis.slice(1).forEach(li => {
@@ -36613,16 +36645,27 @@ a { color: #1565c0; }`;
             // (which actually clamps height) and the toggle are only added
             // when the setting is on.
             //
-            // "Edit details"/"Edit notes" (edits pageType) have their own
-            // independent sa_edits_enable_details_collapse /
-            // sa_edits_enable_notes_collapse settings instead of sharing the
-            // global sa_enable_annotation_collapse — both default to off
-            // (uncollapsed initially), unlike Annotation's default-on.
-            const _annotationCollapseEnabled = colName === 'Edit details'
+            // "Edit details"/"Edit notes" (edits pageType) always get the
+            // clamp/toggle machinery — sa_edits_enable_details_collapse /
+            // sa_edits_enable_notes_collapse do NOT gate it off entirely
+            // (that would remove the toggle handle along with the clamp,
+            // leaving no way to manually collapse a cell at all — see
+            // debug/NOTES.md). Instead those settings control only the
+            // INITIAL expand state (see the expandedCells pre-population
+            // below); the toggle itself works identically to Annotation's
+            // either way, in both directions, at any time.
+            const _isEditsProseCol = colName === 'Edit details' || colName === 'Edit notes';
+            const _annotationCollapseEnabled = _isEditsProseCol
+                ? true
+                : Lib.settings.sa_enable_annotation_collapse !== false;
+            // true = "start this edits prose column collapsed" (the
+            // Annotation-style default); false (the actual default for
+            // these two columns) = start expanded.
+            const _editsStartCollapsed = colName === 'Edit details'
                 ? Lib.settings.sa_edits_enable_details_collapse === true
                 : colName === 'Edit notes'
                 ? Lib.settings.sa_edits_enable_notes_collapse === true
-                : Lib.settings.sa_enable_annotation_collapse !== false;
+                : false;
             let proseOverflowCount = 0;
             // True when at least one overflowing prose cell in this column
             // contains a nested wiki <h2> — used to decide whether the
@@ -36657,6 +36700,19 @@ a { color: #1565c0; }`;
                     })()
                     : [];
 
+                // "Edit details"/"Edit notes" default to expanded: on the
+                // FIRST pass over this column for the current fetch (guarded
+                // by _editsProseDefaultExpandedCols so a user's later manual
+                // collapse — which deletes the expandedCells entry — isn't
+                // silently re-expanded on the next sort/filter re-render),
+                // pre-populate expandedCells for every overflowing cell here,
+                // exactly as if the user had already clicked each one open.
+                // From then on these cells are indistinguishable from any
+                // other manually-expanded cell — same toggle, same
+                // persistence, same everything.
+                const _shouldDefaultExpandThisPass =
+                    _isEditsProseCol && !_editsStartCollapsed && !_editsProseDefaultExpandedCols.has(colName);
+
                 _proseOverflowing.forEach(({ td, inner }) => {
                     proseOverflowCount++;
                     if (inner.querySelector('h2')) columnHasNestedH2 = true;
@@ -36664,7 +36720,11 @@ a { color: #1565c0; }`;
                     const tr     = td.closest('tr');
                     const rowIdx = tr ? tr.dataset.mbRowIdx : undefined;
                     const ecKey  = rowIdx !== undefined ? `${rowIdx}:${colIndex}` : undefined;
+                    if (_shouldDefaultExpandThisPass && ecKey !== undefined && !expandedCells.has(ecKey)) {
+                        expandedCells.set(ecKey, true);
+                    }
                     const startExpanded = ecKey !== undefined && expandedCells.get(ecKey) === true;
+                    if (startExpanded) _anyCellStartedExpanded = true;
 
                     inner.classList.toggle('mb-text-clamp-expanded', startExpanded);
                     td.classList.add('mb-has-collapse-toggle');
@@ -36699,6 +36759,8 @@ a { color: #1565c0; }`;
                         cellToggle.classList.add('mb-collapse-toggle-has-match');
                     }
                 });
+
+                if (_shouldDefaultExpandThisPass) _editsProseDefaultExpandedCols.add(colName);
             }
 
             const collapsibleCount = multiRowCells.length + proseOverflowCount;
@@ -36749,14 +36811,28 @@ a { color: #1565c0; }`;
             const _h2CtrlHint = columnHasNestedH2
                 ? ' — Ctrl+Click to also expand all wiki sub-headings inside every cell in this column'
                 : '';
-            collapseHdrBtn.title = `Expand ALL multi-row "${colName}" cells (${collapsibleCount}) in this table column${_h2CtrlHint} — ${_collapseKbHint}`;
+            // Initial state must reflect whether cells actually started
+            // expanded (_anyCellStartedExpanded) — previously hardcoded to
+            // "collapsed", which was fine for every column until "Edit
+            // details"/"Edit notes" started defaulting to expanded (see
+            // debug/NOTES.md). Not tri-state: on the very first render after
+            // a fetch a column's cells are always uniformly all-expanded or
+            // all-collapsed (nothing produces a genuine mixed state yet), so
+            // "any" is an equally sufficient signal as "all" would be here.
+            collapseHdrBtn.title = _anyCellStartedExpanded
+                ? `Collapse ALL multi-row "${colName}" cells (${collapsibleCount}) in this table column${_h2CtrlHint} — ${_collapseKbHint}`
+                : `Expand ALL multi-row "${colName}" cells (${collapsibleCount}) in this table column${_h2CtrlHint} — ${_collapseKbHint}`;
             collapseHdrBtn.setAttribute('role', 'button');
-            collapseHdrBtn.setAttribute('aria-expanded', 'false');
-            collapseHdrBtn.setAttribute('aria-label', `Expand all collapsed cells in: ${colName}`);
+            collapseHdrBtn.setAttribute('aria-expanded', _anyCellStartedExpanded ? 'true' : 'false');
+            collapseHdrBtn.setAttribute('aria-label',
+                _anyCellStartedExpanded
+                    ? `Collapse all multi-row cells in: ${colName}`
+                    : `Expand all collapsed cells in: ${colName}`
+            );
 
             const _glyphSpan = document.createElement('span');
             _glyphSpan.className   = 'mb-col-collapse-glyph';
-            _glyphSpan.textContent = '▶';
+            _glyphSpan.textContent = _anyCellStartedExpanded ? '▼' : '▶';
             const _countSpan = document.createElement('span');
             _countSpan.className   = 'mb-col-collapse-count';
             _countSpan.textContent = String(collapsibleCount);
@@ -36819,6 +36895,7 @@ a { color: #1565c0; }`;
             }
 
             collapseHdrBtns.push(collapseHdrBtn);
+            if (_anyCellStartedExpanded) anyCellInAnyColumnStartedExpanded = true;
         });
 
         // ── Wire global ▶/◀ toggle button ────────────────────────────────────
@@ -36832,9 +36909,14 @@ a { color: #1565c0; }`;
             if (globalBtn) {
                 if (anyColumnHasMultiRow) {
                     globalBtn.style.display = 'inline-flex';
-                    // Reset to collapsed state on every (re-)init.
-                    globalBtn.innerHTML = makeCollapseExpandBtnHTML(true);
-                    globalBtn.title = 'Expand ALL collapsed multi-row cells in EVERY collapsable table column';
+                    // Reset on every (re-)init to reflect actual cell state —
+                    // collapsed, unless some column's cells started expanded
+                    // (e.g. "Edit details"/"Edit notes" defaulting open; see
+                    // anyCellInAnyColumnStartedExpanded above / debug/NOTES.md).
+                    globalBtn.innerHTML = makeCollapseExpandBtnHTML(!anyCellInAnyColumnStartedExpanded);
+                    globalBtn.title = anyCellInAnyColumnStartedExpanded
+                        ? 'Collapse ALL expanded multi-row cells in EVERY collapsable table column'
+                        : 'Expand ALL collapsed multi-row cells in EVERY collapsable table column';
 
                     // Re-wire onclick (safe for disk-load re-runs — re-wiring
                     // captures the fresh collapseHdrBtns array from this init).
@@ -41477,6 +41559,7 @@ a { color: #1565c0; }`;
                     groupedRows = [];
                     expandedCells.clear();
                     _areaFlagRegionCorrected.clear();
+                    _editsProseDefaultExpandedCols.clear();
                     _mbRowIdxCounter = 0;
 
                     // PageTypes that use singular colName (same set as _singularPageTypes
@@ -41591,6 +41674,7 @@ a { color: #1565c0; }`;
                     allRows = [];
                     expandedCells.clear();
                     _areaFlagRegionCorrected.clear();
+                    _editsProseDefaultExpandedCols.clear();
                     _mbRowIdxCounter = 0;
                     data.rows.forEach((rowCells, rowIndex) => {
                         const tr = document.createElement('tr');

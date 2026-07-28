@@ -1015,3 +1015,100 @@ layout engine, always returns 0). Verified the decision logic itself in
 isolation instead: extracted the exact ternary and ran it against 8 cases
 (both new settings unset/true/false, and an unrelated column to confirm
 zero effect on the existing global-setting behavior) — all correct.
+
+## 2026-07-28 — collapse handles were missing entirely when uncollapsed by default
+
+The previous fix misread what "uncollapsed by default" should mean. It
+gated `_annotationCollapseEnabled` off for "Edit details"/"Edit notes"
+when the new setting was false (the default) — but per
+`initCollapsableColumns`'s own existing comment, `_annotationCollapseEnabled
+= false` means the ENTIRE clamp/toggle mechanism is skipped, not just the
+initial visual state: `_proseOverflowing` is unconditionally `[]`, so no
+`.mb-cell-collapse-toggle` ever gets built for any cell, and
+`collapsibleCount === 0` also suppresses the column-header "collapse
+all"/"expand all" button. Net effect: zero way to manually collapse a
+cell or the whole column, exactly as reported — not a cosmetic miss, a
+complete loss of the interactive feature for these two columns whenever
+the (now-default) setting was off.
+
+Real fix: the clamp/toggle machinery must always stay active for these
+two columns (`_annotationCollapseEnabled` is now unconditionally `true`
+for them, decoupled entirely from the new settings). What the settings
+actually control is the *initial* expand state, via a new
+`expandedCells` pre-population step: on the first `initCollapsableColumns`
+pass after a fetch (only), every overflowing "Edit details"/"Edit notes"
+cell gets `expandedCells.set(key, true)` before `startExpanded` is read —
+i.e. exactly as if the user had already clicked each one open. From that
+point on these cells are indistinguishable from any other manually-toggled
+cell: same toggle, same `expandedCells`-backed persistence across
+sort/filter re-renders, same manual collapse/expand at any time. A new
+`_editsProseDefaultExpandedCols` Set (declared next to `expandedCells` and
+`_areaFlagRegionCorrected`, cleared at the same 3 call sites those two
+already are — `startFetchingProcess` and both disk-load branches) tracks
+which columns have already had this one-time pre-population applied for
+the current fetch, so a user's later manual collapse (which deletes the
+`expandedCells` entry) isn't silently re-expanded on the next re-render.
+
+The two settings' semantics flipped accordingly: `true` now means "start
+this column collapsed" (opt into the classic Annotation-style default),
+`false` (still the default) means "start expanded" — labels/descriptions
+updated to match ("Start … column collapsed", explicitly noting the
+toggle is always available either way). Setting keys themselves
+(`sa_edits_enable_details_collapse`/`sa_edits_enable_notes_collapse`)
+were kept unchanged to avoid unnecessary churn on already-shipped WIP
+settings.
+
+Verified the state machine in isolation (real `scrollHeight`/
+`clientHeight` overflow detection can't be tested under jsdom, same
+limitation as before): fresh-fetch pass auto-expands all overflowing
+cells; a simulated manual collapse (delete from the map) correctly
+survives a second "re-render" pass without being re-forced open; a brand
+new fetch (both tracking structures cleared) correctly re-defaults from
+scratch; `editsStartCollapsed = true` never auto-expands anything
+(matches the classic behavior exactly); an unrelated column is completely
+unaffected in every scenario.
+
+## 2026-07-28 — collapse-state summary widgets didn't reflect start-expanded
+
+Individual cells correctly started expanded after the previous fix, but
+both aggregate UI widgets — the global `#mb-col-collapse-all-btn` and the
+per-column `.mb-col-collapse-hdr-btn` header glyph — still showed "▶
+Expand all" / `aria-expanded="false"` regardless. Root cause: both were
+simply *hardcoded* to the collapsed initial state
+(`collapseHdrBtn.setAttribute('aria-expanded', 'false')` unconditionally;
+`globalBtn.innerHTML = makeCollapseExpandBtnHTML(true)` with the comment
+"Reset to collapsed state on every (re-)init") — reasonable for every
+column that always defaulted to collapsed, but never updated to account
+for a column whose cells might legitimately start expanded instead.
+
+Fixed by tracking whether any cell actually started expanded and
+reflecting that in both widgets' initial glyph/`aria-expanded`/title:
+- New per-column `_anyCellStartedExpanded` flag, set from the same
+  `startExpanded` value already computed in both the multi-row (list) cell
+  loop and the prose cell loop — whichever cell type a given collapsable
+  column happens to use. The column-header button's glyph/aria-expanded/
+  title now key off this instead of a hardcoded `false`.
+- New outer-scoped `anyCellInAnyColumnStartedExpanded`, OR-accumulated
+  across every column processed by this `initCollapsableColumns` call,
+  drives the global button's initial `makeCollapseExpandBtnHTML(...)` call
+  and title the same way.
+- Not tri-state by design: on the very first render after a fetch a
+  column's cells are always uniformly all-expanded or all-collapsed —
+  nothing in the current pre-population design produces a genuine mixed
+  state at that point — so "any cell started expanded" is an equally
+  correct signal as "all cells started expanded" would be here, and
+  simpler to compute.
+
+Scoped only to the single-table-mode global-button wiring inside
+`initCollapsableColumns` (the `!isMultiMode` branch) — `edits` is always
+`tableMode: 'single'`, and no multi-table column currently has any
+pre-expand behavior, so `rewireGlobalCollapseButtonMulti()`'s separate
+implementation was intentionally left untouched.
+
+Not verified end-to-end (same jsdom layout-engine limitation as the
+previous two entries — `initCollapsableColumns` also has a much larger
+helper-function dependency surface than `applyEditsToTable`/
+`applyStickyColumn`, making full extraction impractical here); verified
+by careful manual trace of the exact variable flow instead — confirmed
+`_anyCellStartedExpanded`/`anyCellInAnyColumnStartedExpanded` scoping,
+assignment points, and every place each is read.
