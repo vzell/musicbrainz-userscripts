@@ -5552,35 +5552,34 @@
             addCell(null);
         }
 
-        // Edit by
-        const byLink = block.querySelector('p.subheader a[href^="/user/"]');
-        addCell(byLink ? byLink.cloneNode(true) : null);
-
-        // My vote
-        const myVoteEl = block.querySelector('.my-vote');
-        addCell(myVoteEl ? myVoteEl.textContent.replace(/^\s*My vote:\s*/i, '').trim() : null);
-
-        // Vote count
-        const voteCountEl = block.querySelector('.vote-count');
-        addCell(voteCountEl ? voteCountEl.textContent.replace(/\s+/g, ' ').trim() : null);
-
-        // Closed/Approved / Voting — mutually exclusive, both read from
-        // .edit-expiration. "Approved:" is the prefix MusicBrainz uses for
-        // auto-editor edits that passed their voting period without ever
-        // being formally "Closed:" — same semantics (a final date, no more
-        // voting), so it's folded into the same column.
-        const expirationEl = block.querySelector('.edit-expiration');
-        let closedText = null, votingText = null;
-        if (expirationEl) {
-            const text = expirationEl.textContent.replace(/\s+/g, ' ').trim();
-            if (/^(Closed|Approved):/i.test(text)) closedText = text.replace(/^(?:Closed|Approved):\s*/i, '').trim();
-            else if (/^Voting:/i.test(text)) votingText = text.replace(/^Voting:\s*/i, '').trim();
+        // Edit details — rendered as-is; every edit type wraps this in its own
+        // native <table class="details ...">, so de-table-ify it (see
+        // _detableify's JSDoc) before it ends up nested inside a <td> of the
+        // outer edits table.
+        const detailsEl = block.querySelector('.edit-details');
+        if (detailsEl) {
+            const clone = detailsEl.cloneNode(true);
+            _detableify(clone);
+            addCell(clone);
+        } else {
+            addCell(null);
         }
-        addCell(closedText);
-        addCell(votingText);
 
-        // Edit status
-        addCell(_editStatusLabel(block));
+        // Edit notes — rendered as-is, minus the hidden "add a note" composer
+        // widget. De-table-ify defensively too, in case a note's limited wiki
+        // formatting ever renders a table. Edits with zero real notes still
+        // have a (now-empty) .edit-notes element once the composer widget is
+        // stripped — render "N/A" rather than a blank cell, consistent with
+        // every other empty column.
+        const notesEl = block.querySelector('.edit-notes');
+        if (notesEl) {
+            const clone = notesEl.cloneNode(true);
+            clone.querySelectorAll('.add-edit-note').forEach(el => el.remove());
+            _detableify(clone);
+            addCell(clone.textContent.trim() ? clone : null);
+        } else {
+            addCell(null);
+        }
 
         // Entered from / By — first check the dedicated .entered-from block
         // (relationship-type edits), then fall back to scanning .edit-details
@@ -5610,34 +5609,35 @@
             addCell(null);
         }
 
-        // Edit details — rendered as-is; every edit type wraps this in its own
-        // native <table class="details ...">, so de-table-ify it (see
-        // _detableify's JSDoc) before it ends up nested inside a <td> of the
-        // outer edits table.
-        const detailsEl = block.querySelector('.edit-details');
-        if (detailsEl) {
-            const clone = detailsEl.cloneNode(true);
-            _detableify(clone);
-            addCell(clone);
-        } else {
-            addCell(null);
-        }
+        // Edit by
+        const byLink = block.querySelector('p.subheader a[href^="/user/"]');
+        addCell(byLink ? byLink.cloneNode(true) : null);
 
-        // Edit notes — rendered as-is, minus the hidden "add a note" composer
-        // widget. De-table-ify defensively too, in case a note's limited wiki
-        // formatting ever renders a table. Edits with zero real notes still
-        // have a (now-empty) .edit-notes element once the composer widget is
-        // stripped — render "N/A" rather than a blank cell, consistent with
-        // every other empty column.
-        const notesEl = block.querySelector('.edit-notes');
-        if (notesEl) {
-            const clone = notesEl.cloneNode(true);
-            clone.querySelectorAll('.add-edit-note').forEach(el => el.remove());
-            _detableify(clone);
-            addCell(clone.textContent.trim() ? clone : null);
-        } else {
-            addCell(null);
+        // My vote
+        const myVoteEl = block.querySelector('.my-vote');
+        addCell(myVoteEl ? myVoteEl.textContent.replace(/^\s*My vote:\s*/i, '').trim() : null);
+
+        // Vote count
+        const voteCountEl = block.querySelector('.vote-count');
+        addCell(voteCountEl ? voteCountEl.textContent.replace(/\s+/g, ' ').trim() : null);
+
+        // Closed/Approved / Voting — mutually exclusive, both read from
+        // .edit-expiration. "Approved:" is the prefix MusicBrainz uses for
+        // auto-editor edits that passed their voting period without ever
+        // being formally "Closed:" — same semantics (a final date, no more
+        // voting), so it's folded into the same column.
+        const expirationEl = block.querySelector('.edit-expiration');
+        let closedText = null, votingText = null;
+        if (expirationEl) {
+            const text = expirationEl.textContent.replace(/\s+/g, ' ').trim();
+            if (/^(Closed|Approved):/i.test(text)) closedText = text.replace(/^(?:Closed|Approved):\s*/i, '').trim();
+            else if (/^Voting:/i.test(text)) votingText = text.replace(/^Voting:\s*/i, '').trim();
         }
+        addCell(closedText);
+        addCell(votingText);
+
+        // Edit status
+        addCell(_editStatusLabel(block));
 
         return tr;
     }
@@ -5844,9 +5844,11 @@
         _ensureDetableifyStyle();
 
         const headers = [
-            'Edit#', 'Edit action', 'Edit by', 'My vote', 'Vote count',
-            'Closed/Approved', 'Voting', 'Edit status', 'Entered from release', 'By artist',
-            'Edit details', 'Edit notes'
+            'Edit#', 'Edit action',
+            'Edit details', 'Edit notes',
+            'Entered from release', 'By artist',
+            'Edit by', 'My vote', 'Vote count',
+            'Closed/Approved', 'Voting', 'Edit status'
         ];
 
         const table = docContext.createElement('table');

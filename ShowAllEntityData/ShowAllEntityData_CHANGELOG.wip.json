@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.2",
+        "date": "2026-07-29",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Reordered the `edits` page type's columns to group related content together: `Edit#`, `Edit action`, `Edit details`, `Edit notes`, `Entered from release`, `By artist`, `Edit by`, `My vote`, `Vote count`, `Closed/Approved`, `Voting`, `Edit status` (was: `Edit#`, `Edit action`, `Edit by`, `My vote`, `Vote count`, `Closed/Approved`, `Voting`, `Edit status`, `Entered from release`, `By artist`, `Edit details`, `Edit notes` — see `WIP.1`). `_buildEditRow()`'s cell-building order was moved to match, since cells are appended positionally against the `headers` array; no other code references these columns by index (`collapsableColumns`, `addCAA`, and the prose-column checks all key off the column name), so nothing else needed to change."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.1",
         "date": "2026-07-25",
         "sections": [
