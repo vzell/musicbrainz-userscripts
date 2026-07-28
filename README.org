@@ -86347,6 +86347,125 @@ no change in background colors: @debug/no-change.html
 make "By artist" collapsable and render each artist on it on line:
 Bruce Springsteen & The E Street Band with Jackson Browne (American singer-songwriter), Tom Petty & Rosemary Butler
 
+** It actually works only on browsers where the following userscript is installed: @debug/ColourfulEdits.user.js
+
+It actually works only on browsers where the following userscript is installed: @debug/ColourfulEdits.user.js
+
+Before doing any further edits, explain why
+
+** actually
+
+Actually read the following edits page directly
+https://musicbrainz.org/artist/b3c01c39-429c-4b1e-8ad4-c7b04b601ca4/edits (the usrescript is NOT installed there), just
+the first one. You will see there are background colors on e.g.  the following containers:
+
+#+begin_example
+<div class="edit-header applied edit-add add-relationship"><div class="edit-description"><table><tbody><tr><td><div class="my-vote"><strong>My vote: </strong>N/A</div></td><td class="vote-count"><div><strong>automatically applied</strong></div></td></tr><tr><td class="edit-expiration" colspan="2"><strong>Closed:</strong> <!-- -->2024-03-25 09:42 GMT+1</td></tr></tbody></table></div><h2><a href="/edit/110120997"><bdi>Edit #110120997 - Add relationship</bdi></a></h2><p class="subheader"><span class="prefix">~</span> <!-- -->Edit by <a href="/user/vzell"><img alt="" class="avatar no-avatar" height="15" src="https://static.metabrainz.org/MB/editor-b055e61.svg" width="15"><bdi>vzell</bdi></a> </p></div>
+#+end_example
+
+So please reexplain your last statements
+
+** DONE plan: add a new configuration section and config variables for the edit types the other userscript uses 
+
+1.)
+
+add a new configuration section for 'edit' pageTypes and configurabe variables for the edit types the other userscript
+uses (defaults taken from the other userscript)
+
+2.)
+
+Instead of colorizing the background of the complete row (this is what currently happens when the script is loaded for
+the very first paginated page on the complete final renderd page), only change the background color of the "Edit action" column accordingly
+
+** DONE actually also add the same background color as on the "Edit action" column also to the "Edit#" column
+
+actually also add the same background color as on the "Edit action" column also to the "Edit#" column
+
+** DONE make the collapsing of the "Edit details" and "Edit notes" columns configurable
+
+make the collapsing of the "Edit details" and "Edit notes" columns configurable, booleans (by default both columns should be uncollpased initially)
+
+** DONE the collapse handles are missing now when initially both columns are uncollpased
+
+The collapse handles are missing now when initially both columns are uncollpased. So no chance to manually collapse individual or all column cells with the latest change
+
+** DONE bugs
+
+Both the global button
+
+#+begin_example
+<button id="mb-col-collapse-all-btn" title="Expand ALL collapsed multi-row cells in EVERY collapsable table column" style="font-size: 0.8em; padding: 2px 6px; border-radius: 4px; background-image: initial; background-position: initial; background-size: initial; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial; border: 1px solid rgb(204, 204, 204); cursor: pointer; vertical-align: middle; align-items: center; gap: 4px; display: inline-flex;"><span style="align-self:center;font-size:1em;">▶</span><span style="display:flex;flex-direction:column;align-items:center;line-height:1;font-size:0.72em;"><span>Expand</span><span>all</span></span><span style="display:flex;flex-direction:column;align-items:center;line-height:1;font-size:0.72em;"><span>multi-row</span><span>cells</span></span></button>
+#+end_example
+
+and the column header glyph
+
+#+begin_example
+<span class="mb-col-collapse-hdr-btn" data-col-index="10" title="Expand ALL multi-row &quot;Edit details&quot; cells (18) in this table column — keyboard: Ctrl+M then O when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for Ctrl+O)" role="button" aria-expanded="false" aria-label="Expand all collapsed cells in: Edit details" style="margin-left: auto;"><span class="mb-col-collapse-glyph">▶</span><span class="mb-col-collapse-count">18</span><span class="mb-col-collapse-rack">▤</span></span>
+#+end_example
+
+doesn't honor the collapse state when initially uncollapsed
+
+** background
+
+edit types in "edits" pageType, e.g
+
+#+begin_example
+<div class="edit-details"><table class="details edit-recordiing"><tbody><tr><th>Recording:</th><td colspan="2"><a href="/recording/3fe6a34b-28c2-471f-8bcf-73cf39ca3d10"><bdi>Al lado de mi cabana</bdi></a> by <bdi><a href="/artist/b3c01c39-429c-4b1e-8ad4-c7b04b601ca4" title="MGV Drabenderhöhe">MGV Drabenderhöhe</a></bdi></td></tr><tr><th>Name:</th><td class="old">Al <span class="diff-only-a">Lado</span> de mi cabana</td><td class="new">Al <span class="diff-only-b">lado</span> de mi cabana</td></tr></tbody></table></div>
+#+end_example
+
+have background colored '<td class="old">' and '<td class="new">' data cells coming from the MB CSS file https://static.metabrainz.org/MB/common-aaaf2ca.css
+specifically
+
+#+begin_example
+table.details td span.new,table.details td.new {
+    background: #e4fbe4
+}
+
+table.details td span.old,table.details td.old {
+    background: #fbe3e4
+}
+#+end_example
+
+Add the same background colors (configurable, with the defaults from the MB CSS) also on the final rendered page
+
+** on zebra striped rows with grey background
+
+on zebra striped table rows with grey background, the '<td class="old">' and '<td class="new">' data cells are NOT background colered
+
+#+begin_example
+<td data-mb-rest-bg="rgb(242, 242, 242)" style="background: rgb(242, 242, 242);"><div class="mb-text-clamp-marker mb-text-clamp-inner"><div class="edit-details"><div class="details edit-recordiing mb-dt-table" style="display: table;"><div class="mb-dt-tbody" style="display: table-row-group;"><div class="mb-dt-tr" style="display: table-row;"><th class="mb-dt-cell mb-dt-th">Recording:</th><td colspan="2" class="mb-dt-cell"><a href="/recording/3fe6a34b-28c2-471f-8bcf-73cf39ca3d10"><bdi>Al lado de mi cabana</bdi></a> by <bdi><a href="/artist/b3c01c39-429c-4b1e-8ad4-c7b04b601ca4" title="MGV Drabenderhöhe">MGV Drabenderhöhe</a></bdi></td></div><div class="mb-dt-tr" style="display: table-row;"><th class="mb-dt-cell mb-dt-th">Name:</th><td class="old mb-dt-cell">Al <span class="diff-only-a">Lado</span> de mi cabana</td><td class="new mb-dt-cell">Al <span class="diff-only-b">lado</span> de mi cabana</td></div></div></div></div></div></td>
+#+end_example
+
+but on zebra striped table rows with white background they are:
+
+#+begin_example
+<td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"><div class="mb-text-clamp-marker mb-text-clamp-inner"><div class="edit-details"><div class="details edit-relationship mb-dt-table" style="display: table;"><div class="mb-dt-tbody" style="display: table-row-group;"><div class="mb-dt-tr" style="display: table-row;"><th rowspan="2" class="mb-dt-cell mb-dt-th">Relationship:</th><td class="old mb-dt-cell"><a href="/artist/7b0a30f8-d9b3-458f-a129-b878a26d4b78" title="Zell, Volker"><bdi>Volker Zell</bdi></a> is/was a    member of <a href="/artist/b3c01c39-429c-4b1e-8ad4-c7b04b601ca4" title="MGV Drabenderhöhe"><bdi>MGV Drabenderhöhe</bdi></a> <!-- --> </td></div><div class="mb-dt-tr" style="display: table-row;"><td class="new mb-dt-cell"><a href="/artist/7b0a30f8-d9b3-458f-a129-b878a26d4b78" title="Zell, Volker"><bdi>Volker Zell</bdi></a> is/was a    member of <a href="/artist/b3c01c39-429c-4b1e-8ad4-c7b04b601ca4" title="MGV Drabenderhöhe"><bdi>MGV Drabenderhöhe</bdi></a> <!-- --> <!-- -->(tenor vocals)</td></div></div></div></div></div></td>
+#+end_example
+
+** plan/ pagination hover
+
+1.)
+
+[Image #6] - original rendered table from https://musicbrainz.org/artist/b3c01c39-429c-4b1e-8ad4-c7b04b601ca4/edits for an "Edit medium" type edit
+[Image #7] - same rendered table on the final rendered page on a zebra row with white background
+[Image #8] - same rendered table on the final rendered page on a zebra row with white background, but when the mouse pointer is hovered over it (makeking the row background grey dark), and the straigh lines between cloumns/rows almost invisibe, as thexy are black
+
+Is it possible to also use zebra striping on rendered tracklist tables on the final rendered page
+
+2.)
+
+Is it possible to use another background row color when hovering over a row like e.g. "#e19ec8" (make it configurable) than the current dark grey ?
+Probably than the point 1.) will also be solved
+
+** /plan [Image #3] grey background zebra rows do not show the zebra striping itself
+
+[Image #3] grey background zebra rows do not show the zebra striping itself
+
+** TODO Volker Zell performed solo vocals on Roll Jordan Roll	MGV Drabenderhöhe	
+
+Relationship:	Volker Zell performed solo vocals on Roll Jordan Roll by MGV Drabenderhöhe
+
+** TODO change default of hovee background color
 ** TODO notes-received.html
 
 @debug/notes-received.html
