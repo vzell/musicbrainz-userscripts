@@ -1180,3 +1180,64 @@ MusicBrainz stylesheet without a real browser — jsdom has no external
 stylesheet to conflict with in the first place, which is exactly why this
 particular failure mode was never visible in any of the earlier jsdom
 verification passes for this feature).
+
+## 2026-07-28 — zebra striping for nested tracklist tables + configurable row-hover color
+
+Screenshots comparing a native "Edit medium" page against the rendered
+version showed two related problems in the nested "Old tracklist"/"New
+tracklist" compare grid inside "Edit details": no zebra striping at all
+(uniform, unstyled rows), and hovering the row made the thin `#ddd` cell
+borders nearly invisible.
+
+1. **Zebra striping** — same class of bug as the old/new diff colors,
+   confirmed by re-checking `_detableify()`: it copies *all* attributes
+   from the original element when converting `<tr>` → `<div class="…
+   mb-dt-tr">`, so the native `odd`/`even` class survives intact (e.g.
+   `<div class="edit-medium-track odd mb-dt-tr" style="display: table-row;">`).
+   Nothing colors it though — MusicBrainz's own zebra CSS requires a real
+   `<tr>` ancestor it no longer has, and `_ensureDetableifyStyle()` didn't
+   yet have a replacement rule for it (unlike the old/new diff cells,
+   which it already patches). Added `.mb-dt-tr.odd`/`.mb-dt-tr.even`
+   background rules, `!important` for the same defensive reason as the
+   diff colors. Colors are NOT sourced from MusicBrainz's stylesheet this
+   time (user chose reasonable defaults over chasing the exact values):
+   new `sa_edits_color_zebra_odd` (`#ffffff`) / `sa_edits_color_zebra_even`
+   (`#f2f2f2`) settings.
+2. **Row hover swallowing the nested grid's borders** — investigation
+   found `applyStickyColumn`'s hover handler already reads
+   `Lib.settings.sa_ui_row_hover_bg || '#e2e2e2'`, but `sa_ui_row_hover_bg`
+   had **no `configSchema` entry at all** — a setting that looked wired up
+   in code but was never actually exposed in the settings menu, so it was
+   permanently stuck on `#e2e2e2`. Fixed generally (benefits every table
+   this script renders, not just edits) by adding the missing schema
+   entry, grouped with the other `*_hover_bg` settings.
+   Separately: that JS-driven hover handler only ever touches the *outer*
+   row's direct `<td>` children — it can't reach arbitrarily-nested
+   `<td>`/`<th>` elements inside a de-tableified grid. Whatever was
+   actually darkening those is almost certainly MusicBrainz's own native
+   hover CSS reaching arbitrary depth (same descendant-selector pattern
+   already established for its zebra rule) — a JS-only fix wouldn't touch
+   that. Added a pure-CSS `tr:hover .mb-dt-table td, tr:hover
+   .mb-dt-table th { background: ... !important; }` rule instead, reading
+   the now-real `sa_ui_row_hover_bg` value — no JS event wiring needed,
+   the browser's native `:hover` pseudo-class handles activation/
+   deactivation automatically, and it composes cleanly with the existing
+   JS handler (different DOM elements — outer cell vs. nested descendants
+   — so no conflict). This rule's extra `tr` type selector gives it higher
+   specificity than the zebra rule (`.mb-dt-tr.odd`), so hovering
+   correctly overrides zebra without relying on source order, and rows
+   revert to their zebra color on mouse-leave automatically.
+
+Verified via jsdom: a synthetic "Edit medium" block with a nested nested
+`<table class="tbl">` tracklist compare grid (odd/even rows) — confirmed
+the injected `<style>` contains all three rules with correct
+colors/`!important` for both default and custom settings, the `odd`/`even`
+classes correctly survive on real `<div class="mb-dt-tr">` elements, and
+zero real `<table>`/`<tbody>`/`<tr>` remain nested inside `.edit-details`
+(regression check for the original nested-table-corruption fix — this is
+the first test data with a table nested *two* levels deep: the compare
+grid inside the "Tracklist:" row inside the outer `.edit-details` table).
+As with the earlier `!important`/cascade fix, actual visual
+hover/cascade behavior against MusicBrainz's real stylesheet can't be
+verified without a live browser (jsdom has no external stylesheet to
+begin with).

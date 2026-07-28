@@ -1028,6 +1028,18 @@
             description: 'Background color applied to H3 sub-table headers when the cursor hovers over them (.mb-toggle-h3:hover). Default is the original MusicBrainz light grey (#f9f9f9). Takes precedence over the non-hover H3 background (sa_ui_h3_bg).'
         },
 
+        sa_ui_row_hover_bg: {
+            label: 'Table row hover background color',
+            type: 'color_picker',
+            default: '#e2e2e2',
+            description: 'Background color applied to a table row\'s cells while the mouse ' +
+                         'hovers over it (used by applyStickyColumn\'s hover handling for every ' +
+                         'table this script renders). This setting already existed in code but ' +
+                         'had no settings-menu entry until now, so it was never actually ' +
+                         'adjustable — default matches the value that was hardcoded as its ' +
+                         'JS-side fallback.'
+        },
+
         // --- Table column-header (thead) row colors ---
         sa_ui_thead_th_bg: {
             label: 'Table header-row background color',
@@ -2241,6 +2253,26 @@
                          '"Edit details" compare table. Default matches MusicBrainz\'s own site ' +
                          'CSS (`table.details td.old`/`span.old`, from ' +
                          'static.metabrainz.org/MB/common-*.css).'
+        },
+
+        sa_edits_color_zebra_odd: {
+            label: 'Edit details tracklist — odd row',
+            type: 'color_picker',
+            default: '#ffffff',
+            description: 'Background color for odd rows in a nested compare table inside "Edit ' +
+                         'details" (e.g. a medium edit\'s Old/New tracklist) — MusicBrainz\'s own ' +
+                         'zebra striping no longer reaches these rows once de-tableified (see ' +
+                         'debug/NOTES.md). A reasonable default, not sourced from MusicBrainz\'s ' +
+                         'stylesheet.'
+        },
+
+        sa_edits_color_zebra_even: {
+            label: 'Edit details tracklist — even row',
+            type: 'color_picker',
+            default: '#f2f2f2',
+            description: 'Background color for even rows in a nested compare table inside "Edit ' +
+                         'details". A reasonable default, not sourced from MusicBrainz\'s ' +
+                         'stylesheet.'
         }
 
     };
@@ -5698,6 +5730,21 @@
      * is more specific ("odd"/white rows worked fine, since nothing
      * conflicts with an unstyled/default background). See
      * sa_enable_edits_diff_colors / debug/NOTES.md.
+     *
+     * Also restores zebra striping (`.mb-dt-tr.odd`/`.mb-dt-tr.even` —
+     * `_detableify()` preserves the original `odd`/`even` class on the
+     * converted row `<div>`, MusicBrainz's own zebra CSS just can't reach it
+     * anymore for the same real-`<table>`-ancestor reason as above) and a
+     * row-hover override (`tr:hover .mb-dt-table td/th`, reading the
+     * general `sa_ui_row_hover_bg` setting) for the same class of content —
+     * without it, hovering a row makes these deeply-nested cells' thin
+     * `#ddd` borders nearly invisible against whatever MusicBrainz's own
+     * native hover CSS darkens them to (same reaches-any-depth pattern as
+     * its zebra rule). Both `!important` for the same reason as the diff
+     * colors above; the hover rule's extra type selector (`tr`) gives it
+     * higher specificity than the zebra rule, so it wins during an actual
+     * hover without depending on source order, and rows correctly revert
+     * to their zebra color on mouse-leave.
      */
     function _ensureDetableifyStyle() {
         if (document.getElementById('mb-detableify-style')) return;
@@ -5706,6 +5753,9 @@
         const diffColorsEnabled = Lib.settings.sa_enable_edits_diff_colors !== false;
         const diffNewColor = Lib.settings.sa_edits_color_diff_new || '#e4fbe4';
         const diffOldColor = Lib.settings.sa_edits_color_diff_old || '#fbe3e4';
+        const zebraOdd  = Lib.settings.sa_edits_color_zebra_odd  || '#ffffff';
+        const zebraEven = Lib.settings.sa_edits_color_zebra_even || '#f2f2f2';
+        const rowHoverBg = Lib.settings.sa_ui_row_hover_bg || '#e2e2e2';
         style.textContent = `
             .mb-dt-table {
                 border-collapse: collapse;
@@ -5726,6 +5776,15 @@
                 background: ${diffOldColor} !important;
             }
             ` : ''}
+            .mb-dt-tr.odd {
+                background: ${zebraOdd} !important;
+            }
+            .mb-dt-tr.even {
+                background: ${zebraEven} !important;
+            }
+            tr:hover .mb-dt-table td, tr:hover .mb-dt-table th {
+                background: ${rowHoverBg} !important;
+            }
         `;
         document.head.appendChild(style);
     }
