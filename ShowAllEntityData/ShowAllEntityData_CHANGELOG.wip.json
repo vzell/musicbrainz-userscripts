@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.3",
+        "date": "2026-07-29",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fixed the `edits` page type's column filter highlighting matches in the wrong column — e.g. filtering the \"Edit notes\" column highlighted \"alias\" inside \"Edit details\" instead, or (with a trailing comma in the filter string) narrowed to the correct row but highlighted nothing at all. `highlightText()` was scanning `row.querySelectorAll('td')` and using its flat, recursive index to find the target column's cell, but that numbering doesn't match `row.cells`-based indexing (used by `testRowMatch()`/`getColFilters`) once any earlier cell contains nested real `<td>`/`<th>` elements — which every `_detableify()`'d \"Edit details\" cell does (per its own JSDoc, `<td>`/`<th>` are deliberately kept real for `rowspan`/`colspan`). `highlightText()` now resolves the target column via `row.cells[targetColIndex]` directly (matching the same numbering the match logic already uses) and lets `highlightCrossTag()` walk that cell's own subtree, which still finds nested matches correctly. The global-filter case (no target column) is unchanged. Row matching itself was already correct — only the highlight placement was wrong. See `debug/filter-bug.org`, `debug/editNotes-filter-bug.html`."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.2",
         "date": "2026-07-29",
         "sections": [

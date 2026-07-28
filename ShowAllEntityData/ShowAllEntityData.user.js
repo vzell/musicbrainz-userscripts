@@ -25206,11 +25206,31 @@ a { color: #1565c0; }`;
                 : 'mb-column-filter-highlight';
         }
 
-        row.querySelectorAll('td').forEach((td, idx) => {
-            if (targetColIndex !== -1 && idx !== targetColIndex) return;
-            td.normalize();
-            highlightCrossTag(td, regex, className);
-        });
+        // targetColIndex (when set) is a row.cells index — the SAME numbering
+        // testRowMatch()/getColFilters use for f.idx. A flat, recursive
+        // querySelectorAll('td') NodeList does NOT share that numbering: any
+        // column whose cell contains nested real <td>/<th> elements (e.g. a
+        // de-tableified 'edits' "Edit details" cell — see _detableify's
+        // JSDoc, which deliberately keeps <td>/<th> real for rowspan/colspan)
+        // shifts the flat index for every column after it, so the two
+        // schemes only coincide by chance. Resolving the cell directly via
+        // row.cells[targetColIndex] keeps this aligned with the match logic;
+        // highlightCrossTag() still walks the whole subtree of that cell, so
+        // nested content is still searched correctly. The global-filter case
+        // (targetColIndex === -1) has no column to align to, so it keeps
+        // scanning every <td> at every depth, matching its previous behavior.
+        if (targetColIndex === -1) {
+            row.querySelectorAll('td').forEach(td => {
+                td.normalize();
+                highlightCrossTag(td, regex, className);
+            });
+        } else {
+            const td = row.cells[targetColIndex];
+            if (td) {
+                td.normalize();
+                highlightCrossTag(td, regex, className);
+            }
+        }
     }
 
     /**

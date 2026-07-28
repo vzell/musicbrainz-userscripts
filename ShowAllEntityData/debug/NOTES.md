@@ -1304,3 +1304,44 @@ direct children in the synthetic "Edit medium" tracklist fixture do carry
 `.mb-dt-cell` (confirming the new selector actually reaches them). Real
 cascade-winning behavior still can't be verified without a live browser —
 asked the user to reload and confirm visually.
+
+## 2026-07-29 — "Edit notes" column filter highlighting the wrong column (`filter-bug.org`)
+
+`editNotes-filter-bug.html` (`/edit/subscribed_editors`, snapshot supplied
+by the user together with two screenshots): filtering the "Edit notes"
+column for `lias` highlighted "alias" inside the *"Edit details"* column
+instead (both rows' "(view all aliases)" text lit up), and filtering
+`lias,` (trailing comma) correctly narrowed to the single row whose Edit
+notes text is "Main alias, at least currently." but produced no highlight
+anywhere at all.
+
+Root cause: `highlightText()` targeted a column by indexing a **flat,
+recursive** `row.querySelectorAll('td')` NodeList with `targetColIndex`
+(originally a `row.cells`-based index, the same one `testRowMatch()` uses
+via `f.idx`). Every edit's `.edit-details` block is de-tableified
+(`_detableify()`) but — per that function's own JSDoc — deliberately keeps
+`<td>`/`<th>` as real elements (needed for `rowspan`/`colspan`), so an
+"Edit details" cell that itself lives at `row.cells[2]` still contains
+several nested real `<td>` elements (its own "Label:"/value,
+"Alias:"/value, … pairs). Those nested cells get counted into the same
+flat sequence as top-level columns, so any column after "Edit details" in
+DOM order — "Edit notes" here — has its `f.idx` collide with one of those
+nested cells instead of its own real `<td>`. Row matching itself (which
+correctly uses `row.cells[f.idx]`, unaffected by nested `<td>`s) was never
+wrong — only the highlight lookup was.
+
+This is not something the `edits` column-reorder work (`WIP.2`)
+introduced — the same flat-vs-direct-child index mismatch already existed
+for "Edit notes" in the original column order (where it was the very last
+column, after "Edit details"). The reorder only made the symptom visible
+in a *different*, more confusing way (highlighting appears to land in
+"Edit details" specifically) because "Edit details" now sits immediately
+to its left rather than several unaffected columns away.
+
+Fixed in `highlightText()`: for a specific target column
+(`targetColIndex !== -1`), resolve `row.cells[targetColIndex]` directly
+(matching `testRowMatch()`'s indexing) instead of counting through a flat
+`querySelectorAll('td')`; `highlightCrossTag()` still walks that cell's
+full subtree, so nested de-tableified content is still searched
+correctly. The global-filter case (`targetColIndex === -1`, which
+legitimately needs to reach every `<td>` at every depth) is unchanged.
