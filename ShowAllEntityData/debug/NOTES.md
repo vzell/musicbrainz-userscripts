@@ -1345,3 +1345,130 @@ Fixed in `highlightText()`: for a specific target column
 full subtree, so nested de-tableified content is still searched
 correctly. The global-filter case (`targetColIndex === -1`, which
 legitimately needs to reach every `<td>` at every depth) is unchanged.
+
+## 2026-07-29 — `user-edits`/`user-open-edits` page types
+
+`edits-by-vzell.html` (`/user/vzell/edits`) and `open-edits-by-vzell.html`
+(`/user/vzell/edits/open`, no open edits at capture time — empty `div.edit-list`
+set): same native `div.edit-list` block sequence the existing `edits` page
+type already converts via `applyEditsToTable()`/`_buildEditRow()` — identical
+`.edit-header`/`.edit-description`/`.edit-details`/`.edit-notes` shape, same
+`ul.pagination` widget (this account's `/edits` snapshot shows "Found at
+least 500 edits" with a double-ellipsis milestone window, i.e. the same
+ambiguous-pagination case `_hasAmbiguousEditsPagination()` already handles
+generically).
+
+One difference from every page `edits` covers (`/search/edits`,
+`/edit/subscribed(_editors)`, `/<entity>/<mbid>/edits`): those pages have no
+native `<h2>` left after `applyEditsToTable()` removes every `div.edit-list`
+(each carries its own `<h2>Edit #… - …</h2>`, which goes with it), which is
+why `edits` needs `insertH2: 'Edits'`. The two user pages already have a
+real, page-level `<h2>` ahead of all the `div.edit-list` blocks:
+`<h2>Edits by <username></h2>` / `<h2>Open edits by <username></h2>`. Since
+`updateH2Count()`'s single-table fallback (no `insertH2`/`rowTargetSelector`
+on the page def) just walks `document.querySelectorAll('h2')` and keeps the
+last one that still precedes `table.tbl` in document order, this native h2
+is picked up automatically — no `insertH2` needed, and adding one would just
+inject a redundant second heading.
+
+Added `user-edits` (`/user/<username>/edits`) and `user-open-edits`
+(`/user/<username>/edits/open`) page types, both reusing `edits`'s
+`editsToTable`/`unboundedPagination`/`collapsableColumns`/`addCAA` feature
+set verbatim, minus `insertH2`. Also had to extend the `@include` header's
+`/user/<username>/(?:subscriptions|…|tags|tag\/)` regex — it did not
+previously include `edits`/`edits/open`, so the userscript would not have
+activated on these URLs at all.
+
+### Follow-up: page failed to load at all ("Required elements not found")
+
+Reported live on `/user/vzell/edits` right after the above landed:
+
+```
+[VZ-ShowAllEntityData: user-edits] Initializing script for path: /user/vzell/edits
+[VZ-ShowAllEntityData: user-edits] ❌ Required elements not found. Terminating. {pageType: 'user-edits', hasHeader: false}
+```
+
+`pageType` detection worked fine — the failure is `hasHeader: false`. Root
+cause: these two pages render **no `<h1>` at all** (confirmed both live and
+in `edits-by-vzell.html`/`open-edits-by-vzell.html` — `grep -c "<h1"` on
+both is `0`). The init block's `headerContainer` chain
+(`ShowAllEntityData.user.js` ~line 19669) is a pure `||` fallback of
+`h1`-scoped selectors (`.artistheader h1`, `h1 a bdi`, `#content h1`, bare
+`h1`, …) with nothing that ever falls back to an `<h2>` — so on a page with
+zero `<h1>` elements it evaluates to `null` regardless of what else is on
+the page, and the very next check (`if (!pageType || !headerContainer)`)
+aborts before `startFetchingProcess` is ever wired up. This is a real gap
+in the init logic, not something the debug snapshots could have caught
+without deliberately checking for an `<h1>` — the page content the
+snapshots captured (`div#content` onward) never included one either way.
+
+Fixed by adding a fallback scoped specifically to
+`pageType === 'user-edits' || pageType === 'user-open-edits'`: when no
+`<h1>`-based selector matched, use `#content h2` (falling back to a bare
+`h2`) instead — the native "Edits by …"/"Open edits by …" heading these
+pages do have. Deliberately scoped to just these two page types rather than
+a blanket "no h1 → grab any h2" rule, since that could mask a genuinely
+missing header on some other page type by silently latching onto an
+unrelated `<h2>` elsewhere on the page. Verified against both real
+snapshots via jsdom: `headerContainer` resolves to `null` before the fix
+and to the correct native h2 (`"Edits by vzell (newest first)"` /
+`"Open edits by vzell"`) after it.
+
+Checked every other consumer of `headerContainer` further down in the init
+block (button-controls insertion, `applyH1CommentSpanRelocation`, the
+status-displays wrapper) — all three already do
+`headerContainer.tagName === 'H1' ? headerContainer : (headerContainer.closest('h1') || headerContainer)`
+or equivalent, i.e. they already degrade to "use headerContainer itself"
+whenever no ancestor `<h1>` exists, so none of them needed changes to cope
+with headerContainer now sometimes being an `<h2>` with no `<h1>` ancestor
+at all.
+
+## 2026-07-29 — `user-edits`/`user-open-edits` cram everything onto one heading (`user-edits-wrong.org`)
+
+`debug/user-edits-wrong.org` dumps the fully-rendered `<h2>` from
+`/user/vzell/edits` after clicking "Show all Edits for User": it contains
+the "Edits by vzell (newest first)" text, the ENTIRE button toolbar
+(`#mb-show-all-controls-container` — Show all Edits, Stop, Save/Load,
+Resize/Visible/Density/Stats/Export, Shortcuts/Settings/Help), the row-count
+badge (`.mb-row-count-stat`), the CAA toggle button, and the ENTIRE filter
+bar (`#mb-filter-container` — global filter, history dropdown, highlight/
+collapse/clear buttons, status display) — plus `mb-toggle-h2`/
+`mb-h2-processed` classes and a "▼" toggle icon, meaning
+`makeH2sCollapsible()` made the whole thing one collapsible section. Every
+other page type keeps these on two separate lines (`<h1>` = title +
+buttons, `<h2>` = count/CAA/filter), because they have a real `<h1>`
+already. These two pages don't (see the previous entry above) — there is
+only the one native `<h2>`, so both the page-load button-toolbar injection
+and the post-render filter/count/CAA injection resolve to it.
+
+Fix (matches the user's own diagnosis, and the exact pattern
+`artist-tags`/etc. already use with `renameH2ToH3`+`insertH2`): added a new
+`applyRenameH2ToH1()` DOM pre-processing function (mirrors
+`applyRenameH2ToH3()` — same attribute-copy / child-node-move /
+`replaceChild` approach, just promoting to `<h1>` instead of demoting to
+`<h3>`), gated on a new `features.renameH2ToH1: true`. Gave both page types
+`renameH2ToH1: true` plus `insertH2: 'Edits'` / `insertH2: 'Open edits'`.
+
+First jsdom run against the real `debug/edits-by-vzell.html` snapshot
+caught a real bug in the naive "rename every `<h2>` in the document"
+approach (copied verbatim from `applyRenameH2ToH3`, which never needed to
+worry about this): every one of the 50 real edits on that page still
+carries its OWN native `<h2>Edit #NNNNNN - Action</h2>` heading at this
+point in the pipeline (`applyRenameH2ToH1` runs BEFORE
+`applyEditsToTable()` has removed the `div.edit-list` blocks) — the naive
+version promoted all 51 `<h2>`s (the page heading + all 50 per-edit
+headings) to `<h1>`, instead of just the one intended. Fixed by adding the
+exact same `!h.closest('div.edit-list')` exclusion `applyInsertH2()`
+already uses for its own `<h3>` search, for the identical underlying
+reason.
+
+Re-verified the full pipeline (`applyRenameH2ToH1` → `applyInsertH2` →
+`applyEditsToTable`'s block-removal) against both real snapshots: exactly
+one `<h1>` (the original heading text) and one `<h2>` ("Edits"/"Open
+edits") remain, in the correct `<h1>` → `<h2>` → `table.tbl` document
+order, with all 50 per-edit headings gone (removed along with their
+`div.edit-list` blocks, as already happens for every other `editsToTable`
+page). `open-edits-by-vzell.html` (zero open edits at capture time) behaves
+the same way minus the row conversion — `applyEditsToTable` still early-
+returns when there are no `div.edit-list` blocks to convert, same as
+before this fix, not a new regression.

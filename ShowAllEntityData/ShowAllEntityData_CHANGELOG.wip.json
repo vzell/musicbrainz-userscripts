@@ -1,5 +1,30 @@
 [
     {
+        "version": "WIP.5",
+        "date": "2026-07-29",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fixed `user-edits`/`user-open-edits` cramming the entire action-button toolbar, row-count badge, CAA toggle, and filter bar onto the same native heading (see `debug/user-edits-wrong.org`). Both pages render no native `<h1>` at all — their only heading is a `<h2>Edits by <username></h2>` / `<h2>Open edits by <username></h2>` — so the page-load button-toolbar injection and the post-render filter/count/CAA-toggle injection both resolved to that one element, which then also got made collapsible (every `<h2>` is fair game for `makeH2sCollapsible()`, unlike an `<h1>` page title). Added a new `renameH2ToH1: true` feature (mirroring the existing `renameH2ToH3: true` used by tag pages) that promotes the native `<h2>` to `<h1>` — carrying the already-injected button toolbar with it, since the promotion moves child nodes rather than discarding them — and gave both page types `insertH2: 'Edits'` / `insertH2: 'Open edits'` so a fresh, dedicated `<h2>` gets injected as the actual filter/count/CAA-toggle anchor, matching every other single-table page type's h1-title/h2-anchor split. New `applyRenameH2ToH1()` (mirrors `applyRenameH2ToH3()`) excludes any `<h2>` nested inside a `div.edit-list` block — every real edit on an as-yet-unconverted edits-listing page carries its own native `<h2>Edit #NNNNNN - Action</h2>` heading, and promoting those too (confirmed via a jsdom run against the real `debug/edits-by-vzell.html` snapshot: 51 `<h1>`s instead of 1, before this exclusion was added) would have been a much worse regression than the one being fixed. Verified via jsdom against both real snapshots: exactly one `<h1>` and one `<h2>` result, in the correct order, before `applyEditsToTable` removes the `div.edit-list` blocks."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.4",
+        "date": "2026-07-29",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Added two new page types for a user's own edit-listing pages: `user-edits` (`/user/<username>/edits`) and `user-open-edits` (`/user/<username>/edits/open`) — e.g. `/user/vzell/edits`, `/user/vzell/edits/open`. Both reuse the exact same `editsToTable`/`unboundedPagination`/`collapsableColumns`/`addCAA` pipeline as the existing `edits` page type (see `WIP.5` for the `renameH2ToH1`/`insertH2` heading setup these two needed on top of that, which the base `edits` page type does not). Also extended the `@include` header's `/user/<username>/...` regex to cover `edits`/`edits/open`, which it did not match before.",
+                    "Fixed the two new page types failing to initialize at all (\"Required elements not found. Terminating.\", `hasHeader: false`) — confirmed live on `/user/vzell/edits`. Both pages render no `<h1>` whatsoever (only the native `<h2>` mentioned above), but every branch of the init header-detection chain required an `<h1>`, so `headerContainer` stayed `null` and the script aborted before doing anything. Added a `headerContainer` fallback scoped specifically to `user-edits`/`user-open-edits` (not a blanket \"no h1 → use any h2\" rule, to avoid masking a real missing-header case on some other page type) that falls back to the page's `<h2>` when no `<h1>` is found. Every other consumer of `headerContainer` already degrades gracefully to \"use headerContainer itself\" when no ancestor `<h1>` exists, so no other code needed to change."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.3",
         "date": "2026-07-29",
         "sections": [

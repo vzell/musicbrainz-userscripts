@@ -28,7 +28,7 @@ lines 1999-    ColumnDataExtractor registry (named extractor functions)
 lines 3090-    SyntheticColumnDataExtractor registry
 lines 3352-    buildActive* helpers (column extractors, erasers, injected columns)
 lines 3913-    DOM pre-processing helpers: applyListToTable, applyRenameH2ToH3,
-               applyInsertH2, applyInsertPrependH2, applyShowAllTags
+               applyRenameH2ToH1, applyInsertH2, applyInsertPrependH2, applyShowAllTags
 lines 4954-    pageDefinitions[] array — one entry per recognised URL pattern
 lines 16400-   Init block: page type detection, header location, button injection
 lines 22828-   runFilter() — real-time filter logic
@@ -61,6 +61,7 @@ Each entry follows this shape:
     features: {
         // DOM pre-processing (applied before fetch, in order):
         renameH2ToH3: true,           // demote native <h2>s inside #content to <h3>
+        renameH2ToH1: true,           // promote native <h2>s to <h1> (page has no native h1 at all)
         insertH2: 'Section title',    // inject <h2> after .tabs container
         insertPrependH2: 'Title',     // inject <h2> before first table
         listToTable: ['genres','tags'], // convert <ul id="X"> → <table class="tbl">
@@ -208,7 +209,12 @@ Enable via the `sa_enable_debug_logging` setting or the Tampermonkey menu.
    handles it (targetHeader must be inside the resolved container)
 5. If `tableMode: 'multi'` and the page has no native h2, add `insertH2`
 6. If the page has native h2s that should become h3s, add `renameH2ToH3: true`
-7. Bump version, add changelog entry
+7. If the page has no native h1 at all (its only heading is a `<h2>`), add
+   `renameH2ToH1: true` plus `insertH2: '…'` — otherwise the page-load button
+   toolbar and the post-render filter/count UI both end up crammed onto the
+   same native heading (see `applyRenameH2ToH1`'s JSDoc,
+   `debug/user-edits-wrong.org`)
+8. Bump version, add changelog entry
 
 ---
 

@@ -16,7 +16,7 @@
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits)(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits(?:\?.*)?|edit\/subscribed(?:_editors)?(?:\?.*)?|account\/applications(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections(?:\?.*)?|election\/.*|genres(?:\?.*)?|cdstub\/.*|doc\/Edit_Types(?:\?.*)?|instruments(?:\?.*)?|privileged(?:\?.*)?)$/
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers(?:\?.*)?|collections(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*)$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers(?:\?.*)?|collections(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?(?:\?.*)?)$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -5918,6 +5918,69 @@
     }
 
     /**
+     * Promotes every `<h2>` element in the page body to `<h1>`, preserving all
+     * attributes and child nodes. Mirror image of `applyRenameH2ToH3()` above
+     * — identical DOM-manipulation approach, just `<h1>` instead of `<h3>`.
+     *
+     * This is a DOM pre-processing step for pageTypes that carry
+     * `features.renameH2ToH1: true` (currently 'user-edits'/'user-open-edits').
+     * Those pages render no native `<h1>` at all — their only heading is a
+     * `<h2>` ("Edits by <username>" / "Open edits by <username>"). Left as an
+     * `<h2>`, both the page-load button-toolbar injection and the post-render
+     * filter/count/CAA-toggle injection resolve to that SAME element (there is
+     * nothing else to pick), cramming the whole action-button toolbar, row-count
+     * badge, CAA toggle, and filter bar into one native heading — which then
+     * also gets made collapsible by `makeH2sCollapsible()` (every `<h2>` is
+     * fair game, unlike an `<h1>` page title). See debug/user-edits-wrong.org.
+     * Promoting it to `<h1>` first frees up `<h2>` for the subsequent
+     * `insertH2()` call's dedicated anchor, matching every other single-table
+     * page type's h1-title / h2-anchor split.
+     *
+     * The button-toolbar container is appended into `headerContainer` at
+     * page-load time — before this function has run, since it's a
+     * click-triggered pre-processing step and the button must already exist
+     * somewhere to be clicked. That's fine: because this function MOVES the
+     * old `<h2>`'s child nodes into the new `<h1>` (rather than discarding
+     * them), the toolbar travels with it into the correct final element.
+     *
+     * Excludes any `<h2>` nested inside a `div.edit-list` block — every real
+     * edit on an (as yet unconverted) edits-listing page carries its OWN
+     * native `<h2>Edit #NNNNNN - Action</h2>` heading (see `_buildEditRow`'s
+     * `block.querySelector('h2 a[href^="/edit/"]')` lookup), and this
+     * function runs BEFORE `applyEditsToTable()` has removed those blocks.
+     * Without this exclusion every one of those per-edit headings gets
+     * promoted to `<h1>` too — confirmed via a jsdom run against the real
+     * `debug/edits-by-vzell.html` snapshot (51 `<h1>`s instead of 1) before
+     * this filter was added. Mirrors `applyInsertH2()`'s own identical
+     * `!h.closest('div.edit-list')` exclusion, same underlying reason.
+     *
+     * Operates on `document` directly (the live page DOM).
+     *
+     * @param {object} def - The active merged pageDefinition object.
+     */
+    function applyRenameH2ToH1(def) {
+        if (!def?.features?.renameH2ToH1) return;
+
+        const _h2s = Array.from(document.querySelectorAll('h2'))
+            .filter(h => !h.closest('div.edit-list'));
+        if (_h2s.length === 0) {
+            Lib.debug('init', 'applyRenameH2ToH1: no <h2> elements found — nothing to rename.');
+            return;
+        }
+
+        _h2s.forEach(_h2 => {
+            const _h1 = document.createElement('h1');
+            // Copy all attributes
+            Array.from(_h2.attributes).forEach(attr => _h1.setAttribute(attr.name, attr.value));
+            // Move all child nodes
+            while (_h2.firstChild) _h1.appendChild(_h2.firstChild);
+            _h2.parentNode.replaceChild(_h1, _h2);
+        });
+
+        Lib.debug('init', `applyRenameH2ToH1: renamed ${_h2s.length} <h2> element(s) to <h1>.`);
+    }
+
+    /**
      * Inserts a new `<h2>` element with the text supplied by
      * `features.insertH2` immediately after the `<div class="tabs">` container
      * in the page body.
@@ -7845,6 +7908,58 @@
                 // links to a non-release entity (e.g. a recording, for
                 // "Edit recording" edits) — CAA_CTX.entityGuard only matches
                 // release/release-group hrefs.
+                addCAA: 'Entered from release'
+            },
+            tableMode: 'single'
+        },
+        // User edit-listing pages ('/user/<username>/edits/open',
+        // '/user/<username>/edits'). Same div.edit-list → table.tbl pipeline as
+        // 'edits' above, but — unlike every '/edits' listing 'edits' covers —
+        // these pages render no native <h1> at all: their only heading is a
+        // native <h2>: "Open edits by <username>" / "Edits by <username>"
+        // (see debug/open-edits-by-vzell.html, debug/edits-by-vzell.html).
+        // Leaving that <h2> as the sole heading (an earlier version of this
+        // pageType did exactly that) makes the page-load button toolbar AND
+        // the post-render filter/count/CAA-toggle UI both resolve to the
+        // SAME element, cramming everything onto one collapsible line — see
+        // debug/user-edits-wrong.org. renameH2ToH1 promotes that native
+        // heading to <h1> (carrying the already-injected button toolbar with
+        // it, since the promotion moves child nodes rather than discarding
+        // them), and insertH2 then injects a fresh, dedicated <h2> as the
+        // filter/count/CAA-toggle anchor — the same "reshape heading, then
+        // inject a clean anchor" pattern 'artist-tags' etc. already use with
+        // renameH2ToH3+insertH2. Neither page has a div.tabs or any <h3>
+        // outside a div.edit-list, so insertH2 falls through to its "after
+        // the first <h1>" placement — right after the just-promoted heading.
+        // Each match is anchored with '$', so '/edits/open' can never satisfy
+        // 'user-edits' and '/edits' (no '/open' suffix) can never satisfy
+        // 'user-open-edits' — array order between the two does not matter,
+        // but 'user-open-edits' (the more specific path) is listed first to
+        // mirror the tag-page convention (entity tags before generic 'tags').
+        {
+            type: 'user-open-edits',
+            match: (path) => /^\/user\/[^/]+\/edits\/open$/.test(path),
+            buttons: [ { label: 'Show all Open Edits for User' } ],
+            features: {
+                editsToTable: true,
+                unboundedPagination: true,
+                renameH2ToH1: true,
+                insertH2: 'Open edits',
+                collapsableColumns: [ 'Edit details', 'Edit notes' ],
+                addCAA: 'Entered from release'
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'user-edits',
+            match: (path) => /^\/user\/[^/]+\/edits$/.test(path),
+            buttons: [ { label: 'Show all Edits for User' } ],
+            features: {
+                editsToTable: true,
+                unboundedPagination: true,
+                renameH2ToH1: true,
+                insertH2: 'Edits',
+                collapsableColumns: [ 'Edit details', 'Edit notes' ],
                 addCAA: 'Entered from release'
             },
             tableMode: 'single'
@@ -19637,6 +19752,19 @@ a { color: #1565c0; }`;
                           document.querySelector('#content h1') || // Often catches search result headers
                           document.querySelector('h1');
 
+    // user-edits / user-open-edits ('/user/<username>/edits[/open]') render no
+    // <h1> at all — confirmed live, not just in the debug snapshots (every
+    // fallback above requires an <h1>, so headerContainer would otherwise stay
+    // null and the whole script aborts at the check below). The only heading
+    // on these pages is the native <h2>Edits by <username></h2> / <h2>Open
+    // edits by <username></h2> — use that instead. Scoped to these two
+    // pageTypes specifically (not a blanket "no h1 → fall back to any h2"
+    // rule) so no other page type's legitimately-missing-h1 case starts
+    // silently picking up an unrelated h2.
+    if (!headerContainer && (pageType === 'user-edits' || pageType === 'user-open-edits')) {
+        headerContainer = document.querySelector('#content h2') || document.querySelector('h2');
+    }
+
     if (pageType) Lib.prefix = `[VZ-${SCRIPT_BASE_NAME}: ${pageType}]`;
     Lib.debug('init', 'Initializing script for path:', path);
 
@@ -28390,19 +28518,28 @@ a { color: #1565c0; }`;
             await applyShowAllTags(activeDefinition);
         }
 
-        // ── renameH2ToH3 / insertH2 pre-processing ───────────────────────────
-        // For pageTypes that carry features.renameH2ToH3 and/or features.insertH2
-        // (e.g. 'artist-tags'), reshape the native heading hierarchy so that the
-        // collapsible-header, filter-container, and multi-table infrastructure
-        // attaches correctly:
-        //   1. Demote all existing <h2> elements to <h3> (section labels).
-        //   2. Inject a fresh <h2> after <div class="tabs"> as the anchor node.
+        // ── renameH2ToH3 / renameH2ToH1 / insertH2 pre-processing ────────────
+        // For pageTypes that carry features.renameH2ToH3, features.renameH2ToH1,
+        // and/or features.insertH2 (e.g. 'artist-tags', 'user-edits'), reshape
+        // the native heading hierarchy so that the collapsible-header,
+        // filter-container, and multi-table infrastructure attaches correctly:
+        //   1. Demote all existing <h2> elements to <h3> (section labels) — OR
+        //      promote them to <h1> (page title) when the page has no native
+        //      <h1> of its own at all (e.g. 'user-edits'/'user-open-edits' —
+        //      see debug/user-edits-wrong.org).
+        //   2. Inject a fresh <h2> after <div class="tabs"> (or, absent that,
+        //      before the first qualifying <h3>, or after the first <h1>) as
+        //      the anchor node.
         // Must run BEFORE listToTable so that the DOM heading structure is already
         // in its final form when applyListToTable() walks the DOM for <div id="…">
-        // containers.  Internal order is also significant: renameH2ToH3 must run
-        // before insertH2 so the newly inserted <h2> is NOT immediately demoted.
+        // containers.  Internal order is also significant: renameH2ToH3/
+        // renameH2ToH1 must run before insertH2 so the newly inserted <h2> is
+        // NOT immediately demoted/promoted itself.
         if (activeDefinition.features?.renameH2ToH3) {
             applyRenameH2ToH3(activeDefinition);
+        }
+        if (activeDefinition.features?.renameH2ToH1) {
+            applyRenameH2ToH1(activeDefinition);
         }
         if (activeDefinition.features?.insertH2) {
             applyInsertH2(activeDefinition);
