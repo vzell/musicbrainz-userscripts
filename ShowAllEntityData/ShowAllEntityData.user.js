@@ -15,7 +15,7 @@
 // @require      https://raw.githubusercontent.com/vzell/mb-userscripts/master/lib/VZ_MBLibrary.user.js
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits)(?:\?.*)?$/
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits(?:\?.*)?|edit\/subscribed(?:_editors)?(?:\?.*)?|account\/applications(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections(?:\?.*)?|election\/.*|genres(?:\?.*)?|cdstub\/.*|doc\/Edit_Types(?:\?.*)?|instruments(?:\?.*)?|privileged(?:\?.*)?)$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)(?:\?.*)?|account\/applications(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections(?:\?.*)?|election\/.*|genres(?:\?.*)?|cdstub\/.*|doc\/Edit_Types(?:\?.*)?|instruments(?:\?.*)?|privileged(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers(?:\?.*)?|collections(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?(?:\?.*)?)$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
@@ -5879,6 +5879,151 @@
     }
 
     /**
+     * Builds one `<tr>` for the `notes-received` page type from a single,
+     * self-contained `div.edit-list` block.
+     *
+     * Unlike the other edits-listing pages, `/edit/notes-received`'s
+     * `div.edit-list` wraps only two children: the edit-header `<h2>` and a
+     * single `div.edit-note` — none of `.edit-description`/`p.subheader`/
+     * `.edit-details`/the multi-note `.edit-notes` wrapper the other pages
+     * have. When an edit received multiple notes, MusicBrainz repeats the
+     * WHOLE `div.edit-list` block (header + that one note) once per note
+     * rather than nesting multiple notes under one heading, so each block
+     * here maps to exactly one row of Edit# / Edit action / Edit notes. See
+     * debug/notes-received.html.
+     *
+     * @param {Element}           block      - The `div.edit-list` element.
+     * @param {Document|Element}  docContext - DOM context (see `applyNotesReceivedToTable`).
+     * @returns {HTMLTableRowElement}
+     */
+    function _buildNotesReceivedRow(block, docContext) {
+        const tr = docContext.createElement('tr');
+
+        // Same edit-type background colouring as the regular edits pages —
+        // .edit-header carries the identical class shape here (e.g. "applied
+        // edit-add add-release", "edit-error edit-remove remove-cover-art").
+        const headerEl = block.querySelector('.edit-header');
+        const editActionBg = headerEl ? _editActionBgColor(headerEl.className) : null;
+
+        const addCell = (nodes) => {
+            const td = docContext.createElement('td');
+            if (nodes == null) {
+                td.textContent = 'N/A';
+            } else if (typeof nodes === 'string') {
+                td.textContent = nodes;
+            } else if (nodes instanceof Node) {
+                td.appendChild(nodes);
+            } else {
+                nodes.forEach(n => td.appendChild(n));
+            }
+            tr.appendChild(td);
+            return td;
+        };
+
+        // Edit# / Edit action — identical parsing to _buildEditRow.
+        const editLink = block.querySelector('h2 a[href^="/edit/"]');
+        const bdiText  = editLink ? (editLink.querySelector('bdi')?.textContent.trim() || editLink.textContent.trim()) : '';
+        const m = bdiText.match(/^Edit #(\d+)\s*-\s*(.+)$/);
+        if (editLink && m) {
+            const a = docContext.createElement('a');
+            a.setAttribute('href', editLink.getAttribute('href'));
+            a.textContent = `#${m[1]}`;
+            const editNumTd = addCell(a);
+            const actionTd  = addCell(m[2].trim());
+            if (editActionBg) {
+                editNumTd.style.backgroundColor = editActionBg;
+                editNumTd.dataset.mbCustomCellBg = editActionBg;
+                actionTd.style.backgroundColor = editActionBg;
+                actionTd.dataset.mbCustomCellBg = editActionBg;
+            }
+        } else {
+            addCell(null);
+            addCell(null);
+        }
+
+        // Edit notes — the single div.edit-note nested inside this block
+        // (see this function's JSDoc). De-table-ify defensively, same as
+        // _buildEditRow, in case a note's limited wiki formatting ever
+        // renders a table.
+        const noteEl = block.querySelector('.edit-note');
+        if (noteEl) {
+            const clone = noteEl.cloneNode(true);
+            clone.querySelectorAll('.add-edit-note').forEach(el => el.remove());
+            _detableify(clone);
+            addCell(clone.textContent.trim() ? clone : null);
+        } else {
+            addCell(null);
+        }
+
+        return tr;
+    }
+
+    /**
+     * Converts the native `div.edit-list` block sequence found on
+     * `/edit/notes-received` into a `<table class="tbl">` with just three
+     * columns (Edit#, Edit action, Edit notes) — a much sparser page than
+     * the other edits-listing pages: MusicBrainz renders no vote/status/
+     * entered-from/by-artist/edit-details data here at all, only the edit
+     * heading plus the one note that was left on it (see
+     * debug/notes-received.html). When an edit received multiple notes, the
+     * WHOLE `div.edit-list` block (header + note) repeats once per note
+     * rather than nesting multiple notes under one heading, so this
+     * produces one row per (edit, note) pair rather than one row per edit.
+     *
+     * This is a DOM pre-processing step for pageTypes that carry
+     * `features.notesReceivedToTable: true` (currently just
+     * 'notes-received'). Must run in the same pre-processing slot as
+     * `applyEditsToTable`/`applyListToTable` — after `applyRenameH2ToH3`/
+     * `applyInsertH2` and before maxPage determination — and, like
+     * `applyEditsToTable`, must be re-applied to each freshly fetched
+     * `Document` in the pagination loop.
+     *
+     * Deliberately NOT reusing `applyEditsToTable`/`_buildEditRow`: those
+     * expect `.edit-description`/`p.subheader`/`.edit-details`/a multi-note
+     * `.edit-notes` wrapper, none of which exist on this page — only the
+     * edit-header `<h2>` and a single `div.edit-note`.
+     *
+     * @param {object}           def        - The active merged pageDefinition object.
+     * @param {Document|Element} [docContext=document] - DOM context to search; defaults
+     *   to the live document. Pass a fetched document for paginated XHR pages.
+     */
+    function applyNotesReceivedToTable(def, docContext = document) {
+        if (!def?.features?.notesReceivedToTable) return;
+        const blocks = Array.from(docContext.querySelectorAll('div.edit-list'))
+            .filter(b => b.querySelector('h2 a[href^="/edit/"]'));
+        if (blocks.length === 0) return;
+
+        _ensureDetableifyStyle();
+
+        const headers = [ 'Edit#', 'Edit action', 'Edit notes' ];
+
+        const table = docContext.createElement('table');
+        table.className = 'tbl';
+
+        const thead = docContext.createElement('thead');
+        const hr = docContext.createElement('tr');
+        headers.forEach(h => {
+            const th = docContext.createElement('th');
+            th.textContent = h;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+
+        const tbody = docContext.createElement('tbody');
+        blocks.forEach(block => tbody.appendChild(_buildNotesReceivedRow(block, docContext)));
+        table.appendChild(tbody);
+
+        // Each div.edit-list is a fully self-contained wrapper (header + its
+        // one note), same as applyEditsToTable — removing the block is enough.
+        const firstBlock = blocks[0];
+        firstBlock.parentNode.insertBefore(table, firstBlock);
+        blocks.forEach(block => block.remove());
+
+        Lib.debug('init', `applyNotesReceivedToTable: converted ${tbody.rows.length} edit-list block(s) → table.`);
+    }
+
+    /**
      * Renames every `<h2>` element in the page body to `<h3>`, preserving all
      * attributes and child nodes.
      *
@@ -6073,7 +6218,12 @@
         // .edit-note — which then gets cloned into that edit's "Edit notes"
         // table cell by applyEditsToTable, i.e. the filterline "disappears"
         // into a data row instead of sitting above the table. See
-        // debug/still-no.html / debug/act.org.
+        // debug/still-no.html / debug/act.org. This also covers
+        // '/edit/notes-received' (features.notesReceivedToTable): its
+        // div.edit-list wraps just the edit-header <h2> plus one nested
+        // div.edit-note (its own <h3> author/date heading), so the same
+        // div.edit-list exclusion already applies there too — see
+        // debug/notes-received.html.
         const _contentRoot = document.getElementById('content') ||
                              document.getElementById('page') ||
                              document.body;
@@ -7909,6 +8059,30 @@
                 // "Edit recording" edits) — CAA_CTX.entityGuard only matches
                 // release/release-group hrefs.
                 addCAA: 'Entered from release'
+            },
+            tableMode: 'single'
+        },
+        // "Recent notes left on your edits" ('/edit/notes-received'). Native
+        // <h1>Recent notes left on your edits</h1> exists (unlike
+        // 'user-edits'/'user-open-edits' above — no renameH2ToH1 needed
+        // here), but no <h2> at all, so insertH2 still creates the
+        // filter/count anchor same as base 'edits'.  Each div.edit-list here
+        // wraps only two children — the edit-header <h2> and a single
+        // div.edit-note — none of the vote/status/entered-from/details
+        // content or the multi-note .edit-notes wrapper the other
+        // edits-listing pages have. Only 3 columns exist as a result: Edit#,
+        // Edit action, Edit notes. See debug/notes-received.html and
+        // applyNotesReceivedToTable's JSDoc for why this needs its own
+        // notesReceivedToTable feature/converter instead of editsToTable.
+        {
+            type: 'notes-received',
+            match: (path) => path === '/edit/notes-received',
+            buttons: [ { label: 'Show all Notes Received' } ],
+            features: {
+                notesReceivedToTable: true,
+                unboundedPagination: true,
+                insertH2: 'Edit Notes',
+                collapsableColumns: [ 'Edit notes' ]
             },
             tableMode: 'single'
         },
@@ -28569,6 +28743,16 @@ a { color: #1565c0; }`;
             applyEditsToTable(activeDefinition);
         }
 
+        // ── notesReceivedToTable pre-processing ──────────────────────────────
+        // For the 'notes-received' pageType, convert the div.edit-list +
+        // div.edit-note sibling-pair sequence into a proper <table class="tbl">
+        // — see applyNotesReceivedToTable's JSDoc for why this needs its own
+        // converter instead of reusing applyEditsToTable. Same ordering
+        // constraints apply.
+        if (activeDefinition.features?.notesReceivedToTable) {
+            applyNotesReceivedToTable(activeDefinition);
+        }
+
         // Clear existing highlights immediately from DOM for visual feedback
         document.querySelectorAll('.mb-global-filter-highlight, .mb-column-filter-highlight').forEach(n => {
             n.replaceWith(document.createTextNode(n.textContent));
@@ -28865,6 +29049,20 @@ a { color: #1565c0; }`;
                         break;
                     }
                     applyEditsToTable(activeDefinition, doc);
+                }
+
+                // ── notesReceivedToTable on fetched pages ────────────────────
+                // Mirrors the editsToTable handling directly above — same
+                // ambiguous-pagination early-stop logic, same div.edit-list
+                // h2 detection (notes-received's div.edit-list carries the
+                // same h2 edit#/action link as every other edits-listing page).
+                if (doc !== document && activeDefinition.features?.notesReceivedToTable) {
+                    if (isAmbiguousEditsPagination &&
+                        doc.querySelectorAll('div.edit-list h2 a[href^="/edit/"]').length === 0) {
+                        Lib.debug('fetch', `notes-received: page ${p} has no edit-list blocks — reached the end of an unbounded listing, stopping.`);
+                        break;
+                    }
+                    applyNotesReceivedToTable(activeDefinition, doc);
                 }
 
                 // Use parseDocumentForTables to filter which tables we actually process

@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.6",
+        "date": "2026-07-29",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Added a new `notes-received` page type for `/edit/notes-received` (\"Recent notes left on your edits\") — e.g. the \"Show all Notes Received\" button. This page's `div.edit-list` blocks are much sparser than every other edits-listing page: each wraps only the edit-header `<h2>` plus a single nested `div.edit-note` — none of `.edit-description`/`p.subheader`/`.edit-details`/the multi-note `.edit-notes` wrapper — so only 3 columns exist: `Edit#`, `Edit action`, `Edit notes`. When an edit received multiple notes, MusicBrainz repeats the WHOLE `div.edit-list` block (header + that one note) once per note rather than nesting multiple notes under one heading, so this produces one row per (edit, note) pair. New `_buildNotesReceivedRow()`/`applyNotesReceivedToTable()` (gated on a new `features.notesReceivedToTable: true`, wired into the same pre-processing slot as `applyEditsToTable`/`applyListToTable`, including the fetched-page and ambiguous-pagination-early-stop handling) build this deliberately instead of reusing `applyEditsToTable`/`_buildEditRow`, which assume columns this page doesn't have. Unlike `user-edits`/`user-open-edits`, this page already has a native `<h1>Recent notes left on your edits</h1>`, so no `renameH2ToH1` is needed — just the usual `insertH2: 'Edit Notes'` anchor, same as base `edits`. Also extended the `@include` header's `edit/subscribed(_editors)?` alternative to `edit/(?:subscribed(?:_editors)?|notes-received)`, which didn't cover this URL before. Verified via jsdom against the real `debug/notes-received.html` snapshot, including the duplicate-block (multi-note) case."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.5",
         "date": "2026-07-29",
         "sections": [

@@ -1472,3 +1472,57 @@ page). `open-edits-by-vzell.html` (zero open edits at capture time) behaves
 the same way minus the row conversion — `applyEditsToTable` still early-
 returns when there are no `div.edit-list` blocks to convert, same as
 before this fix, not a new regression.
+
+## 2026-07-29 — `notes-received` page type (`/edit/notes-received`)
+
+`notes-received.html` ("Recent notes left on your edits"): has a native
+`<h1>` (unlike `user-edits`/`user-open-edits` above — no `renameH2ToH1`
+needed here) but no `<h2>` at all, matching base `edits`'s situation. Only
+3 columns worth of data exist: no `.my-vote`/`.vote-count`/
+`.edit-expiration`/`.entered-from`/`.edit-details`/`p.subheader` anywhere on
+the page — just the edit heading and the note(s) left on it.
+
+First read of the raw (minified, one-line) HTML dump miscounted the closing
+`</div>` tags and concluded `div.edit-note` was a separate element
+following each `div.edit-list` as a SIBLING, not nested inside it — leading
+to an initial implementation that looked up `block.nextElementSibling` for
+the note and produced "N/A" in every "Edit notes" cell when tested. Loading
+the actual snapshot into jsdom and inspecting `div.edit-list`'s real
+`.children` immediately disproved this: `div.edit-note` is nested INSIDE
+`div.edit-list`, as its second child (sibling of `.edit-header`, both
+direct children of `div.edit-list`) — i.e. `div.edit-list` here is
+self-contained, exactly like the regular `edits` page type, just far
+sparser (only `.edit-header` + one `.edit-note`, none of the other
+sub-elements). Lesson: for a large minified single-line HTML dump, don't
+manually count nested closing tags — load it and query the actual DOM.
+
+Fixed by changing the note lookup to `block.querySelector('.edit-note')`
+(a normal descendant query) and simplifying the removal step back to
+`blocks.forEach(block => block.remove())` (mirrors `applyEditsToTable`
+exactly, since each `div.edit-list` is fully self-contained here too).
+When an edit received multiple notes, MusicBrainz repeats the WHOLE
+`div.edit-list` block (header + that one note) once per note rather than
+nesting multiple notes under one heading — confirmed against the real
+snapshot: edit #104823906 appears as two separate `div.edit-list` blocks,
+each with a different note, and both round-trip correctly into two
+separate table rows.
+
+Added `applyNotesReceivedToTable()`/`_buildNotesReceivedRow()` (deliberately
+not reusing `applyEditsToTable`/`_buildEditRow`, which assume columns this
+page doesn't have) gated on a new `features.notesReceivedToTable: true`,
+wired into the same pre-processing slot as `applyEditsToTable` (including
+the fetched-page loop and the ambiguous-pagination early-stop check — this
+page's pagination widget shows the same double-ellipsis milestone window).
+`insertH2: 'Edit Notes'` provides the filter/count anchor, same reasoning
+as base `edits`. Also extended the `@include` header's
+`edit/subscribed(_editors)?` alternative to
+`edit/(?:subscribed(?:_editors)?|notes-received)` — it did not previously
+match this URL.
+
+Re-verified the full pipeline (`applyInsertH2` → `applyNotesReceivedToTable`)
+against the real snapshot: exactly one `<h1>` (original text) and one `<h2>`
+("Edit Notes") remain, in the correct `<h1>` → `<h2>` → `table.tbl` order;
+50 rows produced (0 `div.edit-list` remain, including the duplicate-block
+case); each row's "Edit notes" cell contains the actual author/date/note
+text (including a row with an `.edit-note-modified-text` "Last modified…"
+line, confirmed present in the cloned cell).
