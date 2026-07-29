@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.723+2026-07-30
+// @version      9.99.724+2026-07-30
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -2053,7 +2053,7 @@
         sa_area_flag_region_countries: {
             label: 'Countries where a flagged subdivision forces Region',
             type: 'text',
-            default: 'United States',
+            default: 'United States, United Kingdom, Canada, Australia',
             description: 'Comma-separated list of country names — exactly as MusicBrainz renders ' +
                          'them, e.g. "United States, Germany" — for which `splitLocation`/`splitArea` ' +
                          '(used to split "Location"/"Area"/"Begin area"/"End area" columns into ' +

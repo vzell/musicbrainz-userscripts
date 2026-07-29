@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.724",
+    "date": "2026-07-30",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Added \"United Kingdom\", \"Canada\", and \"Australia\" to the default `sa_area_flag_region_countries` list (was just \"United States\"), which now reads \"United States, United Kingdom, Canada, Australia\" — all three are already-supported countries per the setting's own description (matching the flag-decorating userscripts it's designed to work with, e.g. \"MusicBrainz: Canadian Province Flags Everywhere\")."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.723",
     "date": "2026-07-30",
     "sections": [
