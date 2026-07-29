@@ -1526,3 +1526,19 @@ against the real snapshot: exactly one `<h1>` (original text) and one `<h2>`
 case); each row's "Edit notes" cell contains the actual author/date/note
 text (including a row with an `.edit-note-modified-text` "Last modified…"
 line, confirmed present in the cloned cell).
+
+### Follow-up: added User / Date-Time columns
+
+Added `User`/`Date/Time` columns between `Edit action` and `Edit notes`,
+parsed from the note's own `<h3>` (author link + date link) — e.g.
+`<h3 class="yes"><a href="/user/tigerman325">…<bdi>tigerman325</bdi></a>
+<div class="voting-icon"></div> <a class="date" href="/edit-note/NNN">2025-02-04
+17:29 GMT+1</a></h3>`. Queried both anchors directly
+(`a[href^="/user/"]` / `a.date`) rather than by sibling position, so the
+optional `<div class="voting-icon">` MusicBrainz inserts between them (only
+present when the `<h3>` carries a vote-outcome class like `yes`/`no`/
+`abstain`/`approve`) doesn't need special-casing. Verified via jsdom against
+the real snapshot for both a plain `<h3 class="">` row and the exact
+`tigerman325`/`class="yes"` example with the voting-icon present — both
+correctly extract the user link (with avatar + username, hyperlink intact)
+and the date link (hyperlink to that specific `/edit-note/NNN` intact).

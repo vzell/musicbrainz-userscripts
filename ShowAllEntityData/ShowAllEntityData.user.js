@@ -5889,8 +5889,8 @@
      * have. When an edit received multiple notes, MusicBrainz repeats the
      * WHOLE `div.edit-list` block (header + that one note) once per note
      * rather than nesting multiple notes under one heading, so each block
-     * here maps to exactly one row of Edit# / Edit action / Edit notes. See
-     * debug/notes-received.html.
+     * here maps to exactly one row of Edit# / Edit action / User /
+     * Date/Time / Edit notes. See debug/notes-received.html.
      *
      * @param {Element}           block      - The `div.edit-list` element.
      * @param {Document|Element}  docContext - DOM context (see `applyNotesReceivedToTable`).
@@ -5941,6 +5941,17 @@
             addCell(null);
         }
 
+        // User / Date/Time — parsed from the note's own <h3>, e.g.
+        // <h3 class="yes"><a href="/user/tigerman325"><img …><bdi>tigerman325</bdi></a>
+        // <div class="voting-icon"></div> <a class="date" href="/edit-note/NNN">…</a></h3>.
+        // Both cloned as their original <a> elements so the links (to the
+        // user's profile / directly to that edit note) survive into the cell.
+        const noteH3 = block.querySelector('.edit-note h3');
+        const userLink = noteH3 ? noteH3.querySelector('a[href^="/user/"]') : null;
+        addCell(userLink ? userLink.cloneNode(true) : null);
+        const dateLink = noteH3 ? noteH3.querySelector('a.date') : null;
+        addCell(dateLink ? dateLink.cloneNode(true) : null);
+
         // Edit notes — the single div.edit-note nested inside this block
         // (see this function's JSDoc). De-table-ify defensively, same as
         // _buildEditRow, in case a note's limited wiki formatting ever
@@ -5960,12 +5971,13 @@
 
     /**
      * Converts the native `div.edit-list` block sequence found on
-     * `/edit/notes-received` into a `<table class="tbl">` with just three
-     * columns (Edit#, Edit action, Edit notes) — a much sparser page than
-     * the other edits-listing pages: MusicBrainz renders no vote/status/
-     * entered-from/by-artist/edit-details data here at all, only the edit
-     * heading plus the one note that was left on it (see
-     * debug/notes-received.html). When an edit received multiple notes, the
+     * `/edit/notes-received` into a `<table class="tbl">` with just five
+     * columns (Edit#, Edit action, User, Date/Time, Edit notes) — a much
+     * sparser page than the other edits-listing pages: MusicBrainz renders
+     * no vote/status/entered-from/by-artist/edit-details data here at all,
+     * only the edit heading plus the one note that was left on it, whose
+     * own `<h3>` supplies the note author (User) and timestamp (Date/Time)
+     * (see debug/notes-received.html). When an edit received multiple notes, the
      * WHOLE `div.edit-list` block (header + note) repeats once per note
      * rather than nesting multiple notes under one heading, so this
      * produces one row per (edit, note) pair rather than one row per edit.
@@ -5995,7 +6007,7 @@
 
         _ensureDetableifyStyle();
 
-        const headers = [ 'Edit#', 'Edit action', 'Edit notes' ];
+        const headers = [ 'Edit#', 'Edit action', 'User', 'Date/Time', 'Edit notes' ];
 
         const table = docContext.createElement('table');
         table.className = 'tbl';
@@ -8070,10 +8082,12 @@
         // wraps only two children — the edit-header <h2> and a single
         // div.edit-note — none of the vote/status/entered-from/details
         // content or the multi-note .edit-notes wrapper the other
-        // edits-listing pages have. Only 3 columns exist as a result: Edit#,
-        // Edit action, Edit notes. See debug/notes-received.html and
-        // applyNotesReceivedToTable's JSDoc for why this needs its own
-        // notesReceivedToTable feature/converter instead of editsToTable.
+        // edits-listing pages have. Only 5 columns exist as a result: Edit#,
+        // Edit action, User, Date/Time, Edit notes (User/Date-Time parsed
+        // from the note's own <h3> author link + date link). See
+        // debug/notes-received.html and applyNotesReceivedToTable's JSDoc
+        // for why this needs its own notesReceivedToTable feature/converter
+        // instead of editsToTable.
         {
             type: 'notes-received',
             match: (path) => path === '/edit/notes-received',

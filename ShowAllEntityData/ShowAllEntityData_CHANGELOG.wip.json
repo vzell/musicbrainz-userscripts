@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.7",
+        "date": "2026-07-29",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Added `User` and `Date/Time` columns to the `notes-received` page type (`/edit/notes-received`), positioned between `Edit action` and `Edit notes` — see `WIP.6`. Both are parsed from the note's own `<h3>` (e.g. `<h3 class=\"yes\"><a href=\"/user/tigerman325\">…<bdi>tigerman325</bdi></a><div class=\"voting-icon\"></div> <a class=\"date\" href=\"/edit-note/NNN\">2025-02-04 17:29 GMT+1</a></h3>`) — `User` clones the author's `<a href=\"/user/…\">` link (avatar + username, preserving the hyperlink), `Date/Time` clones the `<a class=\"date\">` link (preserving its deep link to that specific edit note). Both extractions ignore the optional `<div class=\"voting-icon\">` MusicBrainz sometimes inserts between them (present when the note's `<h3>` carries a vote-outcome class like `yes`/`no`/`abstain`/`approve`), since they query for the two anchors directly rather than relying on sibling position."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.6",
         "date": "2026-07-29",
         "sections": [
