@@ -1031,7 +1031,7 @@
         sa_ui_row_hover_bg: {
             label: 'Table row hover background color',
             type: 'color_picker',
-            default: '#e2e2e2',
+            default: '#c2d2e9',
             description: 'Background color applied to a table row\'s cells while the mouse ' +
                          'hovers over it (used by applyStickyColumn\'s hover handling for every ' +
                          'table this script renders). This setting already existed in code but ' +
@@ -5763,7 +5763,7 @@
         const diffOldColor = Lib.settings.sa_edits_color_diff_old || '#fbe3e4';
         const zebraOdd  = Lib.settings.sa_edits_color_zebra_odd  || '#ffffff';
         const zebraEven = Lib.settings.sa_edits_color_zebra_even || '#f2f2f2';
-        const rowHoverBg = Lib.settings.sa_ui_row_hover_bg || '#e2e2e2';
+        const rowHoverBg = Lib.settings.sa_ui_row_hover_bg || '#c2d2e9';
         style.textContent = `
             .mb-dt-table {
                 border-collapse: collapse;
@@ -10512,7 +10512,7 @@
             // data-mb-sticky-bg.  The attribute is refreshed on every _apply() call
             // so re-runs after zebra re-striping always have the current rest colour.
             // Row hover highlight colour — read once, shared by all row handlers.
-            const hoverBgColor = Lib.settings.sa_ui_row_hover_bg || '#e2e2e2';
+            const hoverBgColor = Lib.settings.sa_ui_row_hover_bg || '#c2d2e9';
 
             table.querySelectorAll('tbody tr').forEach(tr => {
                 const cell = tr.cells[stickyIdx];
