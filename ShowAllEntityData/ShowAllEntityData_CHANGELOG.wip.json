@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.8",
+        "date": "2026-07-30",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Added a `Vote` column to the `notes-received` page type (`/edit/notes-received`), positioned right before `Edit notes` — see `WIP.6`/`WIP.7`. Extracted from the note's own `<h3>` class (`yes`/`no`/`abstain`/`approve`; `\"\"` means no vote was cast alongside the note), the same element `User`/`Date/Time` already parse. MusicBrainz normally shows this via an adjacent empty `<div class=\"voting-icon\"></div>` styled entirely through its own site CSS (a background-image keyed off the `<h3>`'s class) — unavailable to a detached/fetched page, same unreliability `_editActionBgColor`'s JSDoc already documents for edit-type colors — so a new `_NOTE_VOTE_GLYPHS` lookup (👍 yes, 👎 no, ➖ abstain, ✔️ approve) supplies its own fixed glyph instead, prefixed onto the vote-outcome text. Verified via jsdom against the real `debug/notes-received.html` snapshot: all four non-empty vote classes present on that page extract correctly, and the no-vote case (empty class) correctly falls back to `N/A`."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.7",
         "date": "2026-07-29",
         "sections": [

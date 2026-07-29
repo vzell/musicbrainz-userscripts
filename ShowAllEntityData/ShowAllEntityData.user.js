@@ -5879,6 +5879,17 @@
     }
 
     /**
+     * Glyph prefix for each native vote-outcome class MusicBrainz stamps on
+     * a note's own `<h3>` (e.g. `<h3 class="yes">`). Used by
+     * `_buildNotesReceivedRow`'s "Vote" column — see that call site's
+     * comment for why this can't just read MusicBrainz's own rendered
+     * `.voting-icon` glyph (an empty `<div>` styled entirely via the site's
+     * own external stylesheet, unavailable to a detached/fetched page).
+     * @type {Object<string,string>}
+     */
+    const _NOTE_VOTE_GLYPHS = { yes: '👍', no: '👎', abstain: '➖', approve: '✔️' };
+
+    /**
      * Builds one `<tr>` for the `notes-received` page type from a single,
      * self-contained `div.edit-list` block.
      *
@@ -5890,7 +5901,7 @@
      * WHOLE `div.edit-list` block (header + that one note) once per note
      * rather than nesting multiple notes under one heading, so each block
      * here maps to exactly one row of Edit# / Edit action / User /
-     * Date/Time / Edit notes. See debug/notes-received.html.
+     * Date/Time / Vote / Edit notes. See debug/notes-received.html.
      *
      * @param {Element}           block      - The `div.edit-list` element.
      * @param {Document|Element}  docContext - DOM context (see `applyNotesReceivedToTable`).
@@ -5952,6 +5963,20 @@
         const dateLink = noteH3 ? noteH3.querySelector('a.date') : null;
         addCell(dateLink ? dateLink.cloneNode(true) : null);
 
+        // Vote — the note-h3's own class ("yes"/"no"/"abstain"/"approve";
+        // "" means no vote was cast alongside the note) is MusicBrainz's
+        // native vote-outcome marker for this note's author, normally shown
+        // via the adjacent empty <div class="voting-icon"></div> — its glyph
+        // comes entirely from MusicBrainz's own site CSS (background-image
+        // keyed off this class), which a detached/fetched page has no access
+        // to (same unreliability _editActionBgColor's JSDoc documents for
+        // reading edit-type colors). Prefixing our own fixed glyph
+        // (_NOTE_VOTE_GLYPHS) instead of trying to read the unavailable
+        // rendered icon.
+        const voteClass = noteH3 ? noteH3.className.trim().toLowerCase() : '';
+        const voteGlyph = _NOTE_VOTE_GLYPHS[voteClass];
+        addCell(voteGlyph ? `${voteGlyph} ${voteClass}` : null);
+
         // Edit notes — the single div.edit-note nested inside this block
         // (see this function's JSDoc). De-table-ify defensively, same as
         // _buildEditRow, in case a note's limited wiki formatting ever
@@ -5971,13 +5996,15 @@
 
     /**
      * Converts the native `div.edit-list` block sequence found on
-     * `/edit/notes-received` into a `<table class="tbl">` with just five
-     * columns (Edit#, Edit action, User, Date/Time, Edit notes) — a much
-     * sparser page than the other edits-listing pages: MusicBrainz renders
-     * no vote/status/entered-from/by-artist/edit-details data here at all,
-     * only the edit heading plus the one note that was left on it, whose
-     * own `<h3>` supplies the note author (User) and timestamp (Date/Time)
-     * (see debug/notes-received.html). When an edit received multiple notes, the
+     * `/edit/notes-received` into a `<table class="tbl">` with just six
+     * columns (Edit#, Edit action, User, Date/Time, Vote, Edit notes) — a
+     * much sparser page than the other edits-listing pages: MusicBrainz
+     * renders no status/entered-from/by-artist/edit-details data here at
+     * all, only the edit heading plus the one note that was left on it,
+     * whose own `<h3>` supplies the note author (User), timestamp
+     * (Date/Time), and vote outcome (Vote, via the `<h3>`'s own class —
+     * see `_NOTE_VOTE_GLYPHS`). See debug/notes-received.html. When an edit
+     * received multiple notes, the
      * WHOLE `div.edit-list` block (header + note) repeats once per note
      * rather than nesting multiple notes under one heading, so this
      * produces one row per (edit, note) pair rather than one row per edit.
@@ -6007,7 +6034,7 @@
 
         _ensureDetableifyStyle();
 
-        const headers = [ 'Edit#', 'Edit action', 'User', 'Date/Time', 'Edit notes' ];
+        const headers = [ 'Edit#', 'Edit action', 'User', 'Date/Time', 'Vote', 'Edit notes' ];
 
         const table = docContext.createElement('table');
         table.className = 'tbl';
@@ -8080,14 +8107,14 @@
         // here), but no <h2> at all, so insertH2 still creates the
         // filter/count anchor same as base 'edits'.  Each div.edit-list here
         // wraps only two children — the edit-header <h2> and a single
-        // div.edit-note — none of the vote/status/entered-from/details
-        // content or the multi-note .edit-notes wrapper the other
-        // edits-listing pages have. Only 5 columns exist as a result: Edit#,
-        // Edit action, User, Date/Time, Edit notes (User/Date-Time parsed
-        // from the note's own <h3> author link + date link). See
-        // debug/notes-received.html and applyNotesReceivedToTable's JSDoc
-        // for why this needs its own notesReceivedToTable feature/converter
-        // instead of editsToTable.
+        // div.edit-note — none of the status/entered-from/details content
+        // or the multi-note .edit-notes wrapper the other edits-listing
+        // pages have. Only 6 columns exist as a result: Edit#, Edit action,
+        // User, Date/Time, Vote, Edit notes (User/Date-Time/Vote all parsed
+        // from the note's own <h3> — author link, date link, and vote-
+        // outcome class respectively). See debug/notes-received.html and
+        // applyNotesReceivedToTable's JSDoc for why this needs its own
+        // notesReceivedToTable feature/converter instead of editsToTable.
         {
             type: 'notes-received',
             match: (path) => path === '/edit/notes-received',

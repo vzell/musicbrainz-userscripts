@@ -1542,3 +1542,21 @@ the real snapshot for both a plain `<h3 class="">` row and the exact
 `tigerman325`/`class="yes"` example with the voting-icon present — both
 correctly extract the user link (with avatar + username, hyperlink intact)
 and the date link (hyperlink to that specific `/edit-note/NNN` intact).
+
+### Follow-up: added Vote column
+
+Added a `Vote` column right before `Edit notes`, extracted from the same
+note `<h3>`'s own class — `yes`/`no`/`abstain`/`approve` (`""` = no vote
+cast alongside the note). MusicBrainz normally renders this via the
+adjacent `<div class="voting-icon"></div>` — always empty in the markup,
+its actual glyph comes entirely from the site's own external CSS
+(background-image keyed off the `<h3>` class), which a detached/fetched
+page has no access to — same class of unreliability already documented for
+`_editActionBgColor`'s edit-type colors. Added a small `_NOTE_VOTE_GLYPHS`
+lookup (👍 yes, 👎 no, ➖ abstain, ✔️ approve) supplying our own fixed
+glyph instead, prefixed onto the class text (e.g. "👍 yes").
+
+Verified via jsdom against the real snapshot: found and correctly extracted
+all four non-empty vote classes present on the page (6× `yes`, 1× `no`,
+1× `abstain`, 1× `approve`, the rest `""`), and confirmed the no-vote case
+falls back to `N/A` like every other empty cell on this page.
