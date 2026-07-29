@@ -86030,69 +86030,6 @@ add support for new pageType
 |----------------------+--------------------------------------+---------------------------|
 | auto-editor-election | https://musicbrainz.org/election/473 | auto-editor.html          |
 
-* TODO "MusicBrainz: More Flags Everywhere" by @Lotheric
-** initial
-
-Now that the userscript "MusicBrainz: More Flags Everywhere" by @Lotheric supports more flags of country subdivisions:
-
-#+begin_example
-Australia (States)
-Belgium (Regions, Provinces)
-Brazil (States, Federal District)
-Canada (Provinces, Territories)
-Czechia (Regions)
-Denmark (Regions)
-Estonia (Counties)
-Finland (Regions)
-France (Regions, State Private Property, Former Regions)
-Germany (States)
-Italy (Regions)
-Japan (Prefectures)
-Netherlands (Kingdom, Provinces, Special Municipalities)
-Russia (Oblasts, Republics, Autonomous Okrugs, Krais, Federal Cities)
-Spain (Autonomous Communities, Autonomous Cities)
-Sweden (Counties)
-Switzerland (Cantons)
-United Kingdom (Countries)
-United States (States, District)
-#+end_example
-
-Maybe we can refine the logic of the functions 'splitLocation' and 'splitArea' to better position area parts in the
-right column for specific countries.
-
-Lets start with United States. On e.g https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/artists
-in the following row @debug/florida.html "Florida" (together with its flag) is positioned in the "MB-Locality" instead of the "MB-Region" column.
-
-Introduce a country specific rule, so that when a value in the "MB-Locality" column has actually a flag icon, it should be extracted to the "MB-Region" column instead. 
-
-Make the country list user editable for future adjusments. For now start with United States.
-
-** act on @debug/flags.org
-
-It only works for the fist page of a paginated pageType like e.g. https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/artists
-
-On the final rendered page, all other rows from the paginated pages 2...Max still exhibit the same old behaviour, also
-when the userscript "MusicBrainz: More Flags Everywhere" by @Lotheric is installed the flags are still rendered for all
-rows. Is it possible to run the split functions after the final page is being rendered, so whenn all the flags are present
-
-** act on @debug/flags2.org
-
-** from the console
-
-from the console for https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/artists
-
-#+begin_example
-12:53:40.712 [VZ-ShowAllEntityData: area-artists] 🎨 initAreaFlagRegionObserver: no Locality/Region/Country trio found on this table. Headers: [, Artist, Type, Gender, Area, Begin, Begin area, End, End area, Rating] 
-#+end_example
-
-** works
-
-works now, leave the debug statements in, commit, push
-
-** TODO add "United Kingdom", "Canada" and "Australia" to the list
-
-add "United Kingdom", "Canada" and "Australia" to the list
-
 * DONE plan: rewrite @match directives
 
 Rewrite @match directives to a more compact form, maybe using @include
@@ -86152,14 +86089,7 @@ Do this in a new branch.
 // @match        *://*.musicbrainz.eu/privileged
 #+end_example
 
-
-* TODO Auto-click "Show more..." in Annotations if present
-
-Auto-click "Show more..." in Annotations if present
-
-https://musicbrainz.eu/work/04e3c57d-3caa-461e-a525-74e2ba52f8b9
-
-* TODO add support for edit pages
+* DONE add support for edit pages
 ** initial
 
 add support for edit pages
@@ -86312,7 +86242,7 @@ The same is true for release edits, where some "By artist" column values have e.
 
 still NO H2 line, it looks like the H2 heading "Edits" landed in this row @debug/still-no.html
 
-** TODO "Approved" + date/time should be treated as "Closed"
+** DONE "Approved" + date/time should be treated as "Closed"
 
 1.)
 
@@ -86461,20 +86391,226 @@ Probably than the point 1.) will also be solved
 
 [Image #3] grey background zebra rows do not show the zebra striping itself
 
-** TODO Volker Zell performed solo vocals on Roll Jordan Roll	MGV Drabenderhöhe	
+** DONE rearrange columns for 'edts' pageTypes
 
-Relationship:	Volker Zell performed solo vocals on Roll Jordan Roll by MGV Drabenderhöhe
+rearrange columns for 'edts' pageTypes "const headers":
 
-** TODO change default of hovee background color
-** TODO notes-received.html
+from
 
+#+begin_example
+        const headers = [
+            'Edit#', 'Edit action', 'Edit by', 'My vote', 'Vote count',
+            'Closed/Approved', 'Voting', 'Edit status', 'Entered from release', 'By artist',
+            'Edit details', 'Edit notes'
+        ];
+#+end_example
+
+to
+
+#+begin_example
+        const headers = [
+            'Edit#', 'Edit action',
+	    'Edit details', 'Edit notes',
+	    'Entered from release', 'By artist',
+	    'Edit by', 'My vote', 'Vote count',
+            'Closed/Approved', 'Voting', 'Edit status', 
+        ];
+#+end_example
+
+** DONE plan: filtering on "Edit notes" column reaches out to "Edit details" column
+*** initial
+
+Bug: Filtering on "Edit notes" column reaches out to "Edit details" column:
+
+When filtering on e.g https://musicbrainz.org/edit/subscribed_editors in the column "Edit notes" for the filter string
+"lias" nothing gets actually highlighted in the "Edit notes" column itself, also the string "alias" is present, but the
+filter string "lias" gets highlighted in the "Edit details" columns, see screenshot (Image #2) and @debug/editNotes-filter-bug.html
+
+When adding "," to the filterstring in the "Edit notes" column, effectively given "lias,"
+only one row is left, cause it matches "lias," in the "Edit notes" column, but it still doesn't highlight (Image #3)
+
+*** act on @debug/filter-bug.org
+
+act on @debug/filter-bug.org
+
+** DONE add new pageTypes for user edits 
+*** initial
+
+add new pageTypes for the following two user edit pages 
+
+#+begin_example
+user-open-edits - https://musicbrainz.org/user/<username>/edits/open
+user-edits - https://musicbrainz.org/user/<username>/edits
+#+end_example
+
+e.g. for the "vzell" user:
+
+#+begin_example
+@debug/open-edits-by-vzell.html (currently there are no open edits) - https://musicbrainz.org/user/vzell/edits/open
+@debug/edits-by-vzell.html - https://musicbrainz.org/user/vzell/edits
+#+end_example
+
+Compared to the current "edits" pageType these pages seem to already have a native H2 header
+
+*** bug
+
+doesn't work, console output:
+
+#+begin_example
+[VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities] 🚀 Userscript (9.99.714+2026-07-25) loaded with external library (3.19.0+2026-04-01) active on MusicBrainz page: https://musicbrainz.org/user/vzell/edits 
+[VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities] 🚀 URL: https://musicbrainz.org/user/vzell/edits 
+[VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities] 🚀 URL basepath: https://musicbrainz.org/user/vzell/edits 
+[VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities] 🚀 URL path: /user/vzell/edits 
+[VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities] 🚀 Query parameters:  
+[VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities] 🚀 Has "link_type_id": false 
+[VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities] 🚀 Detected pageType: user-edits 
+[VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities] 🚀 Detected tableMode: single 
+[VZ-ShowAllEntityData: user-edits] 🚀 Initializing script for path: /user/vzell/edits
+[VZ-ShowAllEntityData: user-edits] ❌ Required elements not found. Terminating. {pageType: 'user-edits', hasHeader: false}
+[VZ-ShowAllEntityData: user-edits] 📝 Changelog source: remote — replaced 0 local entries with 849 remote entries (fromCache=true) 
+#+end_example
+
+*** wrong
+
+Actually what we did is wrong compared to all other pageTypes so far.
+Now the h2 line carries also the filter elemtns together with the action buttons.
+
+#+begin_example
+<h2 class="mb-h2-processed mb-toggle-h2" title="Click to collapse/uncollapse section (Ctrl+Click to toggle ALL sections)" style="cursor: pointer; user-select: none;"><span class="mb-toggle-icon">▼</span>Edits by <a href="/user/vzell"><img alt="" class="avatar no-avatar" height="15" src="https://static.metabrainz.org/MB/editor-b055e61.svg" width="15"><bdi>vzell</bdi></a><small> (<span style="background: rgb(255, 255, 204);">newest first</span>)</small><div id="mb-show-all-controls-container" style="display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: 10px; vertical-align: middle; line-height: 1;"><button type="button" title="Fetch all the table data from the MusicBrainz backend database (Ctrl+M, then 1)" data-label="Show all Edits for User" style="font-size: 0.8em; padding: 2px 8px; height: 24px; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; background-color: rgb(255, 204, 204); color: black;" class="">🧮¹ Show all Edits for User</button><button id="mb-stop-btn" type="button" title="Stop the current data fetching process from the MusicBrainz backend database (Ctrl+M, then O)" style="font-size: 0.8em; padding: 2px 8px; height: 24px; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-sizing: border-box; align-items: center; justify-content: center; background-color: rgb(244, 67, 54); color: white; border: 1px solid rgb(211, 47, 47); display: none;" disabled="">Stopping...</button><span id="mb-button-divider-initial" class="mb-button-divider-initial" style="color: rgb(153, 153, 153); margin: 0px 4px;"> | </span><button id="mb-save-to-disk-btn" type="button" title="Save current table data to disk in a serialized format as Gzipped JSON (Ctrl+M, then S, or Ctrl+S)" style="font-size: 0.8em; padding: 2px 8px; height: 24px; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-sizing: border-box; display: inline-block; align-items: center; justify-content: center; background-color: rgb(76, 175, 80); color: white; border: 1px solid rgb(69, 160, 73);"><span>💾 <span style="text-decoration:underline">S</span>ave to Disk</span></button><button id="mb-load-from-disk-btn" type="button" title="Load table data from disk (serialized JSON file in Gzipped format) (Ctrl+M, then L, or Ctrl+L)" style="font-size: 0.8em; padding: 2px 8px; height: 24px; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; background-color: rgb(33, 150, 243); color: white; border: 1px solid rgb(11, 125, 218);"><span>📂 <span style="text-decoration:underline">L</span>oad from Disk</span></button><span class="mb-button-divider-after-load" style="color: rgb(153, 153, 153); margin: 0px 4px;"> | </span><input id="mb-file-input" type="file" accept=".gz,application/gzip" style="display: none;"><span id="mb-fetch-progress-wrap" style="display: none; align-items: center; vertical-align: middle;"><span id="mb-fetch-progress-outer" style="display: inline-block; position: relative; width: auto; min-width: 420px; max-width: 750px; height: 20px; background: rgb(224, 224, 224); border-radius: 4px; overflow: hidden; vertical-align: middle; border: 1px solid rgb(187, 187, 187);"><span id="mb-fetch-progress-fill" style="display: block; position: absolute; top: 0px; left: 0px; height: 100%; width: 14%; background: rgb(255, 204, 204); transition: width 0.2s, background 0.3s; border-radius: 3px 0px 0px 3px;"></span><span id="mb-fetch-progress-label" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.75em; font-weight: bold; color: rgb(51, 51, 51); white-space: nowrap; pointer-events: none;">Loading page 7 of 50... (350 rows) - 65.5s left</span></span></span><button id="mb-resize-btn" title="Restore original column widths (click to toggle / Ctrl+M, then R, or Ctrl+R)" type="button" style="font-size: 0.8em; padding: 2px 8px; height: 24px; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; background: rgb(232, 245, 233); border-color: rgb(76, 175, 80);"><span>↔️ <span style="text-decoration:underline">R</span>estore</span></button><button id="mb-visible-btn" title="Show/hide table columns (Ctrl+M, then V, or Ctrl+V)" type="button" style="font-size: 0.8em; padding: 2px 8px; height: 24px; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;"><span>👁️ <span style="text-decoration:underline">V</span>isible</span></button><button id="mb-density-btn" title="Change table density (spacing) (Ctrl+M, then D, or Ctrl+D)" type="button" style="font-size: 0.8em; padding: 2px 8px; height: 24px; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;"><span>📏 <span style="text-decoration:underline">D</span>ensity</span></button><button id="mb-stats-btn" title="Show table statistics (Ctrl+M, then I, or Ctrl+I)" type="button" style="font-size: 0.8em; padding: 2px 8px; height: 24px; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;"><span>📊 Stat<span style="text-decoration:underline">i</span>stics</span></button><button id="mb-export-btn" title="Export visible rows and columns to various formats (Ctrl+M, then E, or Ctrl+E)" type="button" style="font-size: 0.8em; padding: 2px 8px; height: 24px; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;"><span>💾 <span style="text-decoration:underline">E</span>xport</span></button><span class="mb-button-divider-before-shortcuts" style="color: rgb(153, 153, 153); margin: 0px 4px;"> | </span><button id="mb-shortcuts-help-btn" title="Show keyboard shortcuts (or press ? / Ctrl+M, then K, or Ctrl+K)" type="button" style="font-size: 0.8em; padding: 2px 8px; height: 24px; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;">🎹</button><button id="mb-settings-btn" type="button" title="Open userscript settings manager to configure script behavior (Ctrl+M, then ,, or Ctrl+,)" style="font-size: 0.8em; padding: 2px 8px; height: 24px; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; background-color: rgb(96, 125, 139); color: white; border: 1px solid rgb(84, 110, 122);">⚙️</button><button id="mb-app-help-btn" title="Show application help and feature overview (Ctrl+M, then H)" type="button" style="font-size: 0.8em; padding: 2px 8px; height: 24px; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; background-color: rgb(120, 144, 156); color: white; border: 1px solid rgb(96, 125, 139); user-select: none;">❓</button></div><span class="mb-row-count-stat" data-mbtt="There are &lt;span style=&quot;background:#e8e8e8;color:#111111;border-radius:2px;padding:0 3px;font-weight:bold;&quot;&gt;350&lt;/span&gt; rows total unfiltered in this table">(350)</span><button id="mb-caa-toggle-btn-0" type="button" class="mb-caa-art-toggle-btn" title="Show CAA cover art image stripe for this section — keyboard: Ctrl+A or Ctrl+M then A when a column filter is focused" style="cursor: pointer; padding: 1px 5px 1px 3px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 5px; display: inline-flex; align-items: center; gap: 6px; line-height: 1; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;" data-art-render-gen="1"><img class="mb-caa-toggle-thumb" src="//coverartarchive.org/release/6eadae96-8c62-41dc-b4e7-c1be90fc52e2/front-250" style="height: 18px; width: 18px; object-fit: cover; border-radius: 2px; vertical-align: middle; display: block;"><span class="mb-caa-toggle-count">6</span></button><button id="mb-caa-toggle-btn-retry-0" type="button" title="Retry loading all CAA cover art images for this table (forces network reload)" style="cursor: pointer; padding: 1px 4px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 3px; line-height: 1; display: inline-flex; align-items: center; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;">⟳</button><span id="mb-filter-container" style="display: inline-flex; align-items: center; white-space: nowrap; gap: 5px; font-size: 1rem; line-height: 1; margin-left: 15px; vertical-align: middle;"><span id="mb-global-filter-wrapper" class="mb-filter-wrapper" style="display: inline-flex; align-items: stretch; position: relative;"><span style="position: relative; display: inline-flex; align-items: center;"><input id="mb-global-filter-input" placeholder="Global Filter…" title="Enter global filter string (focus with 'Ctrl+G', use 'Ctrl+U' for unicode character map)" style="font-size: 1em; padding: 2px 6px; border-width: 2px medium 2px 2px; border-style: solid none solid solid; border-color: rgb(0, 0, 0) currentcolor rgb(0, 0, 0) rgb(0, 0, 0); border-image: none; border-radius: 3px 0px 0px 3px; width: 500px; height: 24px; box-sizing: border-box; transition: box-shadow 0.2s; outline: none;"><button id="mb-global-filter-clear" type="button" tabindex="-1" title="Clear global filter" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; cursor: pointer; color: rgb(192, 57, 43); font-size: 1em; font-weight: bold; line-height: 1; padding: 2px 3px; border-radius: 3px; display: none;">✕</button></span><span id="mb-global-filter-drag" title="Drag to resize filter field" style="display: inline-flex; align-items: center; justify-content: center; width: 10px; flex-shrink: 0; cursor: col-resize; user-select: none; border-width: 2px 2px 2px medium; border-style: solid solid solid none; border-color: rgb(0, 0, 0) rgb(0, 0, 0) rgb(0, 0, 0) currentcolor; border-image: none; border-radius: 0px 3px 3px 0px; background: rgb(240, 240, 240); font-size: 7px; color: rgb(170, 170, 170); letter-spacing: -1px;">⋮</span></span><span style="position: relative; display: inline-flex; align-items: stretch; gap: 4px; flex-shrink: 0;"><button type="button" title="Pin current filter to persistent list (saves query + checkbox states)" style="padding: 0px 8px; background: rgb(232, 245, 233); border: 1px solid rgb(165, 214, 167); border-radius: 6px; cursor: pointer; font-size: 1.1em; font-weight: bold; color: rgb(46, 125, 50); transition: background-color 0.2s, transform 0.1s, box-shadow 0.1s; height: 24px; box-sizing: border-box; flex-shrink: 0;">+</button><span style="position: relative; display: inline-flex; align-items: stretch; flex-shrink: 0;"><button type="button" title="Show/hide filter history (Alt+H)" style="padding: 0px 8px; background: rgb(240, 240, 240); border: 1px solid rgb(204, 204, 204); border-radius: 6px; cursor: pointer; font-size: 0.85em; white-space: nowrap; transition: background-color 0.2s, transform 0.1s, box-shadow 0.1s; height: 24px; box-sizing: border-box;">🕑 <span style="text-decoration:underline">H</span>istory ▼</button><div style="display: none; position: absolute; top: calc(100% + 4px); left: 0px; min-width: 420px; background: white; border: 1px solid rgb(204, 204, 204); border-radius: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 4px 16px; z-index: 20001; box-sizing: border-box;"><div style="padding: 8px 8px 6px; border-bottom: 1px solid rgb(238, 238, 238);"><div style="position: relative; display: flex; align-items: center;"><input type="text" placeholder="🔍 Quick filter both lists…" style="width: 100%; box-sizing: border-box; padding: 5px 28px 5px 8px; border: 1px solid rgb(204, 204, 204); border-radius: 4px; font-size: 0.88em; outline: none;"><button type="button" tabindex="-1" title="Clear quick filter" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; cursor: pointer; color: rgb(192, 57, 43); font-size: 0.95em; font-weight: bold; line-height: 1; padding: 2px 3px; border-radius: 3px; display: none;">✕</button></div></div><div style="padding: 4px 8px 2px; background: rgb(232, 245, 233); border-bottom: 1px solid rgb(200, 230, 201); display: flex; align-items: center; justify-content: space-between;"><span style="font-size: 0.76em; font-weight: 700; color: rgb(46, 125, 50); text-transform: uppercase; letter-spacing: 0.04em;">📌 Pinned</span><button type="button" title="Edit the persistent pinned filter list (Alt+E)" style="padding: 2px 7px; background: rgb(255, 248, 225); border: 1px solid rgb(255, 224, 130); border-radius: 5px; cursor: pointer; font-size: 0.76em; font-weight: 600; color: rgb(230, 81, 0); white-space: nowrap; transition: background-color 0.2s, transform 0.1s, box-shadow 0.1s; line-height: 1.6;">✎ <span style="text-decoration:underline">E</span>dit Pinned Filter List</button></div><div tabindex="0" style="max-height: 380px; overflow-y: auto;"><div class="mb-fhw-hist-row" data-idx="0" data-list="pin" style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;cursor:pointer;font-size:0.9em;border-bottom:1px dotted #eee;gap:6px;">
+                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Vinyl</span>
+                    <span style="flex-shrink:0;display:flex;gap:3px;align-items:center;">&nbsp;<span title="Case Sensitive" style="color:#1976D2;font-size:0.78em;font-weight:700;border:1px solid #1976D2;border-radius:2px;padding:0 2px;">Cs</span></span>
+                </div><div class="mb-fhw-hist-row" data-idx="1" data-list="pin" style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;cursor:pointer;font-size:0.9em;border-bottom:1px dotted #eee;gap:6px;">
+                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">version</span>
+                    <span style="flex-shrink:0;display:flex;gap:3px;align-items:center;">&nbsp;<span title="Regular Expression" style="color:#7B1FA2;font-size:0.78em;font-weight:700;border:1px solid #7B1FA2;border-radius:2px;padding:0 2px;">Re</span></span>
+                </div><div class="mb-fhw-hist-row" data-idx="2" data-list="pin" style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;cursor:pointer;font-size:0.9em;border-bottom:1px dotted #eee;gap:6px;">
+                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Vinyl|Reel</span>
+                    <span style="flex-shrink:0;display:flex;gap:3px;align-items:center;">&nbsp;<span title="Regular Expression" style="color:#7B1FA2;font-size:0.78em;font-weight:700;border:1px solid #7B1FA2;border-radius:2px;padding:0 2px;">Re</span></span>
+                </div></div><div style="padding: 3px 8px; border-top: 1px solid rgb(238, 238, 238); border-bottom: 1px solid rgb(221, 221, 221); font-size: 0.76em; color: rgb(102, 102, 102); display: flex; justify-content: space-between; background: rgb(249, 251, 231);"><span>3 of 3 entries</span><span>↑↓ navigate   Enter: apply</span></div><div style="padding: 4px 8px 2px; background: rgb(227, 242, 253); border-bottom: 1px solid rgb(187, 222, 251);"><span style="font-size:0.76em;font-weight:700;color:#1565c0;text-transform:uppercase;letter-spacing:0.04em;">🕑 Recent (LRU)</span></div><div tabindex="0" style="max-height: 380px; overflow-y: auto;"><div class="mb-fhw-hist-row" data-idx="0" data-list="lru" style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;cursor:pointer;font-size:0.9em;border-bottom:1px dotted #eee;gap:6px;">
+                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">annota</span>
+                    <span style="flex-shrink:0;display:flex;gap:3px;align-items:center;"></span>
+                </div><div class="mb-fhw-hist-row" data-idx="1" data-list="lru" style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;cursor:pointer;font-size:0.9em;border-bottom:1px dotted #eee;gap:6px;">
+                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">7" Vinyl</span>
+                    <span style="flex-shrink:0;display:flex;gap:3px;align-items:center;">&nbsp;<span title="Case Sensitive" style="color:#1976D2;font-size:0.78em;font-weight:700;border:1px solid #1976D2;border-radius:2px;padding:0 2px;">Cs</span></span>
+                </div><div class="mb-fhw-hist-row" data-idx="2" data-list="lru" style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;cursor:pointer;font-size:0.9em;border-bottom:1px dotted #eee;gap:6px;">
+                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">12" Vinyl</span>
+                    <span style="flex-shrink:0;display:flex;gap:3px;align-items:center;">&nbsp;<span title="Case Sensitive" style="color:#1976D2;font-size:0.78em;font-weight:700;border:1px solid #1976D2;border-radius:2px;padding:0 2px;">Cs</span></span>
+                </div><div class="mb-fhw-hist-row" data-idx="3" data-list="lru" style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;cursor:pointer;font-size:0.9em;border-bottom:1px dotted #eee;gap:6px;">
+                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">31903</span>
+                    <span style="flex-shrink:0;display:flex;gap:3px;align-items:center;"></span>
+                </div><div class="mb-fhw-hist-row" data-idx="4" data-list="lru" style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;cursor:pointer;font-size:0.9em;border-bottom:1px dotted #eee;gap:6px;">
+                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">saga</span>
+                    <span style="flex-shrink:0;display:flex;gap:3px;align-items:center;"></span>
+                </div><div class="mb-fhw-hist-row" data-idx="5" data-list="lru" style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;cursor:pointer;font-size:0.9em;border-bottom:1px dotted #eee;gap:6px;">
+                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">angel</span>
+                    <span style="flex-shrink:0;display:flex;gap:3px;align-items:center;"></span>
+                </div></div><div style="padding: 3px 8px; border-top: 1px solid rgb(238, 238, 238); font-size: 0.76em; color: rgb(136, 136, 136); display: flex; justify-content: space-between;"><span>6 of 6 entries</span><span>↑↓ navigate   Enter: apply   Esc: close</span></div></div></span></span><label id="mb-global-filter-case-label" title="Case Sensitive Filtering" style="font-size: 0.8em; color: rgb(51, 51, 51); cursor: pointer; display: flex; align-items: center; margin: 0px; user-select: none; font-weight: normal; height: 24px;"><input id="mb-global-filter-case-checkbox" type="checkbox" style="margin-right: 2px; vertical-align: middle;">Cc</label><label id="mb-global-filter-rx-label" title="RegExp Filtering" style="font-size: 0.8em; color: rgb(51, 51, 51); cursor: pointer; display: flex; align-items: center; margin: 0px; user-select: none; font-weight: normal; height: 24px;"><input id="mb-global-filter-rx-checkbox" type="checkbox" style="margin-right: 2px; vertical-align: middle;">Rx</label><label id="mb-global-filter-exclude-label" title="Exclude Matches" style="font-size: 0.8em; color: rgb(51, 51, 51); cursor: pointer; display: flex; align-items: center; margin: 0px; user-select: none; font-weight: normal; height: 24px;"><input id="mb-global-filter-exclude-checkbox" type="checkbox" style="margin-right: 2px; vertical-align: middle;">Ex</label><span id="mb-preload-filter-msg" style="font-size: 0.8em; color: red; margin-left: 4px; font-weight: bold; white-space: nowrap; display: none;"></span><button id="mb-toggle-prefilter-btn" title="Toggle prefilter highlighting" style="font-size: 0.8em; padding: 2px 6px; border-radius: 4px; background: rgb(240, 240, 240); border: 1px solid rgb(204, 204, 204); cursor: pointer; vertical-align: middle; transition: background-color 0.3s; display: none;">Prefilter</button><button id="mb-col-collapse-all-btn" title="Collapse ALL expanded multi-row cells in EVERY collapsable table column" style="font-size: 0.8em; padding: 2px 6px; border-radius: 4px; background-image: initial; background-position: initial; background-size: initial; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial; border: 1px solid rgb(204, 204, 204); cursor: pointer; vertical-align: middle; align-items: center; gap: 4px; display: inline-flex;"><span style="align-self:center;font-size:1em;">▼</span><span style="display:flex;flex-direction:column;align-items:center;line-height:1;font-size:0.72em;"><span>Collapse</span><span>all</span></span><span style="display:flex;flex-direction:column;align-items:center;line-height:1;font-size:0.72em;"><span>multi-row</span><span>cells</span></span></button><button id="mb-toggle-filter-highlight-btn" title="Toggle filter string highlighting for the global filter and ALL column filters (except the filter string when &quot;Loading from Disk&quot; was used)" style="font-size: 0.8em; padding: 2px 6px; border-radius: 4px; background: rgb(240, 240, 240); border: 1px solid rgb(204, 204, 204); cursor: pointer; vertical-align: middle; transition: background-color 0.3s; display: none;">🎨 Toggle ALL highlighting</button><button id="mb-clear-column-filters-btn" title="Clear ALL column-specific filters (triggered by 'Shift+Esc')" style="font-size: 0.8em; padding: 2px 6px; border-radius: 4px; background: rgb(240, 240, 240); border: 1px solid rgb(204, 204, 204); cursor: pointer; vertical-align: middle; display: none;"><span style="color: red; font-size: 1em; font-weight: bold;">✗ </span>Clear ALL COLUMN filters</button><button id="mb-clear-all-filters-btn" title="Clear the global filter and ALL column filters (triggered by 'Ctrl+Shift+G')" style="font-size: 0.8em; padding: 2px 6px; border-radius: 4px; background: rgb(240, 240, 240); border: 1px solid rgb(204, 204, 204); cursor: pointer; vertical-align: middle; display: none;"><span style="color: red; font-size: 1em; font-weight: bold;">✗ </span>Clear ALL filters</button><span id="mb-status-display" style="font-size: 0.9em; color: rgb(51, 51, 51); display: flex; align-items: center; height: 24px; font-weight: bold; gap: 4px;"><span id="mb-filter-status-display" class="mb-filter-status"></span><span id="mb-sort-status-display" class="mb-sort-status"></span></span></span></h2>
+#+end_example
+
+What we really want on these user edit pages, is a new feature/function "renameH2ToH1: true" and also the feature insertH2: 'Edits'/'Open edits' (for the two new pageTypes)
+
+*** act on @debug/user-edits-wrong.org
+
+** DONE notes-received.html
+*** initial
+
+Add a new pageType for "Recent notes left on your edits" https://musicbrainz.org/edit/notes-received
 @debug/notes-received.html
 
-https://musicbrainz.org/edit/notes-received
+Here again there is NO native H2 header, like for the "edits" pageType. Additionally only a subset of the columns
+present in other edits pages exist for this pageType, namely:
+
+#+begin_example
+'Edit#', 'Edit action', 'Edit notes'
+#+end_example
+
 https://musicbrainz.org/edit/notes-received?modbot_condition=
 https://musicbrainz.org/edit/notes-received?modbot_condition=%3D - 
 https://musicbrainz.org/edit/notes-received?modbot_condition=%21%3D - 
 
+*** extract two more columns "User" and "Date/Time"
+
+extract two more columns "User" and "Date/Time" after the "Edit action" and before the current "Edit notes" from h3 container of each edit, e.g.
+
+#+begin_example
+<h3 class="yes"><a href="/user/tigerman325"><img alt="" class="avatar no-avatar" height="15" src="https://static.metabrainz.org/MB/editor-b055e61.svg" width="15"><bdi>tigerman325</bdi></a><div class="voting-icon"></div> <a class="date" href="/edit-note/78299187">2025-02-04 17:29 GMT+1</a></h3>
+#+end_example
+
+The user with the hyperlink 
+
+** TODO Volker Zell performed solo vocals on Roll Jordan Roll	MGV Drabenderhöhe
+
+Relationship:	Volker Zell performed solo vocals on Roll Jordan Roll by MGV Drabenderhöhe
+
+* TODO Auto-click "Show more..." in Annotations if present
+
+Auto-click "Show more..." in Annotations if present
+
+https://musicbrainz.eu/work/04e3c57d-3caa-461e-a525-74e2ba52f8b9
+
+* TODO "MusicBrainz: More Flags Everywhere" by @Lotheric
+** initial
+
+Now that the userscript "MusicBrainz: More Flags Everywhere" by @Lotheric supports more flags of country subdivisions:
+
+#+begin_example
+Australia (States)
+Belgium (Regions, Provinces)
+Brazil (States, Federal District)
+Canada (Provinces, Territories)
+Czechia (Regions)
+Denmark (Regions)
+Estonia (Counties)
+Finland (Regions)
+France (Regions, State Private Property, Former Regions)
+Germany (States)
+Italy (Regions)
+Japan (Prefectures)
+Netherlands (Kingdom, Provinces, Special Municipalities)
+Russia (Oblasts, Republics, Autonomous Okrugs, Krais, Federal Cities)
+Spain (Autonomous Communities, Autonomous Cities)
+Sweden (Counties)
+Switzerland (Cantons)
+United Kingdom (Countries)
+United States (States, District)
+#+end_example
+
+Maybe we can refine the logic of the functions 'splitLocation' and 'splitArea' to better position area parts in the
+right column for specific countries.
+
+Lets start with United States. On e.g https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/artists
+in the following row @debug/florida.html "Florida" (together with its flag) is positioned in the "MB-Locality" instead of the "MB-Region" column.
+
+Introduce a country specific rule, so that when a value in the "MB-Locality" column has actually a flag icon, it should be extracted to the "MB-Region" column instead. 
+
+Make the country list user editable for future adjusments. For now start with United States.
+
+** act on @debug/flags.org
+
+It only works for the fist page of a paginated pageType like e.g. https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/artists
+
+On the final rendered page, all other rows from the paginated pages 2...Max still exhibit the same old behaviour, also
+when the userscript "MusicBrainz: More Flags Everywhere" by @Lotheric is installed the flags are still rendered for all
+rows. Is it possible to run the split functions after the final page is being rendered, so whenn all the flags are present
+
+** act on @debug/flags2.org
+
+** from the console
+
+from the console for https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/artists
+
+#+begin_example
+12:53:40.712 [VZ-ShowAllEntityData: area-artists] 🎨 initAreaFlagRegionObserver: no Locality/Region/Country trio found on this table. Headers: [, Artist, Type, Gender, Area, Begin, Begin area, End, End area, Rating] 
+#+end_example
+
+** works
+
+works now, leave the debug statements in, commit, push
+
+** TODO add "United Kingdom", "Canada" and "Australia" to the list
+
+add "United Kingdom", "Canada" and "Australia" to the list
+
+* TODO change default of hover background color
 
 * Performance fixes — ready to implement (analysed, approach agreed)
 
