@@ -86537,9 +86537,29 @@ extract two more columns "User" and "Date/Time" after the "Edit action" and befo
 
 The user with the hyperlink 
 
+** DONE add "yes"/"no" votes with glyphes as an additional column named "Vote"
+
+If on an edit note there is a '<h3 class="yes">' or '<h3 class="no">' e.g.
+
+#+begin_example
+<div class="edit-note" id="note-147948624-1"><h3 class="yes">
+#+end_example
+
+extract the text "yes"/"no" prepende with the "voting-icon" glyph e.g.
+
+#+begin_example
+<div class="voting-icon">
+#+end_example
+
+into a new column named "Vote" right before the "Edit notes" column.
+
 ** TODO Volker Zell performed solo vocals on Roll Jordan Roll	MGV Drabenderhöhe
 
 Relationship:	Volker Zell performed solo vocals on Roll Jordan Roll by MGV Drabenderhöhe
+
+* DONE change default of hover background color
+
+change sa_ui_row_hover_bg from "#e2e2e2" to "#c2d2e9"
 
 * TODO Auto-click "Show more..." in Annotations if present
 
@@ -86608,9 +86628,9 @@ works now, leave the debug statements in, commit, push
 
 ** TODO add "United Kingdom", "Canada" and "Australia" to the list
 
-add "United Kingdom", "Canada" and "Australia" to the list
+add "United Kingdom", "Canada" and "Australia" to the config variable "sa_area_flag_region_countries"
 
-* TODO change default of hover background color
+
 
 * Performance fixes — ready to implement (analysed, approach agreed)
 
@@ -86934,7 +86954,6 @@ so that all new fixes are also in the feature branch.
 * DONE merge current branch in main, commit and push
 
 merge current branch in main, commit and push
-
 
 * DONE BatchEditCoverart
 ** initial
