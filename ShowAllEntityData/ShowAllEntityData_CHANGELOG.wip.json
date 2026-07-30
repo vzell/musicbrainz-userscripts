@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Country/MB-Locality/MB-Region unique-values filter dropdown (📊): cells holding more than one flag (a multi-event Country cell, or a Region cell where a third-party userscript decorates both a subdivision AND its sovereign state with custom flag icons, e.g. \"Noord-Holland, Kingdom of the Netherlands\") now show all of their flags in the dropdown instead of none. countryFlagMap/areaIconMap (see WIP.1/WIP.2) previously keyed each flag by a label parsed from that single flag's own text, but the dropdown's unique value is always the whole cell's combined text — a multi-flag cell's combined value never matched any single flag's label, so no icon was shown at all. Both maps are now keyed by the cell's full getCleanColumnText() value (exactly how the dropdown's own value list is built) and bundle every flag found in that cell into one wrapper."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-07-31",
     "sections": [

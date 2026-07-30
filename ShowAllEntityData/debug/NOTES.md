@@ -1592,3 +1592,40 @@ falls back to `N/A` like every other empty cell on this page.
   `sa_enable_annotation_auto_expand` setting), which simply calls
   `.click()` on every `a.annotation-toggle` found — deferring to MB's own
   click handler rather than replicating its collapse/expand DOM logic.
+
+## 2026-07-31 — Country/Locality/Region flag icon in the unique-values dropdown (branch fix/dropdown-flag-flat)
+
+- `with-flag.html` (raw MB markup, Canada example): confirmed the native
+  Country flag shape — a bare `<span class="flag flag-XX">` with NO
+  `<img>` child (CSS background-sprite only) — versus the third-party
+  "More Flags Everywhere"/"Canadian Province Flags Everywhere" subdivision
+  icon shape — `<span class="area-icon"><img class="flag flag-XX-prov"
+  src="https://...svg"></span>` immediately preceding the place-name
+  `<a>`. These are two structurally different techniques; the dropdown
+  fix needed a different clone strategy for each (CSS-value baking via
+  `getComputedStyle()` for the Country span, since it's pure CSS with zero
+  markup of its own in this userscript; plain node cloning for the area
+  icon, since it's a self-contained `<img>`).
+- `florida.html` (full raw page snapshot) and
+  `area-artists-with-flag-symbols.html` (full raw page snapshot, user-
+  supplied): confirmed the US-state variant of the same subdivision icon
+  uses a different class, `flag-custom-region`, and an inline base64
+  data-URI SVG `src` instead of an external URL — same `span.area-icon`
+  wrapper shape either way, so detection keys off the wrapper, never the
+  `<img>`'s own class.
+- `noord-holland.html` (single-cell raw snippet, user-supplied): a Region
+  cell where the third-party userscript decorates the SOVEREIGN STATE
+  link ("Kingdom of the Netherlands") with its own custom
+  `area-icon`/`<img>` flag too, instead of leaving MusicBrainz's native
+  `<span class="flag flag-XX">` alone — so the cell reads
+  `<icon> Noord-Holland, <icon> Kingdom of the Netherlands` with two
+  `area-icon` wrappers in one cell. This exposed a second, independent bug
+  in the dropdown code (present for the Country column too, for
+  multi-event cells): `countryFlagMap`/`areaIconMap` were keying each flag
+  by a label parsed from that single flag's own adjacent text, but the
+  dropdown's actual unique value is always the whole cell's combined text
+  (`getCleanColumnText(cell)`, matching how `valueCounts` itself is
+  built). A multi-flag cell's combined value never matched any single
+  flag's own label, so the entry silently got no icon at all. Fixed by
+  keying both maps on the cell's full `getCleanColumnText()` value and
+  bundling every flag found in that cell into one wrapper `<span>`.
