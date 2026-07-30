@@ -2043,6 +2043,29 @@
         },
 
         // ============================================================
+        // ANNOTATION SECTION (ENTITY PAGES) — native MusicBrainz "Show
+        // more..." truncation, unrelated to the "Annotation" table-column
+        // feature above.
+        // ============================================================
+        divider_native_annotation: {
+            type: 'divider',
+            label: '📖 ANNOTATION SECTION (Entity Pages)'
+        },
+
+        sa_enable_annotation_auto_expand: {
+            label: 'Auto-expand native "Annotation" section',
+            type: 'checkbox',
+            default: true,
+            description: 'Automatically click MusicBrainz\'s native "Show more..." ' +
+                         '(`a.annotation-toggle`) link on entity pages (e.g. an ' +
+                         'artist/release/work/... page\'s own "Annotation" section), so a ' +
+                         'long annotation is fully visible on page load instead of truncated ' +
+                         'behind an extra manual click. Unrelated to the "📝 ANNOTATION ' +
+                         'COLUMNS" section above, which only affects this script\'s own ' +
+                         'rendered table columns.'
+        },
+
+        // ============================================================
         // AREA / LOCATION COLUMN SPLITTING SECTION
         // ============================================================
         divider_area_split: {
@@ -19931,6 +19954,33 @@ a { color: #1565c0; }`;
             childList: true, subtree: true,
             attributes: true, attributeFilter: ['class', 'style']
         });
+    }
+
+    /**
+     * Auto-clicks MusicBrainz's own native "Show more..." annotation-toggle
+     * link (`<a class="annotation-toggle" href="#">Show more...</a>`) on
+     * entity pages, so a long Annotation section is already fully expanded
+     * on load instead of truncated behind `div.annotation-body
+     * .annotation-collapsed` (see `debug/showmore.html`).
+     *
+     * Deliberately calls `.click()` rather than replicating MB's own
+     * collapse/expand DOM logic — this defers entirely to whatever MB's
+     * native handler actually does (removing `.annotation-collapsed`,
+     * dropping the toggle `<p>`, …) and stays correct even if MB changes
+     * that implementation.
+     *
+     * Called unconditionally, before page-type detection below — bare
+     * entity pages (e.g. `/work/<mbid>`) have no matching `pageDefinitions`
+     * entry, and the init block below returns early for those
+     * (`!pageType || !headerContainer`), so this must not depend on
+     * `pageType`/`headerContainer` at all to still run there.
+     */
+    function autoExpandNativeAnnotation() {
+        document.querySelectorAll('a.annotation-toggle').forEach(link => link.click());
+    }
+
+    if (Lib.settings.sa_enable_annotation_auto_expand) {
+        autoExpandNativeAnnotation();
     }
 
     // --- Initialization Logic ---
