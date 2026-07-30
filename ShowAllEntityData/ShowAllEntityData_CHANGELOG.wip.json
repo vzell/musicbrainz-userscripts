@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "MB-Locality/MB-Region (and Begin/End variants) unique-values filter dropdown (📊): entries now show the subdivision flag icon injected by third-party userscripts like \"MusicBrainz: More Flags Everywhere\", matching the icon already shown in the table cells. The dropdown's flag-decoration feature previously only recognized exact Country column names, so it never ran at all for Locality/Region columns; its cell scan was also hardcoded to <span> elements, which would have missed the <img class=\"flag ...\"> markup these third-party icons actually use even if it had run. Column-name matching is now suffix-based (matching this file's own _flagRegionColumnTrios convention for the same column family), which as a side effect also fixes the Country dropdown never decorating a 'Release country' column."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-07-31",
     "sections": [

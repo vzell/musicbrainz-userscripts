@@ -35248,6 +35248,24 @@ a { color: #1565c0; }`;
                     }
                 }
 
+                // ---- Subdivision flag icon (Locality/Region columns only) ---
+                // For synthetic Locality/Region columns, prepend the
+                // third-party "More Flags Everywhere" <span class="area-icon">
+                // <img></span> icon so each dropdown entry matches the visual
+                // appearance of the table cells. areaIconMap stores a
+                // pre-built clone (keyed by the place-name text value) — the
+                // icon is a self-contained <img> (own `src`), so no CSS
+                // baking is needed here, unlike the Country flag above.
+                if (isAreaCol) {
+                    const iconSpan = areaIconMap.get(v);
+                    if (iconSpan) {
+                        const iconClone = iconSpan.cloneNode(true);
+                        iconClone.setAttribute('aria-hidden', 'true');
+                        iconClone.style.marginRight = '4px';
+                        item.appendChild(iconClone);
+                    }
+                }
+
                 if (filter) {
                     // Build highlighted content with a <mark> around the match
                     const li = v.toLowerCase();
@@ -35323,21 +35341,26 @@ a { color: #1565c0; }`;
         const caaYesCount = 0; // unused after 9.99.569 — artwork-presence filtered via makeSynItem rename
         const caaNoCount  = 0;
 
-        // Is this a synthetic Country column produced by splitCountryDate,
-        // splitLocation, or splitArea?  Detected by column header name so that
-        // the unique-values dropdown can decorate each entry with its country
-        // flag icon (the same <img> already rendered in the table cell).
-        const _COUNTRY_COL_NAMES = new Set([
-            'Country', 'Begin country', 'End country'
-        ]);
-        const isCountryCol = (() => {
+        // Is this a synthetic Country, Locality, or Region column produced by
+        // splitCountryDate, splitLocation, or splitArea? Detected by column
+        // header name (suffix match, mirroring _flagRegionColumnTrios' own
+        // convention for this exact column-name family) so that the
+        // unique-values dropdown can decorate each entry with its flag icon —
+        // the native CSS-sprite <span class="flag flag-XX"> already rendered
+        // for Country columns, or the third-party "More Flags Everywhere"
+        // <img class="flag ..."> already rendered for Locality/Region columns.
+        const _flagColKind = (() => {
             const headers = table.querySelectorAll('thead tr:first-child th');
             const th = headers[colIndex];
-            if (!th) return false;
+            if (!th) return null;
             const name = th.dataset.colName ||
                 th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
-            return _COUNTRY_COL_NAMES.has(name);
+            if (name.endsWith('ountry')) return 'country';
+            if (name.endsWith('ocality') || name.endsWith('egion')) return 'area';
+            return null;
         })();
+        const isCountryCol = _flagColKind === 'country';
+        const isAreaCol    = _flagColKind === 'area';
 
         /**
          * Reads the browser's already-resolved visual appearance of a live
@@ -35498,6 +35521,58 @@ a { color: #1565c0; }`;
                 if (flagMap.size === valueCounts.size) break;
             }
             return flagMap;
+        })() : new Map();
+
+        /**
+         * Maps each unique Locality/Region text value (e.g. "Illinois") to a
+         * clone of the third-party "More Flags Everywhere" / "Canadian
+         * Province Flags Everywhere" subdivision flag icon
+         * (<span class="area-icon"><img class="flag ..."></span>) scraped
+         * from the first visible tbody cell that contains that value. Built
+         * only when isAreaCol is true.
+         *
+         * Unlike the native Country flag (a CSS background-sprite <span>,
+         * see countryFlagMap above), this icon is a genuine <img> whose
+         * visible bitmap comes from its own `src` (an external SVG URL or an
+         * inline base64 data-URI SVG) — a self-contained image that renders
+         * identically no matter where it's parented, so no
+         * resolveFlagVisual()-style CSS baking is needed here; cloning the
+         * node is sufficient.
+         *
+         * The `span.area-icon` wrapper (rather than the <img>'s own class,
+         * which varies — "flag-XX-prov" for Canadian provinces,
+         * "flag-custom-region" for US states, possibly others) is the
+         * reliable structural marker: it's exactly what _routeAreaLink()
+         * (the splitArea/splitLocation extractor helper, line ~2507) already
+         * keys off to detect and carry this icon into the reconstructed
+         * Locality/Region cell in the first place.
+         *
+         * @type {Map<string, HTMLSpanElement>}  value → cloned area-icon span
+         */
+        const areaIconMap = isAreaCol ? (() => {
+            const iconMap = new Map();
+            if (!tbody) return iconMap;
+            for (const row of tbody.rows) {
+                if (row.style.display === 'none') continue;
+                const cell = row.cells[colIndex];
+                if (!cell) continue;
+                const iconSpans = cell.querySelectorAll('span.area-icon');
+                for (const iconSpan of iconSpans) {
+                    // _routeAreaLink() always places the place-name <a> as
+                    // the icon's next sibling element (a text node with a
+                    // single space in between, which nextElementSibling
+                    // skips over) — see line ~2515-2518.
+                    const a = iconSpan.nextElementSibling;
+                    if (!a) continue;
+                    const label = a.textContent.trim().replace(/\s+/g, ' ');
+                    if (label && valueCounts.has(label) && !iconMap.has(label)) {
+                        iconMap.set(label, iconSpan.cloneNode(true));
+                    }
+                    if (iconMap.size === valueCounts.size) break;
+                }
+                if (iconMap.size === valueCounts.size) break;
+            }
+            return iconMap;
         })() : new Map();
 
         const isRelCellCol = (() => {
