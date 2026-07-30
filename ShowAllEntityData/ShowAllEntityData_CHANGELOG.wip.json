@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Country column unique-values filter dropdown (📊): fixed a regression from WIP.3 where flags looked flat/washed-out again — WIP.3's multi-flag fix wrapped icons in a <span style=\"display:inline-flex\"> container, an extra layout context not present in the table cell that could interfere with the native flag's baked width/height/background rendering. Removed the wrapper: each icon is now stored/cloned independently and appended as its own direct sibling (matching the original, working single-flag structure), with no behavior change for the multi-flag case.",
+          "'Area'/'Begin area'/'End area' (the unsplit source columns splitArea/splitLocation operate on) unique-values filter dropdown (📊): entries now show flag icon(s) too, matching the table cells. These columns can hold BOTH icon shapes in one cell (a Locality/Region subdivision icon followed by the Country's own flag), so column-name matching now also covers an 'rea' suffix, and countryFlagMap/areaIconMap (WIP.1/WIP.2) are unified into a single flagIconMap that scans for both shapes together in document order, so a combined cell's icons come out correctly interleaved rather than grouped by shape."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-07-31",
     "sections": [
