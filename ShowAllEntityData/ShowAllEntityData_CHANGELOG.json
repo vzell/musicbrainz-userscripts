@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.726",
+    "date": "2026-07-30",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Removed the `sa_area_flag_region_countries` settings-menu entry (and its now-empty \"🌍 AREA / LOCATION COLUMN SPLITTING\" section) — the countries where a flagged subdivision link forces \"Region\" instead of \"Locality\" (United States, United Kingdom, Canada, Australia) are no longer end-user configurable, and are now a fixed internal `AREA_FLAG_REGION_COUNTRIES` constant instead."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.725",
     "date": "2026-07-30",
     "sections": [

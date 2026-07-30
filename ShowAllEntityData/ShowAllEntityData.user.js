@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.725+2026-07-30
+// @version      9.99.726+2026-07-30
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -147,6 +147,15 @@
     const REMOTE_CACHE_TTL_MS  = 60 * 60 * 1000; // 1 hour
     const CACHE_KEY_HELP       = SCRIPT_BASE_NAME.toLowerCase() + '-remote-help-text';
     const CACHE_KEY_CHANGELOG  = SCRIPT_BASE_NAME.toLowerCase() + '-remote-changelog';
+
+    // Countries — exactly as MusicBrainz renders them, e.g. "United States" —
+    // for which `splitLocation`/`splitArea` force a flagged subdivision link
+    // (added by a separately-installed userscript such as "MusicBrainz: More
+    // Flags Everywhere" or "MusicBrainz: Canadian Province Flags Everywhere",
+    // @Lotheric) into "Region" instead of "Locality". See `_flagRegionCountrySet()`
+    // for the full rationale. Not user-configurable — editing this list
+    // requires a code change, not a settings toggle.
+    const AREA_FLAG_REGION_COUNTRIES = ['United States', 'United Kingdom', 'Canada', 'Australia'];
 
 
     // CONFIG SCHEMA
@@ -2066,41 +2075,6 @@
         },
 
         // ============================================================
-        // AREA / LOCATION COLUMN SPLITTING SECTION
-        // ============================================================
-        divider_area_split: {
-            type: 'divider',
-            label: '🌍 AREA / LOCATION COLUMN SPLITTING'
-        },
-
-        sa_area_flag_region_countries: {
-            label: 'Countries where a flagged subdivision forces Region',
-            type: 'text',
-            default: 'United States, United Kingdom, Canada, Australia',
-            description: 'Comma-separated list of country names — exactly as MusicBrainz renders ' +
-                         'them, e.g. "United States, Germany" — for which `splitLocation`/`splitArea` ' +
-                         '(used to split "Location"/"Area"/"Begin area"/"End area" columns into ' +
-                         'Locality/Region/Country) apply an extra rule: normally the first (most ' +
-                         'specific) area link becomes "Locality" and every subsequent one becomes ' +
-                         '"Region". But if that first link is decorated with a subdivision flag icon ' +
-                         '— added by a separately-installed userscript such as "MusicBrainz: More ' +
-                         'Flags Everywhere" or "MusicBrainz: Canadian Province Flags Everywhere" ' +
-                         '(@Lotheric) — it is routed to "Region" instead. This handles areas with no ' +
-                         'city/locality entered at all, only a bare state/province (e.g. a US artist ' +
-                         'whose only Area is "Florida", which would otherwise be misclassified as a ' +
-                         'Locality). Matching is case-insensitive and only applies to rows whose ' +
-                         'resolved Country matches one of these names; it also has no effect at all ' +
-                         'unless the flag-decorating userscript is actually installed and active (no ' +
-                         'icon in the page, no effect). Countries supported by "More Flags Everywhere" ' +
-                         'as of this writing: Australia, Belgium, Brazil, Canada, Czechia, Denmark, ' +
-                         'Estonia, Finland, France, Germany, Italy, Japan, Netherlands, Russia, Spain, ' +
-                         'Sweden, Switzerland, United Kingdom, United States — add any of these (using ' +
-                         'the exact MusicBrainz country name) once you\'ve verified it behaves as ' +
-                         'expected for that country\'s subdivision naming. Leave blank to disable the ' +
-                         'rule entirely.'
-        },
-
-        // ============================================================
         // EDITS PAGE SECTION
         // ============================================================
         divider_edits_colors: {
@@ -2434,14 +2408,13 @@
     }
 
     /**
-     * _flagRegionCountrySet — parses the user-editable
-     * `sa_area_flag_region_countries` setting into a lowercase Set of country
-     * names, for the membership check `_routeAreaLink` uses to decide whether
-     * a flagged subdivision link should be forced into Region (see below).
+     * _flagRegionCountrySet — builds a lowercase Set of country names from
+     * the internal `AREA_FLAG_REGION_COUNTRIES` constant, for the membership
+     * check `_routeAreaLink` uses to decide whether a flagged subdivision
+     * link should be forced into Region (see below).
      */
     function _flagRegionCountrySet() {
-        const raw = (Lib.settings.sa_area_flag_region_countries || '').toString();
-        return new Set(raw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
+        return new Set(AREA_FLAG_REGION_COUNTRIES.map(s => s.toLowerCase()));
     }
 
     /**
@@ -2495,7 +2468,7 @@
      * than per country, so position is the only signal available — EXCEPT
      * when that first link itself carries a subdivision-flag icon (meaning no
      * city/locality was ever entered, only a bare state/province) AND the
-     * row's country is in the user-editable `sa_area_flag_region_countries`
+     * row's country is in the internal `AREA_FLAG_REGION_COUNTRIES`
      * list: that link is then forced into Region instead, since it's
      * conceptually a Region-level entity even though it's positionally first.
      *
@@ -31242,7 +31215,7 @@ a { color: #1565c0; }`;
      * immediately followed by one ending in "egion" then one ending in
      * "ountry" reliably identifies a triplet regardless of its caller-chosen
      * prefix (`Locality`/`MB-Locality`/`MB-Begin locality`/…, see
-     * `sa_area_flag_region_countries`'s description for the full naming set).
+     * `AREA_FLAG_REGION_COUNTRIES`'s comment for the full naming set).
      *
      * @param {HTMLTableElement} table
      * @returns {Array<{localityIdx: number, regionIdx: number, countryIdx: number}>}
@@ -31289,8 +31262,8 @@ a { color: #1565c0; }`;
      * Locality cell has just been decorated with a subdivision flag icon
      * (`a[data-flag-processed]`, set by the "MusicBrainz: More Flags
      * Everywhere" / "Canadian Province Flags Everywhere" userscripts,
-     * @Lotheric) AND its resolved Country is in the user-editable
-     * `sa_area_flag_region_countries` list, moves that Locality value into
+     * @Lotheric) AND its resolved Country is in the internal
+     * `AREA_FLAG_REGION_COUNTRIES` list, moves that Locality value into
      * Region — on both the live row (immediate visual feedback) and the
      * master row (so the correction survives future re-renders; see
      * `_findMasterRowByIdx`).
@@ -31327,7 +31300,7 @@ a { color: #1565c0; }`;
                 return;
             }
             if (!_flagRegionCountrySet().has(countryName)) {
-                Lib.debug('render', `_maybeCorrectAreaFlagRegion: rowIdx=${rowIdx} is flagged but country "${countryName}" is not in sa_area_flag_region_countries`);
+                Lib.debug('render', `_maybeCorrectAreaFlagRegion: rowIdx=${rowIdx} is flagged but country "${countryName}" is not in AREA_FLAG_REGION_COUNTRIES`);
                 return;
             }
 
@@ -31379,7 +31352,7 @@ a { color: #1565c0; }`;
      * an ancestor node that MutationObserver's subtree walk still SHOULD see,
      * but the specific record shape wasn't anticipated here).
      *
-     * No-ops entirely when `sa_area_flag_region_countries` is empty, or when a
+     * No-ops entirely when `AREA_FLAG_REGION_COUNTRIES` is empty, or when a
      * table has no Locality/Region/Country column triplet (see
      * `_flagRegionColumnTrios`) — most pages pay zero overhead.
      *
@@ -33746,7 +33719,7 @@ a { color: #1565c0; }`;
 
         // Install (or re-confirm) the MutationObserver that corrects flagged
         // subdivisions still sitting in Locality once a flag-decorating userscript
-        // processes them (no-ops when sa_area_flag_region_countries is empty).
+        // processes them (no-ops when AREA_FLAG_REGION_COUNTRIES is empty).
         initAreaFlagRegionObserver();
     }
 
