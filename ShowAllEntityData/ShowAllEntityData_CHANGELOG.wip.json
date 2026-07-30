@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Country column unique-values filter dropdown (📊): the flag icon next to each country name now renders identically to the flag in the table cell. Previously only the span's CSS class was copied into the dropdown clone, which relies on MusicBrainz's own stylesheet cascading correctly wherever the clone lands — the dropdown panel sits outside #content/table.tbl and in a smaller font-size context, so the flag could come out looking flatter/blanker than the real one. Now the resolved visual (background sprite, size, border, vertical-align, …) is read directly from the live table-cell flag via getComputedStyle() — including a ::before/::after pseudo-element fallback — and baked as inline styles onto the dropdown clone, so it is pixel-identical regardless of where MusicBrainz's CSS rule is scoped."
+        ]
+      }
+    ]
+  }
+]

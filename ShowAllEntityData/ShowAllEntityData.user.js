@@ -35230,18 +35230,20 @@ a { color: #1565c0; }`;
                 // For synthetic Country columns (splitCountryDate / splitLocation
                 // / splitArea), prepend the CSS flag <span class="flag flag-XX">
                 // so each dropdown entry matches the visual appearance of the
-                // table cells.  MusicBrainz renders flags as CSS background-image
-                // sprites on the span itself — there is no child <img> element.
-                // countryFlagMap stores a pre-built span clone (className copied
-                // from the source cell) keyed by the country text value.
+                // table cells. countryFlagMap stores a pre-built span clone
+                // (keyed by the country text value) whose visual appearance
+                // (background sprite, size, border, vertical-align, …) was
+                // already baked as inline styles by resolveFlagVisual() — do
+                // NOT overwrite those with a fresh cssText here, only add the
+                // dropdown-specific layout spacing (cloneNode(false) copies
+                // the style attribute along with the class/other attributes).
                 if (isCountryCol) {
                     const flagSpan = countryFlagMap.get(v);
                     if (flagSpan) {
                         // Clone so each item gets its own independent node.
                         const flagClone = flagSpan.cloneNode(false);
                         flagClone.setAttribute('aria-hidden', 'true');
-                        flagClone.style.cssText =
-                            'display:inline-block; margin-right:4px; vertical-align:middle;';
+                        flagClone.style.marginRight = '4px';
                         item.appendChild(flagClone);
                     }
                 }
@@ -35338,6 +35340,61 @@ a { color: #1565c0; }`;
         })();
 
         /**
+         * Reads the browser's already-resolved visual appearance of a live
+         * MusicBrainz flag <span class="flag flag-XX"> from the table cell
+         * (background sprite, size, border, vertical-align, …) via
+         * getComputedStyle(), so it can be baked as inline styles onto a
+         * clone destined for the unique-values dropdown.
+         *
+         * The dropdown panel lives outside #content/table.tbl (appended
+         * directly to document.body by getUniqDropEl()) and in a shrunk
+         * font-size context (#mb-col-uniq-dropdown sets font-size: 0.87em).
+         * Simply copying className and hoping MusicBrainz's own stylesheet
+         * cascades onto the clone wherever it lands is fragile — ancestor-
+         * scoped selectors, em-relative sizing, or MB rendering the flag via
+         * a ::before/::after pseudo-element instead of a direct background
+         * would all silently produce a flatter/blanker-looking icon. Reading
+         * the resolved values directly from a real, correctly-rendered span
+         * sidesteps all of that: inline values are immune to DOM location,
+         * ambient font-size, and cascade/specificity, and are already
+         * resolved to absolute px rather than em.
+         *
+         * Falls back to the span's ::before then ::after pseudo-element if
+         * the span itself has no background-image, since some CSS flag
+         * techniques paint the icon on a pseudo-element rather than the
+         * element itself.
+         *
+         * @param {Element} span - a live (attached) `.flag.flag-XX` element
+         * @returns {?Object} resolved style properties to bake as inline
+         *   styles on a clone, or null if no flag visual could be found
+         */
+        function resolveFlagVisual(span) {
+            const pick = (cs) => {
+                const bgImg = cs.backgroundImage;
+                if (!bgImg || bgImg === 'none') return null;
+                return {
+                    backgroundImage:    bgImg,
+                    backgroundPosition: cs.backgroundPosition,
+                    backgroundRepeat:   cs.backgroundRepeat,
+                    backgroundSize:     cs.backgroundSize,
+                    backgroundColor:    cs.backgroundColor,
+                    width:              cs.width,
+                    height:             cs.height,
+                    display:            cs.display,
+                    border:             cs.border,
+                    borderRadius:       cs.borderRadius,
+                    boxShadow:          cs.boxShadow,
+                    verticalAlign:      cs.verticalAlign,
+                };
+            };
+            let visual = pick(window.getComputedStyle(span));
+            if (visual) return visual;
+            visual = pick(window.getComputedStyle(span, '::before'));
+            if (visual) return visual;
+            return pick(window.getComputedStyle(span, '::after'));
+        }
+
+        /**
          * Maps each unique country text value (e.g. "Germany (DE)") to a
          * clone of the MusicBrainz flag <span class="flag flag-XX ..."> element
          * scraped from the first visible tbody cell that contains that value.
@@ -35348,7 +35405,10 @@ a { color: #1565c0; }`;
          * image on a <span class="flag flag-XX"> element — there is no child
          * <img> tag.  The extractors (splitCountryDate, splitLocation, splitArea)
          * preserve the original className verbatim on the reconstructed span, so
-         * the CSS rules from MusicBrainz continue to apply in the cloned node.
+         * the CSS rules from MusicBrainz continue to apply in the cloned node
+         * (that in-table-DOM case is already correct — see resolveFlagVisual()'s
+         * JSDoc for why the dropdown case needs its visual baked explicitly
+         * instead of relying on the same cascade).
          *
          * The text label is derived from the cell value produced by
          * getCleanColumnText() so the Map keys are guaranteed to match the keys
@@ -35404,9 +35464,33 @@ a { color: #1565c0; }`;
                         // Clone the span, strip child nodes (we only want the
                         // CSS flag background, not the link text), and record it.
                         const flagClone = document.createElement('span');
-                        // Copy every CSS class from the source span so the
-                        // MusicBrainz stylesheet applies the correct flag sprite.
+                        // Copy the CSS class too (harmless belt-and-suspenders —
+                        // inline styles below always win the cascade regardless,
+                        // so there is no conflict risk; kept in case any
+                        // non-visual behavior is keyed off the class name).
                         flagClone.className = span.className;
+                        // Bake the resolved visual as inline styles — see
+                        // resolveFlagVisual()'s JSDoc for why this is used
+                        // instead of relying on className + cascade alone.
+                        const visual = resolveFlagVisual(span);
+                        if (visual) {
+                            flagClone.style.backgroundImage    = visual.backgroundImage;
+                            flagClone.style.backgroundPosition = visual.backgroundPosition;
+                            flagClone.style.backgroundRepeat   = visual.backgroundRepeat;
+                            flagClone.style.backgroundSize     = visual.backgroundSize;
+                            if (visual.backgroundColor &&
+                                visual.backgroundColor !== 'rgba(0, 0, 0, 0)' &&
+                                visual.backgroundColor !== 'transparent') {
+                                flagClone.style.backgroundColor = visual.backgroundColor;
+                            }
+                            flagClone.style.width         = visual.width;
+                            flagClone.style.height        = visual.height;
+                            flagClone.style.display       = visual.display === 'none' ? 'inline-block' : visual.display;
+                            flagClone.style.border        = visual.border;
+                            flagClone.style.borderRadius  = visual.borderRadius;
+                            flagClone.style.boxShadow     = visual.boxShadow;
+                            flagClone.style.verticalAlign = visual.verticalAlign;
+                        }
                         flagMap.set(label, flagClone);
                     }
                     if (flagMap.size === valueCounts.size) break;
