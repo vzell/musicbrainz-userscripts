@@ -86561,11 +86561,22 @@ Relationship:	Volker Zell performed solo vocals on Roll Jordan Roll by MGV Drabe
 
 change sa_ui_row_hover_bg from "#e2e2e2" to "#c2d2e9"
 
-* TODO Auto-click "Show more..." in Annotations if present
+* DONE plan: Auto-click "Show more..." in Annotations if present
+** initial
 
-Auto-click "Show more..." in Annotations if present
+Auto-click the "Show more..." toggle
+
+#+begin_example
+<p><a class="annotation-toggle" href="#">Show more...</a></p>
+#+end_example
+
+in the H2 "Annotations" if present on a pageType , e.g 
 
 https://musicbrainz.eu/work/04e3c57d-3caa-461e-a525-74e2ba52f8b9
+
+So when uncollapsing the e.g H2 header "Annotation" section, the complete annotation is already visible without artificialy clicking the "Show more.." link
+
+Do this on a new branch
 
 * TODO "MusicBrainz: More Flags Everywhere" by @Lotheric
 ** initial
@@ -86627,9 +86638,14 @@ from the console for https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68
 works now, leave the debug statements in, commit, push
 
 ** TODO add "United Kingdom", "Canada" and "Australia" to the list
+*** DONE initial
 
 add "United Kingdom", "Canada" and "Australia" to the config variable "sa_area_flag_region_countries"
 
+*** TODO add this as non configurable variable
+
+Currently the following countries "United States, United Kingdom, Canada, Australia" are set as configuration directive "sa_area_flag_region_countries"
+This shouldn't actually be a configuration option, but a real variable, not exposed to endusers.
 
 
 * Performance fixes — ready to implement (analysed, approach agreed)
