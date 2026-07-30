@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.727",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Auto-expand native 'Annotation' section default configuration setting changed to false."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.726",
     "date": "2026-07-30",
     "sections": [

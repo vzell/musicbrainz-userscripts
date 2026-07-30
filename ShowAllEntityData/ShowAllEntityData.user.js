@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.726+2026-07-30
+// @version      9.99.727+2026-07-31
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -2064,7 +2064,7 @@
         sa_enable_annotation_auto_expand: {
             label: 'Auto-expand native "Annotation" section',
             type: 'checkbox',
-            default: true,
+            default: false,
             description: 'Automatically click MusicBrainz\'s native "Show more..." ' +
                          '(`a.annotation-toggle`) link on entity pages (e.g. an ' +
                          'artist/release/work/... page\'s own "Annotation" section), so a ' +

@@ -86578,7 +86578,7 @@ So when uncollapsing the e.g H2 header "Annotation" section, the complete annota
 
 Do this on a new branch
 
-* TODO "MusicBrainz: More Flags Everywhere" by @Lotheric
+* DONE "MusicBrainz: More Flags Everywhere" by @Lotheric
 ** initial
 
 Now that the userscript "MusicBrainz: More Flags Everywhere" by @Lotheric supports more flags of country subdivisions:
@@ -86637,12 +86637,12 @@ from the console for https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68
 
 works now, leave the debug statements in, commit, push
 
-** TODO add "United Kingdom", "Canada" and "Australia" to the list
+** DONE add "United Kingdom", "Canada" and "Australia" to the list
 *** DONE initial
 
 add "United Kingdom", "Canada" and "Australia" to the config variable "sa_area_flag_region_countries"
 
-*** TODO add this as non configurable variable
+*** DONE add this as non configurable variable
 
 Currently the following countries "United States, United Kingdom, Canada, Australia" are set as configuration directive "sa_area_flag_region_countries"
 This shouldn't actually be a configuration option, but a real variable, not exposed to endusers.
