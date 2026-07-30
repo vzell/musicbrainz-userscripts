@@ -1560,3 +1560,35 @@ Verified via jsdom against the real snapshot: found and correctly extracted
 all four non-empty vote classes present on the page (6× `yes`, 1× `no`,
 1× `abstain`, 1× `approve`, the rest `""`), and confirmed the no-vote case
 falls back to `N/A` like every other empty cell on this page.
+
+## 2026-07-30 — native Annotation section "Show more..." (`showmore.html`, branch feature/annotation-auto-expand-showmore)
+
+- `showmore.html` (live snapshot of a `/work/<mbid>` page's own native
+  Annotation section): confirmed the exact DOM shape MusicBrainz renders
+  for a truncated annotation —
+  ```html
+  <div class="annotation">
+    <h2 class="annotation">Annotation</h2>
+    <div class="annotation-body annotation-collapsed">
+      <h2>Official BMI registration</h2>
+      <p><bdi>...</bdi></p>
+    </div>
+    <p><a class="annotation-toggle" href="#">Show more...</a></p>
+    <div class="annotation-details">Annotation last modified by ...</div>
+  </div>
+  ```
+  `annotation-collapsed` is the clamp class; `a.annotation-toggle` is MB's
+  own native "Show more..." link — not previously referenced anywhere in
+  this script (confirmed via grep, zero prior hits).
+- This section lives on **bare entity pages** (`/work/<mbid>`,
+  `/artist/<mbid>`, etc.), which have **no** `pageDefinitions` match — the
+  init block's `if (!pageType || !headerContainer) return;` bailout
+  (`ShowAllEntityData.user.js` ~line 20040) means the script currently does
+  nothing at all on these URLs, even though the `@include` on line 16
+  already covers them. `makeH2sCollapsible()` and the page-level-H2
+  machinery never run there either — not the right hook for this feature.
+- Implemented `autoExpandNativeAnnotation()`, called unconditionally
+  *before* page-type detection (guarded only by the new
+  `sa_enable_annotation_auto_expand` setting), which simply calls
+  `.click()` on every `a.annotation-toggle` found — deferring to MB's own
+  click handler rather than replicating its collapse/expand DOM logic.
