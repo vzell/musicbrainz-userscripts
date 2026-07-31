@@ -35328,18 +35328,23 @@ a { color: #1565c0; }`;
 
         // Does this column's cells carry flag icon(s) the unique-values
         // dropdown should decorate each entry with? Detected by column
-        // header name (suffix match, mirroring _flagRegionColumnTrios' own
-        // convention for this exact column-name family), covering:
-        //   - Country columns ('ountry' suffix): native CSS-sprite
+        // header name, covering:
+        //   - Country columns ('ountry' suffix, e.g. 'Country', 'Begin
+        //     country', 'Release country'): native CSS-sprite
         //     <span class="flag flag-XX">.
-        //   - Locality/Region columns ('ocality'/'egion' suffix):
-        //     third-party "More Flags Everywhere" <span class="area-icon">
-        //     <img></span>.
-        //   - the unsplit Area column ('rea' suffix — 'Area'/'Begin area'/
-        //     'End area', the SOURCE column splitArea/splitLocation operate
-        //     on): can hold BOTH shapes in the same cell (a locality/region
-        //     subdivision icon followed by the country's own flag — see
-        //     debug/with-flag.html), so it needs both scans at once.
+        //   - Locality/Region columns ('ocality'/'egion' suffix): third-party
+        //     "More Flags Everywhere" <span class="area-icon"><img></span>.
+        //   - Unsplit combined columns — the SOURCE columns
+        //     splitArea/splitLocation/splitCountryDate operate on, which
+        //     hold the full "Locality in Region, Country" (or "Release
+        //     events") chain in one cell and so can contain BOTH icon shapes
+        //     together (a locality/region subdivision icon followed by the
+        //     country's own flag — see debug/with-flag.html,
+        //     debug/location-column.html): 'Area'/'Begin area'/'End area'
+        //     ('rea' suffix), plus 'Location'/'Place'/'Release events'
+        //     (exact names — these don't share a common suffix with the
+        //     others, so listed explicitly rather than suffix-matched).
+        const _FLAG_SOURCE_COL_NAMES = new Set(['Location', 'Place', 'Release events']);
         const hasFlagIcons = (() => {
             const headers = table.querySelectorAll('thead tr:first-child th');
             const th = headers[colIndex];
@@ -35347,7 +35352,8 @@ a { color: #1565c0; }`;
             const name = th.dataset.colName ||
                 th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
             return name.endsWith('ountry') || name.endsWith('ocality') ||
-                name.endsWith('egion') || name.endsWith('rea');
+                name.endsWith('egion') || name.endsWith('rea') ||
+                _FLAG_SOURCE_COL_NAMES.has(name);
         })();
 
         /**
@@ -35415,19 +35421,27 @@ a { color: #1565c0; }`;
          * other column type.
          *
          * Two independent flag shapes exist in these columns, and a single
-         * cell can contain either or BOTH (the unsplit "Area"/"Begin area"/
-         * "End area" column shows the full "Locality in Region, Country"
-         * chain in one cell, so it can have a subdivision icon AND the
-         * country's own flag together — see debug/with-flag.html):
-         *   - Native country flag: <span class="flag flag-XX"> — rendered
-         *     exclusively via a CSS background-image sprite, no <img> child.
-         *     This userscript defines no CSS of its own for `.flag`/
-         *     `.flag-XX` — it relies entirely on MusicBrainz's own page
-         *     stylesheet, which the dropdown (parented outside #content, in
-         *     a shrunk font-size context — see getUniqDropEl()) may not
-         *     inherit correctly. resolveFlagVisual()'s getComputedStyle()
-         *     baking (see its JSDoc) bakes the resolved visual as inline
-         *     styles instead of relying on that cascade.
+         * cell can contain either or BOTH (the unsplit combined columns —
+         * "Area"/"Begin area"/"End area", "Location"/"Place", "Release
+         * events" — show the full "Locality in Region, Country" (or
+         * "Release events") chain in one cell, so they can have a
+         * subdivision icon AND the country's own flag together — see
+         * debug/with-flag.html, debug/location-column.html):
+         *   - Native country flag: an element with class "flag"
+         *     (+ a "flag-XX" country-code companion class) rendered
+         *     exclusively via a CSS background-image sprite. Usually a
+         *     <span> wrapping an <a> (e.g. "Country" columns), but MB also
+         *     renders it as e.g. <li class="flag flag-US" title="…"> with
+         *     plain text, no <a> at all (the unsplit "Release events"
+         *     column — see debug/release-events.html), so the scan below
+         *     matches on the class, not a span-specific tag selector. This
+         *     userscript defines no CSS of its own for `.flag`/`.flag-XX` —
+         *     it relies entirely on MusicBrainz's own page stylesheet, which
+         *     the dropdown (parented outside #content, in a shrunk
+         *     font-size context — see getUniqDropEl()) may not inherit
+         *     correctly. resolveFlagVisual()'s getComputedStyle() baking
+         *     (see its JSDoc) bakes the resolved visual as inline styles
+         *     instead of relying on that cascade.
          *   - Third-party subdivision icon: <span class="area-icon"><img
          *     class="flag ..."></span>, injected by "More Flags Everywhere"/
          *     "Canadian Province Flags Everywhere". A self-contained <img>
@@ -35440,13 +35454,17 @@ a { color: #1565c0; }`;
          *     marker: it's exactly what _routeAreaLink() (the
          *     splitArea/splitLocation extractor helper, line ~2507) already
          *     keys off to detect and carry this icon into the reconstructed
-         *     cell in the first place.
+         *     cell in the first place. Note the <img> ALSO carries a "flag"/
+         *     "flag-XX" class of its own, so it would otherwise double-match
+         *     the native-flag selector above — excluded via a
+         *     closest('span.area-icon') check so it's only counted once,
+         *     via its wrapper.
          *
          * cell.querySelectorAll() with both selectors combined returns
          * matches in DOCUMENT ORDER regardless of which part of the
-         * selector list matched them, so a combined Area cell's icons come
-         * out correctly interleaved (locality/region icon(s) first,
-         * country flag last) rather than grouped by shape.
+         * selector list matched them, so a combined cell's icons come out
+         * correctly interleaved (locality/region icon(s) first, country
+         * flag last) rather than grouped by shape.
          *
          * Each icon is stored as an independent node (NOT wrapped in a
          * shared container element) so the per-row insertion code can
@@ -35479,7 +35497,16 @@ a { color: #1565c0; }`;
                 if (!cell) continue;
                 const label = getCleanColumnText(cell);
                 if (!label || !valueCounts.has(label) || iconMap.has(label)) continue;
-                const icons = cell.querySelectorAll('span[class*="flag-"], span.area-icon');
+                // The native country flag isn't always a <span> — MusicBrainz
+                // also renders it as e.g. <li class="flag flag-US" title="…">
+                // (the unsplit "Release events" column — see
+                // debug/release-events.html) — so match on the ".flag" class
+                // itself (any tag), not a span-specific selector. The nested
+                // <img class="flag flag-custom-region"> inside a
+                // "span.area-icon" wrapper also carries a "flag"/"flag-XX"
+                // class and would match too — excluded below via closest()
+                // so it isn't double-counted alongside its wrapper.
+                const icons = cell.querySelectorAll('.flag[class*="flag-"], span.area-icon');
                 if (icons.length === 0) continue;
                 const clones = [];
                 for (const el of icons) {
@@ -35488,9 +35515,11 @@ a { color: #1565c0; }`;
                         clones.push(el.cloneNode(true));
                         continue;
                     }
-                    // Native country flag span — clone it, strip child nodes
-                    // (we only want the CSS flag background, not the link
-                    // text), and bake the resolved visual as inline styles.
+                    if (el.closest('span.area-icon')) continue; // nested <img>, already handled via its wrapper above
+                    // Native country flag element (<span> or <li>) — build a
+                    // fresh <span> clone (we only want the CSS flag
+                    // background, not the original tag/link text), and bake
+                    // the resolved visual as inline styles.
                     const flagClone = document.createElement('span');
                     // Copy the CSS class too (harmless belt-and-suspenders —
                     // inline styles below always win the cascade regardless,

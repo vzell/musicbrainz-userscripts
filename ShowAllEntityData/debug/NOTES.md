@@ -1629,3 +1629,39 @@ falls back to `N/A` like every other empty cell on this page.
   flag's own label, so the entry silently got no icon at all. Fixed by
   keying both maps on the cell's full `getCleanColumnText()` value and
   bundling every flag found in that cell into one wrapper `<span>`.
+- Follow-up: that wrapper `<span style="display:inline-flex">` turned out
+  to be an extra layout context not present in the table cell, and the
+  likely cause of a regression report ("Country flags flat again").
+  Removed it — `flagIconMap`'s values are now plain arrays of
+  already-baked/cloned icon nodes, appended as independent sibling nodes
+  in the dropdown item, matching the original working single-flag
+  structure exactly (just repeated per icon when there's more than one).
+  Also unified `countryFlagMap`/`areaIconMap` into this single
+  `flagIconMap`, since both are now built the same way (key on
+  `getCleanColumnText(cell)`, scan for both icon shapes together).
+- `location-column.html` (single-row raw snippet, user-supplied, from
+  `/artist/<mbid>/events`): the unsplit "Location" column (splitLocation's
+  `sourceColumn`) holds the full "Place in Locality, Region, Country"
+  chain in one cell — same combined-column pattern as the unsplit "Area"
+  column, just under a different source-column name that doesn't share
+  the 'rea'/'ocality'/'egion'/'ountry' suffixes already matched. Confirms
+  `splitLocation`'s other unsplit source-column name, "Place" (used e.g.
+  by report-detail), needs the same treatment even though not directly
+  observed in this snapshot.
+- `release-events.html` (single-row raw snippet, user-supplied, from a
+  label's `/relationships` page): the unsplit "Release events" column
+  (splitCountryDate's `sourceColumn`) renders its native country flag as
+  `<li class="flag flag-US" title="United States (US)">US  2011-02-22</li>`
+  — no `<a>`, no wrapping `<span>` at all, just the "flag"/"flag-XX"
+  classes directly on the `<li>`. This is a genuinely different DOM shape
+  from every other flag occurrence in this script (always a `<span>`
+  before now) and required generalizing the flag-icon dropdown scan from
+  a span-tag selector to a `.flag` class selector (any tag), with an
+  explicit `closest('span.area-icon')` exclusion so the subdivision
+  icon's nested `<img>` (which also carries a `flag`/`flag-XX` class)
+  isn't double-counted alongside its wrapper.
+- Added `'Location'`, `'Place'`, and `'Release events'` as explicit
+  (non-suffix) matches in the flag-icon dropdown feature's column-name
+  detection, alongside the existing `'ountry'`/`'ocality'`/`'egion'`/`'rea'`
+  suffix matches — these three source-column names don't share a common
+  suffix with the others or each other.
