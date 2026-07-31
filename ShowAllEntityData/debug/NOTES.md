@@ -1593,6 +1593,186 @@ falls back to `N/A` like every other empty cell on this page.
   `.click()` on every `a.annotation-toggle` found — deferring to MB's own
   click handler rather than replicating its collapse/expand DOM logic.
 
+## 2026-07-31 — account-applications CSP style-src breakage (branch fix/account-applications-csp-style-src)
+
+- Root cause: MusicBrainz's backend serves `/account/*` pages directly
+  (`server: Plack::Handler::Starlet`) with a `style-src 'self'
+  staticbrainz.org static.metabrainz.org` CSP (no `unsafe-inline`), unlike
+  general content pages (`/artist/...`, `/release-group/...`) which are
+  served via an edge layer (`server: openresty`) with **no** CSP header at
+  all (verified via `curl -I`). Confirmed via a live browser console error
+  pasted by the user: "Applying inline style violates... style-src...".
+- Two independent CSS-injection patterns are both CSP-vulnerable and both
+  found in use:
+  1. `document.createElement('style')` + `document.head.appendChild()` for
+     shared stylesheets — 9 sites in `ShowAllEntityData.user.js` (sticky
+     headers, main toolbar chrome, dialog hover states, sidebar toggle,
+     relationships-icon column, edit-diff table colors, Unicode picker),
+     all converted to `GM_addStyle()` (WIP.1). Two more sites in
+     `VZ_MBLibrary.user.js` (`resizingStyleEl` cursor-lock helper, used
+     twice) converted the same way.
+  2. `container.innerHTML = \`...style="..."...\`` — inline `style=`
+     attributes embedded in HTML-template strings are *also* covered by
+     CSP `style-src` (confirmed by the browser's own violation wording:
+     "hashes do not apply to event handlers, style attributes..."). Found
+     in `VZ_MBLibrary.user.js`'s settings dialog (`showModal`, ~50
+     attributes across the shell + all per-row setting-type widgets:
+     checkbox/number/text/color-picker/popup-dialog sub-fields/keyboard-
+     shortcut capture/function+table buttons) and its changelog viewer
+     (`show`, ~25 attributes) — both fixed by moving styling to
+     `GM_addStyle()`-injected stylesheets keyed by id/class (WIP.2). Also
+     found and fixed one `onfocus`/`onblur` inline-event-handler pair in
+     the changelog search box (replaced with a CSS `:focus` rule — inline
+     event-handler attributes are restricted the same way, under
+     `script-src`, and we don't have the page's per-load nonce).
+  3. `Object.assign(el.style, {...})` and `el.style.property = value` (JS
+     CSSOM property mutation, as opposed to parsing an HTML `style=`
+     attribute or `<style>` element) is **not** restricted by CSP — this is
+     the pattern already used correctly for `showCustomDialog`/
+     `showCustomConfirm` (the generic alert/confirm popup) and for the
+     settings-row containers' own layout, and is why those already worked
+     before this fix.
+- **ALL FIXED (2026-07-31, WIP.9 — see below).** The full inventory of
+  `innerHTML`-embedded `style="..."` attributes across
+  `ShowAllEntityData.user.js` is now 0 (down from the original ~260 found
+  at the start of this investigation); every remaining `style="` match in
+  the file is inside a JSDoc/line comment describing markup, not live code
+  (confirmed by grep). Fix history:
+  **Fixed (2026-07-31, WIP.3):** `createFilterHistoryWidget` (11
+  attributes — hit on initial /account/applications page load via console
+  errors even though nothing was visibly broken yet, since its dropdown
+  panel stays `display:none` until the "History ▼" button is clicked;
+  fixed via a new shared, id-guarded `_ensureFilterHistoryWidgetStyle()`
+  stylesheet with classes `.mb-fhw-badge*`, `.mb-fhw-mark`,
+  `.mb-fhw-lru-label`, `.mb-fhw-hist-row`, `.mb-fhw-hist-label`,
+  `.mb-fhw-glyphs`, `.mb-fhw-empty`) and one missed leftover in
+  `initSaUnicodeCharsFeature` (a separate inline `style="text-align:right"`
+  on the picker's Close row, not part of the `<style>` block WIP.1
+  converted).
+  **Fixed (2026-07-31, WIP.4):** `showLoadFilterDialog` (49 attributes,
+  including its `countFilteredRows`/nested-helper markup which the earlier
+  grep-by-function pass mis-attributed as a separate top-level function —
+  it's actually declared inside `showLoadFilterDialog`) — the "Load from
+  Disk" dialog, confirmed via the user's screenshot: fully unstyled/stacked
+  layout on the very first dialog open. Its own `_histGlyphs`/
+  `_histHighlight`/`_renderHistSection` duplicate of
+  `createFilterHistoryWidget`'s history-dropdown code was rewired to reuse
+  the exact same `.mb-fhw-*` classes (renamed its local `sa-hist-row` class
+  to `mb-fhw-hist-row` throughout); the dialog shell got its own dedicated
+  `sa-load-dialog-style` stylesheet (id-guarded, injected once — safe since
+  its few interpolated dynamic values only change via a settings save,
+  which reloads the page).
+  **Fixed (2026-07-31, WIP.5):** `buildMetaBlockHTML` (10 attributes — the
+  "File Metadata" table shared by both the Save and Load dialogs; fixed via
+  a new shared, id-guarded `_ensureMetaBlockStyle()` stylesheet with
+  classes `.sa-meta-*`, including `.sa-meta-mode-badge` +
+  `.sa-meta-mode-{multi,single}` modifier classes replacing the old
+  `${modeColor}`-interpolated inline style — the mode is one of exactly two
+  values so this needed no genuinely-dynamic CSS) and `showSaveDialog` (13
+  attributes — the "Save Table Data" dialog shell, confirmed broken via the
+  user's screenshot; same `sa-save-shell-style` id-guarded, injected-once
+  pattern as `showLoadFilterDialog`'s shell, since its dynamic values are
+  also settings-only).
+  **Fixed (2026-07-31, WIP.6):** `showStatsPanel` (46 attributes, the
+  biggest single-function fix so far — ~1570-line function). Almost every
+  occurrence interpolated one of a handful of colors from the panel's own
+  fixed, hardcoded palette object `C` (`C.accent`/`C.alert`/`C.muted`/etc,
+  defined once near the top of the function, never settings-driven), so
+  these collapsed cleanly into ~20 reusable `.sa-stats-*` classes
+  (`_ensureStatsPanelStyle()`) instead of needing per-instance dynamic CSS
+  — e.g. `.sa-stats-accent-600`/`.sa-stats-accent-700` for the two
+  color+weight combos actually used, `.sa-stats-bbb`/`.sa-stats-faint`/
+  `.sa-stats-muted-999` for the various "empty/placeholder" greys. One
+  genuinely conditional case (`_sc`, picking `C.accent`/`C.alert`/
+  `C.muted` based on a column's sort direction ▲/▼/none) was changed from
+  computing a *color* to computing a *class name* (`_scClass`) instead —
+  same pattern to reach for whenever a small, enumerable set of dynamic
+  values feeds into what would otherwise be an inline style.
+  **Fixed (2026-07-31, WIP.7):** `showExportDialog` (15 attributes) — the
+  generic export dialog (CSV/etc "Save Data" flow, distinct from
+  `showSaveDialog`'s full-table-serialization dialog); virtually identical
+  shell to `showSaveDialog`/`showLoadFilterDialog`, same
+  dedicated-id-guarded-injected-once `sa-export-shell-style` stylesheet
+  pattern.
+  **Fixed (2026-07-31, WIP.8):** `showEditPersistentListDialog` (49
+  attributes — the biggest remaining function) — the "Edit Pinned Filter
+  List" table-editor dialog (opened from the ✎ Edit Pinned Filter List
+  button inside the filter-history dropdown). Its per-row rendering
+  (`_eplRender`) computed a dynamic `rowStyle` string from 3 discrete
+  selection states (selected/marked/neither) — same pattern as
+  `showStatsPanel`'s sort-direction case — converted to a base
+  `.sa-epl-row` class plus `.sa-epl-row-sel`/`.sa-epl-row-mrk` modifier
+  classes (`rowClass` computed instead of `rowStyle`). The later
+  `tr.style.background =`/`tr.style.outline =` JS property-assignment
+  calls in `_eplSelectRow`/`_toggleMark` (already CSP-safe) are unaffected
+  since inline styles still override classes — dynamic re-selection after
+  initial render behaves identically to before. Also reused the shared
+  `.mb-fhw-mark` class for its quick-filter highlight instead of yet
+  another one-off `<mark style="...">` duplicate.
+  **Fixed (2026-07-31, WIP.9 — final cleanup pass, closes this
+  investigation):** all remaining small/scattered functions in one pass,
+  since the user confirmed everything tested so far looked correct and
+  asked to finish the rest rather than continue waiting for individual
+  bug reports: `showRenderDecisionDialog` (7, the "Large Dataset Fetched"
+  Save/Render/Cancel decision dialog), `showCtrlMTooltip` (5, the Ctrl+M
+  shortcuts tooltip — one genuinely conditional case, `_ccColor`, changed
+  to `_ccClass` following the now-established color→class pattern),
+  `_saveSettingsConfig` (5, its own hand-built metadata block — reused
+  the existing `.sa-meta-*` classes directly instead of duplicating them),
+  `_relBuildTooltipHTML` (5, relationship-cell rich tooltips),
+  `makeCollapseExpandBtnHTML` (3, the shared ▶/▼ collapse-toggle button
+  label used all over the script), plus one-two-attribute sites in
+  `showAppHelp`'s error fallback, `toggleAutoResizeColumns`'s and
+  `renderRowsChunked`'s progress overlays, `makeButtonHTML` (mnemonic
+  underline → `<u>` tag), `_mbttLabel`/`_mbttColName`/`_mbttCount` (rich
+  hover-tooltip spans — colors read from `Lib.settings`, safe to
+  cache as CSS classes since a settings change always reloads the page),
+  and `ergInjectReleaseGroupButton`/`ergInjectReleaseButton` (identical
+  "Error loading release(-group)" messages, deduplicated into one shared
+  `.sa-erg-error` class). Verified 0 remaining `style="..."` attributes in
+  live code file-wide (every remaining match is inside a comment) and that
+  every class referenced via `class="..."` has a matching `GM_addStyle()`
+  definition (cross-checked by script, not just visual inspection).
+  User decided (2026-07-31) to fix these incrementally as each is found
+  broken during further pageType testing, rather than blind-editing all
+  ~260 in one pass with no way to visually verify each — then, once
+  everything tested so far was confirmed working, asked to finish the
+  remaining small functions in one final pass (WIP.9 above). Recurring
+  pattern used throughout, for future reference: `[id="..."]`/class +
+  `GM_addStyle()`-injected, id-guarded stylesheet, called idempotently
+  either once per page load (fully static content) or once per dialog
+  instance (content depends on values that only change via a settings
+  save, which always reloads the page); for genuinely per-instance
+  dynamic values (like the changelog viewer's nesting-depth-based
+  color/font-size, or a row's selected/marked/sort-direction state), reach
+  for a small fixed set of modifier classes and compute a *class name*
+  instead of a *style/color value*.
+
+## 2026-07-31 — Ctrl+M shortcuts tooltip never showing on /account/applications (WIP.10, non-CSP)
+
+- Separate, unrelated bug found while verifying the CSP fixes above:
+  pressing Ctrl+M on `/account/applications` produced zero visible
+  tooltip (no console errors — genuinely never triggered). Root cause:
+  `showCtrlMTooltip()` (`ShowAllEntityData.user.js`, ~line 9529) had
+  `const contentDiv = document.getElementById('content'); ... if
+  (!contentDiv) return;` right after building the tooltip's own
+  `GM_addStyle()` stylesheet — this page type has no `div#content` (a
+  flat `div#page` layout, same fact noted throughout this file's earlier
+  `account-applications` entry), so the function returned before ever
+  creating `ctrlMTooltipElement`. `contentDiv`/`sidebarDiv` were only
+  actually needed later, for positioning the tooltip in the upper-right
+  of `#content` without overlapping the sidebar — not for building the
+  tooltip's content at all. Fixed by removing the early bailout and
+  adding a `contentDiv`-absent branch in the positioning `setTimeout`
+  that anchors the tooltip to the viewport's top-right corner instead.
+- Also noted mid-session: the git working directory was switched to an
+  unrelated branch (`fix/dropdown-flag-flat`, flag-icon dropdown
+  decoration work) partway through this investigation, which is why
+  `MB_PageEnhancer.user.js`'s `@grant GM_addStyle` and this file's own
+  WIP changelog briefly appeared to have reverted — they hadn't; that
+  branch simply never had this branch's commits. No actual regression;
+  resolved by switching back to `fix/account-applications-csp-style-src`
+  (working tree was clean, so the switch was lossless).
 ## 2026-07-31 — Country/Locality/Region flag icon in the unique-values dropdown (branch fix/dropdown-flag-flat)
 
 - `with-flag.html` (raw MB markup, Canada example): confirmed the native

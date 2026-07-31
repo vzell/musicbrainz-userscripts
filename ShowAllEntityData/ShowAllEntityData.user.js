@@ -12,7 +12,7 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=musicbrainz.org
 // @require      https://cdn.jsdelivr.net/npm/@jaames/iro@5
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
-// @require      https://raw.githubusercontent.com/vzell/mb-userscripts/master/lib/VZ_MBLibrary.user.js
+// @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits)(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)(?:\?.*)?|account\/applications(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections(?:\?.*)?|election\/.*|genres(?:\?.*)?|cdstub\/.*|doc\/Edit_Types(?:\?.*)?|instruments(?:\?.*)?|privileged(?:\?.*)?)$/
@@ -24,6 +24,7 @@
 // @connect      *.archive.org
 // @connect      *
 // @grant        GM_xmlhttpRequest
+// @grant        GM_addStyle
 // @grant        GM_info
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -5761,15 +5762,14 @@
      */
     function _ensureDetableifyStyle() {
         if (document.getElementById('mb-detableify-style')) return;
-        const style = document.createElement('style');
-        style.id = 'mb-detableify-style';
         const diffColorsEnabled = Lib.settings.sa_enable_edits_diff_colors !== false;
         const diffNewColor = Lib.settings.sa_edits_color_diff_new || '#e4fbe4';
         const diffOldColor = Lib.settings.sa_edits_color_diff_old || '#fbe3e4';
         const zebraOdd  = Lib.settings.sa_edits_color_zebra_odd  || '#ffffff';
         const zebraEven = Lib.settings.sa_edits_color_zebra_even || '#f2f2f2';
         const rowHoverBg = Lib.settings.sa_ui_row_hover_bg || '#c2d2e9';
-        style.textContent = `
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
             .mb-dt-table {
                 border-collapse: collapse;
                 margin: 4px 0;
@@ -5798,8 +5798,8 @@
             tr:hover .mb-dt-table .mb-dt-cell {
                 background: ${rowHoverBg} !important;
             }
-        `;
-        document.head.appendChild(style);
+        `);
+        style.id = 'mb-detableify-style';
     }
 
     /**
@@ -9540,12 +9540,27 @@
             return; // Tooltip disabled in settings or Lib not available
         }
 
+        // GM_addStyle so this tooltip's CSS is exempt from page CSP style-src
+        // restrictions (see other dialogs' identical treatment). Fully
+        // static — safe to inject once, idempotent.
+        if (!document.getElementById('sa-ctrlm-tooltip-style')) {
+            const ctrlMStyle = GM_addStyle(`
+                .sa-ctrlm-indent { margin-left: 4px; }
+                .sa-ctrlm-more { margin-left: 4px; font-size: 0.9em; color: #666; }
+                .sa-ctrlm-col-active { color: #006600; }
+                .sa-ctrlm-col-inactive { color: #999999; }
+            `);
+            ctrlMStyle.id = 'sa-ctrlm-tooltip-style';
+        }
+
         // Remove existing tooltip if any
         hideCtrlMTooltip();
 
         const contentDiv = document.getElementById('content');
         const sidebarDiv = document.getElementById('sidebar');
-        if (!contentDiv) return;
+        // Some page types (e.g. /account/applications) have no div#content —
+        // only the positioning below depends on it, so don't bail out of the
+        // whole tooltip; fall back to viewport-relative positioning instead.
 
         // Create tooltip element
         ctrlMTooltipElement = document.createElement('div');
@@ -9572,10 +9587,10 @@
             for (let i = 0; i < Math.min(actionButtons.length, 9); i++) {
                 const key = buttonKeys[i];
                 const text = actionButtons[i].textContent.trim().substring(0, 20);
-                tooltipHTML += `<div style="margin-left: 4px;"><strong>${key}</strong>: ${text}${actionButtons[i].textContent.trim().length > 20 ? '...' : ''}</div>`;
+                tooltipHTML += `<div class="sa-ctrlm-indent"><strong>${key}</strong>: ${text}${actionButtons[i].textContent.trim().length > 20 ? '...' : ''}</div>`;
             }
             if (actionButtons.length > 9) {
-                tooltipHTML += `<div style="margin-left: 4px; font-size: 0.9em; color: #666;">+ ${actionButtons.length - 9} more (a-${String.fromCharCode(97 + Math.min(actionButtons.length - 10, 25))})</div>`;
+                tooltipHTML += `<div class="sa-ctrlm-more">+ ${actionButtons.length - 9} more (a-${String.fromCharCode(97 + Math.min(actionButtons.length - 10, 25))})</div>`;
             }
             tooltipHTML += '<br/>';
         }
@@ -9591,28 +9606,29 @@
         // Regular function shortcuts
         tooltipHTML += '<strong>Functions:</strong><br/>';
         for (const [key, entry] of _regularEntries) {
-            tooltipHTML += `<div style="margin-left: 4px;"><strong>${key}</strong>: ${entry.description}</div>`;
+            tooltipHTML += `<div class="sa-ctrlm-indent"><strong>${key}</strong>: ${entry.description}</div>`;
         }
 
         // Column-context shortcuts (o/q/a) — shown separately with focus status
         if (_colCtxEntries.length > 0) {
-            const _ccColor  = _colFilterFocused ? '#006600' : '#999999';
+            const _ccClass  = _colFilterFocused ? 'sa-ctrlm-col-active' : 'sa-ctrlm-col-inactive';
             const _ccStatus = _colFilterFocused ? '✓ col filter active' : '⚠ focus col filter first';
-            tooltipHTML += `<br/><strong style="color:${_ccColor}">Col-filter context (${_ccStatus}):</strong><br/>`;
+            tooltipHTML += `<br/><strong class="${_ccClass}">Col-filter context (${_ccStatus}):</strong><br/>`;
             for (const [key, entry] of _colCtxEntries) {
-                tooltipHTML += `<div style="margin-left: 4px; color:${_ccColor};"><strong>${key}</strong>: ${entry.description}</div>`;
+                tooltipHTML += `<div class="sa-ctrlm-indent ${_ccClass}"><strong>${key}</strong>: ${entry.description}</div>`;
             }
         }
 
         ctrlMTooltipElement.innerHTML = tooltipHTML;
         document.body.appendChild(ctrlMTooltipElement);
 
-        // Position in upper right of content div, not overlapping sidebar
+        // Position in upper right of content div, not overlapping sidebar.
+        // Falls back to viewport-relative positioning on page types with no
+        // div#content (e.g. /account/applications).
         setTimeout(() => {
-            if (contentDiv && sidebarDiv) {
+            const tooltipRect = ctrlMTooltipElement.getBoundingClientRect();
+            if (contentDiv) {
                 const contentRect = contentDiv.getBoundingClientRect();
-                const sidebarRect = sidebarDiv.getBoundingClientRect();
-                const tooltipRect = ctrlMTooltipElement.getBoundingClientRect();
 
                 // Position in upper right, respecting sidebar
                 let left = Math.min(contentRect.right - tooltipRect.width - 10, window.innerWidth - tooltipRect.width - 10);
@@ -9620,11 +9636,17 @@
 
                 if (sidebarDiv) {
                     // Ensure doesn't overlap sidebar
+                    const sidebarRect = sidebarDiv.getBoundingClientRect();
                     left = Math.min(left, sidebarRect.left - tooltipRect.width - 10);
                 }
 
                 ctrlMTooltipElement.style.left = left + 'px';
                 ctrlMTooltipElement.style.top = (contentRect.top + 10) + 'px';
+            } else {
+                // No div#content on this page type — anchor to the viewport's
+                // upper right instead.
+                ctrlMTooltipElement.style.left = (window.innerWidth - tooltipRect.width - 20) + 'px';
+                ctrlMTooltipElement.style.top = '20px';
             }
         }, 0);
     }
@@ -10037,9 +10059,8 @@
             return;
         }
 
-        const style = document.createElement('style');
-        style.id = 'mb-sticky-headers-style';
-        style.textContent = `
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
             /* Ensure the table borders play nicely with sticky elements */
             table.tbl {
                 border-collapse: separate;
@@ -10095,9 +10116,8 @@
                 word-break:    normal  !important;
             }
 
-        `;
-
-        document.head.appendChild(style);
+        `);
+        style.id = 'mb-sticky-headers-style';
         Lib.debug('ui', 'Sticky headers enabled - column headers will remain visible while scrolling');
     }
 
@@ -11180,15 +11200,23 @@
         // of a single-line inline-block button whose line-height is ~1.4.
         // The outer button carries display:inline-flex; align-items:center; gap:4px
         // which is still required for the two-column layout to render correctly.
+        //
+        // GM_addStyle so this widely-reused button label's CSS is exempt from
+        // page CSP style-src restrictions. Fully static, safe to inject once.
+        if (!document.getElementById('sa-collapse-btn-style')) {
+            const cebStyle = GM_addStyle(`
+                .sa-ceb-arrow { align-self:center; font-size:1em; }
+                .sa-ceb-col { display:flex; flex-direction:column; align-items:center; line-height:1; font-size:0.72em; }
+            `);
+            cebStyle.id = 'sa-collapse-btn-style';
+        }
         const arrow  = expand ? '▶' : '▼';
         const action = expand ? 'Expand' : 'Collapse';
-        return `<span style="align-self:center;font-size:1em;">${arrow}</span>` +
-            `<span style="display:flex;flex-direction:column;align-items:center;` +
-            `line-height:1;font-size:0.72em;">` +
+        return `<span class="sa-ceb-arrow">${arrow}</span>` +
+            `<span class="sa-ceb-col">` +
             `<span>${action}</span>` +
             `<span>all</span></span>` +
-            `<span style="display:flex;flex-direction:column;align-items:center;` +
-            `line-height:1;font-size:0.72em;"><span>multi-row</span>` +
+            `<span class="sa-ceb-col"><span>multi-row</span>` +
             `<span>cells</span></span>`;
     }
 
@@ -13631,7 +13659,7 @@ ${sections.join('\n')}
 
         const isFiltered   = rowsTotal > rowsExported;
         const rowSummary   = isFiltered
-            ? `<strong>${rowsExported.toLocaleString()}</strong> of ${rowsTotal.toLocaleString()} rows <span style="color:#888;font-size:0.9em;">(${rowsTotal - rowsExported} filtered out)</span>`
+            ? `<strong>${rowsExported.toLocaleString()}</strong> of ${rowsTotal.toLocaleString()} rows <span class="sa-ed-filtered-note">(${rowsTotal - rowsExported} filtered out)</span>`
             : `<strong>${rowsExported.toLocaleString()}</strong> rows`;
 
         const dialog = document.createElement('div');
@@ -13654,27 +13682,49 @@ ${sections.join('\n')}
             'box-sizing:border-box',
         ].join(';');
 
+        // GM_addStyle so this dialog shell's CSS is exempt from page CSP
+        // style-src restrictions (see showSaveDialog's identical treatment).
+        // Idempotent — headerFontSz/statusFontSz only change via a settings
+        // save, which reloads the page.
+        if (!document.getElementById('sa-export-shell-style')) {
+            const shellStyle = GM_addStyle(`
+                #sa-ed-drag-handle { margin-bottom:18px; border-bottom:1px solid #eee; padding-bottom:12px; cursor:move; user-select:none; }
+                #sa-ed-title { margin:0; color:#222; font-size:1.2em; }
+                #sa-ed-description { margin:8px 0 0; color:#555; font-size:${headerFontSz}; }
+                #sa-ed-row-summary { margin:6px 0 0; color:#666; font-size:0.9em; }
+                .sa-ed-filtered-note { color:#888; font-size:0.9em; }
+                #sa-ed-meta-block { margin-bottom:16px; border:1px solid #eee; border-radius:6px; padding:10px 14px; background:#fafafa; }
+                #sa-ed-filename-row { margin-bottom:14px; }
+                #sa-ed-filename-label { display:block; font-size:0.88em; font-weight:600; color:#444; margin-bottom:5px; }
+                #sa-ed-filename-input { width:100%; box-sizing:border-box; padding:8px 10px; border:1px solid #ccc; border-radius:6px; font-size:0.9em; font-family:monospace; outline:none; }
+                #sa-ed-btn-row { display:flex; gap:12px; margin-bottom:8px; }
+                #sa-ed-save-confirm { flex:2; padding:10px; background:#4CAF50; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                #sa-ed-cancel { flex:1; padding:10px; background:#f0f0f0; color:#333; border:1px solid #ccc; border-radius:6px; cursor:pointer; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                #sa-ed-status { display:none; padding:5px 2px; font-size:${statusFontSz}; min-height:20px; }
+            `);
+            shellStyle.id = 'sa-export-shell-style';
+        }
+
         dialog.innerHTML = `
-            <div id="sa-ed-drag-handle" style="margin-bottom:18px;border-bottom:1px solid #eee;padding-bottom:12px;cursor:move;user-select:none;">
-                <h3 style="margin:0;color:#222;font-size:1.2em;">&#128229; ${customTitle ? String(customTitle).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : `Export Table Data &mdash; ${format}`}</h3>
-                <p style="margin:8px 0 0;color:#555;font-size:${headerFontSz};">${description}</p>
-                <p style="margin:6px 0 0;color:#666;font-size:0.9em;">Exporting ${rowSummary}. Review the metadata below, optionally edit the filename, then click <strong>Save Data</strong>.</p>
+            <div id="sa-ed-drag-handle">
+                <h3 id="sa-ed-title">&#128229; ${customTitle ? String(customTitle).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : `Export Table Data &mdash; ${format}`}</h3>
+                <p id="sa-ed-description">${description}</p>
+                <p id="sa-ed-row-summary">Exporting ${rowSummary}. Review the metadata below, optionally edit the filename, then click <strong>Save Data</strong>.</p>
             </div>
-            <div id="sa-ed-meta-block" style="margin-bottom:16px;border:1px solid #eee;border-radius:6px;padding:10px 14px;background:#fafafa;">
+            <div id="sa-ed-meta-block">
                 ${buildMetaBlockHTML(metaData, rowsExported, null)}
             </div>
-            <div style="margin-bottom:14px;">
-                <label for="sa-ed-filename-input" style="display:block;font-size:0.88em;font-weight:600;color:#444;margin-bottom:5px;">&#128462; Filename</label>
-                <input id="sa-ed-filename-input" type="text" value=""
-                    style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:0.9em;font-family:monospace;outline:none;">
+            <div id="sa-ed-filename-row">
+                <label for="sa-ed-filename-input" id="sa-ed-filename-label">&#128462; Filename</label>
+                <input id="sa-ed-filename-input" type="text" value="">
             </div>
-            <div style="display:flex;gap:12px;margin-bottom:8px;">
-                <button id="sa-ed-save-confirm" style="flex:2;padding:10px;background:#4CAF50;color:white;border:none;border-radius:6px;font-weight:bold;cursor:pointer;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">
-                    <span>&#128229; <span style="text-decoration:underline">S</span>ave Data</span>
+            <div id="sa-ed-btn-row">
+                <button id="sa-ed-save-confirm">
+                    <span>&#128229; <u>S</u>ave Data</span>
                 </button>
-                <button id="sa-ed-cancel" style="flex:1;padding:10px;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:6px;cursor:pointer;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">Cancel</button>
+                <button id="sa-ed-cancel">Cancel</button>
             </div>
-            <div id="sa-ed-status" style="display:none;padding:5px 2px;font-size:${statusFontSz};min-height:20px;"></div>
+            <div id="sa-ed-status"></div>
         `;
 
         document.body.appendChild(dialog);
@@ -13701,9 +13751,8 @@ ${sections.join('\n')}
         // ── Hover styles ──────────────────────────────────────────────────────
         const styleId = 'sa-export-dialog-styles';
         if (!document.getElementById(styleId)) {
-            const s = document.createElement('style');
-            s.id = styleId;
-            s.textContent = `
+            // GM_addStyle so this is exempt from page CSP style-src restrictions.
+            const s = GM_addStyle(`
                 #sa-ed-save-confirm:hover:not([disabled]) { background:#45a049 !important; }
                 #sa-ed-cancel:hover                        { background:#e0e0e0 !important; }
                 #sa-ed-save-confirm:active:not([disabled]),
@@ -13711,8 +13760,8 @@ ${sections.join('\n')}
                     transform: translateY(1px);
                     box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
                 }
-            `;
-            document.head.appendChild(s);
+            `);
+            s.id = styleId;
         }
 
         // ── Refs ──────────────────────────────────────────────────────────────
@@ -13787,7 +13836,7 @@ ${sections.join('\n')}
             statusDiv.innerHTML     = `\u2705 Download initiated for <em>"${chosenFilename}"</em>. Monitor your browser for the file.`;
             statusDiv.style.color   = '#2e7d32';
             statusDiv.style.display = 'block';
-            saveBtn.innerHTML  = '&#128229; <span style="text-decoration:underline">S</span>ave Data';
+            saveBtn.innerHTML  = '&#128229; <u>S</u>ave Data';
             saveBtn.disabled   = false; saveBtn.style.opacity = '';
 
             // Parse the setting robustly: GM storage returns strings, not numbers.
@@ -14089,7 +14138,7 @@ ${sections.join('\n')}
             label = text;
         } else {
             label = text.slice(0, idx) +
-                '<span style="text-decoration:underline">' + underlineChar + '</span>' +
+                '<u>' + underlineChar + '</u>' +
                 text.slice(idx + underlineChar.length);
         }
         const content = icon ? icon + ' ' + label : label;
@@ -14290,7 +14339,73 @@ ${sections.join('\n')}
      *   saveToLru:       Function,           – call to push current query+state to LRU
      * }}
      */
+    /**
+     * Lazily injects the shared, id-guarded stylesheet for
+     * {@link createFilterHistoryWidget}'s history-row markup (badges, mark
+     * highlight, history rows). Uses GM_addStyle (not a plain
+     * document.createElement('style') + head.appendChild) so it is exempt
+     * from page CSP style-src restrictions — MusicBrainz's account/* pages
+     * block plain inline stylesheets. Classes here are generic (not scoped
+     * per filter-input instance), so this only needs to run once for the
+     * whole page regardless of how many filter inputs get a history widget.
+     */
+    function _ensureFilterHistoryWidgetStyle() {
+        if (document.getElementById('mb-fhw-style')) return;
+        const style = GM_addStyle(`
+            .mb-fhw-badge {
+                font-size: 0.78em;
+                font-weight: 700;
+                border-radius: 2px;
+                padding: 0 2px;
+            }
+            .mb-fhw-badge-cs { color: #1976D2; border: 1px solid #1976D2; }
+            .mb-fhw-badge-re { color: #7B1FA2; border: 1px solid #7B1FA2; }
+            .mb-fhw-badge-ex { color: #c62828; border: 1px solid #c62828; }
+            .mb-fhw-mark {
+                background: #fff176;
+                padding: 0;
+            }
+            .mb-fhw-lru-label {
+                font-size: 0.76em;
+                font-weight: 700;
+                color: #1565c0;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+            }
+            .mb-fhw-hist-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 6px 10px;
+                cursor: pointer;
+                font-size: 0.9em;
+                border-bottom: 1px dotted #eee;
+                gap: 6px;
+            }
+            .mb-fhw-hist-label {
+                flex: 1;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .mb-fhw-glyphs {
+                flex-shrink: 0;
+                display: flex;
+                gap: 3px;
+                align-items: center;
+            }
+            .mb-fhw-empty {
+                padding: 8px 10px;
+                color: #aaa;
+                font-size: 0.85em;
+                text-align: center;
+            }
+        `);
+        style.id = 'mb-fhw-style';
+    }
+
     function createFilterHistoryWidget(cfg) {
+        _ensureFilterHistoryWidgetStyle();
         const { filterInput, caseCheckbox, rxCheckbox, exCheckbox, onApply } = cfg;
         const getQuery  = cfg.getQuery  || (() => filterInput.value.trim());
         const setQuery  = cfg.setQuery  || ((q) => { filterInput.value = q; });
@@ -14315,9 +14430,9 @@ ${sections.join('\n')}
 
         const _histGlyphs = (e) => {
             const parts = [];
-            if (e.useCase)    parts.push('<span title="Case Sensitive" style="color:#1976D2;font-size:0.78em;font-weight:700;border:1px solid #1976D2;border-radius:2px;padding:0 2px;">Cs</span>');
-            if (e.useRegex)   parts.push('<span title="Regular Expression" style="color:#7B1FA2;font-size:0.78em;font-weight:700;border:1px solid #7B1FA2;border-radius:2px;padding:0 2px;">Re</span>');
-            if (e.useExclude) parts.push('<span title="Exclude Matches" style="color:#c62828;font-size:0.78em;font-weight:700;border:1px solid #c62828;border-radius:2px;padding:0 2px;">Ex</span>');
+            if (e.useCase)    parts.push('<span title="Case Sensitive" class="mb-fhw-badge mb-fhw-badge-cs">Cs</span>');
+            if (e.useRegex)   parts.push('<span title="Regular Expression" class="mb-fhw-badge mb-fhw-badge-re">Re</span>');
+            if (e.useExclude) parts.push('<span title="Exclude Matches" class="mb-fhw-badge mb-fhw-badge-ex">Ex</span>');
             return parts.length ? '&nbsp;' + parts.join('&nbsp;') : '';
         };
 
@@ -14326,7 +14441,7 @@ ${sections.join('\n')}
             const idx = haystack.toLowerCase().indexOf(needle.toLowerCase());
             if (idx < 0) return haystack;
             return haystack.slice(0, idx) +
-                `<mark style="background:#fff176;padding:0;">${haystack.slice(idx, idx + needle.length)}</mark>` +
+                `<mark class="mb-fhw-mark">${haystack.slice(idx, idx + needle.length)}</mark>` +
                 haystack.slice(idx + needle.length);
         };
 
@@ -14352,7 +14467,7 @@ ${sections.join('\n')}
         const toggleBtn = document.createElement('button');
         toggleBtn.type = 'button';
         toggleBtn.title = 'Show/hide filter history (Alt+H)';
-        toggleBtn.innerHTML = '&#128337; <span style="text-decoration:underline">H</span>istory &#9660;';
+        toggleBtn.innerHTML = '&#128337; <u>H</u>istory &#9660;';
         toggleBtn.style.cssText = 'padding:0 8px; background:#f0f0f0; border:1px solid #ccc; border-radius:6px; cursor:pointer; font-size:0.85em; white-space:nowrap; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; height:24px; box-sizing:border-box;';
 
         // ── DOM: Dropdown panel ───────────────────────────────────────────────────
@@ -14387,7 +14502,7 @@ ${sections.join('\n')}
         const pinHeaderEditBtn = document.createElement('button');
         pinHeaderEditBtn.type = 'button';
         pinHeaderEditBtn.title = 'Edit the persistent pinned filter list (Alt+E)';
-        pinHeaderEditBtn.innerHTML = '&#9998; <span style="text-decoration:underline">E</span>dit Pinned Filter List';
+        pinHeaderEditBtn.innerHTML = '&#9998; <u>E</u>dit Pinned Filter List';
         pinHeaderEditBtn.style.cssText = 'padding:2px 7px;background:#fff8e1;border:1px solid #ffe082;border-radius:5px;cursor:pointer;font-size:0.76em;font-weight:600;color:#e65100;white-space:nowrap;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;line-height:1.6;';
         pinHeader.appendChild(pinHeaderLabel);
         pinHeader.appendChild(pinHeaderEditBtn);
@@ -14404,7 +14519,7 @@ ${sections.join('\n')}
         // LRU section header
         const lruHeader = document.createElement('div');
         lruHeader.style.cssText = 'padding:4px 8px 2px; background:#e3f2fd; border-bottom:1px solid #bbdefb;';
-        lruHeader.innerHTML = '<span style="font-size:0.76em;font-weight:700;color:#1565c0;text-transform:uppercase;letter-spacing:0.04em;">&#128337; Recent (LRU)</span>';
+        lruHeader.innerHTML = '<span class="mb-fhw-lru-label">&#128337; Recent (LRU)</span>';
 
         const lruList   = document.createElement('div');
         lruList.style.cssText = `max-height:${histDropdownPx}px; overflow-y:auto;`;
@@ -14437,12 +14552,11 @@ ${sections.join('\n')}
                 const esc   = e.query.replace(/&/g, '&amp;').replace(/</g, '&lt;');
                 const label = _histHighlight(esc, esc_qf);
                 const glyphs = _histGlyphs(e);
-                return `<div class="mb-fhw-hist-row" data-idx="${i}" data-list="${listId}"
-                    style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;cursor:pointer;font-size:0.9em;border-bottom:1px dotted #eee;gap:6px;">
-                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${label}</span>
-                    <span style="flex-shrink:0;display:flex;gap:3px;align-items:center;">${glyphs}</span>
+                return `<div class="mb-fhw-hist-row" data-idx="${i}" data-list="${listId}">
+                    <span class="mb-fhw-hist-label">${label}</span>
+                    <span class="mb-fhw-glyphs">${glyphs}</span>
                 </div>`;
-            }).join('') || `<div style="padding:8px 10px;color:#aaa;font-size:0.85em;text-align:center;">No matching entries</div>`;
+            }).join('') || `<div class="mb-fhw-empty">No matching entries</div>`;
 
             container.querySelectorAll('.mb-fhw-hist-row').forEach(row => {
                 row.addEventListener('mouseenter', () => {
@@ -15488,8 +15602,17 @@ ${sections.join('\n')}
                 // Both fetch and cache failed — show error with Retry button
                 const errEl = document.createElement('div');
                 errEl.style.cssText = 'text-align:center; padding:30px; color:#c62828;';
-                errEl.innerHTML = `<div style="font-size:1.1em; margin-bottom:12px;">⚠️ Could not load help text</div>
-<div style="color:#555; margin-bottom:18px; font-size:0.9em;">${error}</div>`;
+                // GM_addStyle so this error message's CSS is exempt from page
+                // CSP style-src restrictions. Fully static, safe to inject once.
+                if (!document.getElementById('sa-help-error-style')) {
+                    const heStyle = GM_addStyle(`
+                        .sa-help-err-title { font-size:1.1em; margin-bottom:12px; }
+                        .sa-help-err-msg { color:#555; margin-bottom:18px; font-size:0.9em; }
+                    `);
+                    heStyle.id = 'sa-help-error-style';
+                }
+                errEl.innerHTML = `<div class="sa-help-err-title">⚠️ Could not load help text</div>
+<div class="sa-help-err-msg">${error}</div>`;
                 const retryBtn = document.createElement('button');
                 retryBtn.textContent = '↺ Retry';
                 retryBtn.style.cssText = 'padding:7px 20px; border-radius:6px; border:1px solid #888; cursor:pointer; background:#eee; font-size:0.95em;';
@@ -16384,7 +16507,46 @@ ${sections.join('\n')}
      * Memory Usage reports JS heap size via performance.memory (Chromium-only)
      * rather than the old fictional "100 bytes × row count" estimate.
      */
+    /**
+     * Lazily injects the shared, id-guarded stylesheet for
+     * {@link showStatsPanel}'s data-cell markup (colors/weights from the
+     * panel's fixed palette `C`, defined further down in showStatsPanel).
+     * Uses GM_addStyle (not a plain document.createElement('style') +
+     * head.appendChild) so it is exempt from page CSP style-src
+     * restrictions — MusicBrainz's account/* pages block plain inline
+     * stylesheets and inline style="..." attributes alike. The palette is
+     * a hardcoded constant (not settings-driven), so these class values
+     * never go stale; safe to inject once regardless of how many times
+     * the panel is opened/closed within a page load.
+     */
+    function _ensureStatsPanelStyle() {
+        if (document.getElementById('sa-stats-panel-style')) return;
+        const style = GM_addStyle(`
+            .sa-stats-section-icon { font-size:1.1em; }
+            .sa-stats-pill { display:inline-block; font-size:0.72em; font-weight:700; padding:0 4px; border-radius:3px; background:#e3f2fd; color:#1565c0; border:1px solid #90caf9; margin-left:3px; vertical-align:middle; }
+            .sa-stats-code { font-size:0.9em; }
+            .sa-stats-strong-600 { font-weight:600; }
+            .sa-stats-strong-700 { font-weight:700; }
+            .sa-stats-accent { color:#1565c0; }
+            .sa-stats-accent-600 { color:#1565c0; font-weight:600; }
+            .sa-stats-accent-700 { color:#1565c0; font-weight:700; }
+            .sa-stats-alert { color:#c62828; }
+            .sa-stats-alert-600 { color:#c62828; font-weight:600; }
+            .sa-stats-muted { color:#555; }
+            .sa-stats-muted-label { font-size:0.8em; color:#555; }
+            .sa-stats-muted-small { font-size:0.83em; color:#555; }
+            .sa-stats-muted-999 { color:#999; }
+            .sa-stats-faint { color:#aaa; }
+            .sa-stats-bbb { color:#bbb; }
+            .sa-stats-bbb-small { color:#bbb; font-size:0.9em; }
+            .sa-stats-strikethrough { text-decoration:line-through; color:#aaa; }
+            .sa-stats-green { color:#388e3c; }
+        `);
+        style.id = 'sa-stats-panel-style';
+    }
+
     function showStatsPanel() {
+        _ensureStatsPanelStyle();
         // Toggle: remove if already open
         const existing = document.getElementById('mb-stats-panel');
         if (existing) { existing.remove(); return; }
@@ -16476,10 +16638,7 @@ ${sections.join('\n')}
         const _filterFlagsHtml = (flags) => {
             if (!flags || (!flags.cc && !flags.rx && !flags.ex)) return '';
             const pill = (label, title) =>
-                `<span style="display:inline-block;font-size:0.72em;font-weight:700;` +
-                `padding:0 4px;border-radius:3px;background:#e3f2fd;color:#1565c0;` +
-                `border:1px solid #90caf9;margin-left:3px;vertical-align:middle;" ` +
-                `title="${title}">${label}</span>`;
+                `<span class="sa-stats-pill" title="${title}">${label}</span>`;
             let out = '';
             if (flags.cc) out += pill('Cc', 'Case-sensitive filter');
             if (flags.rx) out += pill('Rx', 'RegExp filter');
@@ -16839,7 +16998,7 @@ ${sections.join('\n')}
             h.style.cssText = `font-size:1.0em;font-weight:700;color:${C.green};
                 margin:10px 0 4px;padding:3px 0 3px 2px;
                 border-bottom:2px solid ${C.greenL};display:flex;align-items:center;gap:6px;`;
-            h.innerHTML = `<span style="font-size:1.1em">${icon}</span><span>${text}</span>`;
+            h.innerHTML = `<span class="sa-stats-section-icon">${icon}</span><span>${text}</span>`;
             return h;
         };
 
@@ -16995,12 +17154,12 @@ ${sections.join('\n')}
             },
             {
                 stat: '📄 Page type',
-                value: `<code style="font-size:0.9em">${pageType || 'unknown'}</code>`,
+                value: `<code class="sa-stats-code">${pageType || 'unknown'}</code>`,
                 comment: '',
             },
             {
                 stat: '🗂️ Table mode',
-                value: `<code style="font-size:0.9em">${tableMode}</code>`,
+                value: `<code class="sa-stats-code">${tableMode}</code>`,
                 comment: tableMode === 'multi'
                     ? 'Multiple h3-grouped sub-tables' : 'Single consolidated table',
             },
@@ -17011,15 +17170,15 @@ ${sections.join('\n')}
             },
             {
                 stat: '📋 Total table rows',
-                value: `<span style="font-weight:600">${_snapshotTotalRows.toLocaleString()}</span>`,
+                value: `<span class="sa-stats-strong-600">${_snapshotTotalRows.toLocaleString()}</span>`,
                 comment: 'Total number of unfiltered table rows',
             },
             {
                 // id used for live refresh from _showCaaCompletionToast when panel is open.
                 stat: `🖼️ Total table rows with ${_artKey} artwork`,
                 value: _totalCaaCount > 0
-                    ? `<span style="color:${C.accent};font-weight:600">${_totalCaaCount.toLocaleString()}</span>`
-                    : '<span id="mb-stats-art-count-val" style="color:#999">—</span>',
+                    ? `<span class="sa-stats-accent-600">${_totalCaaCount.toLocaleString()}</span>`
+                    : '<span id="mb-stats-art-count-val" class="sa-stats-muted-999">—</span>',
                 comment: _totalCaaCount > 0
                     ? `Rows with confirmed ${_artKey} front artwork across ${subTblCount} sub-table${subTblCount > 1 ? 's' : ''}`
                     : `Counting ${_artKey} artwork… (updates when image loading completes)`,
@@ -17034,7 +17193,7 @@ ${sections.join('\n')}
             {
                 stat: '🔀 Total extracted columns',
                 value: _extractedCols > 0
-                    ? `<span style="color:${C.accent};font-weight:600">${_extractedCols}</span>`
+                    ? `<span class="sa-stats-accent-600">${_extractedCols}</span>`
                     : '0',
                 comment: _extractedCols > 0
                     ? 'Columns split/extracted from original columns via columnExtractors'
@@ -17043,7 +17202,7 @@ ${sections.join('\n')}
             {
                 stat: '🔁 Total derived columns',
                 value: _derivedCols > 0
-                    ? `<span style="color:${C.accent};font-weight:600">${_derivedCols}</span>`
+                    ? `<span class="sa-stats-accent-600">${_derivedCols}</span>`
                     : '0',
                 comment: _derivedCols > 0
                     ? 'Columns further derived from extracted columns via syntheticColumnExtractors'
@@ -17052,7 +17211,7 @@ ${sections.join('\n')}
             {
                 stat: '🔗 Total injected derived columns',
                 value: _iceDerivedCols > 0
-                    ? `<span style="color:${C.accent};font-weight:600">${_iceDerivedCols}</span>`
+                    ? `<span class="sa-stats-accent-600">${_iceDerivedCols}</span>`
                     : '0',
                 comment: _iceDerivedCols > 0
                     ? 'Columns derived from injected columns via injectedColumnExtractors (e.g. Release country, Release date, R-DD … R-Month)'
@@ -17061,7 +17220,7 @@ ${sections.join('\n')}
             {
                 stat: '💉 Total injected columns',
                 value: _injectedCols > 0
-                    ? `<span style="color:${C.accent};font-weight:600">${_injectedCols}</span>`
+                    ? `<span class="sa-stats-accent-600">${_injectedCols}</span>`
                     : '0',
                 comment: _injectedCols > 0
                     ? 'Columns populated asynchronously via external API calls (e.g. Relationships via WS2)'
@@ -17069,7 +17228,7 @@ ${sections.join('\n')}
             },
             {
                 stat: '⬛ Total columns',
-                value: `<span style="font-weight:600">${totalCols}</span>`,
+                value: `<span class="sa-stats-strong-600">${totalCols}</span>`,
                 comment: 'Total effective columns in the final rendered table',
             },
             {
@@ -17080,28 +17239,28 @@ ${sections.join('\n')}
             {
                 stat: '🙈 Hidden columns',
                 value: hiddenCols > 0
-                    ? `<span style="color:${C.alert};font-weight:600">${hiddenCols}</span>`
+                    ? `<span class="sa-stats-alert-600">${hiddenCols}</span>`
                     : '0',
                 comment: hiddenCols > 0 ? 'Use 👁️ Visible menu to restore' : '',
             },
             {
                 stat: '🔍 Global filter',
                 value: _gfRaw
-                    ? `<em style="color:${C.accent}">"${_gfRaw}"</em>${_filterFlagsHtml(_gfFlags)}`
-                    : '<span style="color:#999">none</span>',
+                    ? `<em class="sa-stats-accent">"${_gfRaw}"</em>${_filterFlagsHtml(_gfFlags)}`
+                    : '<span class="sa-stats-muted-999">none</span>',
                 comment: "check the '🔍 Filter' column in the 'Table Detail' section below",
             },
             {
                 stat: '📂 Sub-table filters',
                 value: _stFlt > 0
-                    ? `<span style="color:${C.accent};font-weight:600">${_stFlt} active</span>`
+                    ? `<span class="sa-stats-accent-600">${_stFlt} active</span>`
                     : '0',
                 comment: '',
             },
             {
                 stat: '🔠 Column filters',
                 value: _colFlt > 0
-                    ? `<span style="color:${C.accent};font-weight:600">${_colFlt} active</span>`
+                    ? `<span class="sa-stats-accent-600">${_colFlt} active</span>`
                     : '0',
                 comment: '',
             },
@@ -17145,7 +17304,7 @@ ${sections.join('\n')}
             const _idbPlaceholderRows = [
                 {
                     stat:    `🖼️ Art images store (IDB)`,
-                    value:   '<em style="color:#aaa">querying…</em>',
+                    value:   '<em class="sa-stats-faint">querying…</em>',
                     comment: _idbEnabled
                         ? `TTL: ${Lib.settings.sa_art_idb_image_ttl_days || 30} days — blob cache (sa_art_idb_enable)`
                         : '⚠️ IDB art cache disabled (sa_art_idb_enable = false)',
@@ -17153,7 +17312,7 @@ ${sections.join('\n')}
                 },
                 {
                     stat:    `📋 Art metadata store (IDB)`,
-                    value:   '<em style="color:#aaa">querying…</em>',
+                    value:   '<em class="sa-stats-faint">querying…</em>',
                     comment: _idbEnabled
                         ? `TTL: ${Lib.settings.sa_art_idb_metadata_ttl_days || 7} days — archive JSON metadata`
                         : '⚠️ IDB art cache disabled',
@@ -17161,7 +17320,7 @@ ${sections.join('\n')}
                 },
                 {
                     stat:    `🔗 Rel WS2 store (IDB)`,
-                    value:   '<em style="color:#aaa">querying…</em>',
+                    value:   '<em class="sa-stats-faint">querying…</em>',
                     comment: _relIdbEnabled
                         ? 'TTL: 7 days — relationship WS2 JSON responses (sa_rels_idb_enable)'
                         : '⚠️ IDB rel cache disabled (sa_rels_idb_enable = false)',
@@ -17256,7 +17415,7 @@ ${sections.join('\n')}
                 const _allRows = Array.from(_idbTbl.querySelectorAll('tbody tr'));
                 [0, 1, 2].forEach(i => {
                     const td = _allRows[i] && _allRows[i].querySelectorAll('td')[1];
-                    if (td) td.innerHTML = '<em style="color:#aaa">disabled</em>';
+                    if (td) td.innerHTML = '<em class="sa-stats-faint">disabled</em>';
                 });
             }
         }
@@ -17372,12 +17531,12 @@ ${sections.join('\n')}
 
             // Col 1: entity-type label (e.g. "Place", "Artist", …)
             chRow.appendChild(_chTd(
-                `<span style="font-size:0.8em;color:${C.muted}">${_entityTypeLabel}</span>`,
+                `<span class="sa-stats-muted-label">${_entityTypeLabel}</span>`,
                 { nowrap: true }));
 
             // Col 2: h1 entity name
             chRow.appendChild(_chTd(
-                `<strong style="color:${C.accent}">${_h1Text || '—'}</strong>`, {}));
+                `<strong class="sa-stats-accent">${_h1Text || '—'}</strong>`, {}));
 
             // Col 3: active filter value for this table.
             // For single-table pages there is no per-table sub-table filter;
@@ -17389,8 +17548,8 @@ ${sections.join('\n')}
                               : '';
             chRow.appendChild(_chTd(
                 _filterVal
-                    ? `<em style="color:${C.accent}">"${_filterVal}"</em>${_filterFlagsHtml(td.filter ? td.filterFlags : _gfFlags)}`
-                    : '<span style="color:#bbb">—</span>',
+                    ? `<em class="sa-stats-accent">"${_filterVal}"</em>${_filterFlagsHtml(td.filter ? td.filterFlags : _gfFlags)}`
+                    : '<span class="sa-stats-bbb">—</span>',
                 { nowrap: true,
                   title: _filterVal
                     ? `${_filterSrc}: "${_filterVal}"`
@@ -17400,9 +17559,9 @@ ${sections.join('\n')}
             const _hiddenRows = td.total - td.visible;
             chRow.appendChild(_chTd(
                 _hiddenRows > 0
-                    ? `<span style="color:${C.accent};font-weight:700">${td.visible.toLocaleString()}</span>` +
-                      ` <span style="font-size:0.83em;color:${C.muted}">/ ${td.total.toLocaleString()}</span>`
-                    : `<span style="font-weight:700">${td.total.toLocaleString()}</span>`,
+                    ? `<span class="sa-stats-accent-700">${td.visible.toLocaleString()}</span>` +
+                      ` <span class="sa-stats-muted-small">/ ${td.total.toLocaleString()}</span>`
+                    : `<span class="sa-stats-strong-700">${td.total.toLocaleString()}</span>`,
                 { right: true, nowrap: true }));
 
             // Col 5: artwork count — rows with confirmed front artwork for this sub-table.
@@ -17411,8 +17570,8 @@ ${sections.join('\n')}
             // started or loading not yet complete).
             chRow.appendChild(_chTd(
                 td.caaCount > 0
-                    ? `🖼️ <span style="color:${C.accent};font-weight:700">${td.caaCount.toLocaleString()}</span>`
-                    : '<span style="color:#bbb;font-size:0.9em" title="Loading artwork — count updates when image loading completes">—</span>',
+                    ? `🖼️ <span class="sa-stats-accent-700">${td.caaCount.toLocaleString()}</span>`
+                    : '<span class="sa-stats-bbb-small" title="Loading artwork — count updates when image loading completes">—</span>',
                 { right: true, nowrap: true }));
 
             // ── Row 2: "Table name" label | table name | column labels ─────────
@@ -17420,22 +17579,22 @@ ${sections.join('\n')}
 
             // Col 1: "Table name" label (replaces old "h2/h3")
             chRow2.appendChild(_chTd(
-                `<span style="font-size:0.8em;color:${C.muted}">Table name</span>`,
+                `<span class="sa-stats-muted-label">Table name</span>`,
                 { nowrap: true }));
 
             // Col 2: table name (from h3 or h2)
             chRow2.appendChild(_chTd(
-                `<span style="font-weight:600">${td.name}</span>`, {}));
+                `<span class="sa-stats-strong-600">${td.name}</span>`, {}));
 
             // Col 3–5: column-header labels (muted, small)
             chRow2.appendChild(_chTd(
-                `<span style="font-size:0.8em;color:${C.muted}">Active filter</span>`,
+                `<span class="sa-stats-muted-label">Active filter</span>`,
                 { small: true }));
             chRow2.appendChild(_chTd(
-                `<span style="font-size:0.8em;color:${C.muted}">Filtered rows</span>`,
+                `<span class="sa-stats-muted-label">Filtered rows</span>`,
                 { small: true, right: true }));
             chRow2.appendChild(_chTd(
-                `<span style="font-size:0.8em;color:${C.muted}">Rows with ${_artKey} artwork</span>`,
+                `<span class="sa-stats-muted-label">Rows with ${_artKey} artwork</span>`,
                 { small: true, right: true }));
 
             cardHdr.appendChild(chRow);
@@ -17520,37 +17679,37 @@ ${sections.join('\n')}
                     // Column name cell — tinted background for synthetic columns
                     cr.appendChild(_mkColTd(
                         col.visible
-                            ? `<strong${col.colType !== 'original' ? ` style="color:${C.accent}"` : ''}>${col.name}</strong>`
-                            : `<span style="text-decoration:line-through;color:#aaa">${col.name}</span>`
+                            ? `<strong${col.colType !== 'original' ? ` class="sa-stats-accent"` : ''}>${col.name}</strong>`
+                            : `<span class="sa-stats-strikethrough">${col.name}</span>`
                     ));
                     cr.appendChild(_mkColTd(
                         col.visible
-                            ? `<span style="color:#388e3c">✔ yes</span>`
-                            : `<span style="color:#c62828">✘ no</span>`,
+                            ? `<span class="sa-stats-green">✔ yes</span>`
+                            : `<span class="sa-stats-alert">✘ no</span>`,
                         { center: true }
                     ));
-                    const _sc = col.sort.startsWith('▲') ? C.accent
-                        : col.sort.startsWith('▼') ? C.alert : C.muted;
+                    const _scClass = col.sort.startsWith('▲') ? 'sa-stats-accent'
+                        : col.sort.startsWith('▼') ? 'sa-stats-alert' : 'sa-stats-muted';
                     cr.appendChild(_mkColTd(
-                        `<span style="color:${_sc}">${col.sort}</span>`,
+                        `<span class="${_scClass}">${col.sort}</span>`,
                         { center: true }
                     ));
                     cr.appendChild(_mkColTd(String(col.unique), { right: true }));
                     cr.appendChild(_mkColTd(
                         col.multiRow > 0
-                            ? `<span style="color:${C.accent}">${col.multiRow}</span>`
-                            : `<span style="color:#bbb">0</span>`,
+                            ? `<span class="sa-stats-accent">${col.multiRow}</span>`
+                            : `<span class="sa-stats-bbb">0</span>`,
                         { right: true }
                     ));
                     cr.appendChild(_mkColTd(
                         col.filter
-                            ? `<em style="color:${C.accent}">"${col.filter}"</em>`
-                            : '<span style="color:#bbb">—</span>'
+                            ? `<em class="sa-stats-accent">"${col.filter}"</em>`
+                            : '<span class="sa-stats-bbb">—</span>'
                     ));
                     cr.appendChild(_mkColTd(
                         col.resize === 'default'
-                            ? '<span style="color:#bbb">default</span>'
-                            : `<span style="color:${C.accent}">${col.resize}</span>`
+                            ? '<span class="sa-stats-bbb">default</span>'
+                            : `<span class="sa-stats-accent">${col.resize}</span>`
                     ));
                     colTbody.appendChild(cr);
                 });
@@ -19293,9 +19452,18 @@ a { color: #1565c0; }`;
             font-size: 16px;
             text-align: center;
         `;
+        // GM_addStyle so this overlay's CSS is exempt from page CSP style-src
+        // restrictions. Fully static, safe to inject once.
+        if (!document.getElementById('sa-resize-overlay-style')) {
+            const roStyle = GM_addStyle(`
+                #mb-resize-heading { margin-bottom: 10px; }
+                #mb-resize-progress { font-size: 14px; }
+            `);
+            roStyle.id = 'sa-resize-overlay-style';
+        }
         _resizeOverlay.innerHTML = `
-            <div id="mb-resize-heading" style="margin-bottom: 10px;">📐 Measuring column widths…</div>
-            <div id="mb-resize-progress" style="font-size: 14px;">Preparing…</div>
+            <div id="mb-resize-heading">📐 Measuring column widths…</div>
+            <div id="mb-resize-progress">Preparing…</div>
         `;
         document.body.appendChild(_resizeOverlay);
         const _resizeHeading  = _resizeOverlay.querySelector('#mb-resize-heading');
@@ -19676,8 +19844,8 @@ a { color: #1565c0; }`;
 
         const sidebarWidth = '240px';
 
-        const style = document.createElement('style');
-        style.textContent = `
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
             /* Sidebar with proper overflow handling */
             #sidebar {
                 transition: transform 0.3s ease, width 0.3s ease, opacity 0.3s ease, margin-right 0.3s ease;
@@ -19780,8 +19948,7 @@ a { color: #1565c0; }`;
             body.sidebar-is-collapsed #content {
                 margin-right: 0 !important;
             }
-        `;
-        document.head.appendChild(style);
+        `);
 
         const handle = document.createElement('div');
         handle.id = 'sidebar-toggle-handle';
@@ -21170,8 +21337,10 @@ a { color: #1565c0; }`;
     controlsContainer.insertBefore(stopBtn, initialDivider);
     // Filter container is NOT appended here anymore; moved to H2 later
 
-    const style = document.createElement('style');
-    style.textContent = `
+    // GM_addStyle so this is exempt from page CSP style-src restrictions
+    // (MusicBrainz's account/* pages serve a CSP with no 'unsafe-inline' for
+    // style-src, which silently drops plain injected <style> tags).
+    const style = GM_addStyle(`
         .mb-sorting-active, .mb-sorting-active * { cursor: wait !important; }
         .mb-show-all-btn-active { transform: translateY(1px); box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
         button.mb-show-all-btn-loading:disabled {
@@ -21945,14 +22114,12 @@ a { color: #1565c0; }`;
                 box-shadow: 0 0 0 4px rgba(26,115,232,0.28) !important;
             }
         }
-    `;
-    document.head.appendChild(style);
+    `);
 
     // ── Relationships-column CSS ───────────────────────────────────────
+    // GM_addStyle so this is exempt from page CSP style-src restrictions.
     (() => {
-        const _rs = document.createElement('style');
-        _rs.id = 'mb-rel-column-style';
-        _rs.textContent = `
+        const _rs = GM_addStyle(`
             th.mb-injected-column { font-style: italic; }
             /* td.mb-rel-cell: host cell for async relationship icon links.
                No CSS rules on the <a> elements — they are plain inline anchors
@@ -22008,8 +22175,8 @@ a { color: #1565c0; }`;
                 margin: 1px;
                 padding: 0;
             }
-        `;
-        document.head.appendChild(_rs);
+        `);
+        _rs.id = 'mb-rel-column-style';
     })();
 
     if (Lib.settings.sa_enable_count_stat_tooltip) {
@@ -22472,11 +22639,42 @@ a { color: #1565c0; }`;
      * @param {File|null}   file       - The File object (for legacy filename parsing), or null.
      * @returns {string} HTML string for the meta block (ready to set as innerHTML).
      */
+    /**
+     * Lazily injects the shared, id-guarded stylesheet for
+     * {@link buildMetaBlockHTML}'s output. Uses GM_addStyle (not a plain
+     * document.createElement('style') + head.appendChild) so it is exempt
+     * from page CSP style-src restrictions — MusicBrainz's account/* pages
+     * block plain inline stylesheets and inline style="..." attributes
+     * alike. Classes here are generic (not scoped per dialog instance), so
+     * this only needs to run once regardless of how many dialogs
+     * (Save/Load) render a metadata block.
+     */
+    function _ensureMetaBlockStyle() {
+        if (document.getElementById('sa-meta-block-style')) return;
+        const style = GM_addStyle(`
+            .sa-meta-dash { color:#bbb; }
+            .sa-meta-legacy { color:#888; font-style:italic; }
+            .sa-meta-legacy-hint { font-size:0.85em; }
+            .sa-meta-label { padding:3px 10px 3px 0; color:#666; font-weight:600; white-space:nowrap; vertical-align:top; }
+            .sa-meta-value { padding:3px 0; word-break:break-all; }
+            .sa-meta-filtered-note { color:#e65100; font-size:0.85em; }
+            .sa-meta-mode-badge { color:#fff; border-radius:3px; padding:0 5px; font-size:0.82em; }
+            .sa-meta-mode-multi { background:#1565c0; }
+            .sa-meta-mode-single { background:#2e7d32; }
+            .sa-meta-url-link { color:#1565c0; font-size:0.88em; word-break:break-all; }
+            .sa-meta-version-badge { background:#f5f5f5; border:1px solid #ddd; border-radius:3px; padding:0 5px; font-size:0.85em; }
+            .sa-meta-header { font-size:0.82em; color:#555; margin-bottom:6px; font-weight:700; letter-spacing:0.03em; text-transform:uppercase; }
+            .sa-meta-table { border-collapse:collapse; width:100%; font-size:0.88em; line-height:1.5; }
+        `);
+        style.id = 'sa-meta-block-style';
+    }
+
     function buildMetaBlockHTML(data, totalRows, file = null) {
+        _ensureMetaBlockStyle();
         const esc  = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        const dash = '<span style="color:#bbb;">—</span>';
+        const dash = '<span class="sa-meta-dash">—</span>';
         const legacyVal = (val) => val
-            ? `<span style="color:#888;font-style:italic;">${esc(val)} <span style="font-size:0.85em;">(from filename)</span></span>`
+            ? `<span class="sa-meta-legacy">${esc(val)} <span class="sa-meta-legacy-hint">(from filename)</span></span>`
             : dash;
         const fmtDate = (ts) => {
             if (!ts) return '\u2014';
@@ -22484,8 +22682,8 @@ a { color: #1565c0; }`;
         };
         const row = (label, value) =>
             `<tr>` +
-            `<td style="padding:3px 10px 3px 0;color:#666;font-weight:600;white-space:nowrap;vertical-align:top;">${label}</td>` +
-            `<td style="padding:3px 0;word-break:break-all;">${value}</td>` +
+            `<td class="sa-meta-label">${label}</td>` +
+            `<td class="sa-meta-value">${value}</td>` +
             `</tr>`;
 
         const fname     = file ? file.name : '';
@@ -22528,22 +22726,22 @@ a { color: #1565c0; }`;
         const displayDetail   = data.detailSegment ? esc(data.detailSegment) : dash;
         const isFiltered      = (data.pageType || '').endsWith('-filtered');
         const pageTypeDisplay = esc(data.pageType || '')
-            + (isFiltered ? ' <span style="color:#e65100;font-size:0.85em;">(filtered)</span>' : '');
-        const modeColor   = data.tableMode === 'multi' ? '#1565c0' : '#2e7d32';
+            + (isFiltered ? ' <span class="sa-meta-filtered-note">(filtered)</span>' : '');
+        const modeClass   = data.tableMode === 'multi' ? 'sa-meta-mode-multi' : 'sa-meta-mode-single';
         const modeDisplay = data.tableMode
-            ? `<span style="background:${modeColor};color:#fff;border-radius:3px;padding:0 5px;font-size:0.82em;">${esc(data.tableMode)}</span>`
+            ? `<span class="sa-meta-mode-badge ${modeClass}">${esc(data.tableMode)}</span>`
             : dash;
         const btnLabelDisplay = data.buttonLabel ? `<em>${esc(data.buttonLabel)}</em>` : dash;
         const urlDisplay = data.url
-            ? `<a href="${esc(data.url)}" target="_blank" style="color:#1565c0;font-size:0.88em;word-break:break-all;">${esc(data.url)}</a>`
+            ? `<a href="${esc(data.url)}" target="_blank" class="sa-meta-url-link">${esc(data.url)}</a>`
             : dash;
         const verDisplay = data.version
-            ? `<span style="background:#f5f5f5;border:1px solid #ddd;border-radius:3px;padding:0 5px;font-size:0.85em;">${esc(data.version)}</span>`
+            ? `<span class="sa-meta-version-badge">${esc(data.version)}</span>`
             : dash;
 
         return (
-            `<div style="font-size:0.82em;color:#555;margin-bottom:6px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;">&#128196; File Metadata</div>` +
-            `<table style="border-collapse:collapse;width:100%;font-size:0.88em;line-height:1.5;">` +
+            `<div class="sa-meta-header">&#128196; File Metadata</div>` +
+            `<table class="sa-meta-table">` +
             row('Entity type',  displayEntityType) +
             row('Entity name',  displayEntityName) +
             row('Section',      displaySectionSuffix) +
@@ -22601,26 +22799,46 @@ a { color: #1565c0; }`;
 
         const totalRows = dataToSave.rowCount || 0;
 
+        // GM_addStyle so this dialog shell's CSS is exempt from page CSP
+        // style-src restrictions (see showLoadFilterDialog's identical
+        // treatment). Idempotent — headerFontSz/statusFontSz only change via
+        // a settings save, which reloads the page.
+        if (!document.getElementById('sa-save-shell-style')) {
+            const shellStyle = GM_addStyle(`
+                #sa-sd-drag-handle { margin-bottom:18px; border-bottom:1px solid #eee; padding-bottom:12px; cursor:move; user-select:none; }
+                #sa-sd-title { margin:0; color:#222; font-size:1.2em; }
+                #sa-sd-subtitle { margin:5px 0 0; color:#666; font-size:${headerFontSz}; }
+                #sa-sd-meta-block { margin-bottom:16px; border:1px solid #eee; border-radius:6px; padding:10px 14px; background:#fafafa; }
+                #sa-sd-filename-row { margin-bottom:14px; }
+                #sa-sd-filename-label { display:block; font-size:0.88em; font-weight:600; color:#444; margin-bottom:5px; }
+                #sa-sd-filename-input { width:100%; box-sizing:border-box; padding:8px 10px; border:1px solid #ccc; border-radius:6px; font-size:0.9em; font-family:monospace; outline:none; }
+                #sa-sd-btn-row { display:flex; gap:12px; margin-bottom:8px; }
+                #sa-sd-save-confirm { flex:2; padding:10px; background:#4CAF50; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                #sa-sd-cancel { flex:1; padding:10px; background:#f0f0f0; color:#333; border:1px solid #ccc; border-radius:6px; cursor:pointer; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                #sa-sd-status { display:none; padding:5px 2px; font-size:${statusFontSz}; min-height:20px; }
+            `);
+            shellStyle.id = 'sa-save-shell-style';
+        }
+
         dialog.innerHTML = `
-            <div id="sa-sd-drag-handle" style="margin-bottom:18px;border-bottom:1px solid #eee;padding-bottom:12px;cursor:move;user-select:none;">
-                <h3 style="margin:0;color:#222;font-size:1.2em;">&#128190; Save Table Data</h3>
-                <p style="margin:5px 0 0;color:#666;font-size:${headerFontSz};">Review the metadata below, optionally edit the filename, then click <strong>Save Data</strong> to download the compressed JSON file.</p>
+            <div id="sa-sd-drag-handle">
+                <h3 id="sa-sd-title">&#128190; Save Table Data</h3>
+                <p id="sa-sd-subtitle">Review the metadata below, optionally edit the filename, then click <strong>Save Data</strong> to download the compressed JSON file.</p>
             </div>
-            <div id="sa-sd-meta-block" style="margin-bottom:16px;border:1px solid #eee;border-radius:6px;padding:10px 14px;background:#fafafa;">
+            <div id="sa-sd-meta-block">
                 ${buildMetaBlockHTML(dataToSave, totalRows, null)}
             </div>
-            <div style="margin-bottom:14px;">
-                <label for="sa-sd-filename-input" style="display:block;font-size:0.88em;font-weight:600;color:#444;margin-bottom:5px;">&#128462; Filename</label>
-                <input id="sa-sd-filename-input" type="text" value=""
-                    style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:0.9em;font-family:monospace;outline:none;">
+            <div id="sa-sd-filename-row">
+                <label for="sa-sd-filename-input" id="sa-sd-filename-label">&#128462; Filename</label>
+                <input id="sa-sd-filename-input" type="text" value="">
             </div>
-            <div style="display:flex;gap:12px;margin-bottom:8px;">
-                <button id="sa-sd-save-confirm" style="flex:2;padding:10px;background:#4CAF50;color:white;border:none;border-radius:6px;font-weight:bold;cursor:pointer;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">
-                    <span>&#128190; <span style="text-decoration:underline">S</span>ave Data</span>
+            <div id="sa-sd-btn-row">
+                <button id="sa-sd-save-confirm">
+                    <span>&#128190; <u>S</u>ave Data</span>
                 </button>
-                <button id="sa-sd-cancel" style="flex:1;padding:10px;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:6px;cursor:pointer;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">Cancel</button>
+                <button id="sa-sd-cancel">Cancel</button>
             </div>
-            <div id="sa-sd-status" style="display:none;padding:5px 2px;font-size:${statusFontSz};min-height:20px;"></div>
+            <div id="sa-sd-status"></div>
         `;
 
         document.body.appendChild(dialog);
@@ -22649,9 +22867,8 @@ a { color: #1565c0; }`;
         // ── Hover styles ──────────────────────────────────────────────────────
         const styleId = 'sa-save-dialog-styles';
         if (!document.getElementById(styleId)) {
-            const s = document.createElement('style');
-            s.id = styleId;
-            s.textContent = `
+            // GM_addStyle so this is exempt from page CSP style-src restrictions.
+            const s = GM_addStyle(`
                 #sa-sd-save-confirm:hover:not([disabled]) { background:#45a049 !important; }
                 #sa-sd-cancel:hover                        { background:#e0e0e0 !important; }
                 #sa-sd-save-confirm:active:not([disabled]),
@@ -22659,8 +22876,8 @@ a { color: #1565c0; }`;
                     transform: translateY(1px);
                     box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
                 }
-            `;
-            document.head.appendChild(s);
+            `);
+            s.id = styleId;
         }
 
         // ── Refs ──────────────────────────────────────────────────────────────
@@ -22749,7 +22966,7 @@ a { color: #1565c0; }`;
             statusDiv.style.color   = '#2e7d32';
             statusDiv.style.display = 'block';
 
-            saveBtn.innerHTML     = '&#128190; <span style="text-decoration:underline">S</span>ave Data';
+            saveBtn.innerHTML     = '&#128190; <u>S</u>ave Data';
             saveBtn.disabled      = false;
             saveBtn.style.opacity = '';
 
@@ -22806,77 +23023,124 @@ a { color: #1565c0; }`;
             'max-height:calc(100vh - 60px)', 'overflow-y:auto', 'resize:both', 'box-sizing:border-box',
         ].join(';');
 
+        // GM_addStyle so this dialog's CSS is exempt from page CSP style-src
+        // restrictions (see showSaveDialog/showLoadFilterDialog's identical
+        // treatment). Idempotent — headerFontSz only changes via a settings
+        // save, which reloads the page. Reuses the shared .mb-fhw-mark class
+        // from _ensureFilterHistoryWidgetStyle() for the quick-filter
+        // highlight (same visual as every other filter-history mark).
+        _ensureFilterHistoryWidgetStyle();
+        if (!document.getElementById('sa-epl-style')) {
+            const eplStyle = GM_addStyle(`
+                #sa-epl-drag { margin-bottom:14px; border-bottom:1px solid #eee; padding-bottom:10px; cursor:move; user-select:none; }
+                #sa-epl-title { margin:0; color:#222; font-size:1.1em; }
+                #sa-epl-subtitle { margin:4px 0 0; color:#666; font-size:${headerFontSz}; }
+                #sa-epl-qf-row { margin-bottom:10px; }
+                #sa-epl-qf-inner { position:relative; display:flex; align-items:center; }
+                #sa-epl-qf { width:100%; box-sizing:border-box; padding:6px 32px 6px 10px; border:1px solid #ccc; border-radius:6px; font-size:0.9em; outline:none; }
+                #sa-epl-qf-clear-btn { position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#c0392b; font-size:0.95em; font-weight:bold; line-height:1; padding:2px 3px; border-radius:3px; display:none; }
+                #sa-epl-table-wrap { border:1px solid #ddd; border-radius:6px; overflow:auto; max-height:320px; margin-bottom:12px; }
+                #sa-epl-table { width:100%; border-collapse:collapse; font-size:0.88em; }
+                #sa-epl-thead-row { background:#f5f5f5; position:sticky; top:0; z-index:1; }
+                .sa-epl-th-left, .sa-epl-th-center { border-bottom:2px solid #ddd; font-weight:700; }
+                .sa-epl-th-left { padding:6px 10px; text-align:left; }
+                .sa-epl-th-center { padding:6px 4px; text-align:center; }
+                #sa-epl-form { display:none; background:#f9f9f9; border:1px solid #ddd; border-radius:6px; padding:12px; margin-bottom:12px; }
+                #sa-epl-form-input-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+                #sa-epl-input { flex:1; padding:7px 10px; border:1px solid #ccc; border-radius:6px; font-size:0.9em; outline:none; }
+                #sa-epl-checkbox-row { display:flex; gap:16px; margin-bottom:8px; flex-wrap:wrap; }
+                .sa-epl-checkbox-label { cursor:pointer; display:flex; align-items:center; gap:5px; font-size:0.88em; font-weight:600; }
+                #sa-epl-form-btn-row { display:flex; gap:8px; }
+                #sa-epl-form-apply { padding:6px 14px; background:#4CAF50; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; font-size:0.88em; }
+                #sa-epl-form-discard { padding:6px 14px; background:#f0f0f0; color:#333; border:1px solid #ccc; border-radius:6px; cursor:pointer; font-size:0.88em; }
+                #sa-epl-status { min-height:18px; font-size:0.82em; color:#888; margin-bottom:10px; }
+                #sa-epl-action-row { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+                #sa-epl-add-btn { padding:7px 12px; background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; border-radius:6px; cursor:pointer; font-weight:600; font-size:0.85em; }
+                #sa-epl-edit-btn { padding:7px 12px; background:#fff8e1; color:#e65100; border:1px solid #ffe082; border-radius:6px; cursor:pointer; font-weight:600; font-size:0.85em; }
+                #sa-epl-remove-btn { padding:7px 12px; background:#ffebee; color:#c62828; border:1px solid #ef9a9a; border-radius:6px; cursor:pointer; font-weight:600; font-size:0.85em; }
+                .sa-epl-spacer { flex:1; }
+                #sa-epl-save-btn { padding:7px 14px; background:#4CAF50; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; font-size:0.88em; }
+                #sa-epl-cancel-btn { padding:7px 14px; background:#f0f0f0; color:#333; border:1px solid #ccc; border-radius:6px; cursor:pointer; font-size:0.88em; }
+                .sa-epl-mark-icon { font-size:0.9em; cursor:default; user-select:none; }
+                .sa-epl-row { cursor:pointer; border-bottom:1px solid #eee; }
+                .sa-epl-row-sel { background:#e3f2fd; outline:2px solid #90caf9; }
+                .sa-epl-row-mrk { background:#fffde7; outline:1px dashed #f9a825; }
+                .sa-epl-td-idx { padding:5px 6px; color:#aaa; font-size:0.82em; white-space:nowrap; }
+                .sa-epl-td-query { padding:5px 10px; font-size:0.9em; word-break:break-all; }
+                .sa-epl-td-center { padding:5px 4px; text-align:center; }
+                .sa-epl-empty { padding:12px; text-align:center; color:#aaa; font-size:0.88em; }
+            `);
+            eplStyle.id = 'sa-epl-style';
+        }
+
         dlg.innerHTML = `
-            <div id="sa-epl-drag" style="margin-bottom:14px;border-bottom:1px solid #eee;padding-bottom:10px;cursor:move;user-select:none;">
-                <h3 style="margin:0;color:#222;font-size:1.1em;">&#128204; Edit Pinned Filter List</h3>
-                <p style="margin:4px 0 0;color:#666;font-size:${headerFontSz};">Add, edit or remove entries from the persistent pinned filter list. Changes take effect only when you click <strong>Save</strong>.</p>
+            <div id="sa-epl-drag">
+                <h3 id="sa-epl-title">&#128204; Edit Pinned Filter List</h3>
+                <p id="sa-epl-subtitle">Add, edit or remove entries from the persistent pinned filter list. Changes take effect only when you click <strong>Save</strong>.</p>
             </div>
             <!-- Quick filter -->
-            <div style="margin-bottom:10px;">
-                <div style="position:relative;display:flex;align-items:center;">
-                    <input id="sa-epl-qf" type="text" placeholder="&#128269; Quick filter list..."
-                        style="width:100%;box-sizing:border-box;padding:6px 32px 6px 10px;border:1px solid #ccc;border-radius:6px;font-size:0.9em;outline:none;">
+            <div id="sa-epl-qf-row">
+                <div id="sa-epl-qf-inner">
+                    <input id="sa-epl-qf" type="text" placeholder="&#128269; Quick filter list...">
                     <button id="sa-epl-qf-clear-btn" tabindex="-1"
-                        title="Clear quick filter"
-                        style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#c0392b;font-size:0.95em;font-weight:bold;line-height:1;padding:2px 3px;border-radius:3px;display:none;">&#10005;</button>
+                        title="Clear quick filter">&#10005;</button>
                 </div>
             </div>
             <!-- Entry table -->
-            <div id="sa-epl-table-wrap" style="border:1px solid #ddd;border-radius:6px;overflow:auto;max-height:320px;margin-bottom:12px;">
-                <table id="sa-epl-table" style="width:100%;border-collapse:collapse;font-size:0.88em;">
+            <div id="sa-epl-table-wrap">
+                <table id="sa-epl-table">
                     <thead>
-                        <tr style="background:#f5f5f5;position:sticky;top:0;z-index:1;">
-                            <th style="padding:6px 10px;text-align:left;border-bottom:2px solid #ddd;font-weight:700;">#</th>
-                            <th style="padding:6px 10px;text-align:left;border-bottom:2px solid #ddd;font-weight:700;">Filter Expression</th>
-                            <th style="padding:6px 4px;text-align:center;border-bottom:2px solid #ddd;font-weight:700;" title="Case Sensitive">Cs</th>
-                            <th style="padding:6px 4px;text-align:center;border-bottom:2px solid #ddd;font-weight:700;" title="Regular Expression">Re</th>
-                            <th style="padding:6px 4px;text-align:center;border-bottom:2px solid #ddd;font-weight:700;" title="Exclude Matches">Ex</th>
+                        <tr id="sa-epl-thead-row">
+                            <th class="sa-epl-th-left">#</th>
+                            <th class="sa-epl-th-left">Filter Expression</th>
+                            <th class="sa-epl-th-center" title="Case Sensitive">Cs</th>
+                            <th class="sa-epl-th-center" title="Regular Expression">Re</th>
+                            <th class="sa-epl-th-center" title="Exclude Matches">Ex</th>
                         </tr>
                     </thead>
                     <tbody id="sa-epl-tbody"></tbody>
                 </table>
             </div>
             <!-- Edit form (hidden until Add/Edit clicked) -->
-            <div id="sa-epl-form" style="display:none;background:#f9f9f9;border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:12px;">
-                <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-                    <input id="sa-epl-input" type="text" placeholder="Filter expression..."
-                        style="flex:1;padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:0.9em;outline:none;">
+            <div id="sa-epl-form">
+                <div id="sa-epl-form-input-row">
+                    <input id="sa-epl-input" type="text" placeholder="Filter expression...">
                 </div>
-                <div style="display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap;">
-                    <label style="cursor:pointer;display:flex;align-items:center;gap:5px;font-size:0.88em;font-weight:600;">
+                <div id="sa-epl-checkbox-row">
+                    <label class="sa-epl-checkbox-label">
                         <input type="checkbox" id="sa-epl-case"> Case Sensitive
                     </label>
-                    <label style="cursor:pointer;display:flex;align-items:center;gap:5px;font-size:0.88em;font-weight:600;">
+                    <label class="sa-epl-checkbox-label">
                         <input type="checkbox" id="sa-epl-regex"> Regular Expression
                     </label>
-                    <label style="cursor:pointer;display:flex;align-items:center;gap:5px;font-size:0.88em;font-weight:600;">
+                    <label class="sa-epl-checkbox-label">
                         <input type="checkbox" id="sa-epl-exclude"> Exclude Matches
                     </label>
                 </div>
-                <div style="display:flex;gap:8px;">
-                    <button id="sa-epl-form-apply" style="padding:6px 14px;background:#4CAF50;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:bold;font-size:0.88em;">Apply</button>
-                    <button id="sa-epl-form-discard" style="padding:6px 14px;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:0.88em;">Discard</button>
+                <div id="sa-epl-form-btn-row">
+                    <button id="sa-epl-form-apply">Apply</button>
+                    <button id="sa-epl-form-discard">Discard</button>
                 </div>
             </div>
             <!-- Status line -->
-            <div id="sa-epl-status" style="min-height:18px;font-size:0.82em;color:#888;margin-bottom:10px;"></div>
+            <div id="sa-epl-status"></div>
             <!-- Action buttons row -->
-            <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-                <button id="sa-epl-add-btn" style="padding:7px 12px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.85em;" title="Add new entry (Alt+A)">
-                    + <span style="text-decoration:underline">A</span>dd
+            <div id="sa-epl-action-row">
+                <button id="sa-epl-add-btn" title="Add new entry (Alt+A)">
+                    + <u>A</u>dd
                 </button>
-                <button id="sa-epl-edit-btn" style="padding:7px 12px;background:#fff8e1;color:#e65100;border:1px solid #ffe082;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.85em;" title="Edit selected entry (Alt+E)" disabled>
-                    &#9998; <span style="text-decoration:underline">E</span>dit
+                <button id="sa-epl-edit-btn" title="Edit selected entry (Alt+E)" disabled>
+                    &#9998; <u>E</u>dit
                 </button>
-                <button id="sa-epl-remove-btn" style="padding:7px 12px;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.85em;" title="Remove selected entry (Alt+R)" disabled>
-                    &#10005; <span style="text-decoration:underline">R</span>emove
+                <button id="sa-epl-remove-btn" title="Remove selected entry (Alt+R)" disabled>
+                    &#10005; <u>R</u>emove
                 </button>
-                <div style="flex:1;"></div>
-                <button id="sa-epl-save-btn" style="padding:7px 14px;background:#4CAF50;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:bold;font-size:0.88em;" title="Save changes (Alt+S)">
-                    &#128190; <span style="text-decoration:underline">S</span>ave
+                <div class="sa-epl-spacer"></div>
+                <button id="sa-epl-save-btn" title="Save changes (Alt+S)">
+                    &#128190; <u>S</u>ave
                 </button>
-                <button id="sa-epl-cancel-btn" style="padding:7px 14px;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:0.88em;" title="Cancel (Alt+C / Escape)">
-                    <span style="text-decoration:underline">C</span>ancel
+                <button id="sa-epl-cancel-btn" title="Cancel (Alt+C / Escape)">
+                    <u>C</u>ancel
                 </button>
             </div>
         `;
@@ -22944,7 +23208,7 @@ a { color: #1565c0; }`;
             const nesc = needle.replace(/&/g,'&amp;').replace(/</g,'&lt;');
             const idx = esc.toLowerCase().indexOf(nesc.toLowerCase());
             if (idx < 0) return esc;
-            return esc.slice(0,idx) + `<mark style="background:#fff176;padding:0;">${esc.slice(idx, idx+nesc.length)}</mark>` + esc.slice(idx+nesc.length);
+            return esc.slice(0,idx) + `<mark class="mb-fhw-mark">${esc.slice(idx, idx+nesc.length)}</mark>` + esc.slice(idx+nesc.length);
         };
 
         const _eplStatus = (msg, color = '#888') => {
@@ -22985,14 +23249,14 @@ a { color: #1565c0; }`;
                 eplRemoveBtn.disabled      = false;
                 eplRemoveBtn.style.opacity = '';
                 eplRemoveBtn.innerHTML     =
-                    `&#10005; <span style="text-decoration:underline">R</span>emove (${n} marked)`;
+                    `&#10005; <u>R</u>emove (${n} marked)`;
                 eplRemoveBtn.title = `Remove all ${n} marked entries (Alt+R)`;
             } else {
                 const hasSel               = selectedIdx >= 0;
                 eplRemoveBtn.disabled      = !hasSel;
                 eplRemoveBtn.style.opacity = hasSel ? '' : '0.4';
                 eplRemoveBtn.innerHTML     =
-                    '&#10005; <span style="text-decoration:underline">R</span>emove';
+                    '&#10005; <u>R</u>emove';
                 eplRemoveBtn.title = 'Remove selected entry (Alt+R)';
             }
         };
@@ -23024,22 +23288,19 @@ a { color: #1565c0; }`;
                 const hl       = _eplHighlight(e.query, qf);
                 const isMrk    = markedSet.has(origIdx);
                 const isSel    = origIdx === selectedIdx;
-                const rowStyle = isSel ? 'background:#e3f2fd;outline:2px solid #90caf9;'
-                               : isMrk ? 'background:#fffde7;outline:1px dashed #f9a825;'
-                               : '';
-                const markIcon = `<span class="sa-epl-mark-icon" title="Tab → mark/unmark for bulk removal" `
-                               + `style="font-size:0.9em;cursor:default;user-select:none;">`
+                const rowClass = isSel ? 'sa-epl-row-sel' : isMrk ? 'sa-epl-row-mrk' : '';
+                const markIcon = `<span class="sa-epl-mark-icon" title="Tab → mark/unmark for bulk removal">`
                                + (isMrk ? '&#9745;' : '&#9744;') + `</span>`;
                 return `<tr data-orig-idx="${origIdx}" tabindex="0" `
-                     + `style="cursor:pointer;border-bottom:1px solid #eee;${rowStyle}">`
-                     + `<td style="padding:5px 6px;color:#aaa;font-size:0.82em;white-space:nowrap;">`
+                     + `class="sa-epl-row ${rowClass}">`
+                     + `<td class="sa-epl-td-idx">`
                      + `${markIcon}&thinsp;${origIdx + 1}</td>`
-                     + `<td style="padding:5px 10px;font-size:0.9em;word-break:break-all;">${hl}</td>`
-                     + `<td style="padding:5px 4px;text-align:center;">${e.useCase    ? '&#10003;' : ''}</td>`
-                     + `<td style="padding:5px 4px;text-align:center;">${e.useRegex   ? '&#10003;' : ''}</td>`
-                     + `<td style="padding:5px 4px;text-align:center;">${e.useExclude ? '&#10003;' : ''}</td>`
+                     + `<td class="sa-epl-td-query">${hl}</td>`
+                     + `<td class="sa-epl-td-center">${e.useCase    ? '&#10003;' : ''}</td>`
+                     + `<td class="sa-epl-td-center">${e.useRegex   ? '&#10003;' : ''}</td>`
+                     + `<td class="sa-epl-td-center">${e.useExclude ? '&#10003;' : ''}</td>`
                      + `</tr>`;
-            }).join('') || `<tr><td colspan="5" style="padding:12px;text-align:center;color:#aaa;font-size:0.88em;">No entries</td></tr>`;
+            }).join('') || `<tr><td colspan="5" class="sa-epl-empty">No entries</td></tr>`;
 
             // ── Wire row interactions ─────────────────────────────────────────
             const rows = Array.from(eplTbody.querySelectorAll('tr[data-orig-idx]'));
@@ -23391,119 +23652,164 @@ a { color: #1565c0; }`;
             'box-sizing:border-box',
         ].join(';');
 
+        // GM_addStyle (not inline style="..." attributes in the innerHTML below)
+        // so this dialog's CSS is exempt from page CSP style-src restrictions —
+        // MusicBrainz's account/* pages block inline styles the same way as
+        // <style> elements. Idempotent (id-guarded): the interpolated settings
+        // values (headerFontSz/statusFontSz/histDropdownPx) only change via a
+        // settings save, which reloads the page, so this is safe to inject once
+        // and reuse across repeated dialog opens within the same page load.
+        // Reuses the shared .mb-fhw-* classes from
+        // _ensureFilterHistoryWidgetStyle() for the history-row/badge/mark
+        // markup, matching createFilterHistoryWidget's identical widget.
+        _ensureFilterHistoryWidgetStyle();
+        if (!document.getElementById('sa-load-dialog-style')) {
+            const ldStyle = GM_addStyle(`
+                #sa-ld-drag-handle { margin-bottom:18px; border-bottom:1px solid #eee; padding-bottom:12px; cursor:move; user-select:none; }
+                #sa-ld-title { margin:0; color:#222; font-size:1.2em; }
+                #sa-ld-subtitle { margin:5px 0 0; color:#666; font-size:${headerFontSz}; }
+                .sa-ld-btn-row { display:flex; gap:12px; margin-bottom:8px; }
+                #sa-load-confirm, #sa-render-confirm { flex:2; padding:10px; background:#4CAF50; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                #sa-load-cancel { flex:1; padding:10px; background:#f0f0f0; color:#333; border:1px solid #ccc; border-radius:6px; cursor:pointer; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                .sa-ld-status { display:none; padding:5px 2px; font-size:${statusFontSz}; min-height:20px; }
+                #sa-ld-meta-block { display:none; margin-top:10px; border-top:1px solid #eee; padding-top:10px; }
+                .sa-ld-phase { display:none; margin-top:18px; border-top:1px solid #eee; padding-top:16px; }
+                #sa-ld-filter-row { margin-bottom:10px; position:relative; }
+                #sa-ld-filter-row-inner { display:flex; gap:4px; align-items:stretch; }
+                #sa-ld-filter-input-wrap { position:relative; flex:1; display:flex; align-items:center; }
+                #sa-load-filter-input { width:100%; padding:8px 32px 8px 12px; border:1px solid #ccc; border-radius:6px; font-size:1em; outline:none; box-sizing:border-box; }
+                #sa-filter-clear-btn, #sa-hist-qf-clear-btn { position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#c0392b; font-weight:bold; line-height:1; padding:2px 3px; border-radius:3px; display:none; }
+                #sa-filter-clear-btn { font-size:1em; }
+                #sa-hist-qf-clear-btn { font-size:0.95em; }
+                #sa-hist-pin-btn { padding:0 10px; background:#e8f5e9; border:1px solid #a5d6a7; border-radius:6px; cursor:pointer; font-size:1.1em; font-weight:bold; color:#2e7d32; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                #sa-load-history-toggle { padding:0 10px; background:#f0f0f0; border:1px solid #ccc; border-radius:6px; cursor:pointer; font-size:0.85em; white-space:nowrap; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                #sa-load-history-dropdown { display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; background:white; border:1px solid #ccc; border-radius:6px; box-shadow:0 4px 16px rgba(0,0,0,0.15); z-index:20001; box-sizing:border-box; }
+                #sa-ld-qf-wrap { padding:8px 8px 6px; border-bottom:1px solid #eee; }
+                #sa-ld-qf-inner { position:relative; display:flex; align-items:center; }
+                #sa-hist-quick-filter { width:100%; box-sizing:border-box; padding:5px 32px 5px 8px; border:1px solid #ccc; border-radius:4px; font-size:0.88em; outline:none; }
+                #sa-ld-pin-header { padding:4px 8px 2px; background:#e8f5e9; border-bottom:1px solid #c8e6c9; display:flex; align-items:center; justify-content:space-between; }
+                .sa-ld-pin-label { font-size:0.76em; font-weight:700; color:#2e7d32; text-transform:uppercase; letter-spacing:0.04em; }
+                #sa-hist-edit-btn { padding:2px 7px; background:#fff8e1; border:1px solid #ffe082; border-radius:5px; cursor:pointer; font-size:0.76em; font-weight:600; color:#e65100; white-space:nowrap; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; line-height:1.6; }
+                .sa-ld-hist-list { max-height:${histDropdownPx}px; overflow-y:auto; }
+                #persistent-sa-hist-footer { padding:3px 8px; border-top:1px solid #eee; border-bottom:1px solid #ddd; font-size:0.76em; color:#666; display:flex; justify-content:space-between; background:#f9fbe7; }
+                #sa-ld-lru-header { padding:4px 8px 2px; background:#e3f2fd; border-bottom:1px solid #bbdefb; }
+                #lru-sa-hist-footer { padding:3px 8px; border-top:1px solid #eee; font-size:0.76em; color:#888; display:flex; justify-content:space-between; }
+                #sa-ld-checkbox-row { display:flex; gap:12px; align-items:center; margin-bottom:14px; background:#f9f9f9; padding:10px; border-radius:8px; flex-wrap:wrap; }
+                #sa-ld-checkbox-inner { display:flex; gap:20px; justify-content:center; flex:1; flex-wrap:wrap; }
+                .sa-ld-checkbox-label { cursor:pointer; display:flex; align-items:center; gap:6px; font-size:0.9em; font-weight:600; }
+                #sa-filter-confirm { flex:2; padding:10px; background:#1976D2; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                #sa-render-no-filter-confirm { flex:1; padding:10px; background:#4CAF50; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                .sa-ld-excluded-note { color:#888; }
+            `);
+            ldStyle.id = 'sa-load-dialog-style';
+        }
+
         dialog.innerHTML = `
             <!-- ── Shared header (also drag handle) ── -->
-            <div id="sa-ld-drag-handle" style="margin-bottom:18px;border-bottom:1px solid #eee;padding-bottom:12px;cursor:move;user-select:none;">
-                <h3 style="margin:0;color:#222;font-size:1.2em;">&#128194; Load Table Data</h3>
-                <p style="margin:5px 0 0;color:#666;font-size:${headerFontSz};">Load serialized data from disk. Remember you must have at least saved a dataset before to the filesystem (with the "Save to Disk" button)</p>
+            <div id="sa-ld-drag-handle">
+                <h3 id="sa-ld-title">&#128194; Load Table Data</h3>
+                <p id="sa-ld-subtitle">Load serialized data from disk. Remember you must have at least saved a dataset before to the filesystem (with the "Save to Disk" button)</p>
             </div>
 
             <!-- ── Phase 1 — Load ── -->
             <div id="sa-ld-phase1">
-                <div style="display:flex;gap:12px;margin-bottom:8px;">
-                    <button id="sa-load-confirm" style="flex:2;padding:10px;background:#4CAF50;color:white;border:none;border-radius:6px;font-weight:bold;cursor:pointer;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">
-                        <span><span style="text-decoration:underline">L</span>oad Data</span>
+                <div class="sa-ld-btn-row">
+                    <button id="sa-load-confirm">
+                        <span><u>L</u>oad Data</span>
                     </button>
-                    <button id="sa-load-cancel" style="flex:1;padding:10px;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:6px;cursor:pointer;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">Cancel</button>
+                    <button id="sa-load-cancel">Cancel</button>
                 </div>
-                <div id="sa-ld-load-status" style="display:none;padding:5px 2px;font-size:${statusFontSz};min-height:20px;"></div>
-                <div id="sa-ld-meta-block" style="display:none;margin-top:10px;border-top:1px solid #eee;padding-top:10px;"></div>
+                <div id="sa-ld-load-status" class="sa-ld-status"></div>
+                <div id="sa-ld-meta-block"></div>
             </div>
 
             <!-- ── Phase 2 — Filter (hidden until load complete) ── -->
-            <div id="sa-ld-phase2" style="display:none;margin-top:18px;border-top:1px solid #eee;padding-top:16px;">
+            <div id="sa-ld-phase2" class="sa-ld-phase">
                 <!-- Filter expression row: input + Pin + History button -->
-                <div style="margin-bottom:10px;position:relative;">
-                    <div style="display:flex;gap:4px;align-items:stretch;">
-                        <div style="position:relative;flex:1;display:flex;align-items:center;">
+                <div id="sa-ld-filter-row">
+                    <div id="sa-ld-filter-row-inner">
+                        <div id="sa-ld-filter-input-wrap">
                             <input id="sa-load-filter-input" type="text"
-                                placeholder="Filter expression... evaluated for each column"
-                                style="width:100%;padding:8px 32px 8px 12px;border:1px solid #ccc;border-radius:6px;font-size:1em;outline:none;box-sizing:border-box;">
+                                placeholder="Filter expression... evaluated for each column">
                             <button id="sa-filter-clear-btn" tabindex="-1"
-                                title="Clear filter expression"
-                                style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#c0392b;font-size:1em;font-weight:bold;line-height:1;padding:2px 3px;border-radius:3px;display:none;">&#10005;</button>
+                                title="Clear filter expression">&#10005;</button>
                         </div>
                         <button id="sa-hist-pin-btn"
-                            title="Pin current filter to persistent list (saves query + checkbox states)"
-                            style="padding:0 10px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;cursor:pointer;font-size:1.1em;font-weight:bold;color:#2e7d32;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">+</button>
+                            title="Pin current filter to persistent list (saves query + checkbox states)">+</button>
                         <button id="sa-load-history-toggle"
-                            title="Show/hide filter history (Alt+H)"
-                            style="padding:0 10px;background:#f0f0f0;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:0.85em;white-space:nowrap;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">
-                            &#128337; <span style="text-decoration:underline">H</span>istory &#9660;
+                            title="Show/hide filter history (Alt+H)">
+                            &#128337; <u>H</u>istory &#9660;
                         </button>
                     </div>
                     <!-- ── History dropdown panel ── -->
-                    <div id="sa-load-history-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:white;border:1px solid #ccc;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.15);z-index:20001;box-sizing:border-box;">
+                    <div id="sa-load-history-dropdown">
                         <!-- Quick-filter input inside the panel -->
-                        <div style="padding:8px 8px 6px;border-bottom:1px solid #eee;">
-                            <div style="position:relative;display:flex;align-items:center;">
+                        <div id="sa-ld-qf-wrap">
+                            <div id="sa-ld-qf-inner">
                                 <input id="sa-hist-quick-filter" type="text"
-                                    placeholder="&#128269; Quick filter both lists..."
-                                    style="width:100%;box-sizing:border-box;padding:5px 32px 5px 8px;border:1px solid #ccc;border-radius:4px;font-size:0.88em;outline:none;">
+                                    placeholder="&#128269; Quick filter both lists...">
                                 <button id="sa-hist-qf-clear-btn" tabindex="-1"
-                                    title="Clear quick filter"
-                                    style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#c0392b;font-size:0.95em;font-weight:bold;line-height:1;padding:2px 3px;border-radius:3px;display:none;">&#10005;</button>
+                                    title="Clear quick filter">&#10005;</button>
                             </div>
                         </div>
                         <!-- Persistent pinned list -->
-                        <div style="padding:4px 8px 2px;background:#e8f5e9;border-bottom:1px solid #c8e6c9;display:flex;align-items:center;justify-content:space-between;">
-                            <span style="font-size:0.76em;font-weight:700;color:#2e7d32;text-transform:uppercase;letter-spacing:0.04em;">&#128204; Pinned</span>
+                        <div id="sa-ld-pin-header">
+                            <span class="sa-ld-pin-label">&#128204; Pinned</span>
                             <button id="sa-hist-edit-btn"
-                                title="Edit the persistent pinned filter list (Alt+E)"
-                                style="padding:2px 7px;background:#fff8e1;border:1px solid #ffe082;border-radius:5px;cursor:pointer;font-size:0.76em;font-weight:600;color:#e65100;white-space:nowrap;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;line-height:1.6;">
-                                &#9998; <span style="text-decoration:underline">E</span>dit Pinned Filter List
+                                title="Edit the persistent pinned filter list (Alt+E)">
+                                &#9998; <u>E</u>dit Pinned Filter List
                             </button>
                         </div>
-                        <div id="persistent-sa-hist-list" style="max-height:${histDropdownPx}px;overflow-y:auto;"></div>
-                        <div id="persistent-sa-hist-footer" style="padding:3px 8px;border-top:1px solid #eee;border-bottom:1px solid #ddd;font-size:0.76em;color:#666;display:flex;justify-content:space-between;background:#f9fbe7;">
+                        <div id="persistent-sa-hist-list" class="sa-ld-hist-list"></div>
+                        <div id="persistent-sa-hist-footer">
                             <span id="persistent-sa-hist-count"></span>
                             <span>&#8593;&#8595; navigate &nbsp; Enter: apply</span>
                         </div>
                         <!-- LRU recent list -->
-                        <div style="padding:4px 8px 2px;background:#e3f2fd;border-bottom:1px solid #bbdefb;">
-                            <span style="font-size:0.76em;font-weight:700;color:#1565c0;text-transform:uppercase;letter-spacing:0.04em;">&#128337; Recent (LRU)</span>
+                        <div id="sa-ld-lru-header">
+                            <span class="mb-fhw-lru-label">&#128337; Recent (LRU)</span>
                         </div>
-                        <div id="lru-sa-hist-list" style="max-height:${histDropdownPx}px;overflow-y:auto;"></div>
-                        <div id="lru-sa-hist-footer" style="padding:3px 8px;border-top:1px solid #eee;font-size:0.76em;color:#888;display:flex;justify-content:space-between;">
+                        <div id="lru-sa-hist-list" class="sa-ld-hist-list"></div>
+                        <div id="lru-sa-hist-footer">
                             <span id="lru-sa-hist-count"></span>
                             <span>&#8593;&#8595; navigate &nbsp; Enter: apply &nbsp; Esc: close</span>
                         </div>
                     </div>
                 </div>
                 <!-- Checkbox row -->
-                <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;background:#f9f9f9;padding:10px;border-radius:8px;flex-wrap:wrap;">
-                    <div style="display:flex;gap:20px;justify-content:center;flex:1;flex-wrap:wrap;">
-                        <label style="cursor:pointer;display:flex;align-items:center;gap:6px;font-size:0.9em;font-weight:600;" title="Match filter expression with exact case (uppercase/lowercase must match)">
+                <div id="sa-ld-checkbox-row">
+                    <div id="sa-ld-checkbox-inner">
+                        <label class="sa-ld-checkbox-label" title="Match filter expression with exact case (uppercase/lowercase must match)">
                             <input type="checkbox" id="sa-load-case"> Case Sensitive
                         </label>
-                        <label style="cursor:pointer;display:flex;align-items:center;gap:6px;font-size:0.9em;font-weight:600;" title="Interpret filter expression as a regular expression (JavaScript RegExp syntax)">
+                        <label class="sa-ld-checkbox-label" title="Interpret filter expression as a regular expression (JavaScript RegExp syntax)">
                             <input type="checkbox" id="sa-load-regex"> Regular Expression
                         </label>
-                        <label style="cursor:pointer;display:flex;align-items:center;gap:6px;font-size:0.9em;font-weight:600;" title="Exclude rows that match the filter expression instead of keeping them">
+                        <label class="sa-ld-checkbox-label" title="Exclude rows that match the filter expression instead of keeping them">
                             <input type="checkbox" id="sa-load-exclude"> Exclude Matches
                         </label>
                     </div>
                 </div>
                 <!-- Action buttons -->
-                <div style="display:flex;gap:12px;margin-bottom:8px;">
-                    <button id="sa-filter-confirm" style="flex:2;padding:10px;background:#1976D2;color:white;border:none;border-radius:6px;font-weight:bold;cursor:pointer;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">
-                        <span><span style="text-decoration:underline">F</span>ilter Data</span>
+                <div class="sa-ld-btn-row">
+                    <button id="sa-filter-confirm">
+                        <span><u>F</u>ilter Data</span>
                     </button>
-                    <button id="sa-render-no-filter-confirm" style="flex:1;padding:10px;background:#4CAF50;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:bold;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;" title="Render all rows from the loaded file without applying any filter">
-                        <span>&#9654; <span style="text-decoration:underline">R</span>ender All Rows</span>
+                    <button id="sa-render-no-filter-confirm" title="Render all rows from the loaded file without applying any filter">
+                        <span>&#9654; <u>R</u>ender All Rows</span>
                     </button>
                 </div>
-                <div id="sa-ld-filter-status" style="display:none;padding:5px 2px;font-size:${statusFontSz};min-height:20px;"></div>
+                <div id="sa-ld-filter-status" class="sa-ld-status"></div>
             </div>
 
             <!-- ── Phase 3 — Render (hidden until filter count computed) ── -->
-            <div id="sa-ld-phase3" style="display:none;margin-top:18px;border-top:1px solid #eee;padding-top:16px;">
-                <div style="display:flex;gap:12px;margin-bottom:8px;">
-                    <button id="sa-render-confirm" style="flex:2;padding:10px;background:#4CAF50;color:white;border:none;border-radius:6px;font-weight:bold;cursor:pointer;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">
-                        <span><span style="text-decoration:underline">R</span>ender Data</span>
+            <div id="sa-ld-phase3" class="sa-ld-phase">
+                <div class="sa-ld-btn-row">
+                    <button id="sa-render-confirm">
+                        <span><u>R</u>ender Data</span>
                     </button>
                 </div>
-                <div id="sa-ld-render-status" style="display:none;padding:5px 2px;font-size:${statusFontSz};min-height:20px;"></div>
+                <div id="sa-ld-render-status" class="sa-ld-status"></div>
             </div>
         `;
 
@@ -23571,9 +23877,8 @@ a { color: #1565c0; }`;
         // ── Hover styles ────────────────────────────────────────────────────
         const styleId = 'sa-load-popup-styles';
         if (!document.getElementById(styleId)) {
-            const s = document.createElement('style');
-            s.id = styleId;
-            s.textContent = `
+            // GM_addStyle so this is exempt from page CSP style-src restrictions.
+            const s = GM_addStyle(`
                 .sa-history-item:hover { background:#f0f0f0 !important; }
                 #sa-load-confirm:hover:not([disabled])           { background:#45a049 !important; }
                 #sa-load-cancel:hover                            { background:#e0e0e0 !important; }
@@ -23589,8 +23894,8 @@ a { color: #1565c0; }`;
                     transform: translateY(1px);
                     box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
                 }
-            `;
-            document.head.appendChild(s);
+            `);
+            s.id = styleId;
         }
 
         // ── Element refs ────────────────────────────────────────────────────
@@ -23811,7 +24116,7 @@ a { color: #1565c0; }`;
                     if (!loadAnywayConfirmed) {
                         rawData = null;
                         rawFile = null;
-                        loadBtn.innerHTML  = '<span><span style="text-decoration:underline">L</span>oad Data</span>';
+                        loadBtn.innerHTML  = '<span><u>L</u>oad Data</span>';
                         loadBtn.disabled   = false;
                         loadBtn.style.opacity = '';
                         loadStatus.innerHTML   = '\u{1F6AB} Load cancelled \u2014 page type mismatch.';
@@ -23832,7 +24137,7 @@ a { color: #1565c0; }`;
                 const rowLabel = totalRows === 1 ? 'row' : 'rows';
 
                 // Restore Load button
-                loadBtn.innerHTML  = '<span><span style="text-decoration:underline">L</span>oad Data</span>';
+                loadBtn.innerHTML  = '<span><u>L</u>oad Data</span>';
                 loadBtn.disabled   = false;
                 loadBtn.style.opacity = '';
 
@@ -23856,7 +24161,7 @@ a { color: #1565c0; }`;
             } catch (err) {
                 rawData = null;
                 rawFile = null;
-                loadBtn.innerHTML  = '<span><span style="text-decoration:underline">L</span>oad Data</span>';
+                loadBtn.innerHTML  = '<span><u>L</u>oad Data</span>';
                 loadBtn.disabled   = false;
                 loadBtn.style.opacity = '';
                 loadStatus.innerHTML   = `\u274C Error: ${err.message}`;
@@ -23917,7 +24222,7 @@ a { color: #1565c0; }`;
                 filterStatus.innerHTML = `<strong>${matchCount.toLocaleString()}</strong> ${rl} will be rendered (no filter applied)`;
             } else if (useExclude) {
                 const excluded = totalRows - matchCount;
-                filterStatus.innerHTML = `<strong>${matchCount.toLocaleString()}</strong> ${rl} will be rendered &nbsp;\u00B7&nbsp; <span style="color:#888;">${excluded.toLocaleString()} excluded</span>`;
+                filterStatus.innerHTML = `<strong>${matchCount.toLocaleString()}</strong> ${rl} will be rendered &nbsp;\u00B7&nbsp; <span class="sa-ld-excluded-note">${excluded.toLocaleString()} excluded</span>`;
             } else {
                 filterStatus.innerHTML = `<strong>${matchCount.toLocaleString()}</strong> of ${totalRows.toLocaleString()} ${rl} match \u2192 will be rendered`;
             }
@@ -24007,11 +24312,14 @@ a { color: #1565c0; }`;
             : { query: String(h), useCase: false, useRegex: false, useExclude: false };
 
         // Build compact checkbox-state glyphs.
+        // Reuses the shared .mb-fhw-badge* classes from
+        // _ensureFilterHistoryWidgetStyle() (see createFilterHistoryWidget's
+        // identical _histGlyphs, which this duplicates).
         const _histGlyphs = (e) => {
             const parts = [];
-            if (e.useCase)    parts.push('<span title="Case Sensitive" style="color:#1976D2;font-size:0.78em;font-weight:700;border:1px solid #1976D2;border-radius:2px;padding:0 2px;">Cs</span>');
-            if (e.useRegex)   parts.push('<span title="Regular Expression" style="color:#7B1FA2;font-size:0.78em;font-weight:700;border:1px solid #7B1FA2;border-radius:2px;padding:0 2px;">Re</span>');
-            if (e.useExclude) parts.push('<span title="Exclude Matches" style="color:#c62828;font-size:0.78em;font-weight:700;border:1px solid #c62828;border-radius:2px;padding:0 2px;">Ex</span>');
+            if (e.useCase)    parts.push('<span title="Case Sensitive" class="mb-fhw-badge mb-fhw-badge-cs">Cs</span>');
+            if (e.useRegex)   parts.push('<span title="Regular Expression" class="mb-fhw-badge mb-fhw-badge-re">Re</span>');
+            if (e.useExclude) parts.push('<span title="Exclude Matches" class="mb-fhw-badge mb-fhw-badge-ex">Ex</span>');
             return parts.length ? '&nbsp;' + parts.join('&nbsp;') : '';
         };
 
@@ -24021,7 +24329,7 @@ a { color: #1565c0; }`;
             const idx = haystack.toLowerCase().indexOf(needle.toLowerCase());
             if (idx < 0) return haystack;
             return haystack.slice(0, idx) +
-                `<mark style="background:#fff176;padding:0;">${haystack.slice(idx, idx + needle.length)}</mark>` +
+                `<mark class="mb-fhw-mark">${haystack.slice(idx, idx + needle.length)}</mark>` +
                 haystack.slice(idx + needle.length);
         };
 
@@ -24040,14 +24348,13 @@ a { color: #1565c0; }`;
                 const esc   = e.query.replace(/&/g, '&amp;').replace(/</g, '&lt;');
                 const label = _histHighlight(esc, escaped_qf);
                 const glyphs = _histGlyphs(e);
-                return `<div class="sa-hist-row" data-idx="${i}" data-list="${listId}"
-                    style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;cursor:pointer;font-size:0.9em;border-bottom:1px dotted #eee;gap:6px;">
-                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${label}</span>
-                    <span style="flex-shrink:0;display:flex;gap:3px;align-items:center;">${glyphs}</span>
+                return `<div class="mb-fhw-hist-row" data-idx="${i}" data-list="${listId}">
+                    <span class="mb-fhw-hist-label">${label}</span>
+                    <span class="mb-fhw-glyphs">${glyphs}</span>
                 </div>`;
-            }).join('') || `<div style="padding:8px 10px;color:#aaa;font-size:0.85em;text-align:center;">No matching entries</div>`;
+            }).join('') || `<div class="mb-fhw-empty">No matching entries</div>`;
 
-            container.querySelectorAll('.sa-hist-row').forEach(row => {
+            container.querySelectorAll('.mb-fhw-hist-row').forEach(row => {
                 row.addEventListener('mouseenter', () => {
                     _histActiveList = listId;
                     _histSelectRow(parseInt(row.dataset.idx), listId);
@@ -24084,13 +24391,13 @@ a { color: #1565c0; }`;
             const other     = isPin ? histLruList : histPinList;
             if (isPin) _histPinSelIdx = i; else _histLruSelIdx = i;
             // Clear other list selection
-            if (other) other.querySelectorAll('.sa-hist-row').forEach(r => { r.style.background=''; r.style.outline=''; });
+            if (other) other.querySelectorAll('.mb-fhw-hist-row').forEach(r => { r.style.background=''; r.style.outline=''; });
             if (!container) return;
-            container.querySelectorAll('.sa-hist-row').forEach((row, j) => {
+            container.querySelectorAll('.mb-fhw-hist-row').forEach((row, j) => {
                 row.style.background = j === i ? '#e3f2fd' : '';
                 row.style.outline    = j === i ? '1px solid #90caf9' : '';
             });
-            const sel = container.querySelector(`.sa-hist-row[data-idx="${i}"]`);
+            const sel = container.querySelector(`.mb-fhw-hist-row[data-idx="${i}"]`);
             if (sel) sel.scrollIntoView({ block: 'nearest' });
         };
 
@@ -24708,16 +25015,38 @@ a { color: #1565c0; }`;
      * @param {'gf'|'stf'|'cf'} type - CSS variable prefix.
      * @returns {string} HTML span.
      */
+    /**
+     * Lazily injects the shared, id-guarded stylesheet for
+     * {@link _mbttLabel}/{@link _mbttColName}/{@link _mbttCount}'s rich
+     * tooltip spans. GM_addStyle so it is exempt from page CSP style-src
+     * restrictions. The colors read from Lib.settings here are fixed for
+     * the lifetime of the page — any settings change reloads the page
+     * (see the settings dialog's save handler) — so computing them once
+     * at first call and caching as CSS classes is safe.
+     */
+    function _ensureMbttStyle() {
+        if (document.getElementById('sa-mbtt-style')) return;
+        const gfBg     = Lib.settings.sa_global_filter_highlight_bg    || '#FFD700';
+        const gfCol    = Lib.settings.sa_global_filter_highlight_color || 'red';
+        const cfBg     = Lib.settings.sa_column_filter_highlight_bg    || '#add8e6';
+        const cfCol    = Lib.settings.sa_column_filter_highlight_color || 'red';
+        const countBg  = Lib.settings.sa_ui_row_count_bg               || '#e8e8e8';
+        const countCol = Lib.settings.sa_ui_row_count_color            || '#111111';
+        const style = GM_addStyle(`
+            .mb-mbtt-gf, .mb-mbtt-stf, .mb-mbtt-cf { border-radius:2px; padding:0 3px; font-style:italic; }
+            .mb-mbtt-gf { background:${gfBg}; color:${gfCol}; }
+            .mb-mbtt-stf { background:#90ee90; color:#000; }
+            .mb-mbtt-cf { background:${cfBg}; color:${cfCol}; }
+            .mb-mbtt-colname { color:${cfBg}; font-weight:bold; }
+            .mb-mbtt-count { background:${countBg}; color:${countCol}; border-radius:2px; padding:0 3px; font-weight:bold; }
+        `);
+        style.id = 'sa-mbtt-style';
+    }
+
     function _mbttLabel(word, type) {
-        // Same CSS vars as the #mb-stat-tooltip .mbtt-* rules; inline style
-        // is used so the label works outside the tooltip context too.
-        const bg  = type === 'gf'  ? (Lib.settings.sa_global_filter_highlight_bg   || '#FFD700')
-                  : type === 'stf' ? '#90ee90'
-                  :                  (Lib.settings.sa_column_filter_highlight_bg    || '#add8e6');
-        const col = type === 'gf'  ? (Lib.settings.sa_global_filter_highlight_color || 'red')
-                  : type === 'stf' ? '#000'
-                  :                  (Lib.settings.sa_column_filter_highlight_color  || 'red');
-        return `<span style="background:${bg};color:${col};border-radius:2px;padding:0 3px;font-style:italic;">${word}</span>`;
+        _ensureMbttStyle();
+        const cls = type === 'gf' ? 'mb-mbtt-gf' : type === 'stf' ? 'mb-mbtt-stf' : 'mb-mbtt-cf';
+        return `<span class="${cls}">${word}</span>`;
     }
 
     /**
@@ -24730,15 +25059,13 @@ a { color: #1565c0; }`;
      * @returns {string} HTML span.
      */
     function _mbttColName(name) {
-        // Use the cf highlight background as the text color so the column name
-        // visually "belongs to" the adjacent filter-expression pill.
-        const cfBg = Lib.settings.sa_column_filter_highlight_bg || '#add8e6';
+        _ensureMbttStyle();
         const safe = name
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
-        return `<span style="color:${cfBg};font-weight:bold;">'${safe}'</span>`;
+        return `<span class="mb-mbtt-colname">'${safe}'</span>`;
     }
 
     /**
@@ -24753,10 +25080,8 @@ a { color: #1565c0; }`;
      * @returns {string} HTML string.
      */
     function _mbttCount(n) {
-        const bg  = Lib.settings.sa_ui_row_count_bg    || '#e8e8e8';
-        const col = Lib.settings.sa_ui_row_count_color || '#111111';
-        return `<span style="background:${bg};color:${col};border-radius:2px;` +
-               `padding:0 3px;font-weight:bold;">${n}</span>`;
+        _ensureMbttStyle();
+        return `<span class="mb-mbtt-count">${n}</span>`;
     }
 
     /**
@@ -28086,47 +28411,37 @@ a { color: #1565c0; }`;
 
             const pageLabel = (pagesProcessed === 1) ? 'page' : 'pages';
 
+            // GM_addStyle so this dialog's CSS is exempt from page CSP
+            // style-src restrictions (see other dialogs' identical treatment).
+            // Fully static — safe to inject once, idempotent.
+            if (!document.getElementById('sa-render-decision-style')) {
+                const rdStyle = GM_addStyle(`
+                    #sa-rd-title { margin-top: 0; color: #333; }
+                    #sa-rd-summary { font-size: 16px; margin: 20px 0; }
+                    #sa-rd-warning { font-size: 14px; color: #666; margin: 20px 0; }
+                    #sa-rd-btn-row { display: flex; gap: 10px; justify-content: center; margin-top: 25px; }
+                    .sa-rd-btn { padding: 10px 20px; font-size: 14px; cursor: pointer; color: white; border: none; border-radius: 6px; font-weight: bold; }
+                    #mb-dialog-save { background: #4CAF50; }
+                    #mb-dialog-render { background: #2196F3; }
+                    #mb-dialog-cancel { background: #f44336; }
+                `);
+                rdStyle.id = 'sa-render-decision-style';
+            }
+
             dialog.innerHTML = `
-                <h2 style="margin-top: 0; color: #333;">Large Dataset Fetched</h2>
-                <p style="font-size: 16px; margin: 20px 0;">
+                <h2 id="sa-rd-title">Large Dataset Fetched</h2>
+                <p id="sa-rd-summary">
                     Successfully fetched <strong>${totalRows.toLocaleString()} rows</strong> from <strong>${pagesProcessed} ${pageLabel}</strong>.
                 </p>
-                <p style="font-size: 14px; color: #666; margin: 20px 0;">
+                <p id="sa-rd-warning">
                     Rendering this many rows may take a considerable amount of time and could impact your browser performance
                     or even make your browser completely unusable. You can instead SAVE the data directly to disk and LOAD it
                     with a PRE-FILTER condition LATER (to decrease the number of rows to make the rendering feasible) or proceed with rendering now.
                 </p>
-                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 25px;">
-                    <button id="mb-dialog-save" style="
-                        padding: 10px 20px;
-                        font-size: 14px;
-                        cursor: pointer;
-                        background: #4CAF50;
-                        color: white;
-                        border: none;
-                        border-radius: 6px;
-                        font-weight: bold;
-                    ">💾 Save to Disk</button>
-                    <button id="mb-dialog-render" style="
-                        padding: 10px 20px;
-                        font-size: 14px;
-                        cursor: pointer;
-                        background: #2196F3;
-                        color: white;
-                        border: none;
-                        border-radius: 6px;
-                        font-weight: bold;
-                    ">🎨 Render Now</button>
-                    <button id="mb-dialog-cancel" style="
-                        padding: 10px 20px;
-                        font-size: 14px;
-                        cursor: pointer;
-                        background: #f44336;
-                        color: white;
-                        border: none;
-                        border-radius: 6px;
-                        font-weight: bold;
-                    ">❌ Cancel</button>
+                <div id="sa-rd-btn-row">
+                    <button id="mb-dialog-save" class="sa-rd-btn">💾 Save to Disk</button>
+                    <button id="mb-dialog-render" class="sa-rd-btn">🎨 Render Now</button>
+                    <button id="mb-dialog-cancel" class="sa-rd-btn">❌ Cancel</button>
                 </div>
             `;
 
@@ -31542,9 +31857,18 @@ a { color: #1565c0; }`;
             font-size: 16px;
             text-align: center;
         `;
+        // GM_addStyle so this overlay's CSS is exempt from page CSP style-src
+        // restrictions. Fully static, safe to inject once.
+        if (!document.getElementById('sa-render-progress-style')) {
+            const rpStyle = GM_addStyle(`
+                #mb-render-heading { margin-bottom: 10px; }
+                #mb-render-progress { font-size: 14px; }
+            `);
+            rpStyle.id = 'sa-render-progress-style';
+        }
         progressMsg.innerHTML = `
-            <div style="margin-bottom: 10px;">🎨 Rendering rows...</div>
-            <div id="mb-render-progress" style="font-size: 14px;">0 / ${totalRows.toLocaleString()}</div>
+            <div id="mb-render-heading">🎨 Rendering rows...</div>
+            <div id="mb-render-progress">0 / ${totalRows.toLocaleString()}</div>
         `;
         document.body.appendChild(progressMsg);
         const progressText = document.getElementById('mb-render-progress');
@@ -39910,6 +40234,12 @@ a { color: #1565c0; }`;
      *   positioning the dialog near the button).
      */
     function _saveSettingsConfig(triggerButton = null) {
+        // Reuses the shared .sa-meta-* classes from _ensureMetaBlockStyle()
+        // (buildMetaBlockHTML's stylesheet) for the config-specific meta
+        // block built manually below — GM_addStyle-safe against page CSP,
+        // and showExportDialog's own buildMetaBlockHTML call further down
+        // would inject it anyway, but call explicitly for robustness.
+        _ensureMetaBlockStyle();
         try {
             const json     = _buildConfigJson();
             const blob     = new Blob([json], { type: 'application/json' });
@@ -39930,16 +40260,15 @@ a { color: #1565c0; }`;
             const fmtDate = (iso) => { try { return new Date(iso).toLocaleString(); } catch (_) { return iso; } };
             const row = (label, value) =>
                 `<tr>` +
-                `<td style="padding:3px 10px 3px 0;color:#666;font-weight:600;white-space:nowrap;vertical-align:top;">${label}</td>` +
-                `<td style="padding:3px 0;word-break:break-all;">${value}</td>` +
+                `<td class="sa-meta-label">${label}</td>` +
+                `<td class="sa-meta-value">${value}</td>` +
                 `</tr>`;
 
             const metaBlockHtml =
-                `<div style="font-size:0.82em;color:#555;margin-bottom:6px;font-weight:700;` +
-                `letter-spacing:0.03em;text-transform:uppercase;">&#128196; File Metadata</div>` +
-                `<table style="border-collapse:collapse;width:100%;font-size:0.88em;line-height:1.5;">` +
+                `<div class="sa-meta-header">&#128196; File Metadata</div>` +
+                `<table class="sa-meta-table">` +
                 row('Script ID',       `<code>${esc(meta.script_id || SCRIPT_ID)}</code>`) +
-                row('Script version',  `<span style="background:#f5f5f5;border:1px solid #ddd;border-radius:3px;padding:0 5px;font-size:0.85em;">${esc(meta.script_version || scriptVersion)}</span>`) +
+                row('Script version',  `<span class="sa-meta-version-badge">${esc(meta.script_version || scriptVersion)}</span>`) +
                 row('Schema version',  esc(String(meta.schema_version || _CFG_SCHEMA_VERSION))) +
                 row('Exported at',     esc(fmtDate(meta.exported_at))) +
                 row('Settings count',  `<strong>${settingsCount}</strong> keys`) +
@@ -41191,7 +41520,26 @@ a { color: #1565c0; }`;
      * @param {HTMLTableCellElement} cell  The `td.mb-rel-cell` being displayed.
      * @returns {string} Safe HTML string for `innerHTML`.
      */
+    /**
+     * Lazily injects the shared, id-guarded stylesheet for
+     * {@link _relBuildTooltipHTML}'s output. GM_addStyle so it is exempt
+     * from page CSP style-src restrictions. Fully static, safe to inject
+     * once per page load.
+     */
+    function _ensureRelTooltipStyle() {
+        if (document.getElementById('sa-rel-tooltip-style')) return;
+        const style = GM_addStyle(`
+            .sa-rel-tt-none { opacity:0.6; font-style:italic; }
+            .sa-rel-tt-img { width:16px; height:16px; vertical-align:middle; margin-right:5px; flex-shrink:0; }
+            .sa-rel-tt-ended { margin-left:5px; opacity:0.6; font-style:italic; }
+            .sa-rel-tt-row { display:flex; align-items:center; padding:2px 0; }
+            .sa-rel-tt-url { flex:1; min-width:0; }
+        `);
+        style.id = 'sa-rel-tooltip-style';
+    }
+
     function _relBuildTooltipHTML(cell) {
+        _ensureRelTooltipStyle();
         /**
          * Escapes a string for safe insertion as HTML text content.
          * @param {string} s
@@ -41252,26 +41600,25 @@ a { color: #1565c0; }`;
 
         const _anchors = Array.from(cell.querySelectorAll('a'));
         if (!_anchors.length) {
-            return `<span style="opacity:0.6;font-style:italic;">No relationships</span>`;
+            return `<span class="sa-rel-tt-none">No relationships</span>`;
         }
 
         const _lines = _anchors.map(a => {
             const _keySpan = a.querySelector('.mb-rel-filter-key');
             const _img     = a.querySelector('img');
             const _imgHtml = _img
-                ? `<img src="${_esc(_img.src)}" style="width:16px;height:16px;` +
-                  `vertical-align:middle;margin-right:5px;flex-shrink:0;">`
+                ? `<img src="${_esc(_img.src)}" class="sa-rel-tt-img">`
                 : '';
             const _ended    = parseFloat(a.style.opacity || '1') < 0.5;
             const _endedTag = _ended
-                ? `<span style="margin-left:5px;opacity:0.6;font-style:italic;">(ended)</span>`
+                ? `<span class="sa-rel-tt-ended">(ended)</span>`
                 : '';
             const _urlHtml  = _keySpan
                 ? _serialiseKeySpan(_keySpan)
                 : _esc(a.href);
-            return `<div style="display:flex;align-items:center;padding:2px 0;">` +
+            return `<div class="sa-rel-tt-row">` +
                    `${_imgHtml}` +
-                   `<span style="flex:1;min-width:0;">${_urlHtml}</span>` +
+                   `<span class="sa-rel-tt-url">${_urlHtml}</span>` +
                    `${_endedTag}` +
                    `</div>`;
         });
@@ -43168,9 +43515,11 @@ a { color: #1565c0; }`;
         if (document.getElementById('sa-unicode-menu')) return;
 
         // ── CSS ──────────────────────────────────────────────────────────────
-        const style = document.createElement('style');
-        style.id    = 'sa-unicode-menu-style';
-        style.textContent = `
+        // GM_addStyle (not document.createElement('style') + head.appendChild)
+        // so this stylesheet is exempt from page CSP style-src restrictions
+        // (MusicBrainz's account/* pages serve a CSP with no 'unsafe-inline'
+        // for style-src, which silently drops plain injected <style> tags).
+        const style = GM_addStyle(`
 #sa-unicode-menu {
     display: none;
     position: absolute;
@@ -43216,8 +43565,11 @@ a { color: #1565c0; }`;
     color: #666;
     font-size: 0.88em;
 }
-        `;
-        document.head.appendChild(style);
+.sa-unicode-cell-name-close {
+    text-align: right;
+}
+        `);
+        style.id = 'sa-unicode-menu-style';
 
         // ── Menu DOM ─────────────────────────────────────────────────────────
         const menu = document.createElement('div');
@@ -43229,7 +43581,7 @@ a { color: #1565c0; }`;
         closeRow.dataset.saUnicodeIdx = '0';
         closeRow.innerHTML =
             '<span class="sa-unicode-cell-char"></span>' +
-            '<span class="sa-unicode-cell-name" style="text-align:right">✕ Close (Esc)</span>';
+            '<span class="sa-unicode-cell-name sa-unicode-cell-name-close">✕ Close (Esc)</span>';
         menu.appendChild(closeRow);
 
         // Character rows
@@ -43802,6 +44154,13 @@ a { color: #1565c0; }`;
      * @param {HTMLTableCellElement} parent  The `<td>` element holding the RG link.
      */
     function ergInjectReleaseGroupButton(parent) {
+        // GM_addStyle so this error message's CSS is exempt from page CSP
+        // style-src restrictions. Fully static, safe to inject once; shared
+        // with ergInjectReleaseButton's identical error message.
+        if (!document.getElementById('sa-erg-error-style')) {
+            const ergStyle = GM_addStyle(`.sa-erg-error { color:#f00; }`);
+            ergStyle.id = 'sa-erg-error-style';
+        }
         const mbid  = parent.querySelector('a').href.match(MBID_REGEX)?.[0];
         if (!mbid) return;
         const table = document.createElement('table');
@@ -43854,7 +44213,7 @@ a { color: #1565c0; }`;
             `/ws/2/release?release-group=${mbid}&limit=100&inc=media&fmt=json`,
             (toggled) => { if (toggled) _insertTable(); else _removeTable(); },
             (json)    => { ergParseReleaseGroup(json, mbid, table); },
-            (status)  => { table.innerHTML = `<tr><td style="color:#f00;">Error loading release group (HTTP ${status})</td></tr>`; }
+            (status)  => { table.innerHTML = `<tr><td class="sa-erg-error">Error loading release group (HTTP ${status})</td></tr>`; }
         );
 
         parent.insertBefore(button, parent.firstChild);
@@ -43874,6 +44233,12 @@ a { color: #1565c0; }`;
      * @param {string}               [mbid]        Release MBID (default: read from first `<a>` in `parent`).
      */
     function ergInjectReleaseButton(parent, tableParent, table, mbid) {
+        // Shared with ergInjectReleaseGroupButton's identical error message —
+        // see its GM_addStyle comment for why this is safe to call here too.
+        if (!document.getElementById('sa-erg-error-style')) {
+            const ergStyle = GM_addStyle(`.sa-erg-error { color:#f00; }`);
+            ergStyle.id = 'sa-erg-error-style';
+        }
         const resolvedMbid = mbid || parent.querySelector('a')?.href.match(MBID_REGEX)?.[0];
         if (!resolvedMbid) return;
         const resolvedTable       = table       || document.createElement('table');
@@ -43887,7 +44252,7 @@ a { color: #1565c0; }`;
                 else         resolvedTableParent.removeChild(resolvedTable);
             },
             (json)   => { ergParseRelease(json, resolvedTable); },
-            (status) => { resolvedTable.innerHTML = `<tr><td style="color:#f00;">Error loading release (HTTP ${status})</td></tr>`; }
+            (status) => { resolvedTable.innerHTML = `<tr><td class="sa-erg-error">Error loading release (HTTP ${status})</td></tr>`; }
         );
 
         parent.insertBefore(button, parent.childNodes[0]);
@@ -50536,7 +50901,8 @@ a { color: #1565c0; }`;
                 if (!_col5) return;
                 // Only replace when currently showing the placeholder '—'.
                 if (_col5.querySelector('span[title]') || _col5.textContent.trim() === '—' || _col5.querySelector('[style*="#bbb"]')) {
-                    _col5.innerHTML = `🖼️ <span style="color:#1565c0;font-weight:700">${_cnt.toLocaleString()}</span>`;
+                    _ensureStatsPanelStyle();
+                    _col5.innerHTML = `🖼️ <span class="sa-stats-accent-700">${_cnt.toLocaleString()}</span>`;
                 }
             });
 

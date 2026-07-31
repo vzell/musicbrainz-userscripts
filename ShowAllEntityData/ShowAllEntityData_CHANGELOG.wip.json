@@ -1,0 +1,122 @@
+[
+    {
+        "version": "WIP.10",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fix the Ctrl+M shortcuts tooltip never appearing at all on page types with no `div#content` (e.g. /account/applications) — unrelated to the CSP `style-src` fixes above. `showCtrlMTooltip()` had an early `if (!contentDiv) return;` guard that skipped building the tooltip entirely whenever `#content` was absent, even though `#content` is only actually needed for the positioning step at the end of the function. Removed the early bailout and added a viewport-relative positioning fallback (anchored to the top-right corner) for when `#content` doesn't exist, instead of requiring it unconditionally."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.9",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fix the remaining CSP `style-src` breakage on /account/applications in one final pass, closing out the investigation started in WIP.1: `showRenderDecisionDialog` (the \"Large Dataset Fetched\" decision dialog), `showCtrlMTooltip` (the Ctrl+M shortcuts tooltip), `_saveSettingsConfig` (settings-export metadata block, now reusing the shared `.sa-meta-*` classes), `_relBuildTooltipHTML` (relationship-cell rich tooltips), `makeCollapseExpandBtnHTML` (the shared ▶/▼ collapse-toggle button label used throughout the script), and a handful of smaller 1-2-attribute sites (help-panel error fallback, resize/render progress overlays, mnemonic-underline button labels, rich hover-tooltip spans, and the release/release-group inline-expand error messages). File-wide: 0 remaining `style=\"...\"` attributes in live code (down from ~260 at the start of this investigation) — every class referenced via `class=\"...\"` verified to have a matching `GM_addStyle()` definition."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.8",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fix the \"Edit Pinned Filter List\" table-editor dialog (`showEditPersistentListDialog`, opened via the ✎ Edit Pinned Filter List button inside any filter-history dropdown) rendering unstyled on /account/applications — same CSP `style-src` issue as WIP.1-7, across 49 attributes, the biggest remaining function. Its per-row selection/mark highlighting (a dynamic `rowStyle` string computed from 3 discrete states) was converted to a base `.sa-epl-row` class plus `.sa-epl-row-sel`/`.sa-epl-row-mrk` modifier classes; the existing JS property-assignment calls that update selection after initial render are unaffected. Also reused the shared `.mb-fhw-mark` class for its quick-filter highlight."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.7",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fix the generic export dialog (`showExportDialog`, the CSV/etc \"Save Data\" flow, distinct from `showSaveDialog`'s full-table-serialization dialog) rendering unstyled on /account/applications — same CSP `style-src` issue as WIP.1-6, across 15 attributes. Virtually identical shell to `showSaveDialog`/`showLoadFilterDialog`, fixed with the same dedicated, id-guarded, injected-once `GM_addStyle()` stylesheet pattern."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.6",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fix the statistics panel (`showStatsPanel`) rendering unstyled on /account/applications — same CSP `style-src` issue as WIP.1-5, this time across 46 attributes in the largest single function fixed so far (~1570 lines). Almost every occurrence interpolated one of a handful of colors from the panel's own fixed, hardcoded palette (never settings-driven), so they collapsed into ~20 reusable `.sa-stats-*` classes via a new shared `_ensureStatsPanelStyle()` stylesheet. One genuinely conditional case (picking a color based on a column's sort direction) was changed to compute a class name instead of a color value, keeping it CSS-only."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.5",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fix the \"Save Table Data\" dialog (`showSaveDialog`) and the shared \"File Metadata\" table it and the Load dialog both use (`buildMetaBlockHTML`) rendering unstyled on /account/applications — same CSP `style-src` issue as WIP.1-4. `buildMetaBlockHTML`'s 10 attributes moved to a new shared, id-guarded `GM_addStyle()` stylesheet, including replacing an inline `${modeColor}`-interpolated background with two static modifier classes (`.sa-meta-mode-multi`/`.sa-meta-mode-single`) since the value is always one of exactly two options. `showSaveDialog`'s own 13 attributes moved to a dedicated, id-guarded, injected-once stylesheet (its interpolated values are settings-only, unchanged without a page reload)."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.4",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fix the \"Load from Disk\" dialog (`showLoadFilterDialog`) rendering completely unstyled/stacked on /account/applications on its very first open — same CSP `style-src` issue as WIP.1-3, this time in the dialog's own 49 `innerHTML`-embedded `style=\"...\"` attributes (dialog shell) plus its internal duplicate of `createFilterHistoryWidget`'s history-dropdown code, which was rewired to reuse the exact same shared `.mb-fhw-*` classes from WIP.3 instead of duplicating them. The dialog shell itself got its own dedicated, id-guarded `GM_addStyle()` stylesheet, safe to inject once since its interpolated dynamic values (font sizes, dropdown height) only change via a settings save, which reloads the page anyway."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.3",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fix `createFilterHistoryWidget()` (the Pin/History dropdown attached to every filter input, including the global filter built during initial page load) rendering unstyled if opened on /account/applications — same CSP `style-src` issue as WIP.1/WIP.2, found via console errors present on initial page load even though nothing looked visibly broken yet (the dropdown panel stays `display:none` until clicked). Converted its 11 `innerHTML`-embedded `style=\"...\"` attributes to a shared, page-global `GM_addStyle()` stylesheet (guarded by id so it's only injected once regardless of how many filter inputs get a history widget). Also replaced two single-letter mnemonic underline spans (`<span style=\"text-decoration:underline\">`) with plain `<u>` tags — no CSS needed. Also fixed one missed leftover from WIP.1's `initSaUnicodeCharsFeature` conversion: a separate inline `style=\"text-align:right\"` on the picker's Close row that wasn't part of the `<style>` block originally converted. NOTE: an identical duplicated `_histGlyphs` badge-rendering block still exists un-fixed inside `showLoadFilterDialog` (one of the still-deferred functions, see debug/NOTES.md) — left alone per the incremental fix-as-you-test approach."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.2",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fix the settings/configuration dialog and the changelog viewer rendering broken on /account/applications (unstyled, stacked layout) by fixing the same CSP `style-src` issue as WIP.1, this time in the shared `VZ_MBLibrary.user.js` library (`@require`d by this script): the dialog shells and per-row setting widgets were built via `container.innerHTML` templates with ~75 inline `style=\"...\"` attributes, which are blocked by page CSP the same as `<style>` elements. Converted to id/class selectors targeted by `GM_addStyle()`-injected stylesheets, plus added `// @grant GM_addStyle` to both `VZ_MBLibrary.user.js` and `MB_PageEnhancer.user.js` (the other consumer of this library) so `GM_addStyle` exists in their sandbox. Also replaced an `onfocus`/`onblur` inline event-handler pair in the changelog search box with a CSS `:focus` rule (also CSP-restricted). NOTE: the same `innerHTML`+`style=\"...\"` pattern still exists in ~20 more functions within ShowAllEntityData.user.js itself (dialogs, tooltips, stats panel — see debug/NOTES.md) and will be fixed incrementally as each is found broken during further pageType testing."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.1",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Replace all 9 direct `document.createElement('style')` + `document.head.appendChild()` CSS injection sites (edit-diff table colors, sticky table headers, export/save/load dialog hover states, sidebar toggle, main toolbar chrome, relationships-icon column, Unicode character picker) with `GM_addStyle()` so injected CSS is exempt from Content-Security-Policy `style-src` restrictions (no `unsafe-inline`) that MusicBrainz's backend applies to /account/* pages. This was silently dropping these stylesheets on /account/applications, causing a raw Unicode picker dump appended below the page footer and the sub-table filter row's Cc/Rx/Ex checkboxes stacking one-per-line instead of inline."
+                ]
+            }
+        ]
+    }
+]

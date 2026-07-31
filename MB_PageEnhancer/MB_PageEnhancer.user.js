@@ -10,7 +10,7 @@
 // @downloadURL  https://raw.githubusercontent.com/vzell/mb-userscripts/master/MB_PageEnhancer.user.js
 // @updateURL    https://raw.githubusercontent.com/vzell/mb-userscripts/master/MB_PageEnhancer.user.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=musicbrainz.org
-// @require      https://cdn.jsdelivr.net/gh/vzell/mb-userscripts@master/lib/VZ_MBLibrary.user.js
+// @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
 // @match        *://*.musicbrainz.org/release/*-*-*-*-*
 // @exclude      *://*.musicbrainz.org/release/*/*
 // @match        *://*.musicbrainz.org/event/*-*-*-*-*
@@ -21,6 +21,7 @@
 // @grant        GM_registerMenuCommand
 // @grant        GM_unregisterMenuCommand
 // @grant        GM_xmlhttpRequest
+// @grant        GM_addStyle
 // @license      MIT
 // ==/UserScript==
 
