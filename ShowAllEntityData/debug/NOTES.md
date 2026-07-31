@@ -1747,3 +1747,29 @@ falls back to `N/A` like every other empty cell on this page.
   color/font-size, or a row's selected/marked/sort-direction state), reach
   for a small fixed set of modifier classes and compute a *class name*
   instead of a *style/color value*.
+
+## 2026-07-31 — Ctrl+M shortcuts tooltip never showing on /account/applications (WIP.10, non-CSP)
+
+- Separate, unrelated bug found while verifying the CSP fixes above:
+  pressing Ctrl+M on `/account/applications` produced zero visible
+  tooltip (no console errors — genuinely never triggered). Root cause:
+  `showCtrlMTooltip()` (`ShowAllEntityData.user.js`, ~line 9529) had
+  `const contentDiv = document.getElementById('content'); ... if
+  (!contentDiv) return;` right after building the tooltip's own
+  `GM_addStyle()` stylesheet — this page type has no `div#content` (a
+  flat `div#page` layout, same fact noted throughout this file's earlier
+  `account-applications` entry), so the function returned before ever
+  creating `ctrlMTooltipElement`. `contentDiv`/`sidebarDiv` were only
+  actually needed later, for positioning the tooltip in the upper-right
+  of `#content` without overlapping the sidebar — not for building the
+  tooltip's content at all. Fixed by removing the early bailout and
+  adding a `contentDiv`-absent branch in the positioning `setTimeout`
+  that anchors the tooltip to the viewport's top-right corner instead.
+- Also noted mid-session: the git working directory was switched to an
+  unrelated branch (`fix/dropdown-flag-flat`, flag-icon dropdown
+  decoration work) partway through this investigation, which is why
+  `MB_PageEnhancer.user.js`'s `@grant GM_addStyle` and this file's own
+  WIP changelog briefly appeared to have reverted — they hadn't; that
+  branch simply never had this branch's commits. No actual regression;
+  resolved by switching back to `fix/account-applications-csp-style-src`
+  (working tree was clean, so the switch was lossless).

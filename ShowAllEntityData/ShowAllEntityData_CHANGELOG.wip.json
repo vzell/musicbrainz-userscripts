@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.10",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fix the Ctrl+M shortcuts tooltip never appearing at all on page types with no `div#content` (e.g. /account/applications) — unrelated to the CSP `style-src` fixes above. `showCtrlMTooltip()` had an early `if (!contentDiv) return;` guard that skipped building the tooltip entirely whenever `#content` was absent, even though `#content` is only actually needed for the positioning step at the end of the function. Removed the early bailout and added a viewport-relative positioning fallback (anchored to the top-right corner) for when `#content` doesn't exist, instead of requiring it unconditionally."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.9",
         "date": "2026-07-31",
         "sections": [

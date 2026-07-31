@@ -9549,7 +9549,9 @@
 
         const contentDiv = document.getElementById('content');
         const sidebarDiv = document.getElementById('sidebar');
-        if (!contentDiv) return;
+        // Some page types (e.g. /account/applications) have no div#content —
+        // only the positioning below depends on it, so don't bail out of the
+        // whole tooltip; fall back to viewport-relative positioning instead.
 
         // Create tooltip element
         ctrlMTooltipElement = document.createElement('div');
@@ -9611,12 +9613,13 @@
         ctrlMTooltipElement.innerHTML = tooltipHTML;
         document.body.appendChild(ctrlMTooltipElement);
 
-        // Position in upper right of content div, not overlapping sidebar
+        // Position in upper right of content div, not overlapping sidebar.
+        // Falls back to viewport-relative positioning on page types with no
+        // div#content (e.g. /account/applications).
         setTimeout(() => {
-            if (contentDiv && sidebarDiv) {
+            const tooltipRect = ctrlMTooltipElement.getBoundingClientRect();
+            if (contentDiv) {
                 const contentRect = contentDiv.getBoundingClientRect();
-                const sidebarRect = sidebarDiv.getBoundingClientRect();
-                const tooltipRect = ctrlMTooltipElement.getBoundingClientRect();
 
                 // Position in upper right, respecting sidebar
                 let left = Math.min(contentRect.right - tooltipRect.width - 10, window.innerWidth - tooltipRect.width - 10);
@@ -9624,11 +9627,17 @@
 
                 if (sidebarDiv) {
                     // Ensure doesn't overlap sidebar
+                    const sidebarRect = sidebarDiv.getBoundingClientRect();
                     left = Math.min(left, sidebarRect.left - tooltipRect.width - 10);
                 }
 
                 ctrlMTooltipElement.style.left = left + 'px';
                 ctrlMTooltipElement.style.top = (contentRect.top + 10) + 'px';
+            } else {
+                // No div#content on this page type — anchor to the viewport's
+                // upper right instead.
+                ctrlMTooltipElement.style.left = (window.innerWidth - tooltipRect.width - 20) + 'px';
+                ctrlMTooltipElement.style.top = '20px';
             }
         }, 0);
     }
