@@ -87616,7 +87616,7 @@ Add compehensive tooltips to the following buttons
 which describe what they are doing
 
 
-* forum
+* TODO forum
 ** initial
 
 For my upcoming MusicBrainz article about the latest updates in my userscript, please generate a list of new
@@ -87764,6 +87764,46 @@ Here is the last version as an example:
 
 act on @debug/forum.org
 
+#+begin_example
+● I've drafted the forum post covering everything from 9.99.675 through the current 9.99.746, and appended it to debug/forum.org (it's gitignored, so nothing to commit). Here it is:
+
+  ---
+  VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
+
+  Changes since last version
+
+  New pages supported
+
+  - Report pages — the full /reports index (all 117 reports, in 14 categories) and every individual report page now load, filter and sort like every other page this script handles, including inline cover-art thumbnails where a report lists releases or events, and extra date/time
+  and text-length columns on reports that have a "Last edited" or "Annotation" column.
+  - Your Applications page — /account/applications (your OAuth2 authorized apps, and any apps you've registered as a developer) is now consolidated into one filterable table.
+  - Edit-listing pages — a big one: search results for edits, edits on a specific entity, subscribed edits, your own edits (open or all), and the "recent notes left on your edits" page are all now supported. Each edit becomes a proper table row, edit type and open/closed state
+  get a colour (matching the well-known "Colourful Edits" userscript's palette, even if you don't have it installed), old/new value changes are colour-coded, and long edit details/notes can be collapsed. Edits tied to a specific release also get a small cover-art thumbnail.
+  - Auto-editor elections — both the /elections overview and individual election pages.
+  - Genre list, Instrument list, Edit Types documentation, and CD stub pages — /genres, /instruments, /doc/Edit_Types, and both the CD stub browsing list and individual CD stub pages all get the same filtering/sorting treatment.
+  - Privileged user accounts — the /privileged page listing auto-editors, relationship editors, bots, and other special account types.
+  - musicbrainz.eu mirror — the script now works there too, not just musicbrainz.org.
+
+  Enhancements
+
+  - Filter dropdown multi-select — the little 📊 dropdown that lists every value in a column now lets you tick several values at once instead of only picking one.
+  - Collapsible long-text columns — free-text columns like "Annotation" can now be collapsed behind a "show more/less" toggle instead of stretching the row, with a configurable preview height. Wiki-style sub-headings inside an annotation stay individually collapsible too, with
+  their own colour setting.
+  - Auto-expand annotations on entity pages — optionally, a long native Annotation on an entity's own page can now expand automatically instead of needing an extra click (off by default).
+  - Smarter Location/Area columns — the "Area" columns now split more usefully into a Locality (city) and Region (state/county) part instead of one combined value, and play nicer with popular flag-icon userscripts (Canadian Province Flags, More Flags Everywhere, etc.).
+  - Optional flag icons in the filter dropdown — Country/Area/Location-style columns can now optionally show the same little flag icon in the filter dropdown as in the table itself (off by default).
+
+  Fixes
+
+  - Sorting no longer gets confused by hidden cover-art/event-art markers, so tables with inline thumbnails sort correctly again.
+  - Sorting now applies consistently across every row of a merged release-group discography view, instead of only part of it.
+  - Several rendering glitches on report pages are fixed (missing section headings, broken formatting when an annotation contained wiki-style headings, wrong or missing cover-art icons).
+  - Column filtering on edit-listing pages no longer highlights the wrong column.
+  - A handful of small bugs in the collapsible-column toggles are fixed (wrong item counts, a toggle that stopped responding after being clicked once).
+  - Several dialogs (Settings, Save/Load to Disk, Statistics, Export, and others) now display correctly on the Applications page, which previously showed them broken/unstyled due to MusicBrainz applying stricter security rules there.
+  - Minor: column headers starting with a number (e.g. "1st seconder" on election pages) no longer render with the digit stripped off.
+  - Minor: fixed a column-alignment issue on pages when also using the "MusicBrainz Nuclear Tags" userscript.
+#+end_example
 
 * TODO collapsable
 
