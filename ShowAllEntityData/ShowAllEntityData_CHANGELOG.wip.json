@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.9",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fix the remaining CSP `style-src` breakage on /account/applications in one final pass, closing out the investigation started in WIP.1: `showRenderDecisionDialog` (the \"Large Dataset Fetched\" decision dialog), `showCtrlMTooltip` (the Ctrl+M shortcuts tooltip), `_saveSettingsConfig` (settings-export metadata block, now reusing the shared `.sa-meta-*` classes), `_relBuildTooltipHTML` (relationship-cell rich tooltips), `makeCollapseExpandBtnHTML` (the shared ▶/▼ collapse-toggle button label used throughout the script), and a handful of smaller 1-2-attribute sites (help-panel error fallback, resize/render progress overlays, mnemonic-underline button labels, rich hover-tooltip spans, and the release/release-group inline-expand error messages). File-wide: 0 remaining `style=\"...\"` attributes in live code (down from ~260 at the start of this investigation) — every class referenced via `class=\"...\"` verified to have a matching `GM_addStyle()` definition."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.8",
         "date": "2026-07-31",
         "sections": [

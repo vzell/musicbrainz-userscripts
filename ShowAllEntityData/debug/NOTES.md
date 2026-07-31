@@ -1632,15 +1632,12 @@ falls back to `N/A` like every other empty cell on this page.
      `showCustomConfirm` (the generic alert/confirm popup) and for the
      settings-row containers' own layout, and is why those already worked
      before this fix.
-- **Not yet fixed — same pattern confirmed present in
-  `ShowAllEntityData.user.js` itself**, ~57 `style="..."` attributes
-  across ~14 functions (counts from a grep-by-enclosing-function pass):
-  `showRenderDecisionDialog` (7),
-  `showCtrlMTooltip` (5), `_saveSettingsConfig` (5), `_relBuildTooltipHTML`
-  (5), `makeCollapseExpandBtnHTML` (3), plus a handful of 1-2-count sites
-  (`loadAndRender`, `toggleAutoResizeColumns`, `renderRowsChunked`,
-  `makeButtonHTML`, `_mbttLabel`, `_mbttColName`, `_mbttCount`,
-  `ergInjectReleaseGroupButton`, `ergInjectReleaseButton`, `_fmtMs`).
+- **ALL FIXED (2026-07-31, WIP.9 — see below).** The full inventory of
+  `innerHTML`-embedded `style="..."` attributes across
+  `ShowAllEntityData.user.js` is now 0 (down from the original ~260 found
+  at the start of this investigation); every remaining `style="` match in
+  the file is inside a JSDoc/line comment describing markup, not live code
+  (confirmed by grep). Fix history:
   **Fixed (2026-07-31, WIP.3):** `createFilterHistoryWidget` (11
   attributes — hit on initial /account/applications page load via console
   errors even though nothing was visibly broken yet, since its dropdown
@@ -1712,10 +1709,41 @@ falls back to `N/A` like every other empty cell on this page.
   initial render behaves identically to before. Also reused the shared
   `.mb-fhw-mark` class for its quick-filter highlight instead of yet
   another one-off `<mark style="...">` duplicate.
+  **Fixed (2026-07-31, WIP.9 — final cleanup pass, closes this
+  investigation):** all remaining small/scattered functions in one pass,
+  since the user confirmed everything tested so far looked correct and
+  asked to finish the rest rather than continue waiting for individual
+  bug reports: `showRenderDecisionDialog` (7, the "Large Dataset Fetched"
+  Save/Render/Cancel decision dialog), `showCtrlMTooltip` (5, the Ctrl+M
+  shortcuts tooltip — one genuinely conditional case, `_ccColor`, changed
+  to `_ccClass` following the now-established color→class pattern),
+  `_saveSettingsConfig` (5, its own hand-built metadata block — reused
+  the existing `.sa-meta-*` classes directly instead of duplicating them),
+  `_relBuildTooltipHTML` (5, relationship-cell rich tooltips),
+  `makeCollapseExpandBtnHTML` (3, the shared ▶/▼ collapse-toggle button
+  label used all over the script), plus one-two-attribute sites in
+  `showAppHelp`'s error fallback, `toggleAutoResizeColumns`'s and
+  `renderRowsChunked`'s progress overlays, `makeButtonHTML` (mnemonic
+  underline → `<u>` tag), `_mbttLabel`/`_mbttColName`/`_mbttCount` (rich
+  hover-tooltip spans — colors read from `Lib.settings`, safe to
+  cache as CSS classes since a settings change always reloads the page),
+  and `ergInjectReleaseGroupButton`/`ergInjectReleaseButton` (identical
+  "Error loading release(-group)" messages, deduplicated into one shared
+  `.sa-erg-error` class). Verified 0 remaining `style="..."` attributes in
+  live code file-wide (every remaining match is inside a comment) and that
+  every class referenced via `class="..."` has a matching `GM_addStyle()`
+  definition (cross-checked by script, not just visual inspection).
   User decided (2026-07-31) to fix these incrementally as each is found
   broken during further pageType testing, rather than blind-editing all
-  ~260 in one pass with no way to visually verify each. Same
-  `[id="..."]`/class + `GM_addStyle()` conversion pattern applies; watch
-  for genuinely per-instance dynamic values (like the changelog viewer's
-  nesting-depth-based color/font-size) which need a small fixed set of
-  modifier classes rather than one class per instance.
+  ~260 in one pass with no way to visually verify each — then, once
+  everything tested so far was confirmed working, asked to finish the
+  remaining small functions in one final pass (WIP.9 above). Recurring
+  pattern used throughout, for future reference: `[id="..."]`/class +
+  `GM_addStyle()`-injected, id-guarded stylesheet, called idempotently
+  either once per page load (fully static content) or once per dialog
+  instance (content depends on values that only change via a settings
+  save, which always reloads the page); for genuinely per-instance
+  dynamic values (like the changelog viewer's nesting-depth-based
+  color/font-size, or a row's selected/marked/sort-direction state), reach
+  for a small fixed set of modifier classes and compute a *class name*
+  instead of a *style/color value*.

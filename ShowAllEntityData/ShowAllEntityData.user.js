@@ -9531,6 +9531,19 @@
             return; // Tooltip disabled in settings or Lib not available
         }
 
+        // GM_addStyle so this tooltip's CSS is exempt from page CSP style-src
+        // restrictions (see other dialogs' identical treatment). Fully
+        // static — safe to inject once, idempotent.
+        if (!document.getElementById('sa-ctrlm-tooltip-style')) {
+            const ctrlMStyle = GM_addStyle(`
+                .sa-ctrlm-indent { margin-left: 4px; }
+                .sa-ctrlm-more { margin-left: 4px; font-size: 0.9em; color: #666; }
+                .sa-ctrlm-col-active { color: #006600; }
+                .sa-ctrlm-col-inactive { color: #999999; }
+            `);
+            ctrlMStyle.id = 'sa-ctrlm-tooltip-style';
+        }
+
         // Remove existing tooltip if any
         hideCtrlMTooltip();
 
@@ -9563,10 +9576,10 @@
             for (let i = 0; i < Math.min(actionButtons.length, 9); i++) {
                 const key = buttonKeys[i];
                 const text = actionButtons[i].textContent.trim().substring(0, 20);
-                tooltipHTML += `<div style="margin-left: 4px;"><strong>${key}</strong>: ${text}${actionButtons[i].textContent.trim().length > 20 ? '...' : ''}</div>`;
+                tooltipHTML += `<div class="sa-ctrlm-indent"><strong>${key}</strong>: ${text}${actionButtons[i].textContent.trim().length > 20 ? '...' : ''}</div>`;
             }
             if (actionButtons.length > 9) {
-                tooltipHTML += `<div style="margin-left: 4px; font-size: 0.9em; color: #666;">+ ${actionButtons.length - 9} more (a-${String.fromCharCode(97 + Math.min(actionButtons.length - 10, 25))})</div>`;
+                tooltipHTML += `<div class="sa-ctrlm-more">+ ${actionButtons.length - 9} more (a-${String.fromCharCode(97 + Math.min(actionButtons.length - 10, 25))})</div>`;
             }
             tooltipHTML += '<br/>';
         }
@@ -9582,16 +9595,16 @@
         // Regular function shortcuts
         tooltipHTML += '<strong>Functions:</strong><br/>';
         for (const [key, entry] of _regularEntries) {
-            tooltipHTML += `<div style="margin-left: 4px;"><strong>${key}</strong>: ${entry.description}</div>`;
+            tooltipHTML += `<div class="sa-ctrlm-indent"><strong>${key}</strong>: ${entry.description}</div>`;
         }
 
         // Column-context shortcuts (o/q/a) — shown separately with focus status
         if (_colCtxEntries.length > 0) {
-            const _ccColor  = _colFilterFocused ? '#006600' : '#999999';
+            const _ccClass  = _colFilterFocused ? 'sa-ctrlm-col-active' : 'sa-ctrlm-col-inactive';
             const _ccStatus = _colFilterFocused ? '✓ col filter active' : '⚠ focus col filter first';
-            tooltipHTML += `<br/><strong style="color:${_ccColor}">Col-filter context (${_ccStatus}):</strong><br/>`;
+            tooltipHTML += `<br/><strong class="${_ccClass}">Col-filter context (${_ccStatus}):</strong><br/>`;
             for (const [key, entry] of _colCtxEntries) {
-                tooltipHTML += `<div style="margin-left: 4px; color:${_ccColor};"><strong>${key}</strong>: ${entry.description}</div>`;
+                tooltipHTML += `<div class="sa-ctrlm-indent ${_ccClass}"><strong>${key}</strong>: ${entry.description}</div>`;
             }
         }
 
@@ -11169,15 +11182,23 @@
         // of a single-line inline-block button whose line-height is ~1.4.
         // The outer button carries display:inline-flex; align-items:center; gap:4px
         // which is still required for the two-column layout to render correctly.
+        //
+        // GM_addStyle so this widely-reused button label's CSS is exempt from
+        // page CSP style-src restrictions. Fully static, safe to inject once.
+        if (!document.getElementById('sa-collapse-btn-style')) {
+            const cebStyle = GM_addStyle(`
+                .sa-ceb-arrow { align-self:center; font-size:1em; }
+                .sa-ceb-col { display:flex; flex-direction:column; align-items:center; line-height:1; font-size:0.72em; }
+            `);
+            cebStyle.id = 'sa-collapse-btn-style';
+        }
         const arrow  = expand ? '▶' : '▼';
         const action = expand ? 'Expand' : 'Collapse';
-        return `<span style="align-self:center;font-size:1em;">${arrow}</span>` +
-            `<span style="display:flex;flex-direction:column;align-items:center;` +
-            `line-height:1;font-size:0.72em;">` +
+        return `<span class="sa-ceb-arrow">${arrow}</span>` +
+            `<span class="sa-ceb-col">` +
             `<span>${action}</span>` +
             `<span>all</span></span>` +
-            `<span style="display:flex;flex-direction:column;align-items:center;` +
-            `line-height:1;font-size:0.72em;"><span>multi-row</span>` +
+            `<span class="sa-ceb-col"><span>multi-row</span>` +
             `<span>cells</span></span>`;
     }
 
@@ -14099,7 +14120,7 @@ ${sections.join('\n')}
             label = text;
         } else {
             label = text.slice(0, idx) +
-                '<span style="text-decoration:underline">' + underlineChar + '</span>' +
+                '<u>' + underlineChar + '</u>' +
                 text.slice(idx + underlineChar.length);
         }
         const content = icon ? icon + ' ' + label : label;
@@ -15563,8 +15584,17 @@ ${sections.join('\n')}
                 // Both fetch and cache failed — show error with Retry button
                 const errEl = document.createElement('div');
                 errEl.style.cssText = 'text-align:center; padding:30px; color:#c62828;';
-                errEl.innerHTML = `<div style="font-size:1.1em; margin-bottom:12px;">⚠️ Could not load help text</div>
-<div style="color:#555; margin-bottom:18px; font-size:0.9em;">${error}</div>`;
+                // GM_addStyle so this error message's CSS is exempt from page
+                // CSP style-src restrictions. Fully static, safe to inject once.
+                if (!document.getElementById('sa-help-error-style')) {
+                    const heStyle = GM_addStyle(`
+                        .sa-help-err-title { font-size:1.1em; margin-bottom:12px; }
+                        .sa-help-err-msg { color:#555; margin-bottom:18px; font-size:0.9em; }
+                    `);
+                    heStyle.id = 'sa-help-error-style';
+                }
+                errEl.innerHTML = `<div class="sa-help-err-title">⚠️ Could not load help text</div>
+<div class="sa-help-err-msg">${error}</div>`;
                 const retryBtn = document.createElement('button');
                 retryBtn.textContent = '↺ Retry';
                 retryBtn.style.cssText = 'padding:7px 20px; border-radius:6px; border:1px solid #888; cursor:pointer; background:#eee; font-size:0.95em;';
@@ -19404,9 +19434,18 @@ a { color: #1565c0; }`;
             font-size: 16px;
             text-align: center;
         `;
+        // GM_addStyle so this overlay's CSS is exempt from page CSP style-src
+        // restrictions. Fully static, safe to inject once.
+        if (!document.getElementById('sa-resize-overlay-style')) {
+            const roStyle = GM_addStyle(`
+                #mb-resize-heading { margin-bottom: 10px; }
+                #mb-resize-progress { font-size: 14px; }
+            `);
+            roStyle.id = 'sa-resize-overlay-style';
+        }
         _resizeOverlay.innerHTML = `
-            <div id="mb-resize-heading" style="margin-bottom: 10px;">📐 Measuring column widths…</div>
-            <div id="mb-resize-progress" style="font-size: 14px;">Preparing…</div>
+            <div id="mb-resize-heading">📐 Measuring column widths…</div>
+            <div id="mb-resize-progress">Preparing…</div>
         `;
         document.body.appendChild(_resizeOverlay);
         const _resizeHeading  = _resizeOverlay.querySelector('#mb-resize-heading');
@@ -24958,16 +24997,38 @@ a { color: #1565c0; }`;
      * @param {'gf'|'stf'|'cf'} type - CSS variable prefix.
      * @returns {string} HTML span.
      */
+    /**
+     * Lazily injects the shared, id-guarded stylesheet for
+     * {@link _mbttLabel}/{@link _mbttColName}/{@link _mbttCount}'s rich
+     * tooltip spans. GM_addStyle so it is exempt from page CSP style-src
+     * restrictions. The colors read from Lib.settings here are fixed for
+     * the lifetime of the page — any settings change reloads the page
+     * (see the settings dialog's save handler) — so computing them once
+     * at first call and caching as CSS classes is safe.
+     */
+    function _ensureMbttStyle() {
+        if (document.getElementById('sa-mbtt-style')) return;
+        const gfBg     = Lib.settings.sa_global_filter_highlight_bg    || '#FFD700';
+        const gfCol    = Lib.settings.sa_global_filter_highlight_color || 'red';
+        const cfBg     = Lib.settings.sa_column_filter_highlight_bg    || '#add8e6';
+        const cfCol    = Lib.settings.sa_column_filter_highlight_color || 'red';
+        const countBg  = Lib.settings.sa_ui_row_count_bg               || '#e8e8e8';
+        const countCol = Lib.settings.sa_ui_row_count_color            || '#111111';
+        const style = GM_addStyle(`
+            .mb-mbtt-gf, .mb-mbtt-stf, .mb-mbtt-cf { border-radius:2px; padding:0 3px; font-style:italic; }
+            .mb-mbtt-gf { background:${gfBg}; color:${gfCol}; }
+            .mb-mbtt-stf { background:#90ee90; color:#000; }
+            .mb-mbtt-cf { background:${cfBg}; color:${cfCol}; }
+            .mb-mbtt-colname { color:${cfBg}; font-weight:bold; }
+            .mb-mbtt-count { background:${countBg}; color:${countCol}; border-radius:2px; padding:0 3px; font-weight:bold; }
+        `);
+        style.id = 'sa-mbtt-style';
+    }
+
     function _mbttLabel(word, type) {
-        // Same CSS vars as the #mb-stat-tooltip .mbtt-* rules; inline style
-        // is used so the label works outside the tooltip context too.
-        const bg  = type === 'gf'  ? (Lib.settings.sa_global_filter_highlight_bg   || '#FFD700')
-                  : type === 'stf' ? '#90ee90'
-                  :                  (Lib.settings.sa_column_filter_highlight_bg    || '#add8e6');
-        const col = type === 'gf'  ? (Lib.settings.sa_global_filter_highlight_color || 'red')
-                  : type === 'stf' ? '#000'
-                  :                  (Lib.settings.sa_column_filter_highlight_color  || 'red');
-        return `<span style="background:${bg};color:${col};border-radius:2px;padding:0 3px;font-style:italic;">${word}</span>`;
+        _ensureMbttStyle();
+        const cls = type === 'gf' ? 'mb-mbtt-gf' : type === 'stf' ? 'mb-mbtt-stf' : 'mb-mbtt-cf';
+        return `<span class="${cls}">${word}</span>`;
     }
 
     /**
@@ -24980,15 +25041,13 @@ a { color: #1565c0; }`;
      * @returns {string} HTML span.
      */
     function _mbttColName(name) {
-        // Use the cf highlight background as the text color so the column name
-        // visually "belongs to" the adjacent filter-expression pill.
-        const cfBg = Lib.settings.sa_column_filter_highlight_bg || '#add8e6';
+        _ensureMbttStyle();
         const safe = name
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
-        return `<span style="color:${cfBg};font-weight:bold;">'${safe}'</span>`;
+        return `<span class="mb-mbtt-colname">'${safe}'</span>`;
     }
 
     /**
@@ -25003,10 +25062,8 @@ a { color: #1565c0; }`;
      * @returns {string} HTML string.
      */
     function _mbttCount(n) {
-        const bg  = Lib.settings.sa_ui_row_count_bg    || '#e8e8e8';
-        const col = Lib.settings.sa_ui_row_count_color || '#111111';
-        return `<span style="background:${bg};color:${col};border-radius:2px;` +
-               `padding:0 3px;font-weight:bold;">${n}</span>`;
+        _ensureMbttStyle();
+        return `<span class="mb-mbtt-count">${n}</span>`;
     }
 
     /**
@@ -28336,47 +28393,37 @@ a { color: #1565c0; }`;
 
             const pageLabel = (pagesProcessed === 1) ? 'page' : 'pages';
 
+            // GM_addStyle so this dialog's CSS is exempt from page CSP
+            // style-src restrictions (see other dialogs' identical treatment).
+            // Fully static — safe to inject once, idempotent.
+            if (!document.getElementById('sa-render-decision-style')) {
+                const rdStyle = GM_addStyle(`
+                    #sa-rd-title { margin-top: 0; color: #333; }
+                    #sa-rd-summary { font-size: 16px; margin: 20px 0; }
+                    #sa-rd-warning { font-size: 14px; color: #666; margin: 20px 0; }
+                    #sa-rd-btn-row { display: flex; gap: 10px; justify-content: center; margin-top: 25px; }
+                    .sa-rd-btn { padding: 10px 20px; font-size: 14px; cursor: pointer; color: white; border: none; border-radius: 6px; font-weight: bold; }
+                    #mb-dialog-save { background: #4CAF50; }
+                    #mb-dialog-render { background: #2196F3; }
+                    #mb-dialog-cancel { background: #f44336; }
+                `);
+                rdStyle.id = 'sa-render-decision-style';
+            }
+
             dialog.innerHTML = `
-                <h2 style="margin-top: 0; color: #333;">Large Dataset Fetched</h2>
-                <p style="font-size: 16px; margin: 20px 0;">
+                <h2 id="sa-rd-title">Large Dataset Fetched</h2>
+                <p id="sa-rd-summary">
                     Successfully fetched <strong>${totalRows.toLocaleString()} rows</strong> from <strong>${pagesProcessed} ${pageLabel}</strong>.
                 </p>
-                <p style="font-size: 14px; color: #666; margin: 20px 0;">
+                <p id="sa-rd-warning">
                     Rendering this many rows may take a considerable amount of time and could impact your browser performance
                     or even make your browser completely unusable. You can instead SAVE the data directly to disk and LOAD it
                     with a PRE-FILTER condition LATER (to decrease the number of rows to make the rendering feasible) or proceed with rendering now.
                 </p>
-                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 25px;">
-                    <button id="mb-dialog-save" style="
-                        padding: 10px 20px;
-                        font-size: 14px;
-                        cursor: pointer;
-                        background: #4CAF50;
-                        color: white;
-                        border: none;
-                        border-radius: 6px;
-                        font-weight: bold;
-                    ">💾 Save to Disk</button>
-                    <button id="mb-dialog-render" style="
-                        padding: 10px 20px;
-                        font-size: 14px;
-                        cursor: pointer;
-                        background: #2196F3;
-                        color: white;
-                        border: none;
-                        border-radius: 6px;
-                        font-weight: bold;
-                    ">🎨 Render Now</button>
-                    <button id="mb-dialog-cancel" style="
-                        padding: 10px 20px;
-                        font-size: 14px;
-                        cursor: pointer;
-                        background: #f44336;
-                        color: white;
-                        border: none;
-                        border-radius: 6px;
-                        font-weight: bold;
-                    ">❌ Cancel</button>
+                <div id="sa-rd-btn-row">
+                    <button id="mb-dialog-save" class="sa-rd-btn">💾 Save to Disk</button>
+                    <button id="mb-dialog-render" class="sa-rd-btn">🎨 Render Now</button>
+                    <button id="mb-dialog-cancel" class="sa-rd-btn">❌ Cancel</button>
                 </div>
             `;
 
@@ -31792,9 +31839,18 @@ a { color: #1565c0; }`;
             font-size: 16px;
             text-align: center;
         `;
+        // GM_addStyle so this overlay's CSS is exempt from page CSP style-src
+        // restrictions. Fully static, safe to inject once.
+        if (!document.getElementById('sa-render-progress-style')) {
+            const rpStyle = GM_addStyle(`
+                #mb-render-heading { margin-bottom: 10px; }
+                #mb-render-progress { font-size: 14px; }
+            `);
+            rpStyle.id = 'sa-render-progress-style';
+        }
         progressMsg.innerHTML = `
-            <div style="margin-bottom: 10px;">🎨 Rendering rows...</div>
-            <div id="mb-render-progress" style="font-size: 14px;">0 / ${totalRows.toLocaleString()}</div>
+            <div id="mb-render-heading">🎨 Rendering rows...</div>
+            <div id="mb-render-progress">0 / ${totalRows.toLocaleString()}</div>
         `;
         document.body.appendChild(progressMsg);
         const progressText = document.getElementById('mb-render-progress');
@@ -39959,6 +40015,12 @@ a { color: #1565c0; }`;
      *   positioning the dialog near the button).
      */
     function _saveSettingsConfig(triggerButton = null) {
+        // Reuses the shared .sa-meta-* classes from _ensureMetaBlockStyle()
+        // (buildMetaBlockHTML's stylesheet) for the config-specific meta
+        // block built manually below — GM_addStyle-safe against page CSP,
+        // and showExportDialog's own buildMetaBlockHTML call further down
+        // would inject it anyway, but call explicitly for robustness.
+        _ensureMetaBlockStyle();
         try {
             const json     = _buildConfigJson();
             const blob     = new Blob([json], { type: 'application/json' });
@@ -39979,16 +40041,15 @@ a { color: #1565c0; }`;
             const fmtDate = (iso) => { try { return new Date(iso).toLocaleString(); } catch (_) { return iso; } };
             const row = (label, value) =>
                 `<tr>` +
-                `<td style="padding:3px 10px 3px 0;color:#666;font-weight:600;white-space:nowrap;vertical-align:top;">${label}</td>` +
-                `<td style="padding:3px 0;word-break:break-all;">${value}</td>` +
+                `<td class="sa-meta-label">${label}</td>` +
+                `<td class="sa-meta-value">${value}</td>` +
                 `</tr>`;
 
             const metaBlockHtml =
-                `<div style="font-size:0.82em;color:#555;margin-bottom:6px;font-weight:700;` +
-                `letter-spacing:0.03em;text-transform:uppercase;">&#128196; File Metadata</div>` +
-                `<table style="border-collapse:collapse;width:100%;font-size:0.88em;line-height:1.5;">` +
+                `<div class="sa-meta-header">&#128196; File Metadata</div>` +
+                `<table class="sa-meta-table">` +
                 row('Script ID',       `<code>${esc(meta.script_id || SCRIPT_ID)}</code>`) +
-                row('Script version',  `<span style="background:#f5f5f5;border:1px solid #ddd;border-radius:3px;padding:0 5px;font-size:0.85em;">${esc(meta.script_version || scriptVersion)}</span>`) +
+                row('Script version',  `<span class="sa-meta-version-badge">${esc(meta.script_version || scriptVersion)}</span>`) +
                 row('Schema version',  esc(String(meta.schema_version || _CFG_SCHEMA_VERSION))) +
                 row('Exported at',     esc(fmtDate(meta.exported_at))) +
                 row('Settings count',  `<strong>${settingsCount}</strong> keys`) +
@@ -41240,7 +41301,26 @@ a { color: #1565c0; }`;
      * @param {HTMLTableCellElement} cell  The `td.mb-rel-cell` being displayed.
      * @returns {string} Safe HTML string for `innerHTML`.
      */
+    /**
+     * Lazily injects the shared, id-guarded stylesheet for
+     * {@link _relBuildTooltipHTML}'s output. GM_addStyle so it is exempt
+     * from page CSP style-src restrictions. Fully static, safe to inject
+     * once per page load.
+     */
+    function _ensureRelTooltipStyle() {
+        if (document.getElementById('sa-rel-tooltip-style')) return;
+        const style = GM_addStyle(`
+            .sa-rel-tt-none { opacity:0.6; font-style:italic; }
+            .sa-rel-tt-img { width:16px; height:16px; vertical-align:middle; margin-right:5px; flex-shrink:0; }
+            .sa-rel-tt-ended { margin-left:5px; opacity:0.6; font-style:italic; }
+            .sa-rel-tt-row { display:flex; align-items:center; padding:2px 0; }
+            .sa-rel-tt-url { flex:1; min-width:0; }
+        `);
+        style.id = 'sa-rel-tooltip-style';
+    }
+
     function _relBuildTooltipHTML(cell) {
+        _ensureRelTooltipStyle();
         /**
          * Escapes a string for safe insertion as HTML text content.
          * @param {string} s
@@ -41301,26 +41381,25 @@ a { color: #1565c0; }`;
 
         const _anchors = Array.from(cell.querySelectorAll('a'));
         if (!_anchors.length) {
-            return `<span style="opacity:0.6;font-style:italic;">No relationships</span>`;
+            return `<span class="sa-rel-tt-none">No relationships</span>`;
         }
 
         const _lines = _anchors.map(a => {
             const _keySpan = a.querySelector('.mb-rel-filter-key');
             const _img     = a.querySelector('img');
             const _imgHtml = _img
-                ? `<img src="${_esc(_img.src)}" style="width:16px;height:16px;` +
-                  `vertical-align:middle;margin-right:5px;flex-shrink:0;">`
+                ? `<img src="${_esc(_img.src)}" class="sa-rel-tt-img">`
                 : '';
             const _ended    = parseFloat(a.style.opacity || '1') < 0.5;
             const _endedTag = _ended
-                ? `<span style="margin-left:5px;opacity:0.6;font-style:italic;">(ended)</span>`
+                ? `<span class="sa-rel-tt-ended">(ended)</span>`
                 : '';
             const _urlHtml  = _keySpan
                 ? _serialiseKeySpan(_keySpan)
                 : _esc(a.href);
-            return `<div style="display:flex;align-items:center;padding:2px 0;">` +
+            return `<div class="sa-rel-tt-row">` +
                    `${_imgHtml}` +
-                   `<span style="flex:1;min-width:0;">${_urlHtml}</span>` +
+                   `<span class="sa-rel-tt-url">${_urlHtml}</span>` +
                    `${_endedTag}` +
                    `</div>`;
         });
@@ -43856,6 +43935,13 @@ a { color: #1565c0; }`;
      * @param {HTMLTableCellElement} parent  The `<td>` element holding the RG link.
      */
     function ergInjectReleaseGroupButton(parent) {
+        // GM_addStyle so this error message's CSS is exempt from page CSP
+        // style-src restrictions. Fully static, safe to inject once; shared
+        // with ergInjectReleaseButton's identical error message.
+        if (!document.getElementById('sa-erg-error-style')) {
+            const ergStyle = GM_addStyle(`.sa-erg-error { color:#f00; }`);
+            ergStyle.id = 'sa-erg-error-style';
+        }
         const mbid  = parent.querySelector('a').href.match(MBID_REGEX)?.[0];
         if (!mbid) return;
         const table = document.createElement('table');
@@ -43908,7 +43994,7 @@ a { color: #1565c0; }`;
             `/ws/2/release?release-group=${mbid}&limit=100&inc=media&fmt=json`,
             (toggled) => { if (toggled) _insertTable(); else _removeTable(); },
             (json)    => { ergParseReleaseGroup(json, mbid, table); },
-            (status)  => { table.innerHTML = `<tr><td style="color:#f00;">Error loading release group (HTTP ${status})</td></tr>`; }
+            (status)  => { table.innerHTML = `<tr><td class="sa-erg-error">Error loading release group (HTTP ${status})</td></tr>`; }
         );
 
         parent.insertBefore(button, parent.firstChild);
@@ -43928,6 +44014,12 @@ a { color: #1565c0; }`;
      * @param {string}               [mbid]        Release MBID (default: read from first `<a>` in `parent`).
      */
     function ergInjectReleaseButton(parent, tableParent, table, mbid) {
+        // Shared with ergInjectReleaseGroupButton's identical error message —
+        // see its GM_addStyle comment for why this is safe to call here too.
+        if (!document.getElementById('sa-erg-error-style')) {
+            const ergStyle = GM_addStyle(`.sa-erg-error { color:#f00; }`);
+            ergStyle.id = 'sa-erg-error-style';
+        }
         const resolvedMbid = mbid || parent.querySelector('a')?.href.match(MBID_REGEX)?.[0];
         if (!resolvedMbid) return;
         const resolvedTable       = table       || document.createElement('table');
@@ -43941,7 +44033,7 @@ a { color: #1565c0; }`;
                 else         resolvedTableParent.removeChild(resolvedTable);
             },
             (json)   => { ergParseRelease(json, resolvedTable); },
-            (status) => { resolvedTable.innerHTML = `<tr><td style="color:#f00;">Error loading release (HTTP ${status})</td></tr>`; }
+            (status) => { resolvedTable.innerHTML = `<tr><td class="sa-erg-error">Error loading release (HTTP ${status})</td></tr>`; }
         );
 
         parent.insertBefore(button, parent.childNodes[0]);
@@ -50590,7 +50682,8 @@ a { color: #1565c0; }`;
                 if (!_col5) return;
                 // Only replace when currently showing the placeholder '—'.
                 if (_col5.querySelector('span[title]') || _col5.textContent.trim() === '—' || _col5.querySelector('[style*="#bbb"]')) {
-                    _col5.innerHTML = `🖼️ <span style="color:#1565c0;font-weight:700">${_cnt.toLocaleString()}</span>`;
+                    _ensureStatsPanelStyle();
+                    _col5.innerHTML = `🖼️ <span class="sa-stats-accent-700">${_cnt.toLocaleString()}</span>`;
                 }
             });
 
