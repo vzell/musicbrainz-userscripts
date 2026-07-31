@@ -35545,7 +35545,19 @@ a { color: #1565c0; }`;
                         }
                         flagClone.style.width         = visual.width;
                         flagClone.style.height        = visual.height;
-                        flagClone.style.display       = visual.display === 'none' ? 'inline-block' : visual.display;
+                        // Only pass a resolved `display` through verbatim when it is
+                        // context-free (renders the same regardless of its ancestor
+                        // chain). Values like 'block', 'list-item', 'table-cell', or
+                        // 'flex'/'grid' (in addition to 'none') depend on layout context
+                        // that no longer exists once the flag is cloned standalone into
+                        // the dropdown item as a bare sibling of its text — e.g.
+                        // 'release-country' spans (Country/Date column) carry extra
+                        // column-alignment CSS beyond the shared '.flag' sprite rule,
+                        // and baking a table/list/block display verbatim here forces the
+                        // dropdown's value text onto its own new line after the icon
+                        // instead of sitting inline right behind it.
+                        flagClone.style.display = /^(inline|inline-block|inline-flex|inline-grid)$/.test(visual.display)
+                            ? visual.display : 'inline-block';
                         flagClone.style.border        = visual.border;
                         flagClone.style.borderRadius  = visual.borderRadius;
                         flagClone.style.boxShadow     = visual.boxShadow;

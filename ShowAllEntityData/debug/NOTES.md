@@ -1672,3 +1672,44 @@ blocked behind a JS proof-of-work bot-check, `/__meb_verify`, in this
 environment) — in particular, whether a *collapsed* `'Location'`/
 `'Country/Date'` cell's dropdown entry now renders correctly needs a real
 test.
+
+### Follow-up (user-tested): 'Country/Date' text on its own line + excess gap between multiple flags
+
+User confirmed 'Country' itself is unaffected on the same URL — isolates
+the bug to something specific to `.release-country`'s CSS, not a general
+regression of the shared flag-baking code.
+
+Screenshot evidence (single-event entries "AT -", "AU -" and a two-event
+entry "AT 2003-05-05 Mon XE 2003-05-05 Mon"): the flag icon renders, but
+the value text always starts on a **new line** below it instead of right
+behind it, and multi-flag entries show a large gap between the icons.
+
+Root cause (reasoned, not confirmed against live DevTools data — no
+browser access in this environment): `flagIconMap`'s bake step only
+normalized a resolved `display: none` to `inline-block`, passing every
+other resolved `display` value through verbatim onto the (child-stripped,
+empty) clone. `.release-country` carries an extra class beyond the shared
+`.flag`/`.flag-XX` sprite rule (`class="flag flag-XX release-country"`)
+for aligning the flag+code against the release-date column in MB's native
+multi-event list — plausibly a `display` value (block/list-item/
+table-cell-ish) that only behaves correctly inside that original
+`.release-event` row context. Baked verbatim onto a bare clone dropped
+into the dropdown item (a sibling of the plain value text, no such
+context), it forces a line break, and — if it's a table-cell-style anonymous
+box — could also explain the oversized gap between consecutive flags in a
+multi-event cell.
+
+Fix: broadened the normalization from "only 'none' → 'inline-block'" to
+"anything other than inline/inline-block/inline-flex/inline-grid →
+'inline-block'". This is a no-op for the already-working Country/Area
+case (their resolved `display` was presumably already one of the
+safe/context-free values, since they render correctly today), so it
+carries no regression risk for those.
+
+**Still unverified**: whether this also fully resolves the "too much
+empty space between multiple flags" symptom, or whether that also needs a
+width fix (e.g. if `.release-country`'s resolved `width` reflects a wide
+alignment column rather than the icon's true small size — deliberately
+NOT touched here without live confirmation, per the lesson from the
+Release-events probe regression: don't guess a second unverified change
+in the same pass). Needs user retest.

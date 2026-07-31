@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'Country/Date' unique-values filter dropdown (📊, WIP.5): fixed the dropdown's value text landing on its own new line below the flag icon instead of right behind it. flagIconMap only normalized a baked 'display: none' to 'inline-block', passing every other resolved display value through verbatim — 'release-country' spans carry extra column-alignment CSS beyond the shared '.flag' sprite rule (unlike the plain '.flag.flag-XX' spans on the Country column, which is unaffected), and a layout-context-dependent display value (e.g. block/list-item/table-cell) baked onto the icon clone forces a line break once it's cloned standalone into the dropdown item. Now only inherently context-free display values (inline/inline-block/inline-flex/inline-grid) are passed through; anything else normalizes to inline-block, same as the existing 'none' case."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.5",
     "date": "2026-07-31",
     "sections": [
