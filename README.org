@@ -86647,6 +86647,392 @@ add "United Kingdom", "Canada" and "Australia" to the config variable "sa_area_f
 Currently the following countries "United States, United Kingdom, Canada, Australia" are set as configuration directive "sa_area_flag_region_countries"
 This shouldn't actually be a configuration option, but a real variable, not exposed to endusers.
 
+* TODO plan: strange flat flag glyph in the unique column drop down
+** initial
+
+Why is the flag glyph (e.g. the US flag) in the unique column drop down e.g. from the "Country" column of https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/artists
+
+#+begin_example
+<div class="mb-col-uniq-item" role="option" aria-selected="false" title="United States"><span class="mb-col-uniq-checkbox" aria-hidden="true">☐</span><span class="mb-uniq-count-badge" aria-hidden="true" style="color: rgb(17, 17, 17); background-color: rgb(255, 250, 205); font-weight: bold; font-family: monospace; border-radius: 3px; padding: 0px 3px; margin-right: 5px; font-size: 0.85em; display: inline-block; min-width: 5ch; text-align: right;">(382)</span><span class="flag flag-US" aria-hidden="true" style="display: inline-block; margin-right: 4px; vertical-align: middle;"></span>United States</div>
+#+end_example
+
+so flat compared to the actual flag symbol in the column cells itself, e.g the following US flag
+
+#+begin_example
+<td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"><span class="flag flag-US"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><bdi>United States</bdi></a></span></td>
+#+end_example
+
+If a fix is available do it a new branch
+
+** flag symbols in "Location" and "Region" columns resulting from splitting the "Area" column
+
+Currently flag symbols in the unique value drop down lists from the "Location" and "Region" columns resulting from
+splitting the "Area" column according to the following typical configuration directives
+
+#+begin_example
+                    columnExtractors: [
+                        { sourceColumn: 'Area', extractor: 'splitArea', syntheticColumns: ['MB-Locality', 'MB-Region', 'Country'] }
+                    ],
+#+end_example
+
+are missing when the separately-installed userscript "MusicBrainz: More Flags Everywhere" is present, also the column
+data cells are re ndering the flag symbols.
+
+It should be possible like we currently do with the country flags in the "Country" column, e.g. at https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/artists
+
+Raw HTML code @debug/area-artists-with-flag-symbols.html
+
+** noord-holland.html
+
+the following data cell with multiple flags, doesn't render the flags in the unique value drop down @debug/noord-holland.html
+
+** the area columns itself like "Area", "Begin area" etc, also do NOT render the flags in the unique value drop down, also the flags are present in the data cells itself
+
+OK, multiple flags are now rendered when present
+
+1.)
+
+But the country flags are now rendering again flat in the unique value drop down, what we already fiXED in our firST session
+
+2.)
+
+the area columns itself like "Area", "Begin area" etc (the ones where the splitting accurs on), also do NOT Render the
+flags in the unique value drop down, also the flags are present in the data cells itself
+
+** location column
+
+1.)
+
+The "Location" column e.g in https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events
+also doesn't render flags in the unique value drop down
+@debug/location-column.html
+
+2.)
+
+The "Release events" column e.g in https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e/relationships
+also doesn't render flags in the unique value drop down
+
+@debug/release-events.html
+
+** bugs in "Release events" column
+
+bugs in "Release events" colums
+
+1.)
+
+image 6:
+
+when multi-row cell is collapsed, only the first flag is rendered OK, the other ones are rendered flat 
+
+2.)
+
+image 7:
+
+when multi-row cell is uncollapsed, all flags are rendered OK
+
+3.)
+
+In both cases, when flags are present, in the unique value drop down, the flag and the country name are rendered in separate lines
+
+** almost
+
+almost
+
+1.)
+
+too much empty space between flag and country name/date
+
+2.)
+
+multi-row cells show ONLY first flag and NO country name/date
+
+** even worse
+
+even worse, now all flags are flat again, ALSO for other pageType and columns where country flags are present
+
+also still too much empty space
+
+* applications pageType
+** initial
+
+pageType "type: 'account-applications'" broken since a recent MusicBrainz server update:
+
+@debug/applications.html - last working initial raw version
+@debug/applications-new.html - current non working initial raw version
+@debug/applications-new-final.html - current non working final rendered page
+
+do it in a new branch
+
+** Fix: CSP style-src silently blocking 9 inline <style> injections (incl. account-applications page)
+
+     Context
+
+     The user reported the account-applications page type (/account/applications) as
+     "broken since a recent MusicBrainz server update." Investigation of
+     debug/applications.html (old, working) vs debug/applications-new.html /
+     debug/applications-new-final.html (new, broken) showed MusicBrainz added a new
+     native "Digest access authentication" section (h2 + paragraphs + a functional
+     <form> with two hidden CSRF inputs and Disable/Reset buttons). Tracing the
+     render pipeline (parseDocumentForTables, renderGroupedTable,
+     makeH2sCollapsible) showed the table-consolidation logic itself handles this
+     fine — no crash, no data loss, no corruption.
+
+     The user then supplied a screenshot of the live rendered page showing a raw,
+     unstyled dump of "Unicode character map" picker rows (e.g. "Left Single Quote",
+     "✕ Close (Esc)") appended below MusicBrainz's own site footer. This traced to
+     initSaUnicodeCharsFeature()'s <style id="sa-unicode-menu-style"> block
+     (ShowAllEntityData.user.js:42941-43038), whose #sa-unicode-menu { display: none; position: absolute; ... } rule normally keeps this Ctrl+U-triggered
+     picker hidden. The user confirmed via a live browser console error that
+     MusicBrainz's CSP header now reads:
+
+     style-src 'self' staticbrainz.org static.metabrainz.org
+
+     — no 'unsafe-inline', nonce, or hash — so the browser silently drops this
+     (and any other) inline <style> element the script injects via
+     document.createElement('style') + document.head.appendChild(...).
+
+     Scope correction (verified via curl -I): this CSP is not site-wide.
+     General content pages (/artist/..., /release-group/..., /search?...)
+     are served by an edge layer (server: openresty) and return no
+     content-security-policy header at all. /account/applications is served
+     directly by the backend app (server: Plack::Handler::Starlet) and does
+     carry the restrictive CSP. So today, the 9-site vulnerable pattern is only
+     actually breaking rendering on /account/applications (and plausibly other
+     account/* routes served the same way — unconfirmed). It is not currently
+     degrading sticky headers, dialogs, etc. on general content pages.
+
+     That said, all 9 sites use the identical CSP-fragile pattern, and a second,
+     independent visual bug on this same page confirms the fix must still cover
+     more than just the Unicode picker: the sub-table filter row's Cc/Rx/Ex
+     checkboxes render stacked one-per-line instead of inline (user-supplied
+     screenshot). Traced to .mb-subtable-filter-container /
+     .mb-subtable-filter-container.visible (ShowAllEntityData.user.js:21460- 21470), which lives inside site #5 (the large main-toolbar <style>
+     block) and sets display: inline-flex on .visible. With that stylesheet
+     dropped by CSP, the container falls back to a plain <span>'s default
+     display: inline, which doesn't establish a flex row; each <label> inside
+     it independently carries an inline display: flex (via JS property
+     assignment, so CSP-exempt) which computes to a block-level box, forcing each
+     onto its own line. This is mechanistically the same root cause as the
+     Unicode-picker bug, just via a different rule in the same blocked
+     stylesheet — confirming site #5 needs the same fix, not just site #9.
+
+     Given both confirmed symptoms live on /account/applications, and MusicBrainz
+     could extend this CSP to more routes later, the user chose to convert all 9
+     sites to GM_addStyle now rather than just the two currently-proven-broken
+     ones (#5, #9) — it's a uniformly cheap, strictly-correct change either way.
+
+     Two other observations from the account-applications investigation were
+     ruled out as bugs and are intentionally out of scope: (1) the "Authorized
+     applications" intro paragraph now renders after the table instead of before
+     it — a mechanical, pre-existing side effect of how renderGroupedTable inserts
+     new h3/table pairs immediately after the section header, which would equally
+     affect the old page structure; (2) the new "Digest access authentication"
+     section starts collapsed via makeH2sCollapsible() — this is the same
+     generic behavior "Developer applications" already had, not a regression.
+
+     Fix approach
+
+     Add // @grant GM_addStyle to the userscript header and convert all 9
+     document.createElement('style') + document.head.appendChild(...) sites to
+     GM_addStyle(cssText). GM_addStyle runs in the userscript's privileged
+     Tampermonkey context and is exempt from the page's CSP style-src
+     restriction — unlike a plain DOM-inserted <style> element, which the CSP
+     correctly treats as page content and blocks. GM_addStyle returns the
+     created <style> HTMLElement (Tampermonkey semantics — the only GM engine
+     this script targets, confirmed via existing GM_xmlhttpRequest/
+     GM_registerMenuCommand usage), so any site that previously set .id on the
+     element for a getElementById idempotency guard can keep doing so on the
+     returned element. GM_addStyle takes a plain string, so the existing
+     template-literal CSS with interpolated settings-driven colors (sites #1, #2)
+     works unchanged.
+     
+** bug
+
+The 'account-applications' pageType renders fine now, so do some other pageTypes, but the configuration dialog is now broken, see screenshot + console log
+@debug/csp.log
+
+** in the userscript headers, change the require line to the local version
+
+OOps,
+in the userscript headers, change the require line to the local version
+
+#+begin_example
+// @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
+#+end_example
+
+** explain what these CSP-vulnerable patterns are
+
+Explain what these CSP-vulnerable patterns are. Are the current fixes best practice anyway for userscripts ?
+Is it normal that these kind of pages exist where these CSP-vulnerable patterns show up. Why has MusicBrainz choosen to implement it like this ?
+What is "// @grant        GM_addStyle" good for
+
+** The two CSP-vulnerable patterns
+
+  Pattern 1: Injected <style> elements
+  const style = document.createElement('style');
+  style.textContent = `.foo { color: red; }`;
+  document.head.appendChild(style);
+  CSP's style-src directive governs stylesheets — both <link rel="stylesheet"> and <style> blocks, whether they're present in the original HTML or inserted later by any script. The browser doesn't distinguish "page's own script" from "extension-injected script" here; a <style>
+  element is a <style> element. Without 'unsafe-inline', a nonce, or a matching hash in the CSP header, the browser parses the tag, computes zero rules from it, and logs a console warning. Silent from the page's perspective — nothing throws, nothing crashes, the CSS just never
+  applies.
+
+  Pattern 2: Inline style="..." HTML attributes
+  container.innerHTML = `<div style="display:flex;color:red;">...</div>`;
+  This is the same CSP directive, different code path: when the browser's HTML parser encounters a style="" attribute (whether parsed from the original document or from a string assigned to .innerHTML), it's treated as inline CSS and checked against the same style-src policy. No
+  unsafe-inline → the attribute is parsed but dropped, and the element falls back to its default UA styling (which is why the settings dialog collapsed into plain stacked <div>s).
+
+  There's a close cousin I also found and fixed: inline event-handler attributes (onfocus="...", onclick="..."). Those are gated by script-src, not style-src, but same mechanism — parsed-from-markup inline JS needs a nonce/hash/unsafe-inline too, and we don't have access to the
+  page's per-request nonce (it's generated server-side, one nonce per page load, not discoverable or reusable by us).
+
+  What isn't restricted: element.style.color = 'red' or Object.assign(element.style, {...}). These go through the CSSOM (the JS CSSStyleDeclaration object), not the HTML attribute parser. CSP only inspects markup being parsed — HTML text and <style> text — not runtime property
+  mutations, even though the browser will later reflect that mutation back into the style="" attribute if you inspect the live DOM. This is exactly why some of the script's buttons already looked fine before any fix: whoever wrote that code happened to use .style.property =
+  value, and it was never CSP-vulnerable to begin with.
+
+  Are the fixes best practice?
+
+  Yes, and for reasons beyond just "it satisfies this one CSP header":
+
+  - GM_addStyle is the Tampermonkey/Greasemonkey-idiomatic way to inject a stylesheet from a userscript. It runs in the extension's privileged context rather than being parsed as page content, so it's exempt from the page's CSP entirely — not just this particular policy, but any
+  CSP a site might add later. Using the raw DOM API (createElement('style')) was always somewhat fragile for this exact reason; it just hadn't been tested against a page with a real CSP until now.
+  - Class-based CSS over inline attributes is generally better practice regardless of CSP — smaller markup, no duplicated declarations across N instances of the same widget, and it's how the settings dialog's own JSDoc comment (the one I found in showModal) already described the
+  intent: "Rows are built as real DOM elements... so display:flex cannot be stripped." The original author clearly knew about the innerHTML-stripping risk for some elements and missed it for others — my fix just closes that gap consistently.
+  - CSS :focus over onfocus/onblur attributes is strictly better practice independent of CSP too — it's declarative, doesn't need JS to run first, and doesn't risk XSS if the values were ever attacker-influenced (not the case here, but it's the general reason inline event
+  handlers are discouraged).
+
+  So: not workarounds bolted on to dodge a policy, but a shift toward the patterns that were already correct in parts of this codebase.
+
+  Is it normal for CSP to vary by page on the same site?
+
+  Yes, this is common and usually deliberate, though it can also be an artifact of infrastructure rather than a security decision. What I found on musicbrainz.org specifically:
+
+  - /account/* pages are served directly by the Perl/Catalyst backend (Plack::Handler::Starlet) and carry the CSP header.
+  - General content pages (/artist/..., /release-group/..., /search) are served through an edge/cache layer (openresty) and carry no CSP header at all.
+
+  Two plausible explanations, and they're not mutually exclusive:
+
+  1. Deliberate, risk-tiered hardening. /account/* is where session cookies, OAuth app tokens, and (as of the change that started this investigation) digest-auth credentials and CSRF tokens live. It's standard practice to apply a stricter CSP to authentication/account-management
+  surfaces first — they're the highest-value XSS target — even when the rest of the site hasn't been migrated yet. A strict style-src/script-src with nonces meaningfully raises the bar against injected-script and injected-style attacks on exactly the pages where credential theft
+  would matter most.
+  2. Infrastructure boundary, not a security choice per se. The openresty-fronted content pages may simply not have been routed through whatever middleware sets the CSP header — CSP might be rolling out incrementally as MusicBrainz migrates parts of the stack, or the cache layer
+  strips response headers it doesn't know about. Under this reading, "no CSP on content pages" isn't a statement that those pages are less important, just that CSP hasn't reached them yet.
+
+  Given the new digest-auth feature (password-adjacent, MD5-hash-based legacy auth) landed on /account/applications around the same time you noticed the breakage, my best guess is the CSP tightening is part of the same security push — plausibly rolled out to /account/* first
+  precisely because that's where a new credential-handling feature just went in. I don't have visibility into MusicBrainz's actual deployment history to confirm which of the two explanations is right, though.
+
+  What does // @grant GM_addStyle actually do
+
+  @grant lines declare which privileged Tampermonkey APIs (GM_* functions) a script is allowed to call. Tampermonkey builds a sandboxed execution environment per script; only the specific GM_* functions you list are exposed into that sandbox (this is also a security boundary —
+  it's why a userscript can't silently start doing GM_xmlhttpRequest to exfiltrate data unless it explicitly declared that grant, so a user reviewing the script's permissions before installing can see what it's allowed to touch).
+
+  Without @grant GM_addStyle, the function simply doesn't exist in that script's global scope — calling it throws GM_addStyle is not defined, not a CSP error. That's why I had to add the grant to both ShowAllEntityData.user.js/VZ_MBLibrary.user.js and separately to
+  MB_PageEnhancer.user.js: @required library code executes inside the sandbox of whichever top-level script pulled it in, so each consumer needs its own grant declared, even though the library only has one copy of the code that calls GM_addStyle.
+
+  Functionally, GM_addStyle(css) creates a <style> element and inserts it into <head> — same end result as the manual createElement/appendChild pattern — but because it goes through Tampermonkey's privileged injection path rather than the page's own DOM-manipulation API as seen
+  by CSP, the browser doesn't treat it as page-authored content subject to the page's style-src policy.
+  
+** what does CSP stands for and how it is declared in a web page
+
+ What CSP stands for
+
+  Content Security Policy — an HTTP response header (or an equivalent <meta> tag) that lets a website tell the browser "only trust content from these sources; refuse everything else," as a defense mostly against XSS and data-injection attacks. Instead of trying to sanitize every
+  possible injection point in the app, the site declares an allowlist once and the browser enforces it uniformly — even against content the site's own server-side code might accidentally have failed to escape.
+
+  How it's declared
+
+  1. HTTP response header (the way MusicBrainz does it — what I saw via curl -I):
+  Content-Security-Policy: default-src 'self'; frame-ancestors 'none'; script-src 'self' 'nonce-JexaXHNPXIhsWLOJi4KyNC0-cQ39sonkkOEkwEYkxTk' staticbrainz.org static.metabrainz.org; style-src 'self' staticbrainz.org static.metabrainz.org; img-src 'self' data: staticbrainz.org
+  static.metabrainz.org; frame-src 'self'
+  Set server-side, applies to the whole document as soon as the response arrives — before the browser even starts parsing the HTML body. This is the more common and more robust mechanism, since it can't be tampered with by anything running in the page (a <meta> tag injected via
+  XSS could theoretically be neutralized or overridden by later markup).
+
+  2. HTML <meta> tag, as an alternative when you don't control server headers:
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'">
+  Same syntax as the header value, just delivered in-document. Weaker in a few ways: it only takes effect once the parser reaches that <meta> tag (so anything earlier in <head> is unprotected), and it can't set a few directives at all (frame-ancestors, report-uri/report-to, and
+  the sandboxing directives require the HTTP header form).
+
+  Reading the directive syntax
+
+  Each directive is name value1 value2 ..., directives separated by ;:
+
+  ┌─────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │    Directive    │                                                      Governs                                                       │
+  ├─────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ default-src     │ Fallback for any directive not explicitly listed                                                                   │
+  ├─────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ script-src      │ JavaScript sources — <script> tags, inline scripts, eval                                                           │
+  ├─────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ style-src       │ CSS sources — <style> tags, <link rel=stylesheet>, inline style="" attributes (the one that broke this userscript) │
+  ├─────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ img-src         │ Image sources                                                                                                      │
+  ├─────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ frame-src       │ What can be embedded in an <iframe> on this page                                                                   │
+  ├─────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ frame-ancestors │ What sites are allowed to embed this page in their own <iframe> (clickjacking defense)                             │
+  ├─────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ connect-src     │ fetch/XHR/WebSocket targets                                                                                        │
+  └─────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Common source-value keywords: 'self' (same origin), 'none' (nothing), a bare hostname like staticbrainz.org (that origin, any scheme/port unless specified), 'unsafe-inline' (allow inline script/style — the escape hatch that's absent here), 'nonce-<random>' (a one-time token the
+  server prints fresh into both the header and the specific <script>/<style> tags it wants to allow, so only server-generated tags — never attacker- or extension-injected ones — can match), and 'sha256-<hash>' (allow a specific inline script/style block by its exact content
+  hash, used the same way as a nonce but for static, unchanging inline blocks).
+
+  That 'nonce-JexaXHNPXIhsWLOJi4KyNC0-cQ39sonkkOEkwEYkxTk' in MusicBrainz's script-src is exactly this mechanism — it changes on every single page load, which is precisely why a userscript can never legitimately obtain it and use it to smuggle its own <script>/<style> past the
+  policy. GM_addStyle sidesteps the whole problem instead of trying to solve it: it doesn't add page-authored content at all, it injects through the browser extension's own privileged API, which CSP has no visibility into.
+
+** is it possible for musicbrainz to actually break my userscript completely
+
+● Short answer: no, not completely — but it's worth understanding precisely why, and where the real risk actually is (spoiler: it's not CSP).
+
+  Why CSP can't stop the script from running
+
+  Tampermonkey userscripts execute in what browsers call an "isolated world" — the same underlying browser extension mechanism as Chrome/Firefox extension content scripts. This is a fundamental part of the extension security model, not something MusicBrainz's server can see or
+  influence: the page's CSP governs content the page itself is responsible for (its own <script> tags, inline handlers, stylesheets, images, fetches made through the page's own APIs). A userscript's own JS execution, DOM reads, and any GM_* API calls sit outside that boundary
+  entirely. MusicBrainz cannot write a CSP header that says "block Tampermonkey scripts" — CSP has no vocabulary for that, and even if it did, the isolated-world architecture means the browser wouldn't apply it there.
+
+  That's also why GM_addStyle works as a fix at all: it's not a clever workaround exploiting a loophole, it's the intended, documented mechanism for exactly this situation — Tampermonkey deliberately provides privileged APIs (GM_addStyle, GM_xmlhttpRequest, GM_setValue, etc.)
+  specifically so script authors don't have to fight the page's CSP for legitimate extension behavior.
+
+  What CSP genuinely CAN keep breaking
+
+  Only the parts of the script that manipulate the DOM the same way the page itself would — using standard web-platform APIs instead of GM_* equivalents:
+
+  - document.createElement('style') / inline style="" — what we just fixed, twice over
+  - Any inline event-handler attribute built via innerHTML (the onfocus/onblur case)
+  - If the script ever used the page's own fetch()/XMLHttpRequest instead of GM_xmlhttpRequest — it already correctly uses GM_xmlhttpRequest (see the @connect directives), so this is a non-issue
+  - Injecting <script> tags into the page DOM to run page-context code — the script doesn't do this anywhere I've seen
+  - If MusicBrainz added img-src restrictions that somehow applied to elements the script injects — currently CAA/EAA thumbnails etc. are just <img> elements the extension DOM API creates, which (like style attributes) is markup subject to CSP if img-src were tightened without a
+  matching allowance
+
+  So: CSP getting stricter could keep chipping away at cosmetic/DOM-injection details, the same category of bug as the last two sessions. It's annoying and needs periodic fixing, but it degrades gracefully — features go unstyled or slightly broken, not "the whole script stops
+  running."
+
+  The actually bigger risk: MusicBrainz restructuring the DOM
+
+  Looking at debug/NOTES.md's history, essentially every prior "page type broken" bug in this project has been MusicBrainz changing HTML structure — new sections, renamed classes, moved elements, added/removed wrapper divs — not CSP. That risk is unrelated to security headers
+  entirely and is the one that can genuinely break a feature completely: if pageDefinitions' matchers, parseDocumentForTables, or a column extractor's selectors no longer match the real DOM, that feature silently does nothing or throws, with no graceful degradation. That's a
+  structural coupling the script has always had with MusicBrainz's markup and always will — CSP is a comparatively narrow, newer, and more cosmetic risk by comparison.
+
+  One honest caveat
+
+  There's a genuinely murkier CSP directive called require-trusted-types-for 'script' (Trusted Types) that restricts DOM XSS sinks like innerHTML at a lower level than style-src/script-src. Whether that would affect extension-injected innerHTML writes depends on
+  browser/version-specific implementation details I'm not fully certain of — it's rarer, MusicBrainz doesn't currently use it, and I wouldn't want to overstate my confidence either way. If they ever adopted it, it could plausibly force a deeper rewrite (buildling everything via
+  createElement/textContent instead of innerHTML strings) — but that's speculative, not something currently in play.
+
+** initial.log
+
+The following console output gets created on the https://musicbrainz.org/account/applications URL
+@debug/initial.log
+
+Also it's just the initial page with the action buttons rendered (no visual glitches) why are there still console
+errors, also we fixed a lot already
+
+** The "Load from disk" dialog is also completely broken
+
+The "Load from disk" dialog is also completely broken already on the initial page @debug/LoadFromDisk.log
+
+** The "Save to disk" dialog is also completely broken
+
+The "Save to disk" dialog is also completely broken
 
 * Performance fixes — ready to implement (analysed, approach agreed)
 
@@ -87220,7 +87606,24 @@ features/fixes/enhancements.
 For this use the different tags in the git history of this whole project, but avoid using very technicals terms in the
 list like we use in the changelog, instead create a high level descriptions.
 
-Here is the last version as a example: 
+Start from the following changelog entry
+
+#+begin_example
+  {
+    "version": "9.99.675",
+    "date": "2026-07-01",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added support for MusicBrainz report pages: the /reports index (all 117 reports across 14 categories, rendered as a filterable multi-table view) and individual /report/<ReportName> pages (paginated, with buttons to switch between all results and results limited to your subscribed entities). Column sets are report-specific and auto-detected generically; the DuplicateArtists-style 'merge queue' checkbox column renders but is non-functional (known limitation — the table is detached from its native <form>)."
+        ]
+      }
+    ]
+  },
+#+end_example
+    
+Here is the last version as an example: 
 
 # [VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities](https://github.com/vzell/mb-userscripts/tree/master?tab=readme-ov-file#mb_show_all_entity_data)
 
@@ -87249,6 +87652,23 @@ Here is the last version as a example:
 * **"Save to disk"** now preserves the correct column headers when saving at the large-table render-threshold prompt --- previously the saved file could contain the wrong header names
 * **Column resize** is much more reliable --- a run of fixes addressed resize minimum creep, line breaks appearing in disambiguation comments during resize, and incorrect widths on initially-collapsed sub-tables
 
+* act on
+
+act on @debug/forum.org
+
+* collapsable
+
+https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e/relationships - distibuted
+
+#+begin_example
+                collapsableColumns: [ 'Release events' ],
+#+end_example
+
+to
+
+#+begin_example
+                collapsableColumns: [ 'Release events', 'Release country', 'Release date' ],
+#+end_example
 
 * TODO Release page enhancer / MB page enhancer
 ** DONE create a userscript which shows coverart on the mainpage in miniature form
