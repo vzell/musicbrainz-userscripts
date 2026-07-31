@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.2",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fix the settings/configuration dialog and the changelog viewer rendering broken on /account/applications (unstyled, stacked layout) by fixing the same CSP `style-src` issue as WIP.1, this time in the shared `VZ_MBLibrary.user.js` library (`@require`d by this script): the dialog shells and per-row setting widgets were built via `container.innerHTML` templates with ~75 inline `style=\"...\"` attributes, which are blocked by page CSP the same as `<style>` elements. Converted to id/class selectors targeted by `GM_addStyle()`-injected stylesheets, plus added `// @grant GM_addStyle` to both `VZ_MBLibrary.user.js` and `MB_PageEnhancer.user.js` (the other consumer of this library) so `GM_addStyle` exists in their sandbox. Also replaced an `onfocus`/`onblur` inline event-handler pair in the changelog search box with a CSS `:focus` rule (also CSP-restricted). NOTE: the same `innerHTML`+`style=\"...\"` pattern still exists in ~20 more functions within ShowAllEntityData.user.js itself (dialogs, tooltips, stats panel — see debug/NOTES.md) and will be fixed incrementally as each is found broken during further pageType testing."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.1",
         "date": "2026-07-31",
         "sections": [

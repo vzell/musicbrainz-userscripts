@@ -21,6 +21,7 @@
 // @grant        GM_registerMenuCommand
 // @grant        GM_unregisterMenuCommand
 // @grant        GM_xmlhttpRequest
+// @grant        GM_addStyle
 // @license      MIT
 // ==/UserScript==
 

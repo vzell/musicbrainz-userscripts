@@ -1592,3 +1592,62 @@ falls back to `N/A` like every other empty cell on this page.
   `sa_enable_annotation_auto_expand` setting), which simply calls
   `.click()` on every `a.annotation-toggle` found — deferring to MB's own
   click handler rather than replicating its collapse/expand DOM logic.
+
+## 2026-07-31 — account-applications CSP style-src breakage (branch fix/account-applications-csp-style-src)
+
+- Root cause: MusicBrainz's backend serves `/account/*` pages directly
+  (`server: Plack::Handler::Starlet`) with a `style-src 'self'
+  staticbrainz.org static.metabrainz.org` CSP (no `unsafe-inline`), unlike
+  general content pages (`/artist/...`, `/release-group/...`) which are
+  served via an edge layer (`server: openresty`) with **no** CSP header at
+  all (verified via `curl -I`). Confirmed via a live browser console error
+  pasted by the user: "Applying inline style violates... style-src...".
+- Two independent CSS-injection patterns are both CSP-vulnerable and both
+  found in use:
+  1. `document.createElement('style')` + `document.head.appendChild()` for
+     shared stylesheets — 9 sites in `ShowAllEntityData.user.js` (sticky
+     headers, main toolbar chrome, dialog hover states, sidebar toggle,
+     relationships-icon column, edit-diff table colors, Unicode picker),
+     all converted to `GM_addStyle()` (WIP.1). Two more sites in
+     `VZ_MBLibrary.user.js` (`resizingStyleEl` cursor-lock helper, used
+     twice) converted the same way.
+  2. `container.innerHTML = \`...style="..."...\`` — inline `style=`
+     attributes embedded in HTML-template strings are *also* covered by
+     CSP `style-src` (confirmed by the browser's own violation wording:
+     "hashes do not apply to event handlers, style attributes..."). Found
+     in `VZ_MBLibrary.user.js`'s settings dialog (`showModal`, ~50
+     attributes across the shell + all per-row setting-type widgets:
+     checkbox/number/text/color-picker/popup-dialog sub-fields/keyboard-
+     shortcut capture/function+table buttons) and its changelog viewer
+     (`show`, ~25 attributes) — both fixed by moving styling to
+     `GM_addStyle()`-injected stylesheets keyed by id/class (WIP.2). Also
+     found and fixed one `onfocus`/`onblur` inline-event-handler pair in
+     the changelog search box (replaced with a CSS `:focus` rule — inline
+     event-handler attributes are restricted the same way, under
+     `script-src`, and we don't have the page's per-load nonce).
+  3. `Object.assign(el.style, {...})` and `el.style.property = value` (JS
+     CSSOM property mutation, as opposed to parsing an HTML `style=`
+     attribute or `<style>` element) is **not** restricted by CSP — this is
+     the pattern already used correctly for `showCustomDialog`/
+     `showCustomConfirm` (the generic alert/confirm popup) and for the
+     settings-row containers' own layout, and is why those already worked
+     before this fix.
+- **Not yet fixed — same pattern confirmed present in
+  `ShowAllEntityData.user.js` itself**, ~260 `style="..."` attributes
+  across ~20 functions (counts from a grep-by-enclosing-function pass):
+  `showEditPersistentListDialog` (49), `showLoadFilterDialog` (49),
+  `showStatsPanel` (46), `showExportDialog` (15), `showSaveDialog` (13),
+  `countFilteredRows` (12), `createFilterHistoryWidget` (11),
+  `buildMetaBlockHTML` (10), `showRenderDecisionDialog` (7),
+  `showCtrlMTooltip` (5), `_saveSettingsConfig` (5), `_relBuildTooltipHTML`
+  (5), `makeCollapseExpandBtnHTML` (3), plus a handful of 1-2-count sites
+  (`loadAndRender`, `toggleAutoResizeColumns`, `renderRowsChunked`,
+  `makeButtonHTML`, `_mbttLabel`, `_mbttColName`, `_mbttCount`,
+  `ergInjectReleaseGroupButton`, `ergInjectReleaseButton`, `_fmtMs`).
+  User decided (2026-07-31) to fix these incrementally as each is found
+  broken during further pageType testing, rather than blind-editing all
+  ~260 in one pass with no way to visually verify each. Same
+  `[id="..."]`/class + `GM_addStyle()` conversion pattern applies; watch
+  for genuinely per-instance dynamic values (like the changelog viewer's
+  nesting-depth-based color/font-size) which need a small fixed set of
+  modifier classes rather than one class per instance.
