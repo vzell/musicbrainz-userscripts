@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.8",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The 📊 unique-values filter dropdown's flag-icon decoration (WIP.1-WIP.7, covering Country/Area/Locality/Region/Location/Place/Country-Date columns) is now gated behind a new 'Show Flag Icons In Unique-Values Dropdown' setting (sa_enable_dropdown_flag_icons, in the existing 'UNIQUE COLUMN VALUES DROP DOWN CONFIGURATION' settings section), default OFF. hasFlagIcons short-circuits on the setting before doing any column-name/DOM work, so the dropdown renders exactly as it did before this feature existed unless a user opts in."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.7",
     "date": "2026-07-31",
     "sections": [

@@ -693,6 +693,15 @@
             description: "Background color for the (n) occurrence count badge rendered in front of each unique-values dropdown entry"
         },
 
+        sa_enable_dropdown_flag_icons: {
+            label: "Show Flag Icons In Unique-Values Dropdown",
+            type: "checkbox",
+            default: false,
+            description: "Decorate each entry in the 📊 unique-values filter dropdown with the same " +
+                         "flag icon shown in the table cell, for Country/Area/Locality/Region/Location/" +
+                         "Place/Country-Date columns."
+        },
+
         // ============================================================
         // THRESHOLD SECTION
         // ============================================================
@@ -35359,7 +35368,7 @@ a { color: #1565c0; }`;
         //     flag-XX"> with no wrapping <span>/<a>, a different shape that
         //     caused a regression when decoration was attempted for it
         //     (reverted; see git history) and is out of scope here.
-        const hasFlagIcons = (() => {
+        const hasFlagIcons = Lib.settings.sa_enable_dropdown_flag_icons && (() => {
             const headers = table.querySelectorAll('thead tr:first-child th');
             const th = headers[colIndex];
             if (!th) return false;
