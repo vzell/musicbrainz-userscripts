@@ -1,17 +1,5 @@
 [
   {
-    "version": "WIP.5",
-    "date": "2026-07-31",
-    "sections": [
-      {
-        "label": "🐛 Fix",
-        "items": [
-          "'Location'/'Place' (splitLocation's unsplit source columns) and 'Release events' (splitCountryDate's unsplit source column) unique-values filter dropdown (📊): entries now show flag icon(s) too, matching the table cells. Column-name matching (WIP.4) now also covers these exact names, and the flag scan matches on the '.flag' CSS class itself rather than a span-specific selector, since MusicBrainz also renders the native country flag as e.g. <li class=\"flag flag-US\" title=\"...\"> with no <a> at all (the 'Release events' column) — the nested <img> inside a subdivision's <span class=\"area-icon\"> wrapper also carries a 'flag'/'flag-XX' class and is explicitly excluded so it isn't double-counted alongside its wrapper."
-        ]
-      }
-    ]
-  },
-  {
     "version": "WIP.4",
     "date": "2026-07-31",
     "sections": [
