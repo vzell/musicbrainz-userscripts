@@ -1773,3 +1773,171 @@ falls back to `N/A` like every other empty cell on this page.
   branch simply never had this branch's commits. No actual regression;
   resolved by switching back to `fix/account-applications-csp-style-src`
   (working tree was clean, so the switch was lossless).
+## 2026-07-31 — Country/Locality/Region flag icon in the unique-values dropdown (branch fix/dropdown-flag-flat)
+
+- `with-flag.html` (raw MB markup, Canada example): confirmed the native
+  Country flag shape — a bare `<span class="flag flag-XX">` with NO
+  `<img>` child (CSS background-sprite only) — versus the third-party
+  "More Flags Everywhere"/"Canadian Province Flags Everywhere" subdivision
+  icon shape — `<span class="area-icon"><img class="flag flag-XX-prov"
+  src="https://...svg"></span>` immediately preceding the place-name
+  `<a>`. These are two structurally different techniques; the dropdown
+  fix needed a different clone strategy for each (CSS-value baking via
+  `getComputedStyle()` for the Country span, since it's pure CSS with zero
+  markup of its own in this userscript; plain node cloning for the area
+  icon, since it's a self-contained `<img>`).
+- `florida.html` (full raw page snapshot) and
+  `area-artists-with-flag-symbols.html` (full raw page snapshot, user-
+  supplied): confirmed the US-state variant of the same subdivision icon
+  uses a different class, `flag-custom-region`, and an inline base64
+  data-URI SVG `src` instead of an external URL — same `span.area-icon`
+  wrapper shape either way, so detection keys off the wrapper, never the
+  `<img>`'s own class.
+- `noord-holland.html` (single-cell raw snippet, user-supplied): a Region
+  cell where the third-party userscript decorates the SOVEREIGN STATE
+  link ("Kingdom of the Netherlands") with its own custom
+  `area-icon`/`<img>` flag too, instead of leaving MusicBrainz's native
+  `<span class="flag flag-XX">` alone — so the cell reads
+  `<icon> Noord-Holland, <icon> Kingdom of the Netherlands` with two
+  `area-icon` wrappers in one cell. This exposed a second, independent bug
+  in the dropdown code (present for the Country column too, for
+  multi-event cells): `countryFlagMap`/`areaIconMap` were keying each flag
+  by a label parsed from that single flag's own adjacent text, but the
+  dropdown's actual unique value is always the whole cell's combined text
+  (`getCleanColumnText(cell)`, matching how `valueCounts` itself is
+  built). A multi-flag cell's combined value never matched any single
+  flag's own label, so the entry silently got no icon at all. Fixed by
+  keying both maps on the cell's full `getCleanColumnText()` value and
+  bundling every flag found in that cell into one wrapper `<span>`.
+
+## 2026-07-31 (later) — Location/Place/Country-Date dropdowns (still branch fix/dropdown-flag-flat)
+
+The "Release events" decoration attempt (commit `4286ba9`) was reverted
+(`0052f8d`) per explicit instruction after a probe-based width-remeasurement
+fix for it regressed the already-working Country column. That native
+`<li class="flag flag-XX">` shape (script-rebuilt by `_rePopulateCell`, no
+wrapping `<span>`/`<a>` at all) remains out of scope.
+
+`'Location'`, source-column `'Place'` (Place-category reports, e.g.
+`AnnotationsPlaces` — `place-no-H2-1.html`), and `'Country/Date'`
+(`no-h2.html`/`edits-search.html`, native `.release-event >
+.release-country/.release-date`) are a DIFFERENT, much lower-risk case:
+their native markup is the exact same two shapes already fixed for
+Country/Area — `<span class="flag flag-XX">` (optionally wrapping an `<a>`,
+e.g. `release-country` just adds an extra class) and the third-party
+`<span class="area-icon"><img></span>`. The only actual gap was that
+`hasFlagIcons`' suffix match (`ountry`/`ocality`/`egion`/`rea`) never
+matched these three exact column names. Fix: added them as exact-name
+matches — no new DOM-shape handling, reusing the already-verified
+`flagIconMap` scan/bake code untouched.
+
+One real (not speculative) risk specific to these two: unlike
+`'Country'`/`'Area'`, `'Location'` and `'Country/Date'` ARE listed in
+`collapsableColumns` on several page definitions, so a flag span can sit
+inside a currently-collapsed multi-event `<li>` (`initCollapsableColumns`
+hides non-first `<li>`s via inline `style.display = 'none'` on the `<li>`
+itself). Pseudo-elements aren't generated at all inside a display:none
+subtree, so `resolveFlagVisual`'s `::before`/`::after` fallback would find
+nothing for a collapsed-but-not-first event. Re-added the (previously
+reasoned-through-but-reverted-along-with-the-probe-fix) li-reveal
+safeguard: temporarily set the ancestor `<li>`'s `display` back to `''`
+around the `getComputedStyle()` read, restore to `'none'` immediately
+after, synchronously (no flicker). This is unrelated to, and much simpler
+than, the `hasOwnText`/probe technique that caused the earlier regression
+— no content stripping, no DOM mutation beyond the one inline style
+round-trip.
+
+**Not yet manually verified in a real browser** (musicbrainz.org is
+blocked behind a JS proof-of-work bot-check, `/__meb_verify`, in this
+environment) — in particular, whether a *collapsed* `'Location'`/
+`'Country/Date'` cell's dropdown entry now renders correctly needs a real
+test.
+
+### Follow-up (user-tested): 'Country/Date' text on its own line + excess gap between multiple flags
+
+User confirmed 'Country' itself is unaffected on the same URL — isolates
+the bug to something specific to `.release-country`'s CSS, not a general
+regression of the shared flag-baking code.
+
+Screenshot evidence (single-event entries "AT -", "AU -" and a two-event
+entry "AT 2003-05-05 Mon XE 2003-05-05 Mon"): the flag icon renders, but
+the value text always starts on a **new line** below it instead of right
+behind it, and multi-flag entries show a large gap between the icons.
+
+Root cause (reasoned, not confirmed against live DevTools data — no
+browser access in this environment): `flagIconMap`'s bake step only
+normalized a resolved `display: none` to `inline-block`, passing every
+other resolved `display` value through verbatim onto the (child-stripped,
+empty) clone. `.release-country` carries an extra class beyond the shared
+`.flag`/`.flag-XX` sprite rule (`class="flag flag-XX release-country"`)
+for aligning the flag+code against the release-date column in MB's native
+multi-event list — plausibly a `display` value (block/list-item/
+table-cell-ish) that only behaves correctly inside that original
+`.release-event` row context. Baked verbatim onto a bare clone dropped
+into the dropdown item (a sibling of the plain value text, no such
+context), it forces a line break, and — if it's a table-cell-style anonymous
+box — could also explain the oversized gap between consecutive flags in a
+multi-event cell.
+
+Fix: broadened the normalization from "only 'none' → 'inline-block'" to
+"anything other than inline/inline-block/inline-flex/inline-grid →
+'inline-block'". This is a no-op for the already-working Country/Area
+case (their resolved `display` was presumably already one of the
+safe/context-free values, since they render correctly today), so it
+carries no regression risk for those.
+
+**Still unverified**: whether this also fully resolves the "too much
+empty space between multiple flags" symptom, or whether that also needs a
+width fix (e.g. if `.release-country`'s resolved `width` reflects a wide
+alignment column rather than the icon's true small size — deliberately
+NOT touched here without live confirmation, per the lesson from the
+Release-events probe regression: don't guess a second unverified change
+in the same pass). Needs user retest.
+
+### Follow-up 2 (user confirmed display fix, gap persists) — real computed-style + cell-markup data provided
+
+User pasted the actual multi-event cell markup AND the dropdown item's
+resulting DOM with computed styles baked in as inline styles. This is the
+first time in this whole investigation actual live data (not a guess) was
+available for one of these fixes. Confirmed:
+
+- Text now sits behind the flag (WIP.6's display-normalization fix
+  worked).
+- Both flag spans ('flag-AT release-country', 'flag-XE release-country')
+  have IDENTICAL baked styles: `width: 48px; height: 14.4px;
+  background-position: 0% 84%; background-size: auto;`
+  `background-image: url("data:image/png;base64,...")`.
+- Decoded that base64 PNG's IHDR directly (python, `struct.unpack('>I',
+  raw[16:20]/[20:24])`): the actual image is **16×11px** — the baked box
+  is 3x wider and taller than the icon itself.
+- Root cause confirmed (not just theorized): `.release-country`'s box is
+  sized in the ORIGINAL cell to fit the flag AND the visible "AT"/"XE"
+  abbreviation text next to it (that's real, user-visible content there —
+  see the raw cell markup: `<span class="flag flag-AT
+  release-country"><a...><abbr title="Austria">AT</abbr></a></span>`).
+  flagIconMap's clone deliberately strips that child content (to avoid
+  showing "AT" twice — once from the icon's own text, once from the
+  dropdown's value text which already reads "AT 2003-05-05 Mon..."), but
+  kept baking the FULL content-sized box width, leaving ~32px of empty
+  space where the stripped text used to be. This happens for every flag
+  in a multi-flag cell AND after the last one (explains both "gap between
+  flags" and "gap between last flag and text").
+- Fix: added `_pngDataUriNaturalSize()` — reads the PNG's real
+  width/height straight out of the base64 payload's IHDR chunk
+  (synchronous, no `<img>`/decode round-trip) — and use it as the clone's
+  box size instead of the source element's box, but ONLY when
+  `background-size` resolves to `auto` (meaning the image is meant to
+  paint at its own natural size in the first place, so matching the box
+  to that size is an exact, not approximate, substitution — no change in
+  what's visually painted, just less empty box around it).
+  `background-position-x: 0%` is invariant to box width, and matching
+  height to the image's own height makes the Y-offset moot too, so this
+  cannot alter which part of the image is shown, only remove the
+  leftover space.
+- Deliberately scoped narrowly (only kicks in for PNG data URIs with
+  `background-size: auto`) rather than guessing at some universal "always
+  shrink to X px" rule — falls back to the prior (already-working-
+  everywhere-else) behavior for anything else, so the Country/Area case
+  is untouched.
+
+Needs user retest to confirm the gap is gone.
