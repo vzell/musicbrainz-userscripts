@@ -86647,7 +86647,7 @@ add "United Kingdom", "Canada" and "Australia" to the config variable "sa_area_f
 Currently the following countries "United States, United Kingdom, Canada, Australia" are set as configuration directive "sa_area_flag_region_countries"
 This shouldn't actually be a configuration option, but a real variable, not exposed to endusers.
 
-* TODO plan: strange flat flag glyph in the unique column drop down
+* DONE plan: strange flat flag glyph in the unique column drop down
 ** initial
 
 Why is the flag glyph (e.g. the US flag) in the unique column drop down e.g. from the "Country" column of https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/artists
@@ -86752,7 +86752,77 @@ even worse, now all flags are flat again, ALSO for other pageType and columns wh
 
 also still too much empty space
 
-* applications pageType
+** still no flag icons
+*** initial
+
+On branch "fix/dropdown-flag-flat" in changelog
+
+#+begin_example
+  {
+    "version": "WIP.4",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Country column unique-values filter dropdown (📊): fixed a regression from WIP.3 where flags looked flat/washed-out again — WIP.3's multi-flag fix wrapped icons in a <span style=\"display:inline-flex\"> container, an extra layout context not present in the table cell that could interfere with the native flag's baked width/height/background rendering. Removed the wrapper: each icon is now stored/cloned independently and appended as its own direct sibling (matching the original, working single-flag structure), with no behavior change for the multi-flag case.",
+          "'Area'/'Begin area'/'End area' (the unsplit source columns splitArea/splitLocation operate on) unique-values filter dropdown (📊): entries now show flag icon(s) too, matching the table cells. These columns can hold BOTH icon shapes in one cell (a Locality/Region subdivision icon followed by the Country's own flag), so column-name matching now also covers an 'rea' suffix, and countryFlagMap/areaIconMap (WIP.1/WIP.2) are unified into a single flagIconMap that scans for both shapes together in document order, so a combined cell's icons come out correctly interleaved rather than grouped by shape."
+        ]
+      }
+    ]
+  },
+#+end_example
+
+you implemented
+
+#+begin_example
+"'Area'/'Begin area'/'End area' (the unsplit source columns splitArea/splitLocation operate on) unique-values filter dropdown (📊): entries now show flag icon(s) too, matching the table cells.
+#+end_example
+
+This feature is still missing on the following columns e.g.
+
+#+begin_example
+"Place" - https://musicbrainz.org/report/AnnotationsPlaces
+"Location" - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events
+"Country/Date" - https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
+#+end_example
+
+These are all columns where the 'splitLocation' / 'splitCountryDate' functions operate on
+
+*** bug
+
+Everything looks good except the "Country/Date" column in e.g. https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
+
+1.)
+
+The text part in the unique drop down is rendered on a new line, it should be right behind the flag icon
+
+2.)
+
+for multi-row cells with more than one flag there is additionally too much empty space between the flags itself
+
+*** bug
+
+OK, the text now renders behind the flags, but the gap between the flags is still there
+
+multi-row data cell:
+#+begin_example
+<td class="mb-has-collapse-toggle" data-mb-rest-bg="rgb(242, 242, 242)" style="background: rgb(242, 242, 242);"><script type="application/json">{"events":[{"country":{"iso_3166_3_codes":[],"iso_3166_2_codes":[],"typeID":1,"begin_date":null,"entityType":"area","primaryAlias":"Austria","comment":"","primary_code":"AT","name":"Austria","iso_3166_1_codes":["AT"],"gid":"caac77d1-a5c8-3e6e-8e27-90b44dcc1446","end_date":null,"country_code":"AT","id":14,"last_updated":"2013-05-27T12:35:40Z","editsPending":false,"ended":false},"date":{"month":5,"day":5,"year":2003}},{"date":{"month":5,"day":5,"year":2003},"country":{"ended":false,"editsPending":false,"last_updated":"2013-08-28T11:55:13Z","id":241,"country_code":"XE","end_date":null,"gid":"89a675c2-3e37-3518-b83c-418bad59a85a","name":"Europe","iso_3166_1_codes":["XE"],"primary_code":"XE","comment":"","primaryAlias":"Europe","entityType":"area","begin_date":null,"typeID":null,"iso_3166_2_codes":[],"iso_3166_3_codes":[]}}]}</script><div class="release-events-container"><ul aria-label="Release events" class="release-events abbreviated"><li aria-label="Release event" class="release-event" style=""><span class="flag flag-AT release-country"><a href="/area/caac77d1-a5c8-3e6e-8e27-90b44dcc1446"><abbr title="Austria">AT</abbr></a></span><span class="release-date">2003-05-05<span class="mb-day-of-week unknown" title="No standard release day known for Austria." style="cursor: help;">Mon</span></span></li><li aria-label="Release event" class="release-event" style=""><span class="flag flag-XE release-country"><a href="/area/89a675c2-3e37-3518-b83c-418bad59a85a"><abbr title="Europe">XE</abbr></a></span><span class="release-date">2003-05-05<span class="mb-day-of-week unknown" title="No standard release day known for Europe." style="cursor: help;">Mon</span></span></li></ul></div><span class="mb-cell-collapse-toggle" title="Collapse multi-row cell back to display just the first item (2 total)" role="button" aria-expanded="true" aria-label="Collapse: showing all 2 items"><span class="mb-cell-collapse-glyph">▼</span><span class="mb-cell-collapse-count">2</span><span class="mb-cell-collapse-rack">▤</span></span></td>
+#+end_example
+
+unique column value for the multi-row data cell:
+#+begin_example
+<div class="mb-col-uniq-item" role="option" aria-selected="false" title="AT 2003-05-05 Mon XE 2003-05-05 Mon"><span class="mb-col-uniq-checkbox" aria-hidden="true">☐</span><span class="mb-uniq-count-badge" aria-hidden="true" style="color: rgb(17, 17, 17); background-color: rgb(255, 250, 205); font-weight: bold; font-family: monospace; border-radius: 3px; padding: 0px 3px; margin-right: 5px; font-size: 0.85em; display: inline-block; min-width: 3ch; text-align: right;">(1)</span><span class="flag flag-AT release-country" style="background-image: url(&quot;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAALCAIAAAD5gJpuAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAADkSURBVHgBdZA9bgIxEEafk1Ua6tWKgo4maag4GDU9B6LhBvRcgCopEKFLGnt+MsGW2ETaz09Pn6wp7EnOIzbuEyQHtlvAzQhUXRQVF0HES/GRv/b7DgD39w9Ug7itbuRw9pyjp8XCoGO99tc3+gE3FyGmA5GglkrO+WUY7HBIl8ul73vA3bmff4nR6tlsdrvd6pPaVC2TgVD3GOJ+poO7maWyWqXNxq9X6osb6vrnG6imYfjc7To7nZ6PRz+faWtpO6luRQqiLJdAZ/BUhPncy/1WCqWk3y5UB6oVg/QNNoLwBDU/fNZaTRqxEjAAAAAASUVORK5CYII=&quot;); background-position: 0% 84%; background-repeat: no-repeat; background-size: auto; width: 48px; height: 14.4px; display: inline-block; border: 0px rgb(0, 0, 0); border-radius: 0px; box-shadow: none; vertical-align: baseline; margin-right: 4px;" aria-hidden="true"></span><span class="flag flag-XE release-country" style="background-image: url(&quot;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAALCAIAAAD5gJpuAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAWlJREFUGBkFwb1qkwEcxeGT1xAjRqPgJBS/sIMEM3kFToKgk7tDK4IgnRw6iuDgIAiVKF6C4ODmHYg0iKClWicHqQq2NZD2/Z/z83k6N25NOmogyEmSSkwcyi5wUkk5Jk7cFZw8e6l3uBcCJonLVYnb/YKyq6olmc92d3597gb3+r2/23tS7JJst6Mz23dufl97vTDd6Dv7cZvkyOAUokmSBBxHAnh2//3HrRN3n4ynm4OXq18lCUl0OhI0YHBiZCmjc3/uPb0iSdBBS48ujBdnCEkSSI1jHKikEi9d/wKGJEYVsnz1rSQBINQlTiopSYTJm/NJgWMLIC/eXZOUlCSJJmltu1pXax9Mvx1bW/mQtiQnfrW6tb7RF0GRhdIkdltQpKBwLT8ejRd3Jg8+Xb64e/vhApCUQIcQdMHz2b/B8LiCpCiYzZ/Dleen4xwdBttxKgfzPUQ3qd8/1iUBEgAAgSCIQwjIIoL/qIB6+OgzWTAAAAAASUVORK5CYII=&quot;); background-position: 0% 84%; background-repeat: no-repeat; background-size: auto; width: 48px; height: 14.4px; display: inline-block; border: 0px rgb(0, 0, 0); border-radius: 0px; box-shadow: none; vertical-align: baseline; margin-right: 4px;" aria-hidden="true"></span>AT 2003-05-05 Mon XE 2003-05-05 Mon</div>
+#+end_example
+
+there is also gap between the flag(s) and the text itself
+
+** make the whole flag display in the column unique-value drop down configurable
+
+make the whole flag display in the unique-value drop-down list of all columns where it's displaying now configurable (default: false)
+
+
+* TODO applications pageType - CSP
 ** initial
 
 pageType "type: 'account-applications'" broken since a recent MusicBrainz server update:
@@ -87033,6 +87103,8 @@ The "Load from disk" dialog is also completely broken already on the initial pag
 ** The "Save to disk" dialog is also completely broken
 
 The "Save to disk" dialog is also completely broken
+
+
 
 * Performance fixes — ready to implement (analysed, approach agreed)
 
