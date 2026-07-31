@@ -86646,7 +86646,6 @@ add "United Kingdom", "Canada" and "Australia" to the config variable "sa_area_f
 
 Currently the following countries "United States, United Kingdom, Canada, Australia" are set as configuration directive "sa_area_flag_region_countries"
 This shouldn't actually be a configuration option, but a real variable, not exposed to endusers.
-
 * DONE plan: strange flat flag glyph in the unique column drop down
 ** initial
 
@@ -86821,8 +86820,7 @@ there is also gap between the flag(s) and the text itself
 
 make the whole flag display in the unique-value drop-down list of all columns where it's displaying now configurable (default: false)
 
-
-* TODO applications pageType - CSP
+* DONE applications pageType - CSP
 ** initial
 
 pageType "type: 'account-applications'" broken since a recent MusicBrainz server update:
@@ -87104,7 +87102,45 @@ The "Load from disk" dialog is also completely broken already on the initial pag
 
 The "Save to disk" dialog is also completely broken
 
+** merge current branch in main, commit and push
 
+merge current branch in main, commit and push
+take into account a possible version bump of the library
+actually version bump the library from 3.19.1 to 4.0.0 as this is a major change
+
+** DONE resync the HELP file "ShowAllEntityData_HELP.txt" against the current code base and keyboard shortcuts 
+
+Resync the HELP file "ShowAllEntityData_HELP.txt" against the current code base and keyboard shortcuts, start from the
+following changelog entry
+
+#+begin_example
+  {
+    "version": "9.99.675",
+    "date": "2026-07-01",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added support for MusicBrainz report pages: the /reports index (all 117 reports across 14 categories, rendered as a filterable multi-table view) and individual /report/<ReportName> pages (paginated, with buttons to switch between all results and results limited to your subscribed entities). Column sets are report-specific and auto-detected generically; the DuplicateArtists-style 'merge queue' checkbox column renders but is non-functional (known limitation — the table is detached from its native <form>)."
+        ]
+      }
+    ]
+  },
+#+end_example
+
+
+* does @/home/vzell/git/userscripts/BruceBaseParser/BruceBaseParser.user.js uses "// @grant        GM_addStyle" in it's code, does it need some change regarding our library version @/home/vzell/git/userscripts/BruceBaseParser/BruceBaseParser.user.js
+
+  Searched for 2 patterns, read 2 files, listed 1 directory (ctrl+o to expand)
+
+● No, no change needed there.
+
+  BruceBaseParser.user.js already has // @grant GM_addStyle (line 24) and already calls GM_addStyle(...) directly (line 11879) — it didn't need this grant added, unlike MB_PageEnhancer which was missing it before the CSP fix. It also:
+
+  - @requires VZ_MBLibrary.user.js via a local file:///… path, so it always picks up whatever's currently on disk — no pinned/cached version to bump.
+  - Doesn't reference LIBRARY_VERSION or hardcode any VZ_MBLibrary version string anywhere in its code.
+
+  So the 3.19.0 → 3.19.1 library bump requires no change in BruceBaseParser.user.js.
 
 * Performance fixes — ready to implement (analysed, approach agreed)
 
@@ -87728,9 +87764,10 @@ Here is the last version as an example:
 
 act on @debug/forum.org
 
-* collapsable
 
-https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e/relationships - distibuted
+* TODO collapsable
+
+https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e/relationships - distributed
 
 #+begin_example
                 collapsableColumns: [ 'Release events' ],
