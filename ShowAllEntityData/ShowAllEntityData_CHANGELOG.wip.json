@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'Location', source-column 'Place' (Place-category reports, e.g. AnnotationsPlaces), and 'Country/Date' unique-values filter dropdown (📊): entries now show flag icon(s) too, matching the table cells. These are the unsplit SOURCE columns splitLocation/splitCountryDate operate on, and their native markup uses the exact same two flag shapes already fixed for Country/Area (WIP.1/WIP.4) — the gap was only that the dropdown's column-name detection never recognized these three exact names. (Deliberately NOT extended to 'Release events' — that column's flag is a script-rebuilt <li class=\"flag flag-XX\"> with no wrapping <span>/<a>, a different shape whose decoration attempt was reverted after regressing the Country column; see git history.) Because 'Location'/'Country/Date' (unlike Country/Area) can appear inside a currently-collapsed multi-event <li>, resolveFlagVisual() now also temporarily reveals a hidden ancestor <li> around the getComputedStyle() read (restored immediately after) so a collapsed-but-not-first event's flag doesn't read back as blank."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-07-31",
     "sections": [

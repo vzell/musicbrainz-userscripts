@@ -1629,3 +1629,46 @@ falls back to `N/A` like every other empty cell on this page.
   flag's own label, so the entry silently got no icon at all. Fixed by
   keying both maps on the cell's full `getCleanColumnText()` value and
   bundling every flag found in that cell into one wrapper `<span>`.
+
+## 2026-07-31 (later) — Location/Place/Country-Date dropdowns (still branch fix/dropdown-flag-flat)
+
+The "Release events" decoration attempt (commit `4286ba9`) was reverted
+(`0052f8d`) per explicit instruction after a probe-based width-remeasurement
+fix for it regressed the already-working Country column. That native
+`<li class="flag flag-XX">` shape (script-rebuilt by `_rePopulateCell`, no
+wrapping `<span>`/`<a>` at all) remains out of scope.
+
+`'Location'`, source-column `'Place'` (Place-category reports, e.g.
+`AnnotationsPlaces` — `place-no-H2-1.html`), and `'Country/Date'`
+(`no-h2.html`/`edits-search.html`, native `.release-event >
+.release-country/.release-date`) are a DIFFERENT, much lower-risk case:
+their native markup is the exact same two shapes already fixed for
+Country/Area — `<span class="flag flag-XX">` (optionally wrapping an `<a>`,
+e.g. `release-country` just adds an extra class) and the third-party
+`<span class="area-icon"><img></span>`. The only actual gap was that
+`hasFlagIcons`' suffix match (`ountry`/`ocality`/`egion`/`rea`) never
+matched these three exact column names. Fix: added them as exact-name
+matches — no new DOM-shape handling, reusing the already-verified
+`flagIconMap` scan/bake code untouched.
+
+One real (not speculative) risk specific to these two: unlike
+`'Country'`/`'Area'`, `'Location'` and `'Country/Date'` ARE listed in
+`collapsableColumns` on several page definitions, so a flag span can sit
+inside a currently-collapsed multi-event `<li>` (`initCollapsableColumns`
+hides non-first `<li>`s via inline `style.display = 'none'` on the `<li>`
+itself). Pseudo-elements aren't generated at all inside a display:none
+subtree, so `resolveFlagVisual`'s `::before`/`::after` fallback would find
+nothing for a collapsed-but-not-first event. Re-added the (previously
+reasoned-through-but-reverted-along-with-the-probe-fix) li-reveal
+safeguard: temporarily set the ancestor `<li>`'s `display` back to `''`
+around the `getComputedStyle()` read, restore to `'none'` immediately
+after, synchronously (no flicker). This is unrelated to, and much simpler
+than, the `hasOwnText`/probe technique that caused the earlier regression
+— no content stripping, no DOM mutation beyond the one inline style
+round-trip.
+
+**Not yet manually verified in a real browser** (musicbrainz.org is
+blocked behind a JS proof-of-work bot-check, `/__meb_verify`, in this
+environment) — in particular, whether a *collapsed* `'Location'`/
+`'Country/Date'` cell's dropdown entry now renders correctly needs a real
+test.

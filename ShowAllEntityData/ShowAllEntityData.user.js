@@ -35340,6 +35340,25 @@ a { color: #1565c0; }`;
         //     on): can hold BOTH shapes in the same cell (a locality/region
         //     subdivision icon followed by the country's own flag — see
         //     debug/with-flag.html), so it needs both scans at once.
+        //   - 'Location'/'Place' (exact match — the SOURCE column
+        //     splitLocation operates on; 'Place' is ambiguous with an
+        //     unrelated Name_Comment source column of the same name on
+        //     Place-entity listings, but those cells simply have no
+        //     flag/area-icon span to find, so the scan below is a harmless
+        //     no-op there): same combined Locality/Region + Country flag
+        //     shape as the unsplit Area column above (debug/with-flag.html).
+        //   - 'Country/Date' (exact match — the native, un-split SOURCE
+        //     column splitCountryDate operates on, e.g. release-group
+        //     release lists): native MusicBrainz markup, per release event,
+        //     is <span class="flag flag-XX release-country"><a><abbr>...
+        //     </abbr></a></span> — the SAME shape as the already-handled
+        //     Country column flag span (just with an extra class), so no
+        //     new scan logic is needed, only recognising the column name.
+        //     NOTE: deliberately NOT extended to 'Release events' — that
+        //     source column's flag is a script-rebuilt <li class="flag
+        //     flag-XX"> with no wrapping <span>/<a>, a different shape that
+        //     caused a regression when decoration was attempted for it
+        //     (reverted; see git history) and is out of scope here.
         const hasFlagIcons = (() => {
             const headers = table.querySelectorAll('thead tr:first-child th');
             const th = headers[colIndex];
@@ -35347,7 +35366,8 @@ a { color: #1565c0; }`;
             const name = th.dataset.colName ||
                 th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
             return name.endsWith('ountry') || name.endsWith('ocality') ||
-                name.endsWith('egion') || name.endsWith('rea');
+                name.endsWith('egion') || name.endsWith('rea') ||
+                name === 'Location' || name === 'Place' || name === 'Country/Date';
         })();
 
         /**
@@ -35375,6 +35395,18 @@ a { color: #1565c0; }`;
          * techniques paint the icon on a pseudo-element rather than the
          * element itself.
          *
+         * 'Location' and 'Country/Date' (unlike 'Country'/'Area', which are
+         * never multi-row) are declared in several page definitions'
+         * `collapsableColumns`, so a flag span here can sit inside a
+         * collapsed multi-event `<li>` that `initCollapsableColumns` hid via
+         * inline `style.display = 'none'` on the `<li>` itself (not on the
+         * span) — pseudo-elements are not generated at all for anything
+         * inside a display:none subtree, so the ::before/::after fallback
+         * above would silently find nothing for a collapsed-but-not-first
+         * event. Temporarily revealing that `<li>` around the read (and
+         * restoring it immediately after, synchronously — no visible
+         * flicker) avoids that.
+         *
          * @param {Element} span - a live (attached) `.flag.flag-XX` element
          * @returns {?Object} resolved style properties to bake as inline
          *   styles on a clone, or null if no flag visual could be found
@@ -35398,11 +35430,14 @@ a { color: #1565c0; }`;
                     verticalAlign:      cs.verticalAlign,
                 };
             };
+            const li = span.closest('li');
+            const wasHidden = !!li && li.style.display === 'none';
+            if (wasHidden) li.style.display = '';
             let visual = pick(window.getComputedStyle(span));
-            if (visual) return visual;
-            visual = pick(window.getComputedStyle(span, '::before'));
-            if (visual) return visual;
-            return pick(window.getComputedStyle(span, '::after'));
+            if (!visual) visual = pick(window.getComputedStyle(span, '::before'));
+            if (!visual) visual = pick(window.getComputedStyle(span, '::after'));
+            if (wasHidden) li.style.display = 'none';
+            return visual;
         }
 
         /**
