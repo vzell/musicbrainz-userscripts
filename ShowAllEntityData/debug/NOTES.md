@@ -1633,17 +1633,15 @@ falls back to `N/A` like every other empty cell on this page.
      settings-row containers' own layout, and is why those already worked
      before this fix.
 - **Not yet fixed — same pattern confirmed present in
-  `ShowAllEntityData.user.js` itself**, ~248 `style="..."` attributes
-  across ~21 functions (counts from a grep-by-enclosing-function pass):
-  `showEditPersistentListDialog` (49), `showLoadFilterDialog` (49) — NOTE:
-  this one includes a byte-for-byte duplicate of `createFilterHistoryWidget`'s
-  `_histGlyphs` badge helper (Cs/Re/Ex spans) at ~line 24063, left un-fixed
-  here even though the shared `.mb-fhw-badge`/`.mb-fhw-badge-{cs,re,ex}`
-  classes it needs already exist (see below) — `showStatsPanel` (46),
-  `showExportDialog` (15), `showSaveDialog` (13), `countFilteredRows` (12),
-  `buildMetaBlockHTML` (10), `showRenderDecisionDialog` (7),
-  `showCtrlMTooltip` (5), `_saveSettingsConfig` (5), `_relBuildTooltipHTML`
-  (5), `makeCollapseExpandBtnHTML` (3), plus a handful of 1-2-count sites
+  `ShowAllEntityData.user.js` itself**, ~188 `style="..."` attributes
+  across ~19 functions (counts from a grep-by-enclosing-function pass):
+  `showEditPersistentListDialog` (49) — a table-editor dialog shell (drag
+  handle, editable pinned-filter-list table), NOT another `_histGlyphs`
+  duplicate this time, confirmed by grep — `showStatsPanel`
+  (46), `showExportDialog` (15), `showSaveDialog` (13), `buildMetaBlockHTML`
+  (10), `showRenderDecisionDialog` (7), `showCtrlMTooltip` (5),
+  `_saveSettingsConfig` (5), `_relBuildTooltipHTML` (5),
+  `makeCollapseExpandBtnHTML` (3), plus a handful of 1-2-count sites
   (`loadAndRender`, `toggleAutoResizeColumns`, `renderRowsChunked`,
   `makeButtonHTML`, `_mbttLabel`, `_mbttColName`, `_mbttCount`,
   `ergInjectReleaseGroupButton`, `ergInjectReleaseButton`, `_fmtMs`).
@@ -1654,11 +1652,23 @@ falls back to `N/A` like every other empty cell on this page.
   fixed via a new shared, id-guarded `_ensureFilterHistoryWidgetStyle()`
   stylesheet with classes `.mb-fhw-badge*`, `.mb-fhw-mark`,
   `.mb-fhw-lru-label`, `.mb-fhw-hist-row`, `.mb-fhw-hist-label`,
-  `.mb-fhw-glyphs`, `.mb-fhw-empty` — reusable by `showLoadFilterDialog`'s
-  duplicate helper whenever that gets fixed too) and one missed leftover
-  in `initSaUnicodeCharsFeature` (a separate inline
-  `style="text-align:right"` on the picker's Close row, not part of the
-  `<style>` block WIP.1 converted).
+  `.mb-fhw-glyphs`, `.mb-fhw-empty`) and one missed leftover in
+  `initSaUnicodeCharsFeature` (a separate inline `style="text-align:right"`
+  on the picker's Close row, not part of the `<style>` block WIP.1
+  converted).
+  **Fixed (2026-07-31, WIP.4):** `showLoadFilterDialog` (49 attributes,
+  including its `countFilteredRows`/nested-helper markup which the earlier
+  grep-by-function pass mis-attributed as a separate top-level function —
+  it's actually declared inside `showLoadFilterDialog`) — the "Load from
+  Disk" dialog, confirmed via the user's screenshot: fully unstyled/stacked
+  layout on the very first dialog open. Its own `_histGlyphs`/
+  `_histHighlight`/`_renderHistSection` duplicate of
+  `createFilterHistoryWidget`'s history-dropdown code was rewired to reuse
+  the exact same `.mb-fhw-*` classes (renamed its local `sa-hist-row` class
+  to `mb-fhw-hist-row` throughout); the dialog shell got its own dedicated
+  `sa-load-dialog-style` stylesheet (id-guarded, injected once — safe since
+  its few interpolated dynamic values only change via a settings save,
+  which reloads the page).
   User decided (2026-07-31) to fix these incrementally as each is found
   broken during further pageType testing, rather than blind-editing all
   ~260 in one pass with no way to visually verify each. Same

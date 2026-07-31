@@ -23442,119 +23442,164 @@ a { color: #1565c0; }`;
             'box-sizing:border-box',
         ].join(';');
 
+        // GM_addStyle (not inline style="..." attributes in the innerHTML below)
+        // so this dialog's CSS is exempt from page CSP style-src restrictions —
+        // MusicBrainz's account/* pages block inline styles the same way as
+        // <style> elements. Idempotent (id-guarded): the interpolated settings
+        // values (headerFontSz/statusFontSz/histDropdownPx) only change via a
+        // settings save, which reloads the page, so this is safe to inject once
+        // and reuse across repeated dialog opens within the same page load.
+        // Reuses the shared .mb-fhw-* classes from
+        // _ensureFilterHistoryWidgetStyle() for the history-row/badge/mark
+        // markup, matching createFilterHistoryWidget's identical widget.
+        _ensureFilterHistoryWidgetStyle();
+        if (!document.getElementById('sa-load-dialog-style')) {
+            const ldStyle = GM_addStyle(`
+                #sa-ld-drag-handle { margin-bottom:18px; border-bottom:1px solid #eee; padding-bottom:12px; cursor:move; user-select:none; }
+                #sa-ld-title { margin:0; color:#222; font-size:1.2em; }
+                #sa-ld-subtitle { margin:5px 0 0; color:#666; font-size:${headerFontSz}; }
+                .sa-ld-btn-row { display:flex; gap:12px; margin-bottom:8px; }
+                #sa-load-confirm, #sa-render-confirm { flex:2; padding:10px; background:#4CAF50; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                #sa-load-cancel { flex:1; padding:10px; background:#f0f0f0; color:#333; border:1px solid #ccc; border-radius:6px; cursor:pointer; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                .sa-ld-status { display:none; padding:5px 2px; font-size:${statusFontSz}; min-height:20px; }
+                #sa-ld-meta-block { display:none; margin-top:10px; border-top:1px solid #eee; padding-top:10px; }
+                .sa-ld-phase { display:none; margin-top:18px; border-top:1px solid #eee; padding-top:16px; }
+                #sa-ld-filter-row { margin-bottom:10px; position:relative; }
+                #sa-ld-filter-row-inner { display:flex; gap:4px; align-items:stretch; }
+                #sa-ld-filter-input-wrap { position:relative; flex:1; display:flex; align-items:center; }
+                #sa-load-filter-input { width:100%; padding:8px 32px 8px 12px; border:1px solid #ccc; border-radius:6px; font-size:1em; outline:none; box-sizing:border-box; }
+                #sa-filter-clear-btn, #sa-hist-qf-clear-btn { position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#c0392b; font-weight:bold; line-height:1; padding:2px 3px; border-radius:3px; display:none; }
+                #sa-filter-clear-btn { font-size:1em; }
+                #sa-hist-qf-clear-btn { font-size:0.95em; }
+                #sa-hist-pin-btn { padding:0 10px; background:#e8f5e9; border:1px solid #a5d6a7; border-radius:6px; cursor:pointer; font-size:1.1em; font-weight:bold; color:#2e7d32; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                #sa-load-history-toggle { padding:0 10px; background:#f0f0f0; border:1px solid #ccc; border-radius:6px; cursor:pointer; font-size:0.85em; white-space:nowrap; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                #sa-load-history-dropdown { display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; background:white; border:1px solid #ccc; border-radius:6px; box-shadow:0 4px 16px rgba(0,0,0,0.15); z-index:20001; box-sizing:border-box; }
+                #sa-ld-qf-wrap { padding:8px 8px 6px; border-bottom:1px solid #eee; }
+                #sa-ld-qf-inner { position:relative; display:flex; align-items:center; }
+                #sa-hist-quick-filter { width:100%; box-sizing:border-box; padding:5px 32px 5px 8px; border:1px solid #ccc; border-radius:4px; font-size:0.88em; outline:none; }
+                #sa-ld-pin-header { padding:4px 8px 2px; background:#e8f5e9; border-bottom:1px solid #c8e6c9; display:flex; align-items:center; justify-content:space-between; }
+                .sa-ld-pin-label { font-size:0.76em; font-weight:700; color:#2e7d32; text-transform:uppercase; letter-spacing:0.04em; }
+                #sa-hist-edit-btn { padding:2px 7px; background:#fff8e1; border:1px solid #ffe082; border-radius:5px; cursor:pointer; font-size:0.76em; font-weight:600; color:#e65100; white-space:nowrap; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; line-height:1.6; }
+                .sa-ld-hist-list { max-height:${histDropdownPx}px; overflow-y:auto; }
+                #persistent-sa-hist-footer { padding:3px 8px; border-top:1px solid #eee; border-bottom:1px solid #ddd; font-size:0.76em; color:#666; display:flex; justify-content:space-between; background:#f9fbe7; }
+                #sa-ld-lru-header { padding:4px 8px 2px; background:#e3f2fd; border-bottom:1px solid #bbdefb; }
+                #lru-sa-hist-footer { padding:3px 8px; border-top:1px solid #eee; font-size:0.76em; color:#888; display:flex; justify-content:space-between; }
+                #sa-ld-checkbox-row { display:flex; gap:12px; align-items:center; margin-bottom:14px; background:#f9f9f9; padding:10px; border-radius:8px; flex-wrap:wrap; }
+                #sa-ld-checkbox-inner { display:flex; gap:20px; justify-content:center; flex:1; flex-wrap:wrap; }
+                .sa-ld-checkbox-label { cursor:pointer; display:flex; align-items:center; gap:6px; font-size:0.9em; font-weight:600; }
+                #sa-filter-confirm { flex:2; padding:10px; background:#1976D2; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                #sa-render-no-filter-confirm { flex:1; padding:10px; background:#4CAF50; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                .sa-ld-excluded-note { color:#888; }
+            `);
+            ldStyle.id = 'sa-load-dialog-style';
+        }
+
         dialog.innerHTML = `
             <!-- ── Shared header (also drag handle) ── -->
-            <div id="sa-ld-drag-handle" style="margin-bottom:18px;border-bottom:1px solid #eee;padding-bottom:12px;cursor:move;user-select:none;">
-                <h3 style="margin:0;color:#222;font-size:1.2em;">&#128194; Load Table Data</h3>
-                <p style="margin:5px 0 0;color:#666;font-size:${headerFontSz};">Load serialized data from disk. Remember you must have at least saved a dataset before to the filesystem (with the "Save to Disk" button)</p>
+            <div id="sa-ld-drag-handle">
+                <h3 id="sa-ld-title">&#128194; Load Table Data</h3>
+                <p id="sa-ld-subtitle">Load serialized data from disk. Remember you must have at least saved a dataset before to the filesystem (with the "Save to Disk" button)</p>
             </div>
 
             <!-- ── Phase 1 — Load ── -->
             <div id="sa-ld-phase1">
-                <div style="display:flex;gap:12px;margin-bottom:8px;">
-                    <button id="sa-load-confirm" style="flex:2;padding:10px;background:#4CAF50;color:white;border:none;border-radius:6px;font-weight:bold;cursor:pointer;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">
-                        <span><span style="text-decoration:underline">L</span>oad Data</span>
+                <div class="sa-ld-btn-row">
+                    <button id="sa-load-confirm">
+                        <span><u>L</u>oad Data</span>
                     </button>
-                    <button id="sa-load-cancel" style="flex:1;padding:10px;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:6px;cursor:pointer;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">Cancel</button>
+                    <button id="sa-load-cancel">Cancel</button>
                 </div>
-                <div id="sa-ld-load-status" style="display:none;padding:5px 2px;font-size:${statusFontSz};min-height:20px;"></div>
-                <div id="sa-ld-meta-block" style="display:none;margin-top:10px;border-top:1px solid #eee;padding-top:10px;"></div>
+                <div id="sa-ld-load-status" class="sa-ld-status"></div>
+                <div id="sa-ld-meta-block"></div>
             </div>
 
             <!-- ── Phase 2 — Filter (hidden until load complete) ── -->
-            <div id="sa-ld-phase2" style="display:none;margin-top:18px;border-top:1px solid #eee;padding-top:16px;">
+            <div id="sa-ld-phase2" class="sa-ld-phase">
                 <!-- Filter expression row: input + Pin + History button -->
-                <div style="margin-bottom:10px;position:relative;">
-                    <div style="display:flex;gap:4px;align-items:stretch;">
-                        <div style="position:relative;flex:1;display:flex;align-items:center;">
+                <div id="sa-ld-filter-row">
+                    <div id="sa-ld-filter-row-inner">
+                        <div id="sa-ld-filter-input-wrap">
                             <input id="sa-load-filter-input" type="text"
-                                placeholder="Filter expression... evaluated for each column"
-                                style="width:100%;padding:8px 32px 8px 12px;border:1px solid #ccc;border-radius:6px;font-size:1em;outline:none;box-sizing:border-box;">
+                                placeholder="Filter expression... evaluated for each column">
                             <button id="sa-filter-clear-btn" tabindex="-1"
-                                title="Clear filter expression"
-                                style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#c0392b;font-size:1em;font-weight:bold;line-height:1;padding:2px 3px;border-radius:3px;display:none;">&#10005;</button>
+                                title="Clear filter expression">&#10005;</button>
                         </div>
                         <button id="sa-hist-pin-btn"
-                            title="Pin current filter to persistent list (saves query + checkbox states)"
-                            style="padding:0 10px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;cursor:pointer;font-size:1.1em;font-weight:bold;color:#2e7d32;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">+</button>
+                            title="Pin current filter to persistent list (saves query + checkbox states)">+</button>
                         <button id="sa-load-history-toggle"
-                            title="Show/hide filter history (Alt+H)"
-                            style="padding:0 10px;background:#f0f0f0;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:0.85em;white-space:nowrap;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">
-                            &#128337; <span style="text-decoration:underline">H</span>istory &#9660;
+                            title="Show/hide filter history (Alt+H)">
+                            &#128337; <u>H</u>istory &#9660;
                         </button>
                     </div>
                     <!-- ── History dropdown panel ── -->
-                    <div id="sa-load-history-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:white;border:1px solid #ccc;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.15);z-index:20001;box-sizing:border-box;">
+                    <div id="sa-load-history-dropdown">
                         <!-- Quick-filter input inside the panel -->
-                        <div style="padding:8px 8px 6px;border-bottom:1px solid #eee;">
-                            <div style="position:relative;display:flex;align-items:center;">
+                        <div id="sa-ld-qf-wrap">
+                            <div id="sa-ld-qf-inner">
                                 <input id="sa-hist-quick-filter" type="text"
-                                    placeholder="&#128269; Quick filter both lists..."
-                                    style="width:100%;box-sizing:border-box;padding:5px 32px 5px 8px;border:1px solid #ccc;border-radius:4px;font-size:0.88em;outline:none;">
+                                    placeholder="&#128269; Quick filter both lists...">
                                 <button id="sa-hist-qf-clear-btn" tabindex="-1"
-                                    title="Clear quick filter"
-                                    style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#c0392b;font-size:0.95em;font-weight:bold;line-height:1;padding:2px 3px;border-radius:3px;display:none;">&#10005;</button>
+                                    title="Clear quick filter">&#10005;</button>
                             </div>
                         </div>
                         <!-- Persistent pinned list -->
-                        <div style="padding:4px 8px 2px;background:#e8f5e9;border-bottom:1px solid #c8e6c9;display:flex;align-items:center;justify-content:space-between;">
-                            <span style="font-size:0.76em;font-weight:700;color:#2e7d32;text-transform:uppercase;letter-spacing:0.04em;">&#128204; Pinned</span>
+                        <div id="sa-ld-pin-header">
+                            <span class="sa-ld-pin-label">&#128204; Pinned</span>
                             <button id="sa-hist-edit-btn"
-                                title="Edit the persistent pinned filter list (Alt+E)"
-                                style="padding:2px 7px;background:#fff8e1;border:1px solid #ffe082;border-radius:5px;cursor:pointer;font-size:0.76em;font-weight:600;color:#e65100;white-space:nowrap;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;line-height:1.6;">
-                                &#9998; <span style="text-decoration:underline">E</span>dit Pinned Filter List
+                                title="Edit the persistent pinned filter list (Alt+E)">
+                                &#9998; <u>E</u>dit Pinned Filter List
                             </button>
                         </div>
-                        <div id="persistent-sa-hist-list" style="max-height:${histDropdownPx}px;overflow-y:auto;"></div>
-                        <div id="persistent-sa-hist-footer" style="padding:3px 8px;border-top:1px solid #eee;border-bottom:1px solid #ddd;font-size:0.76em;color:#666;display:flex;justify-content:space-between;background:#f9fbe7;">
+                        <div id="persistent-sa-hist-list" class="sa-ld-hist-list"></div>
+                        <div id="persistent-sa-hist-footer">
                             <span id="persistent-sa-hist-count"></span>
                             <span>&#8593;&#8595; navigate &nbsp; Enter: apply</span>
                         </div>
                         <!-- LRU recent list -->
-                        <div style="padding:4px 8px 2px;background:#e3f2fd;border-bottom:1px solid #bbdefb;">
-                            <span style="font-size:0.76em;font-weight:700;color:#1565c0;text-transform:uppercase;letter-spacing:0.04em;">&#128337; Recent (LRU)</span>
+                        <div id="sa-ld-lru-header">
+                            <span class="mb-fhw-lru-label">&#128337; Recent (LRU)</span>
                         </div>
-                        <div id="lru-sa-hist-list" style="max-height:${histDropdownPx}px;overflow-y:auto;"></div>
-                        <div id="lru-sa-hist-footer" style="padding:3px 8px;border-top:1px solid #eee;font-size:0.76em;color:#888;display:flex;justify-content:space-between;">
+                        <div id="lru-sa-hist-list" class="sa-ld-hist-list"></div>
+                        <div id="lru-sa-hist-footer">
                             <span id="lru-sa-hist-count"></span>
                             <span>&#8593;&#8595; navigate &nbsp; Enter: apply &nbsp; Esc: close</span>
                         </div>
                     </div>
                 </div>
                 <!-- Checkbox row -->
-                <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;background:#f9f9f9;padding:10px;border-radius:8px;flex-wrap:wrap;">
-                    <div style="display:flex;gap:20px;justify-content:center;flex:1;flex-wrap:wrap;">
-                        <label style="cursor:pointer;display:flex;align-items:center;gap:6px;font-size:0.9em;font-weight:600;" title="Match filter expression with exact case (uppercase/lowercase must match)">
+                <div id="sa-ld-checkbox-row">
+                    <div id="sa-ld-checkbox-inner">
+                        <label class="sa-ld-checkbox-label" title="Match filter expression with exact case (uppercase/lowercase must match)">
                             <input type="checkbox" id="sa-load-case"> Case Sensitive
                         </label>
-                        <label style="cursor:pointer;display:flex;align-items:center;gap:6px;font-size:0.9em;font-weight:600;" title="Interpret filter expression as a regular expression (JavaScript RegExp syntax)">
+                        <label class="sa-ld-checkbox-label" title="Interpret filter expression as a regular expression (JavaScript RegExp syntax)">
                             <input type="checkbox" id="sa-load-regex"> Regular Expression
                         </label>
-                        <label style="cursor:pointer;display:flex;align-items:center;gap:6px;font-size:0.9em;font-weight:600;" title="Exclude rows that match the filter expression instead of keeping them">
+                        <label class="sa-ld-checkbox-label" title="Exclude rows that match the filter expression instead of keeping them">
                             <input type="checkbox" id="sa-load-exclude"> Exclude Matches
                         </label>
                     </div>
                 </div>
                 <!-- Action buttons -->
-                <div style="display:flex;gap:12px;margin-bottom:8px;">
-                    <button id="sa-filter-confirm" style="flex:2;padding:10px;background:#1976D2;color:white;border:none;border-radius:6px;font-weight:bold;cursor:pointer;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">
-                        <span><span style="text-decoration:underline">F</span>ilter Data</span>
+                <div class="sa-ld-btn-row">
+                    <button id="sa-filter-confirm">
+                        <span><u>F</u>ilter Data</span>
                     </button>
-                    <button id="sa-render-no-filter-confirm" style="flex:1;padding:10px;background:#4CAF50;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:bold;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;" title="Render all rows from the loaded file without applying any filter">
-                        <span>&#9654; <span style="text-decoration:underline">R</span>ender All Rows</span>
+                    <button id="sa-render-no-filter-confirm" title="Render all rows from the loaded file without applying any filter">
+                        <span>&#9654; <u>R</u>ender All Rows</span>
                     </button>
                 </div>
-                <div id="sa-ld-filter-status" style="display:none;padding:5px 2px;font-size:${statusFontSz};min-height:20px;"></div>
+                <div id="sa-ld-filter-status" class="sa-ld-status"></div>
             </div>
 
             <!-- ── Phase 3 — Render (hidden until filter count computed) ── -->
-            <div id="sa-ld-phase3" style="display:none;margin-top:18px;border-top:1px solid #eee;padding-top:16px;">
-                <div style="display:flex;gap:12px;margin-bottom:8px;">
-                    <button id="sa-render-confirm" style="flex:2;padding:10px;background:#4CAF50;color:white;border:none;border-radius:6px;font-weight:bold;cursor:pointer;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">
-                        <span><span style="text-decoration:underline">R</span>ender Data</span>
+            <div id="sa-ld-phase3" class="sa-ld-phase">
+                <div class="sa-ld-btn-row">
+                    <button id="sa-render-confirm">
+                        <span><u>R</u>ender Data</span>
                     </button>
                 </div>
-                <div id="sa-ld-render-status" style="display:none;padding:5px 2px;font-size:${statusFontSz};min-height:20px;"></div>
+                <div id="sa-ld-render-status" class="sa-ld-status"></div>
             </div>
         `;
 
@@ -23861,7 +23906,7 @@ a { color: #1565c0; }`;
                     if (!loadAnywayConfirmed) {
                         rawData = null;
                         rawFile = null;
-                        loadBtn.innerHTML  = '<span><span style="text-decoration:underline">L</span>oad Data</span>';
+                        loadBtn.innerHTML  = '<span><u>L</u>oad Data</span>';
                         loadBtn.disabled   = false;
                         loadBtn.style.opacity = '';
                         loadStatus.innerHTML   = '\u{1F6AB} Load cancelled \u2014 page type mismatch.';
@@ -23882,7 +23927,7 @@ a { color: #1565c0; }`;
                 const rowLabel = totalRows === 1 ? 'row' : 'rows';
 
                 // Restore Load button
-                loadBtn.innerHTML  = '<span><span style="text-decoration:underline">L</span>oad Data</span>';
+                loadBtn.innerHTML  = '<span><u>L</u>oad Data</span>';
                 loadBtn.disabled   = false;
                 loadBtn.style.opacity = '';
 
@@ -23906,7 +23951,7 @@ a { color: #1565c0; }`;
             } catch (err) {
                 rawData = null;
                 rawFile = null;
-                loadBtn.innerHTML  = '<span><span style="text-decoration:underline">L</span>oad Data</span>';
+                loadBtn.innerHTML  = '<span><u>L</u>oad Data</span>';
                 loadBtn.disabled   = false;
                 loadBtn.style.opacity = '';
                 loadStatus.innerHTML   = `\u274C Error: ${err.message}`;
@@ -23967,7 +24012,7 @@ a { color: #1565c0; }`;
                 filterStatus.innerHTML = `<strong>${matchCount.toLocaleString()}</strong> ${rl} will be rendered (no filter applied)`;
             } else if (useExclude) {
                 const excluded = totalRows - matchCount;
-                filterStatus.innerHTML = `<strong>${matchCount.toLocaleString()}</strong> ${rl} will be rendered &nbsp;\u00B7&nbsp; <span style="color:#888;">${excluded.toLocaleString()} excluded</span>`;
+                filterStatus.innerHTML = `<strong>${matchCount.toLocaleString()}</strong> ${rl} will be rendered &nbsp;\u00B7&nbsp; <span class="sa-ld-excluded-note">${excluded.toLocaleString()} excluded</span>`;
             } else {
                 filterStatus.innerHTML = `<strong>${matchCount.toLocaleString()}</strong> of ${totalRows.toLocaleString()} ${rl} match \u2192 will be rendered`;
             }
@@ -24057,11 +24102,14 @@ a { color: #1565c0; }`;
             : { query: String(h), useCase: false, useRegex: false, useExclude: false };
 
         // Build compact checkbox-state glyphs.
+        // Reuses the shared .mb-fhw-badge* classes from
+        // _ensureFilterHistoryWidgetStyle() (see createFilterHistoryWidget's
+        // identical _histGlyphs, which this duplicates).
         const _histGlyphs = (e) => {
             const parts = [];
-            if (e.useCase)    parts.push('<span title="Case Sensitive" style="color:#1976D2;font-size:0.78em;font-weight:700;border:1px solid #1976D2;border-radius:2px;padding:0 2px;">Cs</span>');
-            if (e.useRegex)   parts.push('<span title="Regular Expression" style="color:#7B1FA2;font-size:0.78em;font-weight:700;border:1px solid #7B1FA2;border-radius:2px;padding:0 2px;">Re</span>');
-            if (e.useExclude) parts.push('<span title="Exclude Matches" style="color:#c62828;font-size:0.78em;font-weight:700;border:1px solid #c62828;border-radius:2px;padding:0 2px;">Ex</span>');
+            if (e.useCase)    parts.push('<span title="Case Sensitive" class="mb-fhw-badge mb-fhw-badge-cs">Cs</span>');
+            if (e.useRegex)   parts.push('<span title="Regular Expression" class="mb-fhw-badge mb-fhw-badge-re">Re</span>');
+            if (e.useExclude) parts.push('<span title="Exclude Matches" class="mb-fhw-badge mb-fhw-badge-ex">Ex</span>');
             return parts.length ? '&nbsp;' + parts.join('&nbsp;') : '';
         };
 
@@ -24071,7 +24119,7 @@ a { color: #1565c0; }`;
             const idx = haystack.toLowerCase().indexOf(needle.toLowerCase());
             if (idx < 0) return haystack;
             return haystack.slice(0, idx) +
-                `<mark style="background:#fff176;padding:0;">${haystack.slice(idx, idx + needle.length)}</mark>` +
+                `<mark class="mb-fhw-mark">${haystack.slice(idx, idx + needle.length)}</mark>` +
                 haystack.slice(idx + needle.length);
         };
 
@@ -24090,14 +24138,13 @@ a { color: #1565c0; }`;
                 const esc   = e.query.replace(/&/g, '&amp;').replace(/</g, '&lt;');
                 const label = _histHighlight(esc, escaped_qf);
                 const glyphs = _histGlyphs(e);
-                return `<div class="sa-hist-row" data-idx="${i}" data-list="${listId}"
-                    style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;cursor:pointer;font-size:0.9em;border-bottom:1px dotted #eee;gap:6px;">
-                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${label}</span>
-                    <span style="flex-shrink:0;display:flex;gap:3px;align-items:center;">${glyphs}</span>
+                return `<div class="mb-fhw-hist-row" data-idx="${i}" data-list="${listId}">
+                    <span class="mb-fhw-hist-label">${label}</span>
+                    <span class="mb-fhw-glyphs">${glyphs}</span>
                 </div>`;
-            }).join('') || `<div style="padding:8px 10px;color:#aaa;font-size:0.85em;text-align:center;">No matching entries</div>`;
+            }).join('') || `<div class="mb-fhw-empty">No matching entries</div>`;
 
-            container.querySelectorAll('.sa-hist-row').forEach(row => {
+            container.querySelectorAll('.mb-fhw-hist-row').forEach(row => {
                 row.addEventListener('mouseenter', () => {
                     _histActiveList = listId;
                     _histSelectRow(parseInt(row.dataset.idx), listId);
@@ -24134,13 +24181,13 @@ a { color: #1565c0; }`;
             const other     = isPin ? histLruList : histPinList;
             if (isPin) _histPinSelIdx = i; else _histLruSelIdx = i;
             // Clear other list selection
-            if (other) other.querySelectorAll('.sa-hist-row').forEach(r => { r.style.background=''; r.style.outline=''; });
+            if (other) other.querySelectorAll('.mb-fhw-hist-row').forEach(r => { r.style.background=''; r.style.outline=''; });
             if (!container) return;
-            container.querySelectorAll('.sa-hist-row').forEach((row, j) => {
+            container.querySelectorAll('.mb-fhw-hist-row').forEach((row, j) => {
                 row.style.background = j === i ? '#e3f2fd' : '';
                 row.style.outline    = j === i ? '1px solid #90caf9' : '';
             });
-            const sel = container.querySelector(`.sa-hist-row[data-idx="${i}"]`);
+            const sel = container.querySelector(`.mb-fhw-hist-row[data-idx="${i}"]`);
             if (sel) sel.scrollIntoView({ block: 'nearest' });
         };
 

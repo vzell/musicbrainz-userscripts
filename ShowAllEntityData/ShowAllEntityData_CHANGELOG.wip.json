@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.4",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fix the \"Load from Disk\" dialog (`showLoadFilterDialog`) rendering completely unstyled/stacked on /account/applications on its very first open — same CSP `style-src` issue as WIP.1-3, this time in the dialog's own 49 `innerHTML`-embedded `style=\"...\"` attributes (dialog shell) plus its internal duplicate of `createFilterHistoryWidget`'s history-dropdown code, which was rewired to reuse the exact same shared `.mb-fhw-*` classes from WIP.3 instead of duplicating them. The dialog shell itself got its own dedicated, id-guarded `GM_addStyle()` stylesheet, safe to inject once since its interpolated dynamic values (font sizes, dropdown height) only change via a settings save, which reloads the page anyway."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.3",
         "date": "2026-07-31",
         "sections": [
