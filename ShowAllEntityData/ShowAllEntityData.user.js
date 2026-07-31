@@ -16437,7 +16437,46 @@ ${sections.join('\n')}
      * Memory Usage reports JS heap size via performance.memory (Chromium-only)
      * rather than the old fictional "100 bytes × row count" estimate.
      */
+    /**
+     * Lazily injects the shared, id-guarded stylesheet for
+     * {@link showStatsPanel}'s data-cell markup (colors/weights from the
+     * panel's fixed palette `C`, defined further down in showStatsPanel).
+     * Uses GM_addStyle (not a plain document.createElement('style') +
+     * head.appendChild) so it is exempt from page CSP style-src
+     * restrictions — MusicBrainz's account/* pages block plain inline
+     * stylesheets and inline style="..." attributes alike. The palette is
+     * a hardcoded constant (not settings-driven), so these class values
+     * never go stale; safe to inject once regardless of how many times
+     * the panel is opened/closed within a page load.
+     */
+    function _ensureStatsPanelStyle() {
+        if (document.getElementById('sa-stats-panel-style')) return;
+        const style = GM_addStyle(`
+            .sa-stats-section-icon { font-size:1.1em; }
+            .sa-stats-pill { display:inline-block; font-size:0.72em; font-weight:700; padding:0 4px; border-radius:3px; background:#e3f2fd; color:#1565c0; border:1px solid #90caf9; margin-left:3px; vertical-align:middle; }
+            .sa-stats-code { font-size:0.9em; }
+            .sa-stats-strong-600 { font-weight:600; }
+            .sa-stats-strong-700 { font-weight:700; }
+            .sa-stats-accent { color:#1565c0; }
+            .sa-stats-accent-600 { color:#1565c0; font-weight:600; }
+            .sa-stats-accent-700 { color:#1565c0; font-weight:700; }
+            .sa-stats-alert { color:#c62828; }
+            .sa-stats-alert-600 { color:#c62828; font-weight:600; }
+            .sa-stats-muted { color:#555; }
+            .sa-stats-muted-label { font-size:0.8em; color:#555; }
+            .sa-stats-muted-small { font-size:0.83em; color:#555; }
+            .sa-stats-muted-999 { color:#999; }
+            .sa-stats-faint { color:#aaa; }
+            .sa-stats-bbb { color:#bbb; }
+            .sa-stats-bbb-small { color:#bbb; font-size:0.9em; }
+            .sa-stats-strikethrough { text-decoration:line-through; color:#aaa; }
+            .sa-stats-green { color:#388e3c; }
+        `);
+        style.id = 'sa-stats-panel-style';
+    }
+
     function showStatsPanel() {
+        _ensureStatsPanelStyle();
         // Toggle: remove if already open
         const existing = document.getElementById('mb-stats-panel');
         if (existing) { existing.remove(); return; }
@@ -16529,10 +16568,7 @@ ${sections.join('\n')}
         const _filterFlagsHtml = (flags) => {
             if (!flags || (!flags.cc && !flags.rx && !flags.ex)) return '';
             const pill = (label, title) =>
-                `<span style="display:inline-block;font-size:0.72em;font-weight:700;` +
-                `padding:0 4px;border-radius:3px;background:#e3f2fd;color:#1565c0;` +
-                `border:1px solid #90caf9;margin-left:3px;vertical-align:middle;" ` +
-                `title="${title}">${label}</span>`;
+                `<span class="sa-stats-pill" title="${title}">${label}</span>`;
             let out = '';
             if (flags.cc) out += pill('Cc', 'Case-sensitive filter');
             if (flags.rx) out += pill('Rx', 'RegExp filter');
@@ -16892,7 +16928,7 @@ ${sections.join('\n')}
             h.style.cssText = `font-size:1.0em;font-weight:700;color:${C.green};
                 margin:10px 0 4px;padding:3px 0 3px 2px;
                 border-bottom:2px solid ${C.greenL};display:flex;align-items:center;gap:6px;`;
-            h.innerHTML = `<span style="font-size:1.1em">${icon}</span><span>${text}</span>`;
+            h.innerHTML = `<span class="sa-stats-section-icon">${icon}</span><span>${text}</span>`;
             return h;
         };
 
@@ -17048,12 +17084,12 @@ ${sections.join('\n')}
             },
             {
                 stat: '📄 Page type',
-                value: `<code style="font-size:0.9em">${pageType || 'unknown'}</code>`,
+                value: `<code class="sa-stats-code">${pageType || 'unknown'}</code>`,
                 comment: '',
             },
             {
                 stat: '🗂️ Table mode',
-                value: `<code style="font-size:0.9em">${tableMode}</code>`,
+                value: `<code class="sa-stats-code">${tableMode}</code>`,
                 comment: tableMode === 'multi'
                     ? 'Multiple h3-grouped sub-tables' : 'Single consolidated table',
             },
@@ -17064,15 +17100,15 @@ ${sections.join('\n')}
             },
             {
                 stat: '📋 Total table rows',
-                value: `<span style="font-weight:600">${_snapshotTotalRows.toLocaleString()}</span>`,
+                value: `<span class="sa-stats-strong-600">${_snapshotTotalRows.toLocaleString()}</span>`,
                 comment: 'Total number of unfiltered table rows',
             },
             {
                 // id used for live refresh from _showCaaCompletionToast when panel is open.
                 stat: `🖼️ Total table rows with ${_artKey} artwork`,
                 value: _totalCaaCount > 0
-                    ? `<span style="color:${C.accent};font-weight:600">${_totalCaaCount.toLocaleString()}</span>`
-                    : '<span id="mb-stats-art-count-val" style="color:#999">—</span>',
+                    ? `<span class="sa-stats-accent-600">${_totalCaaCount.toLocaleString()}</span>`
+                    : '<span id="mb-stats-art-count-val" class="sa-stats-muted-999">—</span>',
                 comment: _totalCaaCount > 0
                     ? `Rows with confirmed ${_artKey} front artwork across ${subTblCount} sub-table${subTblCount > 1 ? 's' : ''}`
                     : `Counting ${_artKey} artwork… (updates when image loading completes)`,
@@ -17087,7 +17123,7 @@ ${sections.join('\n')}
             {
                 stat: '🔀 Total extracted columns',
                 value: _extractedCols > 0
-                    ? `<span style="color:${C.accent};font-weight:600">${_extractedCols}</span>`
+                    ? `<span class="sa-stats-accent-600">${_extractedCols}</span>`
                     : '0',
                 comment: _extractedCols > 0
                     ? 'Columns split/extracted from original columns via columnExtractors'
@@ -17096,7 +17132,7 @@ ${sections.join('\n')}
             {
                 stat: '🔁 Total derived columns',
                 value: _derivedCols > 0
-                    ? `<span style="color:${C.accent};font-weight:600">${_derivedCols}</span>`
+                    ? `<span class="sa-stats-accent-600">${_derivedCols}</span>`
                     : '0',
                 comment: _derivedCols > 0
                     ? 'Columns further derived from extracted columns via syntheticColumnExtractors'
@@ -17105,7 +17141,7 @@ ${sections.join('\n')}
             {
                 stat: '🔗 Total injected derived columns',
                 value: _iceDerivedCols > 0
-                    ? `<span style="color:${C.accent};font-weight:600">${_iceDerivedCols}</span>`
+                    ? `<span class="sa-stats-accent-600">${_iceDerivedCols}</span>`
                     : '0',
                 comment: _iceDerivedCols > 0
                     ? 'Columns derived from injected columns via injectedColumnExtractors (e.g. Release country, Release date, R-DD … R-Month)'
@@ -17114,7 +17150,7 @@ ${sections.join('\n')}
             {
                 stat: '💉 Total injected columns',
                 value: _injectedCols > 0
-                    ? `<span style="color:${C.accent};font-weight:600">${_injectedCols}</span>`
+                    ? `<span class="sa-stats-accent-600">${_injectedCols}</span>`
                     : '0',
                 comment: _injectedCols > 0
                     ? 'Columns populated asynchronously via external API calls (e.g. Relationships via WS2)'
@@ -17122,7 +17158,7 @@ ${sections.join('\n')}
             },
             {
                 stat: '⬛ Total columns',
-                value: `<span style="font-weight:600">${totalCols}</span>`,
+                value: `<span class="sa-stats-strong-600">${totalCols}</span>`,
                 comment: 'Total effective columns in the final rendered table',
             },
             {
@@ -17133,28 +17169,28 @@ ${sections.join('\n')}
             {
                 stat: '🙈 Hidden columns',
                 value: hiddenCols > 0
-                    ? `<span style="color:${C.alert};font-weight:600">${hiddenCols}</span>`
+                    ? `<span class="sa-stats-alert-600">${hiddenCols}</span>`
                     : '0',
                 comment: hiddenCols > 0 ? 'Use 👁️ Visible menu to restore' : '',
             },
             {
                 stat: '🔍 Global filter',
                 value: _gfRaw
-                    ? `<em style="color:${C.accent}">"${_gfRaw}"</em>${_filterFlagsHtml(_gfFlags)}`
-                    : '<span style="color:#999">none</span>',
+                    ? `<em class="sa-stats-accent">"${_gfRaw}"</em>${_filterFlagsHtml(_gfFlags)}`
+                    : '<span class="sa-stats-muted-999">none</span>',
                 comment: "check the '🔍 Filter' column in the 'Table Detail' section below",
             },
             {
                 stat: '📂 Sub-table filters',
                 value: _stFlt > 0
-                    ? `<span style="color:${C.accent};font-weight:600">${_stFlt} active</span>`
+                    ? `<span class="sa-stats-accent-600">${_stFlt} active</span>`
                     : '0',
                 comment: '',
             },
             {
                 stat: '🔠 Column filters',
                 value: _colFlt > 0
-                    ? `<span style="color:${C.accent};font-weight:600">${_colFlt} active</span>`
+                    ? `<span class="sa-stats-accent-600">${_colFlt} active</span>`
                     : '0',
                 comment: '',
             },
@@ -17198,7 +17234,7 @@ ${sections.join('\n')}
             const _idbPlaceholderRows = [
                 {
                     stat:    `🖼️ Art images store (IDB)`,
-                    value:   '<em style="color:#aaa">querying…</em>',
+                    value:   '<em class="sa-stats-faint">querying…</em>',
                     comment: _idbEnabled
                         ? `TTL: ${Lib.settings.sa_art_idb_image_ttl_days || 30} days — blob cache (sa_art_idb_enable)`
                         : '⚠️ IDB art cache disabled (sa_art_idb_enable = false)',
@@ -17206,7 +17242,7 @@ ${sections.join('\n')}
                 },
                 {
                     stat:    `📋 Art metadata store (IDB)`,
-                    value:   '<em style="color:#aaa">querying…</em>',
+                    value:   '<em class="sa-stats-faint">querying…</em>',
                     comment: _idbEnabled
                         ? `TTL: ${Lib.settings.sa_art_idb_metadata_ttl_days || 7} days — archive JSON metadata`
                         : '⚠️ IDB art cache disabled',
@@ -17214,7 +17250,7 @@ ${sections.join('\n')}
                 },
                 {
                     stat:    `🔗 Rel WS2 store (IDB)`,
-                    value:   '<em style="color:#aaa">querying…</em>',
+                    value:   '<em class="sa-stats-faint">querying…</em>',
                     comment: _relIdbEnabled
                         ? 'TTL: 7 days — relationship WS2 JSON responses (sa_rels_idb_enable)'
                         : '⚠️ IDB rel cache disabled (sa_rels_idb_enable = false)',
@@ -17309,7 +17345,7 @@ ${sections.join('\n')}
                 const _allRows = Array.from(_idbTbl.querySelectorAll('tbody tr'));
                 [0, 1, 2].forEach(i => {
                     const td = _allRows[i] && _allRows[i].querySelectorAll('td')[1];
-                    if (td) td.innerHTML = '<em style="color:#aaa">disabled</em>';
+                    if (td) td.innerHTML = '<em class="sa-stats-faint">disabled</em>';
                 });
             }
         }
@@ -17425,12 +17461,12 @@ ${sections.join('\n')}
 
             // Col 1: entity-type label (e.g. "Place", "Artist", …)
             chRow.appendChild(_chTd(
-                `<span style="font-size:0.8em;color:${C.muted}">${_entityTypeLabel}</span>`,
+                `<span class="sa-stats-muted-label">${_entityTypeLabel}</span>`,
                 { nowrap: true }));
 
             // Col 2: h1 entity name
             chRow.appendChild(_chTd(
-                `<strong style="color:${C.accent}">${_h1Text || '—'}</strong>`, {}));
+                `<strong class="sa-stats-accent">${_h1Text || '—'}</strong>`, {}));
 
             // Col 3: active filter value for this table.
             // For single-table pages there is no per-table sub-table filter;
@@ -17442,8 +17478,8 @@ ${sections.join('\n')}
                               : '';
             chRow.appendChild(_chTd(
                 _filterVal
-                    ? `<em style="color:${C.accent}">"${_filterVal}"</em>${_filterFlagsHtml(td.filter ? td.filterFlags : _gfFlags)}`
-                    : '<span style="color:#bbb">—</span>',
+                    ? `<em class="sa-stats-accent">"${_filterVal}"</em>${_filterFlagsHtml(td.filter ? td.filterFlags : _gfFlags)}`
+                    : '<span class="sa-stats-bbb">—</span>',
                 { nowrap: true,
                   title: _filterVal
                     ? `${_filterSrc}: "${_filterVal}"`
@@ -17453,9 +17489,9 @@ ${sections.join('\n')}
             const _hiddenRows = td.total - td.visible;
             chRow.appendChild(_chTd(
                 _hiddenRows > 0
-                    ? `<span style="color:${C.accent};font-weight:700">${td.visible.toLocaleString()}</span>` +
-                      ` <span style="font-size:0.83em;color:${C.muted}">/ ${td.total.toLocaleString()}</span>`
-                    : `<span style="font-weight:700">${td.total.toLocaleString()}</span>`,
+                    ? `<span class="sa-stats-accent-700">${td.visible.toLocaleString()}</span>` +
+                      ` <span class="sa-stats-muted-small">/ ${td.total.toLocaleString()}</span>`
+                    : `<span class="sa-stats-strong-700">${td.total.toLocaleString()}</span>`,
                 { right: true, nowrap: true }));
 
             // Col 5: artwork count — rows with confirmed front artwork for this sub-table.
@@ -17464,8 +17500,8 @@ ${sections.join('\n')}
             // started or loading not yet complete).
             chRow.appendChild(_chTd(
                 td.caaCount > 0
-                    ? `🖼️ <span style="color:${C.accent};font-weight:700">${td.caaCount.toLocaleString()}</span>`
-                    : '<span style="color:#bbb;font-size:0.9em" title="Loading artwork — count updates when image loading completes">—</span>',
+                    ? `🖼️ <span class="sa-stats-accent-700">${td.caaCount.toLocaleString()}</span>`
+                    : '<span class="sa-stats-bbb-small" title="Loading artwork — count updates when image loading completes">—</span>',
                 { right: true, nowrap: true }));
 
             // ── Row 2: "Table name" label | table name | column labels ─────────
@@ -17473,22 +17509,22 @@ ${sections.join('\n')}
 
             // Col 1: "Table name" label (replaces old "h2/h3")
             chRow2.appendChild(_chTd(
-                `<span style="font-size:0.8em;color:${C.muted}">Table name</span>`,
+                `<span class="sa-stats-muted-label">Table name</span>`,
                 { nowrap: true }));
 
             // Col 2: table name (from h3 or h2)
             chRow2.appendChild(_chTd(
-                `<span style="font-weight:600">${td.name}</span>`, {}));
+                `<span class="sa-stats-strong-600">${td.name}</span>`, {}));
 
             // Col 3–5: column-header labels (muted, small)
             chRow2.appendChild(_chTd(
-                `<span style="font-size:0.8em;color:${C.muted}">Active filter</span>`,
+                `<span class="sa-stats-muted-label">Active filter</span>`,
                 { small: true }));
             chRow2.appendChild(_chTd(
-                `<span style="font-size:0.8em;color:${C.muted}">Filtered rows</span>`,
+                `<span class="sa-stats-muted-label">Filtered rows</span>`,
                 { small: true, right: true }));
             chRow2.appendChild(_chTd(
-                `<span style="font-size:0.8em;color:${C.muted}">Rows with ${_artKey} artwork</span>`,
+                `<span class="sa-stats-muted-label">Rows with ${_artKey} artwork</span>`,
                 { small: true, right: true }));
 
             cardHdr.appendChild(chRow);
@@ -17573,37 +17609,37 @@ ${sections.join('\n')}
                     // Column name cell — tinted background for synthetic columns
                     cr.appendChild(_mkColTd(
                         col.visible
-                            ? `<strong${col.colType !== 'original' ? ` style="color:${C.accent}"` : ''}>${col.name}</strong>`
-                            : `<span style="text-decoration:line-through;color:#aaa">${col.name}</span>`
+                            ? `<strong${col.colType !== 'original' ? ` class="sa-stats-accent"` : ''}>${col.name}</strong>`
+                            : `<span class="sa-stats-strikethrough">${col.name}</span>`
                     ));
                     cr.appendChild(_mkColTd(
                         col.visible
-                            ? `<span style="color:#388e3c">✔ yes</span>`
-                            : `<span style="color:#c62828">✘ no</span>`,
+                            ? `<span class="sa-stats-green">✔ yes</span>`
+                            : `<span class="sa-stats-alert">✘ no</span>`,
                         { center: true }
                     ));
-                    const _sc = col.sort.startsWith('▲') ? C.accent
-                        : col.sort.startsWith('▼') ? C.alert : C.muted;
+                    const _scClass = col.sort.startsWith('▲') ? 'sa-stats-accent'
+                        : col.sort.startsWith('▼') ? 'sa-stats-alert' : 'sa-stats-muted';
                     cr.appendChild(_mkColTd(
-                        `<span style="color:${_sc}">${col.sort}</span>`,
+                        `<span class="${_scClass}">${col.sort}</span>`,
                         { center: true }
                     ));
                     cr.appendChild(_mkColTd(String(col.unique), { right: true }));
                     cr.appendChild(_mkColTd(
                         col.multiRow > 0
-                            ? `<span style="color:${C.accent}">${col.multiRow}</span>`
-                            : `<span style="color:#bbb">0</span>`,
+                            ? `<span class="sa-stats-accent">${col.multiRow}</span>`
+                            : `<span class="sa-stats-bbb">0</span>`,
                         { right: true }
                     ));
                     cr.appendChild(_mkColTd(
                         col.filter
-                            ? `<em style="color:${C.accent}">"${col.filter}"</em>`
-                            : '<span style="color:#bbb">—</span>'
+                            ? `<em class="sa-stats-accent">"${col.filter}"</em>`
+                            : '<span class="sa-stats-bbb">—</span>'
                     ));
                     cr.appendChild(_mkColTd(
                         col.resize === 'default'
-                            ? '<span style="color:#bbb">default</span>'
-                            : `<span style="color:${C.accent}">${col.resize}</span>`
+                            ? '<span class="sa-stats-bbb">default</span>'
+                            : `<span class="sa-stats-accent">${col.resize}</span>`
                     ));
                     colTbody.appendChild(cr);
                 });

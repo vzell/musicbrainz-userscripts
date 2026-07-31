@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.6",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fix the statistics panel (`showStatsPanel`) rendering unstyled on /account/applications — same CSP `style-src` issue as WIP.1-5, this time across 46 attributes in the largest single function fixed so far (~1570 lines). Almost every occurrence interpolated one of a handful of colors from the panel's own fixed, hardcoded palette (never settings-driven), so they collapsed into ~20 reusable `.sa-stats-*` classes via a new shared `_ensureStatsPanelStyle()` stylesheet. One genuinely conditional case (picking a color based on a column's sort direction) was changed to compute a class name instead of a color value, keeping it CSS-only."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.5",
         "date": "2026-07-31",
         "sections": [

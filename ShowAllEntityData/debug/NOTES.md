@@ -1633,12 +1633,12 @@ falls back to `N/A` like every other empty cell on this page.
      settings-row containers' own layout, and is why those already worked
      before this fix.
 - **Not yet fixed — same pattern confirmed present in
-  `ShowAllEntityData.user.js` itself**, ~166 `style="..."` attributes
-  across ~17 functions (counts from a grep-by-enclosing-function pass):
+  `ShowAllEntityData.user.js` itself**, ~121 `style="..."` attributes
+  across ~16 functions (counts from a grep-by-enclosing-function pass):
   `showEditPersistentListDialog` (49) — a table-editor dialog shell (drag
   handle, editable pinned-filter-list table), NOT another `_histGlyphs`
-  duplicate this time, confirmed by grep — `showStatsPanel`
-  (46), `showExportDialog` (15), `showRenderDecisionDialog` (7),
+  duplicate this time, confirmed by grep — `showExportDialog` (15),
+  `showRenderDecisionDialog` (7),
   `showCtrlMTooltip` (5), `_saveSettingsConfig` (5), `_relBuildTooltipHTML`
   (5), `makeCollapseExpandBtnHTML` (3), plus a handful of 1-2-count sites
   (`loadAndRender`, `toggleAutoResizeColumns`, `renderRowsChunked`,
@@ -1679,6 +1679,21 @@ falls back to `N/A` like every other empty cell on this page.
   user's screenshot; same `sa-save-shell-style` id-guarded, injected-once
   pattern as `showLoadFilterDialog`'s shell, since its dynamic values are
   also settings-only).
+  **Fixed (2026-07-31, WIP.6):** `showStatsPanel` (46 attributes, the
+  biggest single-function fix so far — ~1570-line function). Almost every
+  occurrence interpolated one of a handful of colors from the panel's own
+  fixed, hardcoded palette object `C` (`C.accent`/`C.alert`/`C.muted`/etc,
+  defined once near the top of the function, never settings-driven), so
+  these collapsed cleanly into ~20 reusable `.sa-stats-*` classes
+  (`_ensureStatsPanelStyle()`) instead of needing per-instance dynamic CSS
+  — e.g. `.sa-stats-accent-600`/`.sa-stats-accent-700` for the two
+  color+weight combos actually used, `.sa-stats-bbb`/`.sa-stats-faint`/
+  `.sa-stats-muted-999` for the various "empty/placeholder" greys. One
+  genuinely conditional case (`_sc`, picking `C.accent`/`C.alert`/
+  `C.muted` based on a column's sort direction ▲/▼/none) was changed from
+  computing a *color* to computing a *class name* (`_scClass`) instead —
+  same pattern to reach for whenever a small, enumerable set of dynamic
+  values feeds into what would otherwise be an inline style.
   User decided (2026-07-31) to fix these incrementally as each is found
   broken during further pageType testing, rather than blind-editing all
   ~260 in one pass with no way to visually verify each. Same
