@@ -1633,17 +1633,32 @@ falls back to `N/A` like every other empty cell on this page.
      settings-row containers' own layout, and is why those already worked
      before this fix.
 - **Not yet fixed — same pattern confirmed present in
-  `ShowAllEntityData.user.js` itself**, ~260 `style="..."` attributes
-  across ~20 functions (counts from a grep-by-enclosing-function pass):
-  `showEditPersistentListDialog` (49), `showLoadFilterDialog` (49),
-  `showStatsPanel` (46), `showExportDialog` (15), `showSaveDialog` (13),
-  `countFilteredRows` (12), `createFilterHistoryWidget` (11),
+  `ShowAllEntityData.user.js` itself**, ~248 `style="..."` attributes
+  across ~21 functions (counts from a grep-by-enclosing-function pass):
+  `showEditPersistentListDialog` (49), `showLoadFilterDialog` (49) — NOTE:
+  this one includes a byte-for-byte duplicate of `createFilterHistoryWidget`'s
+  `_histGlyphs` badge helper (Cs/Re/Ex spans) at ~line 24063, left un-fixed
+  here even though the shared `.mb-fhw-badge`/`.mb-fhw-badge-{cs,re,ex}`
+  classes it needs already exist (see below) — `showStatsPanel` (46),
+  `showExportDialog` (15), `showSaveDialog` (13), `countFilteredRows` (12),
   `buildMetaBlockHTML` (10), `showRenderDecisionDialog` (7),
   `showCtrlMTooltip` (5), `_saveSettingsConfig` (5), `_relBuildTooltipHTML`
   (5), `makeCollapseExpandBtnHTML` (3), plus a handful of 1-2-count sites
   (`loadAndRender`, `toggleAutoResizeColumns`, `renderRowsChunked`,
   `makeButtonHTML`, `_mbttLabel`, `_mbttColName`, `_mbttCount`,
   `ergInjectReleaseGroupButton`, `ergInjectReleaseButton`, `_fmtMs`).
+  **Fixed (2026-07-31, WIP.3):** `createFilterHistoryWidget` (11
+  attributes — hit on initial /account/applications page load via console
+  errors even though nothing was visibly broken yet, since its dropdown
+  panel stays `display:none` until the "History ▼" button is clicked;
+  fixed via a new shared, id-guarded `_ensureFilterHistoryWidgetStyle()`
+  stylesheet with classes `.mb-fhw-badge*`, `.mb-fhw-mark`,
+  `.mb-fhw-lru-label`, `.mb-fhw-hist-row`, `.mb-fhw-hist-label`,
+  `.mb-fhw-glyphs`, `.mb-fhw-empty` — reusable by `showLoadFilterDialog`'s
+  duplicate helper whenever that gets fixed too) and one missed leftover
+  in `initSaUnicodeCharsFeature` (a separate inline
+  `style="text-align:right"` on the picker's Close row, not part of the
+  `<style>` block WIP.1 converted).
   User decided (2026-07-31) to fix these incrementally as each is found
   broken during further pageType testing, rather than blind-editing all
   ~260 in one pass with no way to visually verify each. Same

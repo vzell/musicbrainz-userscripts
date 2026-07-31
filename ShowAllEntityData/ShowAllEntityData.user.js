@@ -14278,7 +14278,73 @@ ${sections.join('\n')}
      *   saveToLru:       Function,           – call to push current query+state to LRU
      * }}
      */
+    /**
+     * Lazily injects the shared, id-guarded stylesheet for
+     * {@link createFilterHistoryWidget}'s history-row markup (badges, mark
+     * highlight, history rows). Uses GM_addStyle (not a plain
+     * document.createElement('style') + head.appendChild) so it is exempt
+     * from page CSP style-src restrictions — MusicBrainz's account/* pages
+     * block plain inline stylesheets. Classes here are generic (not scoped
+     * per filter-input instance), so this only needs to run once for the
+     * whole page regardless of how many filter inputs get a history widget.
+     */
+    function _ensureFilterHistoryWidgetStyle() {
+        if (document.getElementById('mb-fhw-style')) return;
+        const style = GM_addStyle(`
+            .mb-fhw-badge {
+                font-size: 0.78em;
+                font-weight: 700;
+                border-radius: 2px;
+                padding: 0 2px;
+            }
+            .mb-fhw-badge-cs { color: #1976D2; border: 1px solid #1976D2; }
+            .mb-fhw-badge-re { color: #7B1FA2; border: 1px solid #7B1FA2; }
+            .mb-fhw-badge-ex { color: #c62828; border: 1px solid #c62828; }
+            .mb-fhw-mark {
+                background: #fff176;
+                padding: 0;
+            }
+            .mb-fhw-lru-label {
+                font-size: 0.76em;
+                font-weight: 700;
+                color: #1565c0;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+            }
+            .mb-fhw-hist-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 6px 10px;
+                cursor: pointer;
+                font-size: 0.9em;
+                border-bottom: 1px dotted #eee;
+                gap: 6px;
+            }
+            .mb-fhw-hist-label {
+                flex: 1;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .mb-fhw-glyphs {
+                flex-shrink: 0;
+                display: flex;
+                gap: 3px;
+                align-items: center;
+            }
+            .mb-fhw-empty {
+                padding: 8px 10px;
+                color: #aaa;
+                font-size: 0.85em;
+                text-align: center;
+            }
+        `);
+        style.id = 'mb-fhw-style';
+    }
+
     function createFilterHistoryWidget(cfg) {
+        _ensureFilterHistoryWidgetStyle();
         const { filterInput, caseCheckbox, rxCheckbox, exCheckbox, onApply } = cfg;
         const getQuery  = cfg.getQuery  || (() => filterInput.value.trim());
         const setQuery  = cfg.setQuery  || ((q) => { filterInput.value = q; });
@@ -14303,9 +14369,9 @@ ${sections.join('\n')}
 
         const _histGlyphs = (e) => {
             const parts = [];
-            if (e.useCase)    parts.push('<span title="Case Sensitive" style="color:#1976D2;font-size:0.78em;font-weight:700;border:1px solid #1976D2;border-radius:2px;padding:0 2px;">Cs</span>');
-            if (e.useRegex)   parts.push('<span title="Regular Expression" style="color:#7B1FA2;font-size:0.78em;font-weight:700;border:1px solid #7B1FA2;border-radius:2px;padding:0 2px;">Re</span>');
-            if (e.useExclude) parts.push('<span title="Exclude Matches" style="color:#c62828;font-size:0.78em;font-weight:700;border:1px solid #c62828;border-radius:2px;padding:0 2px;">Ex</span>');
+            if (e.useCase)    parts.push('<span title="Case Sensitive" class="mb-fhw-badge mb-fhw-badge-cs">Cs</span>');
+            if (e.useRegex)   parts.push('<span title="Regular Expression" class="mb-fhw-badge mb-fhw-badge-re">Re</span>');
+            if (e.useExclude) parts.push('<span title="Exclude Matches" class="mb-fhw-badge mb-fhw-badge-ex">Ex</span>');
             return parts.length ? '&nbsp;' + parts.join('&nbsp;') : '';
         };
 
@@ -14314,7 +14380,7 @@ ${sections.join('\n')}
             const idx = haystack.toLowerCase().indexOf(needle.toLowerCase());
             if (idx < 0) return haystack;
             return haystack.slice(0, idx) +
-                `<mark style="background:#fff176;padding:0;">${haystack.slice(idx, idx + needle.length)}</mark>` +
+                `<mark class="mb-fhw-mark">${haystack.slice(idx, idx + needle.length)}</mark>` +
                 haystack.slice(idx + needle.length);
         };
 
@@ -14340,7 +14406,7 @@ ${sections.join('\n')}
         const toggleBtn = document.createElement('button');
         toggleBtn.type = 'button';
         toggleBtn.title = 'Show/hide filter history (Alt+H)';
-        toggleBtn.innerHTML = '&#128337; <span style="text-decoration:underline">H</span>istory &#9660;';
+        toggleBtn.innerHTML = '&#128337; <u>H</u>istory &#9660;';
         toggleBtn.style.cssText = 'padding:0 8px; background:#f0f0f0; border:1px solid #ccc; border-radius:6px; cursor:pointer; font-size:0.85em; white-space:nowrap; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; height:24px; box-sizing:border-box;';
 
         // ── DOM: Dropdown panel ───────────────────────────────────────────────────
@@ -14375,7 +14441,7 @@ ${sections.join('\n')}
         const pinHeaderEditBtn = document.createElement('button');
         pinHeaderEditBtn.type = 'button';
         pinHeaderEditBtn.title = 'Edit the persistent pinned filter list (Alt+E)';
-        pinHeaderEditBtn.innerHTML = '&#9998; <span style="text-decoration:underline">E</span>dit Pinned Filter List';
+        pinHeaderEditBtn.innerHTML = '&#9998; <u>E</u>dit Pinned Filter List';
         pinHeaderEditBtn.style.cssText = 'padding:2px 7px;background:#fff8e1;border:1px solid #ffe082;border-radius:5px;cursor:pointer;font-size:0.76em;font-weight:600;color:#e65100;white-space:nowrap;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;line-height:1.6;';
         pinHeader.appendChild(pinHeaderLabel);
         pinHeader.appendChild(pinHeaderEditBtn);
@@ -14392,7 +14458,7 @@ ${sections.join('\n')}
         // LRU section header
         const lruHeader = document.createElement('div');
         lruHeader.style.cssText = 'padding:4px 8px 2px; background:#e3f2fd; border-bottom:1px solid #bbdefb;';
-        lruHeader.innerHTML = '<span style="font-size:0.76em;font-weight:700;color:#1565c0;text-transform:uppercase;letter-spacing:0.04em;">&#128337; Recent (LRU)</span>';
+        lruHeader.innerHTML = '<span class="mb-fhw-lru-label">&#128337; Recent (LRU)</span>';
 
         const lruList   = document.createElement('div');
         lruList.style.cssText = `max-height:${histDropdownPx}px; overflow-y:auto;`;
@@ -14425,12 +14491,11 @@ ${sections.join('\n')}
                 const esc   = e.query.replace(/&/g, '&amp;').replace(/</g, '&lt;');
                 const label = _histHighlight(esc, esc_qf);
                 const glyphs = _histGlyphs(e);
-                return `<div class="mb-fhw-hist-row" data-idx="${i}" data-list="${listId}"
-                    style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;cursor:pointer;font-size:0.9em;border-bottom:1px dotted #eee;gap:6px;">
-                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${label}</span>
-                    <span style="flex-shrink:0;display:flex;gap:3px;align-items:center;">${glyphs}</span>
+                return `<div class="mb-fhw-hist-row" data-idx="${i}" data-list="${listId}">
+                    <span class="mb-fhw-hist-label">${label}</span>
+                    <span class="mb-fhw-glyphs">${glyphs}</span>
                 </div>`;
-            }).join('') || `<div style="padding:8px 10px;color:#aaa;font-size:0.85em;text-align:center;">No matching entries</div>`;
+            }).join('') || `<div class="mb-fhw-empty">No matching entries</div>`;
 
             container.querySelectorAll('.mb-fhw-hist-row').forEach(row => {
                 row.addEventListener('mouseenter', () => {
@@ -43002,6 +43067,9 @@ a { color: #1565c0; }`;
     color: #666;
     font-size: 0.88em;
 }
+.sa-unicode-cell-name-close {
+    text-align: right;
+}
         `);
         style.id = 'sa-unicode-menu-style';
 
@@ -43015,7 +43083,7 @@ a { color: #1565c0; }`;
         closeRow.dataset.saUnicodeIdx = '0';
         closeRow.innerHTML =
             '<span class="sa-unicode-cell-char"></span>' +
-            '<span class="sa-unicode-cell-name" style="text-align:right">✕ Close (Esc)</span>';
+            '<span class="sa-unicode-cell-name sa-unicode-cell-name-close">✕ Close (Esc)</span>';
         menu.appendChild(closeRow);
 
         // Character rows

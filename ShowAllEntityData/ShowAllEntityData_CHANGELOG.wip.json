@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.3",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fix `createFilterHistoryWidget()` (the Pin/History dropdown attached to every filter input, including the global filter built during initial page load) rendering unstyled if opened on /account/applications — same CSP `style-src` issue as WIP.1/WIP.2, found via console errors present on initial page load even though nothing looked visibly broken yet (the dropdown panel stays `display:none` until clicked). Converted its 11 `innerHTML`-embedded `style=\"...\"` attributes to a shared, page-global `GM_addStyle()` stylesheet (guarded by id so it's only injected once regardless of how many filter inputs get a history widget). Also replaced two single-letter mnemonic underline spans (`<span style=\"text-decoration:underline\">`) with plain `<u>` tags — no CSS needed. Also fixed one missed leftover from WIP.1's `initSaUnicodeCharsFeature` conversion: a separate inline `style=\"text-align:right\"` on the picker's Close row that wasn't part of the `<style>` block originally converted. NOTE: an identical duplicated `_histGlyphs` badge-rendering block still exists un-fixed inside `showLoadFilterDialog` (one of the still-deferred functions, see debug/NOTES.md) — left alone per the incremental fix-as-you-test approach."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.2",
         "date": "2026-07-31",
         "sections": [
