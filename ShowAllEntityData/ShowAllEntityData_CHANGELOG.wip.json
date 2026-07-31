@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.5",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fix the \"Save Table Data\" dialog (`showSaveDialog`) and the shared \"File Metadata\" table it and the Load dialog both use (`buildMetaBlockHTML`) rendering unstyled on /account/applications — same CSP `style-src` issue as WIP.1-4. `buildMetaBlockHTML`'s 10 attributes moved to a new shared, id-guarded `GM_addStyle()` stylesheet, including replacing an inline `${modeColor}`-interpolated background with two static modifier classes (`.sa-meta-mode-multi`/`.sa-meta-mode-single`) since the value is always one of exactly two options. `showSaveDialog`'s own 13 attributes moved to a dedicated, id-guarded, injected-once stylesheet (its interpolated values are settings-only, unchanged without a page reload)."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.4",
         "date": "2026-07-31",
         "sections": [

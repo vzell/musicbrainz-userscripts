@@ -22524,11 +22524,42 @@ a { color: #1565c0; }`;
      * @param {File|null}   file       - The File object (for legacy filename parsing), or null.
      * @returns {string} HTML string for the meta block (ready to set as innerHTML).
      */
+    /**
+     * Lazily injects the shared, id-guarded stylesheet for
+     * {@link buildMetaBlockHTML}'s output. Uses GM_addStyle (not a plain
+     * document.createElement('style') + head.appendChild) so it is exempt
+     * from page CSP style-src restrictions — MusicBrainz's account/* pages
+     * block plain inline stylesheets and inline style="..." attributes
+     * alike. Classes here are generic (not scoped per dialog instance), so
+     * this only needs to run once regardless of how many dialogs
+     * (Save/Load) render a metadata block.
+     */
+    function _ensureMetaBlockStyle() {
+        if (document.getElementById('sa-meta-block-style')) return;
+        const style = GM_addStyle(`
+            .sa-meta-dash { color:#bbb; }
+            .sa-meta-legacy { color:#888; font-style:italic; }
+            .sa-meta-legacy-hint { font-size:0.85em; }
+            .sa-meta-label { padding:3px 10px 3px 0; color:#666; font-weight:600; white-space:nowrap; vertical-align:top; }
+            .sa-meta-value { padding:3px 0; word-break:break-all; }
+            .sa-meta-filtered-note { color:#e65100; font-size:0.85em; }
+            .sa-meta-mode-badge { color:#fff; border-radius:3px; padding:0 5px; font-size:0.82em; }
+            .sa-meta-mode-multi { background:#1565c0; }
+            .sa-meta-mode-single { background:#2e7d32; }
+            .sa-meta-url-link { color:#1565c0; font-size:0.88em; word-break:break-all; }
+            .sa-meta-version-badge { background:#f5f5f5; border:1px solid #ddd; border-radius:3px; padding:0 5px; font-size:0.85em; }
+            .sa-meta-header { font-size:0.82em; color:#555; margin-bottom:6px; font-weight:700; letter-spacing:0.03em; text-transform:uppercase; }
+            .sa-meta-table { border-collapse:collapse; width:100%; font-size:0.88em; line-height:1.5; }
+        `);
+        style.id = 'sa-meta-block-style';
+    }
+
     function buildMetaBlockHTML(data, totalRows, file = null) {
+        _ensureMetaBlockStyle();
         const esc  = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        const dash = '<span style="color:#bbb;">—</span>';
+        const dash = '<span class="sa-meta-dash">—</span>';
         const legacyVal = (val) => val
-            ? `<span style="color:#888;font-style:italic;">${esc(val)} <span style="font-size:0.85em;">(from filename)</span></span>`
+            ? `<span class="sa-meta-legacy">${esc(val)} <span class="sa-meta-legacy-hint">(from filename)</span></span>`
             : dash;
         const fmtDate = (ts) => {
             if (!ts) return '\u2014';
@@ -22536,8 +22567,8 @@ a { color: #1565c0; }`;
         };
         const row = (label, value) =>
             `<tr>` +
-            `<td style="padding:3px 10px 3px 0;color:#666;font-weight:600;white-space:nowrap;vertical-align:top;">${label}</td>` +
-            `<td style="padding:3px 0;word-break:break-all;">${value}</td>` +
+            `<td class="sa-meta-label">${label}</td>` +
+            `<td class="sa-meta-value">${value}</td>` +
             `</tr>`;
 
         const fname     = file ? file.name : '';
@@ -22580,22 +22611,22 @@ a { color: #1565c0; }`;
         const displayDetail   = data.detailSegment ? esc(data.detailSegment) : dash;
         const isFiltered      = (data.pageType || '').endsWith('-filtered');
         const pageTypeDisplay = esc(data.pageType || '')
-            + (isFiltered ? ' <span style="color:#e65100;font-size:0.85em;">(filtered)</span>' : '');
-        const modeColor   = data.tableMode === 'multi' ? '#1565c0' : '#2e7d32';
+            + (isFiltered ? ' <span class="sa-meta-filtered-note">(filtered)</span>' : '');
+        const modeClass   = data.tableMode === 'multi' ? 'sa-meta-mode-multi' : 'sa-meta-mode-single';
         const modeDisplay = data.tableMode
-            ? `<span style="background:${modeColor};color:#fff;border-radius:3px;padding:0 5px;font-size:0.82em;">${esc(data.tableMode)}</span>`
+            ? `<span class="sa-meta-mode-badge ${modeClass}">${esc(data.tableMode)}</span>`
             : dash;
         const btnLabelDisplay = data.buttonLabel ? `<em>${esc(data.buttonLabel)}</em>` : dash;
         const urlDisplay = data.url
-            ? `<a href="${esc(data.url)}" target="_blank" style="color:#1565c0;font-size:0.88em;word-break:break-all;">${esc(data.url)}</a>`
+            ? `<a href="${esc(data.url)}" target="_blank" class="sa-meta-url-link">${esc(data.url)}</a>`
             : dash;
         const verDisplay = data.version
-            ? `<span style="background:#f5f5f5;border:1px solid #ddd;border-radius:3px;padding:0 5px;font-size:0.85em;">${esc(data.version)}</span>`
+            ? `<span class="sa-meta-version-badge">${esc(data.version)}</span>`
             : dash;
 
         return (
-            `<div style="font-size:0.82em;color:#555;margin-bottom:6px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;">&#128196; File Metadata</div>` +
-            `<table style="border-collapse:collapse;width:100%;font-size:0.88em;line-height:1.5;">` +
+            `<div class="sa-meta-header">&#128196; File Metadata</div>` +
+            `<table class="sa-meta-table">` +
             row('Entity type',  displayEntityType) +
             row('Entity name',  displayEntityName) +
             row('Section',      displaySectionSuffix) +
@@ -22653,26 +22684,46 @@ a { color: #1565c0; }`;
 
         const totalRows = dataToSave.rowCount || 0;
 
+        // GM_addStyle so this dialog shell's CSS is exempt from page CSP
+        // style-src restrictions (see showLoadFilterDialog's identical
+        // treatment). Idempotent — headerFontSz/statusFontSz only change via
+        // a settings save, which reloads the page.
+        if (!document.getElementById('sa-save-shell-style')) {
+            const shellStyle = GM_addStyle(`
+                #sa-sd-drag-handle { margin-bottom:18px; border-bottom:1px solid #eee; padding-bottom:12px; cursor:move; user-select:none; }
+                #sa-sd-title { margin:0; color:#222; font-size:1.2em; }
+                #sa-sd-subtitle { margin:5px 0 0; color:#666; font-size:${headerFontSz}; }
+                #sa-sd-meta-block { margin-bottom:16px; border:1px solid #eee; border-radius:6px; padding:10px 14px; background:#fafafa; }
+                #sa-sd-filename-row { margin-bottom:14px; }
+                #sa-sd-filename-label { display:block; font-size:0.88em; font-weight:600; color:#444; margin-bottom:5px; }
+                #sa-sd-filename-input { width:100%; box-sizing:border-box; padding:8px 10px; border:1px solid #ccc; border-radius:6px; font-size:0.9em; font-family:monospace; outline:none; }
+                #sa-sd-btn-row { display:flex; gap:12px; margin-bottom:8px; }
+                #sa-sd-save-confirm { flex:2; padding:10px; background:#4CAF50; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                #sa-sd-cancel { flex:1; padding:10px; background:#f0f0f0; color:#333; border:1px solid #ccc; border-radius:6px; cursor:pointer; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                #sa-sd-status { display:none; padding:5px 2px; font-size:${statusFontSz}; min-height:20px; }
+            `);
+            shellStyle.id = 'sa-save-shell-style';
+        }
+
         dialog.innerHTML = `
-            <div id="sa-sd-drag-handle" style="margin-bottom:18px;border-bottom:1px solid #eee;padding-bottom:12px;cursor:move;user-select:none;">
-                <h3 style="margin:0;color:#222;font-size:1.2em;">&#128190; Save Table Data</h3>
-                <p style="margin:5px 0 0;color:#666;font-size:${headerFontSz};">Review the metadata below, optionally edit the filename, then click <strong>Save Data</strong> to download the compressed JSON file.</p>
+            <div id="sa-sd-drag-handle">
+                <h3 id="sa-sd-title">&#128190; Save Table Data</h3>
+                <p id="sa-sd-subtitle">Review the metadata below, optionally edit the filename, then click <strong>Save Data</strong> to download the compressed JSON file.</p>
             </div>
-            <div id="sa-sd-meta-block" style="margin-bottom:16px;border:1px solid #eee;border-radius:6px;padding:10px 14px;background:#fafafa;">
+            <div id="sa-sd-meta-block">
                 ${buildMetaBlockHTML(dataToSave, totalRows, null)}
             </div>
-            <div style="margin-bottom:14px;">
-                <label for="sa-sd-filename-input" style="display:block;font-size:0.88em;font-weight:600;color:#444;margin-bottom:5px;">&#128462; Filename</label>
-                <input id="sa-sd-filename-input" type="text" value=""
-                    style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:0.9em;font-family:monospace;outline:none;">
+            <div id="sa-sd-filename-row">
+                <label for="sa-sd-filename-input" id="sa-sd-filename-label">&#128462; Filename</label>
+                <input id="sa-sd-filename-input" type="text" value="">
             </div>
-            <div style="display:flex;gap:12px;margin-bottom:8px;">
-                <button id="sa-sd-save-confirm" style="flex:2;padding:10px;background:#4CAF50;color:white;border:none;border-radius:6px;font-weight:bold;cursor:pointer;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">
-                    <span>&#128190; <span style="text-decoration:underline">S</span>ave Data</span>
+            <div id="sa-sd-btn-row">
+                <button id="sa-sd-save-confirm">
+                    <span>&#128190; <u>S</u>ave Data</span>
                 </button>
-                <button id="sa-sd-cancel" style="flex:1;padding:10px;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:6px;cursor:pointer;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">Cancel</button>
+                <button id="sa-sd-cancel">Cancel</button>
             </div>
-            <div id="sa-sd-status" style="display:none;padding:5px 2px;font-size:${statusFontSz};min-height:20px;"></div>
+            <div id="sa-sd-status"></div>
         `;
 
         document.body.appendChild(dialog);
@@ -22800,7 +22851,7 @@ a { color: #1565c0; }`;
             statusDiv.style.color   = '#2e7d32';
             statusDiv.style.display = 'block';
 
-            saveBtn.innerHTML     = '&#128190; <span style="text-decoration:underline">S</span>ave Data';
+            saveBtn.innerHTML     = '&#128190; <u>S</u>ave Data';
             saveBtn.disabled      = false;
             saveBtn.style.opacity = '';
 

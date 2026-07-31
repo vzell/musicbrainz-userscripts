@@ -1633,15 +1633,14 @@ falls back to `N/A` like every other empty cell on this page.
      settings-row containers' own layout, and is why those already worked
      before this fix.
 - **Not yet fixed — same pattern confirmed present in
-  `ShowAllEntityData.user.js` itself**, ~188 `style="..."` attributes
-  across ~19 functions (counts from a grep-by-enclosing-function pass):
+  `ShowAllEntityData.user.js` itself**, ~166 `style="..."` attributes
+  across ~17 functions (counts from a grep-by-enclosing-function pass):
   `showEditPersistentListDialog` (49) — a table-editor dialog shell (drag
   handle, editable pinned-filter-list table), NOT another `_histGlyphs`
   duplicate this time, confirmed by grep — `showStatsPanel`
-  (46), `showExportDialog` (15), `showSaveDialog` (13), `buildMetaBlockHTML`
-  (10), `showRenderDecisionDialog` (7), `showCtrlMTooltip` (5),
-  `_saveSettingsConfig` (5), `_relBuildTooltipHTML` (5),
-  `makeCollapseExpandBtnHTML` (3), plus a handful of 1-2-count sites
+  (46), `showExportDialog` (15), `showRenderDecisionDialog` (7),
+  `showCtrlMTooltip` (5), `_saveSettingsConfig` (5), `_relBuildTooltipHTML`
+  (5), `makeCollapseExpandBtnHTML` (3), plus a handful of 1-2-count sites
   (`loadAndRender`, `toggleAutoResizeColumns`, `renderRowsChunked`,
   `makeButtonHTML`, `_mbttLabel`, `_mbttColName`, `_mbttCount`,
   `ergInjectReleaseGroupButton`, `ergInjectReleaseButton`, `_fmtMs`).
@@ -1669,6 +1668,17 @@ falls back to `N/A` like every other empty cell on this page.
   `sa-load-dialog-style` stylesheet (id-guarded, injected once — safe since
   its few interpolated dynamic values only change via a settings save,
   which reloads the page).
+  **Fixed (2026-07-31, WIP.5):** `buildMetaBlockHTML` (10 attributes — the
+  "File Metadata" table shared by both the Save and Load dialogs; fixed via
+  a new shared, id-guarded `_ensureMetaBlockStyle()` stylesheet with
+  classes `.sa-meta-*`, including `.sa-meta-mode-badge` +
+  `.sa-meta-mode-{multi,single}` modifier classes replacing the old
+  `${modeColor}`-interpolated inline style — the mode is one of exactly two
+  values so this needed no genuinely-dynamic CSS) and `showSaveDialog` (13
+  attributes — the "Save Table Data" dialog shell, confirmed broken via the
+  user's screenshot; same `sa-save-shell-style` id-guarded, injected-once
+  pattern as `showLoadFilterDialog`'s shell, since its dynamic values are
+  also settings-only).
   User decided (2026-07-31) to fix these incrementally as each is found
   broken during further pageType testing, rather than blind-editing all
   ~260 in one pass with no way to visually verify each. Same
