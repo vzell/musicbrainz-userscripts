@@ -1,0 +1,14 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Replace all 9 direct `document.createElement('style')` + `document.head.appendChild()` CSS injection sites (edit-diff table colors, sticky table headers, export/save/load dialog hover states, sidebar toggle, main toolbar chrome, relationships-icon column, Unicode character picker) with `GM_addStyle()` so injected CSS is exempt from Content-Security-Policy `style-src` restrictions (no `unsafe-inline`) that MusicBrainz's backend applies to /account/* pages. This was silently dropping these stylesheets on /account/applications, causing a raw Unicode picker dump appended below the page footer and the sub-table filter row's Cc/Rx/Ex checkboxes stacking one-per-line instead of inline."
+                ]
+            }
+        ]
+    }
+]

@@ -24,6 +24,7 @@
 // @connect      *.archive.org
 // @connect      *
 // @grant        GM_xmlhttpRequest
+// @grant        GM_addStyle
 // @grant        GM_info
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -5752,15 +5753,14 @@
      */
     function _ensureDetableifyStyle() {
         if (document.getElementById('mb-detableify-style')) return;
-        const style = document.createElement('style');
-        style.id = 'mb-detableify-style';
         const diffColorsEnabled = Lib.settings.sa_enable_edits_diff_colors !== false;
         const diffNewColor = Lib.settings.sa_edits_color_diff_new || '#e4fbe4';
         const diffOldColor = Lib.settings.sa_edits_color_diff_old || '#fbe3e4';
         const zebraOdd  = Lib.settings.sa_edits_color_zebra_odd  || '#ffffff';
         const zebraEven = Lib.settings.sa_edits_color_zebra_even || '#f2f2f2';
         const rowHoverBg = Lib.settings.sa_ui_row_hover_bg || '#c2d2e9';
-        style.textContent = `
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
             .mb-dt-table {
                 border-collapse: collapse;
                 margin: 4px 0;
@@ -5789,8 +5789,8 @@
             tr:hover .mb-dt-table .mb-dt-cell {
                 background: ${rowHoverBg} !important;
             }
-        `;
-        document.head.appendChild(style);
+        `);
+        style.id = 'mb-detableify-style';
     }
 
     /**
@@ -10028,9 +10028,8 @@
             return;
         }
 
-        const style = document.createElement('style');
-        style.id = 'mb-sticky-headers-style';
-        style.textContent = `
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
             /* Ensure the table borders play nicely with sticky elements */
             table.tbl {
                 border-collapse: separate;
@@ -10086,9 +10085,8 @@
                 word-break:    normal  !important;
             }
 
-        `;
-
-        document.head.appendChild(style);
+        `);
+        style.id = 'mb-sticky-headers-style';
         Lib.debug('ui', 'Sticky headers enabled - column headers will remain visible while scrolling');
     }
 
@@ -13692,9 +13690,8 @@ ${sections.join('\n')}
         // ── Hover styles ──────────────────────────────────────────────────────
         const styleId = 'sa-export-dialog-styles';
         if (!document.getElementById(styleId)) {
-            const s = document.createElement('style');
-            s.id = styleId;
-            s.textContent = `
+            // GM_addStyle so this is exempt from page CSP style-src restrictions.
+            const s = GM_addStyle(`
                 #sa-ed-save-confirm:hover:not([disabled]) { background:#45a049 !important; }
                 #sa-ed-cancel:hover                        { background:#e0e0e0 !important; }
                 #sa-ed-save-confirm:active:not([disabled]),
@@ -13702,8 +13699,8 @@ ${sections.join('\n')}
                     transform: translateY(1px);
                     box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
                 }
-            `;
-            document.head.appendChild(s);
+            `);
+            s.id = styleId;
         }
 
         // ── Refs ──────────────────────────────────────────────────────────────
@@ -19667,8 +19664,8 @@ a { color: #1565c0; }`;
 
         const sidebarWidth = '240px';
 
-        const style = document.createElement('style');
-        style.textContent = `
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
             /* Sidebar with proper overflow handling */
             #sidebar {
                 transition: transform 0.3s ease, width 0.3s ease, opacity 0.3s ease, margin-right 0.3s ease;
@@ -19771,8 +19768,7 @@ a { color: #1565c0; }`;
             body.sidebar-is-collapsed #content {
                 margin-right: 0 !important;
             }
-        `;
-        document.head.appendChild(style);
+        `);
 
         const handle = document.createElement('div');
         handle.id = 'sidebar-toggle-handle';
@@ -21161,8 +21157,10 @@ a { color: #1565c0; }`;
     controlsContainer.insertBefore(stopBtn, initialDivider);
     // Filter container is NOT appended here anymore; moved to H2 later
 
-    const style = document.createElement('style');
-    style.textContent = `
+    // GM_addStyle so this is exempt from page CSP style-src restrictions
+    // (MusicBrainz's account/* pages serve a CSP with no 'unsafe-inline' for
+    // style-src, which silently drops plain injected <style> tags).
+    const style = GM_addStyle(`
         .mb-sorting-active, .mb-sorting-active * { cursor: wait !important; }
         .mb-show-all-btn-active { transform: translateY(1px); box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
         button.mb-show-all-btn-loading:disabled {
@@ -21936,14 +21934,12 @@ a { color: #1565c0; }`;
                 box-shadow: 0 0 0 4px rgba(26,115,232,0.28) !important;
             }
         }
-    `;
-    document.head.appendChild(style);
+    `);
 
     // ── Relationships-column CSS ───────────────────────────────────────
+    // GM_addStyle so this is exempt from page CSP style-src restrictions.
     (() => {
-        const _rs = document.createElement('style');
-        _rs.id = 'mb-rel-column-style';
-        _rs.textContent = `
+        const _rs = GM_addStyle(`
             th.mb-injected-column { font-style: italic; }
             /* td.mb-rel-cell: host cell for async relationship icon links.
                No CSS rules on the <a> elements — they are plain inline anchors
@@ -21999,8 +21995,8 @@ a { color: #1565c0; }`;
                 margin: 1px;
                 padding: 0;
             }
-        `;
-        document.head.appendChild(_rs);
+        `);
+        _rs.id = 'mb-rel-column-style';
     })();
 
     if (Lib.settings.sa_enable_count_stat_tooltip) {
@@ -22640,9 +22636,8 @@ a { color: #1565c0; }`;
         // ── Hover styles ──────────────────────────────────────────────────────
         const styleId = 'sa-save-dialog-styles';
         if (!document.getElementById(styleId)) {
-            const s = document.createElement('style');
-            s.id = styleId;
-            s.textContent = `
+            // GM_addStyle so this is exempt from page CSP style-src restrictions.
+            const s = GM_addStyle(`
                 #sa-sd-save-confirm:hover:not([disabled]) { background:#45a049 !important; }
                 #sa-sd-cancel:hover                        { background:#e0e0e0 !important; }
                 #sa-sd-save-confirm:active:not([disabled]),
@@ -22650,8 +22645,8 @@ a { color: #1565c0; }`;
                     transform: translateY(1px);
                     box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
                 }
-            `;
-            document.head.appendChild(s);
+            `);
+            s.id = styleId;
         }
 
         // ── Refs ──────────────────────────────────────────────────────────────
@@ -23562,9 +23557,8 @@ a { color: #1565c0; }`;
         // ── Hover styles ────────────────────────────────────────────────────
         const styleId = 'sa-load-popup-styles';
         if (!document.getElementById(styleId)) {
-            const s = document.createElement('style');
-            s.id = styleId;
-            s.textContent = `
+            // GM_addStyle so this is exempt from page CSP style-src restrictions.
+            const s = GM_addStyle(`
                 .sa-history-item:hover { background:#f0f0f0 !important; }
                 #sa-load-confirm:hover:not([disabled])           { background:#45a049 !important; }
                 #sa-load-cancel:hover                            { background:#e0e0e0 !important; }
@@ -23580,8 +23574,8 @@ a { color: #1565c0; }`;
                     transform: translateY(1px);
                     box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
                 }
-            `;
-            document.head.appendChild(s);
+            `);
+            s.id = styleId;
         }
 
         // ── Element refs ────────────────────────────────────────────────────
@@ -42958,9 +42952,11 @@ a { color: #1565c0; }`;
         if (document.getElementById('sa-unicode-menu')) return;
 
         // ── CSS ──────────────────────────────────────────────────────────────
-        const style = document.createElement('style');
-        style.id    = 'sa-unicode-menu-style';
-        style.textContent = `
+        // GM_addStyle (not document.createElement('style') + head.appendChild)
+        // so this stylesheet is exempt from page CSP style-src restrictions
+        // (MusicBrainz's account/* pages serve a CSP with no 'unsafe-inline'
+        // for style-src, which silently drops plain injected <style> tags).
+        const style = GM_addStyle(`
 #sa-unicode-menu {
     display: none;
     position: absolute;
@@ -43006,8 +43002,8 @@ a { color: #1565c0; }`;
     color: #666;
     font-size: 0.88em;
 }
-        `;
-        document.head.appendChild(style);
+        `);
+        style.id = 'sa-unicode-menu-style';
 
         // ── Menu DOM ─────────────────────────────────────────────────────────
         const menu = document.createElement('div');
