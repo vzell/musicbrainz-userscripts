@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.7",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'Country/Date' unique-values filter dropdown (📊, WIP.5/WIP.6): fixed a large empty gap between multiple flag icons in a cell, and between the last flag and the value text. Confirmed against a live cell's computed style: 'release-country' spans size their box (48x14.4px) to fit BOTH the flag AND a visible country-code abbreviation (e.g. \"AT\") that flagIconMap's clone deliberately strips to avoid duplicating the dropdown's own value text — baking that box's full width verbatim left a large empty gap after the now-childless icon (the PNG itself is only 16x11px). flagIconMap now reads the flag's actual pixel size directly from its background-image's PNG header (when background-size is 'auto', i.e. the image already paints at its natural size — a synchronous, exact fix, not a guess) and sizes the clone to that instead of the source's content-sized box."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.6",
     "date": "2026-07-31",
     "sections": [

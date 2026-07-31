@@ -1713,3 +1713,51 @@ alignment column rather than the icon's true small size — deliberately
 NOT touched here without live confirmation, per the lesson from the
 Release-events probe regression: don't guess a second unverified change
 in the same pass). Needs user retest.
+
+### Follow-up 2 (user confirmed display fix, gap persists) — real computed-style + cell-markup data provided
+
+User pasted the actual multi-event cell markup AND the dropdown item's
+resulting DOM with computed styles baked in as inline styles. This is the
+first time in this whole investigation actual live data (not a guess) was
+available for one of these fixes. Confirmed:
+
+- Text now sits behind the flag (WIP.6's display-normalization fix
+  worked).
+- Both flag spans ('flag-AT release-country', 'flag-XE release-country')
+  have IDENTICAL baked styles: `width: 48px; height: 14.4px;
+  background-position: 0% 84%; background-size: auto;`
+  `background-image: url("data:image/png;base64,...")`.
+- Decoded that base64 PNG's IHDR directly (python, `struct.unpack('>I',
+  raw[16:20]/[20:24])`): the actual image is **16×11px** — the baked box
+  is 3x wider and taller than the icon itself.
+- Root cause confirmed (not just theorized): `.release-country`'s box is
+  sized in the ORIGINAL cell to fit the flag AND the visible "AT"/"XE"
+  abbreviation text next to it (that's real, user-visible content there —
+  see the raw cell markup: `<span class="flag flag-AT
+  release-country"><a...><abbr title="Austria">AT</abbr></a></span>`).
+  flagIconMap's clone deliberately strips that child content (to avoid
+  showing "AT" twice — once from the icon's own text, once from the
+  dropdown's value text which already reads "AT 2003-05-05 Mon..."), but
+  kept baking the FULL content-sized box width, leaving ~32px of empty
+  space where the stripped text used to be. This happens for every flag
+  in a multi-flag cell AND after the last one (explains both "gap between
+  flags" and "gap between last flag and text").
+- Fix: added `_pngDataUriNaturalSize()` — reads the PNG's real
+  width/height straight out of the base64 payload's IHDR chunk
+  (synchronous, no `<img>`/decode round-trip) — and use it as the clone's
+  box size instead of the source element's box, but ONLY when
+  `background-size` resolves to `auto` (meaning the image is meant to
+  paint at its own natural size in the first place, so matching the box
+  to that size is an exact, not approximate, substitution — no change in
+  what's visually painted, just less empty box around it).
+  `background-position-x: 0%` is invariant to box width, and matching
+  height to the image's own height makes the Y-offset moot too, so this
+  cannot alter which part of the image is shown, only remove the
+  leftover space.
+- Deliberately scoped narrowly (only kicks in for PNG data URIs with
+  `background-size: auto`) rather than guessing at some universal "always
+  shrink to X px" rule — falls back to the prior (already-working-
+  everywhere-else) behavior for anything else, so the Country/Area case
+  is untouched.
+
+Needs user retest to confirm the gap is gone.

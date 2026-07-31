@@ -35441,6 +35441,51 @@ a { color: #1565c0; }`;
         }
 
         /**
+         * When a resolved flag visual's `backgroundImage` is a
+         * `data:image/png;base64,…` URI AND `backgroundSize` is `auto`
+         * (meaning the image already paints at its own natural pixel size,
+         * not stretched/cropped to fill some other box), returns that
+         * image's real `{width, height}` in px by reading the PNG's IHDR
+         * chunk directly out of the base64 payload — no `<img>`/decode
+         * round-trip needed, so this stays synchronous.
+         *
+         * Exists because 'release-country' spans (Country/Date column) size
+         * their box to fit BOTH the flag AND a visible country-code
+         * abbreviation (e.g. "AT") that flagIconMap's clone deliberately
+         * strips (see below) to avoid duplicating the dropdown's own value
+         * text — baking that box's full width verbatim (as resolveFlagVisual
+         * reports it) leaves a large empty gap after the now-childless icon
+         * where the stripped text used to be (confirmed against a live
+         * cell's computed style: box 48x14.4px vs. the PNG's actual 16x11px).
+         * Since `background-position-x: 0%` is invariant to box width and
+         * matching height to the image's own natural height makes the Y
+         * offset moot too, sizing the box to the image's real dimensions
+         * renders identically, just without the leftover space.
+         *
+         * @param {string} backgroundImage - resolved `background-image` CSS value
+         * @param {string} backgroundSize  - resolved `background-size` CSS value
+         * @returns {?{width: number, height: number}} natural size in px, or
+         *   null if not a background-size:auto PNG data URI, or on any parse failure
+         */
+        function _pngDataUriNaturalSize(backgroundImage, backgroundSize) {
+            if (backgroundSize !== 'auto') return null;
+            const m = /^url\(["']?(data:image\/png;base64,[^"')]+)["']?\)$/.exec(backgroundImage || '');
+            if (!m) return null;
+            try {
+                const bin = atob(m[1].slice(m[1].indexOf(',') + 1));
+                if (bin.length < 24 || bin.slice(0, 8) !== '\x89PNG\r\n\x1a\n') return null;
+                const readUint32 = (offset) => (bin.charCodeAt(offset) << 24 |
+                    bin.charCodeAt(offset + 1) << 16 | bin.charCodeAt(offset + 2) << 8 |
+                    bin.charCodeAt(offset + 3)) >>> 0;
+                const width  = readUint32(16);
+                const height = readUint32(20);
+                return (width > 0 && height > 0) ? { width, height } : null;
+            } catch {
+                return null;
+            }
+        }
+
+        /**
          * Maps each unique flag-bearing column text value (e.g.
          * "Germany (DE)", "Illinois", or a combined "Noord-Holland, Kingdom
          * of the Netherlands" value — see below) to an array of already
@@ -35543,8 +35588,9 @@ a { color: #1565c0; }`;
                             visual.backgroundColor !== 'transparent') {
                             flagClone.style.backgroundColor = visual.backgroundColor;
                         }
-                        flagClone.style.width         = visual.width;
-                        flagClone.style.height        = visual.height;
+                        const natural = _pngDataUriNaturalSize(visual.backgroundImage, visual.backgroundSize);
+                        flagClone.style.width         = natural ? natural.width + 'px'  : visual.width;
+                        flagClone.style.height        = natural ? natural.height + 'px' : visual.height;
                         // Only pass a resolved `display` through verbatim when it is
                         // context-free (renders the same regardless of its ancestor
                         // chain). Values like 'block', 'list-item', 'table-cell', or
