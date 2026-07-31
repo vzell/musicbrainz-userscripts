@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.10",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Add `// @grant GM_addStyle` so the shared `VZ_MBLibrary.user.js` settings/changelog dialogs (used by this script too) can inject CSS via `GM_addStyle()` instead of a plain `<style>` element, which MusicBrainz's `/account/*` pages block under Content-Security-Policy. See ShowAllEntityData's 9.99.737 changelog entry for the full root-cause writeup."
+        ]
+      }
+    ]
+  },
+  {
     "version": "1.0.9",
     "date": "2026-06-19",
     "sections": [
