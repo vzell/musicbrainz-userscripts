@@ -13620,7 +13620,7 @@ ${sections.join('\n')}
 
         const isFiltered   = rowsTotal > rowsExported;
         const rowSummary   = isFiltered
-            ? `<strong>${rowsExported.toLocaleString()}</strong> of ${rowsTotal.toLocaleString()} rows <span style="color:#888;font-size:0.9em;">(${rowsTotal - rowsExported} filtered out)</span>`
+            ? `<strong>${rowsExported.toLocaleString()}</strong> of ${rowsTotal.toLocaleString()} rows <span class="sa-ed-filtered-note">(${rowsTotal - rowsExported} filtered out)</span>`
             : `<strong>${rowsExported.toLocaleString()}</strong> rows`;
 
         const dialog = document.createElement('div');
@@ -13643,27 +13643,49 @@ ${sections.join('\n')}
             'box-sizing:border-box',
         ].join(';');
 
+        // GM_addStyle so this dialog shell's CSS is exempt from page CSP
+        // style-src restrictions (see showSaveDialog's identical treatment).
+        // Idempotent — headerFontSz/statusFontSz only change via a settings
+        // save, which reloads the page.
+        if (!document.getElementById('sa-export-shell-style')) {
+            const shellStyle = GM_addStyle(`
+                #sa-ed-drag-handle { margin-bottom:18px; border-bottom:1px solid #eee; padding-bottom:12px; cursor:move; user-select:none; }
+                #sa-ed-title { margin:0; color:#222; font-size:1.2em; }
+                #sa-ed-description { margin:8px 0 0; color:#555; font-size:${headerFontSz}; }
+                #sa-ed-row-summary { margin:6px 0 0; color:#666; font-size:0.9em; }
+                .sa-ed-filtered-note { color:#888; font-size:0.9em; }
+                #sa-ed-meta-block { margin-bottom:16px; border:1px solid #eee; border-radius:6px; padding:10px 14px; background:#fafafa; }
+                #sa-ed-filename-row { margin-bottom:14px; }
+                #sa-ed-filename-label { display:block; font-size:0.88em; font-weight:600; color:#444; margin-bottom:5px; }
+                #sa-ed-filename-input { width:100%; box-sizing:border-box; padding:8px 10px; border:1px solid #ccc; border-radius:6px; font-size:0.9em; font-family:monospace; outline:none; }
+                #sa-ed-btn-row { display:flex; gap:12px; margin-bottom:8px; }
+                #sa-ed-save-confirm { flex:2; padding:10px; background:#4CAF50; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                #sa-ed-cancel { flex:1; padding:10px; background:#f0f0f0; color:#333; border:1px solid #ccc; border-radius:6px; cursor:pointer; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; }
+                #sa-ed-status { display:none; padding:5px 2px; font-size:${statusFontSz}; min-height:20px; }
+            `);
+            shellStyle.id = 'sa-export-shell-style';
+        }
+
         dialog.innerHTML = `
-            <div id="sa-ed-drag-handle" style="margin-bottom:18px;border-bottom:1px solid #eee;padding-bottom:12px;cursor:move;user-select:none;">
-                <h3 style="margin:0;color:#222;font-size:1.2em;">&#128229; ${customTitle ? String(customTitle).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : `Export Table Data &mdash; ${format}`}</h3>
-                <p style="margin:8px 0 0;color:#555;font-size:${headerFontSz};">${description}</p>
-                <p style="margin:6px 0 0;color:#666;font-size:0.9em;">Exporting ${rowSummary}. Review the metadata below, optionally edit the filename, then click <strong>Save Data</strong>.</p>
+            <div id="sa-ed-drag-handle">
+                <h3 id="sa-ed-title">&#128229; ${customTitle ? String(customTitle).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : `Export Table Data &mdash; ${format}`}</h3>
+                <p id="sa-ed-description">${description}</p>
+                <p id="sa-ed-row-summary">Exporting ${rowSummary}. Review the metadata below, optionally edit the filename, then click <strong>Save Data</strong>.</p>
             </div>
-            <div id="sa-ed-meta-block" style="margin-bottom:16px;border:1px solid #eee;border-radius:6px;padding:10px 14px;background:#fafafa;">
+            <div id="sa-ed-meta-block">
                 ${buildMetaBlockHTML(metaData, rowsExported, null)}
             </div>
-            <div style="margin-bottom:14px;">
-                <label for="sa-ed-filename-input" style="display:block;font-size:0.88em;font-weight:600;color:#444;margin-bottom:5px;">&#128462; Filename</label>
-                <input id="sa-ed-filename-input" type="text" value=""
-                    style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:0.9em;font-family:monospace;outline:none;">
+            <div id="sa-ed-filename-row">
+                <label for="sa-ed-filename-input" id="sa-ed-filename-label">&#128462; Filename</label>
+                <input id="sa-ed-filename-input" type="text" value="">
             </div>
-            <div style="display:flex;gap:12px;margin-bottom:8px;">
-                <button id="sa-ed-save-confirm" style="flex:2;padding:10px;background:#4CAF50;color:white;border:none;border-radius:6px;font-weight:bold;cursor:pointer;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">
-                    <span>&#128229; <span style="text-decoration:underline">S</span>ave Data</span>
+            <div id="sa-ed-btn-row">
+                <button id="sa-ed-save-confirm">
+                    <span>&#128229; <u>S</u>ave Data</span>
                 </button>
-                <button id="sa-ed-cancel" style="flex:1;padding:10px;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:6px;cursor:pointer;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;">Cancel</button>
+                <button id="sa-ed-cancel">Cancel</button>
             </div>
-            <div id="sa-ed-status" style="display:none;padding:5px 2px;font-size:${statusFontSz};min-height:20px;"></div>
+            <div id="sa-ed-status"></div>
         `;
 
         document.body.appendChild(dialog);
@@ -13775,7 +13797,7 @@ ${sections.join('\n')}
             statusDiv.innerHTML     = `\u2705 Download initiated for <em>"${chosenFilename}"</em>. Monitor your browser for the file.`;
             statusDiv.style.color   = '#2e7d32';
             statusDiv.style.display = 'block';
-            saveBtn.innerHTML  = '&#128229; <span style="text-decoration:underline">S</span>ave Data';
+            saveBtn.innerHTML  = '&#128229; <u>S</u>ave Data';
             saveBtn.disabled   = false; saveBtn.style.opacity = '';
 
             // Parse the setting robustly: GM storage returns strings, not numbers.

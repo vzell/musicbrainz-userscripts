@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.7",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fix the generic export dialog (`showExportDialog`, the CSV/etc \"Save Data\" flow, distinct from `showSaveDialog`'s full-table-serialization dialog) rendering unstyled on /account/applications — same CSP `style-src` issue as WIP.1-6, across 15 attributes. Virtually identical shell to `showSaveDialog`/`showLoadFilterDialog`, fixed with the same dedicated, id-guarded, injected-once `GM_addStyle()` stylesheet pattern."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.6",
         "date": "2026-07-31",
         "sections": [

@@ -1633,12 +1633,11 @@ falls back to `N/A` like every other empty cell on this page.
      settings-row containers' own layout, and is why those already worked
      before this fix.
 - **Not yet fixed — same pattern confirmed present in
-  `ShowAllEntityData.user.js` itself**, ~121 `style="..."` attributes
-  across ~16 functions (counts from a grep-by-enclosing-function pass):
+  `ShowAllEntityData.user.js` itself**, ~106 `style="..."` attributes
+  across ~15 functions (counts from a grep-by-enclosing-function pass):
   `showEditPersistentListDialog` (49) — a table-editor dialog shell (drag
   handle, editable pinned-filter-list table), NOT another `_histGlyphs`
-  duplicate this time, confirmed by grep — `showExportDialog` (15),
-  `showRenderDecisionDialog` (7),
+  duplicate this time, confirmed by grep — `showRenderDecisionDialog` (7),
   `showCtrlMTooltip` (5), `_saveSettingsConfig` (5), `_relBuildTooltipHTML`
   (5), `makeCollapseExpandBtnHTML` (3), plus a handful of 1-2-count sites
   (`loadAndRender`, `toggleAutoResizeColumns`, `renderRowsChunked`,
@@ -1694,6 +1693,12 @@ falls back to `N/A` like every other empty cell on this page.
   computing a *color* to computing a *class name* (`_scClass`) instead —
   same pattern to reach for whenever a small, enumerable set of dynamic
   values feeds into what would otherwise be an inline style.
+  **Fixed (2026-07-31, WIP.7):** `showExportDialog` (15 attributes) — the
+  generic export dialog (CSV/etc "Save Data" flow, distinct from
+  `showSaveDialog`'s full-table-serialization dialog); virtually identical
+  shell to `showSaveDialog`/`showLoadFilterDialog`, same
+  dedicated-id-guarded-injected-once `sa-export-shell-style` stylesheet
+  pattern.
   User decided (2026-07-31) to fix these incrementally as each is found
   broken during further pageType testing, rather than blind-editing all
   ~260 in one pass with no way to visually verify each. Same
