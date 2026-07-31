@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.746",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Resynced ShowAllEntityData_HELP.txt against every user-facing change since 9.99.675, and against the live keyboard-shortcut/settings code as ground truth. Added: the report pages (/reports, /report/<Name>), edit-listing pages (edits/user-edits/user-open-edits/notes-received) as a new EDIT-LISTING PAGES section, auto-editor elections, genre/instrument/edit-types lists, CD stub pages, and privileged-accounts page to SUPPORTED PAGES; the musicbrainz.eu mirror note; unique-values dropdown multi-select checkboxes and the opt-in flag-icon decoration; the Locality/Region split of Area-family extracted columns; a new ANNOTATION COLUMNS section and ANNOTATION SECTION AUTO-EXPAND note; and the 🎨 EDITS PAGE / 📝 ANNOTATION COLUMNS / 📖 ANNOTATION SECTION settings groups. Also corrected a pre-existing keyboard-shortcuts inaccuracy found while cross-checking ctrlMFunctionMap and configSchema directly: `sa_enable_direct_ctrl_char_shortcuts` defaults to OFF, meaning every direct Ctrl+<letter> shortcut (including ones the HELP file listed as always-on, like Ctrl+G/Ctrl+C/Ctrl+K) is actually suppressed by default in favor of the Ctrl+M prefix mode — documented this plainly, added the missing Ctrl+B / prefix-mode b/g/c/q/a entries, and noted which shortcuts (Ctrl+2/3, Ctrl+,, Ctrl+Shift+G, Ctrl+↑/↓/#, Ctrl+U) are never affected by the toggle. Also added a new ACCOUNT APPLICATIONS PAGE section explaining why /account/applications gets its own callout: MusicBrainz serves /account/* with a stricter Content-Security-Policy (style-src 'self' staticbrainz.org static.metabrainz.org, no unsafe-inline) than other pages, and every dialog/tooltip/panel in this script now renders correctly there via GM_addStyle()-injected stylesheets — the subject of the 9.99.736-9.99.745 fix run — with no reduced functionality."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.745",
     "date": "2026-07-31",
     "sections": [
