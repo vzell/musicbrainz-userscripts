@@ -1,5 +1,102 @@
 [
   {
+    "version": "9.99.735",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The 📊 unique-values filter dropdown's flag-icon decoration (9.99.728-9.99.734, covering Country/Area/Locality/Region/Location/Place/Country-Date columns) is now gated behind a new 'Show Flag Icons In Unique-Values Dropdown' setting (sa_enable_dropdown_flag_icons, in the existing 'UNIQUE COLUMN VALUES DROP DOWN CONFIGURATION' settings section), default OFF. hasFlagIcons short-circuits on the setting before doing any column-name/DOM work, so the dropdown renders exactly as it did before this feature existed unless a user opts in."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.734",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'Country/Date' unique-values filter dropdown (📊, 9.99.732/9.99.733): fixed a large empty gap between multiple flag icons in a cell, and between the last flag and the value text. Confirmed against a live cell's computed style: 'release-country' spans size their box (48x14.4px) to fit BOTH the flag AND a visible country-code abbreviation (e.g. \"AT\") that flagIconMap's clone deliberately strips to avoid duplicating the dropdown's own value text — baking that box's full width verbatim left a large empty gap after the now-childless icon (the PNG itself is only 16x11px). flagIconMap now reads the flag's actual pixel size directly from its background-image's PNG header (when background-size is 'auto', i.e. the image already paints at its natural size — a synchronous, exact fix, not a guess) and sizes the clone to that instead of the source's content-sized box."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.733",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'Country/Date' unique-values filter dropdown (📊, 9.99.732): fixed the dropdown's value text landing on its own new line below the flag icon instead of right behind it. flagIconMap only normalized a baked 'display: none' to 'inline-block', passing every other resolved display value through verbatim — 'release-country' spans carry extra column-alignment CSS beyond the shared '.flag' sprite rule (unlike the plain '.flag.flag-XX' spans on the Country column, which is unaffected), and a layout-context-dependent display value (e.g. block/list-item/table-cell) baked onto the icon clone forces a line break once it's cloned standalone into the dropdown item. Now only inherently context-free display values (inline/inline-block/inline-flex/inline-grid) are passed through; anything else normalizes to inline-block, same as the existing 'none' case."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.732",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'Location', source-column 'Place' (Place-category reports, e.g. AnnotationsPlaces), and 'Country/Date' unique-values filter dropdown (📊): entries now show flag icon(s) too, matching the table cells. These are the unsplit SOURCE columns splitLocation/splitCountryDate operate on, and their native markup uses the exact same two flag shapes already fixed for Country/Area (9.99.728/9.99.731) — the gap was only that the dropdown's column-name detection never recognized these three exact names. (Deliberately NOT extended to 'Release events' — that column's flag is a script-rebuilt <li class=\"flag flag-XX\"> with no wrapping <span>/<a>, a different shape whose decoration attempt was reverted after regressing the Country column; see git history.) Because 'Location'/'Country/Date' (unlike Country/Area) can appear inside a currently-collapsed multi-event <li>, resolveFlagVisual() now also temporarily reveals a hidden ancestor <li> around the getComputedStyle() read (restored immediately after) so a collapsed-but-not-first event's flag doesn't read back as blank."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.731",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Country column unique-values filter dropdown (📊): fixed a regression from 9.99.730 where flags looked flat/washed-out again — 9.99.730's multi-flag fix wrapped icons in a <span style=\"display:inline-flex\"> container, an extra layout context not present in the table cell that could interfere with the native flag's baked width/height/background rendering. Removed the wrapper: each icon is now stored/cloned independently and appended as its own direct sibling (matching the original, working single-flag structure), with no behavior change for the multi-flag case.",
+          "'Area'/'Begin area'/'End area' (the unsplit source columns splitArea/splitLocation operate on) unique-values filter dropdown (📊): entries now show flag icon(s) too, matching the table cells. These columns can hold BOTH icon shapes in one cell (a Locality/Region subdivision icon followed by the Country's own flag), so column-name matching now also covers an 'rea' suffix, and countryFlagMap/areaIconMap (9.99.728/9.99.729) are unified into a single flagIconMap that scans for both shapes together in document order, so a combined cell's icons come out correctly interleaved rather than grouped by shape."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.730",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Country/MB-Locality/MB-Region unique-values filter dropdown (📊): cells holding more than one flag (a multi-event Country cell, or a Region cell where a third-party userscript decorates both a subdivision AND its sovereign state with custom flag icons, e.g. \"Noord-Holland, Kingdom of the Netherlands\") now show all of their flags in the dropdown instead of none. countryFlagMap/areaIconMap (see 9.99.728/9.99.729) previously keyed each flag by a label parsed from that single flag's own text, but the dropdown's unique value is always the whole cell's combined text — a multi-flag cell's combined value never matched any single flag's label, so no icon was shown at all. Both maps are now keyed by the cell's full getCleanColumnText() value (exactly how the dropdown's own value list is built) and bundle every flag found in that cell into one wrapper."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.729",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "MB-Locality/MB-Region (and Begin/End variants) unique-values filter dropdown (📊): entries now show the subdivision flag icon injected by third-party userscripts like \"MusicBrainz: More Flags Everywhere\", matching the icon already shown in the table cells. The dropdown's flag-decoration feature previously only recognized exact Country column names, so it never ran at all for Locality/Region columns; its cell scan was also hardcoded to <span> elements, which would have missed the <img class=\"flag ...\"> markup these third-party icons actually use even if it had run. Column-name matching is now suffix-based (matching this file's own _flagRegionColumnTrios convention for the same column family), which as a side effect also fixes the Country dropdown never decorating a 'Release country' column."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.728",
+    "date": "2026-07-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Country column unique-values filter dropdown (📊): the flag icon next to each country name now renders identically to the flag in the table cell. Previously only the span's CSS class was copied into the dropdown clone, which relies on MusicBrainz's own stylesheet cascading correctly wherever the clone lands — the dropdown panel sits outside #content/table.tbl and in a smaller font-size context, so the flag could come out looking flatter/blanker than the real one. Now the resolved visual (background sprite, size, border, vertical-align, …) is read directly from the live table-cell flag via getComputedStyle() — including a ::before/::after pseudo-element fallback — and baked as inline styles onto the dropdown clone, so it is pixel-identical regardless of where MusicBrainz's CSS rule is scoped."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.727",
     "date": "2026-07-31",
     "sections": [
