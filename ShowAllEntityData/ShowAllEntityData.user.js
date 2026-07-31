@@ -22966,77 +22966,124 @@ a { color: #1565c0; }`;
             'max-height:calc(100vh - 60px)', 'overflow-y:auto', 'resize:both', 'box-sizing:border-box',
         ].join(';');
 
+        // GM_addStyle so this dialog's CSS is exempt from page CSP style-src
+        // restrictions (see showSaveDialog/showLoadFilterDialog's identical
+        // treatment). Idempotent — headerFontSz only changes via a settings
+        // save, which reloads the page. Reuses the shared .mb-fhw-mark class
+        // from _ensureFilterHistoryWidgetStyle() for the quick-filter
+        // highlight (same visual as every other filter-history mark).
+        _ensureFilterHistoryWidgetStyle();
+        if (!document.getElementById('sa-epl-style')) {
+            const eplStyle = GM_addStyle(`
+                #sa-epl-drag { margin-bottom:14px; border-bottom:1px solid #eee; padding-bottom:10px; cursor:move; user-select:none; }
+                #sa-epl-title { margin:0; color:#222; font-size:1.1em; }
+                #sa-epl-subtitle { margin:4px 0 0; color:#666; font-size:${headerFontSz}; }
+                #sa-epl-qf-row { margin-bottom:10px; }
+                #sa-epl-qf-inner { position:relative; display:flex; align-items:center; }
+                #sa-epl-qf { width:100%; box-sizing:border-box; padding:6px 32px 6px 10px; border:1px solid #ccc; border-radius:6px; font-size:0.9em; outline:none; }
+                #sa-epl-qf-clear-btn { position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#c0392b; font-size:0.95em; font-weight:bold; line-height:1; padding:2px 3px; border-radius:3px; display:none; }
+                #sa-epl-table-wrap { border:1px solid #ddd; border-radius:6px; overflow:auto; max-height:320px; margin-bottom:12px; }
+                #sa-epl-table { width:100%; border-collapse:collapse; font-size:0.88em; }
+                #sa-epl-thead-row { background:#f5f5f5; position:sticky; top:0; z-index:1; }
+                .sa-epl-th-left, .sa-epl-th-center { border-bottom:2px solid #ddd; font-weight:700; }
+                .sa-epl-th-left { padding:6px 10px; text-align:left; }
+                .sa-epl-th-center { padding:6px 4px; text-align:center; }
+                #sa-epl-form { display:none; background:#f9f9f9; border:1px solid #ddd; border-radius:6px; padding:12px; margin-bottom:12px; }
+                #sa-epl-form-input-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+                #sa-epl-input { flex:1; padding:7px 10px; border:1px solid #ccc; border-radius:6px; font-size:0.9em; outline:none; }
+                #sa-epl-checkbox-row { display:flex; gap:16px; margin-bottom:8px; flex-wrap:wrap; }
+                .sa-epl-checkbox-label { cursor:pointer; display:flex; align-items:center; gap:5px; font-size:0.88em; font-weight:600; }
+                #sa-epl-form-btn-row { display:flex; gap:8px; }
+                #sa-epl-form-apply { padding:6px 14px; background:#4CAF50; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; font-size:0.88em; }
+                #sa-epl-form-discard { padding:6px 14px; background:#f0f0f0; color:#333; border:1px solid #ccc; border-radius:6px; cursor:pointer; font-size:0.88em; }
+                #sa-epl-status { min-height:18px; font-size:0.82em; color:#888; margin-bottom:10px; }
+                #sa-epl-action-row { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+                #sa-epl-add-btn { padding:7px 12px; background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; border-radius:6px; cursor:pointer; font-weight:600; font-size:0.85em; }
+                #sa-epl-edit-btn { padding:7px 12px; background:#fff8e1; color:#e65100; border:1px solid #ffe082; border-radius:6px; cursor:pointer; font-weight:600; font-size:0.85em; }
+                #sa-epl-remove-btn { padding:7px 12px; background:#ffebee; color:#c62828; border:1px solid #ef9a9a; border-radius:6px; cursor:pointer; font-weight:600; font-size:0.85em; }
+                .sa-epl-spacer { flex:1; }
+                #sa-epl-save-btn { padding:7px 14px; background:#4CAF50; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; font-size:0.88em; }
+                #sa-epl-cancel-btn { padding:7px 14px; background:#f0f0f0; color:#333; border:1px solid #ccc; border-radius:6px; cursor:pointer; font-size:0.88em; }
+                .sa-epl-mark-icon { font-size:0.9em; cursor:default; user-select:none; }
+                .sa-epl-row { cursor:pointer; border-bottom:1px solid #eee; }
+                .sa-epl-row-sel { background:#e3f2fd; outline:2px solid #90caf9; }
+                .sa-epl-row-mrk { background:#fffde7; outline:1px dashed #f9a825; }
+                .sa-epl-td-idx { padding:5px 6px; color:#aaa; font-size:0.82em; white-space:nowrap; }
+                .sa-epl-td-query { padding:5px 10px; font-size:0.9em; word-break:break-all; }
+                .sa-epl-td-center { padding:5px 4px; text-align:center; }
+                .sa-epl-empty { padding:12px; text-align:center; color:#aaa; font-size:0.88em; }
+            `);
+            eplStyle.id = 'sa-epl-style';
+        }
+
         dlg.innerHTML = `
-            <div id="sa-epl-drag" style="margin-bottom:14px;border-bottom:1px solid #eee;padding-bottom:10px;cursor:move;user-select:none;">
-                <h3 style="margin:0;color:#222;font-size:1.1em;">&#128204; Edit Pinned Filter List</h3>
-                <p style="margin:4px 0 0;color:#666;font-size:${headerFontSz};">Add, edit or remove entries from the persistent pinned filter list. Changes take effect only when you click <strong>Save</strong>.</p>
+            <div id="sa-epl-drag">
+                <h3 id="sa-epl-title">&#128204; Edit Pinned Filter List</h3>
+                <p id="sa-epl-subtitle">Add, edit or remove entries from the persistent pinned filter list. Changes take effect only when you click <strong>Save</strong>.</p>
             </div>
             <!-- Quick filter -->
-            <div style="margin-bottom:10px;">
-                <div style="position:relative;display:flex;align-items:center;">
-                    <input id="sa-epl-qf" type="text" placeholder="&#128269; Quick filter list..."
-                        style="width:100%;box-sizing:border-box;padding:6px 32px 6px 10px;border:1px solid #ccc;border-radius:6px;font-size:0.9em;outline:none;">
+            <div id="sa-epl-qf-row">
+                <div id="sa-epl-qf-inner">
+                    <input id="sa-epl-qf" type="text" placeholder="&#128269; Quick filter list...">
                     <button id="sa-epl-qf-clear-btn" tabindex="-1"
-                        title="Clear quick filter"
-                        style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#c0392b;font-size:0.95em;font-weight:bold;line-height:1;padding:2px 3px;border-radius:3px;display:none;">&#10005;</button>
+                        title="Clear quick filter">&#10005;</button>
                 </div>
             </div>
             <!-- Entry table -->
-            <div id="sa-epl-table-wrap" style="border:1px solid #ddd;border-radius:6px;overflow:auto;max-height:320px;margin-bottom:12px;">
-                <table id="sa-epl-table" style="width:100%;border-collapse:collapse;font-size:0.88em;">
+            <div id="sa-epl-table-wrap">
+                <table id="sa-epl-table">
                     <thead>
-                        <tr style="background:#f5f5f5;position:sticky;top:0;z-index:1;">
-                            <th style="padding:6px 10px;text-align:left;border-bottom:2px solid #ddd;font-weight:700;">#</th>
-                            <th style="padding:6px 10px;text-align:left;border-bottom:2px solid #ddd;font-weight:700;">Filter Expression</th>
-                            <th style="padding:6px 4px;text-align:center;border-bottom:2px solid #ddd;font-weight:700;" title="Case Sensitive">Cs</th>
-                            <th style="padding:6px 4px;text-align:center;border-bottom:2px solid #ddd;font-weight:700;" title="Regular Expression">Re</th>
-                            <th style="padding:6px 4px;text-align:center;border-bottom:2px solid #ddd;font-weight:700;" title="Exclude Matches">Ex</th>
+                        <tr id="sa-epl-thead-row">
+                            <th class="sa-epl-th-left">#</th>
+                            <th class="sa-epl-th-left">Filter Expression</th>
+                            <th class="sa-epl-th-center" title="Case Sensitive">Cs</th>
+                            <th class="sa-epl-th-center" title="Regular Expression">Re</th>
+                            <th class="sa-epl-th-center" title="Exclude Matches">Ex</th>
                         </tr>
                     </thead>
                     <tbody id="sa-epl-tbody"></tbody>
                 </table>
             </div>
             <!-- Edit form (hidden until Add/Edit clicked) -->
-            <div id="sa-epl-form" style="display:none;background:#f9f9f9;border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:12px;">
-                <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-                    <input id="sa-epl-input" type="text" placeholder="Filter expression..."
-                        style="flex:1;padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:0.9em;outline:none;">
+            <div id="sa-epl-form">
+                <div id="sa-epl-form-input-row">
+                    <input id="sa-epl-input" type="text" placeholder="Filter expression...">
                 </div>
-                <div style="display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap;">
-                    <label style="cursor:pointer;display:flex;align-items:center;gap:5px;font-size:0.88em;font-weight:600;">
+                <div id="sa-epl-checkbox-row">
+                    <label class="sa-epl-checkbox-label">
                         <input type="checkbox" id="sa-epl-case"> Case Sensitive
                     </label>
-                    <label style="cursor:pointer;display:flex;align-items:center;gap:5px;font-size:0.88em;font-weight:600;">
+                    <label class="sa-epl-checkbox-label">
                         <input type="checkbox" id="sa-epl-regex"> Regular Expression
                     </label>
-                    <label style="cursor:pointer;display:flex;align-items:center;gap:5px;font-size:0.88em;font-weight:600;">
+                    <label class="sa-epl-checkbox-label">
                         <input type="checkbox" id="sa-epl-exclude"> Exclude Matches
                     </label>
                 </div>
-                <div style="display:flex;gap:8px;">
-                    <button id="sa-epl-form-apply" style="padding:6px 14px;background:#4CAF50;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:bold;font-size:0.88em;">Apply</button>
-                    <button id="sa-epl-form-discard" style="padding:6px 14px;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:0.88em;">Discard</button>
+                <div id="sa-epl-form-btn-row">
+                    <button id="sa-epl-form-apply">Apply</button>
+                    <button id="sa-epl-form-discard">Discard</button>
                 </div>
             </div>
             <!-- Status line -->
-            <div id="sa-epl-status" style="min-height:18px;font-size:0.82em;color:#888;margin-bottom:10px;"></div>
+            <div id="sa-epl-status"></div>
             <!-- Action buttons row -->
-            <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-                <button id="sa-epl-add-btn" style="padding:7px 12px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.85em;" title="Add new entry (Alt+A)">
-                    + <span style="text-decoration:underline">A</span>dd
+            <div id="sa-epl-action-row">
+                <button id="sa-epl-add-btn" title="Add new entry (Alt+A)">
+                    + <u>A</u>dd
                 </button>
-                <button id="sa-epl-edit-btn" style="padding:7px 12px;background:#fff8e1;color:#e65100;border:1px solid #ffe082;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.85em;" title="Edit selected entry (Alt+E)" disabled>
-                    &#9998; <span style="text-decoration:underline">E</span>dit
+                <button id="sa-epl-edit-btn" title="Edit selected entry (Alt+E)" disabled>
+                    &#9998; <u>E</u>dit
                 </button>
-                <button id="sa-epl-remove-btn" style="padding:7px 12px;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.85em;" title="Remove selected entry (Alt+R)" disabled>
-                    &#10005; <span style="text-decoration:underline">R</span>emove
+                <button id="sa-epl-remove-btn" title="Remove selected entry (Alt+R)" disabled>
+                    &#10005; <u>R</u>emove
                 </button>
-                <div style="flex:1;"></div>
-                <button id="sa-epl-save-btn" style="padding:7px 14px;background:#4CAF50;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:bold;font-size:0.88em;" title="Save changes (Alt+S)">
-                    &#128190; <span style="text-decoration:underline">S</span>ave
+                <div class="sa-epl-spacer"></div>
+                <button id="sa-epl-save-btn" title="Save changes (Alt+S)">
+                    &#128190; <u>S</u>ave
                 </button>
-                <button id="sa-epl-cancel-btn" style="padding:7px 14px;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:0.88em;" title="Cancel (Alt+C / Escape)">
-                    <span style="text-decoration:underline">C</span>ancel
+                <button id="sa-epl-cancel-btn" title="Cancel (Alt+C / Escape)">
+                    <u>C</u>ancel
                 </button>
             </div>
         `;
@@ -23104,7 +23151,7 @@ a { color: #1565c0; }`;
             const nesc = needle.replace(/&/g,'&amp;').replace(/</g,'&lt;');
             const idx = esc.toLowerCase().indexOf(nesc.toLowerCase());
             if (idx < 0) return esc;
-            return esc.slice(0,idx) + `<mark style="background:#fff176;padding:0;">${esc.slice(idx, idx+nesc.length)}</mark>` + esc.slice(idx+nesc.length);
+            return esc.slice(0,idx) + `<mark class="mb-fhw-mark">${esc.slice(idx, idx+nesc.length)}</mark>` + esc.slice(idx+nesc.length);
         };
 
         const _eplStatus = (msg, color = '#888') => {
@@ -23145,14 +23192,14 @@ a { color: #1565c0; }`;
                 eplRemoveBtn.disabled      = false;
                 eplRemoveBtn.style.opacity = '';
                 eplRemoveBtn.innerHTML     =
-                    `&#10005; <span style="text-decoration:underline">R</span>emove (${n} marked)`;
+                    `&#10005; <u>R</u>emove (${n} marked)`;
                 eplRemoveBtn.title = `Remove all ${n} marked entries (Alt+R)`;
             } else {
                 const hasSel               = selectedIdx >= 0;
                 eplRemoveBtn.disabled      = !hasSel;
                 eplRemoveBtn.style.opacity = hasSel ? '' : '0.4';
                 eplRemoveBtn.innerHTML     =
-                    '&#10005; <span style="text-decoration:underline">R</span>emove';
+                    '&#10005; <u>R</u>emove';
                 eplRemoveBtn.title = 'Remove selected entry (Alt+R)';
             }
         };
@@ -23184,22 +23231,19 @@ a { color: #1565c0; }`;
                 const hl       = _eplHighlight(e.query, qf);
                 const isMrk    = markedSet.has(origIdx);
                 const isSel    = origIdx === selectedIdx;
-                const rowStyle = isSel ? 'background:#e3f2fd;outline:2px solid #90caf9;'
-                               : isMrk ? 'background:#fffde7;outline:1px dashed #f9a825;'
-                               : '';
-                const markIcon = `<span class="sa-epl-mark-icon" title="Tab → mark/unmark for bulk removal" `
-                               + `style="font-size:0.9em;cursor:default;user-select:none;">`
+                const rowClass = isSel ? 'sa-epl-row-sel' : isMrk ? 'sa-epl-row-mrk' : '';
+                const markIcon = `<span class="sa-epl-mark-icon" title="Tab → mark/unmark for bulk removal">`
                                + (isMrk ? '&#9745;' : '&#9744;') + `</span>`;
                 return `<tr data-orig-idx="${origIdx}" tabindex="0" `
-                     + `style="cursor:pointer;border-bottom:1px solid #eee;${rowStyle}">`
-                     + `<td style="padding:5px 6px;color:#aaa;font-size:0.82em;white-space:nowrap;">`
+                     + `class="sa-epl-row ${rowClass}">`
+                     + `<td class="sa-epl-td-idx">`
                      + `${markIcon}&thinsp;${origIdx + 1}</td>`
-                     + `<td style="padding:5px 10px;font-size:0.9em;word-break:break-all;">${hl}</td>`
-                     + `<td style="padding:5px 4px;text-align:center;">${e.useCase    ? '&#10003;' : ''}</td>`
-                     + `<td style="padding:5px 4px;text-align:center;">${e.useRegex   ? '&#10003;' : ''}</td>`
-                     + `<td style="padding:5px 4px;text-align:center;">${e.useExclude ? '&#10003;' : ''}</td>`
+                     + `<td class="sa-epl-td-query">${hl}</td>`
+                     + `<td class="sa-epl-td-center">${e.useCase    ? '&#10003;' : ''}</td>`
+                     + `<td class="sa-epl-td-center">${e.useRegex   ? '&#10003;' : ''}</td>`
+                     + `<td class="sa-epl-td-center">${e.useExclude ? '&#10003;' : ''}</td>`
                      + `</tr>`;
-            }).join('') || `<tr><td colspan="5" style="padding:12px;text-align:center;color:#aaa;font-size:0.88em;">No entries</td></tr>`;
+            }).join('') || `<tr><td colspan="5" class="sa-epl-empty">No entries</td></tr>`;
 
             // ── Wire row interactions ─────────────────────────────────────────
             const rows = Array.from(eplTbody.querySelectorAll('tr[data-orig-idx]'));

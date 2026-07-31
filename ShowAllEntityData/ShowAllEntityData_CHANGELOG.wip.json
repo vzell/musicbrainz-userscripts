@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.8",
+        "date": "2026-07-31",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fix the \"Edit Pinned Filter List\" table-editor dialog (`showEditPersistentListDialog`, opened via the ✎ Edit Pinned Filter List button inside any filter-history dropdown) rendering unstyled on /account/applications — same CSP `style-src` issue as WIP.1-7, across 49 attributes, the biggest remaining function. Its per-row selection/mark highlighting (a dynamic `rowStyle` string computed from 3 discrete states) was converted to a base `.sa-epl-row` class plus `.sa-epl-row-sel`/`.sa-epl-row-mrk` modifier classes; the existing JS property-assignment calls that update selection after initial render are unaffected. Also reused the shared `.mb-fhw-mark` class for its quick-filter highlight."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.7",
         "date": "2026-07-31",
         "sections": [

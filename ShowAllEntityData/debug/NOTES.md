@@ -1633,11 +1633,9 @@ falls back to `N/A` like every other empty cell on this page.
      settings-row containers' own layout, and is why those already worked
      before this fix.
 - **Not yet fixed — same pattern confirmed present in
-  `ShowAllEntityData.user.js` itself**, ~106 `style="..."` attributes
-  across ~15 functions (counts from a grep-by-enclosing-function pass):
-  `showEditPersistentListDialog` (49) — a table-editor dialog shell (drag
-  handle, editable pinned-filter-list table), NOT another `_histGlyphs`
-  duplicate this time, confirmed by grep — `showRenderDecisionDialog` (7),
+  `ShowAllEntityData.user.js` itself**, ~57 `style="..."` attributes
+  across ~14 functions (counts from a grep-by-enclosing-function pass):
+  `showRenderDecisionDialog` (7),
   `showCtrlMTooltip` (5), `_saveSettingsConfig` (5), `_relBuildTooltipHTML`
   (5), `makeCollapseExpandBtnHTML` (3), plus a handful of 1-2-count sites
   (`loadAndRender`, `toggleAutoResizeColumns`, `renderRowsChunked`,
@@ -1699,6 +1697,21 @@ falls back to `N/A` like every other empty cell on this page.
   shell to `showSaveDialog`/`showLoadFilterDialog`, same
   dedicated-id-guarded-injected-once `sa-export-shell-style` stylesheet
   pattern.
+  **Fixed (2026-07-31, WIP.8):** `showEditPersistentListDialog` (49
+  attributes — the biggest remaining function) — the "Edit Pinned Filter
+  List" table-editor dialog (opened from the ✎ Edit Pinned Filter List
+  button inside the filter-history dropdown). Its per-row rendering
+  (`_eplRender`) computed a dynamic `rowStyle` string from 3 discrete
+  selection states (selected/marked/neither) — same pattern as
+  `showStatsPanel`'s sort-direction case — converted to a base
+  `.sa-epl-row` class plus `.sa-epl-row-sel`/`.sa-epl-row-mrk` modifier
+  classes (`rowClass` computed instead of `rowStyle`). The later
+  `tr.style.background =`/`tr.style.outline =` JS property-assignment
+  calls in `_eplSelectRow`/`_toggleMark` (already CSP-safe) are unaffected
+  since inline styles still override classes — dynamic re-selection after
+  initial render behaves identically to before. Also reused the shared
+  `.mb-fhw-mark` class for its quick-filter highlight instead of yet
+  another one-off `<mark style="...">` duplicate.
   User decided (2026-07-31) to fix these incrementally as each is found
   broken during further pageType testing, rather than blind-editing all
   ~260 in one pass with no way to visually verify each. Same
