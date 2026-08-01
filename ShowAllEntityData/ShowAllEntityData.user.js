@@ -28,6 +28,7 @@
 // @grant        GM_info
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @grant        GM_deleteValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_unregisterMenuCommand
 // @license      MIT
@@ -990,6 +991,26 @@
             default: '#CCFFCC',
             description: 'Background color of the "Show all N rows" overflow sub-table button after it has been clicked ' +
                          '(opening the full listing in a new tab). Provides visual confirmation that the button was activated.'
+        },
+
+        sa_ui_show_single_table_btn_bg: {
+            label: '"Show single-table" button initial background color',
+            type: 'color_picker',
+            default: '#B3E5FC',
+            description: 'Background color of the "Show single-table" sub-table button (appears instead of "Show all N ' +
+                         'rows" when a relationship/performance category has no MusicBrainz overflow, i.e. every row is ' +
+                         'already on screen) before it has been clicked. Deliberately distinct from ' +
+                         'sa_ui_show_all_subtable_btn_bg since both button kinds can appear on the same page (across ' +
+                         'different sub-sections), just never on the same one.'
+        },
+
+        sa_ui_show_single_table_btn_bg_clicked: {
+            label: '"Show single-table" button clicked background color',
+            type: 'color_picker',
+            default: '#CCFFCC',
+            description: 'Background color of the "Show single-table" sub-table button after it has been clicked ' +
+                         '(opening the client-side snapshot in a new tab). Provides visual confirmation that the ' +
+                         'button was activated.'
         },
 
         // --- Filter-bar utility buttons (Prefilter toggle, Toggle highlighting, Clear filters) ---
@@ -18998,6 +19019,162 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Captures a multi-table sub-section's currently-rendered rows into a
+     * snapshot payload consumable by `_hydrateAndRenderFromSnapshotData()` —
+     * reuses the exact header/cell schema `saveTableDataToDisk()` writes to
+     * disk (see its `dataToSave.headers`/`.rows` construction), scoped down
+     * to just this one `table` instead of the whole page.
+     *
+     * No force-expand-before-capture step is needed: `getCleanCellHtml()`
+     * (via `_stripTransientCellState()`) already normalises every cell back
+     * to its canonical collapsed state before serialising, exactly as
+     * `saveTableDataToDisk()` relies on — the reconstructed table gets
+     * working collapse/expand toggles from `initCollapsableColumns()` again
+     * on the new tab, rather than a frozen expanded snapshot.
+     *
+     * @param  {HTMLTableElement} table        The sub-table (h3's table.tbl) to capture.
+     * @param  {string}           categoryName Human-readable relationship-type/category name.
+     * @param  {string}           pageType     Current module-level pageType (e.g. 'artist-relationships').
+     * @returns {Object} Snapshot payload — same shape `_hydrateAndRenderFromSnapshotData` accepts.
+     */
+    function captureSubtableSnapshot(table, categoryName, pageType) {
+        const headers = table.tHead
+            ? Array.from(table.tHead.querySelectorAll('tr'))
+                .filter(row => !row.classList.contains('mb-col-filter-row'))
+                .map(row => Array.from(row.cells)
+                    .filter(cell => !cell.classList.contains('mb-picard-th') &&
+                                    !cell.classList.contains('mb-ice-th'))
+                    .map(cell => ({
+                        html: cell.innerHTML,
+                        colSpan: cell.colSpan || 1,
+                        rowSpan: cell.rowSpan || 1,
+                        tagName: cell.tagName,
+                        style: cell.getAttribute('style') || ''
+                    })))
+            : [];
+
+        const rows = Array.from(table.tBodies[0] ? table.tBodies[0].rows : [])
+            .map(row => Array.from(row.cells)
+                .filter(cell => !cell.classList.contains('mb-rel-cell') &&
+                                !cell.classList.contains('mb-re-cell') &&
+                                !cell.classList.contains('mb-ice-cell') &&
+                                !cell.classList.contains('mb-picard-cell'))
+                .map(cell => ({
+                    html: getCleanCellHtml(cell),
+                    colSpan: cell.colSpan || 1,
+                    rowSpan: cell.rowSpan || 1
+                })));
+
+        // entityType/sectionSuffix derivation mirrors _assembleExportFilename's
+        // pageTypeSlug split — but that helper's detailSlug comes from the
+        // *currently displayed* button/h2 context, which doesn't apply here
+        // (we're on the multi-table overview page, capturing one of several
+        // categories), so detailSegment is set directly from categoryName
+        // instead of calling into it.
+        const pageTypeSlug = pageType.replace(/-filtered$/, '');
+        const firstDash = pageTypeSlug.indexOf('-');
+        const entityType = firstDash !== -1 ? pageTypeSlug.slice(0, firstDash) : pageTypeSlug;
+        const sectionSuffix = firstDash !== -1 ? pageTypeSlug.slice(firstDash + 1) : '';
+
+        return {
+            version: '1.0',
+            url: window.location.href,
+            pageType: `${pageType}-filtered`,
+            buttonLabel: null,
+            timestamp: Date.now(),
+            timestampReadable: new Date().toISOString(),
+            tableMode: 'single',
+            entityType: entityType || null,
+            entityName: _cachedEntityName || null,
+            sectionSuffix: sectionSuffix || null,
+            detailSegment: categoryName || null,
+            rowCount: rows.length,
+            headers,
+            rows,
+            groups: null,
+            discOfficialCategories: null,
+        };
+    }
+
+    /**
+     * Opens a multi-table sub-section as a standalone single-table view in a
+     * new browser tab, via a client-side snapshot handoff — no MusicBrainz
+     * re-fetch, since this is only ever wired up for categories that already
+     * have every row on screen (see the `else` branch of the `group.seeAllUrl`
+     * check in `renderGroupedTable()`).
+     *
+     * The snapshot is stashed via `GM_setValue` (shared across tabs for this
+     * script, unlike page-scoped storage) under a per-call unique key, and the
+     * new tab is pointed at `?link_type_id=1#mb-sa-snapshot=<uid>` on the same
+     * path — the query param makes the existing `pageDefinitions` matcher
+     * resolve the new tab to the real `-filtered` (tableMode:'single')
+     * definition (see e.g. `artist-relationships-filtered`), so all of that
+     * page's normal init/chrome runs unmodified there; the hash marker is
+     * then read once (and the GM value deleted) by the bootstrap hook that
+     * calls `_hydrateAndRenderFromSnapshotData()` instead of letting the page
+     * fetch live data. See CLAUDE.md for the full design rationale.
+     *
+     * @param {HTMLTableElement} table        The sub-table to snapshot.
+     * @param {string}           categoryName Human-readable relationship-type/category name.
+     * @param {string}           pageType     Current module-level pageType.
+     */
+    function openSubtableAsSingleTableTab(table, categoryName, pageType) {
+        const payload = captureSubtableSnapshot(table, categoryName, pageType);
+        const uid = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        GM_setValue(`mb_sa_subtable_snapshot_${uid}`, payload);
+        const targetUrl = `${window.location.origin}${window.location.pathname}?link_type_id=1#mb-sa-snapshot=${uid}`;
+        Lib.debug('navigation', `Opening "${categoryName}" as a single-table snapshot in a new tab: ${targetUrl}`);
+        window.open(targetUrl, '_blank');
+    }
+
+    /**
+     * Corrects a "Show single-table" snapshot tab's native `<h2>` label after
+     * hydration. The placeholder `?link_type_id=1` in the target URL (see
+     * openSubtableAsSingleTableTab) exists purely so pageDefinitions matching
+     * resolves the tab to the real `-filtered` definition — but MusicBrainz's
+     * own server response for that URL still renders its OWN heading text for
+     * whatever relationship/performance type link_type_id 1 actually is (e.g.
+     * "next disc" relationships), which has nothing to do with the category
+     * that was actually captured and hydrated into the table.
+     *
+     * Replaces just the bare text node between `.mb-toggle-icon` and
+     * `.mb-row-count-stat` — every other h2 child (toggle icon, count stat,
+     * CAA/EAA buttons, filter bar) is left alone — with the real category
+     * name, formatted to match MusicBrainz's own "“<type>” relationships" /
+     * "“<type>” performances" pattern (see the quoted-text regex in
+     * `_assembleExportFilename`'s `isFilteredRelationshipPage` branch).
+     *
+     * @param {Object} snapshotPayload - The hydrated snapshot payload (for
+     *   `detailSegment` — the captured category name — and `sectionSuffix`).
+     */
+    function _fixSnapshotHeadingLabel(snapshotPayload) {
+        const categoryName = snapshotPayload && snapshotPayload.detailSegment;
+        if (!categoryName) return;
+
+        const h2 = document.querySelector('#content h2.mb-toggle-h2') || document.querySelector('h2.mb-toggle-h2');
+        const iconSpan = h2 && h2.querySelector('.mb-toggle-icon');
+        if (!iconSpan) return;
+
+        const countSpan = h2.querySelector('.mb-row-count-stat');
+        let node = iconSpan.nextSibling;
+        while (node && node !== countSpan) {
+            const next = node.nextSibling;
+            node.remove();
+            node = next;
+        }
+
+        const sectionWord = (snapshotPayload.sectionSuffix || 'relationships').toLowerCase();
+        const label = document.createTextNode(`“${categoryName}” ${sectionWord}`);
+        if (countSpan) {
+            h2.insertBefore(label, countSpan);
+        } else {
+            h2.appendChild(label);
+        }
+
+        Lib.debug('render', `Corrected snapshot tab heading label to "${categoryName}"`);
+    }
+
+    /**
      * Toggles auto-resize for a single sub-table (multi-table mode counterpart of
      * `toggleAutoResizeColumns`).
      *
@@ -21403,11 +21580,13 @@ a { color: #1565c0; }`;
         }
 
         .mb-subtable-clear-btn,
-        .mb-show-all-subtable-btn {
+        .mb-show-all-subtable-btn,
+        .mb-show-single-table-btn {
             transition: background-color 0.2s, transform 0.1s, box-shadow 0.1s;
         }
         .mb-subtable-clear-btn:active,
-        .mb-show-all-subtable-btn:active {
+        .mb-show-all-subtable-btn:active,
+        .mb-show-single-table-btn:active {
             transform: translateY(1px);
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
         }
@@ -21547,6 +21726,8 @@ a { color: #1565c0; }`;
         .mb-subtable-clear-btn:hover { background: ${uiSubtableBtnVals().bgHover}; }
         .mb-show-all-subtable-btn { font-size: ${uiSubtableBtnVals().fontSize}; padding: ${uiSubtableBtnVals().padding}; cursor: pointer; vertical-align: middle; border-radius: ${uiSubtableBtnVals().borderRadius}; background: ${uiSubtableBtnVals().bg}; border: ${uiSubtableBtnVals().border}; }
         .mb-show-all-subtable-btn:hover { background: ${uiSubtableBtnVals().bgHover}; }
+        .mb-show-single-table-btn { font-size: ${uiSubtableBtnVals().fontSize}; padding: ${uiSubtableBtnVals().padding}; cursor: pointer; vertical-align: middle; border-radius: ${uiSubtableBtnVals().borderRadius}; background: ${uiSubtableBtnVals().bg}; border: ${uiSubtableBtnVals().border}; }
+        .mb-show-single-table-btn:hover { background: ${uiSubtableBtnVals().bgHover}; }
         .mb-subtable-status-display { font-size: 0.85em; color: #333; font-weight: bold; vertical-align: middle; }
         .mb-filter-status { font-family: 'Courier New', monospace; font-size: 1.0em; vertical-align: middle; margin-right: 4px; }
         .mb-sort-status { font-family: 'Arial', sans-serif; font-size: 1.0em; font-style: italic; vertical-align: middle; }
@@ -22065,6 +22246,7 @@ a { color: #1565c0; }`;
         #mb-show-all-controls-container button:focus-visible,
         .mb-subtable-clear-btn:focus-visible,
         .mb-show-all-subtable-btn:focus-visible,
+        .mb-show-single-table-btn:focus-visible,
         .mb-subtable-resize-btn:focus-visible,
         .mb-subtable-vis-btn:focus-visible,
         .mb-caa-art-toggle-btn:focus-visible,
@@ -22093,6 +22275,7 @@ a { color: #1565c0; }`;
             #mb-show-all-controls-container button:focus,
             .mb-subtable-clear-btn:focus,
             .mb-show-all-subtable-btn:focus,
+            .mb-show-single-table-btn:focus,
             .mb-subtable-resize-btn:focus,
             .mb-subtable-vis-btn:focus,
             .mb-caa-art-toggle-btn:focus,
@@ -22378,6 +22561,58 @@ a { color: #1565c0; }`;
             '⚠️ Page Reloaded',
             firstActionBtn
         );
+    }
+
+    // ── "Show single-table" cross-tab snapshot handoff ──────────────────────
+    // Consume the `#mb-sa-snapshot=<uid>` hash marker (if present) now that
+    // normal per-pageType init/button injection has completed, and hydrate
+    // straight from the GM-stored snapshot instead of waiting for the user to
+    // click a fetch button. The marker is produced by
+    // openSubtableAsSingleTableTab() (a multi-table sub-section's "Show
+    // single-table" button, see renderGroupedTable()); the target URL always
+    // carries `?link_type_id=1` so pageDefinitions matching already resolved
+    // this page to the real `-filtered` (tableMode:'single') definition
+    // before we get here, so all of that page's normal init/chrome ran
+    // unmodified — we only replace *what data gets hydrated into it*.
+    const _snapshotHashMatch = window.location.hash.match(/^#mb-sa-snapshot=(.+)$/);
+    if (_snapshotHashMatch) {
+        const _snapshotKey = `mb_sa_subtable_snapshot_${_snapshotHashMatch[1]}`;
+        // Strip the hash immediately so it can't re-trigger (e.g. on a later
+        // in-page hash change) and so a manual reload falls through cleanly
+        // to normal page behaviour instead of re-matching this branch.
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+        const _snapshotPayload = GM_getValue(_snapshotKey, null);
+        GM_deleteValue(_snapshotKey);
+        if (_snapshotPayload) {
+            Lib.debug('cache', `Hydrating from cross-tab subtable snapshot (key=${_snapshotKey})`);
+            // Deferred via setTimeout(...,0): _hydrateAndRenderFromSnapshotData
+            // (and everything it calls — runFilter(), _invalidateFilterCache(),
+            // etc.) references module-level const/let bindings declared further
+            // down in this same top-level IIFE (e.g. _filterResultCache).
+            // Calling it synchronously from here — mid-way through the script's
+            // initial top-to-bottom execution — hits those bindings while still
+            // in their temporal dead zone ("Cannot access '<name>' before
+            // initialization"). Every other caller (a button click, a
+            // FileReader.onload) only ever fires after the whole script has
+            // finished its first synchronous pass, so this is the only call
+            // site that needs the extra tick.
+            setTimeout(async () => {
+                await _hydrateAndRenderFromSnapshotData(_snapshotPayload, {
+                    sourceLabel: _snapshotPayload.detailSegment
+                        ? `live snapshot: ${_snapshotPayload.detailSegment}`
+                        : 'live snapshot'
+                });
+                // MusicBrainz's own native heading for the ?link_type_id=1
+                // placeholder (e.g. "next disc" relationships) has nothing to
+                // do with the category actually captured — correct it now
+                // that hydration (and updateH2Count's count-stat rebuild)
+                // have both settled.
+                _fixSnapshotHeadingLabel(_snapshotPayload);
+            }, 0);
+        } else {
+            Lib.warn('cache', `No snapshot found for key ${_snapshotKey} (stale, expired, or already ` +
+                'consumed by a previous load of this tab) — falling back to normal page behaviour.');
+        }
     }
 
     // Create a separate container for status displays (globalStatusDisplay and infoDisplay).
@@ -33681,6 +33916,31 @@ a { color: #1565c0; }`;
                         }
                     };
                     subTableControls.insertBefore(showAllBtn, subTableControls.firstChild);
+                } else if (pageType === 'artist-relationships' || pageType === 'label-relationships' ||
+                        pageType === 'place-performances') {
+                    // No MusicBrainz overflow for this category (≤100 rows — every
+                    // row is already rendered), so there's nothing to fetch. Offer a
+                    // client-side "convert this sub-table to a single-table page"
+                    // snapshot instead — see openSubtableAsSingleTableTab().
+                    const singleTableBtn = document.createElement('button');
+                    singleTableBtn.id = `mb-stf-${categoryName.replace(/[^a-zA-Z0-9_-]/g, '_')}-single-table-btn`;
+                    singleTableBtn.type = 'button';
+                    singleTableBtn.className = 'mb-show-single-table-btn';
+                    singleTableBtn.textContent = 'Show single-table';
+                    singleTableBtn.title = `Click to open the currently-rendered "${categoryName}" rows as a ` +
+                        'standalone single-table view in a new browser tab (client-side snapshot — no re-fetch, ' +
+                        'since every row for this category is already on screen; the new tab won’t reflect ' +
+                        'any changes made after clicking).';
+                    const _singleTableInitBg = Lib.settings.sa_ui_show_single_table_btn_bg || '#B3E5FC';
+                    singleTableBtn.style.background = _singleTableInitBg;
+                    singleTableBtn.onclick = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openSubtableAsSingleTableTab(table, categoryName, pageType);
+                        const _singleTableClickedBg = Lib.settings.sa_ui_show_single_table_btn_bg_clicked || '#CCFFCC';
+                        singleTableBtn.style.background = _singleTableClickedBg;
+                    };
+                    subTableControls.insertBefore(singleTableBtn, subTableControls.firstChild);
                 }
 
                 h3.addEventListener('click', (e) => {
@@ -33846,6 +34106,35 @@ a { color: #1565c0; }`;
                         } else {
                             h3.insertBefore(subVisBtn, subTableControls);
                         }
+                    }
+
+                    // Also inject the "Show single-table" button if absent — mirrors
+                    // the primary group.seeAllUrl / else branch above (this button
+                    // only applies to categories with no MB overflow, i.e. no
+                    // group.seeAllUrl). Note: the sibling "Show all N rows" button
+                    // has this same defensive-rebuild gap pre-existing in this
+                    // branch already — left alone here, out of scope for this change.
+                    if (!h3.querySelector('.mb-show-single-table-btn') && !group.seeAllUrl &&
+                            (pageType === 'artist-relationships' || pageType === 'label-relationships' ||
+                             pageType === 'place-performances')) {
+                        const subSingleTableBtn = document.createElement('button');
+                        subSingleTableBtn.id = `mb-stf-${categoryName.replace(/[^a-zA-Z0-9_-]/g, '_')}-single-table-btn`;
+                        subSingleTableBtn.type = 'button';
+                        subSingleTableBtn.className = 'mb-show-single-table-btn';
+                        subSingleTableBtn.textContent = 'Show single-table';
+                        subSingleTableBtn.title = `Click to open the currently-rendered "${categoryName}" rows as a ` +
+                            'standalone single-table view in a new browser tab (client-side snapshot — no re-fetch, ' +
+                            'since every row for this category is already on screen; the new tab won’t reflect ' +
+                            'any changes made after clicking).';
+                        subSingleTableBtn.style.background = Lib.settings.sa_ui_show_single_table_btn_bg || '#B3E5FC';
+                        subSingleTableBtn.onclick = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openSubtableAsSingleTableTab(table, categoryName, pageType);
+                            subSingleTableBtn.style.background =
+                                Lib.settings.sa_ui_show_single_table_btn_bg_clicked || '#CCFFCC';
+                        };
+                        subTableControls.insertBefore(subSingleTableBtn, subTableControls.firstChild);
                     }
                 }
             }
@@ -42514,13 +42803,864 @@ a { color: #1565c0; }`;
      * @param {boolean} isRegExp - Whether the pre-filter should be treated as a regular expression
      * @param {boolean} isExclude - When true, rows MATCHING the filter are excluded instead of kept
      */
+    /**
+     * Hydrates and renders a page from already-parsed table snapshot data —
+     * shared by the "Load from Disk" flow (loadTableDataFromDisk) and the
+     * "Show single-table" cross-tab snapshot handoff (openSubtableAsSingleTableTab
+     * / the new-tab hash-marker bootstrap), so both consumers get identical
+     * reconstruction + render + post-render wiring instead of two independently
+     * drifting implementations.
+     *
+     * @param {Object} data - Parsed snapshot payload (saveTableDataToDisk's schema:
+     *   version, pageType, timestamp, tableMode, headers, rows|groups, ...).
+     * @param {Object} [opts]
+     * @param {File|null} [opts.file] - Source File object when loaded from disk;
+     *   null for non-file callers (uses opts.sourceLabel in user-facing text instead).
+     * @param {string} [opts.filterQueryRaw]
+     * @param {boolean} [opts.isCaseSensitive]
+     * @param {boolean} [opts.isRegExp]
+     * @param {boolean} [opts.isExclude]
+     * @param {RegExp|null} [opts.globalRegex]
+     * @param {string} [opts.sourceLabel='snapshot'] - Human-readable source label
+     *   used in place of opts.file.name when opts.file is null.
+     */
+    async function _hydrateAndRenderFromSnapshotData(data, opts = {}) {
+        const {
+            file = null,
+            filterQueryRaw = '',
+            isCaseSensitive = false,
+            isRegExp = false,
+            isExclude = false,
+            globalRegex = null,
+            sourceLabel = 'snapshot',
+        } = opts;
+        const filterQuery = (isCaseSensitive || isRegExp) ? filterQueryRaw : filterQueryRaw.toLowerCase();
+        try {
+            // Validate data structure
+            // NOTE: pageType mismatch check was moved to showLoadFilterDialog Phase 1
+            // (dialogFileInput.onchange), where it has access to the correct dialog
+            // elements and can properly abort before rawData/rawFile are set.
+            if (!data.version || !data.pageType || !data.timestamp) {
+                throw new Error('Invalid data file: missing required fields');
+            }
+
+            Lib.debug('cache', `Loaded data version ${data.version} from ${data.timestampReadable} (File total: ${data.rowCount} rows)`);
+
+            // Prepare the page for re-hydration.
+            // First, strip any focus-mode prefix and background tint from column
+            // filter inputs that may still be in the DOM (e.g. if a field had
+            // focus when the Load dialog was confirmed).
+            document.querySelectorAll('.mb-col-filter-input').forEach(inp => {
+                inp.value = '';
+                inp.style.backgroundColor = '';
+            });
+            performClutterCleanup();
+            cleanupAfterInitialLoad();
+
+            // ── DOM pre-processing for listToTable pages (e.g. artist-credit) ───
+            // On pages where applyListToTable converts <ul> lists to <table.tbl>
+            // elements (pageTypes with features.listToTable), the button click
+            // normally calls startFetchingProcess which runs applyRenameH2ToH3,
+            // applyInsertH2, and applyListToTable before fetching.  On disk-load
+            // startFetchingProcess is never invoked, so those pre-processing steps
+            // have not run.  Without them:
+            //   (a) document.querySelector('table.tbl') returns null — the headers
+            //       restoration block silently skips, renderGroupedTable has no
+            //       templateHead to clone, and compareDocumentPosition crashes
+            //       when called with null as its argument.
+            //   (b) The insertH2 <h2> anchor that renderGroupedTable uses as
+            //       targetHeader is absent, so the master-toggle and filterContainer
+            //       are never anchored.
+            // Run the same three steps here before the headers restoration block.
+            if (activeDefinition.features && activeDefinition.features.listToTable) {
+                Lib.debug('cache',
+                    'disk-load: running DOM pre-processing (renameH2ToH3, insertH2, ' +
+                    'applyListToTable) for listToTable page type: ' + pageType);
+                applyRenameH2ToH3(activeDefinition);
+                applyInsertH2(activeDefinition);
+                applyListToTable(activeDefinition);
+            }
+
+            // Restore table headers if they were saved
+            if (data.headers && data.headers.length > 0) {
+                let firstTable = document.querySelector('table.tbl');
+                if (!firstTable) {
+                    // No native table.tbl anywhere on the page (e.g. the "Show
+                    // single-table" cross-tab snapshot handoff — see
+                    // openSubtableAsSingleTableTab / the new-tab hash-marker
+                    // bootstrap — lands on a MusicBrainz URL whose native
+                    // response happens to render no table at all for the
+                    // placeholder id it carries). Fabricate a bare shell so
+                    // the rest of this function, and renderFinalTable() below,
+                    // have something to hydrate into. General robustness —
+                    // benefits any future caller of this function that lacks
+                    // a live table, not just the snapshot-handoff case.
+                    const _contentContainer = document.querySelector('#content') || document.body;
+                    if (!document.querySelector('h1')) {
+                        const h1 = document.createElement('h1');
+                        h1.textContent = data.entityName || data.pageType || 'Loaded data';
+                        _contentContainer.insertBefore(h1, _contentContainer.firstChild);
+                    }
+                    firstTable = document.createElement('table');
+                    firstTable.className = 'tbl';
+                    firstTable.appendChild(document.createElement('tbody'));
+                    _contentContainer.appendChild(firstTable);
+                    Lib.debug('cache', 'No table.tbl found on page — fabricated an empty shell to hydrate.');
+                }
+                if (firstTable) {
+                    if (firstTable.tHead) firstTable.tHead.remove();
+                    const thead = document.createElement('thead');
+                    data.headers.forEach(headerRowCells => {
+                        // Skip filter rows
+                        const hasFilterInputs = headerRowCells.some(cell => cell.html && cell.html.includes('mb-col-filter-input'));
+                        if (hasFilterInputs) return;
+
+                        const tr = document.createElement('tr');
+                        headerRowCells.forEach(cellData => {
+                            const cell = document.createElement(cellData.tagName || 'th');
+                            cell.innerHTML = cellData.html;
+                            if (cellData.style) cell.setAttribute('style', cellData.style);
+                            if (cellData.colSpan > 1) cell.colSpan = cellData.colSpan;
+                            if (cellData.rowSpan > 1) cell.rowSpan = cellData.rowSpan;
+
+                            // If this header was captured from an already-rendered table
+                            // (the normal case for both "Save to Disk" and the "Show
+                            // single-table" snapshot handoff — see captureSubtableSnapshot),
+                            // its innerHTML carries makeTableSortableUnified's decorated
+                            // .mb-col-hdr-flex layout (sort icons, uniq-value count badge,
+                            // etc.) instead of plain column-name text. Left as-is,
+                            // makeTableSortableUnified's *next* pass over this same <th>
+                            // re-derives colName from th.textContent — which would now
+                            // include the leftover uniq-count badge digits baked into that
+                            // decorated markup (e.g. "Title" -> "Title 18"), since its
+                            // digit-stripping regex deliberately does NOT strip plain 0-9
+                            // (stripping them would mangle genuine numeric column names
+                            // like auto-elections' "1st seconder" — see the comment at
+                            // makeTableSortableUnified's colName derivation). Any
+                            // name-based column lookup downstream (caaFindColumnByName,
+                            // applyStickyColumn, etc.) then silently fails to find the
+                            // column by its real name. Collapse back to the original plain
+                            // text — the flex wrapper's only genuine Text-node child — so
+                            // this header starts clean, exactly like a freshly-fetched
+                            // native <th>.
+                            const hdrFlex = cell.querySelector('.mb-col-hdr-flex');
+                            if (hdrFlex) {
+                                const nameNode = Array.from(hdrFlex.childNodes)
+                                    .find(n => n.nodeType === Node.TEXT_NODE);
+                                cell.textContent = nameNode ? nameNode.textContent.trim() : cell.textContent.trim();
+                            }
+
+                            tr.appendChild(cell);
+                        });
+                        thead.appendChild(tr);
+                    });
+                    firstTable.insertBefore(thead, firstTable.firstChild);
+                }
+            }
+
+            let loadedRowCount = 0;
+
+            // Helper to check if a row matches the pre-load filter
+            const rowMatchesFilter = (tr) => {
+                if (!filterQueryRaw) return true;
+                let matched;
+                if (isRegExp && globalRegex) {
+                    // For regex patterns, test against each cell individually
+                    matched = Array.from(tr.cells).some(cell => {
+                        const cellText = getCleanColumnText(cell);
+                        return globalRegex.test(cellText);
+                    });
+                } else {
+                    // For non-regex, test against concatenated row text
+                    const text = getCleanVisibleText(tr);
+                    matched = isCaseSensitive ? text.includes(filterQuery) : text.toLowerCase().includes(filterQuery);
+                }
+                // isExclude: keep rows that do NOT match; normal: keep rows that DO match
+                return isExclude ? !matched : matched;
+            };
+
+            // Reconstruct rows from serialized data with Filtering
+            _invalidateFilterCache();
+            if (data.tableMode === 'multi' && data.groups) {
+                groupedRows = [];
+                expandedCells.clear();
+                _areaFlagRegionCorrected.clear();
+                _editsProseDefaultExpandedCols.clear();
+                _mbRowIdxCounter = 0;
+
+                // PageTypes that use singular colName (same set as _singularPageTypes
+                // in startFetchingProcess, kept in sync here for disk-load parity).
+                const _diskSingularTypes = new Set([
+                    'tag-value', 'user-tag-value',
+                    'user-tags', 'popular-tags',
+                    'artist-tags', 'releasegroup-tags', 'release-tags',
+                    'recording-tags', 'work-tags', 'label-tags',
+                    'series-tags', 'place-tags', 'area-tags', 'instrument-tags',
+                    'artist-credit'
+                ]);
+
+                data.groups.forEach(group => {
+                    const reconstructedRows = [];
+                    group.rows.forEach((rowCells, rowIndex) => {
+                        const tr = document.createElement('tr');
+                        tr.className = rowIndex % 2 === 0 ? 'even' : 'odd';
+                        rowCells.forEach(cellData => {
+                            const td = document.createElement('td');
+                            td.innerHTML = cellData.html;
+                            if (cellData.colSpan > 1) td.colSpan = cellData.colSpan;
+                            if (cellData.rowSpan > 1) td.rowSpan = cellData.rowSpan;
+                            // Strip transient JS-only state from cells that were
+                            // saved before 9.99.157 (before getCleanCellHtml began
+                            // stripping these markers at save time).  Files saved
+                            // with 9.99.157+ have already been cleaned, so this is
+                            // a cheap no-op for them.
+                            _stripTransientCellState(td);
+                            tr.appendChild(td);
+                        });
+
+                        // ── Skip "See all N …" rows ───────────────────────────────────
+                        // _lastRow.remove() in renderGroupedTable removes the "See all"
+                        // TR from the DOM but NOT from group.rows; saveTableDataToDisk
+                        // serialises group.rows so the row is written to disk.  On
+                        // disk-load we filter it out here so that:
+                        //   (a) loadedRowCount (→ updateH2Count) shows the correct
+                        //       number (e.g. 91) rather than inflated count (91+8).
+                        //   (b) The _seeAllSplice in renderGroupedTable only needs to
+                        //       handle live-fetch rows, not disk-loaded ones.
+                        // Detection: sole cell contains <em><a href*="/tag/"> or
+                        // <em><a href*="/artist-credit/"> whose text starts with
+                        // "See all" (case-insensitive).
+                        if (tr.cells.length === 1) {
+                            const _seeAllA = tr.cells[0].querySelector(
+                                'em a[href*="/tag/"], em a[href*="/artist-credit/"]'
+                            );
+                            if (_seeAllA && /^see all\b/i.test(_seeAllA.textContent.trim())) {
+                                Lib.debug('cache',
+                                    `disk-load: skipped "See all" row ("${_seeAllA.textContent.trim().substring(0, 60)}")`);
+                                return; // skip this row
+                            }
+                        }
+
+                        if (rowMatchesFilter(tr)) {
+                            tr.dataset.mbRowIdx = String(_mbRowIdxCounter++);
+                            reconstructedRows.push(tr);
+                        }
+                    });
+
+                    // ── Derive colName and entityFeatures ─────────────────────
+                    // startFetchingProcess sets colName on each groupedRows entry
+                    // only when the page goes through the listToTable / groupByH3
+                    // fetch branch (the `else if` at the outer fetch-loop level that
+                    // guards on `activeDefinition.features?.listToTable ||
+                    // activeDefinition.features?.groupByH3`).  Standard multi-table
+                    // pages like `releasegroup-releases` use the `else` branch and
+                    // leave group.colName undefined.
+                    //
+                    // disk-load must mirror this exactly:
+                    //   (a) listToTable/groupByH3 pages  — set colName so that
+                    //       renderGroupedTable patches the first <th> of each
+                    //       sub-table to the correct (singular) column name
+                    //       (fixes: all sub-tables showing the first group's name)
+                    //   (b) all other multi-table pages — leave colName undefined
+                    //       so renderGroupedTable does NOT patch the first <th>.
+                    //       Without this guard, `releasegroup-releases` would have
+                    //       its first <th> changed from "Release" to "Official
+                    //       release", causing caaFindColumnByName('Release') to
+                    //       return -1 and skipping all inline art injection.
+                    //
+                    // entityFeatures is derived independently of colName and is
+                    // always set when the definition carries an entityFeatures map.
+                    const _grpCat = group.category || group.key;
+                    const _usesColNamePath = !!(activeDefinition.features?.listToTable ||
+                                                activeDefinition.features?.groupByH3);
+                    const _grpColName = _usesColNamePath
+                        ? (pageType === 'reports-index' ? 'Report' : (_diskSingularTypes.has(pageType) ? _toSingular(_grpCat) : _grpCat))
+                        : undefined;
+                    const _grpEntityFeatures = (activeDefinition.entityFeatures && _grpCat)
+                        ? resolveEntityFeaturesFromH3(_grpCat, activeDefinition)
+                        : null;
+
+                    const _grpEntry = {
+                        key: group.key,
+                        category: _grpCat,
+                        rows: reconstructedRows,
+                        originalRows: [...reconstructedRows]
+                    };
+                    if (_grpColName !== undefined) {
+                        _grpEntry.colName = _grpColName;
+                    }
+                    if (_grpEntityFeatures && Object.keys(_grpEntityFeatures).length > 0) {
+                        _grpEntry.entityFeatures = _grpEntityFeatures;
+                    }
+                    groupedRows.push(_grpEntry);
+                    loadedRowCount += reconstructedRows.length;
+                });
+                allRows = [];
+            } else if (data.rows) {
+                allRows = [];
+                expandedCells.clear();
+                _areaFlagRegionCorrected.clear();
+                _editsProseDefaultExpandedCols.clear();
+                _mbRowIdxCounter = 0;
+                data.rows.forEach((rowCells, rowIndex) => {
+                    const tr = document.createElement('tr');
+                    tr.className = rowIndex % 2 === 0 ? 'even' : 'odd';
+                    rowCells.forEach(cellData => {
+                        const td = document.createElement('td');
+                        td.innerHTML = cellData.html;
+                        if (cellData.colSpan > 1) td.colSpan = cellData.colSpan;
+                        if (cellData.rowSpan > 1) td.rowSpan = cellData.rowSpan;
+                        _stripTransientCellState(td);
+                        tr.appendChild(td);
+                    });
+
+                    if (rowMatchesFilter(tr)) {
+                        tr.dataset.mbRowIdx = String(_mbRowIdxCounter++);
+                        allRows.push(tr);
+                    }
+                });
+                loadedRowCount = allRows.length;
+                groupedRows = [];
+            } else {
+                throw new Error('Invalid data file: no rows or groups found');
+            }
+
+            isLoaded = true;
+            if (data.tableMode) activeDefinition.tableMode = data.tableMode;
+            if (activeDefinition.tableMode !== 'multi') originalAllRows = [...allRows];
+
+            // ── Merge entity-specific features into activeDefinition ──────────────
+            // startFetchingProcess calls resolveEntityFeaturesFromH2(baseDef) and
+            // merges the result into activeDefinition.features before any render or
+            // CAA initialisation.  On disk-load this merge never happens, so keys
+            // such as addCAA / addEAA / extractMainColumn that live inside the
+            // entityFeatures map (e.g. series-releases: entityFeatures.Releases)
+            // are absent from activeDefinition.features.  This causes initCaaPics()
+            // / initEaaPics() to skip entirely (they guard on features.addCAA /
+            // features.addEAA) and also breaks extractMainColumn-driven sticky
+            // columns.
+            // Fix: apply the same merge here immediately after the tableMode
+            // assignment so all downstream code (descriptor builders, initCaaPics,
+            // initCaaInlinePics, applyStickyColumn, etc.) sees the correct merged
+            // features.
+            if (baseDefinition && baseDefinition.entityFeatures) {
+                const _diskEntityFeatures = resolveEntityFeaturesFromH2(baseDefinition);
+                if (_diskEntityFeatures && Object.keys(_diskEntityFeatures).length > 0) {
+                    activeDefinition = {
+                        ...activeDefinition,
+                        features: {
+                            ..._diskEntityFeatures,
+                            ...(activeDefinition.features || {})
+                        }
+                    };
+                    Lib.debug('cache',
+                        'disk-load: merged entityFeatures into activeDefinition.features — ' +
+                        'keys: ' + Object.keys(_diskEntityFeatures).join(', '));
+                }
+            }
+            if (!activeInjectedColumns.length) {
+                activeInjectedColumns = buildActiveInjectedColumns(activeDefinition);
+                Lib.debug('cache', `disk-load: rebuilt activeInjectedColumns (${activeInjectedColumns.length})`);
+            }
+            if (!activeReleaseEventColumns.length) {
+                activeReleaseEventColumns = buildActiveReleaseEventColumns(activeDefinition);
+                Lib.debug('cache', `disk-load: rebuilt activeReleaseEventColumns (${activeReleaseEventColumns.length})`);
+            }
+            if (!activeInjectedColumnExtractors.length) {
+                activeInjectedColumnExtractors = buildActiveInjectedColumnExtractors(activeDefinition);
+                Lib.debug('cache', `disk-load: rebuilt activeInjectedColumnExtractors (${activeInjectedColumnExtractors.length})`);
+            }
+
+            // Visually mark the action button that corresponds to the loaded data with
+            // the same "#ccffcc" success colour used at the end of a live fetch, so the
+            // user has a clear indication of which data type is currently displayed.
+            //
+            // Matching strategy (two passes, first match wins):
+            //   1. Slug-match data.buttonLabel (present in files saved with v9.99.49+):
+            //      toSlug(btn.dataset.label) === toSlug(data.buttonLabel)
+            //      Using slugs makes the comparison immune to emoji, superscript digits,
+            //      case differences, and any other textContent decoration.
+            //   2. Filename-slug fallback (for older files without buttonLabel):
+            //      Extract the detail segment from the old-format filename
+            //      (old format: MB-<pageType>-<detailSlug>-<rows>-<timestamp>.json[.gz];
+            //       new v9.99.140+ format with entity name is handled by strategy 1)
+            //      and compare toSlug(btn.dataset.label) against it.
+            //   3. If neither strategy finds a match, colour all action buttons green.
+            {
+                /**
+                 * Convert a label to a safe filename slug — identical logic to toSlug()
+                 * in saveTableDataToDisk, intentionally duplicated here so the load path
+                 * has no dependency on the save path's closure-scoped helper.
+                 *
+                 * @param {string} text
+                 * @returns {string}
+                 */
+                const slugify = (text) => {
+                    if (!text) return '';
+                    return text
+                        .toLowerCase()
+                        .trim()
+                        .replace(/\s+/g, '_')
+                        .replace(/[^a-z0-9_]/g, '')
+                        .replace(/_+/g, '_')
+                        .replace(/^_+|_+$/g, '');
+                };
+
+                /**
+                 * Return the detail-slug segment embedded in a MB save filename, or '' when
+                 * the filename does not match the expected pattern.
+                 *
+                 * Supported filename formats:
+                 *   Old: MB-<pageTypeSlug>[-<detailSlug>]-<rowCount>-<ISOTimestamp>.json[.gz]
+                 *   New: MB-<PageType>-(<EntityName>)-<Section>[-<detailSlug>]-(<rowCount>)[_<ISOTimestamp>].json[.gz]
+                 *
+                 * For the old format the detail slug is everything between the pageType slug
+                 * and the numeric row-count segment.
+                 * For the new format (parenthesised entity name) strategy 1 (buttonLabel) will
+                 * have already matched; this function only needs to handle the old format as
+                 * a graceful fallback for files saved before v9.99.140.
+                 *
+                 * @param {string} filename - e.g. "MB-artist-releasegroups-official_rgs-579-2026-03-06T16-28-02.json.gz"
+                 * @param {string} ptSlug   - page-type slug e.g. "artist-releasegroups" (lowercase, no -filtered suffix)
+                 * @returns {string}
+                 */
+                const detailSlugFromFilename = (filename, ptSlug) => {
+                    // Strip directory path and extension(s) (.json.gz or .json)
+                    const base = filename.replace(/^.*[\\/]/, '').replace(/\.json(\.gz)?$/, '');
+                    // Try old-format prefix: "MB-<ptSlug>-" (case-insensitive for robustness)
+                    const oldPrefix = `MB-${ptSlug}-`;
+                    if (!base.toLowerCase().startsWith(oldPrefix.toLowerCase())) return '';
+                    const rest = base.slice(oldPrefix.length); // e.g. "official_rgs-579-2026-03-06T16-28-02"
+                    // New-format files have an entity-name in parens right after the prefix,
+                    // e.g. "(Bruce Springsteen)-Relationships-(1329)_...". Bail out early —
+                    // strategy 1 should have already matched these.
+                    if (rest.startsWith('(')) return '';
+                    // Collect tokens until we hit the first all-digit token (row count)
+                    const tokens = rest.split('-');
+                    const detailTokens = [];
+                    for (const tok of tokens) {
+                        if (/^\d+$/.test(tok)) break;  // row-count segment reached
+                        detailTokens.push(tok);
+                    }
+                    return detailTokens.join('_');  // e.g. "official_rgs"
+                };
+
+                const pageTypeSlug = pageType.replace(/-filtered$/, '');
+                let matched = false;
+
+                // --- Strategy 1: slug-match data.buttonLabel ---
+                const savedButtonSlug = slugify(data.buttonLabel || '');
+                if (savedButtonSlug) {
+                    allActionButtons.forEach(btn => {
+                        const btnSlug = slugify(btn.dataset.label || btn.textContent);
+                        if (btnSlug === savedButtonSlug) {
+                            btn.style.backgroundColor = '#ccffcc';
+                            btn.style.color = 'black';
+                            matched = true;
+                            Lib.debug('cache', `Disk-load [strategy 1]: coloured button green via buttonLabel slug "${savedButtonSlug}" → "${btn.dataset.label || btn.textContent.trim()}"`);
+                        }
+                    });
+                }
+
+                // --- Strategy 2: filename detail-slug fallback (older files) ---
+                // Skipped when there is no real File object (e.g. the "Show
+                // single-table" cross-tab snapshot handoff) — strategy 3 below
+                // covers that case.
+                if (!matched && file) {
+                    const fileDetailSlug = detailSlugFromFilename(file.name, pageTypeSlug);
+                    Lib.debug('cache', `Disk-load [strategy 2]: extracted detail slug from filename "${file.name}" → "${fileDetailSlug}"`);
+                    if (fileDetailSlug) {
+                        allActionButtons.forEach(btn => {
+                            const btnSlug = slugify(btn.dataset.label || btn.textContent);
+                            if (btnSlug === fileDetailSlug) {
+                                btn.style.backgroundColor = '#ccffcc';
+                                btn.style.color = 'black';
+                                matched = true;
+                                Lib.debug('cache', `Disk-load [strategy 2]: coloured button green via filename slug "${fileDetailSlug}" → "${btn.dataset.label || btn.textContent.trim()}"`);
+                            }
+                        });
+                    }
+                }
+
+                // --- Strategy 3: fallback — colour all buttons ---
+                if (!matched) {
+                    allActionButtons.forEach(btn => {
+                        btn.style.backgroundColor = '#ccffcc';
+                        btn.style.color = 'black';
+                    });
+                    Lib.debug('cache', `Disk-load [strategy 3]: no button slug matched; coloured all ${allActionButtons.length} action button(s) green`);
+                }
+            }
+
+            // ── Artist-Releasegroups: restore discography category arrays ─────
+            // When a save file from an artist-releasegroups page includes the
+            // pre-fetch category list (discOfficialCategories), restore all three
+            // h3 category arrays BEFORE calling renderGroupedTable so that the
+            // in-loop mbDiscSection stamping (added to renderGroupedTable) fires
+            // correctly on every h3 that is created during the render — including
+            // subsequent re-renders triggered by runFilter() below.
+            if (pageType === 'artist-releasegroups' &&
+                    Array.isArray(data.discOfficialCategories) &&
+                    data.discOfficialCategories.length > 0) {
+                h3_official_category_header_array = data.discOfficialCategories.slice();
+                h3_all_category_header_array      = groupedRows.map(g => g.category || 'Other');
+
+                // Rebuild non-official via the same sequence-match algorithm used
+                // in startFetchingProcess (lines 24127-24148).
+                h3_non_official_category_header_array = [];
+                let _dOffIdx = 0, _dNonOffStarted = false;
+                for (const _dCat of h3_all_category_header_array) {
+                    if (!_dNonOffStarted) {
+                        if (_dOffIdx < h3_official_category_header_array.length &&
+                                _dCat === h3_official_category_header_array[_dOffIdx]) {
+                            _dOffIdx++;
+                        } else {
+                            _dNonOffStarted = true;
+                            if (!h3_non_official_category_header_array.includes(_dCat))
+                                h3_non_official_category_header_array.push(_dCat);
+                        }
+                    } else {
+                        if (!h3_non_official_category_header_array.includes(_dCat))
+                            h3_non_official_category_header_array.push(_dCat);
+                    }
+                }
+                Lib.debug('cache',
+                    `disk-load: restored discography arrays — official=${h3_official_category_header_array.length}` +
+                    ` all=${h3_all_category_header_array.length}` +
+                    ` non-official=${h3_non_official_category_header_array.length}`);
+            }
+
+            // Render
+            if (activeDefinition.tableMode === 'multi' && groupedRows.length > 0) {
+                // Finalize colon-aligned columns before render so colons line up
+                if (Lib.settings.sa_enable_numeric_alignment !== false) {
+                    finalizeSplitAlignedColumns(groupedRows.flatMap(g => g.rows), activeIntegerColumns);
+                    finalizeRLCColumnWidths(groupedRows.flatMap(g => g.rows), activeIntegerColumns);
+                }
+                await renderGroupedTable(groupedRows, _isReleaseGroupsMultiMode());
+            } else if (allRows.length > 0 || loadedRowCount === 0) {
+                // Finalize colon-aligned columns before render so colons line up
+                if (Lib.settings.sa_enable_numeric_alignment !== false) {
+                    finalizeSplitAlignedColumns(allRows, activeIntegerColumns);
+                    finalizeRLCColumnWidths(allRows, activeIntegerColumns);
+                }
+                await renderFinalTable(allRows);
+                document.querySelectorAll('table.tbl thead').forEach(cleanupHeaders);
+                const mainTable = document.querySelector('table.tbl');
+                if (mainTable) {
+                    addColumnFilterRow(mainTable);
+                    makeTableSortableUnified(mainTable, 'main_table');
+                    // Note: initCollapsableColumns() is intentionally NOT called here.
+                    // The runFilter() call below re-renders the table (possibly with a
+                    // pre-filter applied) and its single-table branch calls
+                    // initCollapsableColumns() on the final DOM rows.  Calling it here
+                    // would operate on allRows before runFilter() clones and replaces
+                    // them, so all modifications would be discarded — and the global
+                    // collapse button would not yet have filterContainer in the DOM.
+                }
+            }
+
+            // Apply prefilter highlight after rendering (if prefilter was used)
+            if (filterQueryRaw) {
+                Lib.debug('cache', `Applying prefilter highlight for: "${filterQueryRaw}"`);
+
+                const tables = document.querySelectorAll('table.tbl');
+
+                tables.forEach(table => {
+                    table.querySelectorAll('tbody tr').forEach(row => {
+                        highlightText(row, filterQueryRaw, isCaseSensitive, -1, isRegExp, 'prefilter');
+                    });
+                });
+            }
+
+            finalCleanup();
+
+            // Install navigation guard (idempotent — safe to call on every render)
+            initNavigationGuard();
+
+            // ── updateH2Count MUST run before makeH2sCollapsible ─────────────────
+            // makeH2sCollapsible uses the presence of .mb-row-count-stat on an h2
+            // to identify the main data header (isMainDataHeader = true → icon='▼'
+            // → contentNodes are NOT hidden).  Without .mb-row-count-stat, every h2
+            // is treated as a non-data header (icon='▲') and ALL its content nodes
+            // (including the script-managed h3/table pairs) are set to display:none.
+            // updateH2Count stamps .mb-row-count-stat, so it must precede
+            // makeH2sCollapsible to ensure the correct h2 is left expanded.
+            updateH2Count(loadedRowCount, loadedRowCount);
+
+            // Trailing h2 relocation: must run AFTER updateH2Count() because
+            // _relocateTrailingH2Sections() anchors on .mb-row-count-stat which
+            // is inserted by updateH2Count().  finalCleanup() (called earlier)
+            // already attempted this but found no stat and silently no-oped.
+            _relocateTrailingH2Sections();
+
+            makeH2sCollapsible();
+
+            // ── Artist-Releasegroups: inject discography view buttons ─────────
+            // Mirror the equivalent block in startFetchingProcess (lines
+            // 24109-24201).  The h3_official_category_header_array was already
+            // restored and the h3 elements were stamped with mbDiscSection by the
+            // modified renderGroupedTable.  We only need to inject the buttons.
+            if (pageType === 'artist-releasegroups' &&
+                    h3_official_category_header_array.length > 0) {
+                _injectDiscographyViewButtons();
+                Lib.debug('cache', 'disk-load: discography view buttons injected');
+            }
+
+            // Reset global filter to a clean state after every disk load.
+            // If the page was already rendered with an active filter before the load,
+            // the filterInput still holds the old value; the newly loaded rows are not
+            // affected by it until the user interacts with the filter widget.  Clear the
+            // value now and immediately re-run the filter so:
+            //   (a) the loaded rows are all visible (no stale filter applied),
+            //   (b) filter-status / sort-status displays are cleared,
+            //   (c) "Toggle highlighting" and "Clear ALL filters" buttons are hidden.
+            // Reset to prefix-only — the global filter always keeps the prefix in its value.
+            filterInput.value = getFilterFocusPrefix();
+            filterInput.style.boxShadow = '';
+            filterStatusDisplay.textContent = '';
+            sortStatusDisplay.textContent = '';
+            if (typeof runFilter === 'function') {
+                runFilter();
+            }
+            if (typeof window.updateFilterButtonsVisibility === 'function') {
+                window.updateFilterButtonsVisibility();
+            }
+
+            // Reset all sort state after every disk load.
+            // If the page was already rendered with active column sorts (including
+            // multi-column sorts with cell tints), the sort-icon highlights and tinted
+            // cells persist in the DOM after re-render because makeTableSortableUnified()
+            // only adds new sort buttons — it does not undo previously applied DOM state.
+            // Steps:
+            //   (a) call clearTints() from the tint registry for every known sortKey to
+            //       remove multi-sort background colours from data cells,
+            //   (b) strip .sort-icon-active from all sort icon buttons,
+            //   (c) reset every sort-state entry in multiTableSortStates to neutral,
+            //   (d) clear per-h3 sort status spans,
+            //   (e) clear both Maps so stale keys from the previous render don't accumulate.
+            multiSortTintRegistry.forEach(({ clearTints }) => {
+                try { clearTints(); } catch (_) { /* ignore if table no longer in DOM */ }
+            });
+            document.querySelectorAll('.sort-icon-btn').forEach(btn => {
+                btn.classList.remove('sort-icon-active');
+            });
+            document.querySelectorAll('.mb-sort-status').forEach(el => {
+                el.textContent = '';
+            });
+            multiTableSortStates.clear();
+            multiSortTintRegistry.clear();
+
+            if (Lib.settings.sa_enable_sticky_headers) {
+                applyStickyHeaders();
+            }
+
+            // Add auto-resize columns button
+            if (Lib.settings.sa_enable_column_resizing) {
+                addAutoResizeButton();
+            }
+
+            // Apply sticky column AFTER makeColumnsResizable (called per-table
+            // during renderGroupedTable) so the sticky position is the last writer.
+            if (Lib.settings.sa_enable_sticky_columns !== false) {
+                document.querySelectorAll('table.tbl').forEach(table => {
+                    table.style.borderCollapse = 'separate';
+                    table.style.borderSpacing  = '0';
+                    applyStickyColumn(table);
+                });
+            }
+
+            // Add column visibility toggle for loaded table
+            if (Lib.settings.sa_enable_column_visibility) {
+                const mainTable = document.querySelector('table.tbl');
+                if (mainTable) {
+                    addColumnVisibilityToggle(mainTable);
+                }
+            }
+
+            // Add barcode highlight toggle button (between Visible and Density)
+            addBarcodeHighlightToggleButton();
+
+            // Add density control
+            if (Lib.settings.sa_enable_density_control) {
+                addDensityControl();
+            }
+
+            // Add stats panel button
+            if (Lib.settings.sa_enable_stats_panel) {
+                addStatsButton();
+            }
+
+            // Initialize keyboard shortcuts (if not already initialized)
+            if (Lib.settings.sa_enable_keyboard_shortcuts) {
+                if (!document._mbKeyboardShortcutsInitialized) {
+                    initKeyboardShortcuts();
+                    document._mbKeyboardShortcutsInitialized = true;
+                }
+                addShortcutsHelpButton();
+            }
+
+            // Add export button
+            if (Lib.settings.sa_enable_export) {
+                addExportButton();
+            }
+
+            // Initialize sidebar collapse toggle (must run after render;
+            // idempotent — safe to call even if a prior fetch already ran it)
+            if (Lib.settings.sa_collabsable_sidebar) {
+                initSidebarCollapse();
+            }
+
+            // Inject expand/collapse buttons for release-group and release rows
+            if (Lib.settings.sa_enable_expand_rgs) {
+                initExpandRGsFeature();
+            }
+
+            // Highlight identical barcodes in Barcode columns (post-render)
+            initBarcodeHighlight();
+
+            // CDtoc: attempt to re-wire tracklist toggles (no-op when
+            // data-cdtoc-tracklist-html is absent — attr is not saved to disk).
+            _cdtocInitTracklistToggles();
+
+            // Populate Release events column.
+            if (activeReleaseEventColumns.length) initReleaseEventsColumn();
+
+            // Populate Relationships column cells via async WS2 fetches (if configured).
+            if (activeInjectedColumns.length) initRelationshipsColumn();
+            setTimeout(_relCreateRetryButtons, 200);
+
+            // Inject Picard tagger column AFTER Relationships so Picard is always
+            // the rightmost column (Relationships td is appended first; Picard td
+            // must come after so column order matches the thead).
+            initPicardTaggerColumn();
+
+            // Re-align the filter row after Picard injection (stale-detection no-op
+            // when counts already match; self-heals on mismatch — see addColumnFilterRow).
+            const _diskLoadFilterTable = document.querySelector('table.tbl');
+            if (_diskLoadFilterTable) addColumnFilterRow(_diskLoadFilterTable);
+
+            // CAA / EAA art thumbnails and big-pic strip:
+            // Do NOT call initCaaPics / initEaaPics / initCaaInlinePics /
+            // initEaaInlinePics here.
+            //
+            // For multi-table pages renderGroupedTable() calls them at its own
+            // tail — once for the initial `await renderGroupedTable(groupedRows)`
+            // above, and once more inside the `runFilter()` call below (which
+            // also calls renderGroupedTable).  Any additional explicit call here
+            // would create a third set of pending img.onload closures; because
+            // all three sets are async (browser image loads are never synchronous
+            // even for cache hits) they all fire after JS yields, incrementing
+            // the badge three times over — tripling the displayed count.
+            //
+            // For single-table pages the runFilter() call below takes the
+            // single-table branch of runFilter(), which calls initCaaPics() /
+            // initEaaPics() / initCaaInlinePics() / initEaaInlinePics()
+            // directly.  An extra call here would double the badge count for
+            // the same reason.
+            //
+            // In both cases runFilter() (or renderGroupedTable via runFilter)
+            // is the authoritative and sufficient call site.
+
+            // Explicitly place the CAA/EAA global toggle buttons in the h2
+            // after the count stat has been created.
+            //
+            // _artCreateOrUpdateGlobalToggleButton uses `countStat.after(btn)`
+            // to position the button immediately after `h2 .mb-row-count-stat`.
+            // During a disk-load the call sequence is:
+            //   1. await renderGroupedTable(groupedRows)  → initCaaPics
+            //      → _artCreateOrUpdateGlobalToggleButton → defers
+            //        (h2 .mb-row-count-stat does not exist yet)
+            //   2. runFilter() → renderGroupedTable(filteredArray) → initCaaPics
+            //      → _artCreateOrUpdateGlobalToggleButton → still defers
+            //      → then runFilter calls updateH2Count: count stat created
+            //        but updateH2Count's re-anchor loop finds no buttons yet
+            //   3. updateH2Count(loadedRowCount) [called above] recreates the stat
+            //        re-anchor loop still finds no buttons
+            //
+            // Net result in a new session: the button is never created.
+            // Fix: call _artCreateOrUpdateGlobalToggleButton here, after the
+            // count stat definitely exists.  In a same-session load the button
+            // already exists and this is a cheap idempotent update.
+            if (activeDefinition.tableMode === 'multi') {
+                if (Lib.settings.sa_enable_caa_pics) {
+                    _artCreateOrUpdateGlobalToggleButton(CAA_CTX);
+                    _artCreateOrUpdateGlobalToggleButton(EAA_CTX);
+                }
+            }
+
+            // Show main filter container (if hidden)
+            if (!filterContainer.parentNode) filterContainer.style.display = 'inline-flex';
+
+            if (Lib.settings.sa_enable_save_load) {
+                saveToDiskBtn.style.display = 'inline-block';
+            }
+
+            // --- Update UI Feedback for Pre-Filter ---
+            if (filterQueryRaw) {
+                // Update the prefilter toggle button with prefilter info and show it
+                // Pass the file's total row count and isExclude so the label always shows "N out of T"
+                updatePrefilterToggleButton(loadedRowCount, filterQueryRaw, true, data.rowCount || 0, isExclude);
+                // Hide the old prefilter message span (no longer needed)
+                preFilterMsg.style.display = 'none';
+                // Reset the input field
+                preFilterInput.value = '';
+                // Reset highlighting states
+                prefilterHighlightEnabled = true;
+                filterHighlightEnabled = true;
+                savedPrefilterHighlights = { hasContent: false };
+                savedFilterHighlights = { hasContent: false };
+            } else {
+                // No prefilter, hide prefilter button
+                updatePrefilterToggleButton(0, '', false);
+                preFilterMsg.style.display = 'none';
+            }
+
+            const rowLabel = loadedRowCount === 1 ? 'row' : 'rows';
+            Lib.debug('cache', `Successfully loaded ${loadedRowCount} ${rowLabel} from disk!`);
+            _setInfoSub('mb-info-display-generic',
+                `✓ Loaded ${loadedRowCount} ${rowLabel} from ${file ? `file ${file.name}` : sourceLabel} | Active Pre-Filter: ${!!filterQueryRaw}`,
+                filterQueryRaw
+                    ? `Pre-filter '${filterQueryRaw}' applied. Adjust the filter controls to show more or fewer results.`
+                    : `Use the filter and sort controls to explore the ${loadedRowCount} ${rowLabel}. Click '📂' again to load a different file.`);
+
+            // ── Auto-resize columns after disk-load ───────────────────────────
+            // Deferred by one task (setTimeout 0) so the browser has had a chance
+            // to perform a layout pass and offsetWidth / scrollWidth measurements
+            // inside toggleAutoResizeColumns() reflect the fully-painted DOM.
+            // Only fired when:
+            //   • sa_ld_auto_resize_after_load is enabled (default: true)
+            //   • column resizing is enabled (sa_enable_column_resizing)
+            //   • the table is NOT already in a resized state — so we never
+            //     silently undo an existing manual resize that happened to be
+            //     active when the user triggered a disk load.
+            if (Lib.settings.sa_ld_auto_resize_after_load !== false &&
+                    Lib.settings.sa_enable_column_resizing &&
+                    !isAutoResized && !isManuallyResized) {
+                setTimeout(() => {
+                    const resizeBtnEl = document.getElementById('mb-resize-btn');
+                    if (resizeBtnEl && typeof toggleAutoResizeColumns === 'function') {
+                        Lib.debug('cache', 'Auto-resizing columns after disk load (sa_ld_auto_resize_after_load=true)');
+                        toggleAutoResizeColumns();
+                    }
+                }, 0);
+            }
+
+            // Reset file input
+            fileInput.value = '';
+
+        } catch (err) {
+            Lib.error('cache', 'Failed to load data from file:', err);
+            alert('Failed to load data: ' + err.message);
+            fileInput.value = '';
+        }
+    }
+
     async function loadTableDataFromDisk(file, filterQueryRaw = '', isCaseSensitive = false, isRegExp = false, isExclude = false) {
         if (!file) {
             Lib.warn('cache', 'No file selected.');
             return;
         }
-
-        const filterQuery = (isCaseSensitive || isRegExp) ? filterQueryRaw : filterQueryRaw.toLowerCase();
 
         // Clear previous status message
         preFilterMsg.textContent = '';
@@ -42565,765 +43705,10 @@ a { color: #1565c0; }`;
 
                 const data = JSON.parse(jsonString);
 
-                // Validate data structure
-                // NOTE: pageType mismatch check was moved to showLoadFilterDialog Phase 1
-                // (dialogFileInput.onchange), where it has access to the correct dialog
-                // elements and can properly abort before rawData/rawFile are set.
-                if (!data.version || !data.pageType || !data.timestamp) {
-                    throw new Error('Invalid data file: missing required fields');
-                }
-
-                Lib.debug('cache', `Loaded data version ${data.version} from ${data.timestampReadable} (File total: ${data.rowCount} rows)`);
-
-                // Prepare the page for re-hydration.
-                // First, strip any focus-mode prefix and background tint from column
-                // filter inputs that may still be in the DOM (e.g. if a field had
-                // focus when the Load dialog was confirmed).
-                document.querySelectorAll('.mb-col-filter-input').forEach(inp => {
-                    inp.value = '';
-                    inp.style.backgroundColor = '';
+                await _hydrateAndRenderFromSnapshotData(data, {
+                    file, filterQueryRaw, isCaseSensitive, isRegExp, isExclude, globalRegex,
+                    sourceLabel: file.name
                 });
-                performClutterCleanup();
-                cleanupAfterInitialLoad();
-
-                // ── DOM pre-processing for listToTable pages (e.g. artist-credit) ───
-                // On pages where applyListToTable converts <ul> lists to <table.tbl>
-                // elements (pageTypes with features.listToTable), the button click
-                // normally calls startFetchingProcess which runs applyRenameH2ToH3,
-                // applyInsertH2, and applyListToTable before fetching.  On disk-load
-                // startFetchingProcess is never invoked, so those pre-processing steps
-                // have not run.  Without them:
-                //   (a) document.querySelector('table.tbl') returns null — the headers
-                //       restoration block silently skips, renderGroupedTable has no
-                //       templateHead to clone, and compareDocumentPosition crashes
-                //       when called with null as its argument.
-                //   (b) The insertH2 <h2> anchor that renderGroupedTable uses as
-                //       targetHeader is absent, so the master-toggle and filterContainer
-                //       are never anchored.
-                // Run the same three steps here before the headers restoration block.
-                if (activeDefinition.features && activeDefinition.features.listToTable) {
-                    Lib.debug('cache',
-                        'disk-load: running DOM pre-processing (renameH2ToH3, insertH2, ' +
-                        'applyListToTable) for listToTable page type: ' + pageType);
-                    applyRenameH2ToH3(activeDefinition);
-                    applyInsertH2(activeDefinition);
-                    applyListToTable(activeDefinition);
-                }
-
-                // Restore table headers if they were saved
-                if (data.headers && data.headers.length > 0) {
-                    const firstTable = document.querySelector('table.tbl');
-                    if (firstTable) {
-                        if (firstTable.tHead) firstTable.tHead.remove();
-                        const thead = document.createElement('thead');
-                        data.headers.forEach(headerRowCells => {
-                            // Skip filter rows
-                            const hasFilterInputs = headerRowCells.some(cell => cell.html && cell.html.includes('mb-col-filter-input'));
-                            if (hasFilterInputs) return;
-
-                            const tr = document.createElement('tr');
-                            headerRowCells.forEach(cellData => {
-                                const cell = document.createElement(cellData.tagName || 'th');
-                                cell.innerHTML = cellData.html;
-                                if (cellData.style) cell.setAttribute('style', cellData.style);
-                                if (cellData.colSpan > 1) cell.colSpan = cellData.colSpan;
-                                if (cellData.rowSpan > 1) cell.rowSpan = cellData.rowSpan;
-                                tr.appendChild(cell);
-                            });
-                            thead.appendChild(tr);
-                        });
-                        firstTable.insertBefore(thead, firstTable.firstChild);
-                    }
-                }
-
-                let loadedRowCount = 0;
-
-                // Helper to check if a row matches the pre-load filter
-                const rowMatchesFilter = (tr) => {
-                    if (!filterQueryRaw) return true;
-                    let matched;
-                    if (isRegExp && globalRegex) {
-                        // For regex patterns, test against each cell individually
-                        matched = Array.from(tr.cells).some(cell => {
-                            const cellText = getCleanColumnText(cell);
-                            return globalRegex.test(cellText);
-                        });
-                    } else {
-                        // For non-regex, test against concatenated row text
-                        const text = getCleanVisibleText(tr);
-                        matched = isCaseSensitive ? text.includes(filterQuery) : text.toLowerCase().includes(filterQuery);
-                    }
-                    // isExclude: keep rows that do NOT match; normal: keep rows that DO match
-                    return isExclude ? !matched : matched;
-                };
-
-                // Reconstruct rows from serialized data with Filtering
-                _invalidateFilterCache();
-                if (data.tableMode === 'multi' && data.groups) {
-                    groupedRows = [];
-                    expandedCells.clear();
-                    _areaFlagRegionCorrected.clear();
-                    _editsProseDefaultExpandedCols.clear();
-                    _mbRowIdxCounter = 0;
-
-                    // PageTypes that use singular colName (same set as _singularPageTypes
-                    // in startFetchingProcess, kept in sync here for disk-load parity).
-                    const _diskSingularTypes = new Set([
-                        'tag-value', 'user-tag-value',
-                        'user-tags', 'popular-tags',
-                        'artist-tags', 'releasegroup-tags', 'release-tags',
-                        'recording-tags', 'work-tags', 'label-tags',
-                        'series-tags', 'place-tags', 'area-tags', 'instrument-tags',
-                        'artist-credit'
-                    ]);
-
-                    data.groups.forEach(group => {
-                        const reconstructedRows = [];
-                        group.rows.forEach((rowCells, rowIndex) => {
-                            const tr = document.createElement('tr');
-                            tr.className = rowIndex % 2 === 0 ? 'even' : 'odd';
-                            rowCells.forEach(cellData => {
-                                const td = document.createElement('td');
-                                td.innerHTML = cellData.html;
-                                if (cellData.colSpan > 1) td.colSpan = cellData.colSpan;
-                                if (cellData.rowSpan > 1) td.rowSpan = cellData.rowSpan;
-                                // Strip transient JS-only state from cells that were
-                                // saved before 9.99.157 (before getCleanCellHtml began
-                                // stripping these markers at save time).  Files saved
-                                // with 9.99.157+ have already been cleaned, so this is
-                                // a cheap no-op for them.
-                                _stripTransientCellState(td);
-                                tr.appendChild(td);
-                            });
-
-                            // ── Skip "See all N …" rows ───────────────────────────────────
-                            // _lastRow.remove() in renderGroupedTable removes the "See all"
-                            // TR from the DOM but NOT from group.rows; saveTableDataToDisk
-                            // serialises group.rows so the row is written to disk.  On
-                            // disk-load we filter it out here so that:
-                            //   (a) loadedRowCount (→ updateH2Count) shows the correct
-                            //       number (e.g. 91) rather than inflated count (91+8).
-                            //   (b) The _seeAllSplice in renderGroupedTable only needs to
-                            //       handle live-fetch rows, not disk-loaded ones.
-                            // Detection: sole cell contains <em><a href*="/tag/"> or
-                            // <em><a href*="/artist-credit/"> whose text starts with
-                            // "See all" (case-insensitive).
-                            if (tr.cells.length === 1) {
-                                const _seeAllA = tr.cells[0].querySelector(
-                                    'em a[href*="/tag/"], em a[href*="/artist-credit/"]'
-                                );
-                                if (_seeAllA && /^see all\b/i.test(_seeAllA.textContent.trim())) {
-                                    Lib.debug('cache',
-                                        `disk-load: skipped "See all" row ("${_seeAllA.textContent.trim().substring(0, 60)}")`);
-                                    return; // skip this row
-                                }
-                            }
-
-                            if (rowMatchesFilter(tr)) {
-                                tr.dataset.mbRowIdx = String(_mbRowIdxCounter++);
-                                reconstructedRows.push(tr);
-                            }
-                        });
-
-                        // ── Derive colName and entityFeatures ─────────────────────
-                        // startFetchingProcess sets colName on each groupedRows entry
-                        // only when the page goes through the listToTable / groupByH3
-                        // fetch branch (the `else if` at the outer fetch-loop level that
-                        // guards on `activeDefinition.features?.listToTable ||
-                        // activeDefinition.features?.groupByH3`).  Standard multi-table
-                        // pages like `releasegroup-releases` use the `else` branch and
-                        // leave group.colName undefined.
-                        //
-                        // disk-load must mirror this exactly:
-                        //   (a) listToTable/groupByH3 pages  — set colName so that
-                        //       renderGroupedTable patches the first <th> of each
-                        //       sub-table to the correct (singular) column name
-                        //       (fixes: all sub-tables showing the first group's name)
-                        //   (b) all other multi-table pages — leave colName undefined
-                        //       so renderGroupedTable does NOT patch the first <th>.
-                        //       Without this guard, `releasegroup-releases` would have
-                        //       its first <th> changed from "Release" to "Official
-                        //       release", causing caaFindColumnByName('Release') to
-                        //       return -1 and skipping all inline art injection.
-                        //
-                        // entityFeatures is derived independently of colName and is
-                        // always set when the definition carries an entityFeatures map.
-                        const _grpCat = group.category || group.key;
-                        const _usesColNamePath = !!(activeDefinition.features?.listToTable ||
-                                                    activeDefinition.features?.groupByH3);
-                        const _grpColName = _usesColNamePath
-                            ? (pageType === 'reports-index' ? 'Report' : (_diskSingularTypes.has(pageType) ? _toSingular(_grpCat) : _grpCat))
-                            : undefined;
-                        const _grpEntityFeatures = (activeDefinition.entityFeatures && _grpCat)
-                            ? resolveEntityFeaturesFromH3(_grpCat, activeDefinition)
-                            : null;
-
-                        const _grpEntry = {
-                            key: group.key,
-                            category: _grpCat,
-                            rows: reconstructedRows,
-                            originalRows: [...reconstructedRows]
-                        };
-                        if (_grpColName !== undefined) {
-                            _grpEntry.colName = _grpColName;
-                        }
-                        if (_grpEntityFeatures && Object.keys(_grpEntityFeatures).length > 0) {
-                            _grpEntry.entityFeatures = _grpEntityFeatures;
-                        }
-                        groupedRows.push(_grpEntry);
-                        loadedRowCount += reconstructedRows.length;
-                    });
-                    allRows = [];
-                } else if (data.rows) {
-                    allRows = [];
-                    expandedCells.clear();
-                    _areaFlagRegionCorrected.clear();
-                    _editsProseDefaultExpandedCols.clear();
-                    _mbRowIdxCounter = 0;
-                    data.rows.forEach((rowCells, rowIndex) => {
-                        const tr = document.createElement('tr');
-                        tr.className = rowIndex % 2 === 0 ? 'even' : 'odd';
-                        rowCells.forEach(cellData => {
-                            const td = document.createElement('td');
-                            td.innerHTML = cellData.html;
-                            if (cellData.colSpan > 1) td.colSpan = cellData.colSpan;
-                            if (cellData.rowSpan > 1) td.rowSpan = cellData.rowSpan;
-                            _stripTransientCellState(td);
-                            tr.appendChild(td);
-                        });
-
-                        if (rowMatchesFilter(tr)) {
-                            tr.dataset.mbRowIdx = String(_mbRowIdxCounter++);
-                            allRows.push(tr);
-                        }
-                    });
-                    loadedRowCount = allRows.length;
-                    groupedRows = [];
-                } else {
-                    throw new Error('Invalid data file: no rows or groups found');
-                }
-
-                isLoaded = true;
-                if (data.tableMode) activeDefinition.tableMode = data.tableMode;
-                if (activeDefinition.tableMode !== 'multi') originalAllRows = [...allRows];
-
-                // ── Merge entity-specific features into activeDefinition ──────────────
-                // startFetchingProcess calls resolveEntityFeaturesFromH2(baseDef) and
-                // merges the result into activeDefinition.features before any render or
-                // CAA initialisation.  On disk-load this merge never happens, so keys
-                // such as addCAA / addEAA / extractMainColumn that live inside the
-                // entityFeatures map (e.g. series-releases: entityFeatures.Releases)
-                // are absent from activeDefinition.features.  This causes initCaaPics()
-                // / initEaaPics() to skip entirely (they guard on features.addCAA /
-                // features.addEAA) and also breaks extractMainColumn-driven sticky
-                // columns.
-                // Fix: apply the same merge here immediately after the tableMode
-                // assignment so all downstream code (descriptor builders, initCaaPics,
-                // initCaaInlinePics, applyStickyColumn, etc.) sees the correct merged
-                // features.
-                if (baseDefinition && baseDefinition.entityFeatures) {
-                    const _diskEntityFeatures = resolveEntityFeaturesFromH2(baseDefinition);
-                    if (_diskEntityFeatures && Object.keys(_diskEntityFeatures).length > 0) {
-                        activeDefinition = {
-                            ...activeDefinition,
-                            features: {
-                                ..._diskEntityFeatures,
-                                ...(activeDefinition.features || {})
-                            }
-                        };
-                        Lib.debug('cache',
-                            'disk-load: merged entityFeatures into activeDefinition.features — ' +
-                            'keys: ' + Object.keys(_diskEntityFeatures).join(', '));
-                    }
-                }
-                if (!activeInjectedColumns.length) {
-                    activeInjectedColumns = buildActiveInjectedColumns(activeDefinition);
-                    Lib.debug('cache', `disk-load: rebuilt activeInjectedColumns (${activeInjectedColumns.length})`);
-                }
-                if (!activeReleaseEventColumns.length) {
-                    activeReleaseEventColumns = buildActiveReleaseEventColumns(activeDefinition);
-                    Lib.debug('cache', `disk-load: rebuilt activeReleaseEventColumns (${activeReleaseEventColumns.length})`);
-                }
-                if (!activeInjectedColumnExtractors.length) {
-                    activeInjectedColumnExtractors = buildActiveInjectedColumnExtractors(activeDefinition);
-                    Lib.debug('cache', `disk-load: rebuilt activeInjectedColumnExtractors (${activeInjectedColumnExtractors.length})`);
-                }
-
-                // Visually mark the action button that corresponds to the loaded data with
-                // the same "#ccffcc" success colour used at the end of a live fetch, so the
-                // user has a clear indication of which data type is currently displayed.
-                //
-                // Matching strategy (two passes, first match wins):
-                //   1. Slug-match data.buttonLabel (present in files saved with v9.99.49+):
-                //      toSlug(btn.dataset.label) === toSlug(data.buttonLabel)
-                //      Using slugs makes the comparison immune to emoji, superscript digits,
-                //      case differences, and any other textContent decoration.
-                //   2. Filename-slug fallback (for older files without buttonLabel):
-                //      Extract the detail segment from the old-format filename
-                //      (old format: MB-<pageType>-<detailSlug>-<rows>-<timestamp>.json[.gz];
-                //       new v9.99.140+ format with entity name is handled by strategy 1)
-                //      and compare toSlug(btn.dataset.label) against it.
-                //   3. If neither strategy finds a match, colour all action buttons green.
-                {
-                    /**
-                     * Convert a label to a safe filename slug — identical logic to toSlug()
-                     * in saveTableDataToDisk, intentionally duplicated here so the load path
-                     * has no dependency on the save path's closure-scoped helper.
-                     *
-                     * @param {string} text
-                     * @returns {string}
-                     */
-                    const slugify = (text) => {
-                        if (!text) return '';
-                        return text
-                            .toLowerCase()
-                            .trim()
-                            .replace(/\s+/g, '_')
-                            .replace(/[^a-z0-9_]/g, '')
-                            .replace(/_+/g, '_')
-                            .replace(/^_+|_+$/g, '');
-                    };
-
-                    /**
-                     * Return the detail-slug segment embedded in a MB save filename, or '' when
-                     * the filename does not match the expected pattern.
-                     *
-                     * Supported filename formats:
-                     *   Old: MB-<pageTypeSlug>[-<detailSlug>]-<rowCount>-<ISOTimestamp>.json[.gz]
-                     *   New: MB-<PageType>-(<EntityName>)-<Section>[-<detailSlug>]-(<rowCount>)[_<ISOTimestamp>].json[.gz]
-                     *
-                     * For the old format the detail slug is everything between the pageType slug
-                     * and the numeric row-count segment.
-                     * For the new format (parenthesised entity name) strategy 1 (buttonLabel) will
-                     * have already matched; this function only needs to handle the old format as
-                     * a graceful fallback for files saved before v9.99.140.
-                     *
-                     * @param {string} filename - e.g. "MB-artist-releasegroups-official_rgs-579-2026-03-06T16-28-02.json.gz"
-                     * @param {string} ptSlug   - page-type slug e.g. "artist-releasegroups" (lowercase, no -filtered suffix)
-                     * @returns {string}
-                     */
-                    const detailSlugFromFilename = (filename, ptSlug) => {
-                        // Strip directory path and extension(s) (.json.gz or .json)
-                        const base = filename.replace(/^.*[\\/]/, '').replace(/\.json(\.gz)?$/, '');
-                        // Try old-format prefix: "MB-<ptSlug>-" (case-insensitive for robustness)
-                        const oldPrefix = `MB-${ptSlug}-`;
-                        if (!base.toLowerCase().startsWith(oldPrefix.toLowerCase())) return '';
-                        const rest = base.slice(oldPrefix.length); // e.g. "official_rgs-579-2026-03-06T16-28-02"
-                        // New-format files have an entity-name in parens right after the prefix,
-                        // e.g. "(Bruce Springsteen)-Relationships-(1329)_...". Bail out early —
-                        // strategy 1 should have already matched these.
-                        if (rest.startsWith('(')) return '';
-                        // Collect tokens until we hit the first all-digit token (row count)
-                        const tokens = rest.split('-');
-                        const detailTokens = [];
-                        for (const tok of tokens) {
-                            if (/^\d+$/.test(tok)) break;  // row-count segment reached
-                            detailTokens.push(tok);
-                        }
-                        return detailTokens.join('_');  // e.g. "official_rgs"
-                    };
-
-                    const pageTypeSlug = pageType.replace(/-filtered$/, '');
-                    let matched = false;
-
-                    // --- Strategy 1: slug-match data.buttonLabel ---
-                    const savedButtonSlug = slugify(data.buttonLabel || '');
-                    if (savedButtonSlug) {
-                        allActionButtons.forEach(btn => {
-                            const btnSlug = slugify(btn.dataset.label || btn.textContent);
-                            if (btnSlug === savedButtonSlug) {
-                                btn.style.backgroundColor = '#ccffcc';
-                                btn.style.color = 'black';
-                                matched = true;
-                                Lib.debug('cache', `Disk-load [strategy 1]: coloured button green via buttonLabel slug "${savedButtonSlug}" → "${btn.dataset.label || btn.textContent.trim()}"`);
-                            }
-                        });
-                    }
-
-                    // --- Strategy 2: filename detail-slug fallback (older files) ---
-                    if (!matched) {
-                        const fileDetailSlug = detailSlugFromFilename(file.name, pageTypeSlug);
-                        Lib.debug('cache', `Disk-load [strategy 2]: extracted detail slug from filename "${file.name}" → "${fileDetailSlug}"`);
-                        if (fileDetailSlug) {
-                            allActionButtons.forEach(btn => {
-                                const btnSlug = slugify(btn.dataset.label || btn.textContent);
-                                if (btnSlug === fileDetailSlug) {
-                                    btn.style.backgroundColor = '#ccffcc';
-                                    btn.style.color = 'black';
-                                    matched = true;
-                                    Lib.debug('cache', `Disk-load [strategy 2]: coloured button green via filename slug "${fileDetailSlug}" → "${btn.dataset.label || btn.textContent.trim()}"`);
-                                }
-                            });
-                        }
-                    }
-
-                    // --- Strategy 3: fallback — colour all buttons ---
-                    if (!matched) {
-                        allActionButtons.forEach(btn => {
-                            btn.style.backgroundColor = '#ccffcc';
-                            btn.style.color = 'black';
-                        });
-                        Lib.debug('cache', `Disk-load [strategy 3]: no button slug matched; coloured all ${allActionButtons.length} action button(s) green`);
-                    }
-                }
-
-                // ── Artist-Releasegroups: restore discography category arrays ─────
-                // When a save file from an artist-releasegroups page includes the
-                // pre-fetch category list (discOfficialCategories), restore all three
-                // h3 category arrays BEFORE calling renderGroupedTable so that the
-                // in-loop mbDiscSection stamping (added to renderGroupedTable) fires
-                // correctly on every h3 that is created during the render — including
-                // subsequent re-renders triggered by runFilter() below.
-                if (pageType === 'artist-releasegroups' &&
-                        Array.isArray(data.discOfficialCategories) &&
-                        data.discOfficialCategories.length > 0) {
-                    h3_official_category_header_array = data.discOfficialCategories.slice();
-                    h3_all_category_header_array      = groupedRows.map(g => g.category || 'Other');
-
-                    // Rebuild non-official via the same sequence-match algorithm used
-                    // in startFetchingProcess (lines 24127-24148).
-                    h3_non_official_category_header_array = [];
-                    let _dOffIdx = 0, _dNonOffStarted = false;
-                    for (const _dCat of h3_all_category_header_array) {
-                        if (!_dNonOffStarted) {
-                            if (_dOffIdx < h3_official_category_header_array.length &&
-                                    _dCat === h3_official_category_header_array[_dOffIdx]) {
-                                _dOffIdx++;
-                            } else {
-                                _dNonOffStarted = true;
-                                if (!h3_non_official_category_header_array.includes(_dCat))
-                                    h3_non_official_category_header_array.push(_dCat);
-                            }
-                        } else {
-                            if (!h3_non_official_category_header_array.includes(_dCat))
-                                h3_non_official_category_header_array.push(_dCat);
-                        }
-                    }
-                    Lib.debug('cache',
-                        `disk-load: restored discography arrays — official=${h3_official_category_header_array.length}` +
-                        ` all=${h3_all_category_header_array.length}` +
-                        ` non-official=${h3_non_official_category_header_array.length}`);
-                }
-
-                // Render
-                if (activeDefinition.tableMode === 'multi' && groupedRows.length > 0) {
-                    // Finalize colon-aligned columns before render so colons line up
-                    if (Lib.settings.sa_enable_numeric_alignment !== false) {
-                        finalizeSplitAlignedColumns(groupedRows.flatMap(g => g.rows), activeIntegerColumns);
-                        finalizeRLCColumnWidths(groupedRows.flatMap(g => g.rows), activeIntegerColumns);
-                    }
-                    await renderGroupedTable(groupedRows, _isReleaseGroupsMultiMode());
-                } else if (allRows.length > 0 || loadedRowCount === 0) {
-                    // Finalize colon-aligned columns before render so colons line up
-                    if (Lib.settings.sa_enable_numeric_alignment !== false) {
-                        finalizeSplitAlignedColumns(allRows, activeIntegerColumns);
-                        finalizeRLCColumnWidths(allRows, activeIntegerColumns);
-                    }
-                    await renderFinalTable(allRows);
-                    document.querySelectorAll('table.tbl thead').forEach(cleanupHeaders);
-                    const mainTable = document.querySelector('table.tbl');
-                    if (mainTable) {
-                        addColumnFilterRow(mainTable);
-                        makeTableSortableUnified(mainTable, 'main_table');
-                        // Note: initCollapsableColumns() is intentionally NOT called here.
-                        // The runFilter() call below re-renders the table (possibly with a
-                        // pre-filter applied) and its single-table branch calls
-                        // initCollapsableColumns() on the final DOM rows.  Calling it here
-                        // would operate on allRows before runFilter() clones and replaces
-                        // them, so all modifications would be discarded — and the global
-                        // collapse button would not yet have filterContainer in the DOM.
-                    }
-                }
-
-                // Apply prefilter highlight after rendering (if prefilter was used)
-                if (filterQueryRaw) {
-                    Lib.debug('cache', `Applying prefilter highlight for: "${filterQueryRaw}"`);
-
-                    const tables = document.querySelectorAll('table.tbl');
-
-                    tables.forEach(table => {
-                        table.querySelectorAll('tbody tr').forEach(row => {
-                            highlightText(row, filterQueryRaw, isCaseSensitive, -1, isRegExp, 'prefilter');
-                        });
-                    });
-                }
-
-                finalCleanup();
-
-                // Install navigation guard (idempotent — safe to call on every render)
-                initNavigationGuard();
-
-                // ── updateH2Count MUST run before makeH2sCollapsible ─────────────────
-                // makeH2sCollapsible uses the presence of .mb-row-count-stat on an h2
-                // to identify the main data header (isMainDataHeader = true → icon='▼'
-                // → contentNodes are NOT hidden).  Without .mb-row-count-stat, every h2
-                // is treated as a non-data header (icon='▲') and ALL its content nodes
-                // (including the script-managed h3/table pairs) are set to display:none.
-                // updateH2Count stamps .mb-row-count-stat, so it must precede
-                // makeH2sCollapsible to ensure the correct h2 is left expanded.
-                updateH2Count(loadedRowCount, loadedRowCount);
-
-                // Trailing h2 relocation: must run AFTER updateH2Count() because
-                // _relocateTrailingH2Sections() anchors on .mb-row-count-stat which
-                // is inserted by updateH2Count().  finalCleanup() (called earlier)
-                // already attempted this but found no stat and silently no-oped.
-                _relocateTrailingH2Sections();
-
-                makeH2sCollapsible();
-
-                // ── Artist-Releasegroups: inject discography view buttons ─────────
-                // Mirror the equivalent block in startFetchingProcess (lines
-                // 24109-24201).  The h3_official_category_header_array was already
-                // restored and the h3 elements were stamped with mbDiscSection by the
-                // modified renderGroupedTable.  We only need to inject the buttons.
-                if (pageType === 'artist-releasegroups' &&
-                        h3_official_category_header_array.length > 0) {
-                    _injectDiscographyViewButtons();
-                    Lib.debug('cache', 'disk-load: discography view buttons injected');
-                }
-
-                // Reset global filter to a clean state after every disk load.
-                // If the page was already rendered with an active filter before the load,
-                // the filterInput still holds the old value; the newly loaded rows are not
-                // affected by it until the user interacts with the filter widget.  Clear the
-                // value now and immediately re-run the filter so:
-                //   (a) the loaded rows are all visible (no stale filter applied),
-                //   (b) filter-status / sort-status displays are cleared,
-                //   (c) "Toggle highlighting" and "Clear ALL filters" buttons are hidden.
-                // Reset to prefix-only — the global filter always keeps the prefix in its value.
-                filterInput.value = getFilterFocusPrefix();
-                filterInput.style.boxShadow = '';
-                filterStatusDisplay.textContent = '';
-                sortStatusDisplay.textContent = '';
-                if (typeof runFilter === 'function') {
-                    runFilter();
-                }
-                if (typeof window.updateFilterButtonsVisibility === 'function') {
-                    window.updateFilterButtonsVisibility();
-                }
-
-                // Reset all sort state after every disk load.
-                // If the page was already rendered with active column sorts (including
-                // multi-column sorts with cell tints), the sort-icon highlights and tinted
-                // cells persist in the DOM after re-render because makeTableSortableUnified()
-                // only adds new sort buttons — it does not undo previously applied DOM state.
-                // Steps:
-                //   (a) call clearTints() from the tint registry for every known sortKey to
-                //       remove multi-sort background colours from data cells,
-                //   (b) strip .sort-icon-active from all sort icon buttons,
-                //   (c) reset every sort-state entry in multiTableSortStates to neutral,
-                //   (d) clear per-h3 sort status spans,
-                //   (e) clear both Maps so stale keys from the previous render don't accumulate.
-                multiSortTintRegistry.forEach(({ clearTints }) => {
-                    try { clearTints(); } catch (_) { /* ignore if table no longer in DOM */ }
-                });
-                document.querySelectorAll('.sort-icon-btn').forEach(btn => {
-                    btn.classList.remove('sort-icon-active');
-                });
-                document.querySelectorAll('.mb-sort-status').forEach(el => {
-                    el.textContent = '';
-                });
-                multiTableSortStates.clear();
-                multiSortTintRegistry.clear();
-
-                if (Lib.settings.sa_enable_sticky_headers) {
-                    applyStickyHeaders();
-                }
-
-                // Add auto-resize columns button
-                if (Lib.settings.sa_enable_column_resizing) {
-                    addAutoResizeButton();
-                }
-
-                // Apply sticky column AFTER makeColumnsResizable (called per-table
-                // during renderGroupedTable) so the sticky position is the last writer.
-                if (Lib.settings.sa_enable_sticky_columns !== false) {
-                    document.querySelectorAll('table.tbl').forEach(table => {
-                        table.style.borderCollapse = 'separate';
-                        table.style.borderSpacing  = '0';
-                        applyStickyColumn(table);
-                    });
-                }
-
-                // Add column visibility toggle for loaded table
-                if (Lib.settings.sa_enable_column_visibility) {
-                    const mainTable = document.querySelector('table.tbl');
-                    if (mainTable) {
-                        addColumnVisibilityToggle(mainTable);
-                    }
-                }
-
-                // Add barcode highlight toggle button (between Visible and Density)
-                addBarcodeHighlightToggleButton();
-
-                // Add density control
-                if (Lib.settings.sa_enable_density_control) {
-                    addDensityControl();
-                }
-
-                // Add stats panel button
-                if (Lib.settings.sa_enable_stats_panel) {
-                    addStatsButton();
-                }
-
-                // Initialize keyboard shortcuts (if not already initialized)
-                if (Lib.settings.sa_enable_keyboard_shortcuts) {
-                    if (!document._mbKeyboardShortcutsInitialized) {
-                        initKeyboardShortcuts();
-                        document._mbKeyboardShortcutsInitialized = true;
-                    }
-                    addShortcutsHelpButton();
-                }
-
-                // Add export button
-                if (Lib.settings.sa_enable_export) {
-                    addExportButton();
-                }
-
-                // Initialize sidebar collapse toggle (must run after render;
-                // idempotent — safe to call even if a prior fetch already ran it)
-                if (Lib.settings.sa_collabsable_sidebar) {
-                    initSidebarCollapse();
-                }
-
-                // Inject expand/collapse buttons for release-group and release rows
-                if (Lib.settings.sa_enable_expand_rgs) {
-                    initExpandRGsFeature();
-                }
-
-                // Highlight identical barcodes in Barcode columns (post-render)
-                initBarcodeHighlight();
-
-                // CDtoc: attempt to re-wire tracklist toggles (no-op when
-                // data-cdtoc-tracklist-html is absent — attr is not saved to disk).
-                _cdtocInitTracklistToggles();
-
-                // Populate Release events column.
-                if (activeReleaseEventColumns.length) initReleaseEventsColumn();
-
-                // Populate Relationships column cells via async WS2 fetches (if configured).
-                if (activeInjectedColumns.length) initRelationshipsColumn();
-                setTimeout(_relCreateRetryButtons, 200);
-
-                // Inject Picard tagger column AFTER Relationships so Picard is always
-                // the rightmost column (Relationships td is appended first; Picard td
-                // must come after so column order matches the thead).
-                initPicardTaggerColumn();
-
-                // Re-align the filter row after Picard injection (stale-detection no-op
-                // when counts already match; self-heals on mismatch — see addColumnFilterRow).
-                const _diskLoadFilterTable = document.querySelector('table.tbl');
-                if (_diskLoadFilterTable) addColumnFilterRow(_diskLoadFilterTable);
-
-                // CAA / EAA art thumbnails and big-pic strip:
-                // Do NOT call initCaaPics / initEaaPics / initCaaInlinePics /
-                // initEaaInlinePics here.
-                //
-                // For multi-table pages renderGroupedTable() calls them at its own
-                // tail — once for the initial `await renderGroupedTable(groupedRows)`
-                // above, and once more inside the `runFilter()` call below (which
-                // also calls renderGroupedTable).  Any additional explicit call here
-                // would create a third set of pending img.onload closures; because
-                // all three sets are async (browser image loads are never synchronous
-                // even for cache hits) they all fire after JS yields, incrementing
-                // the badge three times over — tripling the displayed count.
-                //
-                // For single-table pages the runFilter() call below takes the
-                // single-table branch of runFilter(), which calls initCaaPics() /
-                // initEaaPics() / initCaaInlinePics() / initEaaInlinePics()
-                // directly.  An extra call here would double the badge count for
-                // the same reason.
-                //
-                // In both cases runFilter() (or renderGroupedTable via runFilter)
-                // is the authoritative and sufficient call site.
-
-                // Explicitly place the CAA/EAA global toggle buttons in the h2
-                // after the count stat has been created.
-                //
-                // _artCreateOrUpdateGlobalToggleButton uses `countStat.after(btn)`
-                // to position the button immediately after `h2 .mb-row-count-stat`.
-                // During a disk-load the call sequence is:
-                //   1. await renderGroupedTable(groupedRows)  → initCaaPics
-                //      → _artCreateOrUpdateGlobalToggleButton → defers
-                //        (h2 .mb-row-count-stat does not exist yet)
-                //   2. runFilter() → renderGroupedTable(filteredArray) → initCaaPics
-                //      → _artCreateOrUpdateGlobalToggleButton → still defers
-                //      → then runFilter calls updateH2Count: count stat created
-                //        but updateH2Count's re-anchor loop finds no buttons yet
-                //   3. updateH2Count(loadedRowCount) [called above] recreates the stat
-                //        re-anchor loop still finds no buttons
-                //
-                // Net result in a new session: the button is never created.
-                // Fix: call _artCreateOrUpdateGlobalToggleButton here, after the
-                // count stat definitely exists.  In a same-session load the button
-                // already exists and this is a cheap idempotent update.
-                if (activeDefinition.tableMode === 'multi') {
-                    if (Lib.settings.sa_enable_caa_pics) {
-                        _artCreateOrUpdateGlobalToggleButton(CAA_CTX);
-                        _artCreateOrUpdateGlobalToggleButton(EAA_CTX);
-                    }
-                }
-
-                // Show main filter container (if hidden)
-                if (!filterContainer.parentNode) filterContainer.style.display = 'inline-flex';
-
-                if (Lib.settings.sa_enable_save_load) {
-                    saveToDiskBtn.style.display = 'inline-block';
-                }
-
-                // --- Update UI Feedback for Pre-Filter ---
-                if (filterQueryRaw) {
-                    // Update the prefilter toggle button with prefilter info and show it
-                    // Pass the file's total row count and isExclude so the label always shows "N out of T"
-                    updatePrefilterToggleButton(loadedRowCount, filterQueryRaw, true, data.rowCount || 0, isExclude);
-                    // Hide the old prefilter message span (no longer needed)
-                    preFilterMsg.style.display = 'none';
-                    // Reset the input field
-                    preFilterInput.value = '';
-                    // Reset highlighting states
-                    prefilterHighlightEnabled = true;
-                    filterHighlightEnabled = true;
-                    savedPrefilterHighlights = { hasContent: false };
-                    savedFilterHighlights = { hasContent: false };
-                } else {
-                    // No prefilter, hide prefilter button
-                    updatePrefilterToggleButton(0, '', false);
-                    preFilterMsg.style.display = 'none';
-                }
-
-                const rowLabel = loadedRowCount === 1 ? 'row' : 'rows';
-                Lib.debug('cache', `Successfully loaded ${loadedRowCount} ${rowLabel} from disk!`);
-                _setInfoSub('mb-info-display-generic',
-                    `✓ Loaded ${loadedRowCount} ${rowLabel} from file ${file.name} | Active Pre-Filter: ${!!filterQueryRaw}`,
-                    filterQueryRaw
-                        ? `Pre-filter '${filterQueryRaw}' applied. Adjust the filter controls to show more or fewer results.`
-                        : `Use the filter and sort controls to explore the ${loadedRowCount} ${rowLabel}. Click '📂' again to load a different file.`);
-
-                // ── Auto-resize columns after disk-load ───────────────────────────
-                // Deferred by one task (setTimeout 0) so the browser has had a chance
-                // to perform a layout pass and offsetWidth / scrollWidth measurements
-                // inside toggleAutoResizeColumns() reflect the fully-painted DOM.
-                // Only fired when:
-                //   • sa_ld_auto_resize_after_load is enabled (default: true)
-                //   • column resizing is enabled (sa_enable_column_resizing)
-                //   • the table is NOT already in a resized state — so we never
-                //     silently undo an existing manual resize that happened to be
-                //     active when the user triggered a disk load.
-                if (Lib.settings.sa_ld_auto_resize_after_load !== false &&
-                        Lib.settings.sa_enable_column_resizing &&
-                        !isAutoResized && !isManuallyResized) {
-                    setTimeout(() => {
-                        const resizeBtnEl = document.getElementById('mb-resize-btn');
-                        if (resizeBtnEl && typeof toggleAutoResizeColumns === 'function') {
-                            Lib.debug('cache', 'Auto-resizing columns after disk load (sa_ld_auto_resize_after_load=true)');
-                            toggleAutoResizeColumns();
-                        }
-                    }, 0);
-                }
-
-                // Reset file input
-                fileInput.value = '';
-
             } catch (err) {
                 Lib.error('cache', 'Failed to load data from file:', err);
                 alert('Failed to load data: ' + err.message);

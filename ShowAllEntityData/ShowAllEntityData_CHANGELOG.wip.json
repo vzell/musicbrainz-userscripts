@@ -1,0 +1,23 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-08-01",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added a \"Show single-table\" button to multi-table relationship/performance sub-sections (artist-relationships, label-relationships, place-performances) that have no MusicBrainz overflow (i.e. every row is already rendered, ≤100). Clicking it opens the currently-rendered rows as a standalone single-table view in a new browser tab via a client-side snapshot handoff (GM_setValue/GM_getValue keyed by a per-click uid, plus a `#mb-sa-snapshot=<uid>` hash marker on a `?link_type_id=1`-qualified URL) — no MusicBrainz re-fetch, unlike the existing native-overflow \"Show all N rows\" button. New settings: sa_ui_show_single_table_btn_bg / sa_ui_show_single_table_btn_bg_clicked.",
+          "Extracted loadTableDataFromDisk()'s render/reconstruction body into a shared _hydrateAndRenderFromSnapshotData(data, opts) function, reused by both the existing \"Load from Disk\" feature and the new cross-tab snapshot bootstrap, so both consumers get identical row reconstruction, render, and post-render wiring instead of two independently drifting implementations. Also hardened it with a fallback that fabricates an empty table.tbl shell when none exists natively on the page (benefits any future caller lacking a live table, not just the snapshot handoff)."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed a \"Cannot access '_filterResultCache' before initialization\" crash when opening a \"Show single-table\" snapshot tab: the hash-marker bootstrap hook ran mid-way through the script's initial synchronous top-to-bottom execution, calling into _hydrateAndRenderFromSnapshotData() (via runFilter()/_invalidateFilterCache()) before later module-level const/let bindings in the same top-level scope had initialized. Every other caller (a button click, a FileReader.onload) only ever fires after the whole script has finished its first synchronous pass; the bootstrap's hydrate call is now deferred one tick via setTimeout(...,0) to match.",
+          "Fixed the snapshot tab's <h2> heading always showing MusicBrainz's own native label for whichever relationship/performance type the placeholder `?link_type_id=1` happens to resolve to (e.g. \"next disc\" relationships) instead of the actually-captured category (e.g. \"Produced release\"). Added _fixSnapshotHeadingLabel(), called after hydration settles, to replace just the bare heading text node with the real category name.",
+          "Fixed inline CAA thumbnails and sticky-column not working for release/release-group snapshot tabs: reconstructed headers carried leftover uniq-value count-badge digits (e.g. \"Title\" -> \"Title 18\") baked into their captured innerHTML, which makeTableSortableUnified's colName derivation absorbed into dataset.colName (it deliberately does not strip plain 0-9, to avoid mangling genuine numeric column names like \"1st seconder\"), breaking every name-based column lookup downstream (caaFindColumnByName, applyStickyColumn). The header-restore step in _hydrateAndRenderFromSnapshotData now collapses an already-decorated .mb-col-hdr-flex header back to its clean name text before makeTableSortableUnified re-processes it — a general fix that also corrects the same latent bug in the existing \"Load from Disk\" feature."
+        ]
+      }
+    ]
+  }
+]
