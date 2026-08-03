@@ -19037,6 +19037,44 @@ a { color: #1565c0; }`;
      * @param  {string}           pageType     Current module-level pageType (e.g. 'artist-relationships').
      * @returns {Object} Snapshot payload — same shape `_hydrateAndRenderFromSnapshotData` accepts.
      */
+    /**
+     * PageTypes wired up for the "Show single-table" cross-tab snapshot
+     * button (see openSubtableAsSingleTableTab / renderGroupedTable's
+     * group.seeAllUrl else-branch). All are tableMode:'multi' categories
+     * that never carry a native MusicBrainz overflow link (group.seeAllUrl)
+     * — either because MB's own single-page cap only applies to
+     * non_paginated:true page types where a specific category happens to
+     * stay under the cap (artist/label relationships, place performances —
+     * see 100-row limit), or because the page type accumulates every row
+     * itself via its own multi-page fetch (non_paginated:false —
+     * artist-releasegroups, releasegroup-releases) and MB never imposes any
+     * per-category cap to begin with, so overflow simply doesn't exist as a
+     * concept there.
+     * @type {Set<string>}
+     */
+    const SA_SNAPSHOT_SUPPORTED_PAGETYPES = new Set([
+        'artist-relationships', 'label-relationships', 'place-performances',
+        'artist-releasegroups', 'releasegroup-releases',
+    ]);
+
+    /**
+     * Subset of SA_SNAPSHOT_SUPPORTED_PAGETYPES that have a matching
+     * tableMode:'single' "-filtered" pageDefinition reachable via a
+     * disambiguating query param (e.g. artist-relationships-filtered via
+     * `?link_type_id=<id>`) — openSubtableAsSingleTableTab's target URL
+     * needs that param appended so pageDefinitions matching resolves the new
+     * tab correctly. PageTypes without such a sibling (artist-releasegroups,
+     * releasegroup-releases) match their own bare URL directly — there is no
+     * separate single-mode definition to route to at all — and MusicBrainz's
+     * native table on that bare page already carries class="tbl", so the
+     * bare URL alone gives _hydrateAndRenderFromSnapshotData something to
+     * hydrate into with no extra routing trick needed.
+     * @type {Set<string>}
+     */
+    const SA_SNAPSHOT_LINK_TYPE_ID_PAGETYPES = new Set([
+        'artist-relationships', 'label-relationships', 'place-performances',
+    ]);
+
     function captureSubtableSnapshot(table, categoryName, pageType) {
         const headers = table.tHead
             ? Array.from(table.tHead.querySelectorAll('tr'))
@@ -19079,7 +19117,7 @@ a { color: #1565c0; }`;
         return {
             version: '1.0',
             url: window.location.href,
-            pageType: `${pageType}-filtered`,
+            pageType: SA_SNAPSHOT_LINK_TYPE_ID_PAGETYPES.has(pageType) ? `${pageType}-filtered` : pageType,
             buttonLabel: null,
             timestamp: Date.now(),
             timestampReadable: new Date().toISOString(),
@@ -19104,15 +19142,22 @@ a { color: #1565c0; }`;
      * check in `renderGroupedTable()`).
      *
      * The snapshot is stashed via `GM_setValue` (shared across tabs for this
-     * script, unlike page-scoped storage) under a per-call unique key, and the
-     * new tab is pointed at `?link_type_id=1#mb-sa-snapshot=<uid>` on the same
-     * path — the query param makes the existing `pageDefinitions` matcher
-     * resolve the new tab to the real `-filtered` (tableMode:'single')
-     * definition (see e.g. `artist-relationships-filtered`), so all of that
-     * page's normal init/chrome runs unmodified there; the hash marker is
-     * then read once (and the GM value deleted) by the bootstrap hook that
-     * calls `_hydrateAndRenderFromSnapshotData()` instead of letting the page
-     * fetch live data. See CLAUDE.md for the full design rationale.
+     * script, unlike page-scoped storage) under a per-call unique key. For
+     * pageTypes with a "-filtered" sibling definition (see
+     * `SA_SNAPSHOT_LINK_TYPE_ID_PAGETYPES`), the new tab is pointed at
+     * `?link_type_id=1#mb-sa-snapshot=<uid>` on the same path — the query
+     * param makes the existing `pageDefinitions` matcher resolve the new tab
+     * to that real `-filtered` (tableMode:'single') definition (see e.g.
+     * `artist-relationships-filtered`), so all of that page's normal
+     * init/chrome runs unmodified there. For pageTypes with no such sibling
+     * (e.g. `artist-releasegroups`, `releasegroup-releases`), the bare path
+     * is used as-is — it already matches the same multi-mode definition
+     * either way, and MusicBrainz's own native table on that page already
+     * carries class="tbl" for `_hydrateAndRenderFromSnapshotData` to hydrate
+     * into. Either way, the hash marker is read once (and the GM value
+     * deleted) by the bootstrap hook that calls
+     * `_hydrateAndRenderFromSnapshotData()` instead of letting the page fetch
+     * live data. See CLAUDE.md for the full design rationale.
      *
      * @param {HTMLTableElement} table        The sub-table to snapshot.
      * @param {string}           categoryName Human-readable relationship-type/category name.
@@ -19122,20 +19167,33 @@ a { color: #1565c0; }`;
         const payload = captureSubtableSnapshot(table, categoryName, pageType);
         const uid = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
         GM_setValue(`mb_sa_subtable_snapshot_${uid}`, payload);
-        const targetUrl = `${window.location.origin}${window.location.pathname}?link_type_id=1#mb-sa-snapshot=${uid}`;
+        const query = SA_SNAPSHOT_LINK_TYPE_ID_PAGETYPES.has(pageType) ? '?link_type_id=1' : '';
+        const targetUrl = `${window.location.origin}${window.location.pathname}${query}#mb-sa-snapshot=${uid}`;
         Lib.debug('navigation', `Opening "${categoryName}" as a single-table snapshot in a new tab: ${targetUrl}`);
         window.open(targetUrl, '_blank');
     }
 
     /**
      * Corrects a "Show single-table" snapshot tab's native `<h2>` label after
-     * hydration. The placeholder `?link_type_id=1` in the target URL (see
-     * openSubtableAsSingleTableTab) exists purely so pageDefinitions matching
-     * resolves the tab to the real `-filtered` definition — but MusicBrainz's
-     * own server response for that URL still renders its OWN heading text for
-     * whatever relationship/performance type link_type_id 1 actually is (e.g.
-     * "next disc" relationships), which has nothing to do with the category
-     * that was actually captured and hydrated into the table.
+     * hydration.
+     *
+     * For pageTypes routed via the `?link_type_id=1` placeholder (see
+     * `SA_SNAPSHOT_LINK_TYPE_ID_PAGETYPES` / `openSubtableAsSingleTableTab`),
+     * MusicBrainz's own server response for that URL renders its OWN heading
+     * text for whatever relationship/performance type link_type_id 1
+     * actually is (e.g. "next disc" relationships) — actively wrong, since
+     * it has nothing to do with the category that was actually captured. For
+     * pageTypes that reuse their bare multi-mode URL as-is (e.g.
+     * `artist-releasegroups`), the native heading isn't wrong so much as
+     * generic (just the entity name, with no indication this tab shows one
+     * filtered-down category) — correcting it is still worthwhile there for
+     * clarity, just not fixing an actual bug.
+     *
+     * Targets the h2 immediately preceding `table.tbl` in document order
+     * (mirrors `updateH2Count()`'s own targetH2 resolution) — NOT simply
+     * "the first h2.mb-toggle-h2 on the page", which on a busy page (e.g. a
+     * release-group's bare overview, with its own Wikipedia-extract h2 ahead
+     * of the Releases h2) grabs the wrong section's heading entirely.
      *
      * Replaces just the bare text node between `.mb-toggle-icon` and
      * `.mb-row-count-stat` — every other h2 child (toggle icon, count stat,
@@ -19151,8 +19209,35 @@ a { color: #1565c0; }`;
         const categoryName = snapshotPayload && snapshotPayload.detailSegment;
         if (!categoryName) return;
 
-        const h2 = document.querySelector('#content h2.mb-toggle-h2') || document.querySelector('h2.mb-toggle-h2');
-        const iconSpan = h2 && h2.querySelector('.mb-toggle-icon');
+        const table = document.querySelector('table.tbl');
+        if (!table) return;
+
+        // Prefer the dedicated marker heading created by the "no table.tbl
+        // found — fabricate a shell" branch above (see its comment): when
+        // present, it is unambiguously ours and needs no guessing.
+        let h2 = document.querySelector('h2[data-mb-sa-fabricated-heading="1"]');
+
+        if (!h2) {
+            // Fallback for pageTypes that reuse an existing NATIVE table.tbl
+            // (no fabrication happened — e.g. artist-relationships,
+            // label-relationships, place-performances via the
+            // ?link_type_id=1 placeholder): the h2 immediately preceding
+            // `table` in document order — mirrors updateH2Count()'s own
+            // targetH2 resolution. NOT simply "the first h2.mb-toggle-h2 on
+            // the page": on a busy page grabbing the first match corrects
+            // the WRONG section's heading entirely.
+            const allH2s = Array.from(document.querySelectorAll('h2'));
+            for (let i = 0; i < allH2s.length; i++) {
+                if (allH2s[i].compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING) {
+                    h2 = allH2s[i];
+                } else {
+                    break;
+                }
+            }
+        }
+        if (!h2) return;
+
+        const iconSpan = h2.querySelector('.mb-toggle-icon');
         if (!iconSpan) return;
 
         const countSpan = h2.querySelector('.mb-row-count-stat');
@@ -19163,7 +19248,12 @@ a { color: #1565c0; }`;
             node = next;
         }
 
-        const sectionWord = (snapshotPayload.sectionSuffix || 'relationships').toLowerCase();
+        // sectionSuffix is a raw pageTypeSlug fragment (e.g. "releasegroups"),
+        // not a humanized word — insert the space back for display.
+        const sectionWord = (snapshotPayload.sectionSuffix || 'relationships')
+            .toLowerCase()
+            .replace('releasegroups', 'release groups')
+            .replace('releasegroup', 'release group');
         const label = document.createTextNode(`“${categoryName}” ${sectionWord}`);
         if (countSpan) {
             h2.insertBefore(label, countSpan);
@@ -19172,6 +19262,171 @@ a { color: #1565c0; }`;
         }
 
         Lib.debug('render', `Corrected snapshot tab heading label to "${categoryName}"`);
+    }
+
+    /**
+     * Removes every pre-existing `table.tbl` on the page — and, for each one,
+     * the h3 heading and any wrapper content (CAA bigbox divs, etc.) between
+     * that h3 and its table — before a "Show single-table" snapshot is
+     * hydrated.
+     *
+     * Some pageTypes' native (unprocessed) pages already group their content
+     * into MULTIPLE separate h3 + `table.tbl`-classed sections — e.g.
+     * MusicBrainz's own artist-overview page renders one native
+     * `<table class="tbl release-group-list mergeable-table">` PER
+     * release-group type (Album, EP, Live, …), each under its own `<h3>`,
+     * well before this script does anything. `_hydrateAndRenderFromSnapshotData`'s
+     * header-restore step only ever targets `document.querySelector('table.tbl')`
+     * — the FIRST such table — so without this cleanup it silently replaces
+     * just one of several native sections, leaving the rest fully native and
+     * unprocessed alongside the hydrated single-table view (reported as
+     * "multiple h3 based subtables still" showing).
+     *
+     * Clearing every table.tbl unconditionally (not just when more than one
+     * exists) keeps this a single code path for every pageType: afterward
+     * `_hydrateAndRenderFromSnapshotData`'s own "no table.tbl found on page —
+     * fabricated an empty shell to hydrate" fallback always fires, guaranteeing
+     * exactly one, correctly-scoped table regardless of how many native
+     * sections the source page happened to have.
+     *
+     * Only removes an h3 when a table.tbl is actually found walking its
+     * following siblings before hitting another heading — h3s belonging to
+     * unrelated content (e.g. another installed userscript's own injected
+     * sections) never match that pattern and are left untouched. Mirrors the
+     * sibling-walk-until-table cleanup pattern `startFetchingProcess()`
+     * already uses (at H2 level) to remove other button-config sections.
+     */
+    function _clearNativeTableSectionsForSnapshot() {
+        // Record h2 → [owned h3, …] ownership in one single forward walk over
+        // the CURRENT (pre-mutation) DOM, before any removal happens. This is
+        // the authoritative record of "which h2 originally owned which h3s" —
+        // a release-group's "Album" h2, for instance, owns every
+        // Official/Promotion/Bootleg release h3. Recomputing "the nearest
+        // preceding h2" via compareDocumentPosition *after* some h3s have
+        // already been removed (tried first) is fragile: interleaving removal
+        // with re-querying document order for each subsequent h3 invites
+        // exactly the kind of off-by-one mistake that made "Album" survive.
+        // Capturing the full mapping up front sidesteps that entirely.
+        //
+        // Also records h2 → [directly-owned table.tbl, …] — a table.tbl that
+        // sits right under the h2 with NO h3 in between. Confirmed via a live
+        // debug log this actually happens: this whole bootstrap runs within
+        // one setTimeout(...,0) tick of the tab opening, fast enough to beat
+        // MusicBrainz's OWN client-side JS splitting a release-group's
+        // release listing into its Official/Promotion/Bootleg h3
+        // subsections — at the moment this function ran, "Album" owned
+        // ZERO h3s and MusicBrainz's still-unsplit table.tbl was cleared
+        // entirely by the unconditional "remainingTables" sweep below,
+        // leaving "Album" itself unaccounted for by the h3-based ownership
+        // check alone.
+        let currentH2 = null;
+        let lastHeadingWasH2 = false;
+        const h2ToOwnedH3s = new Map();
+        const h2ToDirectTables = new Map();
+        Array.from(document.querySelectorAll('h2, h3, table.tbl')).forEach(el => {
+            if (el.tagName === 'H2') {
+                currentH2 = el;
+                lastHeadingWasH2 = true;
+                h2ToOwnedH3s.set(el, []);
+                h2ToDirectTables.set(el, []);
+            } else if (el.tagName === 'H3') {
+                lastHeadingWasH2 = false;
+                if (currentH2) h2ToOwnedH3s.get(currentH2).push(el);
+            } else if (currentH2 && lastHeadingWasH2) {
+                // A table.tbl seen while the most recent heading was still
+                // the h2 itself (no h3 in between) — directly owned.
+                h2ToDirectTables.get(currentH2).push(el);
+            }
+        });
+
+        // Walk h3s while their tables still exist to be found — an h3 is
+        // only removed (along with everything up to and including its
+        // table) when a table.tbl actually turns up in its sibling chain
+        // before another heading does.
+        let removedViaH3 = 0;
+        const removedH3s = new Set();
+        Array.from(document.querySelectorAll('h3')).forEach(h3 => {
+            let next = h3.nextElementSibling;
+            const toRemove = [];
+            let foundTable = false;
+            while (next) {
+                if (next.tagName === 'H2' || next.tagName === 'H3') break;
+                toRemove.push(next);
+                if (next.tagName === 'TABLE' && next.classList.contains('tbl')) {
+                    foundTable = true;
+                    break;
+                }
+                next = next.nextElementSibling;
+            }
+            if (foundTable) {
+                toRemove.forEach(el => el.remove());
+                h3.remove();
+                removedH3s.add(h3);
+                removedViaH3++;
+            }
+        });
+
+        // Any table.tbl still left (e.g. a single-table page's own native
+        // table, not h3-anchored at all) is cleared too, so the fallback
+        // fabrication below always starts from a guaranteed-clean slate.
+        const remainingTables = document.querySelectorAll('table.tbl');
+        const remainingCount = remainingTables.length;
+        remainingTables.forEach(t => t.remove());
+
+        // An h2 is now purposeless once EVERY h3 it originally owned (per the
+        // ownership map captured above, before any mutation) has been
+        // removed — an h2 owning even one h3 that was left alone (e.g. a
+        // hidden `<h3 style="display:none">Genres</h3>` sidebar entry with
+        // no table.tbl of its own) is correctly left standing. Remove the h2
+        // AND everything still sitting under it — e.g. an orphaned
+        // master-toggle/filter-bar row (row count, "Expand multi-row cells",
+        // "Uncollapse all CAA images", …) that is a sibling of the h2 itself
+        // rather than of any one h3, so the per-h3 toRemove walk above never
+        // touches it — none of it serves any purpose on the snapshot tab,
+        // which has its own dedicated fabricated heading for the one
+        // category actually captured.
+        let removedEmptyH2 = 0;
+        h2ToOwnedH3s.forEach((ownedH3s, h2) => {
+            const directTables = h2ToDirectTables.get(h2) || [];
+            const _h2Label = h2.textContent.replace(/[▲▼]/g, '').trim().slice(0, 40);
+            if (!h2.isConnected) {
+                Lib.debug('cache', `_clearNativeTableSectionsForSnapshot: h2 "${_h2Label}" skipped — already disconnected.`);
+                return;
+            }
+            if (ownedH3s.length === 0 && directTables.length === 0) {
+                Lib.debug('cache', `_clearNativeTableSectionsForSnapshot: h2 "${_h2Label}" owns no h3 and no direct table.tbl — left standing.`);
+                return;
+            }
+            const _removedCount = ownedH3s.filter(h3 => removedH3s.has(h3)).length;
+            if (_removedCount !== ownedH3s.length) {
+                Lib.debug('cache', `_clearNativeTableSectionsForSnapshot: h2 "${_h2Label}" owns ${ownedH3s.length} ` +
+                    `h3(s), only ${_removedCount} removed — left standing.`);
+                return;
+            }
+            // directTables need no separate removed-check — every table.tbl
+            // still around by the "remainingTables" sweep above gets removed
+            // unconditionally, so any table this h2 directly owned is
+            // guaranteed gone by this point.
+            let node = h2.nextSibling;
+            const toRemove2 = [];
+            while (node) {
+                if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'H2') break;
+                toRemove2.push(node);
+                node = node.nextSibling;
+            }
+            toRemove2.forEach(el => el.remove());
+            h2.remove();
+            removedEmptyH2++;
+            Lib.debug('cache', `_clearNativeTableSectionsForSnapshot: removed now-empty h2 "${_h2Label}" ` +
+                `(${ownedH3s.length} owned h3(s), ${directTables.length} direct table(s), all removed).`);
+        });
+
+        const total = removedViaH3 + remainingCount;
+        if (total || removedEmptyH2) {
+            Lib.debug('cache', `Cleared ${total} pre-existing native table.tbl section(s) ` +
+                `(${removedViaH3} h3-anchored, ${removedEmptyH2} now-empty owning h2(s) removed) ` +
+                `before snapshot hydration.`);
+        }
     }
 
     /**
@@ -22576,6 +22831,19 @@ a { color: #1565c0; }`;
     // unmodified — we only replace *what data gets hydrated into it*.
     const _snapshotHashMatch = window.location.hash.match(/^#mb-sa-snapshot=(.+)$/);
     if (_snapshotHashMatch) {
+        // Signal other cooperating userscripts to back off — the SAME
+        // convention startFetchingProcess() already uses before every normal
+        // fetch. Some third-party MusicBrainz userscripts (e.g. a Picard/
+        // Tagger-port integration script) auto-reload bare entity pages
+        // shortly after load to append their own query param; this tab lands
+        // on that same bare URL for pageTypes with no "-filtered" sibling
+        // (see SA_SNAPSHOT_LINK_TYPE_ID_PAGETYPES), so it's exposed to that
+        // race the same way a normal fetch on this page type would be. This
+        // can only help scripts that actually check the signal — it cannot
+        // force cooperation from a script we don't control — but costs
+        // nothing and matches existing practice.
+        stopOtherScripts();
+
         const _snapshotKey = `mb_sa_subtable_snapshot_${_snapshotHashMatch[1]}`;
         // Strip the hash immediately so it can't re-trigger (e.g. on a later
         // in-page hash change) and so a manual reload falls through cleanly
@@ -22597,6 +22865,22 @@ a { color: #1565c0; }`;
             // finished its first synchronous pass, so this is the only call
             // site that needs the extra tick.
             setTimeout(async () => {
+                // Some pageTypes' native pages already group content into
+                // multiple separate h3+table.tbl sections (e.g. MusicBrainz's
+                // own artist-overview page, one native table per
+                // release-group type) — clear all of them first so the
+                // header-restore step below always hydrates into exactly one,
+                // freshly-fabricated table, not just the first native one it
+                // happens to find. See _clearNativeTableSectionsForSnapshot's
+                // JSDoc for the full "multiple h3 based subtables still
+                // showing" bug this fixes.
+                _clearNativeTableSectionsForSnapshot();
+                // Start watching for late jesus2099 "mb. SUPER MIND CONTROL"
+                // injections as early as possible in this bootstrap — see
+                // _watchForLateJesus2099Injections' JSDoc for why the normal
+                // one-shot performClutterCleanup()/initTreleasesObserver
+                // measures aren't sufficient on this fast-bootstrapping path.
+                _watchForLateJesus2099Injections();
                 await _hydrateAndRenderFromSnapshotData(_snapshotPayload, {
                     sourceLabel: _snapshotPayload.detailSegment
                         ? `live snapshot: ${_snapshotPayload.detailSegment}`
@@ -31742,6 +32026,139 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Watches for jesus2099 "mb. SUPER MIND CONTROL" content that gets
+     * injected (or re-injected) AFTER this function's caller already ran its
+     * own one-shot cleanup pass, and removes it live.
+     *
+     * `performClutterCleanup()` already strips `div.jesus2099userjs154481bigbox`
+     * once, and `initTreleasesObserver()` already watches for jesus2099's
+     * `<tr class="treleases">` rows — both proven necessary because that
+     * script reacts to the page independently of this one (see its other
+     * hooks: the `'jesus2099'` columnEraser, the caa-icon anchor erasure).
+     * In the NORMAL fetch-and-render flow those two measures are sufficient
+     * because jesus2099's own injection has already happened, on its own
+     * schedule, long before the user manually clicks a "Show all" button.
+     *
+     * The "Show single-table" cross-tab snapshot handoff (see
+     * `_hydrateAndRenderFromSnapshotData`'s hash-marker bootstrap) is
+     * different: it clears the native page and hydrates within one
+     * `setTimeout(...,0)` tick of the tab opening, so jesus2099's own script
+     * — running on its own timer — can easily still be *pending* at that
+     * point. It then goes on to inject its enhancements into whatever it
+     * finds in the table moments later, once *our* rows are already in
+     * place. Two symptoms reported against `releasegroup-releases`:
+     *   - A `<td class="relationships">` (jesus2099's own class, distinct
+     *     from this script's own `.mb-rel-cell`) appended as literally every
+     *     row's 2nd cell, right after the sticky column — with a
+     *     `<span class="favicon discogs-favicon">` matching jesus2099's own
+     *     documented favicon-link naming convention (see the `'jesus2099'`
+     *     columnEraser's `caa-icon jesus2099userjs154481` class handling
+     *     elsewhere in this file for the sibling convention this mirrors).
+     *   - A second `div.jesus2099userjs154481bigbox` appearing alongside
+     *     this script's own `.mb-caa-bigbox`, doubling every release's cover
+     *     art image in the big-picture stripe — because
+     *     `performClutterCleanup()`'s one-shot removal ran before jesus2099
+     *     had injected its bigbox at all.
+     *   - A bare `<th>Relationships</th>` (no class, no `data-col-name`,
+     *     none of this script's own header-marker classes) left behind as
+     *     the table's 2nd header, right after "Release" — the header-side
+     *     twin of the `<td class="relationships">` above (jesus2099 injects
+     *     a whole column: one header cell plus one data cell per row).
+     *     `cleanupHeaders()` already strips any header whose text starts
+     *     with "Relationships" (see its `removalMapAlways` set) — but only
+     *     the ONE time it runs, right after `renderFinalTable()`; jesus2099's
+     *     insert can still land after that single pass on this fast
+     *     bootstrap path, same as the two symptoms above.
+     *
+     * Disconnects itself after `SA_JESUS2099_WATCH_MS` — the race window is
+     * inherently short (this mirrors the bounded `setTimeout(_relCreateRetryButtons, 200)`
+     * pattern elsewhere; there is no reason for jesus2099 to inject anything
+     * new long after the tab has settled), so there is no value in an
+     * indefinite whole-document observer.
+     */
+    function _watchForLateJesus2099Injections() {
+        const SA_JESUS2099_WATCH_MS = 5000;
+
+        const _stripBigbox = () => {
+            document.querySelectorAll('div.jesus2099userjs154481bigbox').forEach(div => {
+                div.remove();
+                Lib.debug('cleanup', '_watchForLateJesus2099Injections: removed a late jesus2099 bigbox element.');
+            });
+        };
+        const _stripRelationshipsTd = (el) => {
+            if (el.tagName === 'TD' && el.classList.contains('relationships') && el.closest('table.tbl')) {
+                el.remove();
+                Lib.debug('cleanup', '_watchForLateJesus2099Injections: removed a late jesus2099 "relationships" <td>.');
+            }
+        };
+        // Mirrors cleanupHeaders()'s own removalMapAlways text match, but
+        // additionally requires the header carry NONE of this script's own
+        // marker classes — every header this script itself produces or
+        // keeps (native-surviving or synthetic) always has at least one of
+        // these, so a bare, unmarked <th> is unambiguously foreign.
+        const OWN_HEADER_MARKER_CLASSES = [
+            'mb-original-column', 'mb-extracted-column',
+            'mb-derived-extracted-column', 'mb-injected-column'
+        ];
+        const _stripForeignHeaderTh = (el) => {
+            if (el.tagName !== 'TH' || !el.closest('table.tbl thead')) return;
+            if (OWN_HEADER_MARKER_CLASSES.some(c => el.classList.contains(c))) return;
+            const txt = el.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+            if (/^(Relationships|Performance Attributes|Release events|Tagger)\b/.test(txt)) {
+                el.remove();
+                Lib.debug('cleanup', `_watchForLateJesus2099Injections: removed a late foreign header <th> ("${txt}").`);
+            }
+        };
+
+        const observer = new MutationObserver(mutations => {
+            for (const mutation of mutations) {
+                if (mutation.type === 'childList') {
+                    for (const node of mutation.addedNodes) {
+                        if (node.nodeType !== Node.ELEMENT_NODE) continue;
+                        if (node.matches?.('div.jesus2099userjs154481bigbox')) {
+                            node.remove();
+                            Lib.debug('cleanup', '_watchForLateJesus2099Injections: removed a late jesus2099 bigbox element.');
+                        } else {
+                            node.querySelectorAll?.('div.jesus2099userjs154481bigbox').forEach(div => {
+                                div.remove();
+                                Lib.debug('cleanup', '_watchForLateJesus2099Injections: removed a late jesus2099 bigbox element.');
+                            });
+                        }
+                        if (node.tagName === 'TD') {
+                            _stripRelationshipsTd(node);
+                        } else {
+                            node.querySelectorAll?.('td.relationships').forEach(_stripRelationshipsTd);
+                        }
+                        if (node.tagName === 'TH') {
+                            _stripForeignHeaderTh(node);
+                        } else {
+                            node.querySelectorAll?.('th').forEach(_stripForeignHeaderTh);
+                        }
+                    }
+                } else if (mutation.type === 'attributes') {
+                    // jesus2099 mutates an existing <td>'s class in place, mirroring
+                    // the exact pattern initTreleasesObserver already watches for.
+                    _stripRelationshipsTd(mutation.target);
+                    _stripForeignHeaderTh(mutation.target);
+                }
+            }
+        });
+
+        observer.observe(document.body, {
+            childList: true, subtree: true,
+            attributes: true, attributeFilter: ['class']
+        });
+        Lib.debug('cleanup', `_watchForLateJesus2099Injections: watching document.body for ${SA_JESUS2099_WATCH_MS}ms.`);
+
+        setTimeout(() => {
+            observer.disconnect();
+            _stripBigbox(); // final sweep in case something slipped in right at the boundary
+            document.querySelectorAll('table.tbl thead th').forEach(_stripForeignHeaderTh);
+            Lib.debug('cleanup', '_watchForLateJesus2099Injections: watch window elapsed, observer disconnected.');
+        }, SA_JESUS2099_WATCH_MS);
+    }
+
+    /**
      * Finds the master row (in `allRows`, or nested inside `groupedRows[*].rows`)
      * carrying the given `data-mb-row-idx` value.
      *
@@ -33916,12 +34333,16 @@ a { color: #1565c0; }`;
                         }
                     };
                     subTableControls.insertBefore(showAllBtn, subTableControls.firstChild);
-                } else if (pageType === 'artist-relationships' || pageType === 'label-relationships' ||
-                        pageType === 'place-performances') {
-                    // No MusicBrainz overflow for this category (≤100 rows — every
-                    // row is already rendered), so there's nothing to fetch. Offer a
-                    // client-side "convert this sub-table to a single-table page"
-                    // snapshot instead — see openSubtableAsSingleTableTab().
+                } else if (SA_SNAPSHOT_SUPPORTED_PAGETYPES.has(pageType)) {
+                    // No MusicBrainz overflow for this category — either it's under
+                    // MB's own single-page cap, or (artist-releasegroups /
+                    // releasegroup-releases) the page type accumulates every row
+                    // itself via its own multi-page fetch and MB never imposes a
+                    // per-category cap at all — see SA_SNAPSHOT_SUPPORTED_PAGETYPES.
+                    // Either way every row is already on screen, so there's nothing
+                    // to fetch. Offer a client-side "convert this sub-table to a
+                    // single-table page" snapshot instead — see
+                    // openSubtableAsSingleTableTab().
                     const singleTableBtn = document.createElement('button');
                     singleTableBtn.id = `mb-stf-${categoryName.replace(/[^a-zA-Z0-9_-]/g, '_')}-single-table-btn`;
                     singleTableBtn.type = 'button';
@@ -34115,8 +34536,7 @@ a { color: #1565c0; }`;
                     // has this same defensive-rebuild gap pre-existing in this
                     // branch already — left alone here, out of scope for this change.
                     if (!h3.querySelector('.mb-show-single-table-btn') && !group.seeAllUrl &&
-                            (pageType === 'artist-relationships' || pageType === 'label-relationships' ||
-                             pageType === 'place-performances')) {
+                            SA_SNAPSHOT_SUPPORTED_PAGETYPES.has(pageType)) {
                         const subSingleTableBtn = document.createElement('button');
                         subSingleTableBtn.id = `mb-stf-${categoryName.replace(/[^a-zA-Z0-9_-]/g, '_')}-single-table-btn`;
                         subSingleTableBtn.type = 'button';
@@ -42896,16 +43316,85 @@ a { color: #1565c0; }`;
                     // benefits any future caller of this function that lacks
                     // a live table, not just the snapshot-handoff case.
                     const _contentContainer = document.querySelector('#content') || document.body;
-                    if (!document.querySelector('h1')) {
-                        const h1 = document.createElement('h1');
-                        h1.textContent = data.entityName || data.pageType || 'Loaded data';
-                        _contentContainer.insertBefore(h1, _contentContainer.firstChild);
+                    let _h1 = document.querySelector('h1');
+                    if (!_h1) {
+                        _h1 = document.createElement('h1');
+                        _h1.textContent = data.entityName || data.pageType || 'Loaded data';
+                        _contentContainer.insertBefore(_h1, _contentContainer.firstChild);
                     }
+                    // Dedicated heading for the fabricated table — NOT found
+                    // by searching for/repurposing an existing native <h2>.
+                    // _fixSnapshotHeadingLabel() previously picked "the h2
+                    // immediately preceding table.tbl in document order",
+                    // which works when the fabricated table is the only
+                    // content on the page but grabs the WRONG heading (e.g. a
+                    // release-group's own native "Relationships" section h2,
+                    // which _clearNativeTableSectionsForSnapshot never touches
+                    // — its scope is intentionally limited to h3+table.tbl
+                    // "Releases" sections) once any such section survives
+                    // between h1 and wherever the table would otherwise land.
+                    // A dedicated marker heading sidesteps that guesswork
+                    // entirely — but it must NOT be inserted directly after
+                    // h1 (`_h1.after(...)`), which was tried first and pushes
+                    // MB's native `<p class="subheader">` ("~Release group by
+                    // …") and `<div class="tabs">` (Overview/Aliases/Tags/…)
+                    // down BELOW this heading and table — those are page-level
+                    // chrome that belongs directly under h1, not content to be
+                    // sandwiched below. Anchor after the LAST `div.tabs`
+                    // instead (same preference order applyInsertH2 already
+                    // uses for the identical problem), falling back to right
+                    // after h1 only when no tabs bar exists at all. Text is a
+                    // placeholder — _fixSnapshotHeadingLabel() fills in the
+                    // real captured category name once hydration settles.
+                    const _tabsDivs = document.querySelectorAll('div#page div.tabs, div#content div.tabs, div.tabs');
+                    const _fabAnchor = _tabsDivs.length > 0 ? _tabsDivs[_tabsDivs.length - 1] : _h1;
+
+                    // For the 3 pageTypes routed here via the `?link_type_id=1`
+                    // placeholder (see SA_SNAPSHOT_LINK_TYPE_ID_PAGETYPES),
+                    // reaching this "no table.tbl found" branch at all means
+                    // the placeholder relationship/performance type genuinely
+                    // has zero matches — MusicBrainz's native response is just
+                    // an h2 (its own label for whatever link_type_id 1 happens
+                    // to be, e.g. "next disc relationships") followed by a
+                    // "No relationships of the selected type were found."
+                    // paragraph. That native h2+message has nothing to do
+                    // with the category actually captured and would
+                    // otherwise sit right next to (or in front of) the
+                    // fabricated heading below as confusing, unrelated noise
+                    // — unlike the "a native table DOES exist" case, where
+                    // _fixSnapshotHeadingLabel simply relabels that table's
+                    // own h2 in place and there is no duplicate to clean up.
+                    // It is always the first h2 right after the tabs bar (or
+                    // h1) on these pageTypes, so remove it — and anything
+                    // still under it — before fabricating our own heading at
+                    // that same anchor point.
+                    const _basePageType = (data.pageType || '').replace(/-filtered$/, '');
+                    if (SA_SNAPSHOT_LINK_TYPE_ID_PAGETYPES.has(_basePageType)) {
+                        const _placeholderH2 = _fabAnchor.nextElementSibling;
+                        if (_placeholderH2 && _placeholderH2.tagName === 'H2') {
+                            let node = _placeholderH2.nextSibling;
+                            const toRemove = [];
+                            while (node) {
+                                if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'H2') break;
+                                toRemove.push(node);
+                                node = node.nextSibling;
+                            }
+                            toRemove.forEach(el => el.remove());
+                            _placeholderH2.remove();
+                            Lib.debug('cache', 'Removed native ?link_type_id=1 placeholder heading ' +
+                                '(and its "no relationships found" content) before fabricating our own.');
+                        }
+                    }
+
+                    const _fabricatedHeading = document.createElement('h2');
+                    _fabricatedHeading.textContent = data.detailSegment || data.entityName || 'Loaded data';
+                    _fabricatedHeading.dataset.mbSaFabricatedHeading = '1';
+                    _fabAnchor.after(_fabricatedHeading);
                     firstTable = document.createElement('table');
                     firstTable.className = 'tbl';
                     firstTable.appendChild(document.createElement('tbody'));
-                    _contentContainer.appendChild(firstTable);
-                    Lib.debug('cache', 'No table.tbl found on page — fabricated an empty shell to hydrate.');
+                    _fabricatedHeading.after(firstTable);
+                    Lib.debug('cache', 'No table.tbl found on page — fabricated an empty shell + dedicated heading to hydrate.');
                 }
                 if (firstTable) {
                     if (firstTable.tHead) firstTable.tHead.remove();
