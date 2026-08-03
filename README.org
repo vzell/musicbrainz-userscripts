@@ -86675,7 +86675,7 @@ splitting the "Area" column according to the following typical configuration dir
 #+end_example
 
 are missing when the separately-installed userscript "MusicBrainz: More Flags Everywhere" is present, also the column
-data cells are re ndering the flag symbols.
+data cells are rendering the flag symbols.
 
 It should be possible like we currently do with the country flags in the "Country" column, e.g. at https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/artists
 
@@ -87129,6 +87129,300 @@ following changelog entry
 #+end_example
 
 
+* flags
+
+#+begin_example
+     * Non-flag (Locality/Region) links are positional, not semantic: the
+     * FIRST one seen (per `areaState.count === 0`) is the most specific
+     * (Locality — e.g. city/neighbourhood); every subsequent one is broader
+     * (Region — e.g. county/state, comma-joined). MusicBrainz area links
+     * carry no type information, and the chain depth varies per place rather
+     * than per country, so position is the only signal available — EXCEPT
+     * when that first link itself carries a subdivision-flag icon (meaning no
+     * city/locality was ever entered, only a bare state/province) AND the
+     * row's country is in the internal `AREA_FLAG_REGION_COUNTRIES`
+     * list: that link is then forced into Region instead, since it's
+     * conceptually a Region-level entity even though it's positionally first.
+#+end_example
+
+
+* DONE plan: multi-table pageType subtable to single-table pageType
+** initial
+
+Currently on multi-table pageTypes e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
+each subtable either natively has an overflow button
+
+#+begin_example
+<button title="Click to show all 424 rows in a new browser tab for this sub-section (MusicBrainz Artist-Relationships pages have currently a limit of 100 rows rendered at most per relationship type section)" class="mb-show-all-subtable-btn" type="button" style="background: rgb(255, 224, 178);">Show all 424 rows</button>
+#+end_example
+
+in the H3 heading, see @debug/subtable-overflow.html (when clicked all rows are shown in a new tab in single-table pageType mode) or not, see @debug/subtable.html
+
+In the latter case I want a button with text "Show single-table" and when clicked the current content of the subtable
+under that h3 section should aos be renderd in single-table mode in a new tab, so basically a "multi-table pageType subtable to single-table pageType" tansformation
+
+do this on a new branch when accepted
+
+** bug
+
+native popup box on new tab:
+
+#+begin_example
+Failed to load data: Cannot access '_filterResultCache' before initialization
+#+end_example
+
+** next disc
+
+on the new tab the h2 table header section always starts with '"next-disc" relationships' @debug/next-disc.html instead of the h3 name from the original subtable @debug/h3.html 
+
+** for release and release-group based sub-tables, there are no inline-thumbnails renderd in the 
+
+For release and release-group based sub-tables, there are no inline-thumbnails rendered.
+
+Specifically for release-group based types the thumbnails actually do render when uncollapsing the releae-group title
+for each release in that release-group, see the screenshot
+
+** migging inline thumbnails
+
+see
+
+#+begin_example
+@debug/tribute.html - tab rendered single-table version of the "tribute albums release-group" relationships subtable, uncollapsed one release-group 
+@debug/tribute.log - console log
+#+end_example
+
+** extend the new implementation also to the following pageTypes
+
+extend the new implementation also to the following pageTypes e.g.
+
+#+begin_example
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
+#+end_example
+
+where the sub-tables never have any overflow buttons, because the content comes accumulated from paginated pages, see
+
+#+begin_example
+@debug/a.html - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+@debug/rf.html - https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
+#+end_example
+
+** bugs
+
+1.)
+
+Initially it works for the pageType e.g. https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c but
+the original h3 title e.g "Bootleg release" from the subtable ended up in the wrong h2 header (looks like the first one
+where originally we had "Wikipedia") on the new tab see @debug/RG-reload-bug.html
+
+It should be on the h2 header right before the actual single-table
+
+2.)
+
+A bigger problem is, that shortly after the new tab appears and gets rendered with the single table view (which actually
+seems to work right for "artist-releasegroup" pages), the page reloads to the original URL and overwrites everything
+(except if I quickly press the browser "Stop" button)
+
+** bug
+
+2.) should actually read
+
+A bigger problem is, that shortly after the new tab appears and gets rendered with the single table view (which actually
+seems to work right for "releasegroup-release" pages), the page reloads to the original URL and overwrites everything
+(except if I quickly press the browser "Stop" button)
+
+** bugs
+
+On "artist-releasegroup" pageType when for example clicking the "Show singe-table"-button on the second sub-table with
+h3 "Album" @debug/album2.html I get the following buggy rendered new tab @debug/a-rg-bug.html with multiple h3 based subtables still
+
+** bugs
+
+On pageTypes e.g. https://musicbrainz.org/release-group/d19453c0-cd72-3468-b110-0f898c111e5e
+there are three rendering bugs
+
+#+begin_example
+@debug/rg-bootlegs.html - original page with the "Bootleg release" section/subtable uncollapsed
+@debug/rg-bootlegs-tab.html - the "Bootleg release" section/subtable in its own tab
+#+end_example
+
+1.)
+
+the "Relationships" column (on the original page the second to last column) is rendered additionally as the second column right after the "Release" column
+
+2.)
+
+in the big picture image stripe above the table on the tab page, each release images is doubled
+
+3.)
+
+the content from the h2 "Relationships" section on the original page is rendered right after the '<h2 class="relationships mb-h2-processed mb-toggle-h2"' header on the tab page
+
+** still buggy
+
+On pageTypes e.g. https://musicbrainz.org/release-group/d19453c0-cd72-3468-b110-0f898c111e5e
+there are three rendering bugs
+
+#+begin_example
+@debug/rg-bootlegs-bug.html - original page with the "Wikipedia", "Relationships" and "Bootleg release" section/subtable uncollapsed - [Image #1]
+@debug/rg-bootlegs-tab-bug.html - same in its own tab  - [Image #2]
+#+end_example
+
+1.)
+
+the doubled "Relationships" column is gone, but it's header is still present at the second column after the "Release" column
+
+2.)
+
+the original main h2 header '<h2 class="mb-h2-processed mb-toggle-h2" title="Click to collapse/uncollapse section (Ctrl+Click to toggle ALL sections)"'
+is still present on the new tab page but it's not needed there, as now the new '<h2 data-mb-sa-fabricated-heading="1" class="mb-h2-processed mb-toggle-h2" title="Click to collapse/uncollapse section (Ctrl+Click to toggle ALL sections)"'
+takes over it's place/functionality
+
+3.)
+
+everything starting from
+
+#+begin_example
+<p class="subheader" style=""><span class="prefix">~</span> <!-- -->Release group by <bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></bdi><span id="mb-status-sentinel" style="display: inline-block; width: 0px; height: 0px; overflow: hidden; vertical-align: middle;"></span><div id="mb-status-displays-container" style="display: inline-flex; align-items: center; gap: 8px; line-height: 1; vertical-align: middle; margin-left: 10px;"><span id="mb-global-status-display" style="font-size: 0.95em; color: rgb(51, 51, 51); font-weight: bold; vertical-align: middle;"><span>, </span><span title="Relationship icons: 8 unique MBIDs / 8 cells
+📦 IDB: 0 — IndexedDB browser cache (cross-session)
+💾 cache: 0 — memory cache (same session)
+🌐 net: 8 — live WS2 API fetch (throttled 1 req/s)
+Total load time: 15.8s">🔗Rels: 15.8s</span></span><span id="mb-status-divider" style="display: inline-block; color: rgb(187, 187, 187); font-weight: normal; user-select: none;">|</span><span id="mb-info-display" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.95em; font-weight: bold; vertical-align: middle;"><span id="mb-info-display-caa" style="display: none; color: green;"></span><span id="mb-info-display-rel" style="display: inline-block; color: green;" title="Relationship icons: 8 unique MBIDs / 8 cells
+📦 IDB: 0 — IndexedDB browser cache (cross-session)
+💾 cache: 0 — memory cache (same session)
+🌐 net: 8 — live WS2 API fetch (throttled 1 req/s)
+Total load time: 15.8s">🔗Rels: 15.8s</span><span id="mb-info-display-generic" style="display: inline-block; color: green;" title="Background IndexedDB sweep deleted 2 expired record(s) from images, metadata, and rel-ws2 stores">🗄️ IDB sweep: removed 2 expired entries</span></span></div></p>
+#+end_example
+
+#+begin_example
+<div class="tabs"><ul class="tabs"><li class="sel"><span class="name-variation"><a href="/release-group/d19453c0-cd72-3468-b110-0f898c111e5e" title="The Rising"><bdi>Overview</bdi></a></span></li><li><a href="/release-group/d19453c0-cd72-3468-b110-0f898c111e5e/aliases">Aliases (0)</a></li><li><a href="/release-group/d19453c0-cd72-3468-b110-0f898c111e5e/tags"><bdi>Tags</bdi></a></li><li><a href="/release-group/d19453c0-cd72-3468-b110-0f898c111e5e/ratings"><bdi>Reviews</bdi></a></li><li><a href="/release-group/d19453c0-cd72-3468-b110-0f898c111e5e/details"><bdi>Details</bdi></a></li><li><a href="/release-group/d19453c0-cd72-3468-b110-0f898c111e5e/edit"><bdi>Edit</bdi></a></li></ul></div>
+#+end_example
+
+** act on @debug/rg-bug.org
+
+act on @debug/rg-bug.org
+
+** the obsolete h2 header from the original page is still present
+
+the obsolete h2 header from the original page is still present on the tab page
+
+#+begin_example
+<h2 class="mb-h2-processed mb-toggle-h2" title="Click to collapse/uncollapse section (Ctrl+Click to toggle ALL sections)" style="cursor: pointer; user-select: none;"><span class="mb-toggle-icon">▼</span>Album</h2>
+#+end_example
+
+** buggy
+
+1.)
+
+on e.g. https://musicbrainz.org/release-group/d19453c0-cd72-3468-b110-0f898c111e5e the now obsolete "Album" h2 header is still present
+
+2.)
+
+on e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
+
+[Image #5] - original page with uncollapsed "Performed release" section/subtable and collapsed "Relationships" h2 section at the beginning of the page
+[Image #6] - same subtable on the new tab page with the "Relationships" h2 section missing but artificial new h2 section '“next disc” relationships' see below
+
+#+begin_example
+<h2 class="mb-h2-processed mb-toggle-h2" title="Click to collapse/uncollapse section (Ctrl+Click to toggle ALL sections)" style="cursor: pointer; user-select: none;"><span class="mb-toggle-icon">▼</span>“next disc” relationships</h2>
+<p style="">No relationships of the selected type were found.</p>
+<br style="">
+#+end_example
+
+** works now, but
+
+1.)
+
+works now
+
+2.)
+
+the artificial new h2 section '“next disc” relationships' is also gone, BUT the "Relationships" h2 section from the original page is not present on the tab page
+
+** answer
+
+#+begin_example
+@debug/a-rel-orig-tab.html - original page with all subtable sections collapsed but the h2 "Relationships" section open
+@debug/a-rel-orig-tab.html - same page on the final rendered page for the subtable '"performed release relationships', NO h2 "Relationships" section present above the h2 subtable section
+#+end_example
+
+** double caa
+
+This happens only for the following pageTypes: https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+
+Somehow the '<a href="https://musicbrainz.org/release/501dc106-bd95-4191-abc1-346724f99cb9/cover-art" ref="/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183" title="4 images found in this release"><span class="caa-icon jesus2099userjs154481" style="background-size: contain; background-image: url(&quot;//coverartarchive.org/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183/front-250&quot;);"></span></a>'
+is additionally present in the "Title" column after the '<span class="mb-caa-inline-ph"'
+
+#+begin_example
+<td style="position: sticky; left: 0px; z-index: 1; background: rgb(255, 255, 255);" data-mb-rest-bg="#ffffff" data-mb-sticky-bg="#ffffff" class="mb-sticky-col" data-erg-injected="1" data-caa-inline-done="1"><span data-erg-btn="1" title="Toggle display of underlying entity page" style="cursor: pointer; margin-right: 4px; color: rgb(119, 119, 119);">▶</span><span class="mb-caa-inline-ph" style="display: inline-block; width: 20px; height: 20px; margin-right: 3px; vertical-align: middle; flex-shrink: 0; overflow: hidden; border-radius: 2px; cursor: crosshair; position: relative;" title="4 images found for this release / release-group"><img alt="" style="width: 20px; height: 20px; object-fit: cover; display: inline; border-radius: 2px;" src="blob:https://musicbrainz.org/925bca9b-d39e-4ac7-a2dd-d8f269580a1a"><span class="mb-art-cache-hint-inline" title="IndexedDB cache hit" style="font-size: 0.65em; line-height: 1; position: absolute; top: 0px; left: 0px; user-select: none; cursor: default; pointer-events: none;">🗄️</span></span><a href="https://musicbrainz.org/release/501dc106-bd95-4191-abc1-346724f99cb9/cover-art" ref="/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183" title="4 images found in this release"><span class="caa-icon jesus2099userjs154481" style="background-size: contain; background-image: url(&quot;//coverartarchive.org/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183/front-250&quot;);"></span></a><a class="wrap-anywhere" href="/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183"><bdi>The River, Vol 1</bdi></a><span class="mb-inline-art-sort-key" style="display: none;">caa-inline-yes</span></td>
+#+end_example
+
+compared to the original data cell
+
+#+begin_example
+<td style="position: sticky; left: 0px; z-index: 1; background: rgb(255, 255, 255);" data-mb-rest-bg="#ffffff" data-mb-sticky-bg="#ffffff" class="mb-sticky-col" data-erg-injected="1" data-caa-inline-done="1"><span data-erg-btn="1" title="Toggle display of underlying entity page" style="cursor: pointer; margin-right: 4px; color: rgb(119, 119, 119);">▶</span><span class="mb-caa-inline-ph" style="display: inline-block; width: 20px; height: 20px; margin-right: 3px; vertical-align: middle; flex-shrink: 0; overflow: hidden; border-radius: 2px; cursor: crosshair; position: relative;" title="4 images found for this release / release-group"><img alt="" style="width: 20px; height: 20px; object-fit: cover; display: inline; border-radius: 2px;" src="blob:https://musicbrainz.org/e7b9a3c8-c623-4b7d-83a6-2a9dd8eb90b3"><span class="mb-art-cache-hint-inline" title="IndexedDB cache hit" style="font-size: 0.65em; line-height: 1; position: absolute; top: 0px; left: 0px; user-select: none; cursor: default; pointer-events: none;">🗄️</span></span><a class="wrap-anywhere" href="/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183"><bdi>The River, Vol 1</bdi></a><span class="mb-inline-art-sort-key" style="display: none;">caa-inline-yes</span></td>
+#+end_example
+
+Also the "MB-Name" column shouldn't have a CAA image at all
+
+#+begin_example
+<td data-mb-rest-bg="#ffffff" data-erg-injected="1" style="background: rgb(255, 255, 255);"><span data-erg-btn="1" title="Toggle display of underlying entity page" style="cursor: pointer; margin-right: 4px; color: rgb(119, 119, 119);">▶</span><a href="https://musicbrainz.org/release/501dc106-bd95-4191-abc1-346724f99cb9/cover-art" ref="/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183" title="4 images found in this release"><span class="caa-icon jesus2099userjs154481" style="background-size: contain; background-image: url(&quot;//coverartarchive.org/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183/front-250&quot;);"></span></a><a class="wrap-anywhere" href="/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183"><bdi>The River, Vol 1</bdi></a></td>
+#+end_example
+
+compared to the original page
+
+#+begin_example
+<td data-mb-rest-bg="#ffffff" data-erg-injected="1" style="background: rgb(255, 255, 255);"><span data-erg-btn="1" title="Toggle display of underlying entity page" style="cursor: pointer; margin-right: 4px; color: rgb(119, 119, 119);">▶</span><a class="wrap-anywhere" href="/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183"><bdi>The River, Vol 1</bdi></a></td>
+#+end_example
+
+Here the complete raw HTML from the new tab page
+
+#+begin_example
+@debug/a-rg-double-caa.html
+#+end_example
+
+** act on @debug/double-caa.org
+
+act on @debug/double-caa.org
+
+** DONE add a new configuration variable
+
+add a new configuration variable (default: false) for the "Show single-table" feature we just implemented
+
+** DONE change
+
+Change all occurences of
+
+#+begin_src bash
+label: 'Show all <x> for <y> (specialized)'
+#+end_src
+
+into
+
+#+begin_src bash
+label: 'Show all <x> for <y> (complete)'
+#+end_src
+
+** DONE grey out action buttons
+
+The "Show all ..." action buttons on the pageTypes
+
+#+begin_example
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
+#+end_example
+
+and the "Artist RGs"/"Various Artist RGs" action buttons on the pageType
+
+#+begin_example
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+#+end_example
+
+should be greyed out (it should not be possible to click them) when rendered on the new tab pages after pressing the
+"Show single-table" button.  Additionally the tooltip should show an explanation, in order to get a fresh vesion, the
+original page needs to be refreshed and the "Show single-table" button should be clicked there
+
+
 * does @/home/vzell/git/userscripts/BruceBaseParser/BruceBaseParser.user.js uses "// @grant        GM_addStyle" in it's code, does it need some change regarding our library version @/home/vzell/git/userscripts/BruceBaseParser/BruceBaseParser.user.js
 
   Searched for 2 patterns, read 2 files, listed 1 directory (ctrl+o to expand)
@@ -87141,6 +87435,8 @@ following changelog entry
   - Doesn't reference LIBRARY_VERSION or hardcode any VZ_MBLibrary version string anywhere in its code.
 
   So the 3.19.0 → 3.19.1 library bump requires no change in BruceBaseParser.user.js.
+
+
 
 * Performance fixes — ready to implement (analysed, approach agreed)
 
@@ -87739,26 +88035,26 @@ Here is the last version as an example:
 
 ### Enhancements
 
-* **Keyboard shortcuts** completely reworked --- direct Ctrl+ shortcuts are now disabled by default to avoid accidentally hijacking browser or OS key combinations. All actions are instead available through the Ctrl+M prefix menu: press Ctrl+M followed by a single letter to trigger any action. The prefix tooltip lists everything available. For users who prefer direct shortcuts, the old behaviour can be re-enabled in settings. The shortcuts for the keyboard help overlay and barcode highlight are now configurable.
-* **Rendering** doesn't show the "Page unresponsive" dialog anymore on large tables
-* **Auto-resize** columns got a progress overlay and is much faster on large tables --- when the script measures and fits column widths on large tables, it now shows a progress overlay with elapsed time and an estimated time remaining instead of just freezing the page (e.g. x15 on a 8100 rows table https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases )
-* **Filtering** is significantly faster on large tables --- several rounds of optimisation (caching, smarter matching order, adaptive typing delays) cut filter response times noticeably on tables with thousands of rows
-* **Status bar** completely redesigned --- the progress line at the top now has separate segments for cover art loading, relationship loading, and general info, each with its own hover tooltip showing detailed timing and counts
-* **Alternating shade banding** (the subtle colour striping that shows where sorted values change) now also works when *sorting by a single column*, not just multi-column sorts
-* **Cover-art thumbnails** load in a smarter order --- inline thumbnails in the title column are now fetched before the smaller icons in the CAA/EAA columns, so the most visible images appear first
-* **Collapsed artwork** cells show a "hidden match" hint --- if a row is hidden inside a collapsed cover-art stripe but matches your filter, the expand button turns yellow with a red marker so you know there's a match inside
-* **Sort by text length** --- Alt+clicking a sort arrow now sorts that column by the length of each cell's text, useful for spotting unusually long or short values
-* **Event columns** got smarter --- event entries now split out separate columns for Event Type, Event Country, and Additional Info, making it much easier to filter and sort large event lists
-* **Relationship icons** now show *rich tooltips* --- hovering over a relationship icon displays a proper popup with the full relationship details, highlighted to match your active filter
-* **Relationship icons** *highlight* when your filter matches --- if your filter finds a row because of something in the Relationships column, the specific matching icons are outlined in red so you can see exactly why the row matched
-* **IndexedDB cache statistics** added to the Stats panel --- shows how many relationship records are stored locally, how much space they use, and when they were last accessed
-* Added support for **Ratings pages** --- your /user//ratings pages (and per-entity variants like /ratings/recording) now load all entries at once with full filtering and sorting, including the editor name, entity type, and star rating columns
-* Added support for **entity-level Ratings pages** --- the /work//ratings and similar pages that list everyone who rated a specific entity are now supported as well
-
-### Fixes
-
-* **"Save to disk"** now preserves the correct column headers when saving at the large-table render-threshold prompt --- previously the saved file could contain the wrong header names
-* **Column resize** is much more reliable --- a run of fixes addressed resize minimum creep, line breaks appearing in disambiguation comments during resize, and incorrect widths on initially-collapsed sub-tables
+ * **Keyboard shortcuts** completely reworked --- direct Ctrl+ shortcuts are now disabled by default to avoid accidentally hijacking browser or OS key combinations. All actions are instead available through the Ctrl+M prefix menu: press Ctrl+M followed by a single letter to trigger any action. The prefix tooltip lists everything available. For users who prefer direct shortcuts, the old behaviour can be re-enabled in settings. The shortcuts for the keyboard help overlay and barcode highlight are now configurable.
+ * **Rendering** doesn't show the "Page unresponsive" dialog anymore on large tables
+ * **Auto-resize** columns got a progress overlay and is much faster on large tables --- when the script measures and fits column widths on large tables, it now shows a progress overlay with elapsed time and an estimated time remaining instead of just freezing the page (e.g. x15 on a 8100 rows table https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases )
+ * **Filtering** is significantly faster on large tables --- several rounds of optimisation (caching, smarter matching order, adaptive typing delays) cut filter response times noticeably on tables with thousands of rows
+ * **Status bar** completely redesigned --- the progress line at the top now has separate segments for cover art loading, relationship loading, and general info, each with its own hover tooltip showing detailed timing and counts
+ * **Alternating shade banding** (the subtle colour striping that shows where sorted values change) now also works when *sorting by a single column*, not just multi-column sorts
+ * **Cover-art thumbnails** load in a smarter order --- inline thumbnails in the title column are now fetched before the smaller icons in the CAA/EAA columns, so the most visible images appear first
+ * **Collapsed artwork** cells show a "hidden match" hint --- if a row is hidden inside a collapsed cover-art stripe but matches your filter, the expand button turns yellow with a red marker so you know there's a match inside
+ * **Sort by text length** --- Alt+clicking a sort arrow now sorts that column by the length of each cell's text, useful for spotting unusually long or short values
+ * **Event columns** got smarter --- event entries now split out separate columns for Event Type, Event Country, and Additional Info, making it much easier to filter and sort large event lists
+ * **Relationship icons** now show *rich tooltips* --- hovering over a relationship icon displays a proper popup with the full relationship details, highlighted to match your active filter
+ * **Relationship icons** *highlight* when your filter matches --- if your filter finds a row because of something in the Relationships column, the specific matching icons are outlined in red so you can see exactly why the row matched
+ * **IndexedDB cache statistics** added to the Stats panel --- shows how many relationship records are stored locally, how much space they use, and when they were last accessed
+ * Added support for **Ratings pages** --- your /user//ratings pages (and per-entity variants like /ratings/recording) now load all entries at once with full filtering and sorting, including the editor name, entity type, and star rating columns
+ * Added support for **entity-level Ratings pages** --- the /work//ratings and similar pages that list everyone who rated a specific entity are now supported as well
+ 
+ ### Fixes
+ 
+ * **"Save to disk"** now preserves the correct column headers when saving at the large-table render-threshold prompt --- previously the saved file could contain the wrong header names
+ * **Column resize** is much more reliable --- a run of fixes addressed resize minimum creep, line breaks appearing in disambiguation comments during resize, and incorrect widths on initially-collapsed sub-tables
 
 * act on
 
