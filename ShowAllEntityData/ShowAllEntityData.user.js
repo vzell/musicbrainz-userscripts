@@ -22908,7 +22908,8 @@ a { color: #1565c0; }`;
                 await _hydrateAndRenderFromSnapshotData(_snapshotPayload, {
                     sourceLabel: _snapshotPayload.detailSegment
                         ? `live snapshot: ${_snapshotPayload.detailSegment}`
-                        : 'live snapshot'
+                        : 'live snapshot',
+                    isCrossTabSnapshot: true
                 });
                 // MusicBrainz's own native heading for the ?link_type_id=1
                 // placeholder (e.g. "next disc" relationships) has nothing to
@@ -43356,6 +43357,7 @@ a { color: #1565c0; }`;
             isExclude = false,
             globalRegex = null,
             sourceLabel = 'snapshot',
+            isCrossTabSnapshot = false,
         } = opts;
         const filterQuery = (isCaseSensitive || isRegExp) ? filterQueryRaw : filterQueryRaw.toLowerCase();
         try {
@@ -43882,6 +43884,35 @@ a { color: #1565c0; }`;
                     });
                     Lib.debug('cache', `Disk-load [strategy 3]: no button slug matched; coloured all ${allActionButtons.length} action button(s) green`);
                 }
+            }
+
+            // ── Disable H1 action buttons on a "Show single-table" snapshot tab ──
+            // This page's own h1 action buttons (e.g. "Artist RGs" / "Various
+            // Artists RGs" on an artist overview, "Show all Releases for
+            // ReleaseGroup" on a release-group overview, or the "Show all
+            // Relationships for X" buttons on a relationship/performance
+            // page) would kick off a REAL fetch on this synthetic tab,
+            // silently replacing the frozen single-category snapshot with a
+            // completely different (full multi-table) view — confusing,
+            // since this tab exists specifically to show one category as it
+            // looked at the moment "Show single-table" was clicked. Disable
+            // them here so that's not possible; the tooltip points the user
+            // back to the original tab. Scoped to the cross-tab snapshot
+            // handoff only (isCrossTabSnapshot) — a plain "Load from Disk"
+            // page can still legitimately kick off a fresh fetch afterward.
+            if (isCrossTabSnapshot) {
+                allActionButtons.forEach(btn => {
+                    btn.disabled = true;
+                    btn.style.backgroundColor = '#e0e0e0';
+                    btn.style.color = '#888';
+                    btn.style.cursor = 'not-allowed';
+                    btn.style.opacity = '0.6';
+                    btn.title = 'Disabled on this "Show single-table" snapshot tab — it is a frozen, ' +
+                        'client-side snapshot from the moment "Show single-table" was clicked and has no ' +
+                        'way to re-fetch fresh data itself. To get a fresh version, refresh the ORIGINAL ' +
+                        'page and click "Show single-table" there again.';
+                });
+                Lib.debug('cache', `Disabled ${allActionButtons.length} h1 action button(s) on cross-tab snapshot page.`);
             }
 
             // ── Artist-Releasegroups: restore discography category arrays ─────
