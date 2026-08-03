@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.747",
+    "date": "2026-08-03",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed three related overflow-button features silently disappearing after a Save to Disk → Load from Disk round trip (and, for the latter two, after any other full re-render that happens once their source \"See all\"/\"View all\" row has already been consumed — e.g. clearing a global filter back to empty): the artist-relationships \"Show all N rows\" button (relationship-type sub-section exceeding the 100-row-per-page limit), the tag-value/user-tag-value/artist-credit \"Show all N rows\" button, and the user-ratings \"View all ratings\" button. All three are built purely from metadata captured once from a native placeholder row/link and were never persisted anywhere once that row was consumed — `saveTableDataToDisk()` never wrote it into the exported JSON, so the Load-from-Disk reconstruction path (and, for the latter two, `renderGroupedTable` itself on any later fresh re-render) always rebuilt the group without it. Fixed by capturing this metadata onto the group object at the point each button is first built (`group.seeAllUrl`/`seeAllCount` for relationships, `group.tagSeeAllUrl`/`tagSeeAllCount`/`tagSeeAllEntityLabel` for tag-value/artist-credit, `group.ratingsViewAllUrl` for user-ratings), persisting it in `saveTableDataToDisk()`, restoring it in the Load-from-Disk reconstruction (same conditional pattern already used there for `colName`/`entityFeatures`), and having `renderGroupedTable` fall back to it whenever the source row/link can no longer be found in the DOM."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.746",
     "date": "2026-07-31",
     "sections": [

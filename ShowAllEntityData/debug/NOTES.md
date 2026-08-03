@@ -1941,3 +1941,70 @@ available for one of these fixes. Confirmed:
   is untouched.
 
 Needs user retest to confirm the gap is gone.
+
+## 2026-08-03 — overflow button lost after Load from Disk (`overflow.org`)
+
+- `overflow.org`: before/after h3-header HTML dump from an artist
+  relationships page (`/artist/70248960-.../relationships`) showing the
+  `mb-show-all-subtable-btn` ("Show all 424 rows") present before "Load from
+  Disk" and completely absent after.
+- Root cause: `group.seeAllUrl`/`group.seeAllCount` (set during live fetch
+  when a "See all N relationships" placeholder row is found, read solely to
+  build the button in `renderGroupedTable`'s `if (group.seeAllUrl)` branch)
+  were never included in `saveTableDataToDisk()`'s per-group serialization —
+  only `key`/`category`/`rows` were saved. The Load-from-Disk reconstruction
+  therefore always rebuilt the group without them, so the guard never
+  fired.
+- Fixed by adding `seeAllUrl`/`seeAllCount` to the serialized group object
+  and restoring them in the `_grpEntry` reconstruction (same conditional
+  pattern already used there for `colName`/`entityFeatures`) — 9.99.747.
+  Verified the serialize/reconstruct logic in isolation via
+  `debug/verify_seeall_persist.py` (both an overflow group and an ordinary
+  group with no `seeAllUrl` round-trip correctly); no live browser session
+  available to confirm the actual button renders, so a manual end-to-end
+  retest (Save to Disk → Load from Disk on a >100-row relationship
+  sub-section) is still recommended.
+
+### Follow-up (same day) — extended to the other two overflow buttons
+
+Same underlying gap ("a button built purely from a transient in-memory
+field that's never persisted") also affects two unrelated overflow buttons
+that share the `mb-show-all-subtable-btn` class:
+- the tag-value/user-tag-value/artist-credit "Show all N rows" button
+  (built in `renderGroupedTable` from a trailing `<em><a href="/tag/…">` or
+  `<a href="/artist-credit/…">` row),
+- the user-ratings "View all ratings" button (built from a trailing
+  `<a href="/user/…/ratings/…">` row).
+
+Unlike the artist-relationships case, these two never had a persistent
+`group.*` field at all — they derive the button's href/count/label fresh
+from `tbody.lastElementChild` every time `renderGroupedTable` runs, then
+immediately splice the source row out of `group.rows`/`originalRows`/
+`groupedRows[index].rows` (so re-filtering never resurrects it as a fake
+data row). That splice means the source row only ever exists in the DOM/
+`group.rows` on the very first render after a fetch — on any *later* full
+re-render (not just Load-from-Disk; also plain "clear all filters", which
+also takes the `!query` fresh-h3/table rebuild branch in `renderGroupedTable`
+per `dataArray.forEach`'s `query && existingTables[index]` check), the
+source row is already gone and the button silently fails to reappear, same
+symptom as `overflow.org`.
+
+Fixed by mirroring the relationships case exactly: the button-build blocks
+now stash their derived href/count/label onto `group` (and `groupedRows[index]`
+when it's a different reference, same defensive pattern already used for the
+splice) the first time they successfully find the source row, then fall back
+to that stashed metadata on every later call where the row can't be found —
+covering both Load-from-Disk and the "clear filters" full-rebuild case in one
+fix. New fields: `tagSeeAllUrl`/`tagSeeAllCount`/`tagSeeAllEntityLabel`
+(tag-value/artist-credit) and `ratingsViewAllUrl` (user-ratings) — kept
+separate from `seeAllUrl`/`seeAllCount` since the artist-relationships block
+checks `if (group.seeAllUrl)` unconditionally; reusing the same field names
+would have made that block fire a second, duplicate button for tag-value/
+user-ratings groups. Persisted/restored in `saveTableDataToDisk()`/disk-load
+the same way. Verified via the extended `debug/verify_seeall_persist.py`
+(now covers all three field families); confirmed via reading the h3-creation
+code (`dataArray.forEach`, ~line 33029) that the button-build blocks only
+ever run when a brand-new `<h3>` is being created (never a reused one), so
+there's no risk of the fallback path appending a duplicate button onto a
+stale header — no live browser session available to confirm visually.
+
