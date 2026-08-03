@@ -1533,6 +1533,30 @@
         },
 
         // ============================================================
+        // SHOW SINGLE-TABLE BUTTON SECTION
+        // Client-side snapshot handoff for non-overflowing relationship/
+        // performance/release-listing sub-tables — see
+        // openSubtableAsSingleTableTab() / _hydrateAndRenderFromSnapshotData().
+        // ============================================================
+        divider_show_single_table_btn: {
+            type: 'divider',
+            label: '📑 SHOW SINGLE-TABLE BUTTON'
+        },
+
+        sa_enable_show_single_table_btn: {
+            label: 'Enable "Show single-table" button',
+            type: 'checkbox',
+            default: false,
+            description: 'Adds a "Show single-table" button to relationship/performance/' +
+                         'release-listing sub-tables that have no MusicBrainz overflow ' +
+                         '(artist-relationships, label-relationships, place-performances, ' +
+                         'artist-releasegroups, releasegroup-releases). Clicking it opens the ' +
+                         'currently-rendered rows as a standalone single-table view in a new ' +
+                         'browser tab via a client-side snapshot — no re-fetch. Off by default ' +
+                         'while this feature is new.'
+        },
+
+        // ============================================================
         // EXPAND RELEASE AND RELEASE GROUPS SECTION
         // Adapted from "MusicBrainz: Expand/collapse release groups"
         // by Michael Wiencek — injected post-render into the SA table.
@@ -34378,7 +34402,8 @@ a { color: #1565c0; }`;
                         }
                     };
                     subTableControls.insertBefore(showAllBtn, subTableControls.firstChild);
-                } else if (SA_SNAPSHOT_SUPPORTED_PAGETYPES.has(pageType)) {
+                } else if (Lib.settings.sa_enable_show_single_table_btn &&
+                        SA_SNAPSHOT_SUPPORTED_PAGETYPES.has(pageType)) {
                     // No MusicBrainz overflow for this category — either it's under
                     // MB's own single-page cap, or (artist-releasegroups /
                     // releasegroup-releases) the page type accumulates every row
@@ -34580,7 +34605,8 @@ a { color: #1565c0; }`;
                     // group.seeAllUrl). Note: the sibling "Show all N rows" button
                     // has this same defensive-rebuild gap pre-existing in this
                     // branch already — left alone here, out of scope for this change.
-                    if (!h3.querySelector('.mb-show-single-table-btn') && !group.seeAllUrl &&
+                    if (Lib.settings.sa_enable_show_single_table_btn &&
+                            !h3.querySelector('.mb-show-single-table-btn') && !group.seeAllUrl &&
                             SA_SNAPSHOT_SUPPORTED_PAGETYPES.has(pageType)) {
                         const subSingleTableBtn = document.createElement('button');
                         subSingleTableBtn.id = `mb-stf-${categoryName.replace(/[^a-zA-Z0-9_-]/g, '_')}-single-table-btn`;
