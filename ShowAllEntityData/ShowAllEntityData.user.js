@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.746+2026-07-31
+// @version      9.99.747+2026-08-03
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -34114,53 +34114,82 @@ a { color: #1565c0; }`;
                 if (pageType === 'tag-value' || pageType === 'user-tag-value' ||
                         pageType === 'artist-credit') {
                     const _lastRow = tbody.lastElementChild;
-                    if (_lastRow) {
-                        // Selector targets the page-specific See-all link pattern:
-                        //   tag pages      → <em><a href="/tag/…">
-                        //   artist-credit  → <em><a href="/artist-credit/…">
-                        const _hrefFragment = (pageType === 'artist-credit')
-                            ? '/artist-credit/'
-                            : '/tag/';
-                        const _em = _lastRow.querySelector(
-                            `td em a[href*="${_hrefFragment}"]`
-                        );
+                    // Selector targets the page-specific See-all link pattern:
+                    //   tag pages      → <em><a href="/tag/…">
+                    //   artist-credit  → <em><a href="/artist-credit/…">
+                    const _hrefFragment = (pageType === 'artist-credit')
+                        ? '/artist-credit/'
+                        : '/tag/';
+                    const _em = _lastRow && _lastRow.querySelector(
+                        `td em a[href*="${_hrefFragment}"]`
+                    );
+
+                    let _href, _count, _entityLabel;
+                    if (_em) {
+                        _href  = _em.getAttribute('href');
+                        const _label = _em.textContent.trim(); // e.g. "See all 1,076 release groups"
+                        const _countMatch  = _label.match(/See all ([\d,]+)/i);
+                        _count       = _countMatch ? _countMatch[1] : '?';
+                        const _entityMatch = _label.match(/See all [\d,]+ (.+)/i);
+                        _entityLabel = _entityMatch ? _entityMatch[1].trim() : 'rows';
+                    } else if (group.tagSeeAllUrl) {
+                        // The trailing "See all" row only ever exists in the DOM on the
+                        // very first render of a live fetch — it's spliced out of
+                        // group.rows below the first time this block runs. On every
+                        // later render, and after a Load-from-Disk round trip (which
+                        // never restores that row at all — see the disk-load
+                        // reconstruction's dedicated "See all" row skip), fall back to
+                        // the metadata captured on that first run instead.
+                        _href        = group.tagSeeAllUrl;
+                        _count       = group.tagSeeAllCount;
+                        _entityLabel = group.tagSeeAllEntityLabel;
+                    }
+
+                    if (_href) {
+                        const _seeAllBtn = document.createElement('button');
+                        _seeAllBtn.type      = 'button';
+                        _seeAllBtn.className = 'mb-show-all-subtable-btn';
+                        _seeAllBtn.textContent = `Show all ${_count} rows`;
+                        const _pageKindLabel = (pageType === 'artist-credit')
+                            ? 'MusicBrainz Artist Credit overview pages show at most 10 rows per entity section'
+                            : 'MusicBrainz Tag-Values pages have currently a limit of 10 rows rendered at most per entity type section';
+                        _seeAllBtn.title =
+                            `Click to show all ${_count} ${_entityLabel} in a new browser tab ` +
+                            `for this sub-section (${_pageKindLabel})`;
+                        const _initBg    = Lib.settings.sa_ui_show_all_subtable_btn_bg         || '#FFE0B2';
+                        const _clickedBg = Lib.settings.sa_ui_show_all_subtable_btn_bg_clicked || '#CCFFCC';
+                        _seeAllBtn.style.background = _initBg;
+                        _seeAllBtn.onclick = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.open(new URL(_href, window.location.origin).href, '_blank');
+                            _seeAllBtn.style.background = _clickedBg;
+                        };
+
+                        // Insert after filter container (or toggle icon if container absent)
+                        const _insertAfter = h3.querySelector('.mb-subtable-filter-container') ||
+                                             h3.querySelector('.mb-subtable-filter-toggle-icon');
+                        if (_insertAfter) {
+                            _insertAfter.after(_seeAllBtn);
+                        } else {
+                            h3.appendChild(_seeAllBtn);
+                        }
+
+                        // Persist the button's source metadata onto the group so a later
+                        // Save to Disk can restore this button after a Load-from-Disk
+                        // round trip — mirrors the artist-relationships seeAllUrl/
+                        // seeAllCount capture in the fetch loop (startFetchingProcess).
+                        group.tagSeeAllUrl = _href;
+                        group.tagSeeAllCount = _count;
+                        group.tagSeeAllEntityLabel = _entityLabel;
+                        if (typeof groupedRows !== 'undefined' &&
+                                groupedRows[index] && groupedRows[index] !== group) {
+                            groupedRows[index].tagSeeAllUrl = _href;
+                            groupedRows[index].tagSeeAllCount = _count;
+                            groupedRows[index].tagSeeAllEntityLabel = _entityLabel;
+                        }
+
                         if (_em) {
-                            const _href  = _em.getAttribute('href');
-                            const _label = _em.textContent.trim(); // e.g. "See all 1,076 release groups"
-                            const _countMatch  = _label.match(/See all ([\d,]+)/i);
-                            const _count       = _countMatch ? _countMatch[1] : '?';
-                            const _entityMatch = _label.match(/See all [\d,]+ (.+)/i);
-                            const _entityLabel = _entityMatch ? _entityMatch[1].trim() : 'rows';
-
-                            const _seeAllBtn = document.createElement('button');
-                            _seeAllBtn.type      = 'button';
-                            _seeAllBtn.className = 'mb-show-all-subtable-btn';
-                            _seeAllBtn.textContent = `Show all ${_count} rows`;
-                            const _pageKindLabel = (pageType === 'artist-credit')
-                                ? 'MusicBrainz Artist Credit overview pages show at most 10 rows per entity section'
-                                : 'MusicBrainz Tag-Values pages have currently a limit of 10 rows rendered at most per entity type section';
-                            _seeAllBtn.title =
-                                `Click to show all ${_count} ${_entityLabel} in a new browser tab ` +
-                                `for this sub-section (${_pageKindLabel})`;
-                            const _initBg    = Lib.settings.sa_ui_show_all_subtable_btn_bg         || '#FFE0B2';
-                            const _clickedBg = Lib.settings.sa_ui_show_all_subtable_btn_bg_clicked || '#CCFFCC';
-                            _seeAllBtn.style.background = _initBg;
-                            _seeAllBtn.onclick = (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                window.open(new URL(_href, window.location.origin).href, '_blank');
-                                _seeAllBtn.style.background = _clickedBg;
-                            };
-
-                            // Insert after filter container (or toggle icon if container absent)
-                            const _insertAfter = h3.querySelector('.mb-subtable-filter-container') ||
-                                                 h3.querySelector('.mb-subtable-filter-toggle-icon');
-                            if (_insertAfter) {
-                                _insertAfter.after(_seeAllBtn);
-                            } else {
-                                h3.appendChild(_seeAllBtn);
-                            }
-
                             // Remove the trailing "See all" row — the button replaces it.
                             _lastRow.remove();
 
@@ -34191,21 +34220,23 @@ a { color: #1565c0; }`;
                                 if (groupedRows[index].originalRows)
                                     _seeAllSplice(groupedRows[index].originalRows);
                             }
-
-                            // Patch mbTotalRows to the real (post-removal) row count so that
-                            // updateSubTableRowCount() shows "(N)" and not "(N of N+1)".
-                            const _realCount = tbody.rows.length;
-                            table.dataset.mbTotalRows = String(_realCount);
-                            const _statSpan = h3.querySelector('.mb-row-count-stat');
-                            if (_statSpan) {
-                                _statSpan.textContent = `(${_realCount})`;
-                                _statSpan.removeAttribute('data-mbtt'); // clear stale tooltip
-                            }
-
-                            Lib.debug('render',
-                                `${pageType}: added "Show all ${_count} rows" button to h3 "${categoryName}"; ` +
-                                `patched mbTotalRows to ${_realCount}.`);
                         }
+
+                        // Patch mbTotalRows to the real row count so that
+                        // updateSubTableRowCount() shows "(N)" and not "(N of N+1)".
+                        // Harmless to redo when _em was absent (disk-load / re-render)
+                        // since tbody.rows.length is already correct in that case.
+                        const _realCount = tbody.rows.length;
+                        table.dataset.mbTotalRows = String(_realCount);
+                        const _statSpan = h3.querySelector('.mb-row-count-stat');
+                        if (_statSpan) {
+                            _statSpan.textContent = `(${_realCount})`;
+                            _statSpan.removeAttribute('data-mbtt'); // clear stale tooltip
+                        }
+
+                        Lib.debug('render',
+                            `${pageType}: added "Show all ${_count} rows" button to h3 "${categoryName}"; ` +
+                            `patched mbTotalRows to ${_realCount}.`);
                     }
                 }
 
@@ -34222,42 +34253,67 @@ a { color: #1565c0; }`;
                 //     patched to reflect the real (post-removal) row count.
                 if (pageType === 'user-ratings') {
                     const _lastRow = tbody.lastElementChild;
-                    if (_lastRow) {
-                        const _viewAllLink = _lastRow.querySelector(
-                            'td a[href*="/user/"][href*="/ratings/"]'
-                        );
-                        if (_viewAllLink &&
-                                /^\s*view all ratings\s*$/i.test(_viewAllLink.textContent)) {
-                            const _href = _viewAllLink.getAttribute('href');
+                    const _viewAllLink = _lastRow && _lastRow.querySelector(
+                        'td a[href*="/user/"][href*="/ratings/"]'
+                    );
+                    const _foundInDom = !!(_viewAllLink &&
+                        /^\s*view all ratings\s*$/i.test(_viewAllLink.textContent));
 
-                            const _viewAllBtn = document.createElement('button');
-                            _viewAllBtn.type      = 'button';
-                            _viewAllBtn.className = 'mb-show-all-subtable-btn';
-                            _viewAllBtn.textContent = 'View all ratings';
-                            _viewAllBtn.title =
-                                `Click to view all ratings in a new browser tab ` +
-                                `for this sub-section (MusicBrainz Ratings pages show only ` +
-                                `the top-rated items per entity type)`;
-                            const _initBg    = Lib.settings.sa_ui_show_all_subtable_btn_bg         || '#FFE0B2';
-                            const _clickedBg = Lib.settings.sa_ui_show_all_subtable_btn_bg_clicked || '#CCFFCC';
-                            _viewAllBtn.style.background = _initBg;
-                            _viewAllBtn.onclick = (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                window.open(new URL(_href, window.location.origin).href, '_blank');
-                                _viewAllBtn.style.background = _clickedBg;
-                            };
+                    let _href;
+                    if (_foundInDom) {
+                        _href = _viewAllLink.getAttribute('href');
+                    } else if (group.ratingsViewAllUrl) {
+                        // The trailing "View all ratings" row only ever exists in the DOM
+                        // on the very first render of a live fetch (it's spliced out of
+                        // group.rows below the first time this block runs) — on every
+                        // later render, and after a Load-from-Disk round trip (which
+                        // never restores that row — see the disk-load reconstruction's
+                        // dedicated "See all" row skip, which the same trailing-row
+                        // shape falls into), fall back to the URL captured on that first
+                        // run instead.
+                        _href = group.ratingsViewAllUrl;
+                    }
 
-                            // Insert after filter container (or toggle icon if absent)
-                            const _insertAfter =
-                                h3.querySelector('.mb-subtable-filter-container') ||
-                                h3.querySelector('.mb-subtable-filter-toggle-icon');
-                            if (_insertAfter) {
-                                _insertAfter.after(_viewAllBtn);
-                            } else {
-                                h3.appendChild(_viewAllBtn);
-                            }
+                    if (_href) {
+                        const _viewAllBtn = document.createElement('button');
+                        _viewAllBtn.type      = 'button';
+                        _viewAllBtn.className = 'mb-show-all-subtable-btn';
+                        _viewAllBtn.textContent = 'View all ratings';
+                        _viewAllBtn.title =
+                            `Click to view all ratings in a new browser tab ` +
+                            `for this sub-section (MusicBrainz Ratings pages show only ` +
+                            `the top-rated items per entity type)`;
+                        const _initBg    = Lib.settings.sa_ui_show_all_subtable_btn_bg         || '#FFE0B2';
+                        const _clickedBg = Lib.settings.sa_ui_show_all_subtable_btn_bg_clicked || '#CCFFCC';
+                        _viewAllBtn.style.background = _initBg;
+                        _viewAllBtn.onclick = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.open(new URL(_href, window.location.origin).href, '_blank');
+                            _viewAllBtn.style.background = _clickedBg;
+                        };
 
+                        // Insert after filter container (or toggle icon if absent)
+                        const _insertAfter =
+                            h3.querySelector('.mb-subtable-filter-container') ||
+                            h3.querySelector('.mb-subtable-filter-toggle-icon');
+                        if (_insertAfter) {
+                            _insertAfter.after(_viewAllBtn);
+                        } else {
+                            h3.appendChild(_viewAllBtn);
+                        }
+
+                        // Persist the button's source URL onto the group so a later
+                        // Save to Disk can restore this button after a Load-from-Disk
+                        // round trip — mirrors the artist-relationships seeAllUrl
+                        // capture in the fetch loop (startFetchingProcess).
+                        group.ratingsViewAllUrl = _href;
+                        if (typeof groupedRows !== 'undefined' &&
+                                groupedRows[index] && groupedRows[index] !== group) {
+                            groupedRows[index].ratingsViewAllUrl = _href;
+                        }
+
+                        if (_foundInDom) {
                             // Remove the trailing "View all ratings" row
                             _lastRow.remove();
 
@@ -34276,20 +34332,22 @@ a { color: #1565c0; }`;
                                 if (groupedRows[index].originalRows)
                                     _splice(groupedRows[index].originalRows);
                             }
-
-                            // Patch mbTotalRows to the real (post-removal) count
-                            const _realCount = tbody.rows.length;
-                            table.dataset.mbTotalRows = String(_realCount);
-                            const _statSpan = h3.querySelector('.mb-row-count-stat');
-                            if (_statSpan) {
-                                _statSpan.textContent = `(${_realCount})`;
-                                _statSpan.removeAttribute('data-mbtt');
-                            }
-
-                            Lib.debug('render',
-                                `user-ratings: added "View all ratings" button to h3 "${categoryName}"; ` +
-                                `patched mbTotalRows to ${_realCount}.`);
                         }
+
+                        // Patch mbTotalRows to the real count. Harmless to redo when
+                        // _foundInDom is false (disk-load / re-render) since
+                        // tbody.rows.length is already correct in that case.
+                        const _realCount = tbody.rows.length;
+                        table.dataset.mbTotalRows = String(_realCount);
+                        const _statSpan = h3.querySelector('.mb-row-count-stat');
+                        if (_statSpan) {
+                            _statSpan.textContent = `(${_realCount})`;
+                            _statSpan.removeAttribute('data-mbtt');
+                        }
+
+                        Lib.debug('render',
+                            `user-ratings: added "View all ratings" button to h3 "${categoryName}"; ` +
+                            `patched mbTotalRows to ${_realCount}.`);
                     }
                 }
 
@@ -43201,6 +43259,24 @@ a { color: #1565c0; }`;
                 dataToSave.groups = groupedRows.map(group => ({
                     key: group.key,
                     category: group.category,
+                    // Persist the artist-relationships overflow-button metadata
+                    // (see the "See all N relationships" capture in the fetch
+                    // loop, and the `if (group.seeAllUrl)` button build in
+                    // renderGroupedTable) — without these, the "Show all N
+                    // rows" button silently disappears after a Load from Disk
+                    // round trip, since it was never written into the saved
+                    // JSON in the first place.
+                    seeAllUrl: group.seeAllUrl || null,
+                    seeAllCount: group.seeAllCount || null,
+                    // Same rationale, for the tag-value/user-tag-value/artist-credit
+                    // "Show all N rows" button and the user-ratings "View all ratings"
+                    // button — both are likewise built purely from metadata captured
+                    // in renderGroupedTable (once, on first render) and otherwise never
+                    // persisted anywhere.
+                    tagSeeAllUrl: group.tagSeeAllUrl || null,
+                    tagSeeAllCount: group.tagSeeAllCount || null,
+                    tagSeeAllEntityLabel: group.tagSeeAllEntityLabel || null,
+                    ratingsViewAllUrl: group.ratingsViewAllUrl || null,
                     rows: group.rows.map(row => {
                         return Array.from(row.cells)
                             .filter(cell => !cell.classList.contains('mb-rel-cell') &&

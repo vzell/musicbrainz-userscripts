@@ -87128,6 +87128,370 @@ following changelog entry
   },
 #+end_example
 
+* DONE no overflow buttons when reading from disk
+
+There are no overflow buttons present
+
+#+begin_example
+<button title="Click to show all 424 rows in a new browser tab for this sub-section (MusicBrainz Artist-Relationships pages have currently a limit of 100 rows rendered at most per relationship type section)" class="mb-show-all-subtable-btn" type="button" style="background: rgb(255, 224, 178);">Show all 424 rows</button>
+#+end_example
+
+when reading from disk
+
+full h3 header e.g. from https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
+
+before reading from disk:
+#+begin_example
+<h3 class="mb-toggle-h3" title="Click to collapse/uncollapse sub-section (Ctrl+Click to toggle ALL sub-sections)" style="cursor: pointer; user-select: none;"><span class="mb-toggle-icon">▲</span>Holds phonographic copyright (℗) for recording <span class="mb-row-count-stat" data-mbtt="There are &lt;span class=&quot;mb-mbtt-count&quot;&gt;100&lt;/span&gt; rows total unfiltered in this sub-table">(100)</span><button id="mb-stf-holds_phonographic_copyright_____for_recording-resize-btn" type="button" class="mb-subtable-resize-btn" title="Auto-resize columns in sub-section &quot;holds phonographic copyright (℗) for recording&quot;" aria-label="Auto-resize columns for: holds phonographic copyright (℗) for recording" style="font-size: 0.8em; padding: 1px 5px; border-radius: 4px; background: rgb(240, 240, 240); border: 1px solid rgb(204, 204, 204); cursor: pointer; vertical-align: middle; margin-left: 6px; display: inline-flex; align-items: center; box-sizing: border-box; transition: background-color 0.2s, border-color 0.2s, transform 0.1s, box-shadow 0.1s;">↔️</button><button id="mb-stf-holds_phonographic_copyright_____for_recording-vis-btn" type="button" class="mb-subtable-vis-btn" title="Show/hide columns in sub-section &quot;holds phonographic copyright (℗) for recording&quot;" aria-label="Column visibility for: holds phonographic copyright (℗) for recording" style="font-size: 0.85em; padding: 1px 5px; border-radius: 4px; background-image: initial; background-position: initial; background-size: initial; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial; border: 1px solid rgb(204, 204, 204); cursor: pointer; vertical-align: middle; margin-left: 6px; display: inline-flex; align-items: center; box-sizing: border-box; transition: background-color 0.2s, border-color 0.2s, transform 0.1s, box-shadow 0.1s;">👁️</button><span class="mb-subtable-filter-toggle-icon" title="Toggle filter elements for sub-section &quot;holds phonographic copyright (℗) for recording&quot;" role="button" aria-label="Toggle sub-table filter for &quot;holds phonographic copyright (℗) for recording&quot;">🔍</span><span class="mb-subtable-filter-container" data-category-name="holds phonographic copyright (℗) for recording"><span class="mb-subtable-filter-wrapper"><span class="mb-stf-input-wrap" style="position: relative; display: inline-flex; align-items: center;"><input id="mb-stf-holds_phonographic_copyright_____for_recording-input" type="text" placeholder="Filter &quot;holds phonographic copyright (℗) for recording&quot;… just in this sub-category" title="Filter rows in the &quot;holds phonographic copyright (℗) for recording&quot; sub-table, use 'Ctrl+U' for unicode character map" style="font-size: 1em; padding: 2px 28px 2px 6px; border-width: 2px medium 2px 2px; border-style: solid none solid solid; border-color: rgb(204, 204, 204) currentcolor rgb(204, 204, 204) rgb(204, 204, 204); border-image: none; border-radius: 3px 0px 0px 3px; width: 320px; height: 24px; box-sizing: border-box; transition: box-shadow 0.2s; outline: none;"><button id="mb-stf-holds_phonographic_copyright_____for_recording-clear" type="button" tabindex="-1" title="Clear filter for &quot;holds phonographic copyright (℗) for recording&quot;" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; cursor: pointer; color: rgb(192, 57, 43); font-size: 1em; font-weight: bold; line-height: 1; padding: 2px 3px; border-radius: 3px; display: none;">✕</button></span><span class="mb-stf-drag-handle" title="Drag to resize filter field" style="display: inline-flex; align-items: center; justify-content: center; width: 10px; flex-shrink: 0; cursor: col-resize; user-select: none; border-width: 2px 2px 2px medium; border-style: solid solid solid none; border-color: rgb(204, 204, 204) rgb(204, 204, 204) rgb(204, 204, 204) currentcolor; border-image: none; border-radius: 0px 3px 3px 0px; background: rgb(240, 240, 240); font-size: 7px; color: rgb(170, 170, 170); letter-spacing: -1px;">⋮</span></span><button type="button" title="Pin current filter to persistent list (saves query + checkbox states)" style="padding: 0px 8px; background: rgb(232, 245, 233); border: 1px solid rgb(165, 214, 167); border-radius: 6px; cursor: pointer; font-size: 1.1em; font-weight: bold; color: rgb(46, 125, 50); transition: background-color 0.2s, transform 0.1s, box-shadow 0.1s; height: 24px; box-sizing: border-box; flex-shrink: 0;">+</button><span style="position: relative; display: inline-flex; align-items: stretch; flex-shrink: 0;"><button type="button" title="Show/hide filter history (Alt+H)" style="padding: 0px 8px; background: rgb(240, 240, 240); border: 1px solid rgb(204, 204, 204); border-radius: 6px; cursor: pointer; font-size: 0.85em; white-space: nowrap; transition: background-color 0.2s, transform 0.1s, box-shadow 0.1s; height: 24px; box-sizing: border-box;">🕑 <u>H</u>istory ▼</button><div style="display: none; position: absolute; top: calc(100% + 4px); left: 0px; min-width: 420px; background: white; border: 1px solid rgb(204, 204, 204); border-radius: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 4px 16px; z-index: 20001; box-sizing: border-box;"><div style="padding: 8px 8px 6px; border-bottom: 1px solid rgb(238, 238, 238);"><div style="position: relative; display: flex; align-items: center;"><input type="text" placeholder="🔍 Quick filter both lists…" style="width: 100%; box-sizing: border-box; padding: 5px 28px 5px 8px; border: 1px solid rgb(204, 204, 204); border-radius: 4px; font-size: 0.88em; outline: none;"><button type="button" tabindex="-1" title="Clear quick filter" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; cursor: pointer; color: rgb(192, 57, 43); font-size: 0.95em; font-weight: bold; line-height: 1; padding: 2px 3px; border-radius: 3px; display: none;">✕</button></div></div><div style="padding: 4px 8px 2px; background: rgb(232, 245, 233); border-bottom: 1px solid rgb(200, 230, 201); display: flex; align-items: center; justify-content: space-between;"><span style="font-size: 0.76em; font-weight: 700; color: rgb(46, 125, 50); text-transform: uppercase; letter-spacing: 0.04em;">📌 Pinned</span><button type="button" title="Edit the persistent pinned filter list (Alt+E)" style="padding: 2px 7px; background: rgb(255, 248, 225); border: 1px solid rgb(255, 224, 130); border-radius: 5px; cursor: pointer; font-size: 0.76em; font-weight: 600; color: rgb(230, 81, 0); white-space: nowrap; transition: background-color 0.2s, transform 0.1s, box-shadow 0.1s; line-height: 1.6;">✎ <u>E</u>dit Pinned Filter List</button></div><div tabindex="0" style="max-height: 380px; overflow-y: auto;"><div class="mb-fhw-hist-row" data-idx="0" data-list="pin">
+                    <span class="mb-fhw-hist-label">coup de grace</span>
+                    <span class="mb-fhw-glyphs"></span>
+                </div></div><div style="padding: 3px 8px; border-top: 1px solid rgb(238, 238, 238); border-bottom: 1px solid rgb(221, 221, 221); font-size: 0.76em; color: rgb(102, 102, 102); display: flex; justify-content: space-between; background: rgb(249, 251, 231);"><span>1 of 1 entries</span><span>↑↓ navigate   Enter: apply</span></div><div style="padding: 4px 8px 2px; background: rgb(227, 242, 253); border-bottom: 1px solid rgb(187, 222, 251);"><span class="mb-fhw-lru-label">🕑 Recent (LRU)</span></div><div tabindex="0" style="max-height: 380px; overflow-y: auto;"><div class="mb-fhw-hist-row" data-idx="0" data-list="lru">
+                    <span class="mb-fhw-hist-label">unknown title</span>
+                    <span class="mb-fhw-glyphs"></span>
+                </div><div class="mb-fhw-hist-row" data-idx="1" data-list="lru">
+                    <span class="mb-fhw-hist-label">(unknown title)</span>
+                    <span class="mb-fhw-glyphs"></span>
+                </div><div class="mb-fhw-hist-row" data-idx="2" data-list="lru">
+                    <span class="mb-fhw-hist-label">Satisfaction</span>
+                    <span class="mb-fhw-glyphs"></span>
+                </div><div class="mb-fhw-hist-row" data-idx="3" data-list="lru">
+                    <span class="mb-fhw-hist-label">blinded</span>
+                    <span class="mb-fhw-glyphs"></span>
+                </div><div class="mb-fhw-hist-row" data-idx="4" data-list="lru">
+                    <span class="mb-fhw-hist-label">cassette</span>
+                    <span class="mb-fhw-glyphs"></span>
+                </div><div class="mb-fhw-hist-row" data-idx="5" data-list="lru">
+                    <span class="mb-fhw-hist-label">fox</span>
+                    <span class="mb-fhw-glyphs"></span>
+                </div><div class="mb-fhw-hist-row" data-idx="6" data-list="lru">
+                    <span class="mb-fhw-hist-label">coup de grace</span>
+                    <span class="mb-fhw-glyphs"></span>
+                </div></div><div style="padding: 3px 8px; border-top: 1px solid rgb(238, 238, 238); font-size: 0.76em; color: rgb(136, 136, 136); display: flex; justify-content: space-between;"><span>7 of 7 entries</span><span>↑↓ navigate   Enter: apply   Esc: close</span></div></div></span><label id="mb-stf-holds_phonographic_copyright_____for_recording-case-label" for="mb-stf-holds_phonographic_copyright_____for_recording-case-checkbox" title="Case Sensitive Filtering (filter for &quot;holds phonographic copyright (℗) for recording&quot; sub-table)" style="font-size: 0.8em; cursor: pointer; display: flex; align-items: center; margin: 0px; user-select: none; font-weight: normal; height: 24px;"><input id="mb-stf-holds_phonographic_copyright_____for_recording-case-checkbox" type="checkbox" style="margin-right: 2px; vertical-align: middle;">Cc</label><label id="mb-stf-holds_phonographic_copyright_____for_recording-rx-label" for="mb-stf-holds_phonographic_copyright_____for_recording-rx-checkbox" title="RegExp Filtering (filter for &quot;holds phonographic copyright (℗) for recording&quot; sub-table)" style="font-size: 0.8em; cursor: pointer; display: flex; align-items: center; margin: 0px; user-select: none; font-weight: normal; height: 24px;"><input id="mb-stf-holds_phonographic_copyright_____for_recording-rx-checkbox" type="checkbox" style="margin-right: 2px; vertical-align: middle;">Rx</label><label id="mb-stf-holds_phonographic_copyright_____for_recording-ex-label" for="mb-stf-holds_phonographic_copyright_____for_recording-ex-checkbox" title="Exclude Matches (filter for &quot;holds phonographic copyright (℗) for recording&quot; sub-table)" style="font-size: 0.8em; cursor: pointer; display: flex; align-items: center; margin: 0px; user-select: none; font-weight: normal; height: 24px;"><input id="mb-stf-holds_phonographic_copyright_____for_recording-ex-checkbox" type="checkbox" style="margin-right: 2px; vertical-align: middle;">Ex</label></span><button id="mb-stf-holds_phonographic_copyright_____for_recording-subtable-collapse-btn" type="button" class="mb-subtable-collapse-btn" title="Expand ALL collapsed multi-row cells in &quot;holds phonographic copyright (℗) for recording&quot; sub-section" aria-label="Expand all collapsed multi-row cells in: holds phonographic copyright (℗) for recording" style="font-size: 0.8em; padding: 2px 6px; border-radius: 4px; background-image: initial; background-position: initial; background-size: initial; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial; border: 1px solid rgb(204, 204, 204); cursor: pointer; vertical-align: middle; align-items: center; gap: 4px; margin-left: 8px; transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; display: none;"><span class="sa-ceb-arrow">▶</span><span class="sa-ceb-col"><span>Expand</span><span>all</span></span><span class="sa-ceb-col"><span>multi-row</span><span>cells</span></span></button><span class="mb-subtable-controls"><button title="Click to show all 424 rows in a new browser tab for this sub-section (MusicBrainz Artist-Relationships pages have currently a limit of 100 rows rendered at most per relationship type section)" class="mb-show-all-subtable-btn" type="button" style="background: rgb(255, 224, 178);">Show all 424 rows</button><button id="mb-stf-holds_phonographic_copyright_____for_recording-toggle-filter-highlight-btn" type="button" title="Toggle filter string highlighting for the sub-table filter and ALL column filters in this sub-table (except the filter string when &quot;Loading from Disk&quot; was used)" style="font-size: 0.8em; padding: 2px 6px; border-radius: 4px; background: rgb(240, 240, 240); border: 1px solid rgb(204, 204, 204); cursor: pointer; vertical-align: middle; transition: background-color 0.3s; display: none;">🎨 Toggle highlighting</button><button id="mb-stf-holds_phonographic_copyright_____for_recording-clear-all-btn" class="mb-stf-clear-col-btn" type="button" title="Clear ALL column filters for this sub-table (the sub-table filter itself is kept)" style="font-size: 0.8em; padding: 2px 6px; border-radius: 4px; background: rgb(240, 240, 240); border: 1px solid rgb(204, 204, 204); cursor: pointer; vertical-align: middle; display: none;"><span style="color: red; font-size: 1em; font-weight: bold;">✗ </span>Clear all column filters</button><button class="mb-subtable-clear-btn" type="button" title="Clear all filters for this sub-table (the sub-table filter and all column filters)" style="display: none;"><span style="color: red; font-size: 1em; font-weight: bold;">✗ </span><span class="mb-subtable-clear-btn-label">Clear all filters</span></button><span class="mb-filter-status" data-table-name="holds phonographic copyright (℗) for recording" data-table-index="1"></span><span class="mb-sort-status" data-table-name="holds phonographic copyright (℗) for recording" data-table-index="1"></span></span></h3>
+#+end_example
+
+after reading from disk:
+#+begin_example
+<h3 class="mb-toggle-h3" title="Click to collapse/uncollapse sub-section (Ctrl+Click to toggle ALL sub-sections)" style="cursor: pointer; user-select: none;"><span class="mb-toggle-icon">▲</span>Holds phonographic copyright (℗) for recording <span class="mb-row-count-stat" data-mbtt="There are &lt;span class=&quot;mb-mbtt-count&quot;&gt;100&lt;/span&gt; rows total unfiltered in this sub-table">(100)</span><button id="mb-stf-holds_phonographic_copyright_____for_recording-resize-btn" type="button" class="mb-subtable-resize-btn" title="Auto-resize columns in sub-section &quot;holds phonographic copyright (℗) for recording&quot;" aria-label="Auto-resize columns for: holds phonographic copyright (℗) for recording" style="font-size: 0.8em; padding: 1px 5px; border-radius: 4px; background: rgb(240, 240, 240); border: 1px solid rgb(204, 204, 204); cursor: pointer; vertical-align: middle; margin-left: 6px; display: inline-flex; align-items: center; box-sizing: border-box; transition: background-color 0.2s, border-color 0.2s, transform 0.1s, box-shadow 0.1s;">↔️</button><button id="mb-stf-holds_phonographic_copyright_____for_recording-vis-btn" type="button" class="mb-subtable-vis-btn" title="Show/hide columns in sub-section &quot;holds phonographic copyright (℗) for recording&quot;" aria-label="Column visibility for: holds phonographic copyright (℗) for recording" style="font-size: 0.85em; padding: 1px 5px; border-radius: 4px; background-image: initial; background-position: initial; background-size: initial; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial; border: 1px solid rgb(204, 204, 204); cursor: pointer; vertical-align: middle; margin-left: 6px; display: inline-flex; align-items: center; box-sizing: border-box; transition: background-color 0.2s, border-color 0.2s, transform 0.1s, box-shadow 0.1s;">👁️</button><span class="mb-subtable-filter-toggle-icon" title="Toggle filter elements for sub-section &quot;holds phonographic copyright (℗) for recording&quot;" role="button" aria-label="Toggle sub-table filter for &quot;holds phonographic copyright (℗) for recording&quot;">🔍</span><span class="mb-subtable-filter-container" data-category-name="holds phonographic copyright (℗) for recording"><span class="mb-subtable-filter-wrapper"><span class="mb-stf-input-wrap" style="position: relative; display: inline-flex; align-items: center;"><input id="mb-stf-holds_phonographic_copyright_____for_recording-input" type="text" placeholder="Filter &quot;holds phonographic copyright (℗) for recording&quot;… just in this sub-category" title="Filter rows in the &quot;holds phonographic copyright (℗) for recording&quot; sub-table, use 'Ctrl+U' for unicode character map" style="font-size: 1em; padding: 2px 28px 2px 6px; border-width: 2px medium 2px 2px; border-style: solid none solid solid; border-color: rgb(204, 204, 204) currentcolor rgb(204, 204, 204) rgb(204, 204, 204); border-image: none; border-radius: 3px 0px 0px 3px; width: 320px; height: 24px; box-sizing: border-box; transition: box-shadow 0.2s; outline: none;"><button id="mb-stf-holds_phonographic_copyright_____for_recording-clear" type="button" tabindex="-1" title="Clear filter for &quot;holds phonographic copyright (℗) for recording&quot;" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; cursor: pointer; color: rgb(192, 57, 43); font-size: 1em; font-weight: bold; line-height: 1; padding: 2px 3px; border-radius: 3px; display: none;">✕</button><button id="mb-rel-retry-1" type="button" title="Retry Relationship icons for this sub-table (network reload, clears IDB)" style="cursor: pointer; padding: 1px 4px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 3px; line-height: 1; display: inline-flex; align-items: center; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;">🔗⟳</button></span><span class="mb-stf-drag-handle" title="Drag to resize filter field" style="display: inline-flex; align-items: center; justify-content: center; width: 10px; flex-shrink: 0; cursor: col-resize; user-select: none; border-width: 2px 2px 2px medium; border-style: solid solid solid none; border-color: rgb(204, 204, 204) rgb(204, 204, 204) rgb(204, 204, 204) currentcolor; border-image: none; border-radius: 0px 3px 3px 0px; background: rgb(240, 240, 240); font-size: 7px; color: rgb(170, 170, 170); letter-spacing: -1px;">⋮</span></span><button type="button" title="Pin current filter to persistent list (saves query + checkbox states)" style="padding: 0px 8px; background: rgb(232, 245, 233); border: 1px solid rgb(165, 214, 167); border-radius: 6px; cursor: pointer; font-size: 1.1em; font-weight: bold; color: rgb(46, 125, 50); transition: background-color 0.2s, transform 0.1s, box-shadow 0.1s; height: 24px; box-sizing: border-box; flex-shrink: 0;">+</button><span style="position: relative; display: inline-flex; align-items: stretch; flex-shrink: 0;"><button type="button" title="Show/hide filter history (Alt+H)" style="padding: 0px 8px; background: rgb(240, 240, 240); border: 1px solid rgb(204, 204, 204); border-radius: 6px; cursor: pointer; font-size: 0.85em; white-space: nowrap; transition: background-color 0.2s, transform 0.1s, box-shadow 0.1s; height: 24px; box-sizing: border-box;">🕑 <u>H</u>istory ▼</button><div style="display: none; position: absolute; top: calc(100% + 4px); left: 0px; min-width: 420px; background: white; border: 1px solid rgb(204, 204, 204); border-radius: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 4px 16px; z-index: 20001; box-sizing: border-box;"><div style="padding: 8px 8px 6px; border-bottom: 1px solid rgb(238, 238, 238);"><div style="position: relative; display: flex; align-items: center;"><input type="text" placeholder="🔍 Quick filter both lists…" style="width: 100%; box-sizing: border-box; padding: 5px 28px 5px 8px; border: 1px solid rgb(204, 204, 204); border-radius: 4px; font-size: 0.88em; outline: none;"><button type="button" tabindex="-1" title="Clear quick filter" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; cursor: pointer; color: rgb(192, 57, 43); font-size: 0.95em; font-weight: bold; line-height: 1; padding: 2px 3px; border-radius: 3px; display: none;">✕</button></div></div><div style="padding: 4px 8px 2px; background: rgb(232, 245, 233); border-bottom: 1px solid rgb(200, 230, 201); display: flex; align-items: center; justify-content: space-between;"><span style="font-size: 0.76em; font-weight: 700; color: rgb(46, 125, 50); text-transform: uppercase; letter-spacing: 0.04em;">📌 Pinned</span><button type="button" title="Edit the persistent pinned filter list (Alt+E)" style="padding: 2px 7px; background: rgb(255, 248, 225); border: 1px solid rgb(255, 224, 130); border-radius: 5px; cursor: pointer; font-size: 0.76em; font-weight: 600; color: rgb(230, 81, 0); white-space: nowrap; transition: background-color 0.2s, transform 0.1s, box-shadow 0.1s; line-height: 1.6;">✎ <u>E</u>dit Pinned Filter List</button></div><div tabindex="0" style="max-height: 380px; overflow-y: auto;"><div class="mb-fhw-hist-row" data-idx="0" data-list="pin">
+                    <span class="mb-fhw-hist-label">coup de grace</span>
+                    <span class="mb-fhw-glyphs"></span>
+                </div></div><div style="padding: 3px 8px; border-top: 1px solid rgb(238, 238, 238); border-bottom: 1px solid rgb(221, 221, 221); font-size: 0.76em; color: rgb(102, 102, 102); display: flex; justify-content: space-between; background: rgb(249, 251, 231);"><span>1 of 1 entries</span><span>↑↓ navigate   Enter: apply</span></div><div style="padding: 4px 8px 2px; background: rgb(227, 242, 253); border-bottom: 1px solid rgb(187, 222, 251);"><span class="mb-fhw-lru-label">🕑 Recent (LRU)</span></div><div tabindex="0" style="max-height: 380px; overflow-y: auto;"><div class="mb-fhw-hist-row" data-idx="0" data-list="lru">
+                    <span class="mb-fhw-hist-label">unknown title</span>
+                    <span class="mb-fhw-glyphs"></span>
+                </div><div class="mb-fhw-hist-row" data-idx="1" data-list="lru">
+                    <span class="mb-fhw-hist-label">(unknown title)</span>
+                    <span class="mb-fhw-glyphs"></span>
+                </div><div class="mb-fhw-hist-row" data-idx="2" data-list="lru">
+                    <span class="mb-fhw-hist-label">Satisfaction</span>
+                    <span class="mb-fhw-glyphs"></span>
+                </div><div class="mb-fhw-hist-row" data-idx="3" data-list="lru">
+                    <span class="mb-fhw-hist-label">blinded</span>
+                    <span class="mb-fhw-glyphs"></span>
+                </div><div class="mb-fhw-hist-row" data-idx="4" data-list="lru">
+                    <span class="mb-fhw-hist-label">cassette</span>
+                    <span class="mb-fhw-glyphs"></span>
+                </div><div class="mb-fhw-hist-row" data-idx="5" data-list="lru">
+                    <span class="mb-fhw-hist-label">fox</span>
+                    <span class="mb-fhw-glyphs"></span>
+                </div><div class="mb-fhw-hist-row" data-idx="6" data-list="lru">
+                    <span class="mb-fhw-hist-label">coup de grace</span>
+                    <span class="mb-fhw-glyphs"></span>
+                </div></div><div style="padding: 3px 8px; border-top: 1px solid rgb(238, 238, 238); font-size: 0.76em; color: rgb(136, 136, 136); display: flex; justify-content: space-between;"><span>7 of 7 entries</span><span>↑↓ navigate   Enter: apply   Esc: close</span></div></div></span><label id="mb-stf-holds_phonographic_copyright_____for_recording-case-label" for="mb-stf-holds_phonographic_copyright_____for_recording-case-checkbox" title="Case Sensitive Filtering (filter for &quot;holds phonographic copyright (℗) for recording&quot; sub-table)" style="font-size: 0.8em; cursor: pointer; display: flex; align-items: center; margin: 0px; user-select: none; font-weight: normal; height: 24px;"><input id="mb-stf-holds_phonographic_copyright_____for_recording-case-checkbox" type="checkbox" style="margin-right: 2px; vertical-align: middle;">Cc</label><label id="mb-stf-holds_phonographic_copyright_____for_recording-rx-label" for="mb-stf-holds_phonographic_copyright_____for_recording-rx-checkbox" title="RegExp Filtering (filter for &quot;holds phonographic copyright (℗) for recording&quot; sub-table)" style="font-size: 0.8em; cursor: pointer; display: flex; align-items: center; margin: 0px; user-select: none; font-weight: normal; height: 24px;"><input id="mb-stf-holds_phonographic_copyright_____for_recording-rx-checkbox" type="checkbox" style="margin-right: 2px; vertical-align: middle;">Rx</label><label id="mb-stf-holds_phonographic_copyright_____for_recording-ex-label" for="mb-stf-holds_phonographic_copyright_____for_recording-ex-checkbox" title="Exclude Matches (filter for &quot;holds phonographic copyright (℗) for recording&quot; sub-table)" style="font-size: 0.8em; cursor: pointer; display: flex; align-items: center; margin: 0px; user-select: none; font-weight: normal; height: 24px;"><input id="mb-stf-holds_phonographic_copyright_____for_recording-ex-checkbox" type="checkbox" style="margin-right: 2px; vertical-align: middle;">Ex</label></span><button id="mb-stf-holds_phonographic_copyright_____for_recording-subtable-collapse-btn" type="button" class="mb-subtable-collapse-btn" title="Expand ALL collapsed multi-row cells in &quot;holds phonographic copyright (℗) for recording&quot; sub-section" aria-label="Expand all collapsed multi-row cells in: holds phonographic copyright (℗) for recording" style="font-size: 0.8em; padding: 2px 6px; border-radius: 4px; background-image: initial; background-position: initial; background-size: initial; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial; border: 1px solid rgb(204, 204, 204); cursor: pointer; vertical-align: middle; align-items: center; gap: 4px; margin-left: 8px; transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; display: none;"><span class="sa-ceb-arrow">▶</span><span class="sa-ceb-col"><span>Expand</span><span>all</span></span><span class="sa-ceb-col"><span>multi-row</span><span>cells</span></span></button><span class="mb-subtable-controls"><button id="mb-stf-holds_phonographic_copyright_____for_recording-toggle-filter-highlight-btn" type="button" title="Toggle filter string highlighting for the sub-table filter and ALL column filters in this sub-table (except the filter string when &quot;Loading from Disk&quot; was used)" style="font-size: 0.8em; padding: 2px 6px; border-radius: 4px; background: rgb(240, 240, 240); border: 1px solid rgb(204, 204, 204); cursor: pointer; vertical-align: middle; transition: background-color 0.3s; display: none;">🎨 Toggle highlighting</button><button id="mb-stf-holds_phonographic_copyright_____for_recording-clear-all-btn" class="mb-stf-clear-col-btn" type="button" title="Clear ALL column filters for this sub-table (the sub-table filter itself is kept)" style="font-size: 0.8em; padding: 2px 6px; border-radius: 4px; background: rgb(240, 240, 240); border: 1px solid rgb(204, 204, 204); cursor: pointer; vertical-align: middle; display: none;"><span style="color: red; font-size: 1em; font-weight: bold;">✗ </span>Clear all column filters</button><button class="mb-subtable-clear-btn" type="button" title="Clear ALL COLUMN filters for this sub-table" style="display: none;"><span style="color: red; font-size: 1em; font-weight: bold;">✗ </span><span class="mb-subtable-clear-btn-label">Clear all column filters</span></button><span class="mb-filter-status" data-table-name="holds phonographic copyright (℗) for recording" data-table-index="1"></span><span class="mb-sort-status" data-table-name="holds phonographic copyright (℗) for recording" data-table-index="1"></span></span></h3>
+#+end_example
+
+
+* flags
+
+#+begin_example
+     * Non-flag (Locality/Region) links are positional, not semantic: the
+     * FIRST one seen (per `areaState.count === 0`) is the most specific
+     * (Locality — e.g. city/neighbourhood); every subsequent one is broader
+     * (Region — e.g. county/state, comma-joined). MusicBrainz area links
+     * carry no type information, and the chain depth varies per place rather
+     * than per country, so position is the only signal available — EXCEPT
+     * when that first link itself carries a subdivision-flag icon (meaning no
+     * city/locality was ever entered, only a bare state/province) AND the
+     * row's country is in the internal `AREA_FLAG_REGION_COUNTRIES`
+     * list: that link is then forced into Region instead, since it's
+     * conceptually a Region-level entity even though it's positionally first.
+#+end_example
+
+
+* DONE plan: multi-table pageType subtable to single-table pageType
+** initial
+
+Currently on multi-table pageTypes e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
+each subtable either natively has an overflow button
+
+#+begin_example
+<button title="Click to show all 424 rows in a new browser tab for this sub-section (MusicBrainz Artist-Relationships pages have currently a limit of 100 rows rendered at most per relationship type section)" class="mb-show-all-subtable-btn" type="button" style="background: rgb(255, 224, 178);">Show all 424 rows</button>
+#+end_example
+
+in the H3 heading, see @debug/subtable-overflow.html (when clicked all rows are shown in a new tab in single-table pageType mode) or not, see @debug/subtable.html
+
+In the latter case I want a button with text "Show single-table" and when clicked the current content of the subtable
+under that h3 section should aos be renderd in single-table mode in a new tab, so basically a "multi-table pageType subtable to single-table pageType" tansformation
+
+do this on a new branch when accepted
+
+** bug
+
+native popup box on new tab:
+
+#+begin_example
+Failed to load data: Cannot access '_filterResultCache' before initialization
+#+end_example
+
+** next disc
+
+on the new tab the h2 table header section always starts with '"next-disc" relationships' @debug/next-disc.html instead of the h3 name from the original subtable @debug/h3.html 
+
+** for release and release-group based sub-tables, there are no inline-thumbnails renderd in the 
+
+For release and release-group based sub-tables, there are no inline-thumbnails rendered.
+
+Specifically for release-group based types the thumbnails actually do render when uncollapsing the releae-group title
+for each release in that release-group, see the screenshot
+
+** migging inline thumbnails
+
+see
+
+#+begin_example
+@debug/tribute.html - tab rendered single-table version of the "tribute albums release-group" relationships subtable, uncollapsed one release-group 
+@debug/tribute.log - console log
+#+end_example
+
+** extend the new implementation also to the following pageTypes
+
+extend the new implementation also to the following pageTypes e.g.
+
+#+begin_example
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
+#+end_example
+
+where the sub-tables never have any overflow buttons, because the content comes accumulated from paginated pages, see
+
+#+begin_example
+@debug/a.html - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+@debug/rf.html - https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
+#+end_example
+
+** bugs
+
+1.)
+
+Initially it works for the pageType e.g. https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c but
+the original h3 title e.g "Bootleg release" from the subtable ended up in the wrong h2 header (looks like the first one
+where originally we had "Wikipedia") on the new tab see @debug/RG-reload-bug.html
+
+It should be on the h2 header right before the actual single-table
+
+2.)
+
+A bigger problem is, that shortly after the new tab appears and gets rendered with the single table view (which actually
+seems to work right for "artist-releasegroup" pages), the page reloads to the original URL and overwrites everything
+(except if I quickly press the browser "Stop" button)
+
+** bug
+
+2.) should actually read
+
+A bigger problem is, that shortly after the new tab appears and gets rendered with the single table view (which actually
+seems to work right for "releasegroup-release" pages), the page reloads to the original URL and overwrites everything
+(except if I quickly press the browser "Stop" button)
+
+** bugs
+
+On "artist-releasegroup" pageType when for example clicking the "Show singe-table"-button on the second sub-table with
+h3 "Album" @debug/album2.html I get the following buggy rendered new tab @debug/a-rg-bug.html with multiple h3 based subtables still
+
+** bugs
+
+On pageTypes e.g. https://musicbrainz.org/release-group/d19453c0-cd72-3468-b110-0f898c111e5e
+there are three rendering bugs
+
+#+begin_example
+@debug/rg-bootlegs.html - original page with the "Bootleg release" section/subtable uncollapsed
+@debug/rg-bootlegs-tab.html - the "Bootleg release" section/subtable in its own tab
+#+end_example
+
+1.)
+
+the "Relationships" column (on the original page the second to last column) is rendered additionally as the second column right after the "Release" column
+
+2.)
+
+in the big picture image stripe above the table on the tab page, each release images is doubled
+
+3.)
+
+the content from the h2 "Relationships" section on the original page is rendered right after the '<h2 class="relationships mb-h2-processed mb-toggle-h2"' header on the tab page
+
+** still buggy
+
+On pageTypes e.g. https://musicbrainz.org/release-group/d19453c0-cd72-3468-b110-0f898c111e5e
+there are three rendering bugs
+
+#+begin_example
+@debug/rg-bootlegs-bug.html - original page with the "Wikipedia", "Relationships" and "Bootleg release" section/subtable uncollapsed - [Image #1]
+@debug/rg-bootlegs-tab-bug.html - same in its own tab  - [Image #2]
+#+end_example
+
+1.)
+
+the doubled "Relationships" column is gone, but it's header is still present at the second column after the "Release" column
+
+2.)
+
+the original main h2 header '<h2 class="mb-h2-processed mb-toggle-h2" title="Click to collapse/uncollapse section (Ctrl+Click to toggle ALL sections)"'
+is still present on the new tab page but it's not needed there, as now the new '<h2 data-mb-sa-fabricated-heading="1" class="mb-h2-processed mb-toggle-h2" title="Click to collapse/uncollapse section (Ctrl+Click to toggle ALL sections)"'
+takes over it's place/functionality
+
+3.)
+
+everything starting from
+
+#+begin_example
+<p class="subheader" style=""><span class="prefix">~</span> <!-- -->Release group by <bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></bdi><span id="mb-status-sentinel" style="display: inline-block; width: 0px; height: 0px; overflow: hidden; vertical-align: middle;"></span><div id="mb-status-displays-container" style="display: inline-flex; align-items: center; gap: 8px; line-height: 1; vertical-align: middle; margin-left: 10px;"><span id="mb-global-status-display" style="font-size: 0.95em; color: rgb(51, 51, 51); font-weight: bold; vertical-align: middle;"><span>, </span><span title="Relationship icons: 8 unique MBIDs / 8 cells
+📦 IDB: 0 — IndexedDB browser cache (cross-session)
+💾 cache: 0 — memory cache (same session)
+🌐 net: 8 — live WS2 API fetch (throttled 1 req/s)
+Total load time: 15.8s">🔗Rels: 15.8s</span></span><span id="mb-status-divider" style="display: inline-block; color: rgb(187, 187, 187); font-weight: normal; user-select: none;">|</span><span id="mb-info-display" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.95em; font-weight: bold; vertical-align: middle;"><span id="mb-info-display-caa" style="display: none; color: green;"></span><span id="mb-info-display-rel" style="display: inline-block; color: green;" title="Relationship icons: 8 unique MBIDs / 8 cells
+📦 IDB: 0 — IndexedDB browser cache (cross-session)
+💾 cache: 0 — memory cache (same session)
+🌐 net: 8 — live WS2 API fetch (throttled 1 req/s)
+Total load time: 15.8s">🔗Rels: 15.8s</span><span id="mb-info-display-generic" style="display: inline-block; color: green;" title="Background IndexedDB sweep deleted 2 expired record(s) from images, metadata, and rel-ws2 stores">🗄️ IDB sweep: removed 2 expired entries</span></span></div></p>
+#+end_example
+
+#+begin_example
+<div class="tabs"><ul class="tabs"><li class="sel"><span class="name-variation"><a href="/release-group/d19453c0-cd72-3468-b110-0f898c111e5e" title="The Rising"><bdi>Overview</bdi></a></span></li><li><a href="/release-group/d19453c0-cd72-3468-b110-0f898c111e5e/aliases">Aliases (0)</a></li><li><a href="/release-group/d19453c0-cd72-3468-b110-0f898c111e5e/tags"><bdi>Tags</bdi></a></li><li><a href="/release-group/d19453c0-cd72-3468-b110-0f898c111e5e/ratings"><bdi>Reviews</bdi></a></li><li><a href="/release-group/d19453c0-cd72-3468-b110-0f898c111e5e/details"><bdi>Details</bdi></a></li><li><a href="/release-group/d19453c0-cd72-3468-b110-0f898c111e5e/edit"><bdi>Edit</bdi></a></li></ul></div>
+#+end_example
+
+** act on @debug/rg-bug.org
+
+act on @debug/rg-bug.org
+
+** the obsolete h2 header from the original page is still present
+
+the obsolete h2 header from the original page is still present on the tab page
+
+#+begin_example
+<h2 class="mb-h2-processed mb-toggle-h2" title="Click to collapse/uncollapse section (Ctrl+Click to toggle ALL sections)" style="cursor: pointer; user-select: none;"><span class="mb-toggle-icon">▼</span>Album</h2>
+#+end_example
+
+** buggy
+
+1.)
+
+on e.g. https://musicbrainz.org/release-group/d19453c0-cd72-3468-b110-0f898c111e5e the now obsolete "Album" h2 header is still present
+
+2.)
+
+on e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
+
+[Image #5] - original page with uncollapsed "Performed release" section/subtable and collapsed "Relationships" h2 section at the beginning of the page
+[Image #6] - same subtable on the new tab page with the "Relationships" h2 section missing but artificial new h2 section '“next disc” relationships' see below
+
+#+begin_example
+<h2 class="mb-h2-processed mb-toggle-h2" title="Click to collapse/uncollapse section (Ctrl+Click to toggle ALL sections)" style="cursor: pointer; user-select: none;"><span class="mb-toggle-icon">▼</span>“next disc” relationships</h2>
+<p style="">No relationships of the selected type were found.</p>
+<br style="">
+#+end_example
+
+** works now, but
+
+1.)
+
+works now
+
+2.)
+
+the artificial new h2 section '“next disc” relationships' is also gone, BUT the "Relationships" h2 section from the original page is not present on the tab page
+
+** answer
+
+#+begin_example
+@debug/a-rel-orig-tab.html - original page with all subtable sections collapsed but the h2 "Relationships" section open
+@debug/a-rel-orig-tab.html - same page on the final rendered page for the subtable '"performed release relationships', NO h2 "Relationships" section present above the h2 subtable section
+#+end_example
+
+** double caa
+
+This happens only for the following pageTypes: https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+
+Somehow the '<a href="https://musicbrainz.org/release/501dc106-bd95-4191-abc1-346724f99cb9/cover-art" ref="/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183" title="4 images found in this release"><span class="caa-icon jesus2099userjs154481" style="background-size: contain; background-image: url(&quot;//coverartarchive.org/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183/front-250&quot;);"></span></a>'
+is additionally present in the "Title" column after the '<span class="mb-caa-inline-ph"'
+
+#+begin_example
+<td style="position: sticky; left: 0px; z-index: 1; background: rgb(255, 255, 255);" data-mb-rest-bg="#ffffff" data-mb-sticky-bg="#ffffff" class="mb-sticky-col" data-erg-injected="1" data-caa-inline-done="1"><span data-erg-btn="1" title="Toggle display of underlying entity page" style="cursor: pointer; margin-right: 4px; color: rgb(119, 119, 119);">▶</span><span class="mb-caa-inline-ph" style="display: inline-block; width: 20px; height: 20px; margin-right: 3px; vertical-align: middle; flex-shrink: 0; overflow: hidden; border-radius: 2px; cursor: crosshair; position: relative;" title="4 images found for this release / release-group"><img alt="" style="width: 20px; height: 20px; object-fit: cover; display: inline; border-radius: 2px;" src="blob:https://musicbrainz.org/925bca9b-d39e-4ac7-a2dd-d8f269580a1a"><span class="mb-art-cache-hint-inline" title="IndexedDB cache hit" style="font-size: 0.65em; line-height: 1; position: absolute; top: 0px; left: 0px; user-select: none; cursor: default; pointer-events: none;">🗄️</span></span><a href="https://musicbrainz.org/release/501dc106-bd95-4191-abc1-346724f99cb9/cover-art" ref="/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183" title="4 images found in this release"><span class="caa-icon jesus2099userjs154481" style="background-size: contain; background-image: url(&quot;//coverartarchive.org/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183/front-250&quot;);"></span></a><a class="wrap-anywhere" href="/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183"><bdi>The River, Vol 1</bdi></a><span class="mb-inline-art-sort-key" style="display: none;">caa-inline-yes</span></td>
+#+end_example
+
+compared to the original data cell
+
+#+begin_example
+<td style="position: sticky; left: 0px; z-index: 1; background: rgb(255, 255, 255);" data-mb-rest-bg="#ffffff" data-mb-sticky-bg="#ffffff" class="mb-sticky-col" data-erg-injected="1" data-caa-inline-done="1"><span data-erg-btn="1" title="Toggle display of underlying entity page" style="cursor: pointer; margin-right: 4px; color: rgb(119, 119, 119);">▶</span><span class="mb-caa-inline-ph" style="display: inline-block; width: 20px; height: 20px; margin-right: 3px; vertical-align: middle; flex-shrink: 0; overflow: hidden; border-radius: 2px; cursor: crosshair; position: relative;" title="4 images found for this release / release-group"><img alt="" style="width: 20px; height: 20px; object-fit: cover; display: inline; border-radius: 2px;" src="blob:https://musicbrainz.org/e7b9a3c8-c623-4b7d-83a6-2a9dd8eb90b3"><span class="mb-art-cache-hint-inline" title="IndexedDB cache hit" style="font-size: 0.65em; line-height: 1; position: absolute; top: 0px; left: 0px; user-select: none; cursor: default; pointer-events: none;">🗄️</span></span><a class="wrap-anywhere" href="/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183"><bdi>The River, Vol 1</bdi></a><span class="mb-inline-art-sort-key" style="display: none;">caa-inline-yes</span></td>
+#+end_example
+
+Also the "MB-Name" column shouldn't have a CAA image at all
+
+#+begin_example
+<td data-mb-rest-bg="#ffffff" data-erg-injected="1" style="background: rgb(255, 255, 255);"><span data-erg-btn="1" title="Toggle display of underlying entity page" style="cursor: pointer; margin-right: 4px; color: rgb(119, 119, 119);">▶</span><a href="https://musicbrainz.org/release/501dc106-bd95-4191-abc1-346724f99cb9/cover-art" ref="/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183" title="4 images found in this release"><span class="caa-icon jesus2099userjs154481" style="background-size: contain; background-image: url(&quot;//coverartarchive.org/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183/front-250&quot;);"></span></a><a class="wrap-anywhere" href="/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183"><bdi>The River, Vol 1</bdi></a></td>
+#+end_example
+
+compared to the original page
+
+#+begin_example
+<td data-mb-rest-bg="#ffffff" data-erg-injected="1" style="background: rgb(255, 255, 255);"><span data-erg-btn="1" title="Toggle display of underlying entity page" style="cursor: pointer; margin-right: 4px; color: rgb(119, 119, 119);">▶</span><a class="wrap-anywhere" href="/release-group/7fa55e1d-086e-4073-be1a-7c5b61e57183"><bdi>The River, Vol 1</bdi></a></td>
+#+end_example
+
+Here the complete raw HTML from the new tab page
+
+#+begin_example
+@debug/a-rg-double-caa.html
+#+end_example
+
+** act on @debug/double-caa.org
+
+act on @debug/double-caa.org
+
+** DONE add a new configuration variable
+
+add a new configuration variable (default: false) for the "Show single-table" feature we just implemented
+
+** DONE change
+
+Change all occurences of
+
+#+begin_src bash
+label: 'Show all <x> for <y> (specialized)'
+#+end_src
+
+into
+
+#+begin_src bash
+label: 'Show all <x> for <y> (complete)'
+#+end_src
+
+** DONE grey out action buttons
+
+The "Show all ..." action buttons on the pageTypes
+
+#+begin_example
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
+#+end_example
+
+and the "Artist RGs"/"Various Artist RGs" action buttons on the pageType
+
+#+begin_example
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+#+end_example
+
+should be greyed out (it should not be possible to click them) when rendered on the new tab pages after pressing the
+"Show single-table" button.  Additionally the tooltip should show an explanation, in order to get a fresh vesion, the
+original page needs to be refreshed and the "Show single-table" button should be clicked there
+
 
 * flags
 
