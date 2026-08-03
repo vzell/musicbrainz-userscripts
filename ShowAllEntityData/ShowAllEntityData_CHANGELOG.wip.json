@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-08-03",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the overflow-button persistence added by 765edfe (\"Fix overflow buttons disappearing after Load from Disk\", on main) being silently dropped by the merge of main into this branch: the disk-load reconstruction loop that restores seeAllUrl/tagSeeAllUrl/ratingsViewAllUrl onto each reconstructed group had already been extracted (WIP.1 above) from loadTableDataFromDisk() into _hydrateAndRenderFromSnapshotData(), re-indenting every line in that block — git's line-based merge treated the whole region as already changed on this branch and merged 765edfe's inserted restoration lines out without ever raising a conflict marker, even though the corresponding save-side (saveTableDataToDisk) and render-side (renderGroupedTable) halves of that same fix merged in cleanly. Re-added the three restoration blocks (seeAllUrl/seeAllCount, tagSeeAllUrl/tagSeeAllCount/tagSeeAllEntityLabel, ratingsViewAllUrl) to _grpEntry construction so the \"Show all N rows\"/\"View all ratings\" buttons survive a Load-from-Disk round trip again."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-08-01",
     "sections": [

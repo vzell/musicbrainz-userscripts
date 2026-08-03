@@ -43762,6 +43762,30 @@ a { color: #1565c0; }`;
                     if (_grpEntityFeatures && Object.keys(_grpEntityFeatures).length > 0) {
                         _grpEntry.entityFeatures = _grpEntityFeatures;
                     }
+                    // Restore the artist-relationships overflow-button metadata
+                    // saved by saveTableDataToDisk() above — renderGroupedTable's
+                    // `if (group.seeAllUrl)` check rebuilds the "Show all N rows"
+                    // button from these two fields alone, so they must survive
+                    // the disk round trip exactly like colName/entityFeatures do.
+                    if (group.seeAllUrl) {
+                        _grpEntry.seeAllUrl = group.seeAllUrl;
+                        _grpEntry.seeAllCount = group.seeAllCount;
+                    }
+                    // Same for the tag-value/user-tag-value/artist-credit "Show all
+                    // N rows" button and the user-ratings "View all ratings" button
+                    // — renderGroupedTable's own fallback (added alongside this)
+                    // rebuilds each button straight from these fields when the
+                    // trailing "See all"/"View all ratings" row isn't found in the
+                    // DOM, which is always the case right after a disk-load (that
+                    // row is never reconstructed — see the dedicated skip above).
+                    if (group.tagSeeAllUrl) {
+                        _grpEntry.tagSeeAllUrl = group.tagSeeAllUrl;
+                        _grpEntry.tagSeeAllCount = group.tagSeeAllCount;
+                        _grpEntry.tagSeeAllEntityLabel = group.tagSeeAllEntityLabel;
+                    }
+                    if (group.ratingsViewAllUrl) {
+                        _grpEntry.ratingsViewAllUrl = group.ratingsViewAllUrl;
+                    }
                     groupedRows.push(_grpEntry);
                     loadedRowCount += reconstructedRows.length;
                 });
