@@ -32069,6 +32069,22 @@ a { color: #1565c0; }`;
      *     the ONE time it runs, right after `renderFinalTable()`; jesus2099's
      *     insert can still land after that single pass on this fast
      *     bootstrap path, same as the two symptoms above.
+     *   - jesus2099's cover-art icon anchor (`<a href="…/cover-art"><span
+     *     class="caa-icon jesus2099userjs154481">`) reappearing on
+     *     artist-releasegroups — doubled in the sticky "Title" column
+     *     (alongside this script's own `.mb-caa-inline-ph` thumbnail) and
+     *     present at all in the synthetic "MB-Name" column. Unlike the
+     *     three symptoms above (all specific to releasegroup-releases),
+     *     this one is a *generic, page-wide* jesus2099 behavior — it
+     *     independently scans the whole live page for release/
+     *     release-group links and prepends this icon next to each one,
+     *     on its own schedule, regardless of whose table those links live
+     *     in. `_stripTransientCellState()`'s own jesus2099 stripping (see
+     *     its comment) already keeps the STORED snapshot clean at capture
+     *     time — but that only protects what gets serialized from the
+     *     SOURCE page; it does nothing to stop jesus2099 separately
+     *     re-injecting this same icon into the DESTINATION tab's own live
+     *     DOM once this script's rows exist there.
      *
      * Disconnects itself after `SA_JESUS2099_WATCH_MS` — the race window is
      * inherently short (this mirrors the bounded `setTimeout(_relCreateRetryButtons, 200)`
@@ -32109,6 +32125,29 @@ a { color: #1565c0; }`;
                 Lib.debug('cleanup', `_watchForLateJesus2099Injections: removed a late foreign header <th> ("${txt}").`);
             }
         };
+        // jesus2099's "mb. SUPER MIND CONTROL" cover-art icon: unlike the
+        // "relationships" td/th above (which only ever showed up on
+        // releasegroup-releases), this one is a generic, page-wide
+        // enhancement — jesus2099 independently scans the whole live page
+        // for release/release-group links and prepends this icon anchor
+        // next to each one it finds, on its own schedule, regardless of
+        // whose table those links are in. applyColumnErasers()'s
+        // 'jesus2099' eraser and _stripTransientCellState (see their own
+        // comments) already strip this from the SOURCE page's row content
+        // at capture time, so the stored snapshot itself is clean — but
+        // that only protects what gets serialized; it does nothing about
+        // jesus2099 separately, and independently, re-injecting this same
+        // icon into the DESTINATION tab's own live DOM once its rows exist
+        // there (reported on artist-releasegroups: doubled in the sticky
+        // "Title" column, and present at all in the synthetic "MB-Name"
+        // column, which never had an eraser configured because its source
+        // was clean when the row was first extracted).
+        const _stripJesus2099CaaAnchor = (el) => {
+            if (el.tagName === 'A' && el.querySelector('span.caa-icon.jesus2099userjs154481') && el.closest('table.tbl')) {
+                el.remove();
+                Lib.debug('cleanup', '_watchForLateJesus2099Injections: removed a late jesus2099 caa-icon anchor.');
+            }
+        };
 
         const observer = new MutationObserver(mutations => {
             for (const mutation of mutations) {
@@ -32134,6 +32173,11 @@ a { color: #1565c0; }`;
                         } else {
                             node.querySelectorAll?.('th').forEach(_stripForeignHeaderTh);
                         }
+                        if (node.tagName === 'A') {
+                            _stripJesus2099CaaAnchor(node);
+                        } else {
+                            node.querySelectorAll?.('a').forEach(_stripJesus2099CaaAnchor);
+                        }
                     }
                 } else if (mutation.type === 'attributes') {
                     // jesus2099 mutates an existing <td>'s class in place, mirroring
@@ -32154,6 +32198,7 @@ a { color: #1565c0; }`;
             observer.disconnect();
             _stripBigbox(); // final sweep in case something slipped in right at the boundary
             document.querySelectorAll('table.tbl thead th').forEach(_stripForeignHeaderTh);
+            document.querySelectorAll('table.tbl a').forEach(_stripJesus2099CaaAnchor);
             Lib.debug('cleanup', '_watchForLateJesus2099Injections: watch window elapsed, observer disconnected.');
         }, SA_JESUS2099_WATCH_MS);
     }
@@ -40665,6 +40710,12 @@ a { color: #1565c0; }`;
      *   - data-erg-injected on any element — reset so initExpandRGsFeature
      *     injects a fresh live button on the deserialized rows.
      *
+     *   Foreign userscript content
+     *   - Any <a> wrapping a <span class="caa-icon jesus2099userjs154481">
+     *     (jesus2099's own cover-art icon, re-injected into the live DOM
+     *     well after this script's one-time columnEraser already ran —
+     *     see _stripTransientCellState's own comment for the full story).
+     *
      * @param {HTMLTableCellElement} cell - The live <td> or <th> to serialize.
      * @returns {string} Clean innerHTML with no highlight wrapper spans and no
      *   transient JS-only state.
@@ -40712,6 +40763,7 @@ a { color: #1565c0; }`;
      *   - [data-erg-btn] glyph reset from ▼ to ▶
      *   - Direct-child <table> elements (ERG ghost tables) removed
      *   - data-erg-injected dataset marker removed
+     *   - Any <a> wrapping a jesus2099 caa-icon (span.caa-icon.jesus2099userjs154481) removed
      *
      * @param {HTMLElement} el - The <td> element to clean in-place.
      */
@@ -40800,6 +40852,31 @@ a { color: #1565c0; }`;
         Array.from(el.children).forEach(child => { if (child.tagName === 'TABLE') child.remove(); });
         delete el.dataset.ergInjected;
         el.querySelectorAll('[data-erg-injected]').forEach(child => delete child.dataset.ergInjected);
+
+        // jesus2099 caa-icon anchor — mirrors applyColumnErasers()'s
+        // Strategy 2 (the 'jesus2099' columnEraser sentinel), but applied
+        // unconditionally to every captured/serialized cell rather than only
+        // the columns a pageDefinition explicitly configured an eraser for.
+        // That extraction-time eraser runs exactly once, when a row is first
+        // built from a freshly-fetched page; it does not run again later.
+        // On artist-releasegroups, jesus2099's "mb. SUPER MIND CONTROL"
+        // userscript re-injects this same <a href="…/cover-art"><span
+        // class="caa-icon jesus2099userjs154481"> icon into the live DOM
+        // asynchronously, well after that one-time erasure already ran —
+        // so by the time a user clicks "Show single-table" or "Save to
+        // Disk", the live cell (in BOTH the sticky "Title" column, which HAD
+        // an eraser configured, and synthetic columns like "MB-Name", which
+        // never did because the source it's cloned from was clean at
+        // extraction time) already carries this re-injected icon, and
+        // getCleanCellHtml/captureSubtableSnapshot faithfully — and
+        // wrongly — capture it. Stripping it here, unconditionally, on
+        // every serialize catches it regardless of which column it landed
+        // in or when jesus2099 injected it.
+        el.querySelectorAll('a').forEach(anchor => {
+            if (anchor.querySelector('span.caa-icon.jesus2099userjs154481')) {
+                anchor.remove();
+            }
+        });
     }
 
     /**
