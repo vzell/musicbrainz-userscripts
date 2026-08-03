@@ -8562,7 +8562,7 @@
             match: (path) => path.match(/\/area\/[a-f0-9-]{36}\/releases/) && params.has('link_type_id'),
             buttons: [
                 {
-                    label: 'Show all Release Relationships for Area (specialized)',
+                    label: 'Show all Release Relationships for Area (complete)',
                     targetHeader: 'Relationships',
                     tableMode: 'single',
                     non_paginated: false,
@@ -8669,7 +8669,7 @@
         {
             type: 'area-recordings-filtered',
             match: (path, params) => path.match(/\/area\/[a-f0-9-]{36}\/recordings/) && params.has('link_type_id'),
-            buttons: [ { label: 'Show all Recordings for Area (specialized)' } ],
+            buttons: [ { label: 'Show all Recordings for Area (complete)' } ],
             features: {
                 columnExtractors: [
                     { sourceColumn: 'Title', extractor: 'video', syntheticColumns: ['Video'] },
@@ -8712,7 +8712,7 @@
         {
             type: 'area-works-filtered',
             match: (path, params) => path.match(/\/area\/[a-f0-9-]{36}\/works/) && params.has('link_type_id'),
-            buttons: [ { label: 'Show all Works for Area (specialized)' } ],
+            buttons: [ { label: 'Show all Works for Area (complete)' } ],
             features: {
                 columnExtractors: [
                     { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
@@ -8782,7 +8782,7 @@
         {
             type: 'place-performances-filtered',
             match: (path, params) => path.match(/\/place\/[a-f0-9-]{36}\/performances/) && params.has('link_type_id'),
-            buttons: [ { label: 'Show all Performances for Place (specialized)' } ],
+            buttons: [ { label: 'Show all Performances for Place (complete)' } ],
             features: {
                 columnExtractors: [
                     { sourceColumn: 'Title', extractor: 'video',     syntheticColumns: ['Video'] },
@@ -8952,7 +8952,7 @@
         {
             type: 'label-relationships-filtered',
             match: (path, params) => path.match(/\/label\/[a-f0-9-]{36}\/relationships/) && params.has('link_type_id'),
-            buttons: [ { label: 'Show all Relationships for Label (specialized)' } ],
+            buttons: [ { label: 'Show all Relationships for Label (complete)' } ],
             features: {
                 columnExtractors: [
                     { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
@@ -9050,7 +9050,7 @@
         {
             type: 'work-recordings-filtered',
             match: (path, params) => path.match(/\/work\/[a-f0-9-]{36}/) && params.has('link_type_id'),
-            buttons: [ { label: 'Show all Recordings for Work (specialized)' } ],
+            buttons: [ { label: 'Show all Recordings for Work (complete)' } ],
             features: {
                 columnExtractors: [
                     { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] },
@@ -9089,7 +9089,7 @@
             type: 'artist-relationships-filtered',
             // Check for link_type_id to identify the paginated "See all" view. This MUST come before the general 'artist-relationships' match.
             match: (path, params) => path.match(/\/artist\/[a-f0-9-]{36}\/relationships/) && params.has('link_type_id'),
-            buttons: [ { label: 'Show all Relationships for Artist (specialized)' } ],
+            buttons: [ { label: 'Show all Relationships for Artist (complete)' } ],
             features: {
                 columnErasers: [
                     { sourceColumn: 'Title', erasers: ['▶', '➕'] }
