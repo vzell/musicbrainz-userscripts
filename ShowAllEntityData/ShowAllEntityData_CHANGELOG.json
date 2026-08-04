@@ -1,5 +1,29 @@
 [
   {
+    "version": "9.99.753",
+    "date": "2026-08-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed flagged bare states/provinces for United States and Canada (no city entered, e.g. an artist whose Area is set directly to \"Illinois\") landing in \"MB-Locality\" instead of \"MB-Region\" — a regression from the 9.99.752 fix, which removed those two countries from `AREA_FLAG_REGION_COUNTRIES` entirely to stop flagged CITIES being force-routed to Region. Since \"MusicBrainz: More Flags Everywhere\" (@Lotheric) now flags both city-level and state/province-level links for United States/Canada, flag-presence + country membership alone can no longer tell them apart. Added `AREA_FLAG_REGION_SUBDIVISIONS`, a closed allowlist of US state/district/territory and Canadian province/territory/region NAMES (sourced from that script's own non-city REGIONS sections) via a new `_flagRegionSubdivisionSet()` helper: for United States/Canada, a flagged first area link is now only forced into Region when its own name matches this allowlist, so a flagged city (not in the list) correctly stays in Locality while a flagged bare state/province (in the list) is force-routed to Region as before. United Kingdom/Australia are unaffected, still using the simpler country-membership check (`AREA_FLAG_REGION_COUNTRIES`) since that script only flags regions for them. Updated both `_routeAreaLink()` (extraction-time routing) and its deferred counterpart `_maybeCorrectAreaFlagRegion()` (pages 2..Max, async flag-decoration timing) identically."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.752",
+    "date": "2026-08-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed flagged city-level Area entries for United States and Canada landing merged into \"MB-Region\" (together with the state/province flag) instead of staying in \"MB-Locality\" — e.g. on `/area/<mbid>/artists`. `_routeAreaLink()` force-routes a flagged first area link into Region whenever its country is in the internal `AREA_FLAG_REGION_COUNTRIES` list, a rule that only made sense while \"MusicBrainz: More Flags Everywhere\" (@Lotheric) exclusively decorated state/province-level links for United States/United Kingdom/Canada/Australia (a flagged first link could only mean \"no city entered\"). Now that that userscript also flags city-level links for United States and Canada, a flagged first link there can legitimately be a real city. Removed 'United States' and 'Canada' from `AREA_FLAG_REGION_COUNTRIES` (now `['United Kingdom', 'Australia']`) so those two countries' flagged cities stay in Locality; United Kingdom/Australia are unaffected since that script still only flags regions for them."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.750",
     "date": "2026-08-04",
     "sections": [

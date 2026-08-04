@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.751+2026-08-04
+// @version      9.99.753+2026-08-04
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -149,14 +149,63 @@
     const CACHE_KEY_HELP       = SCRIPT_BASE_NAME.toLowerCase() + '-remote-help-text';
     const CACHE_KEY_CHANGELOG  = SCRIPT_BASE_NAME.toLowerCase() + '-remote-changelog';
 
-    // Countries — exactly as MusicBrainz renders them, e.g. "United States" —
+    // Countries — exactly as MusicBrainz renders them, e.g. "United Kingdom" —
     // for which `splitLocation`/`splitArea` force a flagged subdivision link
     // (added by a separately-installed userscript such as "MusicBrainz: More
     // Flags Everywhere" or "MusicBrainz: Canadian Province Flags Everywhere",
     // @Lotheric) into "Region" instead of "Locality". See `_flagRegionCountrySet()`
     // for the full rationale. Not user-configurable — editing this list
     // requires a code change, not a settings toggle.
-    const AREA_FLAG_REGION_COUNTRIES = ['United States', 'United Kingdom', 'Canada', 'Australia'];
+    //
+    // 'United States' and 'Canada' were removed once "More Flags Everywhere"
+    // started decorating CITY-level area links (not just state/province) for
+    // those two countries: a flagged first link there can now legitimately be
+    // a real city, so it must stay in Locality rather than being force-routed
+    // to Region. 'United Kingdom'/'Australia' still only get region-level
+    // flags from that script, so the force-to-Region behaviour still applies.
+    const AREA_FLAG_REGION_COUNTRIES = ['United Kingdom', 'Australia'];
+
+    // Exact state/province/territory/region NAMES (as MusicBrainz renders
+    // them) for United States and Canada — the two countries where "More
+    // Flags Everywhere" now decorates BOTH city-level AND subdivision-level
+    // area links with a flag, so flag-presence + country membership alone
+    // (the `AREA_FLAG_REGION_COUNTRIES` check above) can no longer tell a
+    // bare subdivision (force to Region) apart from a real flagged city
+    // (must stay in Locality) for these two countries. Used by
+    // `_flagRegionSubdivisionSet()`.
+    //
+    // Sourced from that userscript's own "(States)"/"(District)"/
+    // "(Territories)"/"(Provinces)"/"(Regions)" sections (v2026-08-01.1829),
+    // deliberately EXCLUDING its "(Cities)"/"(Municipalities)" sections.
+    // Unlike a city allowlist — which keeps growing as that script adds more
+    // cities, and would need a matching update here every time — the set of
+    // US states / Canadian provinces is essentially closed and almost never
+    // changes: an unrecognised name simply falls through to Locality, which
+    // is already the correct behaviour for a city. Not user-configurable —
+    // editing this list requires a code change, not a settings toggle.
+    const AREA_FLAG_REGION_SUBDIVISIONS = {
+        'united states': [
+            'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado',
+            'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho',
+            'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana',
+            'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota',
+            'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada',
+            'New Hampshire', 'New Jersey', 'New Mexico', 'New York',
+            'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon',
+            'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota',
+            'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington',
+            'West Virginia', 'Wisconsin', 'Wyoming',
+            'Washington D.C.',
+            'Johnston Atoll', 'Midway Islands', 'Palmyra Atoll', 'Wake Island'
+        ],
+        'canada': [
+            'Alberta', 'British Columbia', 'Manitoba', 'New Brunswick',
+            'Newfoundland and Labrador', 'Nova Scotia', 'Ontario',
+            'Prince Edward Island', 'Québec', 'Saskatchewan',
+            'Northwest Territories', 'Nunavut', 'Yukon',
+            'Cape Breton', 'Labrador', 'Nunavik', 'Saguenay–Lac-Saint-Jean'
+        ]
+    };
 
 
     // CONFIG SCHEMA
@@ -2428,6 +2477,24 @@
     }
 
     /**
+     * _flagRegionSubdivisionSet — builds a lowercase Set of the known
+     * state/province/territory/region NAMES for one country from the
+     * internal `AREA_FLAG_REGION_SUBDIVISIONS` map (keyed by lowercase
+     * country name), or `null` if that country isn't tracked there. Used by
+     * `_routeAreaLink`/`_maybeCorrectAreaFlagRegion` for United
+     * States/Canada, where flag-presence alone no longer distinguishes a
+     * bare subdivision from a real flagged city (see
+     * `AREA_FLAG_REGION_SUBDIVISIONS`'s comment for the full rationale).
+     *
+     * @param {string|null} countryName - any case; matched case-insensitively
+     * @returns {Set<string>|null}
+     */
+    function _flagRegionSubdivisionSet(countryName) {
+        const list = countryName ? AREA_FLAG_REGION_SUBDIVISIONS[countryName.toLowerCase()] : null;
+        return list ? new Set(list.map(s => s.toLowerCase())) : null;
+    }
+
+    /**
      * _findRowCountryName — pre-scans a Location/Area cell node for its
      * flag-wrapped country anchor and returns the resolved country name (from
      * MusicBrainz's own `<abbr title="…">`), or null if none is found.
@@ -2477,10 +2544,19 @@
      * carry no type information, and the chain depth varies per place rather
      * than per country, so position is the only signal available — EXCEPT
      * when that first link itself carries a subdivision-flag icon (meaning no
-     * city/locality was ever entered, only a bare state/province) AND the
-     * row's country is in the internal `AREA_FLAG_REGION_COUNTRIES`
-     * list: that link is then forced into Region instead, since it's
-     * conceptually a Region-level entity even though it's positionally first.
+     * city/locality was ever entered, only a bare state/province): that link
+     * is then forced into Region instead, since it's conceptually a
+     * Region-level entity even though it's positionally first. Two ways this
+     * gets decided, depending on the row's country:
+     *   - Countries in `AREA_FLAG_REGION_COUNTRIES` (UK/Australia): ANY
+     *     flagged first link is forced — that script only ever flags
+     *     region-level links there, so flag-presence alone is unambiguous.
+     *   - Countries in `AREA_FLAG_REGION_SUBDIVISIONS` (US/Canada): that
+     *     script flags city-level links too, so flag-presence alone is no
+     *     longer enough — the flagged link's own NAME must also match a
+     *     known state/province/territory name (`_flagRegionSubdivisionSet()`)
+     *     before it's forced; a flagged city name simply won't match and
+     *     stays in Locality.
      *
      * @param {HTMLAnchorElement} a - the '/area/' anchor to route
      * @param {HTMLElement} containerL - Locality output container (<li> or <td>)
@@ -2516,8 +2592,12 @@
             // "first link" slot should be forced into Region instead of Locality.
             const iconSpan = a.previousElementSibling && a.previousElementSibling.matches('span.area-icon')
                 ? a.previousElementSibling : null;
-            const forceRegion = areaState.count === 0 && iconSpan && areaState.countryName &&
-                _flagRegionCountrySet().has(areaState.countryName.toLowerCase());
+            const subdivisionSet = _flagRegionSubdivisionSet(areaState.countryName);
+            const forceRegion = areaState.count === 0 && iconSpan && areaState.countryName && (
+                subdivisionSet
+                    ? subdivisionSet.has(a.textContent.trim().toLowerCase())
+                    : _flagRegionCountrySet().has(areaState.countryName.toLowerCase())
+            );
             const container = (areaState.count === 0 && !forceRegion) ? containerL : containerR;
             areaState.count++;
             if (container.hasChildNodes()) container.appendChild(document.createTextNode(', '));
@@ -31587,11 +31667,15 @@ a { color: #1565c0; }`;
      * Locality cell has just been decorated with a subdivision flag icon
      * (`a[data-flag-processed]`, set by the "MusicBrainz: More Flags
      * Everywhere" / "Canadian Province Flags Everywhere" userscripts,
-     * @Lotheric) AND its resolved Country is in the internal
-     * `AREA_FLAG_REGION_COUNTRIES` list, moves that Locality value into
-     * Region — on both the live row (immediate visual feedback) and the
-     * master row (so the correction survives future re-renders; see
-     * `_findMasterRowByIdx`).
+     * @Lotheric), moves that Locality value into Region — on both the live
+     * row (immediate visual feedback) and the master row (so the correction
+     * survives future re-renders; see `_findMasterRowByIdx`). Whether it
+     * qualifies mirrors `_routeAreaLink`'s `forceRegion` check exactly: for
+     * countries in `AREA_FLAG_REGION_COUNTRIES` (UK/Australia) any flagged
+     * Locality qualifies; for countries in `AREA_FLAG_REGION_SUBDIVISIONS`
+     * (US/Canada) the flagged anchor's own NAME must also match a known
+     * state/province/territory name, since that script flags city-level
+     * links there too (see `AREA_FLAG_REGION_SUBDIVISIONS`'s comment).
      *
      * This is the deferred counterpart to the same check `_routeAreaLink`
      * already performs at extraction time: extraction only sees whatever the
@@ -31616,7 +31700,8 @@ a { color: #1565c0; }`;
                 Lib.debug('render', `_maybeCorrectAreaFlagRegion: rowIdx=${rowIdx} has no cell at localityIdx=${trio.localityIdx} (row has ${tr.cells.length} cells)`);
                 return;
             }
-            if (!localityTd.querySelector('a[data-flag-processed]')) return; // not decorated yet — normal, not an error
+            const flaggedAnchor = localityTd.querySelector('a[data-flag-processed]');
+            if (!flaggedAnchor) return; // not decorated yet — normal, not an error
             const countryTd   = tr.cells[trio.countryIdx];
             const countryName = (countryTd?.textContent || '')
                 .replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase();
@@ -31624,8 +31709,12 @@ a { color: #1565c0; }`;
                 Lib.debug('render', `_maybeCorrectAreaFlagRegion: rowIdx=${rowIdx} localityIdx=${trio.localityIdx} is flagged but countryIdx=${trio.countryIdx} resolved to empty text (raw="${countryTd?.textContent}")`);
                 return;
             }
-            if (!_flagRegionCountrySet().has(countryName)) {
-                Lib.debug('render', `_maybeCorrectAreaFlagRegion: rowIdx=${rowIdx} is flagged but country "${countryName}" is not in AREA_FLAG_REGION_COUNTRIES`);
+            const subdivisionSet = _flagRegionSubdivisionSet(countryName);
+            const qualifies = subdivisionSet
+                ? subdivisionSet.has(flaggedAnchor.textContent.trim().toLowerCase())
+                : _flagRegionCountrySet().has(countryName);
+            if (!qualifies) {
+                Lib.debug('render', `_maybeCorrectAreaFlagRegion: rowIdx=${rowIdx} is flagged ("${flaggedAnchor.textContent.trim()}") but country "${countryName}" is not in AREA_FLAG_REGION_COUNTRIES and the name is not a recognised AREA_FLAG_REGION_SUBDIVISIONS entry`);
                 return;
             }
 
@@ -31677,16 +31766,17 @@ a { color: #1565c0; }`;
      * an ancestor node that MutationObserver's subtree walk still SHOULD see,
      * but the specific record shape wasn't anticipated here).
      *
-     * No-ops entirely when `AREA_FLAG_REGION_COUNTRIES` is empty, or when a
-     * table has no Locality/Region/Country column triplet (see
-     * `_flagRegionColumnTrios`) — most pages pay zero overhead.
+     * No-ops entirely when both `AREA_FLAG_REGION_COUNTRIES` and
+     * `AREA_FLAG_REGION_SUBDIVISIONS` are empty, or when a table has no
+     * Locality/Region/Country column triplet (see `_flagRegionColumnTrios`)
+     * — most pages pay zero overhead.
      *
      * Observed tbodies are tracked in `_areaFlagObservedTbodies` (a `WeakSet`)
      * so repeated calls (e.g. after a filter re-render) do not attach
      * duplicate observers — mirrors `initTreleasesObserver`'s pattern.
      */
     function initAreaFlagRegionObserver() {
-        if (_flagRegionCountrySet().size === 0) return;
+        if (_flagRegionCountrySet().size === 0 && Object.keys(AREA_FLAG_REGION_SUBDIVISIONS).length === 0) return;
         document.querySelectorAll('table.tbl tbody').forEach(tbody => {
             if (_areaFlagObservedTbodies.has(tbody)) return;
             const table = tbody.closest('table');
