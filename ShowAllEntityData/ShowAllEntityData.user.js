@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.748+2026-08-04
+// @version      9.99.750+2026-08-04
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -8753,7 +8753,7 @@
 		    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'},
 		    {sourceColumn: 'Length', align: ':'}
 		],
-                collapsableColumns: [ 'Release events' ],
+                collapsableColumns: [ 'Release events', 'Release country', 'Release date' ],
                 addCAA: 'Title',
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
@@ -8779,7 +8779,7 @@
 		    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'},
 		    {sourceColumn: 'Length', align: ':'}
 		],
-                collapsableColumns: [ 'Release events' ],
+                collapsableColumns: [ 'Release events', 'Release country', 'Release date' ],
                 addCAA: 'Title',
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
@@ -8921,7 +8921,7 @@
 		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
 		    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'}
 		],
-                collapsableColumns: [ 'Release events' ],
+                collapsableColumns: [ 'Release events', 'Release country', 'Release date' ],
                 addCAA: 'Title',
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
@@ -8946,7 +8946,7 @@
 		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
 		    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'}
 		],
-                collapsableColumns: [ 'Release events' ],
+                collapsableColumns: [ 'Release events', 'Release country', 'Release date' ],
                 addCAA: 'Title',
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
@@ -41170,7 +41170,15 @@ a { color: #1565c0; }`;
         }
         // Third-pass: derive synthetic columns from the now-populated injected columns
         // (e.g. split 'Release events' into 'Release country' + 'Release date').
-        if (activeInjectedColumnExtractors.length) applyInjectedColumnExtractors();
+        if (activeInjectedColumnExtractors.length) {
+            applyInjectedColumnExtractors();
+            // Re-run again: applyInjectedColumnExtractors() is the pass that
+            // actually fills 'Release country'/'Release date' ICE cells, and
+            // nothing re-scans for collapsable columns after it. Safe to call
+            // a third time — initCollapsableColumns() is idempotent (it does
+            // a cleanup pass before rebuilding).
+            document.querySelectorAll('table.tbl').forEach(t => initCollapsableColumns(t));
+        }
     }
 
     /**

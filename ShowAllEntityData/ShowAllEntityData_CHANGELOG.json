@@ -1,5 +1,29 @@
 [
   {
+    "version": "9.99.750",
+    "date": "2026-08-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Extended the 9.99.749 \"Release country\"/\"Release date\" collapse-toggle fix to place-performances pages: added those two columns to `collapsableColumns` on both `place-performances` and `place-performances-filtered` page definitions. They share the same `initReleaseEventsColumn()`/`applyInjectedColumnExtractors()` pipeline as label-relationships, so the underlying re-scan fix already covers them — this only extends the config."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.749",
+    "date": "2026-08-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed \"Release country\" and \"Release date\" never getting their collapse toggle on label-relationships pages, even when listed in `collapsableColumns`. `initReleaseEventsColumn()` fills those two columns' multi-row `<ul><li>` content in a third pass (`applyInjectedColumnExtractors()`, which splits the now-populated \"Release events\" cell), but the collapse-column scan (`initCollapsableColumns()`) was only re-run after the second pass, before that content existed. Fixed by re-running `initCollapsableColumns()` again after `applyInjectedColumnExtractors()` completes (safe/idempotent — it does its own cleanup pass before rebuilding, so \"Release events\"' already-installed toggle isn't duplicated). Also added \"Release country\" and \"Release date\" to `collapsableColumns` on both `label-relationships` and `label-relationships-filtered` page definitions now that the underlying bug is fixed."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.748",
     "date": "2026-08-04",
     "sections": [
