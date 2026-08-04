@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.753+2026-08-04
+// @version      9.99.754+2026-08-05
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -25596,15 +25596,29 @@ a { color: #1565c0; }`;
      * here as it is in getCleanColumnText() — sort/global-filter keys must
      * stay free of that metadata.
      *
+     * Also unwraps (not removes) any live filter-highlight span
+     * (`_COLLAPSE_MATCH_SEL` — a column/global/pre/subtable filter can leave
+     * these in the DOM indefinitely while its filter is active) back into a
+     * plain text node before the TreeWalker runs. Without this, sorting a
+     * column while its own filter-match highlight is live splits the
+     * highlighted word's text node in two around the `<span>`, and the
+     * `textParts.join(' ')` below inserts a literal space at that boundary
+     * — corrupting the sort key (e.g. "Illinois" → "I llino is") exactly
+     * the way it corrupted the unique-value dropdown's raw values before
+     * getCleanColumnText() got this same fix (see its own comment below).
+     *
      * @param {Element} element - DOM element to extract text from.
      * @returns {string} Normalised visible text content.
      */
     function getCleanVisibleText(element) {
         const _STRIP_SEL = _CLEAN_STRIP_SEL + ',.mb-rel-filter-key';
         let root = element;
-        if (element.querySelector(_STRIP_SEL)) {
+        if (element.querySelector(_STRIP_SEL) || element.querySelector(_COLLAPSE_MATCH_SEL)) {
             root = element.cloneNode(true);
             root.querySelectorAll(_STRIP_SEL).forEach(el => el.remove());
+            root.querySelectorAll(_COLLAPSE_MATCH_SEL).forEach(el =>
+                el.replaceWith(document.createTextNode(el.textContent)));
+            root.normalize();
         }
 
         let textParts = [];
@@ -25708,13 +25722,18 @@ a { color: #1565c0; }`;
      * Extracts visible text from `element` for column filtering, skipping
      * decorative elements, script/style subtrees, and injected UI elements.
      *
-     * Two-pass approach for robustness:
+     * Three-pass approach for robustness:
      *   1. Clone-and-strip: physically removes all elements matching
      *      `_CLEAN_STRIP_SEL` (inline thumbnails, cache-hint spans, count badges,
      *      per-image art rows, icon spans) from the clone before any text walk.
      *      This prevents cross-browser TreeWalker variance from leaking emoji
      *      (🟢/🟡/🔵/⚠️) or counts into filter and sort keys.
-     *   2. TreeWalker: collects text nodes, skipping script/style/head subtrees
+     *   2. Clone-and-unwrap: replaces any live filter-highlight span
+     *      (`_COLLAPSE_MATCH_SEL`) with a plain text node holding the same
+     *      text, so a still-active column/global/pre/subtable filter's
+     *      highlight doesn't fragment the word it wraps (see the normalize()
+     *      comment below for why this matters).
+     *   3. TreeWalker: collects text nodes, skipping script/style/head subtrees
      *      and known decorative elements by class name.
      *
      * The joined text is passed through `normalizeExtractedText()` which collapses
@@ -25728,34 +25747,51 @@ a { color: #1565c0; }`;
      * @returns {string}            Normalised, filter-ready text content.
      */
     function getCleanColumnText(element) {
-        // ── Clone-and-strip: physically remove all decorative / cache-hint
-        // elements from a clone before text extraction.  This is more robust
-        // than relying on TreeWalker FILTER_REJECT alone: some browser /
-        // Tampermonkey execution environments visit text-node children of a
-        // FILTER_REJECT element when SHOW_TEXT is also in the whatToShow mask.
+        // ── Clone-and-strip / clone-and-unwrap: physically remove decorative /
+        // cache-hint elements and unwrap live filter-highlight spans from a
+        // clone before text extraction.  Stripping is more robust than relying
+        // on TreeWalker FILTER_REJECT alone: some browser / Tampermonkey
+        // execution environments visit text-node children of a FILTER_REJECT
+        // element when SHOW_TEXT is also in the whatToShow mask.
+        //
+        // Unwrapping `_COLLAPSE_MATCH_SEL` spans (rather than leaving them for
+        // FILTER_REJECT, which would drop the matched text entirely) is
+        // required because these highlight spans are left live in the DOM for
+        // as long as their filter stays active — e.g. openUniqDrop() calls
+        // this function directly on cells that are still visibly highlighted
+        // by the very column filter the user just typed. Without unwrapping,
+        // `<span class="mb-column-filter-highlight">llino</span>` inside
+        // "Illinois" would leave the match's own text node isolated inside an
+        // element the walker treats as a separate boundary — see the
+        // normalize() comment below for the resulting corruption.
         let root = element;
-        if (element.querySelector(_CLEAN_STRIP_SEL)) {
+        if (element.querySelector(_CLEAN_STRIP_SEL) || element.querySelector(_COLLAPSE_MATCH_SEL)) {
             root = element.cloneNode(true);
             root.querySelectorAll(_CLEAN_STRIP_SEL).forEach(el => el.remove());
+            root.querySelectorAll(_COLLAPSE_MATCH_SEL).forEach(el =>
+                el.replaceWith(document.createTextNode(el.textContent)));
         }
 
         // ── Normalize adjacent text nodes ─────────────────────────────────────
         // After applySubFilter step 2 clears highlight <span> elements via
         //   n.replaceWith(document.createTextNode(n.textContent))
-        // the replacement bare text nodes are siblings of the surrounding text
-        // nodes — they are NOT automatically merged by the browser.  Without
-        // normalize(), the TreeWalker sees each fragment as a separate text node
-        // and textParts.join(' ') inserts a space between them, splitting e.g.
-        // "United States" → "U" + "nited States" → "U nited States" so that
-        // "Un" no longer matches.  The same fragmentation affects any token that
+        // — the same idiom the clone-and-unwrap pass above now also applies to
+        // still-live highlight spans — the replacement bare text nodes are
+        // siblings of the surrounding text nodes — they are NOT automatically
+        // merged by the browser.  Without normalize(), the TreeWalker sees each
+        // fragment as a separate text node and textParts.join(' ') inserts a
+        // space between them, splitting e.g. "United States" → "U" + "nited
+        // States" → "U nited States" so that "Un" no longer matches, or (the
+        // still-live-highlight case above) "Illinois" → "I" + "llino" + "is"
+        // → "I llino is". The same fragmentation affects any token that
         // straddles a previously-highlighted boundary (examples: "(Pi" failing
         // to match "(Pitman pressing)", "-01-" failing to match "1973-01-05").
         // normalize() merges all adjacent text-node siblings in the subtree,
         // restoring the original contiguous text so join(' ') only inserts spaces
         // at real inter-element boundaries.
-        // Calling it on `root` (which is the clone when stripping was needed, or
-        // the live element otherwise) is safe: it never changes visible content,
-        // only the internal text-node structure.
+        // Calling it on `root` (which is the clone when stripping/unwrapping was
+        // needed, or the live element otherwise) is safe: it never changes
+        // visible content, only the internal text-node structure.
         root.normalize();
 
         let textParts = [];
