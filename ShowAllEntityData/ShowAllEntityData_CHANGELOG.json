@@ -1,5 +1,65 @@
 [
   {
+    "version": "9.99.753",
+    "date": "2026-08-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed flagged bare states/provinces for United States and Canada (no city entered, e.g. an artist whose Area is set directly to \"Illinois\") landing in \"MB-Locality\" instead of \"MB-Region\" — a regression from the 9.99.752 fix, which removed those two countries from `AREA_FLAG_REGION_COUNTRIES` entirely to stop flagged CITIES being force-routed to Region. Since \"MusicBrainz: More Flags Everywhere\" (@Lotheric) now flags both city-level and state/province-level links for United States/Canada, flag-presence + country membership alone can no longer tell them apart. Added `AREA_FLAG_REGION_SUBDIVISIONS`, a closed allowlist of US state/district/territory and Canadian province/territory/region NAMES (sourced from that script's own non-city REGIONS sections) via a new `_flagRegionSubdivisionSet()` helper: for United States/Canada, a flagged first area link is now only forced into Region when its own name matches this allowlist, so a flagged city (not in the list) correctly stays in Locality while a flagged bare state/province (in the list) is force-routed to Region as before. United Kingdom/Australia are unaffected, still using the simpler country-membership check (`AREA_FLAG_REGION_COUNTRIES`) since that script only flags regions for them. Updated both `_routeAreaLink()` (extraction-time routing) and its deferred counterpart `_maybeCorrectAreaFlagRegion()` (pages 2..Max, async flag-decoration timing) identically."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.752",
+    "date": "2026-08-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed flagged city-level Area entries for United States and Canada landing merged into \"MB-Region\" (together with the state/province flag) instead of staying in \"MB-Locality\" — e.g. on `/area/<mbid>/artists`. `_routeAreaLink()` force-routes a flagged first area link into Region whenever its country is in the internal `AREA_FLAG_REGION_COUNTRIES` list, a rule that only made sense while \"MusicBrainz: More Flags Everywhere\" (@Lotheric) exclusively decorated state/province-level links for United States/United Kingdom/Canada/Australia (a flagged first link could only mean \"no city entered\"). Now that that userscript also flags city-level links for United States and Canada, a flagged first link there can legitimately be a real city. Removed 'United States' and 'Canada' from `AREA_FLAG_REGION_COUNTRIES` (now `['United Kingdom', 'Australia']`) so those two countries' flagged cities stay in Locality; United Kingdom/Australia are unaffected since that script still only flags regions for them."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.750",
+    "date": "2026-08-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Extended the 9.99.749 \"Release country\"/\"Release date\" collapse-toggle fix to place-performances pages: added those two columns to `collapsableColumns` on both `place-performances` and `place-performances-filtered` page definitions. They share the same `initReleaseEventsColumn()`/`applyInjectedColumnExtractors()` pipeline as label-relationships, so the underlying re-scan fix already covers them — this only extends the config."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.749",
+    "date": "2026-08-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed \"Release country\" and \"Release date\" never getting their collapse toggle on label-relationships pages, even when listed in `collapsableColumns`. `initReleaseEventsColumn()` fills those two columns' multi-row `<ul><li>` content in a third pass (`applyInjectedColumnExtractors()`, which splits the now-populated \"Release events\" cell), but the collapse-column scan (`initCollapsableColumns()`) was only re-run after the second pass, before that content existed. Fixed by re-running `initCollapsableColumns()` again after `applyInjectedColumnExtractors()` completes (safe/idempotent — it does its own cleanup pass before rebuilding, so \"Release events\"' already-installed toggle isn't duplicated). Also added \"Release country\" and \"Release date\" to `collapsableColumns` on both `label-relationships` and `label-relationships-filtered` page definitions now that the underlying bug is fixed."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.748",
+    "date": "2026-08-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the injected \"Relationships\" column never appearing on artist-works pages (`/artist/<mbid>/works`). Two compounding causes: the `artist-works` page definition never declared `features.injectedColumns: [ 'Relationships' ]` in the first place, so `buildActiveInjectedColumns()` — which already had dedicated `entityType: 'work'` / `inc=url-rels+artist-rels` handling for this page type — was never invoked; and even after adding that declaration, `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` would have immediately deleted the newly created header and cells again, because its \"no /release/ or /release-group/ link in the row ⇒ nothing to show\" guard — correct for release/release-group-linked pages like artist-relationships and artist-releasegroups — doesn't apply on artist-works, where the column targets each row's own Work MBID directly and a Work row never links to a release. Fixed by adding the missing `injectedColumns` declaration and gating the suppression guard to skip `entityType === 'work'`."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.747",
     "date": "2026-08-03",
     "sections": [
