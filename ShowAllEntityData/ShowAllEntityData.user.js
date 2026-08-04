@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.747+2026-08-03
+// @version      9.99.748+2026-08-04
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -9220,6 +9220,7 @@
             buttons: [ { label: 'Show all Works for Artist' } ],
             features: {
                 collapsableColumns: [ 'Authors', 'Recording artists', 'Other artists', 'ISWC', 'Lyrics languages', 'Attributes' ],
+                injectedColumns: [ 'Relationships' ],
                 extractMainColumn: 'Work',
                 stickyColumn: 'Work'
             },
@@ -41370,6 +41371,15 @@ a { color: #1565c0; }`;
     function _suppressRelationshipsIfNoReleaseOrReleaseGroupLinks(table) {
         if (!table) return;
         if (!activeInjectedColumns.length) return; // Relationships not active for this pageType
+
+        // This guard's premise (no /release/ or /release-group/ link ⇒ nothing to
+        // show) only applies when the injected Relationships column targets a
+        // release/release-group entity discovered via a link in the row (entityType
+        // 'release' or 'release-group'). On artist-works (entityType 'work') the
+        // column targets the row's OWN Work entity via its own MBID — there's no
+        // release/release-group link to find here by design, so the check must not
+        // gate the column for that entityType.
+        if (activeInjectedColumns[0].entityType === 'work') return;
 
         // ── Empty-tbody guard ───────────────────────────────────────────────────
         // Same race condition as _suppressReleaseEventsIfNoReleaseLinks: when

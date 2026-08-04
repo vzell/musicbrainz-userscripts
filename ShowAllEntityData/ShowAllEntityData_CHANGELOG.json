@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.748",
+    "date": "2026-08-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the injected \"Relationships\" column never appearing on artist-works pages (`/artist/<mbid>/works`). Two compounding causes: the `artist-works` page definition never declared `features.injectedColumns: [ 'Relationships' ]` in the first place, so `buildActiveInjectedColumns()` — which already had dedicated `entityType: 'work'` / `inc=url-rels+artist-rels` handling for this page type — was never invoked; and even after adding that declaration, `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` would have immediately deleted the newly created header and cells again, because its \"no /release/ or /release-group/ link in the row ⇒ nothing to show\" guard — correct for release/release-group-linked pages like artist-relationships and artist-releasegroups — doesn't apply on artist-works, where the column targets each row's own Work MBID directly and a Work row never links to a release. Fixed by adding the missing `injectedColumns` declaration and gating the suppression guard to skip `entityType === 'work'`."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.747",
     "date": "2026-08-03",
     "sections": [
