@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.754",
+    "date": "2026-08-05",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the column unique-values dropdown (📊) showing entries with artificial blank spaces splitting words apart (e.g. \"Illinois\" rendered as \"I llino is\") whenever that column had an active filter whose match landed mid-word — reported on Area/Country columns of `/area/<mbid>/artists` filtering for \"llino\"/\"it\", but reproducible on any column. Root cause: `getCleanColumnText()` (used by `openUniqDrop()` to build each dropdown entry's raw value) read text directly from live table cells, which keep the matching column filter's `<span class=\"mb-column-filter-highlight\">` wrapped around the matched substring for as long as that filter stays active (`highlightText()`/`highlightCrossTag()`). That live `<span>` split a word's text into separate before/match/after text nodes that `element.normalize()` cannot merge across an intervening element, so the TreeWalker collected them as separate fragments and `textParts.join(' ')` inserted a literal space at each boundary. Fixed by unwrapping (not stripping) any element matching the existing `_COLLAPSE_MATCH_SEL` selector — the authoritative list of all 4 filter-highlight classes (`mb-global-filter-highlight`, `mb-column-filter-highlight`, `mb-pre-filter-highlight`, `mb-subtable-filter-highlight`) — back into a plain text node before `normalize()` runs, in both `getCleanColumnText()` and `getCleanVisibleText()` (the latter shares the identical clone/strip/TreeWalker shape and feeds sort keys / the non-regex global filter, so it had the same latent bug — e.g. sorting a column while its own filter-highlight was live would have produced a corrupted, wrongly-ordered sort key)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.753",
     "date": "2026-08-04",
     "sections": [

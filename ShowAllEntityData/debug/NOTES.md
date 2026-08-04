@@ -2008,3 +2008,43 @@ ever run when a brand-new `<h3>` is being created (never a reused one), so
 there's no risk of the fallback path appending a duplicate button onto a
 stale header — no live browser session available to confirm visually.
 
+## 2026-08-05 — unique-value dropdown artificial mid-word blanks (`flag-filter-bug.org`, `flag-filter-bug.html`, `ucd.html`)
+
+- `flag-filter-bug.org`: user report — on `/area/489ce91b-.../artists`,
+  filtering the "Area" column for "llino" then opening that column's
+  unique-value dropdown (📊) shows entries with spurious blanks inside a
+  word, e.g. "Illinois" → "I llino is". Same happens filtering "Country"
+  for "it". `ucd.html` is the dropdown's own rendered markup (captured
+  live); `flag-filter-bug.html` is the full page snapshot with both column
+  filters applied.
+- Despite the bug title, flag icons (`<img>`/`<span class="area-icon">`)
+  are a red herring — they carry no text content and don't touch this code
+  path. `ucd.html` shows the corruption already baked into
+  `item.title="Chicago, I llino is, United States"`, i.e. it's in the raw
+  value `openUniqDrop()` extracts via `getCleanColumnText(cell)`
+  (`:35569`), not in the dropdown's own `<mark>` highlighter
+  (`renderItems()`, `:35736+`), which only decorates an already-corrupted
+  string.
+- Root cause: `getCleanColumnText()` reads live table cells. While a
+  column filter is active, `highlightText()`/`highlightCrossTag()` leave a
+  real `<span class="mb-column-filter-highlight">` wrapped around the
+  matched substring inside the cell (by design — visible highlight, not
+  transient). `getCleanColumnText()`'s clone-and-strip pass
+  (`_CLEAN_STRIP_SEL`) didn't know about this span class, so `root` stayed
+  the live, unstripped element; `root.normalize()` cannot merge text
+  across an intervening *element* (only adjacent text-node siblings), so
+  the TreeWalker collected "I" / "llino" / "is" as three separate
+  fragments and `textParts.join(' ')` inserted a space at each boundary.
+  This is the same fragmentation mechanism the function's own existing
+  comment already described for the *post-clear* case (the "U nited
+  States" example) — it was never extended to the *still-live* case, which
+  is exactly what `openUniqDrop()` hits.
+- Fix (9.99.754): unwrap (not strip) any element matching the existing
+  `_COLLAPSE_MATCH_SEL` selector (`:11437` — already the authoritative
+  list of all 4 filter-highlight classes) into a plain text node before
+  `normalize()`, in both `getCleanColumnText()` and `getCleanVisibleText()`
+  (the latter shares the identical shape and feeds sort keys / the global
+  filter, so had the same latent bug). No live browser session available
+  to confirm visually; verified via `node --check` and JSON validation of
+  the changelog entry.
+
