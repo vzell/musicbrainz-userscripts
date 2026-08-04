@@ -9179,6 +9179,7 @@
                     { sourceColumn: 'Title', extractor: 'video', syntheticColumns: ['Video'] },
                     { sourceColumn: 'Title', extractor: 'caa', syntheticColumns: ['CAA'] }
                 ],
+                injectedColumns: [ 'Relationships' ],
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'Length', align: ':'} ],
                 collapsableColumns: [ 'CAA' ],
                 tooltipColumns: [ 'Title', 'Artist', '---', 'Date', 'Attributes' ],

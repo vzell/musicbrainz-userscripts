@@ -2048,3 +2048,62 @@ stale header — no live browser session available to confirm visually.
   to confirm visually; verified via `node --check` and JSON validation of
   the changelog entry.
 
+## 2026-08-05 — "Relationships" column missing after "Show single-table" on artist-relationships (debug/missing-relationships-column.org)
+
+Snapshots used: `relationships-column.html` (the source sub-table on
+`/artist/70248960-.../relationships`, "'liner notes for release' relationships" category —
+confirmed a native `<th data-col-name="Relationships" class="mb-injected-column">`),
+`missing-relationships-column.html` (the resulting "Show single-table" tab — confirmed via
+grep that `mb-rel-cell` and `mb-injected-column` occur **zero** times anywhere in the
+1MB rendered DOM; the string "Relationships" only survives in unrelated button-label/nav
+text, not as a header).
+
+- Root cause: the cross-tab snapshot handoff (`captureSubtableSnapshot` →
+  `openSubtableAsSingleTableTab` → `_hydrateAndRenderFromSnapshotData`) deliberately
+  excludes async-populated `mb-rel-cell`/`mb-re-cell`/`mb-ice-cell`/`mb-picard-cell` data
+  cells from the captured row HTML (line ~19201) — these are meant to be freshly rebuilt
+  post-hydration by `cleanupHeaders()` + `initRelationshipsColumn()`/
+  `initReleaseEventsColumn()`, gated on the **destination** page definition's
+  `features.injectedColumns` (`activeInjectedColumns`, built by `buildActiveInjectedColumns()`
+  at line 4219). For `artist-relationships`/`label-relationships`/`place-performances`, the
+  snapshot tab's URL carries `?link_type_id=1`, which routes to each type's `-filtered`
+  sibling (a `tableMode:'single'` definition) rather than reusing the source multi-table
+  definition directly. Checked all three `-filtered` siblings:
+  `label-relationships-filtered` and `place-performances-filtered` both already declared
+  `injectedColumns: ['Release events', 'Relationships']` (matching their multi-table
+  siblings) — but `artist-relationships-filtered` declared no `injectedColumns` at all,
+  unlike its own multi-table sibling `artist-relationships` (which has
+  `injectedColumns: ['Relationships']`). This asymmetry is why
+  `artist-releasegroups`/`releasegroup-releases` sub-tables (which have no `-filtered`
+  sibling at all — the snapshot tab reuses their own bare-URL multi-table definition,
+  already carrying `injectedColumns`) were unaffected, while only `artist-relationships`
+  exhibited the bug.
+- Mechanism of the disappearance (not just "never created" — actively deleted): even though
+  the captured header HTML for "Relationships" survives the round trip into the hydrated
+  `<thead>` (as inert, classless text — cell class/dataset attributes are never part of the
+  captured `{html, colSpan, rowSpan, tagName, style}` cell shape), `cleanupHeaders()`'s
+  *unconditional* "always remove foreign Relationships/Performance Attributes/Release
+  events/Tagger columns" pass (line 28723 `removalMapAlways`, matches on header TEXT alone,
+  independent of `activeInjectedColumns`) deletes it regardless. Normally this is harmless
+  because the very same `cleanupHeaders()` call re-injects a fresh, properly
+  `mb-injected-column`-marked header a few dozen lines later (line 28932, gated on
+  `activeInjectedColumns.length`) — but with `activeInjectedColumns` empty for
+  `artist-relationships-filtered`, that re-injection step never runs, so the header is
+  deleted and never replaced. `initRelationshipsColumn()` (called at line 44397) also bails
+  immediately (`if (!activeInjectedColumns.length) return;`), so no `mb-rel-cell` `<td>` is
+  ever (re)created either. Net result: complete, silent disappearance of both header and
+  data cells — matching the zero-occurrence grep result above exactly.
+- Fix: added the missing `injectedColumns: ['Relationships']` to
+  `artist-relationships-filtered`'s `features` (mirroring `label-relationships-filtered`/
+  `place-performances-filtered`, and its own multi-table sibling `artist-relationships`). No
+  other code path needed to change — the existing `cleanupHeaders()`/
+  `initRelationshipsColumn()` self-heal machinery already does the right thing once
+  `activeInjectedColumns` is populated, for both the normal live-fetch flow (the
+  "(complete)" button) and the cross-tab snapshot hydration flow. No live browser session
+  available in this environment to confirm visually; verified statically by tracing
+  `buildActiveInjectedColumns()`'s resolution for `artist-relationships-filtered` (falls
+  into the generic `else` branch — `entityType: 'release'`, `incOptions: ['url-rels']` —
+  matching `artist-relationships`'s own resolution) and by grepping both debug HTML
+  snapshots for `mb-rel-cell`/`mb-injected-column` to confirm the bug's exact shape (full
+  absence, not misalignment or mis-styling).
+

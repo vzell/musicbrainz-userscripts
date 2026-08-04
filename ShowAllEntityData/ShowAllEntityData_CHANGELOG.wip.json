@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-08-05",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the \"Relationships\" column disappearing entirely (both header and data cells) after clicking \"Show single-table\" on an artist-relationships sub-table (e.g. \"'liner notes for release' relationships\"), while the same button worked correctly for artist-releasegroups/releasegroup-releases sub-tables. Root cause: the cross-tab snapshot handoff deliberately does not capture the async-populated `mb-rel-cell` data cells (they're meant to be freshly (re)built post-hydration by cleanupHeaders()/initRelationshipsColumn(), gated on the *destination* page definition's `features.injectedColumns`) — but `artist-relationships-filtered` (the tableMode:'single' definition the `?link_type_id=1`-qualified snapshot tab routes to) never declared `injectedColumns: ['Relationships']` in the first place, unlike its multi-table sibling `artist-relationships` and unlike the equivalent `label-relationships-filtered`/`place-performances-filtered` definitions (which already had it and were unaffected). With no active injected-column descriptor, cleanupHeaders()'s unconditional \"always remove foreign Relationships/Release events/Tagger header text\" pass still deleted the plain-text \"Relationships\" `<th>` that came along in the captured header HTML, but its later re-injection step (gated on the same descriptor) never ran to replace it, and initRelationshipsColumn() bailed immediately — so neither the header nor any `mb-rel-cell` `<td>` was ever (re)created. Added the missing `injectedColumns: ['Relationships']` declaration to `artist-relationships-filtered`."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-08-03",
     "sections": [
