@@ -6667,9 +6667,10 @@
      *     header-scanning works unmodified.
      *   - An "Artist" column is only natively present on Various Artists
      *     releases. It is always added here — backfilled on every data row with
-     *     the release's main artist credit (read once from
-     *     `p.subheader bdi a[href^="/artist/"]`) when not already present — so
-     *     every medium's column schema is identical regardless of VA-ness.
+     *     the release's full main artist credit (every joined artist link, not
+     *     just the first — read once from the `<bdi>` in `p.subheader` that
+     *     contains `a[href^="/artist/"]`) when not already present — so every
+     *     medium's column schema is identical regardless of VA-ness.
      *   - The `medium` class is removed from the table once processed, both so
      *     the rest of the pipeline treats it like any other `table.tbl`, and so
      *     this function is naturally idempotent (a re-run finds no more
@@ -6692,6 +6693,7 @@
         if (_mediumTables.length === 0) return;
 
         const _defaultArtistLink = document.querySelector('p.subheader bdi a[href^="/artist/"]');
+        const _defaultArtistBdi = _defaultArtistLink?.closest('bdi') ?? null;
 
         _mediumTables.forEach(table => {
             const _thead = table.querySelector(':scope > thead');
@@ -6731,15 +6733,13 @@
                 _artistTh.textContent = 'Artist';
                 _headerCells[_titleIdx].after(_artistTh);
 
-                if (_defaultArtistLink) {
+                if (_defaultArtistBdi) {
                     _tbody.querySelectorAll(':scope > tr').forEach(row => {
                         const _cells = Array.from(row.children);
                         const _titleTd = _cells[_titleIdx];
                         if (!_titleTd) return;
                         const _artistTd = document.createElement('td');
-                        const _bdi = document.createElement('bdi');
-                        _bdi.appendChild(_defaultArtistLink.cloneNode(true));
-                        _artistTd.appendChild(_bdi);
+                        _artistTd.appendChild(_defaultArtistBdi.cloneNode(true));
                         _titleTd.after(_artistTd);
                     });
                 } else {

@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed `release-tracks`' backfilled \"Artist\" column (WIP.1) truncating a multi-artist release credit down to just the first artist — e.g. a release credited to \"Bruce Springsteen & The E Street Band\" rendered as just \"Bruce Springsteen\" in every row. `applyNormalizeMediumTracklists()` was capturing and cloning only the first `<a href=\"/artist/...\">` found inside `p.subheader`'s `<bdi>`, dropping the join text (\" & \", \", \", \" feat. \", …) and any subsequent artist links; it now captures and clones the entire `<bdi>` artist-credit element, matching how MusicBrainz's own native Various-Artists per-track Artist cells already render multi-artist credits."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-08-06",
     "sections": [

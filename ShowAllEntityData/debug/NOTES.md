@@ -2107,3 +2107,32 @@ text, not as a header).
   snapshots for `mb-rel-cell`/`mb-injected-column` to confirm the bug's exact shape (full
   absence, not misalignment or mis-styling).
 
+## 2026-08-07 — release-tracks backfilled Artist column truncated multi-artist credits
+
+`tracklist-live.html` (`/release/e7969bdb-...`, a Bruce Springsteen & The E
+Street Band release) is the multi-artist-credit fixture for
+`release-tracks` — its `p.subheader` reads:
+
+```html
+<p class="subheader">... Release by <bdi>
+  <a href="/artist/70248960-..." title="Springsteen, Bruce">Bruce Springsteen</a> &amp;
+  <a href="/artist/d6652e7b-..." title="E Street Band, The">The E Street Band</a>
+</bdi> ...</p>
+```
+
+`applyNormalizeMediumTracklists()`'s Artist-column backfill (used on
+non-VA releases with no natively-present Artist column) was scraping only
+`document.querySelector('p.subheader bdi a[href^="/artist/"]')` — the
+*first* artist `<a>` — and cloning just that single link into each row's
+new `<td>`, silently dropping the `" & "` join text and every subsequent
+artist. `tracklist-single-medium.html`/`tracklist-multiple-mediums.html`
+(both single-artist releases) never exercised this, and the VA fixture
+(`tracklist-overflow.html`) has a natively-present Artist column so never
+enters the backfill branch at all — hence this went unnoticed until now.
+
+Fixed by capturing the artist link's enclosing `<bdi>` (`.closest('bdi')`)
+instead of the link itself, and cloning that whole `<bdi>` per row — same
+approach as the native VA per-track Artist `<td>`s already use, so every
+joined artist credit (any join phrase: "&", ",", "feat.", ...) survives
+verbatim.
+
