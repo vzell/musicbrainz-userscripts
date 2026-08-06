@@ -1606,6 +1606,30 @@
         },
 
         // ============================================================
+        // RELEASE TRACKLIST SECTION
+        // Consolidates the native per-medium tracklist(s) on a release page
+        // (musicbrainz.org/release/<mbid>) into the standard SA multi-table
+        // filterable/sortable view — see the 'release-tracks' pageDefinitions
+        // entry and applyNormalizeMediumTracklists()/loadAllOverflowMediumTracks().
+        // ============================================================
+        divider_release_tracks: {
+            type: 'divider',
+            label: '💿 RELEASE TRACKLIST'
+        },
+
+        sa_enable_release_tracks: {
+            label: 'Enable Release Tracklist consolidation',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds a "Show all Tracks for Release" button on release pages ' +
+                         '(musicbrainz.org/release/<mbid>) that consolidates every medium\'s ' +
+                         'tracklist into the standard filterable/sortable view, auto-loading ' +
+                         'any medium truncated by MusicBrainz\'s "Load all tracks..." link and ' +
+                         'always showing an Artist column (backfilled with the release\'s main ' +
+                         'artist credit on non-Various-Artists releases).'
+        },
+
+        // ============================================================
         // EXPAND RELEASE AND RELEASE GROUPS SECTION
         // Adapted from "MusicBrainz: Expand/collapse release groups"
         // by Michael Wiencek — injected post-render into the SA table.
@@ -4250,6 +4274,9 @@
      *                 <span class="caa-icon jesus2099userjs154481"> (cover-art icon injected
      *                 by the jesus2099 "mb. SUPER MIND CONTROL" userscript); detection is
      *                 class-based and independent of the span's style attribute or href value
+     *   'jesus2099-any' — removes ANY element whose class list contains a class starting
+     *                 with "jesus2099userjs" (prefix match, any numeric ID suffix). Use only
+     *                 on columns whose own content never carries that class itself.
      *
      * Each returned descriptor gains a `colIdx` property initialised to -1; the actual
      * column index is filled in per-page during the header-scanning pass inside the fetch loop.
@@ -4381,6 +4408,21 @@
      *    This covers both the background-image variant and the plain variant of the
      *    cover-art icon injected by the jesus2099 "mb. SUPER MIND CONTROL" userscript.
      *
+     * 3. **jesus2099 generic marker-element erasure** (sentinel string `'jesus2099-any'`):
+     *    Removes ANY element (any tag) whose class list contains a class starting with
+     *    "jesus2099userjs" — e.g. the Length column's hover "toolzone"/"editbutt"/
+     *    "openEdits" `<div>`s (Merge/Edit/Open-edits quick-action buttons) injected by
+     *    the jesus2099 "mb. SUPER MIND CONTROL" userscript, which can carry a baked-in
+     *    `style="display:block"` from whatever hover state was active at scrape time and
+     *    so appear as permanent clutter in the static consolidated table. Unlike the
+     *    `'jesus2099'` sentinel above (one hardcoded class/shape), this matches by prefix
+     *    only, since jesus2099's script embeds an install/version-specific numeric ID in
+     *    the class name (seen as both "154481" and "81127" across different snapshots).
+     *    Only safe to use on columns where nothing jesus2099-classed carries legitimate
+     *    MB content itself (e.g. Length) — do NOT apply to a column whose own primary
+     *    link/cell carries a jesus2099 marker class (e.g. a recording title `<a
+     *    class="jesus2099userjs...recording">`), since that would delete the content too.
+     *
      * Must be called BEFORE active column extractors run on the same row so that extractor
      * output is based on the already-cleaned cell content.
      *
@@ -4402,9 +4444,10 @@
             }
 
             // Partition erasers into glyph-symbol erasers and the named sentinels
-            const textErasers    = entry.erasers.filter(e => e !== 'jesus2099' && e !== 'wiencek');
-            const eraseJesus2099 = entry.erasers.includes('jesus2099');
-            const eraseWiencek   = entry.erasers.includes('wiencek');
+            const textErasers       = entry.erasers.filter(e => e !== 'jesus2099' && e !== 'jesus2099-any' && e !== 'wiencek');
+            const eraseJesus2099    = entry.erasers.includes('jesus2099');
+            const eraseJesus2099Any = entry.erasers.includes('jesus2099-any');
+            const eraseWiencek      = entry.erasers.includes('wiencek');
 
             let removedCount = 0;
 
@@ -4434,7 +4477,27 @@
                 });
             }
 
-            // Strategy 3: wiencek suggested-work / work div erasure
+            // Strategy 3: jesus2099 generic marker-element erasure
+            // Removes ANY element (any tag) whose class list contains a class starting
+            // with "jesus2099userjs" — e.g. the Length column's hover "toolzone"/
+            // "editbutt"/"openEdits" <div>s (Merge/Edit/Open-edits quick-action buttons),
+            // which can carry a baked-in style="display:block" from whatever hover state
+            // was active at scrape time and so appear as permanent clutter once cloned
+            // into the static consolidated table. Matches by class PREFIX only (not the
+            // exact "jesus2099userjs154481" class Strategy 2 targets), since jesus2099's
+            // script embeds an install/version-specific numeric ID in the class name.
+            // Only use on columns where nothing jesus2099-classed carries legitimate MB
+            // content itself — see JSDoc above.
+            if (eraseJesus2099Any) {
+                cell.querySelectorAll('[class*="jesus2099userjs"]').forEach(el => {
+                    const _cls = el.className;
+                    el.remove();
+                    removedCount++;
+                    Lib.debug('extract', `columnEraser: removed jesus2099-any element (class="${_cls}") from column "${entry.sourceColumn}" (colIdx=${entry.colIdx})`);
+                });
+            }
+
+            // Strategy 4: wiencek suggested-work / work div erasure
             // Removes injected <div class="suggested-work"> and <div class="work"> containers
             // added by Michael Wiencek's "MusicBrainz: Expand/collapse release groups"
             // userscript on Artist-Recordings pages.  These divs carry inline style attributes
@@ -6491,6 +6554,205 @@
         // and mutate the DOM (show hidden <li> elements) before we proceed.
         await Promise.resolve();
         Lib.debug('init', 'applyShowAllTags: click processed — proceeding with DOM pre-processing.');
+    }
+
+    /**
+     * Clicks every "Load all tracks..." overflow link inside a release page's
+     * `<table class="tbl medium">` elements and waits for MusicBrainz's AJAX
+     * replacement of that medium's `<tbody>` to finish before the tracklist is
+     * scraped — otherwise only the first 100 (of e.g. 1209) tracks would be
+     * captured.
+     *
+     * MusicBrainz renders an overflowing medium's `<tbody>` with a trailing row:
+     *   <tr><td colspan="N">This medium has too many tracks to load at once;
+     *   currently showing 100 out of 1209 total.
+     *   <a class="load-tracks" href="#">Load all tracks...</a></td></tr>
+     *
+     * IMPORTANT: MusicBrainz replaces the triggering `<tr>` with a "loading"
+     * placeholder almost immediately on click — long before the AJAX response
+     * with the real track rows has actually arrived and been rendered. Waiting
+     * only for that `<tr>` to leave the DOM (an earlier version of this function
+     * did this) resolves after a few milliseconds with the tracklist still
+     * truncated. Completion is instead detected by parsing the expected final
+     * track count ("...out of 1209 total.") from the overflow message BEFORE
+     * clicking, then waiting for the `<tbody>`'s actual data-row count to reach
+     * that number. If the count can't be parsed, falls back to a "no further
+     * `<tbody>` mutation for 800ms" idle heuristic once the overflow link itself
+     * is gone. Each medium is processed in its own loop (re-checking for a fresh
+     * `a.load-tracks` after every wait, bounded to 20 iterations) in case
+     * MusicBrainz ever loads tracks in incremental batches rather than all at
+     * once, and each wait is capped at 30s so a failed/slow request can't hang
+     * the fetch pipeline indefinitely. Mediums are processed sequentially so
+     * their AJAX requests can't race each other.
+     *
+     * Triggered by `features.loadOverflowTracks: true` in the page definition.
+     *
+     * @param   {object}  def - The active merged pageDefinition object.
+     * @returns {Promise<void>}
+     */
+    async function loadAllOverflowMediumTracks(def) {
+        if (!def?.features?.loadOverflowTracks) return;
+
+        const _tbodies = Array.from(document.querySelectorAll('table.tbl.medium tbody'))
+            .filter(tb => tb.querySelector('a.load-tracks'));
+        if (_tbodies.length === 0) return;
+
+        Lib.debug('init', `loadAllOverflowMediumTracks: found ${_tbodies.length} overflowing medium(s).`);
+
+        for (const _tbody of _tbodies) {
+            let _guard = 0;
+            while (_tbody.querySelector('a.load-tracks') && _guard < 20) {
+                _guard++;
+                const _link = _tbody.querySelector('a.load-tracks');
+                const _row = _link.closest('tr');
+                const _totalMatch = _row?.textContent.match(/out of (\d+) total/);
+                const _expectedTotal = _totalMatch ? parseInt(_totalMatch[1], 10) : null;
+                const _dataRowCount = () => _tbody.querySelectorAll(':scope > tr:not(.subh)').length;
+
+                await new Promise(resolve => {
+                    let _settled = false;
+                    let _idleTimeoutId;
+                    let _hardTimeoutId;
+                    const _finish = () => {
+                        if (_settled) return;
+                        _settled = true;
+                        _observer.disconnect();
+                        clearTimeout(_idleTimeoutId);
+                        clearTimeout(_hardTimeoutId);
+                        resolve();
+                    };
+                    const _onMutation = () => {
+                        const _linkGone = !_tbody.querySelector('a.load-tracks');
+                        if (_expectedTotal !== null) {
+                            // Definitive mode: only the actual row count decides completion.
+                            if (_linkGone && _dataRowCount() >= _expectedTotal) _finish();
+                            return;
+                        }
+                        // Unknown total — fall back to "no mutation for 800ms" once
+                        // the overflow link itself is gone.
+                        clearTimeout(_idleTimeoutId);
+                        if (_linkGone) _idleTimeoutId = setTimeout(_finish, 800);
+                    };
+                    const _observer = new MutationObserver(_onMutation);
+                    _observer.observe(_tbody, { childList: true });
+                    _hardTimeoutId = setTimeout(() => {
+                        Lib.debug('init', 'loadAllOverflowMediumTracks: timed out after 30s waiting for ' +
+                                          '"Load all tracks..." to finish — proceeding with partial tracklist.');
+                        _finish();
+                    }, 30000);
+                    Lib.debug('init', `loadAllOverflowMediumTracks: clicking "Load all tracks..." for medium ` +
+                                      `(expecting ${_expectedTotal ?? 'unknown'} total tracks).`);
+                    _link.click();
+                });
+            }
+        }
+
+        Lib.debug('init', 'loadAllOverflowMediumTracks: all overflowing mediums resolved.');
+    }
+
+    /**
+     * Normalises each native `<table class="tbl medium">` on a release page into
+     * the shape the standard multi-table fetch/render pipeline expects, so the
+     * existing h3-sibling-walk grouping logic and header-scanning column pipeline
+     * can process it unmodified:
+     *
+     *   - The medium's title (e.g. "1 - CD") lives inside its own `<thead>`
+     *     (`<a class="expand-medium"><span>1</span><span class="expand-triangle">
+     *     ▼</span>CD</a>`) rather than a preceding sibling `<h3>` like every other
+     *     multi-table pageType — a literal `<h3>` is inserted before the table so
+     *     the generic sibling-walk grouping picks it up unaided.
+     *   - The real column headers are the `<tbody>`'s first row
+     *     (`<tr class="subh">`), not the `<thead>` — that row is moved into a
+     *     freshly built `<thead>` so `referenceTable.querySelectorAll('thead th')`
+     *     header-scanning works unmodified.
+     *   - An "Artist" column is only natively present on Various Artists
+     *     releases. It is always added here — backfilled on every data row with
+     *     the release's main artist credit (read once from
+     *     `p.subheader bdi a[href^="/artist/"]`) when not already present — so
+     *     every medium's column schema is identical regardless of VA-ness.
+     *   - The `medium` class is removed from the table once processed, both so
+     *     the rest of the pipeline treats it like any other `table.tbl`, and so
+     *     this function is naturally idempotent (a re-run finds no more
+     *     `table.tbl.medium` elements to touch).
+     *
+     * Must run on the live `document` AFTER loadAllOverflowMediumTracks() (so the
+     * full track list is present) and BEFORE the standard fetch-loop's header
+     * scanning / grouping pass.
+     *
+     * Triggered by `features.normalizeMediumTracklists: true` in the page
+     * definition.
+     *
+     * @param {object} def - The active merged pageDefinition object.
+     * @returns {void}
+     */
+    function applyNormalizeMediumTracklists(def) {
+        if (!def?.features?.normalizeMediumTracklists) return;
+
+        const _mediumTables = Array.from(document.querySelectorAll('table.tbl.medium'));
+        if (_mediumTables.length === 0) return;
+
+        const _defaultArtistLink = document.querySelector('p.subheader bdi a[href^="/artist/"]');
+
+        _mediumTables.forEach(table => {
+            const _thead = table.querySelector(':scope > thead');
+            const _tbody = table.querySelector(':scope > tbody');
+            const _expandLink = _thead?.querySelector('a.expand-medium');
+            const _subhRow = _tbody?.querySelector(':scope > tr.subh');
+
+            if (!_thead || !_tbody || !_expandLink || !_subhRow) {
+                Lib.debug('init', 'applyNormalizeMediumTracklists: skipping table with unexpected structure.');
+                return;
+            }
+
+            // ── 1. Derive "<disc number> - <format>" and insert it as a sibling h3 ──
+            const _discNumber = _expandLink.querySelector('span')?.textContent.trim() || '';
+            const _linkClone = _expandLink.cloneNode(true);
+            _linkClone.querySelectorAll('span').forEach(s => s.remove());
+            const _format = _linkClone.textContent.trim();
+            const _title = [_discNumber, _format].filter(Boolean).join(' - ');
+
+            const _h3 = document.createElement('h3');
+            _h3.textContent = _title;
+            table.before(_h3);
+            Lib.debug('init', `applyNormalizeMediumTracklists: inserted <h3>"${_title}"</h3> before medium table.`);
+
+            // ── 2. Move tr.subh into a freshly built <thead> (replaces the title-only one) ──
+            const _newThead = document.createElement('thead');
+            _newThead.appendChild(_subhRow); // moves the node out of tbody
+            _thead.replaceWith(_newThead);
+
+            // ── 3. Always have an "Artist" column — backfill when natively absent ──
+            const _headerCells = Array.from(_subhRow.querySelectorAll('th'));
+            const _titleIdx = _headerCells.findIndex(th => th.textContent.trim() === 'Title');
+            const _hasArtist = _headerCells.some(th => th.textContent.trim() === 'Artist');
+
+            if (!_hasArtist && _titleIdx !== -1) {
+                const _artistTh = document.createElement('th');
+                _artistTh.textContent = 'Artist';
+                _headerCells[_titleIdx].after(_artistTh);
+
+                if (_defaultArtistLink) {
+                    _tbody.querySelectorAll(':scope > tr').forEach(row => {
+                        const _cells = Array.from(row.children);
+                        const _titleTd = _cells[_titleIdx];
+                        if (!_titleTd) return;
+                        const _artistTd = document.createElement('td');
+                        const _bdi = document.createElement('bdi');
+                        _bdi.appendChild(_defaultArtistLink.cloneNode(true));
+                        _artistTd.appendChild(_bdi);
+                        _titleTd.after(_artistTd);
+                    });
+                } else {
+                    Lib.debug('init', 'applyNormalizeMediumTracklists: no release-level default ' +
+                                      'artist found (p.subheader) — Artist column left empty.');
+                }
+            }
+
+            // ── 4. Plain table.tbl from here on (also makes this function idempotent) ──
+            table.classList.remove('medium');
+        });
+
+        Lib.debug('init', `applyNormalizeMediumTracklists: normalised ${_mediumTables.length} medium table(s).`);
     }
 
     /**
@@ -9425,6 +9687,43 @@
             buttons: [ { label: 'Show all Disc IDs for Release' } ],
             tableMode: 'multi',
             non_paginated: false
+        },
+        {
+            type: 'release-tracks',
+            // Anchored on both ends so this bare-entity-page definition never also
+            // matches a sub-path like /release/<mbid>/aliases (those have their own
+            // dedicated pageDefinitions above). Gated by sa_enable_release_tracks so
+            // the whole feature (and its toolbar button) can be turned off.
+            match: (path) => Lib.settings.sa_enable_release_tracks && path.match(/^\/release\/[a-f0-9-]{36}$/),
+            buttons: [ { label: 'Show all Tracks for Release' } ],
+            features: {
+                loadOverflowTracks: true,        // click + await native "Load all tracks..."
+                normalizeMediumTracklists: true, // synthesize h3 + fix up thead/Artist column
+                removeSelectors: [
+                    'h2.tracklist button.work-button-style', // native "Edit recording comments"
+                    'h2.tracklist span#settings-icon'
+                ],
+                columnErasers: [
+                    // Strips jesus2099 "SUPER MIND CONTROL" hover toolzone/editbutt/
+                    // openEdits <div>s (Merge/Edit/Open-edits quick-action buttons) that
+                    // can be cloned into the Length cell with a baked-in
+                    // style="display:block" — see debug/jesus-cell.html.
+                    { sourceColumn: 'Length', erasers: ['jesus2099-any'] }
+                ],
+                integerColumns: [
+                    { sourceColumn: 'Length', align: ':' },
+                    { sourceColumn: 'Rating', align: 'C' }
+                ],
+                stickyColumn: 'Title'
+                // Future work: Title-derived synthetic columns ("recording of",
+                // "recording engineer", …) would be added here as
+                // `syntheticColumnExtractors`, gated by a new settings checkbox
+                // following the `eventParts`/`sa_enable_event_parts_extractor`
+                // pattern (see buildActiveSyntheticColumnExtractors). Not
+                // implemented yet — see debug/release-tracks-pageType.org item 5.
+            },
+            tableMode: 'multi',
+            non_paginated: true
         },
         // Recording pages
         {
@@ -29742,6 +30041,21 @@ a { color: #1565c0; }`;
             await applyShowAllTags(activeDefinition);
         }
 
+        // ── release-tracks pre-processing ───────────────────────────────────
+        // For the 'release-tracks' pageType, first click any "Load all tracks..."
+        // overflow links and await MusicBrainz's AJAX completion (must be the
+        // very first pre-processing step, like showAllTags above, so nothing
+        // downstream scrapes an incomplete tracklist), then normalise each
+        // native table.tbl.medium's thead/header-row/Artist-column shape so the
+        // standard header-scanning and h3-sibling-walk grouping pipeline can
+        // process it unmodified.
+        if (activeDefinition.features?.loadOverflowTracks) {
+            await loadAllOverflowMediumTracks(activeDefinition);
+        }
+        if (activeDefinition.features?.normalizeMediumTracklists) {
+            applyNormalizeMediumTracklists(activeDefinition);
+        }
+
         // ── renameH2ToH3 / renameH2ToH1 / insertH2 pre-processing ────────────
         // For pageTypes that carry features.renameH2ToH3, features.renameH2ToH1,
         // and/or features.insertH2 (e.g. 'artist-tags', 'user-edits'), reshape
@@ -30340,7 +30654,7 @@ a { color: #1565c0; }`;
                 let rowsInThisPage = 0;
                 let pageCategoryMap = new Map();
 
-                if (_isReleaseGroupsMultiMode()) {
+                if (_isReleaseGroupsMultiMode() || pageType === 'release-tracks') {
                     doc.querySelectorAll('table.tbl').forEach(table => {
                         // Fetched XHR pages contain native MusicBrainz <h3> elements
                         // (e.g. "Album", "Single", "EP") that do NOT carry the
@@ -30348,6 +30662,15 @@ a { color: #1565c0; }`;
                         // findH3ForTable() requires that class and always returns null
                         // here, collapsing every group into "Other".  Use a plain
                         // backwards walk with no class restriction instead.
+                        //
+                        // 'release-tracks' reuses this same block: applyNormalizeMediumTracklists()
+                        // already inserted a plain sibling <h3> before each medium table (their
+                        // titles live inside the table's own <thead>, not a native sibling <h3>),
+                        // so no further pageType-specific branching is needed here — this walk
+                        // finds those synthesized headings the same way it finds native ones.
+                        // Deliberately does NOT extend _isReleaseGroupsMultiMode() itself, which
+                        // also gates unrelated release-group-specific CAA-thumbnail/cleanup logic
+                        // at several other call sites.
                         let _prev = table.previousElementSibling, _steps = 0, _h3 = null;
                         while (_prev && _steps < 5) {
                             if (_prev.tagName === 'H3') { _h3 = _prev; break; }
@@ -40251,6 +40574,21 @@ a { color: #1565c0; }`;
                 _el.remove();
                 Lib.debug('cleanup', `removeSelector: removed "${activeDefinition.features.removeSelector}".`);
             }
+        }
+
+        // ── features.removeSelectors (post-render, plural) ─────────────────────
+        // Same post-render timing as features.removeSelector above, but removes
+        // ALL elements matching EACH selector (querySelectorAll, e.g. stripping
+        // both the "Edit recording comments" button AND the settings-icon span
+        // out of h2.tracklist once it becomes the reused global-filter header on
+        // 'release-tracks' pages). Kept as a separate, additive key rather than
+        // changing removeSelector's single-element querySelector behaviour, which
+        // ~14 existing pageDefinitions already rely on.
+        if (Array.isArray(activeDefinition?.features?.removeSelectors)) {
+            activeDefinition.features.removeSelectors.forEach(sel => {
+                document.querySelectorAll(sel).forEach(el => el.remove());
+                Lib.debug('cleanup', `removeSelectors: removed all matches of "${sel}".`);
+            });
         }
 
         // ── Remove MusicBrainz native filter bar (div.filter) ─────────────────

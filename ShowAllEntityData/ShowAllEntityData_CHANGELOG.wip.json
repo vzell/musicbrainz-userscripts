@@ -1,0 +1,27 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-08-06",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed `release-tracks`' \"Load all tracks...\" overflow handling (WIP.1) resolving after only a few milliseconds and still rendering the truncated 100-row tracklist: MusicBrainz replaces the triggering `<tr>` with a loading placeholder almost instantly on click, long before the AJAX response with the real rows has arrived, so waiting for that `<tr>` to leave the DOM (the original signal) fired a false-positive completion. `loadAllOverflowMediumTracks()` now parses the expected final track count from the overflow message (\"...out of 1209 total.\") and waits for the `<tbody>`'s actual data-row count to reach it, falling back to an idle-mutation heuristic only when that count can't be parsed; the per-medium timeout was also raised from 15s to 30s to give large tracklists room to load.",
+          "Fixed jesus2099 \"SUPER MIND CONTROL\" hover-toolzone artifacts (Merge/Edit/Open-edits quick-action `<div>`s, e.g. `<div class=\"jesus2099userjs81127toolzone\" style=\"display:block\">`) being cloned into the final rendered Length column with a baked-in `display:block` from whatever hover state was active at scrape time. Added a new generic `'jesus2099-any'` `columnErasers` sentinel (removes any element whose class starts with \"jesus2099userjs\", by prefix rather than one hardcoded suffix, since that userscript embeds an install/version-specific numeric ID) alongside the existing exact-class `'jesus2099'` sentinel, and applied it to `release-tracks`' Length column."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-08-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added a new `release-tracks` pageType for bare release pages (musicbrainz.org/release/<mbid>), consolidating every medium's native tracklist into the standard filterable/sortable multi-table view via a new \"Show all Tracks for Release\" button (gated by the new `sa_enable_release_tracks` setting, default on). Each medium's `<thead>`-embedded title (e.g. \"1 - CD\") is synthesized into a sibling `<h3>` so the existing release-group h3-sibling-walk grouping pipeline can be reused unmodified; the native `<tr class=\"subh\">` header row is promoted into a proper `<thead>`; an `Artist` column is always present, backfilled with the release's main artist credit on non-Various-Artists releases. Mediums truncated by MusicBrainz's own \"Load all tracks...\" overflow link (>100 tracks) are auto-loaded and awaited before the tracklist is scraped, so no tracks are missed. The native \"Edit recording comments\" button and settings-icon are stripped from the reused `h2.tracklist` header once it becomes the global filter/master-toggle anchor. Also adds a new additive `features.removeSelectors` (plural array) post-render step alongside the existing singular `removeSelector`."
+        ]
+      }
+    ]
+  }
+]
