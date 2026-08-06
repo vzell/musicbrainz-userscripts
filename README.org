@@ -91088,6 +91088,54 @@ OK (idb=false memory=true) — //coverartarchive.org/release-group/f489d026-6206
 userscript.html?name=Mammoth.user.js&id=9123a0fc-4fef-482f-9573-ad850092b7b9:1040 [Violation] 'setTimeout' handler took 80ms
 #+end_example
 
+
+* DONE question regarding using claude code "/plan" on one machine and later switching to a different machine to continue working on the same session, what is the best practice ?
+
+Question regarding using claude code "/plan" on one machine and later switching to a different machine to continue
+working on the same session, what is the best practice ?
+
+Should I transfer specific files from the "~/.claude" directory or other ones between machines before continuing on the
+second ?
+
+#+begin_example
+● Here's what I found on session continuity across machines:
+
+  Session storage: Transcripts live at ~/.claude/projects/<project>/<session-id>.jsonl, where <project> is your working directory's absolute path with non-alphanumeric chars replaced by dashes. It's tied to that exact path string — if the path differs between machines, the
+  session lands in a different <project> folder and won't show up under /resume.
+
+  Manually copying files: Not an officially supported workflow. claude --resume <session-id> is documented to search the current project + worktrees, then other projects on that machine — it isn't described as looking elsewhere. You could try dropping the .jsonl into the
+  equivalent path on machine 2, but there's no guarantee, and it's not the sanctioned path.
+
+  Plan mode specifically: Not stored separately — it's just conversation state, but the mode itself (plan, and also bypassPermissions) is explicitly never restored on resume. You'll need to hit Shift+Tab / /plan again after resuming to re-enter plan mode; the plan discussion
+  content itself does come back with the rest of the transcript.
+
+  What else matters:
+
+  ┌───────────────────────────────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────┐
+  │                                 File                                  │                                 Sync?                                  │
+  ├───────────────────────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────┤
+  │ .claude/settings.json (project, git-tracked)                          │ Yes — travels with the repo                                            │
+  ├───────────────────────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────┤
+  │ .claude/settings.local.json (project, gitignored)                     │ No — machine-specific, leave it                                        │
+  ├───────────────────────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────┤
+  │ ~/.claude/settings.json (user/global)                                 │ No — manual only, and gets overridden by project-level settings anyway │
+  ├───────────────────────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────┤
+  │ ~/.claude/keybindings.json                                            │ No — machine-specific                                                  │
+  ├───────────────────────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────┤
+  │ ~/.claude/projects/<project>/memory/ (auto-memory, used in this repo) │ No — local per machine, not documented as exportable                   │
+  └───────────────────────────────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────┘
+
+  Recommended approach instead of copying ~/.claude files by hand:
+  1. Note the session ID and try claude --resume <session-id> in the same project path on machine 2 (works reliably within the same repo/worktree).
+  2. If you're on the Claude web/desktop app rather than pure CLI, those sessions sync automatically via your account.
+  3. For pure code handoff, just push/pull via git — the plan's actual output (files, diffs) travels that way regardless of session state.
+  4. If neither fits, the pragmatic move is: capture the plan text itself before switching machines, then paste it back in as context on a fresh session — more reliable than fighting path/session-hash mismatches.
+
+  Given this repo already uses the auto-memory system, one option worth considering: ask me to save key decisions from the plan as a project memory before you switch — that at least survives on whichever machine holds this repo's memory directory, even if the raw session doesn't
+  transfer.
+#+end_example
+
+
 * TODO Failed to save data: Invalid string length
 
 Why do I get "Failed to save data: Invalid string length" in a native browser popup box on e.g.
@@ -91143,3 +91191,134 @@ How much do you want to invest in fixing this — a permanent fix or a quick mit
   
 
  
+
+* TODO plan: Add support for a new MusicBrainz release pageType
+** DONE initial
+
+Add support for a new MusicBrainz "multi"-table pageType 'release-tracks' which handles MusicBrainz release URLs of the form
+https://musicbrainz.org/release/<MBID> e.g. https://musicbrainz.org/release/b0209926-3b26-4cf5-8993-7dbfbeafb259
+
+Read from the following example releases which catch every possible tracklist 
+
+#+begin_example
+https://musicbrainz.org/release/b0209926-3b26-4cf5-8993-7dbfbeafb259 - @debug/tracklist-single-medium.html - Bruce Springsteen MusicBrainz release page with a single medium tracklist
+https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd - @debug/tracklist-multiple-mediums.html - Bruce Springsteen MusicBrainz release page with multiple medium tracklists
+https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b - @debug/tracklist-overflow.html - Various Artists MusicBrainz release page with a single medium tracklist but more than 100 tracks ("This medium has too many tracks to load at once; currently showing 100 out of 1209 total. Load all tracks..." at the end of the tracklist)
+#+end_example
+
+1.)
+
+The current h2 "Tracklist" header
+
+#+begin_example
+<h2 class="tracklist">Tracklist<button class="work-button-style">Edit recording comments</button><span id="settings-icon">⚙️</span></h2>
+#+end_example
+
+should be used for the global filter and other related stuff like "mb-row-count-stat", "mb-master-toggle" etc.
+See the @debug/h2-example-global.html for the h2 header line from the "multi"-table pageType https://musicbrainz.org/release-group/d19453c0-cd72-3468-b110-0f898c111e5e
+
+The "<button class="work-button-style">Edit recording comments</button><span id="settings-icon">⚙️</span>" should NOT be present on the final rendered page in the h2 header, if present
+
+2.)
+
+Each "thead" in a 'table class="tbl medium "' e.g.
+
+#+begin_example
+"<thead><tr><th colspan="4"><a class="expand-medium" href="/medium/6a8b3932-5c0b-3769-96e1-42e601258028" id="disc1"><span>1</span><span class="expand-triangle">▼</span>CD</a></th></tr></thead>
+#+end_example
+
+should be used on the final rendered page as a new "multi"-table pageType subtable h3 heading with the title taken from
+the "span" containers in the "thead" concatenated with " - " , so e.g. in the above example "1 - CD" would be the h3 subtable title in the final rendered page
+
+3.)
+
+The actual "tbody" container should be used for the the new subtable contents
+
+#+begin_example
+<tbody style=""><tr class="subh"><th class="pos t">#</th><th>Title</th><th class="rating c">Rating</th><th class="treleases">Length</th></tr>
+#+end_example
+
+and the FIRST "tr" row act as the column headers for the subtable
+
+4.)
+
+On releases where the artist is "Various Artists"
+
+#+begin_example
+https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b
+#+end_example
+
+the '<tr class="subh">' has an additional "Artist" column
+
+#+begin_example
+<tr class="subh"><th class="pos t">#</th><th>Title</th><th>Artist</th><th class="rating c">Rating</th><th class="treleases">Length</th></tr>
+#+end_example
+
+Because of this, the "Artist" column should always be present on the final rendered page on all sub-tables, prefilled
+with the default artist on non "Various Artists" pages, so e.g. in the above cases with "Bruce Springsteen"
+
+5.)
+
+Eventually we will extract additional synthetic columns (configurable, default "false") from the "Title" data cells like
+"recording of", "recording engineer", etc.
+
+So prepare the feature configration for the pageType for this fact.
+
+6.)
+
+Check if you can reuse code/configuration from other "multi"-table pageType definitions and codeflows, WITHOUT breaking
+anything for other alredy working pageTypes
+
+7.)
+
+Actually make the whole new pageType feature configurable, so add the userscript "include" directive, but add the action buttons onyl if the feature is true (default: true)
+
+8.)
+
+For pages with a single medium tracklist but more than 100 tracks ("This medium has too many tracks to load at once; currently showing 100 out of 1209 total. Load all tracks..." at the end of the tracklist)
+first emulate the click on the "Load all tracks..." link to get all tracks before rendering the final page
+
+9.)
+
+Do this in a new branch
+
+** DONE act on @debug/release-tracks-pageType.org
+
+act on @debug/release-tracks-pageType.org
+
+** DONE bugs
+
+1.)
+
+Console log for https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b the overflog table case with more than 100 tracks @debug/tracklist-multiple-mediums.log
+It's not working, it still renders the original 100 rows, onyl if I click the "Load all tracks..." manually and then the action button "Show all tracks.." it works
+
+2.)
+
+If the "Length" column has the additional "class="jesus2099userjs...." flagged elements (hidden or not on the initial page), @debug /jesus-cell.html
+they should be removed from the final rendered page. Currently for example the page https://musicbrainz.org/release/b0209926-3b26-4cf5-8993-7dbfbeafb259 is rendered as @debug/tracklist-single-medium-final.html
+where these artefacts are present
+
+** maybe: bugs
+
+console log for https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b
+
+#+begin_example
+helpers.js:119 Uncaught TypeError: Cannot read properties of undefined (reading 'toLowerCase')
+	isPrefixKeyEvent	@	userscript.html?name…-464f22b2210f:12840
+        document.addEventListener.capture	@	userscript.html?name…-464f22b2210f:13046
+#+end_example
+
+** add new feature
+*** "Recording artist" column always present, but only filled if the "Recording artist:" div is present
+
+#+begin_example
+<div class="small">Recording artist:<!-- --> <bdi><a href="/artist/82322886-4c92-4509-9611-ac2173438469" title="Riders Against the Storm (husband/wife hip hop duo)">Riders Against the Storm</a></bdi></div>
+#+end_example
+
+*** <div class="ars"> in it's own column and not together with just the title and optional disambiguation comment
+
+*** <div class="ars ISRC"> and <div class="ars AcoustID"> (collapsable) in it's own column and not together with just the title and optional disambiguation comment
+
+
+*** E Street band is missing on non various artists releases in "Artist" column
