@@ -2541,3 +2541,55 @@ correctly across a simulated 3-medium run, and the "medium X of Y" label
 correctly clamps at Y for a single-medium case (never shows "medium 2 of
 1").
 
+## 2026-08-07 — "only render when at least one track has a value" (WIP.10)
+
+User asked for this to apply to all three of "Disambiguation",
+"AcoustIDs", "ISRCs". Flagged a real conflict before implementing: unlike
+Video/Recording artist (native MB markup, present or not at the moment we
+scrape it), AcoustIDs/ISRCs come from a third-party userscript's *async*
+lookup that's usually still in progress when `applyExtractTrackTitleData`
+runs — confirmed earlier this session (the `problem.html`/`g.html`
+investigation) that both captures had zero AcoustID/ISRC source data
+present at that exact moment. That's the whole reason the late-arrival
+`MutationObserver` (`initAcoustIdIsrcObserver`, WIP.6) exists. Gating
+column creation on "is data present right now" would mean the column
+usually wouldn't exist at the moment data eventually arrives either —
+and `_relocateLateAcoustIdIsrc`'s `arsDiv.remove()` runs unconditionally
+even when no matching `<th>` is found, so the data would just be silently
+discarded, making the observer non-functional in the common case.
+
+Asked the user via `AskUserQuestion` how to resolve this (three options:
+extend the observer to retroactively create the column when data first
+arrives with no destination yet; apply the gate to Disambiguation only;
+or apply the gate everywhere and accept the observer becoming
+non-functional for column creation). User picked the recommended
+option — gate only "Disambiguation", leave AcoustIDs/ISRCs as-is
+(setting-gated, not presence-gated).
+
+Considered but didn't pursue the "retroactive column creation" option:
+even setting aside the added complexity (creating a `<th>` + backfilling
+every existing row across every medium's table, reactively, from inside
+a `MutationObserver` callback scoped to one row), there's an unverified
+risk that a later sort/filter re-render rebuilds `<tr>`s from the
+original scraped row-data model rather than the live DOM — in which case
+a column added only to the live DOM after the fact could silently vanish
+on the next re-sort. Not confirmed either way without a live browser
+session; flagged rather than guessed at.
+
+Implementation: added a third page-wide scan,
+`_pageHasDisambig = _anyTitleCellMatches(td => td.querySelector(':scope > span.comment, :scope > span.name-variation > span.comment'))`,
+and changed the "Disambiguation" `<th>` creation from unconditional
+(`if (!_hasDisambig)`) to `if (!_hasDisambig && _pageHasDisambig)` — same
+pattern as Video/Recording artist. The row-level `<td>` insertion was
+already gated on `_disambigTh` (not `_hasDisambig`), so it needed no
+separate change.
+
+Test suite fallout: Test1/Test2 (neither has a comment in its fixture)
+previously asserted "Disambiguation" was present unconditionally — now
+correctly assert its absence. Also added `document.body.innerHTML = ''`
+isolation at the start of every remaining synchronous test (1 through 6)
+that didn't already have it, since with a third page-wide-gated column
+in play, cross-test DOM contamination (earlier tests' leftover tables
+still in the document) becomes more likely to actually change a later
+test's outcome rather than being harmlessly ignored.
+

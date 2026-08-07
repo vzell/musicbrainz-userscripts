@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.10",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "`release-tracks`' \"Disambiguation\" column is no longer unconditional — it's now only created once at least one track on the release has the parenthetical comment, same page-wide decision as \"Video\"/\"Recording artist\" (`renderGroupedTable()`'s shared header template forces this to be decided once across the whole release, not per medium). \"AcoustIDs\"/\"ISRCs\" deliberately keep their current behavior (created whenever their setting is on, independent of whether data is present yet) — their data arrives via an async third-party lookup that's often still in progress when this script runs, which is exactly why the late-arrival `MutationObserver` (added earlier this session) exists; gating their column creation on data already being present would make that observer's job impossible most of the time, since it has nowhere to place data once its destination column doesn't exist."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.9",
     "date": "2026-08-07",
     "sections": [

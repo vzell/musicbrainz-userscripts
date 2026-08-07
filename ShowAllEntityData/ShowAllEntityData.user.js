@@ -6880,9 +6880,11 @@
      *     Name</a> <span class="comment">(disambiguation)</span></span>` —
      *     only present when the track title differs from its recording's
      *     name; the disambiguation comment is moved into a new
-     *     "Disambiguation" column, and the secondary "Recording Name" line
-     *     (after the `<br>`) is discarded (not requested to be kept
-     *     anywhere — see debug/fix.org).
+     *     "Disambiguation" column (only added once ANY track on the
+     *     release has one — same page-wide-decision reasoning as "Video"
+     *     below, via `_pageHasDisambig`), and the secondary "Recording
+     *     Name" line (after the `<br>`) is discarded (not requested to be
+     *     kept anywhere — see debug/fix.org).
      *   - `<div class="ars">` (bare) — the recording's general
      *     relationships (engineer, producer, recording-of-work, publisher,
      *     …), moved into a new "ARs" column, appended at the very end of
@@ -6979,6 +6981,9 @@
         const _pageHasRecArtist = _anyTitleCellMatches(
             td => td.querySelector(':scope > div.small > bdi')
         );
+        const _pageHasDisambig = _anyTitleCellMatches(
+            td => td.querySelector(':scope > span.comment, :scope > span.name-variation > span.comment')
+        );
 
         _tables.forEach(table => {
             const _theadRow = table.querySelector(':scope > thead > tr');
@@ -7010,7 +7015,9 @@
                 _videoTh = document.createElement('th');
                 _videoTh.textContent = 'Video';
             }
-            if (!_hasDisambig) {
+            // Disambiguation: same page-wide-decision reasoning as Video —
+            // only added once ANY track on the release has the comment.
+            if (!_hasDisambig && _pageHasDisambig) {
                 _disambigTh = document.createElement('th');
                 _disambigTh.textContent = 'Disambiguation';
             }
