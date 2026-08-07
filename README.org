@@ -91310,13 +91310,25 @@ helpers.js:119 Uncaught TypeError: Cannot read properties of undefined (reading 
 #+end_example
 
 ** TODO add new feature
-*** "Recording artist" column always present, but only filled if the "Recording artist:" div is present
+** "Recording artist" column always present, but only filled if the "Recording artist:" div is present
+
+Add a new "Recording artist" column if the following constructs are present in the original "Title" column, e.g. in
+https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd in the DVD-Video medium
+
+#+begin_example
+<div class="small">Recording artist:<!-- --> <bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a> &amp; <a href="/artist/d6652e7b-33fe-49ef-8336-4c863b4f996f" title="E Street Band, The">The E Street Band</a></bdi></div>
+#+end_example
+
+ONLY add the new colum if at least on track has such an entry
 
 #+begin_example
 <div class="small">Recording artist:<!-- --> <bdi><a href="/artist/82322886-4c92-4509-9611-ac2173438469" title="Riders Against the Storm (husband/wife hip hop duo)">Riders Against the Storm</a></bdi></div>
 #+end_example
+** exchange the columns "Recording artist" and "Artist", make "Artist" come first
 
-*** DONE "E Street Band" is missing on non various artists releases in "Artist" column
+exchange the columns "Recording artist" and "Artist", make "Artist" come first
+
+** DONE "E Street Band" is missing on non various artists releases in "Artist" column
 
 On e.g https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc
 
@@ -91344,7 +91356,7 @@ Total load time: 299ms">🎨CAA: 299ms</span><span id="mb-info-display-rel" styl
 
 but the final "Artist" column shows just "Bruce Springsteen" instead of "Bruce Springsteen & The E Street Band" (of course both hyperlinked)
 
-*** <div class="ars"> in it's own column and not together with just the title and optional disambiguation comment
+** DONE <div class="ars"> in it's own column and not together with just the title and optional disambiguation comment
 
 Currently the complete "Title" column @debug/area-column.html on the initial page e.g. from
 https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd see @debug/tracklist-multiple-mediums.html
@@ -91375,19 +91387,228 @@ If the following containers are present in the "Title" data cell
 
 make them a new configurable collabsable column (default: false) in the final rendered table, rendere multi row specifically @debug/ucd.html
 
-*** <div class="ars ISRC"> and <div class="ars AcoustID"> (collapsable) in it's own column and not together with just the title and optional disambiguation comment
-
-*** act on @debug/fix.org
+** DONE <div class="ars ISRC"> and <div class="ars AcoustID"> (collapsable) in it's own column and not together with just the title and optional disambiguation comment
+** DONE act on @debug/fix.org
 
 act on @debug/fix.org
 
 also check @debug/tracklist-live.html for disamiguation information and add a new column for it
 
-*** problem
+** DONE problem
 
 @debug/problem.html shows that on e.g. https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd the acoustid
 extraction doesn't work and the "ARs" column is NOT collapsable compared to @debug/g.html where everything is OK
 
-*** Acoustids not working yet, everything else is ok, we tackle this later, commit, push
+** DONE Acoustids not working yet, everything else is ok, we tackle this later, commit, push
 
 Acoustids not working yet, everything else is ok, we tackle this later, commit, push
+
+** DONE ok
+
+actually both, AcoustID and ISRC extraction are working fine, the problem is it sometimes takes a while until both are
+loaded on the original page by the jesus userscript and if not yet present they of course cannot be renderd on the final
+page
+
+1.)
+
+rename the current column names:
+
+AcoustID => AcoustIDs
+ISRC => ISRCs
+
+2.)
+
+Extract the video icon '<span class="video" title="This recording is a video"></span>' for e.g. on the https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd
+release in it's own "Video" column like we did for e.g. for the 'artist-recordings' pageType 
+
+#+begin_example
+        {
+            type: 'artist-recordings',
+            ...
+            features: {
+	        ...
+                columnExtractors: [
+                    { sourceColumn: 'Name', extractor: 'video', syntheticColumns: ['Video'] }
+                ],
+#+end_example
+
+Only create the "Video" column, when a sub-table has at least one track with the video glyph
+
+** DONE video column bug
+
+The video column is actually extracted but has NO column header @debug/no-video-colmn-header.html
+
+** DONE add a progress indicator when fetching releases with overflow tracklists
+
+Add a progress indicator when fetching releases with overflow tracklists, like what we already do when fetching paginated pageTypes
+@debug/progress.html
+
+** DONE only render the following columns when at least on track has a value
+
+Only render the following columns when at least on track has a value for it
+
+#+begin_example
+Disambiguation
+AcoustIDs
+ISRCs
+#+end_example
+
+** DONE Loading overflow tracks: medium 1 of 1...
+
+The progress span actually only ever shows "Loading overflow tracks: medium 1 of 1..." instead of
+
+#+begin_example
+<span id="mb-fetch-progress-wrap" style="display: inline-flex; align-items: center; vertical-align: middle;"><span id="mb-fetch-progress-outer" style="display: inline-block; position: relative; width: auto; min-width: 420px; max-width: 750px; height: 20px; background: rgb(224, 224, 224); border-radius: 4px; overflow: hidden; vertical-align: middle; border: 1px solid rgb(187, 187, 187);"><span id="mb-fetch-progress-fill" style="display: block; position: absolute; top: 0px; left: 0px; height: 100%; width: 0%; background: rgb(255, 204, 204); transition: width 0.2s, background 0.3s; border-radius: 3px 0px 0px 3px;"></span><span id="mb-fetch-progress-label" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.75em; font-weight: bold; color: rgb(51, 51, 51); white-space: nowrap; pointer-events: none;">Loading overflow tracks: medium 1 of 1...</span></span></span>
+#+end_example
+
+instead of the proposed "Loading overflow tracks: medium X of Y... (Z tracks) - Ns left"
+
+** DONE bug
+
+the button should be wider, currently it cuts of "Load" from "Loading"
+
+** DONE render the disambiguation with the "(" and ")"
+
+1.)
+
+Currently the disambiguation is rendered as
+
+#+begin_example
+(version 1)
+#+end_example
+
+it should actually be without the the "(" and ")", so
+
+#+begin_example
+version 1
+#+end_example
+
+2.)
+
+change
+
+#+begin_example
+                integerColumns: [
+                    { sourceColumn: 'Length', align: ':' },
+                    { sourceColumn: 'Rating', align: 'C' }
+                ],
+#+end_example
+
+to
+
+#+begin_example
+                integerColumns: [
+                    { sourceColumn: '#', align: 'C' },
+                    { sourceColumn: 'Length', align: ':' },
+                    { sourceColumn: 'Rating', align: 'C' }
+                ],
+#+end_example
+
+for the pageType 'release-tracks'
+
+** DONE plan: add support for work
+*** initial
+
+Add new columns to support the MusicBrainz "recording of <work>" reference (AR - advanced relationships) and optional
+attributes when present at least in one track of the "Title" column
+
+For the format see
+
+#+begin_example
+@debug/recording.html
+@debug/live-recording.html
+@debug/live-cover-recording.html
+#+end_example
+
+taken from e.g. https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd and https://musicbrainz.org/release/e7969bdb-f9a3-4421-865a-b0194ef2c0ed
+
+The column names should be
+
+1.)
+
+"Recording of" filled with e.g. "Dancing in the Dark" from
+
+#+begin_example
+<a class="wrap-anywhere" href="/work/f8556ea5-f89f-3c2f-922f-d5225c1a4511"><bdi>Dancing in the Dark</bdi></a>
+#+end_example
+
+2.)
+
+and if one or more of the following attributes are present before the "<dt>recording of:</dt>, e.g. "<dt>live recording of:</dt>"
+
+#+begin_example
+acappella
+cover
+demo
+instrumental
+karaoke
+live
+medley
+partial
+#+end_example
+
+add a column with the attribut name (first letter uppercased) for each attribute present. The value should be
+"true"/"false" if present/absent
+
+3.)
+
+add the columns before the "ARs" column
+ 
+*** act on @debug/rec-of.org
+
+act on @debug/rec-of.org
+
+*** adjustments to the plan
+
+for the case of the "Recording of" and later maybe more "ARs" extractions, do not remove the extracted data from the
+"ARs" column, leave that column as is.
+
+make this whole feature configurable (default: true)
+
+*** add the work glyph
+
+1.)
+
+add the work glyph
+
+#+begin_example
+<span class="worklink"></span>
+#+end_example
+
+which exists before the actual work reference e.g. '<a class="wrap-anywhere" href="/work/e8a5fe99-0aff-3e7b-840c-7ab96cb702be"><bdi>Badlands</bdi></a>'
+to the current "Recording of" column name so that it reads "Recording of <worklink glyph>"
+
+2.)
+
+in the "Recording of" attributes columns change the current "true"/"false" values to "attribute name"/empty
+
+a.) So e.g. when the "live" attribute is present on a track instead of rendering "true" render the actual attribute name "live"
+b.) So e.g. when the "live" attribute is NOT present on a track instead of rendering "false" render an empty cell
+
+the same for all other attribute columns
+
+*** glyph is still missing @debug/still-missing-glyph.html
+
+glyph is still missing @debug/still-missing-glyph.html
+
+*** add the "Recording of" date if present in the "Title" data cell
+
+add the "Recording of" date if present in the "Title" data cell e.g. "(on 1978-07-07)" as "1978-07-07" in a new column
+named "Date" after the "Recording of" column
+
+*** still no blank
+
+1.)
+
+still no blank @ebug/still-no-blank.html
+
+2.)
+
+add the "Recording of" date if present in the "Title" data cell e.g. "(on 1978-07-07)" as "1978-07-07" in a new column
+named "Date" after the "Recording of" column
+
+*** render the "Recording of" column after the recording of attribut columns
+
+render the "Recording of" and "Date" (at the same time rename it to "Recording date") column after the recording of attribut columns
+** TODO stil no blank before work glyph
+
