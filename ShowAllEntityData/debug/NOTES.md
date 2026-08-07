@@ -2761,3 +2761,236 @@ simultaneously, nested dl.ars blocks intact, dt text unchanged), the
 setting-off case creates neither column, and idempotency (extended the
 existing Test4 double-run fixture to also include a "recording of" block).
 
+### Follow-up: work glyph in the header, attribute-name values instead of true/false
+
+Two more corrections after the initial implementation:
+
+1. **Work glyph in the "Recording of" header.** MusicBrainz always
+   renders an empty, CSS-styled `<span class="worklink"></span>` right
+   before a work link (confirmed in all three fixtures — e.g.
+   `debug/recording.html`'s `<dd><span class="worklink"></span><a
+   href="/work/...">`) — purely a visual icon, no text/content of its
+   own. Since it's stateless (identical regardless of which row it came
+   from) and this userscript only ever runs on musicbrainz.org (so MB's
+   own site-wide CSS for `.worklink` is always available, wherever the
+   span ends up in the DOM), the `<th>` now gets a **freshly-created**
+   `<span class="worklink">` appended after the text "Recording of " —
+   no need to clone one from any particular row. Confirmed this doesn't
+   disturb any of the existing `th.textContent.trim() === 'Recording of'`
+   header-name-matching checks elsewhere in the function (idempotency
+   guard, `_arsHeaderRef` lookup) — `textContent` ignores the empty span
+   entirely, so it still trims to exactly `"Recording of"`.
+2. **Attribute cell values**: `'true'`/`'false'` → the attribute word
+   itself (e.g. `'live'`) when present, empty string when absent — user's
+   literal wording: "instead of rendering 'true' render the actual
+   attribute name 'live'" / "instead of rendering 'false' render an empty
+   cell". One-line change in the per-row extraction
+   (`_td.textContent = _recOfAttrs.includes(attr) ? attr : ''` — previously
+   left the `? 'true' : 'false'` ternary in place). Column header names
+   stay capitalized ("Live") — only the cell VALUES changed to the raw
+   lowercase attribute word, matching the user's example verbatim.
+
+Both changes verified via the existing Test12 (3-table page-wide union
+fixture) — added a `span.worklink` presence check on the "Recording of"
+header, and updated every attribute-cell assertion from `'true'`/`'false'`
+to the attribute word/empty string.
+
+### Follow-up: work glyph never actually rendered (debug/missing-glyph.html)
+
+User's screenshot showed the "Recording of" header with no icon at all —
+just plain text + the standard sort/filter controls. Confirmed via
+`debug/missing-glyph.html` (a snapshot of the FINAL rendered
+`.mb-col-hdr-flex` for this column): `<div class="mb-col-hdr-flex">Recording
+of <span class="sort-icon-btn">⇅</span>...` — no `span.worklink` anywhere.
+
+Root cause: `makeTableSortableUnified()` (`:40317`) rebuilds **every**
+`<th>` from scratch, unconditionally — `const colName = th.textContent...`
+(reads text only) immediately followed by `th.innerHTML = ''` (wipes
+*everything*, including any child element), then rebuilds a fresh
+`.mb-col-hdr-flex` from that plain `colName` string
+(`hdrFlex.appendChild(document.createTextNode(\`${colName} \`))`). The
+glyph `<span class="worklink">` I'd appended directly to `_recOfTh` in
+`applyExtractTrackTitleData()` (pre-processing, well before this rebuild
+runs) never had a chance — this pipeline stage doesn't preserve or even
+look at a `<th>`'s existing child elements, only its flattened text.
+
+The jsdom test suite couldn't have caught this: it only exercises
+`applyExtractTrackTitleData()` directly, never simulates
+`makeTableSortableUnified()`'s rebuild — a real blind spot for anything
+that assumes a `<th>`'s content survives past pre-processing.
+
+Fix: reverted `_recOfTh` to plain `textContent = 'Recording of'` (no
+glyph at creation time), and added a new post-render function,
+`_recOfInitColHeaderGlyph()`, mirroring the *already-established* pattern
+`_artInitCaaColHeaderToggle()` (`:52060`) uses for the CAA/EAA
+column-header thumbnail toggle button — inject extra UI into an
+already-built `.mb-col-hdr-flex` by locating the target column's `<th>`
+by name AFTER the standard render pipeline has finished, not before.
+Called from the tail of `renderGroupedTable()`, right alongside
+`initAcoustIdIsrcObserver()` (same release-tracks-only, safe-to-re-run,
+no-op-when-absent shape). Idempotency uses a `span.worklink` presence
+check directly, since — unlike the CAA/EAA button — there's no dedicated
+marker attribute already established for this to key off.
+
+Verified with a new, dedicated jsdom test (Test14) that manually builds
+the *exact* `.mb-col-hdr-flex` structure confirmed in
+`debug/missing-glyph.html` (text node + `span.sort-icon-btn`, no
+`makeTableSortableUnified()` simulation needed since the structure itself
+is now hand-built to match) — confirms the glyph lands immediately after
+the text node and before the sort icons, other columns are untouched, and
+a second call doesn't duplicate it.
+
+### Follow-up: glyph in the DOM but still invisible (debug/still-missing-glyph.html)
+
+The `_recOfInitColHeaderGlyph()` fix above got `<span class="worklink">`
+correctly positioned in the live DOM (confirmed via
+`debug/still-missing-glyph.html`: `<div class="mb-col-hdr-flex">Recording
+of <span class="worklink"></span><span class="sort-icon-btn">⇅</span>...`
+— exactly where intended) — but the icon still didn't render visually.
+
+Since live CSS isn't inspectable from this environment, asked the user to
+compare browser devtools' Computed panel for the (working) `span.worklink`
+inside an "ARs" cell's `dl.ars` vs. the (invisible) one just injected into
+the header. Both showed **identical** `background-image` (the same
+`data:image/svg+xml` icon), `background-size: 14px`, `background-position:
+0px 0px`, `background-repeat: no-repeat`, `padding-left: 16px` — i.e. the
+`.worklink` CSS rule matches and applies correctly in BOTH places; it is
+NOT scoped to `.ars`/`dd` as first suspected. The one real difference:
+`display: inline` / `height: auto` (→ ~13px, from line-height) in the
+working "ARs" copy, vs. `display: block` / `height: 0px` in the header
+copy.
+
+Root cause: per the CSS Flexbox spec, **any direct child of a `display:
+flex` container has its outer `display` "blockified"** — forced to a
+block-level box — regardless of what `display` value is actually set on
+that child (even an explicit `inline-block` gets blockified this way).
+`.mb-col-hdr-flex` is `display:flex`, so the injected glyph span, being
+one of its direct children, is blockified to `display:block` no matter
+what. A plain inline element flowing mid-text gets a non-zero height for
+free from the surrounding line box's line-height, even with zero content
+of its own (this is what makes the "ARs" copy visible) — but a
+blockified flex item is no longer part of any line box, so with no
+explicit `height` set, an empty block box is simply 0px tall, collapsing
+the (correctly positioned, correctly painted) background-image icon into
+an invisible 16px×0px sliver.
+
+Fix: `glyph.style.height = '14px'` (matching the icon's own
+`background-size`) on the injected span — the only thing actually needed;
+width already works correctly via `padding-left` regardless of block vs.
+inline context, confirmed by both computed-style panels showing the same
+16px padding-left. Verified via jsdom (can't verify actual pixel
+rendering without a layout engine, but confirms the inline style is
+correctly set) by extending Test14 with an explicit
+`glyph.style.height === '14px'` assertion.
+
+### Follow-up: no gap between the glyph and the sort icons
+
+Glyph now visible, but sitting flush against the `⇅` sort icon (the
+glyph has no intrinsic spacing of its own — its `background-image` only
+occupies its own `padding-left`, nothing to its right). Added a plain
+`document.createTextNode(' ')` right after the glyph in
+`_recOfInitColHeaderGlyph()`, so the flex row reads `"Recording of "` +
+glyph + `" "` + sort icons. Idempotency guard (checks for an existing
+`span.worklink` before inserting anything) already covers the space too
+— a second call skips both, no separate fix needed there.
+
+### Follow-up: still no gap, even with the trailing space text node (debug/still-no-blank.html)
+
+`debug/still-no-blank.html`'s snapshot confirmed the trailing
+`document.createTextNode(' ')` from the previous fix WAS present in the
+live DOM — `<span class="worklink" style="height: 14px;"></span> <span
+class="sort-icon-btn">⇅</span>` — yet the glyph and the `⇅` icon still
+rendered flush against each other, no visible gap.
+
+Root cause: standard CSS whitespace-collapsing. A whitespace-only text
+node sitting directly between two block-level (or, as established in the
+previous entry, *blockified*) boxes collapses to zero rendered width —
+it only survives as visible space between genuinely inline-flowing
+content sharing a line box, which neither the glyph nor the sort-icon
+span are anymore once inside `.mb-col-hdr-flex` (`display:flex`
+blockifies every direct child, glyph included). A text node has no
+`margin`/`padding` of its own to fall back on the way an element does.
+
+Fix: replaced the trailing text node with `glyph.style.marginRight =
+'4px'` on the glyph element itself — margin isn't subject to
+whitespace-collapsing the way a text node is, so this produces a
+guaranteed, real gap regardless of the flex-blockification at play.
+Updated Test14 to assert `glyph.style.marginRight === '4px'` instead of
+the old text-node-based assertions, and that the sort icon immediately
+follows the glyph (no text node in between anymore).
+
+### Follow-up: new "Date" column from the "recording of" `(on YYYY-MM-DD)` suffix
+
+User's next request also asked for the optional `(on YYYY-MM-DD)` date
+MusicBrainz appends after the work link inside the same "recording of"
+`<dd>` (e.g. `<dd><span class="worklink"></span><a
+href="/work/...">Rave On</a> (on 1978-07-07)<dl class="ars">...`) to be
+extracted into its own new "Date" column, positioned directly after
+"Recording of" and before the attribute columns.
+
+Added `_parseRecOfDate(dd)`: finds the `<dd>`'s direct-child TEXT NODE
+matching `/\(on [\d-]+\)/` (the date sits as a bare text node between the
+work `<a>` and the nested `dl.ars` writer/publisher blocks, same DOM
+shape confirmed in `debug/recording.html`/`debug/live-recording.html`/
+`debug/live-cover-recording.html`) and extracts just the `YYYY-MM-DD`
+substring — returns `null` when absent (most "recording of" blocks have
+no date, e.g. a work with no known original recording date).
+
+Same purely-additive, page-wide-gated, single-master-setting pattern as
+"Recording of" and the attribute columns: folded into the existing
+page-wide attribute-presence scan loop (adds `_pageHasRecOfDate`,
+computed alongside `_presentRecOfAttributes` in the same per-row pass,
+zero extra DOM traversal), a new `_recOfDateTh` header inserted right
+after `_recOfTh` (before the attribute `<th>`s, still all chained via
+`.before()` off the "ARs" header), and a new `<td>` in the per-row
+extraction block — which required hoisting `_recOfDd` resolution out of
+the `_recOfTh`-only branch so both the work-link `<td>` and the new date
+`<td>` share the same lookup. `_recOfDt`/`_recOfDd` are still read-only
+here, same as before — "ARs" is untouched by this addition too.
+
+Verified via jsdom: Test12 extended to assert the "Date" column appears
+with the correct extracted value across all 3 fixture tables (including
+one with no date, confirming the column still renders with an empty cell
+rather than being entirely per-row conditional), with position
+assertions updated for the extra column before "ARs"; Test13 extended to
+confirm no "Date" column is created either when the whole
+`sa_enable_release_tracks_recording_of_columns` setting is off.
+
+### Follow-up: reordered "Recording of"/"Recording date" after the attribute columns, renamed "Date"
+
+User's next request: render "Recording of" and "Date" (renamed to
+"Recording date") AFTER the recording-of attribute columns, instead of
+before. Final column order (still all directly before "ARs"): attribute
+columns (`Acappella`/`Cover`/`Demo`/`Instrumental`/`Karaoke`/`Live`/
+`Medley`/`Partial`, in `REC_OF_ATTRIBUTES`' fixed canonical order) →
+"Recording of" → "Recording date" → "ARs".
+
+Both the header-creation block and the row-level `<td>`-append block in
+`applyExtractTrackTitleData()` insert everything via `.before(ref)`
+against the same, unchanging `ARs` reference (`_arsHeaderRef` for
+headers; plain `row.appendChild()` in append-order for `<td>`s, since
+"ARs" is always the last thing appended in the row). Against a fixed
+`.before(ref)` target, whichever element is inserted LAST ends up
+closest to `ref` — so simply reordering the three code blocks (attribute
+`forEach` loop, then "Recording of" `<th>` creation, then "Recording
+date" `<th>` creation) was sufficient to reorder the rendered columns;
+same reordering applied to the row-level `<td>`-creation blocks so
+`row.appendChild()`'s append order matches. No new insertion-point logic
+needed.
+
+Renamed the "Date" column to "Recording date" throughout: header
+creation/idempotency-check string, the `configSchema` description for
+`sa_enable_release_tracks_recording_of_columns`, and the function-level
+JSDoc bullet — a bare "Date" read ambiguously sitting among a release
+tracklist's other columns.
+
+Verified via jsdom: updated Test12's position assertions for the new
+order (discovered, while updating them, that the attribute columns
+themselves are NOT emitted in the order their `<dt>` text lists them —
+e.g. `"live cover recording of:"` lists "live" before "cover", but the
+rendered columns show "Cover" before "Live" — because insertion order
+follows `REC_OF_ATTRIBUTES`' fixed canonical array order, not the
+per-track `<dt>` word order, which is the whole point of a page-wide
+canonical order in the first place); renamed all "Date"-column
+assertions (Test12, Test13) to "Recording date".
+

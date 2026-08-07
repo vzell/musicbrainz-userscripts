@@ -1669,13 +1669,15 @@
             label: 'Show "Recording of" + attribute columns',
             type: 'checkbox',
             default: true,
-            description: 'Adds a "Recording of" column (the linked work, e.g. "Dancing in the ' +
-                         'Dark") plus one true/false column per recording attribute actually ' +
-                         'used on the release (Acappella, Cover, Demo, Instrumental, Karaoke, ' +
-                         'Live, Medley, Partial — e.g. a "live cover recording of:" relationship ' +
-                         'sets both "Live" and "Cover" to true for that track), extracted from ' +
-                         'the release tracklist\'s "ARs" relationship data. "ARs" itself is left ' +
-                         'completely unchanged — the work link appears in both places.'
+            description: 'Adds one column per recording attribute actually used on the release ' +
+                         '(Acappella, Cover, Demo, Instrumental, Karaoke, Live, Medley, Partial — ' +
+                         'e.g. a "live cover recording of:" relationship shows the attribute name ' +
+                         'in both the "Live" and "Cover" cells for that track, empty otherwise), ' +
+                         'a "Recording of" column (the linked work, e.g. "Dancing in the Dark"), ' +
+                         'and a "Recording date" column for the recording date when present ' +
+                         '(e.g. "1978-07-07"), extracted from the release tracklist\'s "ARs" ' +
+                         'relationship data. "ARs" itself is left completely unchanged — the ' +
+                         'work link appears in both places.'
         },
 
         sa_enable_ars_collapse: {
@@ -6988,23 +6990,35 @@
      *     recording of:</dt><dd><a href="/work/...">Rave On</a> (on
      *     1978-07-07)<dl class="ars">...writer/publisher...</dl></dd>`.
      *     Unlike every other bullet here, this one is **purely additive**:
-     *     the work link is *cloned* (not moved) into a new "Recording of"
-     *     column, and one true/false column per attribute word actually
-     *     used anywhere on the release (`Acappella`/`Cover`/`Demo`/
-     *     `Instrumental`/`Karaoke`/`Live`/`Medley`/`Partial`) — but
-     *     `_bareArsDiv` itself, and everything inside it, is left
-     *     completely untouched, so "ARs" still gets the exact same full
-     *     content it always has (including this same work link, now
-     *     duplicated) — per explicit instruction, since (unlike Video/
-     *     Recording artist/Disambiguation/AcoustID/ISRC) this data isn't
-     *     the *only* thing living in its source element: the nested
-     *     writer/lyricist/publisher `dl.ars` blocks have no column of
-     *     their own and must not be lost. Also gated by
+     *     one column per attribute word actually used anywhere on the
+     *     release (`Acappella`/`Cover`/`Demo`/`Instrumental`/`Karaoke`/
+     *     `Live`/`Medley`/`Partial`) — cell text is the attribute word
+     *     itself when present (e.g. `"live"`), empty when absent — then a
+     *     "Recording of" column (the work link, *cloned* not moved; its
+     *     header additionally gets MB's own empty, CSS-styled work-glyph
+     *     icon, `<span class="worklink">`, matching the visual convention
+     *     that it's always rendered right before a work link — injected
+     *     post-render by `_recOfInitColHeaderGlyph()`, since anything
+     *     appended to this `<th>` here would be destroyed the moment
+     *     `makeTableSortableUnified()` rebuilds it); then a "Recording
+     *     date" column right after it for the optional `(on YYYY-MM-DD)`
+     *     MB appends after the work link (`_parseRecOfDate` — absent for
+     *     the plain "recording of:" case, see debug/recording.html), its
+     *     own independent page-wide presence gate (a "recording of" can
+     *     exist with no date). But `_bareArsDiv` itself, and everything
+     *     inside it, is left completely untouched, so "ARs" still gets
+     *     the exact same full content it always has (including this same
+     *     work link, now duplicated) — per explicit instruction, since
+     *     (unlike Video/Recording artist/Disambiguation/AcoustID/ISRC)
+     *     this data isn't the *only* thing living in its source element:
+     *     the nested writer/lyricist/publisher `dl.ars` blocks have no
+     *     column of their own and must not be lost. Also gated by
      *     `sa_enable_release_tracks_recording_of_columns` (default on) —
      *     the only piece of this whole function with its own on/off
-     *     setting. Inserted directly before "ARs" (not chained off
+     *     setting. All inserted directly before "ARs" (not chained off
      *     Title/Video/Disambiguation/Artist/Recording-artist like
-     *     everything above), per explicit instruction.
+     *     everything above), in the order attribute columns → "Recording
+     *     of" → "Recording date", per explicit instruction.
      *
      * Unlike every `ColumnDataExtractor` entry (`splitLocation`,
      * `splitArea`, `eventParts`, …), which are purely additive (read
@@ -7071,6 +7085,7 @@
         const _recOfEnabled = Lib.settings.sa_enable_release_tracks_recording_of_columns !== false;
         const _pageHasRecOf = _recOfEnabled && _anyTitleCellMatches(td => _findRecOfDt(td) !== null);
         const _presentRecOfAttributes = new Set();
+        let _pageHasRecOfDate = false;
         if (_recOfEnabled) {
             _tables.forEach(table => {
                 const _thRow = table.querySelector(':scope > thead > tr');
@@ -7081,7 +7096,9 @@
                 _tb.querySelectorAll(':scope > tr').forEach(tr => {
                     const td = tr.children[_tIdx];
                     if (!td) return;
-                    _parseRecOfAttributes(_findRecOfDt(td)).forEach(attr => _presentRecOfAttributes.add(attr));
+                    const _dt = _findRecOfDt(td);
+                    _parseRecOfAttributes(_dt).forEach(attr => _presentRecOfAttributes.add(attr));
+                    if (_parseRecOfDate(_dt?.nextElementSibling) !== null) _pageHasRecOfDate = true;
                 });
             });
         }
@@ -7143,25 +7160,28 @@
                 _theadRow.appendChild(_isrcTh);
             }
 
-            // "Recording of" + attribute columns — purely additive (see
-            // this function's JSDoc), inserted directly before "ARs" (not
-            // chained off Title/Video/Disambiguation/Artist/Recording
-            // artist like everything else), in the fixed canonical
-            // attribute order. `_newAttrThs` tracks only the ones created
-            // THIS pass, for the row loop below — mirrors how `_disambigTh`
-            // etc. being non-null (vs. already-existing) gates row-level
-            // insertion everywhere else in this function.
+            // Attribute columns + "Recording of" + "Recording date" —
+            // purely additive (see this function's JSDoc), inserted
+            // directly before "ARs" (not chained off
+            // Title/Video/Disambiguation/Artist/Recording artist like
+            // everything else). Each insertion below is `.before(ref)`
+            // against the same fixed `ARs` reference, so — since a later
+            // insertion against an unchanging reference always lands
+            // closer to that reference than an earlier one — creating the
+            // attribute columns FIRST, then "Recording of", then
+            // "Recording date" produces the desired final order:
+            // [attribute columns…], Recording of, Recording date, ARs.
+            // `_newAttrThs` tracks only the ones created THIS pass, for
+            // the row loop below — mirrors how `_disambigTh` etc. being
+            // non-null (vs. already-existing) gates row-level insertion
+            // everywhere else in this function.
             let _recOfTh = null;
+            let _recOfDateTh = null;
             const _newAttrThs = [];
             if (_pageHasRecOf) {
                 const _arsHeaderRef = _hasArs
                     ? _headerCells.find(th => th.textContent.trim() === 'ARs')
                     : _arsTh;
-                if (!_headerCells.some(th => th.textContent.trim() === 'Recording of')) {
-                    _recOfTh = document.createElement('th');
-                    _recOfTh.textContent = 'Recording of';
-                    _arsHeaderRef.before(_recOfTh);
-                }
                 REC_OF_ATTRIBUTES.forEach(attr => {
                     if (!_presentRecOfAttributes.has(attr)) return;
                     const _label = attr.charAt(0).toUpperCase() + attr.slice(1);
@@ -7171,6 +7191,33 @@
                     _arsHeaderRef.before(_th);
                     _newAttrThs.push({ attr, th: _th });
                 });
+                if (!_headerCells.some(th => th.textContent.trim() === 'Recording of')) {
+                    _recOfTh = document.createElement('th');
+                    // Plain text only — the work-glyph icon (MB's own empty,
+                    // CSS-styled <span class="worklink">, always rendered
+                    // right before a work link) can't be appended here: this
+                    // whole <th> gets wiped and rebuilt from a plain colName
+                    // STRING by makeTableSortableUnified() (`th.innerHTML =
+                    // ''` discards any child element before rebuilding the
+                    // .mb-col-hdr-flex layout — confirmed via
+                    // debug/missing-glyph.html), so anything appended here
+                    // would never survive into the final rendered header.
+                    // Injected post-render instead — see
+                    // _recOfInitColHeaderGlyph().
+                    _recOfTh.textContent = 'Recording of';
+                    _arsHeaderRef.before(_recOfTh);
+                }
+                // "Recording date" — the optional "(on YYYY-MM-DD)"
+                // following the work link — same page-wide-decision
+                // reasoning as everything else here, via its own
+                // `_pageHasRecOfDate` scan (a track can have a "recording
+                // of" with no date at all — see debug/recording.html).
+                // Right after "Recording of".
+                if (_pageHasRecOfDate && !_headerCells.some(th => th.textContent.trim() === 'Recording date')) {
+                    _recOfDateTh = document.createElement('th');
+                    _recOfDateTh.textContent = 'Recording date';
+                    _arsHeaderRef.before(_recOfDateTh);
+                }
             }
 
             // Video then Disambiguation, chained right after Title in that
@@ -7194,7 +7241,7 @@
             }
 
             if (!_disambigTh && !_recArtistTh && !_arsTh && !_acoustIdTh && !_isrcTh && !_videoTh &&
-                !_recOfTh && _newAttrThs.length === 0) return; // already fully processed
+                !_recOfTh && !_recOfDateTh && _newAttrThs.length === 0) return; // already fully processed
 
             _tbody.querySelectorAll(':scope > tr').forEach(row => {
                 const _cells = Array.from(row.children);
@@ -7259,34 +7306,45 @@
                     (_artistIdx !== -1 ? _cells[_artistIdx] : _rowInsertCursor).after(_td);
                 }
 
-                // "Recording of" + attribute columns — read-only (see this
-                // function's JSDoc): clones the work link, never touches
-                // `_bareArsDiv`, so the existing ARs block right below still
-                // moves its full, untouched content into "ARs" exactly as
-                // it always has. Must run before that block purely for
-                // column ORDER (row.appendChild always appends at the
-                // current tail, so calling it here first is what lands
-                // these <td>s immediately before the "ARs" <td>, matching
-                // the header order above) — not because the ARs block would
-                // otherwise consume anything these need.
-                if (_recOfTh || _newAttrThs.length > 0) {
+                // Attribute columns + "Recording of" + "Recording date" —
+                // read-only (see this function's JSDoc): clones the work
+                // link, never touches `_bareArsDiv`, so the existing ARs
+                // block right below still moves its full, untouched
+                // content into "ARs" exactly as it always has. Must run
+                // before that block purely for column ORDER
+                // (row.appendChild always appends at the current tail, so
+                // calling it here first is what lands these <td>s
+                // immediately before the "ARs" <td>) — not because the ARs
+                // block would otherwise consume anything these need.
+                // <td> append order mirrors the header creation order
+                // above: attribute columns, then Recording of, then
+                // Recording date.
+                if (_recOfTh || _recOfDateTh || _newAttrThs.length > 0) {
                     const _recOfDt = _findRecOfDt(_titleTd);
-                    if (_recOfTh) {
-                        const _td = document.createElement('td');
-                        const _recOfDd = _recOfDt?.nextElementSibling;
-                        const _workAnchor = _recOfDd && _recOfDd.tagName === 'DD'
-                            ? _recOfDd.querySelector(':scope > a')
-                            : null;
-                        if (_workAnchor) _td.appendChild(_workAnchor.cloneNode(true));
-                        row.appendChild(_td);
-                    }
+                    const _recOfDdRaw = _recOfDt?.nextElementSibling;
+                    const _recOfDd = _recOfDdRaw && _recOfDdRaw.tagName === 'DD' ? _recOfDdRaw : null;
                     if (_newAttrThs.length > 0) {
                         const _recOfAttrs = _parseRecOfAttributes(_recOfDt);
                         _newAttrThs.forEach(({ attr }) => {
                             const _td = document.createElement('td');
-                            _td.textContent = _recOfAttrs.includes(attr) ? 'true' : 'false';
+                            // Cell text is the attribute word itself when
+                            // present (e.g. "live"), empty when absent — not
+                            // true/false.
+                            if (_recOfAttrs.includes(attr)) _td.textContent = attr;
                             row.appendChild(_td);
                         });
+                    }
+                    if (_recOfTh) {
+                        const _td = document.createElement('td');
+                        const _workAnchor = _recOfDd ? _recOfDd.querySelector(':scope > a') : null;
+                        if (_workAnchor) _td.appendChild(_workAnchor.cloneNode(true));
+                        row.appendChild(_td);
+                    }
+                    if (_recOfDateTh) {
+                        const _td = document.createElement('td');
+                        const _date = _parseRecOfDate(_recOfDd);
+                        if (_date) _td.textContent = _date;
+                        row.appendChild(_td);
                     }
                 }
 
@@ -7408,6 +7466,29 @@
         if (!_prefix) return [];
         const _words = _prefix.split(/\s+/);
         return REC_OF_ATTRIBUTES.filter(attr => _words.includes(attr));
+    }
+
+    /**
+     * Parses the optional date MusicBrainz appends right after the work
+     * link in a "recording of:" `<dd>` — e.g. `<a href="/work/...">Rave
+     * On</a> <!-- -->(on 1978-07-07)<dl class="ars">...` (see
+     * debug/live-recording.html/live-cover-recording.html; the plain
+     * "recording of:" case, debug/recording.html, has no date at all).
+     * Matches `[\d-]+` rather than a strict `YYYY-MM-DD` shape since
+     * MusicBrainz dates can have partial precision (year-only,
+     * year-month).
+     *
+     * @param {?HTMLElement} dd - The `<dd>` sibling of a `_findRecOfDt`
+     *   result (may be `null`/absent).
+     * @returns {?string} e.g. `"1978-07-07"`, or `null` if no date present.
+     */
+    function _parseRecOfDate(dd) {
+        if (!dd) return null;
+        const _textNode = Array.from(dd.childNodes)
+            .find(n => n.nodeType === Node.TEXT_NODE && /\(on [\d-]+\)/.test(n.textContent));
+        if (!_textNode) return null;
+        const _match = _textNode.textContent.match(/\(on ([\d-]+)\)/);
+        return _match ? _match[1] : null;
     }
 
     /**
@@ -7581,6 +7662,90 @@
 
             _sweep();
             [500, 1500, 3000, 6000].forEach(delay => setTimeout(_sweep, delay));
+        });
+    }
+
+    /**
+     * Injects (or re-confirms) MusicBrainz's own empty, CSS-styled
+     * work-glyph icon (`<span class="worklink">`, always rendered right
+     * before a work link natively) into the "Recording of" column's
+     * header, right after its text.
+     *
+     * Can't be done at `applyExtractTrackTitleData()`'s pre-processing
+     * time (where the `<th>` itself is created): `makeTableSortableUnified()`
+     * rebuilds every `<th>` from a plain `colName` STRING derived from
+     * `th.textContent` — `th.innerHTML = ''` unconditionally wipes any
+     * child element first — so anything appended to the `<th>` before that
+     * point is destroyed the moment the standard render pipeline builds
+     * the real `.mb-col-hdr-flex` layout (confirmed via
+     * debug/missing-glyph.html). Must run AFTER that, mirroring
+     * `_artInitCaaColHeaderToggle()`'s established pattern for injecting
+     * extra UI into an already-built `.mb-col-hdr-flex`: find the named
+     * column's `<th>` post-render, locate its `.mb-col-hdr-flex`, insert
+     * idempotently (checked via a `span.worklink` presence guard, since —
+     * unlike CAA/EAA's toggle button — there's no dedicated marker
+     * attribute to key off).
+     *
+     * Called from the tail of `renderGroupedTable()`, alongside
+     * `initAcoustIdIsrcObserver()` — same release-tracks-only, re-run-
+     * safe, no-op-when-column-absent shape.
+     *
+     * @returns {void}
+     */
+    function _recOfInitColHeaderGlyph() {
+        if (activeDefinition?.type !== 'release-tracks') return;
+        document.querySelectorAll('table.tbl').forEach(table => {
+            const th = Array.from(table.querySelectorAll('thead th'))
+                .find(h => _cleanColHeaderText(h) === 'Recording of');
+            if (!th) return;
+            const hdrFlex = th.querySelector('.mb-col-hdr-flex');
+            if (!hdrFlex || hdrFlex.querySelector('span.worklink')) return;
+            const glyph = document.createElement('span');
+            glyph.className = 'worklink';
+            // .worklink's icon is a `background-image` painted into its
+            // `padding-left` area (confirmed via computed-style comparison
+            // against a working one inside "ARs": identical background-image
+            // /background-size:14px/padding-left:16px/background-origin:
+            // padding-box in BOTH places) — so the CSS rule itself DOES
+            // match here too, it isn't scoped to .ars/dd. What differs is
+            // `height`: inline elements mid-text get a non-zero height from
+            // the surrounding line box (~13px here, from line-height) even
+            // with no content of their own, but ANY direct child of a flex
+            // container — like this span, inside .mb-col-hdr-flex — has its
+            // outer display "blockified" per the CSS Flexbox spec
+            // (regardless of its own `display` value), which removes that
+            // line-box-derived height entirely; with no explicit height, a
+            // childless block box is just 0px tall — collapsing the
+            // otherwise-correctly-positioned icon to an invisible 16×0
+            // sliver. Setting an explicit height (matching the 14px
+            // background-size) is what actually fixes visibility; the width
+            // needs no equivalent fix since padding-left is honored
+            // regardless of block/inline. See debug/still-missing-glyph.html
+            // and the two Computed-panel screenshots this was diagnosed
+            // from.
+            glyph.style.height = '14px';
+            // A trailing space TEXT NODE doesn't work here (tried first,
+            // see debug/still-no-blank.html): the space sits between two
+            // flex-blockified sibling boxes (the glyph and the first
+            // .sort-icon-btn), so CSS's whitespace-collapsing rules for
+            // whitespace directly touching a block-level box on both sides
+            // eat it — same underlying "flex item blockification" reason
+            // the height fix above was needed, just for width/whitespace
+            // instead of height this time. margin-right is unaffected by
+            // any of this (an explicit box-model property, not rendered
+            // text), so it's what actually produces a guaranteed, visible
+            // gap.
+            glyph.style.marginRight = '4px';
+            // makeTableSortableUnified() always builds this flex row as
+            // `${colName} ` (a single leading text node) followed by the
+            // sort/uniq-value icon elements — insert right after that text
+            // node so the header reads "Recording of [glyph] ⇅ ▲ ▼ ...".
+            const _textNode = Array.from(hdrFlex.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
+            if (_textNode) {
+                _textNode.after(glyph);
+            } else {
+                hdrFlex.insertBefore(glyph, hdrFlex.firstChild);
+            }
         });
     }
 
@@ -36244,6 +36409,12 @@ a { color: #1565c0; }`;
         // late-arriving AcoustID/ISRC data into their columns on
         // release-tracks pages (no-ops for every other pageType).
         initAcoustIdIsrcObserver();
+
+        // Re-inject the "Recording of" column header's work-glyph icon —
+        // makeTableSortableUnified() above just rebuilt every <th> from
+        // scratch, wiping it out (no-ops for every other pageType/absent
+        // column — see _recOfInitColHeaderGlyph()'s JSDoc).
+        _recOfInitColHeaderGlyph();
     }
 
     /**
