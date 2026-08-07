@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.7",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Renamed `release-tracks`' (WIP.4) \"AcoustID\"/\"ISRC\" columns to \"AcoustIDs\"/\"ISRCs\" (plural, since each cell can hold more than one entry).",
+          "Added a new, conditionally-created \"Video\" column to `release-tracks`, extracted from the native `<span class=\"video\" title=\"This recording is a video\">` icon MusicBrainz glomms into the Title cell for video recordings (see e.g. the \"2 - DVD-Video\" medium on `/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd`) — reuses the existing, generic `ColumnDataExtractor.video` extractor (already used by several other pageTypes, e.g. `artist-recordings`, via a normal `columnExtractors` entry) rather than duplicating its move-the-span/audio-video-sort-key logic. Unlike a normal `columnExtractors` entry, which always creates its synthetic column, the \"Video\" `<th>` is only added when at least one track ANYWHERE ON THE RELEASE (any medium) has the icon, so a release with no video tracks at all never gets a permanently empty column — decided once, page-wide, not per medium: `renderGroupedTable()` builds a single header `<thead>` template from the first `table.tbl` in the document and clones it for every medium, so a `<th>` present on only some mediums' native theads would silently vanish from every rendered table (row data still carries through per group, the header does not). Positioned directly after \"Title\" (before \"Disambiguation\")."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.6",
     "date": "2026-08-07",
     "sections": [

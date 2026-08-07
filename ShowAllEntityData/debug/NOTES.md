@@ -2337,3 +2337,115 @@ Implemented the fix flagged above. Two parts:
    microtask tick) — both correctly relocated into their column and
    removed from the Title cell.
 
+## 2026-08-07 — "AcoustID"/"ISRC" clarified as working; column rename + Video column (WIP.7)
+
+User confirmed AcoustID/ISRC extraction itself is fine — the earlier
+`problem.html`/`g.html` investigation's "sometimes empty" symptom is just
+jesus2099's async lookup not having finished yet on either capture (the
+WIP.6 observer already addresses the case where it finishes late). No
+further extraction-logic changes needed for that.
+
+Two follow-up requests:
+
+1. **Column rename**: "AcoustID" → "AcoustIDs", "ISRC" → "ISRCs" (plural —
+   a cell can hold more than one entry). Renamed everywhere the literal
+   header text is used for lookup/creation/idempotency-checking:
+   `applyExtractTrackTitleData()`'s `_hasAcoustId`/`_hasIsrc` checks and
+   `<th>`/text creation, `_relocateLateAcoustIdIsrc()`'s `_relocateOne`
+   calls (which resolve the destination `<td>` by header name), and
+   `collapsableColumns: ['ARs', 'AcoustIDs', 'ISRCs']` in the pageDef —
+   `collapsableColumns` matches by clean header text, so this had to move
+   in lockstep with the `<th>` text or the columns would silently lose
+   their collapse behavior. Left the setting *keys*
+   (`sa_enable_release_tracks_acoustid_column` etc.) singular/unchanged —
+   only user-facing labels/descriptions and the actual column header text
+   needed to change.
+
+2. **New "Video" column**: `debug/tracklist-multiple-mediums.html`'s
+   "2 - DVD-Video" medium (release `6d19588c-...`) confirmed the exact
+   native shape: `<span class="video" title="This recording is a
+   video"></span>` sits as the **first child** of the Title `<td>` — a
+   sibling of (not nested inside) `span.name-variation`/the recording
+   `<a>`. This script already has a generic, reusable
+   `ColumnDataExtractor.video` extractor (used by several other pageTypes
+   via a normal `columnExtractors: [{ sourceColumn: '...', extractor:
+   'video', syntheticColumns: ['Video'] }]` entry, e.g.
+   `artist-recordings`) — reused it directly rather than reimplementing
+   the move-the-span/audio-video-sort-key logic.
+
+   The twist the user asked for — "only create the column when a
+   sub-table has at least one track with the video glyph" — isn't
+   something the generic `columnExtractors` mechanism supports (it always
+   creates its synthetic column unconditionally for every group sharing a
+   page's column schema; existing per-category variation is only via
+   `entityFeatures`, keyed by a fixed category name, not by scanning
+   actual cell content). Implemented instead inside
+   `applyExtractTrackTitleData()` itself, which already has exactly the
+   per-table context needed: before deciding on any `<th>`, scan every row
+   in *this specific* medium's `tbody` for `span.video`; only if at least
+   one row has it, create the "Video" `<th>` and, per row, call
+   `ColumnDataExtractor.video(titleTd)` to move that row's span (or add
+   the "audio" sort key if this particular row has none) into the new
+   column. Must run before the recording-anchor `<br>`-truncation step
+   later in the same row loop, since `span.video` — being a plain sibling,
+   not nested inside the anchor — would otherwise be silently discarded
+   when the Title cell is rebuilt down to just the clean anchor.
+
+   Positioned directly after "Title", with "Disambiguation" chained right
+   after it (both header and row insertion use the same "cursor" pattern:
+   start at the Title cell/`<th>`, advance past Video if created, then
+   insert Disambiguation) — so column order is Title → [Video] →
+   [Disambiguation] → Artist → ... → ARs → [AcoustIDs] → [ISRCs].
+
+   Verified via the same jsdom harness (extended to also load
+   `ColumnDataExtractor.video`, wrapped standalone since only that one
+   method was needed): a table with no video row gets no "Video" column at
+   all; a table with the icon present gets it created in the right
+   position, with the span correctly moved and its `mb-video-sort-key`
+   intact.
+
+## 2026-08-07 — "Video" column had no header (debug/no-video-colmn-header.html)
+
+User report: on a multi-medium release, the "Video" column's data was
+correctly extracted (`mb-video-sort-key` spans present, 5 of them in the
+supplied capture) but the `<th>` was completely missing from the rendered
+`<thead>` — confirmed via `data-col-name="Video"`: 0 matches anywhere in
+the file, even though the header row between "Title" and "Disambiguation"
+was otherwise intact.
+
+Root cause: the per-table conditional Video-column decision added in the
+entry above is fundamentally incompatible with how `renderGroupedTable()`
+builds headers for multi-table pages. It derives ONE header template from
+`document.querySelector('table.tbl')` — literally the FIRST `table.tbl`
+in the document — via `rawTemplateHead`/`templateHead`
+(`ShowAllEntityData.user.js:34539-34544`), then clones that SAME template
+for every group/medium's `<thead>` (`:34815-34934`). If medium 1 ("1 -
+CD", first in document order) has no video tracks, its native `<thead>`
+(after `applyExtractTrackTitleData()`'s per-table decision) has no "Video"
+`<th>` — so the template lacks it too, and EVERY medium's final rendered
+table lacks it, even mediums that DO have video rows and clearly still
+carry the row-level `<td>`/sort-key data (scraped independently, per
+group, unaffected by the header template). This is the exact same
+invariant the Artist-column backfill already documents ("every medium's
+column schema is identical") — it was never actually optional, my
+per-table Video logic just violated it silently.
+
+Fix: moved the video-presence check out of the per-table loop into a new
+`_pageHasVideo` computed once up front, scanning every `table.tbl`'s Title
+column across the whole document (not just the current table) —
+`applyExtractTrackTitleData()`'s existing per-table loop then just reads
+that single boolean instead of re-scanning locally. Since the FIRST table
+in the document is guaranteed to get the same `_videoTh` decision as every
+other table now, `renderGroupedTable()`'s header-template cloning works
+correctly regardless of document order. Mediums with no actual video
+tracks still get a "Video" `<th>`/`<td>` (empty/"audio", like any other
+uniform column), but only once at least one medium on the release has a
+video track at all — matches how "AcoustIDs"/"ISRCs" already behave
+(their presence is release-wide via a setting, not per-medium either).
+
+Verified via jsdom: built two separate `table.tbl` elements in the same
+document (mimicking two mediums) — one with no video row, one with a
+video row — called `applyExtractTrackTitleData()` once across both, and
+confirmed BOTH tables end up with the "Video" header (the no-video table's
+row correctly shows the "audio" sort key, empty cell).
+

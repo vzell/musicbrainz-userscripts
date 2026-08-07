@@ -1630,10 +1630,10 @@
         },
 
         sa_enable_release_tracks_acoustid_column: {
-            label: 'Show "AcoustID" column',
+            label: 'Show "AcoustIDs" column',
             type: 'checkbox',
             default: false,
-            description: 'Adds a multi-row "AcoustID" column to the consolidated release ' +
+            description: 'Adds a multi-row "AcoustIDs" column to the consolidated release ' +
                          'tracklist, extracted from each track\'s native AcoustID fingerprint ' +
                          'list (normally glommed into the Title cell as a comma-separated run). ' +
                          'Off by default since most releases don\'t need it visible; each linked ' +
@@ -1641,10 +1641,10 @@
         },
 
         sa_enable_release_tracks_isrc_column: {
-            label: 'Show "ISRC" column',
+            label: 'Show "ISRCs" column',
             type: 'checkbox',
             default: false,
-            description: 'Adds a multi-row "ISRC" column to the consolidated release tracklist, ' +
+            description: 'Adds a multi-row "ISRCs" column to the consolidated release tracklist, ' +
                          'extracted from each track\'s native ISRC code(s) (normally glommed ' +
                          'into the Title cell). Off by default since most releases don\'t need ' +
                          'it visible.'
@@ -1656,7 +1656,7 @@
             default: true,
             description: 'The AcoustID/ISRC lookup done by third-party userscripts (e.g. ' +
                          'jesus2099\'s) is asynchronous and can finish after this script has ' +
-                         'already extracted the "AcoustID"/"ISRC" columns from the Title cell — ' +
+                         'already extracted the "AcoustIDs"/"ISRCs" columns from the Title cell — ' +
                          'when that happens, the late data would otherwise never reach those ' +
                          'columns. When on, a MutationObserver watches each medium\'s table for ' +
                          'AcoustID/ISRC data appearing after the fact and moves it into the ' +
@@ -6847,11 +6847,27 @@
      *   - `<div class="ars AcoustID…">` / `<div class="ars ISRC…">` — only
      *     present once the jesus2099 script's AcoustID lookup has run;
      *     each holds a single `<dl><dt>…</dt><dd>flat comma-separated
-     *     list of links</dd></dl>`. Moved into new "AcoustID"/"ISRC"
+     *     list of links</dd></dl>`. Moved into new "AcoustIDs"/"ISRCs"
      *     columns (each gated by its own off-by-default setting), rebuilt
      *     as one `<li>` per entry so they render as ordinary multi-row
      *     list cells (see `_findCellListItems`) instead of one long flat
      *     line — see debug/ucd.html for the un-split source shape.
+     *   - `<span class="video" title="This recording is a video">` — reuses
+     *     the existing, generic `ColumnDataExtractor.video` extractor
+     *     (already used by several other pageTypes' `columnExtractors`,
+     *     e.g. `artist-recordings`) rather than duplicating its logic. The
+     *     "Video" `<th>` is only added when at least one row ACROSS THE
+     *     WHOLE RELEASE (any medium, not just this one) has the icon — see
+     *     `_pageHasVideo` below — so a release with no video tracks at all
+     *     (the common case) never gets a permanently empty column. This
+     *     can't be decided per medium/table: `renderGroupedTable()` builds
+     *     one shared header template from the FIRST `table.tbl` in the
+     *     document and clones it for every medium, so a `<th>` present on
+     *     only some mediums' native theads would silently disappear from
+     *     every rendered table (the row data still carries through, the
+     *     header does not) — matches the "every medium's column schema is
+     *     identical" invariant the Artist backfill above already relies
+     *     on.
      *
      * Unlike every `ColumnDataExtractor` entry (`splitLocation`,
      * `splitArea`, `eventParts`, …), which are purely additive (read
@@ -6880,6 +6896,29 @@
         const _acoustIdEnabled = Lib.settings.sa_enable_release_tracks_acoustid_column === true;
         const _isrcEnabled = Lib.settings.sa_enable_release_tracks_isrc_column === true;
 
+        // Decided once, across every medium, NOT per table: renderGroupedTable()
+        // builds a single header <thead> template from the very first table.tbl
+        // in the document and clones it for every medium's table (see its
+        // `templateHead`/`rawTemplateHead` — ":34539-34544"), so a column that
+        // exists on only SOME mediums' native theads (e.g. present on medium 2
+        // but not medium 1, because medium 1 happens to have no video tracks)
+        // would silently vanish from every rendered table's header — the row
+        // DATA still carries through per-group, but the <th> itself does not,
+        // since only the first table's structure ever reaches the template.
+        // Matches the existing "every medium's column schema is identical"
+        // invariant the Artist backfill above already relies on.
+        const _pageHasVideo = _tables.some(table => {
+            const _thRow = table.querySelector(':scope > thead > tr');
+            const _tb = table.querySelector(':scope > tbody');
+            if (!_thRow || !_tb) return false;
+            const _tIdx = Array.from(_thRow.querySelectorAll('th')).findIndex(th => th.textContent.trim() === 'Title');
+            if (_tIdx === -1) return false;
+            return Array.from(_tb.querySelectorAll(':scope > tr')).some(tr => {
+                const td = tr.children[_tIdx];
+                return td && td.querySelector('span.video[title="This recording is a video"]');
+            });
+        });
+
         _tables.forEach(table => {
             const _theadRow = table.querySelector(':scope > thead > tr');
             const _tbody = table.querySelector(':scope > tbody');
@@ -6891,15 +6930,23 @@
 
             const _hasDisambig = _headerCells.some(th => th.textContent.trim() === 'Disambiguation');
             const _hasArs = _headerCells.some(th => th.textContent.trim() === 'ARs');
-            const _hasAcoustId = _headerCells.some(th => th.textContent.trim() === 'AcoustID');
-            const _hasIsrc = _headerCells.some(th => th.textContent.trim() === 'ISRC');
+            const _hasAcoustId = _headerCells.some(th => th.textContent.trim() === 'AcoustIDs');
+            const _hasIsrc = _headerCells.some(th => th.textContent.trim() === 'ISRCs');
+            const _hasVideo = _headerCells.some(th => th.textContent.trim() === 'Video');
 
-            let _disambigTh = null, _arsTh = null, _acoustIdTh = null, _isrcTh = null;
+            let _disambigTh = null, _arsTh = null, _acoustIdTh = null, _isrcTh = null, _videoTh = null;
 
+            // Video: added to every medium's table uniformly once ANY medium
+            // on the release has at least one video track (see _pageHasVideo
+            // above and this function's JSDoc for why this can't be decided
+            // per table).
+            if (!_hasVideo && _pageHasVideo) {
+                _videoTh = document.createElement('th');
+                _videoTh.textContent = 'Video';
+            }
             if (!_hasDisambig) {
                 _disambigTh = document.createElement('th');
                 _disambigTh.textContent = 'Disambiguation';
-                _headerCells[_titleIdx].after(_disambigTh);
             }
             if (!_hasArs) {
                 _arsTh = document.createElement('th');
@@ -6908,21 +6955,41 @@
             }
             if (_acoustIdEnabled && !_hasAcoustId) {
                 _acoustIdTh = document.createElement('th');
-                _acoustIdTh.textContent = 'AcoustID';
+                _acoustIdTh.textContent = 'AcoustIDs';
                 _theadRow.appendChild(_acoustIdTh);
             }
             if (_isrcEnabled && !_hasIsrc) {
                 _isrcTh = document.createElement('th');
-                _isrcTh.textContent = 'ISRC';
+                _isrcTh.textContent = 'ISRCs';
                 _theadRow.appendChild(_isrcTh);
             }
 
-            if (!_disambigTh && !_arsTh && !_acoustIdTh && !_isrcTh) return; // already fully processed
+            // Video then Disambiguation, chained right after Title in that
+            // order — mirrors the row-level insertion order below.
+            let _titleHeaderCursor = _headerCells[_titleIdx];
+            if (_videoTh) {
+                _titleHeaderCursor.after(_videoTh);
+                _titleHeaderCursor = _videoTh;
+            }
+            if (_disambigTh) {
+                _titleHeaderCursor.after(_disambigTh);
+            }
+
+            if (!_disambigTh && !_arsTh && !_acoustIdTh && !_isrcTh && !_videoTh) return; // already fully processed
 
             _tbody.querySelectorAll(':scope > tr').forEach(row => {
                 const _cells = Array.from(row.children);
                 const _titleTd = _cells[_titleIdx];
                 if (!_titleTd) return;
+
+                // Video: reuses the existing, generic `video`
+                // ColumnDataExtractor (see its own JSDoc) rather than
+                // duplicating its move-the-span/sort-key logic. Must run
+                // before the recording-anchor cleanup below — span.video
+                // sits as a SIBLING of (not nested inside) the recording
+                // <a>, so it would otherwise be silently discarded when
+                // the Title cell is rebuilt further down.
+                const _videoTd = _videoTh ? ColumnDataExtractor.video(_titleTd)[0] : null;
 
                 const _recAnchor = _titleTd.querySelector('a[href^="/recording/"]');
 
@@ -6938,13 +7005,20 @@
                     ':scope > span.comment, :scope > span.name-variation > span.comment'
                 );
 
+                // Video then Disambiguation, chained right after Title —
+                // mirrors the header insertion order above.
+                let _rowInsertCursor = _titleTd;
+                if (_videoTd) {
+                    _rowInsertCursor.after(_videoTd);
+                    _rowInsertCursor = _videoTd;
+                }
                 if (_disambigTh) {
                     const _td = document.createElement('td');
                     // Moves (not clones) the live comment span — see
                     // initAcoustIdIsrcObserver()'s JSDoc for why preserving
                     // node identity throughout this whole function matters.
                     if (_commentSpan) _td.appendChild(_commentSpan);
-                    _titleTd.after(_td);
+                    _rowInsertCursor.after(_td);
                 }
 
                 if (_arsTh) {
@@ -7031,7 +7105,7 @@
      * `div.ars` child whose class starts with `AcoustID`/`ISRC`, added
      * later by a third-party userscript's async lookup (see
      * `initAcoustIdIsrcObserver`'s JSDoc). If found, moves it into the
-     * row's already-existing "AcoustID"/"ISRC" `<td>` the same way
+     * row's already-existing "AcoustIDs"/"ISRCs" `<td>` the same way
      * `applyExtractTrackTitleData()` would have, via `_buildMultiRowArsTd()`
      * — merging into an existing `<ul>` there rather than replacing it, in
      * case this runs more than once for the same row. Safe to call on any
@@ -7079,8 +7153,8 @@
             Lib.debug('render', `initAcoustIdIsrcObserver: relocated late-arriving ${colName} data.`);
         };
 
-        if (acoustIdDiv) _relocateOne(acoustIdDiv, 'AcoustID', /* pairToggleLink= */ true);
-        if (isrcDiv) _relocateOne(isrcDiv, 'ISRC', /* pairToggleLink= */ false);
+        if (acoustIdDiv) _relocateOne(acoustIdDiv, 'AcoustIDs', /* pairToggleLink= */ true);
+        if (isrcDiv) _relocateOne(isrcDiv, 'ISRCs', /* pairToggleLink= */ false);
     }
 
     /**
@@ -7092,7 +7166,7 @@
      * MIND CONTROL") completing its own async AcoustID lookup (a network
      * round-trip to acoustid.org per recording) later than this script's
      * own, synchronous, one-shot extraction pass. Without this, that
-     * late-arriving data would never reach the "AcoustID"/"ISRC" columns.
+     * late-arriving data would never reach the "AcoustIDs"/"ISRCs" columns.
      *
      * Depends on `applyExtractTrackTitleData()` MOVING (not cloning) the
      * recording `<a>` and every other element it extracts, rather than
@@ -7114,7 +7188,7 @@
      *
      * No-ops entirely — zero overhead — unless the active page is
      * `release-tracks`, `sa_enable_release_tracks_acoustid_isrc_observer`
-     * is on, and at least one of the "AcoustID"/"ISRC" column settings is
+     * is on, and at least one of the "AcoustIDs"/"ISRCs" column settings is
      * on (nothing to relocate into otherwise).
      *
      * Observed tbodies are tracked in `_acoustIdIsrcObservedTbodies` (a
@@ -10106,15 +10180,22 @@
                 normalizeMediumTracklists: true, // synthesize h3 + fix up thead/Artist column
                 // Cleans the Title cell down to just the track title and
                 // moves everything else MusicBrainz glommed into it
-                // (disambiguation comment, general relationships, AcoustID/
-                // ISRC) into their own columns — see
-                // applyExtractTrackTitleData()'s JSDoc for why this needs
-                // in-place DOM surgery rather than the additive
+                // (video icon, disambiguation comment, general
+                // relationships, AcoustID/ISRC) into their own columns —
+                // see applyExtractTrackTitleData()'s JSDoc for why this
+                // needs in-place DOM surgery rather than the additive
                 // `columnExtractors`/`syntheticColumnExtractors` mechanism
                 // (e.g. `eventParts`, used elsewhere via
-                // `sa_enable_event_parts_extractor`). AcoustID/ISRC are each
-                // gated by their own off-by-default setting; "ARs" is
-                // unconditional, like the Artist backfill above.
+                // `sa_enable_event_parts_extractor`) for most of this —
+                // "Video" specifically still reuses that mechanism's
+                // `video` extractor internally, just invoked conditionally
+                // (once, across the whole release — see
+                // applyExtractTrackTitleData()'s `_pageHasVideo`) instead
+                // of via a `columnExtractors` entry.
+                // AcoustIDs/ISRCs are each gated by their own
+                // off-by-default setting; "ARs" and "Video" (when any
+                // track on the release has the icon) are unconditional,
+                // like the Artist backfill above.
                 extractTitleData: true,
                 removeSelectors: [
                     'h2.tracklist button.work-button-style', // native "Edit recording comments"
@@ -10131,11 +10212,12 @@
                     { sourceColumn: 'Length', align: ':' },
                     { sourceColumn: 'Rating', align: 'C' }
                 ],
-                // "Disambiguation" is deliberately excluded — plain short
-                // text, no clamp needed. "ARs" is prose-shaped (dl/dt/dd);
-                // "AcoustID"/"ISRC" are list-shaped (ul/li) — both auto-
-                // detected by initCollapsableColumns() once declared here.
-                collapsableColumns: [ 'ARs', 'AcoustID', 'ISRC' ],
+                // "Disambiguation"/"Video" are deliberately excluded —
+                // plain short content, no clamp needed. "ARs" is
+                // prose-shaped (dl/dt/dd); "AcoustIDs"/"ISRCs" are
+                // list-shaped (ul/li) — both auto-detected by
+                // initCollapsableColumns() once declared here.
+                collapsableColumns: [ 'ARs', 'AcoustIDs', 'ISRCs' ],
                 stickyColumn: 'Title'
             },
             tableMode: 'multi',
