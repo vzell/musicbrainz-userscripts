@@ -2502,3 +2502,42 @@ runs) — with a defensive fallback to the old cursor position if "Artist"
 somehow isn't found. Final order: Title → Video → Disambiguation → Artist
 → Recording artist → Rating → Length → ARs → AcoustIDs → ISRCs.
 
+## 2026-08-07 — overflow-tracks progress indicator (WIP.9, debug/progress.html)
+
+User supplied `debug/progress.html` — a snapshot of the existing paginated
+fetch loop's progress bar (`#mb-fetch-progress-wrap` etc.,
+`"Loading page 14 of 745... (1400 rows) - 882.1s left"`) — and asked for
+the same treatment on `release-tracks`' overflow-tracklist loading
+(`loadAllOverflowMediumTracks()`), which currently runs silently before
+the real fetch loop starts.
+
+`fetchProgressWrap`/`fetchProgressFill`/`fetchProgressLabel` are created
+once at UI-setup time (near `controlsContainer`, `:21980-22037`) and are
+plain top-level `const`s in the same outer IIFE scope as
+`loadAllOverflowMediumTracks` (defined much earlier in the file, `:6665`,
+but never CALLED until user interaction — long after the whole script,
+including those consts, has finished loading) — same reasoning already
+established for referencing `ColumnDataExtractor` from
+`applyExtractTrackTitleData()` despite similar apparent ordering. Safe to
+reference directly, no refactor needed.
+
+Confirmed via `grep` that nothing between `loadAllOverflowMediumTracks()`'s
+call site (`startFetchingProcess`, `:30623`) and the main fetch loop's own
+progress-bar reset (`:30856`) touches `fetchProgressWrap` — so showing it
+here and leaving it visible is safe; the main loop's own reset naturally
+takes over once this phase finishes, exactly the same relationship the
+pre-existing two-pass (`tag-value`/`user-tag-value`) progress handling
+already has with the main loop (`:30463`/`:30531`).
+
+Implementation: added per-medium counters (`_mediumsCompleted`,
+`_tracksLoadedSoFar`, `_cumulativeMediumTime`) around the EXISTING
+click+wait loop (unchanged) — updated once per medium (not continuously
+during a medium's own wait, to match the granularity of the existing
+per-page update) via a small `_updateOverflowProgress()` closure mirroring
+the main loop's exact `fillPct`/`fillColor`/`estRemainingSeconds` formula.
+Verified the arithmetic/label-formatting logic standalone (outside
+jsdom, pure JS): fill percentage and remaining-time estimate progress
+correctly across a simulated 3-medium run, and the "medium X of Y" label
+correctly clamps at Y for a single-medium case (never shows "medium 2 of
+1").
+

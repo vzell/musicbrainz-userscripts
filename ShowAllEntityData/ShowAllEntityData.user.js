@@ -6657,6 +6657,13 @@
      * the fetch pipeline indefinitely. Mediums are processed sequentially so
      * their AJAX requests can't race each other.
      *
+     * Drives the same inline progress bar (`fetchProgressWrap`/-`Fill`/-`Label`,
+     * created once at UI-setup time) the paginated-fetch loop in
+     * `startFetchingProcess` uses, updated once per medium (not continuously
+     * during each medium's own wait) — otherwise, on a release with several
+     * overflowing mediums, this phase runs silently before the real fetch
+     * loop even starts and can look like a hang.
+     *
      * Triggered by `features.loadOverflowTracks: true` in the page definition.
      *
      * @param   {object}  def - The active merged pageDefinition object.
@@ -6671,7 +6678,38 @@
 
         Lib.debug('init', `loadAllOverflowMediumTracks: found ${_tbodies.length} overflowing medium(s).`);
 
+        // Progress indicator, mirroring the paginated-fetch "Loading page X
+        // of Y... (Z rows) - Ns left" bar driven by startFetchingProcess's
+        // main fetch loop (fetchProgressWrap/-Fill/-Label, created once at
+        // UI-setup time — see the "Fetch progress bar" block near the
+        // controlsContainer). Each overflowing medium is its own AJAX round
+        // trip (see this function's own JSDoc), which on a release with
+        // several such mediums can otherwise look like a hang before the
+        // real per-page fetch loop even starts.
+        const _totalMediums = _tbodies.length;
+        let _mediumsCompleted = 0;
+        let _tracksLoadedSoFar = 0;
+        let _cumulativeMediumTime = 0;
+        fetchProgressWrap.style.display = 'inline-flex';
+        fetchProgressFill.style.width = '0%';
+        fetchProgressFill.style.background = '#ffcccc';
+        fetchProgressLabel.style.color = '#333';
+        fetchProgressLabel.textContent = `Loading overflow tracks: medium 1 of ${_totalMediums}...`;
+
+        const _updateOverflowProgress = () => {
+            const _progress = _mediumsCompleted / _totalMediums;
+            const _avgMediumTime = _mediumsCompleted > 0 ? _cumulativeMediumTime / _mediumsCompleted : 0;
+            const _estRemainingSeconds = (_avgMediumTime * (_totalMediums - _mediumsCompleted)) / 1000;
+            fetchProgressFill.style.width = `${Math.round(_progress * 100)}%`;
+            fetchProgressFill.style.background =
+                _progress >= 1.0 ? '#ccffcc' : (_progress >= 0.5 ? '#ffe0b2' : '#ffcccc');
+            fetchProgressLabel.textContent =
+                `Loading overflow tracks: medium ${Math.min(_mediumsCompleted + 1, _totalMediums)} of ` +
+                `${_totalMediums}... (${_tracksLoadedSoFar} tracks) - ${_estRemainingSeconds.toFixed(1)}s left`;
+        };
+
         for (const _tbody of _tbodies) {
+            const _mediumStartTime = performance.now();
             let _guard = 0;
             while (_tbody.querySelector('a.load-tracks') && _guard < 20) {
                 _guard++;
@@ -6717,6 +6755,11 @@
                     _link.click();
                 });
             }
+
+            _tracksLoadedSoFar += _tbody.querySelectorAll(':scope > tr:not(.subh)').length;
+            _mediumsCompleted++;
+            _cumulativeMediumTime += performance.now() - _mediumStartTime;
+            _updateOverflowProgress();
         }
 
         Lib.debug('init', 'loadAllOverflowMediumTracks: all overflowing mediums resolved.');

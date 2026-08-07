@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.9",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added a progress indicator for `release-tracks`' \"Load all tracks...\" overflow handling (`loadAllOverflowMediumTracks`), reusing the same inline progress bar the paginated-fetch loop already shows (\"Loading page X of Y... (Z rows) - Ns left\"). On a release with several overflowing mediums (each its own AJAX round trip that can take a few seconds), this phase previously ran silently before the real fetch loop even started, which could look like a hang. Now shows \"Loading overflow tracks: medium X of Y... (Z tracks) - Ns left\", updated once per medium (not continuously during each medium's own wait)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.8",
     "date": "2026-08-07",
     "sections": [
