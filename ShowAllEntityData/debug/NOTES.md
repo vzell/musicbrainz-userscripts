@@ -2994,3 +2994,31 @@ per-track `<dt>` word order, which is the whole point of a page-wide
 canonical order in the first place); renamed all "Date"-column
 assertions (Test12, Test13) to "Recording date".
 
+### Follow-up: still no blank — this time on the OTHER side of the glyph (debug/still-missing-glyph.html, second capture)
+
+User's next report, same filename reused for a fresh capture: no gap
+between "Recording of" and the glyph itself (leading edge), rather than
+between the glyph and the sort icons (trailing edge, already fixed).
+Snapshot markup: `Recording of <span class="worklink"></span><span
+class="sort-icon-btn">...` — the leading space IS present in the markup
+(it's the trailing space `makeTableSortableUnified()` always bakes into
+its `${colName} ` text node, per the existing comment in
+`_recOfInitColHeaderGlyph()`), yet still didn't render as a visible gap.
+
+Root cause: identical to the earlier trailing-space bug
+(`debug/still-no-blank.html`), just on the other side. CSS collapses
+whitespace sitting directly against a block-level box on EITHER side of
+that whitespace, not just after it — and the glyph is blockified (a flex
+item inside `.mb-col-hdr-flex`, per the height fix's own comment)
+regardless of which neighboring text it's compared against. The
+`${colName} ` template's trailing space, now sitting immediately before
+the blockified glyph, collapses away exactly like the manually-added
+trailing space after the glyph did.
+
+Fix: `glyph.style.marginLeft = '4px'` alongside the existing
+`marginRight`, for the identical reason — margin is an explicit
+box-model property, not rendered text, so it isn't subject to
+whitespace-collapsing either way. Extended Test14 with a
+`glyph.style.marginLeft === '4px'` assertion right next to the existing
+`marginRight` one.
+

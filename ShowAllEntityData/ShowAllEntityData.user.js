@@ -7724,17 +7724,20 @@
             // and the two Computed-panel screenshots this was diagnosed
             // from.
             glyph.style.height = '14px';
-            // A trailing space TEXT NODE doesn't work here (tried first,
-            // see debug/still-no-blank.html): the space sits between two
-            // flex-blockified sibling boxes (the glyph and the first
-            // .sort-icon-btn), so CSS's whitespace-collapsing rules for
-            // whitespace directly touching a block-level box on both sides
-            // eat it — same underlying "flex item blockification" reason
-            // the height fix above was needed, just for width/whitespace
-            // instead of height this time. margin-right is unaffected by
+            // Neither a trailing space TEXT NODE after the glyph (tried
+            // first, see debug/still-no-blank.html) NOR the leading space
+            // makeTableSortableUnified() already bakes into its `${colName}
+            // ` text node (tried next, see debug/still-missing-glyph.html's
+            // second capture — `Recording of <span class="worklink">`, with
+            // that leading space visible in the markup but not rendered)
+            // survive: CSS collapses whitespace sitting directly against a
+            // block-level box on EITHER side, and the glyph is blockified
+            // (a flex item — see the height comment above) regardless of
+            // which sibling it's compared against. margin is unaffected by
             // any of this (an explicit box-model property, not rendered
             // text), so it's what actually produces a guaranteed, visible
-            // gap.
+            // gap on both sides.
+            glyph.style.marginLeft = '4px';
             glyph.style.marginRight = '4px';
             // makeTableSortableUnified() always builds this flex row as
             // `${colName} ` (a single leading text node) followed by the
