@@ -91309,16 +91309,85 @@ helpers.js:119 Uncaught TypeError: Cannot read properties of undefined (reading 
         document.addEventListener.capture	@	userscript.html?name…-464f22b2210f:13046
 #+end_example
 
-** add new feature
+** TODO add new feature
 *** "Recording artist" column always present, but only filled if the "Recording artist:" div is present
 
 #+begin_example
 <div class="small">Recording artist:<!-- --> <bdi><a href="/artist/82322886-4c92-4509-9611-ac2173438469" title="Riders Against the Storm (husband/wife hip hop duo)">Riders Against the Storm</a></bdi></div>
 #+end_example
 
+*** DONE "E Street Band" is missing on non various artists releases in "Artist" column
+
+On e.g https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc
+
+the artist is actually "Bruce Springsteen & The E Street Band" see
+
+#+begin_example
+Bruce Springsteen</a> &amp; <a href="/artist/d6652e7b-33fe-49ef-8336-4c863b4f996f" title="E Street Band, The">The E Street Band
+#+end_example
+
+in
+
+#+begin_example
+<p class="subheader"><span class="prefix">~</span> <!-- -->Release by <bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a> &amp; <a href="/artist/d6652e7b-33fe-49ef-8336-4c863b4f996f" title="E Street Band, The">The E Street Band</a></bdi> <span class="small">(<a href="/release-group/85206823-9808-3da2-a9d7-2e9b8b0f4e99"><bdi>see all versions of this release, 129 available</bdi></a>)</span><span id="mb-status-sentinel" style="display: inline-block; width: 0px; height: 0px; overflow: hidden; vertical-align: middle;"></span><div id="mb-status-displays-container" style="display: inline-flex; align-items: center; gap: 8px; line-height: 1; vertical-align: middle; margin-left: 10px;"><span id="mb-global-status-display" style="font-size: 0.95em; color: rgb(153, 153, 153); font-weight: bold; vertical-align: middle;"><span title="Pages and rows loaded from the MusicBrainz database.">Loaded 1 page (40 rows)</span><span>; </span><span title="Time to fetch all pages from the MusicBrainz server.">Fetching: 0.05s</span><span>, </span><span title="Time to build and insert the fetched rows into the DOM.">Rendering: 0.15s</span><span>, </span><span title="CAA/EAA artwork: 0 icon + 0 inline = 0 total
+🟢 Memory cache: 0
+🗄️ IndexedDB cache: 0
+🔵 Network fetch: 0
+🌐 Browser cache: 0
+Total load time: 299ms">🎨CAA: 299ms</span><span>, </span><span title="Time to auto-measure and set per-column widths (sa_auto_resize_columns).">📐Measuring: 0.15s</span></span><span id="mb-status-divider" style="display: inline-block; color: rgb(187, 187, 187); font-weight: normal; user-select: none;">|</span><span id="mb-info-display" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.95em; font-weight: bold; vertical-align: middle;"><span id="mb-info-display-caa" style="display: inline-block; color: green;" title="CAA/EAA artwork: 0 icon + 0 inline = 0 total
+🟢 Memory cache: 0
+🗄️ IndexedDB cache: 0
+🔵 Network fetch: 0
+🌐 Browser cache: 0
+Total load time: 299ms">🎨CAA: 299ms</span><span id="mb-info-display-rel" style="display: none; color: green;"></span><span id="mb-info-display-generic" style="display: inline-block; color: green;" title="Each visible column was measured and fitted to its widest content. Drag column edges to adjust manually, or click the resize button again to restore original widths.">✓ Auto-resized 5 visible columns across 3 tables in 0.14s (drag column edges to adjust)</span></span></div></p>
+#+end_example
+
+but the final "Artist" column shows just "Bruce Springsteen" instead of "Bruce Springsteen & The E Street Band" (of course both hyperlinked)
+
 *** <div class="ars"> in it's own column and not together with just the title and optional disambiguation comment
+
+Currently the complete "Title" column @debug/area-column.html on the initial page e.g. from
+https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd see @debug/tracklist-multiple-mediums.html
+is rendered on the final page.
+
+1.)
+
+Actually on the final rendered page I don't want the complete data from the "Title" column cell in the final "Title"
+column cell but just the real title e.g. "Lonesome Day"
+
+#+begin_example
+<a href="/recording/b742f9b0-623e-41c2-9d8b-db6349618ad3" class="jesus2099userjs81127recording"><bdi>Lonesome Day</bdi></a>
+#+end_example
+
+and add a new synthetic column called "ARs" at the very end of the table and extract the '<div class="ars">' container
+into it
+
+Make the new "ARs" collapsable with configurable height like the "Annotations" column
+
+2.)
+
+If the following containers are present in the "Title" data cell
+
+#+begin_example
+<div class="ars AcoustID81127"
+<div class="ars ISRC81127"
+#+end_example
+
+make them a new configurable collabsable column (default: false) in the final rendered table, rendere multi row specifically @debug/ucd.html
 
 *** <div class="ars ISRC"> and <div class="ars AcoustID"> (collapsable) in it's own column and not together with just the title and optional disambiguation comment
 
+*** act on @debug/fix.org
 
-*** E Street band is missing on non various artists releases in "Artist" column
+act on @debug/fix.org
+
+also check @debug/tracklist-live.html for disamiguation information and add a new column for it
+
+*** problem
+
+@debug/problem.html shows that on e.g. https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd the acoustid
+extraction doesn't work and the "ARs" column is NOT collapsable compared to @debug/g.html where everything is OK
+
+*** Acoustids not working yet, everything else is ok, we tackle this later, commit, push
+
+Acoustids not working yet, everything else is ok, we tackle this later, commit, push
