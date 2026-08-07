@@ -2593,3 +2593,73 @@ in play, cross-test DOM contamination (earlier tests' leftover tables
 still in the document) becomes more likely to actually change a later
 test's outcome rather than being harmlessly ignored.
 
+## 2026-08-07 — overflow-tracks progress bar never actually showed progress (WIP.11)
+
+User reported the WIP.9 progress bar always shows the exact static
+initial text — `"Loading overflow tracks: medium 1 of 1..."`, 0% fill —
+never the `"(Z tracks) - Ns left"` format that was supposed to appear.
+
+Root cause: `_updateOverflowProgress()` was only ever called (a) once,
+before the loop, to set the initial text, and (b) once per medium, AFTER
+that medium's whole wait loop finished. For the single-overflowing-medium
+case — very likely the MOST common case in practice, and exactly what the
+user hit — there is no "in between": the entire wait (which, per this
+function's own JSDoc, can itself take up to 30s and is a single AJAX
+round trip that has nothing to do with the fast per-page fetch loop
+following it) shows nothing but the static initial text, then the
+"finished" update fires for a brief instant before `startFetchingProcess`
+immediately takes the progress bar over for its own (near-instant, for
+`non_paginated: true` pages) next phase — so the user never actually sees
+it change at all.
+
+Fix: `_onMutation` (the existing `MutationObserver` callback that already
+detects a medium's completion via its live row count vs. the parsed
+"...out of N total." expectation) now ALSO calls
+`_updateOverflowProgress()` on every firing, passing the current medium's
+elapsed time and live fraction (`_dataRowCount()/_expectedTotal`) so the
+bar updates continuously as rows actually stream in, not just at
+before/after boundaries. `_updateOverflowProgress` itself was rewritten
+to take these live-in-progress parameters and blend them into both the
+fill percentage (`(_mediumsCompleted + currentFraction) / totalMediums`)
+and the remaining-time estimate (this medium's own remaining time,
+extrapolated from its progress-so-far, plus average completed-medium time
+for any mediums still queued after it — falling back to this medium's own
+elapsed time as that average until at least one medium has fully
+completed, so the very first estimate isn't just "0s").
+
+Verified via a standalone simulation (no jsdom needed, pure arithmetic —
+same approach as the WIP.9 verification): a single-medium 1209-track load
+streaming in over 4 chunks now shows fill/track-count/remaining-time
+progressing smoothly (0%→25%→50%→74%→100%, "0 tracks"→"1209 tracks",
+9.1s→0.0s) instead of staying frozen; a two-medium scenario also
+progresses correctly across the medium boundary, with the remaining-time
+estimate becoming more accurate once the first medium's actual duration
+is known.
+
+### Follow-up: label text clipped on both ends (screenshot: "ing overflow tracks: medium 1 of 1... (201 tracks) - 2.4")
+
+User's screenshot showed the label losing "Load" off the front (and
+presumably "s left" off the back — `justify-content:center` clips
+symmetrically) once the live-progress fix above actually started
+rendering real text.
+
+Root cause: `#mb-fetch-progress-outer` is `width:auto; min-width:420px`,
+but its two children (`#mb-fetch-progress-fill`/`#mb-fetch-progress-label`)
+are both `position:absolute` — absolutely-positioned elements are removed
+from normal flow and contribute nothing to their parent's auto/intrinsic
+width. So the container never actually grows to fit the label text; it
+always renders at exactly 420px (its explicit min-width), and anything
+wider gets clipped by `overflow:hidden`. This was invisible before because
+the original paginated-fetch label ("Loading page 999 of 999... (99999
+rows) - 9999.9s left", ~55 chars worst case) apparently fit within 420px;
+the new overflow-tracks label ("Loading overflow tracks: medium 20 of
+20... (99999 tracks) - 9999.9s left", ~73 chars worst case) does not.
+
+Fix: bumped `min-width` from 420px to 600px (still comfortably under the
+existing 750px `max-width` cap) — a static, generously-sized value chosen
+to fit the new label's estimated worst case, matching the original
+design's own approach (a fixed range sized for anticipated content, not a
+truly dynamic auto-fit — CSS alone can't make an absolutely-positioned,
+`width:100%`-of-parent label drive its own parent's width, that's a
+circular dependency).
+

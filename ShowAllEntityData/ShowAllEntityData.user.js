@@ -6659,10 +6659,17 @@
      *
      * Drives the same inline progress bar (`fetchProgressWrap`/-`Fill`/-`Label`,
      * created once at UI-setup time) the paginated-fetch loop in
-     * `startFetchingProcess` uses, updated once per medium (not continuously
-     * during each medium's own wait) — otherwise, on a release with several
-     * overflowing mediums, this phase runs silently before the real fetch
-     * loop even starts and can look like a hang.
+     * `startFetchingProcess` uses — otherwise, on a release with an
+     * overflowing medium, this phase runs silently before the real fetch
+     * loop even starts and can look like a hang. Updated live as each
+     * medium's own AJAX response streams rows in (via the same
+     * `MutationObserver` that already detects completion — see
+     * `_updateOverflowProgress`'s own comment), not just once per medium:
+     * a single large overflowing medium (often the release's ONLY one) can
+     * itself take as long as an entire paginated fetch, so a per-medium-only
+     * update would show nothing but the static initial text for the whole
+     * wait, then flash "done" for a moment before the next phase's progress
+     * bar overwrites it.
      *
      * Triggered by `features.loadOverflowTracks: true` in the page definition.
      *
@@ -6694,19 +6701,49 @@
         fetchProgressFill.style.width = '0%';
         fetchProgressFill.style.background = '#ffcccc';
         fetchProgressLabel.style.color = '#333';
-        fetchProgressLabel.textContent = `Loading overflow tracks: medium 1 of ${_totalMediums}...`;
 
-        const _updateOverflowProgress = () => {
-            const _progress = _mediumsCompleted / _totalMediums;
-            const _avgMediumTime = _mediumsCompleted > 0 ? _cumulativeMediumTime / _mediumsCompleted : 0;
-            const _estRemainingSeconds = (_avgMediumTime * (_totalMediums - _mediumsCompleted)) / 1000;
+        // Unlike the per-page fetch loop (one HTTP round trip per update), a
+        // single overflowing medium's own AJAX load can itself take a long
+        // time — often the ONLY medium on the release, so a "once per medium"
+        // update (the first version of this fix) would show nothing but the
+        // initial static text for the entire wait, then flash "done" for a
+        // moment before the next phase's progress bar overwrites it. Instead
+        // updated on every `_onMutation` firing (i.e. as rows actually stream
+        // in), using the live row count against the "...out of N total."
+        // count parsed before clicking.
+        //
+        // @param {number} currentElapsedMs - Time spent on the CURRENTLY
+        //   loading medium so far (0 once it has just finished).
+        // @param {number} currentFraction  - That medium's own live progress,
+        //   0-1 (0 once it has just finished — its contribution is already
+        //   folded into `_mediumsCompleted` at that point).
+        // @param {number} currentMediumRows - That medium's live row count
+        //   (0 once it has just finished — folded into `_tracksLoadedSoFar`).
+        const _updateOverflowProgress = (currentElapsedMs = 0, currentFraction = 0, currentMediumRows = 0) => {
+            const _progress = Math.min((_mediumsCompleted + currentFraction) / _totalMediums, 1);
             fetchProgressFill.style.width = `${Math.round(_progress * 100)}%`;
             fetchProgressFill.style.background =
                 _progress >= 1.0 ? '#ccffcc' : (_progress >= 0.5 ? '#ffe0b2' : '#ffcccc');
+
+            // Time left = (this medium's own remaining time, extrapolated from
+            // its progress-so-far) + (average completed-medium time × however
+            // many full mediums are still queued up after this one). Falls
+            // back to this medium's own elapsed time as the average until at
+            // least one medium has fully completed.
+            const _avgMediumTime = _mediumsCompleted > 0 ? _cumulativeMediumTime / _mediumsCompleted : currentElapsedMs;
+            const _currentMediumRemainingSeconds = currentFraction > 0
+                ? (currentElapsedMs * (1 - currentFraction) / currentFraction) / 1000
+                : 0;
+            const _fullMediumsRemaining = Math.max(_totalMediums - _mediumsCompleted - (currentFraction > 0 ? 1 : 0), 0);
+            const _estRemainingSeconds = _currentMediumRemainingSeconds + (_fullMediumsRemaining * _avgMediumTime) / 1000;
+
+            const _currentMediumNum = Math.min(_mediumsCompleted + 1, _totalMediums);
+            const _totalTracksSoFar = _tracksLoadedSoFar + currentMediumRows;
             fetchProgressLabel.textContent =
-                `Loading overflow tracks: medium ${Math.min(_mediumsCompleted + 1, _totalMediums)} of ` +
-                `${_totalMediums}... (${_tracksLoadedSoFar} tracks) - ${_estRemainingSeconds.toFixed(1)}s left`;
+                `Loading overflow tracks: medium ${_currentMediumNum} of ${_totalMediums}... ` +
+                `(${_totalTracksSoFar} tracks) - ${_estRemainingSeconds.toFixed(1)}s left`;
         };
+        _updateOverflowProgress();
 
         for (const _tbody of _tbodies) {
             const _mediumStartTime = performance.now();
@@ -6732,6 +6769,14 @@
                         resolve();
                     };
                     const _onMutation = () => {
+                        // Live progress update — see _updateOverflowProgress's
+                        // own comment for why this can't wait until the medium
+                        // fully completes. Only possible when the expected
+                        // total was parseable; nothing to divide by otherwise.
+                        if (_expectedTotal !== null) {
+                            const _liveFraction = Math.min(_dataRowCount() / _expectedTotal, 1);
+                            _updateOverflowProgress(performance.now() - _mediumStartTime, _liveFraction, _dataRowCount());
+                        }
                         const _linkGone = !_tbody.querySelector('a.load-tracks');
                         if (_expectedTotal !== null) {
                             // Definitive mode: only the actual row count decides completion.
@@ -22039,7 +22084,16 @@ a { color: #1565c0; }`;
         'display:inline-block',
         'position:relative',
         'width:auto',
-        'min-width:420px',
+        // min-width must fit the longest label this bar ever shows without
+        // clipping — fetchProgressFill/-Label are both position:absolute, so
+        // they contribute nothing to this element's own auto width; it always
+        // renders at exactly min-width (never grows to fit content) unless
+        // min-width itself is wide enough. 420px fit the original paginated-
+        // fetch label ("Loading page 999 of 999... (99999 rows) - 9999.9s
+        // left", ~55 chars) but not the longer overflow-tracks label
+        // ("Loading overflow tracks: medium 20 of 20... (99999 tracks) -
+        // 9999.9s left", ~73 chars) added later — see debug/NOTES.md.
+        'min-width:600px',
         'max-width:750px',
         'height:20px',
         'background:#e0e0e0',

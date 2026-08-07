@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.11",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the overflow-tracklist progress bar (WIP.9) only ever showing its static initial \"medium 1 of 1...\" text with no fill, instead of live progress. It was previously only updated once a medium fully finished loading — for the common case of a single overflowing medium (often the release's ONLY one), that meant the bar showed nothing but the initial text for the entire load (which can itself take as long as a whole paginated fetch), then flashed a completed state for a moment before the next phase's progress bar overwrote it. Now updates live as each medium's own AJAX response streams rows in, reusing the same `MutationObserver` that already detects completion — fill percentage, track count, and the remaining-time estimate all progress continuously during a medium's own load, not just between mediums.",
+          "Fixed the same progress bar's label text getting clipped on both ends (e.g. \"Loading\" losing its \"Load\") — its container's `min-width` (420px) was sized for the original, shorter paginated-fetch label and never grows to fit longer content since its fill/label children are both `position:absolute` and so don't contribute to the container's own auto width. Bumped to 600px, comfortably fitting the overflow-tracks label's worst case (~73 characters) while staying under the existing 750px cap."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.10",
     "date": "2026-08-07",
     "sections": [
