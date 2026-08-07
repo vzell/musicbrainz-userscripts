@@ -3134,3 +3134,59 @@ event-type siblings; setting-off). Test14 was extended (not replaced) to
 also exercise `_initColHeaderGlyph` for `eventlink`/`placelink`,
 confirming no cross-contamination between the three glyph columns.
 
+## 2026-08-08 — "Recorded at place" missing area chain + missing entirely for name-variations (WIP.15)
+
+User-supplied snapshots: `with-place.html`, `without-place.html` (both
+POST-render `/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc` full-page
+snapshots — the "ARs" column's `dl.ars` content is an exact, unmodified
+copy of the original bare `div.ars` source, since that extraction moves
+those nodes only after every "recorded at"/"recording of" read, so it
+doubles as ground truth for what `_findRecordedAtDt` originally saw), and
+`place-complete.html` (isolated single `<dd>` snippet, the "Meadowlands
+Arena" case only).
+
+- **Bug 1 (with-place.html, "Meadowlands Arena")**: `_recordedAtPlaceTh`'s
+  cell was built from `_recordedAtDdAnchor()` — just the place `<a>`,
+  deliberately excluding the "in `<area>`, `<area>`, `<country>`" chain
+  per WIP.14's original design comment (mirroring how "Recorded at
+  event"'s own anchor text already spells out date/venue/location, so no
+  extra context was thought needed for place either). User wants the area
+  chain included for place — a bare venue name has no context on its own.
+  Fixed with a new `_recordedAtPlaceDetails()` that clones the whole
+  `<dd>` (place anchor + " in " + area chain: area links, region flag
+  `<img>`, CSS-flag-background country `<span>`) and strips only the
+  trailing `" (on YYYY-MM-DD)"` text node (regex `/^\s*\(on\s+.*\)\s*$/`
+  against the fragment's last child) — that date stays "ARs"-only, same
+  as "Recording of"'s own trailing date. "Recorded at event" is
+  unchanged (still `_recordedAtDdAnchor`, anchor-only).
+- **Bug 2 (without-place.html, "Nassau Coliseum")**: extracted nothing at
+  all. Root cause: the place has a name-variation (alias name differing
+  from canonical — MB wraps it as `<dd><span class="placelink"></span>
+  <span class="name-variation"><a href="/place/...">…</a></span> in
+  …</dd>`, one level deeper than the bare case), and
+  `_recordedAtDdAnchor()` queried `:scope > a[href^="..."]` — a
+  direct-child-only query that silently found nothing once the anchor
+  sat inside the extra `<span>`. `_findRecordedAtDt()`'s own presence
+  check (`:scope > span.${glyphClass}`) still passed fine since the
+  glyph span itself is always a direct child — so the column got created
+  (page-wide gate saw the glyph) but individual name-variation rows
+  rendered empty. Fixed by dropping `:scope >` from
+  `_recordedAtDdAnchor()`'s query — the href-prefix filter alone (`/place/`
+  vs. `/event/`, disjoint from area links' `/area/`) already picks the
+  right anchor at any depth. `_recordedAtPlaceDetails()` (bug 1's fix)
+  sidesteps this class of bug entirely for place, since it clones the
+  whole `<dd>` rather than searching for a specific anchor — but the
+  underlying `_recordedAtDdAnchor()` relaxation still matters for
+  "Recorded at event", which could hit the identical name-variation
+  shape (not confirmed in a snapshot, but the same MusicBrainz template
+  convention).
+
+Verified via a real jsdom run (not just read-through) against the actual
+`with-place.html`/`without-place.html` ARs-column content, reconstructed
+into a bare `div.ars` and fed through the real `_findRecordedAtDt`/
+`_recordedAtDdAnchor`/`_recordedAtPlaceDetails` functions extracted
+verbatim from the script: place cell text now reads "Meadowlands Arena in
+East Rutherford,  New Jersey, United States" (bug 1) and "Nassau Coliseum
+in Uniondale,  New York, United States" (bug 2, previously empty) with
+both flags preserved and no trailing date in either.
+

@@ -7025,18 +7025,26 @@
      *     purely-additive columns from the same bare `div.ars`, gated by
      *     the same setting and following the same
      *     never-touch-`_bareArsDiv` contract: "Recorded at event" and
-     *     "Recorded at place" (`_findRecordedAtDt`/
-     *     `_recordedAtDdAnchor`), sourced from sibling `dl.ars` blocks
+     *     "Recorded at place" (`_findRecordedAtDt`/`_recordedAtDdAnchor`/
+     *     `_recordedAtPlaceDetails`), sourced from sibling `dl.ars` blocks
      *     whose `<dt>` text (case-insensitively) *contains* `"recorded
      *     at"` — the exact wording varies (`"recorded at:"`, `"recorded
      *     at and mixed at:"`, other "mixed at" combinations MusicBrainz
      *     may emit) so the distinguishing signal is instead the `<dd>`'s
      *     leading native glyph span (`span.eventlink` vs.
-     *     `span.placelink`). Cell value is just the cloned event/place
-     *     `<a>` — no surrounding "in `<area>`, `<area>`, `<country>`"
-     *     chain, no trailing date (that stays in "ARs" only, matching how
-     *     "Recording of"'s cell is just the cloned work anchor). Two
-     *     SEPARATE columns rather than one shared "Recorded at" because
+     *     `span.placelink`). "Recorded at event"'s cell value is just the
+     *     cloned event `<a>` — its own `<bdi>` text already spells out
+     *     date/venue/location, no surrounding "in `<area>`, `<area>`,
+     *     `<country>`" chain needed (that stays in "ARs" only, matching how
+     *     "Recording of"'s cell is just the cloned work anchor). "Recorded
+     *     at place"'s cell value is the place `<a>` (bare, or wrapped in
+     *     `<span class="name-variation">` when the place has an alias name
+     *     — see `_recordedAtDdAnchor`'s JSDoc) PLUS the following "in
+     *     `<area>`, `<area>`, `<country>`" chain (area links, flag image,
+     *     CSS-flag country span) — a bare venue name has none of that
+     *     context on its own, unlike the event anchor. Both cells drop the
+     *     trailing " (on YYYY-MM-DD)" (stays in "ARs" only). Two SEPARATE
+     *     columns rather than one shared "Recorded at" because
      *     `makeTableSortableUnified()` derives each column's identity
      *     fresh from `th.textContent` on every render — two `<th>`s both
      *     showing literal "Recorded at" would collide. Positioned last of
@@ -7415,8 +7423,8 @@
                     }
                     if (_recordedAtPlaceTh) {
                         const _td = document.createElement('td');
-                        const _anchor = _recordedAtDdAnchor(_findRecordedAtDt(_titleTd, 'placelink'), '/place/');
-                        if (_anchor) _td.appendChild(_anchor.cloneNode(true));
+                        const _details = _recordedAtPlaceDetails(_findRecordedAtDt(_titleTd, 'placelink'));
+                        if (_details) _td.appendChild(_details);
                         row.appendChild(_td);
                     }
                 }
@@ -7600,11 +7608,21 @@
     /**
      * Extracts the event/place anchor from a `_findRecordedAtDt` result's
      * `<dd>` — mirrors the row-level work-anchor lookup for "Recording of",
-     * but filters by href prefix rather than trusting `:scope > a` position
-     * alone: a "recorded at (place)" `<dd>` holds several sibling anchors
-     * (the place itself, then each area in the "in `<area>`, `<area>`,
-     * `<country>`" chain) — the href-prefix filter makes the intent
-     * explicit and immune to markup reordering.
+     * filtering by href prefix rather than trusting anchor position: a
+     * "recorded at (place)" `<dd>` holds several sibling anchors (the place
+     * itself, then each area in the "in `<area>`, `<area>`, `<country>`"
+     * chain) — the href-prefix filter makes the intent explicit and immune
+     * to markup reordering. Deliberately NOT scoped to `:scope > a` — when
+     * the place/event has a name-variation (alias name differing from its
+     * canonical one, same convention as the Title cell's own
+     * `<span class="name-variation">` handling, see
+     * `applyExtractTrackTitleData`'s JSDoc), MusicBrainz wraps the anchor
+     * one level deeper as `<dd><span class="placelink"></span>
+     * <span class="name-variation"><a href="/place/...">…</a></span>
+     * in …</dd>` — a `:scope`-scoped query silently found nothing for
+     * these rows (see debug/without-place.html vs. debug/with-place.html).
+     * The href-prefix filter alone is enough to pick the right anchor at
+     * any depth since areas use a disjoint `/area/` prefix.
      *
      * @param {?HTMLElement} dt - Result of `_findRecordedAtDt` (may be `null`).
      * @param {'/event/'|'/place/'} hrefPrefix
@@ -7613,7 +7631,37 @@
     function _recordedAtDdAnchor(dt, hrefPrefix) {
         const _dd = dt?.nextElementSibling;
         if (!_dd || _dd.tagName !== 'DD') return null;
-        return _dd.querySelector(`:scope > a[href^="${hrefPrefix}"]`);
+        return _dd.querySelector(`a[href^="${hrefPrefix}"]`);
+    }
+
+    /**
+     * Builds the "Recorded at place" cell content from a
+     * `_findRecordedAtDt` result's `<dd>`: the place anchor (bare, or
+     * wrapped in `<span class="name-variation">` — see `_recordedAtDdAnchor`'s
+     * JSDoc) PLUS the following "in `<area>`, `<area>`, `<country>`" chain
+     * (area anchors, the `<span class="area-icon">` flag image, and the
+     * CSS-flag-background country `<span>`) — unlike `_recordedAtDdAnchor`
+     * (still used for "Recorded at event", where the anchor's own `<bdi>`
+     * text already spells out date/venue/location), the place anchor alone
+     * is just a bare venue name with none of that context, so the user
+     * asked for the area chain to come along. Drops only the trailing
+     * " (on YYYY-MM-DD)" parenthetical — that date stays in "ARs" only,
+     * matching how "Recording of"'s cell omits its own trailing date (kept
+     * in the separate "Recording date" column instead).
+     *
+     * @param {?HTMLElement} dt - Result of `_findRecordedAtDt` (may be `null`).
+     * @returns {?DocumentFragment} `null` when `dt` has no place `<dd>`.
+     */
+    function _recordedAtPlaceDetails(dt) {
+        const _dd = dt?.nextElementSibling;
+        if (!_dd || _dd.tagName !== 'DD') return null;
+        const _frag = document.createDocumentFragment();
+        Array.from(_dd.childNodes).forEach(n => _frag.appendChild(n.cloneNode(true)));
+        const _last = _frag.lastChild;
+        if (_last && _last.nodeType === Node.TEXT_NODE && /^\s*\(on\s+.*\)\s*$/.test(_last.textContent)) {
+            _frag.removeChild(_last);
+        }
+        return _frag;
     }
 
     /**

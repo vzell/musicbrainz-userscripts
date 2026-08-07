@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.15",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"Recorded at place\" (WIP.14) now includes the following \"in <area>, <area>, <country>\" chain (area links, region-flag image, CSS-flag-background country span) alongside the place link itself, instead of just the bare venue name — e.g. \"Meadowlands Arena\" now also shows \"in East Rutherford, New Jersey, United States\" with both flags. \"Recorded at event\" is unchanged: its own anchor text already spells out date/venue/location, so no area chain is added there. Both cells still drop the trailing \" (on YYYY-MM-DD)\" (stays in \"ARs\" only, same as before).",
+          "Fixed \"Recorded at place\"/\"Recorded at event\" extracting nothing at all for tracks whose place/event has a name-variation (an alias name differing from the entity's canonical one — MusicBrainz wraps the link one level deeper as `<span class=\"name-variation\"><a>...</a></span>` in that case, mirroring the Title cell's own name-variation markup). The anchor lookup was scoped to `:scope > a`, a direct-child-only query that silently found nothing once the anchor sat inside that extra `<span>`; relaxed to search any depth, since the href-prefix filter (`/place/` vs. `/event/`, disjoint from area links' `/area/`) already picks the right anchor unambiguously regardless of nesting."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.14",
     "date": "2026-08-07",
     "sections": [
