@@ -1,5 +1,31 @@
 [
   {
+    "version": "WIP.13",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added a new \"Recording of\" column to `release-tracks`, extracted from the \"ARs\" relationship data's `<dt>recording of:</dt><dd><a href=\"/work/...\">Work Name</a>...</dd>` block (see e.g. `/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd`'s DVD-Video medium) — keeps the work link, same as every other entity reference extracted this session. Also adds one true/false column per recording attribute actually used somewhere on the release (`Acappella`, `Cover`, `Demo`, `Instrumental`, `Karaoke`, `Live`, `Medley`, `Partial` — MusicBrainz prefixes the `<dt>` with these, e.g. `\"live cover recording of:\"` sets both \"Live\" and \"Cover\" true for that track). Both gated by the existing page-wide \"only render when at least one track has a value\" pattern, plus a new master setting `sa_enable_release_tracks_recording_of_columns` (default **on**) for the whole feature. Positioned directly before \"ARs\" (not chained after Title like every other column added this session).",
+          "Unlike every prior extraction this session, this one is purely additive: the work link is *cloned*, and the \"ARs\" column's underlying `div.ars` content is never touched, removed, or modified — \"ARs\" keeps showing the exact same full relationship data (work link included, now duplicated) it always has. Per explicit instruction, since the source `dl.ars`'s `<dd>` also holds nested writer/lyricist/publisher `dl.ars` blocks that have no column of their own and must not be lost."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.12",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "`release-tracks`' \"Disambiguation\" column no longer keeps the literal `(`/`)` MusicBrainz wraps the comment's text in (e.g. \"(version 1)\" → \"version 1\", \"(live, 1978‐07‐07: …)\" → \"live, 1978‐07‐07: …\") — redundant once the comment has its own dedicated column. New `_stripSurroundingParens()` helper strips a leading `(`/trailing `)` from the cell's first/last actual text node via a `TreeWalker`, handling both structural shapes the comment can appear in (bare text directly in `span.comment`, or wrapped in a nested `<bdi>`).",
+          "`release-tracks`' `integerColumns` now also center-aligns (`align: 'C'`) the native `#` track-number column, matching `Rating`."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.11",
     "date": "2026-08-07",
     "sections": [

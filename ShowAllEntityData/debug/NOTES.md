@@ -2663,3 +2663,101 @@ truly dynamic auto-fit — CSS alone can't make an absolutely-positioned,
 `width:100%`-of-parent label drive its own parent's width, that's a
 circular dependency).
 
+## 2026-08-07 — Disambiguation parentheses stripped; "#" column alignment (WIP.12)
+
+Two small requests:
+
+1. MusicBrainz's own disambiguation comment text is always wrapped in
+   literal `(`/`)` (e.g. `"(version 1)"`, `"(live, 1978‐07‐07: …)"`) —
+   made sense inline in the native Title cell, redundant now that it's
+   its own "Disambiguation" column. New `_stripSurroundingParens(container)`
+   walks `container`'s text nodes via `TreeWalker` (not just
+   `container.firstChild`/`.lastChild` — the comment's text can be either
+   a bare text node directly inside the moved `span.comment`, e.g.
+   `debug/tracklist-live.html`'s `class="jesus2099userjs81127recdis
+   comment"` span, or wrapped in a nested `<bdi>`, e.g.
+   `debug/area-column.html`'s engineer/producer disambiguations like
+   `<span class="comment"><bdi>(US engineer)</bdi></span>` — both shapes
+   confirmed present in this codebase's own debug fixtures) and strips a
+   leading `(` from the first text node / trailing `)` from the last, in
+   place. Called right after moving `_commentSpan` into the Disambiguation
+   `<td>`. Verified against both shapes via jsdom (bare text and
+   `<bdi>`-wrapped), plus the existing `tracklist-live.html`-derived Test3
+   fixture (multi-word comment, confirms only the outermost parens are
+   stripped, not anything else).
+2. Added `{ sourceColumn: '#', align: 'C' }` as the first `integerColumns`
+   entry for `release-tracks`, matching `Rating`'s center alignment.
+
+## 2026-08-07 — "Recording of" + attribute columns (WIP.13)
+
+New request (`debug/rec-of.org`, markup in `debug/recording.html`/
+`live-recording.html`/`live-cover-recording.html`, all real fragments
+from `/release/6d19588c-...` and `/release/e7969bdb-...`): extract the
+"ARs" relationship data's "recording of" `dl.ars` — `<dt>{attrs
+}recording of:</dt><dd><a href="/work/...">Work Name</a> (optional date)
+<dl class="ars">...writer/lyricist/publisher...</dl></dd>` — into a new
+"Recording of" column (work name + link), plus one true/false column per
+attribute word actually used on the release, from the fixed 8-word
+MusicBrainz set (`acappella`, `cover`, `demo`, `instrumental`, `karaoke`,
+`live`, `medley`, `partial`).
+
+Two explicit corrections from the user during planning, both now the
+permanent design for this and any future "extract more from ARs" work:
+
+1. **Never touch "ARs"** — first plan draft used the same move-semantics
+   every other extraction this session uses (Video, Recording artist,
+   Disambiguation, AcoustID, ISRC — see their own entries above), with a
+   "partial removal" scheme (strip just the work link out of the `<dd>`,
+   leave nested writer/publisher `dl.ars` blocks behind). User rejected
+   this: "for the case of the 'Recording of' and later maybe more 'ARs'
+   extractions, do not remove the extracted data from the 'ARs' column,
+   leave that column as is." Implementation switched to `cloneNode`
+   (never mutating `_bareArsDiv`) — the existing
+   `if (_arsTh) { ...move _bareArsDiv's children... }` block runs
+   completely unchanged, so "ARs" ends up with the exact same content it
+   would have without this feature at all, work link included
+   (duplicated in both places). Verified via jsdom: "ARs" still contains
+   the work link AND the nested lyricist/publisher `dl.ars`, dt label
+   unchanged.
+2. **Position before "ARs"**, not appended at the table's end like every
+   other column added this session — mid-turn correction while still in
+   plan mode.
+3. **Master setting** `sa_enable_release_tracks_recording_of_columns`
+   (default on) for the whole feature — also a mid-turn addition (every
+   other column added this session besides AcoustIDs/ISRCs has no
+   individual toggle).
+
+Implementation: `_findRecOfDt(titleTd)` (classifies the bare `div.ars`
+the same way `_bareArsDiv` already does elsewhere in this function, then
+finds its direct-child `dl.ars > dt` matching `/recording of:$/i`) and
+`_parseRecOfAttributes(dt)` (strips the trailing "recording of:", splits
+the remaining prefix on whitespace, filters to the fixed 8-word
+`REC_OF_ATTRIBUTES` set — so an unrecognised word never produces a stray
+column) are new standalone helpers, used both by a page-wide scan (mirrors
+`_pageHasVideo`/`_pageHasRecArtist`/`_pageHasDisambig`'s
+`_anyTitleCellMatches` pattern for the boolean "does any track have a
+'recording of' at all", plus a dedicated loop collecting the *union* of
+attribute words across every table/row into a `Set`) and the per-row
+extraction. Row/header positioning ("before ARs") resolves the "ARs"
+header/cell reference (either the pre-existing one from `_headerCells`,
+or the freshly-created `_arsTh`/first-row `<td>` this same pass) and
+inserts via `.before()` at the header level; at the row level, no
+`.before()` is needed at all — `row.appendChild()` always appends at the
+current tail, so simply placing this extraction's code *before* the
+existing ARs-move block in the function body is sufficient to land the
+new `<td>`s in the right order, matching how every prior column addition
+this session already relies on code order for row-level positioning.
+
+Verified via jsdom: 3 separate tables built from the actual debug fixture
+markup (plain "recording of:", "live recording of:", "live cover
+recording of:") in one document — confirms the page-wide *union* of
+attributes (not per-table): the plain table has neither attribute itself
+but still gets both "Live" and "Cover" columns (correctly `false` for
+that row) once ANY other table on the release uses them, matching the
+same `renderGroupedTable()` shared-header-template constraint documented
+in the Video/Recording-artist/Disambiguation entries above. Also confirms
+"ARs" is untouched (work link findable in both "Recording of" and "ARs"
+simultaneously, nested dl.ars blocks intact, dt text unchanged), the
+setting-off case creates neither column, and idempotency (extended the
+existing Test4 double-run fixture to also include a "recording of" block).
+

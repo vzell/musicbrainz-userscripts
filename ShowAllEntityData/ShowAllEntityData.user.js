@@ -1665,6 +1665,19 @@
                          'column settings above is on; zero overhead otherwise.'
         },
 
+        sa_enable_release_tracks_recording_of_columns: {
+            label: 'Show "Recording of" + attribute columns',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds a "Recording of" column (the linked work, e.g. "Dancing in the ' +
+                         'Dark") plus one true/false column per recording attribute actually ' +
+                         'used on the release (Acappella, Cover, Demo, Instrumental, Karaoke, ' +
+                         'Live, Medley, Partial — e.g. a "live cover recording of:" relationship ' +
+                         'sets both "Live" and "Cover" to true for that track), extracted from ' +
+                         'the release tracklist\'s "ARs" relationship data. "ARs" itself is left ' +
+                         'completely unchanged — the work link appears in both places.'
+        },
+
         sa_enable_ars_collapse: {
             label: 'Enable collapsible "ARs" column',
             type: 'checkbox',
@@ -6970,6 +6983,28 @@
      *     different — credit immediately beside it. Like "Video", this can
      *     only be decided page-wide via `_pageHasRecArtist`, not per
      *     medium/table — see the "Video" bullet above for why.
+     *   - The bare `div.ars`'s "recording of:" `<dl class="ars">` (see
+     *     `_findRecOfDt`/`_parseRecOfAttributes`) — e.g. `<dt>live cover
+     *     recording of:</dt><dd><a href="/work/...">Rave On</a> (on
+     *     1978-07-07)<dl class="ars">...writer/publisher...</dl></dd>`.
+     *     Unlike every other bullet here, this one is **purely additive**:
+     *     the work link is *cloned* (not moved) into a new "Recording of"
+     *     column, and one true/false column per attribute word actually
+     *     used anywhere on the release (`Acappella`/`Cover`/`Demo`/
+     *     `Instrumental`/`Karaoke`/`Live`/`Medley`/`Partial`) — but
+     *     `_bareArsDiv` itself, and everything inside it, is left
+     *     completely untouched, so "ARs" still gets the exact same full
+     *     content it always has (including this same work link, now
+     *     duplicated) — per explicit instruction, since (unlike Video/
+     *     Recording artist/Disambiguation/AcoustID/ISRC) this data isn't
+     *     the *only* thing living in its source element: the nested
+     *     writer/lyricist/publisher `dl.ars` blocks have no column of
+     *     their own and must not be lost. Also gated by
+     *     `sa_enable_release_tracks_recording_of_columns` (default on) —
+     *     the only piece of this whole function with its own on/off
+     *     setting. Inserted directly before "ARs" (not chained off
+     *     Title/Video/Disambiguation/Artist/Recording-artist like
+     *     everything above), per explicit instruction.
      *
      * Unlike every `ColumnDataExtractor` entry (`splitLocation`,
      * `splitArea`, `eventParts`, …), which are purely additive (read
@@ -7030,6 +7065,27 @@
             td => td.querySelector(':scope > span.comment, :scope > span.name-variation > span.comment')
         );
 
+        // "Recording of" + its attribute columns are purely additive (see
+        // this function's JSDoc) and gated by their own setting — skipped
+        // entirely, zero overhead, when off.
+        const _recOfEnabled = Lib.settings.sa_enable_release_tracks_recording_of_columns !== false;
+        const _pageHasRecOf = _recOfEnabled && _anyTitleCellMatches(td => _findRecOfDt(td) !== null);
+        const _presentRecOfAttributes = new Set();
+        if (_recOfEnabled) {
+            _tables.forEach(table => {
+                const _thRow = table.querySelector(':scope > thead > tr');
+                const _tb = table.querySelector(':scope > tbody');
+                if (!_thRow || !_tb) return;
+                const _tIdx = Array.from(_thRow.querySelectorAll('th')).findIndex(th => th.textContent.trim() === 'Title');
+                if (_tIdx === -1) return;
+                _tb.querySelectorAll(':scope > tr').forEach(tr => {
+                    const td = tr.children[_tIdx];
+                    if (!td) return;
+                    _parseRecOfAttributes(_findRecOfDt(td)).forEach(attr => _presentRecOfAttributes.add(attr));
+                });
+            });
+        }
+
         _tables.forEach(table => {
             const _theadRow = table.querySelector(':scope > thead > tr');
             const _tbody = table.querySelector(':scope > tbody');
@@ -7087,6 +7143,36 @@
                 _theadRow.appendChild(_isrcTh);
             }
 
+            // "Recording of" + attribute columns — purely additive (see
+            // this function's JSDoc), inserted directly before "ARs" (not
+            // chained off Title/Video/Disambiguation/Artist/Recording
+            // artist like everything else), in the fixed canonical
+            // attribute order. `_newAttrThs` tracks only the ones created
+            // THIS pass, for the row loop below — mirrors how `_disambigTh`
+            // etc. being non-null (vs. already-existing) gates row-level
+            // insertion everywhere else in this function.
+            let _recOfTh = null;
+            const _newAttrThs = [];
+            if (_pageHasRecOf) {
+                const _arsHeaderRef = _hasArs
+                    ? _headerCells.find(th => th.textContent.trim() === 'ARs')
+                    : _arsTh;
+                if (!_headerCells.some(th => th.textContent.trim() === 'Recording of')) {
+                    _recOfTh = document.createElement('th');
+                    _recOfTh.textContent = 'Recording of';
+                    _arsHeaderRef.before(_recOfTh);
+                }
+                REC_OF_ATTRIBUTES.forEach(attr => {
+                    if (!_presentRecOfAttributes.has(attr)) return;
+                    const _label = attr.charAt(0).toUpperCase() + attr.slice(1);
+                    if (_headerCells.some(th => th.textContent.trim() === _label)) return;
+                    const _th = document.createElement('th');
+                    _th.textContent = _label;
+                    _arsHeaderRef.before(_th);
+                    _newAttrThs.push({ attr, th: _th });
+                });
+            }
+
             // Video then Disambiguation, chained right after Title in that
             // order (mirrors native DOM order: span.video, then
             // span.name-variation [title+disambiguation]) — mirrors the
@@ -7107,7 +7193,8 @@
                 (_artistIdx !== -1 ? _headerCells[_artistIdx] : _titleHeaderCursor).after(_recArtistTh);
             }
 
-            if (!_disambigTh && !_recArtistTh && !_arsTh && !_acoustIdTh && !_isrcTh && !_videoTh) return; // already fully processed
+            if (!_disambigTh && !_recArtistTh && !_arsTh && !_acoustIdTh && !_isrcTh && !_videoTh &&
+                !_recOfTh && _newAttrThs.length === 0) return; // already fully processed
 
             _tbody.querySelectorAll(':scope > tr').forEach(row => {
                 const _cells = Array.from(row.children);
@@ -7151,7 +7238,14 @@
                     // Moves (not clones) the live comment span — see
                     // initAcoustIdIsrcObserver()'s JSDoc for why preserving
                     // node identity throughout this whole function matters.
-                    if (_commentSpan) _td.appendChild(_commentSpan);
+                    if (_commentSpan) {
+                        _td.appendChild(_commentSpan);
+                        // MusicBrainz renders the comment's own text wrapped
+                        // in literal "(" / ")" (e.g. "(version 1)",
+                        // "(live, 1978‐07‐07: …)") — redundant once it has
+                        // its own dedicated column, so stripped here.
+                        _stripSurroundingParens(_td);
+                    }
                     _rowInsertCursor.after(_td);
                 }
                 // Recording artist goes right after this row's "Artist"
@@ -7163,6 +7257,37 @@
                     // every other extracted node in this function.
                     if (_recArtistBdi) _td.appendChild(_recArtistBdi);
                     (_artistIdx !== -1 ? _cells[_artistIdx] : _rowInsertCursor).after(_td);
+                }
+
+                // "Recording of" + attribute columns — read-only (see this
+                // function's JSDoc): clones the work link, never touches
+                // `_bareArsDiv`, so the existing ARs block right below still
+                // moves its full, untouched content into "ARs" exactly as
+                // it always has. Must run before that block purely for
+                // column ORDER (row.appendChild always appends at the
+                // current tail, so calling it here first is what lands
+                // these <td>s immediately before the "ARs" <td>, matching
+                // the header order above) — not because the ARs block would
+                // otherwise consume anything these need.
+                if (_recOfTh || _newAttrThs.length > 0) {
+                    const _recOfDt = _findRecOfDt(_titleTd);
+                    if (_recOfTh) {
+                        const _td = document.createElement('td');
+                        const _recOfDd = _recOfDt?.nextElementSibling;
+                        const _workAnchor = _recOfDd && _recOfDd.tagName === 'DD'
+                            ? _recOfDd.querySelector(':scope > a')
+                            : null;
+                        if (_workAnchor) _td.appendChild(_workAnchor.cloneNode(true));
+                        row.appendChild(_td);
+                    }
+                    if (_newAttrThs.length > 0) {
+                        const _recOfAttrs = _parseRecOfAttributes(_recOfDt);
+                        _newAttrThs.forEach(({ attr }) => {
+                            const _td = document.createElement('td');
+                            _td.textContent = _recOfAttrs.includes(attr) ? 'true' : 'false';
+                            row.appendChild(_td);
+                        });
+                    }
                 }
 
                 if (_arsTh) {
@@ -7202,6 +7327,87 @@
         });
 
         Lib.debug('init', 'applyExtractTrackTitleData: processed Title-derived columns.');
+    }
+
+    /**
+     * Strips a single leading `(` and trailing `)` from `container`'s text,
+     * in place — used to drop the redundant literal parentheses MusicBrainz
+     * wraps a disambiguation comment's text in (e.g. `"(version 1)"` →
+     * `"version 1"`), now that the comment has its own dedicated column.
+     * Finds the first/last actual text nodes via a `TreeWalker` rather than
+     * assuming a flat structure, since the comment may be a bare text node
+     * directly inside the moved `<span class="comment">`, or one wrapped in
+     * a `<bdi>` (both shapes occur — see debug/tracklist-live.html vs.
+     * debug/area-column.html). A no-op if either character isn't present.
+     *
+     * @param {HTMLElement} container
+     * @returns {void}
+     */
+    function _stripSurroundingParens(container) {
+        const _walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+        const _textNodes = [];
+        let _n;
+        while ((_n = _walker.nextNode())) _textNodes.push(_n);
+        if (_textNodes.length === 0) return;
+
+        const _first = _textNodes[0];
+        if (_first.textContent.startsWith('(')) {
+            _first.textContent = _first.textContent.slice(1);
+        }
+        const _last = _textNodes[_textNodes.length - 1];
+        if (_last.textContent.endsWith(')')) {
+            _last.textContent = _last.textContent.slice(0, -1);
+        }
+    }
+
+    /**
+     * The fixed set of MusicBrainz recording-relationship attribute words
+     * that can prefix a "recording of:" `<dt>` (e.g. `"live cover
+     * recording of:"`) — see debug/rec-of.org. Column names are these
+     * capitalized (`Acappella`, `Cover`, …).
+     * @type {string[]}
+     */
+    const REC_OF_ATTRIBUTES = ['acappella', 'cover', 'demo', 'instrumental', 'karaoke', 'live', 'medley', 'partial'];
+
+    /**
+     * Finds `titleTd`'s "recording of:" `<dt>` — i.e. the direct-child
+     * `<dt>` of the bare `div.ars` (same classification as `_bareArsDiv`
+     * elsewhere in `applyExtractTrackTitleData`: a `div.ars` with no
+     * `AcoustID…`/`ISRC…`-prefixed class) whose text ends in `"recording
+     * of:"`, optionally prefixed with one or more attribute words (e.g.
+     * `"live cover recording of:"` — see debug/live-cover-recording.html).
+     * Used both by the page-wide presence scan and the per-row extraction
+     * in `applyExtractTrackTitleData`.
+     *
+     * @param {HTMLTableCellElement} titleTd
+     * @returns {?HTMLElement} The `<dt>`, or `null` if this track has none.
+     */
+    function _findRecOfDt(titleTd) {
+        let _bareArsDiv = null;
+        titleTd.querySelectorAll(':scope > div.ars').forEach(d => {
+            const _classes = Array.from(d.classList);
+            if (!_classes.some(c => c.startsWith('AcoustID') || c.startsWith('ISRC'))) _bareArsDiv = d;
+        });
+        if (!_bareArsDiv) return null;
+        return Array.from(_bareArsDiv.querySelectorAll(':scope > dl.ars > dt'))
+            .find(dt => /recording of:$/i.test(dt.textContent.trim())) || null;
+    }
+
+    /**
+     * Parses the attribute words (if any) prefixing a "recording of:"
+     * `<dt>` — e.g. `"live cover recording of:"` → `['live', 'cover']` —
+     * restricted to `REC_OF_ATTRIBUTES`, so an unrecognised word never
+     * silently produces a stray column.
+     *
+     * @param {?HTMLElement} dt - Result of `_findRecOfDt` (may be `null`).
+     * @returns {string[]}
+     */
+    function _parseRecOfAttributes(dt) {
+        if (!dt) return [];
+        const _prefix = dt.textContent.trim().replace(/recording of:$/i, '').trim().toLowerCase();
+        if (!_prefix) return [];
+        const _words = _prefix.split(/\s+/);
+        return REC_OF_ATTRIBUTES.filter(attr => _words.includes(attr));
     }
 
     /**
@@ -10355,6 +10561,7 @@
                     { sourceColumn: 'Length', erasers: ['jesus2099-any'] }
                 ],
                 integerColumns: [
+                    { sourceColumn: '#', align: 'C' },
                     { sourceColumn: 'Length', align: ':' },
                     { sourceColumn: 'Rating', align: 'C' }
                 ],
