@@ -3022,3 +3022,115 @@ whitespace-collapsing either way. Extended Test14 with a
 `glyph.style.marginLeft === '4px'` assertion right next to the existing
 `marginRight` one.
 
+### Follow-up: "Recorded at event"/"Recorded at place" columns
+
+User's next request: extract two more relationship types from the same
+bare `div.ars` — "recorded at" against an event, and "recorded at"
+(optionally combined with "mixed at") against a place. Both are *sibling*
+`dl.ars` blocks to "recording of:" within `div.ars`, not nested inside
+it. Three real markup shapes were supplied:
+
+1. **Event, bare "recorded at:"** — `<dd>` starts with `<span
+   class="eventlink"></span>`, then the event anchor whose `<bdi>` embeds
+   the date+venue+location as one string (`"1978‐07‐07: The Roxy Theatre,
+   West Hollywood, CA, USA"`), then an optional trailing date in
+   parens — **without** an `"on "` prefix in this example (`" (1978-07-07)"`,
+   unlike "recording of"'s `"(on YYYY-MM-DD)"`).
+2. **Place, bare "recorded at:"** — `<dd>` starts with `<span
+   class="placelink"></span>`, then the place anchor, then `"in <area
+   anchor>, <area anchor>, <country anchor>"`, then optionally the same
+   `<!-- -->(on YYYY-MM-DD)` comment-separator date pattern
+   `_parseRecOfDate` already parses for "recording of".
+3. **Place, combined `<dt>` verb, no date** — `<dt>recorded at and mixed
+   at:</dt>`, otherwise the same `span.placelink` + place anchor + area
+   chain shape as (2), confirming the `<dt>` wording is NOT a fixed
+   string (MusicBrainz can combine "recorded at" with "mixed at", and
+   possibly other combinations not yet seen).
+
+**Design decisions** (all user-approved before implementation):
+
+- **Classify by the `<dd>`'s glyph span, not the `<dt>` text.** Since the
+  `<dt>` wording varies, matching it exactly (like `_findRecOfDt`'s
+  `/recording of:$/i`) would miss shape 3 above. Instead
+  `_findRecordedAtDt(titleTd, glyphClass)` does a loose, unanchored
+  `/recorded at/i` substring test against the `<dt>`, then requires that
+  same `dl.ars`'s `<dd>` have a `:scope > span.${glyphClass}` child —
+  `glyphClass` is `'eventlink'` or `'placelink'`, passed in by the
+  caller. This is the actual classifying signal per the request.
+- **Two separate columns are required, not just a style choice.** The
+  standard sort/filter header pipeline (`makeTableSortableUnified()`)
+  rebuilds every `<th>`'s `dataset.colName` fresh from `th.textContent`
+  on every render. Two `<th>`s both showing literal text "Recorded at"
+  would collide: the second would never pass its own
+  `_headerCells.some(th => th.textContent.trim() === 'Recorded at')`
+  creation guard (the first one already satisfies it), and the
+  post-render glyph injector's `_cleanColHeaderText(th) === 'Recorded
+  at'` lookup would only ever find the first one via `.find()`. Labeling
+  them "Recorded at event" and "Recorded at place" sidesteps this
+  entirely while still reading as one family.
+- **No date extraction this round** — deliberately deferred. Only the
+  cloned event/place `<a>` goes into the new columns; the date (in
+  either format seen above) stays visible only inside "ARs", same as the
+  "in `<area>`, `<country>`" chain for the place variant.
+- **`_recordedAtDdAnchor(dt, hrefPrefix)`** extracts the anchor via
+  `:scope > a[href^="${hrefPrefix}"]` rather than just the first `:scope
+  > a` (unlike "Recording of"'s work-anchor lookup) — a place `<dd>` has
+  *several* sibling anchors (the place itself, then each area in the "in
+  `<area>`, `<area>`, `<country>`" chain), so the href-prefix filter is
+  what actually picks the right one; position alone would happen to work
+  today but isn't the real invariant.
+- **First match only, per kind, per row** — mirrors `_findRecOfDt`'s own
+  simplicity (no multi-row list support exists for "Recording of"
+  either). Verified with a fixture with two event-type `dl.ars` siblings
+  in the same row.
+- **Header-creation gating widened.** The existing `if (_pageHasRecOf) {
+  ... }` block correctly gates attribute columns + "Recording of" +
+  "Recording date" together, but was too narrow for the new columns — a
+  release can have "recorded at" data with zero "recording of" data at
+  all. Widened to `if (_pageHasRecOf || _pageHasRecordedAtEvent ||
+  _pageHasRecordedAtPlace)`, with the existing recording-of-specific code
+  nested behind its own inner `if (_pageHasRecOf)`. The early-return
+  guard right after this block was extended the same way — otherwise a
+  release with only recorded-at data would create the headers but bail
+  before the row loop ever populated them.
+- **Reused the existing setting**
+  `sa_enable_release_tracks_recording_of_columns` rather than adding a
+  new one — same purely-additive family as "Recording of"/"Recording
+  date", avoids settings sprawl. Label/description updated to mention
+  the new columns.
+- **Column order**: since every column in this group is inserted via
+  `.before(_arsHeaderRef)` against the same fixed "ARs" reference, and a
+  *later* insertion against a fixed reference always lands closer to it
+  than an earlier one, simply creating the two new blocks *after* the
+  existing attribute/Recording-of/Recording-date code (in the same
+  `if` block) was sufficient to produce the desired final order —
+  [attribute columns] → Recording of → Recording date → Recorded at
+  (event) → Recorded at place → ARs — with no extra positioning logic.
+  Same mechanism already used for every prior reordering in this
+  function's history.
+
+**Glyph injector generalized.** `_recOfInitColHeaderGlyph()` (hard-coded
+to "Recording of"/`worklink`) became `_initColHeaderGlyph(columnName,
+glyphClass)`, called three times from `renderGroupedTable()`'s tail. The
+`height: 14px` / `marginLeft`/`marginRight: 4px` fixes established for
+`worklink` (see the entries above) are reused verbatim for
+`eventlink`/`placelink`, since the root cause (any direct child of
+`.mb-col-hdr-flex`, a flex container, gets blockified regardless of its
+own `display`) is about the flex container, not the specific glyph
+class — but this is **unverified in a real browser** for the two new
+glyph classes (no CSS rendering available in this environment). If
+either icon turns out missing, mis-sized, or misaligned once tested
+live, expect the same kind of Computed-panel comparison documented
+above for `worklink` to be needed, most likely just adjusting the
+`height`/margin constants for that glyph class specifically.
+
+Verified via jsdom: new Test15 (page-wide union across 3 tables built
+from the exact event/place/combined-dt shapes above — including a check
+that a release with recorded-at data but zero recording-of data still
+gets both new columns, a regression check for the widened header-gating
+condition) and Test16 (recording-of + both recorded-at kinds together in
+one row, for column-order verification; first-match-only with two
+event-type siblings; setting-off). Test14 was extended (not replaced) to
+also exercise `_initColHeaderGlyph` for `eventlink`/`placelink`,
+confirming no cross-contamination between the three glyph columns.
+

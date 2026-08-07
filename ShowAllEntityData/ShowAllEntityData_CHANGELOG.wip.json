@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.14",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added \"Recorded at event\" and \"Recorded at place\" columns to `release-tracks`, extracted from the same bare `div.ars`'s sibling `<dl class=\"ars\"><dt>recorded at:</dt>...</dl>` relationship (a sibling of \"recording of:\", not nested inside it) already partly covered by the \"Recording of\" feature. MusicBrainz's `<dt>` wording for this relationship varies (`\"recorded at:\"`, `\"recorded at and mixed at:\"`, other \"mixed at\" combinations), so classification is instead by the `<dd>`'s leading native glyph span — `span.eventlink` vs. `span.placelink` — matched via a loose case-insensitive `\"recorded at\"` substring test against the `<dt>` rather than an exact/anchored pattern. Two separate columns (not one shared \"Recorded at\") because the standard sort/filter header pipeline derives each column's identity fresh from its header text on every render — two headers both showing literal \"Recorded at\" would collide and the second would never be created. Cell value is just the cloned event/place link (no \"in <area>, <area>, <country>\" chain, no trailing date — no date extraction this round, deferred). A row with more than one \"recorded at\" entry of the same kind only yields the first, in document order. Reuses the existing `sa_enable_release_tracks_recording_of_columns` setting (label/description updated) rather than adding a new one — same purely-additive family. Positioned after \"Recording date\", still directly before \"ARs\"; \"ARs\" itself is left completely untouched, same contract as \"Recording of\".",
+          "Generalized the post-render column-header glyph injector (`_recOfInitColHeaderGlyph` → `_initColHeaderGlyph(columnName, glyphClass)`) so the same technique now serves all three glyph columns (\"Recording of\"/`worklink`, \"Recorded at event\"/`eventlink`, \"Recorded at place\"/`placelink`) instead of duplicating the function body. The `height`/`margin` CSS fixes already established for `worklink` (see WIP.13) are reused as-is for the two new glyph classes, since the root cause — any direct child of `.mb-col-hdr-flex`, a flex container, gets its outer display blockified regardless of its own `display` value — is unrelated to the specific glyph class; this is however **unverified in a live browser** for `eventlink`/`placelink` and may need the same kind of Computed-panel comparison `worklink` needed if either icon turns out missing, mis-sized, or misaligned."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.13",
     "date": "2026-08-07",
     "sections": [

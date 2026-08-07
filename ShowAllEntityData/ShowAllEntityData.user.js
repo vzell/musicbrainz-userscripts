@@ -1666,7 +1666,7 @@
         },
 
         sa_enable_release_tracks_recording_of_columns: {
-            label: 'Show "Recording of" + attribute columns',
+            label: 'Show "Recording of" / "Recorded at" + attribute columns',
             type: 'checkbox',
             default: true,
             description: 'Adds one column per recording attribute actually used on the release ' +
@@ -1674,10 +1674,13 @@
                          'e.g. a "live cover recording of:" relationship shows the attribute name ' +
                          'in both the "Live" and "Cover" cells for that track, empty otherwise), ' +
                          'a "Recording of" column (the linked work, e.g. "Dancing in the Dark"), ' +
-                         'and a "Recording date" column for the recording date when present ' +
-                         '(e.g. "1978-07-07"), extracted from the release tracklist\'s "ARs" ' +
-                         'relationship data. "ARs" itself is left completely unchanged — the ' +
-                         'work link appears in both places.'
+                         'a "Recording date" column for the recording date when present ' +
+                         '(e.g. "1978-07-07"), and "Recorded at event"/"Recorded at place" ' +
+                         'columns (the linked event/place, classified by MusicBrainz\'s own icon ' +
+                         'rather than the varying "recorded at:"/"recorded at and mixed at:" ' +
+                         'wording) — all extracted from the release tracklist\'s "ARs" ' +
+                         'relationship data. "ARs" itself is left completely unchanged — every ' +
+                         'extracted link appears in both places.'
         },
 
         sa_enable_ars_collapse: {
@@ -6998,7 +7001,7 @@
      *     header additionally gets MB's own empty, CSS-styled work-glyph
      *     icon, `<span class="worklink">`, matching the visual convention
      *     that it's always rendered right before a work link — injected
-     *     post-render by `_recOfInitColHeaderGlyph()`, since anything
+     *     post-render by `_initColHeaderGlyph()`, since anything
      *     appended to this `<th>` here would be destroyed the moment
      *     `makeTableSortableUnified()` rebuilds it); then a "Recording
      *     date" column right after it for the optional `(on YYYY-MM-DD)`
@@ -7018,7 +7021,30 @@
      *     setting. All inserted directly before "ARs" (not chained off
      *     Title/Video/Disambiguation/Artist/Recording-artist like
      *     everything above), in the order attribute columns → "Recording
-     *     of" → "Recording date", per explicit instruction.
+     *     of" → "Recording date", per explicit instruction. Two more
+     *     purely-additive columns from the same bare `div.ars`, gated by
+     *     the same setting and following the same
+     *     never-touch-`_bareArsDiv` contract: "Recorded at event" and
+     *     "Recorded at place" (`_findRecordedAtDt`/
+     *     `_recordedAtDdAnchor`), sourced from sibling `dl.ars` blocks
+     *     whose `<dt>` text (case-insensitively) *contains* `"recorded
+     *     at"` — the exact wording varies (`"recorded at:"`, `"recorded
+     *     at and mixed at:"`, other "mixed at" combinations MusicBrainz
+     *     may emit) so the distinguishing signal is instead the `<dd>`'s
+     *     leading native glyph span (`span.eventlink` vs.
+     *     `span.placelink`). Cell value is just the cloned event/place
+     *     `<a>` — no surrounding "in `<area>`, `<area>`, `<country>`"
+     *     chain, no trailing date (that stays in "ARs" only, matching how
+     *     "Recording of"'s cell is just the cloned work anchor). Two
+     *     SEPARATE columns rather than one shared "Recorded at" because
+     *     `makeTableSortableUnified()` derives each column's identity
+     *     fresh from `th.textContent` on every render — two `<th>`s both
+     *     showing literal "Recorded at" would collide. Positioned last of
+     *     this whole additive group, directly before "ARs": [attribute
+     *     columns] → Recording of → Recording date → Recorded at event
+     *     → Recorded at place → ARs. Unlike the rest of this bullet,
+     *     these two fire independently of `_pageHasRecOf` — a release can
+     *     have "recorded at" data with no "recording of" data at all.
      *
      * Unlike every `ColumnDataExtractor` entry (`splitLocation`,
      * `splitArea`, `eventParts`, …), which are purely additive (read
@@ -7084,6 +7110,11 @@
         // entirely, zero overhead, when off.
         const _recOfEnabled = Lib.settings.sa_enable_release_tracks_recording_of_columns !== false;
         const _pageHasRecOf = _recOfEnabled && _anyTitleCellMatches(td => _findRecOfDt(td) !== null);
+        // "Recorded at event"/"Recorded at place" — same purely-additive
+        // family, same master setting, but independent of _pageHasRecOf: a
+        // release can have "recorded at" data with zero "recording of" data.
+        const _pageHasRecordedAtEvent = _recOfEnabled && _anyTitleCellMatches(td => _findRecordedAtDt(td, 'eventlink') !== null);
+        const _pageHasRecordedAtPlace = _recOfEnabled && _anyTitleCellMatches(td => _findRecordedAtDt(td, 'placelink') !== null);
         const _presentRecOfAttributes = new Set();
         let _pageHasRecOfDate = false;
         if (_recOfEnabled) {
@@ -7160,63 +7191,90 @@
                 _theadRow.appendChild(_isrcTh);
             }
 
-            // Attribute columns + "Recording of" + "Recording date" —
-            // purely additive (see this function's JSDoc), inserted
-            // directly before "ARs" (not chained off
+            // Attribute columns + "Recording of" + "Recording date" +
+            // "Recorded at event" + "Recorded at place" — purely
+            // additive (see this function's JSDoc), inserted directly
+            // before "ARs" (not chained off
             // Title/Video/Disambiguation/Artist/Recording artist like
             // everything else). Each insertion below is `.before(ref)`
             // against the same fixed `ARs` reference, so — since a later
             // insertion against an unchanging reference always lands
             // closer to that reference than an earlier one — creating the
             // attribute columns FIRST, then "Recording of", then
-            // "Recording date" produces the desired final order:
-            // [attribute columns…], Recording of, Recording date, ARs.
-            // `_newAttrThs` tracks only the ones created THIS pass, for
-            // the row loop below — mirrors how `_disambigTh` etc. being
-            // non-null (vs. already-existing) gates row-level insertion
-            // everywhere else in this function.
+            // "Recording date", then the two "Recorded at" columns
+            // produces the desired final order: [attribute columns…],
+            // Recording of, Recording date, Recorded at event, Recorded
+            // at (place), ARs. `_newAttrThs` tracks only the ones created
+            // THIS pass, for the row loop below — mirrors how
+            // `_disambigTh` etc. being non-null (vs. already-existing)
+            // gates row-level insertion everywhere else in this function.
             let _recOfTh = null;
             let _recOfDateTh = null;
+            let _recordedAtEventTh = null;
+            let _recordedAtPlaceTh = null;
             const _newAttrThs = [];
-            if (_pageHasRecOf) {
+            if (_pageHasRecOf || _pageHasRecordedAtEvent || _pageHasRecordedAtPlace) {
                 const _arsHeaderRef = _hasArs
                     ? _headerCells.find(th => th.textContent.trim() === 'ARs')
                     : _arsTh;
-                REC_OF_ATTRIBUTES.forEach(attr => {
-                    if (!_presentRecOfAttributes.has(attr)) return;
-                    const _label = attr.charAt(0).toUpperCase() + attr.slice(1);
-                    if (_headerCells.some(th => th.textContent.trim() === _label)) return;
-                    const _th = document.createElement('th');
-                    _th.textContent = _label;
-                    _arsHeaderRef.before(_th);
-                    _newAttrThs.push({ attr, th: _th });
-                });
-                if (!_headerCells.some(th => th.textContent.trim() === 'Recording of')) {
-                    _recOfTh = document.createElement('th');
-                    // Plain text only — the work-glyph icon (MB's own empty,
-                    // CSS-styled <span class="worklink">, always rendered
-                    // right before a work link) can't be appended here: this
-                    // whole <th> gets wiped and rebuilt from a plain colName
-                    // STRING by makeTableSortableUnified() (`th.innerHTML =
-                    // ''` discards any child element before rebuilding the
-                    // .mb-col-hdr-flex layout — confirmed via
-                    // debug/missing-glyph.html), so anything appended here
-                    // would never survive into the final rendered header.
-                    // Injected post-render instead — see
-                    // _recOfInitColHeaderGlyph().
-                    _recOfTh.textContent = 'Recording of';
-                    _arsHeaderRef.before(_recOfTh);
+                if (_pageHasRecOf) {
+                    REC_OF_ATTRIBUTES.forEach(attr => {
+                        if (!_presentRecOfAttributes.has(attr)) return;
+                        const _label = attr.charAt(0).toUpperCase() + attr.slice(1);
+                        if (_headerCells.some(th => th.textContent.trim() === _label)) return;
+                        const _th = document.createElement('th');
+                        _th.textContent = _label;
+                        _arsHeaderRef.before(_th);
+                        _newAttrThs.push({ attr, th: _th });
+                    });
+                    if (!_headerCells.some(th => th.textContent.trim() === 'Recording of')) {
+                        _recOfTh = document.createElement('th');
+                        // Plain text only — the work-glyph icon (MB's own empty,
+                        // CSS-styled <span class="worklink">, always rendered
+                        // right before a work link) can't be appended here: this
+                        // whole <th> gets wiped and rebuilt from a plain colName
+                        // STRING by makeTableSortableUnified() (`th.innerHTML =
+                        // ''` discards any child element before rebuilding the
+                        // .mb-col-hdr-flex layout — confirmed via
+                        // debug/missing-glyph.html), so anything appended here
+                        // would never survive into the final rendered header.
+                        // Injected post-render instead — see
+                        // _initColHeaderGlyph().
+                        _recOfTh.textContent = 'Recording of';
+                        _arsHeaderRef.before(_recOfTh);
+                    }
+                    // "Recording date" — the optional "(on YYYY-MM-DD)"
+                    // following the work link — same page-wide-decision
+                    // reasoning as everything else here, via its own
+                    // `_pageHasRecOfDate` scan (a track can have a "recording
+                    // of" with no date at all — see debug/recording.html).
+                    // Right after "Recording of".
+                    if (_pageHasRecOfDate && !_headerCells.some(th => th.textContent.trim() === 'Recording date')) {
+                        _recOfDateTh = document.createElement('th');
+                        _recOfDateTh.textContent = 'Recording date';
+                        _arsHeaderRef.before(_recOfDateTh);
+                    }
                 }
-                // "Recording date" — the optional "(on YYYY-MM-DD)"
-                // following the work link — same page-wide-decision
-                // reasoning as everything else here, via its own
-                // `_pageHasRecOfDate` scan (a track can have a "recording
-                // of" with no date at all — see debug/recording.html).
-                // Right after "Recording of".
-                if (_pageHasRecOfDate && !_headerCells.some(th => th.textContent.trim() === 'Recording date')) {
-                    _recOfDateTh = document.createElement('th');
-                    _recOfDateTh.textContent = 'Recording date';
-                    _arsHeaderRef.before(_recOfDateTh);
+                // "Recorded at event"/"Recorded at place" — read from
+                // sibling `dl.ars` blocks to "recording of:" (see
+                // _findRecordedAtDt's JSDoc), so these fire independently
+                // of `_pageHasRecOf` above. Two SEPARATE columns rather
+                // than one shared "Recorded at": makeTableSortableUnified()
+                // derives each column's identity fresh from `th.textContent`
+                // on every render, so two <th>s both reading literal
+                // "Recorded at" would collide — the second would never
+                // pass its own `_headerCells.some(...)` presence guard, and
+                // the post-render glyph injector's name-based lookup would
+                // only ever find the first one.
+                if (_pageHasRecordedAtEvent && !_headerCells.some(th => th.textContent.trim() === 'Recorded at event')) {
+                    _recordedAtEventTh = document.createElement('th');
+                    _recordedAtEventTh.textContent = 'Recorded at event';
+                    _arsHeaderRef.before(_recordedAtEventTh);
+                }
+                if (_pageHasRecordedAtPlace && !_headerCells.some(th => th.textContent.trim() === 'Recorded at place')) {
+                    _recordedAtPlaceTh = document.createElement('th');
+                    _recordedAtPlaceTh.textContent = 'Recorded at place';
+                    _arsHeaderRef.before(_recordedAtPlaceTh);
                 }
             }
 
@@ -7241,7 +7299,8 @@
             }
 
             if (!_disambigTh && !_recArtistTh && !_arsTh && !_acoustIdTh && !_isrcTh && !_videoTh &&
-                !_recOfTh && !_recOfDateTh && _newAttrThs.length === 0) return; // already fully processed
+                !_recOfTh && !_recOfDateTh && _newAttrThs.length === 0 &&
+                !_recordedAtEventTh && !_recordedAtPlaceTh) return; // already fully processed
 
             _tbody.querySelectorAll(':scope > tr').forEach(row => {
                 const _cells = Array.from(row.children);
@@ -7306,20 +7365,22 @@
                     (_artistIdx !== -1 ? _cells[_artistIdx] : _rowInsertCursor).after(_td);
                 }
 
-                // Attribute columns + "Recording of" + "Recording date" —
-                // read-only (see this function's JSDoc): clones the work
-                // link, never touches `_bareArsDiv`, so the existing ARs
-                // block right below still moves its full, untouched
-                // content into "ARs" exactly as it always has. Must run
-                // before that block purely for column ORDER
+                // Attribute columns + "Recording of" + "Recording date" +
+                // "Recorded at event" + "Recorded at place" —
+                // read-only (see this function's JSDoc): clones the
+                // relevant anchor, never touches `_bareArsDiv`, so the
+                // existing ARs block right below still moves its full,
+                // untouched content into "ARs" exactly as it always has.
+                // Must run before that block purely for column ORDER
                 // (row.appendChild always appends at the current tail, so
                 // calling it here first is what lands these <td>s
                 // immediately before the "ARs" <td>) — not because the ARs
                 // block would otherwise consume anything these need.
                 // <td> append order mirrors the header creation order
                 // above: attribute columns, then Recording of, then
-                // Recording date.
-                if (_recOfTh || _recOfDateTh || _newAttrThs.length > 0) {
+                // Recording date, then Recorded at event, then Recorded at place.
+                if (_recOfTh || _recOfDateTh || _newAttrThs.length > 0 ||
+                    _recordedAtEventTh || _recordedAtPlaceTh) {
                     const _recOfDt = _findRecOfDt(_titleTd);
                     const _recOfDdRaw = _recOfDt?.nextElementSibling;
                     const _recOfDd = _recOfDdRaw && _recOfDdRaw.tagName === 'DD' ? _recOfDdRaw : null;
@@ -7344,6 +7405,18 @@
                         const _td = document.createElement('td');
                         const _date = _parseRecOfDate(_recOfDd);
                         if (_date) _td.textContent = _date;
+                        row.appendChild(_td);
+                    }
+                    if (_recordedAtEventTh) {
+                        const _td = document.createElement('td');
+                        const _anchor = _recordedAtDdAnchor(_findRecordedAtDt(_titleTd, 'eventlink'), '/event/');
+                        if (_anchor) _td.appendChild(_anchor.cloneNode(true));
+                        row.appendChild(_td);
+                    }
+                    if (_recordedAtPlaceTh) {
+                        const _td = document.createElement('td');
+                        const _anchor = _recordedAtDdAnchor(_findRecordedAtDt(_titleTd, 'placelink'), '/place/');
+                        if (_anchor) _td.appendChild(_anchor.cloneNode(true));
                         row.appendChild(_td);
                     }
                 }
@@ -7489,6 +7562,58 @@
         if (!_textNode) return null;
         const _match = _textNode.textContent.match(/\(on ([\d-]+)\)/);
         return _match ? _match[1] : null;
+    }
+
+    /**
+     * Finds `titleTd`'s "recorded at" `<dt>` matching one relationship kind
+     * (event or place) — classified by its `<dd>`'s leading native
+     * MusicBrainz glyph span (`span.eventlink` / `span.placelink`), NOT by
+     * the `<dt>` text itself: MusicBrainz's wording varies (`"recorded
+     * at:"`, `"recorded at and mixed at:"`, possibly other "mixed at"
+     * combinations — see debug/….html), so the `<dt>` match is a loose
+     * substring test (`/recorded at/i`, unlike `_findRecOfDt`'s `$`-anchored
+     * pattern). Same bare-`div.ars` classification as `_findRecOfDt`, same
+     * "take the first matching `dl.ars` sibling" simplicity as the rest of
+     * this extraction — a row with more than one "recorded at" entry of the
+     * SAME kind only ever yields the first, in document order.
+     *
+     * @param {HTMLTableCellElement} titleTd
+     * @param {'eventlink'|'placelink'} glyphClass
+     * @returns {?HTMLElement} The `<dt>`, or `null` if this track has none
+     *   of this kind.
+     */
+    function _findRecordedAtDt(titleTd, glyphClass) {
+        let _bareArsDiv = null;
+        titleTd.querySelectorAll(':scope > div.ars').forEach(d => {
+            const _classes = Array.from(d.classList);
+            if (!_classes.some(c => c.startsWith('AcoustID') || c.startsWith('ISRC'))) _bareArsDiv = d;
+        });
+        if (!_bareArsDiv) return null;
+        return Array.from(_bareArsDiv.querySelectorAll(':scope > dl.ars > dt'))
+            .find(dt => {
+                if (!/recorded at/i.test(dt.textContent.trim())) return false;
+                const _dd = dt.nextElementSibling;
+                return !!(_dd && _dd.tagName === 'DD' && _dd.querySelector(`:scope > span.${glyphClass}`));
+            }) || null;
+    }
+
+    /**
+     * Extracts the event/place anchor from a `_findRecordedAtDt` result's
+     * `<dd>` — mirrors the row-level work-anchor lookup for "Recording of",
+     * but filters by href prefix rather than trusting `:scope > a` position
+     * alone: a "recorded at (place)" `<dd>` holds several sibling anchors
+     * (the place itself, then each area in the "in `<area>`, `<area>`,
+     * `<country>`" chain) — the href-prefix filter makes the intent
+     * explicit and immune to markup reordering.
+     *
+     * @param {?HTMLElement} dt - Result of `_findRecordedAtDt` (may be `null`).
+     * @param {'/event/'|'/place/'} hrefPrefix
+     * @returns {?HTMLAnchorElement}
+     */
+    function _recordedAtDdAnchor(dt, hrefPrefix) {
+        const _dd = dt?.nextElementSibling;
+        if (!_dd || _dd.tagName !== 'DD') return null;
+        return _dd.querySelector(`:scope > a[href^="${hrefPrefix}"]`);
     }
 
     /**
@@ -7666,10 +7791,15 @@
     }
 
     /**
-     * Injects (or re-confirms) MusicBrainz's own empty, CSS-styled
-     * work-glyph icon (`<span class="worklink">`, always rendered right
-     * before a work link natively) into the "Recording of" column's
-     * header, right after its text.
+     * Injects (or re-confirms) a MusicBrainz-native, empty, CSS-styled
+     * relationship glyph span (`<span class="worklink">` for "Recording
+     * of", `<span class="eventlink">`/`<span class="placelink">` for
+     * "Recorded at event"/"Recorded at place" — MB's own icon, always
+     * rendered right before that relationship kind's link natively) into
+     * the named release-tracks column's header, right after its text.
+     * Generalized (originally `_recOfInitColHeaderGlyph`, "Recording of"
+     * only) so the same post-render-injection technique serves all three
+     * glyph columns from one implementation.
      *
      * Can't be done at `applyExtractTrackTitleData()`'s pre-processing
      * time (where the `<th>` itself is created): `makeTableSortableUnified()`
@@ -7682,67 +7812,51 @@
      * `_artInitCaaColHeaderToggle()`'s established pattern for injecting
      * extra UI into an already-built `.mb-col-hdr-flex`: find the named
      * column's `<th>` post-render, locate its `.mb-col-hdr-flex`, insert
-     * idempotently (checked via a `span.worklink` presence guard, since —
-     * unlike CAA/EAA's toggle button — there's no dedicated marker
+     * idempotently (checked via a `span.${glyphClass}` presence guard,
+     * since — unlike CAA/EAA's toggle button — there's no dedicated marker
      * attribute to key off).
+     *
+     * The `height`/`margin` fixes below were derived specifically from
+     * `.worklink`'s computed style (see debug/still-missing-glyph.html and
+     * debug/still-no-blank.html for the two-round diagnosis: invisible due
+     * to flex-item blockification stripping height, then no gap due to
+     * whitespace-collapse on both sides of the blockified glyph). The same
+     * root cause — ANY direct child of `.mb-col-hdr-flex`, a flex
+     * container, gets its outer display blockified regardless of its own
+     * `display` value — applies to `.eventlink`/`.placelink` too, so the
+     * same fixed values are used for them, but this is UNVERIFIED against
+     * their actual computed `background-size`/`padding-left` (no live
+     * browser/CSS rendering in this environment) — if either glyph is
+     * missing, mis-sized, or misaligned, expect the same kind of
+     * Computed-panel comparison documented for `.worklink` to be needed.
      *
      * Called from the tail of `renderGroupedTable()`, alongside
      * `initAcoustIdIsrcObserver()` — same release-tracks-only, re-run-
      * safe, no-op-when-column-absent shape.
      *
+     * @param {string} columnName - Exact header text (matched via
+     *   `_cleanColHeaderText`), e.g. `"Recording of"`.
+     * @param {string} glyphClass - CSS class of the native MB glyph span,
+     *   e.g. `"worklink"`, `"eventlink"`, `"placelink"`.
      * @returns {void}
      */
-    function _recOfInitColHeaderGlyph() {
+    function _initColHeaderGlyph(columnName, glyphClass) {
         if (activeDefinition?.type !== 'release-tracks') return;
         document.querySelectorAll('table.tbl').forEach(table => {
             const th = Array.from(table.querySelectorAll('thead th'))
-                .find(h => _cleanColHeaderText(h) === 'Recording of');
+                .find(h => _cleanColHeaderText(h) === columnName);
             if (!th) return;
             const hdrFlex = th.querySelector('.mb-col-hdr-flex');
-            if (!hdrFlex || hdrFlex.querySelector('span.worklink')) return;
+            if (!hdrFlex || hdrFlex.querySelector(`span.${glyphClass}`)) return;
             const glyph = document.createElement('span');
-            glyph.className = 'worklink';
-            // .worklink's icon is a `background-image` painted into its
-            // `padding-left` area (confirmed via computed-style comparison
-            // against a working one inside "ARs": identical background-image
-            // /background-size:14px/padding-left:16px/background-origin:
-            // padding-box in BOTH places) — so the CSS rule itself DOES
-            // match here too, it isn't scoped to .ars/dd. What differs is
-            // `height`: inline elements mid-text get a non-zero height from
-            // the surrounding line box (~13px here, from line-height) even
-            // with no content of their own, but ANY direct child of a flex
-            // container — like this span, inside .mb-col-hdr-flex — has its
-            // outer display "blockified" per the CSS Flexbox spec
-            // (regardless of its own `display` value), which removes that
-            // line-box-derived height entirely; with no explicit height, a
-            // childless block box is just 0px tall — collapsing the
-            // otherwise-correctly-positioned icon to an invisible 16×0
-            // sliver. Setting an explicit height (matching the 14px
-            // background-size) is what actually fixes visibility; the width
-            // needs no equivalent fix since padding-left is honored
-            // regardless of block/inline. See debug/still-missing-glyph.html
-            // and the two Computed-panel screenshots this was diagnosed
-            // from.
+            glyph.className = glyphClass;
             glyph.style.height = '14px';
-            // Neither a trailing space TEXT NODE after the glyph (tried
-            // first, see debug/still-no-blank.html) NOR the leading space
-            // makeTableSortableUnified() already bakes into its `${colName}
-            // ` text node (tried next, see debug/still-missing-glyph.html's
-            // second capture — `Recording of <span class="worklink">`, with
-            // that leading space visible in the markup but not rendered)
-            // survive: CSS collapses whitespace sitting directly against a
-            // block-level box on EITHER side, and the glyph is blockified
-            // (a flex item — see the height comment above) regardless of
-            // which sibling it's compared against. margin is unaffected by
-            // any of this (an explicit box-model property, not rendered
-            // text), so it's what actually produces a guaranteed, visible
-            // gap on both sides.
             glyph.style.marginLeft = '4px';
             glyph.style.marginRight = '4px';
             // makeTableSortableUnified() always builds this flex row as
             // `${colName} ` (a single leading text node) followed by the
             // sort/uniq-value icon elements — insert right after that text
-            // node so the header reads "Recording of [glyph] ⇅ ▲ ▼ ...".
+            // node so the header reads "<columnName> [glyph] ⇅ ▲ ▼ ...".
             const _textNode = Array.from(hdrFlex.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
             if (_textNode) {
                 _textNode.after(glyph);
@@ -36413,11 +36527,14 @@ a { color: #1565c0; }`;
         // release-tracks pages (no-ops for every other pageType).
         initAcoustIdIsrcObserver();
 
-        // Re-inject the "Recording of" column header's work-glyph icon —
+        // Re-inject the "Recording of"/"Recorded at event"/"Recorded at
+        // (place)" column headers' relationship glyph icons —
         // makeTableSortableUnified() above just rebuilt every <th> from
-        // scratch, wiping it out (no-ops for every other pageType/absent
-        // column — see _recOfInitColHeaderGlyph()'s JSDoc).
-        _recOfInitColHeaderGlyph();
+        // scratch, wiping them out (no-ops for every other pageType/absent
+        // column — see _initColHeaderGlyph()'s JSDoc).
+        _initColHeaderGlyph('Recording of', 'worklink');
+        _initColHeaderGlyph('Recorded at event', 'eventlink');
+        _initColHeaderGlyph('Recorded at place', 'placelink');
     }
 
     /**
