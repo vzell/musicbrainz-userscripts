@@ -6868,6 +6868,18 @@
      *     header does not) — matches the "every medium's column schema is
      *     identical" invariant the Artist backfill above already relies
      *     on.
+     *   - `<div class="small">Recording artist:<!-- --> <bdi>…joined artist
+     *     links…</bdi></div>` — present when a track's recording is
+     *     credited to a different artist than the release itself (e.g. a
+     *     live cover, a guest performance). The `<bdi>` (preserving every
+     *     joined artist link and join phrase verbatim, same reasoning as
+     *     the release-level Artist backfill above) is moved into a new
+     *     "Recording artist" column, positioned right after "Artist" (not
+     *     chained off Title/Video/Disambiguation) so the release-level
+     *     credit reads first, with the recording's own — possibly
+     *     different — credit immediately beside it. Like "Video", this can
+     *     only be decided page-wide via `_pageHasRecArtist`, not per
+     *     medium/table — see the "Video" bullet above for why.
      *
      * Unlike every `ColumnDataExtractor` entry (`splitLocation`,
      * `splitArea`, `eventParts`, …), which are purely additive (read
@@ -6907,7 +6919,7 @@
         // since only the first table's structure ever reaches the template.
         // Matches the existing "every medium's column schema is identical"
         // invariant the Artist backfill above already relies on.
-        const _pageHasVideo = _tables.some(table => {
+        const _anyTitleCellMatches = (titleCellPredicate) => _tables.some(table => {
             const _thRow = table.querySelector(':scope > thead > tr');
             const _tb = table.querySelector(':scope > tbody');
             if (!_thRow || !_tb) return false;
@@ -6915,9 +6927,15 @@
             if (_tIdx === -1) return false;
             return Array.from(_tb.querySelectorAll(':scope > tr')).some(tr => {
                 const td = tr.children[_tIdx];
-                return td && td.querySelector('span.video[title="This recording is a video"]');
+                return td && titleCellPredicate(td);
             });
         });
+        const _pageHasVideo = _anyTitleCellMatches(
+            td => td.querySelector('span.video[title="This recording is a video"]')
+        );
+        const _pageHasRecArtist = _anyTitleCellMatches(
+            td => td.querySelector(':scope > div.small > bdi')
+        );
 
         _tables.forEach(table => {
             const _theadRow = table.querySelector(':scope > thead > tr');
@@ -6927,14 +6945,19 @@
             const _headerCells = Array.from(_theadRow.querySelectorAll('th'));
             const _titleIdx = _headerCells.findIndex(th => th.textContent.trim() === 'Title');
             if (_titleIdx === -1) return; // not a tracklist table
+            // Already present by this point — inserted by
+            // applyNormalizeMediumTracklists() right after Title, before
+            // this function runs.
+            const _artistIdx = _headerCells.findIndex(th => th.textContent.trim() === 'Artist');
 
             const _hasDisambig = _headerCells.some(th => th.textContent.trim() === 'Disambiguation');
+            const _hasRecArtist = _headerCells.some(th => th.textContent.trim() === 'Recording artist');
             const _hasArs = _headerCells.some(th => th.textContent.trim() === 'ARs');
             const _hasAcoustId = _headerCells.some(th => th.textContent.trim() === 'AcoustIDs');
             const _hasIsrc = _headerCells.some(th => th.textContent.trim() === 'ISRCs');
             const _hasVideo = _headerCells.some(th => th.textContent.trim() === 'Video');
 
-            let _disambigTh = null, _arsTh = null, _acoustIdTh = null, _isrcTh = null, _videoTh = null;
+            let _disambigTh = null, _recArtistTh = null, _arsTh = null, _acoustIdTh = null, _isrcTh = null, _videoTh = null;
 
             // Video: added to every medium's table uniformly once ANY medium
             // on the release has at least one video track (see _pageHasVideo
@@ -6947,6 +6970,11 @@
             if (!_hasDisambig) {
                 _disambigTh = document.createElement('th');
                 _disambigTh.textContent = 'Disambiguation';
+            }
+            // Recording artist: same page-wide-decision reasoning as Video.
+            if (!_hasRecArtist && _pageHasRecArtist) {
+                _recArtistTh = document.createElement('th');
+                _recArtistTh.textContent = 'Recording artist';
             }
             if (!_hasArs) {
                 _arsTh = document.createElement('th');
@@ -6965,7 +6993,9 @@
             }
 
             // Video then Disambiguation, chained right after Title in that
-            // order — mirrors the row-level insertion order below.
+            // order (mirrors native DOM order: span.video, then
+            // span.name-variation [title+disambiguation]) — mirrors the
+            // row-level insertion order below.
             let _titleHeaderCursor = _headerCells[_titleIdx];
             if (_videoTh) {
                 _titleHeaderCursor.after(_videoTh);
@@ -6974,8 +7004,15 @@
             if (_disambigTh) {
                 _titleHeaderCursor.after(_disambigTh);
             }
+            // Recording artist goes right after "Artist" (not chained off
+            // Title/Video/Disambiguation) so "Artist" — the release-level
+            // credit — reads first, with the recording's own (possibly
+            // different) credit immediately beside it.
+            if (_recArtistTh) {
+                (_artistIdx !== -1 ? _headerCells[_artistIdx] : _titleHeaderCursor).after(_recArtistTh);
+            }
 
-            if (!_disambigTh && !_arsTh && !_acoustIdTh && !_isrcTh && !_videoTh) return; // already fully processed
+            if (!_disambigTh && !_recArtistTh && !_arsTh && !_acoustIdTh && !_isrcTh && !_videoTh) return; // already fully processed
 
             _tbody.querySelectorAll(':scope > tr').forEach(row => {
                 const _cells = Array.from(row.children);
@@ -7005,6 +7042,8 @@
                     ':scope > span.comment, :scope > span.name-variation > span.comment'
                 );
 
+                const _recArtistBdi = _titleTd.querySelector(':scope > div.small > bdi');
+
                 // Video then Disambiguation, chained right after Title —
                 // mirrors the header insertion order above.
                 let _rowInsertCursor = _titleTd;
@@ -7019,6 +7058,16 @@
                     // node identity throughout this whole function matters.
                     if (_commentSpan) _td.appendChild(_commentSpan);
                     _rowInsertCursor.after(_td);
+                }
+                // Recording artist goes right after this row's "Artist"
+                // <td>, not chained off Title/Video/Disambiguation — mirrors
+                // the header insertion order above.
+                if (_recArtistTh) {
+                    const _td = document.createElement('td');
+                    // Moves (not clones) the live <bdi> — same reasoning as
+                    // every other extracted node in this function.
+                    if (_recArtistBdi) _td.appendChild(_recArtistBdi);
+                    (_artistIdx !== -1 ? _cells[_artistIdx] : _rowInsertCursor).after(_td);
                 }
 
                 if (_arsTh) {
@@ -10180,22 +10229,24 @@
                 normalizeMediumTracklists: true, // synthesize h3 + fix up thead/Artist column
                 // Cleans the Title cell down to just the track title and
                 // moves everything else MusicBrainz glommed into it
-                // (video icon, disambiguation comment, general
-                // relationships, AcoustID/ISRC) into their own columns —
-                // see applyExtractTrackTitleData()'s JSDoc for why this
-                // needs in-place DOM surgery rather than the additive
-                // `columnExtractors`/`syntheticColumnExtractors` mechanism
-                // (e.g. `eventParts`, used elsewhere via
+                // (video icon, disambiguation comment, recording artist
+                // credit, general relationships, AcoustID/ISRC) into their
+                // own columns — see applyExtractTrackTitleData()'s JSDoc
+                // for why this needs in-place DOM surgery rather than the
+                // additive `columnExtractors`/`syntheticColumnExtractors`
+                // mechanism (e.g. `eventParts`, used elsewhere via
                 // `sa_enable_event_parts_extractor`) for most of this —
                 // "Video" specifically still reuses that mechanism's
                 // `video` extractor internally, just invoked conditionally
                 // (once, across the whole release — see
-                // applyExtractTrackTitleData()'s `_pageHasVideo`) instead
-                // of via a `columnExtractors` entry.
+                // applyExtractTrackTitleData()'s `_pageHasVideo`/
+                // `_pageHasRecArtist`) instead of via a `columnExtractors`
+                // entry.
                 // AcoustIDs/ISRCs are each gated by their own
-                // off-by-default setting; "ARs" and "Video" (when any
-                // track on the release has the icon) are unconditional,
-                // like the Artist backfill above.
+                // off-by-default setting; "ARs", "Video", and "Recording
+                // artist" (when any track on the release has the
+                // icon/credit, respectively) are unconditional, like the
+                // Artist backfill above.
                 extractTitleData: true,
                 removeSelectors: [
                     'h2.tracklist button.work-button-style', // native "Edit recording comments"
@@ -10212,10 +10263,10 @@
                     { sourceColumn: 'Length', align: ':' },
                     { sourceColumn: 'Rating', align: 'C' }
                 ],
-                // "Disambiguation"/"Video" are deliberately excluded —
-                // plain short content, no clamp needed. "ARs" is
-                // prose-shaped (dl/dt/dd); "AcoustIDs"/"ISRCs" are
-                // list-shaped (ul/li) — both auto-detected by
+                // "Disambiguation"/"Video"/"Recording artist" are
+                // deliberately excluded — plain short content, no clamp
+                // needed. "ARs" is prose-shaped (dl/dt/dd); "AcoustIDs"/
+                // "ISRCs" are list-shaped (ul/li) — both auto-detected by
                 // initCollapsableColumns() once declared here.
                 collapsableColumns: [ 'ARs', 'AcoustIDs', 'ISRCs' ],
                 stickyColumn: 'Title'

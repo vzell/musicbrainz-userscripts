@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.8",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added a new \"Recording artist\" column to `release-tracks`, extracted from the native `<div class=\"small\">Recording artist:<!-- --> <bdi>…joined artist links…</bdi></div>` MusicBrainz glomms into the Title cell when a track's recording is credited to a different artist than the release itself (e.g. a live cover, a guest performance — see e.g. the \"2 - DVD-Video\" medium on `/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd`). The whole `<bdi>` — preserving every joined artist link and join phrase verbatim, same reasoning as the release-level Artist backfill — is moved (not cloned) into the new column. Like \"Video\", the column's presence is decided once, page-wide (any track on the release has the credit), not per medium, since `renderGroupedTable()`'s single shared header template would otherwise silently drop a `<th>` present on only some mediums' native theads. Positioned directly after \"Artist\" — the release-level credit reads first, with the recording's own (possibly different) credit immediately beside it."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.7",
     "date": "2026-08-07",
     "sections": [

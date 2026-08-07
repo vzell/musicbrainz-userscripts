@@ -2449,3 +2449,56 @@ video row — called `applyExtractTrackTitleData()` once across both, and
 confirmed BOTH tables end up with the "Video" header (the no-video table's
 row correctly shows the "audio" sort key, empty cell).
 
+## 2026-08-07 — "Recording artist" column (WIP.8)
+
+Same shape as "Video" (previous entry), applied to a different Title-cell
+construct: `<div class="small">Recording artist:<!-- --> <bdi>…</bdi></div>`,
+present when a track's recording is credited to someone other than the
+release's own artist — confirmed via `tracklist-multiple-mediums.html`'s
+"2 - DVD-Video" medium (release `6d19588c-...`, a Bruce Springsteen & The
+E Street Band live release), e.g. a live cover credited to "Bruce
+Springsteen & The E Street Band" that differs from a compilation/various
+mediums' own release-level artist. Structural position confirmed: `div.small`
+is a direct child of the Title `<td>`, sitting right after `<input
+class="recording-comment">` and before any `div.ars*` — extracted via
+`:scope > div.small > bdi`.
+
+Learned from the "Video" investigation immediately above, so implemented
+correctly the first time: added a `_pageHasRecArtist` page-wide scan
+(refactored the existing `_pageHasVideo` one-off scan into a shared
+`_anyTitleCellMatches(predicate)` helper both now call, rather than
+duplicating the table/tbody/title-index resolution a third time) — the
+"Recording artist" `<th>` is only added once at least one track ANYWHERE
+on the release has the credit, never decided per medium.
+
+Also fixed a latent, previously-harmless bug while wiring this in: neither
+the header-side nor row-side insertion "cursor" updated itself after
+inserting the Disambiguation `<th>`/`<td>` (`_titleHeaderCursor`/
+`_rowInsertCursor` stayed pointed at Video-or-Title instead of advancing
+to Disambiguation) — never mattered before because Disambiguation was
+always the last thing chained via `.after()`; now that Recording artist
+chains after it too, the cursor has to actually advance for the ordering
+(Title → Video → Disambiguation → Recording artist) to come out right.
+
+Verified via jsdom, same two-table page-wide pattern as the Video test:
+one table with no `div.small`, one with the real multi-artist `<bdi>`
+content from the actual release-6d19588c markup — confirmed both tables
+get the column, the no-credit table's cell is empty, the credited table's
+`<bdi>` (both joined artist links, join phrase, wrapper element itself)
+survives intact, and the Title cell is still cleaned correctly alongside
+it in the same row.
+
+### Follow-up: reordered so "Artist" comes before "Recording artist"
+
+"Recording artist" originally chained off Title/Video/Disambiguation
+(same cursor as those three), landing right before "Artist" (which
+`applyNormalizeMediumTracklists()` already inserts right after Title,
+earlier in the pipeline). User asked to swap so "Artist" reads first.
+Changed the insertion anchor for both the header `<th>` and each row's
+`<td>` from the Video/Disambiguation cursor to the table's existing
+"Artist" `<th>`/`<td>` (resolved once via `_artistIdx`, found in
+`_headerCells` since Artist was already inserted before this function
+runs) — with a defensive fallback to the old cursor position if "Artist"
+somehow isn't found. Final order: Title → Video → Disambiguation → Artist
+→ Recording artist → Rating → Length → ARs → AcoustIDs → ISRCs.
+
