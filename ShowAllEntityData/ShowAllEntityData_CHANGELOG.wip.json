@@ -1,5 +1,41 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added a new (default on) `sa_enable_release_tracks_acoustid_isrc_observer` setting: a `MutationObserver`-based reactive fix for the \"AcoustID\"/\"ISRC\" columns (WIP.4) so late-arriving data from a third-party userscript's async AcoustID lookup (e.g. jesus2099's, a network round-trip to acoustid.org per recording — routinely still in progress by the time this script's own one-shot extraction pass ran) reaches those columns instead of being silently missed. Watches each medium's table for AcoustID/ISRC data appearing after the fact and relocates it into the right column reactively, mirroring the existing area-flag/region-correction observer (`initAreaFlagRegionObserver`). Only does anything when at least one of the AcoustID/ISRC column settings is on; zero overhead otherwise. Required switching `applyExtractTrackTitleData()`'s Title-cell cleanup from cloning the recording link/ARs/AcoustID/ISRC content to *moving* it — a clone would silently break this fix, since whatever the decorating userscript is tracking (a live object reference, or a re-query matching the same class/attributes) needs the actual live node to still be present in the rendered table for its own late decoration to land anywhere this observer can see it."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.5",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the \"ARs\"/\"AcoustID\"/\"ISRC\" columns (WIP.4) never getting a collapse toggle on any release-tracks page with more than one medium, even when a cell's content clearly overflowed the clamp. Root cause: `renderGroupedTable()`'s `shouldStayOpen` heuristic (which decides whether a sub-table starts expanded or `display:none`) only recognizes a lone sub-table or the literal categories `album`/`official` — release-tracks' medium-title categories (\"1 - CD\", \"2 - DVD-Video\", …) matched neither, so every medium on a multi-medium release started hidden. `initCollapsableColumns()`/`makeColumnsResizable()` then ran immediately afterward against that still-hidden table — measuring `scrollHeight`/`clientHeight` on a `display:none` element always reads 0 in a real browser, so the overflow check permanently found nothing to add a toggle to, even after the section was later expanded by hand. This bug predates this session but was invisible until `collapsableColumns` was added to release-tracks in WIP.4. Fixed by keeping every release-tracks sub-table expanded by default regardless of medium count — matching the feature's whole point (consolidating a release's tracklists into one always-visible view) and avoiding the hidden-at-measurement-time trap entirely."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.4",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "`release-tracks`' \"Title\" column no longer shows the raw glommed cell MusicBrainz (and, once it has run, the third-party jesus2099 \"SUPER MIND CONTROL\" script) builds it from — just the clean track title now. Everything else that used to be crammed into that cell is extracted into its own new column: a \"Disambiguation\" column (the parenthetical comment shown when a track's title differs from its recording, e.g. \"(live, 1978‐07‐07: The Roxy Theatre, West Hollywood, CA, USA)\"); an always-present, collapsible \"ARs\" column at the end of the table (the recording's general relationships — engineer, producer, recording-of-work, publisher, … — previously glommed into the Title cell as a `<div class=\"ars\">`), with its own independent collapse-height settings (`sa_enable_ars_collapse`, `sa_ars_column_max_height_em`, `sa_ars_column_max_width`) rather than sharing the \"Annotation\" column's; and two new off-by-default multi-row columns, \"AcoustID\" and \"ISRC\" (`sa_enable_release_tracks_acoustid_column` / `sa_enable_release_tracks_isrc_column`), each entry rendered as its own list row instead of one long comma-separated line — AcoustID entries keep their native ×/+ link/unlink action link. The secondary \"recording name\" line MusicBrainz shows under a track's title when it differs from the underlying recording's name is dropped (not kept in any column, per explicit confirmation). Implemented via a new `applyExtractTrackTitleData()` DOM-surgery pass (mirroring the existing Artist-column backfill's approach) rather than the additive `columnExtractors` mechanism, since cleaning the Title cell in place isn't something that mechanism supports."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-08-07",
     "sections": [

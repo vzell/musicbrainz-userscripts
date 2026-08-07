@@ -2136,3 +2136,204 @@ approach as the native VA per-track Artist `<td>`s already use, so every
 joined artist credit (any join phrase: "&", ",", "feat.", ...) survives
 verbatim.
 
+## 2026-08-07 — release-tracks Title cell: ARs/AcoustID/ISRC/Disambiguation extraction
+
+`debug/fix.org` requested cleaning the "Title" column down to just the real
+track title, since MusicBrainz (and, once it has run, the third-party
+jesus2099 "SUPER MIND CONTROL" script) glues several unrelated things into
+the same `<td>`. Confirmed exact DOM shape across three fixtures:
+
+- `debug/area-column.html` — an isolated pre-jesus2099 baseline `<td>`
+  (plain `<a href="/recording/...">`, no jesus2099 classes at all): just the
+  title link plus one bare `<div class="ars">` wrapping five `<dl class="ars">`
+  relationship blocks (engineer/producer/vocals/copyright; recorded-at
+  place; recording-of-work with a nested `dl.ars` for lyricist/composer;
+  publisher). No AcoustID/ISRC content — confirms those are added later by
+  jesus2099's lookup, not native MB markup.
+- `debug/tracklist-multiple-mediums.html` — the same track post-jesus2099:
+  the `<td>` now carries class `jesus2099userjs{N}acoustids-handled` and
+  contains, in order: the title `<a class="jesus2099userjs{N}recording">`,
+  a hidden `<input class="recording-comment">` (unrelated, ignored),
+  `<div class="ars AcoustID{N}">` (one `dl.ars` with `<dt>AcoustIDs:</dt>`
+  and a `<dd>` holding 30 UUID links comma-separated in one flat run, each
+  immediately followed by a ×/+ link/unlink toggle link to acoustid.org),
+  `<div class="ars ISRC{N}">` (same shape, one ISRC link), then the bare
+  `<div class="ars">` (identical relationship content to file 1). All three
+  `div.ars*` variants are **siblings**, direct children of the `<td>` —
+  never nested inside each other or inside the title `<a>`.
+- `debug/tracklist-live.html` (Bruce Springsteen & The E Street Band,
+  `/release/e7969bdb-...`) — confirms the disambiguation-comment shape for
+  a track whose title differs from its recording's name ("Rave On!" the
+  track vs. "Rave On" the recording, a live cover): `<span
+  class="name-variation"><a ...>Rave On!<br>Rave On</a> <span
+  class="jesus2099userjs{N}recdis comment">(live, 1978‐07‐07: The Roxy
+  Theatre, West Hollywood, CA, USA)</span></span>` — i.e. the disambiguation
+  is a `.comment` span, sibling of the title `<a>`, wrapped together with it
+  inside `span.name-variation` only when a name-variation exists. Critically,
+  this must be distinguished from the many OTHER `.comment` spans nested
+  several levels deep inside the bare `div.ars`'s relationship `dl`s (e.g.
+  "(US engineer)", "(conductor)", "(cellist)" in `area-column.html`) —
+  solved by only matching `:scope > span.comment` or
+  `:scope > span.name-variation > span.comment` (shallow, direct-child-only
+  queries), never a deep `td.querySelector('.comment')`.
+- `debug/ucd.html` — turned out to be exactly the AcoustID `<dd>`'s raw flat
+  content (byte-identical to the one inside `tracklist-multiple-mediums.html`'s
+  `div.ars.AcoustID{N}`), not an already-multi-row example as its filename/
+  the fix.org wording suggested — i.e. it's the *input* shape that needed
+  splitting into one `<li>` per entry, not a reference for the *output*
+  shape. The multi-row output convention was instead taken from this
+  script's existing list-cell mechanism (`_findCellListItems()`/
+  `initCollapsableColumns()`, same as Catalog#/Label): wrap each entry in
+  its own `<li>` inside a `<ul>`.
+
+Implementation: new `applyExtractTrackTitleData()` (next to
+`applyNormalizeMediumTracklists()`), gated by `features.extractTitleData:
+true`, since none of this can go through the existing `columnExtractors`/
+`syntheticColumnExtractors` mechanism (`eventParts`, `splitLocation`,
+`splitArea`, …) — those are all purely additive (read `sourceCell`, return
+new `<td>`s, never mutate the source), confirmed by reading `eventParts`'s
+body (only reads `sourceCell.textContent`). Cleaning the Title cell down to
+"just the real title" requires actually removing content from the source
+column, which no existing extractor does — this mirrors the Artist-column
+backfill's in-place DOM-surgery approach instead.
+
+Design decisions confirmed with the user before implementing: AcoustID and
+ISRC are two **separate** new columns (not combined into one); the
+secondary "recording name" line (the `<br>`-separated second line inside
+the title `<a>`, e.g. "Rave On" under "Rave On!") is dropped silently, not
+kept anywhere; AcoustID's native ×/+ action links are kept in the new
+column; "ARs" gets its own dedicated `sa_enable_ars_collapse`/
+`sa_ars_column_max_height_em`/`sa_ars_column_max_width` settings rather
+than sharing Annotation's global ones — required extending
+`initCollapsableColumns()`'s existing `_isEditsProseCol` per-column
+special-case pattern with a parallel `_isArsProseCol` branch, a dedicated
+`.mb-text-clamp-inner-ars` CSS class (higher specificity than the generic
+`.mb-text-clamp-inner` rule, so no `!important` needed), and extending
+`_getProseColumnMaxWidth()` from a no-arg function to
+`_getProseColumnMaxWidth(table, colIndex)` (resolving the column's clean
+header name via the existing `_cleanColHeaderText()` helper) across its
+four call sites.
+
+## 2026-08-07 — ARs/AcoustID/ISRC collapse toggle never appears on multi-medium releases
+
+`debug/problem.html` (`/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd`, 2
+mediums) vs `debug/g.html` (a single-medium release) — both captured after
+the WIP.4 Title-extraction work, user reported the ARs column not
+collapsible in problem.html but working fine in g.html.
+
+Static diff of the two captures (grep/python, no live browser available):
+both show the extracted "ARs" `<td>` correctly populated with real,
+substantial `dl.ars` content, and both correctly get the
+`mb-text-clamp-marker mb-text-clamp-inner mb-text-clamp-inner-ars` wrapper
+classes — but problem.html has **zero** real `mb-cell-collapse-toggle` /
+`mb-has-collapse-toggle` elements anywhere in the actual table body (every
+textual match is inside the injected `<style>` block — CSS rule
+definitions only), while g.html has 17 real ones. A second, independent
+clue pointed the same direction: `makeColumnsResizable`'s cached
+`th.dataset.mbResizeMin` (`ShowAllEntityData.user.js` ~line 19393-19418,
+computed once from `_initHdrFlex.scrollWidth + 8`) read `"8"` for
+problem.html's ARs `<th>` (i.e. `scrollWidth` measured as exactly 0) vs a
+normal `"567"` for g.html's — the classic signature of measuring an
+element that isn't actually laid out yet.
+
+Root cause (confirmed via code trace, not the extraction/DOM-surgery code
+from WIP.4): `renderGroupedTable()`'s `shouldStayOpen` heuristic (`:34779-
+34782`) — `isSingleSubTable || ((catLower === 'album' || catLower ===
+'official') && group.rows.length < sa_auto_expand)` — decides whether each
+sub-table starts expanded or gets `table.style.display = 'none'`.
+release-tracks' medium-title categories ("1 - CD", "2 - DVD-Video", …)
+match neither condition once a release has more than one medium, so every
+medium's table starts hidden. `initCollapsableColumns(table)` and
+`makeColumnsResizable`'s header-flex measurement then run immediately
+after, in the very same synchronous per-group iteration (`:35298`,
+`~:35289`) — `scrollHeight`/`clientHeight` on a `display:none` element
+always read 0/0 in a real browser, so the overflow-detection filter never
+finds an overflowing cell, for *any* collapsable column, permanently (the
+later manual h3-expand click only flips `display`, it doesn't re-run
+`initCollapsableColumns`). Single-medium releases hit `isSingleSubTable ===
+true` and never get hidden, so g.html works.
+
+This bug predates this session's work — `shouldStayOpen` was never
+release-tracks-aware — but was invisible until now because release-tracks
+had zero `collapsableColumns` entries before WIP.4 added `['ARs',
+'AcoustID', 'ISRC']`. Not something `applyExtractTrackTitleData()`/
+`applyNormalizeMediumTracklists()` caused.
+
+Fix (WIP.5): added `const isReleaseTracks = activeDefinition?.type ===
+'release-tracks';` and OR'd it into `shouldStayOpen`, so every
+release-tracks medium always starts expanded regardless of count —
+sidesteps the hidden-at-measurement-time trap entirely, and is also the
+more sensible default anyway (a tracklist-consolidation tool hiding
+mediums by default works against its own purpose).
+
+Separately investigated the user's other complaint from the same report,
+"AcoustID extraction doesn't work" on problem.html: confirmed via grep that
+**neither** problem.html nor g.html contains any native `div.ars.AcoustID*`
+/`div.ars.ISRC*` markup at capture time (0 matches in both) — i.e. no
+source data was present in the DOM when `applyExtractTrackTitleData` ran
+in either capture. jesus2099's AcoustID lookup is async (queries
+acoustid.org per recording) and evidently hadn't completed by the time
+either page was captured — not an extraction-logic bug. Flagged as a
+latent robustness concern for later, not yet fixed: `applyExtractTrackTitleData`
+rebuilds the Title cell's anchor via `cloneNode`, so if jesus2099's lookup
+completes *after* extraction has already run, its result may attach to a
+detached/orphaned reference and never reach the new AcoustID/ISRC columns.
+The existing `initAreaFlagRegionObserver()` (2026-07-25 entries above) is
+the established precedent in this codebase for exactly this shape of
+problem — a third-party userscript decorating the DOM asynchronously,
+after this script's own synchronous pass already ran.
+
+## 2026-08-07 — AcoustID/ISRC late-arrival observer (WIP.6)
+
+Implemented the fix flagged above. Two parts:
+
+1. **Move, not clone, throughout `applyExtractTrackTitleData()`.** The
+   recording `<a>`, the comment span, and every AcoustID/ISRC anchor were
+   all previously extracted via `cloneNode(true)`. Switched all of them to
+   plain `appendChild` (which moves a node already in the document,
+   detaching it from its old parent) — the bare `div.ars` relationship
+   content already worked this way (`while (bareArsDiv.firstChild)
+   td.appendChild(...)`), this just makes the whole function consistent.
+   This matters for the observer below: whether the decorating userscript
+   holds a literal JS reference to the original anchor object, or
+   re-queries the live DOM by selector/class match, either way it needs
+   the actual SAME node (or one still carrying the same class/attributes)
+   to still be present in the rendered table — a clone silently breaks
+   both cases, since the clone is a different object the decorating
+   script never knew about.
+2. **New `initAcoustIdIsrcObserver()`**, modeled directly on
+   `initAreaFlagRegionObserver()`'s structure (WeakSet-tracked
+   per-`tbody` dedup so repeated calls after a filter/sort re-render don't
+   double-attach; a live `MutationObserver` for the common case; an
+   immediate sweep at attach-time plus bounded-delay fallback sweeps at
+   [500, 1500, 3000, 6000]ms). Called from the same place
+   `initAreaFlagRegionObserver()` already is — the tail of
+   `renderGroupedTable()` — since release-tracks is `tableMode: 'multi'`.
+   No-ops entirely (zero overhead) unless the active page is
+   release-tracks, the new `sa_enable_release_tracks_acoustid_isrc_observer`
+   setting (default **true**, per explicit request) is on, and at least
+   one of the AcoustID/ISRC column-visibility settings is on.
+
+   One difference from the area-flag-region precedent: that one reacts to
+   decoration of content our OWN extraction never touches (Locality/Region
+   links survive our pipeline untouched), so its "immediate sweep" purely
+   covers "decoration already finished before we started observing". For
+   AcoustID/ISRC, if the userscript finishes BEFORE
+   `applyExtractTrackTitleData()` runs, that pass already finds and
+   extracts it directly — no observer needed. The observer's immediate
+   sweep instead covers the narrower window between
+   `applyExtractTrackTitleData()` (early pre-processing) and
+   `initAcoustIdIsrcObserver()` (end of the final render) finishing.
+
+   Verified via the same jsdom harness pattern used elsewhere in this file
+   (no live browser available): confirmed the recording anchor surviving
+   `applyExtractTrackTitleData()` is literally the same object (not a
+   clone, via a custom test-only `data-marker` attribute check), and
+   exercised both paths — a `div.ars.AcoustID…` injected into the
+   already-cleaned Title `<td>` before `initAcoustIdIsrcObserver()` is
+   called (caught by the immediate sweep, synchronously) and a
+   `div.ars.ISRC…` injected after the observer is already attached
+   (caught reactively by the `MutationObserver` callback, awaited via a
+   microtask tick) — both correctly relocated into their column and
+   removed from the Title cell.
+

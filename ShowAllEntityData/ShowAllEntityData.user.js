@@ -1629,6 +1629,78 @@
                          'artist credit on non-Various-Artists releases).'
         },
 
+        sa_enable_release_tracks_acoustid_column: {
+            label: 'Show "AcoustID" column',
+            type: 'checkbox',
+            default: false,
+            description: 'Adds a multi-row "AcoustID" column to the consolidated release ' +
+                         'tracklist, extracted from each track\'s native AcoustID fingerprint ' +
+                         'list (normally glommed into the Title cell as a comma-separated run). ' +
+                         'Off by default since most releases don\'t need it visible; each linked ' +
+                         'AcoustID keeps its native unlink (×) / suggested-link (+) action link.'
+        },
+
+        sa_enable_release_tracks_isrc_column: {
+            label: 'Show "ISRC" column',
+            type: 'checkbox',
+            default: false,
+            description: 'Adds a multi-row "ISRC" column to the consolidated release tracklist, ' +
+                         'extracted from each track\'s native ISRC code(s) (normally glommed ' +
+                         'into the Title cell). Off by default since most releases don\'t need ' +
+                         'it visible.'
+        },
+
+        sa_enable_release_tracks_acoustid_isrc_observer: {
+            label: 'Watch for late-arriving AcoustID/ISRC data',
+            type: 'checkbox',
+            default: true,
+            description: 'The AcoustID/ISRC lookup done by third-party userscripts (e.g. ' +
+                         'jesus2099\'s) is asynchronous and can finish after this script has ' +
+                         'already extracted the "AcoustID"/"ISRC" columns from the Title cell — ' +
+                         'when that happens, the late data would otherwise never reach those ' +
+                         'columns. When on, a MutationObserver watches each medium\'s table for ' +
+                         'AcoustID/ISRC data appearing after the fact and moves it into the ' +
+                         'right column reactively (mirrors the existing area-flag/region ' +
+                         'correction observer). Only does anything when at least one of the two ' +
+                         'column settings above is on; zero overhead otherwise.'
+        },
+
+        sa_enable_ars_collapse: {
+            label: 'Enable collapsible "ARs" column',
+            type: 'checkbox',
+            default: true,
+            description: 'Height-clamp the "ARs" column (recording-level relationships — ' +
+                         'engineer, producer, recording-of-work, publisher, etc. — extracted ' +
+                         'from the release tracklist\'s Title cell) behind a ▶/▼ "show ' +
+                         'more/less" toggle, the same way the "Annotation" column collapses, ' +
+                         'but independently configurable via the two settings below. Only cells ' +
+                         'that actually overflow the clamp get a toggle.'
+        },
+
+        sa_ars_column_max_height_em: {
+            label: 'ARs column collapsed height (em)',
+            type: 'number',
+            default: 5.6,
+            min: 1,
+            max: 30,
+            description: 'Height (in em) that a collapsed "ARs" cell is clamped to before its ' +
+                         '▶/▼ toggle appears. Independent of "Annotation column collapsed ' +
+                         'height" above. Only takes effect when "Enable collapsible ARs column" ' +
+                         'is on.'
+        },
+
+        sa_ars_column_max_width: {
+            label: 'ARs column max width (px)',
+            type: 'number',
+            default: 480,
+            min: 200,
+            max: 2000,
+            description: 'Cap applied by the auto-resize ("↔️ Resize" / Ctrl+R) feature to the ' +
+                         '"ARs" column, instead of sizing it to its widest relationship line\'s ' +
+                         'unwrapped width. Independent of "Annotation column max width" above. ' +
+                         'Always active regardless of "Enable collapsible ARs column".'
+        },
+
         // ============================================================
         // EXPAND RELEASE AND RELEASE GROUPS SECTION
         // Adapted from "MusicBrainz: Expand/collapse release groups"
@@ -6756,6 +6828,339 @@
     }
 
     /**
+     * Cleans up the release-tracks "Title" `<td>`, which MusicBrainz (and,
+     * once it has run, the third-party "jesus2099 SUPER MIND CONTROL"
+     * userscript) glues several unrelated things into alongside the actual
+     * track title:
+     *
+     *   - `<span class="name-variation"><a>Track Title<br>Recording
+     *     Name</a> <span class="comment">(disambiguation)</span></span>` —
+     *     only present when the track title differs from its recording's
+     *     name; the disambiguation comment is moved into a new
+     *     "Disambiguation" column, and the secondary "Recording Name" line
+     *     (after the `<br>`) is discarded (not requested to be kept
+     *     anywhere — see debug/fix.org).
+     *   - `<div class="ars">` (bare) — the recording's general
+     *     relationships (engineer, producer, recording-of-work, publisher,
+     *     …), moved into a new "ARs" column, appended at the very end of
+     *     the table.
+     *   - `<div class="ars AcoustID…">` / `<div class="ars ISRC…">` — only
+     *     present once the jesus2099 script's AcoustID lookup has run;
+     *     each holds a single `<dl><dt>…</dt><dd>flat comma-separated
+     *     list of links</dd></dl>`. Moved into new "AcoustID"/"ISRC"
+     *     columns (each gated by its own off-by-default setting), rebuilt
+     *     as one `<li>` per entry so they render as ordinary multi-row
+     *     list cells (see `_findCellListItems`) instead of one long flat
+     *     line — see debug/ucd.html for the un-split source shape.
+     *
+     * Unlike every `ColumnDataExtractor` entry (`splitLocation`,
+     * `splitArea`, `eventParts`, …), which are purely additive (read
+     * `sourceCell`, return new `<td>`s, never mutate the source), this
+     * function also rewrites the Title cell itself down to just the clean
+     * recording-title text — something the additive `columnExtractors`
+     * mechanism has no way to do. Mirrors the in-place DOM-surgery
+     * approach `applyNormalizeMediumTracklists()` above already uses for
+     * the Artist-column backfill.
+     *
+     * Must run AFTER `applyNormalizeMediumTracklists()` — needs plain
+     * `table.tbl` (not `.medium`) and the Title column's real index.
+     *
+     * Triggered by `features.extractTitleData: true` in the page
+     * definition.
+     *
+     * @param {object} def - The active merged pageDefinition object.
+     * @returns {void}
+     */
+    function applyExtractTrackTitleData(def) {
+        if (!def?.features?.extractTitleData) return;
+
+        const _tables = Array.from(document.querySelectorAll('table.tbl'));
+        if (_tables.length === 0) return;
+
+        const _acoustIdEnabled = Lib.settings.sa_enable_release_tracks_acoustid_column === true;
+        const _isrcEnabled = Lib.settings.sa_enable_release_tracks_isrc_column === true;
+
+        _tables.forEach(table => {
+            const _theadRow = table.querySelector(':scope > thead > tr');
+            const _tbody = table.querySelector(':scope > tbody');
+            if (!_theadRow || !_tbody) return;
+
+            const _headerCells = Array.from(_theadRow.querySelectorAll('th'));
+            const _titleIdx = _headerCells.findIndex(th => th.textContent.trim() === 'Title');
+            if (_titleIdx === -1) return; // not a tracklist table
+
+            const _hasDisambig = _headerCells.some(th => th.textContent.trim() === 'Disambiguation');
+            const _hasArs = _headerCells.some(th => th.textContent.trim() === 'ARs');
+            const _hasAcoustId = _headerCells.some(th => th.textContent.trim() === 'AcoustID');
+            const _hasIsrc = _headerCells.some(th => th.textContent.trim() === 'ISRC');
+
+            let _disambigTh = null, _arsTh = null, _acoustIdTh = null, _isrcTh = null;
+
+            if (!_hasDisambig) {
+                _disambigTh = document.createElement('th');
+                _disambigTh.textContent = 'Disambiguation';
+                _headerCells[_titleIdx].after(_disambigTh);
+            }
+            if (!_hasArs) {
+                _arsTh = document.createElement('th');
+                _arsTh.textContent = 'ARs';
+                _theadRow.appendChild(_arsTh);
+            }
+            if (_acoustIdEnabled && !_hasAcoustId) {
+                _acoustIdTh = document.createElement('th');
+                _acoustIdTh.textContent = 'AcoustID';
+                _theadRow.appendChild(_acoustIdTh);
+            }
+            if (_isrcEnabled && !_hasIsrc) {
+                _isrcTh = document.createElement('th');
+                _isrcTh.textContent = 'ISRC';
+                _theadRow.appendChild(_isrcTh);
+            }
+
+            if (!_disambigTh && !_arsTh && !_acoustIdTh && !_isrcTh) return; // already fully processed
+
+            _tbody.querySelectorAll(':scope > tr').forEach(row => {
+                const _cells = Array.from(row.children);
+                const _titleTd = _cells[_titleIdx];
+                if (!_titleTd) return;
+
+                const _recAnchor = _titleTd.querySelector('a[href^="/recording/"]');
+
+                let _bareArsDiv = null, _acoustIdDiv = null, _isrcDiv = null;
+                _titleTd.querySelectorAll(':scope > div.ars').forEach(d => {
+                    const _classes = Array.from(d.classList);
+                    if (_classes.some(c => c.startsWith('AcoustID'))) _acoustIdDiv = d;
+                    else if (_classes.some(c => c.startsWith('ISRC'))) _isrcDiv = d;
+                    else _bareArsDiv = d;
+                });
+
+                const _commentSpan = _titleTd.querySelector(
+                    ':scope > span.comment, :scope > span.name-variation > span.comment'
+                );
+
+                if (_disambigTh) {
+                    const _td = document.createElement('td');
+                    // Moves (not clones) the live comment span — see
+                    // initAcoustIdIsrcObserver()'s JSDoc for why preserving
+                    // node identity throughout this whole function matters.
+                    if (_commentSpan) _td.appendChild(_commentSpan);
+                    _titleTd.after(_td);
+                }
+
+                if (_arsTh) {
+                    const _td = document.createElement('td');
+                    if (_bareArsDiv) {
+                        while (_bareArsDiv.firstChild) _td.appendChild(_bareArsDiv.firstChild);
+                    }
+                    row.appendChild(_td);
+                }
+
+                if (_acoustIdTh) {
+                    row.appendChild(_buildMultiRowArsTd(_acoustIdDiv, /* pairToggleLink= */ true));
+                }
+
+                if (_isrcTh) {
+                    row.appendChild(_buildMultiRowArsTd(_isrcDiv, /* pairToggleLink= */ false));
+                }
+
+                if (_recAnchor) {
+                    // Strip the secondary "recording name" line (and everything
+                    // after it) directly on the live anchor, then move (not
+                    // clone) it back in as the Title cell's only child —
+                    // preserves its object identity in case a third-party
+                    // script (e.g. jesus2099's AcoustID lookup) holds a live
+                    // reference to it or re-queries the DOM by selector; a
+                    // cloneNode here would silently break that (see
+                    // initAcoustIdIsrcObserver()'s JSDoc).
+                    const _br = _recAnchor.querySelector('br');
+                    if (_br) {
+                        while (_br.nextSibling) _br.nextSibling.remove();
+                        _br.remove();
+                    }
+                    _titleTd.innerHTML = '';
+                    _titleTd.appendChild(_recAnchor);
+                }
+            });
+        });
+
+        Lib.debug('init', 'applyExtractTrackTitleData: processed Title-derived columns.');
+    }
+
+    /**
+     * Builds a `<td><ul><li>…</li>…</ul></td>` from an AcoustID/ISRC
+     * `<div class="ars …">`'s flat, comma-separated `<dd>` content (see
+     * `applyExtractTrackTitleData`) — one `<li>` per entry, instead of one
+     * long unbroken line, so the cell qualifies as an ordinary multi-row
+     * list cell for `_findCellListItems()`/`initCollapsableColumns()`.
+     *
+     * @param {?HTMLElement} arsDiv - The `div.ars.AcoustID…`/`div.ars.ISRC…`
+     *   element (or `null` if this track has none).
+     * @param {boolean} pairToggleLink - True for AcoustID, where each entry
+     *   is two sibling `<a>`s (the UUID/code link, then its ×/+ link/unlink
+     *   toggle) that must stay paired inside the same `<li>`. False for
+     *   ISRC, where each entry is a single `<a>`.
+     * @returns {HTMLTableCellElement}
+     */
+    function _buildMultiRowArsTd(arsDiv, pairToggleLink) {
+        const td = document.createElement('td');
+        if (!arsDiv) return td;
+
+        const dd = arsDiv.querySelector('dl.ars dd');
+        if (!dd) return td;
+
+        const ul = document.createElement('ul');
+        const anchors = Array.from(dd.querySelectorAll(':scope > a'));
+        const step = pairToggleLink ? 2 : 1;
+        for (let i = 0; i < anchors.length; i += step) {
+            const li = document.createElement('li');
+            // Moves (not clones) each anchor — see initAcoustIdIsrcObserver()'s
+            // JSDoc for why node identity is preserved throughout this pass.
+            li.appendChild(anchors[i]);
+            if (pairToggleLink && anchors[i + 1]) li.appendChild(anchors[i + 1]);
+            ul.appendChild(li);
+        }
+        if (ul.children.length) td.appendChild(ul);
+        return td;
+    }
+
+    const _acoustIdIsrcObservedTbodies = new WeakSet();
+
+    /**
+     * Scans a single `<td>` for AcoustID/ISRC data that arrived AFTER
+     * `applyExtractTrackTitleData()` already ran and cleaned it — i.e. a
+     * `div.ars` child whose class starts with `AcoustID`/`ISRC`, added
+     * later by a third-party userscript's async lookup (see
+     * `initAcoustIdIsrcObserver`'s JSDoc). If found, moves it into the
+     * row's already-existing "AcoustID"/"ISRC" `<td>` the same way
+     * `applyExtractTrackTitleData()` would have, via `_buildMultiRowArsTd()`
+     * — merging into an existing `<ul>` there rather than replacing it, in
+     * case this runs more than once for the same row. Safe to call on any
+     * `<td>` any number of times — a no-op once no matching `div.ars`
+     * remains (including on the destination AcoustID/ISRC `<td>` itself,
+     * which never contains a `div.ars`).
+     *
+     * @param {HTMLTableCellElement} titleTd
+     * @returns {void}
+     */
+    function _relocateLateAcoustIdIsrc(titleTd) {
+        if (!titleTd || titleTd.tagName !== 'TD') return;
+
+        let acoustIdDiv = null, isrcDiv = null;
+        titleTd.querySelectorAll(':scope > div.ars').forEach(d => {
+            const classes = Array.from(d.classList);
+            if (classes.some(c => c.startsWith('AcoustID'))) acoustIdDiv = d;
+            else if (classes.some(c => c.startsWith('ISRC'))) isrcDiv = d;
+        });
+        if (!acoustIdDiv && !isrcDiv) return;
+
+        const table = titleTd.closest('table.tbl');
+        const row = titleTd.closest('tr');
+        if (!table || !row) return;
+
+        const headerCells = Array.from(table.querySelectorAll('thead th'));
+        const titleIdx = headerCells.findIndex(th => _cleanColHeaderText(th) === 'Title');
+        if (titleIdx === -1 || row.children[titleIdx] !== titleTd) return;
+
+        const _relocateOne = (arsDiv, colName, pairToggleLink) => {
+            const idx = headerCells.findIndex(th => _cleanColHeaderText(th) === colName);
+            const destTd = idx !== -1 ? row.children[idx] : null;
+            if (destTd) {
+                const builtUl = _buildMultiRowArsTd(arsDiv, pairToggleLink).querySelector('ul');
+                if (builtUl) {
+                    const existingUl = destTd.querySelector('ul');
+                    if (existingUl) {
+                        while (builtUl.firstChild) existingUl.appendChild(builtUl.firstChild);
+                    } else {
+                        destTd.appendChild(builtUl);
+                    }
+                }
+            }
+            arsDiv.remove();
+            Lib.debug('render', `initAcoustIdIsrcObserver: relocated late-arriving ${colName} data.`);
+        };
+
+        if (acoustIdDiv) _relocateOne(acoustIdDiv, 'AcoustID', /* pairToggleLink= */ true);
+        if (isrcDiv) _relocateOne(isrcDiv, 'ISRC', /* pairToggleLink= */ false);
+    }
+
+    /**
+     * Attaches a `MutationObserver` to every release-tracks medium's
+     * `<tbody>`, reacting to AcoustID/ISRC data (`div.ars.AcoustID…`/
+     * `div.ars.ISRC…`) appearing inside a Title `<td>` AFTER
+     * `applyExtractTrackTitleData()` has already run and cleaned it — the
+     * classic shape of a third-party userscript (e.g. jesus2099's "SUPER
+     * MIND CONTROL") completing its own async AcoustID lookup (a network
+     * round-trip to acoustid.org per recording) later than this script's
+     * own, synchronous, one-shot extraction pass. Without this, that
+     * late-arriving data would never reach the "AcoustID"/"ISRC" columns.
+     *
+     * Depends on `applyExtractTrackTitleData()` MOVING (not cloning) the
+     * recording `<a>` and every other element it extracts, rather than
+     * replacing them with clones (see that function's own comments):
+     * whether the decorating userscript holds a live JS reference to the
+     * original anchor, or re-queries the live DOM by selector/class,
+     * either way it needs the SAME node object — or one still matching the
+     * same class/attributes — to still be present in the live, rendered
+     * table for its own decoration to land anywhere this observer can see
+     * it.
+     *
+     * Mirrors `initAreaFlagRegionObserver()`'s structure: a live
+     * `MutationObserver` for the common case, plus an immediate sweep
+     * (covers a lookup that finished in the narrow window between
+     * `applyExtractTrackTitleData()` running and this function being
+     * called) and a few bounded-delay fallback sweeps (covers whatever
+     * timing/DOM-mutation strategy the decorating userscript happens to
+     * use that the observer's `childList` watch doesn't happen to catch).
+     *
+     * No-ops entirely — zero overhead — unless the active page is
+     * `release-tracks`, `sa_enable_release_tracks_acoustid_isrc_observer`
+     * is on, and at least one of the "AcoustID"/"ISRC" column settings is
+     * on (nothing to relocate into otherwise).
+     *
+     * Observed tbodies are tracked in `_acoustIdIsrcObservedTbodies` (a
+     * `WeakSet`) so repeated calls (e.g. after a filter/sort re-render,
+     * which replaces the tbody's row nodes wholesale — see this file's
+     * CLAUDE.md "Common pitfalls") attach at most one observer per live
+     * tbody, mirroring `initAreaFlagRegionObserver`'s own dedup pattern.
+     */
+    function initAcoustIdIsrcObserver() {
+        if (activeDefinition?.type !== 'release-tracks') return;
+        if (Lib.settings.sa_enable_release_tracks_acoustid_isrc_observer === false) return;
+        if (!Lib.settings.sa_enable_release_tracks_acoustid_column &&
+            !Lib.settings.sa_enable_release_tracks_isrc_column) return;
+
+        document.querySelectorAll('table.tbl tbody').forEach(tbody => {
+            if (_acoustIdIsrcObservedTbodies.has(tbody)) return;
+            const table = tbody.closest('table');
+            if (!table) return;
+            const headerCells = Array.from(table.querySelectorAll('thead th'));
+            if (!headerCells.some(th => _cleanColHeaderText(th) === 'Title')) return; // not a tracklist table
+            _acoustIdIsrcObservedTbodies.add(tbody);
+
+            const _sweep = () => {
+                tbody.querySelectorAll(':scope > tr > td').forEach(td => _relocateLateAcoustIdIsrc(td));
+            };
+
+            const observer = new MutationObserver(mutations => {
+                const tdsToCheck = new Set();
+                mutations.forEach(m => {
+                    m.addedNodes.forEach(node => {
+                        if (node.nodeType !== Node.ELEMENT_NODE) return;
+                        const td = node.tagName === 'TD' ? node : node.closest('td');
+                        if (td && tbody.contains(td)) tdsToCheck.add(td);
+                    });
+                });
+                tdsToCheck.forEach(td => _relocateLateAcoustIdIsrc(td));
+            });
+            observer.observe(tbody, { childList: true, subtree: true });
+            Lib.debug('render', 'initAcoustIdIsrcObserver: watching tbody for late AcoustID/ISRC data.');
+
+            _sweep();
+            [500, 1500, 3000, 6000].forEach(delay => setTimeout(_sweep, delay));
+        });
+    }
+
+    /**
      * Derives the runtime integer-column descriptor list from a merged
      * activeDefinition object.
      *
@@ -9699,6 +10104,18 @@
             features: {
                 loadOverflowTracks: true,        // click + await native "Load all tracks..."
                 normalizeMediumTracklists: true, // synthesize h3 + fix up thead/Artist column
+                // Cleans the Title cell down to just the track title and
+                // moves everything else MusicBrainz glommed into it
+                // (disambiguation comment, general relationships, AcoustID/
+                // ISRC) into their own columns — see
+                // applyExtractTrackTitleData()'s JSDoc for why this needs
+                // in-place DOM surgery rather than the additive
+                // `columnExtractors`/`syntheticColumnExtractors` mechanism
+                // (e.g. `eventParts`, used elsewhere via
+                // `sa_enable_event_parts_extractor`). AcoustID/ISRC are each
+                // gated by their own off-by-default setting; "ARs" is
+                // unconditional, like the Artist backfill above.
+                extractTitleData: true,
                 removeSelectors: [
                     'h2.tracklist button.work-button-style', // native "Edit recording comments"
                     'h2.tracklist span#settings-icon'
@@ -9714,13 +10131,12 @@
                     { sourceColumn: 'Length', align: ':' },
                     { sourceColumn: 'Rating', align: 'C' }
                 ],
+                // "Disambiguation" is deliberately excluded — plain short
+                // text, no clamp needed. "ARs" is prose-shaped (dl/dt/dd);
+                // "AcoustID"/"ISRC" are list-shaped (ul/li) — both auto-
+                // detected by initCollapsableColumns() once declared here.
+                collapsableColumns: [ 'ARs', 'AcoustID', 'ISRC' ],
                 stickyColumn: 'Title'
-                // Future work: Title-derived synthetic columns ("recording of",
-                // "recording engineer", …) would be added here as
-                // `syntheticColumnExtractors`, gated by a new settings checkbox
-                // following the `eventParts`/`sa_enable_event_parts_extractor`
-                // pattern (see buildActiveSyntheticColumnExtractors). Not
-                // implemented yet — see debug/release-tracks-pageType.org item 5.
             },
             tableMode: 'multi',
             non_paginated: true
@@ -11147,8 +11563,9 @@
 
     /**
      * Fallback cap for `_getProseColumnMaxWidth()` — only used if the
-     * `sa_annotation_column_max_width` setting is somehow unavailable.
-     * Matches that setting's configSchema `default`.
+     * relevant setting (`sa_annotation_column_max_width` or, for the "ARs"
+     * column, `sa_ars_column_max_width`) is somehow unavailable. Matches
+     * both settings' configSchema `default` (they share the same value).
      * @type {number}
      */
     const PROSE_COLUMN_MAX_WIDTH_PX_FALLBACK = 480;
@@ -11161,11 +11578,20 @@
      * column, since `initCollapsableColumns`'s height-clamp only constrains
      * the live cell's vertical size, not the width of the detached
      * measurement clone. User-configurable via `sa_annotation_column_max_width`
-     * — always applied regardless of `sa_enable_annotation_collapse`.
+     * for every prose column except "ARs", which has its own independent
+     * `sa_ars_column_max_width` (see `initCollapsableColumns`'s matching
+     * `_isArsProseCol` special case) — always applied regardless of the
+     * corresponding collapse-enable setting.
+     * @param {HTMLTableElement} table
+     * @param {number} colIndex
      * @returns {number}
      */
-    function _getProseColumnMaxWidth() {
-        const configured = Number(Lib.settings.sa_annotation_column_max_width);
+    function _getProseColumnMaxWidth(table, colIndex) {
+        const th = table.querySelectorAll('thead th')[colIndex];
+        const colName = th ? _cleanColHeaderText(th) : '';
+        const configured = Number(
+            colName === 'ARs' ? Lib.settings.sa_ars_column_max_width : Lib.settings.sa_annotation_column_max_width
+        );
         return Number.isFinite(configured) && configured > 0
             ? configured
             : PROSE_COLUMN_MAX_WIDTH_PX_FALLBACK;
@@ -11284,7 +11710,7 @@
                         // measured width instead of sizing to a paragraph's
                         // unwrapped nowrap width — see _getProseColumnMaxWidth().
                         if (_isProseCollapseColumn(currentTable, columnIndex)) {
-                            maxWidth = Math.min(maxWidth, _getProseColumnMaxWidth());
+                            maxWidth = Math.min(maxWidth, _getProseColumnMaxWidth(currentTable, columnIndex));
                         }
 
                         // Set the measured width
@@ -11400,7 +11826,7 @@
                     }
                     document.body.removeChild(measureDiv);
                     if (_isProseCollapseColumn(table, columnIndex)) {
-                        maxWidth = Math.min(maxWidth, _getProseColumnMaxWidth());
+                        maxWidth = Math.min(maxWidth, _getProseColumnMaxWidth(table, columnIndex));
                     }
                     col.style.width   = `${Math.ceil(maxWidth + 20)}px`;
                     col.style.display = '';
@@ -20064,7 +20490,7 @@ a { color: #1565c0; }`;
             for (let colIndex = 0; colIndex < columnCount; colIndex++) {
                 if (!columnVisible[colIndex]) continue;
                 if (_isProseCollapseColumn(table, colIndex)) {
-                    columnWidths[colIndex] = Math.min(columnWidths[colIndex], _getProseColumnMaxWidth());
+                    columnWidths[colIndex] = Math.min(columnWidths[colIndex], _getProseColumnMaxWidth(table, colIndex));
                 }
             }
 
@@ -20511,7 +20937,7 @@ a { color: #1565c0; }`;
             for (let colIndex = 0; colIndex < columnCount; colIndex++) {
                 if (!columnVisible[colIndex]) continue;
                 if (_isProseCollapseColumn(table, colIndex)) {
-                    columnWidths[colIndex] = Math.min(columnWidths[colIndex], _getProseColumnMaxWidth());
+                    columnWidths[colIndex] = Math.min(columnWidths[colIndex], _getProseColumnMaxWidth(table, colIndex));
                 }
             }
 
@@ -22658,6 +23084,17 @@ a { color: #1565c0; }`;
             overflow: hidden;
         }
         .mb-text-clamp-inner.mb-text-clamp-expanded {
+            max-height: none;
+        }
+        /* "ARs" column (release-tracks) — independent collapsed height from
+           Annotation's, via sa_ars_column_max_height_em. The extra class
+           (higher selector specificity than the generic rule above) is only
+           added to ARs cells — see the _isArsProseCol branch in
+           initCollapsableColumns(). */
+        .mb-text-clamp-inner.mb-text-clamp-inner-ars {
+            max-height: ${Lib.settings.sa_ars_column_max_height_em || 5.6}em; /* sa_ars_column_max_height_em */
+        }
+        .mb-text-clamp-inner.mb-text-clamp-inner-ars.mb-text-clamp-expanded {
             max-height: none;
         }
         .mb-cell-collapse-label {
@@ -30055,6 +30492,9 @@ a { color: #1565c0; }`;
         if (activeDefinition.features?.normalizeMediumTracklists) {
             applyNormalizeMediumTracklists(activeDefinition);
         }
+        if (activeDefinition.features?.extractTitleData) {
+            applyExtractTrackTitleData(activeDefinition);
+        }
 
         // ── renameH2ToH3 / renameH2ToH1 / insertH2 pre-processing ────────────
         // For pageTypes that carry features.renameH2ToH3, features.renameH2ToH1,
@@ -34499,9 +34939,20 @@ a { color: #1565c0; }`;
                 const categoryName = group.category || group.key || 'Unknown';
                 const catLower = categoryName.toLowerCase();
                 // Auto-expand when: only a single sub-table on the page, OR the well-known
-                // categories 'album'/'official' have a small enough row count.
+                // categories 'album'/'official' have a small enough row count, OR this is
+                // release-tracks (every medium — "1 - CD", "2 - DVD-Video", … — always
+                // stays open; hiding mediums by default works against the whole point of
+                // consolidating a release's tracklists into one view). The release-tracks
+                // case also fixes a real bug, not just a UX preference: initCollapsableColumns()/
+                // makeColumnsResizable() run synchronously right after this, in the same
+                // pass — measuring scrollHeight/clientHeight on a `display:none` table
+                // always reads 0/0 in a real browser, so any collapsable column
+                // (ARs/AcoustID/ISRC) on a table left hidden here permanently never gets
+                // its overflow-triggered toggle, even after the user later expands the
+                // section manually (see debug/NOTES.md).
                 const isSingleSubTable = dataArray.length === 1;
-                const shouldStayOpen = isSingleSubTable ||
+                const isReleaseTracks = activeDefinition?.type === 'release-tracks';
+                const shouldStayOpen = isSingleSubTable || isReleaseTracks ||
                     ((catLower === 'album' || catLower === 'official') && group.rows.length < Lib.settings.sa_auto_expand);
                 table.style.display = shouldStayOpen ? '' : 'none';
                 Lib.debug('render', `Group "${categoryName}" auto-expand status: ${shouldStayOpen} (singleSubTable=${isSingleSubTable})`);
@@ -35344,6 +35795,11 @@ a { color: #1565c0; }`;
         // subdivisions still sitting in Locality once a flag-decorating userscript
         // processes them (no-ops when AREA_FLAG_REGION_COUNTRIES is empty).
         initAreaFlagRegionObserver();
+
+        // Install (or re-confirm) the MutationObserver that relocates
+        // late-arriving AcoustID/ISRC data into their columns on
+        // release-tracks pages (no-ops for every other pageType).
+        initAcoustIdIsrcObserver();
     }
 
     /**
@@ -38746,8 +39202,9 @@ a { color: #1565c0; }`;
             } else if (el.classList.contains('mb-text-clamp-marker')) {
                 // Prose-cell wrapper — reset to bare (unclamped, uncollapsed)
                 // state; re-measured and re-wired (or left bare) later in
-                // this function depending on sa_enable_annotation_collapse.
-                el.classList.remove('mb-text-clamp-inner', 'mb-text-clamp-expanded');
+                // this function depending on sa_enable_annotation_collapse
+                // (or, for the "ARs" column, sa_enable_ars_collapse).
+                el.classList.remove('mb-text-clamp-inner', 'mb-text-clamp-inner-ars', 'mb-text-clamp-expanded');
             } else if (el.tagName === 'TD') {
                 // td.mb-has-collapse-toggle — clear positioning class.
                 el.classList.remove('mb-has-collapse-toggle');
@@ -39026,8 +39483,16 @@ a { color: #1565c0; }`;
             // below); the toggle itself works identically to Annotation's
             // either way, in both directions, at any time.
             const _isEditsProseCol = colName === 'Edit details' || colName === 'Edit notes';
+            // "ARs" (release-tracks) gets its own independent collapse toggle
+            // and height, rather than sharing Annotation's — see
+            // sa_enable_ars_collapse / sa_ars_column_max_height_em and the
+            // matching _isArsProseCol branch below and in
+            // _getProseColumnMaxWidth().
+            const _isArsProseCol = colName === 'ARs';
             const _annotationCollapseEnabled = _isEditsProseCol
                 ? true
+                : _isArsProseCol
+                ? Lib.settings.sa_enable_ars_collapse !== false
                 : Lib.settings.sa_enable_annotation_collapse !== false;
             // true = "start this edits prose column collapsed" (the
             // Annotation-style default); false (the actual default for
@@ -39062,7 +39527,10 @@ a { color: #1565c0; }`;
                 // (full, unclamped text; no toggle).
                 const _proseOverflowing = _annotationCollapseEnabled
                     ? (() => {
-                        _proseWrapped.forEach(({ inner }) => inner.classList.add('mb-text-clamp-inner'));
+                        _proseWrapped.forEach(({ inner }) => {
+                            inner.classList.add('mb-text-clamp-inner');
+                            if (_isArsProseCol) inner.classList.add('mb-text-clamp-inner-ars');
+                        });
                         // Pass 2: batch-read scrollHeight/clientHeight — one layout
                         // flush for the whole column instead of one per cell.
                         return _proseWrapped.filter(({ inner }) =>
