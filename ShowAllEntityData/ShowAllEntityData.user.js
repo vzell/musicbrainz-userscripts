@@ -1690,18 +1690,23 @@
             label: 'Show engineer/mixer/producer credit columns',
             type: 'checkbox',
             default: true,
-            description: 'Adds "Recording engineer", "Mixer", "Engineer", and "Producer" columns to ' +
-                         'the consolidated release tracklist, extracted from each track\'s "recording ' +
-                         'engineer:"/"mixer:"/"engineer:"/"producer:" relationship data (normally ' +
-                         'glommed into the "ARs" column). Each role can be prefixed with attribute words ' +
-                         '(Additional, Assistant, Associate, Co, and — for Engineer/Producer only — ' +
-                         'Executive); one column per attribute word actually used on the release is added ' +
-                         'per role (e.g. "Mixer (Assistant)"), showing the attribute word when present, ' +
-                         'empty otherwise. When a track has more than one matching credit for the same ' +
-                         'role (e.g. both a bare "mixer:" and a separate "assistant mixer:"), all of them ' +
-                         'are merged into one multi-row cell for that role. Multiple credited artists ' +
-                         'render as a collapsible multi-row list. "ARs" itself is left completely ' +
-                         'unchanged — every extracted link appears in both places.'
+            description: 'Adds "Recording engineer", "Mixer", "Engineer", "Producer", and ' +
+                         '"Miscellaneous support" columns to the consolidated release tracklist, ' +
+                         'extracted from each track\'s "recording engineer:"/"mixer:"/"engineer:"/' +
+                         '"producer:"/"miscellaneous support:" relationship data (normally glommed ' +
+                         'into the "ARs" column). Each of the first four roles can be prefixed with ' +
+                         'attribute words (Additional, Assistant, Associate, Co, and — for Engineer/' +
+                         'Producer only — Executive); one column per attribute word actually used on ' +
+                         'the release is added per role (e.g. "Mixer (Assistant)"), showing the ' +
+                         'attribute word when present, empty otherwise ("Miscellaneous support" has ' +
+                         'no attribute words and gets no such columns). When a track has more than one ' +
+                         'matching credit for the same role (e.g. both a bare "mixer:" and a separate ' +
+                         '"assistant mixer:"), all of them are merged into one multi-row cell for that ' +
+                         'role. Multiple credited artists render as a collapsible multi-row list, each ' +
+                         'paired with its own credited instrument (e.g. "Ian Kagey (strings)") or, for ' +
+                         '"Miscellaneous support", its own task (e.g. "Sandy Park (task: string ' +
+                         'contractor)") when present. "ARs" itself is left completely unchanged — every ' +
+                         'extracted link appears in both places.'
         },
 
         sa_enable_ars_collapse: {
@@ -7982,18 +7987,26 @@
 
     /**
      * Role descriptors for the "Recording engineer"/"Mixer"/"Engineer"/
-     * "Producer" credit columns (see `_findCreditDts`/`_buildCreditListTd`
-     * and `applyExtractTrackTitleData`'s JSDoc for the full design). Array
+     * "Producer"/"Miscellaneous support" credit columns (see
+     * `_findCreditDts`/`_buildCreditListTd` and
+     * `applyExtractTrackTitleData`'s JSDoc for the full design). Array
      * order doubles as the desired final left-to-right column order,
      * matching debug/artist-roles.org's own Group 1 (Recording engineer,
-     * Mixer) → Group 2 (Engineer, Producer) presentation order.
+     * Mixer) → Group 2 (Engineer, Producer) presentation order, with
+     * "Miscellaneous support" (a later, separately requested addition —
+     * see `debug/buggy-list-title.html`) appended last.
      *
      * `roleWords` is the base role phrase as it appears at the END of a
      * `<dt>` (e.g. `<dt>recording engineer:</dt>`, `<dt>assistant mixer:
      * </dt>`) — a `<dt>` matches a role only when its trailing words equal
      * `roleWords` exactly AND every word before that (if any) is a member
      * of `attributeVocab` (see `_findCreditDts`'s JSDoc for why this must
-     * be strict, not lenient).
+     * be strict, not lenient). `attributeVocab: []` (as for
+     * "miscellaneous support:") means the role accepts no attribute-word
+     * prefix at all — any leading word before "miscellaneous support:"
+     * makes `_findCreditDts` reject the `<dt>`, and no attribute columns
+     * are ever added for it (`_creditRoleThs` generation naturally no-ops
+     * over an empty `attributeVocab`).
      */
     const CREDIT_ROLES = [
         { key: 'recEngineer', roleWords: ['recording', 'engineer'], columnLabel: 'Recording engineer',
@@ -8003,7 +8016,9 @@
         { key: 'engineer', roleWords: ['engineer'], columnLabel: 'Engineer',
           attributeVocab: ['additional', 'assistant', 'associate', 'co', 'executive'] },
         { key: 'producer', roleWords: ['producer'], columnLabel: 'Producer',
-          attributeVocab: ['additional', 'assistant', 'associate', 'co', 'executive'] }
+          attributeVocab: ['additional', 'assistant', 'associate', 'co', 'executive'] },
+        { key: 'miscSupport', roleWords: ['miscellaneous', 'support'], columnLabel: 'Miscellaneous support',
+          attributeVocab: [] }
     ];
 
     /**
@@ -8079,6 +8094,84 @@
     }
 
     /**
+     * Finds the first credited artist's `<a href="/artist/…">` within a
+     * `_buildCreditListTd` segment (see that function's JSDoc for what a
+     * "segment" is). Searches each segment node itself AND its descendants
+     * (`querySelector`, not a direct-child-only check), because MusicBrainz
+     * sometimes wraps the artist anchor one level deeper in
+     * `<span class="name-variation">…</span>` (an alias/disambiguated
+     * name) — a direct-child-only check silently drops that artist
+     * entirely, since the segment's only direct-child element is the
+     * wrapping span, never the anchor itself (see
+     * `debug/missing-engineer.html`: a bare `<dt>engineer:</dt>` crediting
+     * 3 artists where the first is name-variation-wrapped — previously that
+     * one artist's segment produced no `<li>` at all, while the other two
+     * (not wrapped) rendered fine). Mirrors `_findRecordedAtDt`'s own
+     * `:scope >`-removal fix for the identical name-variation-nesting
+     * problem (see WIP.15/`_recordedAtDdAnchor`).
+     *
+     * @param {Node[]} seg
+     * @returns {HTMLAnchorElement|null}
+     */
+    function _findCreditSegmentArtistAnchor(seg) {
+        for (const n of seg) {
+            if (n.nodeType !== Node.ELEMENT_NODE) continue;
+            if (n.tagName === 'A' && /^\/artist\//.test(n.getAttribute('href') || '')) return n;
+            if (n.querySelector) {
+                const _nested = n.querySelector('a[href^="/artist/"]');
+                if (_nested) return _nested;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Finds every credited instrument `<a href="/instrument/…">` within a
+     * `_buildCreditListTd` segment — same nested-anchor search as
+     * `_findCreditSegmentArtistAnchor`, generalized to "every match" since
+     * a segment can legitimately credit more than one instrument (e.g.
+     * `(guitar, bass)`, untested against real data, see
+     * `_buildCreditListTd`'s JSDoc).
+     *
+     * @param {Node[]} seg
+     * @returns {HTMLAnchorElement[]}
+     */
+    function _findCreditSegmentInstrumentAnchors(seg) {
+        const _results = [];
+        seg.forEach(n => {
+            if (n.nodeType !== Node.ELEMENT_NODE) return;
+            if (n.tagName === 'A' && /^\/instrument\//.test(n.getAttribute('href') || '')) { _results.push(n); return; }
+            if (n.querySelectorAll) n.querySelectorAll('a[href^="/instrument/"]').forEach(a => _results.push(a));
+        });
+        return _results;
+    }
+
+    /**
+     * Finds a "miscellaneous support:" task annotation within a
+     * `_buildCreditListTd` segment — plain text, not a link (unlike the
+     * instrument annotation), rendered by MusicBrainz as
+     * `<!-- -->(task: string contractor)` directly after the artist anchor
+     * (see `debug/buggy-list-title.html`'s "miscellaneous support:" `<dd>`
+     * for Sandy Park). Scans the segment's own text nodes (never descends
+     * into elements — the task text is always a direct sibling of the
+     * artist anchor, never nested) for a `(task: …)` parenthetical and
+     * returns just its inner text (`"task: string contractor"`), letting
+     * the caller wrap it in parens itself, matching how the instrument
+     * case's parens are added by the caller too.
+     *
+     * @param {Node[]} seg
+     * @returns {string|null}
+     */
+    function _findCreditSegmentTaskAnnotation(seg) {
+        for (const n of seg) {
+            if (n.nodeType !== Node.TEXT_NODE) continue;
+            const _m = n.textContent.match(/\(task:\s*([^)]*)\)/i);
+            if (_m) return `task: ${_m[1].trim()}`;
+        }
+        return null;
+    }
+
+    /**
      * Builds a `<td><ul><li>…</li>…</ul></td>` merging every credited
      * artist across one or more `<dd>`s (one per matched `_findCreditDts`
      * `<dt>`) into a single collapsable multi-row cell — e.g. a "Mixer"
@@ -8105,24 +8198,26 @@
      * every node up to the next marker (or end of `<dd>`) belongs to that
      * artist, so it's agnostic to the literal ","/" and " separator text
      * MusicBrainz uses to join multiple credited artists in one `<dd>`.
+     * `_findCreditSegmentArtistAnchor` resolves the artist anchor itself
+     * (nested-anchor-aware, see its own JSDoc).
      *
-     * A credited instrument — MusicBrainz renders it as
-     * `<a href="/instrument/…">…</a>` wrapped in a parenthetical
+     * Two mutually-exclusive kinds of per-artist annotation are looked up
+     * WITHIN the artist's own segment and appended to that artist's `<li>`
+     * as `" (…)"` (instrument takes priority if somehow both are present,
+     * though no real `<dd>` mixes them): a credited instrument — rendered
+     * as `<a href="/instrument/…">…</a>` wrapped in a parenthetical
      * immediately after the artist anchor, e.g. `Ian Kagey
-     * <!-- -->(<a href="/instrument/…">strings</a>)<!-- -->` — is looked up
-     * WITHIN the artist's own segment (by `href` prefix, ignoring the
-     * `<!-- -->` comment nodes and "(", ")" text MusicBrainz wraps it in)
-     * and appended to that artist's `<li>` as `" (strings)"`, so it stays
+     * <!-- -->(<a href="/instrument/…">strings</a>)<!-- -->` (see
+     * `_findCreditSegmentInstrumentAnchors`) — or a "miscellaneous
+     * support:" task, rendered as plain parenthetical text with no link,
+     * e.g. `Sandy Park <!-- -->(task: string contractor)` (see
+     * `_findCreditSegmentTaskAnnotation`). Either way the annotation stays
      * paired with the artist it belongs to instead of becoming its own
      * unrelated list item (see `debug/buggy-list.html`/
-     * `debug/buggy-list-title.html` for the bug this fixes: a naive flat
-     * `:scope > a` anchor count treated each instrument anchor as an extra
-     * "artist", turning 3 credited engineers into 6 list items). More than
-     * one instrument anchor in the same segment (e.g. `(guitar, bass)`) are
-     * all kept, comma-joined inside the one parenthetical — untested
-     * against real data, no such example found in `debug/*.html`, but
-     * mirrors how MusicBrainz already comma-joins other same-`<dd>` link
-     * lists.
+     * `debug/buggy-list-title.html` for the instrument-anchor bug this
+     * originally fixed: a naive flat `:scope > a` anchor count treated
+     * each instrument anchor as an extra "artist", turning 3 credited
+     * engineers into 6 list items).
      *
      * @param {HTMLElement[]} dds - The `<dd>` elements to merge (each the
      *   `nextElementSibling` of one `_findCreditDts` match).
@@ -8139,11 +8234,11 @@
                 _segments[_segments.length - 1].push(n);
             });
             _segments.forEach(seg => {
-                const _artistA = seg.find(n => n.nodeType === Node.ELEMENT_NODE && n.tagName === 'A' && /^\/artist\//.test(n.getAttribute('href') || ''));
+                const _artistA = _findCreditSegmentArtistAnchor(seg);
                 if (!_artistA) return;
-                const _instrumentAs = seg.filter(n => n.nodeType === Node.ELEMENT_NODE && n.tagName === 'A' && /^\/instrument\//.test(n.getAttribute('href') || ''));
                 const li = document.createElement('li');
                 li.appendChild(_artistA.cloneNode(true));
+                const _instrumentAs = _findCreditSegmentInstrumentAnchors(seg);
                 if (_instrumentAs.length > 0) {
                     li.appendChild(document.createTextNode(' ('));
                     _instrumentAs.forEach((a, i) => {
@@ -8151,6 +8246,9 @@
                         li.appendChild(a.cloneNode(true));
                     });
                     li.appendChild(document.createTextNode(')'));
+                } else {
+                    const _task = _findCreditSegmentTaskAnnotation(seg);
+                    if (_task) li.appendChild(document.createTextNode(` (${_task})`));
                 }
                 ul.appendChild(li);
             });
@@ -11435,7 +11533,7 @@
                 // all auto-detected by initCollapsableColumns() once
                 // declared here. "Recorded at event" is deliberately
                 // excluded — always a single anchor, never a list.
-                collapsableColumns: [ 'ARs', 'AcoustIDs', 'ISRCs', 'Recording engineer', 'Mixer', 'Engineer', 'Producer', 'Recorded at place' ],
+                collapsableColumns: [ 'ARs', 'AcoustIDs', 'ISRCs', 'Recording engineer', 'Mixer', 'Engineer', 'Producer', 'Miscellaneous support', 'Recorded at place' ],
                 stickyColumn: 'Title'
             },
             tableMode: 'multi',

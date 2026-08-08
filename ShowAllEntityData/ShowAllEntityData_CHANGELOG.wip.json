@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.21",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed a bare \"engineer:\" (and any other) credit column (WIP.16/WIP.20) silently dropping an artist entirely whenever MusicBrainz wraps that artist's anchor in `<span class=\"name-variation\">…</span>` (an alias/disambiguated name), instead of just that one artist's instrument/task annotation being lost. `_buildCreditListTd`'s per-artist segmentation looked for the artist `<a>` only as a direct child of the segment; a name-variation-wrapped artist's only direct child is the wrapping `<span>`, so that segment produced no `<li>` at all — e.g. a bare \"engineer:\" crediting 3 artists where the first is name-variation-wrapped rendered only the other 2, with the first missing without any indication. New `_findCreditSegmentArtistAnchor`/`_findCreditSegmentInstrumentAnchors` now search each segment node's descendants too (not just the node itself), mirroring WIP.15's identical `_recordedAtDdAnchor` fix for the same name-variation-nesting problem in \"Recorded at place\"."
+        ]
+      },
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added a \"Miscellaneous support\" credit column, extracted from `<dt>miscellaneous support:</dt>` the same way as the other 4 credit-role columns (WIP.16), reusing `CREDIT_ROLES`/`_findCreditDts`/`_buildCreditListTd` with an empty `attributeVocab` (no attribute-word prefix is recognized for this role, so it gets no attribute columns). Each credited artist is paired with their own task annotation when MusicBrainz provides one — rendered as plain parenthetical text, not a link, e.g. \"(task: string contractor)\" — via new `_findCreditSegmentTaskAnnotation`, appended the same way the instrument annotation already is for the other 4 roles, so an artist with a task reads as \"Sandy Park (task: string contractor)\". Gated by the same `sa_enable_release_tracks_credit_role_columns` setting as the other 4 credit-role columns; positioned last in that group, still before \"Recorded at place\"/\"ARs\"."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.20",
     "date": "2026-08-08",
     "sections": [

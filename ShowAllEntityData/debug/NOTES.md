@@ -3476,3 +3476,74 @@ exercising WIP.16's multi-`<dt>` merge path) correctly produces 5 `<li>`s
 total with instrument pairing preserved only on the segments that actually
 had one.
 
+## 2026-08-08 — credit columns: name-variation-wrapped artist dropped; "Miscellaneous support" column (WIP.21)
+
+**Source**: `debug/missing-engineer.html` (a bare `engineer:` `<dt>`/`<dd>`
+pair, provided directly this time instead of a full page snapshot) and the
+already-known "miscellaneous support:" `<dt>`/`<dd>` in
+`debug/buggy-list-title.html` (same release as WIP.20, "Only the Strong
+Survive").
+
+**Bug 1 — name-variation-wrapped artist silently dropped**: the `<dd>` for
+`engineer:` on this track credits 3 artists — Andres Bermudez (rendered
+with a name variation, "Andres Bermudezat", plus an
+"(other vocals [Sam Moore vocal])" annotation), Ron Aniello, and Rob
+Lebret:
+
+```html
+<dt>engineer:</dt>
+<dd><span class="artistlink"></span><span class="name-variation"><a href="/artist/…">Andres Bermudezat</a></span> <!-- -->(other vocals [Sam Moore vocal])<!-- -->, <span class="artistlink"></span><a href="/artist/…">Ron Aniello</a> and <span class="artistlink"></span><a href="/artist/…">Rob Lebret</a></dd>
+```
+
+`_findCreditDts` matched the `<dt>` correctly (1 match, as expected — the
+matching logic only reads `<dt>` text, unaffected). The bug was entirely
+inside `_buildCreditListTd`'s segmentation (added in WIP.20): each
+segment's artist anchor was looked up via `seg.find(n => … n.tagName ===
+'A' …)`, i.e. a DIRECT-CHILD-ONLY check. Andres Bermudez's segment has no
+direct-child `<a>` — its only direct-child element is the wrapping
+`<span class="name-variation">`, with the actual `<a>` one level deeper —
+so `_artistA` came back `null` and the whole segment was skipped via
+`if (!_artistA) return;`. Verified via jsdom against the real markup:
+before the fix, only 2 of the 3 credited engineers rendered (Ron Aniello,
+Rob Lebret), with Andres Bermudez missing entirely and no indication
+anything was dropped. This is the exact same class of bug as WIP.15's
+`_recordedAtDdAnchor` fix (`:scope > a[href^=…]` → `a[href^=…]`) for
+"Recorded at place" — name-variation wrapping is a recurring MusicBrainz
+markup shape that any anchor-lookup in this area needs to anticipate.
+
+**Fix**: new `_findCreditSegmentArtistAnchor`/
+`_findCreditSegmentInstrumentAnchors` replace the inline direct-child
+`seg.find`/`seg.filter` checks — for each segment node, check the node
+itself first, then `n.querySelector('a[href^="/artist/"]')` (or
+`querySelectorAll` for instruments) to catch anchors nested one level
+deeper. Re-verified with the same jsdom test: all 3 artists now render,
+Andres Bermudez included, with no instrument/task annotation lost from the
+other two either (regression-tested against WIP.20's own instrument test
+cases — unaffected, still passing).
+
+**Feature 2 — "Miscellaneous support" column**: requested together with
+bug 1's fix. `<dt>miscellaneous support:</dt>` credits an artist together
+with a "task" annotation — plain parenthetical text, NOT a link (unlike
+the instrument annotation the 4 existing credit columns already handle):
+
+```html
+<dt>miscellaneous support:</dt>
+<dd><span class="artistlink"></span><a href="/artist/…">Sandy Park</a> <!-- -->(task: string contractor)</dd>
+```
+
+Added as a 5th entry in `CREDIT_ROLES` (`roleWords: ['miscellaneous',
+'support']`, `attributeVocab: []` — no attribute-word prefix is
+recognized for this role by the spec, so it gets no attribute columns;
+verified `_findCreditDts`/the header-insertion loop both no-op cleanly
+over an empty `attributeVocab`, needed no code changes there). New
+`_findCreditSegmentTaskAnnotation` scans a segment's own text nodes for a
+`(task: …)` pattern and returns its inner text (`"task: string
+contractor"`); `_buildCreditListTd` tries the instrument-anchor lookup
+first, falling back to the task-text lookup only when no instrument anchor
+was found (the two are mutually exclusive in every real example seen so
+far — no `<dd>` has ever needed both). Result: "Sandy Park (task: string
+contractor)" as one list item, verified via jsdom against the real `<dd>`
+markup above. Added to `collapsableColumns` for `release-tracks` alongside
+the other 4 credit-role columns; no new setting — reuses
+`sa_enable_release_tracks_credit_role_columns`.
+
