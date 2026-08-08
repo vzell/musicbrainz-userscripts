@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.24",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the \"Engineer\"/\"Mixer\" (and any other pair of) credit columns rendering empty for a track whose `<dt>` credits the same artists under multiple roles at once, e.g. `<dt>engineer and mixer:</dt>` (`debug/Nightshift.html`) — the whole `<dt>` was matched as one unit against a single role's `roleWords`, so `\"engineer and mixer:\"` matched neither the bare \"engineer\" role (trailing word is \"mixer\", not \"engineer\") nor the \"mixer\" role (leading words \"engineer and\" aren't recognized attribute words), leaving both columns empty despite ARs clearly crediting both. `_findCreditDts` now splits each `<dt>`'s body into role components on `,`/` and ` (the same separators MusicBrainz uses to join multiple artists in a `<dd>`) before matching, so `\"engineer and mixer:\"` → `[\"engineer\", \"mixer\"]`, each checked independently — the same `<dd>`'s artists now correctly appear in BOTH \"Engineer\" and \"Mixer\". A `<dt>` with no `,`/` and ` (the common case) splits into one component, so single-role credits are completely unaffected; the per-component attribute-word strictness (e.g. \"recording engineer\" still never matching bare \"engineer\") is unchanged, just applied per component instead of to the whole `<dt>`."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.23",
     "date": "2026-08-08",
     "sections": [

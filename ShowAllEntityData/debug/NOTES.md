@@ -3666,3 +3666,56 @@ case) and WIP.21 (name-variation-wrapped artist) regression tests — both
 still produce identical `<li>` text content, confirming the attribute/
 annotation-combination change didn't disturb either path.
 
+## 2026-08-08 — credit columns: one `<dt>` crediting multiple roles at once (WIP.24)
+
+**Source**: `debug/Nightshift.html` — user reported "Engineer" and
+"Mixer" both rendering empty for a track whose ARs clearly credit
+someone in both roles:
+
+```html
+<dt>engineer and mixer:</dt>
+<dd><a href="/artist/…">Ron Aniello</a> and <a href="/artist/…">Rob Lebret</a></dd>
+```
+
+**Root cause**: `_findCreditDts` matched the WHOLE `<dt>` body against one
+role's `roleWords` at a time. For `"engineer and mixer:"` → words
+`['engineer','and','mixer']`: role `engineer` (`roleWords: ['engineer']`)
+needs the TRAILING word to be `"engineer"` — it's `"mixer"` — rejected.
+Role `mixer` (`roleWords: ['mixer']`) needs every word before the trailing
+`"mixer"` to be a recognized attribute — `"engineer"` and `"and"` aren't —
+rejected too. So a `<dt>` combining two roles with "and" matched NEITHER,
+even though this same shape (`"engineer and mixer:"`) had already turned
+up multiple times in earlier debug snapshots this session (`debug/
+buggy-list-title.html`, `debug/soul-days.html`) without anyone noticing
+both columns were silently empty for those tracks too — this bug predates
+WIP.16 and was never actually exercised by a targeted test until now.
+
+**Fix**: `_findCreditDts` now splits the `<dt>`'s body (everything before
+the trailing `:`) into ROLE COMPONENTS on `/\s*,\s*|\s+and\s+/i` — the
+same separator convention MusicBrainz already uses to join multiple
+ARTISTS in one `<dd>`, now recognized as also joining multiple ROLES in
+one `<dt>`. `"engineer and mixer"` → `["engineer", "mixer"]`, each checked
+independently against `roleWords`/`attributeVocab` exactly as before (the
+per-component strictness — e.g. `"recording engineer"` still never
+matching bare `engineer` — is unchanged, just scoped to one component
+instead of the whole `<dt>`). A `<dt>` with no `,`/`and` splits into
+exactly one component, so every existing single-role test case (`mixer:`,
+`assistant mixer:`, `recording engineer:`, …) is provably unaffected — no
+component boundary is introduced where there wasn't already one word
+sequence to check. Only the first matching component counts per `<dt>`
+(`break` after a match) — a `<dt>` combining the same role twice would be
+a MusicBrainz data error, not something to double-count.
+
+**Verified via jsdom** against the real Nightshift `<dt>engineer and
+mixer:</dt>`/`<dt>producer:</dt>` pair, plus two synthetic edge cases
+(no real example of either exists yet): `"recording engineer and
+producer:"` (compound role component + simple role component — confirms
+"Recording engineer" gets it, bare "Engineer" correctly does NOT) and
+`"assistant engineer and co-producer:"` (attribute-prefixed components on
+both sides of "and" — confirms each component keeps its OWN attribute
+word: "Engineer" cell shows `"Y Person (assistant)"`, "Producer" cell
+shows `"Y Person (co)"`, never mixing the two). Re-ran every prior credit-
+column regression test (WIP.16/WIP.20/WIP.21/WIP.22/WIP.23) — all
+unchanged, confirming single-role `<dt>`s are unaffected by the
+component-splitting change.
+

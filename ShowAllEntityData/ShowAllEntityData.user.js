@@ -8027,6 +8027,46 @@
      * `<dt>assistant mixer:</dt>`, since "assistant" is a recognized
      * attribute word.
      *
+     * A `<dt>` can credit the SAME `<dd>` artists under MULTIPLE roles at
+     * once, joined the same way MusicBrainz joins multiple artists in a
+     * `<dd>` — with `","`/`" and "` — e.g. `<dt>engineer and mixer:</dt>`
+     * (real data: `debug/Nightshift.html`/`debug/soul-days.html`/
+     * `debug/buggy-list-title.html`) means its artists are credited as
+     * BOTH "Engineer" AND "Mixer". The whole `<dt>` body (everything before
+     * the trailing `:`) is therefore split into ROLE COMPONENTS on
+     * `/\s*,\s*|\s+and\s+/i` first — `"engineer and mixer"` → `["engineer",
+     * "mixer"]` — and each component is checked independently against
+     * `roleWords`/`attributeVocab`, exactly like the single-component case
+     * below. A `<dt>` with no `","`/`" and "` (the common case) splits into
+     * one component, so single-role credits are completely unaffected.
+     * Only the FIRST matching component counts (a `<dt>` combining the same
+     * role twice would be a MusicBrainz data error, not something to
+     * double-count) — see the `break` below.
+     *
+     * Word-splitting each component uses `/[\s-]+/` (whitespace OR
+     * hyphen), not just whitespace: MusicBrainz renders the "co" attribute
+     * hyphen-attached to the following word (`"co-recording engineer:"`,
+     * `"co-executive engineer:"` — see debug/artist-roles.org), so a plain
+     * whitespace split would turn `"co-recording"` into one unmatched
+     * token instead of two. Safe generally here since none of the role
+     * words or attribute words themselves contain a hyphen.
+     *
+     * The attribute-word check is deliberately STRICT (every leading word
+     * OF THAT COMPONENT must be a recognized attribute, or the whole
+     * component is rejected for this role), unlike `_parseRecOfAttributes`'s
+     * lenient "silently drop an unrecognized word without invalidating the
+     * match" behavior. This is required because "engineer" is both a
+     * standalone role AND the tail of the compound role "recording
+     * engineer" — a lenient match would wrongly accept `<dt>recording
+     * engineer:</dt>` as a bare "engineer" credit too, since its last word
+     * literally is "engineer:". With the strict check, `roleWords:
+     * ['engineer']` correctly rejects it (leading word "recording" isn't a
+     * recognized attribute), while `roleWords: ['recording', 'engineer']`
+     * correctly accepts it. This applies per-component even when the
+     * `<dt>` combines roles, e.g. `<dt>recording engineer and producer:
+     * </dt>`'s `"recording engineer"` component still only matches
+     * `roleWords: ['recording', 'engineer']`, never bare `['engineer']`.
+     *
      * Unlike `_findRecOfDt` (single match, first-in-document-order) this
      * returns **every** matching `<dt>`, not just the first — real data
      * (`debug/full.html`) has tracks with BOTH a bare `<dt>mixer:</dt>`
@@ -8038,35 +8078,16 @@
      * simpler "first match only" rule since none of them can have more
      * than one legitimate value per track.
      *
-     * Word-splitting uses `/[\s-]+/` (whitespace OR hyphen), not just
-     * whitespace: MusicBrainz renders the "co" attribute hyphen-attached to
-     * the following word (`"co-recording engineer:"`,
-     * `"co-executive engineer:"` — see debug/artist-roles.org), so a plain
-     * whitespace split would turn `"co-recording"` into one unmatched
-     * token instead of two. Safe generally here since none of the role
-     * words or attribute words themselves contain a hyphen.
-     *
-     * The attribute-word check is deliberately STRICT (every leading word
-     * must be a recognized attribute, or the whole `<dt>` is rejected for
-     * this role), unlike `_parseRecOfAttributes`'s lenient "silently drop
-     * an unrecognized word without invalidating the match" behavior. This
-     * is required because "engineer" is both a standalone role AND the
-     * tail of the compound role "recording engineer" — a lenient match
-     * would wrongly accept `<dt>recording engineer:</dt>` as a bare
-     * "engineer" credit too, since its last word literally is "engineer:".
-     * With the strict check, `roleWords: ['engineer']` correctly rejects
-     * it (leading word "recording" isn't a recognized attribute), while
-     * `roleWords: ['recording', 'engineer']` correctly accepts it.
-     *
      * @param {HTMLTableCellElement} titleTd
-     * @param {string[]} roleWords - Lowercase words the `<dt>` must end
-     *   with, e.g. `['recording', 'engineer']`.
+     * @param {string[]} roleWords - Lowercase words the `<dt>` (or one of
+     *   its role components) must end with, e.g. `['recording',
+     *   'engineer']`.
      * @param {string[]} attributeVocab - Recognized attribute words for
      *   this role (lowercase), e.g. `['additional', 'assistant', …]`.
      * @returns {Array<{dt: HTMLElement, attributes: string[]}>} Every
-     *   matching `<dt>`, each paired with the attribute words found in its
-     *   own prefix (in `attributeVocab` order, deduplicated) — empty array
-     *   when this track has no such credit.
+     *   matching `<dt>`, each paired with the attribute words found in the
+     *   matching component's own prefix (in `attributeVocab` order,
+     *   deduplicated) — empty array when this track has no such credit.
      */
     function _findCreditDts(titleTd, roleWords, attributeVocab) {
         let _bareArsDiv = null;
@@ -8079,14 +8100,19 @@
         Array.from(_bareArsDiv.querySelectorAll(':scope > dl.ars > dt')).forEach(dt => {
             const _raw = dt.textContent.trim();
             if (!/:$/.test(_raw)) return;
-            const _words = _raw.slice(0, -1).trim().split(/[\s-]+/).filter(Boolean).map(w => w.toLowerCase());
-            if (_words.length < roleWords.length) return;
-            const _tail = _words.slice(_words.length - roleWords.length);
-            if (_tail.join(' ') !== roleWords.join(' ')) return;
-            const _prefixWords = _words.slice(0, _words.length - roleWords.length);
-            if (!_prefixWords.every(w => attributeVocab.includes(w))) return;
-            const _attributes = attributeVocab.filter(a => _prefixWords.includes(a));
-            _results.push({ dt, attributes: _attributes });
+            const _body = _raw.slice(0, -1).trim();
+            const _components = _body.split(/\s*,\s*|\s+and\s+/i).map(c => c.trim()).filter(Boolean);
+            for (const _component of _components) {
+                const _words = _component.split(/[\s-]+/).filter(Boolean).map(w => w.toLowerCase());
+                if (_words.length < roleWords.length) continue;
+                const _tail = _words.slice(_words.length - roleWords.length);
+                if (_tail.join(' ') !== roleWords.join(' ')) continue;
+                const _prefixWords = _words.slice(0, _words.length - roleWords.length);
+                if (!_prefixWords.every(w => attributeVocab.includes(w))) continue;
+                const _attributes = attributeVocab.filter(a => _prefixWords.includes(a));
+                _results.push({ dt, attributes: _attributes });
+                break;
+            }
         });
         return _results;
     }
