@@ -15,7 +15,7 @@
 // @require      https://raw.githubusercontent.com/vzell/mb-userscripts/master/lib/VZ_MBLibrary.user.js
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits)(?:\?.*)?$/
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)(?:\?.*)?|account\/applications(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections(?:\?.*)?|election\/.*|genres(?:\?.*)?|cdstub\/.*|doc\/Edit_Types(?:\?.*)?|instruments(?:\?.*)?|privileged(?:\?.*)?)$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)(?:\?.*)?|account\/applications(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections(?:\?.*)?|election\/.*|genres(?:\?.*)?|cdstub\/.*|isrc\/.*|doc\/Edit_Types(?:\?.*)?|instruments(?:\?.*)?|privileged(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers(?:\?.*)?|collections(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?(?:\?.*)?)$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
@@ -9501,6 +9501,43 @@
             buttons: [ { label: 'Show all Tracks' } ],
             features: {
                 integerColumns: [ { sourceColumn: '#', align: 'R' } ]
+            },
+            tableMode: 'single',
+            non_paginated: true
+        },
+        // Individual ISRC page (/isrc/<code>, e.g. /isrc/USSM19500019) — no
+        // div#content, native <h1>ISRC "…"</h1> and native <h2>Associated
+        // with N recording(s)</h2> immediately followed by an ALREADY
+        // tbl-shaped <table class="tbl mergeable-table"> (checkbox / Title /
+        // Artist / Length) — no listToTable/insertH2 needed, same minimal
+        // shape as 'cd-stub' above. Title carries a native .comment span
+        // (disambiguation, often live-performance metadata — e.g. "live,
+        // 1975-10-18, early show: The Roxy Theatre, West Hollywood, CA,
+        // USA") — extractMainColumn: 'Title' splits it into a synthetic
+        // Comment column (same convention as 'work-recordings-filtered'
+        // etc.), which the eventParts syntheticColumnExtractor further
+        // parses into Event-Type/Event-Date/Event-Detail/Event-Venue/
+        // Event-Venue-Detail/Event-City/Event-State/Event-Country/
+        // Event-Additional-Info columns. Artist's native multi-artist-credit
+        // <bdi> is handled generically by the existing column pipeline — no
+        // extractor needed there. The leading checkbox <th> carries no
+        // "checkbox-cell" class (unlike other MB merge-tables), so a
+        // pageType==='isrc'-scoped branch in startFetchingProcess stamps
+        // that class on before the header scan runs, letting the existing
+        // sa_remove_checkbox_cell mechanism handle it like everywhere else.
+        // No pagination — an ISRC's recording list is fixed and already
+        // fully rendered. See debug/ISRC.html.
+        {
+            type: 'isrc',
+            match: (path) => path.match(/^\/isrc\/[^/]+\/?$/),
+            buttons: [ { label: 'Show all Recordings' } ],
+            features: {
+                syntheticColumnExtractors: [
+                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
+                ],
+                integerColumns: [ { sourceColumn: 'Length', align: ':' } ],
+                extractMainColumn: 'Title',
+                stickyColumn: 'Title'
             },
             tableMode: 'single',
             non_paginated: true
@@ -31760,6 +31797,24 @@ a { color: #1565c0; }`;
         // insertPrependH2: inject an h2 BEFORE the existing one (e.g. search pages).
         if (activeDefinition.features?.insertPrependH2) {
             applyInsertPrependH2(activeDefinition);
+        }
+
+        // ── isrc: stamp the checkbox-cell class ─────────────────────────────
+        // Native /isrc/<code> pages render a merge-checkbox column whose
+        // leading <th> carries no CSS class at all (unlike other MB
+        // merge-tables), so the existing sa_remove_checkbox_cell mechanism —
+        // both the early header scan (indicesToExclude) and cleanupHeaders()
+        // further below, both keyed off th.classList.contains('checkbox-cell')
+        // — would otherwise never recognise it and leave a blank, unlabeled
+        // checkbox column in the rendered table. Stamp the class once here,
+        // before either scan runs, so the checkbox column is handled exactly
+        // like every other merge-table's checkbox column. See debug/ISRC.html.
+        if (pageType === 'isrc') {
+            const _isrcCheckboxTh = document.querySelector('table.tbl thead th:first-child');
+            if (_isrcCheckboxTh && _isrcCheckboxTh.querySelector('input[type="checkbox"]')) {
+                _isrcCheckboxTh.classList.add('checkbox-cell');
+                Lib.debug('cleanup', 'isrc: stamped checkbox-cell class on native checkbox <th>.');
+            }
         }
 
         // ── listToTable pre-processing ────────────────────────────────────────

@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.19",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added support for individual ISRC pages (/isrc/<code>, e.g. /isrc/USSM19500019), new pageType 'isrc'. The native page already renders a fixed, fully-populated `<table class=\"tbl mergeable-table\">` (checkbox / Title / Artist / Length) directly below its own correct `<h1>`/`<h2>`, so the new page definition needs no listToTable/insertH2/renameH2ToH3 and no fetch pagination (`non_paginated: true`) — mirrors the existing 'cd-stub'/'auto-editor-election' page definitions. Title's native `.comment` disambiguation span (often live-performance metadata, e.g. \"live, 1975-10-18, early show: The Roxy Theatre, West Hollywood, CA, USA\") is split into a synthetic Comment column via `extractMainColumn: 'Title'`, then further parsed by the existing `eventParts` extractor into Event-Type/Event-Date/Event-Detail/Event-Venue/Event-Venue-Detail/Event-City/Event-State/Event-Country/Event-Additional-Info columns — the same convention already used by 'work-recordings-filtered' and others. Artist's native multi-artist-credit markup is handled by the existing generic column pipeline with no new extractor; Length uses the standard `integerColumns` mm:ss sort convention. The native checkbox `<th>` carries no `checkbox-cell` CSS class (unlike other MusicBrainz merge-tables), so a small pageType==='isrc'-scoped pre-processing step stamps that class on before the header scan runs, letting the existing `sa_remove_checkbox_cell` setting govern it exactly like every other merge-checkbox column, without introducing a new removal mechanism."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.18",
     "date": "2026-08-08",
     "sections": [

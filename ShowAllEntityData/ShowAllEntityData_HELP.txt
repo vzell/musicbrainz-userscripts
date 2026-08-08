@@ -31,8 +31,9 @@ SUPPORTED PAGES
 • Auto-editor elections (/elections) and individual election pages
   (/election/<n>)
 • Genre list (/genres), Instrument list (/instruments), Edit Types
-  documentation (/doc/Edit_Types), Top CD stubs (/cdstub/browse), and
-  individual CD stub pages (/cdstub/<disc-id>)
+  documentation (/doc/Edit_Types), Top CD stubs (/cdstub/browse),
+  individual CD stub pages (/cdstub/<disc-id>), and individual ISRC pages
+  (/isrc/<code>)
 • Privileged user accounts (/privileged)
 • Also works on the musicbrainz.eu mirror domain, in addition to
   musicbrainz.org
