@@ -3996,3 +3996,67 @@ span still intact after it. Re-ran every prior credit-column regression
 test — all unchanged, confirming non-name-variation credits (the common
 case) still clone the bare anchor exactly as before.
 
+## 2026-08-08 — AR column header background; flag icons in "Recorded at place" dropdown (WIP.29)
+
+**Request 1 — header background**: user asked for the columns
+`applyExtractTrackTitleData` builds from the Title cell's `dl.ars` data
+("ARs"/"AcoustIDs"/"ISRCs", "Recording of work"/"Recorded at" family, the
+credit-role/copyright columns) to get the same header background color
+that generic synthetic columns already get on other page types. Found the
+existing mechanism in `cleanupHeaders()` (~line 31464): every `<th>` built
+from `activeColumnExtractors`/`activeSyntheticColumnExtractors` gets class
+`mb-extracted-column` (or `mb-derived-extracted-column` for second-pass
+derived columns) plus an inline `backgroundColor` read from
+`sa_ui_thead_th_extracted_bg` (default `#b8c8b8`, a greenish grey) /
+`sa_ui_thead_th_derived_bg`. `applyExtractTrackTitleData`'s own `<th>`s
+never got this treatment — they're built by hand (in-place DOM surgery),
+not through that pipeline, so they'd always rendered visually identical
+to the page's own native columns.
+
+**Fix**: a single consolidated pass, right before the master "already
+processed" gate (where every one of this function's `<th>` local
+variables — `_arsTh`, `_acoustIdTh`, `_isrcTh`, `_recOfTh`,
+`_recOfDateTh`, `_newAttrThs`, `_recordedAtEventTh`,
+`_recordedAtPlaceAdditionalTh`, `_recordedAtPlaceTh`, `_creditRoleThs`,
+`_copyrightByArtistTh`, `_copyrightByLabelTh`, `_producedForTh` — is
+already in scope and finalized), stamps every non-null one with
+`mb-extracted-column` + the SAME `sa_ui_thead_th_extracted_bg` setting
+(reused, not a new setting). "Video"/"Disambiguation"/"Recording artist"
+were deliberately left unstamped — they come from the Title/Artist cells
+directly, not from `dl.ars`, so they're a different kind of "extracted"
+column than what was asked about. Runs once per table per render; since
+`<th>` elements persist across re-renders (only their `.innerHTML` is
+rebuilt by `makeTableSortableUnified()`, not the element itself) and
+`cloneNode(true)` (used when `renderGroupedTable()` clones the shared
+`<thead>` template to other mediums) preserves classes/inline styles,
+stamping once on first creation is sufficient.
+
+**Request 2 — flag icons in the "Recorded at place" dropdown**: a
+SEPARATE, already-existing feature (`sa_enable_dropdown_flag_icons`,
+default OFF) decorates the 📊 unique-values dropdown with the same
+region/country flag icons shown in the table cell, already covering
+Country/Area/Locality/Region/Location/Place/Country-Date columns (see
+`openUniqDrop()`'s `hasFlagIcons`/`flagIconMap`/`resolveFlagVisual`, a
+substantial existing mechanism that bakes a live cell's *resolved* CSS
+(via `getComputedStyle`) onto a clone, since the dropdown panel renders
+outside `table.tbl`'s own cascade context). The underlying icon-scanning
+code (`cell.querySelectorAll('span[class*="flag-"], span.area-icon')`) is
+column-name-agnostic — it was ALREADY capable of finding "Recorded at
+place"'s flags (identical `<span class="area-icon"><img></span>`/
+`<span class="flag flag-XX">` shapes as the already-supported columns).
+The only reason it didn't apply was the `hasFlagIcons` gate's column-name
+allow-list, which checks for an exact/suffix name match and had no entry
+for "Recorded at place".
+
+**Fix**: added `name === 'Recorded at place'` to that allow-list — no new
+scan logic needed, purely a name-recognition addition, matching this
+same code's own precedent for 'Location'/'Country/Date' (both previously
+added the exact same way, per the comments directly above the check).
+Confirmed via a small standalone test of just the name-matching logic
+that "Recorded at place" now matches while "Recorded at event"/"Mixer"
+correctly still don't (they have no flags to show). The dropdown itself
+(`getComputedStyle`-dependent) can't be exercised in jsdom — verified by
+code-inspection against the already-proven mechanism instead, matching
+this session's established "reuse the existing pattern" lesson from the
+`_initColHeaderGlyph()` episode two sessions ago.
+

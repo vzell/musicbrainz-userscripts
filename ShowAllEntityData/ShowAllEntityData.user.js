@@ -750,7 +750,7 @@
             default: false,
             description: "Decorate each entry in the 📊 unique-values filter dropdown with the same " +
                          "flag icon shown in the table cell, for Country/Area/Locality/Region/Location/" +
-                         "Place/Country-Date columns."
+                         "Place/Country-Date columns, and release-tracks' own \"Recorded at place\" column."
         },
 
         // ============================================================
@@ -1157,7 +1157,10 @@
             default: '#b8c8b8',
             description: 'Background color for extracted table column-header cells — columns split or ' +
                          'injected from original columns via columnExtractors (e.g. Country, Date, Place, ' +
-                         'Area, MB-Name, Comment, CAA, EAA, Video, Cancelled, Primary Alias, etc.). ' +
+                         'Area, MB-Name, Comment, CAA, EAA, Video, Cancelled, Primary Alias, etc.), and — ' +
+                         'on release-tracks — every column extracted from the Title cell\'s "ARs" data ' +
+                         '(ARs/AcoustIDs/ISRCs, "Recording of work"/"Recorded at" family, the engineer/' +
+                         'mixer/producer/copyright credit columns). ' +
                          'The default (#b8c8b8) is a darker, greenish grey — visually distinct from the ' +
                          'standard header background — to make extracted columns immediately recognisable. ' +
                          'Also used as the row-tint color for extracted-column rows in the Statistics panel ' +
@@ -7646,6 +7649,32 @@
             if (_recArtistTh) {
                 (_artistIdx !== -1 ? _headerCells[_artistIdx] : _titleHeaderCursor).after(_recArtistTh);
             }
+
+            // Every column extracted from the Title cell's "ARs" (dl.ars)
+            // data — ARs/AcoustIDs/ISRCs, the "Recording of"/"Recorded at"
+            // family, and the credit-role/copyright/"Produced for label"
+            // columns — gets the same header background a generic
+            // synthetic column gets elsewhere (see
+            // cleanupHeaders()'s `mb-extracted-column` class +
+            // `sa_ui_thead_th_extracted_bg`, the same setting reused here).
+            // These are built by hand in this function (in-place DOM
+            // surgery) rather than through the `activeColumnExtractors`
+            // pipeline, but they're the exact same kind of "derived, not
+            // native" column, so they should look like one. Video/
+            // Disambiguation/Recording artist are deliberately excluded —
+            // they're extracted from other parts of the Title/Artist
+            // cells, not from `dl.ars`.
+            const _arHeaderBg = Lib.settings.sa_ui_thead_th_extracted_bg || '#b8c8b8';
+            const _stampArTh = th => {
+                if (!th) return;
+                th.classList.add('mb-extracted-column');
+                th.style.backgroundColor = _arHeaderBg;
+            };
+            [_arsTh, _acoustIdTh, _isrcTh, _recOfTh, _recOfDateTh, _recordedAtEventTh,
+             _recordedAtPlaceAdditionalTh, _recordedAtPlaceTh, _copyrightByArtistTh,
+             _copyrightByLabelTh, _producedForTh].forEach(_stampArTh);
+            _newAttrThs.forEach(({ th }) => _stampArTh(th));
+            _creditRoleThs.forEach(({ mainTh }) => _stampArTh(mainTh));
 
             if (!_disambigTh && !_recArtistTh && !_arsTh && !_acoustIdTh && !_isrcTh && !_videoTh &&
                 !_recOfTh && !_recOfDateTh && _newAttrThs.length === 0 &&
@@ -39380,6 +39409,16 @@ a { color: #1565c0; }`;
         //     flag-XX"> with no wrapping <span>/<a>, a different shape that
         //     caused a regression when decoration was attempted for it
         //     (reverted; see git history) and is out of scope here.
+        //   - 'Recorded at place' (exact match — release-tracks' own
+        //     `_buildRecordedAtPlaceTd`, see WIP.14/17/25): each place's
+        //     "in <area>, <region flag>, <country flag>" chain uses the
+        //     exact same <span class="area-icon"><img></span>/<span
+        //     class="flag flag-XX"> shapes as 'Area'/'Country' above, so —
+        //     like 'Location'/'Country/Date' — this is purely a name-
+        //     recognition addition, no new scan logic. A multi-place cell
+        //     (multiple <li>s, one combined dropdown value) surfaces every
+        //     place's flags together, same convention already established
+        //     for other multi-row collapsable columns with flags.
         const hasFlagIcons = Lib.settings.sa_enable_dropdown_flag_icons && (() => {
             const headers = table.querySelectorAll('thead tr:first-child th');
             const th = headers[colIndex];
@@ -39388,7 +39427,8 @@ a { color: #1565c0; }`;
                 th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
             return name.endsWith('ountry') || name.endsWith('ocality') ||
                 name.endsWith('egion') || name.endsWith('rea') ||
-                name === 'Location' || name === 'Place' || name === 'Country/Date';
+                name === 'Location' || name === 'Place' || name === 'Country/Date' ||
+                name === 'Recorded at place';
         })();
 
         /**

@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.29",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Every column release-tracks extracts from the Title cell's \"ARs\" data (\"ARs\"/\"AcoustIDs\"/\"ISRCs\", the \"Recording of work\"/\"Recorded at\" family and its attribute columns, and the engineer/mixer/producer/copyright credit columns) now gets the same header background color a generic synthetic column gets on other page types (`mb-extracted-column` + the existing `sa_ui_thead_th_extracted_bg` setting, default a greenish grey) instead of looking identical to the page's own native columns. \"Video\"/\"Disambiguation\"/\"Recording artist\" are unaffected — they're extracted from other parts of the Title/Artist cells, not from `dl.ars`.",
+          "The 📊 unique-values dropdown's flag-icon decoration (`sa_enable_dropdown_flag_icons` setting, existing feature already covering Country/Area/Locality/Region/Location/Place/Country-Date columns) now also covers release-tracks' \"Recorded at place\" column — each dropdown entry gets the same region/country flag icons shown in the table cell itself. No new icon-scanning logic was needed: \"Recorded at place\" cells already use the identical `<span class=\"area-icon\"><img></span>`/`<span class=\"flag flag-XX\">` shapes the existing scan already recognizes; the column just needed to be added to the column-name allow-list."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.28",
     "date": "2026-08-08",
     "sections": [
