@@ -1,5 +1,24 @@
 [
   {
+    "version": "WIP.23",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Reverted the per-role attribute-word columns (e.g. \"Mixer (Assistant)\") added in WIP.16. A credited artist's own attribute words (Additional/Assistant/Associate/Co/Executive) now render inline right after their name, inside the role's own column, instead of as a separate page-wide-gated column per attribute word — e.g. the \"Mixer\" cell now shows a two-item list \"Paul Hamingson (assistant)\" / \"Bob Clearmountain\" instead of a flag in a separate \"Mixer (Assistant)\" column (`debug/attributes.html`). Applies to every credit-role column that can have attribute words: \"Recording engineer\", \"Mixer\", \"Engineer\", \"Producer\". `_creditRoleState`'s page-wide attribute-word union tracking, and the header/row-population code that built one `<th>`/`<td>` per attribute word, are removed — the page-wide scan now only needs to know WHICH roles are used anywhere on the release, not which attribute words."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "When a credited artist has both attribute words and an instrument/task/other annotation, both now render together in one parenthetical, comma-separated, e.g. \"Karl Egsieker (assistant/co, task: Second Engineer)\" instead of the attribute words being dropped from the artist's own list item entirely (they only ever showed up in the now-removed separate attribute column). Multiple attribute words on one credit are joined with \"/\", matching the order they appear in `attributeVocab` (e.g. \"assistant/co\").",
+          "Any per-artist annotation whose text starts with \"task:\" (case-insensitive — MusicBrainz's own \"miscellaneous support:\" wording, but the same check applies to a task annotation on any other credit role too) now renders in italics, e.g. \"Sandy Park (task: string contractor)\" with the task text italicized. Every other annotation kind (a linked instrument, or other free text like \"other vocals [...]\") stays plain, unchanged from WIP.20/WIP.22."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.22",
     "date": "2026-08-08",
     "sections": [

@@ -1694,19 +1694,21 @@
                          '"Miscellaneous support" columns to the consolidated release tracklist, ' +
                          'extracted from each track\'s "recording engineer:"/"mixer:"/"engineer:"/' +
                          '"producer:"/"miscellaneous support:" relationship data (normally glommed ' +
-                         'into the "ARs" column). Each of the first four roles can be prefixed with ' +
-                         'attribute words (Additional, Assistant, Associate, Co, and — for Engineer/' +
-                         'Producer only — Executive); one column per attribute word actually used on ' +
-                         'the release is added per role (e.g. "Mixer (Assistant)"), showing the ' +
-                         'attribute word when present, empty otherwise ("Miscellaneous support" has ' +
-                         'no attribute words and gets no such columns). When a track has more than one ' +
-                         'matching credit for the same role (e.g. both a bare "mixer:" and a separate ' +
-                         '"assistant mixer:"), all of them are merged into one multi-row cell for that ' +
-                         'role. Multiple credited artists render as a collapsible multi-row list, each ' +
-                         'paired with its own credited instrument (e.g. "Ian Kagey (strings)") or, for ' +
-                         '"Miscellaneous support", its own task (e.g. "Sandy Park (task: string ' +
-                         'contractor)") when present. "ARs" itself is left completely unchanged — every ' +
-                         'extracted link appears in both places.'
+                         'into the "ARs" column) — one column per role, no separate attribute-word ' +
+                         'columns. Each of the first four roles can be prefixed with attribute words ' +
+                         '(Additional, Assistant, Associate, Co, and — for Engineer/Producer only — ' +
+                         'Executive); when present, they render right after that artist\'s own name, ' +
+                         'e.g. "Paul Hamingson (assistant)" next to a plain "Bob Clearmountain" in the ' +
+                         'same "Mixer" cell. When a track has more than one matching credit for the ' +
+                         'same role (e.g. both a bare "mixer:" and a separate "assistant mixer:"), all ' +
+                         'of them are merged into one collapsible multi-row list for that role. Each ' +
+                         'artist is also paired with their own credited instrument (e.g. "Ian Kagey ' +
+                         '(strings)") or other note when present — attribute words and the note share ' +
+                         'one parenthetical, comma-separated, e.g. "Karl Egsieker (assistant/co, task: ' +
+                         'Second Engineer)"; a note starting with "task:" (as "Miscellaneous support" ' +
+                         'always has, e.g. "Sandy Park (task: string contractor)") renders in italics. ' +
+                         '"ARs" itself is left completely unchanged — every extracted link appears in ' +
+                         'both places.'
         },
 
         sa_enable_ars_collapse: {
@@ -7100,33 +7102,57 @@
      *     place → ARs. Unlike the rest of this bullet, these fire
      *     independently of `_pageHasRecOf` — a release can have "recorded
      *     at" data with no "recording of" data at all.
-     *   - Four more purely-additive columns from the same bare `div.ars`,
+     *   - Five more purely-additive columns from the same bare `div.ars`,
      *     gated by their OWN dedicated setting
      *     (`sa_enable_release_tracks_credit_role_columns`, not
-     *     `_recOfEnabled`): "Recording engineer", "Mixer", "Engineer", and
-     *     "Producer" (`CREDIT_ROLES`/`_findCreditDts`/
-     *     `_buildCreditListTd`), sourced from sibling `dl.ars` `<dt>`s
-     *     ending in the role's own phrase (e.g. `"recording engineer:"`,
-     *     `"mixer:"`), optionally preceded by attribute words (Additional,
-     *     Assistant, Associate, Co, and — Engineer/Producer only —
-     *     Executive; word-split on `/[\s-]+/`, not just whitespace, since
-     *     MusicBrainz hyphen-attaches "co" to the following word, e.g.
+     *     `_recOfEnabled`): "Recording engineer", "Mixer", "Engineer",
+     *     "Producer", and "Miscellaneous support" (`CREDIT_ROLES`/
+     *     `_findCreditDts`/`_buildCreditListTd`), sourced from sibling
+     *     `dl.ars` `<dt>`s ending in the role's own phrase (e.g.
+     *     `"recording engineer:"`, `"mixer:"`), optionally preceded by
+     *     attribute words (Additional, Assistant, Associate, Co, and — for
+     *     Engineer/Producer only — Executive; empty vocabulary for
+     *     "Miscellaneous support", which accepts no prefix at all;
+     *     word-split on `/[\s-]+/`, not just whitespace, since MusicBrainz
+     *     hyphen-attaches "co" to the following word, e.g.
      *     `"co-recording engineer:"` — see debug/artist-roles.org, no real
      *     example of this exists in debug/full.html, so it's unit-tested
      *     synthetically only). Like "Recorded at event/place", positioned
      *     last of this whole additive group (after them, still directly
-     *     before "ARs"): … → Recorded at place → [Recording engineer
-     *     attrs…] → Recording engineer → [Mixer attrs…] → Mixer →
-     *     [Engineer attrs…] → Engineer → [Producer attrs…] → Producer →
-     *     ARs. Attribute columns are prefixed with their own role's label
-     *     (`"Mixer (Assistant)"`, never a bare `"Assistant"`) for the same
-     *     header-collision reason as "Recorded at event"/"Recorded at
-     *     place" above — two different roles can independently use the
-     *     same attribute word elsewhere on the release. Trailing dates
-     *     (`"(on 1975-10-18)"`, `"(in 2015)"`) are dropped entirely,
-     *     ARs-only, same as "Recorded at event/place" — achieved for free
-     *     since only `<a>` anchors are ever extracted, never trailing
-     *     text/comment nodes.
+     *     before "ARs"): … → Recorded at place → Recording engineer →
+     *     Mixer → Engineer → Producer → Miscellaneous support → ARs — one
+     *     column per role, no separate attribute-word columns. Unlike
+     *     "Recording of"'s attribute columns (a page-wide flag per
+     *     attribute word), each credited artist's OWN attribute words
+     *     render inline right after their name inside the role's own
+     *     column, e.g. `"Paul Hamingson (assistant)"` next to a plain
+     *     `"Bob Clearmountain"` in the same "Mixer" cell (see
+     *     debug/attributes.html) — attribute words don't need their own
+     *     column because they're already scoped to one specific credited
+     *     person, unlike "Recording of"'s attributes, which describe the
+     *     recording itself. When a credited artist also has an instrument
+     *     or free-text annotation (see below), it's appended after the
+     *     attribute words in the same parenthetical, comma-separated, e.g.
+     *     `"Karl Egsieker (assistant/co, task: Second Engineer)"` — see
+     *     `_buildCreditListItem`'s JSDoc for the exact composition rules.
+     *     Trailing dates (`"(on 1975-10-18)"`, `"(in 2015)"`) are dropped
+     *     entirely, ARs-only, same as "Recorded at event/place" —
+     *     achieved for free since only `<a>` anchors are ever extracted,
+     *     never trailing text/comment nodes.
+     *
+     *     Per-artist annotations, appended inline (see
+     *     `_buildCreditListItem`): a credited instrument, rendered as an
+     *     `<a href="/instrument/…">` link (e.g. `"Ian Kagey (strings)"`,
+     *     see debug/buggy-list-title.html), or — when no instrument anchor
+     *     is present — any other free-text parenthetical MusicBrainz
+     *     attaches to that credit, e.g. a "miscellaneous support:" task
+     *     (`"Sandy Park (task: string contractor)"`) or an arbitrary role
+     *     note (`"Andres Bermudezat (other vocals [Sam Moore vocal])"`,
+     *     see debug/missing-engineer.html). An annotation starting with
+     *     `"task:"` (case-insensitive) renders in `<i>` — every other
+     *     annotation kind stays plain, per explicit instruction that only
+     *     the task portion should italicize, in every credit column that
+     *     can have one, not just "Miscellaneous support".
      *
      *     Two DELIBERATE divergences from every other member of this
      *     additive-column family, both driven by real data in
@@ -7135,27 +7161,27 @@
      *     (1) `_findCreditDts` returns and MERGES every matching `<dt>` for
      *     a role, not just the first in document order — no credited
      *     person is silently dropped from a column literally named after
-     *     their role. Attribute columns become row-level "was this
-     *     attribute used by ANY of the merged entries" flags rather than
-     *     tied to one specific person. (2) `_findCreditDts`'s
-     *     attribute-word prefix check is STRICT — every leading word must
-     *     be a recognized attribute or the whole `<dt>` is rejected for
-     *     that role — unlike `_parseRecOfAttributes`'s lenient
-     *     silently-drop-an-unrecognized-word behavior. This is required
-     *     because "engineer" is both a standalone role and the tail of the
-     *     compound role "recording engineer": a lenient check would
-     *     wrongly accept `<dt>recording engineer:</dt>` as a bare
+     *     their role. Each merged `<dd>`'s artists still carry only their
+     *     OWN `<dt>`'s attribute words (see `_buildCreditListTd`'s
+     *     `entries` param), never another merged `<dt>`'s. (2)
+     *     `_findCreditDts`'s attribute-word prefix check is STRICT — every
+     *     leading word must be a recognized attribute or the whole `<dt>`
+     *     is rejected for that role — unlike `_parseRecOfAttributes`'s
+     *     lenient silently-drop-an-unrecognized-word behavior. This is
+     *     required because "engineer" is both a standalone role and the
+     *     tail of the compound role "recording engineer": a lenient check
+     *     would wrongly accept `<dt>recording engineer:</dt>` as a bare
      *     "engineer" credit too.
      *
      *     Also a deliberate departure from this function's own
      *     copy-paste-per-family-member style (`_findRecOfDt` vs.
      *     `_findRecordedAtDt` are separate, independently-written
-     *     functions): all 4 roles share one identical extraction shape,
+     *     functions): all 5 roles share one identical extraction shape,
      *     differing only in role phrase/column label/attribute vocabulary
      *     (unlike recOf vs. recordedAt, which genuinely differ in
      *     *matching strategy* — dt-text-suffix vs. dt-substring+dd-glyph-
      *     class), so `CREDIT_ROLES` is a small data table looped over
-     *     once, rather than 4 hand-duplicated blocks.
+     *     once, rather than 5 hand-duplicated blocks.
      *
      * Unlike every `ColumnDataExtractor` entry (`splitLocation`,
      * `splitArea`, `eventParts`, …), which are purely additive (read
@@ -7250,18 +7276,20 @@
             });
         }
 
-        // "Recording engineer"/"Mixer"/"Engineer"/"Producer" credit
-        // columns — own dedicated setting (not `_recOfEnabled`), same
-        // page-wide-decision reasoning as everything else in this
-        // function (must scan every table.tbl/medium, since
-        // renderGroupedTable() clones one shared <thead> template from the
-        // first table). `_creditRoleState` accumulates, per role, whether
-        // ANY track on the release has that role at all, and the union of
-        // every attribute word used anywhere for it — see CREDIT_ROLES'
-        // JSDoc and `_findCreditDts` for the matching/merge rules.
+        // "Recording engineer"/"Mixer"/"Engineer"/"Producer"/
+        // "Miscellaneous support" credit columns — own dedicated setting
+        // (not `_recOfEnabled`), same page-wide-decision reasoning as
+        // everything else in this function (must scan every
+        // table.tbl/medium, since renderGroupedTable() clones one shared
+        // <thead> template from the first table). `_creditRolesWithRole`
+        // accumulates which roles ANY track on the release has at all —
+        // that's all the page-wide decision needs now, since attribute
+        // words are rendered per-artist inline (see `_buildCreditListItem`)
+        // rather than as their own page-wide-gated columns — see
+        // CREDIT_ROLES' JSDoc and `_findCreditDts` for the matching/merge
+        // rules.
         const _creditRolesEnabled = Lib.settings.sa_enable_release_tracks_credit_role_columns !== false;
-        const _creditRoleState = new Map();
-        CREDIT_ROLES.forEach(role => _creditRoleState.set(role.key, { hasRole: false, attrs: new Set() }));
+        const _creditRolesWithRole = new Set();
         if (_creditRolesEnabled) {
             _tables.forEach(table => {
                 const _thRow = table.querySelector(':scope > thead > tr');
@@ -7273,11 +7301,8 @@
                     const td = tr.children[_tIdx];
                     if (!td) return;
                     CREDIT_ROLES.forEach(role => {
-                        const _matches = _findCreditDts(td, role.roleWords, role.attributeVocab);
-                        if (_matches.length === 0) return;
-                        const _state = _creditRoleState.get(role.key);
-                        _state.hasRole = true;
-                        _matches.forEach(m => m.attributes.forEach(a => _state.attrs.add(a)));
+                        if (_creditRolesWithRole.has(role.key)) return;
+                        if (_findCreditDts(td, role.roleWords, role.attributeVocab).length > 0) _creditRolesWithRole.add(role.key);
                     });
                 });
             });
@@ -7443,46 +7468,29 @@
                 }
             }
 
-            // "Recording engineer"/"Mixer"/"Engineer"/"Producer" credit
-            // columns — same trailing-before-"ARs" positioning trick as
-            // the block above (later `.before(ref)` calls against the same
-            // fixed reference land closer to it), so looping CREDIT_ROLES
-            // in order, attribute columns then the role's own main column,
-            // produces: … Recorded at place → [Recording engineer attrs…]
-            // → Recording engineer → [Mixer attrs…] → Mixer → [Engineer
-            // attrs…] → Engineer → [Producer attrs…] → Producer → ARs.
-            // Attribute headers are prefixed with the role's own column
-            // label (e.g. "Mixer (Assistant)"), never a bare "Assistant" —
-            // two different roles can each use the same attribute word
-            // elsewhere on the release, and column identity is derived
-            // fresh from `th.textContent` on every render, so a shared
-            // bare-word header would collide exactly like a shared
-            // "Recorded at" would (see the block above's own comment).
-            const _creditRoleThs = []; // [{ role, mainTh, attrThs: [{attr, th}] }]
+            // "Recording engineer"/"Mixer"/"Engineer"/"Producer"/
+            // "Miscellaneous support" credit columns — same
+            // trailing-before-"ARs" positioning trick as the block above
+            // (later `.before(ref)` calls against the same fixed reference
+            // land closer to it), so looping CREDIT_ROLES in order produces
+            // exactly: … Recorded at place → Recording engineer → Mixer →
+            // Engineer → Producer → Miscellaneous support → ARs. No
+            // attribute-word columns — an artist's own attribute words
+            // (e.g. "assistant"/"co") render inline after their name inside
+            // the role's own column instead (see `_buildCreditListItem`),
+            // one column per role only.
+            const _creditRoleThs = []; // [{ role, mainTh }]
             if (_creditRolesEnabled) {
                 const _arsHeaderRefForCredits = _hasArs
                     ? _headerCells.find(th => th.textContent.trim() === 'ARs')
                     : _arsTh;
                 CREDIT_ROLES.forEach(role => {
-                    const _state = _creditRoleState.get(role.key);
-                    if (!_state.hasRole) return;
-                    const _attrThs = [];
-                    role.attributeVocab.forEach(attr => {
-                        if (!_state.attrs.has(attr)) return;
-                        const _label = `${role.columnLabel} (${attr.charAt(0).toUpperCase() + attr.slice(1)})`;
-                        if (_headerCells.some(th => th.textContent.trim() === _label)) return;
-                        const _th = document.createElement('th');
-                        _th.textContent = _label;
-                        _arsHeaderRefForCredits.before(_th);
-                        _attrThs.push({ attr, th: _th });
-                    });
-                    let _mainTh = null;
-                    if (!_headerCells.some(th => th.textContent.trim() === role.columnLabel)) {
-                        _mainTh = document.createElement('th');
-                        _mainTh.textContent = role.columnLabel;
-                        _arsHeaderRefForCredits.before(_mainTh);
-                    }
-                    if (_mainTh || _attrThs.length > 0) _creditRoleThs.push({ role, mainTh: _mainTh, attrThs: _attrThs });
+                    if (!_creditRolesWithRole.has(role.key)) return;
+                    if (_headerCells.some(th => th.textContent.trim() === role.columnLabel)) return;
+                    const _mainTh = document.createElement('th');
+                    _mainTh.textContent = role.columnLabel;
+                    _arsHeaderRefForCredits.before(_mainTh);
+                    _creditRoleThs.push({ role, mainTh: _mainTh });
                 });
             }
 
@@ -7633,32 +7641,20 @@
                 }
 
                 // <td> append order mirrors the header creation order
-                // above. For each role: its attribute columns (values
-                // merged — via Set union — across every matching <dt> for
-                // this role on this track, not just one), then its own
-                // main column (a <ul><li> merging every matching <dt>'s
-                // <dd> artists into one multi-row cell — see
-                // _buildCreditListTd's JSDoc for why this merges rather
-                // than taking the first match only, unlike everything
-                // else in this function).
+                // above: one column per role, a <ul><li> merging every
+                // matching <dt>'s <dd> artists into one multi-row cell,
+                // each artist's own attribute words (from that <dt>'s own
+                // match) and instrument/task annotation rendered inline
+                // after their name — see _buildCreditListTd's JSDoc for
+                // why matches are merged rather than taking the first
+                // match only, unlike everything else in this function.
                 if (_creditRoleThs.length > 0) {
-                    _creditRoleThs.forEach(({ role, mainTh, attrThs }) => {
+                    _creditRoleThs.forEach(({ role }) => {
                         const _matches = _findCreditDts(_titleTd, role.roleWords, role.attributeVocab);
-                        if (attrThs.length > 0) {
-                            const _mergedAttrs = new Set();
-                            _matches.forEach(m => m.attributes.forEach(a => _mergedAttrs.add(a)));
-                            attrThs.forEach(({ attr }) => {
-                                const _td = document.createElement('td');
-                                if (_mergedAttrs.has(attr)) _td.textContent = attr;
-                                row.appendChild(_td);
-                            });
-                        }
-                        if (mainTh) {
-                            const _dds = _matches
-                                .map(m => m.dt.nextElementSibling)
-                                .filter(dd => dd && dd.tagName === 'DD');
-                            row.appendChild(_buildCreditListTd(_dds));
-                        }
+                        const _entries = _matches
+                            .map(m => ({ dd: m.dt.nextElementSibling, attributes: m.attributes }))
+                            .filter(e => e.dd && e.dd.tagName === 'DD');
+                        row.appendChild(_buildCreditListTd(_entries));
                     });
                 }
 
@@ -8004,9 +8000,11 @@
      * be strict, not lenient). `attributeVocab: []` (as for
      * "miscellaneous support:") means the role accepts no attribute-word
      * prefix at all — any leading word before "miscellaneous support:"
-     * makes `_findCreditDts` reject the `<dt>`, and no attribute columns
-     * are ever added for it (`_creditRoleThs` generation naturally no-ops
-     * over an empty `attributeVocab`).
+     * makes `_findCreditDts` reject the `<dt>`. Matched attribute words
+     * render inline, after the credited artist's own name (see
+     * `_buildCreditListItem`), not as their own columns, so an empty
+     * `attributeVocab` simply means that role's artists never have any to
+     * show.
      */
     const CREDIT_ROLES = [
         { key: 'recEngineer', roleWords: ['recording', 'engineer'], columnLabel: 'Recording engineer',
@@ -8179,11 +8177,86 @@
     }
 
     /**
+     * Builds one `<li>` for a single credited artist within
+     * `_buildCreditListTd` — resolves the artist anchor from `seg` (see
+     * `_findCreditSegmentArtistAnchor`) and appends a single trailing
+     * `" (…)"` parenthetical combining, in order: this credit's attribute
+     * words (e.g. `assistant`/`co`, from the matching `<dt>`'s own prefix —
+     * see `_findCreditDts`), joined with `"/"` (e.g. `"assistant/co"`,
+     * matching how MusicBrainz itself hyphen/space-joins multiple prefix
+     * words on the `<dt>`); then, if present, this artist's own instrument
+     * or free-text annotation (see `_findCreditSegmentInstrumentAnchors`/
+     * `_findCreditSegmentTextAnnotation` — instrument takes priority,
+     * text-annotation only attempted when no instrument anchor was found).
+     * The two groups are comma-separated when both are present, e.g.
+     * `"Karl Egsieker (assistant/co, task: Second Engineer)"` — see
+     * `debug/attributes.html` (`Paul Hamingson (assistant)`, no
+     * annotation) and `debug/missing-engineer.html` (task/other-role-note
+     * annotation, no attributes) for the two single-group real examples.
+     * No parenthetical at all is appended when both groups are empty
+     * (e.g. a bare `mixer:` credit with no attribute prefix and no note).
+     *
+     * A free-text annotation starting with `"task:"` (case-insensitive —
+     * MusicBrainz's own "miscellaneous support:" wording, see
+     * `_findCreditSegmentTextAnnotation`) is wrapped in `<i>` — every
+     * other annotation kind (instrument links, other free text like
+     * "other vocals […]") stays plain, per explicit instruction that only
+     * the task portion should render in italics, in every credit column
+     * that can have one, not just "Miscellaneous support".
+     *
+     * @param {Node[]} seg
+     * @param {string[]} attributes - This credit's own attribute words, in
+     *   `attributeVocab` order (from `_findCreditDts`'s match for the
+     *   `<dt>` this `<dd>`/segment belongs to).
+     * @returns {HTMLLIElement|null} `null` when `seg` has no artist anchor
+     *   (nothing to build a row for).
+     */
+    function _buildCreditListItem(seg, attributes) {
+        const _artistA = _findCreditSegmentArtistAnchor(seg);
+        if (!_artistA) return null;
+        const li = document.createElement('li');
+        li.appendChild(_artistA.cloneNode(true));
+
+        const _parenNodes = [];
+        if (attributes.length > 0) _parenNodes.push(document.createTextNode(attributes.join('/')));
+
+        const _instrumentAs = _findCreditSegmentInstrumentAnchors(seg);
+        if (_instrumentAs.length > 0) {
+            if (_parenNodes.length > 0) _parenNodes.push(document.createTextNode(', '));
+            _instrumentAs.forEach((a, i) => {
+                if (i > 0) _parenNodes.push(document.createTextNode(', '));
+                _parenNodes.push(a.cloneNode(true));
+            });
+        } else {
+            const _annotation = _findCreditSegmentTextAnnotation(seg);
+            if (_annotation) {
+                if (_parenNodes.length > 0) _parenNodes.push(document.createTextNode(', '));
+                if (/^task:/i.test(_annotation)) {
+                    const _i = document.createElement('i');
+                    _i.textContent = _annotation;
+                    _parenNodes.push(_i);
+                } else {
+                    _parenNodes.push(document.createTextNode(_annotation));
+                }
+            }
+        }
+
+        if (_parenNodes.length > 0) {
+            li.appendChild(document.createTextNode(' ('));
+            _parenNodes.forEach(n => li.appendChild(n));
+            li.appendChild(document.createTextNode(')'));
+        }
+        return li;
+    }
+
+    /**
      * Builds a `<td><ul><li>…</li>…</ul></td>` merging every credited
      * artist across one or more `<dd>`s (one per matched `_findCreditDts`
      * `<dt>`) into a single collapsable multi-row cell — e.g. a "Mixer"
-     * cell merging a bare `mixer:` `<dd>` (one artist) and an
-     * `assistant mixer:` `<dd>` (another artist) into one two-item list.
+     * cell merging a bare `mixer:` `<dd>` (one artist, no attribute) and
+     * an `assistant mixer:` `<dd>` (another artist, `attributes:
+     * ['assistant']`) into one two-item list: `Bob Clearmountain`, `Paul
+     * Hamingson (assistant)` (see `debug/attributes.html`).
      *
      * Always builds a `<ul><li>`, even for a single merged artist — a
      * single-item list cell is still a valid list cell per this project's
@@ -8199,45 +8272,29 @@
      * this function's caller in `applyExtractTrackTitleData`'s JSDoc for
      * the "never touch `_bareArsDiv`" contract).
      *
-     * Splitting is structural, keyed on each artist's own
-     * `<span class="artistlink"></span>` marker (mirrors
-     * `_buildRecordedAtPlaceTd`'s `span.placelink`-marker segmentation) —
-     * every node up to the next marker (or end of `<dd>`) belongs to that
-     * artist, so it's agnostic to the literal ","/" and " separator text
-     * MusicBrainz uses to join multiple credited artists in one `<dd>`.
-     * `_findCreditSegmentArtistAnchor` resolves the artist anchor itself
-     * (nested-anchor-aware, see its own JSDoc).
+     * Splitting each `<dd>` into per-artist segments is structural, keyed
+     * on each artist's own `<span class="artistlink"></span>` marker
+     * (mirrors `_buildRecordedAtPlaceTd`'s `span.placelink`-marker
+     * segmentation) — every node up to the next marker (or end of `<dd>`)
+     * belongs to that artist, so it's agnostic to the literal ","/" and "
+     * separator text MusicBrainz uses to join multiple credited artists in
+     * one `<dd>`. All artists produced from the same `entries[i].dd` share
+     * that entry's own `attributes` (the whole `<dt>` this `<dd>` answers
+     * to carries one shared attribute prefix, e.g. every artist under
+     * `additional mixer:` is "additional", never just some of them) — see
+     * `_buildCreditListItem` for how one artist's `<li>` (attributes +
+     * instrument/task annotation) is actually built.
      *
-     * Two mutually-exclusive kinds of per-artist annotation are looked up
-     * WITHIN the artist's own segment and appended to that artist's `<li>`
-     * as `" (…)"` (instrument takes priority — checked first, with the
-     * free-text lookup only attempted when no instrument anchor was
-     * found — though no real `<dd>` mixes them): a credited instrument —
-     * rendered as `<a href="/instrument/…">…</a>` wrapped in a
-     * parenthetical immediately after the artist anchor, e.g. `Ian Kagey
-     * <!-- -->(<a href="/instrument/…">strings</a>)<!-- -->` (see
-     * `_findCreditSegmentInstrumentAnchors`) — or any other free-text
-     * parenthetical note MusicBrainz attaches to that credit, e.g. a
-     * "miscellaneous support:" task (`Sandy Park <!-- -->(task: string
-     * contractor)`) or an arbitrary role note (`Andres Bermudezat
-     * <!-- -->(other vocals [Sam Moore vocal])`) — see
-     * `_findCreditSegmentTextAnnotation` for why this is one generic
-     * "whatever's in parens" match rather than per-wording special cases.
-     * Either way the annotation stays paired with the artist it belongs to
-     * instead of being dropped or becoming its own unrelated list item
-     * (see `debug/buggy-list.html`/`debug/buggy-list-title.html` for the
-     * instrument-anchor bug this originally fixed: a naive flat
-     * `:scope > a` anchor count treated each instrument anchor as an extra
-     * "artist", turning 3 credited engineers into 6 list items).
-     *
-     * @param {HTMLElement[]} dds - The `<dd>` elements to merge (each the
-     *   `nextElementSibling` of one `_findCreditDts` match).
+     * @param {Array<{dd: HTMLElement, attributes: string[]}>} entries -
+     *   One entry per matched `_findCreditDts` `<dt>`: its `<dd>` (the
+     *   `<dt>`'s `nextElementSibling`) paired with that same match's
+     *   `attributes`.
      * @returns {HTMLTableCellElement}
      */
-    function _buildCreditListTd(dds) {
+    function _buildCreditListTd(entries) {
         const td = document.createElement('td');
         const ul = document.createElement('ul');
-        dds.forEach(dd => {
+        entries.forEach(({ dd, attributes }) => {
             const _segments = [];
             Array.from(dd.childNodes).forEach(n => {
                 const _isArtistMarker = n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && n.classList.contains('artistlink');
@@ -8245,23 +8302,8 @@
                 _segments[_segments.length - 1].push(n);
             });
             _segments.forEach(seg => {
-                const _artistA = _findCreditSegmentArtistAnchor(seg);
-                if (!_artistA) return;
-                const li = document.createElement('li');
-                li.appendChild(_artistA.cloneNode(true));
-                const _instrumentAs = _findCreditSegmentInstrumentAnchors(seg);
-                if (_instrumentAs.length > 0) {
-                    li.appendChild(document.createTextNode(' ('));
-                    _instrumentAs.forEach((a, i) => {
-                        if (i > 0) li.appendChild(document.createTextNode(', '));
-                        li.appendChild(a.cloneNode(true));
-                    });
-                    li.appendChild(document.createTextNode(')'));
-                } else {
-                    const _annotation = _findCreditSegmentTextAnnotation(seg);
-                    if (_annotation) li.appendChild(document.createTextNode(` (${_annotation})`));
-                }
-                ul.appendChild(li);
+                const li = _buildCreditListItem(seg, attributes);
+                if (li) ul.appendChild(li);
             });
         });
         if (ul.children.length) td.appendChild(ul);

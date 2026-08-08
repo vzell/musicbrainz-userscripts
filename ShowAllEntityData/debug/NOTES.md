@@ -3595,3 +3595,74 @@ multi-`<dt>` case) — all still pass unaffected, confirming the instrument
 path still takes priority and the broadened text-fallback doesn't leak
 into it.
 
+## 2026-08-08 — credit columns: attribute words inline instead of their own columns (WIP.23)
+
+**Source**: user explicitly reverted the WIP.16 design decision to give
+each attribute word its own page-wide-gated column (e.g. "Mixer
+(Assistant)"). New request, with `debug/attributes.html` as the driving
+example — a real `mixer:`/`assistant mixer:` pair on one track:
+
+```html
+<dt>assistant mixer:</dt>
+<dd><a href="/artist/…">Paul Hamingson</a></dd>
+<dt>mixer:</dt>
+<dd><a href="/artist/…">Bob Clearmountain</a></dd>
+```
+
+Desired "Mixer" cell: a 2-item collapsible list, `"Paul Hamingson
+(assistant)"` / `"Bob Clearmountain"` — the attribute rendered inline next
+to the artist it belongs to, not in a sibling column.
+
+**Change 1 — remove attribute columns**: `_creditRoleState`'s
+page-wide `attrs: Set` union tracking is gone; the page-wide scan
+(`_creditRolesWithRole`, now a plain `Set<roleKey>`) only needs to know
+WHICH roles are used anywhere on the release, since there's no longer a
+"which attribute words are used anywhere" question to answer. The header-
+insertion block no longer loops `role.attributeVocab` to build `<th>`s —
+one `<th>` per role only. Row population no longer builds a separate
+`<td>` per attribute; `_findCreditDts`'s per-`<dt>` `attributes` array
+(unchanged) is now passed straight through to `_buildCreditListTd` as
+`{dd, attributes}` entries instead of being reduced to a page-wide merged
+Set.
+
+**Change 2 — inline rendering**: new `_buildCreditListItem(seg,
+attributes)` builds one artist's `<li>`, appending a single trailing
+`" (…)"` combining (comma-separated when both present): the credit's own
+attribute words, joined with `"/"` in `attributeVocab` order (e.g.
+`"assistant/co"`), then the existing instrument/free-text annotation
+(unchanged logic from WIP.20/WIP.22, still instrument-anchor-first). All
+artists produced from the same `<dd>` share that `<dt>`'s own attributes —
+important for the merge case (`_buildCreditListTd`'s `entries` param):
+Paul Hamingson's `<li>` only ever sees `['assistant']` (from the
+`assistant mixer:` `<dt>`), never anything from the separately-matched
+bare `mixer:` `<dt>` that produced Bob Clearmountain's `<li>`.
+
+**Change 3 — combined example, verified synthetically** (no real `<dd>`
+seen yet with both an attribute prefix AND a task/instrument note on the
+same credit — hand-built per the user's own worked example): `assistant
+co-engineer:` crediting "Karl Egsieker" with a `(task: Second Engineer)`
+note produces `"Karl Egsieker (assistant/co, task: Second Engineer)"` —
+attributes first, then the task, comma-separated.
+
+**Change 4 — italic task text**: any annotation whose text starts with
+`"task:"` (case-insensitive) is now wrapped in `<i>` when appended — the
+`_findCreditSegmentTextAnnotation` call site in `_buildCreditListItem`
+checks `/^task:/i` on the returned string before deciding whether to wrap
+it in a text node or an `<i>` element. Applies uniformly to every credit
+column that can carry a task annotation (not just "Miscellaneous
+support") — e.g. the same "Karl Egsieker" example italicizes just the
+"task: Second Engineer" portion, not the "assistant/co" attribute prefix
+before it.
+
+**Verified via jsdom**, three cases in one test file against
+`debug/attributes.html`'s real markup plus the synthetic combined example:
+`"Mixer"` → `["Paul Hamingson (assistant)", "Bob Clearmountain"]`;
+`"Engineer"` → `["Karl Egsieker (assistant/co, task: Second Engineer)"]`
+with `<i>task: Second Engineer</i>` confirmed in the built `<li>`'s
+`innerHTML`; `"Miscellaneous support"` → `["Sandy Park (task: string
+contractor)"]`, task text still italicized, unchanged output from before
+this refactor. Re-ran the WIP.20 (instrument, 3-artist recording-engineer
+case) and WIP.21 (name-variation-wrapped artist) regression tests — both
+still produce identical `<li>` text content, confirming the attribute/
+annotation-combination change didn't disturb either path.
+
