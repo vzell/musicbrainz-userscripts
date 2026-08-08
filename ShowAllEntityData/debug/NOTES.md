@@ -3421,3 +3421,58 @@ a word-boundary regex sanity check) → correctly `false`, confirming
 existing loose substring match already tolerates the "additionally "
 prefix.
 
+## 2026-08-08 — credit columns: instrument attribution merged into artist's list item (WIP.20)
+
+**Source**: user report against
+https://musicbrainz.org/release/356e8b33-4504-442a-ac3d-34af95e6ea1d (the
+same release used for WIP.17's multi-place example). `debug/buggy-list-title.html`
+is the raw row markup, `debug/buggy-list.html` is the rendered (buggy) cell
+output for "Recording engineer" on the "Only the Strong Survive" track.
+
+**Bug**: `_buildCreditListTd` (WIP.16) built one `<li>` per `:scope > a`
+anchor found in the `<dd>`, with no distinction between artist anchors and
+any other anchor type. This track's `recording engineer:` `<dd>` credits 3
+artists (Ian Kagey, Rob Lebret, Alex Venguer), each immediately followed by
+a parenthetical instrument attribution:
+
+```html
+<span class="artistlink"></span><a href="/artist/…">Ian Kagey</a>
+<!-- -->(<a href="/instrument/…">strings</a>)<!-- -->,
+<span class="artistlink"></span><a href="/artist/…">Rob Lebret</a>
+<!-- -->(<a href="/instrument/…">strings</a>)<!-- --> and
+<span class="artistlink"></span><a href="/artist/…">Alex Venguer</a>
+<!-- -->(<a href="/instrument/…">strings</a>)
+```
+
+Each `(strings)` is itself an `<a href="/instrument/…">`, a direct child of
+the `<dd>` — so the flat anchor count treated it as a 4th "artist", turning
+3 credited engineers into 6 list items with "strings" appearing 3 times as
+its own unrelated row, completely disconnected from which artist it
+belonged to (confirmed by reading `debug/buggy-list.html`'s rendered
+`<ul>`: 6 `<li>`s, alternating artist/instrument).
+
+**Fix**: `_buildCreditListTd` now segments each `<dd>` structurally, the
+same technique WIP.17 already used for `_buildRecordedAtPlaceTd` — split on
+each artist's own leading `<span class="artistlink"></span>` marker (the
+credit-role equivalent of `_buildRecordedAtPlaceTd`'s `span.placelink`
+marker). Every node up to the next marker (or end of `<dd>`) belongs to
+that artist's segment. Within a segment: the artist `<a href="/artist/…">`
+becomes the `<li>`'s base content; any `<a href="/instrument/…">` found in
+the SAME segment is appended as `" (strings)"`, so it survives the
+`<!-- -->` comment-node/`"(...)"` text wrapping but stays correctly paired.
+More than one instrument anchor in a segment (e.g. a hypothetical
+`(guitar, bass)`) are all kept, comma-joined in one parenthetical — no such
+example exists in any captured snapshot, so this path is unverified
+against real MusicBrainz markup, only reasoned by analogy to how MB already
+comma-joins other same-`<dd>` link lists.
+
+**Verified via jsdom** against the exact `<dd>` markup extracted from
+`debug/buggy-list-title.html`: the 3-artist/3-instrument "recording
+engineer:" `<dd>` now produces exactly 3 `<li>`s, each
+`<a artist>Name</a> (<a instrument>strings</a>)`; the no-instrument
+"engineer and mixer:" `<dd>` (Ron Aniello, Rob Lebret) is unaffected,
+still 2 plain `<li>`s; a merged-`<dd>` scenario (both dds passed together,
+exercising WIP.16's multi-`<dt>` merge path) correctly produces 5 `<li>`s
+total with instrument pairing preserved only on the segments that actually
+had one.
+

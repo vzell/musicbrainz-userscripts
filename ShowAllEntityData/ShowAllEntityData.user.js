@@ -8099,10 +8099,30 @@
      * this function's caller in `applyExtractTrackTitleData`'s JSDoc for
      * the "never touch `_bareArsDiv`" contract).
      *
-     * Splitting is purely by anchor COUNT (`:scope > a` per `<dd>`), same
-     * as `_buildMultiRowArsTd`'s ISRC case — it never reads the literal
-     * ","/" and " separator text between artists, so it's agnostic to how
-     * MusicBrainz joins multiple credited artists in one `<dd>`.
+     * Splitting is structural, keyed on each artist's own
+     * `<span class="artistlink"></span>` marker (mirrors
+     * `_buildRecordedAtPlaceTd`'s `span.placelink`-marker segmentation) —
+     * every node up to the next marker (or end of `<dd>`) belongs to that
+     * artist, so it's agnostic to the literal ","/" and " separator text
+     * MusicBrainz uses to join multiple credited artists in one `<dd>`.
+     *
+     * A credited instrument — MusicBrainz renders it as
+     * `<a href="/instrument/…">…</a>` wrapped in a parenthetical
+     * immediately after the artist anchor, e.g. `Ian Kagey
+     * <!-- -->(<a href="/instrument/…">strings</a>)<!-- -->` — is looked up
+     * WITHIN the artist's own segment (by `href` prefix, ignoring the
+     * `<!-- -->` comment nodes and "(", ")" text MusicBrainz wraps it in)
+     * and appended to that artist's `<li>` as `" (strings)"`, so it stays
+     * paired with the artist it belongs to instead of becoming its own
+     * unrelated list item (see `debug/buggy-list.html`/
+     * `debug/buggy-list-title.html` for the bug this fixes: a naive flat
+     * `:scope > a` anchor count treated each instrument anchor as an extra
+     * "artist", turning 3 credited engineers into 6 list items). More than
+     * one instrument anchor in the same segment (e.g. `(guitar, bass)`) are
+     * all kept, comma-joined inside the one parenthetical — untested
+     * against real data, no such example found in `debug/*.html`, but
+     * mirrors how MusicBrainz already comma-joins other same-`<dd>` link
+     * lists.
      *
      * @param {HTMLElement[]} dds - The `<dd>` elements to merge (each the
      *   `nextElementSibling` of one `_findCreditDts` match).
@@ -8112,9 +8132,26 @@
         const td = document.createElement('td');
         const ul = document.createElement('ul');
         dds.forEach(dd => {
-            Array.from(dd.querySelectorAll(':scope > a')).forEach(a => {
+            const _segments = [];
+            Array.from(dd.childNodes).forEach(n => {
+                const _isArtistMarker = n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && n.classList.contains('artistlink');
+                if (_isArtistMarker || _segments.length === 0) _segments.push([]);
+                _segments[_segments.length - 1].push(n);
+            });
+            _segments.forEach(seg => {
+                const _artistA = seg.find(n => n.nodeType === Node.ELEMENT_NODE && n.tagName === 'A' && /^\/artist\//.test(n.getAttribute('href') || ''));
+                if (!_artistA) return;
+                const _instrumentAs = seg.filter(n => n.nodeType === Node.ELEMENT_NODE && n.tagName === 'A' && /^\/instrument\//.test(n.getAttribute('href') || ''));
                 const li = document.createElement('li');
-                li.appendChild(a.cloneNode(true));
+                li.appendChild(_artistA.cloneNode(true));
+                if (_instrumentAs.length > 0) {
+                    li.appendChild(document.createTextNode(' ('));
+                    _instrumentAs.forEach((a, i) => {
+                        if (i > 0) li.appendChild(document.createTextNode(', '));
+                        li.appendChild(a.cloneNode(true));
+                    });
+                    li.appendChild(document.createTextNode(')'));
+                }
                 ul.appendChild(li);
             });
         });

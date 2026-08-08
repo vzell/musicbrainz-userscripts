@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.20",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the \"Recording engineer\"/\"Mixer\"/\"Engineer\"/\"Producer\" credit columns (WIP.16) turning a credited instrument into a spurious extra list item instead of keeping it attached to the artist it belongs to. MusicBrainz renders a per-artist instrument attribution as \"<artist> <!-- -->(<a href=\\\"/instrument/…\\\">strings</a>)<!-- -->\" right after that artist's own anchor — the previous implementation flattened every `<a>` inside the `<dd>` (both artist AND instrument anchors) into one `<li>` each, so e.g. 3 credited engineers each with an instrument attribution rendered as 6 list items (\"Ian Kagey\", \"strings\", \"Rob Lebret\", \"strings\", …) instead of 3 (\"Ian Kagey (strings)\", \"Rob Lebret (strings)\", …). `_buildCreditListTd` now segments each `<dd>` structurally on its own `<span class=\"artistlink\">` marker (mirroring \"Recorded at place\"'s (WIP.17) `span.placelink`-marker segmentation) so any instrument anchor found within an artist's own segment is appended to that artist's `<li>` as \" (strings)\" instead of becoming its own item. Multiple instrument anchors within one artist's segment (e.g. \"(guitar, bass)\") are all kept, comma-joined — untested against real data, no such example found in any debug snapshot."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.19",
     "date": "2026-08-08",
     "sections": [
