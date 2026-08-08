@@ -3764,3 +3764,135 @@ with the place's own anchor/`span.name-variation` — no leading
 dropping the marker, with zero effect on segmentation, area chains, flags,
 comments, or instrument attributions.
 
+## 2026-08-08 — "Phonographic copyright"/"Produced for" columns, corrected header glyph, multi-`<dl>` bug (WIP.26 rewritten into WIP.27)
+
+**Source**: `debug/copyright.html` (the original "Phonographic copyright"/
+"Produced for" example), then two bugs reported against that same
+not-yet-shipped work: `debug/greetings-original.html`/
+`debug/greetings-rendered.html` (a real page + its rendered output for
+https://musicbrainz.org/release/… "Greetings from Asbury Park, N.J."-era
+tracks).
+
+### Design (unchanged from the original WIP.26 attempt)
+
+"Phonographic copyright (℗) by:" doesn't fit `CREDIT_ROLES` (single marker
+class per role) — it's a fixed, unvarying dt phrase with no attribute-word
+prefix, and a SINGLE `<dd>` can mix marker kinds (`span.artistlink`/
+`span.labellink`) across its own list items, landing in two separately
+named columns: "Phonographic copyright (℗) by artist" / "…by label".
+`_buildPhonographicCopyrightTds` segments each `<dd>` structurally on
+EITHER marker class (tagging each segment's kind), drops the marker
+itself (per WIP.25), trims the trailing "and"/"," separator, then routes
+each segment's remaining content — comment span, `(in YYYY)` year
+attribution, everything — into one of two separate `<ul>`s by its tagged
+kind. Each column is independently gated — a release with only label
+credits gets no "…by artist" column at all.
+
+### Bug 1 (fixed): "by label" never appeared at all
+
+`debug/greetings-rendered.html`'s "Engineer"/"Mixer" columns rendered
+fine, but "Phonographic copyright (℗) by label" was missing entirely —
+even though `debug/greetings-original.html` clearly has a real label
+credit for it. Investigation found the raw page has TWO SIBLING
+`<dl class="ars">` blocks inside the SAME bare `div.ars` for one track:
+
+```html
+<div class="ars">
+  <dl class="ars">…other credits…<dt>phonographic copyright (℗) by:</dt><dd><span class="artistlink"></span>…Bruce Springsteen…</dd></dl>
+  <dl class="ars"><dt>phonographic copyright (℗) by:</dt><dd><span class="labellink"></span>…CBS, Inc.…, …Sony…, and …CBS Dischi…</dd></dl>
+</div>
+```
+
+The original `_findPhonographicCopyrightDt` used `.find()` — first match
+only, mirroring `_findRecOfDt`'s convention, on the (wrong) assumption
+that a track has at most one such `<dt>`. Since `:scope > dl.ars > dt`
+matches dt's from EVERY sibling `<dl>`, `.find()` returned the artist
+`<dt>` (textually first) and silently dropped the label `<dt>` entirely —
+in both the page-wide "does this column exist" gate and the per-row
+builder, so "…by label" never had a chance to appear anywhere on the
+release, not just this row.
+
+**Fix**: renamed to `_findPhonographicCopyrightDts` (plural), returning
+EVERY matching `<dt>` via `.filter()` instead of `.find()`.
+`_phonographicCopyrightHasKind`/`_buildPhonographicCopyrightTds` both
+updated to accept and merge across an array of `<dt>`s — mirrors
+`_findCreditDts`'s own "collect every match" convention (that function
+was never `.find()`-based, so it was already immune to this class of
+bug — a useful confirmation that the "collect everything, merge" pattern
+established for `CREDIT_ROLES` back in WIP.16 was the right call).
+
+### Bug 2 (fixed): header glyph silently discarded
+
+The original WIP.26 attempt appended a real `<span class="artistlink">`/
+`<span class="labellink">` child directly onto each `<th>` at creation
+time (`_buildColumnHeaderWithGlyph`). `debug/greetings-rendered.html`
+showed zero occurrences of either class inside `<thead>` — the glyph
+never rendered anywhere. Root cause: `makeTableSortableUnified()` (called
+on every table to wire up the sort-icon/unique-value-count UI) reads each
+`<th>`'s plain `textContent` into a local `colName`, then unconditionally
+does `th.innerHTML = ''` and rebuilds the header from that string plus its
+own icon elements — discarding ANY child element that was there before,
+regardless of what it was.
+
+Critically, **this exact problem was already solved in an earlier
+session**, for "Recording of"'s `worklink` glyph and "Recorded at
+event"/"Recorded at place"'s `eventlink`/`placelink` glyphs — via
+`_initColHeaderGlyph(columnName, glyphClass)`, a post-render injector
+called from `renderGroupedTable()`'s tail (after `makeTableSortableUnified()`
+has already rebuilt every header), which finds the column's `.mb-col-hdr-flex`
+and inserts the glyph right after its leading text node — including
+specific `height`/`marginLeft`/`marginRight` inline-style fixes derived
+from real Computed-panel debugging of a flex-blockification visual bug
+(see that function's own JSDoc, `debug/still-missing-glyph.html`,
+`debug/still-no-blank.html`). The original WIP.26 attempt reinvented a
+different (and broken) mechanism — a `th.dataset.mbGlyphClass` survival
+hack through the innerHTML wipe — without knowing this established,
+already-battle-tested pattern existed.
+
+**Fix**: reverted the dataset-hack entirely (removed
+`_buildColumnHeaderWithGlyph`, reverted `makeTableSortableUnified()` back
+to its original form, reverted all "Mixer"/"Phonographic copyright…"
+header creation back to plain `document.createElement('th')` +
+`textContent`). Added `_initColHeaderGlyph()` calls for every
+`CREDIT_ROLES` column (`'artistlink'`), both "Phonographic copyright"
+columns, and "Produced for" (`'labellink'`) to the same call site in
+`renderGroupedTable()`'s tail as the pre-existing three calls.
+
+### New feature: "Produced for"
+
+Requested alongside the two bug fixes. `<dt>produced for:</dt>` (see
+debug/copyright.html's "Laurel Canyon Ltd." example), label-only,
+optional `co`/`executive` attribute-word prefixes. Unlike phonographic
+copyright, this fits `_findCreditDts` directly —
+`_findCreditDts(titleTd, ['produced', 'for'], ['co', 'executive'])` needed
+NO changes, since its multi-`<dl>`, multi-`<dt>`-merge, and strict-
+attribute-prefix handling already cover this shape exactly (further
+confirming bug 1's diagnosis — `_findCreditDts` was never vulnerable to
+the multi-`<dl>` bug). New `_buildLabelCreditListTd`/
+`_findLabelCreditSegmentAnchor` — the `/label/`-href, `span.labellink`
+counterpart of `_buildCreditListTd`/`_findCreditSegmentArtistAnchor` —
+clone the WHOLE remaining segment verbatim (same "don't parse sub-pieces"
+approach as `_buildPhonographicCopyrightTds`, preserving a label's own
+`<span class="comment">` note), appending any attribute words at the very
+end (`" (co/executive)"`) since this function never inserts into
+already-cloned content.
+
+### Verification
+
+**Verified via jsdom**, one combined test exercising all three fixes/
+features together: a synthetic 2-sibling-`<dl>` fixture reconstructing the
+real `debug/greetings-original.html` shape (artist dl + label dl, same dt
+phrase) → `_findPhonographicCopyrightDts` returns 2 dt's,
+`hasArtist`/`hasLabel` both `true`, artist `<td>` has the 1 Springsteen
+item, label `<td>` has all 3 real labels (comment spans, year
+attributions intact) — confirming bug 1 is fixed. A third sibling `<dl>`
+with `produced for:` + a synthetic `executive produced for:` →
+`_findCreditDts` returns 2 matches, `_buildLabelCreditListTd` produces
+"Laurel Canyon Ltd. (…comment…)" and "Some Exec Label (executive)" —
+confirming the new feature and its attribute-word placement. Re-ran every
+prior credit-column regression test (WIP.16/20/21/22/23/24) — all
+unchanged. Bug 2's fix (post-render glyph injection) could not be
+exercised via jsdom (no live render pipeline in this environment) —
+verified by code inspection against the already-proven `_initColHeaderGlyph`
+mechanism instead; flagged as such.
+

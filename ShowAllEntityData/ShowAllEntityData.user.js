@@ -1687,7 +1687,7 @@
         },
 
         sa_enable_release_tracks_credit_role_columns: {
-            label: 'Show engineer/mixer/producer credit columns',
+            label: 'Show engineer/mixer/producer/copyright credit columns',
             type: 'checkbox',
             default: true,
             description: 'Adds "Recording engineer", "Mixer", "Engineer", "Producer", and ' +
@@ -1707,8 +1707,17 @@
                          'one parenthetical, comma-separated, e.g. "Karl Egsieker (assistant/co, task: ' +
                          'Second Engineer)"; a note starting with "task:" (as "Miscellaneous support" ' +
                          'always has, e.g. "Sandy Park (task: string contractor)") renders in italics. ' +
-                         '"ARs" itself is left completely unchanged — every extracted link appears in ' +
-                         'both places.'
+                         'Also adds "Phonographic copyright (℗) by artist" and "…by label" from each ' +
+                         'track\'s "phonographic copyright (℗) by:" relationship — the same credit can ' +
+                         'name an artist, a label, or a mix of both, so each is routed to its own ' +
+                         'column, keeping any disambiguation note and "(in YYYY)" year attribution ' +
+                         'attached. Also adds a "Produced for" column from each track\'s "produced ' +
+                         'for:" relationship (labels only), optionally prefixed with "co"/"executive" ' +
+                         'attribute words rendered the same way as the credit columns above, e.g. ' +
+                         '"Laurel Canyon Ltd. (executive)". Every column header carries MusicBrainz\'s ' +
+                         'own marker icon once (e.g. next to "Mixer", "Engineer") instead of repeating ' +
+                         'it on every row. "ARs" itself is left completely unchanged — every extracted ' +
+                         'link appears in both places.'
         },
 
         sa_enable_ars_collapse: {
@@ -7183,6 +7192,86 @@
      *     class), so `CREDIT_ROLES` is a small data table looped over
      *     once, rather than 5 hand-duplicated blocks.
      *
+     *   - Two more columns, same setting, same trailing-before-"ARs"
+     *     position, but NOT part of `CREDIT_ROLES`: "Phonographic
+     *     copyright (℗) by artist" and "…by label"
+     *     (`_findPhonographicCopyrightDts`/`_phonographicCopyrightHasKind`/
+     *     `_buildPhonographicCopyrightTds`), from the fixed `<dt>
+     *     phonographic copyright (℗) by:</dt>` phrase (no attribute-word
+     *     prefix, no `roleWords`/`attributeVocab` matching — a plain
+     *     exact-text `<dt>` lookup, but returning EVERY matching `<dt>`,
+     *     not just the first — see below). Genuinely different shape from
+     *     every `CREDIT_ROLES` member: the SAME `<dd>` can credit an
+     *     artist (`<span class="artistlink">`), a label (`<span class=
+     *     "labellink">`), or a MIX of both in different list items (real
+     *     data, debug/copyright.html, has 3 labels) — so each `<dd>` item
+     *     is routed to one of the two columns by which marker started its
+     *     segment, independently page-wide-gated (a release with only
+     *     label credits gets no "…by artist" column at all). Segmentation
+     *     mirrors `_buildRecordedAtPlaceTd`'s marker-based per-item split
+     *     (marker dropped, trailing "and"/"," separator trimmed) — each
+     *     item's own `<span class="comment">` disambiguation note and
+     *     `"(in YYYY)"` year attribution are kept as-is, never parsed
+     *     apart, same "clone the whole segment, don't try to extract
+     *     sub-pieces" approach as the place chain.
+     *
+     *     `_findPhonographicCopyrightDts` returns an ARRAY (every matching
+     *     `<dt>`, not `.find()`'s first-only) because MusicBrainz can
+     *     render a track's ARs as multiple SIBLING `<dl class="ars">`
+     *     blocks inside the same bare `div.ars` — confirmed via
+     *     debug/greetings-original.html: one `<dl>` crediting an artist,
+     *     immediately followed by a separate sibling `<dl>` crediting
+     *     labels, both with the exact same `<dt>` phrase. A first-match
+     *     lookup silently dropped every `<dt>` after the first, which is
+     *     why "…by label" never appeared at all even on a release with
+     *     real label credits — both the page-wide gate and the per-row
+     *     builder now merge across every matching `<dt>`, mirroring
+     *     `_findCreditDts`'s own "collect every match" convention (that
+     *     function already handled multiple sibling `<dl>`s correctly,
+     *     since it was never `.find()`-based to begin with).
+     *
+     *   - "Produced for" (`<dt>produced for:</dt>`, see
+     *     debug/copyright.html's "Laurel Canyon Ltd." example), same
+     *     setting, positioned last (after both "Phonographic copyright"
+     *     columns, still before "ARs"). Label-only (no artist variant
+     *     requested), optionally prefixed with `co`/`executive` attribute
+     *     words. Reuses `_findCreditDts(titleTd, ['produced', 'for'],
+     *     ['co', 'executive'])` directly for matching/merging — its
+     *     multi-`<dl>`, multi-`<dt>`-merge, and strict-attribute-prefix
+     *     handling are all identical to the `CREDIT_ROLES` family and
+     *     needed no changes — paired with a new label-specific builder,
+     *     `_buildLabelCreditListTd`, and its segment helper
+     *     `_findLabelCreditSegmentAnchor` (the `/label/`-href
+     *     counterpart of `_findCreditSegmentArtistAnchor`), since
+     *     `_buildCreditListTd`'s downstream helpers are all hard-coded to
+     *     `/artist/` hrefs and `span.artistlink`. Unlike
+     *     `_buildCreditListItem` (selective: artist anchor + one
+     *     instrument/text annotation), `_buildLabelCreditListTd` clones
+     *     the WHOLE remaining segment verbatim (same approach as
+     *     `_buildPhonographicCopyrightTds`), so a label's own `<span
+     *     class="comment">` disambiguation note survives untouched; any
+     *     attribute words are appended at the very end (`" (co/
+     *     executive)"`), after that natural note rather than before it,
+     *     since this function never inserts into already-cloned content.
+     *
+     *   - Every `CREDIT_ROLES` column header, both "Phonographic
+     *     copyright" headers, and "Produced for" now carry MusicBrainz's
+     *     own empty marker `<span>` once (e.g. `<th>Mixer <span
+     *     class="artistlink"></span></th>`), matching the CSS `::before`
+     *     glyph hook `dl.ars` itself uses next to every credited
+     *     artist/label, instead of that glyph being absent from the
+     *     header entirely. Like "Recording of"'s `worklink` glyph, this
+     *     can't be built at `<th>`-creation time here —
+     *     `makeTableSortableUnified()` rebuilds every `<th>` from a plain
+     *     `textContent` string shortly after, discarding any child element
+     *     added before that point (confirmed via
+     *     debug/greetings-rendered.html: an EARLIER version of this
+     *     feature that appended the glyph `<span>` directly here had it
+     *     silently wiped from every header) — so it's injected post-render
+     *     by `_initColHeaderGlyph()` instead, called from
+     *     `renderGroupedTable()`'s tail alongside the existing "Recording
+     *     of"/"Recorded at event"/"Recorded at place" calls.
+     *
      * Unlike every `ColumnDataExtractor` entry (`splitLocation`,
      * `splitArea`, `eventParts`, …), which are purely additive (read
      * `sourceCell`, return new `<td>`s, never mutate the source), this
@@ -7290,6 +7379,21 @@
         // rules.
         const _creditRolesEnabled = Lib.settings.sa_enable_release_tracks_credit_role_columns !== false;
         const _creditRolesWithRole = new Set();
+        // "Phonographic copyright (℗) by:" — same `<dl>`, same setting,
+        // but a genuinely different shape (see
+        // `_findPhonographicCopyrightDts`/`_buildPhonographicCopyrightTds`):
+        // one fixed dt phrase that can credit EITHER an artist OR a label
+        // (sometimes both, in different `<dl class="ars">` siblings or
+        // different list items of the same `<dd>` — see
+        // debug/copyright.html, debug/greetings-original.html), so it gets
+        // its own pair of independently-gated columns rather than a
+        // `CREDIT_ROLES` entry. "Produced for:" (label-only, optional
+        // co/executive attributes) reuses `_findCreditDts` for matching —
+        // its multi-`<dl>`/multi-`<dt>`-merge handling already covers this
+        // shape — paired with the label-specific `_buildLabelCreditListTd`.
+        let _pageHasCopyrightByArtist = false;
+        let _pageHasCopyrightByLabel = false;
+        let _pageHasProducedFor = false;
         if (_creditRolesEnabled) {
             _tables.forEach(table => {
                 const _thRow = table.querySelector(':scope > thead > tr');
@@ -7304,6 +7408,12 @@
                         if (_creditRolesWithRole.has(role.key)) return;
                         if (_findCreditDts(td, role.roleWords, role.attributeVocab).length > 0) _creditRolesWithRole.add(role.key);
                     });
+                    if (!_pageHasCopyrightByArtist || !_pageHasCopyrightByLabel) {
+                        const _copyrightDts = _findPhonographicCopyrightDts(td);
+                        if (!_pageHasCopyrightByArtist && _phonographicCopyrightHasKind(_copyrightDts, 'artist')) _pageHasCopyrightByArtist = true;
+                        if (!_pageHasCopyrightByLabel && _phonographicCopyrightHasKind(_copyrightDts, 'label')) _pageHasCopyrightByLabel = true;
+                    }
+                    if (!_pageHasProducedFor && _findCreditDts(td, ['produced', 'for'], ['co', 'executive']).length > 0) _pageHasProducedFor = true;
                 });
             });
         }
@@ -7474,12 +7584,20 @@
             // (later `.before(ref)` calls against the same fixed reference
             // land closer to it), so looping CREDIT_ROLES in order produces
             // exactly: … Recorded at place → Recording engineer → Mixer →
-            // Engineer → Producer → Miscellaneous support → ARs. No
-            // attribute-word columns — an artist's own attribute words
-            // (e.g. "assistant"/"co") render inline after their name inside
-            // the role's own column instead (see `_buildCreditListItem`),
-            // one column per role only.
+            // Engineer → Producer → Miscellaneous support → Phonographic
+            // copyright (℗) by artist → …by label → ARs. No attribute-word
+            // columns — an artist's own attribute words (e.g.
+            // "assistant"/"co") render inline after their name inside the
+            // role's own column instead (see `_buildCreditListItem`), one
+            // column per role only. Each header's own MusicBrainz marker
+            // glyph is injected post-render by `_initColHeaderGlyph()`
+            // (called from `renderGroupedTable()`'s tail, alongside
+            // "Recording of"'s `worklink` glyph) — NOT here, where anything
+            // appended to the `<th>` would be destroyed the moment
+            // `makeTableSortableUnified()` rebuilds it from `th.textContent`
+            // (see `_initColHeaderGlyph()`'s own JSDoc).
             const _creditRoleThs = []; // [{ role, mainTh }]
+            let _copyrightByArtistTh = null, _copyrightByLabelTh = null, _producedForTh = null;
             if (_creditRolesEnabled) {
                 const _arsHeaderRefForCredits = _hasArs
                     ? _headerCells.find(th => th.textContent.trim() === 'ARs')
@@ -7492,6 +7610,21 @@
                     _arsHeaderRefForCredits.before(_mainTh);
                     _creditRoleThs.push({ role, mainTh: _mainTh });
                 });
+                if (_pageHasCopyrightByArtist && !_headerCells.some(th => th.textContent.trim() === 'Phonographic copyright (℗) by artist')) {
+                    _copyrightByArtistTh = document.createElement('th');
+                    _copyrightByArtistTh.textContent = 'Phonographic copyright (℗) by artist';
+                    _arsHeaderRefForCredits.before(_copyrightByArtistTh);
+                }
+                if (_pageHasCopyrightByLabel && !_headerCells.some(th => th.textContent.trim() === 'Phonographic copyright (℗) by label')) {
+                    _copyrightByLabelTh = document.createElement('th');
+                    _copyrightByLabelTh.textContent = 'Phonographic copyright (℗) by label';
+                    _arsHeaderRefForCredits.before(_copyrightByLabelTh);
+                }
+                if (_pageHasProducedFor && !_headerCells.some(th => th.textContent.trim() === 'Produced for')) {
+                    _producedForTh = document.createElement('th');
+                    _producedForTh.textContent = 'Produced for';
+                    _arsHeaderRefForCredits.before(_producedForTh);
+                }
             }
 
             // Video then Disambiguation, chained right after Title in that
@@ -7517,7 +7650,7 @@
             if (!_disambigTh && !_recArtistTh && !_arsTh && !_acoustIdTh && !_isrcTh && !_videoTh &&
                 !_recOfTh && !_recOfDateTh && _newAttrThs.length === 0 &&
                 !_recordedAtEventTh && !_recordedAtPlaceAdditionalTh && !_recordedAtPlaceTh &&
-                _creditRoleThs.length === 0) return; // already fully processed
+                _creditRoleThs.length === 0 && !_copyrightByArtistTh && !_copyrightByLabelTh && !_producedForTh) return; // already fully processed
 
             _tbody.querySelectorAll(':scope > tr').forEach(row => {
                 const _cells = Array.from(row.children);
@@ -7656,6 +7789,20 @@
                             .filter(e => e.dd && e.dd.tagName === 'DD');
                         row.appendChild(_buildCreditListTd(_entries));
                     });
+                }
+
+                if (_copyrightByArtistTh || _copyrightByLabelTh) {
+                    const { artistTd, labelTd } = _buildPhonographicCopyrightTds(_findPhonographicCopyrightDts(_titleTd));
+                    if (_copyrightByArtistTh) row.appendChild(artistTd);
+                    if (_copyrightByLabelTh) row.appendChild(labelTd);
+                }
+
+                if (_producedForTh) {
+                    const _matches = _findCreditDts(_titleTd, ['produced', 'for'], ['co', 'executive']);
+                    const _entries = _matches
+                        .map(m => ({ dd: m.dt.nextElementSibling, attributes: m.attributes }))
+                        .filter(e => e.dd && e.dd.tagName === 'DD');
+                    row.appendChild(_buildLabelCreditListTd(_entries));
                 }
 
                 if (_arsTh) {
@@ -7981,6 +8128,204 @@
             const li = document.createElement('li');
             seg.forEach(n => li.appendChild(n));
             ul.appendChild(li);
+        });
+        if (ul.children.length) td.appendChild(ul);
+        return td;
+    }
+
+    /**
+     * Finds every `<dt>phonographic copyright (℗) by:</dt>` inside a
+     * track's bare `div.ars` (same classification as `_findRecOfDt`/
+     * `_findRecordedAtDt`) — a fixed, unvarying phrase with no
+     * attribute-word prefix seen in any real example so far, so this is a
+     * plain exact-text match, not a `roleWords`/`attributeVocab` lookup
+     * like `_findCreditDts`.
+     *
+     * Returns **every** matching `<dt>`, not just the first: MusicBrainz
+     * can render a track's ARs as MULTIPLE SIBLING `<dl class="ars">`
+     * blocks inside the SAME bare `div.ars` — real data
+     * (`debug/greetings-original.html`) has one `<dl>` with `<dt>
+     * phonographic copyright (℗) by:</dt>` crediting an ARTIST directly
+     * followed by a SEPARATE SIBLING `<dl>` with another `<dt>` of the
+     * exact same phrase crediting LABELS instead (`:scope > dl.ars > dt`
+     * matches dt's from every such sibling `<dl>`, so a naive
+     * `.find()`/first-match approach silently drops every `<dt>` after the
+     * first — this was the root cause of "Phonographic copyright (℗) by
+     * label" never appearing at all, even on a release with real label
+     * credits, since the page-wide gate and the per-row builder both only
+     * ever saw the FIRST (artist) `<dt>`. Fixed as a plural lookup instead,
+     * mirroring `_findCreditDts`'s own "collect every match, let the
+     * caller merge" convention).
+     *
+     * @param {HTMLTableCellElement} titleTd
+     * @returns {HTMLElement[]}
+     */
+    function _findPhonographicCopyrightDts(titleTd) {
+        let _bareArsDiv = null;
+        titleTd.querySelectorAll(':scope > div.ars').forEach(d => {
+            const _classes = Array.from(d.classList);
+            if (!_classes.some(c => c.startsWith('AcoustID') || c.startsWith('ISRC'))) _bareArsDiv = d;
+        });
+        if (!_bareArsDiv) return [];
+        return Array.from(_bareArsDiv.querySelectorAll(':scope > dl.ars > dt'))
+            .filter(dt => dt.textContent.trim().toLowerCase() === 'phonographic copyright (℗) by:');
+    }
+
+    /**
+     * Whether any `_findPhonographicCopyrightDts` result's `<dd>` credits
+     * at least one entity of the given kind — used only for the page-wide
+     * "does any track need this column" gate, so it doesn't need to build
+     * anything (see `_buildPhonographicCopyrightTds` for the actual
+     * content).
+     *
+     * @param {HTMLElement[]} dts
+     * @param {'artist'|'label'} kind
+     * @returns {boolean}
+     */
+    function _phonographicCopyrightHasKind(dts, kind) {
+        const _cls = kind === 'artist' ? 'artistlink' : 'labellink';
+        return dts.some(dt => {
+            const _dd = dt?.nextElementSibling;
+            return !!(_dd && _dd.tagName === 'DD' && _dd.querySelector(`:scope > span.${_cls}`));
+        });
+    }
+
+    /**
+     * Builds the "Phonographic copyright (℗) by artist"/"…by label" cell
+     * content, merging every `_findPhonographicCopyrightDts` match's
+     * `<dd>` (there can be more than one — see that function's JSDoc for
+     * the multi-`<dl>` case that requires this) — same marker-based
+     * per-item segmentation as `_buildRecordedAtPlaceTd` (structural split
+     * at each item's own leading marker `<span>`, marker itself dropped
+     * per WIP.25, trailing "and"/"," separator text trimmed from every
+     * non-last segment), generalized to TWO marker classes
+     * (`span.artistlink`, `span.labellink`) instead of one, since a single
+     * `<dd>` can credit a MIX of artists and labels. Real data
+     * (debug/copyright.html) has 3 labels joined by ","/" and ", each with
+     * its own `<span class="comment">` disambiguation note and a
+     * `<!-- -->(in YYYY)<!-- -->` year attribution (both kept, cloned
+     * as-is, exactly like `_buildRecordedAtPlaceTd` keeps a place's own
+     * area chain — this function doesn't try to parse either one out
+     * separately). Segments are routed into one of two separate `<ul>`s
+     * (and thus `<td>`s) by which marker started them; a segment with no
+     * marker at all (defensive fallback, e.g. malformed data) is dropped
+     * from both.
+     *
+     * @param {HTMLElement[]} dts - Result of `_findPhonographicCopyrightDts`.
+     * @returns {{artistTd: HTMLTableCellElement, labelTd: HTMLTableCellElement}}
+     */
+    function _buildPhonographicCopyrightTds(dts) {
+        const _artistTd = document.createElement('td');
+        const _labelTd = document.createElement('td');
+        const _artistUl = document.createElement('ul');
+        const _labelUl = document.createElement('ul');
+        dts.forEach(dt => {
+            const _dd = dt?.nextElementSibling;
+            if (!_dd || _dd.tagName !== 'DD') return;
+            const _nodes = Array.from(_dd.childNodes).map(n => n.cloneNode(true));
+            const _segments = []; // { kind: 'artist'|'label'|null, nodes: [] }
+            _nodes.forEach(n => {
+                const _isArtistMarker = n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && n.classList.contains('artistlink');
+                const _isLabelMarker = n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && n.classList.contains('labellink');
+                if (_isArtistMarker || _isLabelMarker || _segments.length === 0) {
+                    _segments.push({ kind: _isArtistMarker ? 'artist' : (_isLabelMarker ? 'label' : null), nodes: [] });
+                }
+                if (_isArtistMarker || _isLabelMarker) return; // marker is a segment boundary only, never its own content (see WIP.25)
+                _segments[_segments.length - 1].nodes.push(n);
+            });
+            _segments.forEach((seg, i) => {
+                if (i === _segments.length - 1) return;
+                const _tail = seg.nodes[seg.nodes.length - 1];
+                if (_tail && _tail.nodeType === Node.TEXT_NODE && /^[\s,]*(?:and[\s,]*)?$/i.test(_tail.textContent)) {
+                    seg.nodes.pop();
+                }
+            });
+            _segments.forEach(seg => {
+                if (seg.nodes.length === 0 || !seg.kind) return;
+                const li = document.createElement('li');
+                seg.nodes.forEach(n => li.appendChild(n));
+                (seg.kind === 'artist' ? _artistUl : _labelUl).appendChild(li);
+            });
+        });
+        if (_artistUl.children.length) _artistTd.appendChild(_artistUl);
+        if (_labelUl.children.length) _labelTd.appendChild(_labelUl);
+        return { artistTd: _artistTd, labelTd: _labelTd };
+    }
+
+    /**
+     * Finds the label anchor within a `_buildLabelCreditListTd` segment
+     * (see that function's JSDoc for what a "segment" is) — same
+     * nested-anchor-aware search as `_findCreditSegmentArtistAnchor`,
+     * generalized to `/label/` hrefs instead of `/artist/`.
+     *
+     * @param {Node[]} seg
+     * @returns {HTMLAnchorElement|null}
+     */
+    function _findLabelCreditSegmentAnchor(seg) {
+        for (const n of seg) {
+            if (n.nodeType !== Node.ELEMENT_NODE) continue;
+            if (n.tagName === 'A' && /^\/label\//.test(n.getAttribute('href') || '')) return n;
+            if (n.querySelector) {
+                const _nested = n.querySelector('a[href^="/label/"]');
+                if (_nested) return _nested;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Builds a `<td><ul><li>…</li>…</ul></td>` merging every credited
+     * label across one or more `<dd>`s (one per matched `_findCreditDts`
+     * `<dt>`) — the label-target counterpart of `_buildCreditListTd`, used
+     * for "Produced for" (`<dt>produced for:</dt>`, see
+     * debug/copyright.html's "Laurel Canyon Ltd." example). Segmentation
+     * is structural on each label's own `<span class="labellink"></span>`
+     * marker (dropped per WIP.25 — see `_buildCreditListTd`'s identical
+     * `span.artistlink` segmentation), trailing "and"/"," separator text
+     * trimmed from every non-last segment.
+     *
+     * Unlike `_buildCreditListItem` (which selectively extracts just the
+     * artist anchor plus one instrument/text annotation), this clones the
+     * WHOLE remaining segment content verbatim — same "don't parse
+     * sub-pieces" approach as `_buildPhonographicCopyrightTds` — so a
+     * label's own `<span class="comment">` disambiguation note (e.g.
+     * "(production and management company of Mike Appel and Jim
+     * Cretecos)") survives untouched. This credit's own attribute words
+     * (e.g. `co`/`executive`, from `_findCreditDts`'s match), when
+     * present, are appended at the very end as `" (co/executive)"` —
+     * after any natural disambiguation note, not before it, since that
+     * note is part of the cloned segment and this function never inserts
+     * into the middle of already-cloned content.
+     *
+     * @param {Array<{dd: HTMLElement, attributes: string[]}>} entries -
+     *   One entry per matched `_findCreditDts` `<dt>`.
+     * @returns {HTMLTableCellElement}
+     */
+    function _buildLabelCreditListTd(entries) {
+        const td = document.createElement('td');
+        const ul = document.createElement('ul');
+        entries.forEach(({ dd, attributes }) => {
+            const _segments = [];
+            Array.from(dd.childNodes).forEach(n => {
+                const _isLabelMarker = n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && n.classList.contains('labellink');
+                if (_isLabelMarker || _segments.length === 0) _segments.push([]);
+                if (_isLabelMarker) return; // marker is a segment boundary only, never its own content (see WIP.25)
+                _segments[_segments.length - 1].push(n);
+            });
+            _segments.forEach((seg, i) => {
+                if (i === _segments.length - 1) return;
+                const _tail = seg[seg.length - 1];
+                if (_tail && _tail.nodeType === Node.TEXT_NODE && /^[\s,]*(?:and[\s,]*)?$/i.test(_tail.textContent)) {
+                    seg.pop();
+                }
+            });
+            _segments.forEach(seg => {
+                if (!_findLabelCreditSegmentAnchor(seg)) return;
+                const li = document.createElement('li');
+                seg.forEach(n => li.appendChild(n));
+                if (attributes.length > 0) li.appendChild(document.createTextNode(` (${attributes.join('/')})`));
+                ul.appendChild(li);
+            });
         });
         if (ul.children.length) td.appendChild(ul);
         return td;
@@ -11617,7 +11962,7 @@
                 // all auto-detected by initCollapsableColumns() once
                 // declared here. "Recorded at event" is deliberately
                 // excluded — always a single anchor, never a list.
-                collapsableColumns: [ 'ARs', 'AcoustIDs', 'ISRCs', 'Recording engineer', 'Mixer', 'Engineer', 'Producer', 'Miscellaneous support', 'Recorded at place' ],
+                collapsableColumns: [ 'ARs', 'AcoustIDs', 'ISRCs', 'Recording engineer', 'Mixer', 'Engineer', 'Producer', 'Miscellaneous support', 'Phonographic copyright (℗) by artist', 'Phonographic copyright (℗) by label', 'Produced for', 'Recorded at place' ],
                 stickyColumn: 'Title'
             },
             tableMode: 'multi',
@@ -37318,6 +37663,13 @@ a { color: #1565c0; }`;
         _initColHeaderGlyph('Recording of', 'worklink');
         _initColHeaderGlyph('Recorded at event', 'eventlink');
         _initColHeaderGlyph('Recorded at place', 'placelink');
+        // Same re-injection for every CREDIT_ROLES column (all use the
+        // "artistlink" glyph) plus "Phonographic copyright (℗) by
+        // artist"/"…by label" (artistlink/labellink respectively).
+        CREDIT_ROLES.forEach(role => _initColHeaderGlyph(role.columnLabel, 'artistlink'));
+        _initColHeaderGlyph('Phonographic copyright (℗) by artist', 'artistlink');
+        _initColHeaderGlyph('Phonographic copyright (℗) by label', 'labellink');
+        _initColHeaderGlyph('Produced for', 'labellink');
     }
 
     /**
