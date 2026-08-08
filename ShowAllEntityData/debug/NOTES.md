@@ -3896,3 +3896,103 @@ exercised via jsdom (no live render pipeline in this environment) —
 verified by code inspection against the already-proven `_initColHeaderGlyph`
 mechanism instead; flagged as such.
 
+## 2026-08-08 — credit columns: comment-span disambiguation dropped; column renames (WIP.28)
+
+**Source**: `debug/artist-name-variation-and-primary-alias.html` — a real
+`<dd>` for an `engineer:` credit on
+https://musicbrainz.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60:
+
+```html
+<dd><span class="artistlink"></span><span class="name-variation"><a href="/artist/…" title="לואי להב – Louis Lahav"><bdi>Louis Lehav</bdi></a></span> <span class="comment">(<bdi><i title="Primary alias">Louis Lahav</i></bdi>)</span></dd>
+```
+
+The credit uses a name-variation ("Louis Lehav", a different Hebrew/English
+spelling), and MusicBrainz appends a `<span class="comment">` note
+pointing at the artist's primary alias ("Louis Lahav") right after it —
+only "Louis Lehav" was rendered in the "Engineer" column, with the
+primary-alias note completely gone.
+
+**Root cause**: `_buildCreditListItem`'s only "extra annotation" lookup
+was `_findCreditSegmentTextAnnotation`, which scans a segment's own TEXT
+nodes for a `(…)` pattern. Here the parenthesis characters are inside the
+`<span class="comment">` element itself (`(<bdi>…</bdi>)`), not a sibling
+text node — invisible to that lookup entirely, so the whole note was
+silently dropped rather than just mis-formatted.
+
+**Investigation found a second real occurrence of the same element for a
+different purpose**: earlier in this session's `debug/greetings-original.html`
+dump, `<a>Clarence Clemons</a> <span class="comment">(<bdi>American
+saxophonist</bdi>)</span>` — a plain artist disambiguation with NO
+name-variation wrapping at all. So `span.comment` is a general "note
+attached to an artist mention" pattern, not exclusively tied to
+name-variation credits — the fix needed to cover both.
+
+**Fix**: new `_findCreditSegmentCommentSpan(seg)` — same nested-search
+style as `_findCreditSegmentArtistAnchor` (checks each segment node, then
+its descendants, so it works whether the comment sits directly in the
+segment or is itself nested somewhere). `_buildCreditListItem` clones it
+verbatim and appends it right after the artist anchor, BEFORE the
+existing attribute/instrument/task parenthetical group — kept as two
+independent additions rather than merged into one, since the comment
+already carries its own self-contained `"("`/`")"` characters and inner
+markup (e.g. the `<i>` italics on "Louis Lahav") as real content, not
+something to re-derive as plain text.
+
+**Verified via jsdom** against the real `debug/artist-name-variation-and-primary-alias.html`
+markup: "Engineer" cell now renders `"Louis Lehav (Louis Lahav)"`, with
+the cloned `<span class="comment">` (including its `<i title="Primary
+alias">` italics) confirmed present in the built `<li>`'s `innerHTML`.
+Re-ran every prior credit-column regression test (WIP.16/20/21/22/23/24) —
+all unchanged, confirming the new comment-span handling is purely
+additive and doesn't interfere with the attribute/instrument/task
+parenthetical logic.
+
+### Column renames (same session, unrelated to the bug above)
+
+User asked to rename "Recording of" → "Recording of work" and "Produced
+for" → "Produced for label" (glyphs unchanged — `_initColHeaderGlyph`
+calls updated to the new strings, since that lookup matches on exact
+header text). Updated every functional string-literal site: header
+creation/already-present checks (`_recOfTh`/`_producedForTh`), the
+`collapsableColumns` entry for "Produced for label", the
+`_initColHeaderGlyph()` call site, and the settings description text that
+quotes these as column names. Left prose/JSDoc mentions of the general
+"recording of"/"produced for" MusicBrainz relationship CONCEPT as-is
+(not literal header-string matches) to avoid unnecessary churn.
+
+### Follow-up (same WIP.28): name-variation credit lost its underline
+
+User attached two screenshots comparing the native MusicBrainz page
+(engineer "Louis Lehav" rendered underlined) against the "Engineer"
+column's rendered output (same text, no underline). Root cause: the
+comment-span fix above correctly resolved the artist anchor via
+`_findCreditSegmentArtistAnchor`, but `_buildCreditListItem` then cloned
+ONLY that bare `<a>` — `li.appendChild(_artistA.cloneNode(true))` —
+discarding the wrapping `<span class="name-variation">` entirely. That
+span's own CSS class is what MusicBrainz uses to underline a
+name-variation credit (visually flagging "this is an alias, not the
+artist's primary name"); the text and link both survived, but the visual
+cue didn't.
+
+**Fix**: at the clone site, check whether the artist anchor's immediate
+parent is `<span class="name-variation">`; if so, clone that span instead
+of the bare anchor (`_artistA.parentElement.tagName === 'SPAN' &&
+…classList.contains('name-variation') ? _artistA.parentElement :
+_artistA`). Applied in two places: `_buildCreditListItem` (all 5 credit-
+role columns) and the "Recorded at event" cell builder (`_recordedAtDdAnchor`'s
+caller), which had the exact same "clone the bare anchor only" pattern —
+found via code inspection while fixing the reported bug, not a separate
+user report, but the same root cause so fixed alongside it. Every OTHER
+name-variation-adjacent builder in this file (`_buildRecordedAtPlaceTd`,
+`_buildPhonographicCopyrightTds`, `_buildLabelCreditListTd`) already
+clones the WHOLE segment rather than extracting just the anchor, so the
+wrapper (and its styling) was already preserved there — this bug was
+specific to the two selective-clone builders.
+
+**Verified via jsdom**: re-ran the Louis Lehav/primary-alias test — the
+built `<li>`'s `innerHTML` now starts with `<span class="name-variation">
+<a …>Louis Lehav</a></span>` (previously just the bare `<a>`), comment
+span still intact after it. Re-ran every prior credit-column regression
+test — all unchanged, confirming non-name-variation credits (the common
+case) still clone the bare anchor exactly as before.
+

@@ -1,5 +1,24 @@
 [
   {
+    "version": "WIP.28",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the credit-role columns (\"Recording engineer\"/\"Mixer\"/\"Engineer\"/\"Producer\"/\"Miscellaneous support\") silently dropping a credited artist's `<span class=\"comment\">` disambiguation note entirely — e.g. a name-variation-wrapped credit's \"primary alias\" cross-reference (`debug/artist-name-variation-and-primary-alias.html`: \"Louis Lehav\" crediting engineer, with a `(Louis Lahav)` note pointing at the artist's primary alias) rendered as just the bare name, with the note gone. `_findCreditSegmentTextAnnotation` only reads a segment's own TEXT nodes, but this note's parenthesis characters live inside the `<span class=\"comment\">` element itself, not as sibling text, so it was invisible to that lookup. New `_findCreditSegmentCommentSpan` finds this element (also covers a plain artist disambiguation with no name-variation, e.g. \"Clarence Clemons (American saxophonist)\") and clones it verbatim right after the artist anchor, independent of the existing attribute/instrument/task parenthetical.",
+          "Fixed a name-variation-wrapped credit (e.g. \"Louis Lehav\" above) losing its underline styling once extracted, even though the text/link itself was already correct — MusicBrainz underlines a `<span class=\"name-variation\">`-wrapped credit via that span's own CSS class, to visually flag it as an alias rather than the artist's primary name, but the credit-role columns only ever cloned the bare `<a>` inside it, discarding the wrapper. `_buildCreditListItem` (\"Recording engineer\"/\"Mixer\"/\"Engineer\"/\"Producer\"/\"Miscellaneous support\") and the \"Recorded at event\" cell builder both now clone the wrapping `<span class=\"name-variation\">` instead of the bare anchor whenever the credited artist/event uses one."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Renamed the \"Recording of\" column to \"Recording of work\" and \"Produced for\" to \"Produced for label\" (glyphs unchanged) — clarifies what each column actually links to."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.27",
     "date": "2026-08-08",
     "sections": [

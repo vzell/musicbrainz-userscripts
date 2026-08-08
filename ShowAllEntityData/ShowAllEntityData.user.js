@@ -1673,7 +1673,7 @@
                          '(Acappella, Cover, Demo, Instrumental, Karaoke, Live, Medley, Partial — ' +
                          'e.g. a "live cover recording of:" relationship shows the attribute name ' +
                          'in both the "Live" and "Cover" cells for that track, empty otherwise), ' +
-                         'a "Recording of" column (the linked work, e.g. "Dancing in the Dark"), ' +
+                         'a "Recording of work" column (the linked work, e.g. "Dancing in the Dark"), ' +
                          'a "Recording date" column for the recording date when present ' +
                          '(e.g. "1978-07-07"), and "Recorded at event"/"Recorded at place" ' +
                          'columns (the linked event/place, classified by MusicBrainz\'s own icon ' +
@@ -1711,8 +1711,8 @@
                          'track\'s "phonographic copyright (℗) by:" relationship — the same credit can ' +
                          'name an artist, a label, or a mix of both, so each is routed to its own ' +
                          'column, keeping any disambiguation note and "(in YYYY)" year attribution ' +
-                         'attached. Also adds a "Produced for" column from each track\'s "produced ' +
-                         'for:" relationship (labels only), optionally prefixed with "co"/"executive" ' +
+                         'attached. Also adds a "Produced for label" column from each track\'s ' +
+                         '"produced for:" relationship (labels only), optionally prefixed with "co"/"executive" ' +
                          'attribute words rendered the same way as the credit columns above, e.g. ' +
                          '"Laurel Canyon Ltd. (executive)". Every column header carries MusicBrainz\'s ' +
                          'own marker icon once (e.g. next to "Mixer", "Engineer") instead of repeating ' +
@@ -7230,7 +7230,7 @@
      *     function already handled multiple sibling `<dl>`s correctly,
      *     since it was never `.find()`-based to begin with).
      *
-     *   - "Produced for" (`<dt>produced for:</dt>`, see
+     *   - "Produced for label" (`<dt>produced for:</dt>`, see
      *     debug/copyright.html's "Laurel Canyon Ltd." example), same
      *     setting, positioned last (after both "Phonographic copyright"
      *     columns, still before "ARs"). Label-only (no artist variant
@@ -7255,7 +7255,7 @@
      *     since this function never inserts into already-cloned content.
      *
      *   - Every `CREDIT_ROLES` column header, both "Phonographic
-     *     copyright" headers, and "Produced for" now carry MusicBrainz's
+     *     copyright" headers, and "Produced for label" now carry MusicBrainz's
      *     own empty marker `<span>` once (e.g. `<th>Mixer <span
      *     class="artistlink"></span></th>`), matching the CSS `::before`
      *     glyph hook `dl.ars` itself uses next to every credited
@@ -7513,7 +7513,7 @@
                         _arsHeaderRef.before(_th);
                         _newAttrThs.push({ attr, th: _th });
                     });
-                    if (!_headerCells.some(th => th.textContent.trim() === 'Recording of')) {
+                    if (!_headerCells.some(th => th.textContent.trim() === 'Recording of work')) {
                         _recOfTh = document.createElement('th');
                         // Plain text only — the work-glyph icon (MB's own empty,
                         // CSS-styled <span class="worklink">, always rendered
@@ -7526,7 +7526,7 @@
                         // would never survive into the final rendered header.
                         // Injected post-render instead — see
                         // _initColHeaderGlyph().
-                        _recOfTh.textContent = 'Recording of';
+                        _recOfTh.textContent = 'Recording of work';
                         _arsHeaderRef.before(_recOfTh);
                     }
                     // "Recording date" — the optional "(on YYYY-MM-DD)"
@@ -7620,9 +7620,9 @@
                     _copyrightByLabelTh.textContent = 'Phonographic copyright (℗) by label';
                     _arsHeaderRefForCredits.before(_copyrightByLabelTh);
                 }
-                if (_pageHasProducedFor && !_headerCells.some(th => th.textContent.trim() === 'Produced for')) {
+                if (_pageHasProducedFor && !_headerCells.some(th => th.textContent.trim() === 'Produced for label')) {
                     _producedForTh = document.createElement('th');
-                    _producedForTh.textContent = 'Produced for';
+                    _producedForTh.textContent = 'Produced for label';
                     _arsHeaderRefForCredits.before(_producedForTh);
                 }
             }
@@ -7760,7 +7760,17 @@
                     if (_recordedAtEventTh) {
                         const _td = document.createElement('td');
                         const _anchor = _recordedAtDdAnchor(_findRecordedAtDt(_titleTd, 'eventlink'), '/event/');
-                        if (_anchor) _td.appendChild(_anchor.cloneNode(true));
+                        // Clone the wrapping <span class="name-variation">
+                        // instead of the bare <a> when present, same fix
+                        // (and same underline-styling reason) as
+                        // _buildCreditListItem's artist-node resolution.
+                        if (_anchor) {
+                            const _node = (_anchor.parentElement &&
+                                           _anchor.parentElement.tagName === 'SPAN' &&
+                                           _anchor.parentElement.classList.contains('name-variation'))
+                                ? _anchor.parentElement : _anchor;
+                            _td.appendChild(_node.cloneNode(true));
+                        }
                         row.appendChild(_td);
                     }
                     if (_recordedAtPlaceAdditionalTh) {
@@ -8277,7 +8287,7 @@
      * Builds a `<td><ul><li>…</li>…</ul></td>` merging every credited
      * label across one or more `<dd>`s (one per matched `_findCreditDts`
      * `<dt>`) — the label-target counterpart of `_buildCreditListTd`, used
-     * for "Produced for" (`<dt>produced for:</dt>`, see
+     * for "Produced for label" (`<dt>produced for:</dt>`, see
      * debug/copyright.html's "Laurel Canyon Ltd." example). Segmentation
      * is structural on each label's own `<span class="labellink"></span>`
      * marker (dropped per WIP.25 — see `_buildCreditListTd`'s identical
@@ -8553,6 +8563,43 @@
     }
 
     /**
+     * Finds a MusicBrainz `<span class="comment">…</span>` disambiguation
+     * note within a `_buildCreditListTd` segment — same nested-anchor-style
+     * search as `_findCreditSegmentArtistAnchor` (checks each segment node
+     * itself, then its descendants). MusicBrainz uses this element for two
+     * related but distinct purposes, both of which need to survive
+     * extraction: (1) a plain artist disambiguation right after a bare
+     * (non-name-variation) anchor, e.g. `<a>Clarence Clemons</a> <span
+     * class="comment">(<bdi>American saxophonist</bdi>)</span>`, and (2) a
+     * "primary alias" cross-reference when the credit itself uses a
+     * `<span class="name-variation">`-wrapped alias, e.g. `<span
+     * class="name-variation"><a>Louis Lehav</a></span> <span
+     * class="comment">(<bdi><i title="Primary alias">Louis Lahav</i>
+     * </bdi>)</span>` (see debug/artist-name-variation-and-primary-alias.html
+     * — previously this whole comment span was silently dropped, since
+     * `_findCreditSegmentTextAnnotation` only reads the segment's own TEXT
+     * nodes and this note's parenthesis characters live inside the `<span>`
+     * element itself, not as sibling text). The `<span>` already contains
+     * its own literal `"("`/`")"` characters and any inner markup (e.g. the
+     * `<i>` italics on the primary alias) as real content, not CSS-injected
+     * — so the caller clones it verbatim rather than re-deriving text.
+     *
+     * @param {Node[]} seg
+     * @returns {HTMLElement|null}
+     */
+    function _findCreditSegmentCommentSpan(seg) {
+        for (const n of seg) {
+            if (n.nodeType !== Node.ELEMENT_NODE) continue;
+            if (n.tagName === 'SPAN' && n.classList.contains('comment')) return n;
+            if (n.querySelector) {
+                const _nested = n.querySelector('span.comment');
+                if (_nested) return _nested;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Builds one `<li>` for a single credited artist within
      * `_buildCreditListTd` — resolves the artist anchor from `seg` (see
      * `_findCreditSegmentArtistAnchor`) and appends a single trailing
@@ -8580,6 +8627,14 @@
      * the task portion should render in italics, in every credit column
      * that can have one, not just "Miscellaneous support".
      *
+     * If the segment also carries a `<span class="comment">` disambiguation
+     * note (see `_findCreditSegmentCommentSpan`) — either a plain artist
+     * disambiguation or a "primary alias" cross-reference for a
+     * name-variation-wrapped credit — it's cloned verbatim and appended
+     * right after the artist anchor, BEFORE the attribute/annotation
+     * parenthetical built above (the comment already carries its own
+     * self-contained parens, so it's never merged into that group).
+     *
      * @param {Node[]} seg
      * @param {string[]} attributes - This credit's own attribute words, in
      *   `attributeVocab` order (from `_findCreditDts`'s match for the
@@ -8591,7 +8646,24 @@
         const _artistA = _findCreditSegmentArtistAnchor(seg);
         if (!_artistA) return null;
         const li = document.createElement('li');
-        li.appendChild(_artistA.cloneNode(true));
+        // Clone the WRAPPING `<span class="name-variation">` instead of the
+        // bare `<a>` when present, not just its href/text — MusicBrainz
+        // underlines a name-variation credit via that span's own class to
+        // visually flag it as an alias rather than the artist's primary
+        // name (see debug/artist-name-variation-and-primary-alias.html:
+        // cloning only the `<a>` silently dropped that styling, even
+        // though the text/link itself was already correct).
+        const _artistNode = (_artistA.parentElement &&
+                              _artistA.parentElement.tagName === 'SPAN' &&
+                              _artistA.parentElement.classList.contains('name-variation'))
+            ? _artistA.parentElement : _artistA;
+        li.appendChild(_artistNode.cloneNode(true));
+
+        const _commentSpan = _findCreditSegmentCommentSpan(seg);
+        if (_commentSpan) {
+            li.appendChild(document.createTextNode(' '));
+            li.appendChild(_commentSpan.cloneNode(true));
+        }
 
         const _parenNodes = [];
         if (attributes.length > 0) _parenNodes.push(document.createTextNode(attributes.join('/')));
@@ -11962,7 +12034,7 @@
                 // all auto-detected by initCollapsableColumns() once
                 // declared here. "Recorded at event" is deliberately
                 // excluded — always a single anchor, never a list.
-                collapsableColumns: [ 'ARs', 'AcoustIDs', 'ISRCs', 'Recording engineer', 'Mixer', 'Engineer', 'Producer', 'Miscellaneous support', 'Phonographic copyright (℗) by artist', 'Phonographic copyright (℗) by label', 'Produced for', 'Recorded at place' ],
+                collapsableColumns: [ 'ARs', 'AcoustIDs', 'ISRCs', 'Recording engineer', 'Mixer', 'Engineer', 'Producer', 'Miscellaneous support', 'Phonographic copyright (℗) by artist', 'Phonographic copyright (℗) by label', 'Produced for label', 'Recorded at place' ],
                 stickyColumn: 'Title'
             },
             tableMode: 'multi',
@@ -37655,12 +37727,12 @@ a { color: #1565c0; }`;
         // release-tracks pages (no-ops for every other pageType).
         initAcoustIdIsrcObserver();
 
-        // Re-inject the "Recording of"/"Recorded at event"/"Recorded at
-        // (place)" column headers' relationship glyph icons —
+        // Re-inject the "Recording of work"/"Recorded at event"/"Recorded
+        // at (place)" column headers' relationship glyph icons —
         // makeTableSortableUnified() above just rebuilt every <th> from
         // scratch, wiping them out (no-ops for every other pageType/absent
         // column — see _initColHeaderGlyph()'s JSDoc).
-        _initColHeaderGlyph('Recording of', 'worklink');
+        _initColHeaderGlyph('Recording of work', 'worklink');
         _initColHeaderGlyph('Recorded at event', 'eventlink');
         _initColHeaderGlyph('Recorded at place', 'placelink');
         // Same re-injection for every CREDIT_ROLES column (all use the
@@ -37669,7 +37741,7 @@ a { color: #1565c0; }`;
         CREDIT_ROLES.forEach(role => _initColHeaderGlyph(role.columnLabel, 'artistlink'));
         _initColHeaderGlyph('Phonographic copyright (℗) by artist', 'artistlink');
         _initColHeaderGlyph('Phonographic copyright (℗) by label', 'labellink');
-        _initColHeaderGlyph('Produced for', 'labellink');
+        _initColHeaderGlyph('Produced for label', 'labellink');
     }
 
     /**
