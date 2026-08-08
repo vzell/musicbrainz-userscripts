@@ -8147,28 +8147,35 @@
     }
 
     /**
-     * Finds a "miscellaneous support:" task annotation within a
+     * Finds a free-text parenthetical annotation within a
      * `_buildCreditListTd` segment — plain text, not a link (unlike the
-     * instrument annotation), rendered by MusicBrainz as
-     * `<!-- -->(task: string contractor)` directly after the artist anchor
-     * (see `debug/buggy-list-title.html`'s "miscellaneous support:" `<dd>`
-     * for Sandy Park). Scans the segment's own text nodes (never descends
-     * into elements — the task text is always a direct sibling of the
-     * artist anchor, never nested) for a `(task: …)` parenthetical and
-     * returns just its inner text (`"task: string contractor"`), letting
-     * the caller wrap it in parens itself, matching how the instrument
-     * case's parens are added by the caller too.
+     * instrument annotation, checked first by the caller and skipped here
+     * if found). MusicBrainz renders several different kinds of per-artist
+     * note this way, all sharing the same `<!-- -->(…)` shape directly
+     * after the artist anchor: a "miscellaneous support:" task (e.g.
+     * `<!-- -->(task: string contractor)`, see `debug/buggy-list-title.html`
+     * for Sandy Park) and an arbitrary credited-role note (e.g.
+     * `<!-- -->(other vocals [Sam Moore vocal])` on a bare `engineer:`
+     * credit, see `debug/missing-engineer.html`/`debug/soul-days.html` for
+     * Andres Bermudez). Rather than special-casing each wording (which
+     * would need updating every time MusicBrainz phrases a new kind of
+     * note), this matches ANY `(…)` parenthetical found across the
+     * segment's own text nodes (never descends into elements — this text
+     * is always a direct sibling of the artist anchor, never nested),
+     * concatenated in document order so a parenthetical split across
+     * multiple text nodes by an intervening `<!-- -->` comment (as both
+     * examples above are) still matches as one. Returns just the inner
+     * text (e.g. `"task: string contractor"`, `"other vocals [Sam Moore
+     * vocal]"`), letting the caller wrap it in parens itself, matching how
+     * the instrument case's parens are added by the caller too.
      *
      * @param {Node[]} seg
      * @returns {string|null}
      */
-    function _findCreditSegmentTaskAnnotation(seg) {
-        for (const n of seg) {
-            if (n.nodeType !== Node.TEXT_NODE) continue;
-            const _m = n.textContent.match(/\(task:\s*([^)]*)\)/i);
-            if (_m) return `task: ${_m[1].trim()}`;
-        }
-        return null;
+    function _findCreditSegmentTextAnnotation(seg) {
+        const _text = seg.filter(n => n.nodeType === Node.TEXT_NODE).map(n => n.textContent).join('');
+        const _m = _text.match(/\(([^)]*)\)/);
+        return (_m && _m[1].trim()) ? _m[1].trim() : null;
     }
 
     /**
@@ -8203,21 +8210,25 @@
      *
      * Two mutually-exclusive kinds of per-artist annotation are looked up
      * WITHIN the artist's own segment and appended to that artist's `<li>`
-     * as `" (…)"` (instrument takes priority if somehow both are present,
-     * though no real `<dd>` mixes them): a credited instrument — rendered
-     * as `<a href="/instrument/…">…</a>` wrapped in a parenthetical
-     * immediately after the artist anchor, e.g. `Ian Kagey
+     * as `" (…)"` (instrument takes priority — checked first, with the
+     * free-text lookup only attempted when no instrument anchor was
+     * found — though no real `<dd>` mixes them): a credited instrument —
+     * rendered as `<a href="/instrument/…">…</a>` wrapped in a
+     * parenthetical immediately after the artist anchor, e.g. `Ian Kagey
      * <!-- -->(<a href="/instrument/…">strings</a>)<!-- -->` (see
-     * `_findCreditSegmentInstrumentAnchors`) — or a "miscellaneous
-     * support:" task, rendered as plain parenthetical text with no link,
-     * e.g. `Sandy Park <!-- -->(task: string contractor)` (see
-     * `_findCreditSegmentTaskAnnotation`). Either way the annotation stays
-     * paired with the artist it belongs to instead of becoming its own
-     * unrelated list item (see `debug/buggy-list.html`/
-     * `debug/buggy-list-title.html` for the instrument-anchor bug this
-     * originally fixed: a naive flat `:scope > a` anchor count treated
-     * each instrument anchor as an extra "artist", turning 3 credited
-     * engineers into 6 list items).
+     * `_findCreditSegmentInstrumentAnchors`) — or any other free-text
+     * parenthetical note MusicBrainz attaches to that credit, e.g. a
+     * "miscellaneous support:" task (`Sandy Park <!-- -->(task: string
+     * contractor)`) or an arbitrary role note (`Andres Bermudezat
+     * <!-- -->(other vocals [Sam Moore vocal])`) — see
+     * `_findCreditSegmentTextAnnotation` for why this is one generic
+     * "whatever's in parens" match rather than per-wording special cases.
+     * Either way the annotation stays paired with the artist it belongs to
+     * instead of being dropped or becoming its own unrelated list item
+     * (see `debug/buggy-list.html`/`debug/buggy-list-title.html` for the
+     * instrument-anchor bug this originally fixed: a naive flat
+     * `:scope > a` anchor count treated each instrument anchor as an extra
+     * "artist", turning 3 credited engineers into 6 list items).
      *
      * @param {HTMLElement[]} dds - The `<dd>` elements to merge (each the
      *   `nextElementSibling` of one `_findCreditDts` match).
@@ -8247,8 +8258,8 @@
                     });
                     li.appendChild(document.createTextNode(')'));
                 } else {
-                    const _task = _findCreditSegmentTaskAnnotation(seg);
-                    if (_task) li.appendChild(document.createTextNode(` (${_task})`));
+                    const _annotation = _findCreditSegmentTextAnnotation(seg);
+                    if (_annotation) li.appendChild(document.createTextNode(` (${_annotation})`));
                 }
                 ul.appendChild(li);
             });

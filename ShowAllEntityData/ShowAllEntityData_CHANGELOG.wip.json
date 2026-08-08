@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.22",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the credit-role columns (WIP.16/WIP.20/WIP.21) silently dropping a credited artist's own parenthetical note whenever it's free text rather than a linked instrument or the specific \"(task: …)\" wording — e.g. a bare \"engineer:\" credit's \"(other vocals [Sam Moore vocal])\" note (`debug/missing-engineer.html`/`debug/soul-days.html`) rendered as a bare artist name with the note gone. `_findCreditSegmentTaskAnnotation` (WIP.21, matched only `(task: …)`) is replaced by `_findCreditSegmentTextAnnotation`, which matches ANY `(…)` parenthetical across the segment's text nodes rather than special-casing each wording MusicBrainz happens to use — still only consulted when no instrument anchor was found in the segment, so it can't shadow the instrument case. \"(task: string contractor)\" still renders exactly as before; \"(other vocals [Sam Moore vocal])\" now renders too."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.21",
     "date": "2026-08-08",
     "sections": [

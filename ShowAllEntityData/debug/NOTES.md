@@ -3547,3 +3547,51 @@ markup above. Added to `collapsableColumns` for `release-tracks` alongside
 the other 4 credit-role columns; no new setting — reuses
 `sa_enable_release_tracks_credit_role_columns`.
 
+## 2026-08-08 — credit columns: generalize per-artist annotation to any parenthetical text (WIP.22)
+
+**Source**: user reported WIP.21's fix (name-variation-wrapped artist
+dropped entirely) as "still not fixed", pointing at
+`debug/soul-days-missing.html` (the rendered `<tr>` for the "Soul Days"
+track on the same release as `debug/missing-engineer.html`) and
+`debug/soul-days.html` (that row's raw `<td class="title">` source).
+
+**Investigation**: extracted the real `engineer:` `<dt>`/`<dd>` from
+`debug/soul-days.html` (identical 3-artist content to
+`debug/missing-engineer.html` — same release, same credit) and ran it
+through the current (WIP.21) `_findCreditDts`/`_buildCreditListTd` via
+jsdom, then cross-checked against `debug/soul-days-missing.html`'s actual
+rendered `<td>` for the "Engineer" column. **All 3 artists DO render**
+(Andres Bermudezat, Ron Aniello, Rob Lebret) — WIP.21's fix is confirmed
+working, not regressed. The actual remaining gap: Andres Bermudez's own
+`<li>` renders as a bare artist link with NO annotation — the
+"(other vocals [Sam Moore vocal])" note MusicBrainz attaches right after
+his anchor is silently dropped, because WIP.21's
+`_findCreditSegmentTaskAnnotation` only matched the literal `(task: …)`
+wording (built for the "Miscellaneous support" case), and this dt is a
+plain `engineer:` credit with a differently-worded free-text note. So "1.)
+still not fixed" was accurate, just not about the artist count — about
+this specific artist's annotation silently disappearing, the same
+class of bug as the instrument-annotation loss WIP.20 fixed, just for a
+third annotation shape.
+
+**Fix**: rather than adding a third special-cased regex (which would just
+recreate the same gap for the next new wording MusicBrainz happens to use
+on some other credit), `_findCreditSegmentTaskAnnotation` is replaced by
+`_findCreditSegmentTextAnnotation` — matches ANY `(…)` parenthetical found
+across the segment's own text nodes (concatenated in document order, so a
+parenthetical split by an intervening `<!-- -->` comment — true of both
+the task and other-vocals examples — still matches as one), used as the
+fallback whenever no instrument anchor was found in the segment (instrument
+still takes priority and is checked first, unchanged from WIP.20/WIP.21).
+
+**Verified via jsdom** against both real examples together in one test:
+the `engineer:` `<dd>` (Andres Bermudez + Ron Aniello + Rob Lebret) now
+produces `"Andres Bermudezat (other vocals [Sam Moore vocal])"`, `"Ron
+Aniello"`, `"Rob Lebret"`; the `miscellaneous support:` `<dd>` (Sandy Park)
+still produces `"Sandy Park (task: string contractor)"` unchanged; re-ran
+WIP.20's instrument-annotation regression tests (recording-engineer
+3-artist/3-instrument case, engineer-and-mixer no-annotation case, merged
+multi-`<dt>` case) — all still pass unaffected, confirming the instrument
+path still takes priority and the broadened text-fallback doesn't leak
+into it.
+
