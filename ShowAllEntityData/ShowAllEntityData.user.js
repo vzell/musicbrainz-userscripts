@@ -7929,15 +7929,19 @@
      * `span.placelink` direct child of `<dd>`), not by reading the
      * literal separator text, since that's the same reliable per-place
      * delimiter `_findRecordedAtDt`'s own glyph-presence check already
-     * relies on. The trailing separator text immediately before the NEXT
-     * place's marker (", " or " and ") is dropped from the end of the
-     * earlier segment; anything else trailing a place's own area chain —
-     * e.g. an "(<instrument>)" attribution wrapped in the same `<!-- -->`
-     * comment-node hints MusicBrainz uses elsewhere (see
-     * debug/multiple-places-2.html's "(strings)", and `_parseRecOfDate`'s
-     * "(on …)" for another example of this comment-hint pattern) — is
-     * kept, since only the text immediately preceding the NEXT place's
-     * marker is ever separator-only.
+     * relies on. The marker itself is dropped, never appended to the
+     * `<li>` — MusicBrainz uses it purely as a CSS `::before` glyph hook,
+     * and that same glyph is already shown once in the "Recorded at
+     * place" column header, so repeating it on every row/place would be
+     * redundant (see debug/place-icon.html). The trailing separator text
+     * immediately before the NEXT place's marker (", " or " and ") is
+     * dropped from the end of the earlier segment; anything else trailing
+     * a place's own area chain — e.g. an "(<instrument>)" attribution
+     * wrapped in the same `<!-- -->` comment-node hints MusicBrainz uses
+     * elsewhere (see debug/multiple-places-2.html's "(strings)", and
+     * `_parseRecOfDate`'s "(on …)" for another example of this
+     * comment-hint pattern) — is kept, since only the text immediately
+     * preceding the NEXT place's marker is ever separator-only.
      *
      * Drops only a trailing " (on YYYY-MM-DD)" parenthetical at the very
      * end of the whole `<dd>` (after the last place) — that date stays in
@@ -7960,6 +7964,7 @@
         _nodes.forEach(n => {
             const _isPlaceMarker = n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && n.classList.contains('placelink');
             if (_isPlaceMarker || _segments.length === 0) _segments.push([]);
+            if (_isPlaceMarker) return; // marker is a segment boundary only, never its own content
             _segments[_segments.length - 1].push(n);
         });
         _segments.forEach((seg, i) => {

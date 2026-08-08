@@ -3719,3 +3719,48 @@ column regression test (WIP.16/WIP.20/WIP.21/WIP.22/WIP.23) — all
 unchanged, confirming single-role `<dt>`s are unaffected by the
 component-splitting change.
 
+## 2026-08-08 — "Recorded at place": drop redundant placelink glyph per row (WIP.25)
+
+**Source**: `debug/place-icon.html` — a rendered "Recorded at place" cell,
+captured post-fix (WIP.17/WIP.24), showing `<span class="placelink">
+</span>` as the very first child of each `<li>`, right before the place
+anchor.
+
+**Root cause**: `_buildRecordedAtPlaceTd`'s per-place segmentation
+(WIP.17) uses each place's own `<span class="placelink"></span>` marker
+purely to detect where a new place's content starts (mirrors
+`_findRecordedAtDt`'s own glyph-presence check). The segment-building loop
+pushed the marker node into the SAME segment it was just used to start:
+
+```js
+_nodes.forEach(n => {
+    const _isPlaceMarker = …;
+    if (_isPlaceMarker || _segments.length === 0) _segments.push([]);
+    _segments[_segments.length - 1].push(n);   // marker included here too
+});
+```
+
+so the marker rode along into the final `<li>` as ordinary content. This
+is purely a decorative CSS `::before` glyph hook on the live MusicBrainz
+page (the `<span>` itself is always empty), and the same glyph is already
+shown once in the "Recorded at place" `<th>` — repeating it on every row
+is redundant.
+
+**Fix**: the marker is now dropped as soon as it's used to start a new
+segment — an early `return` skips pushing it into `_segments[...]` when
+`_isPlaceMarker` is true, while still triggering the new-segment push
+beforehand. The tail-trimming logic (drops the "and"/"," separator text
+before the next marker) is untouched, since it only ever inspects the
+LAST node of a segment.
+
+**Verified via jsdom**, reusing the existing WIP.17 test harness
+(`test_multiplace.js`, real markup from `debug/multiple-places.html`/
+`debug/multiple-places-2.html`, plus the single-place and
+name-variation-wrapped regression cases) against the current function
+source: every case's `<li>` count and text content is byte-identical to
+before this fix, and `td.innerHTML` for every case now starts directly
+with the place's own anchor/`span.name-variation` — no leading
+`<span class="placelink">` anywhere. Confirms the fix is scoped purely to
+dropping the marker, with zero effect on segmentation, area chains, flags,
+comments, or instrument attributions.
+

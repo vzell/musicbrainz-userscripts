@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.25",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the \"Recorded at place\" column (WIP.14/WIP.17) rendering MusicBrainz's empty `<span class=\"placelink\"></span>` glyph marker in front of every place, once per list item (`debug/place-icon.html`) — redundant since that same glyph is already shown once in the column header. The marker is used purely to detect where each place's own content starts (`_buildRecordedAtPlaceTd`'s per-place segmentation), but was also being appended as part of that segment's content into the rendered `<li>`. It's now dropped as soon as it's used as a segment boundary, never appended to the cell. No other content changes — area chains, flags, instrument attributions, and multi-place splitting are all unaffected."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.24",
     "date": "2026-08-08",
     "sections": [
