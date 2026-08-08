@@ -1,5 +1,44 @@
 [
   {
+    "version": "WIP.18",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added an \"Additional\" column, right before \"Recorded at place\", for that relationship's own \"additional\" attribute — MusicBrainz renders it as the adverb \"additionally recorded at:\" (confirmed via the embedded relationship-type metadata on the edit-relationships page; unlike the engineer/mixer/producer credit columns' adjective \"additional recording engineer:\" wording), shown here as the canonical word \"additional\" when present, empty otherwise, matching every other attribute column's convention. \"Recorded at event\" gets no equivalent column — its own \"additional\" attribute is never actually rendered in that direction by MusicBrainz. No real-data example of this attribute exists in any captured snapshot; verified via a synthetic jsdom test against the confirmed MB relationship-type template only."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.17",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "\"Recorded at place\" (WIP.14/WIP.15) now renders as a collapsible multi-row list when a single \"recorded at:\" relationship credits more than one place (e.g. a track recorded partly at one studio and partly at another) — one `<li>` per place, each with its own full \"in <area>, <area>, <country>\" chain and flags, instead of previously running every place's content together into one unreadable flat cell. Splitting is structural (a new place starts at each place's own leading glyph marker in the source markup), not by reading the \"and\"/\",\" separator text, so it's immune to wording variations. Per-place extra context (e.g. an \"(<instrument>)\" attribution noting which instrument was recorded at that specific place) is preserved on the correct place's row; only the literal \"and\"/\",\" joining two places is dropped. Single-place rows are unaffected in content (still exactly the place + its area chain), just now wrapped in a one-item list like every other collapsible column in this family — no behavior change for the common case."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.16",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added \"Recording engineer\", \"Mixer\", \"Engineer\", and \"Producer\" credit columns to `release-tracks`, extracted from the same bare `div.ars` as \"Recording of\"/\"Recorded at\" (WIP.13/WIP.14), sourced from sibling `<dl class=\"ars\"><dt>recording engineer:</dt>`/`<dt>mixer:</dt>`/`<dt>engineer:</dt>`/`<dt>producer:</dt>` relationships. Each role can be prefixed with attribute words (Additional, Assistant, Associate, Co, and — Engineer/Producer only — Executive); one column per attribute word actually used on the release is added per role, header-prefixed with the role's own label to avoid collisions (e.g. \"Mixer (Assistant)\"), showing the attribute word when present, empty otherwise — mirrors the existing \"Recording of\" attribute-column pattern. When a `<dd>` credits multiple artists (comma/\"and\"-joined), the cell renders as a collapsible multi-row list, reusing the existing `_findCellListItems`/`initCollapsableColumns` machinery with zero new wiring. Gated by a new dedicated setting, `sa_enable_release_tracks_credit_role_columns` (default on), independent of the existing \"Recording of\"/\"Recorded at\" toggle. Positioned after \"Recorded at place\", still directly before \"ARs\", which is left completely unchanged as always.",
+          "When a track has more than one matching credit for the same role (confirmed in real data: a track with both a bare `<dt>mixer:</dt>` and a separate `<dt>assistant mixer:</dt>`), all matching credits are MERGED into one multi-person list for that role's column, rather than keeping only the first match in document order (the convention every other column in this family uses) — no credited person is silently dropped from a column literally named after their role. Attribute columns become row-level \"was this attribute used by any of the merged entries\" flags rather than tied to one specific person.",
+          "The bare `<dt>engineer:</dt>` role is disambiguated from the compound `<dt>recording engineer:</dt>` role via a strict prefix-word check (every word before the matched role phrase must itself be a recognized attribute word, or the whole `<dt>` is rejected for that role) — a lenient check (silently dropping unrecognized words, like the existing \"Recording of\" attribute parser does) would wrongly accept \"recording engineer:\" as a bare \"engineer\" credit too, since its last word literally is \"engineer:\". Word-splitting uses `/[\\s-]+/` (whitespace OR hyphen), not just whitespace, since MusicBrainz hyphen-attaches the \"co\" attribute to the following word (e.g. \"co-recording engineer:\") — confirmed only in the spec examples (`debug/artist-roles.org`), no real-data example of any hyphenated-prefix or \"co\"/\"executive\"/\"additional\"/\"associate\" combo exists in `debug/full.html`, so this path is unit-tested synthetically only, not against real MusicBrainz markup.",
+          "Trailing dates on these credits (e.g. \"(on 1975-10-18)\", \"(in 2015)\") are dropped entirely — unlike \"Recording of\", which has its own \"Recording date\" column, these 4 roles get no equivalent; the date stays visible in \"ARs\" only. Achieved for free since only `<a>` anchors are ever extracted, never trailing text/comment nodes."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.15",
     "date": "2026-08-08",
     "sections": [

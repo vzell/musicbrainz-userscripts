@@ -1678,9 +1678,30 @@
                          '(e.g. "1978-07-07"), and "Recorded at event"/"Recorded at place" ' +
                          'columns (the linked event/place, classified by MusicBrainz\'s own icon ' +
                          'rather than the varying "recorded at:"/"recorded at and mixed at:" ' +
-                         'wording) — all extracted from the release tracklist\'s "ARs" ' +
-                         'relationship data. "ARs" itself is left completely unchanged — every ' +
-                         'extracted link appears in both places.'
+                         'wording; "Recorded at place" shows one row per place when a single ' +
+                         'relationship credits more than one) — plus an "Additional" column, ' +
+                         'right before "Recorded at place", for that relationship\'s own ' +
+                         '"additional" attribute — all extracted from the release tracklist\'s ' +
+                         '"ARs" relationship data. "ARs" itself is left completely unchanged — ' +
+                         'every extracted link appears in both places.'
+        },
+
+        sa_enable_release_tracks_credit_role_columns: {
+            label: 'Show engineer/mixer/producer credit columns',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds "Recording engineer", "Mixer", "Engineer", and "Producer" columns to ' +
+                         'the consolidated release tracklist, extracted from each track\'s "recording ' +
+                         'engineer:"/"mixer:"/"engineer:"/"producer:" relationship data (normally ' +
+                         'glommed into the "ARs" column). Each role can be prefixed with attribute words ' +
+                         '(Additional, Assistant, Associate, Co, and — for Engineer/Producer only — ' +
+                         'Executive); one column per attribute word actually used on the release is added ' +
+                         'per role (e.g. "Mixer (Assistant)"), showing the attribute word when present, ' +
+                         'empty otherwise. When a track has more than one matching credit for the same ' +
+                         'role (e.g. both a bare "mixer:" and a separate "assistant mixer:"), all of them ' +
+                         'are merged into one multi-row cell for that role. Multiple credited artists ' +
+                         'render as a collapsible multi-row list. "ARs" itself is left completely ' +
+                         'unchanged — every extracted link appears in both places.'
         },
 
         sa_enable_ars_collapse: {
@@ -7026,7 +7047,7 @@
      *     the same setting and following the same
      *     never-touch-`_bareArsDiv` contract: "Recorded at event" and
      *     "Recorded at place" (`_findRecordedAtDt`/`_recordedAtDdAnchor`/
-     *     `_recordedAtPlaceDetails`), sourced from sibling `dl.ars` blocks
+     *     `_buildRecordedAtPlaceTd`), sourced from sibling `dl.ars` blocks
      *     whose `<dt>` text (case-insensitively) *contains* `"recorded
      *     at"` — the exact wording varies (`"recorded at:"`, `"recorded
      *     at and mixed at:"`, other "mixed at" combinations MusicBrainz
@@ -7037,9 +7058,15 @@
      *     date/venue/location, no surrounding "in `<area>`, `<area>`,
      *     `<country>`" chain needed (that stays in "ARs" only, matching how
      *     "Recording of"'s cell is just the cloned work anchor). "Recorded
-     *     at place"'s cell value is the place `<a>` (bare, or wrapped in
+     *     at place"'s cell value is a collapsable multi-row list — one
+     *     `<li>` per place credited in the `<dd>` (a single "recorded at:"
+     *     relationship can name more than one place, see
+     *     debug/multiple-places.html/-2.html; split structurally at each
+     *     place's own `span.placelink` marker, not by reading the "and"/","
+     *     separator text — see `_buildRecordedAtPlaceTd`'s JSDoc), each
+     *     holding that place's `<a>` (bare, or wrapped in
      *     `<span class="name-variation">` when the place has an alias name
-     *     — see `_recordedAtDdAnchor`'s JSDoc) PLUS the following "in
+     *     — see `_recordedAtDdAnchor`'s JSDoc) PLUS its own following "in
      *     `<area>`, `<area>`, `<country>`" chain (area links, flag image,
      *     CSS-flag country span) — a bare venue name has none of that
      *     context on its own, unlike the event anchor. Both cells drop the
@@ -7047,12 +7074,83 @@
      *     columns rather than one shared "Recorded at" because
      *     `makeTableSortableUnified()` derives each column's identity
      *     fresh from `th.textContent` on every render — two `<th>`s both
-     *     showing literal "Recorded at" would collide. Positioned last of
-     *     this whole additive group, directly before "ARs": [attribute
-     *     columns] → Recording of → Recording date → Recorded at event
-     *     → Recorded at place → ARs. Unlike the rest of this bullet,
-     *     these two fire independently of `_pageHasRecOf` — a release can
-     *     have "recorded at" data with no "recording of" data at all.
+     *     showing literal "Recorded at" would collide. An "Additional"
+     *     column (`_recordedAtPlaceHasAdditional`) sits between them,
+     *     right before "Recorded at place" — the "recorded at (place)"
+     *     relationship type's own "additional" attribute, rendered by
+     *     MusicBrainz as the adverb "additionally recorded at:" (see that
+     *     function's JSDoc), surfaced here as the canonical word
+     *     "additional" when present, empty otherwise — the same
+     *     canonical-word-not-inflected-form convention every other
+     *     attribute column in this file uses. A single boolean-style
+     *     column, not a word-per-column loop like
+     *     `REC_OF_ATTRIBUTES`/`CREDIT_ROLES`, since this relationship
+     *     declares only the one attribute. "Recorded at event" gets no
+     *     equivalent — its own "additional" attribute's
+     *     `reverse_link_phrase` has no `{additional:…}` template, so
+     *     MusicBrainz never actually renders it on a recording's own
+     *     tracklist. Positioned last of this whole additive group,
+     *     directly before "ARs": [attribute columns] → Recording of →
+     *     Recording date → Recorded at event → Additional → Recorded at
+     *     place → ARs. Unlike the rest of this bullet, these fire
+     *     independently of `_pageHasRecOf` — a release can have "recorded
+     *     at" data with no "recording of" data at all.
+     *   - Four more purely-additive columns from the same bare `div.ars`,
+     *     gated by their OWN dedicated setting
+     *     (`sa_enable_release_tracks_credit_role_columns`, not
+     *     `_recOfEnabled`): "Recording engineer", "Mixer", "Engineer", and
+     *     "Producer" (`CREDIT_ROLES`/`_findCreditDts`/
+     *     `_buildCreditListTd`), sourced from sibling `dl.ars` `<dt>`s
+     *     ending in the role's own phrase (e.g. `"recording engineer:"`,
+     *     `"mixer:"`), optionally preceded by attribute words (Additional,
+     *     Assistant, Associate, Co, and — Engineer/Producer only —
+     *     Executive; word-split on `/[\s-]+/`, not just whitespace, since
+     *     MusicBrainz hyphen-attaches "co" to the following word, e.g.
+     *     `"co-recording engineer:"` — see debug/artist-roles.org, no real
+     *     example of this exists in debug/full.html, so it's unit-tested
+     *     synthetically only). Like "Recorded at event/place", positioned
+     *     last of this whole additive group (after them, still directly
+     *     before "ARs"): … → Recorded at place → [Recording engineer
+     *     attrs…] → Recording engineer → [Mixer attrs…] → Mixer →
+     *     [Engineer attrs…] → Engineer → [Producer attrs…] → Producer →
+     *     ARs. Attribute columns are prefixed with their own role's label
+     *     (`"Mixer (Assistant)"`, never a bare `"Assistant"`) for the same
+     *     header-collision reason as "Recorded at event"/"Recorded at
+     *     place" above — two different roles can independently use the
+     *     same attribute word elsewhere on the release. Trailing dates
+     *     (`"(on 1975-10-18)"`, `"(in 2015)"`) are dropped entirely,
+     *     ARs-only, same as "Recorded at event/place" — achieved for free
+     *     since only `<a>` anchors are ever extracted, never trailing
+     *     text/comment nodes.
+     *
+     *     Two DELIBERATE divergences from every other member of this
+     *     additive-column family, both driven by real data in
+     *     debug/full.html (a release with both a bare `<dt>mixer:</dt>`
+     *     and a separate `<dt>assistant mixer:</dt>` on the same track):
+     *     (1) `_findCreditDts` returns and MERGES every matching `<dt>` for
+     *     a role, not just the first in document order — no credited
+     *     person is silently dropped from a column literally named after
+     *     their role. Attribute columns become row-level "was this
+     *     attribute used by ANY of the merged entries" flags rather than
+     *     tied to one specific person. (2) `_findCreditDts`'s
+     *     attribute-word prefix check is STRICT — every leading word must
+     *     be a recognized attribute or the whole `<dt>` is rejected for
+     *     that role — unlike `_parseRecOfAttributes`'s lenient
+     *     silently-drop-an-unrecognized-word behavior. This is required
+     *     because "engineer" is both a standalone role and the tail of the
+     *     compound role "recording engineer": a lenient check would
+     *     wrongly accept `<dt>recording engineer:</dt>` as a bare
+     *     "engineer" credit too.
+     *
+     *     Also a deliberate departure from this function's own
+     *     copy-paste-per-family-member style (`_findRecOfDt` vs.
+     *     `_findRecordedAtDt` are separate, independently-written
+     *     functions): all 4 roles share one identical extraction shape,
+     *     differing only in role phrase/column label/attribute vocabulary
+     *     (unlike recOf vs. recordedAt, which genuinely differ in
+     *     *matching strategy* — dt-text-suffix vs. dt-substring+dd-glyph-
+     *     class), so `CREDIT_ROLES` is a small data table looped over
+     *     once, rather than 4 hand-duplicated blocks.
      *
      * Unlike every `ColumnDataExtractor` entry (`splitLocation`,
      * `splitArea`, `eventParts`, …), which are purely additive (read
@@ -7123,6 +7221,11 @@
         // release can have "recorded at" data with zero "recording of" data.
         const _pageHasRecordedAtEvent = _recOfEnabled && _anyTitleCellMatches(td => _findRecordedAtDt(td, 'eventlink') !== null);
         const _pageHasRecordedAtPlace = _recOfEnabled && _anyTitleCellMatches(td => _findRecordedAtDt(td, 'placelink') !== null);
+        // "Additional" — the "recorded at (place)" relationship's own
+        // "additional" attribute (see _recordedAtPlaceHasAdditional's
+        // JSDoc); implies _pageHasRecordedAtPlace by construction (a match
+        // requires a placelink dt to exist in the first place).
+        const _pageHasRecordedAtPlaceAdditional = _recOfEnabled && _anyTitleCellMatches(td => _recordedAtPlaceHasAdditional(_findRecordedAtDt(td, 'placelink')));
         const _presentRecOfAttributes = new Set();
         let _pageHasRecOfDate = false;
         if (_recOfEnabled) {
@@ -7138,6 +7241,39 @@
                     const _dt = _findRecOfDt(td);
                     _parseRecOfAttributes(_dt).forEach(attr => _presentRecOfAttributes.add(attr));
                     if (_parseRecOfDate(_dt?.nextElementSibling) !== null) _pageHasRecOfDate = true;
+                });
+            });
+        }
+
+        // "Recording engineer"/"Mixer"/"Engineer"/"Producer" credit
+        // columns — own dedicated setting (not `_recOfEnabled`), same
+        // page-wide-decision reasoning as everything else in this
+        // function (must scan every table.tbl/medium, since
+        // renderGroupedTable() clones one shared <thead> template from the
+        // first table). `_creditRoleState` accumulates, per role, whether
+        // ANY track on the release has that role at all, and the union of
+        // every attribute word used anywhere for it — see CREDIT_ROLES'
+        // JSDoc and `_findCreditDts` for the matching/merge rules.
+        const _creditRolesEnabled = Lib.settings.sa_enable_release_tracks_credit_role_columns !== false;
+        const _creditRoleState = new Map();
+        CREDIT_ROLES.forEach(role => _creditRoleState.set(role.key, { hasRole: false, attrs: new Set() }));
+        if (_creditRolesEnabled) {
+            _tables.forEach(table => {
+                const _thRow = table.querySelector(':scope > thead > tr');
+                const _tb = table.querySelector(':scope > tbody');
+                if (!_thRow || !_tb) return;
+                const _tIdx = Array.from(_thRow.querySelectorAll('th')).findIndex(th => th.textContent.trim() === 'Title');
+                if (_tIdx === -1) return;
+                _tb.querySelectorAll(':scope > tr').forEach(tr => {
+                    const td = tr.children[_tIdx];
+                    if (!td) return;
+                    CREDIT_ROLES.forEach(role => {
+                        const _matches = _findCreditDts(td, role.roleWords, role.attributeVocab);
+                        if (_matches.length === 0) return;
+                        const _state = _creditRoleState.get(role.key);
+                        _state.hasRole = true;
+                        _matches.forEach(m => m.attributes.forEach(a => _state.attrs.add(a)));
+                    });
                 });
             });
         }
@@ -7200,25 +7336,27 @@
             }
 
             // Attribute columns + "Recording of" + "Recording date" +
-            // "Recorded at event" + "Recorded at place" — purely
-            // additive (see this function's JSDoc), inserted directly
-            // before "ARs" (not chained off
+            // "Recorded at event" + "Additional" + "Recorded at place" —
+            // purely additive (see this function's JSDoc), inserted
+            // directly before "ARs" (not chained off
             // Title/Video/Disambiguation/Artist/Recording artist like
             // everything else). Each insertion below is `.before(ref)`
             // against the same fixed `ARs` reference, so — since a later
             // insertion against an unchanging reference always lands
             // closer to that reference than an earlier one — creating the
             // attribute columns FIRST, then "Recording of", then
-            // "Recording date", then the two "Recorded at" columns
-            // produces the desired final order: [attribute columns…],
-            // Recording of, Recording date, Recorded at event, Recorded
-            // at (place), ARs. `_newAttrThs` tracks only the ones created
-            // THIS pass, for the row loop below — mirrors how
+            // "Recording date", then "Recorded at event", then
+            // "Additional", then "Recorded at place" produces the desired
+            // final order: [attribute columns…], Recording of, Recording
+            // date, Recorded at event, Additional, Recorded at place, ARs.
+            // `_newAttrThs` tracks only the ones created THIS pass, for
+            // the row loop below — mirrors how
             // `_disambigTh` etc. being non-null (vs. already-existing)
             // gates row-level insertion everywhere else in this function.
             let _recOfTh = null;
             let _recOfDateTh = null;
             let _recordedAtEventTh = null;
+            let _recordedAtPlaceAdditionalTh = null;
             let _recordedAtPlaceTh = null;
             const _newAttrThs = [];
             if (_pageHasRecOf || _pageHasRecordedAtEvent || _pageHasRecordedAtPlace) {
@@ -7279,11 +7417,68 @@
                     _recordedAtEventTh.textContent = 'Recorded at event';
                     _arsHeaderRef.before(_recordedAtEventTh);
                 }
+                // "Additional" — the "recorded at (place)" relationship's
+                // own "additional" attribute (see
+                // _recordedAtPlaceHasAdditional's JSDoc for why this is a
+                // single boolean-style column, unlike the word-per-column
+                // REC_OF_ATTRIBUTES/CREDIT_ROLES pattern: "recorded at
+                // (place)" only ever declares this one attribute, so a
+                // whole extra-columns loop would be overkill). Inserted
+                // between "Recorded at event" and "Recorded at place" —
+                // right before the column it describes.
+                if (_pageHasRecordedAtPlaceAdditional && !_headerCells.some(th => th.textContent.trim() === 'Additional')) {
+                    _recordedAtPlaceAdditionalTh = document.createElement('th');
+                    _recordedAtPlaceAdditionalTh.textContent = 'Additional';
+                    _arsHeaderRef.before(_recordedAtPlaceAdditionalTh);
+                }
                 if (_pageHasRecordedAtPlace && !_headerCells.some(th => th.textContent.trim() === 'Recorded at place')) {
                     _recordedAtPlaceTh = document.createElement('th');
                     _recordedAtPlaceTh.textContent = 'Recorded at place';
                     _arsHeaderRef.before(_recordedAtPlaceTh);
                 }
+            }
+
+            // "Recording engineer"/"Mixer"/"Engineer"/"Producer" credit
+            // columns — same trailing-before-"ARs" positioning trick as
+            // the block above (later `.before(ref)` calls against the same
+            // fixed reference land closer to it), so looping CREDIT_ROLES
+            // in order, attribute columns then the role's own main column,
+            // produces: … Recorded at place → [Recording engineer attrs…]
+            // → Recording engineer → [Mixer attrs…] → Mixer → [Engineer
+            // attrs…] → Engineer → [Producer attrs…] → Producer → ARs.
+            // Attribute headers are prefixed with the role's own column
+            // label (e.g. "Mixer (Assistant)"), never a bare "Assistant" —
+            // two different roles can each use the same attribute word
+            // elsewhere on the release, and column identity is derived
+            // fresh from `th.textContent` on every render, so a shared
+            // bare-word header would collide exactly like a shared
+            // "Recorded at" would (see the block above's own comment).
+            const _creditRoleThs = []; // [{ role, mainTh, attrThs: [{attr, th}] }]
+            if (_creditRolesEnabled) {
+                const _arsHeaderRefForCredits = _hasArs
+                    ? _headerCells.find(th => th.textContent.trim() === 'ARs')
+                    : _arsTh;
+                CREDIT_ROLES.forEach(role => {
+                    const _state = _creditRoleState.get(role.key);
+                    if (!_state.hasRole) return;
+                    const _attrThs = [];
+                    role.attributeVocab.forEach(attr => {
+                        if (!_state.attrs.has(attr)) return;
+                        const _label = `${role.columnLabel} (${attr.charAt(0).toUpperCase() + attr.slice(1)})`;
+                        if (_headerCells.some(th => th.textContent.trim() === _label)) return;
+                        const _th = document.createElement('th');
+                        _th.textContent = _label;
+                        _arsHeaderRefForCredits.before(_th);
+                        _attrThs.push({ attr, th: _th });
+                    });
+                    let _mainTh = null;
+                    if (!_headerCells.some(th => th.textContent.trim() === role.columnLabel)) {
+                        _mainTh = document.createElement('th');
+                        _mainTh.textContent = role.columnLabel;
+                        _arsHeaderRefForCredits.before(_mainTh);
+                    }
+                    if (_mainTh || _attrThs.length > 0) _creditRoleThs.push({ role, mainTh: _mainTh, attrThs: _attrThs });
+                });
             }
 
             // Video then Disambiguation, chained right after Title in that
@@ -7308,7 +7503,8 @@
 
             if (!_disambigTh && !_recArtistTh && !_arsTh && !_acoustIdTh && !_isrcTh && !_videoTh &&
                 !_recOfTh && !_recOfDateTh && _newAttrThs.length === 0 &&
-                !_recordedAtEventTh && !_recordedAtPlaceTh) return; // already fully processed
+                !_recordedAtEventTh && !_recordedAtPlaceAdditionalTh && !_recordedAtPlaceTh &&
+                _creditRoleThs.length === 0) return; // already fully processed
 
             _tbody.querySelectorAll(':scope > tr').forEach(row => {
                 const _cells = Array.from(row.children);
@@ -7388,7 +7584,7 @@
                 // above: attribute columns, then Recording of, then
                 // Recording date, then Recorded at event, then Recorded at place.
                 if (_recOfTh || _recOfDateTh || _newAttrThs.length > 0 ||
-                    _recordedAtEventTh || _recordedAtPlaceTh) {
+                    _recordedAtEventTh || _recordedAtPlaceAdditionalTh || _recordedAtPlaceTh) {
                     const _recOfDt = _findRecOfDt(_titleTd);
                     const _recOfDdRaw = _recOfDt?.nextElementSibling;
                     const _recOfDd = _recOfDdRaw && _recOfDdRaw.tagName === 'DD' ? _recOfDdRaw : null;
@@ -7421,12 +7617,44 @@
                         if (_anchor) _td.appendChild(_anchor.cloneNode(true));
                         row.appendChild(_td);
                     }
-                    if (_recordedAtPlaceTh) {
+                    if (_recordedAtPlaceAdditionalTh) {
                         const _td = document.createElement('td');
-                        const _details = _recordedAtPlaceDetails(_findRecordedAtDt(_titleTd, 'placelink'));
-                        if (_details) _td.appendChild(_details);
+                        if (_recordedAtPlaceHasAdditional(_findRecordedAtDt(_titleTd, 'placelink'))) _td.textContent = 'additional';
                         row.appendChild(_td);
                     }
+                    if (_recordedAtPlaceTh) {
+                        row.appendChild(_buildRecordedAtPlaceTd(_findRecordedAtDt(_titleTd, 'placelink')) || document.createElement('td'));
+                    }
+                }
+
+                // <td> append order mirrors the header creation order
+                // above. For each role: its attribute columns (values
+                // merged — via Set union — across every matching <dt> for
+                // this role on this track, not just one), then its own
+                // main column (a <ul><li> merging every matching <dt>'s
+                // <dd> artists into one multi-row cell — see
+                // _buildCreditListTd's JSDoc for why this merges rather
+                // than taking the first match only, unlike everything
+                // else in this function).
+                if (_creditRoleThs.length > 0) {
+                    _creditRoleThs.forEach(({ role, mainTh, attrThs }) => {
+                        const _matches = _findCreditDts(_titleTd, role.roleWords, role.attributeVocab);
+                        if (attrThs.length > 0) {
+                            const _mergedAttrs = new Set();
+                            _matches.forEach(m => m.attributes.forEach(a => _mergedAttrs.add(a)));
+                            attrThs.forEach(({ attr }) => {
+                                const _td = document.createElement('td');
+                                if (_mergedAttrs.has(attr)) _td.textContent = attr;
+                                row.appendChild(_td);
+                            });
+                        }
+                        if (mainTh) {
+                            const _dds = _matches
+                                .map(m => m.dt.nextElementSibling)
+                                .filter(dd => dd && dd.tagName === 'DD');
+                            row.appendChild(_buildCreditListTd(_dds));
+                        }
+                    });
                 }
 
                 if (_arsTh) {
@@ -7606,6 +7834,46 @@
     }
 
     /**
+     * True when a `_findRecordedAtDt`(…, `'placelink'`) result's `<dt>`
+     * carries MusicBrainz's "additional" attribute for the "recorded at
+     * (place)" relationship — surfaced in the "Additional" column, right
+     * before "Recorded at place".
+     *
+     * MusicBrainz's relationship-type template for this attribute is
+     * `"{additional:additionally} recorded at"` (confirmed via the
+     * embedded relationship-type JSON on the edit-relationships page,
+     * search "recorded at" in debug/full.html) — i.e. when set, the `<dt>`
+     * reads **"additionally recorded at:"** (adverb), not "additional
+     * recorded at:" (unlike the credit-role columns' "additional
+     * recording engineer:"/etc., which use the adjective form directly as
+     * the attribute word — see `CREDIT_ROLES`). The cell value shown is
+     * still the canonical word `"additional"` (matching every other
+     * attribute column's convention of showing the base attribute word,
+     * not whatever inflected form MusicBrainz's sentence template uses).
+     * Deliberately a loose `/\badditionally\b/i` substring test on the
+     * whole `<dt>` text (mirrors `_findRecordedAtDt`'s own loose
+     * `/recorded at/i` matching philosophy) rather than an anchored
+     * prefix pattern, so it stays correct regardless of where MusicBrainz
+     * inserts the word in a combined "recorded at and mixed at:"-style
+     * phrase. No real-data example of this attribute exists in any
+     * captured snapshot — unverified against real MusicBrainz markup.
+     *
+     * The "recorded at (event)" relationship (a distinct link type) also
+     * declares an "additional" attribute in its own metadata, but its
+     * `reverse_link_phrase` (the direction shown on a recording's own
+     * tracklist) is plain `"recorded at"` with no `{additional:…}`
+     * template — i.e. MusicBrainz never actually renders it there, so
+     * "Recorded at event" intentionally gets no equivalent column.
+     *
+     * @param {?HTMLElement} dt - Result of `_findRecordedAtDt(titleTd,
+     *   'placelink')` (may be `null`).
+     * @returns {boolean}
+     */
+    function _recordedAtPlaceHasAdditional(dt) {
+        return !!dt && /\badditionally\b/i.test(dt.textContent);
+    }
+
+    /**
      * Extracts the event/place anchor from a `_findRecordedAtDt` result's
      * `<dd>` — mirrors the row-level work-anchor lookup for "Recording of",
      * filtering by href prefix rather than trusting anchor position: a
@@ -7636,32 +7904,222 @@
 
     /**
      * Builds the "Recorded at place" cell content from a
-     * `_findRecordedAtDt` result's `<dd>`: the place anchor (bare, or
-     * wrapped in `<span class="name-variation">` — see `_recordedAtDdAnchor`'s
-     * JSDoc) PLUS the following "in `<area>`, `<area>`, `<country>`" chain
-     * (area anchors, the `<span class="area-icon">` flag image, and the
-     * CSS-flag-background country `<span>`) — unlike `_recordedAtDdAnchor`
-     * (still used for "Recorded at event", where the anchor's own `<bdi>`
-     * text already spells out date/venue/location), the place anchor alone
-     * is just a bare venue name with none of that context, so the user
-     * asked for the area chain to come along. Drops only the trailing
-     * " (on YYYY-MM-DD)" parenthetical — that date stays in "ARs" only,
-     * matching how "Recording of"'s cell omits its own trailing date (kept
-     * in the separate "Recording date" column instead).
+     * `_findRecordedAtDt` result's `<dd>`, as a collapsable multi-row list
+     * — one `<li>` per place, each holding that place's own anchor (bare,
+     * or wrapped in `<span class="name-variation">` — see
+     * `_recordedAtDdAnchor`'s JSDoc) PLUS its own following "in `<area>`,
+     * `<area>`, `<country>`" chain (area anchors, the
+     * `<span class="area-icon">` flag image, and the CSS-flag-background
+     * country `<span>`) — unlike `_recordedAtDdAnchor` (still used for
+     * "Recorded at event", where the anchor's own `<bdi>` text already
+     * spells out date/venue/location), a bare place anchor has none of
+     * that context on its own. Always builds a `<ul><li>`, even for a
+     * single place, matching this project's established single-item-
+     * list-cell convention (no toggle, rendered untouched — see
+     * `_findCellListItems`) — callers must not special-case singular vs.
+     * plural.
+     *
+     * A single "recorded at:" relationship can credit MORE THAN ONE place
+     * in one `<dd>` (see debug/multiple-places.html,
+     * debug/multiple-places-2.html — e.g. a track recorded partly at one
+     * studio and partly at another) — MusicBrainz joins them with "
+     * and "/", " between each place's own `<span class="placelink">`
+     * marker. Splitting is STRUCTURAL (a new segment starts at every
+     * `span.placelink` direct child of `<dd>`), not by reading the
+     * literal separator text, since that's the same reliable per-place
+     * delimiter `_findRecordedAtDt`'s own glyph-presence check already
+     * relies on. The trailing separator text immediately before the NEXT
+     * place's marker (", " or " and ") is dropped from the end of the
+     * earlier segment; anything else trailing a place's own area chain —
+     * e.g. an "(<instrument>)" attribution wrapped in the same `<!-- -->`
+     * comment-node hints MusicBrainz uses elsewhere (see
+     * debug/multiple-places-2.html's "(strings)", and `_parseRecOfDate`'s
+     * "(on …)" for another example of this comment-hint pattern) — is
+     * kept, since only the text immediately preceding the NEXT place's
+     * marker is ever separator-only.
+     *
+     * Drops only a trailing " (on YYYY-MM-DD)" parenthetical at the very
+     * end of the whole `<dd>` (after the last place) — that date stays in
+     * "ARs" only, matching how "Recording of"'s cell omits its own
+     * trailing date (kept in the separate "Recording date" column
+     * instead).
      *
      * @param {?HTMLElement} dt - Result of `_findRecordedAtDt` (may be `null`).
-     * @returns {?DocumentFragment} `null` when `dt` has no place `<dd>`.
+     * @returns {?HTMLTableCellElement} `null` when `dt` has no place `<dd>`.
      */
-    function _recordedAtPlaceDetails(dt) {
+    function _buildRecordedAtPlaceTd(dt) {
         const _dd = dt?.nextElementSibling;
         if (!_dd || _dd.tagName !== 'DD') return null;
-        const _frag = document.createDocumentFragment();
-        Array.from(_dd.childNodes).forEach(n => _frag.appendChild(n.cloneNode(true)));
-        const _last = _frag.lastChild;
+        const _nodes = Array.from(_dd.childNodes).map(n => n.cloneNode(true));
+        const _last = _nodes[_nodes.length - 1];
         if (_last && _last.nodeType === Node.TEXT_NODE && /^\s*\(on\s+.*\)\s*$/.test(_last.textContent)) {
-            _frag.removeChild(_last);
+            _nodes.pop();
         }
-        return _frag;
+        const _segments = [];
+        _nodes.forEach(n => {
+            const _isPlaceMarker = n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && n.classList.contains('placelink');
+            if (_isPlaceMarker || _segments.length === 0) _segments.push([]);
+            _segments[_segments.length - 1].push(n);
+        });
+        _segments.forEach((seg, i) => {
+            if (i === _segments.length - 1) return;
+            const _tail = seg[seg.length - 1];
+            if (_tail && _tail.nodeType === Node.TEXT_NODE && /^[\s,]*(?:and[\s,]*)?$/i.test(_tail.textContent)) {
+                seg.pop();
+            }
+        });
+        const td = document.createElement('td');
+        const ul = document.createElement('ul');
+        _segments.forEach(seg => {
+            if (seg.length === 0) return;
+            const li = document.createElement('li');
+            seg.forEach(n => li.appendChild(n));
+            ul.appendChild(li);
+        });
+        if (ul.children.length) td.appendChild(ul);
+        return td;
+    }
+
+    /**
+     * Role descriptors for the "Recording engineer"/"Mixer"/"Engineer"/
+     * "Producer" credit columns (see `_findCreditDts`/`_buildCreditListTd`
+     * and `applyExtractTrackTitleData`'s JSDoc for the full design). Array
+     * order doubles as the desired final left-to-right column order,
+     * matching debug/artist-roles.org's own Group 1 (Recording engineer,
+     * Mixer) → Group 2 (Engineer, Producer) presentation order.
+     *
+     * `roleWords` is the base role phrase as it appears at the END of a
+     * `<dt>` (e.g. `<dt>recording engineer:</dt>`, `<dt>assistant mixer:
+     * </dt>`) — a `<dt>` matches a role only when its trailing words equal
+     * `roleWords` exactly AND every word before that (if any) is a member
+     * of `attributeVocab` (see `_findCreditDts`'s JSDoc for why this must
+     * be strict, not lenient).
+     */
+    const CREDIT_ROLES = [
+        { key: 'recEngineer', roleWords: ['recording', 'engineer'], columnLabel: 'Recording engineer',
+          attributeVocab: ['additional', 'assistant', 'associate', 'co'] },
+        { key: 'mixer', roleWords: ['mixer'], columnLabel: 'Mixer',
+          attributeVocab: ['additional', 'assistant', 'associate', 'co'] },
+        { key: 'engineer', roleWords: ['engineer'], columnLabel: 'Engineer',
+          attributeVocab: ['additional', 'assistant', 'associate', 'co', 'executive'] },
+        { key: 'producer', roleWords: ['producer'], columnLabel: 'Producer',
+          attributeVocab: ['additional', 'assistant', 'associate', 'co', 'executive'] }
+    ];
+
+    /**
+     * Finds every `<dt>` inside a track's bare `div.ars` (same
+     * classification as `_findRecOfDt`/`_findRecordedAtDt`: the sibling of
+     * any `div.ars.AcoustID…`/`div.ars.ISRC…`) matching a given credit
+     * role — e.g. `roleWords: ['mixer']` matches both `<dt>mixer:</dt>` and
+     * `<dt>assistant mixer:</dt>`, since "assistant" is a recognized
+     * attribute word.
+     *
+     * Unlike `_findRecOfDt` (single match, first-in-document-order) this
+     * returns **every** matching `<dt>`, not just the first — real data
+     * (`debug/full.html`) has tracks with BOTH a bare `<dt>mixer:</dt>`
+     * (Bob Clearmountain) AND a separate `<dt>assistant mixer:</dt>` (Paul
+     * Hamingson): two distinct credits for the same role. Per explicit
+     * instruction, all matches are merged (by the caller, into one
+     * multi-person cell) rather than dropping all but the first — unlike
+     * every other member of this additive-column family, which keeps the
+     * simpler "first match only" rule since none of them can have more
+     * than one legitimate value per track.
+     *
+     * Word-splitting uses `/[\s-]+/` (whitespace OR hyphen), not just
+     * whitespace: MusicBrainz renders the "co" attribute hyphen-attached to
+     * the following word (`"co-recording engineer:"`,
+     * `"co-executive engineer:"` — see debug/artist-roles.org), so a plain
+     * whitespace split would turn `"co-recording"` into one unmatched
+     * token instead of two. Safe generally here since none of the role
+     * words or attribute words themselves contain a hyphen.
+     *
+     * The attribute-word check is deliberately STRICT (every leading word
+     * must be a recognized attribute, or the whole `<dt>` is rejected for
+     * this role), unlike `_parseRecOfAttributes`'s lenient "silently drop
+     * an unrecognized word without invalidating the match" behavior. This
+     * is required because "engineer" is both a standalone role AND the
+     * tail of the compound role "recording engineer" — a lenient match
+     * would wrongly accept `<dt>recording engineer:</dt>` as a bare
+     * "engineer" credit too, since its last word literally is "engineer:".
+     * With the strict check, `roleWords: ['engineer']` correctly rejects
+     * it (leading word "recording" isn't a recognized attribute), while
+     * `roleWords: ['recording', 'engineer']` correctly accepts it.
+     *
+     * @param {HTMLTableCellElement} titleTd
+     * @param {string[]} roleWords - Lowercase words the `<dt>` must end
+     *   with, e.g. `['recording', 'engineer']`.
+     * @param {string[]} attributeVocab - Recognized attribute words for
+     *   this role (lowercase), e.g. `['additional', 'assistant', …]`.
+     * @returns {Array<{dt: HTMLElement, attributes: string[]}>} Every
+     *   matching `<dt>`, each paired with the attribute words found in its
+     *   own prefix (in `attributeVocab` order, deduplicated) — empty array
+     *   when this track has no such credit.
+     */
+    function _findCreditDts(titleTd, roleWords, attributeVocab) {
+        let _bareArsDiv = null;
+        titleTd.querySelectorAll(':scope > div.ars').forEach(d => {
+            const _classes = Array.from(d.classList);
+            if (!_classes.some(c => c.startsWith('AcoustID') || c.startsWith('ISRC'))) _bareArsDiv = d;
+        });
+        if (!_bareArsDiv) return [];
+        const _results = [];
+        Array.from(_bareArsDiv.querySelectorAll(':scope > dl.ars > dt')).forEach(dt => {
+            const _raw = dt.textContent.trim();
+            if (!/:$/.test(_raw)) return;
+            const _words = _raw.slice(0, -1).trim().split(/[\s-]+/).filter(Boolean).map(w => w.toLowerCase());
+            if (_words.length < roleWords.length) return;
+            const _tail = _words.slice(_words.length - roleWords.length);
+            if (_tail.join(' ') !== roleWords.join(' ')) return;
+            const _prefixWords = _words.slice(0, _words.length - roleWords.length);
+            if (!_prefixWords.every(w => attributeVocab.includes(w))) return;
+            const _attributes = attributeVocab.filter(a => _prefixWords.includes(a));
+            _results.push({ dt, attributes: _attributes });
+        });
+        return _results;
+    }
+
+    /**
+     * Builds a `<td><ul><li>…</li>…</ul></td>` merging every credited
+     * artist across one or more `<dd>`s (one per matched `_findCreditDts`
+     * `<dt>`) into a single collapsable multi-row cell — e.g. a "Mixer"
+     * cell merging a bare `mixer:` `<dd>` (one artist) and an
+     * `assistant mixer:` `<dd>` (another artist) into one two-item list.
+     *
+     * Always builds a `<ul><li>`, even for a single merged artist — a
+     * single-item list cell is still a valid list cell per this project's
+     * established convention (no toggle, rendered untouched; see
+     * `_findCellListItems`), so callers must not special-case singular vs.
+     * plural.
+     *
+     * Deliberately CLONES each artist anchor (never moves), unlike
+     * `_buildMultiRowArsTd` (which moves nodes out of an AcoustID/ISRC
+     * `div.ars` that has no other purpose) — the bare `div.ars` here is
+     * shared with "ARs"/"Recording of"/"Recorded at event"/"Recorded at
+     * place", which must keep their exact original content untouched (see
+     * this function's caller in `applyExtractTrackTitleData`'s JSDoc for
+     * the "never touch `_bareArsDiv`" contract).
+     *
+     * Splitting is purely by anchor COUNT (`:scope > a` per `<dd>`), same
+     * as `_buildMultiRowArsTd`'s ISRC case — it never reads the literal
+     * ","/" and " separator text between artists, so it's agnostic to how
+     * MusicBrainz joins multiple credited artists in one `<dd>`.
+     *
+     * @param {HTMLElement[]} dds - The `<dd>` elements to merge (each the
+     *   `nextElementSibling` of one `_findCreditDts` match).
+     * @returns {HTMLTableCellElement}
+     */
+    function _buildCreditListTd(dds) {
+        const td = document.createElement('td');
+        const ul = document.createElement('ul');
+        dds.forEach(dd => {
+            Array.from(dd.querySelectorAll(':scope > a')).forEach(a => {
+                const li = document.createElement('li');
+                li.appendChild(a.cloneNode(true));
+                ul.appendChild(li);
+            });
+        });
+        if (ul.children.length) td.appendChild(ul);
+        return td;
     }
 
     /**
@@ -10898,9 +11356,12 @@
                 // "Disambiguation"/"Video"/"Recording artist" are
                 // deliberately excluded — plain short content, no clamp
                 // needed. "ARs" is prose-shaped (dl/dt/dd); "AcoustIDs"/
-                // "ISRCs" are list-shaped (ul/li) — both auto-detected by
-                // initCollapsableColumns() once declared here.
-                collapsableColumns: [ 'ARs', 'AcoustIDs', 'ISRCs' ],
+                // "ISRCs"/"Recording engineer"/"Mixer"/"Engineer"/
+                // "Producer"/"Recorded at place" are list-shaped (ul/li) —
+                // all auto-detected by initCollapsableColumns() once
+                // declared here. "Recorded at event" is deliberately
+                // excluded — always a single anchor, never a list.
+                collapsableColumns: [ 'ARs', 'AcoustIDs', 'ISRCs', 'Recording engineer', 'Mixer', 'Engineer', 'Producer', 'Recorded at place' ],
                 stickyColumn: 'Title'
             },
             tableMode: 'multi',

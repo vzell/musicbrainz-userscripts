@@ -3190,3 +3190,234 @@ East Rutherford,  New Jersey, United States" (bug 1) and "Nassau Coliseum
 in Uniondale,  New York, United States" (bug 2, previously empty) with
 both flags preserved and no trailing date in either.
 
+## 2026-08-08 — engineer/mixer/producer credit columns (WIP.16)
+
+Spec: `debug/artist-roles.org`. Snapshot: `debug/full.html` (raw
+`/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc/edit-relationships` source,
+NOT rendered — the actual pre-script `<dl class="ars">` markup, unlike
+`with-place.html`/`without-place.html` above which were rendered
+snapshots).
+
+**Real dt-label inventory found** (grepped the whole 78MB file): only 5
+distinct role labels exist — `producer:` (40x, always 3 artists "and"-joined,
+no date), `recording engineer:` (40x/21 distinct values, single artist +
+`<!-- -->(on YYYY-MM-DD)` — note the HTML comment sitting between the anchor
+and the date text), `mixer:` (40x, 39 with no date, 1 with `<!-- -->(in
+2015)`), `assistant mixer:` (40x, single artist, no date — the one real
+attribute-prefixed example in this snapshot), bare `engineer:` (9x, single
+artist, no date, confirmed standalone — immediately followed by
+`<dt>producer:</dt>`, not a truncated "recording engineer:"). No `co-`,
+`additional`, `associate`, or `executive` combos exist anywhere in this
+release — those remain spec-only, unverified against real MB markup.
+
+**Real duplicate-role-credit case, confirmed in one `<dl class="ars">`**:
+`<dt>assistant mixer:</dt><dd>...Paul Hamingson...</dd><dt>mixer:</dt>
+<dd>...Bob Clearmountain...</dd>` — two separate `<dt>`s for the same base
+role on the same track. This directly motivated the merge design (see
+below) rather than reusing the rest of this column family's "first match
+only" convention, which would have silently dropped one of the two people.
+
+**Design decisions, resolved with the user before implementation** (each
+time the recommended option was chosen):
+1. **Merge, don't take-first**: `_findCreditDts` returns every matching
+   `<dt>` for a role (not just the first), and the row-population code
+   merges all their `<dd>`'s artists into one multi-person list cell.
+   Attribute columns become row-level "used by any merged entry" flags,
+   not tied to a specific person. Deliberate divergence from
+   `_findRecOfDt`/`_findRecordedAtDt`'s established "first match only, in
+   document order" rule — driven by the real duplicate-credit case above.
+2. **Per-role-prefixed attribute headers** (`"Mixer (Assistant)"`, never a
+   bare `"Assistant"`) — avoids header-text collisions since two different
+   roles could each independently use the same attribute word elsewhere on
+   a release; column identity is derived from `th.textContent` on every
+   render (same reasoning already established for "Recorded at
+   event"/"Recorded at place" needing separate columns).
+3. **New dedicated setting** (`sa_enable_release_tracks_credit_role_columns`),
+   not reusing `sa_enable_release_tracks_recording_of_columns` — matches
+   the AcoustIDs/ISRCs precedent of independent toggles.
+4. **Trailing dates dropped entirely**, ARs-only — no "X date" columns for
+   these 4 roles, unlike "Recording of"'s "Recording date". Achieved for
+   free since `_buildCreditListTd` only ever extracts `:scope > a` anchors.
+
+**Disambiguation bug that had to be designed around**: a naive "`<dt>` ends
+with `<role>:`" match would be wrong for bare `engineer:` vs. `recording
+engineer:` — the latter also literally ends in the substring "engineer:".
+`_findCreditDts` instead requires the `<dt>`'s trailing N words to exactly
+equal the target role phrase AND every word before that (if any) to be a
+recognized attribute word for that role, or the whole `<dt>` is rejected —
+deliberately STRICT, unlike `_parseRecOfAttributes`'s lenient "silently
+drop an unrecognized word without invalidating the match" behavior (recOf
+never had this compound-role-name collision problem, since there's only
+ever one "recording of" role).
+
+**Hyphen-tokenization discovery**: the org file's own examples show "co"
+renders hyphen-attached to the following word ("co-recording engineer:",
+"co-executive engineer:"), not space-separated like the other attribute
+words. `_findCreditDts` splits on `/[\s-]+/` (whitespace OR hyphen), not
+plain `/\s+/`, to handle this — safe since no role word or attribute word
+itself contains a hyphen. No real example of this exists in
+`debug/full.html`; verified only via a synthetic jsdom test (hand-built
+`<dt>` nodes), not against real MusicBrainz markup — flagged as such,
+matching this codebase's existing "unverified in a live browser" caveat
+convention used elsewhere.
+
+**`CREDIT_ROLES` data-driven loop, not copy-paste-per-role**: unlike
+`_findRecOfDt` vs. `_findRecordedAtDt` (hand-duplicated because they
+differ in *matching strategy* — dt-text-suffix-match vs.
+dt-substring+dd-glyph-class-match), all 4 new roles share one identical
+extraction shape, differing only in role phrase/column label/attribute
+vocabulary — a textbook table-driven case. A single `CREDIT_ROLES` array is
+looped over for gating, header insertion, and row population, so the merge
+behavior and disambiguation logic are implemented once, not reimplemented
+(and potentially inconsistently) 4 times.
+
+**Verified via jsdom** (real function source extracted from the script,
+`eval`'d against jsdom's `document`/`Node`, run against the real
+`<dl class="ars">` block containing recording engineer/engineer/producer/
+assistant mixer/mixer for one track in `debug/full.html`): bare
+`engineer:` matches only the `engineer` role (Toby Scott), not
+`recEngineer`; `recording engineer:` matches only `recEngineer` (Jimmy
+Iovine), not bare `engineer`; `producer:` correctly yields 3 `<li>`s (Jon
+Landau, Chuck Plotkin, Bruce Springsteen) regardless of comma-vs-"and"
+join text; `mixer` correctly MERGES the bare and `assistant mixer:` `<dt>`s
+into one 2-item list (Paul Hamingson, Bob Clearmountain) with a unioned
+`{'assistant'}` attribute set; no date text or HTML comment node leaked
+into any built `<li>`. A separate 3-table jsdom fixture confirmed the
+page-wide gating union correctly detects `mixer`/`producer` roles present
+on only SOME tables (mediums) while leaving `recEngineer`/`engineer`
+correctly absent. Synthetic hyphen tests (§ above) also passed.
+
+## 2026-08-08 — "Recorded at place" multiple places per relationship (WIP.17)
+
+User-supplied isolated `<dd>` snippets (raw source, not rendered):
+`multiple-places.html` (from `/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd`,
+2 places) and `multiple-places-2.html` (from
+`/release/356e8b33-4504-442a-ac3d-34af95e6ea1d`, 3 places).
+
+**Confirmed shape**: a single "recorded at:" relationship's `<dd>` can hold
+MORE THAN ONE place, each with its own full "in `<area>`, `<area>`,
+`<country>`" chain, all as siblings inside the one `<dd>` — not multiple
+separate `<dt>recorded at:</dt>` entries (unlike the engineer/mixer
+duplicate-credit case from WIP.16, this is genuinely one relationship
+naming several places). Places are joined by ", " and/or " and " between
+them. Each place's content is reliably delimited by its own leading
+`<span class="placelink"></span>` marker — the exact same structural
+signal `_findRecordedAtDt`'s glyph-presence check already keys off — so
+splitting on that marker (rather than trying to parse the "and"/","
+wording, which MusicBrainz doesn't apply consistently — 2-place case uses
+" and " between the only pair; 3-place case uses ", " then " and "
+between successive pairs, i.e. an Oxford-less list) is robust regardless
+of how many places or what separator words appear.
+
+**Extra wrinkle found in `multiple-places-2.html`**: place 1 ("Power
+Station at BerkleeNYC") has a per-place instrument attribution — `<!--
+--> (<a href="/instrument/...">strings</a>)<!-- -->` — sitting between the
+end of its area chain and the ", " that joins to place 2 (same `<!--
+-->(...)<!-- -->` comment-node-wrapped-parenthetical convention already
+seen for dates, e.g. `_parseRecOfDate`'s "(on …)"). Also place 3 ("Thrill
+Hill Recording") has BOTH a name-variation wrapper (alias name, same
+convention as the WIP.15 fix) AND its own `<span class="comment">`
+("Springsteen's home studio in Colts Neck"). Confirms the per-place split
+must only strip the EXACT separator text immediately preceding the next
+place's marker, not anything else trailing a place's own content — an
+overly aggressive "everything after the area chain is separator" rule
+would have destroyed the "(strings)" attribution.
+
+**Implementation**: `_recordedAtPlaceDetails` (WIP.15) replaced by
+`_buildRecordedAtPlaceTd`, which now always returns a `<td><ul><li>…`
+(never a flat fragment) — walks the `<dd>`'s cloned child nodes, starts a
+new segment at every direct-child `<span class="placelink">`, and for
+every segment except the last, drops its final child IF that child is a
+text node matching `/^[\s,]*(?:and[\s,]*)?$/i` (pure separator content) —
+this correctly leaves the "(strings)" comment/link/comment sequence
+untouched in place 1's segment (since the actual separator text ", " is
+its own distinct trailing text node, added to the segment AFTER the
+instrument parenthetical), while still stripping the " and "/", " joins
+between every other pair of places. The whole-`<dd>` trailing "(on
+YYYY-MM-DD)" strip (WIP.15) still runs first, before segmenting. Single-
+place rows now produce a 1-item list instead of a flat fragment — same
+content, matching this project's established single-item-list-cell
+convention (no toggle, rendered untouched); added `'Recorded at place'` to
+`release-tracks`'s `collapsableColumns` so the toggle machinery actually
+engages for the multi-place case. `'Recorded at event'` was deliberately
+NOT touched or added to `collapsableColumns` — the user's request and both
+supplied snapshots are place-only; no evidence of a multi-event `<dd>` has
+been seen, and an event anchor's own `<bdi>` text already spells out
+date/venue/location with no separate area chain to split.
+
+**Verified via jsdom** against both real snippets plus a regression check
+against the WIP.15 single-place and name-variation cases (function source
+extracted verbatim from the script): `multiple-places.html` → 2 `<li>`s
+(Henson Recording Studios / Southern Tracks), each with its full area
+chain and no leaked "and"; `multiple-places-2.html` → 3 `<li>`s (Power
+Station at BerkleeNYC, with "(strings)" correctly retained / Stone Hill
+Studio / Thrill Hill Recording, name-variation and its own comment both
+correctly retained), no leaked ", "/" and " separators anywhere; the two
+WIP.15 regression cases (Meadowlands Arena, Nassau Coliseum) each still
+produce exactly one `<li>` with identical content to before.
+
+## 2026-08-08 — "Additional" attribute column for "recorded at (place)" (WIP.18)
+
+User request, no new debug HTML snapshot supplied this time. Investigated
+via the embedded relationship-type JSON already present on the
+edit-relationships page (search `"recorded at"` in `debug/full.html` —
+this JSON describes every MB relationship type's phrase templates and
+attributes, independent of any specific release's actual data).
+
+**Confirmed**: the "recorded at" (place) relationship type (id 693,
+`type0: "place"`) declares an `additional` attribute (min 0, max 1) whose
+`reverse_link_phrase` template is literally
+`"{additional:additionally} recorded at"` — i.e. when set, the `<dt>` a
+recording's own tracklist shows reads **"additionally recorded at:"**
+(adverb), not "additional recorded at:" (adjective). This is a different
+inflection convention than the engineer/mixer/producer credit columns
+(WIP.16), which use the adjective "additional" directly as the rendered
+prefix word (e.g. "additional recording engineer:") — MusicBrainz's
+phrase templates aren't uniform across relationship types, so each new
+attribute needs its own real-wording check rather than assuming the
+credit-roles convention generalizes.
+
+**The "recorded at" (event) relationship type (id 809, `type0: "event"`)
+also declares the same `additional` attribute**, but its own
+`reverse_link_phrase` is plain `"recorded at"` with no `{additional:…}`
+template at all — MusicBrainz's UI apparently never renders this
+attribute in the recording-to-event direction, only recording-to-place.
+Per this finding, "Recorded at event" intentionally gets no "Additional"-
+equivalent column; only "Recorded at place" does.
+
+**No real-data example of a track using this attribute exists in any
+snapshot captured so far** (`full.html`, `with-place.html`,
+`without-place.html`, `multiple-places.html`, `multiple-places-2.html`,
+`place-complete.html`) — grepped all of them for "additionally recorded
+at", zero hits. Implementation and verification are therefore based on
+the confirmed relationship-type template only, not observed real markup —
+flagged explicitly, matching this codebase's established "unverified
+against real markup" caveat convention (see WIP.16's hyphen-tokenization
+entry for the same kind of caveat).
+
+**Implementation**: new `_recordedAtPlaceHasAdditional(dt)` — a loose
+`/\badditionally\b/i` substring test against the whole `<dt>` text
+(mirrors `_findRecordedAtDt`'s own loose `/recorded at/i` matching
+philosophy, tolerant of MB's "recorded at and mixed at:"-style phrase
+combining). A single boolean-style "Additional" column, not a
+word-per-column loop like `REC_OF_ATTRIBUTES`/`CREDIT_ROLES` — this
+relationship declares only the one attribute, so a whole extra-columns
+mechanism would be overkill. Positioned via the same
+`.before(_arsHeaderRef)` ordering trick as every other column in this
+family, inserted between the existing "Recorded at event" and "Recorded
+at place" blocks so it lands exactly there in the final column order:
+… → Recorded at event → **Additional** → Recorded at place → [credit
+columns] → ARs.
+
+**Verified via a synthetic jsdom test** (real function source extracted
+from the script; hand-built `<dt>` nodes, since no real example exists):
+`"additionally recorded at:"` → `hasAdditional = true`; plain `"recorded
+at:"` → `false`; `"additionally recorded at and mixed at:"` → `true`
+(combined-phrase case still detected); a hypothetical adjective-form
+`"additional recorded at:"` (NOT what MB actually renders, tested only as
+a word-boundary regex sanity check) → correctly `false`, confirming
+`\badditionally\b` doesn't accidentally match the unrelated word
+"additional". `_findRecordedAtDt` itself required no changes — its
+existing loose substring match already tolerates the "additionally "
+prefix.
+
