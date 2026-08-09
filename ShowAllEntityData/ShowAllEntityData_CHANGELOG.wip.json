@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.54",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "'release-tracks': for a live-recording track (\"Recording of work\" carries the \"live\" attribute) with a known \"Recording date\", each entity credited in \"Recording engineer\", \"Vocals\", \"Instruments\", \"Recorded at event\", and \"Recorded at place\" now gets a small ⚠️/❌ icon (native tooltip) whenever its own date attribute doesn't exactly match \"Recording date\": ⚠️ when it has a date but it differs (may be from a different performance), ❌ when it has no date attribute at all. Comparison is an exact string match, with no leniency for differing date precision. Deliberately excludes \"Engineer\"/\"Producer\"/\"Mixer\"/\"Miscellaneous support\"/\"Performer\"/\"Produced for label\"/\"Mixed at place\". New setting: \"Flag live-recording credit dates that don't match 'Recording date'\" (default on), depends on the existing \"Recording of\"/\"Recorded at\"/\"Recorded in\"/\"Mixed at\" columns setting for the \"Recording date\" data itself."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.53",
     "date": "2026-08-10",
     "sections": [

@@ -1752,6 +1752,27 @@
                          'is left completely unchanged — every extracted link appears in both places.'
         },
 
+        sa_enable_release_tracks_live_date_check: {
+            label: 'Flag live-recording credit dates that don\'t match "Recording date"',
+            type: 'checkbox',
+            default: true,
+            description: 'For a track whose "Recording of work" cell carries the "live" attribute ' +
+                         '(e.g. "The Rising (live)"), compares that track\'s "Recording date" against ' +
+                         'each entity\'s own date attribute in five columns — "Recording engineer", ' +
+                         '"Vocals", "Instruments", "Recorded at event", and "Recorded at place" — and ' +
+                         'appends a small icon with an explanatory tooltip when they disagree: "⚠️" when ' +
+                         'that entity has its own date but it differs from "Recording date" (may belong ' +
+                         'to a different performance), "❌" when it has no date attribute at all (can\'t ' +
+                         'be confirmed either way). Comparison is an exact string match — no allowance ' +
+                         'for differing date precision. A track without the "live" attribute, or with ' +
+                         'no "Recording date" to compare against, is never flagged. Deliberately ' +
+                         'excludes "Engineer"/"Producer"/"Mixer"/"Miscellaneous support"/ ' +
+                         '"Performer"/"Produced for label"/"Mixed at place". Depends on "Show \'Recording ' +
+                         'of\' / \'Recorded at\' / \'Recorded in\' / \'Mixed at\' columns" above for the ' +
+                         '"Recording date" data itself, and on each target column\'s own setting for that ' +
+                         'column to exist in the first place.'
+        },
+
         sa_enable_release_tracks_dynamic_ar_columns: {
             label: 'Auto-discover columns for every other relationship type',
             type: 'checkbox',
@@ -7396,10 +7417,12 @@
      *     attribute words in the same parenthetical, comma-separated, e.g.
      *     `"Karl Egsieker (assistant/co, task: Second Engineer)"` — see
      *     `_buildCreditListItem`'s JSDoc for the exact composition rules.
-     *     Trailing dates (`"(on 1975-10-18)"`, `"(in 2015)"`) are dropped
-     *     entirely, ARs-only, same as "Recorded at event/place" —
-     *     achieved for free since only `<a>` anchors are ever extracted,
-     *     never trailing text/comment nodes.
+     *     A trailing date (`"(on 1975-10-18)"`, `"(in 2015)"`) is not its
+     *     own column here — it's just whatever free-text annotation
+     *     happened to be present, indistinguishable at render time from a
+     *     task/role note — EXCEPT for "Recording engineer" specifically,
+     *     whose date (if any) also feeds the live-recording date check
+     *     below.
      *
      *     Per-artist annotations, appended inline (see
      *     `_buildCreditListItem`): a credited instrument, rendered as an
@@ -7524,6 +7547,27 @@
      *     `renderGroupedTable()`'s tail alongside the existing "Recording
      *     of"/"Recorded at event"/"Recorded at place" calls.
      *
+     *   - Live-recording date verification (own setting,
+     *     `sa_enable_release_tracks_live_date_check`, gated additionally on
+     *     `_recOfEnabled` — see `_liveDateCheckEnabled`): for a track whose
+     *     "Recording of work" carries the `live` attribute AND has a
+     *     "Recording date", each entity named in exactly five columns —
+     *     "Recording engineer", "Vocals", "Instruments", "Recorded at
+     *     event", "Recorded at place" — gets a trailing `⚠️`/`❌`
+     *     `<span class="mb-live-date-flag">` (native `title` tooltip) when
+     *     its OWN date attribute doesn't exactly match "Recording date"
+     *     (`⚠️`, via `_liveDateCheckResult`) or is missing entirely (`❌`).
+     *     Deliberately excludes every other credit/place column
+     *     ("Engineer"/"Producer"/"Mixer"/"Miscellaneous support"/
+     *     "Performer"/"Produced for label"/"Mixed at place") — "Mixed at
+     *     place" in particular shares `_buildRecordedAtPlaceTd` with
+     *     "Recorded at place" but is opted out by simply never passing the
+     *     `liveDateCtx` parameter at its own call site. Comparison is exact
+     *     string match only, no leniency for differing date precision. See
+     *     `_liveDateCtx`'s own computation (right after `_recOfDd` is
+     *     resolved, above) and `_parseCreditDateAnnotation`/
+     *     `_parseBareParenDate`/`_liveDateCheckResult`/`_appendLiveDateFlag`.
+     *
      * Unlike every `ColumnDataExtractor` entry (`splitLocation`,
      * `splitArea`, `eventParts`, …), which are purely additive (read
      * `sourceCell`, return new `<td>`s, never mutate the source), this
@@ -7602,6 +7646,11 @@
         // entirely, zero overhead, when off.
         const _recOfEnabled = Lib.settings.sa_enable_release_tracks_recording_of_columns !== false;
         const _pageHasRecOf = _recOfEnabled && _anyTitleCellMatches(td => _findRecOfDt(td) !== null);
+        // Live-recording date verification (Recording engineer/Vocals/
+        // Instruments/Recorded at event/Recorded at place) — requires
+        // `_recOfEnabled` since without it there's no "Recording date" data
+        // to compare against at all; see _liveDateCheckResult's JSDoc.
+        const _liveDateCheckEnabled = Lib.settings.sa_enable_release_tracks_live_date_check !== false && _recOfEnabled;
         // "Recorded at event"/"Recorded at place" — same purely-additive
         // family, same master setting, but independent of _pageHasRecOf: a
         // release can have "recorded at" data with zero "recording of" data.
@@ -8191,11 +8240,26 @@
                 // header creation order above: Recording of, then
                 // Recording date, then Recorded at event, then Recorded
                 // at place, then Recorded in area.
+                // Live-recording date verification context for this row —
+                // declared here (not inside the `if` below) so it stays
+                // visible to the later Vocals/Instruments and CREDIT_ROLES
+                // row-population blocks further down, which also need it.
+                // Stays `null` (no checking, no icons) whenever this track
+                // isn't a live recording or has no "Recording date" to
+                // compare against — see _liveDateCheckResult's JSDoc.
+                let _liveDateCtx = null;
                 if (_recOfTh || _recOfDateTh ||
                     _recordedAtEventTh || _recordedAtPlaceTh || _recordedInAreaTh) {
                     const _recOfDt = _findRecOfDt(_titleTd);
                     const _recOfDdRaw = _recOfDt?.nextElementSibling;
                     const _recOfDd = _recOfDdRaw && _recOfDdRaw.tagName === 'DD' ? _recOfDdRaw : null;
+                    if (_liveDateCheckEnabled) {
+                        const _recOfAttrsForLiveCheck = _parseRecOfAttributes(_recOfDt);
+                        if (_recOfAttrsForLiveCheck.includes('live')) {
+                            const _liveRecordingDate = _parseRecOfDate(_recOfDd);
+                            if (_liveRecordingDate) _liveDateCtx = { recordingDate: _liveRecordingDate };
+                        }
+                    }
                     if (_recOfTh) {
                         const _td = document.createElement('td');
                         const _workAnchor = _recOfDd ? _recOfDd.querySelector(':scope > a') : null;
@@ -8250,19 +8314,24 @@
                             // "Recorded at place"'s own trailing date — see
                             // debug/double-ars.html).
                             const _eventDd = _eventDt?.nextElementSibling;
+                            let _eventDateText = null;
                             if (_eventDd && _eventDd.tagName === 'DD') {
                                 const _dateNode = Array.from(_eventDd.childNodes)
                                     .find(n => n.nodeType === Node.TEXT_NODE && /^\s*\(.*\)\s*$/.test(n.textContent));
                                 if (_dateNode) {
                                     _td.appendChild(document.createTextNode(' '));
                                     _td.appendChild(_dateNode.cloneNode(true));
+                                    _eventDateText = _dateNode.textContent;
                                 }
+                            }
+                            if (_liveDateCtx) {
+                                _appendLiveDateFlag(_td, _liveDateCheckResult(_liveDateCtx.recordingDate, _parseBareParenDate(_eventDateText)));
                             }
                         }
                         row.appendChild(_td);
                     }
                     if (_recordedAtPlaceTh) {
-                        row.appendChild(_buildRecordedAtPlaceTd(_findRecordedAtDt(_titleTd, 'placelink')));
+                        row.appendChild(_buildRecordedAtPlaceTd(_findRecordedAtDt(_titleTd, 'placelink'), _liveDateCtx));
                     }
                     if (_recordedInAreaTh) {
                         row.appendChild(_buildRecordedInAreaTd(_findRecordedInDt(_titleTd)) || document.createElement('td'));
@@ -8284,8 +8353,8 @@
                 // the header creation order above.
                 if (_instrumentsTh || _vocalsTh) {
                     const _instrumentVocalsEntries = _findInstrumentVocalsEntries(_titleTd);
-                    if (_vocalsTh) row.appendChild(_buildVocalsTd(_instrumentVocalsEntries));
-                    if (_instrumentsTh) row.appendChild(_buildInstrumentsTd(_instrumentVocalsEntries));
+                    if (_vocalsTh) row.appendChild(_buildVocalsTd(_instrumentVocalsEntries, _liveDateCtx));
+                    if (_instrumentsTh) row.appendChild(_buildInstrumentsTd(_instrumentVocalsEntries, _liveDateCtx));
                 }
 
                 // <td> append order mirrors the header creation order
@@ -8302,7 +8371,11 @@
                         const _entries = _matches
                             .map(m => ({ dd: m.dt.nextElementSibling, attributes: m.attributes }))
                             .filter(e => e.dd && e.dd.tagName === 'DD');
-                        row.appendChild(_buildCreditListTd(_entries));
+                        // Live-recording date verification only applies to
+                        // "Recording engineer" — every other role here
+                        // (Engineer/Producer/Mixer/Miscellaneous support) is
+                        // out of scope, so they get `null` (no-op).
+                        row.appendChild(_buildCreditListTd(_entries, role.key === 'recEngineer' ? _liveDateCtx : null));
                     });
                 }
 
@@ -8733,9 +8806,17 @@
      *
      * @param {HTMLElement[]} dts - Result of `_findRecordedAtDt`/
      *   `_findMixedAtDt` — every matching `<dt>` to merge into one cell.
+     * @param {?{recordingDate: string}} [liveDateCtx] - Live-recording date
+     *   verification context (see `_liveDateCheckResult`), or `null`/
+     *   omitted. Only ever passed at the "Recorded at place" call site —
+     *   deliberately NOT passed for "Mixed at place" (same builder, but
+     *   out of scope for this feature) — so each source `<dt>`'s own
+     *   `_dateText` (computed below) is compared once and the resulting
+     *   flag applied to every place `<li>` that `<dt>` produces, the same
+     *   way `_hasAdditional` already is.
      * @returns {HTMLTableCellElement}
      */
-    function _buildRecordedAtPlaceTd(dts) {
+    function _buildRecordedAtPlaceTd(dts, liveDateCtx = null) {
         const td = document.createElement('td');
         const ul = document.createElement('ul');
         (dts || []).forEach(dt => {
@@ -8775,6 +8856,10 @@
             // specific place, so it's appended to EVERY place `<li>` this
             // `<dt>`'s `<dd>` produces, not just the first.
             const _hasAdditional = _recordedAtPlaceHasAdditional(dt);
+            // Computed once per source `<dt>` (like `_hasAdditional` above),
+            // not per place — every place `<li>` this `<dt>`'s `<dd>`
+            // produces shares the same date, so it shares the same flag.
+            const _liveResult = liveDateCtx ? _liveDateCheckResult(liveDateCtx.recordingDate, _parseCreditDateAnnotation(_dateText)) : null;
             _segments.forEach(seg => {
                 if (seg.length === 0) return;
                 const li = document.createElement('li');
@@ -8790,6 +8875,7 @@
                 if (_dateText) {
                     li.appendChild(document.createTextNode(` (${_dateText})`));
                 }
+                _appendLiveDateFlag(li, _liveResult);
                 ul.appendChild(li);
             });
         });
@@ -9608,6 +9694,104 @@
     }
 
     /**
+     * Recognizes a date-shaped free-text annotation (see
+     * `_findCreditSegmentTextAnnotation`, and the equivalent trailing-date
+     * text `_buildRecordedAtPlaceTd` already parses) — `"on YYYY[-MM[-DD]]"`,
+     * `"in YYYY[-MM]"`, or `"from YYYY[-MM] until YYYY[-MM[-DD]]"` — as
+     * opposed to a task/note annotation like `"(task: …)"` or `"(other
+     * vocals […])"`. Used by the live-recording date verification feature
+     * (see `_liveDateCheckResult`) to tell "this credit has a date, and
+     * it's this value" apart from "this credit has some other kind of
+     * annotation, so effectively no date at all".
+     *
+     * @param {?string} annotationText - Result of
+     *   `_findCreditSegmentTextAnnotation`, or any other free-text
+     *   parenthetical content sharing the same wording convention.
+     * @returns {?{compareValue: string, raw: string}} `compareValue` is the
+     *   digits/dashes after the leading keyword (a range is kept as one
+     *   string, e.g. `"2001-11 until 2002"`, so it can never accidentally
+     *   exact-match a single "Recording date" value); `raw` is the original
+     *   annotation text, for tooltip display. `null` when `annotationText`
+     *   isn't date-shaped at all (including when it's `null`/empty).
+     */
+    function _parseCreditDateAnnotation(annotationText) {
+        if (!annotationText) return null;
+        const _m = annotationText.match(/^(?:on|in)\s+([\d-]+)$/i) ||
+                   annotationText.match(/^from\s+([\d-]+\s+until\s+[\d-]+)$/i);
+        return _m ? { compareValue: _m[1], raw: annotationText } : null;
+    }
+
+    /**
+     * Same idea as `_parseCreditDateAnnotation`, for "Recorded at event"'s
+     * trailing date shape — a bare `"(YYYY-MM-DD)"` text node with no
+     * `"on "`/`"from "` keyword (see `applyExtractTrackTitleData`'s
+     * "Recorded at event" row-population code for why this date shape
+     * differs from every other one in this file).
+     *
+     * @param {?string} dateNodeText - Raw `textContent` of the trailing
+     *   date text node (e.g. `" (2002-08-29)"`), or `null`/absent.
+     * @returns {?{compareValue: string, raw: string}}
+     */
+    function _parseBareParenDate(dateNodeText) {
+        if (!dateNodeText) return null;
+        const _m = dateNodeText.match(/\(([\d-]+)\)/);
+        return _m ? { compareValue: _m[1], raw: _m[1] } : null;
+    }
+
+    /**
+     * Compares a live track's "Recording date" against one already-parsed
+     * date (see `_parseCreditDateAnnotation`/`_parseBareParenDate`) — exact
+     * string match only, deliberately no allowance for differing date
+     * precision (e.g. a bare year vs. a full YYYY-MM-DD), matching this
+     * codebase's existing preference for simple, predictable rules over
+     * fuzzy date-range math. Returns a flag descriptor for
+     * `_appendLiveDateFlag`, or `null` when the dates match (no icon
+     * needed).
+     *
+     * @param {string} recordingDate - This row's "Recording date" value
+     *   (always non-empty — callers only invoke this when one exists).
+     * @param {?{compareValue: string, raw: string}} parsedDate - Result of
+     *   `_parseCreditDateAnnotation`/`_parseBareParenDate`; `null` when no
+     *   date attribute was found at all, or the annotation present wasn't
+     *   date-shaped (e.g. a task note) — both count as "missing".
+     * @returns {?{icon: string, tooltip: string}}
+     */
+    function _liveDateCheckResult(recordingDate, parsedDate) {
+        if (!parsedDate) {
+            return {
+                icon: '❌',
+                tooltip: `This track is a live recording (recorded ${recordingDate}), but this credit has no date attribute — it can't be confirmed to be from the same performance.`
+            };
+        }
+        if (parsedDate.compareValue === recordingDate) return null;
+        return {
+            icon: '⚠️',
+            tooltip: `This track is a live recording (recorded ${recordingDate}), but this credit is dated "${parsedDate.raw}" — it may belong to a different performance.`
+        };
+    }
+
+    /**
+     * Appends a `_liveDateCheckResult` flag (if any) as a trailing emoji
+     * span with a native `title`-attribute tooltip — mirrors the existing
+     * `.mb-art-cache-hint-col` emoji+title pattern used elsewhere in this
+     * script, deliberately not the heavier `data-mbtt` floating-tooltip
+     * system (overkill for a short, single-line explanation). Works on any
+     * container — a credit `<li>`, or a "Recorded at event" `<td>` directly
+     * (that column never renders a list).
+     *
+     * @param {HTMLElement} container
+     * @param {?{icon: string, tooltip: string}} result
+     */
+    function _appendLiveDateFlag(container, result) {
+        if (!result) return;
+        const _flag = document.createElement('span');
+        _flag.className = 'mb-live-date-flag';
+        _flag.textContent = ' ' + result.icon;
+        _flag.title = result.tooltip;
+        container.appendChild(_flag);
+    }
+
+    /**
      * Finds a MusicBrainz `<span class="comment">…</span>` disambiguation
      * note within a `_buildCreditListTd` segment — same nested-anchor-style
      * search as `_findCreditSegmentArtistAnchor` (checks each segment node
@@ -9684,10 +9868,14 @@
      * @param {string[]} attributes - This credit's own attribute words, in
      *   `attributeVocab` order (from `_findCreditDts`'s match for the
      *   `<dt>` this `<dd>`/segment belongs to).
+     * @param {?{recordingDate: string}} [liveDateCtx] - Live-recording date
+     *   verification context (see `_liveDateCheckResult`), or `null`/
+     *   omitted. Only ever passed for the "Recording engineer" role — see
+     *   this function's caller in `applyExtractTrackTitleData`.
      * @returns {HTMLLIElement|null} `null` when `seg` has no artist anchor
      *   (nothing to build a row for).
      */
-    function _buildCreditListItem(seg, attributes) {
+    function _buildCreditListItem(seg, attributes, liveDateCtx = null) {
         const _artistA = _findCreditSegmentArtistAnchor(seg);
         if (!_artistA) return null;
         const li = document.createElement('li');
@@ -9755,6 +9943,9 @@
             _parenNodes.forEach(n => li.appendChild(n));
             li.appendChild(document.createTextNode(')'));
         }
+        if (liveDateCtx) {
+            _appendLiveDateFlag(li, _liveDateCheckResult(liveDateCtx.recordingDate, _parseCreditDateAnnotation(_findCreditSegmentTextAnnotation(seg))));
+        }
         return li;
     }
 
@@ -9798,9 +9989,12 @@
      *   One entry per matched `_findCreditDts` `<dt>`: its `<dd>` (the
      *   `<dt>`'s `nextElementSibling`) paired with that same match's
      *   `attributes`.
+     * @param {?{recordingDate: string}} [liveDateCtx] - Forwarded to
+     *   `_buildCreditListItem` unchanged (see its own JSDoc) — only ever
+     *   non-null for the "Recording engineer" role.
      * @returns {HTMLTableCellElement}
      */
-    function _buildCreditListTd(entries) {
+    function _buildCreditListTd(entries, liveDateCtx = null) {
         const td = document.createElement('td');
         const ul = document.createElement('ul');
         entries.forEach(({ dd, attributes }) => {
@@ -9811,7 +10005,7 @@
                 _segments[_segments.length - 1].push(n);
             });
             _segments.forEach(seg => {
-                const li = _buildCreditListItem(seg, attributes);
+                const li = _buildCreditListItem(seg, attributes, liveDateCtx);
                 if (li) ul.appendChild(li);
             });
         });
@@ -9885,9 +10079,13 @@
      *   prefix with, or `null` for a Vocals entry.
      * @param {string[]} attributes
      * @param {?string} altName
+     * @param {?{recordingDate: string}} [liveDateCtx] - Live-recording date
+     *   verification context (see `_liveDateCheckResult`), or `null`/
+     *   omitted — checked against `_dateAnnotation` below, which this
+     *   function already computes for its own parenthetical.
      * @returns {HTMLLIElement|null} `null` when `seg` has no artist anchor.
      */
-    function _buildInstrumentVocalsListItem(seg, instrumentAnchor, attributes, altName) {
+    function _buildInstrumentVocalsListItem(seg, instrumentAnchor, attributes, altName, liveDateCtx = null) {
         const _artistA = _findCreditSegmentArtistAnchor(seg);
         if (!_artistA) return null;
         const li = document.createElement('li');
@@ -9927,6 +10125,9 @@
         if (altName) {
             li.appendChild(document.createTextNode(` [${altName}]`));
         }
+        if (liveDateCtx) {
+            _appendLiveDateFlag(li, _liveDateCheckResult(liveDateCtx.recordingDate, _parseCreditDateAnnotation(_dateAnnotation)));
+        }
         return li;
     }
 
@@ -9936,9 +10137,11 @@
      * `_findInstrumentVocalsEntries` match on this track.
      *
      * @param {Array<{dt: HTMLElement, parsed: object}>} entries
+     * @param {?{recordingDate: string}} [liveDateCtx] - Forwarded to
+     *   `_buildInstrumentVocalsListItem` unchanged.
      * @returns {HTMLTableCellElement}
      */
-    function _buildInstrumentsTd(entries) {
+    function _buildInstrumentsTd(entries, liveDateCtx = null) {
         const td = document.createElement('td');
         const ul = document.createElement('ul');
         entries.forEach(({ dt, parsed }) => {
@@ -9947,7 +10150,7 @@
             if (!_dd || _dd.tagName !== 'DD') return;
             _segmentDdByArtistMarker(_dd).forEach(seg => {
                 parsed.instruments.forEach(({ anchor, altName, attributes }) => {
-                    const li = _buildInstrumentVocalsListItem(seg, anchor, attributes, altName);
+                    const li = _buildInstrumentVocalsListItem(seg, anchor, attributes, altName, liveDateCtx);
                     if (li) ul.appendChild(li);
                 });
             });
@@ -9961,9 +10164,11 @@
      * one `<li>` per (vocals component × credited artist) pair.
      *
      * @param {Array<{dt: HTMLElement, parsed: object}>} entries
+     * @param {?{recordingDate: string}} [liveDateCtx] - Forwarded to
+     *   `_buildInstrumentVocalsListItem` unchanged.
      * @returns {HTMLTableCellElement}
      */
-    function _buildVocalsTd(entries) {
+    function _buildVocalsTd(entries, liveDateCtx = null) {
         const td = document.createElement('td');
         const ul = document.createElement('ul');
         entries.forEach(({ dt, parsed }) => {
@@ -9972,7 +10177,7 @@
             if (!_dd || _dd.tagName !== 'DD') return;
             _segmentDdByArtistMarker(_dd).forEach(seg => {
                 parsed.vocals.forEach(({ altName, attributes }) => {
-                    const li = _buildInstrumentVocalsListItem(seg, null, attributes, altName);
+                    const li = _buildInstrumentVocalsListItem(seg, null, attributes, altName, liveDateCtx);
                     if (li) ul.appendChild(li);
                 });
             });
