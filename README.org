@@ -91983,37 +91983,8 @@ additional for "Recorded at place"
 Revert this feature to the same implementation as for the other AR columns like "Engineer", "Mixer", etc. so that we get
 the unique value drop down features we just introduced for free
 
-
-** TODO add colors to the synthetic extracted AR columns
-*** DONE initial
-
-still not working:
-
-add the same background color to the extracted AR columns as the syntheticColumns extracted by columnExtractors in other pageTypes
-
-*** DONE bug
-
-still NOT working, @debug/header.html from https://musicbrainz.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60
-
-*** compare
-
-compare
-
-#+begin_example
-[Image #22] - working - https://musicbrainz.org/release-group/c0ae827c-bb5b-4c98-ab3a-1d9573c110ac
-[Image #23] - not working - https://musicbrainz.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60
-#+end_example
-
-
-** TODO add support for ALL ARs
-** TODO extract "mixed at:"
-
-** TODO add warning icons to the cell values where the data is missing (WARNING) or wrong (ERROR)
-
-add warning icons to the cell values where the data is missing (WARNING) or wrong (ERROR)
-
-* DONE fix h2 "Credits"
-** initial
+** DONE fix h2 "Credits"
+*** initial
 
 fix h2 "Credits" section on the final rendered page
 
@@ -92022,7 +91993,7 @@ fix h2 "Credits" section on the final rendered page
 @debug/credits-final.html - "Credits" section on the final rendered page missing the "Release" and "Release group" h3 headers
 #+end_example
 
-** bug
+*** bug
 
 1.)
 
@@ -92033,11 +92004,7 @@ See @debug/credits.html
 
 Make the h3 "Release" and "Release group" sections inside "Credits" separately collapsable, by clicking their names, also add toggle aware tooltips
 
-** TODO why can't the "Disambiguation" column be extracted in it's "Event-..." parts
-
-** TODO split "Recorded at place" column
-
-* DONE cleanup before rendering final page
+** DONE cleanup before rendering final page
 *** medium toolbox
 
 1.)
@@ -92074,23 +92041,12 @@ end of the page, as the buttons are not functional anyway on the final rendered 
 
 act on @debug/toolbox.org
 
-
-* TODO add synthetic entry to the cell structure of the unique value drop when there are ANY name variations
-
-On e.g. https://musicbrainz.org/release-group/85206823-9808-3da2-a9d7-2e9b8b0f4e99 in the "Title" column there is a name variation
-
-#+begin_example
-<td class="artist-credit-variation"><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></bdi></td>
-#+end_example
-
-compared to the release group name
-
-* DONE column filtering the "Length" column on pageType 'release-tracks' doesn't hightlight the filter string
+** DONE column filtering the "Length" column on pageType 'release-tracks' doesn't hightlight the filter string
 
 Column filtering the "Length" column on pageType 'release-tracks' doesn't highlight the filter string see @debug/no-color.html
 
-* DONE userscript "Batch Add Recording Aliases from another Release" from @YoGo9
-** initial
+** DONE userscript "Batch Add Recording Aliases from another Release" from @YoGo9
+*** initial
 
 When the userscript "Batch Add Recording Aliases from another Release" from @YoGo9 is present, the tracklist (of the last medium) is currently not rendered.
 That userscript renders the following artefact near the top of the page @debug/other-userscript.html
@@ -92101,12 +92057,12 @@ Account for the presence/absence of this userscript
 
 also remove the artefact on the final rendered page
 
-** bug
+*** bug
 
 NOT fixed, it still doesn't render the tracklist of the last/only medium, although the removal from the final page worked
 
-* DONE add support for userscript "MB: Inline per-recording streaming & download links"
-** initial
+** DONE add support for userscript "MB: Inline per-recording streaming & download links"
+*** initial
 
 When the userscript "MB: Inline per-recording streaming & download links" is present, each "Title" column on pageType
 'release-tracks' additionally renders the following container '<dl class="ar"><dt><button class="recording-toggle"'
@@ -92128,12 +92084,65 @@ If it says "No streaming or download links found.", don't create the new column 
 
 Do not commit yet
 
+** DONE for multi-row columns, offer also each unique list entry separately in the unique value drop down menu
+*** DONE initial
 
-* TODO for multi-row columns, offer also each unique list entry separately in the unique value drop down menu
+for multi-row columns e.g. "Engineer" in https://musicbrainz.org/release/b0209926-3b26-4cf5-8993-7dbfbeafb259
+@debug/multi-row-cell.html, beside each unique cell content, offer also each unique list entry from a multi-row list
+separately in the unique value drop down menu
 
+*** DONE Why is "Roger Talko (engineer) (assistant) not highlighted, also the filtering itself works
 
-* DONE add support for a new pageType https://musicbrainz.org/isrc/USSM19500019
-*** initial
+Why is "Roger Talko (engineer) (assistant)" not highlighted, also the filtering itself works
+ 
+*** DONE plan: enhance
+**** initial
+
+Is it possible to enhance the latest feature even further, e.g on https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works in the "Authors" column
+"Bruce Springsteen" (inside a "<bdi>Bruce Springsteen</bdi>" container) exists in different roles:
+
+#+begin_example
+"Bruce Springsteen (arranger, composer, lyricist)"
+"Bruce Springsteen (composer, lyricist)"
+"Bruce Springsteen (composer)"
+"Bruce Springsteen (lyricist)"
+"Bruce Springsteen (writer)"
+"Bruce Springsteen (arranger)"
+#+end_example
+
+See the @debug/enhance.html - final rendered page of https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works with the "Authors" column uncollapsed
+
+I want that the plain "Bruce Springsteen" shows up as a selectable value (with a proper count) in the unique value drop
+down, so that when selecting it, all entries independant of the actual role gets filtered and highlighted, even when
+part of a multi-row cell.
+
+In order to distinguish from other values in the unique drop down (we already use the following special glyph '<span class="mb-uniq-item-marker" aria-hidden="true">▤</span>')
+the entry should get preceded with the artist glyph '<span class="artistlink"' we already use in the column names for the pageType 'release-tracks'
+
+**** new plan: act on @debug/enhance.org
+
+new plan: act on @debug/enhance.org
+
+**** expand even further
+
+expand the plan even further, and do not concentrate only on multi-row columns:
+
+On e.g. https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd see @debug/expand.html
+the following columns could additionally show just the "<bdi>" wrapped content (together with the right prefix glyph)
+
+#+begin_example
+Recording of work - "work link glyph" <bdi>Tougher Than the Rest</bdi>
+Recorded at place - "place link glyph" <bdi>The Hit Factory</bdi>, "area link glyph" <bdi>New York</bdi>, "country link glyph" <bdi>United States</bdi>
+Recording engineer - "artist link glyph" <bdi>Toby Scott</bdi>
+Phonographic copyright (℗) by artist - "artist link glyph" <bdi>Bruce Springsteen</bdi>
+etc.
+#+end_example
+
+instead of the complete cell content.
+I think actually a lot of pageTypes will automatically benefit from this enhancement.
+
+** DONE add support for a new pageType https://musicbrainz.org/isrc/USSM19500019
+**** initial
 
 add support for ISRC URLs like e.g https://musicbrainz.org/isrc/USSM19500019
 Full raw HTML @debug/ISRC.html
@@ -92142,7 +92151,7 @@ The new pageType should be named 'isrc'. Adjust the userscript include directive
 
 Check the already existing pageTypes if configuration/code can be reused without breaking existing working pageTypes.
 
-*** add
+**** add
 
 change the current pageType definition for 'isrc' to
 
@@ -92163,3 +92172,272 @@ change the current pageType definition for 'isrc' to
             non_paginated: true
         },
 #+end_example
+** DONE add support for ALL ARs
+*** initial
+
+Currently we only support a subset of all possible ARs in the 'release-tracks' pageType. Enhance this to every AR
+present on a specific release URL like e.g.
+
+See @debug/therising.html for examples in the "Title" column
+
+1.)
+
+"<instrument>:" (e.g. "cello:") and "vocals:" ARs have potential additional attributes like
+
+#+begin_example
+additional
+guest
+solo
+#+end_example
+
+and can even have a "credited as"-part e.g. "main" in angel brackets like
+
+#+begin_example
+guest solo lead vocals [main]
+#+end_example
+
+2.)
+
+instrument(s) and vocal(s) could also be used together when the same artist(s) assumes multiple roles
+
+3.)
+
+when the AR rendering would lead to multiple same strings, like in the case of e.g. https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd
+@debug/double-ars.html
+
+where "phonographic copyright (℗) by:" exists two times, but with different entities, artist and label, make the new column names unique by appending the actual entity name and glyph, like we already did
+
+#+begin_example
+Phonographic copyright (℗) by artist:
+Phonographic copyright (℗) by lebel:
+#+end_example
+
+4.)
+
+Place the new columns naturally at positions where they make most sense, given the current already rendered columns on the final page.
+
+*** act on @debug/support-all-ARs.org
+
+act on @debug/support-all-ARs.org
+
+*** bugs
+
+See @debug/therising.html
+
+1.)
+
+all the new columns are missing the '<span class="....link"' e.g. '<span class="artistlink"', '<span class="placelink"', etc
+
+2.)
+
+The order of the following columns should be (if present) after the "Length" column
+
+#+begin_example
+...
+Length
+Recorded of work
+Recording date
+Recorded at event
+Recorded at place
+Recorded in area <--- renamed from "Recorded in" (this one is currently rendering just the plain area name and is missing the other parts like, "Asbury Park, <New Jersey flag> New Jersey, <United States flag> United States (on 2002-10-16)"
+Performer
+Vocals
+Instruments
+Recording engineer
+Engineer
+Producer
+Mixer
+Mixed at place <--- the current "Mixed at place" should be combined with "Mixed at area" handled like the "Recorded at place" column
+#+end_example
+
+3.)
+
+The "Vocals" and "Instruments" columns are missing the date expressions in brackets e.g "(from 1987-01-20 until 1987-03)" or "(on 1988-04-27)" after the artist name (standalone or multi-row)
+see @debug/therising.html and @debug/double-ars.html
+
+** DONE The columns "Recorded at event" and "Recorded at place" are currently missing additional information
+
+The columns "Recorded at event" and "Recorded at place" on pageType 'release-tracks' e.g. on https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd @debug/double-ars.html
+are currently missing additional information like date info and optional attributed like "additionally" 
+
+1.)
+
+"Recorded at event" is missing the "(1988-04-27)"
+
+#+begin_example
+1988‐04‐27: Los Angeles Memorial Sports Arena, Los Angeles, CA, USA (1988-04-27)
+#+end_example
+
+2.)
+
+"Recorded at place" is missing the complete entry for the "additional recorded at:" and both date infos
+
+#+begin_example
+The Hit Factory in Manhattan, New York City New York, New York New York, United States (additional) (from 1987-01-20 until 1987-03)
+Thrill Hill East (Springsteen’s home studio in Rumson) in Monmouth County, New Jersey New Jersey, United States (from 1987-01-20 until 1987-03)
+#+end_example
+
+3.)
+
+The "Mixed at place" column is missing the flag icons in the unique value drop down (like for example the column "Recorded at place") and probably also the date info + attributes
+** DONE add "arealink" span
+*** initial
+
+When the userscript "MusicBrainz: More Flags Everywhere" is NOT installed or deactivated the "Recorded at place" columns
+gets rendered with the following generic area glyph produced by '<span class="arealink"></span>' which probably gets
+rendered by some MusicBrainz stylesheet or whatever. So basically the page seems knows" how to render that glyph, see [Image #46]
+
+Why on https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd does the column header "Recorded in area"
+not render the area glyph also it's present in the code, see @debug/why-no-area-glyph.html
+
+Do not change anything just explain
+
+*** explain
+
+In a Brave browser where the "MusicBrainz: More Flags Everywhere" is NOT installed, an arealink icon is renderd as can be confirmed with DevTools, see @debug/area-link.raw
+All the MusicBrainz icons seem to be defined in https://static.metabrainz.org/MB/icons-f6c41cc.css
+
+Can we somehow use these, if not rendered natively in the page itself. Just explain first before implementing it for the column header "Recorded in area"
+
+*** @debug/mb-icons.css
+
+Try first with the MB icon CSS file I downloaded at @debug/mb-icons.css
+
+Tell me if it's possible natively
+
+*** yes implement that, not only in the column header but also in the unique value drop down of columns which have currently area names alone without the native area icon, but the arealink is in the code for e.g. in the unique value drop down for the "Recorded in area" column, see
+
+yes implement that, not only in the column header but also in the unique value drop down of columns which have currently
+area names alone without the native area icon, but the arealink is in the code for e.g. in the unique value drop down
+for the "Recorded in area" column
+
+** DONE plan: add warning icons to the cell values where the data is missing (WARNING) or wrong (ERROR)
+*** initial
+
+Append warning/error icons to the cell values where the data is either missing (WARNING) or wrong (ERROR):
+
+On pageType 'release-tracks' e.g. https://musicbrainz.org/release/373df460-f8f9-4c38-abe5-f2ea1c9692cf
+
+1.)
+
+for each row where the "Recording of work" column has the "live" attribute on a work in a data cell, compare the
+"Recording date" column if present with the "date" attribute of the artis(s) in following columns
+
+#+begin_example
+Recording engineer
+Vocals
+Instruments
+#+end_example
+
+a.)
+
+If the date attribute on the above column values is different than the "Recording date" column value, append a warning
+icon to the artist name(s)
+
+b.)
+
+If the date attribute on the above column values is missing append am error icon
+
+2.)
+
+In both cases 1.a) and 1.b), add an explanatory tooltip explaining the fact
+
+*** plan
+
+What tooltip/icon mechanism should this use? The script has two existing patterns: a lightweight emoji+native-title span (used for CAA/EAA cache-hint icons), and a heavier custom floating-div tooltip system (used for the Relationships column).
+
+❯ 1. Lightweight emoji + native title (Recommended)
+     A small ⚠️/❌ span appended after the artist's <li> content, tooltip via the native `title` attribute. Matches the existing `.mb-art-cache-hint-col` pattern, minimal new code, no new CSS/JS singleton needed.
+  1. Rich floating tooltip
+     Reuse the `data-mbtt` + singleton floating-div system used by the Relationships column. Heavier to wire up but allows richer HTML tooltip content (e.g. showing both dates side by side, formatted).
+
+*** add mising columns to compare against
+
+actually the list to compare against should read
+
+#+begin_example
+Recording engineer
+Vocals
+Instruments
+Recorded at event
+Recorded at place
+#+end_example
+
+instead of
+
+#+begin_example
+Recording engineer
+Vocals
+Instruments
+#+end_example
+
+
+** TODO add colors to the synthetic extracted AR columns
+*** DONE initial
+
+still not working:
+
+add the same background color to the extracted AR columns as the syntheticColumns extracted by columnExtractors in other pageTypes
+
+*** DONE bug
+
+still NOT working, @debug/header.html from https://musicbrainz.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60
+
+*** compare
+
+compare
+
+#+begin_example
+[Image #22] - working - https://musicbrainz.org/release-group/c0ae827c-bb5b-4c98-ab3a-1d9573c110ac
+[Image #23] - not working - https://musicbrainz.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60
+#+end_example
+
+
+** TODO add tooltips to the unique value drop down entries which additionally explain the glyph meanings
+
+** TODO why can't the "Disambiguation" column be extracted in it's "Event-..." parts
+
+** TODO split "Recorded at place" column
+
+
+* TODO add the flag and place/area icons at the right position of each entry in the unique value drop down instead of at the very beginning of each entry
+
+add the flag and place/area icons at the right position of each entry in the unique value drop down instead of at the very beginning of each entry
+
+
+* TODO add synthetic entry to the cell structure of the unique value drop when there are ANY name variations
+
+add a synthetic entry to the cell structure of the unique value drop when there are ANY name variations, like for the
+'release-tracks' pageType also for other pageTypes
+
+1.)
+
+On e.g. https://musicbrainz.org/release-group/85206823-9808-3da2-a9d7-2e9b8b0f4e99 in the "Title" column there is a name variation
+
+#+begin_example
+<td class="artist-credit-variation"><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></bdi></td>
+#+end_example
+
+compared to the release group name
+
+2.)
+
+On e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events in the "Location" column
+
+#+begin_example
+<span class="name-variation"><a href="/place/9132ee37-5df6-4188-a2d3-57053fe5250a" title="PHX Arena"><bdi>Mortgage Matchup Center</bdi></a></span>
+#+end_example
+
+3.)
+
+On e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works in the "Recording artists" and "Authors" columns
+
+#+begin_example
+<span class="name-variation"><a href="/artist/7716ddac-2f24-44fa-81b1-bfa920811445" title="José Carreras – Carreras, José (Spanish tenor)">Carreras</a></span>
+#+end_example
+
+
+* TODO use the more than 1000 tracks release to fix AR bugs, specifically "instruments" with brackets
+
+
+
