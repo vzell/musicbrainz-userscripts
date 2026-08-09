@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.32",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added two more synthetic entries to the unique-values dropdown's \"Cell structure\" block, this time dynamic per-distinct-value filters rather than fixed checks: one entry per unique credit attribute word (e.g. \"additional\", \"assistant\", \"co\", \"executive\") and one per unique task string (e.g. \"task: Second Engineer\") actually present anywhere in a credit-role column's visible cells — e.g. the \"Engineer\" column on https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd (`debug/unique-attribute-task.html`). Clicking one filters straight to every row where that specific attribute or task is credited, without typing free text. Attribute-word entries cover every credit-role column (\"Recording engineer\"/\"Mixer\"/\"Engineer\"/\"Producer\"/\"Miscellaneous support\") and \"Produced for label\"; task-value entries cover the 5 credit-role columns only (\"Produced for label\" has no task concept). `_buildCreditListItem`/`_buildLabelCreditListTd` now wrap attribute-word text in a `<span class=\"mb-credit-attr\">` sentinel (and stamp the existing task `<i>` with `mb-credit-task`) so these values are reliably distinguishable from other free text sharing the same parenthetical; both new entry families reuse the exact `dataset.mbMultirowMode` → `testRowMatch()` plumbing every other synthetic entry in this block already uses, via a colon-prefixed compound mode string (`\"attr:additional\"`, `\"task:task: Second Engineer\"`) rather than a parallel filter mechanism."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.31",
     "date": "2026-08-09",
     "sections": [

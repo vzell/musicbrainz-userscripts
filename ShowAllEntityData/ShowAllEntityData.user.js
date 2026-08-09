@@ -8350,7 +8350,19 @@
                 if (!_findLabelCreditSegmentAnchor(seg)) return;
                 const li = document.createElement('li');
                 seg.forEach(n => li.appendChild(n));
-                if (attributes.length > 0) li.appendChild(document.createTextNode(` (${attributes.join('/')})`));
+                if (attributes.length > 0) {
+                    // Word list wrapped in the same 'mb-credit-attr' sentinel
+                    // span _buildCreditListItem uses, so the unique-values
+                    // dropdown's per-attribute synthetic filter entries (see
+                    // openUniqDrop()'s attrValueCounts) work identically for
+                    // "Produced for label" too.
+                    li.appendChild(document.createTextNode(' ('));
+                    const _attrSpan = document.createElement('span');
+                    _attrSpan.className = 'mb-credit-attr';
+                    _attrSpan.textContent = attributes.join('/');
+                    li.appendChild(_attrSpan);
+                    li.appendChild(document.createTextNode(')'));
+                }
                 ul.appendChild(li);
             });
         });
@@ -8683,7 +8695,18 @@
         }
 
         const _parenNodes = [];
-        if (attributes.length > 0) _parenNodes.push(document.createTextNode(attributes.join('/')));
+        if (attributes.length > 0) {
+            // Wrapped in a sentinel <span> (not a bare text node) so the
+            // unique-values dropdown's per-attribute synthetic filter
+            // entries (see openUniqDrop()'s attrValueCounts) can reliably
+            // find and split this specific text apart from any other free
+            // text sharing the same parenthetical — a bare text node isn't
+            // distinguishable from a non-task annotation's own bare text.
+            const _attrSpan = document.createElement('span');
+            _attrSpan.className = 'mb-credit-attr';
+            _attrSpan.textContent = attributes.join('/');
+            _parenNodes.push(_attrSpan);
+        }
 
         const _instrumentAs = _findCreditSegmentInstrumentAnchors(seg);
         if (_instrumentAs.length > 0) {
@@ -8697,7 +8720,12 @@
             if (_annotation) {
                 if (_parenNodes.length > 0) _parenNodes.push(document.createTextNode(', '));
                 if (/^task:/i.test(_annotation)) {
+                    // 'mb-credit-task' class (in addition to the existing
+                    // <i> italics) gives the unique-values dropdown's
+                    // per-task synthetic filter entries an unambiguous
+                    // selector — see openUniqDrop()'s taskValueCounts.
                     const _i = document.createElement('i');
+                    _i.className = 'mb-credit-task';
                     _i.textContent = _annotation;
                     _parenNodes.push(_i);
                 } else {
@@ -30318,6 +30346,25 @@ a { color: #1565c0; }`;
                     match = !!cell && _titleHasRecNameMismatch(cell);
                 } else if (f.multiRowMode === 'name-variation') {
                     match = !!cell && !!cell.querySelector('span.name-variation');
+                } else if (f.multiRowMode.startsWith('attr:')) {
+                    // Compound mode (openUniqDrop()'s makeValueSynItem) — one
+                    // of the dynamic per-attribute-word entries in the
+                    // "Cell structure" block. Matches a credit-role column's
+                    // <span class="mb-credit-attr"> sentinel (see
+                    // _buildCreditListItem/_buildLabelCreditListTd), split on
+                    // "/" since a merged multi-attribute credit renders as
+                    // e.g. "assistant/co" in one span.
+                    const _want = f.multiRowMode.slice(5);
+                    match = !!cell && Array.from(cell.querySelectorAll('.mb-credit-attr'))
+                        .some(s => s.textContent.split('/').includes(_want));
+                } else if (f.multiRowMode.startsWith('task:')) {
+                    // Compound mode counterpart of 'attr:' above, for the
+                    // dynamic per-task-value entries — matches a credit-role
+                    // column's <i class="mb-credit-task"> sentinel exactly
+                    // (whole trimmed text, not split).
+                    const _want = f.multiRowMode.slice(5);
+                    match = !!cell && Array.from(cell.querySelectorAll('.mb-credit-task'))
+                        .some(s => s.textContent.trim() === _want);
                 }
                 if (!match) { colHit = false; break; }
                 continue; // no text highlight for state-based filters
@@ -39205,6 +39252,21 @@ a { color: #1565c0; }`;
         // variant-engineer-2.html "Andres Bermudezat"), rendered with a
         // dotted underline on the live page.
         let nameVariationCount = 0;
+        // Any column: distinct credit attribute words (e.g. "additional",
+        // "assistant", "co", "executive" — the credit-role columns' own
+        // `<span class="mb-credit-attr">` sentinel, see
+        // `_buildCreditListItem`/`_buildLabelCreditListTd`) and distinct
+        // task strings (e.g. "task: Second Engineer" — the `<i
+        // class="mb-credit-task">` sentinel) actually present anywhere in
+        // this column's visible cells, each mapped to how many rows carry
+        // it (counted once per row even if the same value appears on more
+        // than one credited entity in that row's cell — matches how every
+        // other count in this dropdown counts rows, not occurrences). See
+        // debug/unique-attribute-task.html for the real two-credit example
+        // (Billy Bowers/"additional", Karl Egsieker/"task: Second
+        // Engineer") this is built from.
+        const attrValueCounts = new Map();
+        const taskValueCounts = new Map();
         const isTitleCol = (() => {
             const headers = table.querySelectorAll('thead tr:first-child th');
             const th = headers[colIndex];
@@ -39249,6 +39311,17 @@ a { color: #1565c0; }`;
                 }
                 if (isTitleCol && _titleHasRecNameMismatch(cell)) titleMismatchCount++;
                 if (cell.querySelector('span.name-variation')) nameVariationCount++;
+                const _rowAttrWords = new Set();
+                cell.querySelectorAll('.mb-credit-attr').forEach(s => {
+                    s.textContent.split('/').forEach(w => { if (w) _rowAttrWords.add(w); });
+                });
+                _rowAttrWords.forEach(w => attrValueCounts.set(w, (attrValueCounts.get(w) || 0) + 1));
+                const _rowTaskValues = new Set();
+                cell.querySelectorAll('.mb-credit-task').forEach(s => {
+                    const t = s.textContent.trim();
+                    if (t) _rowTaskValues.add(t);
+                });
+                _rowTaskValues.forEach(t => taskValueCounts.set(t, (taskValueCounts.get(t) || 0) + 1));
             });
         }
         const vals = Array.from(valueCounts.keys()).sort((a, b) =>
@@ -39936,6 +40009,57 @@ a { color: #1565c0; }`;
         };
 
         /**
+         * Creates and appends a single per-value synthetic entry to synBox —
+         * the `attrValueCounts`/`taskValueCounts` counterpart of
+         * `makeSynItem`, for a DYNAMIC list of distinct values (one entry
+         * per distinct credit attribute word or task string actually found
+         * in this column) rather than `makeSynItem`'s fixed 5-mode set.
+         *
+         * Reuses the exact same `dataset.mbMultirowMode` plumbing as every
+         * other entry in this section via a colon-prefixed COMPOUND mode
+         * string (`"attr:additional"`, `"task:task: Second Engineer"`),
+         * parsed by `testRowMatch()`'s `f.isMultiRowFilter` branch — kept
+         * on this one mechanism deliberately, rather than adding a second,
+         * parallel filter path for parameterized values.
+         *
+         * @param {'attr'|'task'} kind
+         * @param {string} value  - The exact attribute word or task string
+         *   to match (embedded verbatim in the compound mode string).
+         * @param {number} count  - Number of visible rows matching this value.
+         */
+        const makeValueSynItem = (kind, value, count) => {
+            const item = document.createElement('div');
+            item.className = 'mb-col-uniq-item mb-col-uniq-multirow-item';
+            item.setAttribute('role', 'option');
+            item.title = value;
+
+            const badge = document.createElement('span');
+            badge.className = 'mb-uniq-count-badge';
+            badge.textContent = `(${count})`;
+            badge.setAttribute('aria-hidden', 'true');
+            badge.style.color           = cntColor;
+            badge.style.backgroundColor = cntBg;
+            badge.style.fontWeight      = 'bold';
+            badge.style.fontFamily      = 'monospace';
+            badge.style.borderRadius    = '3px';
+            badge.style.padding         = '0 3px';
+            badge.style.marginRight     = '5px';
+            badge.style.fontSize        = '0.85em';
+            badge.style.display         = 'inline-block';
+            item.appendChild(badge);
+            item.appendChild(document.createTextNode(
+                (kind === 'attr' ? '» attribute: ' : '» ') + value
+            ));
+
+            item.addEventListener('mousedown', ev => ev.preventDefault());
+            item.addEventListener('click', () => {
+                applyMultiRowStateFilter(`${kind}:${value}`, table, colIndex);
+                closeUniqDrop();
+            });
+            synBox.appendChild(item);
+        };
+
+        /**
          * Appends a thin horizontal rule between the synthetic section and the
          * regular value list.  Only called when vals.length > 0 so the divider
          * is never rendered as the last element in an otherwise empty panel.
@@ -40062,7 +40186,13 @@ a { color: #1565c0; }`;
         // Every column type can have genuinely empty cells (e.g. a primary-alias
         // column where most events have no alias, a CAA column with no artwork,
         // etc.) and being able to filter to those rows is universally useful.
-        if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0)) {
+        // Sorted entries for the two dynamic per-value families (shared by
+        // both branches below).
+        const _sortedAttrValues = Array.from(attrValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedTaskValues = Array.from(taskValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _hasValueEntries = _sortedAttrValues.length > 0 || _sortedTaskValues.length > 0;
+
+        if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 || _hasValueEntries)) {
             // Section header — only shown for the multi-entry collapsable section
             // so the single '○ empty cells' entry on plain columns stands alone.
             const synHdr = document.createElement('div');
@@ -40089,16 +40219,22 @@ a { color: #1565c0; }`;
             // still inside the same "Cell structure" section.
             if (titleMismatchCount > 0)     makeSynItem('title-mismatch', '≠ track/recording name',                                           titleMismatchCount);
             if (nameVariationCount > 0)     makeSynItem('name-variation', '~ has name variation',                                              nameVariationCount);
+            // Credit-role columns' per-attribute / per-task dynamic value
+            // entries (see attrValueCounts/taskValueCounts' own comments
+            // above) — one entry per distinct value actually present.
+            _sortedAttrValues.forEach(v => makeValueSynItem('attr', v, attrValueCounts.get(v)));
+            _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
 
             appendSynDivider();
-        } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0) {
+        } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 || _hasValueEntries) {
             // Non-collapsable column (or a collapsable one with zero rows in
             // any multi-row-family state this render): show the header only
             // when more than one synthetic entry will actually appear —
             // otherwise keep the original headerless single-entry look
             // ('○ empty cells' alone has never needed one).
             const _entryCount = (emptyCellCount > 0 ? 1 : 0) +
-                (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0);
+                (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0) +
+                _sortedAttrValues.length + _sortedTaskValues.length;
             if (_entryCount > 1) {
                 const synHdr = document.createElement('div');
                 synHdr.textContent = 'Cell structure';
@@ -40111,6 +40247,8 @@ a { color: #1565c0; }`;
             if (emptyCellCount > 0)     makeSynItem('empty',          '○ empty cells',           emptyCellCount);
             if (titleMismatchCount > 0) makeSynItem('title-mismatch', '≠ track/recording name',  titleMismatchCount);
             if (nameVariationCount > 0) makeSynItem('name-variation', '~ has name variation',    nameVariationCount);
+            _sortedAttrValues.forEach(v => makeValueSynItem('attr', v, attrValueCounts.get(v)));
+            _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
             appendSynDivider();
         }
 
@@ -40386,7 +40524,8 @@ a { color: #1565c0; }`;
               (multiRowExpandedCount   > 0 ? 1 : 0) +
               (totalMultiRow > 1         ? 1 : 0)
             : (emptyCellCount > 0 ? 1 : 0)) +
-            (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0);
+            (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0) +
+            _sortedAttrValues.length + _sortedTaskValues.length;
         const dropH = Math.min(320, (vals.length + synItemCount) * 29 + 50 + 38); // +50 syn header/divider, +38 qf bar
         const dropW = drop.offsetWidth || 200;
 
@@ -40452,7 +40591,11 @@ a { color: #1565c0; }`;
      * descriptor and `testRowMatch()` can filter rows by the structural state of
      * their cell rather than by text content.
      *
-     * Seven modes are supported:
+     * Seven fixed modes are supported, plus two COMPOUND mode families
+     * (`"attr:<value>"` / `"task:<value>"`) generated dynamically by
+     * `openUniqDrop()`'s `makeValueSynItem`, one per distinct value
+     * actually present in the column — not a fixed enum, since the set of
+     * credited attribute words / task strings varies release to release:
      *   'empty'          → keep rows where the column cell has no ul>li AND no text
      *   'single'         → keep rows where the column cell has exactly one ul>li item
      *   'collapsed'      → keep rows where the column toggle shows ▶ (collapsed)
@@ -40465,13 +40608,18 @@ a { color: #1565c0; }`;
      *   'name-variation' → (any column) keep rows where the cell contains a
      *                       MusicBrainz `<span class="name-variation">`
      *                       (an alias/differently-spelled credited name)
+     *   'attr:<value>'   → (credit-role columns) keep rows where the cell has a
+     *                       `<span class="mb-credit-attr">` containing `<value>`
+     *                       as one of its `/`-separated attribute words
+     *   'task:<value>'   → (credit-role columns) keep rows where the cell has a
+     *                       `<i class="mb-credit-task">` whose text equals `<value>`
      *
      * The display label stored in `input.value` is purely cosmetic; the actual
      * filtering logic reads `input.dataset.mbMultirowMode` in `getColFilters()`.
      * If the user edits the field manually the 'input' event handler deletes
      * `dataset.mbMultirowMode` and the filter degrades to a normal text filter.
      *
-     * @param {string}           mode      - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation'
+     * @param {string}           mode      - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | `attr:${string}` | `task:${string}`
      * @param {HTMLTableElement} table     - The table owning the column.
      * @param {number}           colIndex  - Zero-based column index.
      */
@@ -40495,6 +40643,8 @@ a { color: #1565c0; }`;
                       mode === 'single'          ? '• single-row cells'     :
                       mode === 'title-mismatch'  ? '≠ track/recording name' :
                       mode === 'name-variation'  ? '~ has name variation'   :
+                      mode.startsWith('attr:')   ? `» attribute: ${mode.slice(5)}` :
+                      mode.startsWith('task:')   ? `» ${mode.slice(5)}` :
                                             '▶◀ multi-row: any';
         input.value = label;
 

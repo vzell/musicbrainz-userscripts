@@ -4201,3 +4201,91 @@ interaction chain in this environment) — structurally identical to the
 five already-working modes, reusing the same `dataset.mbMultirowMode`
 plumbing end to end.
 
+## 2026-08-09 — per-attribute / per-task synthetic dropdown entries (WIP.32)
+
+**Source**: `debug/unique-attribute-task.html`, a rendered "Engineer"
+cell from https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd:
+
+```html
+<ul>
+  <li><a …>Billy Bowers</a>&nbsp;<span class="comment"><bdi>(US engineer)</bdi></span> (additional)</li>
+  <li><a …>Karl Egsieker</a> (<i>task: Second Engineer</i>)</li>
+</ul>
+```
+
+Requested: one synthetic filter entry per distinct attribute word
+("additional", "assistant", "co", "executive") and one per distinct task
+string ("task: Second Engineer") actually present anywhere in a
+credit-role column, in the SAME "Cell structure" block WIP.31 already
+extended twice. Unlike WIP.31's two additions (fixed booleans per cell),
+this is a DYNAMIC list — the actual set of values varies release to
+release.
+
+**Root problem before any change**: the attribute word(s) and the task
+text both render as bare content inside a `<li>`'s trailing parenthetical
+(`_buildCreditListItem`), indistinguishable from each other or from OTHER
+free text sharing that same parenthetical (a non-task annotation is ALSO
+bare text) by re-parsing the rendered DOM after the fact.
+
+**Fix, in order**:
+
+1. **Mark at build time**: `_buildCreditListItem` now wraps the
+   attribute-word text (`attributes.join('/')`) in `<span class=
+   "mb-credit-attr">` instead of a bare text node, and stamps the
+   existing task `<i>` with class `mb-credit-task` (it was already an
+   `<i>`, just needed an unambiguous selector). `_buildLabelCreditListTd`
+   ("Produced for label", which can have `co`/`executive` attributes but
+   never a task) gets the same `mb-credit-attr` treatment. Both changes
+   are purely additive — same visible text, no effect on
+   `_findCellListItems`/`_classifyCollapseCell`/`getCleanColumnText`
+   (confirmed: `getCleanColumnText` must NOT strip these — real visible
+   text, unlike the hidden sentinels `_CLEAN_STRIP_SEL` covers).
+2. **Count distinct values**: `openUniqDrop()`'s existing per-row scan
+   (same loop that already produces `emptyCellCount`/
+   `titleMismatchCount`/`nameVariationCount`) gained two `Map`s,
+   `attrValueCounts`/`taskValueCounts`, built by scanning each row's cell
+   for `.mb-credit-attr`/`.mb-credit-task` elements, deduping WITHIN each
+   row (a row crediting "additional" on two different people still
+   counts once — matches how every other count in this dropdown counts
+   rows, not occurrences) before incrementing across rows. No column-name
+   gating (unlike `isCaaOrEaaCol`) — purely content-based, like WIP.31's
+   `nameVariationCount`.
+3. **Render**: new `makeValueSynItem(kind, value, count)` sibling to
+   `makeSynItem`, for the dynamic (not fixed-5) entry family — click
+   handler calls `applyMultiRowStateFilter(\`${kind}:${value}\`, …)`, a
+   colon-prefixed COMPOUND mode string (`"attr:additional"`,
+   `"task:task: Second Engineer"`) that stays on the exact same
+   `dataset.mbMultirowMode` plumbing as every other entry here, rather
+   than a second filter mechanism — this session already has a saved
+   memory (`feedback_search_before_new_header_mechanism`) about the cost
+   of inventing a parallel mechanism instead of reusing an established
+   one, and this design follows that lesson directly. Both "Cell
+   structure" header-display gates (the `isCollapsableCol` branch and
+   WIP.31's generalized non-collapsable branch) were widened to also
+   trigger on `attrValueCounts.size > 0 || taskValueCounts.size > 0`.
+4. **Wire the match**: `applyMultiRowStateFilter`'s label ternary and
+   `testRowMatch()`'s `f.isMultiRowFilter` branch both gained
+   `mode.startsWith('attr:')`/`'task:'` arms — `attr:` splits every
+   `.mb-credit-attr` span's text on `/` and checks membership (handles a
+   merged multi-attribute credit like `"assistant/co"` in one span);
+   `task:` checks exact trimmed-text equality against every
+   `.mb-credit-task` element.
+
+**Verified via jsdom**: reconstructed the real `debug/unique-attribute-task.html`
+row from raw `<dt>additional engineer:</dt>`/`<dt>engineer:</dt>` source
+through the real `_findCreditDts`→`_buildCreditListTd` pipeline — built
+`<li>` `textContent` matched the captured rendered HTML EXACTLY ("Billy
+Bowers (US engineer) (additional)", "Karl Egsieker (task: Second
+Engineer)"), confirming the raw-source reconstruction was accurate, with
+`<span class="mb-credit-attr">additional</span>` and `<i class=
+"mb-credit-task">task: Second Engineer</i>` present as expected. A
+separate 4-row synthetic fixture (mixed additional/assistant/co
+attributes, one task, one bare credit, one row with the same attribute on
+two different people) verified the counting logic produces exactly
+`{additional: 2, assistant: 1, co: 1}` / `{"task: Second Engineer": 1}`
+(confirming per-row dedup) and that the `attr:`/`task:` match arms select
+exactly the expected rows for each value. Re-ran every prior credit-column
+regression test (WIP.16/20/21/22/23/24/28/31) — all still pass, `textContent`
+unchanged; only `innerHTML` gained the new wrapping span/class, confirming
+the change is purely additive.
+
