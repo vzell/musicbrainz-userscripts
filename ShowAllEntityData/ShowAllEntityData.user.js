@@ -10314,6 +10314,50 @@
     }
 
     /**
+     * Appends a zero-width space text node to an empty MusicBrainz glyph
+     * marker span we create/clone ourselves (`worklink`/`eventlink`/
+     * `placelink`/`arealink`/`artistlink`/`labellink`, etc. — see
+     * `_initColHeaderGlyph`/`_findCellEntityRefs`'s per-entity-type dropdown
+     * marker) — defeats a real-world third-party userscript's own CSS rule,
+     * confirmed live via DevTools:
+     *
+     *   span.arealink:empty,
+     *   a[href*="/area/"] > span.arealink:empty { display: none !important; }
+     *
+     * That script (a "More Flags Everywhere"-style enhancement) knows
+     * MusicBrainz shows a generic area icon via `background-image` on an
+     * empty `.arealink` span, and deliberately hides it whenever the span
+     * has no children — because IT normally replaces that generic icon with
+     * its own richer per-area flag `<img>` (which, once inserted as a real
+     * child, makes the span no longer `:empty` and the rule stops applying).
+     * Our own glyph spans are always genuinely empty — a column header or a
+     * dropdown's generic "this entity is an area" marker has no specific
+     * area to show a flag FOR — so they matched `:empty` too and got
+     * `!important`-hidden right along with the native fallback icon they
+     * were never meant to suppress in the first place.
+     *
+     * A zero-width space (`​`) has `data.length === 1`; the CSS
+     * `:empty` pseudo-class's own spec definition ("no children, or only
+     * comment/processing-instruction nodes and zero-LENGTH text nodes")
+     * does not match that, so this reliably defeats the selector while
+     * staying visually invisible. Harmless when that third-party script
+     * isn't installed too — MusicBrainz's own CSS never keys off `:empty`
+     * at all (see `debug/mb-icons.css`'s plain, unscoped
+     * `.arealink{background-image:…}` rule, identical in shape to every
+     * other working glyph class), so this is a pure no-op there. Currently
+     * only actually needed for `arealink` (the only glyph class the
+     * third-party rule targets), but applied to every glyph unconditionally
+     * since it's cheap, harmless, and future-proofs against the same
+     * treatment being extended to other entity-type classes later.
+     *
+     * @param {HTMLElement} glyphSpan
+     * @returns {void}
+     */
+    function _guardGlyphAgainstEmptySelectorHiding(glyphSpan) {
+        glyphSpan.appendChild(document.createTextNode('\u200B'));
+    }
+
+    /**
      * Injects (or re-confirms) a MusicBrainz-native, empty, CSS-styled
      * relationship glyph span (`<span class="worklink">` for "Recording
      * of", `<span class="eventlink">`/`<span class="placelink">` for
@@ -10376,6 +10420,10 @@
             glyph.style.height = '14px';
             glyph.style.marginLeft = '4px';
             glyph.style.marginRight = '4px';
+            // Defeats a real third-party userscript's `span.arealink:empty
+            // { display: none !important; }` rule — see
+            // _guardGlyphAgainstEmptySelectorHiding()'s JSDoc.
+            _guardGlyphAgainstEmptySelectorHiding(glyph);
             // makeTableSortableUnified() always builds this flex row as
             // `${colName} ` (a single leading text node) followed by the
             // sort/uniq-value icon elements — insert right after that text
@@ -41588,6 +41636,11 @@ a { color: #1565c0; }`;
                     marker.className = glyphClass;
                     marker.setAttribute('aria-hidden', 'true');
                     marker.style.marginRight = '4px';
+                    // Defeats a real third-party userscript's
+                    // `span.arealink:empty { display: none !important; }`
+                    // rule — see _guardGlyphAgainstEmptySelectorHiding()'s
+                    // JSDoc.
+                    _guardGlyphAgainstEmptySelectorHiding(marker);
                     item.appendChild(marker);
                 }
 

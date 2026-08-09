@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.53",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': fixed the \"Recorded in area\" column header, and any area-typed entry in the 📊 unique-values dropdown (e.g. \"Manhattan\"/\"New York\" inside \"Recorded in area\"'s dropdown), silently rendering with no area icon at all — despite the correct `<span class=\"arealink\">` marker genuinely being present in the DOM with MusicBrainz's own real background-image glyph correctly resolved (confirmed live via DevTools Computed panel: `background-image` resolved to the actual icon, but `display: none` won). Root-caused via a live DevTools Styles-panel walk (with the user) to a real, currently-installed third-party userscript's own injected stylesheet: `span.arealink:empty, a[href*=\"/area/\"] > span.arealink:empty { display: none !important; }` — that script (a \"More Flags Everywhere\"-style enhancement) deliberately hides MusicBrainz's generic native area icon whenever the marker span is EMPTY, since it normally replaces it with a real per-area flag `<img>` (which, once inserted as a child, makes the span no longer `:empty` and the rule stops applying). Our own glyph spans — both the column-header one (`_initColHeaderGlyph`) and the unique-values dropdown's generic per-entity-type marker (`_findCellEntityRefs`'s `glyphClass`, rendered in the dropdown's item-building loop) — are always genuinely empty (a header or a generic \"this entity is an area\" marker has no specific area to show a flag FOR), so they matched `:empty` too and got `!important`-hidden right along with the fallback icon they were never meant to suppress. MusicBrainz's own CSS was never the problem — confirmed via a separately-downloaded, unminified `mb-icons.css`: `.arealink`'s own rule is a plain, unscoped `background-image`, identical in shape/specificity to the already-working `.placelink`/`.eventlink`/`.worklink`/etc.",
+          "New shared `_guardGlyphAgainstEmptySelectorHiding(glyphSpan)` appends a zero-width space (`\\u200B`) text node to any glyph span we create/clone ourselves — a text node with `data.length === 1` does not satisfy the CSS `:empty` pseudo-class's own spec definition (\"no children, or only comment/processing-instruction nodes and zero-LENGTH text nodes\"), so this reliably defeats the third-party selector while staying visually invisible. Called from both `_initColHeaderGlyph()` and the dropdown's entity-marker builder. Applied to every glyph class unconditionally (not just `arealink`, the only one currently affected) since it's cheap and harmless — a pure no-op for users without that userscript installed, since MusicBrainz's own CSS never keys off `:empty` at all — and future-proofs against the same third-party treatment being extended to other entity-type classes later."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.52",
     "date": "2026-08-09",
     "sections": [
