@@ -1669,7 +1669,7 @@
         },
 
         sa_enable_release_tracks_recording_of_columns: {
-            label: 'Show "Recording of" / "Recorded at" columns',
+            label: 'Show "Recording of" / "Recorded at" / "Recorded in" / "Mixed at" columns',
             type: 'checkbox',
             default: true,
             description: 'Adds a "Recording of work" column (the linked work, e.g. "Dancing in ' +
@@ -1684,19 +1684,24 @@
                          'at place" shows one row per place when a single relationship credits ' +
                          'more than one, and that relationship\'s own "additional" attribute — ' +
                          'when present — renders inline on every place row too, e.g. "Some Venue ' +
-                         '(additional)") — all extracted from the release tracklist\'s "ARs" ' +
-                         'relationship data. "ARs" itself is left completely unchanged — every ' +
-                         'extracted link appears in both places.'
+                         '(additional)"). Also adds "Recorded in area" (an area credited directly, ' +
+                         'e.g. "Asbury Park, New Jersey, United States (on 2002-09-20)" — the full ' +
+                         'area chain and trailing date are kept, unlike "Recorded at place") and ' +
+                         '"Mixed at place" (same shape as "Recorded at place", from each track\'s ' +
+                         'bare "mixed at:" relationship — a different place than where it was ' +
+                         'recorded). All extracted from the release tracklist\'s "ARs" relationship ' +
+                         'data. "ARs" itself is left completely unchanged — every extracted link ' +
+                         'appears in both places.'
         },
 
         sa_enable_release_tracks_credit_role_columns: {
-            label: 'Show engineer/mixer/producer/copyright credit columns',
+            label: 'Show engineer/producer/mixer/performer/copyright credit columns',
             type: 'checkbox',
             default: true,
-            description: 'Adds "Recording engineer", "Mixer", "Engineer", "Producer", and ' +
+            description: 'Adds "Recording engineer", "Engineer", "Producer", "Mixer", and ' +
                          '"Miscellaneous support" columns to the consolidated release tracklist, ' +
-                         'extracted from each track\'s "recording engineer:"/"mixer:"/"engineer:"/' +
-                         '"producer:"/"miscellaneous support:" relationship data (normally glommed ' +
+                         'extracted from each track\'s "recording engineer:"/"engineer:"/"producer:"/' +
+                         '"mixer:"/"miscellaneous support:" relationship data (normally glommed ' +
                          'into the "ARs" column) — one column per role, no separate attribute-word ' +
                          'columns. Each of the first four roles can be prefixed with attribute words ' +
                          '(Additional, Assistant, Associate, Co, and — for Engineer/Producer only — ' +
@@ -1717,10 +1722,52 @@
                          'attached. Also adds a "Produced for label" column from each track\'s ' +
                          '"produced for:" relationship (labels only), optionally prefixed with "co"/"executive" ' +
                          'attribute words rendered the same way as the credit columns above, e.g. ' +
-                         '"Laurel Canyon Ltd. (executive)". Every column header carries MusicBrainz\'s ' +
-                         'own marker icon once (e.g. next to "Mixer", "Engineer") instead of repeating ' +
-                         'it on every row. "ARs" itself is left completely unchanged — every extracted ' +
-                         'link appears in both places.'
+                         '"Laurel Canyon Ltd. (executive)". Also adds a "Performer" column (each ' +
+                         'track\'s bare "performer:" relationship), positioned before "Vocals"/' +
+                         '"Instruments" rather than alongside the columns above. Every column header ' +
+                         'carries MusicBrainz\'s own marker icon once (e.g. next to "Mixer", ' +
+                         '"Engineer") instead of repeating it on every row. "ARs" itself is left ' +
+                         'completely unchanged — every extracted link appears in both places.'
+        },
+
+        sa_enable_release_tracks_instrument_vocal_columns: {
+            label: 'Show "Instruments" / "Vocals" columns',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds shared "Instruments" and "Vocals" columns to the consolidated ' +
+                         'release tracklist, extracted from each track\'s instrument (e.g. ' +
+                         '"cello:", "violin and background vocals:") and vocals (e.g. "vocals:", ' +
+                         '"lead vocals:", "guest background vocals:") relationship data (normally ' +
+                         'glommed into the "ARs" column). Every distinct instrument shares the one ' +
+                         '"Instruments" column (e.g. "cello: John Doe", "violin: Jane Doe"), and ' +
+                         'every vocals variant shares the one "Vocals" column — an attribute-word ' +
+                         'prefix (Additional, Guest, Solo, Lead, Background, Spoken, Choir) renders ' +
+                         'inline after the artist\'s name, the same way the credit-role columns ' +
+                         'above render theirs, e.g. "Jane Doe (guest/background)". A credit ' +
+                         'combining an instrument and vocals in one relationship (e.g. "harmonium, ' +
+                         'tabla and vocals:") is split across both columns for the same artist. A ' +
+                         'credited-as alternate name (MusicBrainz\'s own trailing "[…]" bracket, ' +
+                         'e.g. "baritone saxophone [baritone sax]") appends after the artist\'s own ' +
+                         'entry. Independent of the credit-role columns setting above. "ARs" itself ' +
+                         'is left completely unchanged — every extracted link appears in both places.'
+        },
+
+        sa_enable_release_tracks_dynamic_ar_columns: {
+            label: 'Auto-discover columns for every other relationship type',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds one column per relationship type not already covered by the ' +
+                         'columns above (e.g. "Conductor", "Publisher", "Mixed at", "Lyricist and ' +
+                         'composer" — whatever a given release actually uses), auto-discovered from ' +
+                         'the release tracklist\'s "ARs" relationship data rather than a fixed list, ' +
+                         'so future MusicBrainz relationship types are covered without an update to ' +
+                         'this script. Each column is named after its relationship\'s own literal ' +
+                         'phrase (sentence-cased); when the same phrase credits more than one kind of ' +
+                         'entity across the release (e.g. both an artist and a place), it splits into ' +
+                         'one column per kind, the same way "Phonographic copyright (℗) by artist"/ ' +
+                         '"…by label" already do. Independent of the settings above — a release with ' +
+                         'no such extra relationships adds zero columns. "ARs" itself is left ' +
+                         'completely unchanged — every extracted link appears in both places.'
         },
 
         sa_enable_ars_collapse: {
@@ -7560,6 +7607,15 @@
         // release can have "recorded at" data with zero "recording of" data.
         const _pageHasRecordedAtEvent = _recOfEnabled && _anyTitleCellMatches(td => _findRecordedAtDt(td, 'eventlink') !== null);
         const _pageHasRecordedAtPlace = _recOfEnabled && _anyTitleCellMatches(td => _findRecordedAtDt(td, 'placelink') !== null);
+        // "Recorded in area" — same family/setting, independent shape (an
+        // area credited directly, e.g. a live recording's general
+        // geographic context, distinct from "recorded at:"'s specific
+        // place/event — see _findRecordedInDt's JSDoc).
+        const _pageHasRecordedInArea = _recOfEnabled && _anyTitleCellMatches(td => _findRecordedInDt(td) !== null);
+        // "Mixed at place" — same family/setting/shape as "Recorded at
+        // place" (see _findMixedAtDt's JSDoc for why a bare "mixed at:" is
+        // independent of "recorded at:").
+        const _pageHasMixedAtPlace = _recOfEnabled && _anyTitleCellMatches(td => _findMixedAtDt(td) !== null);
         // Both "Recording of work"'s attribute words (REC_OF_ATTRIBUTES) and
         // "Recorded at place"'s "additional" attribute used to be their own
         // page-wide-gated columns (a word-per-column loop, and a single
@@ -7585,6 +7641,17 @@
                 });
             });
         }
+
+        // "Instruments"/"Vocals" — own dedicated setting, independent of
+        // `_recOfEnabled`/`_creditRolesEnabled`: a user may want performer
+        // credits without production credits, or vice versa. Same
+        // page-wide-decision reasoning as everything else here — see
+        // `_parseInstrumentVocalsDt`'s JSDoc for the matching rules.
+        const _instrumentVocalColumnsEnabled = Lib.settings.sa_enable_release_tracks_instrument_vocal_columns !== false;
+        const _pageHasInstruments = _instrumentVocalColumnsEnabled &&
+            _anyTitleCellMatches(td => _findInstrumentVocalsEntries(td).some(e => e.parsed.instruments.length > 0));
+        const _pageHasVocals = _instrumentVocalColumnsEnabled &&
+            _anyTitleCellMatches(td => _findInstrumentVocalsEntries(td).some(e => e.parsed.vocals.length > 0));
 
         // "Recording engineer"/"Mixer"/"Engineer"/"Producer"/
         // "Miscellaneous support" credit columns — own dedicated setting
@@ -7615,6 +7682,13 @@
         let _pageHasCopyrightByArtist = false;
         let _pageHasCopyrightByLabel = false;
         let _pageHasProducedFor = false;
+        // "Performer" — same setting/family as CREDIT_ROLES (a bare
+        // `<dt>performer:</dt>`, no attribute-word prefix seen in real
+        // data), but kept as its own dedicated column/gate rather than a
+        // `CREDIT_ROLES` array entry since it's positioned separately in
+        // the header sequence (before Vocals/Instruments, not alongside
+        // Recording engineer/Mixer/etc. — see the header-building block).
+        let _pageHasPerformer = false;
         if (_creditRolesEnabled) {
             _tables.forEach(table => {
                 const _thRow = table.querySelector(':scope > thead > tr');
@@ -7635,6 +7709,45 @@
                         if (!_pageHasCopyrightByLabel && _phonographicCopyrightHasKind(_copyrightDts, 'label')) _pageHasCopyrightByLabel = true;
                     }
                     if (!_pageHasProducedFor && _findCreditDts(td, ['produced', 'for'], ['co', 'executive']).length > 0) _pageHasProducedFor = true;
+                    if (!_pageHasPerformer && _findCreditDts(td, ['performer'], []).length > 0) _pageHasPerformer = true;
+                });
+            });
+        }
+
+        // Dynamic fallback for every other AR type not covered by a fixed
+        // handler or the Instruments/Vocals columns above (task item 5 of
+        // debug/support-all-ARs.org) — own dedicated setting, independent
+        // of `_recOfEnabled`/`_creditRolesEnabled`/
+        // `_instrumentVocalColumnsEnabled`, since this is the most
+        // exploratory/unpredictable piece and can surface a variable
+        // number of columns per release. `_dynamicRoleColumns`' Map
+        // insertion order is first-encountered-in-page order, which
+        // becomes the final left-to-right column order (see the header
+        // block below). `_classifyArDt` is the single source of truth for
+        // what counts as "dynamic" — see its own JSDoc.
+        const _dynamicArColumnsEnabled = Lib.settings.sa_enable_release_tracks_dynamic_ar_columns !== false;
+        const _dynamicRoleColumns = new Map(); // key -> { displayName, kinds: Set<string> }
+        if (_dynamicArColumnsEnabled) {
+            _tables.forEach(table => {
+                const _thRow = table.querySelector(':scope > thead > tr');
+                const _tb = table.querySelector(':scope > tbody');
+                if (!_thRow || !_tb) return;
+                const _tIdx = Array.from(_thRow.querySelectorAll('th')).findIndex(th => th.textContent.trim() === 'Title');
+                if (_tIdx === -1) return;
+                _tb.querySelectorAll(':scope > tr').forEach(tr => {
+                    const td = tr.children[_tIdx];
+                    if (!td) return;
+                    _findAllArDts(td).forEach(dt => {
+                        const _c = _classifyArDt(dt);
+                        if (_c.kind !== 'dynamic') return;
+                        if (!_dynamicRoleColumns.has(_c.key)) {
+                            _dynamicRoleColumns.set(_c.key, { displayName: _c.displayName, kinds: new Set() });
+                        }
+                        const _dd = dt.nextElementSibling;
+                        if (_dd && _dd.tagName === 'DD') {
+                            _collectEntityKinds(_dd).forEach(k => _dynamicRoleColumns.get(_c.key).kinds.add(k));
+                        }
+                    });
                 });
             });
         }
@@ -7709,30 +7822,38 @@
                 _theadRow.appendChild(_isrcTh);
             }
 
+            // Shared "ARs" reference every additive AR column below is
+            // inserted before — computed ONCE here (all the sub-blocks used
+            // to each recompute their own copy of this identical
+            // expression; harmless but redundant, since every one of them
+            // resolves to the same element). A later `.before(ref)` call
+            // always lands closer to `ref` than an earlier one, so the
+            // FINAL left-to-right column order is simply the order these
+            // blocks run in below: Recording of work, Recording date,
+            // Recorded at event, Recorded at place, Recorded in area,
+            // Performer, Vocals, Instruments, Recording engineer, Engineer,
+            // Producer, Mixer, Miscellaneous support, Mixed at place,
+            // Phonographic copyright (℗) by artist, …by label, Produced for
+            // label, [dynamic-fallback columns], ARs.
+            const _arsHeaderRef = _hasArs
+                ? _headerCells.find(th => th.textContent.trim() === 'ARs')
+                : _arsTh;
+
             // "Recording of" + "Recording date" + "Recorded at event" +
-            // "Recorded at place" — purely additive (see this function's
-            // JSDoc), inserted directly before "ARs" (not chained off
-            // Title/Video/Disambiguation/Artist/Recording artist like
-            // everything else). Each insertion below is `.before(ref)`
-            // against the same fixed `ARs` reference, so — since a later
-            // insertion against an unchanging reference always lands
-            // closer to that reference than an earlier one — creating
-            // "Recording of" first, then "Recording date", then "Recorded
-            // at event", then "Recorded at place" produces the desired
-            // final order: Recording of, Recording date, Recorded at
-            // event, Recorded at place, ARs. Neither "Recording of
-            // work"'s attribute words nor "Recorded at place"'s
-            // "additional" attribute get their own column anymore — both
-            // render inline instead (see the row-population block below),
-            // matching every CREDIT_ROLES column's own convention.
+            // "Recorded at place" + "Recorded in area" — purely additive
+            // (see this function's JSDoc), inserted directly before "ARs"
+            // (not chained off Title/Video/Disambiguation/Artist/Recording
+            // artist like everything else). Neither "Recording of work"'s
+            // attribute words nor "Recorded at place"'s "additional"
+            // attribute get their own column anymore — both render inline
+            // instead (see the row-population block below), matching every
+            // CREDIT_ROLES column's own convention.
             let _recOfTh = null;
             let _recOfDateTh = null;
             let _recordedAtEventTh = null;
             let _recordedAtPlaceTh = null;
-            if (_pageHasRecOf || _pageHasRecordedAtEvent || _pageHasRecordedAtPlace) {
-                const _arsHeaderRef = _hasArs
-                    ? _headerCells.find(th => th.textContent.trim() === 'ARs')
-                    : _arsTh;
+            let _recordedInAreaTh = null;
+            if (_pageHasRecOf || _pageHasRecordedAtEvent || _pageHasRecordedAtPlace || _pageHasRecordedInArea) {
                 if (_pageHasRecOf) {
                     if (!_headerCells.some(th => th.textContent.trim() === 'Recording of work')) {
                         _recOfTh = document.createElement('th');
@@ -7783,55 +7904,163 @@
                     _recordedAtPlaceTh.textContent = 'Recorded at place';
                     _arsHeaderRef.before(_recordedAtPlaceTh);
                 }
+                // "Recorded in area" — independent shape from "Recorded at
+                // place" (see _findRecordedInDt's JSDoc), right after it.
+                if (_pageHasRecordedInArea && !_headerCells.some(th => th.textContent.trim() === 'Recorded in area')) {
+                    _recordedInAreaTh = document.createElement('th');
+                    _recordedInAreaTh.textContent = 'Recorded in area';
+                    _arsHeaderRef.before(_recordedInAreaTh);
+                }
             }
 
-            // "Recording engineer"/"Mixer"/"Engineer"/"Producer"/
-            // "Miscellaneous support" credit columns — same
-            // trailing-before-"ARs" positioning trick as the block above
-            // (later `.before(ref)` calls against the same fixed reference
-            // land closer to it), so looping CREDIT_ROLES in order produces
-            // exactly: … Recorded at place → Recording engineer → Mixer →
-            // Engineer → Producer → Miscellaneous support → Phonographic
-            // copyright (℗) by artist → …by label → ARs. No attribute-word
-            // columns — an artist's own attribute words (e.g.
-            // "assistant"/"co") render inline after their name inside the
-            // role's own column instead (see `_buildCreditListItem`), one
-            // column per role only. Each header's own MusicBrainz marker
-            // glyph is injected post-render by `_initColHeaderGlyph()`
-            // (called from `renderGroupedTable()`'s tail, alongside
-            // "Recording of"'s `worklink` glyph) — NOT here, where anything
-            // appended to the `<th>` would be destroyed the moment
-            // `makeTableSortableUnified()` rebuilds it from `th.textContent`
-            // (see `_initColHeaderGlyph()`'s own JSDoc).
+            // "Performer" — own dedicated column/gate (see
+            // `_pageHasPerformer`'s JSDoc for why it's not folded into the
+            // CREDIT_ROLES loop below), positioned right after "Recorded in
+            // area", before "Vocals"/"Instruments".
+            let _performerTh = null;
+            if (_pageHasPerformer && !_headerCells.some(th => th.textContent.trim() === 'Performer')) {
+                _performerTh = document.createElement('th');
+                _performerTh.textContent = 'Performer';
+                _arsHeaderRef.before(_performerTh);
+            }
+
+            // "Vocals"/"Instruments" — Vocals inserted first so it lands
+            // BEFORE Instruments in the final order (matching typical
+            // liner-note ordering: … Performer → Vocals → Instruments →
+            // Recording engineer → …).
+            let _vocalsTh = null, _instrumentsTh = null;
+            if (_pageHasInstruments || _pageHasVocals) {
+                if (_pageHasVocals && !_headerCells.some(th => th.textContent.trim() === 'Vocals')) {
+                    _vocalsTh = document.createElement('th');
+                    _vocalsTh.textContent = 'Vocals';
+                    _arsHeaderRef.before(_vocalsTh);
+                }
+                if (_pageHasInstruments && !_headerCells.some(th => th.textContent.trim() === 'Instruments')) {
+                    _instrumentsTh = document.createElement('th');
+                    _instrumentsTh.textContent = 'Instruments';
+                    _arsHeaderRef.before(_instrumentsTh);
+                }
+            }
+
+            // "Recording engineer"/"Engineer"/"Producer"/"Mixer"/
+            // "Miscellaneous support" credit columns — looping CREDIT_ROLES
+            // in array order produces exactly: … Instruments → Recording
+            // engineer → Engineer → Producer → Mixer → Miscellaneous
+            // support → Mixed at place → … No attribute-word columns — an
+            // artist's own attribute words (e.g. "assistant"/"co") render
+            // inline after their name inside the role's own column instead
+            // (see `_buildCreditListItem`), one column per role only. Each
+            // header's own MusicBrainz marker glyph is injected post-render
+            // by `_initColHeaderGlyph()` (called from `renderGroupedTable()`'s
+            // tail, alongside "Recording of"'s `worklink` glyph) — NOT here,
+            // where anything appended to the `<th>` would be destroyed the
+            // moment `makeTableSortableUnified()` rebuilds it from
+            // `th.textContent` (see `_initColHeaderGlyph()`'s own JSDoc).
             const _creditRoleThs = []; // [{ role, mainTh }]
-            let _copyrightByArtistTh = null, _copyrightByLabelTh = null, _producedForTh = null;
             if (_creditRolesEnabled) {
-                const _arsHeaderRefForCredits = _hasArs
-                    ? _headerCells.find(th => th.textContent.trim() === 'ARs')
-                    : _arsTh;
                 CREDIT_ROLES.forEach(role => {
                     if (!_creditRolesWithRole.has(role.key)) return;
                     if (_headerCells.some(th => th.textContent.trim() === role.columnLabel)) return;
                     const _mainTh = document.createElement('th');
                     _mainTh.textContent = role.columnLabel;
-                    _arsHeaderRefForCredits.before(_mainTh);
+                    _arsHeaderRef.before(_mainTh);
                     _creditRoleThs.push({ role, mainTh: _mainTh });
                 });
-                if (_pageHasCopyrightByArtist && !_headerCells.some(th => th.textContent.trim() === 'Phonographic copyright (℗) by artist')) {
+            }
+
+            // "Mixed at place" — same family/shape as "Recorded at place"
+            // (see `_findMixedAtDt`'s JSDoc), positioned right after the
+            // CREDIT_ROLES group (Mixer specifically, per CREDIT_ROLES'
+            // own array-order comment) so the two mixing-related columns
+            // read together.
+            let _mixedAtPlaceTh = null;
+            if (_pageHasMixedAtPlace && !_headerCells.some(th => th.textContent.trim() === 'Mixed at place')) {
+                _mixedAtPlaceTh = document.createElement('th');
+                _mixedAtPlaceTh.textContent = 'Mixed at place';
+                _arsHeaderRef.before(_mixedAtPlaceTh);
+            }
+
+            // "Phonographic copyright (℗) by artist"/"…by label" +
+            // "Produced for label" — same `_creditRolesEnabled` setting as
+            // the CREDIT_ROLES loop above, but its own `if` block (not
+            // merged with it) since "Mixed at place" now needs to land
+            // between the two in the final column order.
+            let _copyrightByArtistTh = null, _copyrightByLabelTh = null, _producedForTh = null;
+            if (_creditRolesEnabled) {
+                // Column names derived from the same general
+                // `_splitColumnByEntityKind` rule the dynamic-fallback
+                // columns use (task item 3 of debug/support-all-ARs.org) —
+                // unconditionally split by {artist, label}; see
+                // `_buildPhonographicCopyrightTds`'s JSDoc for why this
+                // pair stays independently gated regardless of what's
+                // actually present on this particular page.
+                const _copyrightColumnNames = _splitColumnByEntityKind('Phonographic copyright (℗) by', new Set(['artist', 'label']));
+                if (_pageHasCopyrightByArtist && !_headerCells.some(th => th.textContent.trim() === _copyrightColumnNames.get('artist'))) {
                     _copyrightByArtistTh = document.createElement('th');
-                    _copyrightByArtistTh.textContent = 'Phonographic copyright (℗) by artist';
-                    _arsHeaderRefForCredits.before(_copyrightByArtistTh);
+                    _copyrightByArtistTh.textContent = _copyrightColumnNames.get('artist');
+                    _arsHeaderRef.before(_copyrightByArtistTh);
                 }
-                if (_pageHasCopyrightByLabel && !_headerCells.some(th => th.textContent.trim() === 'Phonographic copyright (℗) by label')) {
+                if (_pageHasCopyrightByLabel && !_headerCells.some(th => th.textContent.trim() === _copyrightColumnNames.get('label'))) {
                     _copyrightByLabelTh = document.createElement('th');
-                    _copyrightByLabelTh.textContent = 'Phonographic copyright (℗) by label';
-                    _arsHeaderRefForCredits.before(_copyrightByLabelTh);
+                    _copyrightByLabelTh.textContent = _copyrightColumnNames.get('label');
+                    _arsHeaderRef.before(_copyrightByLabelTh);
                 }
                 if (_pageHasProducedFor && !_headerCells.some(th => th.textContent.trim() === 'Produced for label')) {
                     _producedForTh = document.createElement('th');
                     _producedForTh.textContent = 'Produced for label';
-                    _arsHeaderRefForCredits.before(_producedForTh);
+                    _arsHeaderRef.before(_producedForTh);
                 }
+            }
+
+            // Dynamic-fallback AR columns — placed right after "Produced
+            // for label" (fires regardless of `_creditRolesEnabled`),
+            // looping `_dynamicRoleColumns` in Map-insertion (first-
+            // encountered-in-page) order: reading order becomes "curated
+            // specific columns → auto-discovered generic columns → full raw
+            // ARs". Each discovered role can itself split into more than
+            // one column (see `_splitColumnByEntityKind`) — restricted to
+            // `PEER_SPLIT_KINDS` (artist/label) via `_filterPeerKinds`, so
+            // a place/event/work/area/series-shaped role never fragments
+            // (see `PEER_SPLIT_KINDS`'s JSDoc) — e.g. a hypothetical role
+            // crediting both an artist and a label on the same page.
+            const _dynamicColumnThs = []; // [{ key, kindKey, th }]
+            if (_dynamicRoleColumns.size > 0) {
+                _dynamicRoleColumns.forEach(({ displayName, kinds }, key) => {
+                    _splitColumnByEntityKind(displayName, _filterPeerKinds(kinds)).forEach((colName, kindKey) => {
+                        if (_headerCells.some(th => th.textContent.trim() === colName)) return;
+                        const _th = document.createElement('th');
+                        _th.textContent = colName;
+                        _arsHeaderRef.before(_th);
+                        _dynamicColumnThs.push({ key, kindKey, th: _th });
+                        // Runtime collapsableColumns registration — a
+                        // dynamic column's name isn't known at authoring
+                        // time, and initCollapsableColumns() only matches
+                        // by exact string (see the page definition's
+                        // `collapsableColumns` comment). `def` is the same
+                        // object as `activeDefinition` (see this
+                        // function's own JSDoc), so this is visible to
+                        // initCollapsableColumns() when it runs later.
+                        // Dedup-guarded since this function can re-run.
+                        if (!def.features.collapsableColumns.includes(colName)) {
+                            def.features.collapsableColumns.push(colName);
+                        }
+                        // Runtime header-glyph registration — mirrors the
+                        // collapsableColumns registration immediately
+                        // above, for the identical reason: this column's
+                        // name (and which glyph, if any, it should carry)
+                        // isn't known until now, so it can't be one of the
+                        // static `_initColHeaderGlyph()` calls in
+                        // `renderGroupedTable()`'s tail. See
+                        // `_glyphClassForDynamicColumn`'s JSDoc.
+                        const _glyphClass = _glyphClassForDynamicColumn(kindKey, kinds);
+                        if (_glyphClass) {
+                            if (!def.features._dynamicArColumnGlyphs) def.features._dynamicArColumnGlyphs = [];
+                            if (!def.features._dynamicArColumnGlyphs.some(g => g.columnName === colName)) {
+                                def.features._dynamicArColumnGlyphs.push({ columnName: colName, glyphClass: _glyphClass });
+                            }
+                        }
+                    });
+                });
             }
 
             // Video then Disambiguation, chained right after Title in that
@@ -7870,8 +8099,11 @@
 
             if (!_disambigTh && !_recArtistTh && !_arsTh && !_streamingTh && !_acoustIdTh && !_isrcTh && !_videoTh &&
                 !_recOfTh && !_recOfDateTh &&
-                !_recordedAtEventTh && !_recordedAtPlaceTh &&
-                _creditRoleThs.length === 0 && !_copyrightByArtistTh && !_copyrightByLabelTh && !_producedForTh) return; // already fully processed
+                !_recordedAtEventTh && !_recordedAtPlaceTh && !_recordedInAreaTh &&
+                !_performerTh && !_instrumentsTh && !_vocalsTh &&
+                _creditRoleThs.length === 0 && !_mixedAtPlaceTh &&
+                !_copyrightByArtistTh && !_copyrightByLabelTh && !_producedForTh &&
+                _dynamicColumnThs.length === 0) return; // already fully processed
 
             _tbody.querySelectorAll(':scope > tr').forEach(row => {
                 const _cells = Array.from(row.children);
@@ -7946,10 +8178,10 @@
                 }
 
                 // "Recording of" + "Recording date" + "Recorded at event" +
-                // "Recorded at place" — read-only (see this function's
-                // JSDoc): clones the relevant anchor, never touches
-                // `_bareArsDiv`, so the existing ARs block right below
-                // still moves its full, untouched content into "ARs"
+                // "Recorded at place" + "Recorded in area" — read-only (see
+                // this function's JSDoc): clones the relevant anchor, never
+                // touches `_bareArsDiv`, so the existing ARs block right
+                // below still moves its full, untouched content into "ARs"
                 // exactly as it always has. Must run before that block
                 // purely for column ORDER (row.appendChild always appends
                 // at the current tail, so calling it here first is what
@@ -7958,9 +8190,9 @@
                 // anything these need. <td> append order mirrors the
                 // header creation order above: Recording of, then
                 // Recording date, then Recorded at event, then Recorded
-                // at place.
+                // at place, then Recorded in area.
                 if (_recOfTh || _recOfDateTh ||
-                    _recordedAtEventTh || _recordedAtPlaceTh) {
+                    _recordedAtEventTh || _recordedAtPlaceTh || _recordedInAreaTh) {
                     const _recOfDt = _findRecOfDt(_titleTd);
                     const _recOfDdRaw = _recOfDt?.nextElementSibling;
                     const _recOfDd = _recOfDdRaw && _recOfDdRaw.tagName === 'DD' ? _recOfDdRaw : null;
@@ -8013,6 +8245,28 @@
                     if (_recordedAtPlaceTh) {
                         row.appendChild(_buildRecordedAtPlaceTd(_findRecordedAtDt(_titleTd, 'placelink')) || document.createElement('td'));
                     }
+                    if (_recordedInAreaTh) {
+                        row.appendChild(_buildRecordedInAreaTd(_findRecordedInDt(_titleTd)) || document.createElement('td'));
+                    }
+                }
+
+                // "Performer" — <td> append order mirrors the header
+                // creation order above (right after Recorded in area,
+                // before Vocals/Instruments).
+                if (_performerTh) {
+                    const _matches = _findCreditDts(_titleTd, ['performer'], []);
+                    const _entries = _matches
+                        .map(m => ({ dd: m.dt.nextElementSibling, attributes: m.attributes }))
+                        .filter(e => e.dd && e.dd.tagName === 'DD');
+                    row.appendChild(_buildCreditListTd(_entries));
+                }
+
+                // "Vocals"/"Instruments" — Vocals appended first, matching
+                // the header creation order above.
+                if (_instrumentsTh || _vocalsTh) {
+                    const _instrumentVocalsEntries = _findInstrumentVocalsEntries(_titleTd);
+                    if (_vocalsTh) row.appendChild(_buildVocalsTd(_instrumentVocalsEntries));
+                    if (_instrumentsTh) row.appendChild(_buildInstrumentsTd(_instrumentVocalsEntries));
                 }
 
                 // <td> append order mirrors the header creation order
@@ -8033,6 +8287,13 @@
                     });
                 }
 
+                // "Mixed at place" — <td> append order mirrors the header
+                // creation order above (right after the CREDIT_ROLES
+                // columns, before Phonographic copyright).
+                if (_mixedAtPlaceTh) {
+                    row.appendChild(_buildRecordedAtPlaceTd(_findMixedAtDt(_titleTd)) || document.createElement('td'));
+                }
+
                 if (_copyrightByArtistTh || _copyrightByLabelTh) {
                     const { artistTd, labelTd } = _buildPhonographicCopyrightTds(_findPhonographicCopyrightDts(_titleTd));
                     if (_copyrightByArtistTh) row.appendChild(artistTd);
@@ -8045,6 +8306,32 @@
                         .map(m => ({ dd: m.dt.nextElementSibling, attributes: m.attributes }))
                         .filter(e => e.dd && e.dd.tagName === 'DD');
                     row.appendChild(_buildLabelCreditListTd(_entries));
+                }
+
+                // Dynamic-fallback AR columns — <td> append order mirrors
+                // the header creation order above: group this row's
+                // dynamically-classified <dt>s by role key, build each
+                // key's kind-split <td>s once, then append in the exact
+                // same order `_dynamicColumnThs` was created in (guarantees
+                // column-count/order match per row regardless of how many
+                // dynamic columns this release ended up with).
+                if (_dynamicColumnThs.length > 0) {
+                    const _dtsByKey = new Map(); // key -> HTMLElement[]
+                    _findAllArDts(_titleTd).forEach(dt => {
+                        const _c = _classifyArDt(dt);
+                        if (_c.kind !== 'dynamic') return;
+                        if (!_dtsByKey.has(_c.key)) _dtsByKey.set(_c.key, []);
+                        _dtsByKey.get(_c.key).push(dt);
+                    });
+                    const _tdsByKey = new Map(); // key -> Map<kindKey, td>
+                    _dtsByKey.forEach((dts, key) => {
+                        const _kinds = _dynamicRoleColumns.get(key)?.kinds || new Set();
+                        _tdsByKey.set(key, _buildKindSplitListTd(dts, _filterPeerKinds(_kinds)));
+                    });
+                    _dynamicColumnThs.forEach(({ key, kindKey }) => {
+                        const _tds = _tdsByKey.get(key);
+                        row.appendChild((_tds && _tds.get(kindKey)) || document.createElement('td'));
+                    });
                 }
 
                 if (_arsTh) {
@@ -8122,6 +8409,78 @@
     }
 
     /**
+     * Finds `titleTd`'s "bare" `div.ars` — the sibling `div.ars` that carries
+     * neither an `AcoustID…`- nor `ISRC…`-prefixed class (those hold the
+     * AcoustID/ISRC list `<dl>`s, a completely separate concern — see
+     * `_buildMultiRowArsTd`). Every "ARs" extractor in this file
+     * (`_findRecOfDt`, `_findRecordedAtDt`, `_findPhonographicCopyrightDts`,
+     * `_findCreditDts`, and the instrument/vocals/dynamic-fallback
+     * classifiers) needs this exact same lookup first — factored out once so
+     * they can't drift.
+     *
+     * @param {HTMLTableCellElement} titleTd
+     * @returns {?HTMLElement}
+     */
+    function _findBareArsDiv(titleTd) {
+        let _bareArsDiv = null;
+        titleTd.querySelectorAll(':scope > div.ars').forEach(d => {
+            const _classes = Array.from(d.classList);
+            if (!_classes.some(c => c.startsWith('AcoustID') || c.startsWith('ISRC'))) _bareArsDiv = d;
+        });
+        return _bareArsDiv;
+    }
+
+    /**
+     * Every direct-child `<dt>` of `titleTd`'s bare `div.ars > dl.ars` (see
+     * `_findBareArsDiv`) — the full, unfiltered set of AR relationship
+     * labels for this track, in document order. Used by the page-wide
+     * AR-discovery scan and per-row classification pass (`_classifyArDt`) so
+     * every relationship type gets considered exactly once, regardless of
+     * whether a dedicated extractor already claims it.
+     *
+     * @param {HTMLTableCellElement} titleTd
+     * @returns {HTMLElement[]}
+     */
+    function _findAllArDts(titleTd) {
+        const _bareArsDiv = _findBareArsDiv(titleTd);
+        if (!_bareArsDiv) return [];
+        return Array.from(_bareArsDiv.querySelectorAll(':scope > dl.ars > dt'));
+    }
+
+    /**
+     * Matches a single `<dt>` against one role's `roleWords`/`attributeVocab`
+     * — the per-`<dt>` matching body of `_findCreditDts`'s loop (see its
+     * JSDoc for the full component-splitting/strict-attribute-prefix rules
+     * this mirrors exactly), extracted so other classifiers (the dynamic AR
+     * fallback's `_dtMatchesAnyFixedHandler`) can reuse the identical
+     * matching rules against one already-in-hand `<dt>` without re-scanning
+     * `titleTd` from scratch.
+     *
+     * @param {HTMLElement} dt
+     * @param {string[]} roleWords
+     * @param {string[]} attributeVocab
+     * @returns {?{attributes: string[]}} `null` when `dt` doesn't match this
+     *   role at all.
+     */
+    function _creditDtMatch(dt, roleWords, attributeVocab) {
+        const _raw = dt.textContent.trim();
+        if (!/:$/.test(_raw)) return null;
+        const _body = _raw.slice(0, -1).trim();
+        const _components = _body.split(/\s*,\s*|\s+and\s+/i).map(c => c.trim()).filter(Boolean);
+        for (const _component of _components) {
+            const _words = _component.split(/[\s-]+/).filter(Boolean).map(w => w.toLowerCase());
+            if (_words.length < roleWords.length) continue;
+            const _tail = _words.slice(_words.length - roleWords.length);
+            if (_tail.join(' ') !== roleWords.join(' ')) continue;
+            const _prefixWords = _words.slice(0, _words.length - roleWords.length);
+            if (!_prefixWords.every(w => attributeVocab.includes(w))) continue;
+            const _attributes = attributeVocab.filter(a => _prefixWords.includes(a));
+            return { attributes: _attributes };
+        }
+        return null;
+    }
+
+    /**
      * The fixed set of MusicBrainz recording-relationship attribute words
      * that can prefix a "recording of:" `<dt>` (e.g. `"live cover
      * recording of:"`) — see debug/rec-of.org. Rendered inline in the
@@ -8147,14 +8506,7 @@
      * @returns {?HTMLElement} The `<dt>`, or `null` if this track has none.
      */
     function _findRecOfDt(titleTd) {
-        let _bareArsDiv = null;
-        titleTd.querySelectorAll(':scope > div.ars').forEach(d => {
-            const _classes = Array.from(d.classList);
-            if (!_classes.some(c => c.startsWith('AcoustID') || c.startsWith('ISRC'))) _bareArsDiv = d;
-        });
-        if (!_bareArsDiv) return null;
-        return Array.from(_bareArsDiv.querySelectorAll(':scope > dl.ars > dt'))
-            .find(dt => /recording of:$/i.test(dt.textContent.trim())) || null;
+        return _findAllArDts(titleTd).find(dt => /recording of:$/i.test(dt.textContent.trim())) || null;
     }
 
     /**
@@ -8216,18 +8568,11 @@
      *   of this kind.
      */
     function _findRecordedAtDt(titleTd, glyphClass) {
-        let _bareArsDiv = null;
-        titleTd.querySelectorAll(':scope > div.ars').forEach(d => {
-            const _classes = Array.from(d.classList);
-            if (!_classes.some(c => c.startsWith('AcoustID') || c.startsWith('ISRC'))) _bareArsDiv = d;
-        });
-        if (!_bareArsDiv) return null;
-        return Array.from(_bareArsDiv.querySelectorAll(':scope > dl.ars > dt'))
-            .find(dt => {
-                if (!/recorded at/i.test(dt.textContent.trim())) return false;
-                const _dd = dt.nextElementSibling;
-                return !!(_dd && _dd.tagName === 'DD' && _dd.querySelector(`:scope > span.${glyphClass}`));
-            }) || null;
+        return _findAllArDts(titleTd).find(dt => {
+            if (!/recorded at/i.test(dt.textContent.trim())) return false;
+            const _dd = dt.nextElementSibling;
+            return !!(_dd && _dd.tagName === 'DD' && _dd.querySelector(`:scope > span.${glyphClass}`));
+        }) || null;
     }
 
     /**
@@ -8401,6 +8746,95 @@
     }
 
     /**
+     * Finds `titleTd`'s "mixed at:" `<dt>` — a place-typed relationship
+     * (MusicBrainz's own relationship-type metadata: `"mixed at"` shares
+     * `type0: "place"` with `"recorded at"`, same `root_id` — see the
+     * embedded JSON on the edit-relationships page) whose `<dt>` wording is
+     * always the bare `"mixed at:"` (unlike "recorded at", it has no
+     * "and …" combined variant of its own — the COMBINED phrase, when the
+     * same place served both roles, is `"recorded at and mixed at:"`,
+     * which `_findRecordedAtDt`'s own loose `/recorded at/i` substring test
+     * already matches, so that case surfaces via "Recorded at place", not
+     * here). Same loose substring match / same-shape lookup as
+     * `_findRecordedAtDt`, gated on the `<dd>` carrying a `span.placelink`
+     * marker so a track with only a bare "mixed at:" `<dt>` (a DIFFERENT
+     * place than where it was recorded — see debug/therising.html's
+     * "Southern Tracks"/"Silent Sound Studios" examples) is found too.
+     *
+     * @param {HTMLTableCellElement} titleTd
+     * @returns {?HTMLElement} The `<dt>`, or `null` if this track has none.
+     */
+    function _findMixedAtDt(titleTd) {
+        return _findAllArDts(titleTd).find(dt => {
+            if (!/mixed at/i.test(dt.textContent.trim())) return false;
+            const _dd = dt.nextElementSibling;
+            return !!(_dd && _dd.tagName === 'DD' && _dd.querySelector(':scope > span.placelink'));
+        }) || null;
+    }
+
+    /**
+     * Finds `titleTd`'s "recorded in:" `<dt>` — an area-typed relationship
+     * (MusicBrainz: `cardinality0: 1`, i.e. always exactly ONE area target
+     * per relationship instance, never multiple peers — unlike "recorded
+     * at"/"mixed at" place credits, which CAN legitimately list more than
+     * one place). Exact-text match (mirrors `_findPhonographicCopyrightDts`'s
+     * fixed-phrase reasoning), gated on the `<dd>` carrying a
+     * `span.arealink` marker.
+     *
+     * @param {HTMLTableCellElement} titleTd
+     * @returns {?HTMLElement} The `<dt>`, or `null` if this track has none.
+     */
+    function _findRecordedInDt(titleTd) {
+        return _findAllArDts(titleTd).find(dt => {
+            if (dt.textContent.trim().toLowerCase() !== 'recorded in:') return false;
+            const _dd = dt.nextElementSibling;
+            return !!(_dd && _dd.tagName === 'DD' && _dd.querySelector(':scope > span.arealink'));
+        }) || null;
+    }
+
+    /**
+     * Builds the "Recorded in area" cell content from a `_findRecordedInDt`
+     * result's `<dd>` — unlike `_buildRecordedAtPlaceTd`'s place-then-area
+     * chain (where "place" is the peer-splittable primary kind and "area"
+     * is always DIFFERENT-kind decoration), an area-credited relationship's
+     * own decoration ALSO reuses `arealink` markers (its own parent-area
+     * chain, e.g. crediting "Asbury Park" still shows ", New Jersey, United
+     * States" via two more `arealink`-marked/flagged spans — see
+     * debug/therising.html) — the SAME kind as the primary target itself,
+     * so marker-kind alone can't distinguish "the credited area" from "its
+     * own ancestry". Since `cardinality0: 1` means there's only ever ONE
+     * target per relationship instance anyway (see `_findRecordedInDt`'s
+     * JSDoc), no segmentation is attempted at all: only the very FIRST
+     * `span.arealink` marker (redundant with the column header's own glyph)
+     * is dropped, and everything else — every subsequent area/flag/anchor
+     * in the chain, AND the trailing `" (on YYYY-MM-DD)"`/`" (from … until
+     * …)"` date parenthetical — is cloned verbatim into one `<li>`. Unlike
+     * "Recorded at place", the trailing date is deliberately KEPT here (no
+     * separate "Recording date"-style column exists for this relationship).
+     *
+     * @param {?HTMLElement} dt - Result of `_findRecordedInDt` (may be `null`).
+     * @returns {?HTMLTableCellElement} `null` when `dt` has no area `<dd>`.
+     */
+    function _buildRecordedInAreaTd(dt) {
+        const _dd = dt?.nextElementSibling;
+        if (!_dd || _dd.tagName !== 'DD') return null;
+        const td = document.createElement('td');
+        const ul = document.createElement('ul');
+        const li = document.createElement('li');
+        let _droppedPrimaryMarker = false;
+        Array.from(_dd.childNodes).forEach(n => {
+            if (!_droppedPrimaryMarker && n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && n.classList.contains('arealink')) {
+                _droppedPrimaryMarker = true;
+                return;
+            }
+            li.appendChild(n.cloneNode(true));
+        });
+        ul.appendChild(li);
+        td.appendChild(ul);
+        return td;
+    }
+
+    /**
      * Finds every `<dt>phonographic copyright (℗) by:</dt>` inside a
      * track's bare `div.ars` (same classification as `_findRecOfDt`/
      * `_findRecordedAtDt`) — a fixed, unvarying phrase with no
@@ -8428,14 +8862,122 @@
      * @returns {HTMLElement[]}
      */
     function _findPhonographicCopyrightDts(titleTd) {
-        let _bareArsDiv = null;
-        titleTd.querySelectorAll(':scope > div.ars').forEach(d => {
-            const _classes = Array.from(d.classList);
-            if (!_classes.some(c => c.startsWith('AcoustID') || c.startsWith('ISRC'))) _bareArsDiv = d;
+        return _findAllArDts(titleTd).filter(dt => dt.textContent.trim().toLowerCase() === 'phonographic copyright (℗) by:');
+    }
+
+    /**
+     * The complete set of native MusicBrainz "marker" classes
+     * (`<span class="{kind}link"></span>`, always empty — a CSS-styled
+     * icon hook, not text content) this file's AR extraction recognizes as
+     * the leading marker of one credited entity within a `<dd>`. Confirmed
+     * against real release-tracks markup (debug/therising.html,
+     * debug/double-ars.html) — no other `*link` marker class appears in
+     * this context.
+     * @type {string[]}
+     */
+    const KNOWN_ENTITY_LINK_KINDS = ['artist', 'label', 'place', 'event', 'work', 'area', 'series'];
+
+    /**
+     * The subset of `KNOWN_ENTITY_LINK_KINDS` eligible to act as a
+     * PEER-SPLITTING segment boundary in `_buildKindSplitListTd` — i.e.
+     * kinds where multiple occurrences within one `<dd>` genuinely mean
+     * multiple DISTINCT credited entities (comma/"and"-joined artists or
+     * labels, confirmed for `_buildPhonographicCopyrightTds`'s mixed
+     * artist+label case). Deliberately excludes `place`/`event`/`work`/
+     * `area`/`series`: those kinds' relationships are "chain"-shaped
+     * instead — a SINGLE primary target (if any) accompanied by its own
+     * nested geographic/hierarchical decoration that legitimately reuses
+     * `arealink` markers repeatedly (e.g. a place's own "in `<area>`,
+     * `<area>`, `<country>`" chain, or an area crediting ITS OWN parent
+     * area — see `debug/therising.html`'s "recorded in:"/"mixed at:"
+     * examples). Treating those as peer-splittable fragmented a single
+     * "A&M Studios in Hollywood" place credit into two separate "…place"/
+     * "…area" columns, and fragmented a single "Asbury Park, New Jersey,
+     * United States" area chain into multiple rows — both real regressions
+     * this constant fixes. Any relationship shaped like that needs its own
+     * dedicated handler (see `_buildRecordedAtPlaceTd`/`_buildRecordedInAreaTd`)
+     * rather than relying on generic peer-splitting; the dynamic AR-column
+     * fallback (`_classifyArDt`) only ever passes this restricted set to
+     * `_splitColumnByEntityKind`/`_buildKindSplitListTd`, so an unknown
+     * FUTURE place/event/work/area-shaped relationship safely falls back to
+     * `_buildKindSplitListTd`'s `kinds.size === 0` "clone whole `<dd>`
+     * verbatim, one row" behavior instead of fragmenting.
+     * @type {string[]}
+     */
+    const PEER_SPLIT_KINDS = ['artist', 'label'];
+
+    /**
+     * `kinds` filtered down to `PEER_SPLIT_KINDS` — the set the
+     * dynamic-fallback AR-column discovery actually passes to
+     * `_splitColumnByEntityKind`/`_buildKindSplitListTd` for a given role
+     * (see `PEER_SPLIT_KINDS`'s JSDoc for why place/event/work/area/series
+     * markers must never be treated as peer-splittable there).
+     *
+     * @param {Set<string>} kinds
+     * @returns {Set<string>}
+     */
+    function _filterPeerKinds(kinds) {
+        return new Set(Array.from(kinds).filter(k => PEER_SPLIT_KINDS.includes(k)));
+    }
+
+    /**
+     * The MusicBrainz marker glyph class for one dynamic-fallback column —
+     * `${kindKey}link` directly when the column was kind-split (`kindKey`
+     * is an actual peer kind, e.g. `'artist'`/`'label'`), or, for a merged
+     * (`'default'`) column, `${the one kind}link` when exactly one entity
+     * kind was found ACROSS THE WHOLE PAGE for this role (via the
+     * unrestricted `kinds` — not `_filterPeerKinds`'s result — so a
+     * single-kind place/event/work/area role still gets its own header
+     * glyph even though it was never peer-split). `null` when no glyph can
+     * be determined (zero or more-than-one kind merged into one column).
+     *
+     * @param {string} kindKey - `'default'` or a specific kind.
+     * @param {Set<string>} kinds - The FULL (unrestricted) kinds set for
+     *   this role, from `_dynamicRoleColumns`.
+     * @returns {?string}
+     */
+    function _glyphClassForDynamicColumn(kindKey, kinds) {
+        if (kindKey !== 'default') return `${kindKey}link`;
+        return kinds.size === 1 ? `${Array.from(kinds)[0]}link` : null;
+    }
+
+    /**
+     * Every entity kind (see `KNOWN_ENTITY_LINK_KINDS`) credited within a
+     * single `<dd>` — detected structurally by each item's own leading
+     * `<span class="{kind}link">` marker, the same marker
+     * `_buildKindSplitListTd` segments on.
+     *
+     * @param {?HTMLElement} dd
+     * @returns {Set<string>}
+     */
+    function _collectEntityKinds(dd) {
+        const _kinds = new Set();
+        if (!dd) return _kinds;
+        KNOWN_ENTITY_LINK_KINDS.forEach(kind => {
+            if (dd.querySelector(`:scope > span.${kind}link`)) _kinds.add(kind);
         });
-        if (!_bareArsDiv) return [];
-        return Array.from(_bareArsDiv.querySelectorAll(':scope > dl.ars > dt'))
-            .filter(dt => dt.textContent.trim().toLowerCase() === 'phonographic copyright (℗) by:');
+        return _kinds;
+    }
+
+    /**
+     * `_collectEntityKinds`, unioned across every `<dt>`'s `<dd>` in `dts` —
+     * used for the page-wide "does this role need splitting by entity
+     * kind" gate (see `_splitColumnByEntityKind`/`_buildKindSplitListTd`).
+     * Generalizes the old `_phonographicCopyrightHasKind(dts, kind)` (one
+     * boolean per kind, called once per kind) to a single Set covering
+     * every kind at once — needed for the dynamic-fallback AR columns,
+     * where the set of kinds actually present isn't known in advance.
+     *
+     * @param {HTMLElement[]} dts
+     * @returns {Set<string>}
+     */
+    function _collectEntityKindsAcrossDts(dts) {
+        const _kinds = new Set();
+        dts.forEach(dt => {
+            const _dd = dt?.nextElementSibling;
+            if (_dd && _dd.tagName === 'DD') _collectEntityKinds(_dd).forEach(k => _kinds.add(k));
+        });
+        return _kinds;
     }
 
     /**
@@ -8443,80 +8985,175 @@
      * at least one entity of the given kind — used only for the page-wide
      * "does any track need this column" gate, so it doesn't need to build
      * anything (see `_buildPhonographicCopyrightTds` for the actual
-     * content).
+     * content). Thin wrapper over the general `_collectEntityKindsAcrossDts`.
      *
      * @param {HTMLElement[]} dts
      * @param {'artist'|'label'} kind
      * @returns {boolean}
      */
     function _phonographicCopyrightHasKind(dts, kind) {
-        const _cls = kind === 'artist' ? 'artistlink' : 'labellink';
-        return dts.some(dt => {
-            const _dd = dt?.nextElementSibling;
-            return !!(_dd && _dd.tagName === 'DD' && _dd.querySelector(`:scope > span.${_cls}`));
-        });
+        return _collectEntityKindsAcrossDts(dts).has(kind);
     }
 
     /**
-     * Builds the "Phonographic copyright (℗) by artist"/"…by label" cell
-     * content, merging every `_findPhonographicCopyrightDts` match's
-     * `<dd>` (there can be more than one — see that function's JSDoc for
-     * the multi-`<dl>` case that requires this) — same marker-based
-     * per-item segmentation as `_buildRecordedAtPlaceTd` (structural split
-     * at each item's own leading marker `<span>`, marker itself dropped
-     * per WIP.25, trailing "and"/"," separator text trimmed from every
-     * non-last segment), generalized to TWO marker classes
-     * (`span.artistlink`, `span.labellink`) instead of one, since a single
-     * `<dd>` can credit a MIX of artists and labels. Real data
+     * Decides the final column name(s) for one role, given every entity
+     * kind actually credited under it across the whole page (see
+     * `_collectEntityKindsAcrossDts`) — the general form of the existing
+     * "Phonographic copyright (℗) by artist"/"…by label" naming rule (task
+     * item 3 of debug/support-all-ARs.org), reusable by both the fixed
+     * handlers and the dynamic-fallback columns.
+     *
+     * `kinds.size <= 1` (the common case: this role's targets are all the
+     * same kind, or there's no recognized marker at all) → ONE entry keyed
+     * `'default'`, mapped to `baseColumnName` UNCHANGED — a single-kind
+     * column never grows a kind suffix. `kinds.size > 1` → one entry per
+     * kind present (in `KNOWN_ENTITY_LINK_KINDS` order, for determinism),
+     * each named `` `${baseColumnName} ${kind}` ``.
+     *
+     * @param {string} baseColumnName - e.g. `"Phonographic copyright (℗) by"`
+     *   (no trailing kind).
+     * @param {Set<string>} kinds
+     * @returns {Map<string, string>} kind (or `'default'`) → final column name.
+     */
+    function _splitColumnByEntityKind(baseColumnName, kinds) {
+        const _map = new Map();
+        if (kinds.size <= 1) {
+            _map.set('default', baseColumnName);
+            return _map;
+        }
+        KNOWN_ENTITY_LINK_KINDS.forEach(kind => {
+            if (kinds.has(kind)) _map.set(kind, `${baseColumnName} ${kind}`);
+        });
+        return _map;
+    }
+
+    /**
+     * Builds one `<td><ul><li>…</li>…</ul></td>` per entity kind, from
+     * every `dts` match's shared `<dd>` — generalizes
+     * `_buildPhonographicCopyrightTds`'s original 2-hardcoded-marker
+     * (`artistlink`/`labellink`) segmentation to any of
+     * `KNOWN_ENTITY_LINK_KINDS` at once, since a single `<dd>` can credit a
+     * MIX of kinds (e.g. both an artist and a label — see
+     * debug/double-ars.html). Segmentation is structural, keyed on each
+     * item's own leading marker `<span class="{kind}link">` (marker itself
+     * dropped, per WIP.25 — mirrors `_buildCreditListTd`'s identical
+     * `span.artistlink`-marker segmentation), trailing "and"/","
+     * separator text trimmed from every non-last segment. Real data
      * (debug/copyright.html) has 3 labels joined by ","/" and ", each with
      * its own `<span class="comment">` disambiguation note and a
      * `<!-- -->(in YYYY)<!-- -->` year attribution (both kept, cloned
      * as-is, exactly like `_buildRecordedAtPlaceTd` keeps a place's own
      * area chain — this function doesn't try to parse either one out
-     * separately). Segments are routed into one of two separate `<ul>`s
-     * (and thus `<td>`s) by which marker started them; a segment with no
-     * marker at all (defensive fallback, e.g. malformed data) is dropped
-     * from both.
+     * separately).
+     *
+     * `kinds` decides whether to split at all — see
+     * `_splitColumnByEntityKind`'s identical `kinds.size <= 1` rule, which
+     * this mirrors: `kinds.size <= 1` merges everything into ONE `<td>`
+     * keyed `'default'`; `kinds.size > 1` returns one `<td>` per kind in
+     * `kinds`, each ALWAYS present (even empty) so a caller iterating a
+     * fixed set of expected columns never gets a missing entry for a row
+     * that happens to have no items of one particular kind. A segment
+     * whose marker doesn't match any of `KNOWN_ENTITY_LINK_KINDS`
+     * (defensive, not seen in real data) is dropped, matching the original
+     * function's "no marker at all" fallback.
+     *
+     * `kinds.size === 0` (a `<dd>` with no recognized marker anywhere for
+     * this role — not seen in real data, flagged as an untested branch)
+     * clones each `<dd>` verbatim into one `<li>` per `<dt>` instead of
+     * attempting to parse sub-pieces — same "don't over-parse" philosophy
+     * as `_buildLabelCreditListTd`.
+     *
+     * @param {HTMLElement[]} dts - e.g. `_findPhonographicCopyrightDts`'s
+     *   result, or any other multi-`<dt>` match set sharing this shape.
+     * @param {Set<string>} kinds - Entity kinds to split by (see
+     *   `_collectEntityKindsAcrossDts`) — decides whether to split at all,
+     *   and which kinds get their own `<td>`.
+     * @returns {Map<string, HTMLTableCellElement>} Keyed `'default'` when
+     *   `kinds.size <= 1`, otherwise one entry per kind in `kinds`
+     *   (`KNOWN_ENTITY_LINK_KINDS` order).
+     */
+    function _buildKindSplitListTd(dts, kinds) {
+        const _split = kinds.size > 1;
+        const _expectedKeys = _split ? KNOWN_ENTITY_LINK_KINDS.filter(k => kinds.has(k)) : ['default'];
+        const _tds = new Map();
+        const _uls = new Map();
+        _expectedKeys.forEach(key => {
+            _tds.set(key, document.createElement('td'));
+            _uls.set(key, document.createElement('ul'));
+        });
+
+        if (kinds.size === 0) {
+            dts.forEach(dt => {
+                const _dd = dt?.nextElementSibling;
+                if (!_dd || _dd.tagName !== 'DD') return;
+                const li = document.createElement('li');
+                Array.from(_dd.childNodes).forEach(n => li.appendChild(n.cloneNode(true)));
+                _uls.get('default').appendChild(li);
+            });
+        } else {
+            dts.forEach(dt => {
+                const _dd = dt?.nextElementSibling;
+                if (!_dd || _dd.tagName !== 'DD') return;
+                const _nodes = Array.from(_dd.childNodes).map(n => n.cloneNode(true));
+                const _segments = []; // { kind: string|null, nodes: [] }
+                _nodes.forEach(n => {
+                    let _markerKind = null;
+                    if (n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN') {
+                        // Only a marker matching the CALLER's own `kinds` set
+                        // is ever a boundary — any other recognized-but-
+                        // unrequested kind marker (e.g. a nested `arealink`
+                        // inside a place-only split) is left as ordinary
+                        // content of the currently-open segment instead of
+                        // fragmenting it. See PEER_SPLIT_KINDS's JSDoc.
+                        _markerKind = KNOWN_ENTITY_LINK_KINDS.find(k => kinds.has(k) && n.classList.contains(`${k}link`)) || null;
+                    }
+                    if (_markerKind || _segments.length === 0) {
+                        _segments.push({ kind: _markerKind, nodes: [] });
+                    }
+                    if (_markerKind) return; // marker is a segment boundary only, never its own content (see WIP.25)
+                    _segments[_segments.length - 1].nodes.push(n);
+                });
+                _segments.forEach((seg, i) => {
+                    if (i === _segments.length - 1) return;
+                    const _tail = seg.nodes[seg.nodes.length - 1];
+                    if (_tail && _tail.nodeType === Node.TEXT_NODE && /^[\s,]*(?:and[\s,]*)?$/i.test(_tail.textContent)) {
+                        seg.nodes.pop();
+                    }
+                });
+                _segments.forEach(seg => {
+                    if (seg.nodes.length === 0 || !seg.kind) return;
+                    const _key = _split ? seg.kind : 'default';
+                    const _ul = _uls.get(_key);
+                    if (!_ul) return; // seg.kind not in the expected kinds set — defensive, dropped
+                    const li = document.createElement('li');
+                    seg.nodes.forEach(n => li.appendChild(n));
+                    _ul.appendChild(li);
+                });
+            });
+        }
+
+        _tds.forEach((td, key) => {
+            const ul = _uls.get(key);
+            if (ul.children.length) td.appendChild(ul);
+        });
+        return _tds;
+    }
+
+    /**
+     * Builds the "Phonographic copyright (℗) by artist"/"…by label" cell
+     * content — thin wrapper over the general `_buildKindSplitListTd`,
+     * unconditionally split by `{artist, label}` (this role has always
+     * kept its two columns independently gated, even on a page where only
+     * one kind is actually present — see the header-building call site's
+     * `_pageHasCopyrightByArtist`/`_pageHasCopyrightByLabel` flags, which
+     * predate and are unaffected by this generalization).
      *
      * @param {HTMLElement[]} dts - Result of `_findPhonographicCopyrightDts`.
      * @returns {{artistTd: HTMLTableCellElement, labelTd: HTMLTableCellElement}}
      */
     function _buildPhonographicCopyrightTds(dts) {
-        const _artistTd = document.createElement('td');
-        const _labelTd = document.createElement('td');
-        const _artistUl = document.createElement('ul');
-        const _labelUl = document.createElement('ul');
-        dts.forEach(dt => {
-            const _dd = dt?.nextElementSibling;
-            if (!_dd || _dd.tagName !== 'DD') return;
-            const _nodes = Array.from(_dd.childNodes).map(n => n.cloneNode(true));
-            const _segments = []; // { kind: 'artist'|'label'|null, nodes: [] }
-            _nodes.forEach(n => {
-                const _isArtistMarker = n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && n.classList.contains('artistlink');
-                const _isLabelMarker = n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && n.classList.contains('labellink');
-                if (_isArtistMarker || _isLabelMarker || _segments.length === 0) {
-                    _segments.push({ kind: _isArtistMarker ? 'artist' : (_isLabelMarker ? 'label' : null), nodes: [] });
-                }
-                if (_isArtistMarker || _isLabelMarker) return; // marker is a segment boundary only, never its own content (see WIP.25)
-                _segments[_segments.length - 1].nodes.push(n);
-            });
-            _segments.forEach((seg, i) => {
-                if (i === _segments.length - 1) return;
-                const _tail = seg.nodes[seg.nodes.length - 1];
-                if (_tail && _tail.nodeType === Node.TEXT_NODE && /^[\s,]*(?:and[\s,]*)?$/i.test(_tail.textContent)) {
-                    seg.nodes.pop();
-                }
-            });
-            _segments.forEach(seg => {
-                if (seg.nodes.length === 0 || !seg.kind) return;
-                const li = document.createElement('li');
-                seg.nodes.forEach(n => li.appendChild(n));
-                (seg.kind === 'artist' ? _artistUl : _labelUl).appendChild(li);
-            });
-        });
-        if (_artistUl.children.length) _artistTd.appendChild(_artistUl);
-        if (_labelUl.children.length) _labelTd.appendChild(_labelUl);
-        return { artistTd: _artistTd, labelTd: _labelTd };
+        const _tds = _buildKindSplitListTd(dts, new Set(['artist', 'label']));
+        return { artistTd: _tds.get('artist'), labelTd: _tds.get('label') };
     }
 
     /**
@@ -8611,15 +9248,119 @@
     }
 
     /**
-     * Role descriptors for the "Recording engineer"/"Mixer"/"Engineer"/
-     * "Producer"/"Miscellaneous support" credit columns (see
+     * Attribute/type words that can prefix an instrument or "vocals" `<dt>`
+     * component (e.g. `<dt> guest <a href="/instrument/…">harmonium</a>,
+     * guest <a href="/instrument/…">tabla</a> and guest vocals:</dt>`,
+     * `<dt>lead vocals:</dt>`, `<dt>background vocals:</dt>` — see
+     * debug/therising.html). Every word not in this list makes
+     * `_parseInstrumentVocalsDt` reject the WHOLE `<dt>` (see its JSDoc) —
+     * this is what correctly keeps a non-credit phrase like `<dt><a
+     * href="/instrument/…">strings</a> arranger:</dt>` ("arranger" isn't
+     * recognized here) out of the "Instruments" column, leaving it for the
+     * dynamic-fallback classifier to pick up as its own column instead.
+     * @type {string[]}
+     */
+    const INSTRUMENT_VOCAL_ATTRIBUTES = ['additional', 'guest', 'solo', 'lead', 'background', 'spoken', 'choir'];
+
+    /**
+     * Parses one `<dt>` into its instrument-credit and vocals-credit
+     * components, for the shared "Instruments"/"Vocals" columns. Splits the
+     * `<dt>`'s child-node stream into components at `,`/`and` TEXT-node
+     * boundaries only (an instrument `<a>` is never itself a boundary) —
+     * mirrors `_creditDtMatch`'s component-splitting idea, generalized from
+     * a plain-text split to a mixed text/element node stream, since a
+     * component can embed a live `<a href="/instrument/…">` (see
+     * debug/therising.html, e.g. `<dt> guest <a href="/instrument/…">
+     * harmonium</a>, guest <a href="/instrument/…">tabla</a> and guest
+     * vocals:</dt>` — three components: two instrument credits, one vocals
+     * credit, ALL crediting the same artist(s) in the shared `<dd>`).
+     *
+     * Each component must classify ENTIRELY as either an instrument credit
+     * (at most one instrument `<a>`, every other word a member of
+     * `INSTRUMENT_VOCAL_ATTRIBUTES`) or a vocals credit (last word exactly
+     * "vocals", every word before it a member of
+     * `INSTRUMENT_VOCAL_ATTRIBUTES`) — a single unrecognized word anywhere
+     * rejects the WHOLE `<dt>`, not just that component. This is deliberate,
+     * not just a simplification: it's what correctly keeps `<dt> <a
+     * href="/instrument/…">strings</a> arranger:</dt>` (real data) OUT of
+     * "Instruments" — "arranger" isn't a recognized attribute word, so the
+     * component fails to classify, and the whole `<dt>` is left unclaimed
+     * for the dynamic-fallback classifier to pick up as its own "Strings
+     * arranger" column instead.
+     *
+     * An optional trailing `[altName]` bracket (MusicBrainz's credited-as
+     * alternate instrument/vocal-type name, e.g. `<a href="…">baritone
+     * saxophone</a> [baritone sax]:`) is captured per component and
+     * stripped before the attribute-word check.
+     *
+     * @param {HTMLElement} dt
+     * @returns {?{instruments: Array<{anchor: HTMLAnchorElement, altName: ?string, attributes: string[]}>,
+     *             vocals: Array<{altName: ?string, attributes: string[]}>}}
+     *   `null` when `dt` does not classify entirely as instrument/vocals —
+     *   the caller must then leave it to the fixed-handler/dynamic-fallback
+     *   classifiers instead.
+     */
+    function _parseInstrumentVocalsDt(dt) {
+        const _raw = dt.textContent.trim();
+        if (!/:$/.test(_raw)) return null;
+
+        // Split dt's child nodes into components at ","/" and " TEXT-node
+        // boundaries (element nodes — instrument <a>s — are never
+        // boundaries); the dt's own trailing ":" is stripped from the last
+        // text node first so it never ends up inside the last component.
+        const _components = [[]];
+        const _childNodes = Array.from(dt.childNodes);
+        _childNodes.forEach((n, i) => {
+            if (n.nodeType !== Node.TEXT_NODE) {
+                _components[_components.length - 1].push(n);
+                return;
+            }
+            let _text = n.textContent;
+            if (i === _childNodes.length - 1) _text = _text.replace(/:\s*$/, '');
+            _text.split(/\s*,\s*|\s+and\s+/i).forEach((part, pi) => {
+                if (pi > 0) _components.push([]);
+                if (part) _components[_components.length - 1].push(document.createTextNode(part));
+            });
+        });
+
+        const _instruments = [];
+        const _vocals = [];
+        for (const _comp of _components.filter(c => c.length > 0)) {
+            const _instrumentAnchors = _comp.filter(n => n.nodeType === Node.ELEMENT_NODE && n.tagName === 'A' && /^\/instrument\//.test(n.getAttribute('href') || ''));
+            if (_instrumentAnchors.length > 1) return null; // defensive — not seen in real data
+            let _text = _comp.filter(n => n.nodeType === Node.TEXT_NODE).map(n => n.textContent).join(' ');
+            let _altName = null;
+            const _bracketMatch = _text.match(/\[([^\]]+)\]/);
+            if (_bracketMatch) {
+                _altName = _bracketMatch[1].trim();
+                _text = _text.replace(_bracketMatch[0], ' ');
+            }
+            const _words = _text.split(/\s+/).map(w => w.toLowerCase()).filter(Boolean);
+            if (_instrumentAnchors.length === 1) {
+                if (!_words.every(w => INSTRUMENT_VOCAL_ATTRIBUTES.includes(w))) return null;
+                _instruments.push({ anchor: _instrumentAnchors[0], altName: _altName, attributes: INSTRUMENT_VOCAL_ATTRIBUTES.filter(a => _words.includes(a)) });
+            } else {
+                if (_words.length === 0 || _words[_words.length - 1] !== 'vocals') return null;
+                const _prefixWords = _words.slice(0, -1);
+                if (!_prefixWords.every(w => INSTRUMENT_VOCAL_ATTRIBUTES.includes(w))) return null;
+                _vocals.push({ altName: _altName, attributes: INSTRUMENT_VOCAL_ATTRIBUTES.filter(a => _prefixWords.includes(a)) });
+            }
+        }
+        if (_instruments.length === 0 && _vocals.length === 0) return null;
+        return { instruments: _instruments, vocals: _vocals };
+    }
+
+    /**
+     * Role descriptors for the "Recording engineer"/"Engineer"/"Producer"/
+     * "Mixer"/"Miscellaneous support" credit columns (see
      * `_findCreditDts`/`_buildCreditListTd` and
      * `applyExtractTrackTitleData`'s JSDoc for the full design). Array
-     * order doubles as the desired final left-to-right column order,
-     * matching debug/artist-roles.org's own Group 1 (Recording engineer,
-     * Mixer) → Group 2 (Engineer, Producer) presentation order, with
-     * "Miscellaneous support" (a later, separately requested addition —
-     * see `debug/buggy-list-title.html`) appended last.
+     * order doubles as the desired final left-to-right column order —
+     * "Mixer" deliberately sits last (right before "Miscellaneous
+     * support"), immediately followed in the header sequence by "Mixed at
+     * place" (a separate, non-`CREDIT_ROLES` column — see the
+     * header-building block), so the two mixing-related columns read
+     * together.
      *
      * `roleWords` is the base role phrase as it appears at the END of a
      * `<dt>` (e.g. `<dt>recording engineer:</dt>`, `<dt>assistant mixer:
@@ -8638,12 +9379,12 @@
     const CREDIT_ROLES = [
         { key: 'recEngineer', roleWords: ['recording', 'engineer'], columnLabel: 'Recording engineer',
           attributeVocab: ['additional', 'assistant', 'associate', 'co'] },
-        { key: 'mixer', roleWords: ['mixer'], columnLabel: 'Mixer',
-          attributeVocab: ['additional', 'assistant', 'associate', 'co'] },
         { key: 'engineer', roleWords: ['engineer'], columnLabel: 'Engineer',
           attributeVocab: ['additional', 'assistant', 'associate', 'co', 'executive'] },
         { key: 'producer', roleWords: ['producer'], columnLabel: 'Producer',
           attributeVocab: ['additional', 'assistant', 'associate', 'co', 'executive'] },
+        { key: 'mixer', roleWords: ['mixer'], columnLabel: 'Mixer',
+          attributeVocab: ['additional', 'assistant', 'associate', 'co'] },
         { key: 'miscSupport', roleWords: ['miscellaneous', 'support'], columnLabel: 'Miscellaneous support',
           attributeVocab: [] }
     ];
@@ -8719,29 +9460,10 @@
      *   deduplicated) — empty array when this track has no such credit.
      */
     function _findCreditDts(titleTd, roleWords, attributeVocab) {
-        let _bareArsDiv = null;
-        titleTd.querySelectorAll(':scope > div.ars').forEach(d => {
-            const _classes = Array.from(d.classList);
-            if (!_classes.some(c => c.startsWith('AcoustID') || c.startsWith('ISRC'))) _bareArsDiv = d;
-        });
-        if (!_bareArsDiv) return [];
         const _results = [];
-        Array.from(_bareArsDiv.querySelectorAll(':scope > dl.ars > dt')).forEach(dt => {
-            const _raw = dt.textContent.trim();
-            if (!/:$/.test(_raw)) return;
-            const _body = _raw.slice(0, -1).trim();
-            const _components = _body.split(/\s*,\s*|\s+and\s+/i).map(c => c.trim()).filter(Boolean);
-            for (const _component of _components) {
-                const _words = _component.split(/[\s-]+/).filter(Boolean).map(w => w.toLowerCase());
-                if (_words.length < roleWords.length) continue;
-                const _tail = _words.slice(_words.length - roleWords.length);
-                if (_tail.join(' ') !== roleWords.join(' ')) continue;
-                const _prefixWords = _words.slice(0, _words.length - roleWords.length);
-                if (!_prefixWords.every(w => attributeVocab.includes(w))) continue;
-                const _attributes = attributeVocab.filter(a => _prefixWords.includes(a));
-                _results.push({ dt, attributes: _attributes });
-                break;
-            }
+        _findAllArDts(titleTd).forEach(dt => {
+            const _match = _creditDtMatch(dt, roleWords, attributeVocab);
+            if (_match) _results.push({ dt, attributes: _match.attributes });
         });
         return _results;
     }
@@ -9041,6 +9763,263 @@
         });
         if (ul.children.length) td.appendChild(ul);
         return td;
+    }
+
+    /**
+     * Splits `dd`'s child nodes into per-artist segments at each artist's
+     * own `<span class="artistlink"></span>` marker — the exact
+     * segmentation `_buildCreditListTd` uses inline, kept here as its own
+     * tiny helper since `_buildInstrumentsTd`/`_buildVocalsTd` need the
+     * identical split against a shared `<dd>` that can carry more than one
+     * component's worth of credits (see `_parseInstrumentVocalsDt`).
+     *
+     * @param {HTMLElement} dd
+     * @returns {Node[][]}
+     */
+    function _segmentDdByArtistMarker(dd) {
+        const _segments = [];
+        Array.from(dd.childNodes).forEach(n => {
+            const _isArtistMarker = n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && n.classList.contains('artistlink');
+            if (_isArtistMarker || _segments.length === 0) _segments.push([]);
+            _segments[_segments.length - 1].push(n);
+        });
+        return _segments;
+    }
+
+    /**
+     * Finds every `<dt>` on this track that `_parseInstrumentVocalsDt`
+     * accepts, paired with its parsed result — the shared scan both
+     * `_buildInstrumentsTd` and `_buildVocalsTd` build their cells from, so
+     * a combined `<dt>` (e.g. "harmonium, tabla and vocals:") is only ever
+     * parsed once.
+     *
+     * @param {HTMLTableCellElement} titleTd
+     * @returns {Array<{dt: HTMLElement, parsed: {instruments: Array, vocals: Array}}>}
+     */
+    function _findInstrumentVocalsEntries(titleTd) {
+        return _findAllArDts(titleTd)
+            .map(dt => ({ dt, parsed: _parseInstrumentVocalsDt(dt) }))
+            .filter(e => e.parsed !== null);
+    }
+
+    /**
+     * Builds one Instruments/Vocals `<li>` for a single credited artist
+     * segment and one parsed instrument-or-vocals component. Mirrors
+     * `_buildCreditListItem`'s shape (artist name/name-variation/comment
+     * span, then a trailing `" (attr1/attr2)"` parenthetical for attribute
+     * words), prefixed with the cloned instrument `<a>` for the
+     * Instruments column (e.g. `"cello: John Doe"`) — the Vocals column has
+     * no such prefix since the column name itself already says "Vocals". A
+     * credited-as `altName` (e.g. `"orchestra bells"`/`"baritone sax"`, from
+     * MusicBrainz's own trailing `[…]` bracket) appends after the attribute
+     * parenthetical, in the same bracket shape MusicBrainz itself uses.
+     *
+     * Unlike the CREDIT_ROLES columns (WIP.16, which deliberately drop a
+     * credit's trailing date — see `_buildCreditListTd`'s JSDoc), instrument
+     * and vocals credits ALWAYS carry a date attribute in real data (e.g.
+     * `<!-- -->(on 2002-08-29)`, `<!-- -->(from 1987-01-20 until 1987-03)` —
+     * see debug/therising.html/debug/double-ars.html) and it's kept here,
+     * via the same `_findCreditSegmentTextAnnotation` free-text-parenthetical
+     * fallback the "Miscellaneous support"/bare-role columns already use for
+     * their own annotations — grouped into the SAME trailing parenthetical
+     * as the attribute words, comma-separated, mirroring
+     * `_buildCreditListItem`'s identical grouping.
+     *
+     * @param {Node[]} seg - One artist's segment of the shared `<dd>` (see
+     *   `_segmentDdByArtistMarker`).
+     * @param {?HTMLAnchorElement} instrumentAnchor - The instrument `<a>` to
+     *   prefix with, or `null` for a Vocals entry.
+     * @param {string[]} attributes
+     * @param {?string} altName
+     * @returns {HTMLLIElement|null} `null` when `seg` has no artist anchor.
+     */
+    function _buildInstrumentVocalsListItem(seg, instrumentAnchor, attributes, altName) {
+        const _artistA = _findCreditSegmentArtistAnchor(seg);
+        if (!_artistA) return null;
+        const li = document.createElement('li');
+        if (instrumentAnchor) {
+            li.appendChild(instrumentAnchor.cloneNode(true));
+            li.appendChild(document.createTextNode(': '));
+        }
+        const _artistNode = (_artistA.parentElement &&
+                              _artistA.parentElement.tagName === 'SPAN' &&
+                              _artistA.parentElement.classList.contains('name-variation'))
+            ? _artistA.parentElement : _artistA;
+        li.appendChild(_artistNode.cloneNode(true));
+
+        const _commentSpan = _findCreditSegmentCommentSpan(seg);
+        if (_commentSpan) {
+            li.appendChild(document.createTextNode(' '));
+            li.appendChild(_commentSpan.cloneNode(true));
+        }
+
+        const _parenNodes = [];
+        if (attributes.length > 0) {
+            const _attrSpan = document.createElement('span');
+            _attrSpan.className = 'mb-credit-attr';
+            _attrSpan.textContent = attributes.join('/');
+            _parenNodes.push(_attrSpan);
+        }
+        const _dateAnnotation = _findCreditSegmentTextAnnotation(seg);
+        if (_dateAnnotation) {
+            if (_parenNodes.length > 0) _parenNodes.push(document.createTextNode(', '));
+            _parenNodes.push(document.createTextNode(_dateAnnotation));
+        }
+        if (_parenNodes.length > 0) {
+            li.appendChild(document.createTextNode(' ('));
+            _parenNodes.forEach(n => li.appendChild(n));
+            li.appendChild(document.createTextNode(')'));
+        }
+        if (altName) {
+            li.appendChild(document.createTextNode(` [${altName}]`));
+        }
+        return li;
+    }
+
+    /**
+     * Builds the "Instruments" column cell — one `<li>` per (instrument
+     * component × credited artist) pair, across every
+     * `_findInstrumentVocalsEntries` match on this track.
+     *
+     * @param {Array<{dt: HTMLElement, parsed: object}>} entries
+     * @returns {HTMLTableCellElement}
+     */
+    function _buildInstrumentsTd(entries) {
+        const td = document.createElement('td');
+        const ul = document.createElement('ul');
+        entries.forEach(({ dt, parsed }) => {
+            if (parsed.instruments.length === 0) return;
+            const _dd = dt.nextElementSibling;
+            if (!_dd || _dd.tagName !== 'DD') return;
+            _segmentDdByArtistMarker(_dd).forEach(seg => {
+                parsed.instruments.forEach(({ anchor, altName, attributes }) => {
+                    const li = _buildInstrumentVocalsListItem(seg, anchor, attributes, altName);
+                    if (li) ul.appendChild(li);
+                });
+            });
+        });
+        if (ul.children.length) td.appendChild(ul);
+        return td;
+    }
+
+    /**
+     * Builds the "Vocals" column cell — same shape as `_buildInstrumentsTd`,
+     * one `<li>` per (vocals component × credited artist) pair.
+     *
+     * @param {Array<{dt: HTMLElement, parsed: object}>} entries
+     * @returns {HTMLTableCellElement}
+     */
+    function _buildVocalsTd(entries) {
+        const td = document.createElement('td');
+        const ul = document.createElement('ul');
+        entries.forEach(({ dt, parsed }) => {
+            if (parsed.vocals.length === 0) return;
+            const _dd = dt.nextElementSibling;
+            if (!_dd || _dd.tagName !== 'DD') return;
+            _segmentDdByArtistMarker(_dd).forEach(seg => {
+                parsed.vocals.forEach(({ altName, attributes }) => {
+                    const li = _buildInstrumentVocalsListItem(seg, null, attributes, altName);
+                    if (li) ul.appendChild(li);
+                });
+            });
+        });
+        if (ul.children.length) td.appendChild(ul);
+        return td;
+    }
+
+    /**
+     * Whether `dt` is already claimed by one of the FIXED extraction
+     * handlers (Recording of, Recorded at event/place, Recorded in area,
+     * Mixed at place, Phonographic copyright, Produced for label,
+     * Performer, or any `CREDIT_ROLES` entry) — the dynamic-fallback
+     * AR-column discovery (`_classifyArDt`) uses this as its first,
+     * highest-priority check so none of those existing columns can ever be
+     * shadowed by an auto-discovered duplicate. Deliberately does NOT check
+     * instrument/vocals (`_parseInstrumentVocalsDt`) — that check happens
+     * separately, right after this one, in `_classifyArDt`.
+     *
+     * @param {HTMLElement} dt
+     * @returns {boolean}
+     */
+    function _dtMatchesAnyFixedHandler(dt) {
+        const _raw = dt.textContent.trim();
+        if (/recording of:$/i.test(_raw)) return true;
+        if (/recorded at/i.test(_raw)) {
+            const _dd = dt.nextElementSibling;
+            if (_dd && _dd.tagName === 'DD' &&
+                (_dd.querySelector(':scope > span.eventlink') || _dd.querySelector(':scope > span.placelink'))) return true;
+        }
+        if (_raw.toLowerCase() === 'recorded in:') {
+            const _dd = dt.nextElementSibling;
+            if (_dd && _dd.tagName === 'DD' && _dd.querySelector(':scope > span.arealink')) return true;
+        }
+        if (/mixed at/i.test(_raw)) {
+            const _dd = dt.nextElementSibling;
+            if (_dd && _dd.tagName === 'DD' && _dd.querySelector(':scope > span.placelink')) return true;
+        }
+        if (_raw.toLowerCase() === 'phonographic copyright (℗) by:') return true;
+        if (_creditDtMatch(dt, ['produced', 'for'], ['co', 'executive'])) return true;
+        if (_creditDtMatch(dt, ['performer'], [])) return true;
+        return CREDIT_ROLES.some(role => _creditDtMatch(dt, role.roleWords, role.attributeVocab) !== null);
+    }
+
+    /**
+     * The normalized dynamic-fallback bucketing key for one `<dt>` — its
+     * full literal phrase text (embedded `<a>` text included via
+     * `textContent`, whitespace-collapsed, trailing `":"` stripped,
+     * lowercased). Per the confirmed keying decision (see
+     * debug/support-all-ARs.org discussion): `"strings arranger:"` and
+     * `"cello arranger:"` bucket into TWO separate keys/columns, never
+     * merged — simple and predictable, matches "every AR" literally.
+     *
+     * @param {HTMLElement} dt
+     * @returns {?string} `null` when `dt`'s text doesn't end in `":"`.
+     */
+    function _dynamicRolePhraseKey(dt) {
+        const _raw = dt.textContent.trim();
+        if (!/:$/.test(_raw)) return null;
+        const _text = _raw.slice(0, -1).replace(/\s+/g, ' ').trim().toLowerCase();
+        return _text || null;
+    }
+
+    /**
+     * The dynamic-fallback column's display name for one `<dt>` — same
+     * normalized text as `_dynamicRolePhraseKey`, sentence-cased (first
+     * letter only, e.g. `"conductor"` → `"Conductor"`,
+     * `"lyricist and composer"` → `"Lyricist and composer"`).
+     *
+     * @param {HTMLElement} dt
+     * @returns {?string}
+     */
+    function _dynamicRoleDisplayName(dt) {
+        const _key = _dynamicRolePhraseKey(dt);
+        if (_key === null) return null;
+        return _key.charAt(0).toUpperCase() + _key.slice(1);
+    }
+
+    /**
+     * Single source of truth for "what kind of AR relationship is this
+     * `<dt>`", used by BOTH the page-wide dynamic-column discovery scan and
+     * the per-row dynamic `<td>` builder, so the two always agree. Checked
+     * in priority order: an already-handled fixed column
+     * (`_dtMatchesAnyFixedHandler`) first, then instrument/vocals
+     * (`_parseInstrumentVocalsDt`), then the dynamic fallback
+     * (`_dynamicRolePhraseKey`) — in practice no real collision exists
+     * between these tiers, since instrument/vocals `<dt>`s never share
+     * vocabulary with any fixed handler's `roleWords`.
+     *
+     * @param {HTMLElement} dt
+     * @returns {{kind: 'fixed'}|{kind: 'instrument-vocals', parsed: object}|
+     *           {kind: 'dynamic', key: string, displayName: string}|
+     *           {kind: 'unclassifiable'}}
+     */
+    function _classifyArDt(dt) {
+        if (_dtMatchesAnyFixedHandler(dt)) return { kind: 'fixed' };
+        const _parsed = _parseInstrumentVocalsDt(dt);
+        if (_parsed) return { kind: 'instrument-vocals', parsed: _parsed };
+        const _key = _dynamicRolePhraseKey(dt);
+        if (_key === null) return { kind: 'unclassifiable' };
+        return { kind: 'dynamic', key: _key, displayName: _dynamicRoleDisplayName(dt) };
     }
 
     /**
@@ -12416,12 +13395,17 @@
                 // deliberately excluded — plain short content, no clamp
                 // needed. "ARs" is prose-shaped (dl/dt/dd); "AcoustIDs"/
                 // "ISRCs"/"Streaming/Downloads"/"Recording engineer"/
-                // "Mixer"/"Engineer"/"Producer"/"Recorded at place" are
-                // list-shaped (ul/li) — all auto-detected by
-                // initCollapsableColumns() once declared here. "Recorded at
-                // event" is deliberately excluded — always a single anchor,
-                // never a list.
-                collapsableColumns: [ 'ARs', 'Streaming/Downloads', 'AcoustIDs', 'ISRCs', 'Recording engineer', 'Mixer', 'Engineer', 'Producer', 'Miscellaneous support', 'Phonographic copyright (℗) by artist', 'Phonographic copyright (℗) by label', 'Produced for label', 'Recorded at place' ],
+                // "Engineer"/"Producer"/"Mixer"/"Recorded at place"/
+                // "Recorded in area"/"Mixed at place"/"Performer"/
+                // "Instruments"/"Vocals" are list-shaped (ul/li) — all
+                // auto-detected by initCollapsableColumns() once declared
+                // here. "Recorded at event" is deliberately excluded —
+                // always a single anchor, never a list. Any AR column the
+                // dynamic-fallback classifier discovers at runtime (see
+                // `_classifyArDt`) is registered into this same array
+                // programmatically, since its name isn't known here at
+                // authoring time.
+                collapsableColumns: [ 'ARs', 'Streaming/Downloads', 'AcoustIDs', 'ISRCs', 'Recording engineer', 'Engineer', 'Producer', 'Mixer', 'Miscellaneous support', 'Mixed at place', 'Phonographic copyright (℗) by artist', 'Phonographic copyright (℗) by label', 'Produced for label', 'Recorded at place', 'Recorded in area', 'Performer', 'Instruments', 'Vocals' ],
                 stickyColumn: 'Title'
             },
             tableMode: 'multi',
@@ -38793,20 +39777,35 @@ a { color: #1565c0; }`;
         initAcoustIdIsrcObserver();
 
         // Re-inject the "Recording of work"/"Recorded at event"/"Recorded
-        // at (place)" column headers' relationship glyph icons —
-        // makeTableSortableUnified() above just rebuilt every <th> from
-        // scratch, wiping them out (no-ops for every other pageType/absent
-        // column — see _initColHeaderGlyph()'s JSDoc).
+        // at (place)"/"Recorded in area"/"Mixed at place" column headers'
+        // relationship glyph icons — makeTableSortableUnified() above just
+        // rebuilt every <th> from scratch, wiping them out (no-ops for
+        // every other pageType/absent column — see _initColHeaderGlyph()'s
+        // JSDoc).
         _initColHeaderGlyph('Recording of work', 'worklink');
         _initColHeaderGlyph('Recorded at event', 'eventlink');
         _initColHeaderGlyph('Recorded at place', 'placelink');
-        // Same re-injection for every CREDIT_ROLES column (all use the
+        _initColHeaderGlyph('Recorded in area', 'arealink');
+        _initColHeaderGlyph('Mixed at place', 'placelink');
+        // Same re-injection for "Performer"/"Vocals"/"Instruments" and
+        // every CREDIT_ROLES column (all credit an artist, so all use the
         // "artistlink" glyph) plus "Phonographic copyright (℗) by
         // artist"/"…by label" (artistlink/labellink respectively).
+        _initColHeaderGlyph('Performer', 'artistlink');
+        _initColHeaderGlyph('Vocals', 'artistlink');
+        _initColHeaderGlyph('Instruments', 'artistlink');
         CREDIT_ROLES.forEach(role => _initColHeaderGlyph(role.columnLabel, 'artistlink'));
         _initColHeaderGlyph('Phonographic copyright (℗) by artist', 'artistlink');
         _initColHeaderGlyph('Phonographic copyright (℗) by label', 'labellink');
         _initColHeaderGlyph('Produced for label', 'labellink');
+        // Dynamic-fallback AR columns — names (and which glyph, if any,
+        // each carries) aren't known until `applyExtractTrackTitleData()`
+        // actually runs, so they can't be static calls like the ones above;
+        // see the header-building block's "Runtime header-glyph
+        // registration" comment / `_glyphClassForDynamicColumn`'s JSDoc.
+        (activeDefinition?.features?._dynamicArColumnGlyphs || []).forEach(
+            ({ columnName, glyphClass }) => _initColHeaderGlyph(columnName, glyphClass)
+        );
 
         // Re-apply the "extracted column" header background to every
         // release-tracks column extracted from the Title cell's "ARs" data
@@ -38817,10 +39816,13 @@ a { color: #1565c0; }`;
         [
             'ARs', 'AcoustIDs', 'ISRCs',
             'Recording of work', 'Recording date',
-            'Recorded at event', 'Recorded at place',
+            'Recorded at event', 'Recorded at place', 'Recorded in area',
+            'Performer', 'Vocals', 'Instruments',
             ...CREDIT_ROLES.map(role => role.columnLabel),
+            'Mixed at place',
             'Phonographic copyright (℗) by artist', 'Phonographic copyright (℗) by label',
             'Produced for label',
+            ...(activeDefinition?.features?._dynamicArColumnGlyphs || []).map(g => g.columnName),
         ].forEach(_stampArColumnHeaderBg);
     }
 

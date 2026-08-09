@@ -328,6 +328,111 @@ already — don't reintroduce it.
 
 ---
 
+## `release-tracks`: dynamic AR-column classification
+
+`release-tracks` does NOT use the generic `columnExtractors`/
+`syntheticColumnExtractors`/`injectedColumns` pipeline described above — it
+has its own bespoke system, `applyExtractTrackTitleData()`, because it needs
+in-place DOM surgery on the Title `<td>` rather than additive per-column
+extraction. Every relationship ("AR") on a track lives as sibling
+`<dt>label:</dt><dd>target(s)</dd>` pairs inside `<div class="ars"><dl
+class="ars">`; a handful of shapes get dedicated columns (Recording of/date,
+Recorded at event/place, Recorded in area, Mixed at place, Performer, the
+five `CREDIT_ROLES` engineer/producer/mixer/etc. columns, Phonographic
+copyright by artist/label, Produced for label, Instruments, Vocals) and
+everything else is auto-discovered. Column order is controlled purely by the
+SEQUENCE these insertion blocks run in inside `applyExtractTrackTitleData`
+(all `.before()` against one shared `_arsHeaderRef` — see the "Common
+pitfalls" entry below) — check that block first before assuming a column's
+position needs a new mechanism.
+
+**`_classifyArDt(dt)`** is the single source of truth for "what kind of AR
+relationship is this `<dt>`", checked in priority order:
+
+1. **Fixed handler** (`_dtMatchesAnyFixedHandler`) — matches any of the
+   dedicated columns above via the same `roleWords`/`_creditDtMatch`
+   machinery those columns already use.
+2. **Instrument/Vocals** (`_parseInstrumentVocalsDt`) — a `<dt>` whose
+   content is ENTIRELY instrument credit(s) and/or a vocals credit (with
+   recognized attribute-word prefixes: additional/guest/solo/lead/
+   background/spoken/choir). A single unrecognized word anywhere rejects
+   the WHOLE `<dt>`, not just one component — this is what correctly keeps
+   e.g. `<dt><a href="/instrument/…">strings</a> arranger:</dt>` OUT of
+   "Instruments" ("arranger" isn't a recognized attribute word), leaving it
+   for the dynamic fallback to claim as its own "Strings arranger" column.
+3. **Dynamic fallback** — anything else gets bucketed by its own literal
+   phrase text (`_dynamicRolePhraseKey`, lowercased/whitespace-collapsed) into
+   an auto-created column, sentence-cased for display
+   (`_dynamicRoleDisplayName`). Two different phrases NEVER merge (e.g.
+   "strings arranger:" and "cello arranger:" become two separate columns) —
+   simple, predictable, and immune to future MusicBrainz relationship types
+   without a code change.
+
+Both the page-wide "does any track need this column" scan and the per-row
+`<td>` builder call `_classifyArDt` — never re-derive the classification
+independently at a new call site, or the two can silently disagree.
+
+**Entity-kind column-name uniqueness** (`_splitColumnByEntityKind`/
+`_buildKindSplitListTd`, generalized from the original "Phonographic
+copyright (℗) by artist"/"…by label" special case): when a relationship's
+targets span more than one entity kind on the page (detected via each
+target's own `<span class="{kind}link">` marker — `KNOWN_ENTITY_LINK_KINDS`
+lists every kind actually seen: artist/label/place/event/work/area/series),
+the column CAN split into one per kind, named `` `${baseColumnName} ${kind}` ``.
+A single-kind relationship's column name is never suffixed.
+
+**`PEER_SPLIT_KINDS` — only `artist`/`label` may ever trigger that split.**
+This is a load-bearing distinction, not an arbitrary restriction — two
+different relationship *shapes* share the same `<span class="{kind}link">`
+marker syntax but need opposite treatment:
+- **Peer-shaped** (artist/label): repeated markers of the same or different
+  peer kind mean MULTIPLE DISTINCT credited entities (comma/"and"-joined
+  artists, or a mix of artists and labels — see
+  `_buildPhonographicCopyrightTds`). Each marker is a real segment boundary.
+- **Chain-shaped** (place/event/work/area/series): a SINGLE primary target
+  (if any) accompanied by its own nested geographic/hierarchical decoration
+  that legitimately reuses `arealink` repeatedly — e.g. a place's own "in
+  `<area>`, `<area>`, `<country>`" chain, or an area crediting its OWN parent
+  area (`"recorded in:"`, `"mixed at:"` — see `debug/therising.html`).
+  Marker KIND alone can't tell "the credited target" from "its own
+  decoration" here, sometimes not even marker IDENTITY (an area's own
+  ancestry reuses the exact same `arealink` class as the area itself).
+
+Treating a chain-shaped relationship as peer-splittable is exactly the bug
+that shipped once already: "mixed at:" fragmented into separate "…place"/
+"…area" columns, and "recorded in:" showed only its first area, dropping the
+rest of the chain and the trailing date. Any relationship shaped like that
+needs its OWN dedicated handler (`_buildRecordedAtPlaceTd`/
+`_buildRecordedInAreaTd` — segment on the ONE primary marker only, or don't
+segment at all when cardinality is 1) rather than the generic kind-splitter;
+the dynamic-fallback discovery scan (`_dynamicRoleColumns`) always filters
+through `_filterPeerKinds` before calling `_splitColumnByEntityKind`/
+`_buildKindSplitListTd`, so an unrecognized FUTURE chain-shaped relationship
+safely falls back to `_buildKindSplitListTd`'s `kinds.size === 0` "clone
+whole `<dd>` verbatim, one row" behavior instead of fragmenting.
+
+**Runtime `collapsableColumns`/header-glyph registration**:
+`initCollapsableColumns()` and `_initColHeaderGlyph()` both match columns by
+exact header-text string only — no wildcard support — so a
+dynamically-discovered column's name (unknown at authoring time) can't be a
+pre-declared page-definition entry or a static `_initColHeaderGlyph()` call.
+Instead, `applyExtractTrackTitleData(def)` pushes each dynamic column's name
+onto `def.features.collapsableColumns`, and — when exactly one entity kind
+is known for it (see `_glyphClassForDynamicColumn`) — a
+`{columnName, glyphClass}` pair onto `def.features._dynamicArColumnGlyphs`,
+both at `<th>`-creation time (dedup-guarded, since this function can re-run
+per its own idempotency design). This works because `def` is the exact same
+object reference as `activeDefinition`, and `applyExtractTrackTitleData`
+always runs (during `startFetchingProcess`) before `initCollapsableColumns()`/
+the glyph re-injection loop are ever called (from `renderGroupedTable()`'s
+tail) — a NEW static/fixed AR column (not dynamically-discovered) still
+needs its OWN explicit `_initColHeaderGlyph('Column Name', 'kindlink')` call
+added to that tail, mirroring the existing ones for "Recording of
+work"/CREDIT_ROLES/etc. — don't forget it, or the header silently renders
+with no icon (exactly the second half of the bug above).
+
+---
+
 ## Things to check before any DOM-related fix
 
 - Does the page have `div#content`? (Most do. `user/*/tags` does not.)

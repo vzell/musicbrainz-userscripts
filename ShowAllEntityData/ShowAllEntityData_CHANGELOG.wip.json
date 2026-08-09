@@ -1,5 +1,91 @@
 [
   {
+    "version": "WIP.51",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': fixed the \"Vocals\"/\"Instruments\" columns (WIP.46) silently dropping a credited artist's own trailing date attribute — e.g. \"Bruce Springsteen (on 2002-08-29)\"/\"Toby Scott (from 1987-01-20 until 1987-03)\" (confirmed against real data in `debug/therising.html`/`debug/double-ars.html`) rendered as just the bare artist name, date gone — spotted by comparing against a dynamic-fallback column (\"Creative direction\") built via `_buildKindSplitListTd`'s blanket-clone-the-whole-`<dd>` approach, which had ALREADY been preserving trailing dates correctly the whole time, unlike `_buildInstrumentVocalsListItem`'s selective artist-anchor-plus-known-annotations extraction, which never looked for one. `_buildInstrumentVocalsListItem` now also calls the existing `_findCreditSegmentTextAnnotation` (the same free-text-parenthetical fallback \"Miscellaneous support\"/bare-role CREDIT_ROLES columns already use for their own annotations) and merges its result into the SAME trailing parenthetical as the attribute words, comma-separated — e.g. \"Jane Doe (guest/background, on 2002-08-29)\" — mirroring `_buildCreditListItem`'s identical grouping. Deliberately NOT applied to the CREDIT_ROLES columns themselves (WIP.16 already established they drop trailing dates on purpose, and no regression was reported there)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.50",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': fixed the dynamic-fallback AR-column machinery (WIP.48) fragmenting a single place/area \"chain\" credit into multiple columns and/or multiple rows — reported live: \"Mixed at place\"/\"Mixed at area\" split \"A&M Studios in Hollywood\" into two separate columns instead of one (`<span class=\"placelink\">`+`<span class=\"arealink\">` both appearing as direct children of the same `<dd>`, per real markup — `_collectEntityKinds` correctly detected BOTH kinds present, but `_buildKindSplitListTd`'s marker-boundary check unconditionally treated ANY of `KNOWN_ENTITY_LINK_KINDS`'s 7 classes as a segment boundary, regardless of what the caller actually asked to split by), and \"Recorded in\" showed only \"Asbury Park\" instead of the full \"Asbury Park, New Jersey, United States (on 2002-09-20)\" chain (an area's OWN parent-area ancestry legitimately reuses the SAME `arealink` marker class repeatedly — a fundamentally different shape from place-vs-area, where marker-KIND alone can no longer distinguish \"the credited target\" from \"its own decoration\"). New `PEER_SPLIT_KINDS` (`['artist', 'label']` — the only two kinds ever proven to have genuine multiple-PEER-entity semantics, e.g. `_buildPhonographicCopyrightTds`'s mixed artist+label case) restricts `_buildKindSplitListTd`'s boundary detection to markers the CALLER's own `kinds` parameter actually requested — any other recognized-but-unrequested kind marker is now left as ordinary content instead of fragmenting the segment. The dynamic-fallback discovery scan now filters its collected kinds through `_filterPeerKinds` before ever calling `_splitColumnByEntityKind`/`_buildKindSplitListTd`, so a place/event/work/area/series-shaped role safely falls back to `_buildKindSplitListTd`'s existing `kinds.size === 0` \"clone whole `<dd>` verbatim, one row\" behavior — never fragments — protecting any FUTURE unknown relationship shaped this way, not just the two observed cases.",
+          "Added \"Mixed at place\" (new `_findMixedAtDt`, reusing `_buildRecordedAtPlaceTd` as-is — same place-primary/area-decoration shape as the existing \"Recorded at place\") and \"Recorded in area\" (new `_findRecordedInDt`/`_buildRecordedInAreaTd` — cardinality-1 per MusicBrainz's own relationship-type metadata, so no segmentation is attempted at all: only the very first `arealink` marker is dropped, everything else — the full ancestor-area chain, flags, AND the trailing date — is cloned verbatim into one row) as their own DEDICATED fixed handlers rather than relying on the generic dynamic-fallback path, so they get exactly the chain-preserving treatment \"Recorded at place\" already has. `_dtMatchesAnyFixedHandler`/`_classifyArDt` updated to recognize both (plus a bare \"performer:\" — see the Feature entry below) so none of the three can be shadowed by a duplicate auto-discovered dynamic column.",
+          "Wired up the missing column-header relationship glyph icons (`_initColHeaderGlyph`) for \"Instruments\"/\"Vocals\"/\"Performer\" (all `artistlink`), \"Recorded in area\" (`arealink`), and \"Mixed at place\" (`placelink`) — these five new/WIP.46 columns never got the same post-render glyph re-injection every other release-tracks AR column already receives from `renderGroupedTable()`'s tail, so their headers showed no icon at all (confirmed via a side-by-side screenshot comparison against \"Recording engineer\"/\"Mixer\"/etc., which do). New `_glyphClassForDynamicColumn`/`def.features._dynamicArColumnGlyphs` runtime registration (mirroring the existing runtime `collapsableColumns` registration mechanism) extends the same glyph re-injection to dynamically-discovered fallback columns too, whenever exactly one entity kind is present for that role."
+        ]
+      },
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "'release-tracks': added a dedicated \"Performer\" column (each track's bare \"performer:\" relationship, via the existing `_findCreditDts`/`_buildCreditListTd` machinery, no attribute-word prefix), positioned before \"Vocals\"/\"Instruments\" rather than lumped in with the CREDIT_ROLES columns — its own gate/setting reuses `sa_enable_release_tracks_credit_role_columns`."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "'release-tracks': reordered the release-tracks AR columns to the requested final sequence: Recording of work, Recording date, Recorded at event, Recorded at place, Recorded in area, Performer, Vocals, Instruments, Recording engineer, Engineer, Producer, Mixer, Miscellaneous support, Mixed at place, Phonographic copyright (℗) by artist/label, Produced for label, [dynamic-fallback columns], ARs — swapping Vocals before Instruments (previously Instruments-then-Vocals), and reordering `CREDIT_ROLES` to Recording engineer/Engineer/Producer/Mixer/Miscellaneous support (previously …/Mixer/Engineer/Producer/…) so \"Mixer\" sits immediately before the new \"Mixed at place\". The whole header-insertion block now computes its shared \"ARs\" `<th>` reference ONCE (`_arsHeaderRef`) instead of four separate, identically-computed copies — the final column order is simply the order the insertion blocks now run in, following this same shared reference throughout."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.48",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "'release-tracks': every AR relationship type not already covered by a dedicated column (Recording of/date, Recorded at event/place, the credit-role columns, Phonographic copyright, Produced for label, Instruments/Vocals — WIP.45-47) now gets its own auto-discovered column instead of only ever surfacing as raw text inside \"ARs\" — e.g. \"Conductor\", \"Publisher\", \"Mixed at\", \"Lyricist and composer\", \"Creative direction\", \"Shot at\", \"Version of\", \"Concertmaster\" (all observed in `debug/therising.html`/`debug/double-ars.html`), and any relationship type MusicBrainz adds in the future, with zero code changes needed. New `_classifyArDt(dt)` is the single source of truth for what kind of relationship a given `<dt>` is — checked in priority order: an already-handled fixed column (`_dtMatchesAnyFixedHandler`, covering everything above via the same `roleWords`/`_creditDtMatch` machinery those columns already use, plus the \"recording of:\"/\"recorded at:\" text+glyph checks), then Instruments/Vocals (`_parseInstrumentVocalsDt`), then the dynamic fallback — used by both the page-wide discovery scan and the per-row `<td>` builder so the two always agree. A page-wide scan (mirroring the existing `_pageHasCopyrightByArtist`-style gates) buckets every track's unclaimed `<dt>`s into a `Map<key, {displayName, kinds}>` keyed on the relationship's own literal phrase text (lowercased, trailing \":\" stripped) — so e.g. \"strings arranger:\" and \"cello arranger:\" become two distinct columns, never merged, matching the confirmed keying decision — with the display name sentence-cased from the same text. Map insertion order (first-encountered-in-page) becomes the final left-to-right column order, inserted as a block right after \"Produced for label\", before \"ARs\": reading order becomes curated specific columns → auto-discovered generic columns → full raw ARs. Each discovered column can itself split by entity kind via the WIP.47 `_splitColumnByEntityKind`/`_buildKindSplitListTd` machinery (e.g. a hypothetical role crediting both an artist and a place on the same release). Gated by a new dedicated setting, `sa_enable_release_tracks_dynamic_ar_columns` (default on), independent of every other release-tracks column setting, since this is the most exploratory/unpredictable piece of the feature. Dynamically-discovered column names are pushed into `def.features.collapsableColumns` at creation time (dedup-guarded) rather than pre-declared in the page definition, since `initCollapsableColumns()` only matches by exact header-text string and the set of names isn't known at authoring time — `def` is the same object as `activeDefinition`, so this registration is visible by the time `initCollapsableColumns()` actually runs. Verified via a standalone jsdom-free unit test covering every previously-unhandled phrase above, plus regression checks confirming \"live recording of:\", \"assistant engineer:\", \"producer and mixer:\", \"phonographic copyright (℗) by:\", and \"produced for:\" all still classify as already-fixed (never shadowed by a duplicate dynamic column), and that a \"strings arranger:\" `<dt>` — rejected by the Instruments parser (WIP.46) specifically because \"arranger\" isn't a recognized attribute word — correctly falls through to become its own \"Strings arranger\" dynamic column instead of silently vanishing."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.47",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Generalized the \"Phonographic copyright (℗) by artist\"/\"…by label\" column-name-uniqueness pattern (the ONLY place this file previously disambiguated a relationship's column name by target entity kind) into reusable machinery, in preparation for the dynamic-fallback AR columns (WIP.48), which need the identical rule applied to an unbounded, unknown-in-advance set of relationship types. New `KNOWN_ENTITY_LINK_KINDS` (`artist`/`label`/`place`/`event`/`work`/`area`/`series` — every native MusicBrainz `<span class=\"{kind}link\">` marker class confirmed present in `dl.ars` credit data) backs `_collectEntityKinds(dd)`/`_collectEntityKindsAcrossDts(dts)` (which entity kinds does a `<dd>`, or set of `<dt>`s, actually credit), `_splitColumnByEntityKind(baseColumnName, kinds)` (decides the final column name(s) — unchanged when `kinds.size <= 1`, one `` `${base} ${kind}` `` per kind otherwise), and `_buildKindSplitListTd(dts, kinds)` (generalizes the original 2-hardcoded-marker `<dd>` segmentation to any number of kinds at once, always returning a `<td>` for every EXPECTED kind — even one that happens to be empty on a particular row — so a caller iterating a fixed column set never gets a missing entry; a `kinds.size === 0` \"no recognized marker at all\" case, not seen in real data, falls back to cloning each `<dd>` verbatim rather than attempting to parse sub-pieces, same philosophy as `_buildLabelCreditListTd`). `_phonographicCopyrightHasKind`/`_buildPhonographicCopyrightTds` are now thin wrappers over the general functions (unconditionally split by `{artist, label}`, preserving this pair's existing independently-gated-columns behavior exactly), and the two header strings are re-derived from `_splitColumnByEntityKind('Phonographic copyright (℗) by', new Set(['artist', 'label']))` instead of being separately hardcoded, so there is exactly one implementation of the naming rule left. Verified byte-identical output against the original two-hardcoded-marker version via a standalone unit test covering `debug/double-ars.html`'s two-separate-dt/dd (artist then label) shape and a `debug/copyright.html`-style single-`<dd>`-with-3-labels shape."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.46",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "'release-tracks': added shared \"Instruments\" and \"Vocals\" columns, extracted from each track's instrument (e.g. \"cello:\", \"harmonium, tabla and vocals:\") and vocals (e.g. \"vocals:\", \"lead vocals:\", \"guest background vocals:\") relationship data (`debug/therising.html`) — previously only ever visible as raw text inside \"ARs\". New `_parseInstrumentVocalsDt(dt)` splits a `<dt>`'s child-node stream into components at \",\"/\"and\" TEXT-node boundaries (an instrument `<a href=\"/instrument/…\">` is never itself a boundary, since a component can embed one), classifying each component as either an instrument credit (at most one instrument anchor, every other word a recognized attribute — Additional/Guest/Solo/Lead/Background/Spoken/Choir) or a vocals credit (last word exactly \"vocals\", every word before it a recognized attribute) — a single unrecognized word anywhere rejects the WHOLE `<dt>`, not just that component, which is what correctly keeps a non-credit phrase like `<dt><a href=\"/instrument/…\">strings</a> arranger:</dt>` (real data) OUT of \"Instruments\": \"arranger\" isn't a recognized attribute word, so the whole `<dt>` is left unclaimed for the dynamic-fallback classifier (WIP.48) to pick up as its own \"Strings arranger\" column instead. A combined credit crediting an artist with both an instrument and vocals in one relationship (e.g. \"harmonium, tabla and vocals:\", confirmed in `debug/therising.html`'s Asif Ali Khan and Group example) is split across both columns for the same artist rather than creating a third \"combined\" column. Every distinct instrument shares the ONE \"Instruments\" column (not one column per instrument) and every vocals variant shares the ONE \"Vocals\" column, each attribute word rendering inline after the artist's name via the same `.mb-credit-attr` sentinel convention every `CREDIT_ROLES` column already uses (WIP.23), so the unique-values dropdown's per-attribute filter entries (WIP.32) work identically here for free. An optional trailing `[altName]` bracket (MusicBrainz's own credited-as alternate instrument/vocal-type name, e.g. \"baritone saxophone [baritone sax]\") is captured per component and appended after the artist's entry. Positioned as their own block between \"Recorded at place\" and the `CREDIT_ROLES` columns (instrumentalists/vocalists read before production credits, matching typical liner-note ordering), gated by a new dedicated setting `sa_enable_release_tracks_instrument_vocal_columns` (default on), independent of the existing credit-role columns setting. Verified against 14 real-markup shapes captured from `debug/therising.html` via a standalone unit test, including the multi-instrument \"guest harmonium, guest tabla and guest vocals:\" case and the bracketed-alt-name \"bell [orchestra bells] and glockenspiel:\" case, plus regression checks confirming \"strings arranger:\"/\"producer and mixer:\"/\"recording engineer:\"/\"phonographic copyright (℗) by:\" are all correctly rejected by this parser."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.45",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Extracted the \"find this track's bare `div.ars` (the sibling with no `AcoustID…`/`ISRC…`-prefixed class), then its direct-child `<dt>`s\" lookup — duplicated verbatim across `_findRecOfDt`, `_findRecordedAtDt`, `_findPhonographicCopyrightDts`, and `_findCreditDts` — into two shared helpers, `_findBareArsDiv(titleTd)` and `_findAllArDts(titleTd)`, and rewired all four onto them with zero behavior change. Also extracted `_findCreditDts`'s per-`<dt>` role-matching body (component-splitting on \",\"/\"and\", strict attribute-word-prefix check) into a standalone `_creditDtMatch(dt, roleWords, attributeVocab)`, usable against one already-in-hand `<dt>` without re-scanning `titleTd` from scratch. Prerequisite refactor for the Instruments/Vocals (WIP.46) and dynamic-fallback (WIP.48) AR-column work — both need to walk EVERY `<dt>` on a track exactly once, classify it, and only fall back to the fixed extractors' own matching rules (via `_creditDtMatch`) for already-handled roles, rather than duplicating this lookup a fifth and sixth time."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.44",
     "date": "2026-08-09",
     "sections": [
