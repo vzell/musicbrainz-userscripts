@@ -92371,6 +92371,9 @@ Vocals
 Instruments
 #+end_example
 
+** TODO add two new global buttons in the h2 "Tracklist" header line right before the '<span id="mb-global-filter-wrapper" class="mb-filter-wrapper"'
+
+add two new global buttons in the h2 "Tracklist" header line right before the '<span id="mb-global-filter-wrapper" class="mb-filter-wrapper"'
 
 ** TODO add colors to the synthetic extracted AR columns
 *** DONE initial
@@ -92439,5 +92442,10 @@ On e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/work
 
 * TODO use the more than 1000 tracks release to fix AR bugs, specifically "instruments" with brackets
 
+* TODO In "Recording enineer" column, "John Cooper (engineer)" should always stay together, a bare "John Cooper" should never be extracted
+
+#+begin_example
+<li><a class="wrap-anywhere" href="/artist/4844fcef-6e56-4407-be41-ead237dff686" title="Cooper, John (engineer)"><bdi>John Cooper</bdi></a>&nbsp;<span class="comment"><bdi>(engineer)</bdi></span><span class="mb-live-date-flag" title="This track is a live recording (recorded 2005-07-18), but this credit has no date attribute — it can't be confirmed to be from the same performance."> ❌</span></li>
+#+end_example
 
 
