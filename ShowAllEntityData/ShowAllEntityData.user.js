@@ -7167,6 +7167,30 @@
      *     relationships (engineer, producer, recording-of-work, publisher,
      *     …), moved into a new "ARs" column, appended at the very end of
      *     the table.
+     *   - `<dl class="ar">` (singular — a completely different element
+     *     shape/class from MusicBrainz's own `<dl class="ars">` relationship
+     *     blocks, so it can never collide with any of them) — injected by
+     *     the third-party "MB: Inline per-recording streaming & download
+     *     links" userscript: `<dt>…Streaming/Downloads:</dt><dd
+     *     class="recording-url-links"><strong>🟢 open.spotify.com:
+     *     </strong><a href="…">[free streaming]</a><br>…</dd>`, one
+     *     `<strong>`+`<a>` pair per site (see debug/streaming-downloads.html;
+     *     the `<dd>`'s `style="display:none"` when the userscript's own
+     *     toggle is left collapsed at scrape time — debug/streaming.html —
+     *     is irrelevant, only the content is read). Moved into a new
+     *     "Streaming/Downloads" column, right after "ARs" (before
+     *     AcoustIDs/ISRCs), rebuilt as one `<li>` per site
+     *     (`_buildStreamingDownloadsTd`) the same way AcoustID/ISRC entries
+     *     are. Same page-wide-decision reasoning as Video/Disambiguation/
+     *     Recording artist (`_pageHasStreaming`) — not gated by a setting of
+     *     its own; a release page where the userscript isn't installed, or
+     *     found nothing anywhere, never gets a permanently empty column.
+     *     When the userscript's own empty state is present instead
+     *     (`<dd>No streaming or download links found.</dd>` — see
+     *     debug/streaming-downloads-empty.html — no `<a>` inside), that
+     *     track's own cell simply renders empty; if EVERY track on the
+     *     release only has that empty state, `_pageHasStreaming` is false
+     *     and the whole column is never created, per explicit instruction.
      *   - `<div class="ars AcoustID…">` / `<div class="ars ISRC…">` — only
      *     present once the jesus2099 script's AcoustID lookup has run;
      *     each holds a single `<dl><dt>…</dt><dd>flat comma-separated
@@ -7511,6 +7535,20 @@
         const _pageHasDisambig = _anyTitleCellMatches(
             td => td.querySelector(':scope > span.comment, :scope > span.name-variation > span.comment')
         );
+        // "Streaming/Downloads" — present only when the third-party "MB:
+        // Inline per-recording streaming & download links" userscript is
+        // active AND has actually found data for at least one track (its
+        // own empty state, `<dd class="recording-url-links">No streaming or
+        // download links found.</dd>`, has no <a> inside — see
+        // debug/streaming-downloads-empty.html — so "has a link anchor" is
+        // used as the presence signal rather than string-matching that
+        // English sentence). Same page-wide-decision reasoning as Video/
+        // Disambiguation/Recording artist above: a release where the
+        // userscript isn't installed, or found nothing anywhere, never gets
+        // a permanently empty column.
+        const _pageHasStreaming = _anyTitleCellMatches(
+            td => td.querySelector('dl.ar dd.recording-url-links a')
+        );
 
         // "Recording of" + its attribute columns are purely additive (see
         // this function's JSDoc) and gated by their own setting — skipped
@@ -7617,11 +7655,12 @@
             const _hasDisambig = _headerCells.some(th => th.textContent.trim() === 'Disambiguation');
             const _hasRecArtist = _headerCells.some(th => th.textContent.trim() === 'Recording artist');
             const _hasArs = _headerCells.some(th => th.textContent.trim() === 'ARs');
+            const _hasStreaming = _headerCells.some(th => th.textContent.trim() === 'Streaming/Downloads');
             const _hasAcoustId = _headerCells.some(th => th.textContent.trim() === 'AcoustIDs');
             const _hasIsrc = _headerCells.some(th => th.textContent.trim() === 'ISRCs');
             const _hasVideo = _headerCells.some(th => th.textContent.trim() === 'Video');
 
-            let _disambigTh = null, _recArtistTh = null, _arsTh = null, _acoustIdTh = null, _isrcTh = null, _videoTh = null;
+            let _disambigTh = null, _recArtistTh = null, _arsTh = null, _streamingTh = null, _acoustIdTh = null, _isrcTh = null, _videoTh = null;
 
             // Video: added to every medium's table uniformly once ANY medium
             // on the release has at least one video track (see _pageHasVideo
@@ -7646,6 +7685,18 @@
                 _arsTh = document.createElement('th');
                 _arsTh.textContent = 'ARs';
                 _theadRow.appendChild(_arsTh);
+            }
+            // Streaming/Downloads: right after ARs, before AcoustIDs/ISRCs —
+            // appendChild always lands at the current tail, so creating this
+            // before those two below produces exactly that order. Same
+            // page-wide-decision reasoning as Video/Disambiguation/Recording
+            // artist (see _pageHasStreaming above), not gated by any setting
+            // of its own — a release page where the source userscript isn't
+            // installed, or found nothing, gets zero overhead and no column.
+            if (_pageHasStreaming && !_hasStreaming) {
+                _streamingTh = document.createElement('th');
+                _streamingTh.textContent = 'Streaming/Downloads';
+                _theadRow.appendChild(_streamingTh);
             }
             if (_acoustIdEnabled && !_hasAcoustId) {
                 _acoustIdTh = document.createElement('th');
@@ -7817,7 +7868,7 @@
             // `table.tbl` — see `_stampArColumnHeaderBg()`, called from
             // `renderGroupedTable()`'s tail.
 
-            if (!_disambigTh && !_recArtistTh && !_arsTh && !_acoustIdTh && !_isrcTh && !_videoTh &&
+            if (!_disambigTh && !_recArtistTh && !_arsTh && !_streamingTh && !_acoustIdTh && !_isrcTh && !_videoTh &&
                 !_recOfTh && !_recOfDateTh &&
                 !_recordedAtEventTh && !_recordedAtPlaceTh &&
                 _creditRoleThs.length === 0 && !_copyrightByArtistTh && !_copyrightByLabelTh && !_producedForTh) return; // already fully processed
@@ -7845,6 +7896,15 @@
                     else if (_classes.some(c => c.startsWith('ISRC'))) _isrcDiv = d;
                     else _bareArsDiv = d;
                 });
+
+                // The "MB: Inline per-recording streaming & download links"
+                // userscript's own container — a completely separate element
+                // shape (`<dl class="ar">`, singular) from MusicBrainz's own
+                // `<dl class="ars">` relationship blocks above, so it can't
+                // collide with any of them. Not scoped to `:scope >` since
+                // its exact nesting depth inside the Title cell isn't fixed
+                // by this script (third-party-injected).
+                const _streamingDl = _streamingTh ? _titleTd.querySelector('dl.ar') : null;
 
                 const _commentSpan = _titleTd.querySelector(
                     ':scope > span.comment, :scope > span.name-variation > span.comment'
@@ -7993,6 +8053,10 @@
                         while (_bareArsDiv.firstChild) _td.appendChild(_bareArsDiv.firstChild);
                     }
                     row.appendChild(_td);
+                }
+
+                if (_streamingTh) {
+                    row.appendChild(_buildStreamingDownloadsTd(_streamingDl));
                 }
 
                 if (_acoustIdTh) {
@@ -9012,6 +9076,69 @@
             if (pairToggleLink && anchors[i + 1]) li.appendChild(anchors[i + 1]);
             ul.appendChild(li);
         }
+        if (ul.children.length) td.appendChild(ul);
+        return td;
+    }
+
+    /**
+     * Builds a `<td><ul><li>…</li>…</ul></td>` for the "Streaming/Downloads"
+     * column from the third-party "MB: Inline per-recording streaming &
+     * download links" userscript's own container:
+     *
+     *   <dl class="ar">
+     *     <dt><button class="recording-toggle">▼</button>Streaming/Downloads:</dt>
+     *     <dd class="recording-url-links">
+     *       <strong>🟢 open.spotify.com: </strong><a href="…">[free streaming]</a><br>
+     *       <strong>▶️ youtube.com: </strong><a href="…">[free streaming]</a><br>
+     *       …
+     *     </dd>
+     *   </dl>
+     *
+     * (see debug/streaming-downloads.html / debug/streaming.html — the
+     * latter with `style="display: none;"` on `<dd>`, i.e. the userscript's
+     * own toggle left it collapsed at scrape time; irrelevant here, only the
+     * content is read, never the collapsed/expanded display state). One
+     * `<li>` per site, built by moving (not cloning — this container has no
+     * other purpose once read, same reasoning as `_buildMultiRowArsTd`'s
+     * AcoustID/ISRC anchors) each `<strong>` (site glyph + name, e.g. "🟢
+     * open.spotify.com: ") together with its immediately following `<a>`
+     * (the actual link) into one `<li>` — segmentation is structural, keyed
+     * on each `<strong>` starting a new entry, so it's agnostic to the
+     * trailing `<br>`s MusicBrainz/the userscript uses to visually separate
+     * entries. `<dd class="recording-url-links">No streaming or download
+     * links found.</dd>` (see debug/streaming-downloads-empty.html) has no
+     * `<a>` at all — the `<strong>`-driven loop below naturally produces an
+     * empty `<ul>` for it, correctly rendering an empty cell rather than
+     * that literal sentence, matching how every other page-wide-gated
+     * column (Video/Disambiguation/…) renders an empty cell for a row with
+     * no data of its own even once the column exists elsewhere on the page.
+     *
+     * @param {?HTMLElement} dl - The `dl.ar` element (or `null` if this
+     *   track has none — e.g. the userscript hasn't run yet/isn't installed).
+     * @returns {HTMLTableCellElement}
+     */
+    function _buildStreamingDownloadsTd(dl) {
+        const td = document.createElement('td');
+        if (!dl) return td;
+
+        const dd = dl.querySelector('dd.recording-url-links');
+        if (!dd) return td;
+
+        const ul = document.createElement('ul');
+        let li = null;
+        Array.from(dd.childNodes).forEach(n => {
+            if (n.nodeType !== Node.ELEMENT_NODE) return;
+            if (n.tagName === 'STRONG') {
+                li = document.createElement('li');
+                li.appendChild(n); // moves — see this function's JSDoc
+                ul.appendChild(li);
+            } else if (n.tagName === 'A' && li) {
+                li.appendChild(n); // moves — attaches to the current entry's <li>
+            }
+            // <br> (and any other element) is left behind, untouched — the
+            // orphaned dl.ar is discarded wholesale when the Title cell is
+            // rebuilt further down in applyExtractTrackTitleData().
+        });
         if (ul.children.length) td.appendChild(ul);
         return td;
     }
@@ -12288,12 +12415,13 @@
                 // "Disambiguation"/"Video"/"Recording artist" are
                 // deliberately excluded — plain short content, no clamp
                 // needed. "ARs" is prose-shaped (dl/dt/dd); "AcoustIDs"/
-                // "ISRCs"/"Recording engineer"/"Mixer"/"Engineer"/
-                // "Producer"/"Recorded at place" are list-shaped (ul/li) —
-                // all auto-detected by initCollapsableColumns() once
-                // declared here. "Recorded at event" is deliberately
-                // excluded — always a single anchor, never a list.
-                collapsableColumns: [ 'ARs', 'AcoustIDs', 'ISRCs', 'Recording engineer', 'Mixer', 'Engineer', 'Producer', 'Miscellaneous support', 'Phonographic copyright (℗) by artist', 'Phonographic copyright (℗) by label', 'Produced for label', 'Recorded at place' ],
+                // "ISRCs"/"Streaming/Downloads"/"Recording engineer"/
+                // "Mixer"/"Engineer"/"Producer"/"Recorded at place" are
+                // list-shaped (ul/li) — all auto-detected by
+                // initCollapsableColumns() once declared here. "Recorded at
+                // event" is deliberately excluded — always a single anchor,
+                // never a list.
+                collapsableColumns: [ 'ARs', 'Streaming/Downloads', 'AcoustIDs', 'ISRCs', 'Recording engineer', 'Mixer', 'Engineer', 'Producer', 'Miscellaneous support', 'Phonographic copyright (℗) by artist', 'Phonographic copyright (℗) by label', 'Produced for label', 'Recorded at place' ],
                 stickyColumn: 'Title'
             },
             tableMode: 'multi',

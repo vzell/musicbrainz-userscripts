@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.42",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "'release-tracks': added a \"Streaming/Downloads\" column, right after \"ARs\" (before AcoustIDs/ISRCs), sourced from the third-party \"MB: Inline per-recording streaming & download links\" userscript's own `<dl class=\"ar\">` container it glues into the Title cell — one `<li>` per site (glyph + name + link, e.g. \"🟢 open.spotify.com: [free streaming]\"), a collapsable multi-row list when more than one site is present (`debug/streaming-downloads.html`). The userscript's own collapsed/expanded toggle state at scrape time (`<dd style=\"display:none\">`, `debug/streaming.html`) is irrelevant — only the content is read. Same page-wide-decision reasoning as \"Video\"/\"Disambiguation\"/\"Recording artist\": only added once ANY track on the release actually has a link (`_pageHasStreaming`, keyed on the `<dd>` having at least one `<a>`, not on string-matching the userscript's own empty-state sentence) — a release with the userscript not installed, or that found nothing anywhere, gets zero overhead and no column at all. When only SOME tracks have data, tracks with the userscript's own \"No streaming or download links found.\" state (`debug/streaming-downloads-empty.html`) just render an empty cell, same as any other page-wide-gated column."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.41",
     "date": "2026-08-09",
     "sections": [
