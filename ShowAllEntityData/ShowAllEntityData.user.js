@@ -14560,6 +14560,78 @@
     }
 
     /**
+     * Finds every MusicBrainz entity reference (work/place/area/artist/label/
+     * event — see `_ENTITY_TYPE_GLYPH`) inside `cell` — an `<a href="/{type}/
+     * {mbid}">` paired with a `<bdi>` name, in EITHER nesting direction:
+     * `<a><bdi>Name</bdi></a>` (the common case — e.g. "Recording of work",
+     * "Recorded at place"'s place/area/country chain, every credit-role
+     * column) or `<bdi><a>Name</a></bdi>` (MusicBrainz's plain native
+     * "Artist"/"Recording artist" column). Generic and structural — not
+     * gated on `collapsableColumns`, a page/column allowlist, or the
+     * presence of a `<ul>` at all (works equally on a bare, non-list cell
+     * like "Recording of work"'s).
+     *
+     * The optional leading glyph span (`worklink`/`placelink`/`arealink`/
+     * `artistlink`/`labellink`/`eventlink`, or — country only — a WRAPPING
+     * `<span class="flag flag-XX">`) is NEVER required and never consulted
+     * for detection: this script's own cell builders (`_buildCreditListItem`,
+     * `_findRecOfDt`'s work-anchor clone, …) deliberately strip the glyph
+     * from a column's own PRIMARY entity (it's already shown once in the
+     * column header via `_initColHeaderGlyph()`) — only secondary/chained
+     * entities (e.g. "Recorded at place"'s area/country tail, still cloned
+     * verbatim by `_buildRecordedAtPlaceTd`) keep their native glyph. So
+     * `href` + `<bdi>` is the only reliable signal; `glyphClass` here is
+     * always resolved from `_ENTITY_TYPE_GLYPH` by the href's own type
+     * segment, independent of whatever glyph markup (if any) is actually
+     * present in the DOM.
+     *
+     * `isBare` answers "does AT LEAST the nearest containing `<li>` (or the
+     * whole cell, if not inside a list) consist of NOTHING but this entity's
+     * own name" — the redundancy signal `openUniqDrop()`'s collection loop
+     * uses to skip offering an entity entry that would just duplicate an
+     * existing whole-cell/item entry 1:1 (e.g. a bare "Recording of work"
+     * cell, or MusicBrainz's plain "Artist" column) while still offering one
+     * for any entity that's part of a bigger chain/annotation somewhere
+     * (e.g. every entity in a "Recorded at place" chain, or a credit with a
+     * trailing date range/attribute).
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Array<{type: string, glyphClass: string, href: string,
+     *   name: string, nameNode: Element, isBare: boolean}>}
+     */
+    function _findCellEntityRefs(cell) {
+        if (!cell) return [];
+        const out = [];
+        cell.querySelectorAll('a[href]').forEach(a => {
+            const href = a.getAttribute('href') || '';
+            const m = href.match(/^\/([a-z][a-z-]*)\/[0-9a-f-]+/i);
+            const glyphClass = m && _ENTITY_TYPE_GLYPH[m[1]];
+            if (!glyphClass) return;
+            // <a><bdi> (common) vs. <bdi><a> (native "Artist" column).
+            const bdi = (a.parentElement && a.parentElement.tagName === 'BDI')
+                ? a.parentElement
+                : a.querySelector('bdi');
+            if (!bdi) return;
+            const name = getCleanColumnText(bdi);
+            if (!name) return;
+            // Prefer the wrapping <span class="name-variation"> (an alias
+            // credit) so highlighting covers MusicBrainz's own underline
+            // styling too — same resolution `_buildCreditListItem`/
+            // `_recordedAtDdAnchor` already use elsewhere in this file.
+            const nameNode = (a.parentElement && a.parentElement.tagName === 'SPAN' &&
+                               a.parentElement.classList.contains('name-variation'))
+                ? a.parentElement
+                : (bdi.contains(a) ? bdi : a);
+            const container = a.closest('li') || cell;
+            out.push({
+                type: m[1], glyphClass, href, name, nameNode,
+                isBare: getCleanColumnText(container) === name
+            });
+        });
+        return out;
+    }
+
+    /**
      * Classifies a table cell's "collapse structure" — unifies list cells
      * (see `_findCellListItems`, e.g. Catalog#/Label/Authors) and prose cells
      * (free-text columns like "Annotation" that overflow their height-clamp
@@ -30525,6 +30597,66 @@ a { color: #1565c0; }`;
      */
     const MB_UNIQ_ITEM_VALUE_PREFIX = '\u0001';
 
+    /**
+     * Reserved prefix marking a `dataset.mbUniqValues` / `checkedValues` entry
+     * as an ENTITY-REFERENCE value (e.g. one specific work/place/area/artist/
+     * label/event found anywhere inside a cell, by its own href/MBID) rather
+     * than a whole-cell or per-`<li>`-item value. Sibling to
+     * `MB_UNIQ_ITEM_VALUE_PREFIX` — same "never appears in real MusicBrainz
+     * text" safety, same case-fold no-op — but a DIFFERENT, third matching
+     * mode: `getCleanColumnText(cell) === value` (whole-cell) and "does any
+     * `<li>` equal this value" (item) both test flattened TEXT; an entity
+     * value instead tests "does this cell contain an `<a href>` whose own
+     * href equals this value" (see `_findCellEntityRefs()`) — membership by
+     * STABLE IDENTITY, not text, since the same entity can legitimately
+     * render under different display text (a name-variation/alias credit) and
+     * two different entities can otherwise share the same display text.
+     *
+     * One prefix for every entity TYPE (work/place/area/artist/label/event) —
+     * the type is always cheaply recoverable by re-parsing the stored href's
+     * own `/type/` path segment at match/highlight time, so a second prefix
+     * byte per type would be pure redundancy.
+     */
+    const MB_UNIQ_ENTITY_HREF_PREFIX = '\u0002';
+
+    /**
+     * Maps a MusicBrainz entity type (the first path segment of its href,
+     * e.g. `/work/{mbid}` → `'work'`) to the MARKER GLYPH CSS CLASS this
+     * codebase already reuses elsewhere for that same entity type — see
+     * `_initColHeaderGlyph()`'s call sites (release-tracks column headers,
+     * around the "Recording of work"/"Recorded at event"/"Recorded at
+     * place"/credit-role/"Phonographic copyright"/"Produced for label"
+     * columns). These are MusicBrainz's OWN empty, site-CSS-styled marker
+     * spans (this file defines no local `.worklink`/`.placelink`/etc. CSS of
+     * its own, by design — same "trust the host page's stylesheet" contract
+     * `_initColHeaderGlyph()` already relies on).
+     *
+     * Deliberately scoped to only the 6 types with an already-VERIFIED glyph
+     * class precedent in this codebase — NOT exhaustive of every MusicBrainz
+     * entity type. Notably absent: a country-specific glyph. MusicBrainz has
+     * no separate "country" entity — a country's href is still `/area/{mbid}`
+     * like any other area (confirmed against debug/expand.html's "Recorded at
+     * place" chain: `<span class="flag flag-US"><a href="/area/…">​<bdi>United
+     * States</bdi></a></span>`, a DIFFERENT, wrapping glyph shape from every
+     * other area/place in the same chain, which use a plain empty SIBLING
+     * span). Detecting that wrapping-flag shape specifically to show a
+     * national flag instead of the generic area glyph would only change a
+     * cosmetic detail, so it's deliberately not attempted — countries get the
+     * plain `arealink` glyph like any other area. Extending this map to more
+     * types (recording/release/release-group/series/instrument/…) later is a
+     * one-line addition whenever a verified glyph class exists for them; none
+     * does today (grepped: no `countrylink`/`recordinglink`/`releaselink`/…
+     * class exists anywhere in this file or in real MusicBrainz markup).
+     */
+    const _ENTITY_TYPE_GLYPH = {
+        work:   'worklink',
+        place:  'placelink',
+        area:   'arealink',
+        artist: 'artistlink',
+        label:  'labellink',
+        event:  'eventlink'
+    };
+
     function getColFilters(table, isCaseSensitive, isRegExp, isExclude = false) {
         if (!table) {
             const empty = [];
@@ -30573,12 +30705,14 @@ a { color: #1565c0; }`;
                 inp.style.borderWidth = '';
                 let valueSet;
                 let hasItemValues = false;
+                let hasEntityValues = false;
                 try {
                     const arr = JSON.parse(inp.dataset.mbUniqValues);
                     // Computed from the raw array, before the lowercase fold below —
-                    // MB_UNIQ_ITEM_VALUE_PREFIX is a control character with no case,
-                    // so folding never affects this check either way.
+                    // both prefixes are control characters with no case, so folding
+                    // never affects either check either way.
                     hasItemValues = arr.some(v => v.startsWith(MB_UNIQ_ITEM_VALUE_PREFIX));
+                    hasEntityValues = arr.some(v => v.startsWith(MB_UNIQ_ENTITY_HREF_PREFIX));
                     valueSet = new Set(isCaseSensitive ? arr : arr.map(v => v.toLowerCase()));
                 } catch (e) {
                     valueSet = new Set(); // corrupt dataset — fail safe to "match nothing extra"
@@ -30589,6 +30723,7 @@ a { color: #1565c0; }`;
                     isMultiValueFilter: true,
                     valueSet,
                     hasItemValues,
+                    hasEntityValues,
                     isCaseSensitive,
                     isExclude
                 });
@@ -30859,6 +30994,36 @@ a { color: #1565c0; }`;
         });
     }
 
+    /**
+     * Highlights the exact matching entity NAME(s) for an entity-prefixed
+     * entry checked in the unique-values dropdown (`openUniqDrop()`'s
+     * per-entity-type-glyph entries — see `MB_UNIQ_ENTITY_HREF_PREFIX`'s own
+     * JSDoc). Unlike `_highlightUniqItemMatches()` (which highlights the
+     * WHOLE matching `<li>`), this highlights only the resolved
+     * `ref.nameNode` — e.g. just "United States" inside a "Recorded at
+     * place" chain that also names a place and two other areas, or just the
+     * artist's own name in a credit whose `<li>` also carries a trailing
+     * date range. Reuses `_buildFuzzyTextMatchRegex()`/`highlightCrossTag()`
+     * exactly like `_highlightUniqItemMatches()` — no new fuzzy-matching
+     * logic needed, since `nameNode` can itself span more than one DOM node
+     * (e.g. a `<span class="name-variation">`-wrapped alias).
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @param {{valueSet: Set<string>, isCaseSensitive: boolean}} f - The
+     *   `isMultiValueFilter` filter descriptor from `getColFilters()`.
+     */
+    function _highlightUniqEntityMatches(cell, f) {
+        if (!cell) return;
+        _findCellEntityRefs(cell).forEach(ref => {
+            const probe = f.isCaseSensitive ? ref.href : ref.href.toLowerCase();
+            if (!f.valueSet.has(MB_UNIQ_ENTITY_HREF_PREFIX + probe)) return;
+            const t = getCleanColumnText(ref.nameNode);
+            if (!t) return;
+            ref.nameNode.normalize();
+            highlightCrossTag(ref.nameNode, _buildFuzzyTextMatchRegex(t), 'mb-column-filter-highlight');
+        });
+    }
+
     /** Returns (creating if absent) the sparse cache entry for a source row. */
     function _getOrCreateRowCache(row) {
         let c = _rowTextCache.get(row);
@@ -31063,6 +31228,22 @@ a { color: #1565c0; }`;
                         return f.valueSet.has(MB_UNIQ_ITEM_VALUE_PREFIX + p);
                     });
                 }
+                // Entity-reference fallback: a checked entity-glyph entry
+                // (MB_UNIQ_ENTITY_HREF_PREFIX) represents one specific
+                // work/place/area/artist/label/event anywhere in the cell,
+                // identified by its own href — not by text at all, so it
+                // can't be tested via getCleanColumnText() equality/
+                // membership the way whole-cell/item values are. Only
+                // attempted when both cheaper checks above already missed
+                // AND this filter actually has at least one entity-prefixed
+                // entry (f.hasEntityValues) — same cheap-phase-1/
+                // expensive-phase-2 shape as the item-value fallback above.
+                if (!isMember && f.hasEntityValues && cell) {
+                    isMember = _findCellEntityRefs(cell).some(ref => {
+                        const p = f.isCaseSensitive ? ref.href : ref.href.toLowerCase();
+                        return f.valueSet.has(MB_UNIQ_ENTITY_HREF_PREFIX + p);
+                    });
+                }
                 const match = f.isExclude ? !isMember : isMember;
                 if (!match) { colHit = false; break; }
                 continue;
@@ -31164,12 +31345,21 @@ a { color: #1565c0; }`;
                 } else if (f.isMultiRowFilter &&
                            (f.multiRowMode.startsWith('attr:') || f.multiRowMode.startsWith('task:'))) {
                     _highlightCreditValueMatch(row.cells[f.idx], f.multiRowMode);
-                } else if (f.isMultiValueFilter && f.hasItemValues) {
+                } else if (f.isMultiValueFilter && (f.hasItemValues || f.hasEntityValues)) {
                     // Item-value entries (openUniqDrop()'s "▤" per-<li> checkboxes)
-                    // DO correspond to one exact <li>, unlike a whole-cell value-set
-                    // match — same "!_fIsExclude" guard as the plain-text branch above.
+                    // and entity-reference entries (its per-entity-type-glyph
+                    // checkboxes) DO correspond to one exact <li> / one exact
+                    // entity name, unlike a whole-cell value-set match — same
+                    // "!_fIsExclude" guard as the plain-text branch above. Both
+                    // may fire independently on the same cell if the user has
+                    // checked an overlapping item entry AND entity entry —
+                    // harmless: nested mb-column-filter-highlight spans render
+                    // identically to one.
                     const _fIsExclude = f.isExclude !== undefined ? f.isExclude : isExclude;
-                    if (!_fIsExclude) _highlightUniqItemMatches(row.cells[f.idx], f);
+                    if (!_fIsExclude) {
+                        if (f.hasItemValues)   _highlightUniqItemMatches(row.cells[f.idx], f);
+                        if (f.hasEntityValues) _highlightUniqEntityMatches(row.cells[f.idx], f);
+                    }
                 }
             });
 
@@ -40031,6 +40221,27 @@ a { color: #1565c0; }`;
         // `_findCellListItems` returns `[]` for those. See
         // `MB_UNIQ_ITEM_VALUE_PREFIX`'s own JSDoc and debug/multi-row-cell.html.
         const itemValueCounts = new Map();
+        // Per-entity-reference counts/info, for the entity-glyph entries
+        // ("United States"/"Toby Scott"/… marked with worklink/placelink/
+        // arealink/artistlink/labellink/eventlink) — see
+        // MB_UNIQ_ENTITY_HREF_PREFIX's own JSDoc and _findCellEntityRefs().
+        // Keyed by href (stable identity), NOT by display text, since the
+        // same entity can render under different alias text and two
+        // different entities can otherwise share the same display text.
+        // `entityHrefCounts`: href -> row count (once per row, same
+        // collect-into-a-Set-first idiom as attrValueCounts/itemValueCounts).
+        // `entityInfo`: href -> { name, glyphClass, hasNonBare }, where
+        // `hasNonBare` — computed by OR-ing _findCellEntityRefs()'s per-
+        // occurrence `isBare` across every row — is the redundancy gate:
+        // only entities that are part of something bigger (a chain, a
+        // trailing date/attribute) in at least one occurrence are worth
+        // offering; an entity whose containing <li>/cell is ALWAYS just its
+        // own bare name (e.g. "Recording of work"'s cell, or MusicBrainz's
+        // plain native "Artist" column) would be a pure duplicate of the
+        // existing whole-cell entry, so those are filtered out below (see
+        // where `combinedVals` is built from `entityInfo`).
+        const entityHrefCounts = new Map();
+        const entityInfo = new Map();
         const isTitleCol = (() => {
             const headers = table.querySelectorAll('thead tr:first-child th');
             const th = headers[colIndex];
@@ -40081,6 +40292,23 @@ a { color: #1565c0; }`;
                     });
                     _rowItemTexts.forEach(t => itemValueCounts.set(t, (itemValueCounts.get(t) || 0) + 1));
                 }
+                // Entity-reference collection — deliberately unconditional
+                // (unlike the "▤" item block above, not gated on isMultiRow):
+                // a bare single-item cell still needs to be COUNTED even
+                // though it can't itself flip hasNonBare to true, and a
+                // non-list cell (e.g. "Recording of work") has no isMultiRow
+                // to gate on at all.
+                const _rowEntityHrefs = new Set();
+                _findCellEntityRefs(cell).forEach(ref => {
+                    _rowEntityHrefs.add(ref.href);
+                    let info = entityInfo.get(ref.href);
+                    if (!info) {
+                        info = { name: ref.name, glyphClass: ref.glyphClass, hasNonBare: false };
+                        entityInfo.set(ref.href, info);
+                    }
+                    if (!ref.isBare) info.hasNonBare = true;
+                });
+                _rowEntityHrefs.forEach(href => entityHrefCounts.set(href, (entityHrefCounts.get(href) || 0) + 1));
                 if (isTitleCol && _titleHasRecNameMismatch(cell)) titleMismatchCount++;
                 if (cell.querySelector('span.name-variation')) nameVariationCount++;
                 const _rowAttrWords = new Set();
@@ -40103,24 +40331,33 @@ a { color: #1565c0; }`;
         // Merged, sorted render list combining whole-cell values (vals above)
         // with per-<li> item values (itemValueCounts) — rendered together in
         // renderItems() as one checkbox list, item entries marked with "▤".
-        // Deliberately NOT deduplicated across the two categories: the same
-        // text can legitimately appear as both a whole-cell value (from some
-        // other row's single-item cell) and an item value (from a different
-        // row's multi-item cell) — they are different filter semantics
-        // (equality vs. membership), so both stay independently selectable.
+        // Deliberately NOT deduplicated across categories: the same text can
+        // legitimately appear as both a whole-cell value (from some other
+        // row's single-item cell) and an item value (from a different row's
+        // multi-item cell), and an entity's own name can independently equal
+        // either — they are different filter semantics (equality / item
+        // membership / entity-href membership), so all stay independently
+        // selectable.
         const itemVals = Array.from(itemValueCounts.keys());
-        const combinedVals = vals.map(v => ({ value: v, isItem: false }))
-            .concat(itemVals.map(v => ({ value: v, isItem: true })))
+        // Entity entries: only hrefs with at least one non-bare occurrence
+        // (see entityInfo's own JSDoc above) — a bare-everywhere entity would
+        // be a pure duplicate of the existing whole-cell entry.
+        const entityEntries = Array.from(entityInfo.entries())
+            .filter(([, info]) => info.hasNonBare);
+        const combinedVals = vals.map(v => ({ value: v, isItem: false, isEntity: false }))
+            .concat(itemVals.map(v => ({ value: v, isItem: true, isEntity: false })))
+            .concat(entityEntries.map(([href, info]) =>
+                ({ value: info.name, isItem: false, isEntity: true, href, glyphClass: info.glyphClass })))
             .sort((a, b) => a.value.toLowerCase().localeCompare(b.value.toLowerCase()));
 
         // Pre-compute the width of the widest count so all badges in this column
         // are identically sized and the numbers right-align (e.g. "   (12)" vs
         // "(21345)").  maxDigits is the character count of the largest count value;
-        // badgeChWidth adds 2 for the surrounding parentheses "(…)". Spans both
-        // valueCounts and itemValueCounts so badge width stays consistent across
-        // the merged combinedVals list.
-        const maxCount     = (valueCounts.size > 0 || itemValueCounts.size > 0)
-            ? Math.max(0, ...valueCounts.values(), ...itemValueCounts.values())
+        // badgeChWidth adds 2 for the surrounding parentheses "(…)". Spans
+        // valueCounts/itemValueCounts/entityHrefCounts so badge width stays
+        // consistent across the merged combinedVals list.
+        const maxCount     = (valueCounts.size > 0 || itemValueCounts.size > 0 || entityHrefCounts.size > 0)
+            ? Math.max(0, ...valueCounts.values(), ...itemValueCounts.values(), ...entityHrefCounts.values())
             : 0;
         const maxDigits    = String(maxCount).length;
         const badgeChWidth = maxDigits + 2; // "(" + digits + ")"
@@ -40187,12 +40424,16 @@ a { color: #1565c0; }`;
                 return;
             }
 
-            matching.forEach(({ value: v, isItem }) => {
+            matching.forEach(({ value: v, isItem, isEntity, href, glyphClass }) => {
                 // The checked-value-set key: item entries are stored prefixed
-                // (MB_UNIQ_ITEM_VALUE_PREFIX) so they coexist with whole-cell
-                // values in the same checkedValues Set / dataset.mbUniqValues
-                // array without colliding — see that constant's own JSDoc.
-                const key = isItem ? MB_UNIQ_ITEM_VALUE_PREFIX + v : v;
+                // with MB_UNIQ_ITEM_VALUE_PREFIX, entity entries with
+                // MB_UNIQ_ENTITY_HREF_PREFIX (keyed by href, not by v) — both
+                // coexist with plain whole-cell values in the same
+                // checkedValues Set / dataset.mbUniqValues array without
+                // colliding — see those constants' own JSDoc.
+                const key = isEntity ? MB_UNIQ_ENTITY_HREF_PREFIX + href
+                          : isItem   ? MB_UNIQ_ITEM_VALUE_PREFIX + v
+                          : v;
                 const item = document.createElement('div');
                 const isChecked = checkedValues.has(key);
                 item.className = isChecked ? 'mb-col-uniq-item mb-col-uniq-checked' : 'mb-col-uniq-item';
@@ -40216,7 +40457,8 @@ a { color: #1565c0; }`;
                 item.appendChild(checkbox);
 
                 // ---- Occurrence count badge: "(n) " prefix, display only ----
-                const count = (isItem ? itemValueCounts : valueCounts).get(v) || 0;
+                const count = isEntity ? (entityHrefCounts.get(href) || 0)
+                            : (isItem ? itemValueCounts : valueCounts).get(v) || 0;
                 const badge = document.createElement('span');
                 badge.className = 'mb-uniq-count-badge';
                 badge.textContent = `(${count})`;
@@ -40274,6 +40516,22 @@ a { color: #1565c0; }`;
                     marker.className = 'mb-uniq-item-marker';
                     marker.setAttribute('aria-hidden', 'true');
                     marker.textContent = '▤';
+                    item.appendChild(marker);
+                }
+
+                // ---- Entity-type marker — MusicBrainz's own empty,
+                // site-CSS-styled glyph span for this entity's type
+                // (worklink/placelink/arealink/artistlink/labellink/
+                // eventlink — see _ENTITY_TYPE_GLYPH). No local CSS class
+                // for the marker itself: same "trust the host page's
+                // stylesheet" contract _initColHeaderGlyph() already relies
+                // on for these exact classes; spacing set inline, matching
+                // how the flag-icon clones above already do it.
+                if (isEntity) {
+                    const marker = document.createElement('span');
+                    marker.className = glyphClass;
+                    marker.setAttribute('aria-hidden', 'true');
+                    marker.style.marginRight = '4px';
                     item.appendChild(marker);
                 }
 
@@ -41534,12 +41792,27 @@ a { color: #1565c0; }`;
         // Human-readable summary label — the authoritative state always lives in
         // dataset.mbUniqValues, never re-derived from this display string.
         // A sole checked value may be an item-prefixed entry
-        // (MB_UNIQ_ITEM_VALUE_PREFIX, openUniqDrop()'s "▤" entries) — stripped
-        // here and re-marked with the same visible glyph so the raw control
-        // character never leaks into the input's displayed value.
-        const _label = v => v.startsWith(MB_UNIQ_ITEM_VALUE_PREFIX)
-            ? '▤ ' + v.slice(MB_UNIQ_ITEM_VALUE_PREFIX.length)
-            : v;
+        // (MB_UNIQ_ITEM_VALUE_PREFIX, openUniqDrop()'s "▤" entries) or an
+        // entity-prefixed entry (MB_UNIQ_ENTITY_HREF_PREFIX, its per-entity-
+        // type-glyph entries, stored as a bare href with no display name at
+        // all) — both stripped here so the raw control character never leaks
+        // into the input's displayed value. An entity entry's name isn't
+        // available in this closure (openUniqDrop()'s entityInfo map is
+        // local to that call), so it's re-resolved from the live DOM via the
+        // already-available `table` param — a plain <input> value can't
+        // render an actual glyph background-image anyway, so a text-only
+        // marker is used instead of the real worklink/placelink/etc. span.
+        const _entityLabel = href => {
+            const a = table.querySelector(`tbody a[href="${href}"]`);
+            const bdi = a && ((a.parentElement && a.parentElement.tagName === 'BDI')
+                ? a.parentElement : a.querySelector('bdi'));
+            return bdi ? getCleanColumnText(bdi) : href;
+        };
+        const _label = v => {
+            if (v.startsWith(MB_UNIQ_ITEM_VALUE_PREFIX)) return '▤ ' + v.slice(MB_UNIQ_ITEM_VALUE_PREFIX.length);
+            if (v.startsWith(MB_UNIQ_ENTITY_HREF_PREFIX)) return '🔗 ' + _entityLabel(v.slice(MB_UNIQ_ENTITY_HREF_PREFIX.length));
+            return v;
+        };
         input.value = values.length === 1 ? _label(values[0]) : `${values.length} selected`;
 
         const activeBg = Lib.settings.sa_col_filter_active_bg || '#fff9c4';
