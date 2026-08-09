@@ -4476,3 +4476,195 @@ markup examples; no live browser available in this environment):
   DOM query, click handler never invoked.
 `node --check ShowAllEntityData.user.js` passed after every edit.
 
+## 2026-08-09 — h2 "Credits" section losing its Release/Release group h3 headers (WIP.36)
+
+**Request**: on the final rendered `release-tracks` page, the h2 "Credits"
+section (native `<div id="bottom-credits">`, below the tracklist —
+`debug/credits-original.html`) is missing its `<h3>Release</h3>` and
+`<h3>Release group</h3>` sub-headings on the final rendered page
+(`debug/credits-final.html`) — everything else inside those two containers
+(`table.details`, the release-group cover-art bigbox) survives untouched.
+
+**Root cause 1 — `renderGroupedTable()`'s initial-render cleanup**: its
+`if (!query)` cleanup pass (`container.querySelectorAll('h3, table.tbl,
+.mb-master-toggle, .mb-group-intro')`) sweeps EVERY `<h3>` on the page
+before rebuilding fresh content, not just the script's own generated
+`h3.mb-toggle-h3` section headers. Its only existing exception was
+`h3:has(span.worklink)` (a separate, unrelated glyph guard). The two native
+`<h3>` inside `#bottom-credits` are bare `<h3>` with no `span.worklink`, so
+they were deleted outright on every initial render, while their sibling
+content (not itself matching the `h3`/`table.tbl` selector) was left alone
+— exactly matching the observed damage.
+
+**Fix 1**: added a second, equally targeted exception right next to the
+existing `worklink` one — skip removal when `el.closest('#bottom-credits')`
+is truthy. Deliberately NOT a broader rescope of the whole selector (e.g.
+to `h3.mb-toggle-h3` only) — that would be a much bigger behavior change
+across every other page type this cleanup pass also runs on (tags/genres
+pages route native `<h2>`-renamed-to-`<h3>` category headers through this
+exact same sweep every re-render), so a narrow, additive guard matching the
+codebase's own established pattern for this cleanup pass was preferred.
+
+**Root cause 2 — `_relocateTrailingH2Sections()`**: this function (runs in
+`finalCleanup()`, after `renderGroupedTable()`) moves any `<h2>` MusicBrainz
+rendered after the main data table to sit immediately before it, by walking
+the candidate `<h2>`'s own `nextSibling` chain and re-parenting each node
+found onto the data h2's parent (`#content`) individually. This assumes the
+candidate h2 is already a direct child of `#content` — true for e.g. native
+"Relationships"/"Related works" h2 sections, but NOT for the Credits h2,
+which is nested one level inside `<div id="bottom-credits">`. Its "siblings"
+under that assumption were actually `#bottom-credits`'s own children
+(`div#release-relationships`, `div#release-group-relationships`) — each got
+individually re-parented onto `#content`, abandoning `#bottom-credits`
+empty behind them. This is what produced the "unwrapped" structure in
+`debug/credits-final.html` (h2 and its two divs as flat siblings, no
+`#bottom-credits` wrapper at all).
+
+**Fix 2**: before falling back to the per-node sibling walk, walk UP from
+the candidate h2 to find the ancestor that IS a direct child of `#content`
+(`while (_wrapper.parentNode !== _content) _wrapper = _wrapper.parentNode`).
+If that ancestor isn't the h2 itself, relocate that WHOLE wrapper as one
+unit (`insertBefore(_wrapper, _dataH2)`) instead of touching its internals.
+For every pre-existing case (h2 already a direct child of `#content`) this
+is a no-op — `_wrapper === h2` — so the original per-node walk still runs
+unchanged.
+
+**Verified via jsdom** (`credits_fix_funcs.js`/`test_credits_fix.js` in
+scratchpad, against the real `debug/credits-original.html` fixture plus a
+synthetic `#content` shell with a data h2/`.mb-row-count-stat` and a
+script-generated `h3.mb-toggle-h3`+`table.tbl` pair):
+- Before either fix ran: 3 `<h3>` in `#content` (Medium 1, Release, Release
+  group), `#bottom-credits` present.
+- After the cleanup pass: 2 `<h3>` remain — "Release"/"Release group"
+  (correctly kept); the script's own "Medium 1" `h3.mb-toggle-h3` was
+  correctly removed (that's the pass's actual job, unaffected by this fix).
+- After `_relocateTrailingH2Sections()`: `#bottom-credits` still present,
+  with its original 3 children intact (`h2`, `div#release-relationships`,
+  `div#release-group-relationships`); both native h3 still present inside
+  their respective divs; `#bottom-credits` correctly relocated to sit
+  before the data h2 (the feature's actual intent, preserved).
+- Simulated `makeH2sCollapsible()`'s `nextSibling` content-gathering walk
+  on the (now intact, still-nested) Credits h2 — correctly finds exactly
+  `div#release-relationships`/`div#release-group-relationships` as its
+  `contentNodes`, confirming the collapsible-section toggle will still work
+  correctly with the h2 left nested inside its wrapper.
+- Regression check: the pre-existing `span.worklink` h3 exception still
+  fires (untouched by the new `#bottom-credits` guard); a non-wrapped
+  trailing h2 section (h2 directly under `#content`, with `<p>`/`<h3>`
+  siblings, e.g. native "Relationships") still relocates via the original
+  per-node walk with unchanged output order — confirming Fix 2's new
+  wrapper-detection branch doesn't affect any pre-existing case.
+`node --check ShowAllEntityData.user.js` passed after every edit.
+
+## 2026-08-09 — Credits section still not relocated; Release/Release group h3 collapsibility (WIP.37)
+
+**Request 1**: WIP.36 kept the `<h3>` headings intact, but the whole h2
+"Credits" section still renders AFTER h2 "Tracklist" instead of before it
+— see `debug/credits.html` (a full real page snapshot, 4.7MB; too large
+for the `Read` tool's 256KB cap, inspected via ad hoc Python/jsdom scripts
+instead of a direct read).
+
+**Root cause**: `debug/credits.html` revealed the real native DOM nests
+BOTH the Tracklist section AND `<div id="bottom-credits">` inside the SAME
+`<div class="tracklist-and-credits">` wrapper, several levels below
+`#content` — not the simpler "`#bottom-credits` is a direct child of
+`#content`" shape WIP.36's fix assumed (confirmed via
+`inspect_credits_page2.js` in scratchpad: `dataH2 top wrapper` and
+`creditsH2 top wrapper` both resolve to the identical `DIV.tracklist-and-
+credits` node — `SAME wrapper element (identity)? true`). WIP.36's "walk up
+to the first ancestor that's a direct child of `#content`" therefore
+produced `div.tracklist-and-credits` itself for the Credits h2 — which is
+also an ANCESTOR of the Tracklist h2 (`_dataH2`) it was about to be
+inserted before. `_dataH2.parentNode.insertBefore(_wrapper, _dataH2)` with
+`_wrapper` an ancestor of `_dataH2` throws a DOM `HierarchyRequestError`
+("new child element contains the parent"), which
+`_relocateTrailingH2Sections()`'s own try/catch silently swallowed —
+aborting the ENTIRE relocation pass (not just Credits) with only a debug
+log, so the failure was invisible without instrumentation.
+
+**Fix**: replaced the "walk up to `#content`" assumption with a proper
+lowest-common-ancestor (LCA) computation between the candidate trailing h2
+and `_dataH2`: build `_dataH2`'s ancestor chain as a `Set` once, then for
+each trailing h2 walk up until hitting a parent present in that set (bounded
+to 50 steps as a defensive guard, matching this codebase's established
+style for bounded DOM walks — see `loadAllOverflowMediumTracks`'s
+`_guard < 20`). The resulting `_lca` may now be `#content` (original simple
+case, unchanged) OR a deeper shared wrapper like `div.tracklist-and-
+credits` (the new case). Relocation then reorders SIBLINGS within `_lca`
+(`_lca.insertBefore(_wrapper, _dataWrapper)`, where `_dataWrapper` is
+`_dataH2`'s own ancestor-or-self that is a direct child of `_lca`) instead
+of always inserting relative to `_dataH2` itself — sibling reordering
+within a shared parent can never throw a hierarchy error, unlike inserting
+an ancestor before its own descendant.
+
+**Verified via jsdom** (`relocate_fn2.js`/`test_relocate_real.js` against
+the REAL `debug/credits.html` DOM — the full 4.7MB page loaded into jsdom
+directly, not a hand-built fixture):
+- Before: `div.tracklist-and-credits` children = `[h2.tracklist, h3.mb-
+  toggle-h3, table.tbl, div, div#bottom-credits]` (Credits last).
+- `_relocateTrailingH2Sections()` — **no throw** (previously would have
+  thrown and been silently swallowed).
+- After: `div.tracklist-and-credits` children = `[div#bottom-credits,
+  h2.tracklist, h3.mb-toggle-h3, table.tbl, div]` — Credits now first;
+  `#bottom-credits` still has its original 3 children intact; both native
+  `<h3>` still present; Credits h2 confirmed
+  `DOCUMENT_POSITION_PRECEDING` relative to the Tracklist h2.
+- Regression (`test_relocate_regression.js`): re-ran both WIP.36 test
+  cases (non-wrapped native "Relationships" h2 with loose `<p>`/`<h3>`
+  siblings; `#bottom-credits` as a DIRECT child of `#content`, no
+  intermediate wrapper) — both produce identical output to before this
+  fix, confirming the LCA generalization is a strict superset, not a
+  behavior change, for every previously-working case.
+
+**Request 2**: make h3 "Release" and "Release group" separately
+collapsible by clicking their names, with toggle-aware tooltips.
+
+**Design**: new `_makeCreditsH3sCollapsible()`, scoped to
+`#bottom-credits`'s two child `<div>`s (`#release-relationships`/
+`#release-group-relationships`). For each, finds its own `:scope > h3`,
+treats every OTHER direct child of that div as the section's collapsible
+content (its own `table.details` row(s), plus — for "Release group" — the
+`jesus2099…bigbox` cover-art strip that precedes its tables), and wires a
+plain `click` listener that flips `style.display` and updates both the
+`▼`/`▲` `.mb-toggle-icon` glyph and the `<h3>`'s `title` attribute between
+"Click to collapse this section" / "Click to expand this section".
+Idempotent via a `.mb-credits-h3-processed` marker class (checked before
+any DOM mutation), safe to call from both `finalCleanup()` and the
+disk-load path without double-wiring.
+
+**Deliberately its own class** (`mb-credits-toggle-h3`), never
+`mb-toggle-h3` — that class is deeply wired into the script's own
+data-group-header machinery (Ctrl+click toggle-all-peers, discography-view
+filtering, CAA/EAA bigbox restoration, `findH3ForTable()`, the
+initial-render `h3` cleanup sweep in `renderGroupedTable()`, …), none of
+which applies to these two static native headers (no owned `table.tbl`, no
+discography grouping) — sharing the class would risk them being silently
+swept into logic that assumes every `.mb-toggle-h3` is a real data-group
+header. A new `.mb-credits-toggle-h3` CSS rule (plus its own `:hover`
+rule) mirrors `.mb-toggle-h3`'s visual style (same `sa_ui_h3_bg`/
+`sa_ui_h3_hover_bg` settings) purely for visual consistency, with zero
+shared JS behavior.
+
+**Wired** in both places `_relocateTrailingH2Sections()` already runs
+(`finalCleanup()`, and the disk-load path after `updateH2Count()`) — the
+second call is a harmless idempotent no-op in practice, since (unlike
+`_relocateTrailingH2Sections()`) this function has no `.mb-row-count-stat`
+dependency: `#bottom-credits` is native content present from initial page
+load, not gated on the script's own row-render completion.
+
+**Verified via jsdom** (`h3_toggle_fn.js`/`test_h3_toggle.js`, against the
+real `debug/credits-original.html` fixture):
+- No `#bottom-credits` present: no throw, clean no-op.
+- After wiring: both h3 get `mb-credits-h3-processed mb-credits-toggle-h3`
+  classes, a `▼` `.mb-toggle-icon`, and title "Click to collapse this
+  section"; all 3 "Release" `table.details` visible initially.
+- 1st click: icon flips to `▲`, title flips to "Click to expand this
+  section", all 3 tables `display:none`.
+- 2nd click: icon back to `▼`, title back to "collapse", tables visible
+  again.
+- Independence: clicking "Release"'s h3 leaves "Release group"'s content
+  nodes (its tables + cover-art bigbox) untouched.
+- Idempotency: calling `_makeCreditsH3sCollapsible()` a second time adds
+  no duplicate icon (still exactly 1 `.mb-toggle-icon` on the h3).
+`node --check ShowAllEntityData.user.js` passed after every edit.
+

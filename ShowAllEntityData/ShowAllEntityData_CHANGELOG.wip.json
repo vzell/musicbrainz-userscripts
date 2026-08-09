@@ -1,5 +1,36 @@
 [
   {
+    "version": "WIP.37",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': fixed the h2 \"Credits\" section (native `<div id=\"bottom-credits\">`) still rendering AFTER the Tracklist section on the final page instead of before it, despite WIP.36's fix keeping its `<h3>` sub-headings intact. Root cause: `_relocateTrailingH2Sections()`'s whole-wrapper relocation (added in WIP.36) walked the Credits `<h2>` up to the first ancestor that is a direct child of `#content` and inserted it before the Tracklist `<h2>` — but on a real release page both the Tracklist and Credits sections share a common native `<div class=\"tracklist-and-credits\">` wrapper several levels below `#content` (see `debug/credits.html`), so that walk produced `<div class=\"tracklist-and-credits\">` itself — an ANCESTOR of the Tracklist `<h2>` it was about to be inserted before — throwing a DOM `HierarchyRequestError` that the function's own try/catch silently swallowed, aborting relocation for every trailing section, not just Credits. Now finds the lowest common ancestor (\"LCA\") the candidate `<h2>` actually shares with the Tracklist `<h2>` (rather than assuming it's always `#content`) and reorders siblings within that LCA instead — `<div id=\"bottom-credits\">` now correctly moves as one intact unit to sit immediately before the Tracklist section."
+        ]
+      },
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "'release-tracks': the native \"Release\"/\"Release group\" `<h3>` sub-headings inside the h2 \"Credits\" section are now independently collapsible by clicking their text — each toggles only its own following content (`table.details` rows, the release-group cover-art bigbox) within its own `<div id=\"release-relationships\">`/`<div id=\"release-group-relationships\">`, independent of the other and of the outer `<h2>Credits</h2>` toggle. Tooltips are toggle-aware (\"Click to collapse this section\" / \"Click to expand this section\", updated live as the section's state changes) rather than a single static label. Deliberately implemented as its own class (`mb-credits-toggle-h3`) rather than reusing the script's `mb-toggle-h3` data-group-header class — that class drives a large web of unrelated logic (Ctrl+click toggle-all, discography-view filtering, CAA/EAA bigbox restoration) these native, non-data headers have no business participating in; only its visual style (background/hover colors, cursor) is mirrored via a dedicated CSS rule."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.36",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': fixed the h2 \"Credits\" section on the final rendered page losing its native \"Release\"/\"Release group\" `<h3>` sub-headings (everything else inside — `table.details`, the release-group cover-art bigbox — stayed intact). Root cause 1: `renderGroupedTable()`'s initial-render cleanup pass swept EVERY `<h3>` on the page (not just the script's own generated `h3.mb-toggle-h3` section headers) before rebuilding, so the two native `<h3>` inside `<div id=\"bottom-credits\">` were being deleted outright; now skipped via a targeted `el.closest('#bottom-credits')` guard alongside the existing `span.worklink` exception.",
+          "'release-tracks': fixed `_relocateTrailingH2Sections()` (which moves the native \"Credits\" `<h2>` to sit before the main Tracklist `<h2>` on the final page) tearing apart `<div id=\"bottom-credits\">` in the process — it walked the Credits `<h2>`'s own `nextSibling` chain assuming the h2 was a direct child of `#content`, but the h2 is actually nested one level inside `#bottom-credits`, so its \"siblings\" were really `#bottom-credits`'s own children (`div#release-relationships`/`div#release-group-relationships`), which got individually re-parented onto `#content`, abandoning `#bottom-credits` empty. Now detects when the candidate h2 isn't a direct child of `#content` and relocates its whole wrapper element as one intact unit instead. See `debug/credits-original.html` / `debug/credits-final.html`."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.35",
     "date": "2026-08-09",
     "sections": [

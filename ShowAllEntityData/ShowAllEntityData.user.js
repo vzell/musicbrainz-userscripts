@@ -24901,6 +24901,15 @@ a { color: #1565c0; }`;
             background-color: ${Lib.settings.sa_ui_h3_hover_bg || '#f9f9f9'};
         }
         .mb-toggle-h3 { cursor: pointer; user-select: none; border-bottom: 1px solid #eee; padding: 4px 0; margin-left: 1.5em; background-color: ${Lib.settings.sa_ui_h3_bg || '#f0fff4'}; }
+        .mb-credits-toggle-h3:hover {
+            color: #222;
+            background-color: ${Lib.settings.sa_ui_h3_hover_bg || '#f9f9f9'};
+        }
+        /* "Release"/"Release group" sub-headings inside the native Credits
+           section (div#bottom-credits) — see _makeCreditsH3sCollapsible()'s
+           JSDoc for why this is a separate class from .mb-toggle-h3 rather
+           than sharing it. Visually mirrors .mb-toggle-h3 for consistency. */
+        .mb-credits-toggle-h3 { cursor: pointer; user-select: none; border-bottom: 1px solid #eee; padding: 4px 0; background-color: ${Lib.settings.sa_ui_h3_bg || '#f0fff4'}; }
         .mb-subtable-controls { display: inline-flex; align-items: baseline; gap: 8px; margin-left: 12px; vertical-align: middle; }
         .mb-subtable-clear-btn { font-size: ${uiSubtableBtnVals().fontSize}; padding: ${uiSubtableBtnVals().padding}; cursor: pointer; vertical-align: middle; border-radius: ${uiSubtableBtnVals().borderRadius}; background: ${uiSubtableBtnVals().bg}; border: ${uiSubtableBtnVals().border}; }
         .mb-subtable-clear-btn:hover { background: ${uiSubtableBtnVals().bgHover}; }
@@ -36730,6 +36739,17 @@ a { color: #1565c0; }`;
                     Lib.debug('render', 'Skipping removal of H3 containing worklink.');
                     return;
                 }
+                // Native "Release"/"Release group" <h3> sub-headings inside a
+                // release page's own <div id="bottom-credits"> Credits section
+                // (release-tracks pageType) are NOT script-generated section
+                // markers — this bare `h3` sweep would otherwise delete them
+                // outright on every initial render while leaving their sibling
+                // content (table.details, cover-art bigbox) untouched. See
+                // debug/credits-original.html / debug/credits-final.html.
+                if (el.tagName === 'H3' && el.closest('#bottom-credits')) {
+                    Lib.debug('render', 'Skipping removal of native H3 inside #bottom-credits.');
+                    return;
+                }
                 el.remove();
             });
 
@@ -43155,6 +43175,31 @@ a { color: #1565c0; }`;
      * cell content out of the table. See debug/report-detail.org and
      * debug/search-annotation-*.html.
      *
+     * An h2 that is NOT a direct child of #content (e.g. release pages' native
+     * <div id="bottom-credits"><h2>Credits</h2><div id="release-relationships">…
+     * — see debug/credits-original.html) is relocated as its WHOLE wrapper
+     * element, not by walking the h2's own nextSibling chain: that walk would
+     * instead collect the wrapper's OTHER children (the h2's true siblings
+     * inside the wrapper) and move each of them out individually, unwrapping
+     * and abandoning the now-empty wrapper rather than relocating one intact
+     * section. See debug/credits-final.html for the resulting damage this
+     * caused before this guard existed.
+     *
+     * The wrapper is found by walking up from the trailing h2 to the LOWEST
+     * COMMON ANCESTOR ("_lca") it shares with _dataH2 — NOT unconditionally up
+     * to #content. On release pages, both the Tracklist h2 (_dataH2) and the
+     * Credits h2 live inside the SAME native `<div class="tracklist-and-credits">`
+     * wrapper (see debug/credits.html), several levels below #content. Walking
+     * `div#bottom-credits` (the Credits h2's wrapper) all the way up to
+     * `div.tracklist-and-credits` and inserting THAT before _dataH2 would try to
+     * insert an ancestor of _dataH2 as _dataH2's own sibling — a DOM
+     * HierarchyRequestError, silently swallowed by the catch below, which
+     * aborted the ENTIRE relocation pass (every trailing h2, not just Credits)
+     * before this fix. Stopping at the true LCA and reordering siblings WITHIN
+     * it (_lca.insertBefore(_wrapper, _dataWrapper)) avoids that: when h2 and
+     * _dataH2 are both direct children of #content this reduces to the
+     * original _content-rooted behavior unchanged.
+     *
      * Controlled by sa_enable_h2_section_relocation_on_final_page (default: true).
      */
     function _relocateTrailingH2Sections() {
@@ -43171,8 +43216,54 @@ a { color: #1565c0; }`;
                 (_dataH2.compareDocumentPosition(h) & Node.DOCUMENT_POSITION_FOLLOWING)
             );
             if (!_trailing.length) return;
+
+            // _dataH2's own ancestor chain up to (and including) #content — used
+            // below to find the lowest common ancestor each trailing h2 shares
+            // with it, rather than assuming that ancestor is always #content.
+            const _dataAncestors = new Set();
+            for (let _a = _dataH2; _a; _a = _a.parentNode) {
+                _dataAncestors.add(_a);
+                if (_a === _content) break;
+            }
+
             // Process in reverse order so earlier sections land first
             [..._trailing].reverse().forEach(h2 => {
+                // Walk up from h2 to the ancestor-or-self ("_wrapper") whose
+                // PARENT is the lowest common ancestor ("_lca") shared with
+                // _dataH2. Bounded to guard against any unexpected detached/
+                // cyclic structure — #content is always reached well within
+                // this many steps on a real page.
+                let _wrapper = h2;
+                let _guard = 0;
+                while (_wrapper.parentNode && !_dataAncestors.has(_wrapper.parentNode) && _guard < 50) {
+                    _wrapper = _wrapper.parentNode;
+                    _guard++;
+                }
+                const _lca = _wrapper.parentNode || _content;
+
+                // Ancestor-or-self of _dataH2 that is a direct child of _lca —
+                // the correct insertion reference within _lca's own children,
+                // NOT _dataH2 itself when _lca sits below #content (inserting
+                // relative to a node nested inside _wrapper's own target
+                // sibling would be a no-op or a hierarchy violation).
+                let _dataWrapper = _dataH2;
+                let _dwGuard = 0;
+                while (_dataWrapper.parentNode !== _lca && _dwGuard < 50) {
+                    _dataWrapper = _dataWrapper.parentNode;
+                    _dwGuard++;
+                }
+                if (_wrapper === _dataWrapper || _dataWrapper.parentNode !== _lca) {
+                    // h2 is nested inside _dataH2's own section, or the guarded
+                    // walk above didn't converge — nothing sane to relocate.
+                    Lib.debug('cleanup', '_relocateTrailingH2Sections: skipping h2 with no valid relocation target.');
+                    return;
+                }
+
+                if (_wrapper !== h2) {
+                    _lca.insertBefore(_wrapper, _dataWrapper);
+                    return;
+                }
+
                 const _sectionNodes = [];
                 let _cur = h2;
                 while (_cur) {
@@ -43182,7 +43273,7 @@ a { color: #1565c0; }`;
                     _cur = _cur.nextSibling;
                 }
                 _sectionNodes.forEach(node => {
-                    _dataH2.parentNode.insertBefore(node, _dataH2);
+                    _lca.insertBefore(node, _dataWrapper);
                 });
             });
             Lib.debug('cleanup',
@@ -43190,6 +43281,76 @@ a { color: #1565c0; }`;
         } catch (_h2Err) {
             Lib.debug('cleanup', '_relocateTrailingH2Sections skipped:', _h2Err);
         }
+    }
+
+    /**
+     * Makes the native "Release"/"Release group" `<h3>` sub-headings inside a
+     * release page's `<div id="bottom-credits">` Credits section independently
+     * collapsible by clicking their text, mirroring `makeH2sCollapsible()`'s
+     * icon/toggle mechanics (a `.mb-toggle-icon` prefix, click-to-toggle,
+     * `style.display` show/hide) at a smaller scope — one native `<h3>` and its
+     * own following siblings within the SAME parent `<div>`
+     * (`div#release-relationships` / `div#release-group-relationships`), not the
+     * whole `<h2>Credits</h2>` section those two divs already toggle together.
+     *
+     * Deliberately uses its OWN class (`mb-credits-toggle-h3`), never
+     * `mb-toggle-h3` — that class is the script's own data-group section-header
+     * mechanism (`renderGroupedTable()`'s per-category headers), wired into a
+     * large web of other logic keyed off it: Ctrl+click "toggle all sub-
+     * sections", discography-view filtering, CAA/EAA bigbox restoration,
+     * `findH3ForTable()`/`findOwningHeader()`, the initial-render cleanup sweep
+     * in `renderGroupedTable()`, etc. These two `<h3>` are native content with
+     * none of that semantics (no owned `table.tbl`, no discography grouping),
+     * so sharing the class would risk them being silently swept up by logic
+     * that assumes every `.mb-toggle-h3` is a real data-group header. Its CSS
+     * only mirrors `.mb-toggle-h3`'s visual style for consistency — see
+     * `.mb-credits-toggle-h3` rule below `.mb-toggle-h3`'s own.
+     *
+     * Idempotent (checks `.mb-credits-h3-processed`) and safe to call more than
+     * once — needed since `#bottom-credits` is left untouched by the h3 cleanup
+     * sweep (see `renderGroupedTable()`'s `el.closest('#bottom-credits')`
+     * guard) and is never destroyed/rebuilt on a re-render, so a plain
+     * `addEventListener` (not delegated) does not need re-wiring after a
+     * `cloneNode(true)` the way row-level interactive elements do.
+     *
+     * Must be called AFTER `_relocateTrailingH2Sections()` has settled
+     * `#bottom-credits` into its final position — it only needs the subtree to
+     * exist, not any particular position, but is kept adjacent to that call for
+     * readability since both operate on the same native structure.
+     */
+    function _makeCreditsH3sCollapsible() {
+        const _bottomCredits = document.getElementById('bottom-credits');
+        if (!_bottomCredits) return;
+
+        Array.from(_bottomCredits.children).forEach(_section => {
+            if (_section.tagName !== 'DIV') return; // skip the Credits <h2> itself
+            const _h3 = _section.querySelector(':scope > h3');
+            if (!_h3 || _h3.classList.contains('mb-credits-h3-processed')) return;
+
+            const _contentNodes = Array.from(_section.children).filter(c => c !== _h3);
+            if (_contentNodes.length === 0) return; // nothing to collapse
+
+            _h3.classList.add('mb-credits-h3-processed', 'mb-credits-toggle-h3');
+
+            const _icon = document.createElement('span');
+            _icon.className = 'mb-toggle-icon';
+            _h3.prepend(_icon);
+
+            const _setState = (expanded) => {
+                _contentNodes.forEach(node => node.style.display = expanded ? '' : 'none');
+                _icon.textContent = expanded ? '▼' : '▲';
+                _h3.title = expanded
+                    ? 'Click to collapse this section'
+                    : 'Click to expand this section';
+            };
+            _setState(true); // native page always shows these expanded
+
+            _h3.addEventListener('click', () => {
+                _setState(_icon.textContent === '▲');
+            });
+
+            Lib.debug('render', `_makeCreditsH3sCollapsible: wired toggle for "${_h3.textContent.trim()}".`);
+        });
     }
 
     /**
@@ -43564,6 +43725,12 @@ a { color: #1565c0; }`;
         // Delegated to _relocateTrailingH2Sections() which can be called
         // independently from loadTableDataFromDisk after updateH2Count() runs.
         _relocateTrailingH2Sections();
+
+        // ── Credits section h3 collapsibility ────────────────────────────────
+        // Runs after relocation above so div#bottom-credits (if present) is
+        // already in its final position — see _makeCreditsH3sCollapsible()'s
+        // JSDoc. No-op on pages without a native Credits section.
+        _makeCreditsH3sCollapsible();
 
         // ── list-merge-buttons-row-container hiding ──────────────────────────
         // When sa_remove_checkbox_cell is enabled, the checkboxes that drive
@@ -47473,6 +47640,13 @@ a { color: #1565c0; }`;
             // is inserted by updateH2Count().  finalCleanup() (called earlier)
             // already attempted this but found no stat and silently no-oped.
             _relocateTrailingH2Sections();
+
+            // _makeCreditsH3sCollapsible() has no .mb-row-count-stat dependency
+            // (div#bottom-credits is native page content, present from initial
+            // load regardless of row-render state) so finalCleanup()'s earlier
+            // call already succeeded here; re-called for consistency with
+            // _relocateTrailingH2Sections() above — idempotent, harmless no-op.
+            _makeCreditsH3sCollapsible();
 
             makeH2sCollapsible();
 
