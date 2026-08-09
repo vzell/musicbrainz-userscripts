@@ -25580,6 +25580,15 @@ a { color: #1565c0; }`;
             user-select: none;
             flex-shrink: 0;
         }
+        /* "▤" marker distinguishing a per-<li> item entry (one credited
+           person/value inside a multi-row cell) from a whole-cell value
+           entry in the same checkbox list — see renderItems(). */
+        .mb-uniq-item-marker {
+            display: inline-block;
+            margin-right: 4px;
+            opacity: 0.65;
+            user-select: none;
+        }
         /* Checked state: distinct resting background so multi-selected items
            remain visually identifiable even when not hovered/focused. The
            higher-specificity :hover / .mb-uniq-focused rules above still win. */
@@ -30500,6 +30509,22 @@ a { color: #1565c0; }`;
      * @returns {Array<{val:string, idx:number}>}  — with an `._rxErrors` property
      *          (array of formatted error strings) attached for single-table callers.
      */
+    /**
+     * Reserved prefix marking a `dataset.mbUniqValues` / `checkedValues` entry
+     * as a multi-row list-ITEM value (e.g. one credited person's own text
+     * inside a merged "Engineer" cell) rather than a whole-cell value. Never
+     * appears in real MusicBrainz text, so it's safe as a sentinel — and
+     * `.toLowerCase()` on it is a no-op, so case-insensitive folding of the
+     * checked-value array (see `getColFilters()` below) never corrupts it.
+     *
+     * A whole-cell value-set filter (`isMultiValueFilter`) tests
+     * `getCleanColumnText(cell) === value` (equality); an item value instead
+     * tests "does any of this cell's own `<li>` items equal this value"
+     * (membership) — see `testRowMatch()`'s `isMultiValueFilter` branch and
+     * `openUniqDrop()`'s `combinedVals`/`renderItems()`.
+     */
+    const MB_UNIQ_ITEM_VALUE_PREFIX = '\u0001';
+
     function getColFilters(table, isCaseSensitive, isRegExp, isExclude = false) {
         if (!table) {
             const empty = [];
@@ -30547,8 +30572,13 @@ a { color: #1565c0; }`;
                 inp.style.borderColor = '';
                 inp.style.borderWidth = '';
                 let valueSet;
+                let hasItemValues = false;
                 try {
                     const arr = JSON.parse(inp.dataset.mbUniqValues);
+                    // Computed from the raw array, before the lowercase fold below —
+                    // MB_UNIQ_ITEM_VALUE_PREFIX is a control character with no case,
+                    // so folding never affects this check either way.
+                    hasItemValues = arr.some(v => v.startsWith(MB_UNIQ_ITEM_VALUE_PREFIX));
                     valueSet = new Set(isCaseSensitive ? arr : arr.map(v => v.toLowerCase()));
                 } catch (e) {
                     valueSet = new Set(); // corrupt dataset — fail safe to "match nothing extra"
@@ -30558,6 +30588,7 @@ a { color: #1565c0; }`;
                     idx:                colIdx,
                     isMultiValueFilter: true,
                     valueSet,
+                    hasItemValues,
                     isCaseSensitive,
                     isExclude
                 });
@@ -30734,6 +30765,98 @@ a { color: #1565c0; }`;
                 highlightCrossTag(el, _regex, 'mb-column-filter-highlight');
             });
         }
+    }
+
+    /**
+     * Builds a regex that matches `t` — a value produced by
+     * `getCleanColumnText()` — against the RAW, un-normalised text
+     * `highlightCrossTag()` actually walks. The two are NOT positionally
+     * equivalent the way `getCleanColumnText()`/`highlightCrossTag()` are for
+     * a single small element (e.g. `_highlightCreditValueMatch()`'s
+     * `.mb-credit-attr`/`.mb-credit-task` sentinels, which are one element
+     * with essentially one text run): `getCleanColumnText()` joins every
+     * qualifying text-node fragment with a SINGLE space
+     * (`textParts.join(' ')`) and then `normalizeExtractedText()` collapses
+     * whitespace runs to one space AND strips the space immediately after
+     * `(`/`[` and immediately before `)`/`]`/`,` — while `highlightCrossTag()`
+     * concatenates ACCEPTED text nodes verbatim, RAW whitespace and all
+     * (newlines/tabs from this file's own pretty-printed markup, real
+     * multi-line MusicBrainz HTML). A literal escaped-string regex built
+     * straight from `t` therefore silently fails to match whenever a value
+     * spans more than one DOM node — exactly the common case for a credit
+     * `<li>` (artist `<a>`, `<span class="comment">`, `<span
+     * class="mb-credit-attr">`/`<i class="mb-credit-task">` are all separate
+     * elements/text nodes). Confirmed via debug/multi-row-cell.html's real
+     * "Karl Egsieker (task: Second Engineer)" `<li>`: its raw concatenation
+     * is `"Karl Egsieker\n\t (\n      task: Second Engineer\n      )\n    "`
+     * — nothing like the single-spaced, paren-tight cleaned string.
+     *
+     * Reversed here: every literal space in the escaped text becomes `\s*`
+     * — NOT `\s+`. A normalized single space usually stands in for a run
+     * of real raw whitespace, but it can ALSO stand in for a boundary with
+     * NO real whitespace character at all: `textParts.join(' ')` always
+     * inserts its own separating space between two qualifying fragments,
+     * even when the only thing connecting them in the raw DOM was a text
+     * node that is ITSELF whitespace-only and therefore entirely
+     * `FILTER_REJECT`ed by `highlightCrossTag()`'s own walker —
+     * contributing ZERO characters, not even one whitespace char, to
+     * `fullText`. Real example, captured from a live release page: a
+     * credited artist's `&nbsp;` separator before their `<span
+     * class="comment">` disambiguation — `<a>…Roger Talkov</a>&nbsp;<span
+     * class="comment">(engineer)</span>`. An isolated non-breaking-space
+     * text node `.trim()`s to empty (NBSP IS whitespace per
+     * `String.prototype.trim()`), so that whole node is rejected and
+     * "Talkov"/"(engineer)" end up directly adjacent with NOTHING between
+     * them in `fullText`; a mandatory `\s+` there fails the whole match,
+     * silently — must be `\s*`. `\s*` (optional) is ALSO inserted right
+     * after an escaped `(`/`[` and right before `)`/`]`/`,`
+     * (normalizeExtractedText's paren/bracket/comma space-stripping may
+     * have collapsed what was originally real whitespace at exactly those
+     * positions down to nothing).
+     *
+     * @param {string} t - A `getCleanColumnText()`-derived value.
+     * @returns {RegExp} A global regex safe to pass to `highlightCrossTag()`.
+     */
+    function _buildFuzzyTextMatchRegex(t) {
+        let esc = t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        esc = esc.replace(/ /g, '\\s*');
+        esc = esc.replace(/(\\\(|\\\[)/g, '$1\\s*');
+        esc = esc.replace(/(\\\)|\\\]|,)/g, '\\s*$1');
+        return new RegExp(esc, 'g');
+    }
+
+    /**
+     * Highlights the exact matching `<li>` item(s) for an item-prefixed entry
+     * checked in the unique-values dropdown (`openUniqDrop()`'s "▤" per-item
+     * entries — see `MB_UNIQ_ITEM_VALUE_PREFIX`'s own JSDoc).
+     *
+     * Unlike whole-cell plain-value matches (deliberately un-highlighted —
+     * see `testRowMatch()`'s `isMultiValueFilter` branch), an item entry DOES
+     * correspond to one exact `<li>`'s own clean text, so it gets the same
+     * `mb-column-filter-highlight` treatment `_highlightCreditValueMatch()`
+     * gives the `attr:`/`task:` compound modes, via the same
+     * `highlightCrossTag()` primitive — but built via
+     * `_buildFuzzyTextMatchRegex()` (see its own JSDoc), since — unlike
+     * `_highlightCreditValueMatch()`'s single-element sentinels — a whole
+     * `<li>`'s text routinely spans multiple child elements/text nodes.
+     * Only `<li>`s whose OWN text matches a checked item value are
+     * highlighted — a merged multi-person cell can have several `<li>`s,
+     * only some of which match.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {{valueSet: Set<string>, isCaseSensitive: boolean}} f - The
+     *   `isMultiValueFilter` filter descriptor from `getColFilters()`.
+     */
+    function _highlightUniqItemMatches(cell, f) {
+        if (!cell) return;
+        _findCellListItems(cell).forEach(li => {
+            const t = getCleanColumnText(li);
+            if (!t) return;
+            const probe = f.isCaseSensitive ? t : t.toLowerCase();
+            if (!f.valueSet.has(MB_UNIQ_ITEM_VALUE_PREFIX + probe)) return;
+            li.normalize();
+            highlightCrossTag(li, _buildFuzzyTextMatchRegex(t), 'mb-column-filter-highlight');
+        });
     }
 
     /** Returns (creating if absent) the sparse cache entry for a source row. */
@@ -30914,11 +31037,32 @@ a { color: #1565c0; }`;
             // ── Value-set filter (set by applyUniqValueSet via uniq-drop checkboxes) ──
             // A row passes if its cell text matches ANY checked value (OR'd within
             // the column). f.val is a human-readable summary label, not matchable
-            // text, so no highlight is produced (mirrors isMultiRowFilter above).
+            // text, so whole-cell matches get no highlight (mirrors isMultiRowFilter
+            // above) — but see the item-value fallback below, which DOES get
+            // highlighted (_highlightUniqItemMatches, in the highlight pass further
+            // down), since unlike a whole-cell match it corresponds to one exact `<li>`.
             if (f.isMultiValueFilter) {
-                const cellText = matchOnly ? _cachedColText(row, f.idx) : getCleanColumnText(row.cells[f.idx]);
+                const cell = row.cells[f.idx];
+                const cellText = matchOnly ? _cachedColText(row, f.idx) : getCleanColumnText(cell);
                 const probe = f.isCaseSensitive ? cellText : cellText.toLowerCase();
-                const isMember = f.valueSet.has(probe);
+                let isMember = f.valueSet.has(probe);
+                // Item-value fallback: a checked "▤" entry (MB_UNIQ_ITEM_VALUE_PREFIX)
+                // represents one <li> inside a multi-row cell, not the whole cell's
+                // flattened text — a merged multi-person cell's getCleanColumnText()
+                // never equals just one person's own text. Only attempted when the
+                // whole-cell check already missed AND this filter actually has at
+                // least one item-prefixed entry (f.hasItemValues), so columns/filters
+                // that never used item-entries pay no extra DOM-walk cost — same
+                // cheap-phase-1/expensive-phase-2 shape as the sentinel-value fallback
+                // below.
+                if (!isMember && f.hasItemValues && cell) {
+                    isMember = _findCellListItems(cell).some(li => {
+                        const t = getCleanColumnText(li);
+                        if (!t) return false;
+                        const p = f.isCaseSensitive ? t : t.toLowerCase();
+                        return f.valueSet.has(MB_UNIQ_ITEM_VALUE_PREFIX + p);
+                    });
+                }
                 const match = f.isExclude ? !isMember : isMember;
                 if (!match) { colHit = false; break; }
                 continue;
@@ -31020,6 +31164,12 @@ a { color: #1565c0; }`;
                 } else if (f.isMultiRowFilter &&
                            (f.multiRowMode.startsWith('attr:') || f.multiRowMode.startsWith('task:'))) {
                     _highlightCreditValueMatch(row.cells[f.idx], f.multiRowMode);
+                } else if (f.isMultiValueFilter && f.hasItemValues) {
+                    // Item-value entries (openUniqDrop()'s "▤" per-<li> checkboxes)
+                    // DO correspond to one exact <li>, unlike a whole-cell value-set
+                    // match — same "!_fIsExclude" guard as the plain-text branch above.
+                    const _fIsExclude = f.isExclude !== undefined ? f.isExclude : isExclude;
+                    if (!_fIsExclude) _highlightUniqItemMatches(row.cells[f.idx], f);
                 }
             });
 
@@ -39865,6 +40015,22 @@ a { color: #1565c0; }`;
         // Engineer") this is built from.
         const attrValueCounts = new Map();
         const taskValueCounts = new Map();
+        // One entry per unique <li> item's own clean text, for multi-row
+        // (≥2-item) list cells — e.g. "Karl Egsieker (task: Second
+        // Engineer)" as its own selectable value distinct from the merged
+        // whole-cell "Billy Bowers ... Karl Egsieker ..." value already in
+        // `valueCounts` above. Counted once per row using the same
+        // collect-into-a-Set-first idiom as attrValueCounts/taskValueCounts
+        // just above. Deliberately keyed on `_findCellListItems(cell).length
+        // >= 2` (i.e. `_classifyCollapseCell`'s own `isMultiRow` for the
+        // list-cell case) so single-item cells — whose one item's text is
+        // already identical to their existing whole-cell `valueCounts`
+        // entry — never contribute a redundant duplicate here, and
+        // prose/Annotation cells (isMultiRow true via a height-clamp toggle,
+        // not a list) correctly contribute nothing since
+        // `_findCellListItems` returns `[]` for those. See
+        // `MB_UNIQ_ITEM_VALUE_PREFIX`'s own JSDoc and debug/multi-row-cell.html.
+        const itemValueCounts = new Map();
         const isTitleCol = (() => {
             const headers = table.querySelectorAll('thead tr:first-child th');
             const th = headers[colIndex];
@@ -39907,6 +40073,14 @@ a { color: #1565c0; }`;
                     // the cell is genuinely empty (no hidden text, no spurious whitespace).
                     if (!v) emptyCellCount++;
                 }
+                if (isMultiRow) {
+                    const _rowItemTexts = new Set();
+                    _findCellListItems(cell).forEach(li => {
+                        const t = getCleanColumnText(li);
+                        if (t) _rowItemTexts.add(t);
+                    });
+                    _rowItemTexts.forEach(t => itemValueCounts.set(t, (itemValueCounts.get(t) || 0) + 1));
+                }
                 if (isTitleCol && _titleHasRecNameMismatch(cell)) titleMismatchCount++;
                 if (cell.querySelector('span.name-variation')) nameVariationCount++;
                 const _rowAttrWords = new Set();
@@ -39926,12 +40100,27 @@ a { color: #1565c0; }`;
             a.toLowerCase().localeCompare(b.toLowerCase())
         );
 
+        // Merged, sorted render list combining whole-cell values (vals above)
+        // with per-<li> item values (itemValueCounts) — rendered together in
+        // renderItems() as one checkbox list, item entries marked with "▤".
+        // Deliberately NOT deduplicated across the two categories: the same
+        // text can legitimately appear as both a whole-cell value (from some
+        // other row's single-item cell) and an item value (from a different
+        // row's multi-item cell) — they are different filter semantics
+        // (equality vs. membership), so both stay independently selectable.
+        const itemVals = Array.from(itemValueCounts.keys());
+        const combinedVals = vals.map(v => ({ value: v, isItem: false }))
+            .concat(itemVals.map(v => ({ value: v, isItem: true })))
+            .sort((a, b) => a.value.toLowerCase().localeCompare(b.value.toLowerCase()));
+
         // Pre-compute the width of the widest count so all badges in this column
         // are identically sized and the numbers right-align (e.g. "   (12)" vs
         // "(21345)").  maxDigits is the character count of the largest count value;
-        // badgeChWidth adds 2 for the surrounding parentheses "(…)".
-        const maxCount     = valueCounts.size > 0
-            ? Math.max(...valueCounts.values())
+        // badgeChWidth adds 2 for the surrounding parentheses "(…)". Spans both
+        // valueCounts and itemValueCounts so badge width stays consistent across
+        // the merged combinedVals list.
+        const maxCount     = (valueCounts.size > 0 || itemValueCounts.size > 0)
+            ? Math.max(0, ...valueCounts.values(), ...itemValueCounts.values())
             : 0;
         const maxDigits    = String(maxCount).length;
         const badgeChWidth = maxDigits + 2; // "(" + digits + ")"
@@ -39986,7 +40175,9 @@ a { color: #1565c0; }`;
         function renderItems(filter) {
             listBox.innerHTML = '';
             const lf = filter.toLowerCase();
-            const matching = filter ? vals.filter(v => v.toLowerCase().includes(lf)) : vals;
+            const matching = filter
+                ? combinedVals.filter(e => e.value.toLowerCase().includes(lf))
+                : combinedVals;
 
             if (matching.length === 0) {
                 const msg = document.createElement('div');
@@ -39996,15 +40187,23 @@ a { color: #1565c0; }`;
                 return;
             }
 
-            matching.forEach(v => {
+            matching.forEach(({ value: v, isItem }) => {
+                // The checked-value-set key: item entries are stored prefixed
+                // (MB_UNIQ_ITEM_VALUE_PREFIX) so they coexist with whole-cell
+                // values in the same checkedValues Set / dataset.mbUniqValues
+                // array without colliding — see that constant's own JSDoc.
+                const key = isItem ? MB_UNIQ_ITEM_VALUE_PREFIX + v : v;
                 const item = document.createElement('div');
-                const isChecked = checkedValues.has(v);
+                const isChecked = checkedValues.has(key);
                 item.className = isChecked ? 'mb-col-uniq-item mb-col-uniq-checked' : 'mb-col-uniq-item';
                 item.setAttribute('role', 'option');
                 item.setAttribute('aria-selected', String(isChecked));
-                // title holds the raw value only — used by the Enter-key handler
-                // and applyUniqVal() so the badge text is never copied into the
-                // filter input field.
+                // title holds the raw, UNPREFIXED value only — used by the
+                // Enter-key handler and applyUniqVal() so the badge text is
+                // never copied into the filter input field. (Confirmed
+                // nothing reads this back programmatically — it's a pure
+                // hover tooltip for the CSS-ellipsis-truncated row, so it
+                // must stay human-readable even for item entries.)
                 item.title = v;
 
                 // ---- Checkbox glyph: ☑/☐, enables multi-select (OR'd within column) ----
@@ -40017,7 +40216,7 @@ a { color: #1565c0; }`;
                 item.appendChild(checkbox);
 
                 // ---- Occurrence count badge: "(n) " prefix, display only ----
-                const count = valueCounts.get(v) || 0;
+                const count = (isItem ? itemValueCounts : valueCounts).get(v) || 0;
                 const badge = document.createElement('span');
                 badge.className = 'mb-uniq-count-badge';
                 badge.textContent = `(${count})`;
@@ -40051,6 +40250,9 @@ a { color: #1565c0; }`;
                 // wrapped in a container span — so there is no extra layout
                 // context (e.g. flex) that could interfere with the native
                 // CSS-sprite flag's baked width/height/background rendering.
+                // flagIconMap is keyed only by whole-cell text, so this is a
+                // harmless no-op for item entries — they simply never carry a
+                // flag icon of their own.
                 if (hasFlagIcons) {
                     const icons = flagIconMap.get(v);
                     if (icons) {
@@ -40061,6 +40263,18 @@ a { color: #1565c0; }`;
                             item.appendChild(iconClone);
                         }
                     }
+                }
+
+                // ---- "▤" item marker — visually distinguishes a per-<li>
+                // item entry from a whole-cell value entry (reuses the same
+                // multi-row "rack" glyph used elsewhere for this cell shape,
+                // e.g. .mb-cell-collapse-rack, rather than inventing a new one).
+                if (isItem) {
+                    const marker = document.createElement('span');
+                    marker.className = 'mb-uniq-item-marker';
+                    marker.setAttribute('aria-hidden', 'true');
+                    marker.textContent = '▤';
+                    item.appendChild(marker);
                 }
 
                 if (filter) {
@@ -40090,12 +40304,12 @@ a { color: #1565c0; }`;
                     // whole set as an OR'd column filter. Deliberately do NOT call
                     // closeUniqDrop() here — multi-select requires the panel to
                     // stay open so more values can be checked/unchecked.
-                    if (checkedValues.has(v)) {
-                        checkedValues.delete(v);
+                    if (checkedValues.has(key)) {
+                        checkedValues.delete(key);
                     } else {
-                        checkedValues.add(v);
+                        checkedValues.add(key);
                     }
-                    const nowChecked = checkedValues.has(v);
+                    const nowChecked = checkedValues.has(key);
                     item.classList.toggle('mb-col-uniq-checked', nowChecked);
                     item.setAttribute('aria-selected', String(nowChecked));
                     checkbox.textContent = nowChecked ? '☑' : '☐';
@@ -40659,11 +40873,11 @@ a { color: #1565c0; }`;
 
         /**
          * Appends a thin horizontal rule between the synthetic section and the
-         * regular value list.  Only called when vals.length > 0 so the divider
-         * is never rendered as the last element in an otherwise empty panel.
+         * regular value list.  Only called when combinedVals.length > 0 so the
+         * divider is never rendered as the last element in an otherwise empty panel.
          */
         const appendSynDivider = () => {
-            if (vals.length === 0) return;
+            if (combinedVals.length === 0) return;
             const divider = document.createElement('div');
             divider.style.cssText = 'border-top:1px solid #d0d0d0; margin:4px 0;';
             divider.setAttribute('aria-hidden', 'true');
@@ -40970,7 +41184,7 @@ a { color: #1565c0; }`;
             appendSynDivider();
         }
 
-        if (vals.length === 0) {
+        if (combinedVals.length === 0) {
             const msg = document.createElement('div');
             msg.className = 'mb-col-uniq-empty';
             msg.textContent = '(no visible values)';
@@ -41124,7 +41338,7 @@ a { color: #1565c0; }`;
             : (emptyCellCount > 0 ? 1 : 0)) +
             (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0) +
             _sortedAttrValues.length + _sortedTaskValues.length;
-        const dropH = Math.min(320, (vals.length + synItemCount) * 29 + 50 + 38); // +50 syn header/divider, +38 qf bar
+        const dropH = Math.min(320, (combinedVals.length + synItemCount) * 29 + 50 + 38); // +50 syn header/divider, +38 qf bar
         const dropW = drop.offsetWidth || 200;
 
         let top  = bRect.bottom + 3;
@@ -41143,7 +41357,7 @@ a { color: #1565c0; }`;
         // Auto-focus the quickfilter input so the user can type immediately
         requestAnimationFrame(() => qfInput.focus());
 
-        Lib.debug('filter', `Uniq-drop col ${colIndex}: ${vals.length} values`);
+        Lib.debug('filter', `Uniq-drop col ${colIndex}: ${combinedVals.length} values`);
     }
 
     /**
@@ -41319,7 +41533,14 @@ a { color: #1565c0; }`;
 
         // Human-readable summary label — the authoritative state always lives in
         // dataset.mbUniqValues, never re-derived from this display string.
-        input.value = values.length === 1 ? values[0] : `${values.length} selected`;
+        // A sole checked value may be an item-prefixed entry
+        // (MB_UNIQ_ITEM_VALUE_PREFIX, openUniqDrop()'s "▤" entries) — stripped
+        // here and re-marked with the same visible glyph so the raw control
+        // character never leaks into the input's displayed value.
+        const _label = v => v.startsWith(MB_UNIQ_ITEM_VALUE_PREFIX)
+            ? '▤ ' + v.slice(MB_UNIQ_ITEM_VALUE_PREFIX.length)
+            : v;
+        input.value = values.length === 1 ? _label(values[0]) : `${values.length} selected`;
 
         const activeBg = Lib.settings.sa_col_filter_active_bg || '#fff9c4';
         input.style.backgroundColor = activeBg;
