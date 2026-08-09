@@ -91309,8 +91309,7 @@ helpers.js:119 Uncaught TypeError: Cannot read properties of undefined (reading 
         document.addEventListener.capture	@	userscript.html?name…-464f22b2210f:13046
 #+end_example
 
-** TODO add new feature
-** "Recording artist" column always present, but only filled if the "Recording artist:" div is present
+** DONE "Recording artist" column always present, but only filled if the "Recording artist:" div is present
 
 Add a new "Recording artist" column if the following constructs are present in the original "Title" column, e.g. in
 https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd in the DVD-Video medium
@@ -91324,7 +91323,8 @@ ONLY add the new colum if at least on track has such an entry
 #+begin_example
 <div class="small">Recording artist:<!-- --> <bdi><a href="/artist/82322886-4c92-4509-9611-ac2173438469" title="Riders Against the Storm (husband/wife hip hop duo)">Riders Against the Storm</a></bdi></div>
 #+end_example
-** exchange the columns "Recording artist" and "Artist", make "Artist" come first
+
+** DONE exchange the columns "Recording artist" and "Artist", make "Artist" come first
 
 exchange the columns "Recording artist" and "Artist", make "Artist" come first
 
@@ -91649,7 +91649,7 @@ Recorded at (event) => Recorded at event
 Recorded at (place) => Recorded at place
 #+end_example
 
-** bugs with place extracion
+** DONE bugs with place extraction
 
 Two bugs with extraction of "recorded at: <place>" to the "Recorded at place <placelink glyph>" column in e.g. https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc
 
@@ -91665,7 +91665,7 @@ Why in the following row NO place information is extracted at all ?
 
 See @debug/without-place.html for the complete row
 
-** TODO plan: add support for new extracted columns
+** DONE plan: add support for new extracted columns
 *** DONE initial
 
 Add new columns to support additional MusicBrainz ARs when present in the "Title" column, from e.g. https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc/edit-relationships
@@ -91753,7 +91753,7 @@ Bruce Springsteen
 
 act on @debug/artist-roles.org
 
-** DONE extract places to collapsable column
+*** DONE extract places to collapsable column
 
 On https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd there is an example of a row where multiple places exist for the "recorded at: <place(s)>
 See @debug/multiple-places.html
@@ -91763,16 +91763,376 @@ See @debug/multiple-places-2.html
 
 In such a case extract the places in a list and render them as a multi-row cell, making the corresponding column collapsable
 
-** DONE the "Recorded at <place>" AR could actually have one additional attribut named "additional"
+*** DONE the "Recorded at <place>" AR could actually have one additional attribut named "additional"
 
 The "recorded at: <place>" AR could actually have one additional attribut named "additional".
 In such a case render a new column "Additional" before the "Recorded at place" column with a vlaue of "additional" if present and an empty cell otherwise
 
-** adjustments
+*** DONE adjustments
 
+Given https://musicbrainz.org/release/356e8b33-4504-442a-ac3d-34af95e6ea1d
+when extracting the "Recording engineer" from the "Title" column @debug/buggy-list-title.html 
+we currently get @debug/buggy-list.html
+
+The part " (strings)" in the '<span class="rel-noop">' if present is an additional instrument which was engineered.
+
+Extract it together with the artist when present
+
+*** DONE also add support for the extraction of "miscellaneous support:"
+
+lets start again:
+
+1.) 
+
+given the the following "engineer:" @debug/missing-engineer.html
+there is currently nothing rendered at all on the final page
+
+2.)
+
+also add support for the artist extraction of "miscellaneous support:" (column name "Miscellaneous support") together with the actual task
+
+#+begin_example
+ (task: string contractor)
+#+end_example
+
+*** DONE bug
+
+1.) from last session is still not fixed, see
+
+#+begin_example
+@debug/soul-days-missing.html - original
+@debug/soul-days-missing.html - rendered
+#+end_example
+
+*** DONE revert the current decision to add a column like e.g. "Mixer (Assistant)"
+
+revert the current decision to add a column like "Mixer (<attribut>)" e.g. "Mixer (Assistant)"
+and instead render the attribut(s) if present after the artist name in brackets @debug/attributes.html
+
+1.)
+
+so e.g. in this case we would get a list of two artists in the collapsable "Mixer" column
+
+#+begin_example
+Paul Hamingson (assistant)
+Bob Clearmountain
+#+end_example
+
+The same is true for the other columns like "Recording engineer", "Producer", "Engineer" if they have additional attributes
+
+2.)
+
+In the case of an engineer for example, if there are additional attributs like "assistant"/"co" etc present for an artist e.g. "Karl Egsieker" together with a task e.g. "task: Second Engineer"
+the final rendered artist in the "Engineer" column should be e.g. 
+
+#+begin_example
+Karl Egsieker (assistant/co, task: Second Engineer)
+#+end_example
+
+3.)
+
+The task part "task: Second Engineer" if present should always be rendered in italic, also for other extracted columns where a task part is present e.g. the column "Miscellaneous support"
+
+** DONE currently the columns for "Engineer" and "Mixer" are empty if an artist has both roles and is reference like in this case
+
+Currently the columns for "Engineer" and "Mixer" are empty if an artist has both roles and is referenced like in this case @debug/Nightshift.html
+
+So actually multiple roles can reference the same artist(s). So try to also parse this situation
+
+** DONE remove place icon from the beginning
+
+currently the place glyph '<span class="placelink"></span>' is rendered in front of the place in the "Recorded at place" column
+See @debug/place-icon.html
+
+That glyph should not be present there it's already in the column header
+
+** DONE add support for phonographic copyright (p)
+
+1.)
+
+Add support for "phonographic copyright by:" AR for both artist(s)and label(s)
+See raw HTML example row @debug/copyright.html on e.g. https://musicbrainz.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60
+
+Name the columns
+
+#+begin_example
+Phonographic copyright (℗) by artist <span class="artistlink"></span>
+Phonographic copyright (℗) by label <span class="labellink"></span>
+#+end_example
+
+2.)
+
+Add the artist glyph '<span class="artistlink"></span>' to the columns which already have artist(s) data cells like, "Mixer", "Engineer", etc e.g.
+
+#+begin_example
+Mixer <span class="artistlink"></span>
+#+end_example
+
+** DONE add support for "produced for:"
+
+1.)
+
+bugs:
+
+#+begin_example
+@debug/greetings-original.html - orignal page
+@debug/greetings-rendered.html - rendered page
+#+end_example
+
+a.)
+
+the artist glyph '<span class="artistlink"></span>' is still not added the artist columns
+
+b.)
+
+the 'Phonographic copyright (℗) by label <span class="labellink"></span>' is completely missing
+
+2.)
+
+Add support for the produced for:" AR for label(s), it could also have optional additional attributes
+
+#+begin_example
+co
+executive
+#+end_example
+
+See raw HTML example row @debug/copyright.html on e.g. https://musicbrainz.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60
+
+Name the column
+
+#+begin_example
+Produced for <span class="labellink"></span>
+#+end_example
+
+** DONE artist-name-variation-and-primary-alias.html
+
+1.)
+
+If an artist has a name variation and optionally a primary artist comment, do not disguard that inforamtion when extracting it, e.g.
+@debug/artist-name-variation-and-primary-alias.html
+in https://musicbrainz.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60
+
+Currently only "Louis Lehav" is extracted to the "Engineer" column
+
+2.)
+
+Rename the following column texts (leave the glyphs present):
+
+#+begin_example
+"Recording of" ==> "Recording of work"
+"Produced for" ==> "Produced for label"
+#+end_example
+
+** DONE [Image #16] "Louis" Lehav" rendered underlined on original page, [Image #17] not underlined on final renderd page
+
+[Image #16] "Louis" Lehav" rendered underlined on original page, [Image #17] not underlined on final renderd page
+
+** DONE add flag icons to the unique value drop down in the "Recorded at place" column
+
+add city, area and country flag icons to the unique value drop down in the "Recorded at place" column
+
+** DONE add synthetic entries to the cell structure of the unique value drop down
+*** DONE initial
+
+add synthetic entries to the optional "Cell structure" block of the unique value drop down for additional filtering purposes
+
+1.)
+
+for the "Title" column where the "track name:" ≠ "rec. name:" e.g. "Rave On!" versus "Rave On" for at least one data cell
+
+See @debug/title.html
+
+2.)
+
+for all columns where at least one data cell has entries with a 'name-variation', e.g. in artist, label, place names etc.
+Visually these column cells have their entries/entry parts underlined with a "broken/dotted" line, see the following screenshots
+
+#+begin_example
+[Image #25] - https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc - e.g "Nassau Coliseum" in the "Recorded at place" column - @debug/nassua.html
+[Image #26] - https://musicbrainz.org/release/356e8b33-4504-442a-ac3d-34af95e6ea1d - e.g. "Andres Bermudezat" in the "Engineer" column - @debug/variant-engineer-2.html
+#+end_example
+
+*** DONE plan: add attribute values to the unique value drop down
+
+add synthetic entries to the optional "Cell structure" block of the unique value drop down for additional filtering purposes
+
+1.)
+
+for each unique attribute value in a AR extracted column like e.g. "additional" in the "Engineer" column for https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd
+@debug/unique-attribute-task.html
+
+2.)
+
+for each unique task value in a AR extracted column like e.g. "task: Second Engineer" in the "Engineer" column for https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd
+@debug/unique-attribute-task.html
+
+*** DONE in the case of the just introduced synthetic entries, also highlight these (only the exact strings, not the complete cell entry) in the same color as we would normally colorize filtered column entries
+
+in the case of the just introduced synthetic entries, also highlight these (only the exact strings, not the complete
+cell entry) in the same color as we would normally colorize filtered column entries
+
+** DONE add attributes to the "Recorded at place" and "Recording of work" columns
+
+Currently the "Recorded at place" and "Recording of work" ARs render their optional attributes in separate columns (if present)
+
+#+begin_example
+cover,live etc. for ""Recording of work"
+additional for "Recorded at place"
+#+end_example
+
+Revert this feature to the same implementation as for the other AR columns like "Engineer", "Mixer", etc. so that we get
+the unique value drop down features we just introduced for free
+
+
+** TODO add colors to the synthetic extracted AR columns
+*** DONE initial
+
+still not working:
+
+add the same background color to the extracted AR columns as the syntheticColumns extracted by columnExtractors in other pageTypes
+
+*** DONE bug
+
+still NOT working, @debug/header.html from https://musicbrainz.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60
+
+*** compare
+
+compare
+
+#+begin_example
+[Image #22] - working - https://musicbrainz.org/release-group/c0ae827c-bb5b-4c98-ab3a-1d9573c110ac
+[Image #23] - not working - https://musicbrainz.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60
+#+end_example
+
+
+** TODO add support for ALL ARs
 ** TODO extract "mixed at:"
 
-** DONE add support for a new pageType https://musicbrainz.org/isrc/USSM19500019
+** TODO add warning icons to the cell values where the data is missing (WARNING) or wrong (ERROR)
+
+add warning icons to the cell values where the data is missing (WARNING) or wrong (ERROR)
+
+* DONE fix h2 "Credits"
+** initial
+
+fix h2 "Credits" section on the final rendered page
+
+#+begin_example
+@debug/credits-original.html - "Credits" section from the original page below the tracklist section with separate h3 headers
+@debug/credits-final.html - "Credits" section on the final rendered page missing the "Release" and "Release group" h3 headers
+#+end_example
+
+** bug
+
+1.)
+
+OK, the h3 headings inside "Credits" are not removed, but the whole h2 "Credits" section still sits after the h2 "Tracklist" instead of before it
+See @debug/credits.html
+
+2.)
+
+Make the h3 "Release" and "Release group" sections inside "Credits" separately collapsable, by clicking their names, also add toggle aware tooltips
+
+** TODO why can't the "Disambiguation" column be extracted in it's "Event-..." parts
+
+** TODO split "Recorded at place" column
+
+* DONE cleanup before rendering final page
+*** medium toolbox
+
+1.)
+
+Before rendering the final page, check if credits are actually being displayed inline, by checking for the "button"-text
+"Display credits at bottom" in the "medium-toolbox" span:
+
+The span is typically rendered like the following for single medium releases
+
+#+begin_example
+<span id="medium-toolbox"><button class="btn-link" id="toggle-credits" type="button">Display credits at bottom</button></span>
+#+end_example
+
+or like the following for multi medium releases
+
+#+begin_example
+<span id="medium-toolbox"><button class="btn-link" id="expand-all-mediums" type="button">Expand all mediums</button> | <button class="btn-link" id="collapse-all-mediums" type="button">Collapse all mediums</button> | <button class="btn-link" id="toggle-credits" type="button">Display credits at bottom</button></span>
+#+end_example
+
+If the "button"-text is rendered like "Display credits inline", e.g.
+
+#+begin_example
+<span id="medium-toolbox"><button class="btn-link" id="expand-all-mediums" type="button">Expand all mediums</button> | <button class="btn-link" id="collapse-all-mediums" type="button">Collapse all mediums</button> | <button class="btn-link" id="toggle-credits" type="button">Display credits inline</button></span>
+#+end_example
+
+emulate first a button click to display the credits inline, wait for rendering them inline and only then render the final page
+
+2.)
+
+On the final rendered page, remove the span '<span id="medium-toolbox">' which now renders after the table(s) near the
+end of the page, as the buttons are not functional anyway on the final rendered page
+
+*** act on @debug/toolbox.org
+
+act on @debug/toolbox.org
+
+
+* TODO add synthetic entry to the cell structure of the unique value drop when there are ANY name variations
+
+On e.g. https://musicbrainz.org/release-group/85206823-9808-3da2-a9d7-2e9b8b0f4e99 in the "Title" column there is a name variation
+
+#+begin_example
+<td class="artist-credit-variation"><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></bdi></td>
+#+end_example
+
+compared to the release group name
+
+* DONE column filtering the "Length" column on pageType 'release-tracks' doesn't hightlight the filter string
+
+Column filtering the "Length" column on pageType 'release-tracks' doesn't highlight the filter string see @debug/no-color.html
+
+* DONE userscript "Batch Add Recording Aliases from another Release" from @YoGo9
+** initial
+
+When the userscript "Batch Add Recording Aliases from another Release" from @YoGo9 is present, the tracklist (of the last medium) is currently not rendered.
+That userscript renders the following artefact near the top of the page @debug/other-userscript.html
+
+See the complete raw HTML @debug/tt2a.html for https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd
+
+Account for the presence/absence of this userscript
+
+also remove the artefact on the final rendered page
+
+** bug
+
+NOT fixed, it still doesn't render the tracklist of the last/only medium, although the removal from the final page worked
+
+* DONE add support for userscript "MB: Inline per-recording streaming & download links"
+** initial
+
+When the userscript "MB: Inline per-recording streaming & download links" is present, each "Title" column on pageType
+'release-tracks' additionally renders the following container '<dl class="ar"><dt><button class="recording-toggle"'
+
+#+begin_example
+@debug/streaming-downloads.html - "Streaming/Downloads" uncollapsed
+@debug/streaming.html - "Streaming/Downloads" collapsed (style="display: none;")
+@debug/streaming-downloads-empty.html - "Streaming/Downloads" empty ==> No streaming or download links found.
+#+end_example
+
+1.)
+
+Add support for a new column "Streaming/Downloads" (right after the "ARs" column) and render each "site glyph", "site name"
+and anchor in a multi-row list (if more than one link present, and make the column collabsable in that case)
+
+2.)
+
+If it says "No streaming or download links found.", don't create the new column at all
+
+Do not commit yet
+
+
+* TODO for multi-row columns, offer also each unique list entry separately in the unique value drop down menu
+
+
+* DONE add support for a new pageType https://musicbrainz.org/isrc/USSM19500019
 *** initial
 
 add support for ISRC URLs like e.g https://musicbrainz.org/isrc/USSM19500019
