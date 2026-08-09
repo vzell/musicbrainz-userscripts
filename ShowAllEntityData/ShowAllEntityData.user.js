@@ -14256,6 +14256,29 @@
     }
 
     /**
+     * Whether a 'Title' column cell carries a third-party userscript's
+     * "track name differs from underlying recording name" flag — MusicBrainz
+     * itself doesn't render this; it's injected by e.g. jesus2099's
+     * userscript as an anchor `title="track name: …\n≠rec. name: …"`
+     * tooltip when the two differ (see debug/title.html: `<a title="track
+     * name: Rave On!\n≠rec. name: Rave On" …>Rave On!</a>`).
+     *
+     * Tests for the literal "≠" character rather than the exact tooltip
+     * wording or the third-party script's own class name
+     * (`jesus2099userjs81127recording`/`…recname`) — the inequality glyph
+     * is the actual signal being flagged (the tooltip presumably uses "="
+     * instead when the names match, though no real example of that case has
+     * been captured), so this is immune to exactly which third-party
+     * script produced it or how its class names are versioned.
+     *
+     * @param {Element} cell - A `<td>` in the 'Title' column.
+     * @returns {boolean}
+     */
+    function _titleHasRecNameMismatch(cell) {
+        return Array.from(cell.querySelectorAll('a[title]')).some(a => a.title.includes('≠'));
+    }
+
+    /**
      * Re-evaluates the `mb-collapse-toggle-has-match` class on every
      * `.mb-cell-collapse-toggle` span inside `table`.
      *
@@ -30291,6 +30314,10 @@ a { color: #1565c0; }`;
                     match = hasMultiRow && isExpanded;
                 } else if (f.multiRowMode === 'single') {
                     match = hasSingleRow;
+                } else if (f.multiRowMode === 'title-mismatch') {
+                    match = !!cell && _titleHasRecNameMismatch(cell);
+                } else if (f.multiRowMode === 'name-variation') {
+                    match = !!cell && !!cell.querySelector('span.name-variation');
                 }
                 if (!match) { colHit = false; break; }
                 continue; // no text highlight for state-based filters
@@ -39163,6 +39190,29 @@ a { color: #1565c0; }`;
         let multiRowCollapsedCount = 0;
         let multiRowExpandedCount  = 0;
         let singleRowCount         = 0;
+        // 'Title' column only: rows where a third-party userscript (e.g.
+        // jesus2099's) has flagged the recording's Title-cell display name as
+        // different from its underlying recording name, via a "≠" character
+        // in the anchor's own title="track name: …\n≠rec. name: …" tooltip
+        // (see debug/title.html) — "=" is presumed used when they match, so
+        // testing for the inequality glyph itself is the robust signal,
+        // immune to exactly which third-party script/class name produced it.
+        let titleMismatchCount = 0;
+        // Any column: rows where at least one credited entity in the cell
+        // uses a MusicBrainz <span class="name-variation"> (an alias/
+        // differently-spelled name shown instead of the entity's primary
+        // one — see debug/nassua.html "Nassau Coliseum", debug/
+        // variant-engineer-2.html "Andres Bermudezat"), rendered with a
+        // dotted underline on the live page.
+        let nameVariationCount = 0;
+        const isTitleCol = (() => {
+            const headers = table.querySelectorAll('thead tr:first-child th');
+            const th = headers[colIndex];
+            if (!th) return false;
+            const name = th.dataset.colName ||
+                th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+            return name === 'Title';
+        })();
         const tbody = table.tBodies[0];
         if (tbody) {
             Array.from(tbody.rows).forEach(row => {
@@ -39197,6 +39247,8 @@ a { color: #1565c0; }`;
                     // the cell is genuinely empty (no hidden text, no spurious whitespace).
                     if (!v) emptyCellCount++;
                 }
+                if (isTitleCol && _titleHasRecNameMismatch(cell)) titleMismatchCount++;
+                if (cell.querySelector('span.name-variation')) nameVariationCount++;
             });
         }
         const vals = Array.from(valueCounts.keys()).sort((a, b) =>
@@ -40032,12 +40084,33 @@ a { color: #1565c0; }`;
             if (multiRowCollapsedCount > 0) makeSynItem('collapsed', '▶ collapsed multi-row cells',                                           multiRowCollapsedCount);
             if (multiRowExpandedCount > 0)  makeSynItem('expanded',  '◀ expanded multi-row cells',                                            multiRowExpandedCount);
             if (totalMultiRow > 1)          makeSynItem('any',       isCaaOrEaaCol ? '✓ has artwork'           : '▶◀ any multi-row cells',    totalMultiRow);
+            // 'Title'-only and any-column extras (see their counters' own
+            // comments above) — appended after the collapse-state entries,
+            // still inside the same "Cell structure" section.
+            if (titleMismatchCount > 0)     makeSynItem('title-mismatch', '≠ track/recording name',                                           titleMismatchCount);
+            if (nameVariationCount > 0)     makeSynItem('name-variation', '~ has name variation',                                              nameVariationCount);
 
             appendSynDivider();
-        } else if (emptyCellCount > 0) {
-            // Non-collapsable column: only '○ empty cells' — no section header needed
-            // since this is the sole synthetic entry.
-            makeSynItem('empty', '○ empty cells', emptyCellCount);
+        } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0) {
+            // Non-collapsable column (or a collapsable one with zero rows in
+            // any multi-row-family state this render): show the header only
+            // when more than one synthetic entry will actually appear —
+            // otherwise keep the original headerless single-entry look
+            // ('○ empty cells' alone has never needed one).
+            const _entryCount = (emptyCellCount > 0 ? 1 : 0) +
+                (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0);
+            if (_entryCount > 1) {
+                const synHdr = document.createElement('div');
+                synHdr.textContent = 'Cell structure';
+                synHdr.style.cssText = [
+                    'font-size:0.75em; font-weight:600; color:#555;',
+                    'padding:4px 8px 2px 8px; letter-spacing:0.03em; user-select:none;'
+                ].join(' ');
+                synBox.appendChild(synHdr);
+            }
+            if (emptyCellCount > 0)     makeSynItem('empty',          '○ empty cells',           emptyCellCount);
+            if (titleMismatchCount > 0) makeSynItem('title-mismatch', '≠ track/recording name',  titleMismatchCount);
+            if (nameVariationCount > 0) makeSynItem('name-variation', '~ has name variation',    nameVariationCount);
             appendSynDivider();
         }
 
@@ -40306,13 +40379,14 @@ a { color: #1565c0; }`;
         const bRect = btn.getBoundingClientRect();
         const vw    = window.innerWidth;
         const vh    = window.innerHeight;
-        const synItemCount = isCollapsableCol
+        const synItemCount = (isCollapsableCol
             ? (emptyCellCount          > 0 ? 1 : 0) +
               (singleRowCount          > 0 ? 1 : 0) +
               (multiRowCollapsedCount  > 0 ? 1 : 0) +
               (multiRowExpandedCount   > 0 ? 1 : 0) +
               (totalMultiRow > 1         ? 1 : 0)
-            : 0;
+            : (emptyCellCount > 0 ? 1 : 0)) +
+            (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0);
         const dropH = Math.min(320, (vals.length + synItemCount) * 29 + 50 + 38); // +50 syn header/divider, +38 qf bar
         const dropW = drop.offsetWidth || 200;
 
@@ -40378,19 +40452,26 @@ a { color: #1565c0; }`;
      * descriptor and `testRowMatch()` can filter rows by the structural state of
      * their cell rather than by text content.
      *
-     * Five modes are supported:
-     *   'empty'      → keep rows where the column cell has no ul>li AND no text
-     *   'single'     → keep rows where the column cell has exactly one ul>li item
-     *   'collapsed'  → keep rows where the column toggle shows ▶ (collapsed)
-     *   'expanded'   → keep rows where the column toggle shows ◀ (expanded)
-     *   'any'        → keep rows that have a multi-row cell in this column
+     * Seven modes are supported:
+     *   'empty'          → keep rows where the column cell has no ul>li AND no text
+     *   'single'         → keep rows where the column cell has exactly one ul>li item
+     *   'collapsed'      → keep rows where the column toggle shows ▶ (collapsed)
+     *   'expanded'       → keep rows where the column toggle shows ◀ (expanded)
+     *   'any'            → keep rows that have a multi-row cell in this column
+     *   'title-mismatch' → ('Title' column only) keep rows where a third-party
+     *                       userscript flagged the track name as different from
+     *                       the underlying recording name (see
+     *                       `_titleHasRecNameMismatch`)
+     *   'name-variation' → (any column) keep rows where the cell contains a
+     *                       MusicBrainz `<span class="name-variation">`
+     *                       (an alias/differently-spelled credited name)
      *
      * The display label stored in `input.value` is purely cosmetic; the actual
      * filtering logic reads `input.dataset.mbMultirowMode` in `getColFilters()`.
      * If the user edits the field manually the 'input' event handler deletes
      * `dataset.mbMultirowMode` and the filter degrades to a normal text filter.
      *
-     * @param {string}           mode      - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any'
+     * @param {string}           mode      - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation'
      * @param {HTMLTableElement} table     - The table owning the column.
      * @param {number}           colIndex  - Zero-based column index.
      */
@@ -40408,10 +40489,12 @@ a { color: #1565c0; }`;
         delete input.dataset.mbUniqValues;
 
         // Store a human-readable display label so the field looks intentionally set.
-        const label = mode === 'empty'    ? '○ empty cells'         :
-                      mode === 'collapsed' ? '▶ multi-row: collapsed' :
-                      mode === 'expanded'  ? '◀ multi-row: expanded'  :
-                      mode === 'single'    ? '• single-row cells'     :
+        const label = mode === 'empty'          ? '○ empty cells'          :
+                      mode === 'collapsed'       ? '▶ multi-row: collapsed' :
+                      mode === 'expanded'        ? '◀ multi-row: expanded'  :
+                      mode === 'single'          ? '• single-row cells'     :
+                      mode === 'title-mismatch'  ? '≠ track/recording name' :
+                      mode === 'name-variation'  ? '~ has name variation'   :
                                             '▶◀ multi-row: any';
         input.value = label;
 

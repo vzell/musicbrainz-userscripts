@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.31",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added two new synthetic entries to the unique-values dropdown's optional \"Cell structure\" block, for additional structural filtering beyond plain text-value matching: \"≠ track/recording name\" for the \"Title\" column, matching rows where a third-party userscript (e.g. jesus2099's) has flagged the displayed track title as different from the underlying recording name — detected via the literal \"≠\" character in the title-anchor's own tooltip (`title=\"track name: …\\n≠rec. name: …\"`), immune to exactly which third-party script produced it; and \"~ has name variation\" for ANY column, matching rows where at least one credited entity (artist, label, place, …) uses a MusicBrainz `<span class=\"name-variation\">` — the same alias/differently-spelled name rendered with a dotted underline on the live page (e.g. \"Nassau Coliseum\" in \"Recorded at place\", \"Andres Bermudezat\" in \"Engineer\"). Both entries appear even on columns that aren't otherwise collapsable (e.g. \"Title\"), showing a \"Cell structure\" header only when more than one synthetic entry would actually appear, matching the existing single-entry \"○ empty cells\" convention."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.30",
     "date": "2026-08-08",
     "sections": [

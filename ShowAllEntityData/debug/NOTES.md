@@ -4117,3 +4117,87 @@ stamping itself work correctly against the actual rendered-table shape,
 unlike WIP.29's untested (and, it turned out, non-functional) approach.
 Re-ran every prior credit-column regression test — all unchanged.
 
+## 2026-08-09 — two new "Cell structure" synthetic dropdown entries (WIP.31)
+
+**Source**: three debug fragments plus two screenshots.
+`debug/title.html`, from https://musicbrainz.org/release/3ce46b79-…:
+
+```html
+<a href="/recording/…" title="track name: Rave On!
+≠rec. name: Rave On" jesus2099userjs81127recname="Rave On!" class="jesus2099userjs81127recording">Rave On!</a>
+```
+
+A THIRD-PARTY userscript (jesus2099's, judging by the class-name prefix —
+not part of this project) injects this tooltip on the Title cell's anchor
+when the displayed track title differs from the underlying recording's
+own name; presumably uses "=" instead when they match, though no real
+example of that case was captured. `debug/nassua.html`/
+`debug/variant-engineer-2.html` — real `<span class="name-variation">`
+wrapped credits (place: "Nassau Coliseum" vs. primary "Nassau Veterans
+Memorial Coliseum"; artist: "Andres Bermudezat" vs. primary "Andres
+Bermudez"), rendered with a dotted underline on the live page per the
+attached screenshots.
+
+**Request**: add BOTH as new synthetic entries in the existing "Cell
+structure" block of the unique-values dropdown (`openUniqDrop()`) — (1)
+for the "Title" column, a "title ≠ recording name" entry; (2) for ANY
+column, a "has name variation" entry — so a user can filter straight to
+just those rows without knowing/typing the exact underlying markup.
+
+**Design**: this block already has an established extension pattern from
+the existing empty/single/collapsed/expanded/any structural entries
+(`emptyCellCount` et al. → `makeSynItem(mode, label, count)` →
+`applyMultiRowStateFilter(mode, …)` → `input.dataset.mbMultirowMode` →
+`testRowMatch()`'s `f.isMultiRowFilter` branch, matched by `f.multiRowMode`
+string). Both new entries plug into that SAME pipeline as two more mode
+strings (`'title-mismatch'`, `'name-variation'`), not a parallel
+mechanism:
+
+- New `_titleHasRecNameMismatch(cell)` — tests for the literal "≠"
+  character in any `a[title]` inside the cell, rather than the exact
+  tooltip wording or the third-party script's own (versioned) class
+  names — the inequality glyph IS the signal being flagged, so this stays
+  correct even if that other script's internal naming changes.
+- "Name variation" detection is a one-line `cell.querySelector('span.
+  name-variation')` — no new helper needed, reuses the exact class
+  MusicBrainz itself renders for every alias credit across this whole
+  session's work (`_findCreditSegmentArtistAnchor`'s nested-anchor search,
+  `_buildRecordedAtPlaceTd`'s whole-segment clone, etc. all already handle
+  this class; this is just the FIRST place that *counts and filters by
+  its presence* rather than preserving its content).
+- Both counters (`titleMismatchCount`, `nameVariationCount`) are computed
+  in the SAME per-row scan that already produces `emptyCellCount` et al.
+  — `isTitleCol` (header-name lookup, mirrors `isCaaOrEaaCol`'s existing
+  pattern) gates the title-mismatch scan to the Title column only; the
+  name-variation scan runs for every column unconditionally (cheap: a
+  single `querySelector` per cell, same cost class as the existing
+  `_classifyCollapseCell` call already happening there).
+
+**A real design wrinkle**: the ORIGINAL "Cell structure" section was only
+ever shown for columns declared in `activeDefinition.features.
+collapsableColumns` (`isCollapsableCol`) OR, for any other column, a
+BARE headerless "○ empty cells" entry with no section wrapper at all. But
+"Title" is NOT a collapsable column (it's plain text/single-value), so
+neither existing branch would ever show a "title ≠ recording name" entry.
+Rewrote the else-if branch to conditionally show the header only when
+MORE THAN ONE synthetic entry will actually render (preserving the
+original headerless look for the common "just empty cells" case exactly,
+regression-free), and added both new entries to BOTH branches (the
+already-collapsable branch, e.g. "Engineer"/"Recorded at place" — real
+examples where "has name variation" now sits alongside the existing
+collapse-state entries — and the newly-generalized non-collapsable
+branch, e.g. "Title").
+
+**Verified via jsdom**: `_titleHasRecNameMismatch` against the real
+`debug/title.html` mismatch case → `true`; a synthetic non-mismatch
+("=rec. name:") case → `false` (confirms the check keys on the glyph, not
+just any "rec. name:" substring). Name-variation detection against the
+real `debug/nassua.html` fragment → `true`; a plain no-alias artist
+anchor → `false`. `testRowMatch()`'s new `'title-mismatch'`/
+`'name-variation'` branches and the `applyMultiRowStateFilter()` label
+mapping were code-reviewed against the existing modes' exact shape (no
+live-DOM rendering test possible for the full dropdown-open/click/filter
+interaction chain in this environment) — structurally identical to the
+five already-working modes, reusing the same `dataset.mbMultirowMode`
+plumbing end to end.
+
