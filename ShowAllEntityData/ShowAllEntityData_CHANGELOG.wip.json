@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.34",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Reverted \"Recording of work\"'s attribute words (Acappella/Cover/Demo/Instrumental/Karaoke/Live/Medley/Partial) and \"Recorded at place\"'s \"additional\" attribute from their own separate columns (a word-per-column loop, and a standalone \"Additional\" column respectively) to render INLINE instead — the same `.mb-credit-attr` sentinel convention every `CREDIT_ROLES` column (\"Engineer\"/\"Mixer\"/etc.) already uses, e.g. \"Rave On (live)\" in \"Recording of work\", \"Some Venue (additional)\" appended to every place row in \"Recorded at place\" when a single relationship credits more than one place. Since the unique-values dropdown's per-attribute synthetic filter entries (WIP.32) already scan `.mb-credit-attr` generically with no column-name gating, both columns get that filtering — and its matching-text highlight (WIP.33) — for free, with zero new dropdown code. No more separate attribute-word/\"Additional\" columns to page-wide-gate, so that whole scan (`_presentRecOfAttributes`/`_pageHasRecordedAtPlaceAdditional`) was also removed."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.33",
     "date": "2026-08-09",
     "sections": [

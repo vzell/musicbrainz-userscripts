@@ -4343,3 +4343,69 @@ confirmed `'task:task: Second Engineer'` wraps the entire task text.
 Re-ran every prior credit-column/dropdown regression test — all still
 pass unchanged.
 
+## 2026-08-09 — revert "Recording of work"/"Recorded at place" attribute columns to inline (WIP.34)
+
+**Request**: "Recording of work"'s attribute words (Acappella/Cover/Demo/
+Instrumental/Karaoke/Live/Medley/Partial — WIP.13/`REC_OF_ATTRIBUTES`) and
+"Recorded at place"'s "additional" attribute (WIP.18/`_recordedAtPlaceHasAdditional`)
+each render as their own separate column today (a word-per-column loop
+for the former, one standalone "Additional" column for the latter) —
+revert BOTH to the SAME inline convention every `CREDIT_ROLES` column
+already uses ("Engineer"/"Mixer"/etc., WIP.16/23), specifically so the
+per-attribute unique-values dropdown filter (WIP.32) and its match-text
+highlight (WIP.33) apply to these two columns "for free" — those features
+were built entirely around scanning for `.mb-credit-attr` sentinels with
+NO column-name gating, so any column whose cells carry that sentinel
+automatically gets them; a separate column never could.
+
+**Change 1 — "Recording of work"**: the row-population block that builds
+this `<td>` now appends the SAME `.mb-credit-attr` span
+(`attrs.join('/')`, e.g. `"cover/live"`) right after the cloned work
+anchor, only when `_parseRecOfAttributes(_recOfDt)` returns non-empty —
+e.g. real data (`debug/live-cover-recording.html`, `<dt>live cover
+recording of:</dt>`) now renders `"Rave On (cover/live)"` in one cell
+instead of a separate blank/"live" "Live" column and blank/"cover"
+"Cover" column. The word-per-column header-creation loop (iterating
+`REC_OF_ATTRIBUTES`), its page-wide presence scan (`_presentRecOfAttributes`),
+and the `_newAttrThs` row-population loop were all removed entirely — no
+replacement needed, since the inline append happens as part of building
+the ALREADY-EXISTING "Recording of work" `<td>`, not a new mechanism.
+
+**Change 2 — "Recorded at place"**: `_buildRecordedAtPlaceTd` now computes
+`_recordedAtPlaceHasAdditional(dt)` ONCE per `<dd>` and, when true,
+appends the `.mb-credit-attr` span (`"additional"`) to EVERY place `<li>`
+that `<dd>` produces — deliberate design choice, since the "additional"
+attribute describes the WHOLE "recorded at:" relationship, not any one
+specific place among several (unlike a `CREDIT_ROLES` merge, where each
+merged `<dt>`'s attributes apply only to ITS OWN artists). Verified
+against a real multi-place `<dd>` (`debug/multiple-places.html`, 2 places)
+with a synthetic `additionally` prefix (no real-data example of this
+combination exists yet, matching this attribute's existing "unverified
+against real markup" caveat from WIP.18) — both places correctly got
+`" (additional)"` appended, not just the first. The standalone
+"Additional" `<th>`/page-wide gate (`_pageHasRecordedAtPlaceAdditional`)
+and its own row-population block were removed.
+
+**Housekeeping**: `_stampArColumnHeaderBg()`'s call-site list (WIP.30) no
+longer includes the removed attribute-word/"Additional" column names —
+they don't exist anymore, so stamping them would be a harmless but
+pointless no-op lookup; removed for clarity. Updated
+`applyExtractTrackTitleData`'s and `REC_OF_ATTRIBUTES`'/
+`_recordedAtPlaceHasAdditional`'s own JSDoc to describe the new inline
+behavior instead of the old column-per-attribute design; updated the
+`sa_enable_release_tracks_recording_of_columns` setting description to
+match.
+
+**Verified via jsdom**: real `debug/live-cover-recording.html` data →
+`_parseRecOfAttributes` returns `['cover', 'live']`, reconstructed
+"Recording of work" `<td>` → `<a>Rave On</a> (<span class="mb-credit-attr">
+cover/live</span>)`, `textContent` = `"Rave On (cover/live)"`. Real
+`debug/multiple-places.html` + synthetic `additionally` prefix →
+`_buildRecordedAtPlaceTd` produces 2 `<li>`s, BOTH with
+`.mb-credit-attr` = `"additional"` present. Re-ran the full existing
+regression suite (every prior credit-column/dropdown test this session,
+WIP.16 through WIP.33) — all still pass unchanged, confirming this
+change didn't disturb anything downstream of the `.mb-credit-attr`
+sentinel (the dropdown counting/highlighting code needed ZERO changes,
+exactly as intended).
+
