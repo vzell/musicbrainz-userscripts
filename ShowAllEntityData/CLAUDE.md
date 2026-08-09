@@ -464,3 +464,21 @@ with no icon (exactly the second half of the bug above).
   `makeH2sCollapsible()` for the page-level h2 mechanism this mirrors at a smaller
   scale). A new interactive element injected into table cells needs the same
   treatment if it uses `addEventListener` directly instead of event delegation.
+- **`release-tracks` AR finders: never `.find()`/take-first on a "does this track
+  have this relationship" lookup.** MusicBrainz can render the SAME relationship
+  phrase (or a closely related one, e.g. "recorded at:" and "additionally recorded
+  at:") as TWO OR MORE separate sibling `<dt>` elements for one track, each with its
+  own `<dd>` — not multiple targets joined inside one `<dd>` (that's a different,
+  already-handled case — see `_buildRecordedAtPlaceTd`'s own placelink-marker
+  segmentation). A `.find()`-based finder silently drops every match after the
+  first, with no error and no obviously-missing UI (the column still renders,
+  just incomplete). This has bitten twice already: `_findPhonographicCopyrightDts`
+  (artist-crediting `<dt>` in one `<dl>`, label-crediting `<dt>` in a sibling
+  `<dl>`) and `_findRecordedAtDt`/`_findMixedAtDt` (a bare "recorded at:" `<dt>`
+  and a separate "additionally recorded at:" `<dt>` for two different studios —
+  see `debug/double-ars.html`). Both are now `.filter()`-based, returning every
+  match; their builders (`_buildPhonographicCopyrightTds`/`_buildRecordedAtPlaceTd`)
+  merge all of them into one cell. Any NEW finder over `_findAllArDts(titleTd)`
+  should default to `.filter()`, and only narrow to "first match only" with an
+  explicit, documented reason (e.g. "Recorded at event" intentionally stays
+  single-anchor/never-a-list, so its row-building call site takes `[0]`).

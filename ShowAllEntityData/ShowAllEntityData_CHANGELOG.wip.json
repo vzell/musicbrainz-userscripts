@@ -1,5 +1,20 @@
 [
   {
+    "version": "WIP.52",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': fixed \"Recorded at event\" silently dropping its own trailing date attribute — e.g. the anchor text already spells out \"1988‐04‐27: Los Angeles Memorial Sports Arena, Los Angeles, CA, USA\", but the separate trailing \" (1988-04-27)\" sibling text right after the anchor (confirmed in `debug/double-ars.html`) was never read at all, only the anchor itself. Now found and appended the same way \"Recording of\"/\"Recorded at place\" already handle their own trailing parentheticals.",
+          "Fixed \"Recorded at place\" silently dropping an ENTIRE second place — reported live against https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd: a track with a separate \"additionally recorded at: The Hit Factory…\" `<dt>` AND a separate \"recorded at: Thrill Hill East…\" `<dt>` (two different studios during the same recording — NOT two places joined inside one `<dd>`, which was already handled) only ever showed the first. Root cause: `_findRecordedAtDt` used a first-match-only `.find()`, exactly the same bug class already fixed once for \"Phonographic copyright (℗) by:\" (see WIP.27) but never applied here. `_findRecordedAtDt`/`_findMixedAtDt` are now `.filter()`-based, returning every matching `<dt>`; `_buildRecordedAtPlaceTd` now accepts and merges the whole array into one cell, checking each source `<dt>`'s own \"additionally recorded at:\" wording independently (so a merged cell can correctly show \"(additional)\" on one dt's places but not another's).",
+          "Fixed \"Recorded at place\" (and, since it shares the same builder, \"Mixed at place\" — WIP.50) unconditionally DROPPING its own trailing date attribute (e.g. \"(from 1987-01-20 until 1987-03)\", \"(on 1988-04-27)\") — this was deliberate for the ORIGINAL \"Recorded at place\"-only design (no per-place date context existed), but is wrong now that dates are expected here too (see \"Recorded in area\", WIP.50, which already keeps its own trailing date). The date is now extracted from each source `<dt>`'s `<dd>` and re-appended AFTER the \"(additional)\" marker on every place `<li>` that `<dt>` produces, e.g. \"The Hit Factory in Manhattan, … United States (additional) (from 1987-01-20 until 1987-03)\" — matching the requested format exactly.",
+          "Fixed the 📊 unique-values dropdown's flag-icon decoration (WIP.29) not covering the new \"Mixed at place\" column (WIP.50) — it shares the exact same `_buildRecordedAtPlaceTd`-built `<span class=\"area-icon\">`/`<span class=\"flag flag-XX\">` shapes as \"Recorded at place\", so — like that column — this was purely a missing name-recognition entry in the dropdown's column allow-list, no new scan logic needed. \"Recorded in area\" needed no equivalent fix — its name already matches the allow-list's generic `endsWith('rea')` check."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.51",
     "date": "2026-08-09",
     "sections": [

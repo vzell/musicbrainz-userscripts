@@ -7605,8 +7605,8 @@
         // "Recorded at event"/"Recorded at place" — same purely-additive
         // family, same master setting, but independent of _pageHasRecOf: a
         // release can have "recorded at" data with zero "recording of" data.
-        const _pageHasRecordedAtEvent = _recOfEnabled && _anyTitleCellMatches(td => _findRecordedAtDt(td, 'eventlink') !== null);
-        const _pageHasRecordedAtPlace = _recOfEnabled && _anyTitleCellMatches(td => _findRecordedAtDt(td, 'placelink') !== null);
+        const _pageHasRecordedAtEvent = _recOfEnabled && _anyTitleCellMatches(td => _findRecordedAtDt(td, 'eventlink').length > 0);
+        const _pageHasRecordedAtPlace = _recOfEnabled && _anyTitleCellMatches(td => _findRecordedAtDt(td, 'placelink').length > 0);
         // "Recorded in area" — same family/setting, independent shape (an
         // area credited directly, e.g. a live recording's general
         // geographic context, distinct from "recorded at:"'s specific
@@ -7615,7 +7615,7 @@
         // "Mixed at place" — same family/setting/shape as "Recorded at
         // place" (see _findMixedAtDt's JSDoc for why a bare "mixed at:" is
         // independent of "recorded at:").
-        const _pageHasMixedAtPlace = _recOfEnabled && _anyTitleCellMatches(td => _findMixedAtDt(td) !== null);
+        const _pageHasMixedAtPlace = _recOfEnabled && _anyTitleCellMatches(td => _findMixedAtDt(td).length > 0);
         // Both "Recording of work"'s attribute words (REC_OF_ATTRIBUTES) and
         // "Recorded at place"'s "additional" attribute used to be their own
         // page-wide-gated columns (a word-per-column loop, and a single
@@ -8228,7 +8228,12 @@
                     }
                     if (_recordedAtEventTh) {
                         const _td = document.createElement('td');
-                        const _anchor = _recordedAtDdAnchor(_findRecordedAtDt(_titleTd, 'eventlink'), '/event/');
+                        // Only the first matching <dt> — "Recorded at
+                        // event" intentionally stays a single-anchor cell,
+                        // never a list (see the page definition's
+                        // `collapsableColumns` comment).
+                        const _eventDt = _findRecordedAtDt(_titleTd, 'eventlink')[0] || null;
+                        const _anchor = _recordedAtDdAnchor(_eventDt, '/event/');
                         // Clone the wrapping <span class="name-variation">
                         // instead of the bare <a> when present, same fix
                         // (and same underline-styling reason) as
@@ -8239,11 +8244,25 @@
                                            _anchor.parentElement.classList.contains('name-variation'))
                                 ? _anchor.parentElement : _anchor;
                             _td.appendChild(_node.cloneNode(true));
+                            // Trailing "(YYYY-MM-DD)" date attribute — plain
+                            // sibling text right after the anchor within the
+                            // same <dd> (no "on "/"from " wording, unlike
+                            // "Recorded at place"'s own trailing date — see
+                            // debug/double-ars.html).
+                            const _eventDd = _eventDt?.nextElementSibling;
+                            if (_eventDd && _eventDd.tagName === 'DD') {
+                                const _dateNode = Array.from(_eventDd.childNodes)
+                                    .find(n => n.nodeType === Node.TEXT_NODE && /^\s*\(.*\)\s*$/.test(n.textContent));
+                                if (_dateNode) {
+                                    _td.appendChild(document.createTextNode(' '));
+                                    _td.appendChild(_dateNode.cloneNode(true));
+                                }
+                            }
                         }
                         row.appendChild(_td);
                     }
                     if (_recordedAtPlaceTh) {
-                        row.appendChild(_buildRecordedAtPlaceTd(_findRecordedAtDt(_titleTd, 'placelink')) || document.createElement('td'));
+                        row.appendChild(_buildRecordedAtPlaceTd(_findRecordedAtDt(_titleTd, 'placelink')));
                     }
                     if (_recordedInAreaTh) {
                         row.appendChild(_buildRecordedInAreaTd(_findRecordedInDt(_titleTd)) || document.createElement('td'));
@@ -8291,7 +8310,7 @@
                 // creation order above (right after the CREDIT_ROLES
                 // columns, before Phonographic copyright).
                 if (_mixedAtPlaceTh) {
-                    row.appendChild(_buildRecordedAtPlaceTd(_findMixedAtDt(_titleTd)) || document.createElement('td'));
+                    row.appendChild(_buildRecordedAtPlaceTd(_findMixedAtDt(_titleTd)));
                 }
 
                 if (_copyrightByArtistTh || _copyrightByLabelTh) {
@@ -8550,29 +8569,41 @@
     }
 
     /**
-     * Finds `titleTd`'s "recorded at" `<dt>` matching one relationship kind
-     * (event or place) — classified by its `<dd>`'s leading native
-     * MusicBrainz glyph span (`span.eventlink` / `span.placelink`), NOT by
-     * the `<dt>` text itself: MusicBrainz's wording varies (`"recorded
-     * at:"`, `"recorded at and mixed at:"`, possibly other "mixed at"
-     * combinations — see debug/….html), so the `<dt>` match is a loose
-     * substring test (`/recorded at/i`, unlike `_findRecOfDt`'s `$`-anchored
-     * pattern). Same bare-`div.ars` classification as `_findRecOfDt`, same
-     * "take the first matching `dl.ars` sibling" simplicity as the rest of
-     * this extraction — a row with more than one "recorded at" entry of the
-     * SAME kind only ever yields the first, in document order.
+     * Finds every `titleTd`'s "recorded at" `<dt>` matching one
+     * relationship kind (event or place) — classified by its `<dd>`'s
+     * leading native MusicBrainz glyph span (`span.eventlink` /
+     * `span.placelink`), NOT by the `<dt>` text itself: MusicBrainz's
+     * wording varies (`"recorded at:"`, `"recorded at and mixed at:"`,
+     * possibly other "mixed at" combinations — see debug/….html), so the
+     * `<dt>` match is a loose substring test (`/recorded at/i`, unlike
+     * `_findRecOfDt`'s `$`-anchored pattern). Same bare-`div.ars`
+     * classification as `_findRecOfDt`.
+     *
+     * Returns **every** matching `<dt>`, not just the first — a track can
+     * have more than one SEPARATE "recorded at:"/"additionally recorded
+     * at:" entry of the SAME kind (see debug/double-ars.html: an
+     * "additionally recorded at: The Hit Factory…" `<dt>` AND a separate
+     * "recorded at: Thrill Hill East…" `<dt>` for the same track — two
+     * different studios during the same recording, not two places joined
+     * in one `<dd>`) — a naive first-match `.find()` silently dropped every
+     * entry after the first, the same class of bug already fixed once for
+     * "Phonographic copyright (℗) by:" (see
+     * `_findPhonographicCopyrightDts`'s JSDoc). `_buildRecordedAtPlaceTd`
+     * merges every returned `<dt>`'s own place(s) into one combined cell;
+     * "Recorded at event" (a deliberately single-anchor, never-a-list
+     * column) only ever uses the first entry (see its row-building call
+     * site).
      *
      * @param {HTMLTableCellElement} titleTd
      * @param {'eventlink'|'placelink'} glyphClass
-     * @returns {?HTMLElement} The `<dt>`, or `null` if this track has none
-     *   of this kind.
+     * @returns {HTMLElement[]}
      */
     function _findRecordedAtDt(titleTd, glyphClass) {
-        return _findAllArDts(titleTd).find(dt => {
+        return _findAllArDts(titleTd).filter(dt => {
             if (!/recorded at/i.test(dt.textContent.trim())) return false;
             const _dd = dt.nextElementSibling;
             return !!(_dd && _dd.tagName === 'DD' && _dd.querySelector(`:scope > span.${glyphClass}`));
-        }) || null;
+        });
     }
 
     /**
@@ -8607,8 +8638,10 @@
      * template — i.e. MusicBrainz never actually renders it there, so
      * "Recorded at event" intentionally gets no equivalent column.
      *
-     * @param {?HTMLElement} dt - Result of `_findRecordedAtDt(titleTd,
-     *   'placelink')` (may be `null`).
+     * @param {?HTMLElement} dt - One element of `_findRecordedAtDt(titleTd,
+     *   'placelink')`'s result (may be `null`) — checked per-`<dt>` by
+     *   `_buildRecordedAtPlaceTd`'s merge loop, since only the `<dt>`(s)
+     *   actually worded "additionally recorded at:" carry the attribute.
      * @returns {boolean}
      */
     function _recordedAtPlaceHasAdditional(dt) {
@@ -8645,24 +8678,26 @@
     }
 
     /**
-     * Builds the "Recorded at place" cell content from a
-     * `_findRecordedAtDt` result's `<dd>`, as a collapsable multi-row list
-     * — one `<li>` per place, each holding that place's own anchor (bare,
-     * or wrapped in `<span class="name-variation">` — see
-     * `_recordedAtDdAnchor`'s JSDoc) PLUS its own following "in `<area>`,
-     * `<area>`, `<country>`" chain (area anchors, the
-     * `<span class="area-icon">` flag image, and the CSS-flag-background
-     * country `<span>`) — unlike `_recordedAtDdAnchor` (still used for
-     * "Recorded at event", where the anchor's own `<bdi>` text already
-     * spells out date/venue/location), a bare place anchor has none of
-     * that context on its own. Always builds a `<ul><li>`, even for a
-     * single place, matching this project's established single-item-
-     * list-cell convention (no toggle, rendered untouched — see
-     * `_findCellListItems`) — callers must not special-case singular vs.
-     * plural.
+     * Builds the "Recorded at place"/"Mixed at place" cell content, merging
+     * every `_findRecordedAtDt`/`_findMixedAtDt` result's `<dd>` (there can
+     * be more than one SEPARATE `<dt>` — see those functions' JSDoc for the
+     * "additionally recorded at:" + separate "recorded at:" case that
+     * requires this), as a collapsable multi-row list — one `<li>` per
+     * place, each holding that place's own anchor (bare, or wrapped in
+     * `<span class="name-variation">` — see `_recordedAtDdAnchor`'s JSDoc)
+     * PLUS its own following "in `<area>`, `<area>`, `<country>`" chain
+     * (area anchors, the `<span class="area-icon">` flag image, and the
+     * CSS-flag-background country `<span>`) — unlike `_recordedAtDdAnchor`
+     * (still used for "Recorded at event", where the anchor's own `<bdi>`
+     * text already spells out date/venue/location), a bare place anchor
+     * has none of that context on its own. Always builds a `<ul><li>`,
+     * even for a single place, matching this project's established
+     * single-item-list-cell convention (no toggle, rendered untouched —
+     * see `_findCellListItems`) — callers must not special-case singular
+     * vs. plural.
      *
-     * A single "recorded at:" relationship can credit MORE THAN ONE place
-     * in one `<dd>` (see debug/multiple-places.html,
+     * A single "recorded at:"/"mixed at:" relationship can ALSO credit
+     * MORE THAN ONE place within ONE `<dd>` (see debug/multiple-places.html,
      * debug/multiple-places-2.html — e.g. a track recorded partly at one
      * studio and partly at another) — MusicBrainz joins them with "
      * and "/", " between each place's own `<span class="placelink">`
@@ -8672,104 +8707,123 @@
      * delimiter `_findRecordedAtDt`'s own glyph-presence check already
      * relies on. The marker itself is dropped, never appended to the
      * `<li>` — MusicBrainz uses it purely as a CSS `::before` glyph hook,
-     * and that same glyph is already shown once in the "Recorded at
-     * place" column header, so repeating it on every row/place would be
-     * redundant (see debug/place-icon.html). The trailing separator text
-     * immediately before the NEXT place's marker (", " or " and ") is
-     * dropped from the end of the earlier segment; anything else trailing
-     * a place's own area chain — e.g. an "(<instrument>)" attribution
-     * wrapped in the same `<!-- -->` comment-node hints MusicBrainz uses
-     * elsewhere (see debug/multiple-places-2.html's "(strings)", and
-     * `_parseRecOfDate`'s "(on …)" for another example of this
-     * comment-hint pattern) — is kept, since only the text immediately
-     * preceding the NEXT place's marker is ever separator-only.
+     * and that same glyph is already shown once in the column header, so
+     * repeating it on every row/place would be redundant (see
+     * debug/place-icon.html). The trailing separator text immediately
+     * before the NEXT place's marker (", " or " and ") is dropped from the
+     * end of the earlier segment; anything else trailing a place's own
+     * area chain — e.g. an "(<instrument>)" attribution wrapped in the
+     * same `<!-- -->` comment-node hints MusicBrainz uses elsewhere (see
+     * debug/multiple-places-2.html's "(strings)") — is kept, since only
+     * the text immediately preceding the NEXT place's marker is ever
+     * separator-only.
      *
-     * Drops only a trailing " (on YYYY-MM-DD)" parenthetical at the very
-     * end of the whole `<dd>` (after the last place) — that date stays in
-     * "ARs" only, matching how "Recording of"'s cell omits its own
-     * trailing date (kept in the separate "Recording date" column
-     * instead).
+     * A trailing `" (on YYYY-MM-DD)"`/`" (from YYYY-MM-DD until YYYY-MM)"`
+     * date parenthetical at the very end of a `<dt>`'s own `<dd>` (see
+     * `debug/double-ars.html`) is extracted, then re-appended AFTER the
+     * "(additional)" attribute marker on every place `<li>` THAT `<dt>`
+     * produces — e.g. `"The Hit Factory in Manhattan, … United States
+     * (additional) (from 1987-01-20 until 1987-03)"` — rather than left in
+     * whatever DOM position it started at, since the "(additional)" marker
+     * is synthesized and injected after the fact. Each SEPARATE `<dt>` in
+     * `dts` gets its OWN date and its OWN "additional" check (see
+     * `_recordedAtPlaceHasAdditional`) — a merged multi-`<dt>` cell can
+     * legitimately show a different date (or no date, or "(additional)" on
+     * one dt's places but not another's) per source `<dt>`.
      *
-     * @param {?HTMLElement} dt - Result of `_findRecordedAtDt` (may be `null`).
-     * @returns {?HTMLTableCellElement} `null` when `dt` has no place `<dd>`.
+     * @param {HTMLElement[]} dts - Result of `_findRecordedAtDt`/
+     *   `_findMixedAtDt` — every matching `<dt>` to merge into one cell.
+     * @returns {HTMLTableCellElement}
      */
-    function _buildRecordedAtPlaceTd(dt) {
-        const _dd = dt?.nextElementSibling;
-        if (!_dd || _dd.tagName !== 'DD') return null;
-        const _nodes = Array.from(_dd.childNodes).map(n => n.cloneNode(true));
-        const _last = _nodes[_nodes.length - 1];
-        if (_last && _last.nodeType === Node.TEXT_NODE && /^\s*\(on\s+.*\)\s*$/.test(_last.textContent)) {
-            _nodes.pop();
-        }
-        const _segments = [];
-        _nodes.forEach(n => {
-            const _isPlaceMarker = n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && n.classList.contains('placelink');
-            if (_isPlaceMarker || _segments.length === 0) _segments.push([]);
-            if (_isPlaceMarker) return; // marker is a segment boundary only, never its own content
-            _segments[_segments.length - 1].push(n);
-        });
-        _segments.forEach((seg, i) => {
-            if (i === _segments.length - 1) return;
-            const _tail = seg[seg.length - 1];
-            if (_tail && _tail.nodeType === Node.TEXT_NODE && /^[\s,]*(?:and[\s,]*)?$/i.test(_tail.textContent)) {
-                seg.pop();
-            }
-        });
-        // The relationship's own "additional" attribute (see
-        // _recordedAtPlaceHasAdditional's JSDoc) used to get its own
-        // separate "Additional" column; reverted to render inline instead,
-        // matching every CREDIT_ROLES column's own `.mb-credit-attr`
-        // convention (so the unique-values dropdown's per-attribute
-        // synthetic filter entries work here too, for free). It describes
-        // the WHOLE relationship, not any one specific place, so it's
-        // appended to EVERY place `<li>` this `<dd>` produces, not just the
-        // first.
-        const _hasAdditional = _recordedAtPlaceHasAdditional(dt);
+    function _buildRecordedAtPlaceTd(dts) {
         const td = document.createElement('td');
         const ul = document.createElement('ul');
-        _segments.forEach(seg => {
-            if (seg.length === 0) return;
-            const li = document.createElement('li');
-            seg.forEach(n => li.appendChild(n));
-            if (_hasAdditional) {
-                li.appendChild(document.createTextNode(' ('));
-                const _attrSpan = document.createElement('span');
-                _attrSpan.className = 'mb-credit-attr';
-                _attrSpan.textContent = 'additional';
-                li.appendChild(_attrSpan);
-                li.appendChild(document.createTextNode(')'));
+        (dts || []).forEach(dt => {
+            const _dd = dt?.nextElementSibling;
+            if (!_dd || _dd.tagName !== 'DD') return;
+            const _nodes = Array.from(_dd.childNodes).map(n => n.cloneNode(true));
+            let _dateText = null;
+            const _last = _nodes[_nodes.length - 1];
+            if (_last && _last.nodeType === Node.TEXT_NODE) {
+                const _dateMatch = _last.textContent.match(/^\s*\(((?:on|from)\s+.*)\)\s*$/i);
+                if (_dateMatch) {
+                    _dateText = _dateMatch[1].trim();
+                    _nodes.pop();
+                }
             }
-            ul.appendChild(li);
+            const _segments = [];
+            _nodes.forEach(n => {
+                const _isPlaceMarker = n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && n.classList.contains('placelink');
+                if (_isPlaceMarker || _segments.length === 0) _segments.push([]);
+                if (_isPlaceMarker) return; // marker is a segment boundary only, never its own content
+                _segments[_segments.length - 1].push(n);
+            });
+            _segments.forEach((seg, i) => {
+                if (i === _segments.length - 1) return;
+                const _tail = seg[seg.length - 1];
+                if (_tail && _tail.nodeType === Node.TEXT_NODE && /^[\s,]*(?:and[\s,]*)?$/i.test(_tail.textContent)) {
+                    seg.pop();
+                }
+            });
+            // The relationship's own "additional" attribute (see
+            // _recordedAtPlaceHasAdditional's JSDoc) used to get its own
+            // separate "Additional" column; reverted to render inline
+            // instead, matching every CREDIT_ROLES column's own
+            // `.mb-credit-attr` convention (so the unique-values dropdown's
+            // per-attribute synthetic filter entries work here too, for
+            // free). It describes the WHOLE relationship, not any one
+            // specific place, so it's appended to EVERY place `<li>` this
+            // `<dt>`'s `<dd>` produces, not just the first.
+            const _hasAdditional = _recordedAtPlaceHasAdditional(dt);
+            _segments.forEach(seg => {
+                if (seg.length === 0) return;
+                const li = document.createElement('li');
+                seg.forEach(n => li.appendChild(n));
+                if (_hasAdditional) {
+                    li.appendChild(document.createTextNode(' ('));
+                    const _attrSpan = document.createElement('span');
+                    _attrSpan.className = 'mb-credit-attr';
+                    _attrSpan.textContent = 'additional';
+                    li.appendChild(_attrSpan);
+                    li.appendChild(document.createTextNode(')'));
+                }
+                if (_dateText) {
+                    li.appendChild(document.createTextNode(` (${_dateText})`));
+                }
+                ul.appendChild(li);
+            });
         });
         if (ul.children.length) td.appendChild(ul);
         return td;
     }
 
     /**
-     * Finds `titleTd`'s "mixed at:" `<dt>` — a place-typed relationship
-     * (MusicBrainz's own relationship-type metadata: `"mixed at"` shares
-     * `type0: "place"` with `"recorded at"`, same `root_id` — see the
-     * embedded JSON on the edit-relationships page) whose `<dt>` wording is
-     * always the bare `"mixed at:"` (unlike "recorded at", it has no
-     * "and …" combined variant of its own — the COMBINED phrase, when the
-     * same place served both roles, is `"recorded at and mixed at:"`,
-     * which `_findRecordedAtDt`'s own loose `/recorded at/i` substring test
-     * already matches, so that case surfaces via "Recorded at place", not
-     * here). Same loose substring match / same-shape lookup as
-     * `_findRecordedAtDt`, gated on the `<dd>` carrying a `span.placelink`
-     * marker so a track with only a bare "mixed at:" `<dt>` (a DIFFERENT
-     * place than where it was recorded — see debug/therising.html's
-     * "Southern Tracks"/"Silent Sound Studios" examples) is found too.
+     * Finds every `titleTd`'s "mixed at:" `<dt>` — a place-typed
+     * relationship (MusicBrainz's own relationship-type metadata: `"mixed
+     * at"` shares `type0: "place"` with `"recorded at"`, same `root_id` —
+     * see the embedded JSON on the edit-relationships page) whose `<dt>`
+     * wording is always the bare `"mixed at:"` (unlike "recorded at", it
+     * has no "and …" combined variant of its own — the COMBINED phrase,
+     * when the same place served both roles, is `"recorded at and mixed
+     * at:"`, which `_findRecordedAtDt`'s own loose `/recorded at/i`
+     * substring test already matches, so that case surfaces via "Recorded
+     * at place", not here). Same loose substring match / same-shape lookup
+     * as `_findRecordedAtDt` — including returning **every** matching
+     * `<dt>`, not just the first, for the identical reason (see its
+     * JSDoc) — gated on the `<dd>` carrying a `span.placelink` marker so a
+     * track with only a bare "mixed at:" `<dt>` (a DIFFERENT place than
+     * where it was recorded — see debug/therising.html's "Southern
+     * Tracks"/"Silent Sound Studios" examples) is found too.
      *
      * @param {HTMLTableCellElement} titleTd
-     * @returns {?HTMLElement} The `<dt>`, or `null` if this track has none.
+     * @returns {HTMLElement[]}
      */
     function _findMixedAtDt(titleTd) {
-        return _findAllArDts(titleTd).find(dt => {
+        return _findAllArDts(titleTd).filter(dt => {
             if (!/mixed at/i.test(dt.textContent.trim())) return false;
             const _dd = dt.nextElementSibling;
             return !!(_dd && _dd.tagName === 'DD' && _dd.querySelector(':scope > span.placelink'));
-        }) || null;
+        });
     }
 
     /**
@@ -41645,16 +41699,19 @@ a { color: #1565c0; }`;
         //     flag-XX"> with no wrapping <span>/<a>, a different shape that
         //     caused a regression when decoration was attempted for it
         //     (reverted; see git history) and is out of scope here.
-        //   - 'Recorded at place' (exact match — release-tracks' own
-        //     `_buildRecordedAtPlaceTd`, see WIP.14/17/25): each place's
-        //     "in <area>, <region flag>, <country flag>" chain uses the
-        //     exact same <span class="area-icon"><img></span>/<span
-        //     class="flag flag-XX"> shapes as 'Area'/'Country' above, so —
-        //     like 'Location'/'Country/Date' — this is purely a name-
-        //     recognition addition, no new scan logic. A multi-place cell
-        //     (multiple <li>s, one combined dropdown value) surfaces every
-        //     place's flags together, same convention already established
-        //     for other multi-row collapsable columns with flags.
+        //   - 'Recorded at place'/'Mixed at place' (exact match —
+        //     release-tracks' own shared `_buildRecordedAtPlaceTd`, see
+        //     WIP.14/17/25/50): each place's "in <area>, <region flag>,
+        //     <country flag>" chain uses the exact same <span
+        //     class="area-icon"><img></span>/<span class="flag flag-XX">
+        //     shapes as 'Area'/'Country' above, so — like
+        //     'Location'/'Country/Date' — this is purely a name-recognition
+        //     addition, no new scan logic. A multi-place cell (multiple
+        //     <li>s, one combined dropdown value) surfaces every place's
+        //     flags together, same convention already established for
+        //     other multi-row collapsable columns with flags. 'Recorded in
+        //     area' needs no separate entry — it already matches the
+        //     generic `endsWith('rea')` check below.
         const hasFlagIcons = Lib.settings.sa_enable_dropdown_flag_icons && (() => {
             const headers = table.querySelectorAll('thead tr:first-child th');
             const th = headers[colIndex];
@@ -41664,7 +41721,7 @@ a { color: #1565c0; }`;
             return name.endsWith('ountry') || name.endsWith('ocality') ||
                 name.endsWith('egion') || name.endsWith('rea') ||
                 name === 'Location' || name === 'Place' || name === 'Country/Date' ||
-                name === 'Recorded at place';
+                name === 'Recorded at place' || name === 'Mixed at place';
         })();
 
         /**
