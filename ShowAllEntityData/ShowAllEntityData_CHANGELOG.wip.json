@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.35",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': before scraping a release's tracklist, now detects whether native per-track relationship credits (Recording engineer/Mixer/Engineer/Producer/Miscellaneous support) are currently rendered inline vs. consolidated into one combined block at the bottom of the page (MusicBrainz's own `#toggle-credits` control in `<span id=\"medium-toolbox\">`, read via its own button label — \"Display credits at bottom\" means already inline, \"Display credits inline\" means currently at bottom), and if at bottom, clicks the control and awaits its re-render (`MutationObserver` on the button, idle-settle + 5s hard-timeout fallback, same shape as the existing overflow-tracks loader) before any row extraction runs — otherwise each row's own `dl.ars` credit block is missing/incomplete and the credit columns silently under-populate. See `debug/toolbox.org`.",
+          "'release-tracks': the native `<span id=\"medium-toolbox\">` (toggle-credits/expand-all-mediums/collapse-all-mediums controls) is now stripped from the final rendered page via the existing `removeSelectors` mechanism, alongside the two other native `h2.tracklist` controls already removed there — its buttons re-render inert once the page has been restructured."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.34",
     "date": "2026-08-09",
     "sections": [

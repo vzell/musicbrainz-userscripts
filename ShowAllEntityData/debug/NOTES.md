@@ -4409,3 +4409,70 @@ change didn't disturb anything downstream of the `.mb-credit-attr`
 sentinel (the dropdown counting/highlighting code needed ZERO changes,
 exactly as intended).
 
+## 2026-08-09 — ensure inline credits before scraping; remove medium-toolbox (WIP.35)
+
+**Request**: `debug/toolbox.org` (user-authored task notes). Two asks: (1)
+before rendering the final page, detect whether a release's per-track
+relationship credits are currently rendered INLINE (per-`<tr>` `dl.ars`
+blocks, which `applyExtractTrackTitleData()` reads) or consolidated into
+one combined block after the tracklist ("at bottom"), and if at bottom,
+click the native `#toggle-credits` control and wait for it to switch to
+inline before any scraping happens; (2) on the final rendered page, remove
+the now-orphaned `<span id="medium-toolbox">` (its buttons re-render inert
+once the page has been restructured).
+
+**Detection**: `#toggle-credits`'s own label always names what clicking it
+would switch TO, not the current state — `"Display credits at bottom"`
+means credits are already inline (button offers to move them away);
+`"Display credits inline"` means credits are currently at bottom (button
+offers to bring them back). Confirmed via `debug/toolbox.org`'s own two
+worked examples (single- and multi-medium `#medium-toolbox` markup).
+
+**Change 1**: new `ensureCreditsInline(def)`, placed beside the existing
+`loadAllOverflowMediumTracks()` (same click-native-control-then-
+`MutationObserver`-wait shape — the only existing precedent for this kind
+of async DOM-wait in the codebase, deliberately reused rather than
+inventing a new mechanism). Reads `span#medium-toolbox button#toggle-credits`'s
+label; if it already says "at bottom", returns immediately (no click). If
+it says "inline", clicks it and awaits a `MutationObserver` on the button
+itself (`characterData`/`childList`/`subtree`) that fires once the label
+flips away from "inline", then waits a further 500ms idle-settle (for the
+accompanying per-track re-render to finish) before resolving; bounded by a
+5s hard timeout so a stalled/absent re-render can't hang the fetch
+pipeline. Gated by `features.ensureCreditsInline: true`, wired into
+`startFetchingProcess()` as the FIRST `release-tracks` pre-processing step
+— before `loadOverflowTracks`, so any tracks subsequently loaded via
+"Load all tracks…" already come in inline rather than needing a second
+toggle — and strictly before `applyNormalizeMediumTracklists()`/
+`applyExtractTrackTitleData()`, both of which scan each row's own
+`dl.ars`.
+
+**Confirmed live-DOM, not fetched-HTML**: `release-tracks` sets
+`non_paginated: true`, which forces `maxPage = 1`; the per-page fetch loop
+in `startFetchingProcess()` then takes its `doc = document` branch (current
+page === only page), never `GM_xmlhttpRequest`/`DOMParser`. A real
+`button.click()` on `#toggle-credits` is therefore fully effective — the
+rest of the pipeline reads the same mutated `document`.
+
+**Change 2**: appended `'span#medium-toolbox'` to `release-tracks`'s
+existing `removeSelectors` array (already used for two other native
+`h2.tracklist` controls — "Edit recording comments" button, settings-icon
+span) — no new removal mechanism needed; runs post-render in the existing
+`finalCleanup()` pass.
+
+**Verified via jsdom** (`ensure_credits_func.js`/`test_ensure_credits_inline.js`
+in scratchpad — synthetic fixtures only, matching `debug/toolbox.org`'s own
+markup examples; no live browser available in this environment):
+- "at bottom" case (label starts "Display credits inline", flips on click
+  via a simulated async handler): clicked, resolved ~540ms after the flip
+  (idle-settle), not instantly and not at the 5s timeout.
+- already-inline case (label starts "Display credits at bottom"): resolved
+  in ~2ms, click handler never invoked.
+- no `#medium-toolbox`/`#toggle-credits` present at all: returned cleanly,
+  no throw, ~0ms.
+- button clicked but never flips (simulated stuck/absent re-render):
+  resolved at ~5007ms via the hard-timeout fallback.
+- `features.ensureCreditsInline` unset/false: returned immediately, no
+  DOM query, click handler never invoked.
+`node --check ShowAllEntityData.user.js` passed after every edit.
+

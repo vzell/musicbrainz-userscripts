@@ -6687,6 +6687,86 @@
     }
 
     /**
+     * Ensures a release page's per-track relationship credits (Recording
+     * engineer, Mixer, Engineer, Producer, Miscellaneous support, etc. —
+     * everything `applyExtractTrackTitleData()` later reads out of each
+     * `<tr>`'s own `dl.ars` block) are rendered INLINE per-track, rather than
+     * consolidated into one combined block after the tracklist.
+     *
+     * Release pages carry a `<button id="toggle-credits">` inside `<span
+     * id="medium-toolbox">` that toggles between the two layouts entirely
+     * client-side (no AJAX round trip). Its own label always names what
+     * clicking it would switch TO, not the current state:
+     *   - "Display credits at bottom" -> credits are currently INLINE already
+     *     (clicking would move them to the bottom) — nothing to do.
+     *   - "Display credits inline"    -> credits are currently AT BOTTOM
+     *     (clicking would move them inline) — must click and wait.
+     *
+     * Must run BEFORE `applyNormalizeMediumTracklists()`/
+     * `applyExtractTrackTitleData()` — both scan each track's own `<tr>` for
+     * its `dl.ars` credit block, which only exists there in the inline
+     * layout. See `debug/toolbox.org`.
+     *
+     * Modeled on `loadAllOverflowMediumTracks()` below — the same
+     * click-native-control-then-`MutationObserver`-wait shape, with an idle
+     * settle delay once the button's own label flips plus a hard timeout so
+     * a stalled/absent re-render can't hang the fetch pipeline.
+     *
+     * Triggered by `features.ensureCreditsInline: true` in the page definition.
+     *
+     * @param   {object}  def - The active merged pageDefinition object.
+     * @returns {Promise<void>}
+     */
+    async function ensureCreditsInline(def) {
+        if (!def?.features?.ensureCreditsInline) return;
+
+        const _btn = document.querySelector('span#medium-toolbox button#toggle-credits');
+        if (!_btn) {
+            Lib.debug('init', 'ensureCreditsInline: no #toggle-credits button found — nothing to do.');
+            return;
+        }
+
+        if (!/inline/i.test(_btn.textContent)) {
+            Lib.debug('init', 'ensureCreditsInline: credits already inline, nothing to do.');
+            return;
+        }
+
+        Lib.debug('init', 'ensureCreditsInline: credits at bottom — clicking toggle-credits to switch to inline.');
+
+        await new Promise(resolve => {
+            let _settled = false;
+            let _idleTimeoutId;
+            let _hardTimeoutId;
+            const _finish = () => {
+                if (_settled) return;
+                _settled = true;
+                _observer.disconnect();
+                clearTimeout(_idleTimeoutId);
+                clearTimeout(_hardTimeoutId);
+                resolve();
+            };
+            const _onMutation = () => {
+                if (!/inline/i.test(_btn.textContent)) {
+                    // Label already flipped to "Display credits at bottom" — give
+                    // the accompanying per-track dl.ars re-render a brief moment
+                    // to settle before proceeding.
+                    clearTimeout(_idleTimeoutId);
+                    _idleTimeoutId = setTimeout(_finish, 500);
+                }
+            };
+            const _observer = new MutationObserver(_onMutation);
+            _observer.observe(_btn, { characterData: true, childList: true, subtree: true });
+            _hardTimeoutId = setTimeout(() => {
+                Lib.debug('init', 'ensureCreditsInline: timed out after 5s waiting for credits toggle — proceeding as-is.');
+                _finish();
+            }, 5000);
+            _btn.click();
+        });
+
+        Lib.debug('init', 'ensureCreditsInline: credits now inline — proceeding with DOM pre-processing.');
+    }
+
+    /**
      * Clicks every "Load all tracks..." overflow link inside a release page's
      * `<table class="tbl medium">` elements and waits for MusicBrainz's AJAX
      * replacement of that medium's `<tbody>` to finish before the tracklist is
@@ -12068,6 +12148,7 @@
             match: (path) => Lib.settings.sa_enable_release_tracks && path.match(/^\/release\/[a-f0-9-]{36}$/),
             buttons: [ { label: 'Show all Tracks for Release' } ],
             features: {
+                ensureCreditsInline: true,       // click + await native #toggle-credits if credits are "at bottom"
                 loadOverflowTracks: true,        // click + await native "Load all tracks..."
                 normalizeMediumTracklists: true, // synthesize h3 + fix up thead/Artist column
                 // Cleans the Title cell down to just the track title and
@@ -12093,7 +12174,8 @@
                 extractTitleData: true,
                 removeSelectors: [
                     'h2.tracklist button.work-button-style', // native "Edit recording comments"
-                    'h2.tracklist span#settings-icon'
+                    'h2.tracklist span#settings-icon',
+                    'span#medium-toolbox' // native toggle-credits/expand/collapse controls — inert post-render
                 ],
                 columnErasers: [
                     // Strips jesus2099 "SUPER MIND CONTROL" hover toolzone/editbutt/
@@ -32577,13 +32659,20 @@ a { color: #1565c0; }`;
         }
 
         // ── release-tracks pre-processing ───────────────────────────────────
-        // For the 'release-tracks' pageType, first click any "Load all tracks..."
-        // overflow links and await MusicBrainz's AJAX completion (must be the
-        // very first pre-processing step, like showAllTags above, so nothing
+        // For the 'release-tracks' pageType, first ensure per-track credits are
+        // rendered inline (clicking the native #toggle-credits control and
+        // awaiting its re-render if needed — must run before anything else here,
+        // since overflow tracks loaded afterward should already come in inline
+        // rather than needing a second toggle), then click any "Load all
+        // tracks..." overflow links and await MusicBrainz's AJAX completion
+        // (must be before extraction, like showAllTags above, so nothing
         // downstream scrapes an incomplete tracklist), then normalise each
         // native table.tbl.medium's thead/header-row/Artist-column shape so the
         // standard header-scanning and h3-sibling-walk grouping pipeline can
         // process it unmodified.
+        if (activeDefinition.features?.ensureCreditsInline) {
+            await ensureCreditsInline(activeDefinition);
+        }
         if (activeDefinition.features?.loadOverflowTracks) {
             await loadAllOverflowMediumTracks(activeDefinition);
         }
