@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.30",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the \"extracted column\" header background (WIP.29) never actually appearing on release-tracks' AR-derived columns, despite being applied at `<th>`-creation time in `applyExtractTrackTitleData()`. Root cause: that function's `<th>`s are built during pre-processing against the NATIVE page's own table, BEFORE the real `table.tbl` this script renders even exists — only their text is scraped into the final header list, and those original DOM nodes are discarded, never reused, so styling them has no visible effect. This is the exact same underlying problem WIP.27 already diagnosed and fixed for the header glyph icons (`_initColHeaderGlyph()`), just not recognized as the same class of bug at the time. New `_stampArColumnHeaderBg(columnName)` mirrors `_initColHeaderGlyph()`'s already-proven approach: a post-render, by-name lookup against the actual rendered `table.tbl`, called from `renderGroupedTable()`'s tail alongside the glyph re-injection calls."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.29",
     "date": "2026-08-08",
     "sections": [

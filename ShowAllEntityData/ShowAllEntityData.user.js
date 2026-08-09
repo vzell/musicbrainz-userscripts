@@ -7650,31 +7650,19 @@
                 (_artistIdx !== -1 ? _headerCells[_artistIdx] : _titleHeaderCursor).after(_recArtistTh);
             }
 
-            // Every column extracted from the Title cell's "ARs" (dl.ars)
-            // data — ARs/AcoustIDs/ISRCs, the "Recording of"/"Recorded at"
-            // family, and the credit-role/copyright/"Produced for label"
-            // columns — gets the same header background a generic
-            // synthetic column gets elsewhere (see
-            // cleanupHeaders()'s `mb-extracted-column` class +
-            // `sa_ui_thead_th_extracted_bg`, the same setting reused here).
-            // These are built by hand in this function (in-place DOM
-            // surgery) rather than through the `activeColumnExtractors`
-            // pipeline, but they're the exact same kind of "derived, not
-            // native" column, so they should look like one. Video/
-            // Disambiguation/Recording artist are deliberately excluded —
-            // they're extracted from other parts of the Title/Artist
-            // cells, not from `dl.ars`.
-            const _arHeaderBg = Lib.settings.sa_ui_thead_th_extracted_bg || '#b8c8b8';
-            const _stampArTh = th => {
-                if (!th) return;
-                th.classList.add('mb-extracted-column');
-                th.style.backgroundColor = _arHeaderBg;
-            };
-            [_arsTh, _acoustIdTh, _isrcTh, _recOfTh, _recOfDateTh, _recordedAtEventTh,
-             _recordedAtPlaceAdditionalTh, _recordedAtPlaceTh, _copyrightByArtistTh,
-             _copyrightByLabelTh, _producedForTh].forEach(_stampArTh);
-            _newAttrThs.forEach(({ th }) => _stampArTh(th));
-            _creditRoleThs.forEach(({ mainTh }) => _stampArTh(mainTh));
+            // NOTE: the "extracted column" header background (see
+            // `_stampArColumnHeaderBg()`) is intentionally NOT applied here.
+            // This function's `<th>`s are built during pre-processing
+            // against the NATIVE page's own table, BEFORE the real
+            // `table.tbl` this script renders even exists — only their text
+            // gets scraped into the final header list; these DOM nodes
+            // themselves are discarded, never reused. Styling them here has
+            // no visible effect (confirmed: an earlier attempt to do exactly
+            // this was silently a no-op). Like `_initColHeaderGlyph()`
+            // (glyphs have the identical problem), the fix has to run
+            // POST-RENDER, by column name, against the actual rendered
+            // `table.tbl` — see `_stampArColumnHeaderBg()`, called from
+            // `renderGroupedTable()`'s tail.
 
             if (!_disambigTh && !_recArtistTh && !_arsTh && !_acoustIdTh && !_isrcTh && !_videoTh &&
                 !_recOfTh && !_recOfDateTh && _newAttrThs.length === 0 &&
@@ -9034,6 +9022,41 @@
             } else {
                 hdrFlex.insertBefore(glyph, hdrFlex.firstChild);
             }
+        });
+    }
+
+    /**
+     * Stamps `mb-extracted-column` + the shared "extracted column" header
+     * background (`sa_ui_thead_th_extracted_bg`, the same setting
+     * `cleanupHeaders()` uses for generic `activeColumnExtractors`-produced
+     * synthetic columns) onto a release-tracks `<th>` found by exact clean
+     * name — same post-render, by-name-lookup pattern as
+     * `_initColHeaderGlyph()`, and for the identical underlying reason:
+     * `applyExtractTrackTitleData()`'s own `<th>`s are built during
+     * pre-processing against the NATIVE page's table, a completely
+     * different (and discarded) set of DOM nodes from the `table.tbl` this
+     * script actually renders — only their TEXT survives into the final
+     * header list, so styling those original nodes has no visible effect
+     * (confirmed: an earlier attempt to stamp them at creation time was a
+     * silent no-op). `cleanupHeaders()` itself can't help either — it only
+     * knows about columns declared via `activeColumnExtractors`/
+     * `activeSyntheticColumnExtractors`, and has no way to recognize these
+     * hand-built AR columns, so it defaults them to `mb-original-column`
+     * (plain header background) instead.
+     *
+     * @param {string} columnName - Exact header text (matched via
+     *   `_cleanColHeaderText`), e.g. `"Recording of work"`.
+     * @returns {void}
+     */
+    function _stampArColumnHeaderBg(columnName) {
+        if (activeDefinition?.type !== 'release-tracks') return;
+        const _bg = Lib.settings.sa_ui_thead_th_extracted_bg || '#b8c8b8';
+        document.querySelectorAll('table.tbl').forEach(table => {
+            const th = Array.from(table.querySelectorAll('thead th'))
+                .find(h => _cleanColHeaderText(h) === columnName);
+            if (!th) return;
+            th.classList.add('mb-extracted-column');
+            th.style.backgroundColor = _bg;
         });
     }
 
@@ -37771,6 +37794,22 @@ a { color: #1565c0; }`;
         _initColHeaderGlyph('Phonographic copyright (℗) by artist', 'artistlink');
         _initColHeaderGlyph('Phonographic copyright (℗) by label', 'labellink');
         _initColHeaderGlyph('Produced for label', 'labellink');
+
+        // Re-apply the "extracted column" header background to every
+        // release-tracks column extracted from the Title cell's "ARs" data
+        // — same rebuild-wipes-it problem as the glyphs above, see
+        // _stampArColumnHeaderBg()'s JSDoc. Video/Disambiguation/Recording
+        // artist are deliberately excluded — they come from other parts of
+        // the Title/Artist cells, not from `dl.ars`.
+        [
+            'ARs', 'AcoustIDs', 'ISRCs',
+            'Recording of work', 'Recording date',
+            'Recorded at event', 'Additional', 'Recorded at place',
+            ...REC_OF_ATTRIBUTES.map(a => a.charAt(0).toUpperCase() + a.slice(1)),
+            ...CREDIT_ROLES.map(role => role.columnLabel),
+            'Phonographic copyright (℗) by artist', 'Phonographic copyright (℗) by label',
+            'Produced for label',
+        ].forEach(_stampArColumnHeaderBg);
     }
 
     /**

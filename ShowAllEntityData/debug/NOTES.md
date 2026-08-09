@@ -4060,3 +4060,60 @@ code-inspection against the already-proven mechanism instead, matching
 this session's established "reuse the existing pattern" lesson from the
 `_initColHeaderGlyph()` episode two sessions ago.
 
+### Follow-up (WIP.30): the header-background fix from WIP.29 didn't actually work
+
+User reported (with a screenshot) that "Recording of work"/"Recording
+date"/"Recorded at event"/"Recorded at place" headers were still plain
+white, not the greenish "extracted column" background WIP.29 claimed to
+add.
+
+**Root cause — the SAME mistake as the `_initColHeaderGlyph()` episode,
+not recognized as such at the time**: WIP.29's fix stamped
+`mb-extracted-column` + inline `backgroundColor` directly onto the `<th>`
+elements created inside `applyExtractTrackTitleData()`. That function runs
+during PRE-PROCESSING, against the NATIVE MusicBrainz page's own
+`<table>` — a completely different, transient set of DOM nodes from the
+`table.tbl` this script actually renders. Only the TEXT of those native
+headers gets scraped into the header-name list used to build the FINAL
+table; the DOM nodes themselves (and anything styled on them) are
+discarded and never appear anywhere in the rendered output. So the
+WIP.29 stamp was a pure no-op — it styled elements nobody ever sees.
+
+This is functionally identical to what `_initColHeaderGlyph()` (see the
+WIP.27 entry above) was already built to solve, and its own JSDoc even
+says so directly ("`makeTableSortableUnified()` rebuilds every `<th>`
+from a plain `colName` STRING... so anything appended to the `<th>`
+before that point is destroyed") — but the connection wasn't made this
+time until the user reported the bug again. The memory saved after the
+WIP.27 episode (`feedback_search_before_new_header_mechanism.md`)
+specifically warns about NOT reinventing a new mechanism for `<th>`
+content problems in this file — this fix violated its own stated lesson
+by treating "add a background color" as a different problem from "add a
+glyph icon" when it's actually the exact same one: *any* styling/content
+added to a release-tracks `<th>` before the final `table.tbl` exists is
+lost.
+
+**Fix**: new `_stampArColumnHeaderBg(columnName)`, an exact structural
+copy of `_initColHeaderGlyph()`'s approach — post-render, `document.
+querySelectorAll('table.tbl')` + `_cleanColHeaderText()` name lookup —
+called from the same `renderGroupedTable()` tail location, right after
+the existing glyph re-injection calls, with the full AR column name list
+(`ARs`/`AcoustIDs`/`ISRCs`, `Recording of work`/`Recording date`/
+`Recorded at event`/`Additional`/`Recorded at place`, the 8
+`REC_OF_ATTRIBUTES` labels capitalized, every `CREDIT_ROLES` label, both
+"Phonographic copyright" columns, `Produced for label`). The dead,
+ineffective stamping pass inside `applyExtractTrackTitleData()` was
+removed entirely and replaced with a comment pointing at the real fix, to
+avoid a future reader assuming it's live code that does something.
+
+**Verified via jsdom**: a minimal fixture reconstructing
+`makeTableSortableUnified()`'s post-rebuild `<th><div class="mb-col-hdr-
+flex">ColumnName <span class="sort-icon-btn">…</span></div></th>` shape
+for "Recording of work"/"Mixer"/"Recorded at place" → after calling
+`_stampArColumnHeaderBg`, every one has `class="mb-extracted-column"` and
+`style.backgroundColor` resolved to the default `#b8c8b8`
+(`rgb(184, 200, 184)`) — confirms both the by-name lookup and the
+stamping itself work correctly against the actual rendered-table shape,
+unlike WIP.29's untested (and, it turned out, non-functional) approach.
+Re-ran every prior credit-column regression test — all unchanged.
+
