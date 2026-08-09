@@ -1,5 +1,46 @@
 [
   {
+    "version": "WIP.40",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Root-caused the \"vzell\" ISRC-filter injection via cross-browser testing with the user: reproduces on Chrome and Vivaldi, NOT on Firefox, Opera, or Brave — despite Opera/Brave also being Chromium-based, ruling out a generic engine quirk. Vivaldi is documented to license and use Google's own proprietary autofill/prediction backend (the same one Chrome uses); Brave and Opera implement their own independent autofill without it. Confirms this is Chrome's/Vivaldi's NATIVE, built-in credential-autofill — which has a long-standing, deliberate policy (crbug.com/468153) of ignoring `autocomplete=\"off\"` for anything its heuristics decide looks like a login-form field, explaining why neither WIP.39's `isTrusted` guard nor `autocomplete=\"off\"` stopped it (both target other mechanisms — synthetic JS-dispatched events and the browser's separate form-field-history feature — not this).",
+          "Rewrote `_hardenFilterInputAgainstPasswordManagers()` into `_hardenFilterInputAgainstAutofill()`, adding two techniques specifically documented to defeat Chrome's own native credential-autofill (neither of which respects `autocomplete=\"off\"`): (1) `type=\"search\"` instead of `text` — Chrome's credential heuristic keys off `text`/`email`-type inputs, not `search`-type ones (also more semantically correct for a filter box); new CSS neutralizes the resulting native search-input chrome (rounded corners, native ✕ button) so the visual appearance is unchanged. (2) The field starts `readonly` and only becomes editable on a genuinely trusted `mousedown`/`focus` (gated on `event.isTrusted`, so it can't be defeated by a script/autofill mechanism synthetically dispatching those events either) — Chrome generally will not attempt to autofill a `readonly` field. The global filter's own auto-focus-after-render code (a PROGRAMMATIC, untrusted focus) now explicitly clears `.readOnly` itself right before focusing, since the trusted-only guard would otherwise leave it readonly (blocking the user's very next keystroke) until a second, real interaction. **Confirmed fixed by the user** on the real Chrome session that reproduced the bug.",
+          "'release-tracks': the yomo widget is still hidden (not removed, per WIP.38's revision) as a first layer of defense, though the newly-confirmed native-Chrome-autofill root cause means the widget's presence/absence was likely never the actual determining factor — kept regardless since it's still a reasonable, low-risk step and satisfies keeping the widget off the final rendered page.",
+          "The `readonly`-until-interaction trick (above) has a visible side effect: Chrome/Vivaldi paint their own default grey background on any `:read-only` input, so every column filter looked greyed-out until clicked at least once (reported by the user with a screenshot right after confirming the main fix). Added a `:read-only { background-color: #fff; }` CSS override for all three filter input types — lower specificity than the yellow `sa_col_filter_active_bg` inline style applied when a filter actually has a value, so an active filter still shows its yellow highlight correctly; only the idle/empty appearance was affected."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.39",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Found the REAL cause of the \"tracklist not rendering with 'Batch Add Recording Aliases' active\" report (WIP.38's widget removal, while still worth keeping, was not actually the fix): the \"ISRCs\" column filter was silently getting populated with the user's own MusicBrainz username (\"vzell\") the moment that other userscript activates, filtering every row out — the table WAS rendering, just with 0 visible rows after an unwanted filter, which looks identical to \"nothing rendered\" at a glance. Confirmed via a real browser console capture (`debug/fail.debug`): our own filter machinery logged `Column filter updated on column 19: \"vzell\"` — a legitimate-looking filter update, not a crash. No Chrome-style yellow `-webkit-autofill` highlight was visible on the field, ruling out Chrome's OWN native credential autofill specifically (that highlight is painted unconditionally via a UA stylesheet no page CSS can suppress) — but not third-party password-manager browser extensions, which insert values through their own content-script logic and don't necessarily show that highlight.",
+          "Hardened all three filter input types (global filter, per-column filter, per-sub-table filter) against exactly this class of interference, three layers deep: (1) their 'input' listeners now reject any event that is neither genuinely user-triggered (`event.isTrusted`, true only for real keystrokes/paste and for events some password-manager extensions and techniques like `document.execCommand('insertText', ...)` produce — impossible to spoof via a bare JS `dispatchEvent`) nor one of our own legitimate internal re-triggers (filter-history entries, \"Clear ALL filters\", a unique-values dropdown entry, the Unicode character picker — all of which now dispatch their synthetic 'input' events through a new shared `_dispatchInternalInputEvent()` helper that marks the event so it still passes) — any other 'input' event is dropped and the injected value discarded before it can silently activate as an active filter; (2) `autocomplete=\"off\"` set on all three (none had it before); (3) the widely-recognized `data-lpignore`/`data-1p-ignore`/`data-bwignore`/`data-form-type=\"other\"`/`data-protonpass-ignore` \"leave this field alone\" attributes (LastPass/1Password/Bitwarden/Dashlane/Proton Pass respectively) via a new shared `_hardenFilterInputAgainstPasswordManagers()` helper — these extensions frequently ignore `autocomplete=\"off\"` on a target field by design (treating it as a common site-authoring mistake) but DO honor their own explicit opt-out markers.",
+          "Got the other userscript's actual source (`debug/other-userscript.js`) and confirmed it contains no code that reads/writes anything resembling a username, and never touches any element outside its own `#yomo-*` fields — ruling out its own JS as the direct writer. Revised theory: a password-manager extension targets `#yomo-src` (a fresh, unlabeled input that script adds near the top of the page) for autofill; WIP.38's `_removeYomoRecordingAliasesWidget()` used to `.remove()` that whole widget outright, and if an extension's fill attempt against `#yomo-src` gets interrupted by its removal, some extensions retry against a new nearby candidate once their original target vanishes — which could land on our column filter. Changed the function to HIDE the widget (`display: none`, DOM nodes kept, not removed) instead of deleting it, so any pending fill can complete harmlessly against a field nobody reads, rather than being forced to look elsewhere. Unconfirmed against a live password-manager extension — still being diagnosed with the user."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.38",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': when the \"Batch Add Recording Aliases from another Release\" userscript (by YoGo9) is active, its widget (`#yomo-src`/`#yomo-preview`/`#yomo-table`/… controls) — injected as the FIRST CHILD of `div#content`, ahead of the native release header — is now detected via its distinctive `#yomo-preview` id and hidden (`display: none`, DOM nodes kept — see WIP.39 for why not removed) as the very first release-tracks pre-processing step, before anything else touches the DOM. Keeps the widget off the final rendered page. A safe no-op when that userscript isn't installed. See `debug/other-userscript.html`/`debug/other-userscript.js` (the widget's markup/source) and `debug/tt2a.html` (a full page capture with it present)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.37",
     "date": "2026-08-09",
     "sections": [

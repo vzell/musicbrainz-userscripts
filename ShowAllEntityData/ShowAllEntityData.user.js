@@ -6687,6 +6687,71 @@
     }
 
     /**
+     * Hides the "Batch Add Recording Aliases from another Release"
+     * userscript's (YoGo9) widget on a release page before any other
+     * release-tracks pre-processing runs — visually removed from the final
+     * page, but its DOM nodes are left in place (`display:none`), NOT
+     * deleted. See below for why.
+     *
+     * That userscript injects a plain, class-less `<div>` (only its child
+     * controls carry ids: `#yomo-src`, `#yomo-type`, `#yomo-locale`,
+     * `#yomo-primary`, `#yomo-preview`, `#yomo-submit`, `#yomo-status`,
+     * `#yomo-table`) as the FIRST CHILD of `div#content`, ahead of the native
+     * `div.wrap-anywhere.releaseheader` — see `debug/other-userscript.html`
+     * / `debug/other-userscript.js` for its markup/source and
+     * `debug/tt2a.html` for a full page capture with it present.
+     *
+     * With it present, the "ISRCs" column filter gets silently populated
+     * with the logged-in user's own MusicBrainz username (see
+     * `debug/fail.debug`), filtering every row out. The other userscript's
+     * OWN source contains no code that reads or writes anything resembling
+     * a username, and never touches any element outside its own `#yomo-*`
+     * fields — ruling out its own JS as the direct cause.
+     *
+     * Leading theory: a password-manager BROWSER EXTENSION targets
+     * `#yomo-src` (a fresh, unlabeled text input, the first one this other
+     * script adds near the top of the page) for autofill. This function
+     * USED to `.remove()` the whole widget outright — if an extension has
+     * already latched onto `#yomo-src` and its fill attempt is interrupted
+     * by that removal, some extensions retry by hunting for a new nearby
+     * candidate once their original target vanishes, which could land on
+     * OUR column filter instead. Hiding rather than removing keeps
+     * `#yomo-src` a stable, present (just invisible) target, so a pending
+     * fill can complete harmlessly against a field nobody reads, instead of
+     * being forced to look elsewhere. Unconfirmed against a live extension;
+     * kept here as the current best-effort mitigation while this is still
+     * being diagnosed with the user.
+     *
+     * Anchored on `#yomo-preview` (always present in the widget's own
+     * markup) rather than a generic "first child of #content" heuristic —
+     * deliberately narrow so this can never hide unrelated native content
+     * or another userscript's UI. Walks up to whichever ancestor is a direct
+     * child of `#content` and hides that whole wrapper as one unit, the
+     * same ancestor-to-direct-child-of-#content pattern used by
+     * `_relocateTrailingH2Sections()`.
+     *
+     * A safe no-op when the widget/script isn't installed.
+     *
+     * Triggered by `features.removeYomoWidget: true` in the page definition.
+     *
+     * @returns {void}
+     */
+    function _removeYomoRecordingAliasesWidget() {
+        const _content = document.getElementById('content');
+        const _anchor = document.getElementById('yomo-preview');
+        if (!_content || !_anchor) return;
+
+        let _wrapper = _anchor;
+        while (_wrapper.parentNode && _wrapper.parentNode !== _content) {
+            _wrapper = _wrapper.parentNode;
+        }
+        if (_wrapper.parentNode !== _content) return; // didn't resolve to a direct child — bail defensively
+
+        _wrapper.style.display = 'none';
+        Lib.debug('init', '_removeYomoRecordingAliasesWidget: hid "Batch Add Recording Aliases from another Release" widget (DOM node kept, not removed).');
+    }
+
+    /**
      * Ensures a release page's per-track relationship credits (Recording
      * engineer, Mixer, Engineer, Producer, Miscellaneous support, etc. —
      * everything `applyExtractTrackTitleData()` later reads out of each
@@ -12148,6 +12213,7 @@
             match: (path) => Lib.settings.sa_enable_release_tracks && path.match(/^\/release\/[a-f0-9-]{36}$/),
             buttons: [ { label: 'Show all Tracks for Release' } ],
             features: {
+                removeYomoWidget: true,          // strip the "Batch Add Recording Aliases" userscript's widget, if present
                 ensureCreditsInline: true,       // click + await native #toggle-credits if credits are "at bottom"
                 loadOverflowTracks: true,        // click + await native "Load all tracks..."
                 normalizeMediumTracklists: true, // synthesize h3 + fix up thead/Artist column
@@ -17543,7 +17609,7 @@ ${sections.join('\n')}
             setQuery(e.query);
             // Fire a synthetic 'input' event so any ✕-button sync listeners
             // (and debounced filter runners wired to 'input') pick up the new value.
-            filterInput.dispatchEvent(new Event('input', { bubbles: false }));
+            _dispatchInternalInputEvent(filterInput, { bubbles: false });
             if (caseCheckbox) caseCheckbox.checked = !!e.useCase;
             if (rxCheckbox)   rxCheckbox.checked   = !!e.useRegex;
             if (exCheckbox)   exCheckbox.checked   = !!e.useExclude;
@@ -24143,6 +24209,12 @@ a { color: #1565c0; }`;
 
     const filterInput = document.createElement('input');
     filterInput.id = 'mb-global-filter-input';
+    // Full autofill/autocomplete hardening (type="search", readonly-until-
+    // genuine-interaction, autocomplete="off", password-manager ignore
+    // attributes) — see _hardenFilterInputAgainstAutofill()'s JSDoc. Also
+    // see _isGenuineFilterInputEvent()'s JSDoc for the matching runtime
+    // guard against untrusted 'input' events.
+    _hardenFilterInputAgainstAutofill(filterInput);
     // The focus prefix is ALWAYS present in the global filter value (never stripped on blur).
     // We initialize the field with the prefix so the invariant holds from creation.
     // The placeholder is shown only when value is empty, which cannot happen during normal
@@ -24482,7 +24554,7 @@ a { color: #1565c0; }`;
         document.querySelectorAll('.mb-subtable-filter-container input[type="text"]').forEach(input => {
             if (input.value) {
                 input.value = '';
-                input.dispatchEvent(new Event('input', { bubbles: false }));
+                _dispatchInternalInputEvent(input, { bubbles: false });
             }
         });
 
@@ -24985,6 +25057,35 @@ a { color: #1565c0; }`;
             box-sizing: border-box;
             transition: box-shadow 0.2s;
             display: block;
+        }
+        /* All three filter inputs use type="search" (see
+           _hardenFilterInputAgainstAutofill()'s JSDoc — a defense against
+           Chrome's/Vivaldi's native credential autofill) — neutralize the
+           browser's own search-input chrome (rounded corners, native ✕
+           cancel button) so they keep looking identical to a plain text
+           input; each already has its own custom ✕ clear button. */
+        #mb-global-filter-input,
+        .mb-col-filter-input,
+        .mb-stf-input-wrap input[type="search"] {
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        #mb-global-filter-input::-webkit-search-cancel-button,
+        .mb-col-filter-input::-webkit-search-cancel-button,
+        .mb-stf-input-wrap input[type="search"]::-webkit-search-cancel-button {
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        /* readonly-until-genuine-interaction (same JSDoc as above) makes
+           Chrome/Vivaldi paint their own default grey :read-only background
+           on every filter input until it's been clicked/focused at least
+           once — lower specificity than the yellow sa_col_filter_active_bg
+           inline style applied when a filter is actually active, so this
+           only affects the idle/empty appearance, never an active filter. */
+        #mb-global-filter-input:read-only,
+        .mb-col-filter-input:read-only,
+        .mb-stf-input-wrap input[type="search"]:read-only {
+            background-color: #fff;
         }
         .mb-col-filter-wrapper {
             position: relative;
@@ -29632,6 +29733,128 @@ a { color: #1565c0; }`;
     // ── Filter focus-mode visual helpers (shared by global and column filters) ──
 
     /**
+     * Applies every known defense against a filter `<input>` getting a
+     * saved credential/username silently inserted into it — see
+     * `debug/fail.debug` for the real capture that started this: the user's
+     * own MusicBrainz username ("vzell") appearing verbatim in the "ISRCs"
+     * column filter, filtering every row out.
+     *
+     * Root-caused (via cross-browser testing with the user) to Chrome's/
+     * Vivaldi's own NATIVE, built-in credential-autofill — not a browser
+     * extension, and not the "Batch Add Recording Aliases" userscript's own
+     * code (confirmed clean by reading `debug/other-userscript.js` in
+     * full). It reproduces on Chrome and Vivaldi but NOT Firefox, Opera, or
+     * Brave — despite Opera and Brave ALSO being Chromium-based, which
+     * rules out a generic Chromium engine quirk. The distinguishing factor:
+     * Vivaldi is documented to license and use Google's own proprietary
+     * autofill/prediction backend (the same one Chrome uses), while Brave
+     * and Opera implement their own independent autofill logic without it.
+     * Chrome's own autofill team has a long-standing, DELIBERATE policy of
+     * ignoring `autocomplete="off"` for anything its heuristics decide
+     * looks like a login-form field (see crbug.com/468153) — so a plain
+     * `autocomplete="off"` (still set below, since it DOES stop the
+     * browser's separate, unrelated form-field-history/autocomplete
+     * feature) cannot by itself stop this. Combines four independently
+     * documented workarounds:
+     *
+     *   1. `type="search"` — Chrome's credential-autofill heuristic keys
+     *      off `text`/`email`-type inputs; `search`-type inputs are
+     *      generally not considered login-field candidates. Also more
+     *      semantically correct for a filter/search box regardless.
+     *   2. `readonly` until the field is actually, genuinely interacted
+     *      with (a real `mousedown` or `focus`, gated on `event.isTrusted`
+     *      so OUR OWN programmatic focus calls — e.g. the global filter's
+     *      auto-focus-after-render — don't prematurely lift it) — Chrome
+     *      generally will not attempt to autofill a `readonly` field.
+     *   3. `autocomplete="off"` — ignored by Chrome's credential heuristic
+     *      specifically, but still respected by the browser's separate
+     *      form-field-history/autocomplete suggestions.
+     *   4. `data-lpignore`/`data-1p-ignore`/`data-bwignore`/`data-form-
+     *      type="other"`/`data-protonpass-ignore` — respected by
+     *      third-party password-manager EXTENSIONS (LastPass, 1Password,
+     *      Bitwarden, Dashlane, Proton Pass), which run their own
+     *      independent autofill logic separate from the browser's native
+     *      one and DO check for these.
+     *
+     * Applied to all three filter input types (global, per-column,
+     * per-sub-table) right after creation. Callers that programmatically
+     * `.focus()` one of these inputs (currently only the global filter's
+     * auto-focus-after-render) MUST also explicitly clear `.readOnly` right
+     * before doing so — see that call site's own comment.
+     *
+     * @param   {HTMLInputElement} input - The filter input to harden.
+     * @returns {void}
+     */
+    function _hardenFilterInputAgainstAutofill(input) {
+        input.type = 'search';
+        input.autocomplete = 'off';
+        input.setAttribute('data-lpignore', 'true');
+        input.setAttribute('data-1p-ignore', 'true');
+        input.setAttribute('data-bwignore', 'true');
+        input.setAttribute('data-form-type', 'other');
+        input.setAttribute('data-protonpass-ignore', 'true');
+
+        input.readOnly = true;
+        const _clearReadOnlyIfGenuine = (e) => {
+            if (!e.isTrusted) return;
+            input.readOnly = false;
+        };
+        input.addEventListener('mousedown', _clearReadOnlyIfGenuine);
+        input.addEventListener('focus', _clearReadOnlyIfGenuine);
+    }
+
+    /**
+     * Dispatches an 'input' event marked as an INTERNAL trigger (a custom
+     * `mbInternal` property set on the Event instance), so that the
+     * untrusted-event guard in the global/column/sub-table filter 'input'
+     * listeners (see `_isGenuineFilterInputEvent()` below) still recognizes
+     * and processes events WE fire ourselves programmatically — e.g.
+     * clicking a filter-history entry, the "Clear ALL filters" button, a
+     * unique-values dropdown entry, or the Unicode character picker. None of
+     * these are genuine keystrokes/paste (`event.isTrusted` is always
+     * `false` for a JS-constructed `new Event(...)`), but they ARE
+     * legitimate, user-initiated actions performed through our own UI, so
+     * they must not be treated the same as an untrusted external write.
+     *
+     * Every internal call site that used to do
+     * `el.dispatchEvent(new Event('input', opts))` on a filter input must go
+     * through this helper instead — a raw dispatch bypasses the marker and
+     * gets silently discarded by the guard.
+     *
+     * @param   {HTMLElement} el     - The input element to dispatch on.
+     * @param   {object}      [opts] - Event constructor options (e.g. `{ bubbles: true }`).
+     * @returns {void}
+     */
+    function _dispatchInternalInputEvent(el, opts = {}) {
+        const evt = new Event('input', opts);
+        evt.mbInternal = true;
+        el.dispatchEvent(evt);
+    }
+
+    /**
+     * Returns true if a filter input's 'input' event should be treated as
+     * genuine — either a real keystroke/paste (`event.isTrusted: true`) or
+     * one of our own legitimate internal re-triggers (marked via
+     * `_dispatchInternalInputEvent()` above, `event.mbInternal: true`).
+     *
+     * Any OTHER 'input' event — most plausibly another userscript directly
+     * setting `.value` on our filter input and firing a bare synthetic event
+     * to make it "stick" — is untrusted and must be rejected before it can
+     * silently activate as an active filter. See debug/fail.debug: a real
+     * capture where an unrelated userscript's own default/cached value (the
+     * user's own MusicBrainz username, "vzell") appeared verbatim in the
+     * "ISRCs" column filter, filtering every row out and making the
+     * tracklist look like it had failed to render at all — no exception was
+     * thrown anywhere, the filter simply did exactly what it was told to.
+     *
+     * @param   {Event} e - The 'input' event to check.
+     * @returns {boolean}
+     */
+    function _isGenuineFilterInputEvent(e) {
+        return !!e.isTrusted || !!e.mbInternal;
+    }
+
+    /**
      * Returns the configured focus prefix string.
      * Central accessor so every call site reads the same value.
      *
@@ -29967,8 +30190,11 @@ a { color: #1565c0; }`;
             wrapper.className = 'mb-col-filter-wrapper';
 
             const input = document.createElement('input');
-            input.type = 'text';
             input.placeholder = '…';
+            // Full autofill/autocomplete hardening — see the global filter's
+            // matching comment / _hardenFilterInputAgainstAutofill()'s JSDoc
+            // / _isGenuineFilterInputEvent()'s JSDoc.
+            _hardenFilterInputAgainstAutofill(input);
             input.title = (() => {
                 const _directOn = typeof Lib !== 'undefined' && Lib.settings && Lib.settings.sa_enable_direct_ctrl_char_shortcuts;
                 const _cKey = getShortcutDisplay('sa_shortcut_focus_column_filter', 'Ctrl+C');
@@ -30015,6 +30241,15 @@ a { color: #1565c0; }`;
             }, _adaptiveFilterDelay);
 
             input.addEventListener('input', (e) => {
+                // Reject untrusted synthetic 'input' events not fired by our own
+                // code — see _isGenuineFilterInputEvent()'s JSDoc. Discards the
+                // injected value outright so it can't silently activate as an
+                // active filter and hide every row.
+                if (!_isGenuineFilterInputEvent(e)) {
+                    Lib.debug('filter', `Ignored untrusted synthetic 'input' event on column ${idx} filter (value="${input.value}") — likely another script writing to this field.`);
+                    input.value = '';
+                    return;
+                }
                 e.stopPropagation();
                 // If the user manually edits a field that carried a multi-row state filter
                 // or a checkbox value-set, drop the special mode so subsequent key strokes
@@ -31430,7 +31665,16 @@ a { color: #1565c0; }`;
 
     // Input: safety net — if some programmatic path emptied the field, restore the prefix
     // before running the filter so the invariant is never violated.
-    filterInput.addEventListener('input', () => {
+    filterInput.addEventListener('input', (e) => {
+        // Reject untrusted synthetic 'input' events not fired by our own code
+        // — see _isGenuineFilterInputEvent()'s JSDoc. Reset to prefix-only
+        // (not empty — the global filter's value must always start with the
+        // prefix) so the injected value can't silently activate as a filter.
+        if (!_isGenuineFilterInputEvent(e)) {
+            Lib.debug('filter', `Ignored untrusted synthetic 'input' event on the global filter (value="${filterInput.value}") — likely another script writing to this field.`);
+            filterInput.value = getFilterFocusPrefix();
+            return;
+        }
         const prefix = getFilterFocusPrefix();
         if (!filterInput.value.startsWith(prefix)) {
             const typed = filterInput.value;
@@ -32668,10 +32912,14 @@ a { color: #1565c0; }`;
         }
 
         // ── release-tracks pre-processing ───────────────────────────────────
-        // For the 'release-tracks' pageType, first ensure per-track credits are
-        // rendered inline (clicking the native #toggle-credits control and
-        // awaiting its re-render if needed — must run before anything else here,
-        // since overflow tracks loaded afterward should already come in inline
+        // For the 'release-tracks' pageType, first remove any known
+        // interfering third-party userscript widget (currently just the
+        // "Batch Add Recording Aliases from another Release" one — see
+        // _removeYomoRecordingAliasesWidget()'s JSDoc) before anything else
+        // touches the DOM, then ensure per-track credits are rendered inline
+        // (clicking the native #toggle-credits control and awaiting its
+        // re-render if needed — must run before anything else here, since
+        // overflow tracks loaded afterward should already come in inline
         // rather than needing a second toggle), then click any "Load all
         // tracks..." overflow links and await MusicBrainz's AJAX completion
         // (must be before extraction, like showAllTags above, so nothing
@@ -32679,6 +32927,9 @@ a { color: #1565c0; }`;
         // native table.tbl.medium's thead/header-row/Artist-column shape so the
         // standard header-scanning and h3-sibling-walk grouping pipeline can
         // process it unmodified.
+        if (activeDefinition.features?.removeYomoWidget) {
+            _removeYomoRecordingAliasesWidget();
+        }
         if (activeDefinition.features?.ensureCreditsInline) {
             await ensureCreditsInline(activeDefinition);
         }
@@ -34845,6 +35096,13 @@ a { color: #1565c0; }`;
                 const _gfi = document.getElementById('mb-global-filter-input') ||
                              document.querySelector('.mb-global-filter input');
                 if (_gfi) {
+                    // This is a PROGRAMMATIC focus — the readonly-until-genuine-
+                    // interaction guard in _hardenFilterInputAgainstAutofill()
+                    // deliberately ignores untrusted focus events, so it must be
+                    // cleared explicitly here or the field would stay readonly
+                    // (silently rejecting the user's next keystroke) until a
+                    // second, real click/focus.
+                    _gfi.readOnly = false;
                     _gfi.focus();
                     Lib.debug('ui', 'Auto-focused global filter input after final render');
                 }
@@ -35777,7 +36035,10 @@ a { color: #1565c0; }`;
 
         const filterInput = document.createElement('input');
         filterInput.id = `${pfx}-input`;
-        filterInput.type = 'text';
+        // Full autofill/autocomplete hardening — see the global filter's
+        // matching comment / _hardenFilterInputAgainstAutofill()'s JSDoc /
+        // _isGenuineFilterInputEvent()'s JSDoc.
+        _hardenFilterInputAgainstAutofill(filterInput);
         filterInput.placeholder = `Filter "${categoryName}"… just in this sub-category`;
         filterInput.title = `Filter rows in the "${categoryName}" sub-table, use 'Ctrl+U' for unicode character map`;
         const _stfW = (Lib.settings.sa_subtable_filter_initial_width ?? 320) + 'px';
@@ -35912,7 +36173,7 @@ a { color: #1565c0; }`;
             setQuery: (q) => { filterInput.value = q; },
             onApply:  () => {
                 // Trigger the debounced filter by firing an 'input' event
-                filterInput.dispatchEvent(new Event('input', { bubbles: false }));
+                _dispatchInternalInputEvent(filterInput, { bubbles: false });
             },
         });
 
@@ -36346,7 +36607,14 @@ a { color: #1565c0; }`;
 
         // ── Event wiring ─────────────────────────────────────────────────────
         const debouncedApply = debounce(applySubFilter, _adaptiveFilterDelay);
-        filterInput.addEventListener('input', () => {
+        filterInput.addEventListener('input', (e) => {
+            // Reject untrusted synthetic 'input' events not fired by our own
+            // code — see _isGenuineFilterInputEvent()'s JSDoc.
+            if (!_isGenuineFilterInputEvent(e)) {
+                Lib.debug('filter', `Ignored untrusted synthetic 'input' event on sub-table filter for "${categoryName}" (value="${filterInput.value}") — likely another script writing to this field.`);
+                filterInput.value = '';
+                return;
+            }
             _syncStfClearBtn();
             debouncedApply();
         });
@@ -36632,7 +36900,7 @@ a { color: #1565c0; }`;
             // Find the input inside this container and dispatch an input event to re-run its filter
             const input = container.querySelector('input[type="text"]');
             if (input && input.value) {
-                input.dispatchEvent(new Event('input', { bubbles: false }));
+                _dispatchInternalInputEvent(input, { bubbles: false });
             }
         });
     }
@@ -40748,7 +41016,7 @@ a { color: #1565c0; }`;
         input.style.backgroundColor = activeBg;
 
         // Synthetic input event triggers the existing debounced filter handler
-        input.dispatchEvent(new Event('input', { bubbles: true }));
+        _dispatchInternalInputEvent(input, { bubbles: true });
 
         Lib.debug('filter', `Uniq-drop: applied "${value}" to col ${colIndex}`);
         return input;
@@ -48343,7 +48611,7 @@ a { color: #1565c0; }`;
         el.setSelectionRange(newPos, newPos);
 
         // Notify React / other listeners about the value change
-        el.dispatchEvent(new Event('input',  { bubbles: true }));
+        _dispatchInternalInputEvent(el, { bubbles: true });
         el.dispatchEvent(new Event('change', { bubbles: true }));
         Lib.debug('unicode', `Unicode char inserted: U+${code.codePointAt(0).toString(16).toUpperCase()}, cursor +${advance}`);
     }

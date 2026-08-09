@@ -4668,3 +4668,359 @@ real `debug/credits-original.html` fixture):
   no duplicate icon (still exactly 1 `.mb-toggle-icon` on the h3).
 `node --check ShowAllEntityData.user.js` passed after every edit.
 
+## 2026-08-09 — tracklist not rendering with "Batch Add Recording Aliases" userscript present (WIP.38)
+
+**Request**: when the "Batch Add Recording Aliases from another Release"
+userscript (by YoGo9) is active, the tracklist (of the last/only medium) is
+not rendered. That script injects a widget — see `debug/other-userscript.html`
+for its own markup, a plain class-less `<div>` whose child controls carry
+ids `#yomo-src`/`#yomo-type`/`#yomo-locale`/`#yomo-primary`/
+`#yomo-preview`/`#yomo-submit`/`#yomo-status`/`#yomo-table` — as the FIRST
+CHILD of `div#content`, ahead of the native `div.wrap-anywhere.releaseheader`.
+`debug/tt2a.html` is a full raw page capture (3.2MB) with the widget present,
+for https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd
+(single "7\" Vinyl" medium, 2 tracks). Also requested: remove the widget
+from the final rendered page.
+
+**Investigation**: extensive jsdom testing against the REAL `tt2a.html`
+DOM (not raw-text regex, which over-counted `<h2>` matches by picking up
+literal `<h2>` text embedded inside `<script type="application/json">`
+JSON string values — the actual parsed DOM has 22 real `h2` elements, not
+the 27 a naive text regex found) ruled out every DOM-position-based
+hypothesis checked:
+- `renderGroupedTable()`'s `targetHeader`/`firstTable` auto-detection
+  (`allH2s` walk + `compareDocumentPosition` against `firstTable`) resolves
+  correctly to the "Tracklist" h2 regardless of the widget's presence.
+- Only one `table.tbl` (the one medium table) exists on the page at all —
+  no competing/earlier table the widget could shadow.
+- `activeDefinition.targetHeader` (the STRING option consumed by
+  `parseDocumentForTables()`) is unset for `release-tracks`, so it takes
+  the unscoped `Array.from(doc.querySelectorAll('table.tbl'))` fallback —
+  unaffected by anything preceding it in the DOM.
+- No unscoped `document.querySelector('input'/'select'/'button'/
+  'script[type="application/json"]')` calls exist anywhere in the codebase
+  that could accidentally first-match one of the widget's own controls
+  instead of an intended native element — every such selector in this file
+  is scoped to a specific container variable, never bare `document`.
+- Delegated further (forked investigation): ran the REAL, extracted
+  `applyNormalizeMediumTracklists()` → `updateH2Count()` pipeline against
+  both the real `tt2a.html` DOM and a variant with the widget's wrapper
+  surgically removed — row extraction (`"1 - 7\" Vinyl": 2 row(s)`) and the
+  `.mb-row-count-stat` stamp on the correct h2 came out IDENTICAL in both
+  variants. `applyExtractTrackTitleData()` (the ~550-line title-cell DOM
+  surgery function) and the full `renderGroupedTable()` cleanup+rebuild
+  pass have too many interdependencies to cleanly extract and run
+  standalone within a reasonable session budget, so they weren't ruled out
+  with the same certainty — the exact failure mechanism was NOT pinned
+  down. It may be a live-runtime effect from that other userscript's own
+  JS (a timing race, or a mutation it makes only during actual page
+  interaction) that a static HTML snapshot fundamentally can't reproduce in
+  jsdom.
+
+**Fix (root-cause-agnostic)**: rather than continue chasing the exact
+mechanism, remove the widget outright — before it can interact with
+anything downstream at all. New `_removeYomoRecordingAliasesWidget()`
+(`ShowAllEntityData.user.js`, next to `applyShowAllTags`/
+`ensureCreditsInline`): finds `#yomo-preview` (always present in the
+widget's own markup, distinctive enough to never collide with native MB
+markup or another userscript), walks up to whichever ancestor is a direct
+child of `#content` (the same ancestor-to-direct-child-of-`#content`
+pattern `_relocateTrailingH2Sections()` already uses, WIP.37), and removes
+that whole wrapper as one unit. A safe no-op when `#yomo-preview` isn't
+present (script not installed). Gated by `features.removeYomoWidget: true`,
+wired as the FIRST step of the `release-tracks` pre-processing block in
+`startFetchingProcess()` — before `ensureCreditsInline`/
+`loadOverflowTracks`/`normalizeMediumTracklists`/`extractTitleData` — so
+nothing downstream ever sees it. Since it's removed for good this early,
+it also never reappears on the final rendered page, satisfying the second
+part of the request without a separate `removeSelectors` entry.
+
+**Verified via jsdom** (`yomo_fn.js`/`test_yomo_removal.js` against the
+real `debug/other-userscript.html` fixture, plus `test_yomo_real.js`
+against the full real `debug/tt2a.html` page):
+- No widget present: no throw, `#content`'s children unchanged.
+- Real widget markup prepended to `#content`: `#yomo-preview` present
+  before, removed after; `.releaseheader` (and everything else) survives
+  untouched.
+- Second call after removal: no throw, still a no-op (idempotent).
+- Against the real `tt2a.html`: before removal, `#content`'s first child
+  is the bare widget `<div>`; after removal, it's
+  `div.wrap-anywhere.releaseheader` (the native element) — `#yomo-preview`
+  gone, `table.tbl.medium` and the "Tracklist" h2 both still present and
+  untouched.
+`node --check ShowAllEntityData.user.js` passed after every edit.
+
+## 2026-08-09 — real root cause: external script injecting "vzell" into the ISRCs column filter (WIP.39)
+
+**The user reported WIP.38 didn't actually fix anything** — the tracklist
+still failed to "render" with the widget-removal fix in place. Two rounds
+of live-browser diagnostics with the user (confirmed: happens on a
+single-medium release too, confirmed: fully disabling the other userscript
+in Tampermonkey resolves it) plus a real browser console capture
+(`debug/fail.debug`, requested from the user) revealed the actual
+mechanism, completely unrelated to WIP.38's DOM-position theory:
+
+```
+🔍 Column filter updated on column 19: "vzell"
+```
+
+— the "ISRCs" column filter (the LAST column) gets silently populated with
+the user's own MusicBrainz username the moment the other userscript
+activates. The table WAS rendering correctly the whole time (WIP.38's
+end-to-end harness — see the WIP.38 entry above — had already proven
+this); with an active filter matching nothing, `renderGroupedTable()`
+correctly shows 0 rows, which is visually indistinguishable from "nothing
+rendered" without noticing the filter box itself.
+
+**Ruled out browser password-manager autofill**: the user's own screenshot
+of the ISRCs filter box showed plain typed-looking text, no autofill
+yellow-tint/highlight and no suggestion dropdown — the visual signature
+Chrome shows for a genuine autofill action. Confirms this is a plain
+`.value = 'vzell'` write followed by a synthetic `dispatchEvent(new
+Event('input'))` — most plausibly the OTHER userscript itself, targeting
+the wrong element via some overly-broad/buggy selector logic we have no
+visibility into (its source isn't in this repo and we don't control it).
+
+**Fix — defend our own filter inputs regardless of the external cause**:
+rather than chase an unknowable third-party bug, hardened all THREE filter
+input types this script owns (global filter, per-column filter, per-
+sub-table filter) against exactly this class of interference. Their
+'input' listeners now require `_isGenuineFilterInputEvent(e)` —
+`event.isTrusted` (true only for a REAL keystroke/paste; a JS-constructed
+`new Event(...)` always has `isTrusted: false`, and this cannot be spoofed
+by any script, including a malicious one — this is a browser-enforced
+guarantee, not something our code has to trust blindly) OR
+`event.mbInternal` (a custom marker WE set, see below). Any event failing
+both checks is rejected: the injected value is discarded (reset to `''`
+for column/sub-table filters, or to `getFilterFocusPrefix()` for the
+global filter, which must always start with its permanent prefix) and
+`debouncedRunFilter()`/`debouncedColumnFilter()`/`debouncedApply()` is
+never called, so the bogus value never gets the chance to activate as a
+filter.
+
+**New shared helper `_dispatchInternalInputEvent(el, opts)`** (next to
+`getFilterFocusPrefix()`): wraps `new Event('input', opts)` and stamps
+`evt.mbInternal = true` before dispatching, so our OWN legitimate
+programmatic re-triggers still pass the guard. Converted all 6 existing
+`el.dispatchEvent(new Event('input', ...))` call sites in the codebase to
+use it: the filter-history-widget "apply saved entry" handler (both the
+global and per-sub-table history widgets share this one function), the
+"Clear ALL filters" button's per-sub-table-input loop,
+`reapplyAllSubTableFilters()`, the unique-values dropdown's "apply this
+value as a column filter" click handler, and the Unicode character
+picker's insert-and-notify step (`_saUnicodeInsert`, which can target
+ANY text field wired for Ctrl+U, not just filters). Missing even one of
+these would have silently broken that specific feature (its own dispatched
+event would now fail the new guard and get discarded).
+
+**Verified via jsdom** (`filter_guard_funcs.js`/`test_filter_guard.js` in
+scratchpad — a minimal fixture mirroring the real per-column filter
+listener's guard branch, since the full listener is deeply coupled to the
+column-filter-creation closure):
+- An external script's exact pattern (`input.value = 'vzell'; input.
+  dispatchEvent(new Event('input'))`, no marker) — value reset to `""`,
+  filter callback never invoked. Reproduces and fixes the exact captured
+  scenario.
+- `_dispatchInternalInputEvent(input, {...})` — value preserved, filter
+  callback DOES fire (confirms internal re-triggers still work).
+- `_isGenuineFilterInputEvent({isTrusted: true})` → `true`;
+  `_isGenuineFilterInputEvent({isTrusted: false})` (no marker) → `false`
+  (a real trusted event can't be constructed via jsdom's `dispatchEvent` at
+  all — `isTrusted` is a read-only, non-configurable property on real
+  `Event` instances in both jsdom and real browsers, so this specific
+  check was made directly against the predicate function rather than
+  through a full dispatch — the guarantee itself is a browser-spec
+  invariant, not something this codebase needs to independently verify).
+`node --check ShowAllEntityData.user.js` passed after every edit.
+
+**Addendum, same day**: none of the three filter inputs previously set
+`autocomplete`. Added `autocomplete="off"` to all three as a
+belt-and-suspenders measure alongside the `isTrusted` guard above — the
+guard alone cannot catch a genuinely browser-trusted insertion (the
+browser's own form-field-history/autocomplete remembering a value by field
+`name`/`id`, or another script using `document.execCommand('insertText',
+...)` specifically to produce a real, trusted 'input' event so
+React-based apps recognize it — a known, legitimate technique some
+userscripts use to reliably sync with React state, and indistinguishable
+from genuine typing purely via `event.isTrusted`).
+
+**Important caveat discovered while investigating the user's follow-up
+report that the fix "still didn't work"**: `git log`/`git status` showed
+WIP.38 and WIP.39 were still uncommitted and unpushed at that point — the
+user had been testing against the pre-fix script the whole time, since
+nothing had actually been deployed yet. Always confirm a fix has been
+committed+pushed (and reinstalled/updated in Tampermonkey) before treating
+a "still broken" report as evidence the fix itself is wrong.
+
+**Second addendum, same day**: the user reported it was STILL happening
+after the `autocomplete="off"` addition too (asked to try one more thing
+before committing/pushing — so this round wasn't yet a real re-test of
+deployed code either; stacking defenses before the first actual
+deployment). This is consistent with the "third-party password-manager
+extension" theory above: many such extensions (LastPass, 1Password,
+Bitwarden, Dashlane, Proton Pass, …) deliberately IGNORE `autocomplete=
+"off"` on a target field, treating it as a common site-authoring mistake
+rather than a genuine opt-out — but they DO respect their own explicit
+per-extension "leave this field alone" `data-*` attributes. Added
+`_hardenFilterInputAgainstPasswordManagers(input)` (next to
+`_dispatchInternalInputEvent()`), setting `data-lpignore`, `data-1p-
+ignore`, `data-bwignore`, `data-form-type="other"`, and `data-protonpass-
+ignore` on all three filter inputs. Verified via jsdom
+(`test_pm_harden.js` in scratchpad) that all five attributes get set
+correctly; there is no way to verify EFFECTIVENESS against a real
+extension outside a live browser with that extension installed — this
+is a best-effort layer based on documented conventions, not something
+this codebase can prove works.
+
+Also asked the user whether they could get the OTHER userscript's own
+source (from Tampermonkey's dashboard) — if it turns out to be that
+script's own code (not a browser/extension autofill mechanism) directly
+writing into our column filter, having its source would let us find the
+exact faulty selector/logic instead of continuing to guess at browser-
+level explanations.
+
+**Third addendum, same day**: user provided the OTHER script's actual
+source, `debug/other-userscript.js` ("Batch Add Recording Aliases from
+another Release", by YoGo9, built on `mbz-loujine-common.js`). Read it in
+full — it fetches release/recording data from the MB web service, matches
+tracks by recording MBID or medium/track position, and posts alias edits.
+It never reads or writes anything resembling a username, and every DOM
+read/write in the script is scoped to its own `#yomo-*` elements
+(`#yomo-src`, `#yomo-locale`, `#yomo-primary`, `#yomo-type`, `#yomo-
+status`, `#yomo-table`) — confirming its own JS is NOT directly writing
+into our ISRC column filter. `injectUI()` confirms exactly what we already
+knew from the markup: `(document.querySelector('#content') ||
+document.body).prepend(box)`.
+
+This rules out "buggy selector in yomo's own code" and strengthens the
+password-manager-extension theory: the widget introduces a fresh,
+unlabeled `<input id="yomo-src">` near the top of the page, a plausible
+autofill target. `_removeYomoRecordingAliasesWidget()` (WIP.38) used to
+`.remove()` the whole widget outright as our first pre-processing step —
+new theory: if an extension has already latched onto `#yomo-src` for an
+autofill attempt and that attempt gets interrupted by the element's
+removal, some extensions retry by hunting for a new nearby candidate once
+their original target vanishes, which could land on our column filter.
+
+**Fix (still speculative, not yet confirmed against a live extension)**:
+changed `_removeYomoRecordingAliasesWidget()` to hide the widget
+(`_wrapper.style.display = 'none'`) instead of `.remove()`ing it — the DOM
+nodes (including `#yomo-src`) stay present and connected, just invisible,
+so a pending autofill attempt can complete harmlessly against a field
+nobody reads, instead of being forced to look elsewhere.
+
+**Verified via jsdom** (`yomo_fn2.js`/`test_yomo_hide.js` in scratchpad,
+against the real `debug/other-userscript.html` fixture): before, `#content`
+has 2 children (the widget div, the native releaseheader div); after
+calling the function, still 2 children (widget NOT removed) —
+`#yomo-src` confirmed still present AND `.isConnected === true`; the
+wrapper's `style.display` confirmed `"none"`.
+`node --check ShowAllEntityData.user.js` passed after every edit.
+
+Still uncommitted/unpushed at this point — user has not yet had the
+chance to test this specific change against a real browser session with
+their password manager active.
+
+## 2026-08-09 — root cause confirmed via cross-browser testing; native Chrome/Vivaldi autofill (WIP.40)
+
+**Hiding the widget also didn't help** (per user report), and they
+provided the OTHER script's full source (`debug/other-userscript.js`) —
+read in full, confirms it never touches anything outside its own
+`#yomo-*` elements, no username handling anywhere. Definitively rules out
+"another userscript's own JS" as the writer.
+
+**Decisive clue — cross-browser test results from the user**: reproduces
+on Chrome and Vivaldi. Does NOT reproduce on Firefox, Opera, or Brave.
+Opera and Brave are ALSO Chromium-based, which rules out a generic
+Chromium-engine-level bug/quirk — if it were that, Opera/Brave would be
+affected too. The distinguishing fact: Vivaldi is documented to license
+and use Google's own proprietary autofill/prediction backend (the same
+service Chrome itself uses) — one of very few Chromium forks to have
+obtained this from Google — while Brave and Opera each implement their
+OWN independent autofill logic without access to it. This uniquely
+explains the exact Chrome+Vivaldi / not-Opera+not-Brave split.
+
+**Conclusion**: this is Chrome's/Vivaldi's NATIVE, BUILT-IN credential-
+autofill feature — not a browser extension, not a userscript. Chrome's
+own autofill/security team has a long-standing, publicly documented,
+DELIBERATE policy of ignoring `autocomplete="off"` for any field its
+heuristics classify as part of a login form (see crbug.com/468153 and
+extensive related discussion — the team's stance is that respecting
+`autocomplete="off"` for credential fields would be a net negative for
+user security/UX, so Chrome will NOT honor it there, full stop). This
+explains why NEITHER of WIP.39's two fixes stopped it: the `isTrusted`
+guard targets fake/synthetic events from JS (native browser autofill
+produces genuinely trusted events — the browser itself is originating
+them), and `autocomplete="off"` targets a mechanism (Chrome's SEPARATE,
+non-credential form-field-history feature) different from the one
+actually responsible here.
+
+**Fix — two techniques specifically documented to work against Chrome's
+own native credential-autofill (as opposed to `autocomplete="off"`, which
+does not)**:
+1. **`type="search"` instead of `type="text"`** — Chrome's credential-
+   autofill heuristic specifically targets `text`/`email`-type inputs; a
+   `search`-type input isn't treated as a login-field candidate. Also
+   semantically more correct for what these fields actually are. New CSS
+   (`-webkit-appearance: none` + hiding `::-webkit-search-cancel-button`)
+   neutralizes the browser's own search-input decorations (rounded
+   corners, native ✕ button) so visual appearance is unchanged — each
+   filter already has its own custom ✕ clear button that would otherwise
+   visually collide with the native one.
+2. **`readonly` until a genuinely trusted interaction** — Chrome generally
+   will not attempt to autofill a `readonly` field. Set on creation;
+   cleared only inside a `mousedown`/`focus` listener gated on
+   `event.isTrusted` (so this can't be defeated the same way a script
+   might fake a `dispatchEvent` — a REAL browser-originated interaction is
+   required). The global filter's own "auto-focus after render" feature
+   (`ShowAllEntityData.user.js`, the `setTimeout(() => { … _gfi.focus(); …
+   }, 150)` block) does a PROGRAMMATIC (untrusted) focus, which the guard
+   correctly ignores — so that code now explicitly does
+   `_gfi.readOnly = false;` itself, right before its own `.focus()` call,
+   or the field would silently reject the user's very next keystroke until
+   a second, real interaction.
+
+Rewrote `_hardenFilterInputAgainstPasswordManagers()` (WIP.39) into
+`_hardenFilterInputAgainstAutofill()` (next to `_dispatchInternalInputEvent()`),
+combining both new techniques with the two from WIP.39
+(`autocomplete="off"`, the `data-lpignore`/etc. third-party-extension
+opt-out attributes) into one call per filter input creation site — now
+just `_hardenFilterInputAgainstAutofill(input)` replaces what used to be
+3 separate lines (`type`, `autocomplete`, the harden call) at each of the
+3 call sites.
+
+**Verified via jsdom** (`harden_autofill_fn.js`/`test_harden_autofill.js`
+in scratchpad): `type` → `"search"`; `autocomplete` → `"off"`; `data-
+lpignore` set; `readOnly` starts `true`; an untrusted (synthetic)
+`focus` event leaves `readOnly` still `true` (correctly ignored); a
+trusted interaction clears it to `false`. `node --check
+ShowAllEntityData.user.js` passed after every edit.
+
+**Confirmed fixed by the user** on their real Chrome session — the "vzell"
+injection into the ISRC column filter no longer happens.
+
+**Follow-up, same day**: fixed reported immediately after, with a
+screenshot — every column filter now shows a grey background until
+clicked/focused at least once (an active, clicked-into filter shows
+white). This is Chrome's/Vivaldi's own default UA styling for `:read-
+only` inputs, a direct visible side effect of the `readonly`-until-
+genuine-interaction trick above — every filter starts `readonly` and the
+browser paints it accordingly until the guard clears it. Added a CSS
+override: `#mb-global-filter-input:read-only, .mb-col-filter-input:read-
+only, .mb-stf-input-wrap input[type="search"]:read-only { background-
+color: #fff; }`, right next to the `type="search"` neutralization rules
+already added. Class-based `:read-only` selectors have lower specificity
+than the INLINE `background-color` style already applied when a filter
+actually has an active value (`sa_col_filter_active_bg`, default
+`#fff9c4` yellow, set via `input.style.backgroundColor = ...`) — so this
+only affects the idle/empty appearance; a genuinely active filter still
+shows its yellow highlight regardless of `readonly` state (a filter CAN
+end up with a value while still `readonly` — e.g. clicking a unique-
+values dropdown entry programmatically sets `.value` via
+`_dispatchInternalInputEvent()` without the user ever having clicked
+the input itself first).
+
+Still uncommitted/unpushed per the user's explicit "do not commit yet"
+instruction from earlier in this same debugging session — the main fix is
+now confirmed working; commit/push is pending the user's go-ahead.
+
