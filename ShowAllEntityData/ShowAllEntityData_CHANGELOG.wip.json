@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.41",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': fixed column/global filter highlighting silently never appearing on the \"Length\" column specifically (`debug/no-color.html`) — reproduced end-to-end in an isolated jsdom harness against the real extracted `testRowMatch()`/`highlightText()`/`highlightCrossTag()` code, which proved the highlight mechanism itself is correct; the wipe happens one step later. Root cause: jesus2099's \"mb. SUPER MIND CONTROL\" userscript mutates the native Length `<td>` in place, setting `class=\"treleases\"` (see `_repairTreleasesTd()`'s own JSDoc and `debug/tracklist-single-medium.html`, which shows this class co-occurring with jesus2099's own toolzone `<div>`s on a real page). The existing `'jesus2099-any'` columnEraser (WIP.2) already strips those nested toolzone/editbutt/openEdits `<div>`s from the Length column at scrape time, but never touched the `treleases` class living on the `<td>` itself — so it survived into this script's own captured row and every future `cloneNode(true)` copy of it. `runFilter()`'s multi-table path clones from that captured row on every keystroke and inserts the clone into a fresh `<tbody>`; `initTreleasesObserver()`'s `MutationObserver` cannot distinguish that routine self-triggered insertion from a genuine live jesus2099 mutation, so it fired `_repairTreleasesTd()` on our OWN freshly-highlighted cell — which rebuilds the cell from plain `textContent` (correctly preserving the visible \"4:35\" value and its numeric-alignment styling) but has no notion of the active filter, silently discarding the `mb-column-filter-highlight`/`mb-global-filter-highlight` `<span>` `testRowMatch()` had just added. Only the Length column is affected since it's the only column jesus2099 marks this way. Fixed by stripping `class=\"treleases\"` (plus jesus2099's plugin `title`/inline `style`) from the cell in the SAME `'jesus2099-any'` eraser pass, once, at scrape time — this script's own rows are now permanently free of the marker, while `initTreleasesObserver()`/`_repairTreleasesTd()` still correctly react to and repair genuine future jesus2099 mutations on the live page, exactly as before."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.40",
     "date": "2026-08-09",
     "sections": [

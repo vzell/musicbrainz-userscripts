@@ -4625,6 +4625,36 @@
                     removedCount++;
                     Lib.debug('extract', `columnEraser: removed jesus2099-any element (class="${_cls}") from column "${entry.sourceColumn}" (colIdx=${entry.colIdx})`);
                 });
+
+                // Strategy 3b: jesus2099 own-CELL class/style/title erasure.
+                // Jesus2099 doesn't just inject descendant clutter (Strategy 3
+                // above) — it also mutates the <td> itself in place: sets
+                // class="treleases", a plugin `title`, and
+                // style="text-align:right" directly on it (see
+                // _repairTreleasesTd()'s own JSDoc, which exists to repair this
+                // SAME mutation when it happens live, post-render). Left
+                // in place here, at SCRAPE time, that "treleases" class survives
+                // into this script's own captured row and every future
+                // cloneNode(true) copy of it (runFilter()'s multi-table path
+                // clones from these captured rows on every keystroke). Each such
+                // clone re-inserted into the tbody is then a "new" element
+                // carrying class="treleases", which initTreleasesObserver()
+                // cannot distinguish from a genuine live jesus2099 mutation —
+                // it fires _repairTreleasesTd() on our OWN freshly-rendered
+                // cell, which rebuilds it from plain textContent, silently
+                // discarding any mb-column-filter-highlight/
+                // mb-global-filter-highlight span testRowMatch() had just
+                // applied. Stripping the marker here, once, keeps this
+                // script's own rows permanently free of it — genuine future
+                // jesus2099 mutations on the LIVE table are untouched by this
+                // and still repaired reactively by the observer as intended.
+                if (cell.classList.contains('treleases')) {
+                    cell.classList.remove('treleases');
+                    cell.removeAttribute('title');
+                    cell.style.cssText = '';
+                    removedCount++;
+                    Lib.debug('extract', `columnEraser: stripped jesus2099 "treleases" class/style from column "${entry.sourceColumn}" (colIdx=${entry.colIdx})`);
+                }
             }
 
             // Strategy 4: wiencek suggested-work / work div erasure
