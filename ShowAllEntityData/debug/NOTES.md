@@ -4289,3 +4289,57 @@ regression test (WIP.16/20/21/22/23/24/28/31) — all still pass, `textContent`
 unchanged; only `innerHTML` gained the new wrapping span/class, confirming
 the change is purely additive.
 
+## 2026-08-09 — highlight the exact matched attr/task value (WIP.33)
+
+**Request**: for the WIP.32 per-attribute/per-task dropdown entries, also
+highlight the matched text — same color as any other active column
+filter — but ONLY the exact string, not the whole cell/`<li>`.
+
+**Investigation**: found the existing highlight mechanism.
+`testRowMatch()` (after computing `finalHit`) loops `colFilters` and calls
+`highlightText(row, f.val, …, f.idx, …)` for every NORMAL (non-structural)
+filter — which resolves `row.cells[f.idx]`, calls `.normalize()`, and
+delegates to `highlightCrossTag(td, regex, 'mb-column-filter-highlight')`,
+the shared cross-tag-safe text-wrapping primitive every highlight class in
+this file uses (`mb-global-filter-highlight`/`mb-subtable-filter-highlight`
+are the same mechanism, different class). The existing code explicitly
+SKIPPED highlighting for every `f.isMultiRowFilter` entry (comment: "Multi-
+row state filters operate on DOM structure, not on text → skip
+highlight") — true for the original 5 structural modes AND WIP.31's
+title-mismatch/name-variation (none of them correspond to one exact
+string), but no longer true for WIP.32's `attr:`/`task:` compound modes,
+which DO name an exact string.
+
+**Fix**: added an `else if` arm alongside the existing "skip" branch,
+specifically for `f.multiRowMode.startsWith('attr:')`/`'task:'`, calling
+new `_highlightCreditValueMatch(row.cells[f.idx], f.multiRowMode)`. Rather
+than calling `highlightCrossTag` on the WHOLE cell (which would highlight
+every occurrence of the substring anywhere, including in an unrelated
+credit's own different value, or partially matching text elsewhere), it
+scopes to each SPECIFIC `.mb-credit-attr`/`.mb-credit-task` sentinel
+(added in WIP.32) WHOSE OWN VALUE actually equals the filter target —
+important for a merged multi-person credit where different people can
+carry different attribute/task values in the same cell. For `attr:`,
+since `.mb-credit-attr`'s text can be a `/`-joined multi-word list (e.g.
+`"assistant/co"`), the regex uses `\b…\b` word boundaries so only the
+matched WORD highlights, not the whole span; for `task:`, the whole
+`.mb-credit-task` text is highlighted (a task is never joined with
+others).
+
+Reuses the EXACT SAME `mb-column-filter-highlight` class as every normal
+column filter (matches the user's "same color" request) and needed no
+extra clearing/reset code — `testRowMatch()` already unconditionally
+clears every `.mb-column-filter-highlight` span in the row at its own top
+before recomputing matches, regardless of which code path created them.
+
+**Verified via jsdom**: a fixture cell with two different credits — one
+`.mb-credit-attr` = `"assistant/co"`, another = `"additional"` — confirmed
+`_highlightCreditValueMatch(cell, 'attr:co')` wraps ONLY "co" inside
+"assistant/co" (`assistant/<span class="mb-column-filter-highlight">co
+</span>`), leaving "assistant" and the unrelated "additional" credit
+completely untouched; `'attr:additional'` correctly highlights the OTHER
+credit instead, leaving "assistant/co" alone. A `.mb-credit-task` fixture
+confirmed `'task:task: Second Engineer'` wraps the entire task text.
+Re-ran every prior credit-column/dropdown regression test — all still
+pass unchanged.
+

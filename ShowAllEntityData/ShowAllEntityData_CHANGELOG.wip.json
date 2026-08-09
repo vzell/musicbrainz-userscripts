@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.33",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Rows matching one of the new per-attribute/per-task synthetic dropdown filters (WIP.32) now get the exact matched string highlighted in the same color as any other active column filter — e.g. clicking \"additional\" in the \"Engineer\" column's dropdown highlights just the word \"additional\" inside each matching credit's parenthetical, not the whole cell or the whole `<li>`. A merged multi-person credit with several different attribute/task values in one cell only highlights the specific credit(s) whose own value actually matched."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.32",
     "date": "2026-08-09",
     "sections": [

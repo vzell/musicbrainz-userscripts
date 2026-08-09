@@ -30195,6 +30195,62 @@ a { color: #1565c0; }`;
         }
     }
 
+    /**
+     * Highlights the exact matched value for a credit-role column's
+     * 'attr:'/'task:' compound `multiRowMode` filter (see `openUniqDrop()`'s
+     * `makeValueSynItem` and `testRowMatch()`'s `f.isMultiRowFilter` branch)
+     * — unlike every OTHER multi-row-state mode (empty/single/collapsed/
+     * expanded/any/title-mismatch/name-variation), which test pure DOM
+     * structure with no single corresponding string, `'attr:'`/`'task:'`
+     * DO correspond to one exact string, so they get the same
+     * `mb-column-filter-highlight` treatment a normal text column filter
+     * would — same color/class, applied ONLY to the exact matched credit's
+     * `<span class="mb-credit-attr">`/`<i class="mb-credit-task">`
+     * sentinel (see `_buildCreditListItem`/`_buildLabelCreditListTd`), not
+     * the whole cell or the whole `<li>`.
+     *
+     * Only sentinels whose OWN value matches the filter target are
+     * highlighted — a merged multi-person credit can have several
+     * `.mb-credit-attr`/`.mb-credit-task` elements in one cell with
+     * DIFFERENT values, and only the row's matching credit(s) should light
+     * up. `.mb-credit-attr`'s text can be a `/`-joined multi-word list
+     * (e.g. `"assistant/co"`), so that case uses a `\b…\b` word-boundary
+     * regex to highlight just the matched word, not the whole span;
+     * `.mb-credit-task`'s text is never joined (one task per credit), so
+     * its whole text is highlighted verbatim.
+     *
+     * Reuses `highlightCrossTag()` — the same cross-tag-safe text-wrapping
+     * primitive every other filter-highlight call in this file uses — so
+     * clearing/idempotency work for free via `testRowMatch()`'s existing
+     * "reset previous `.mb-column-filter-highlight` spans" step at its own
+     * top (no separate cleanup needed here).
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} multiRowMode - The compound mode string, e.g.
+     *   `"attr:additional"` or `"task:task: Second Engineer"`.
+     */
+    function _highlightCreditValueMatch(cell, multiRowMode) {
+        if (!cell) return;
+        const _isAttr = multiRowMode.startsWith('attr:');
+        const _want = multiRowMode.slice(5);
+        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (_isAttr) {
+            const _regex = new RegExp(`\\b${_escaped}\\b`, 'g');
+            cell.querySelectorAll('.mb-credit-attr').forEach(span => {
+                if (!span.textContent.split('/').includes(_want)) return;
+                span.normalize();
+                highlightCrossTag(span, _regex, 'mb-column-filter-highlight');
+            });
+        } else {
+            const _regex = new RegExp(_escaped, 'g');
+            cell.querySelectorAll('.mb-credit-task').forEach(el => {
+                if (el.textContent.trim() !== _want) return;
+                el.normalize();
+                highlightCrossTag(el, _regex, 'mb-column-filter-highlight');
+            });
+        }
+    }
+
     /** Returns (creating if absent) the sparse cache entry for a source row. */
     function _getOrCreateRowCache(row) {
         let c = _rowTextCache.get(row);
@@ -30462,7 +30518,11 @@ a { color: #1565c0; }`;
         if (finalHit && !matchOnly) {
             // Highlighting on excluded matches would be misleading, so skip it
             if (globalQuery && !isExclude) highlightText(row, globalQueryRaw, isCaseSensitive, -1, isRegExp);
-            // Multi-row state filters operate on DOM structure, not on text → skip highlight.
+            // Multi-row state filters operate on DOM structure, not on text → skip
+            // highlight, EXCEPT the 'attr:'/'task:' compound modes (openUniqDrop()'s
+            // makeValueSynItem), which — unlike the other 5 structural modes — DO
+            // correspond to one exact string somewhere in the cell (see
+            // _highlightCreditValueMatch's own JSDoc).
             // Use per-filter case/regexp flags so highlight patterns match what was actually tested.
             colFilters.forEach(f => {
                 if (!f.isMultiRowFilter && !f.isMultiValueFilter) {
@@ -30472,6 +30532,9 @@ a { color: #1565c0; }`;
                     if (!_fIsExclude) {
                         highlightText(row, f.val, _fIsCase, f.idx, _fIsRegExp);
                     }
+                } else if (f.isMultiRowFilter &&
+                           (f.multiRowMode.startsWith('attr:') || f.multiRowMode.startsWith('task:'))) {
+                    _highlightCreditValueMatch(row.cells[f.idx], f.multiRowMode);
                 }
             });
 
