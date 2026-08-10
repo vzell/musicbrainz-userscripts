@@ -42816,34 +42816,6 @@ a { color: #1565c0; }`;
                 badge.style.textAlign          = 'right';
                 item.appendChild(badge);
 
-                // ---- Flag icon(s) (Country / Locality / Region / Area cols) -
-                // Prepend a clone of every flag icon found in the source cell
-                // (native CSS-sprite <span class="flag flag-XX"> and/or
-                // third-party "More Flags Everywhere" <span class="area-icon">
-                // <img></span>) so each dropdown entry matches the visual
-                // appearance of the table cells. flagIconMap stores a
-                // pre-built array of already-baked/cloned icon nodes (keyed
-                // by the cell's full text value, which may bundle more than
-                // one icon — see flagIconMap's JSDoc). Each is appended as
-                // its own independent sibling node directly in `item` — NOT
-                // wrapped in a container span — so there is no extra layout
-                // context (e.g. flex) that could interfere with the native
-                // CSS-sprite flag's baked width/height/background rendering.
-                // flagIconMap is keyed only by whole-cell text, so this is a
-                // harmless no-op for item entries — they simply never carry a
-                // flag icon of their own.
-                if (hasFlagIcons) {
-                    const icons = flagIconMap.get(v);
-                    if (icons) {
-                        for (const icon of icons) {
-                            const iconClone = icon.cloneNode(true);
-                            iconClone.setAttribute('aria-hidden', 'true');
-                            iconClone.style.marginRight = '4px';
-                            item.appendChild(iconClone);
-                        }
-                    }
-                }
-
                 // ---- "▤" item marker — visually distinguishes a per-<li>
                 // item entry from a whole-cell value entry (reuses the same
                 // multi-row "rack" glyph used elsewhere for this cell shape,
@@ -42877,7 +42849,59 @@ a { color: #1565c0; }`;
                     item.appendChild(marker);
                 }
 
-                if (filter) {
+                // ---- Value text, with any flag icon(s) inlined at their
+                // true position (Country / Locality / Region / Area / etc.
+                // columns) --------------------------------------------------
+                // flagIconMap stores this value's cell text pre-split into
+                // ordered 'text'/'icon' segments, in the SAME left-to-right
+                // order they appear in the table cell (see flagIconMap's own
+                // JSDoc) — each icon renders immediately before the
+                // place/area/country name it actually decorates, mirroring
+                // the table cell, instead of every icon being bunched at the
+                // start of the entry. Falls back to the plain single-string
+                // rendering below for any value with no flag segments (plain
+                // text, item entries, entity entries — none of which ever
+                // get a flagIconMap entry).
+                const flagSegments = hasFlagIcons ? flagIconMap.get(v) : null;
+                if (flagSegments) {
+                    // The quickfilter highlights only the FIRST occurrence of
+                    // the match, found by scanning segments in order. A match
+                    // straddling an icon boundary (a real cell never breaks a
+                    // word around a flag) simply renders unhighlighted, which
+                    // is harmless: inclusion in `matching` above already
+                    // guarantees the match exists somewhere in `v`.
+                    let marked = !filter;
+                    if (filter) item.classList.add('mb-uniq-qf-match');
+                    for (const seg of flagSegments) {
+                        if (seg.type === 'icon') {
+                            const iconClone = seg.node.cloneNode(true);
+                            iconClone.setAttribute('aria-hidden', 'true');
+                            iconClone.style.marginRight = '4px';
+                            item.appendChild(iconClone);
+                            continue;
+                        }
+                        if (!marked) {
+                            const lt = seg.text.toLowerCase();
+                            const start = lt.indexOf(lf);
+                            if (start !== -1) {
+                                const end = start + lf.length;
+                                item.appendChild(document.createTextNode(seg.text.slice(0, start)));
+                                const mark = document.createElement('mark');
+                                mark.textContent = seg.text.slice(start, end);
+                                mark.style.color           = hlColor;
+                                mark.style.backgroundColor = hlBg;
+                                mark.style.fontWeight      = 'bold';
+                                mark.style.borderRadius    = '2px';
+                                mark.style.padding         = '0 1px';
+                                item.appendChild(mark);
+                                item.appendChild(document.createTextNode(seg.text.slice(end)));
+                                marked = true;
+                                continue;
+                            }
+                        }
+                        item.appendChild(document.createTextNode(seg.text));
+                    }
+                } else if (filter) {
                     // Build highlighted content with a <mark> around the match
                     const li = v.toLowerCase();
                     const start = li.indexOf(lf);
@@ -43126,13 +43150,87 @@ a { color: #1565c0; }`;
         }
 
         /**
+         * Produces a single ready-to-clone icon node for one flag/area-icon
+         * element found in a LIVE table cell — either a verbatim clone (the
+         * self-contained "More Flags Everywhere"/"Canadian Province Flags
+         * Everywhere" `<span class="area-icon"><img></span>`) or a freshly
+         * baked, childless span (native MusicBrainz `<span class="flag
+         * flag-XX">`, resolved via resolveFlagVisual()'s getComputedStyle()
+         * baking — see its own JSDoc — so the CSS-sprite background survives
+         * being detached from the page's stylesheet cascade into the
+         * dropdown, which is parented outside #content in a shrunk
+         * font-size context; see getUniqDropEl()).
+         *
+         * Child nodes are deliberately dropped for the native-flag case (we
+         * only want the CSS background, not the link text inside, e.g.
+         * "United States") — the caller's document-order walk re-adds that
+         * text as its own separate 'text' segment right after this icon
+         * segment, so keeping it here would duplicate it.
+         *
+         * The returned node is a "master" — callers clone it again per
+         * dropdown render (renderItems() runs on every quickfilter
+         * keystroke) rather than re-baking from the live cell each time.
+         *
+         * @param {Element} el - a live `.area-icon` or `.flag.flag-XX` span
+         * @returns {HTMLElement} a detached node ready for repeated cloning
+         */
+        function _bakeFlagIconNode(el) {
+            if (el.classList.contains('area-icon')) {
+                return el.cloneNode(true);
+            }
+            const flagClone = document.createElement('span');
+            // Copy the CSS class too (harmless belt-and-suspenders — inline
+            // styles below always win the cascade regardless, so there is
+            // no conflict risk; kept in case any non-visual behavior is
+            // keyed off the class name).
+            flagClone.className = el.className;
+            const visual = resolveFlagVisual(el);
+            if (visual) {
+                flagClone.style.backgroundImage    = visual.backgroundImage;
+                flagClone.style.backgroundPosition = visual.backgroundPosition;
+                flagClone.style.backgroundRepeat   = visual.backgroundRepeat;
+                flagClone.style.backgroundSize     = visual.backgroundSize;
+                if (visual.backgroundColor &&
+                    visual.backgroundColor !== 'rgba(0, 0, 0, 0)' &&
+                    visual.backgroundColor !== 'transparent') {
+                    flagClone.style.backgroundColor = visual.backgroundColor;
+                }
+                const natural = _pngDataUriNaturalSize(visual.backgroundImage, visual.backgroundSize);
+                flagClone.style.width         = natural ? natural.width + 'px'  : visual.width;
+                flagClone.style.height        = natural ? natural.height + 'px' : visual.height;
+                // Only pass a resolved `display` through verbatim when it is
+                // context-free (renders the same regardless of its ancestor
+                // chain). Values like 'block', 'list-item', 'table-cell', or
+                // 'flex'/'grid' (in addition to 'none') depend on layout context
+                // that no longer exists once the flag is cloned standalone into
+                // the dropdown item as a bare sibling of its text — e.g.
+                // 'release-country' spans (Country/Date column) carry extra
+                // column-alignment CSS beyond the shared '.flag' sprite rule,
+                // and baking a table/list/block display verbatim here forces the
+                // dropdown's value text onto its own new line after the icon
+                // instead of sitting inline right behind it.
+                flagClone.style.display = /^(inline|inline-block|inline-flex|inline-grid)$/.test(visual.display)
+                    ? visual.display : 'inline-block';
+                flagClone.style.border        = visual.border;
+                flagClone.style.borderRadius  = visual.borderRadius;
+                flagClone.style.boxShadow     = visual.boxShadow;
+                flagClone.style.verticalAlign = visual.verticalAlign;
+            }
+            return flagClone;
+        }
+
+        /**
          * Maps each unique flag-bearing column text value (e.g.
          * "Germany (DE)", "Illinois", or a combined "Noord-Holland, Kingdom
-         * of the Netherlands" value — see below) to an array of already
-         * baked/cloned flag icon nodes — in cell document order — found in
-         * the first visible tbody cell that produced that value. Built only
-         * when hasFlagIcons is true, to avoid the DOM scan overhead on every
-         * other column type.
+         * of the Netherlands" value — see below) to an ORDERED array of
+         * 'text'/'icon' segments — `{type: 'text', text}` or `{type: 'icon',
+         * node}` — reconstructing the cell's actual left-to-right layout, so
+         * the dropdown can render each flag immediately in front of the
+         * place/area/country name it decorates instead of bunching every
+         * icon at the start of the entry (the bug this map exists to fix).
+         * Built from the first visible tbody cell that produced that value,
+         * only when hasFlagIcons is true, to avoid the DOM scan overhead on
+         * every other column type.
          *
          * Two independent flag shapes exist in these columns, and a single
          * cell can contain either or BOTH (the unsplit "Area"/"Begin area"/
@@ -43140,41 +43238,32 @@ a { color: #1565c0; }`;
          * chain in one cell, so it can have a subdivision icon AND the
          * country's own flag together — see debug/with-flag.html):
          *   - Native country flag: <span class="flag flag-XX"> — rendered
-         *     exclusively via a CSS background-image sprite, no <img> child.
-         *     This userscript defines no CSS of its own for `.flag`/
-         *     `.flag-XX` — it relies entirely on MusicBrainz's own page
-         *     stylesheet, which the dropdown (parented outside #content, in
-         *     a shrunk font-size context — see getUniqDropEl()) may not
-         *     inherit correctly. resolveFlagVisual()'s getComputedStyle()
-         *     baking (see its JSDoc) bakes the resolved visual as inline
-         *     styles instead of relying on that cascade.
+         *     exclusively via a CSS background-image sprite, no <img> child,
+         *     but WITH real link text inside (e.g. "United States" — see
+         *     debug/place-flags.html). _bakeFlagIconNode() bakes only the
+         *     icon; the walk below re-adds the inner text as its own
+         *     segment right after.
          *   - Third-party subdivision icon: <span class="area-icon"><img
          *     class="flag ..."></span>, injected by "More Flags Everywhere"/
-         *     "Canadian Province Flags Everywhere". A self-contained <img>
-         *     (own `src` — external SVG URL or base64 data URI) that
-         *     renders identically anywhere, so no CSS baking is needed here
-         *     — cloning the node is sufficient. The `span.area-icon`
-         *     wrapper (rather than the <img>'s own class, which varies —
-         *     "flag-XX-prov" for Canadian provinces, "flag-custom-region"
-         *     for US states, possibly others) is the reliable structural
-         *     marker: it's exactly what _routeAreaLink() (the
-         *     splitArea/splitLocation extractor helper, line ~2507) already
-         *     keys off to detect and carry this icon into the reconstructed
-         *     cell in the first place.
+         *     "Canadian Province Flags Everywhere" — a self-contained <img>
+         *     with no text of its own.
          *
-         * cell.querySelectorAll() with both selectors combined returns
-         * matches in DOCUMENT ORDER regardless of which part of the
-         * selector list matched them, so a combined Area cell's icons come
-         * out correctly interleaved (locality/region icon(s) first,
-         * country flag last) rather than grouped by shape.
-         *
-         * Each icon is stored as an independent node (NOT wrapped in a
-         * shared container element) so the per-row insertion code can
-         * append them as direct siblings of the dropdown item's other
-         * content — a wrapper element (e.g. a flex container) would add an
-         * extra layout context that isn't present in the table cell itself
-         * and risks interfering with the native flag's baked
-         * width/height/background rendering.
+         * Segments are built by walking the LIVE cell with a TreeWalker, in
+         * the same left-to-right document order `getCleanColumnText()` uses
+         * (same script/style/head + `_CLEAN_STRIP_SEL` rejection, same
+         * `isDecorativeIcon()` text skip) — so concatenating every 'text'
+         * segment reproduces this value's own key — but ALSO emitting an
+         * 'icon' segment, pre-order, at each flag/area-icon element. Visiting
+         * pre-order is what places the icon segment BEFORE any text nested
+         * inside it (the native-flag "United States" case above), matching
+         * how the flag visually sits in front of the name in the table cell.
+         * Each flushed text run only gets a light per-chunk normalisation
+         * (whitespace collapse + the same bracket/comma tightening
+         * `normalizeExtractedText()` does) rather than a byte-exact
+         * reproduction of the value string — sufficient for a cosmetic
+         * dropdown label, and avoids the much harder problem of mapping
+         * fully-normalised offsets in the value string back onto per-segment
+         * text after an icon has been spliced out.
          *
          * The Map key is the cell's full getCleanColumnText() value — i.e.
          * exactly how valueCounts itself is keyed (line ~35087) — rather
@@ -43188,73 +43277,78 @@ a { color: #1565c0; }`;
          * a per-icon label would silently never match such a value, leaving
          * it with no icon at all.
          *
-         * @type {Map<string, HTMLElement[]>}  value → array of cloned icon nodes
+         * @type {Map<string, Array<{type: 'text', text: string}|{type: 'icon', node: HTMLElement}>>}
          */
         const flagIconMap = hasFlagIcons ? (() => {
-            const iconMap = new Map();
-            if (!tbody) return iconMap;
+            const segMap = new Map();
+            if (!tbody) return segMap;
+            const iconSel = 'span[class*="flag-"], span.area-icon';
             for (const row of tbody.rows) {
                 if (row.style.display === 'none') continue;
                 const cell = row.cells[colIndex];
                 if (!cell) continue;
                 const label = getCleanColumnText(cell);
-                if (!label || !valueCounts.has(label) || iconMap.has(label)) continue;
-                const icons = cell.querySelectorAll('span[class*="flag-"], span.area-icon');
-                if (icons.length === 0) continue;
-                const clones = [];
-                for (const el of icons) {
-                    if (el.classList.contains('area-icon')) {
-                        // Self-contained <img> — clone verbatim, no baking needed.
-                        clones.push(el.cloneNode(true));
+                if (!label || !valueCounts.has(label) || segMap.has(label)) continue;
+                if (!cell.querySelector(iconSel)) continue;
+
+                const segments = [];
+                let textBuf = '';
+                const flushText = () => {
+                    if (!textBuf) return;
+                    // Mirrors normalizeExtractedText()'s whitespace-collapse
+                    // and bracket/comma tightening (minus the final trim,
+                    // handled once across the whole segment list below).
+                    const clean = textBuf
+                        .replace(/\s+/g, ' ')
+                        .replace(/\( /g, '(').replace(/ \)/g, ')')
+                        .replace(/\[ /g, '[').replace(/ \]/g, ']')
+                        .replace(/ ,/g, ',');
+                    segments.push({ type: 'text', text: clean });
+                    textBuf = '';
+                };
+                const walker = document.createTreeWalker(cell, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+                    acceptNode(node) {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            const tag = node.tagName.toLowerCase();
+                            if (tag === 'script' || tag === 'style' || tag === 'head') return NodeFilter.FILTER_REJECT;
+                            if (node.matches(_CLEAN_STRIP_SEL)) return NodeFilter.FILTER_REJECT;
+                        }
+                        return NodeFilter.FILTER_ACCEPT;
+                    }
+                });
+                let node;
+                while (node = walker.nextNode()) {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        if (node.matches(iconSel)) {
+                            flushText();
+                            segments.push({ type: 'icon', node: _bakeFlagIconNode(node) });
+                        }
                         continue;
                     }
-                    // Native country flag span — clone it, strip child nodes
-                    // (we only want the CSS flag background, not the link
-                    // text), and bake the resolved visual as inline styles.
-                    const flagClone = document.createElement('span');
-                    // Copy the CSS class too (harmless belt-and-suspenders —
-                    // inline styles below always win the cascade regardless,
-                    // so there is no conflict risk; kept in case any
-                    // non-visual behavior is keyed off the class name).
-                    flagClone.className = el.className;
-                    const visual = resolveFlagVisual(el);
-                    if (visual) {
-                        flagClone.style.backgroundImage    = visual.backgroundImage;
-                        flagClone.style.backgroundPosition = visual.backgroundPosition;
-                        flagClone.style.backgroundRepeat   = visual.backgroundRepeat;
-                        flagClone.style.backgroundSize     = visual.backgroundSize;
-                        if (visual.backgroundColor &&
-                            visual.backgroundColor !== 'rgba(0, 0, 0, 0)' &&
-                            visual.backgroundColor !== 'transparent') {
-                            flagClone.style.backgroundColor = visual.backgroundColor;
-                        }
-                        const natural = _pngDataUriNaturalSize(visual.backgroundImage, visual.backgroundSize);
-                        flagClone.style.width         = natural ? natural.width + 'px'  : visual.width;
-                        flagClone.style.height        = natural ? natural.height + 'px' : visual.height;
-                        // Only pass a resolved `display` through verbatim when it is
-                        // context-free (renders the same regardless of its ancestor
-                        // chain). Values like 'block', 'list-item', 'table-cell', or
-                        // 'flex'/'grid' (in addition to 'none') depend on layout context
-                        // that no longer exists once the flag is cloned standalone into
-                        // the dropdown item as a bare sibling of its text — e.g.
-                        // 'release-country' spans (Country/Date column) carry extra
-                        // column-alignment CSS beyond the shared '.flag' sprite rule,
-                        // and baking a table/list/block display verbatim here forces the
-                        // dropdown's value text onto its own new line after the icon
-                        // instead of sitting inline right behind it.
-                        flagClone.style.display = /^(inline|inline-block|inline-flex|inline-grid)$/.test(visual.display)
-                            ? visual.display : 'inline-block';
-                        flagClone.style.border        = visual.border;
-                        flagClone.style.borderRadius  = visual.borderRadius;
-                        flagClone.style.boxShadow     = visual.boxShadow;
-                        flagClone.style.verticalAlign = visual.verticalAlign;
+                    const text = node.nodeValue;
+                    const trimmed = text.trim();
+                    if (trimmed && !isDecorativeIcon(trimmed)) {
+                        textBuf += text;
                     }
-                    clones.push(flagClone);
                 }
-                iconMap.set(label, clones);
-                if (iconMap.size === valueCounts.size) break;
+                flushText();
+                // Trim only at the very ends of the whole entry — interior
+                // segment boundaries keep their natural spacing so text
+                // reads correctly on both sides of a spliced-out icon.
+                const firstText = segments.find(s => s.type === 'text');
+                if (firstText) firstText.text = firstText.text.replace(/^\s+/, '');
+                for (let i = segments.length - 1; i >= 0; i--) {
+                    if (segments[i].type === 'text') {
+                        segments[i].text = segments[i].text.replace(/\s+$/, '');
+                        break;
+                    }
+                }
+
+                if (!segments.some(s => s.type === 'icon')) continue;
+                segMap.set(label, segments);
+                if (segMap.size === valueCounts.size) break;
             }
-            return iconMap;
+            return segMap;
         })() : new Map();
 
         const isRelCellCol = (() => {

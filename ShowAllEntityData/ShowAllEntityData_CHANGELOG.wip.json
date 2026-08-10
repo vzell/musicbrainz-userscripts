@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.76",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The unique-values dropdown's flag/area icon(s) (Country/Locality/Region/Area/Location/Country-Date/Recorded-at-place/Mixed-at-place columns) now render inline, immediately in front of the place/area/country name each one decorates, instead of every icon being bunched at the very start of the entry — e.g. \"Southern Tracks in [flag]Atlanta, [flag]Georgia, [flag]United States\" instead of \"[flag][flag][flag]Southern Tracks in Atlanta, Georgia, United States\" (see debug/place-flags.html, debug/place-flags-ucv.html, debug/uv-dropdown.html). `flagIconMap` now stores an ordered array of text/icon segments (built by walking the live cell with a TreeWalker, mirroring `getCleanColumnText()`'s own document-order text extraction) instead of a flat array of cloned icons; `renderItems()` renders those segments inline, preserving the existing quickfilter `<mark>` highlight for the common case of a match that doesn't straddle an icon."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.75",
     "date": "2026-08-11",
     "sections": [

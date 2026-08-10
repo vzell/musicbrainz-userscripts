@@ -5024,3 +5024,46 @@ Still uncommitted/unpushed per the user's explicit "do not commit yet"
 instruction from earlier in this same debugging session — the main fix is
 now confirmed working; commit/push is pending the user's go-ahead.
 
+## 2026-08-11 — flag/area icons bunched at the start of unique-values dropdown entries (WIP.76)
+
+**Snapshots**: `place-flags.html` (a "Recorded in area" `<td>` from
+`https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd`,
+showing the correct table-cell rendering: "Southern Tracks in
+[region-icon]Atlanta, [region-icon]Georgia, [flag]United States" — each
+icon immediately in front of the name it decorates); `place-flags-ucv.html`
+(the SAME cell value as it was rendering in the unique-values dropdown
+before this fix — all three icons prefixed together at the very start,
+before "Southern Tracks…"); `uv-dropdown.html` (the complete dropdown
+panel for that column, showing every entry with its icons front-loaded
+the same wrong way).
+
+**Root cause**: `openUniqDrop()`'s `flagIconMap` (keyed by
+`getCleanColumnText()` value) stored a flat array of every flag/area-icon
+element found anywhere in the source cell, with no positional link to the
+surrounding text. `renderItems()` appended the whole array as one block
+right after the count badge, then appended the whole value string as a
+second, separate block — so all icons always land before all text,
+regardless of where they actually sit in the cell.
+
+**Fix**: `flagIconMap` now maps each value to an ORDERED array of
+`{type:'text', text}`/`{type:'icon', node}` segments, built by walking the
+live cell with a `TreeWalker` (same acceptance rules as
+`getCleanColumnText()` — reject `script`/`style`/`head` and anything
+matching `_CLEAN_STRIP_SEL`, skip `isDecorativeIcon()` text) and emitting
+an icon segment, pre-order, at each `span[class*="flag-"], span.area-icon`
+element — pre-order visitation is what puts the icon before any text
+nested inside it (native `<span class="flag flag-US">` wraps its own link
+text, e.g. "United States"). The per-element baking logic (verbatim clone
+for `.area-icon`; a freshly built, childless, `resolveFlagVisual()`-baked
+span for a native `.flag.flag-XX`) was extracted unchanged into
+`_bakeFlagIconNode(el)`, now called once per icon element from the walker
+instead of once per element in a flat `querySelectorAll` loop.
+`renderItems()` renders the segments in order — text as plain text nodes,
+icons as cloned/`aria-hidden`/`margin-right`-styled siblings — instead of
+the old two-block append, with the existing quickfilter `<mark>` highlight
+now scoped per-segment (a match straddling an icon boundary simply
+doesn't get highlighted — an accepted, documented degradation, since the
+item's inclusion in the filtered list is still driven by the full value
+string).
+
+`node --check ShowAllEntityData.user.js` passed after every edit.
