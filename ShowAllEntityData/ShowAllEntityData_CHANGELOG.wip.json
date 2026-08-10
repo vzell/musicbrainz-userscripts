@@ -1,5 +1,41 @@
 [
   {
+    "version": "WIP.68",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Same gap as WIP.67, for `release-group`-typed entity links (e.g. a report page's \"Release group\" column, `/report/SetInDifferentRG\"` — see debug/rep-rg.html) — `_ENTITY_TYPE_GLYPH` didn't recognize the `/release-group/{mbid}` URL path segment at all. Added `'release-group': 'rglink'` — note the CSS class is `rglink`, not a hyphenated `release-grouplink`; the map's key (URL path segment) and its value (CSS class name) are independently-confirmed facts about two different things, not derived from each other."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.67",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The unique-values dropdown's entity-glyph rows, and the new `name:`/`comment:`/`alias:` \"Cell structure\" filtering, silently did nothing for `release`/`recording`-typed entity links — e.g. an artist's \"Releases\"/\"Recordings\" pages, a label/series/instrument page's \"Release\" column, or an artist's \"Relationships\" page \"Title\" column. Root cause: `_ENTITY_TYPE_GLYPH` (the map `_findCellEntityRefs()`/`_findCellEntityCommentParts()` use to recognize an entity link at all) only listed 6 of MusicBrainz's own glyph-marker types, based on an in-code comment claiming no `recordinglink`/`releaselink` CSS class existed anywhere in real MusicBrainz markup — confirmed WRONG via live page snapshots (`<span class=\"recordinglink\">`/`<span class=\"releaselink\">` genuinely render on an artist's Relationships page) and MusicBrainz's own icons stylesheet, which defines both (plus `serieslink`/`instrumentlink`/`rglink`/`collectionlink`/`genrelink`, not added here since nothing reported needs them yet). Added `release: 'releaselink'` and `recording: 'recordinglink'` to `_ENTITY_TYPE_GLYPH` and corrected every stale comment repeating the old 6-type claim."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.66",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Unique-values dropdown's \"Cell structure\" section now supports filtering/highlighting by an entity's own anchored name, its disambiguation comment (excluding any primary alias), and its primary alias, independently combinable — e.g. an artist-works page's \"Work\"/\"Authors\" columns' `<a><bdi>Name</bdi></a> <span class=\"comment\">(<i title=\"Primary alias\">Alias</i>, extra text)</span>` shape. Unlike the existing attr:/task:/date:/instrument: entries (which scan DOM sentinel classes this script injects when building release-tracks' bespoke AR columns), this works on NATIVE, unmodified MusicBrainz markup at query time — via a new `_findCellEntityCommentParts()` helper (extends `_findCellEntityRefs()`) reused identically by the counting pass, `_cellMatchesStructureMode()`'s new `name:`/`comment:`/`alias:` compound modes, and a new `_highlightEntityCommentPartMatch()` — so it works generically across every page/column with this shape (artist Works, report-detail, collection Works tab, search Works tab, and any other column sharing the same native markup), not just release-tracks. Scoped to entities that actually have a disambiguation comment; comment-less entities are unaffected (their name remains independently selectable via the existing href-based entity-glyph rows in the standard section)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.65",
     "date": "2026-08-10",
     "sections": [

@@ -16120,6 +16120,77 @@
     }
 
     /**
+     * Extends `_findCellEntityRefs()` (never re-derives its anchor-finding
+     * logic) to split each entity's own native MusicBrainz disambiguation
+     * comment into three independent, filterable pieces — the single source
+     * of truth for `openUniqDrop()`'s "Cell structure" `name:`/`comment:`/
+     * `alias:` entries, `_cellMatchesStructureMode()`'s matching, and
+     * `_highlightEntityCommentPartMatch()`'s highlighting, so all three
+     * agree on exactly the same extraction:
+     *
+     *   - `name`    — the entity's own `<bdi>` text, with any `.comment`
+     *                 nested INSIDE that same `<bdi>` removed first (defends
+     *                 against MusicBrainz's native `<bdi><a>Name</a><span
+     *                 class="comment">…</span></bdi>` "Artist column" shape,
+     *                 where a naive read would wrongly fold the comment into
+     *                 the name).
+     *   - `comment` — the `.comment` span's own text, with any nested
+     *                 `<i title="Primary alias">` removed first, and
+     *                 surrounding parens / a leading ", " separator
+     *                 stripped (generalizes `applyH1CommentSpanRelocation()`'s
+     *                 alias/rest split — see its own JSDoc — to an arbitrary
+     *                 cell, built on `getCleanColumnText()` instead of a
+     *                 manual node walk). `null` when nothing is left after
+     *                 removing the alias (a comment that was ONLY the alias,
+     *                 e.g. `debug/c-a.org`'s "Work" example).
+     *   - `alias`   — the `<i title="Primary alias">`'s own text, or `null`
+     *                 when absent.
+     *
+     * Entities with NO `.comment` at all are dropped entirely — this is
+     * deliberately scoped to "columns with a disambiguation comment" (the
+     * feature request), not every entity column, since a comment-less
+     * entity's name is already independently selectable via the standard
+     * section's existing href-based entity-glyph rows.
+     *
+     * Scoping: the associated `.comment` is looked up via
+     * `container.querySelector('span.comment')`, reusing the SAME container
+     * `_findCellEntityRefs()` already resolves (`a.closest('li') || cell`) —
+     * this assumes at most one comment per container, correct for the
+     * "Work"/"Authors" shapes this was built from (`debug/c-a.org`), but not
+     * specifically handling a hypothetical container with multiple
+     * independently-commented entities.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Array<{name: string, comment: ?string, alias: ?string,
+     *   commentSpan: Element, nameNode: Element}>}
+     */
+    function _findCellEntityCommentParts(cell) {
+        if (!cell) return [];
+        const out = [];
+        _findCellEntityRefs(cell).forEach(ref => {
+            const container = ref.nameNode.closest('li') || cell;
+            const commentSpan = container.querySelector('span.comment');
+            if (!commentSpan) return; // scope: only entities WITH a comment
+
+            const bdi = ref.nameNode.tagName === 'BDI' ? ref.nameNode : ref.nameNode.querySelector('bdi');
+            const bdiClone = bdi ? bdi.cloneNode(true) : null;
+            if (bdiClone) bdiClone.querySelectorAll('.comment').forEach(c => c.remove());
+            const name = bdiClone ? getCleanColumnText(bdiClone) : ref.name;
+
+            const iEl = commentSpan.querySelector('i[title="Primary alias"]');
+            const alias = iEl ? getCleanColumnText(iEl) : null;
+            const commentClone = commentSpan.cloneNode(true);
+            commentClone.querySelectorAll('i[title="Primary alias"]').forEach(i => i.remove());
+            const comment = getCleanColumnText(commentClone)
+                .replace(/^\(\s*/, '').replace(/\s*\)$/, '')
+                .replace(/^\s*,\s*/, '').trim();
+
+            out.push({ name, comment: comment || null, alias, commentSpan, nameNode: ref.nameNode });
+        });
+        return out;
+    }
+
+    /**
      * Classifies a table cell's "collapse structure" — unifies list cells
      * (see `_findCellListItems`, e.g. Catalog#/Label/Authors) and prose cells
      * (free-text columns like "Annotation" that overflow their height-clamp
@@ -16222,7 +16293,7 @@
      * (`addCAA`/`addEAA`'s `.mb-inline-art-sort-key`) under one evaluator so
      * a mode string is matched identically everywhere it's checked.
      *
-     * @param {string} mode - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | `attr:${string}` | `task:${string}` | `date:${string}` | `instrument:${string}` | 'inline-art-yes' | 'inline-art-no'
+     * @param {string} mode - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | `attr:${string}` | `task:${string}` | `date:${string}` | `instrument:${string}` | `name:${string}` | `comment:${string}` | `alias:${string}` | 'inline-art-yes' | 'inline-art-no'
      * @param {HTMLTableCellElement} cell
      * @param {HTMLTableRowElement}  row
      * @param {number}  colIdx
@@ -16290,6 +16361,26 @@
             // load/error path settles (see openUniqDrop()'s makeInlineArtItem).
             const sk = cell ? cell.querySelector('.mb-inline-art-sort-key') : null;
             return !!sk && sk.textContent.trim() === (mode === 'inline-art-yes' ? 'caa-inline-yes' : 'caa-inline-no');
+        }
+        if (mode.startsWith('name:')) {
+            // Compound mode — matches one entity's own anchored <bdi> name
+            // (excluding any disambiguation comment), from
+            // _findCellEntityCommentParts()'s own extraction — see its JSDoc.
+            const want = mode.slice(5);
+            return !!cell && _findCellEntityCommentParts(cell).some(p => p.name === want);
+        }
+        if (mode.startsWith('comment:')) {
+            // Compound mode counterpart of 'name:' above — matches one
+            // entity's disambiguation comment text, excluding any embedded
+            // primary alias.
+            const want = mode.slice(8);
+            return !!cell && _findCellEntityCommentParts(cell).some(p => p.comment === want);
+        }
+        if (mode.startsWith('alias:')) {
+            // Compound mode counterpart of 'name:'/'comment:' above —
+            // matches one entity's own <i title="Primary alias"> text.
+            const want = mode.slice(6);
+            return !!cell && _findCellEntityCommentParts(cell).some(p => p.alias === want);
         }
         return false;
     }
@@ -32346,7 +32437,8 @@ a { color: #1565c0; }`;
      * render under different display text (a name-variation/alias credit) and
      * two different entities can otherwise share the same display text.
      *
-     * One prefix for every entity TYPE (work/place/area/artist/label/event) —
+     * One prefix for every entity TYPE `_ENTITY_TYPE_GLYPH` recognizes
+     * (work/place/area/artist/label/event/release/recording, currently) —
      * the type is always cheaply recoverable by re-parsing the stored href's
      * own `/type/` path segment at match/highlight time, so a second prefix
      * byte per type would be pure redundancy.
@@ -32387,30 +32479,48 @@ a { color: #1565c0; }`;
      * its own, by design — same "trust the host page's stylesheet" contract
      * `_initColHeaderGlyph()` already relies on).
      *
-     * Deliberately scoped to only the 6 types with an already-VERIFIED glyph
-     * class precedent in this codebase — NOT exhaustive of every MusicBrainz
-     * entity type. Notably absent: a country-specific glyph. MusicBrainz has
-     * no separate "country" entity — a country's href is still `/area/{mbid}`
-     * like any other area (confirmed against debug/expand.html's "Recorded at
-     * place" chain: `<span class="flag flag-US"><a href="/area/…">​<bdi>United
-     * States</bdi></a></span>`, a DIFFERENT, wrapping glyph shape from every
-     * other area/place in the same chain, which use a plain empty SIBLING
-     * span). Detecting that wrapping-flag shape specifically to show a
-     * national flag instead of the generic area glyph would only change a
-     * cosmetic detail, so it's deliberately not attempted — countries get the
-     * plain `arealink` glyph like any other area. Extending this map to more
-     * types (recording/release/release-group/series/instrument/…) later is a
-     * one-line addition whenever a verified glyph class exists for them; none
-     * does today (grepped: no `countrylink`/`recordinglink`/`releaselink`/…
-     * class exists anywhere in this file or in real MusicBrainz markup).
+     * NOT exhaustive of every MusicBrainz entity type — only types with an
+     * already-VERIFIED glyph class are listed. Notably absent: a
+     * country-specific glyph. MusicBrainz has no separate "country" entity —
+     * a country's href is still `/area/{mbid}` like any other area (confirmed
+     * against debug/expand.html's "Recorded at place" chain: `<span
+     * class="flag flag-US"><a href="/area/…">​<bdi>United States</bdi></a>
+     * </span>`, a DIFFERENT, wrapping glyph shape from every other area/place
+     * in the same chain, which use a plain empty SIBLING span). Detecting
+     * that wrapping-flag shape specifically to show a national flag instead
+     * of the generic area glyph would only change a cosmetic detail, so it's
+     * deliberately not attempted — countries get the plain `arealink` glyph
+     * like any other area.
+     *
+     * `release`/`recording` were added 2026-08-10 after confirming BOTH real
+     * live markup (`<span class="releaselink">`/`<span
+     * class="recordinglink">` — e.g. an artist's "Relationships" page own
+     * "Title" column) AND the class's own definition in MusicBrainz's icons
+     * stylesheet (`static.metabrainz.org/MB/icons-*.css` — grep it for
+     * `\.[a-zA-Z-]*link\b` to see the full set) — this superseded an
+     * earlier, INCORRECT version of this comment claiming no such classes
+     * existed (they do; that grep just hadn't been run against the right
+     * source). `release-group` (added same day, after a report page's
+     * "Release group" column turned up the same gap — see
+     * debug/rep-rg.html) maps to `rglink`, NOT a hyphenated
+     * `release-grouplink` — the class name and the URL path segment
+     * (`/release-group/{mbid}`, this map's own KEY) don't have to match,
+     * they're independently confirmed facts about two different things.
+     * `series`/`instrument`/`collection`/`genre` are similarly confirmed
+     * available in that same stylesheet whenever a future task needs them —
+     * check there (or a live page snapshot) before assuming "no verified
+     * glyph class" for a type not yet listed here.
      */
     const _ENTITY_TYPE_GLYPH = {
-        work:   'worklink',
-        place:  'placelink',
-        area:   'arealink',
-        artist: 'artistlink',
-        label:  'labellink',
-        event:  'eventlink'
+        work:            'worklink',
+        place:           'placelink',
+        area:            'arealink',
+        artist:          'artistlink',
+        label:           'labellink',
+        event:           'eventlink',
+        release:         'releaselink',
+        recording:       'recordinglink',
+        'release-group': 'rglink'
     };
 
     /**
@@ -32695,6 +32805,46 @@ a { color: #1565c0; }`;
                 highlightCrossTag(el, _regex, 'mb-column-filter-highlight');
             });
         }
+    }
+
+    /**
+     * Highlights the exact matched value for a `name:`/`comment:`/`alias:`
+     * compound structure-mode filter (see `openUniqDrop()`'s
+     * `makeValueSynItem` and `testRowMatch()`'s `f.isMultiValueFilter`
+     * structure-mode fallback) — the query-time counterpart of
+     * `_highlightCreditValueMatch()` for entity name/disambiguation-comment/
+     * primary-alias text, since this markup is native MusicBrainz output
+     * with no injected sentinel class to query (see
+     * `_findCellEntityCommentParts()`'s own JSDoc, the single source of
+     * truth this re-derives from — never a fresh ad hoc extraction here).
+     *
+     * Scopes `highlightCrossTag()` to the SPECIFIC element each mode's value
+     * came from (never the whole cell/whole comment span indiscriminately):
+     * `name:` → the entity's own `<bdi>`/name node, `comment:` → the whole
+     * `.comment` span (safe even though it may also contain the primary
+     * alias — the regex is built from the comment-minus-alias VALUE itself,
+     * so it can only match where that exact text is, per
+     * `_buildFuzzyTextMatchRegex()`'s own contract), `alias:` → the
+     * `<i title="Primary alias">` element itself.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"name:Johann Strauss"`, `"comment:Austro-German composer, …"`, or
+     *   `"alias:Johann Strauss II"`.
+     */
+    function _highlightEntityCommentPartMatch(cell, mode) {
+        if (!cell) return;
+        const _isName    = mode.startsWith('name:');
+        const _isComment = mode.startsWith('comment:');
+        const _want = mode.slice(_isName ? 5 : _isComment ? 8 : 6);
+        _findCellEntityCommentParts(cell).forEach(p => {
+            const _target = _isName ? p.nameNode : _isComment ? p.commentSpan
+                : p.commentSpan.querySelector('i[title="Primary alias"]');
+            const _value  = _isName ? p.name : _isComment ? p.comment : p.alias;
+            if (!_target || _value !== _want) return;
+            _target.normalize();
+            highlightCrossTag(_target, _buildFuzzyTextMatchRegex(_want), 'mb-column-filter-highlight');
+        });
     }
 
     /**
@@ -32996,9 +33146,9 @@ a { color: #1565c0; }`;
                     });
                 }
                 // Entity-reference fallback: a checked entity-glyph entry
-                // (MB_UNIQ_ENTITY_HREF_PREFIX) represents one specific
-                // work/place/area/artist/label/event anywhere in the cell,
-                // identified by its own href — not by text at all, so it
+                // (MB_UNIQ_ENTITY_HREF_PREFIX) represents one specific entity
+                // (of any type _ENTITY_TYPE_GLYPH recognizes) anywhere in the
+                // cell, identified by its own href — not by text at all, so it
                 // can't be tested via getCleanColumnText() equality/
                 // membership the way whole-cell/item values are. Only
                 // attempted when both cheaper checks above already missed
@@ -33131,12 +33281,13 @@ a { color: #1565c0; }`;
                     // checked an overlapping item entry AND entity entry —
                     // harmless: nested mb-column-filter-highlight spans render
                     // identically to one. Checked 'attr:'/'task:'/'date:'/
-                    // 'instrument:' and 'name-variation' structure modes DO
-                    // correspond to exact visible content and get
-                    // highlighted; the other structure modes (empty/single/
-                    // collapsed/expanded/any/title-mismatch/inline-art-yes/no)
-                    // operate on pure DOM state with no single corresponding
-                    // element, so they get no highlight.
+                    // 'instrument:'/'name:'/'comment:'/'alias:' and
+                    // 'name-variation' structure modes DO correspond to
+                    // exact visible content and get highlighted; the other
+                    // structure modes (empty/single/collapsed/expanded/any/
+                    // title-mismatch/inline-art-yes/no) operate on pure DOM
+                    // state with no single corresponding element, so they
+                    // get no highlight.
                     const _fIsExclude = f.isExclude !== undefined ? f.isExclude : isExclude;
                     if (!_fIsExclude) {
                         if (f.hasItemValues)   _highlightUniqItemMatches(row.cells[f.idx], f);
@@ -33146,6 +33297,9 @@ a { color: #1565c0; }`;
                                 if (mode.startsWith('attr:') || mode.startsWith('task:') ||
                                     mode.startsWith('date:') || mode.startsWith('instrument:')) {
                                     _highlightCreditValueMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('name:') || mode.startsWith('comment:') ||
+                                           mode.startsWith('alias:')) {
+                                    _highlightEntityCommentPartMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'name-variation') {
                                     _highlightNameVariationMatch(row.cells[f.idx]);
                                 }
@@ -42031,6 +42185,18 @@ a { color: #1565c0; }`;
         // for every other column, since only Instruments ever produces this
         // sentinel.
         const instrumentValueCounts = new Map();
+        // Distinct entity-name / disambiguation-comment / primary-alias
+        // values (e.g. Work/Authors columns' "An der schönen blauen Donau,
+        // op. 314" / "On the Beautiful Blue Danube, op. 314" / "Johann
+        // Strauss II") — the query-time counterpart of the sentinel-class
+        // Maps above, since this markup is native MusicBrainz output with
+        // no DOM-injection build step to tag; see
+        // _findCellEntityCommentParts()'s own JSDoc for the extraction and
+        // its "only entities WITH a comment" scope. No-op Maps for any
+        // column/cell with no `.comment` at all.
+        const entityNameValueCounts    = new Map();
+        const entityCommentValueCounts = new Map();
+        const entityAliasValueCounts   = new Map();
         // One entry per unique <li> item's own clean text, for multi-row
         // (≥2-item) list cells — e.g. "Karl Egsieker (task: Second
         // Engineer)" as its own selectable value distinct from the merged
@@ -42160,6 +42326,17 @@ a { color: #1565c0; }`;
                     if (t) _rowInstrumentValues.add(t);
                 });
                 _rowInstrumentValues.forEach(t => instrumentValueCounts.set(t, (instrumentValueCounts.get(t) || 0) + 1));
+                const _rowNameValues    = new Set();
+                const _rowCommentValues = new Set();
+                const _rowAliasValues   = new Set();
+                _findCellEntityCommentParts(cell).forEach(p => {
+                    if (p.name)    _rowNameValues.add(p.name);
+                    if (p.comment) _rowCommentValues.add(p.comment);
+                    if (p.alias)   _rowAliasValues.add(p.alias);
+                });
+                _rowNameValues.forEach(t => entityNameValueCounts.set(t, (entityNameValueCounts.get(t) || 0) + 1));
+                _rowCommentValues.forEach(t => entityCommentValueCounts.set(t, (entityCommentValueCounts.get(t) || 0) + 1));
+                _rowAliasValues.forEach(t => entityAliasValueCounts.set(t, (entityAliasValueCounts.get(t) || 0) + 1));
             });
         }
         const vals = Array.from(valueCounts.keys()).sort((a, b) =>
@@ -42911,7 +43088,9 @@ a { color: #1565c0; }`;
             titleMismatchCount, nameVariationCount,
             inlineArtYes, inlineArtNo,
             ...attrValueCounts.values(), ...taskValueCounts.values(),
-            ...dateValueCounts.values(), ...instrumentValueCounts.values()
+            ...dateValueCounts.values(), ...instrumentValueCounts.values(),
+            ...entityNameValueCounts.values(), ...entityCommentValueCounts.values(),
+            ...entityAliasValueCounts.values()
         )).length + 2);
 
         // synBox is inserted between qfBar and listBox; always present but
@@ -43041,22 +43220,26 @@ a { color: #1565c0; }`;
          * the `attrValueCounts`/`taskValueCounts`/`dateValueCounts`/
          * `instrumentValueCounts` counterpart of `makeSynItem`, for a
          * DYNAMIC list of distinct values (one entry per distinct credit
-         * attribute word, task string, date/date-range annotation, or
-         * instrument type actually found in this column) rather than
-         * `makeSynItem`'s fixed 5-mode set.
+         * attribute word, task string, date/date-range annotation,
+         * instrument type, entity name, disambiguation comment, or primary
+         * alias actually found in this column) rather than `makeSynItem`'s
+         * fixed 5-mode set.
          *
          * Reuses the exact same checkbox/`dataset.mbUniqValues` plumbing as
          * `makeSynItem` via a colon-prefixed COMPOUND mode string
          * (`"attr:additional"`, `"task:task: Second Engineer"`,
-         * `"date:on 1988-04-27"`, `"instrument:bass"`), parsed by
+         * `"date:on 1988-04-27"`, `"instrument:bass"`,
+         * `"name:Johann Strauss"`, `"comment:Austro-German composer, …"`,
+         * `"alias:Johann Strauss II"`), parsed by
          * `_cellMatchesStructureMode()` — kept on this one mechanism
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'name'|'comment'|'alias'} kind
          * @param {string} value  - The exact attribute word, task string,
-         *   date/date-range annotation, or instrument type to match
-         *   (embedded verbatim in the compound mode string).
+         *   date/date-range annotation, instrument type, entity name,
+         *   comment, or alias to match (embedded verbatim in the compound
+         *   mode string).
          * @param {number} count  - Number of visible rows matching this value.
          */
         const makeValueSynItem = (kind, value, count) => {
@@ -43082,7 +43265,12 @@ a { color: #1565c0; }`;
             badge.style.textAlign       = 'right';
             item.appendChild(badge);
             _appendSynLabelText(item,
-                (kind === 'attr' ? '» attribute: ' : kind === 'instrument' ? '» instrument: ' : '» ') + value
+                (kind === 'attr'       ? '» attribute: '
+                 : kind === 'instrument' ? '» instrument: '
+                 : kind === 'name'       ? '» name: '
+                 : kind === 'comment'    ? '» comment: '
+                 : kind === 'alias'      ? '» alias: '
+                 : '» ') + value
             );
 
             _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + `${kind}:${value}`);
@@ -43165,14 +43353,18 @@ a { color: #1565c0; }`;
         // Every column type can have genuinely empty cells (e.g. a primary-alias
         // column where most events have no alias, a CAA column with no artwork,
         // etc.) and being able to filter to those rows is universally useful.
-        // Sorted entries for the four dynamic per-value families (shared by
+        // Sorted entries for the seven dynamic per-value families (shared by
         // both branches below).
         const _sortedAttrValues = Array.from(attrValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedTaskValues = Array.from(taskValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedDateValues = Array.from(dateValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedInstrumentValues = Array.from(instrumentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedNameValues    = Array.from(entityNameValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedCommentValues = Array.from(entityCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedAliasValues   = Array.from(entityAliasValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _hasValueEntries = _sortedAttrValues.length > 0 || _sortedTaskValues.length > 0 ||
-            _sortedDateValues.length > 0 || _sortedInstrumentValues.length > 0;
+            _sortedDateValues.length > 0 || _sortedInstrumentValues.length > 0 ||
+            _sortedNameValues.length > 0 || _sortedCommentValues.length > 0 || _sortedAliasValues.length > 0;
 
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 || _hasValueEntries)) {
             // Section header — only shown for the multi-entry collapsable section
@@ -43204,12 +43396,16 @@ a { color: #1565c0; }`;
             // Credit-role columns' per-attribute / per-task / per-date /
             // per-instrument dynamic value entries (see attrValueCounts/
             // taskValueCounts/dateValueCounts/instrumentValueCounts' own
-            // comments above) — one entry per distinct value actually
-            // present.
+            // comments above), plus per-entity name/comment/primary-alias
+            // entries (see entityNameValueCounts' own comment) — one entry
+            // per distinct value actually present.
             _sortedAttrValues.forEach(v => makeValueSynItem('attr', v, attrValueCounts.get(v)));
             _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
             _sortedInstrumentValues.forEach(v => makeValueSynItem('instrument', v, instrumentValueCounts.get(v)));
+            _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameValueCounts.get(v)));
+            _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
+            _sortedAliasValues.forEach(v => makeValueSynItem('alias', v, entityAliasValueCounts.get(v)));
 
             appendSynDivider();
         } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 || _hasValueEntries) {
@@ -43221,7 +43417,8 @@ a { color: #1565c0; }`;
             const _entryCount = (emptyCellCount > 0 ? 1 : 0) +
                 (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0) +
                 _sortedAttrValues.length + _sortedTaskValues.length + _sortedDateValues.length +
-                _sortedInstrumentValues.length;
+                _sortedInstrumentValues.length +
+                _sortedNameValues.length + _sortedCommentValues.length + _sortedAliasValues.length;
             if (_entryCount > 1) {
                 const synHdr = document.createElement('div');
                 synHdr.textContent = 'Cell structure';
@@ -43238,6 +43435,9 @@ a { color: #1565c0; }`;
             _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
             _sortedInstrumentValues.forEach(v => makeValueSynItem('instrument', v, instrumentValueCounts.get(v)));
+            _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameValueCounts.get(v)));
+            _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
+            _sortedAliasValues.forEach(v => makeValueSynItem('alias', v, entityAliasValueCounts.get(v)));
             appendSynDivider();
         }
 
@@ -43587,7 +43787,8 @@ a { color: #1565c0; }`;
             : (emptyCellCount > 0 ? 1 : 0)) +
             (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0) +
             _sortedAttrValues.length + _sortedTaskValues.length + _sortedDateValues.length +
-            _sortedInstrumentValues.length;
+            _sortedInstrumentValues.length +
+            _sortedNameValues.length + _sortedCommentValues.length + _sortedAliasValues.length;
         const dropH = Math.min(320, (combinedVals.length + synItemCount) * 29 + 50 + 38); // +50 syn header/divider, +38 qf bar
         const dropW = drop.offsetWidth || 200;
 
@@ -43637,6 +43838,9 @@ a { color: #1565c0; }`;
         if (mode.startsWith('task:'))  return `» ${mode.slice(5)}`;
         if (mode.startsWith('date:'))  return `» ${mode.slice(5)}`;
         if (mode.startsWith('instrument:')) return `» instrument: ${mode.slice(11)}`;
+        if (mode.startsWith('name:'))    return `» name: ${mode.slice(5)}`;
+        if (mode.startsWith('comment:')) return `» comment: ${mode.slice(8)}`;
+        if (mode.startsWith('alias:'))   return `» alias: ${mode.slice(6)}`;
         return '▶◀ multi-row: any';
     }
 
@@ -43667,6 +43871,9 @@ a { color: #1565c0; }`;
         if (mode.startsWith('task:')) return 'This cell\'s credited task text.';
         if (mode.startsWith('date:')) return 'A date/date-range annotation attached to one of this cell\'s credits.';
         if (mode.startsWith('instrument:')) return 'The instrument type credited in one of this cell\'s items.';
+        if (mode.startsWith('name:')) return 'An entity\'s own anchored/linked name, excluding any disambiguation comment.';
+        if (mode.startsWith('comment:')) return 'An entity\'s disambiguation comment text, excluding any primary alias.';
+        if (mode.startsWith('alias:')) return 'An entity\'s primary alias — an alternate name shown in its disambiguation comment.';
         return '';
     }
 
