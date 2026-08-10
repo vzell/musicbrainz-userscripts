@@ -26139,6 +26139,9 @@ a { color: #1565c0; }`;
                 });
             });
         });
+        Lib.debug('filter', `_countLiveDateFlags(): ${result.warning.total} warning(s), ${result.error.total} error(s) — ` +
+            `warning by column: ${JSON.stringify(Array.from(result.warning.byColumn.entries()))}, ` +
+            `error by column: ${JSON.stringify(Array.from(result.error.byColumn.entries()))}.`);
         return result;
     }
 
@@ -26153,15 +26156,23 @@ a { color: #1565c0; }`;
     function _updateLiveDateFlagButtons() {
         const warningBtn = document.getElementById('mb-live-date-warning-btn');
         const errorBtn = document.getElementById('mb-live-date-error-btn');
-        if (!warningBtn || !errorBtn) return;
+        if (!warningBtn || !errorBtn) {
+            Lib.debug('filter', '_updateLiveDateFlagButtons(): buttons not found in DOM yet, skipping.');
+            return;
+        }
         const counts = _countLiveDateFlags();
         const _fmt = (kind, icon, bucket, btn) => {
-            if (bucket.total === 0) { btn.style.display = 'none'; return; }
+            if (bucket.total === 0) {
+                btn.style.display = 'none';
+                Lib.debug('filter', `_updateLiveDateFlagButtons(): no ${kind} flags, hiding #${btn.id}.`);
+                return;
+            }
             btn.textContent = `(${bucket.total}) ${kind} ${icon}`;
             const breakdown = Array.from(bucket.byColumn.entries())
                 .map(([col, n]) => `${col} (${n})`).join(', ');
             btn.title = `${bucket.total} ${icon} ${kind} icon${bucket.total === 1 ? '' : 's'}: ${breakdown}. Click to show only rows with a ${icon} ${kind} icon.`;
             btn.style.display = 'inline-block';
+            Lib.debug('filter', `_updateLiveDateFlagButtons(): showing #${btn.id} — "${btn.textContent}".`);
         };
         _fmt('WARNING', '⚠️', counts.warning, warningBtn);
         _fmt('ERROR', '❌', counts.error, errorBtn);
@@ -26181,6 +26192,7 @@ a { color: #1565c0; }`;
      * @param {string} icon - `'⚠️'` or `'❌'`.
      */
     function _applyLiveDateFlagFilter(icon) {
+        Lib.debug('filter', `_applyLiveDateFlagFilter(): applying one-off filter for icon "${icon}".`);
         document.querySelectorAll('.mb-col-filter-input').forEach(input => {
             input.value = '';
             input.style.backgroundColor = '';
@@ -46166,6 +46178,22 @@ a { color: #1565c0; }`;
                 Lib.debug('cleanup',
                     'artist-releases VA footer removal skipped:', _vaErr);
             }
+        }
+
+        // Sync filter-bar button visibility (including the release-tracks-only
+        // WARNING/ERROR summary buttons, see _updateLiveDateFlagButtons) now
+        // that the initial render is fully complete. Every other call site of
+        // updateFilterButtonsVisibility() is interaction-driven (runFilter(),
+        // a sub-table filter edit, "Load from Disk") — none of them fire on
+        // a plain first load with no user interaction, which left these
+        // buttons permanently empty/hidden even when live-date flags existed
+        // on the page. finalCleanup() is the one page-type-agnostic function
+        // called unconditionally at the end of the initial render (both
+        // single- and multi-table modes) as well as after disk-load, so this
+        // is the correct single hook.
+        if (typeof window.updateFilterButtonsVisibility === 'function') {
+            Lib.debug('filter', 'finalCleanup(): syncing filter-bar button visibility (incl. live-date flag buttons).');
+            window.updateFilterButtonsVisibility();
         }
     }
 

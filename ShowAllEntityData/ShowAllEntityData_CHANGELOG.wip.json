@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.56",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': WIP.55's WARNING/ERROR summary buttons never appeared even when ⚠️/❌ icons were genuinely present on the page (e.g. real \"Recording engineer\" errors on /release/abc6ad0c-2e02-4141-8275-6943b3553dbf — see debug/h2.html) — both buttons existed in the DOM but stayed permanently empty and hidden. Root cause: `_updateLiveDateFlagButtons()` was only ever called from inside `updateFilterButtonsVisibility()`, and every one of that function's call sites is interaction-driven (`runFilter()`, editing a sub-table filter, \"Load from Disk\") — none of them fire on a plain initial page load with no user interaction, so the buttons were never populated after the first (and typically only) render. Fixed by also calling `updateFilterButtonsVisibility()` from the tail of `finalCleanup()` — the one page-type-agnostic function already called unconditionally once the initial render (single- or multi-table) is fully complete, as well as after disk-load. Also added `Lib.debug('filter', …)` logging to `_countLiveDateFlags()`/`_updateLiveDateFlagButtons()`/`_applyLiveDateFlagFilter()` to make any future issue in this area easier to diagnose."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.55",
     "date": "2026-08-10",
     "sections": [
