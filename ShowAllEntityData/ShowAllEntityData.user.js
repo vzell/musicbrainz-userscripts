@@ -15930,9 +15930,10 @@
      * under one "is this cell multi-row / single-row?" concept.
      *
      * Used by every place that needs to answer that question independently
-     * of `initCollapsableColumns` itself: the multi-row state column filter
-     * (`testRowMatch`'s `f.isMultiRowFilter` branch), the unique-values
-     * dropdown's "Cell structure" counts (`openUniqDrop`), and the
+     * of `initCollapsableColumns` itself: the "Cell structure" checkbox
+     * filter (`_cellMatchesStructureMode`, used by `testRowMatch`'s
+     * `f.isMultiValueFilter` branch), the unique-values dropdown's "Cell
+     * structure" counts (`openUniqDrop`), and the
      * column-header `.mb-col-collapse-count` live count
      * (`_updateAllColHeaderCounts`). Keep this the single source of truth
      * for that classification — do not re-implement list-cell detection
@@ -15974,6 +15975,71 @@
      */
     function _titleHasRecNameMismatch(cell) {
         return Array.from(cell.querySelectorAll('a[title]')).some(a => a.title.includes('≠'));
+    }
+
+    /**
+     * Tests whether a table cell matches a "Cell structure" checkbox mode
+     * from `openUniqDrop()`'s synthetic entries (`makeSynItem`/
+     * `makeValueSynItem`/`makeInlineArtItem`) — the single source of truth
+     * for that question, used both by `testRowMatch()`'s `isMultiValueFilter`
+     * structure-mode fallback and by `openUniqDrop()`'s own per-row counting
+     * pass. Folds structural state (`_classifyCollapseCell`/`expandedCells`),
+     * the two 'Title'/name-variation flags, the dynamic credit-role
+     * `attr:`/`task:` compound modes, and inline-thumbnail presence
+     * (`addCAA`/`addEAA`'s `.mb-inline-art-sort-key`) under one evaluator so
+     * a mode string is matched identically everywhere it's checked.
+     *
+     * @param {string} mode - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | `attr:${string}` | `task:${string}` | 'inline-art-yes' | 'inline-art-no'
+     * @param {HTMLTableCellElement} cell
+     * @param {HTMLTableRowElement}  row
+     * @param {number}  colIdx
+     * @param {Map<string,boolean>} expandedCells - keyed `"rowIdx:colIdx"`
+     * @param {boolean} matchOnly - true during the cheap match-only pre-pass (see testRowMatch)
+     * @returns {boolean}
+     */
+    function _cellMatchesStructureMode(mode, cell, row, colIdx, expandedCells, matchOnly) {
+        const { isMultiRow: hasMultiRow, isSingleRow: hasSingleRow } = _classifyCollapseCell(cell);
+        // hasEmpty: neither multi- nor single-row structure AND no visible text
+        // content — essential for non-collapsable columns where hasMultiRow/
+        // hasSingleRow are always false regardless of whether the cell is
+        // empty or contains plain text.
+        const hasEmpty = !hasMultiRow && !hasSingleRow &&
+            !(matchOnly ? _cachedColText(row, colIdx) : getCleanColumnText(cell));
+        const rowIdx = row.dataset ? row.dataset.mbRowIdx : undefined;
+        const ecKey  = rowIdx !== undefined ? `${rowIdx}:${colIdx}` : undefined;
+        const isExpanded = ecKey !== undefined && expandedCells.get(ecKey) === true;
+        if (mode === 'empty') return hasEmpty;
+        if (mode === 'any') return hasMultiRow;
+        if (mode === 'collapsed') return hasMultiRow && !isExpanded;
+        if (mode === 'expanded') return hasMultiRow && isExpanded;
+        if (mode === 'single') return hasSingleRow;
+        if (mode === 'title-mismatch') return !!cell && _titleHasRecNameMismatch(cell);
+        if (mode === 'name-variation') return !!cell && !!cell.querySelector('span.name-variation');
+        if (mode.startsWith('attr:')) {
+            // Compound mode (openUniqDrop()'s makeValueSynItem) — matches a
+            // credit-role column's <span class="mb-credit-attr"> sentinel,
+            // split on "/" since a merged multi-attribute credit renders as
+            // e.g. "assistant/co" in one span.
+            const want = mode.slice(5);
+            return !!cell && Array.from(cell.querySelectorAll('.mb-credit-attr'))
+                .some(s => s.textContent.split('/').includes(want));
+        }
+        if (mode.startsWith('task:')) {
+            // Compound mode counterpart of 'attr:' above — matches a
+            // credit-role column's <i class="mb-credit-task"> sentinel
+            // exactly (whole trimmed text, not split).
+            const want = mode.slice(5);
+            return !!cell && Array.from(cell.querySelectorAll('.mb-credit-task'))
+                .some(s => s.textContent.trim() === want);
+        }
+        if (mode === 'inline-art-yes' || mode === 'inline-art-no') {
+            // addCAA/addEAA inline-thumbnail presence — .mb-inline-art-sort-key
+            // is the invisible sentinel _artSetInlineSortKey stamps after each
+            // load/error path settles (see openUniqDrop()'s makeInlineArtItem).
+            const sk = cell ? cell.querySelector('.mb-inline-art-sort-key') : null;
+            return !!sk && sk.textContent.trim() === (mode === 'inline-art-yes' ? 'caa-inline-yes' : 'caa-inline-no');
+        }
+        return false;
     }
 
     /**
@@ -20706,7 +20772,6 @@ ${sections.join('\n')}
                         const _pfx = getFilterFocusPrefix();
                         e.target.value = _pfx;
                         e.target.setSelectionRange(_pfx.length, _pfx.length);
-                        delete e.target.dataset.mbMultirowMode;
                         delete e.target.dataset.mbUniqValues;
                         runFilter();
                         Lib.debug('shortcuts', `${filterType} filter cleared via Escape (first press, focus kept)`);
@@ -26068,7 +26133,6 @@ a { color: #1565c0; }`;
         document.querySelectorAll('.mb-col-filter-input').forEach(input => {
             input.value = '';
             input.style.backgroundColor = '';
-            delete input.dataset.mbMultirowMode;
             delete input.dataset.mbUniqValues;
         });
 
@@ -26196,7 +26260,6 @@ a { color: #1565c0; }`;
         document.querySelectorAll('.mb-col-filter-input').forEach(input => {
             input.value = '';
             input.style.backgroundColor = '';
-            delete input.dataset.mbMultirowMode;
             delete input.dataset.mbUniqValues;
         });
         document.querySelectorAll('.mb-subtable-filter-container input[type="text"]').forEach(input => {
@@ -26370,7 +26433,6 @@ a { color: #1565c0; }`;
         table.querySelectorAll('.mb-col-filter-input').forEach(input => {
             input.value = '';
             input.style.backgroundColor = '';
-            delete input.dataset.mbMultirowMode;
             delete input.dataset.mbUniqValues;
         });
 
@@ -30849,12 +30911,14 @@ a { color: #1565c0; }`;
         '.mb-inline-art-sort-key,' +
         // .mb-caa-sort-key (and analogous .mb-eaa-sort-key) carry the invisible
         // artwork-presence sentinel 'yes' or 'no' used by the CAA/EAA column
-        // quick-filter entries '✓ has artwork' / '✗ no artwork'.
-        // Without stripping, a column filter value of 'no' (set by applyUniqVal
-        // via makeArtItem) matches 'not readable', 'no artwork', sort-key text, etc.
-        // The applyUniqVal('yes') / applyUniqVal('no') path bypasses
-        // getCleanColumnText and uses a direct .mb-caa-sort-key check in testRowMatch
-        // — exactly mirroring the mb-inline-art-sort-key pattern.
+        // quick-filter entries '✓ has artwork' / '✗ no artwork' (openUniqDrop()'s
+        // makeSynItem, via its isCaaOrEaaCol relabeling of the 'empty'/'any'
+        // structure modes — _cellMatchesStructureMode() reads _classifyCollapseCell,
+        // which already reflects artwork presence for these columns).
+        // Without stripping, a manually-typed column filter value of 'no' would
+        // match 'not readable', 'no artwork', sort-key text, etc. A manually-typed
+        // 'yes'/'no' bypasses getCleanColumnText and uses a direct .mb-caa-sort-key
+        // check in testRowMatch — exactly mirroring the mb-inline-art-sort-key pattern.
         '.mb-caa-sort-key,.mb-eaa-sort-key,' +
         // .mb-cell-collapse-toggle is the UI widget injected into multi-row cells
         // (Catalog#, Label, …) that shows "▶ 2 ▤" (glyph + item-count + rack icon).
@@ -31874,9 +31938,8 @@ a { color: #1565c0; }`;
             clear.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                // Drop any active multi-row state filter mode / checkbox value-set
-                // so the cleared field reverts to normal text-filter behaviour.
-                delete input.dataset.mbMultirowMode;
+                // Drop any active checkbox value-set so the cleared field
+                // reverts to normal text-filter behaviour.
                 delete input.dataset.mbUniqValues;
                 // Clicking ✕ is identical to pressing Escape the first time while
                 // the field is focused: clear any user-entered text, keep the field
@@ -31912,12 +31975,9 @@ a { color: #1565c0; }`;
                     return;
                 }
                 e.stopPropagation();
-                // If the user manually edits a field that carried a multi-row state filter
-                // or a checkbox value-set, drop the special mode so subsequent key strokes
-                // act as a normal text filter.
-                if (input.dataset.mbMultirowMode) {
-                    delete input.dataset.mbMultirowMode;
-                }
+                // If the user manually edits a field that carried a checkbox
+                // value-set, drop it so subsequent key strokes act as a normal
+                // text filter.
                 if (input.dataset.mbUniqValues) {
                     delete input.dataset.mbUniqValues;
                 }
@@ -32042,6 +32102,28 @@ a { color: #1565c0; }`;
     const MB_UNIQ_ENTITY_HREF_PREFIX = '\u0002';
 
     /**
+     * Reserved prefix marking a `dataset.mbUniqValues` / `checkedValues`
+     * entry as a "Cell structure" STRUCTURE-MODE value (e.g. `'empty'`,
+     * `'collapsed'`, `'attr:additional'`, `'inline-art-yes'`) rather than a
+     * whole-cell/item/entity value — sibling to `MB_UNIQ_ITEM_VALUE_PREFIX`/
+     * `MB_UNIQ_ENTITY_HREF_PREFIX` above, a fourth "which matching mode"
+     * sentinel byte. A structure-mode value tests DOM/cell STATE via
+     * `_cellMatchesStructureMode()` (cell structure, expand/collapse state,
+     * credit-attribute sentinels, inline-artwork presence), never cell text
+     * equality/membership — folding it into the same OR'd checkbox Set lets
+     * `openUniqDrop()`'s "Cell structure" entries reuse the entire existing
+     * multi-select checkbox UI (checkbox glyph, toggle-without-close,
+     * `applyUniqValueSet()`) instead of the old, single-valued, close-on-click
+     * single-mode dataset key this replaced.
+     *
+     * Kept OUT of the case-insensitive fold `getColFilters()` applies to the
+     * rest of the array — mode strings are internal selectors, not user
+     * text, and the `attr:`/`task:` compound modes need exact-case matching
+     * against `.mb-credit-attr`/`.mb-credit-task` text.
+     */
+    const MB_UNIQ_STRUCTURE_MODE_PREFIX = String.fromCharCode(3);
+
+    /**
      * Maps a MusicBrainz entity type (the first path segment of its href,
      * e.g. `/work/{mbid}` → `'work'`) to the MARKER GLYPH CSS CLASS this
      * codebase already reuses elsewhere for that same entity type — see
@@ -32079,6 +32161,17 @@ a { color: #1565c0; }`;
         event:  'eventlink'
     };
 
+    /**
+     * Inverse of `_ENTITY_TYPE_GLYPH` (glyph CSS class → human-readable
+     * entity-type word) — used by `openUniqDrop()`'s `renderItems()` to
+     * explain an entity-reference dropdown entry's glyph marker in its
+     * tooltip, since the marker itself is an unlabelled, empty MusicBrainz
+     * `<span>` with no text a screen reader or hover could otherwise surface.
+     */
+    const _GLYPH_TO_ENTITY_TYPE = Object.fromEntries(
+        Object.entries(_ENTITY_TYPE_GLYPH).map(([type, glyphClass]) => [glyphClass, type])
+    );
+
     function getColFilters(table, isCaseSensitive, isRegExp, isExclude = false) {
         if (!table) {
             const empty = [];
@@ -32103,8 +32196,7 @@ a { color: #1565c0; }`;
             const raw = stripColFilterPrefix(inp.value);
 
             if (!raw) {
-                // Empty field: clear any stale multi-row mode / value-set and error styling, skip
-                delete inp.dataset.mbMultirowMode;
+                // Empty field: clear any stale value-set and error styling, skip
                 delete inp.dataset.mbUniqValues;
                 inp.style.boxShadow   = '';
                 inp.style.borderColor = '';
@@ -32120,7 +32212,9 @@ a { color: #1565c0; }`;
                 : `Col ${colIdx}`;
 
             // ── Value-set filter (set by applyUniqValueSet via uniq-drop checkboxes) ──
-            // Bypasses normal text matching; testRowMatch() checks cell-text set membership.
+            // Bypasses normal text matching; testRowMatch() checks cell-text set
+            // membership, entity/item fallbacks, and — via structureModes —
+            // "Cell structure" DOM-state membership (_cellMatchesStructureMode).
             if (inp.dataset.mbUniqValues) {
                 inp.style.boxShadow   = '0 0 2px 2px green';
                 inp.style.borderColor = '';
@@ -32128,6 +32222,7 @@ a { color: #1565c0; }`;
                 let valueSet;
                 let hasItemValues = false;
                 let hasEntityValues = false;
+                let structureModes = new Set();
                 try {
                     const arr = JSON.parse(inp.dataset.mbUniqValues);
                     // Computed from the raw array, before the lowercase fold below —
@@ -32135,7 +32230,17 @@ a { color: #1565c0; }`;
                     // never affects either check either way.
                     hasItemValues = arr.some(v => v.startsWith(MB_UNIQ_ITEM_VALUE_PREFIX));
                     hasEntityValues = arr.some(v => v.startsWith(MB_UNIQ_ENTITY_HREF_PREFIX));
-                    valueSet = new Set(isCaseSensitive ? arr : arr.map(v => v.toLowerCase()));
+                    // Structure-mode entries are pulled out and kept UNFOLDED
+                    // (never lowercased) — mode strings are internal selectors,
+                    // not user text, and the attr:/task: compound modes need
+                    // exact-case matching against .mb-credit-attr/.mb-credit-task
+                    // text — see MB_UNIQ_STRUCTURE_MODE_PREFIX's own JSDoc.
+                    structureModes = new Set(
+                        arr.filter(v => v.startsWith(MB_UNIQ_STRUCTURE_MODE_PREFIX))
+                           .map(v => v.slice(MB_UNIQ_STRUCTURE_MODE_PREFIX.length))
+                    );
+                    const plainArr = arr.filter(v => !v.startsWith(MB_UNIQ_STRUCTURE_MODE_PREFIX));
+                    valueSet = new Set(isCaseSensitive ? plainArr : plainArr.map(v => v.toLowerCase()));
                 } catch (e) {
                     valueSet = new Set(); // corrupt dataset — fail safe to "match nothing extra"
                 }
@@ -32146,24 +32251,7 @@ a { color: #1565c0; }`;
                     valueSet,
                     hasItemValues,
                     hasEntityValues,
-                    isCaseSensitive,
-                    isExclude
-                });
-                return;
-            }
-
-            // ── Multi-row state filter (set by applyMultiRowStateFilter via uniq-drop) ──
-            // Bypasses normal text matching; testRowMatch() checks the toggle DOM state.
-            if (inp.dataset.mbMultirowMode) {
-                inp.style.boxShadow   = '0 0 2px 2px green';
-                inp.style.borderColor = '';
-                inp.style.borderWidth = '';
-                result.push({
-                    val:            raw,
-                    idx:            colIdx,
-                    isMultiRowFilter: true,
-                    multiRowMode:   inp.dataset.mbMultirowMode,
-                    isRegExp,
+                    structureModes,
                     isCaseSensitive,
                     isExclude
                 });
@@ -32270,9 +32358,9 @@ a { color: #1565c0; }`;
 
     /**
      * Highlights the exact matched value for a credit-role column's
-     * 'attr:'/'task:' compound `multiRowMode` filter (see `openUniqDrop()`'s
-     * `makeValueSynItem` and `testRowMatch()`'s `f.isMultiRowFilter` branch)
-     * — unlike every OTHER multi-row-state mode (empty/single/collapsed/
+     * 'attr:'/'task:' compound structure-mode filter (see `openUniqDrop()`'s
+     * `makeValueSynItem` and `testRowMatch()`'s `f.isMultiValueFilter`
+     * structure-mode fallback) — unlike every OTHER structure mode (empty/single/collapsed/
      * expanded/any/title-mismatch/name-variation), which test pure DOM
      * structure with no single corresponding string, `'attr:'`/`'task:'`
      * DO correspond to one exact string, so they get the same
@@ -32559,75 +32647,13 @@ a { color: #1565c0; }`;
         let colHit = true;
         // Skip per-column checks when the global filter already rejected this row.
         for (const f of (globalHit ? colFilters : [])) {
-            // ── Multi-row state filter: match by expandedCells state, not by DOM toggle ──
-            // Using expandedCells (keyed "rowIdx:colIdx") instead of toggle.textContent
-            // ensures correctness across renderFinalTable+initCollapsableColumns cycles:
-            // the DOM toggle is reset to '▶' by initCollapsableColumns but expandedCells
-            // always reflects the user's actual expand/collapse actions.
-            if (f.isMultiRowFilter) {
-                const cell   = row.cells[f.idx];
-                // _classifyCollapseCell unifies list cells (direct-child <ul><li>,
-                // ≥2 items) and prose cells (e.g. "Annotation" — a
-                // .mb-cell-collapse-toggle from an overflowing height-clamp)
-                // under one multi-row/single-row concept.
-                const { isMultiRow: hasMultiRow, isSingleRow: hasSingleRow } = _classifyCollapseCell(cell);
-                // hasEmpty: neither multi- nor single-row structure AND no visible
-                // text content. Checking text content is essential for non-
-                // collapsable columns where hasMultiRow/hasSingleRow are always
-                // false regardless of whether the cell is empty or contains plain
-                // text — without the text check every row in a non-collapsable
-                // column would be matched by the 'empty' filter mode.
-                const hasEmpty = !hasMultiRow && !hasSingleRow &&
-                    !(matchOnly ? _cachedColText(row, f.idx) : getCleanColumnText(cell));
-                const rowIdx = row.dataset ? row.dataset.mbRowIdx : undefined;
-                const ecKey  = rowIdx !== undefined ? `${rowIdx}:${f.idx}` : undefined;
-                const isExpanded = ecKey !== undefined && expandedCells.get(ecKey) === true;
-                let match = false;
-                if (f.multiRowMode === 'empty') {
-                    match = hasEmpty;
-                } else if (f.multiRowMode === 'any') {
-                    match = hasMultiRow;
-                } else if (f.multiRowMode === 'collapsed') {
-                    match = hasMultiRow && !isExpanded;
-                } else if (f.multiRowMode === 'expanded') {
-                    match = hasMultiRow && isExpanded;
-                } else if (f.multiRowMode === 'single') {
-                    match = hasSingleRow;
-                } else if (f.multiRowMode === 'title-mismatch') {
-                    match = !!cell && _titleHasRecNameMismatch(cell);
-                } else if (f.multiRowMode === 'name-variation') {
-                    match = !!cell && !!cell.querySelector('span.name-variation');
-                } else if (f.multiRowMode.startsWith('attr:')) {
-                    // Compound mode (openUniqDrop()'s makeValueSynItem) — one
-                    // of the dynamic per-attribute-word entries in the
-                    // "Cell structure" block. Matches a credit-role column's
-                    // <span class="mb-credit-attr"> sentinel (see
-                    // _buildCreditListItem/_buildLabelCreditListTd), split on
-                    // "/" since a merged multi-attribute credit renders as
-                    // e.g. "assistant/co" in one span.
-                    const _want = f.multiRowMode.slice(5);
-                    match = !!cell && Array.from(cell.querySelectorAll('.mb-credit-attr'))
-                        .some(s => s.textContent.split('/').includes(_want));
-                } else if (f.multiRowMode.startsWith('task:')) {
-                    // Compound mode counterpart of 'attr:' above, for the
-                    // dynamic per-task-value entries — matches a credit-role
-                    // column's <i class="mb-credit-task"> sentinel exactly
-                    // (whole trimmed text, not split).
-                    const _want = f.multiRowMode.slice(5);
-                    match = !!cell && Array.from(cell.querySelectorAll('.mb-credit-task'))
-                        .some(s => s.textContent.trim() === _want);
-                }
-                if (!match) { colHit = false; break; }
-                continue; // no text highlight for state-based filters
-            }
-
             // ── Value-set filter (set by applyUniqValueSet via uniq-drop checkboxes) ──
             // A row passes if its cell text matches ANY checked value (OR'd within
             // the column). f.val is a human-readable summary label, not matchable
-            // text, so whole-cell matches get no highlight (mirrors isMultiRowFilter
-            // above) — but see the item-value fallback below, which DOES get
-            // highlighted (_highlightUniqItemMatches, in the highlight pass further
-            // down), since unlike a whole-cell match it corresponds to one exact `<li>`.
+            // text, so whole-cell matches get no highlight — but see the item-value
+            // fallback below, which DOES get highlighted (_highlightUniqItemMatches,
+            // in the highlight pass further down), since unlike a whole-cell match
+            // it corresponds to one exact `<li>`.
             if (f.isMultiValueFilter) {
                 const cell = row.cells[f.idx];
                 const cellText = matchOnly ? _cachedColText(row, f.idx) : getCleanColumnText(cell);
@@ -32665,6 +32691,17 @@ a { color: #1565c0; }`;
                         const p = f.isCaseSensitive ? ref.href : ref.href.toLowerCase();
                         return f.valueSet.has(MB_UNIQ_ENTITY_HREF_PREFIX + p);
                     });
+                }
+                // Structure-mode fallback: checked "Cell structure" entries
+                // (MB_UNIQ_STRUCTURE_MODE_PREFIX) test DOM/cell STATE, not
+                // text — see _cellMatchesStructureMode()'s own JSDoc. Only
+                // attempted when both cheaper checks above already missed AND
+                // this filter actually has at least one structure-mode entry,
+                // same cheap-phase-1/expensive-phase-2 shape as the item/
+                // entity fallbacks above.
+                if (!isMember && f.structureModes && f.structureModes.size > 0 && cell) {
+                    isMember = Array.from(f.structureModes).some(mode =>
+                        _cellMatchesStructureMode(mode, cell, row, f.idx, expandedCells, matchOnly));
                 }
                 const match = f.isExclude ? !isMember : isMember;
                 if (!match) { colHit = false; break; }
@@ -32750,24 +32787,22 @@ a { color: #1565c0; }`;
         if (finalHit && !matchOnly) {
             // Highlighting on excluded matches would be misleading, so skip it
             if (globalQuery && !isExclude) highlightText(row, globalQueryRaw, isCaseSensitive, -1, isRegExp);
-            // Multi-row state filters operate on DOM structure, not on text → skip
-            // highlight, EXCEPT the 'attr:'/'task:' compound modes (openUniqDrop()'s
-            // makeValueSynItem), which — unlike the other 5 structural modes — DO
-            // correspond to one exact string somewhere in the cell (see
+            // Value-set filters carry no matchable text for a whole-cell match —
+            // that gets no highlight — EXCEPT the item/entity fallbacks and the
+            // 'attr:'/'task:' structure-mode compound entries, which DO correspond
+            // to one exact string somewhere in the cell (see
             // _highlightCreditValueMatch's own JSDoc).
             // Use per-filter case/regexp flags so highlight patterns match what was actually tested.
             colFilters.forEach(f => {
-                if (!f.isMultiRowFilter && !f.isMultiValueFilter) {
+                if (!f.isMultiValueFilter) {
                     const _fIsExclude = f.isExclude       !== undefined ? f.isExclude       : isExclude;
                     const _fIsCase    = f.isCaseSensitive !== undefined ? f.isCaseSensitive : isCaseSensitive;
                     const _fIsRegExp  = f.isRegExp        !== undefined ? f.isRegExp        : isRegExp;
                     if (!_fIsExclude) {
                         highlightText(row, f.val, _fIsCase, f.idx, _fIsRegExp);
                     }
-                } else if (f.isMultiRowFilter &&
-                           (f.multiRowMode.startsWith('attr:') || f.multiRowMode.startsWith('task:'))) {
-                    _highlightCreditValueMatch(row.cells[f.idx], f.multiRowMode);
-                } else if (f.isMultiValueFilter && (f.hasItemValues || f.hasEntityValues)) {
+                } else if (f.isMultiValueFilter &&
+                           (f.hasItemValues || f.hasEntityValues || (f.structureModes && f.structureModes.size))) {
                     // Item-value entries (openUniqDrop()'s "▤" per-<li> checkboxes)
                     // and entity-reference entries (its per-entity-type-glyph
                     // checkboxes) DO correspond to one exact <li> / one exact
@@ -32776,11 +32811,21 @@ a { color: #1565c0; }`;
                     // may fire independently on the same cell if the user has
                     // checked an overlapping item entry AND entity entry —
                     // harmless: nested mb-column-filter-highlight spans render
-                    // identically to one.
+                    // identically to one. Checked 'attr:'/'task:' structure modes
+                    // get the same _highlightCreditValueMatch treatment they had
+                    // under the old single-mode mechanism; the other structure
+                    // modes operate on DOM state, not text, so they get no highlight.
                     const _fIsExclude = f.isExclude !== undefined ? f.isExclude : isExclude;
                     if (!_fIsExclude) {
                         if (f.hasItemValues)   _highlightUniqItemMatches(row.cells[f.idx], f);
                         if (f.hasEntityValues) _highlightUniqEntityMatches(row.cells[f.idx], f);
+                        if (f.structureModes) {
+                            f.structureModes.forEach(mode => {
+                                if (mode.startsWith('attr:') || mode.startsWith('task:')) {
+                                    _highlightCreditValueMatch(row.cells[f.idx], mode);
+                                }
+                            });
+                        }
                     }
                 }
             });
@@ -32803,7 +32848,7 @@ a { color: #1565c0; }`;
             // column rel-icon highlights work correctly when the sub-table Ex checkbox
             // differs from the global one.
             colFilters.forEach(f => {
-                if (!f.isMultiRowFilter && !f.isMultiValueFilter) {
+                if (!f.isMultiValueFilter) {
                     const _fIsExclude = f.isExclude       !== undefined ? f.isExclude       : isExclude;
                     const _fIsCase    = f.isCaseSensitive !== undefined ? f.isCaseSensitive : isCaseSensitive;
                     const _fIsRegExp  = f.isRegExp        !== undefined ? f.isRegExp        : isRegExp;
@@ -32846,10 +32891,10 @@ a { color: #1565c0; }`;
             c: matchCtx.isCaseSensitive,
             r: matchCtx.isRegExp,
             x: matchCtx.isExclude,
-            f: matchCtx.colFilters.map(f => f.isMultiRowFilter
-                ? { i: f.idx, m: f.multiRowMode }
-                : f.isMultiValueFilter
-                ? { i: f.idx, u: Array.from(f.valueSet).sort(), c: f.isCaseSensitive, x: f.isExclude }
+            f: matchCtx.colFilters.map(f => f.isMultiValueFilter
+                ? { i: f.idx, u: Array.from(f.valueSet).sort(),
+                    sm: Array.from(f.structureModes || []).sort(),
+                    c: f.isCaseSensitive, x: f.isExclude }
                 : { i: f.idx, v: f.val,
                     c: f.isCaseSensitive, r: f.isRegExp, x: f.isExclude })
         });
@@ -32883,10 +32928,10 @@ a { color: #1565c0; }`;
             c: matchCtx.isCaseSensitive,
             r: matchCtx.isRegExp,
             x: matchCtx.isExclude,
-            f: matchCtx.colFilters.map(f => f.isMultiRowFilter
-                ? { i: f.idx, m: f.multiRowMode }
-                : f.isMultiValueFilter
-                ? { i: f.idx, u: Array.from(f.valueSet).sort(), c: f.isCaseSensitive, x: f.isExclude }
+            f: matchCtx.colFilters.map(f => f.isMultiValueFilter
+                ? { i: f.idx, u: Array.from(f.valueSet).sort(),
+                    sm: Array.from(f.structureModes || []).sort(),
+                    c: f.isCaseSensitive, x: f.isExclude }
                 : { i: f.idx, v: f.val,
                     c: f.isCaseSensitive, r: f.isRegExp, x: f.isExclude })
         });
@@ -41879,13 +41924,28 @@ a { color: #1565c0; }`;
                 item.className = isChecked ? 'mb-col-uniq-item mb-col-uniq-checked' : 'mb-col-uniq-item';
                 item.setAttribute('role', 'option');
                 item.setAttribute('aria-selected', String(isChecked));
-                // title holds the raw, UNPREFIXED value only — used by the
+                // title holds the raw, UNPREFIXED value — used by the
                 // Enter-key handler and applyUniqVal() so the badge text is
                 // never copied into the filter input field. (Confirmed
                 // nothing reads this back programmatically — it's a pure
                 // hover tooltip for the CSS-ellipsis-truncated row, so it
-                // must stay human-readable even for item entries.)
-                item.title = v;
+                // must stay human-readable even for item entries.) A glyph
+                // explanation is appended when this entry carries one — the
+                // markers below (entity-type span, ▤ item marker, flag/area
+                // icon) are otherwise unlabelled and have no explanation
+                // anywhere else in the script.
+                const _glyphNotes = [];
+                if (isEntity) {
+                    const _etype = _GLYPH_TO_ENTITY_TYPE[glyphClass] || 'entity';
+                    _glyphNotes.push(`marks a specific ${_etype}, identified by its own link — not just matching text`);
+                }
+                if (isItem) {
+                    _glyphNotes.push('▤ matches one item inside a multi-item cell, not the cell’s entire contents');
+                }
+                if (hasFlagIcons && flagIconMap.get(v)) {
+                    _glyphNotes.push('flag/area icon shown as it appears in the table');
+                }
+                item.title = _glyphNotes.length ? `${v} — ${_glyphNotes.join(' — ')}` : v;
 
                 // ---- Checkbox glyph: ☑/☐, enables multi-select (OR'd within column) ----
                 // Not a native <input type="checkbox"> — the whole row is the click
@@ -42482,19 +42542,68 @@ a { color: #1565c0; }`;
         drop.insertBefore(synBox, listBox);
 
         /**
-         * Creates and appends a single synthetic entry to synBox.
+         * Appends a ☑/☐ checkbox glyph to a "Cell structure" entry and wires
+         * up its click handler to toggle `checkedValues` for the given
+         * structure-mode `key` and re-apply the whole set via
+         * `applyUniqValueSet()` — mirrors `renderItems()`'s regular-value-row
+         * checkbox pattern exactly (multi-select, OR'd, panel stays open) so
+         * "Cell structure" entries behave identically to plain value rows.
+         *
+         * Also appends `_structureModeTooltip()`'s glyph explanation to
+         * `item.title` (already set by the caller to the entry's display
+         * label) so the entry's own ▶/◀/▤/✗/✓/≠/~/🖼️/∅ symbol is explained
+         * on hover, same as `renderItems()`'s regular value rows.
+         *
+         * @param {HTMLElement} item - the entry's row `<div>` (already built,
+         *   not yet appended to synBox)
+         * @param {string}      key  - MB_UNIQ_STRUCTURE_MODE_PREFIX + mode
+         */
+        const _wireStructureCheckbox = (item, key) => {
+            const mode = key.slice(MB_UNIQ_STRUCTURE_MODE_PREFIX.length);
+            const _tip = _structureModeTooltip(mode);
+            if (_tip) item.title = `${item.title} — ${_tip}`;
+
+            const isChecked = checkedValues.has(key);
+            item.classList.add('mb-col-uniq-item', 'mb-col-uniq-multirow-item');
+            if (isChecked) item.classList.add('mb-col-uniq-checked');
+            item.setAttribute('aria-selected', String(isChecked));
+
+            const checkbox = document.createElement('span');
+            checkbox.className = 'mb-col-uniq-checkbox';
+            checkbox.setAttribute('aria-hidden', 'true');
+            checkbox.textContent = isChecked ? '☑' : '☐';
+            item.insertBefore(checkbox, item.firstChild);
+
+            item.addEventListener('mousedown', ev => ev.preventDefault());
+            item.addEventListener('click', () => {
+                if (checkedValues.has(key)) {
+                    checkedValues.delete(key);
+                } else {
+                    checkedValues.add(key);
+                }
+                const nowChecked = checkedValues.has(key);
+                item.classList.toggle('mb-col-uniq-checked', nowChecked);
+                item.setAttribute('aria-selected', String(nowChecked));
+                checkbox.textContent = nowChecked ? '☑' : '☐';
+                applyUniqValueSet(Array.from(checkedValues), table, colIndex);
+            });
+        };
+
+        /**
+         * Creates and appends a single synthetic "Cell structure" entry to
+         * synBox, with a ☑/☐ checkbox (multi-select, OR'd with every other
+         * checked value/entry in this column — see `_wireStructureCheckbox`).
          *
          * Factored out of the collapsable-column guard so that '○ empty cells'
          * can be surfaced for every column type (plain text, extractor synthetic,
          * etc.), not only for columns with multi-row / collapsable structure.
          *
-         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any'
+         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation'
          * @param {string} label   - Human-readable display text
          * @param {number} count   - Number of visible rows matching this mode
          */
         const makeSynItem = (mode, label, count) => {
             const item = document.createElement('div');
-            item.className = 'mb-col-uniq-item mb-col-uniq-multirow-item';
             item.setAttribute('role', 'option');
             item.title = label;
             // Note: resting background and font-style are set via the
@@ -42518,11 +42627,7 @@ a { color: #1565c0; }`;
             item.appendChild(badge);
             item.appendChild(document.createTextNode(label));
 
-            item.addEventListener('mousedown', ev => ev.preventDefault());
-            item.addEventListener('click', () => {
-                applyMultiRowStateFilter(mode, table, colIndex);
-                closeUniqDrop();
-            });
+            _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + mode);
             synBox.appendChild(item);
         };
 
@@ -42533,12 +42638,12 @@ a { color: #1565c0; }`;
          * per distinct credit attribute word or task string actually found
          * in this column) rather than `makeSynItem`'s fixed 5-mode set.
          *
-         * Reuses the exact same `dataset.mbMultirowMode` plumbing as every
-         * other entry in this section via a colon-prefixed COMPOUND mode
-         * string (`"attr:additional"`, `"task:task: Second Engineer"`),
-         * parsed by `testRowMatch()`'s `f.isMultiRowFilter` branch — kept
-         * on this one mechanism deliberately, rather than adding a second,
-         * parallel filter path for parameterized values.
+         * Reuses the exact same checkbox/`dataset.mbUniqValues` plumbing as
+         * `makeSynItem` via a colon-prefixed COMPOUND mode string
+         * (`"attr:additional"`, `"task:task: Second Engineer"`), parsed by
+         * `_cellMatchesStructureMode()` — kept on this one mechanism
+         * deliberately, rather than adding a second, parallel filter path for
+         * parameterized values.
          *
          * @param {'attr'|'task'} kind
          * @param {string} value  - The exact attribute word or task string
@@ -42547,7 +42652,6 @@ a { color: #1565c0; }`;
          */
         const makeValueSynItem = (kind, value, count) => {
             const item = document.createElement('div');
-            item.className = 'mb-col-uniq-item mb-col-uniq-multirow-item';
             item.setAttribute('role', 'option');
             item.title = value;
 
@@ -42569,11 +42673,7 @@ a { color: #1565c0; }`;
                 (kind === 'attr' ? '» attribute: ' : '» ') + value
             ));
 
-            item.addEventListener('mousedown', ev => ev.preventDefault());
-            item.addEventListener('click', () => {
-                applyMultiRowStateFilter(`${kind}:${value}`, table, colIndex);
-                closeUniqDrop();
-            });
+            _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + `${kind}:${value}`);
             synBox.appendChild(item);
         };
 
@@ -42591,57 +42691,14 @@ a { color: #1565c0; }`;
         };
 
         /**
-         * Creates and appends a single CAA/EAA artwork-presence entry to synBox.
-         * Unlike makeSynItem (which triggers applyMultiRowStateFilter), this
-         * helper calls applyUniqVal so the column filter input receives the raw
-         * sort-key text value ('yes' or 'no') that the CAA/EAA extractor already
-         * embeds in the invisible mb-caa-sort-key span of every cell.
+         * Creates and appends a single inline-thumbnail presence entry to
+         * synBox, with the same ☑/☐ checkbox behaviour as `makeSynItem`.
          *
-         * @param {string} value  - 'yes' | 'no'
-         * @param {string} label  - Human-readable display text
-         * @param {number} count  - Number of visible rows matching this value
-         */
-        const makeArtItem = (value, label, count) => {
-            const item = document.createElement('div');
-            item.className = 'mb-col-uniq-item mb-col-uniq-multirow-item';
-            item.setAttribute('role', 'option');
-            item.title = label;
-
-            const badge = document.createElement('span');
-            badge.className = 'mb-uniq-count-badge';
-            badge.textContent = `(${count})`;
-            badge.setAttribute('aria-hidden', 'true');
-            badge.style.color           = cntColor;
-            badge.style.backgroundColor = cntBg;
-            badge.style.fontWeight      = 'bold';
-            badge.style.fontFamily      = 'monospace';
-            badge.style.borderRadius    = '3px';
-            badge.style.padding         = '0 3px';
-            badge.style.marginRight     = '5px';
-            badge.style.fontSize        = '0.85em';
-            badge.style.display         = 'inline-block';
-            item.appendChild(badge);
-            item.appendChild(document.createTextNode(label));
-
-            item.addEventListener('mousedown', ev => ev.preventDefault());
-            item.addEventListener('click', () => {
-                applyUniqVal(value, table, colIndex);
-                closeUniqDrop();
-            });
-            synBox.appendChild(item);
-        };
-
-        /**
-         * Creates and appends a single inline-thumbnail presence entry to synBox.
-         *
-         * Clicking delegates directly to `applyUniqVal` with the invisible sort-key
+         * Uses the 'inline-art-yes'/'inline-art-no' structure modes
+         * (`_cellMatchesStructureMode()`), which test the invisible sort-key
          * text ('caa-inline-yes' or 'caa-inline-no') that `_artSetInlineSortKey`
          * stamps into every settled cell after each load/error path in
-         * `_artInitInlinePics`.  Because `getCleanColumnText()` includes
-         * display:none spans (the `.mb-inline-art-sort-key` class is not in the
-         * strip selector `_CLEAN_STRIP_SEL`), normal text-value matching through
-         * the regular filter pipeline handles filtering, counting, Escape, ✕, and
-         * all "clear" buttons automatically — no bypass mode or DOM walk needed.
+         * `_artInitInlinePics`.
          *
          * @param {boolean} hasArt  - true = rows WITH a loaded inline thumbnail
          * @param {string}  label   - Human-readable display text
@@ -42649,7 +42706,6 @@ a { color: #1565c0; }`;
          */
         const makeInlineArtItem = (hasArt, label, count) => {
             const item = document.createElement('div');
-            item.className = 'mb-col-uniq-item mb-col-uniq-multirow-item';
             item.setAttribute('role', 'option');
             item.title = label;
 
@@ -42669,17 +42725,7 @@ a { color: #1565c0; }`;
             item.appendChild(badge);
             item.appendChild(document.createTextNode(label));
 
-            item.addEventListener('mousedown', ev => ev.preventDefault());
-            item.addEventListener('click', () => {
-                // Filter by the invisible sort-key text injected by _artSetInlineSortKey.
-                // applyUniqVal writes the value to the column filter input and fires an
-                // 'input' event — runFilter() → getCleanColumnText() picks up the
-                // display:none sort-key span → standard text matching applies.
-                // Clearing works identically to any other text filter (Escape, ✕, clear
-                // buttons) because there is no special bypass dataset attribute involved.
-                applyUniqVal(hasArt ? 'caa-inline-yes' : 'caa-inline-no', table, colIndex);
-                closeUniqDrop();
-            });
+            _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + (hasArt ? 'inline-art-yes' : 'inline-art-no'));
             synBox.appendChild(item);
         };
 
@@ -43067,6 +43113,62 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Human-readable label for a "Cell structure" mode string — used as the
+     * cosmetic display text `applyUniqValueSet()` writes into the column
+     * filter `<input>` when exactly one structure-mode entry is checked (the
+     * authoritative filter state always lives in `dataset.mbUniqValues`, this
+     * is display-only). Generic wording only — the CAA/EAA- and
+     * addCAA/addEAA-specific relabeling `openUniqDrop()`'s synthetic entries
+     * use (e.g. '✗ no artwork' for 'empty') depends on per-column context not
+     * available here, same as the label this mirrors from the removed
+     * single-mode filter function this replaced.
+     *
+     * @param {string} mode
+     * @returns {string}
+     */
+    function _structureModeLabel(mode) {
+        if (mode === 'empty')          return '○ empty cells';
+        if (mode === 'collapsed')      return '▶ multi-row: collapsed';
+        if (mode === 'expanded')       return '◀ multi-row: expanded';
+        if (mode === 'single')         return '• single-row cells';
+        if (mode === 'title-mismatch') return '≠ track/recording name';
+        if (mode === 'name-variation') return '~ has name variation';
+        if (mode === 'inline-art-yes') return '🖼️ artwork available';
+        if (mode === 'inline-art-no')  return '∅ NO artwork available';
+        if (mode.startsWith('attr:'))  return `» attribute: ${mode.slice(5)}`;
+        if (mode.startsWith('task:'))  return `» ${mode.slice(5)}`;
+        return '▶◀ multi-row: any';
+    }
+
+    /**
+     * Explanation sentence for a "Cell structure" mode string's own glyph —
+     * appended to the entry's tooltip by `openUniqDrop()`'s
+     * `_wireStructureCheckbox()` so every ▶/◀/▤/✗/✓/≠/~/🖼️/∅ symbol baked
+     * into a synthetic entry's label has a plain-language explanation
+     * somewhere, since these symbols carry no explanation anywhere else in
+     * the script (unlike a table cell's own `.mb-cell-collapse-toggle`,
+     * which already gets one via `_proseToggleTitle()`).
+     *
+     * @param {string} mode
+     * @returns {string}
+     */
+    function _structureModeTooltip(mode) {
+        if (mode === 'empty')          return 'Cells with no content (or, for CAA/EAA columns, no artwork found).';
+        if (mode === 'single')         return 'Cells with exactly one item — no expand/collapse toggle shown.';
+        if (mode === 'collapsed')      return '▶ = a multi-item cell currently showing only its first item.';
+        if (mode === 'expanded')       return '◀ = a multi-item cell currently showing all its items.';
+        if (mode === 'any')            return 'Cells with more than one item, in either collapsed or expanded state (or, for CAA/EAA columns, cells with at least one artwork image).';
+        if (mode === 'title-mismatch') return '≠ = flagged by a third-party userscript because the track title differs from the underlying recording name.';
+        if (mode === 'name-variation') return '~ = a credited name is an alias/differently-spelled variation of the entity’s real name.';
+        if (mode === 'inline-art-yes' || mode === 'inline-art-no') {
+            return '🖼️ = a thumbnail was found and loaded for this row; ∅ = none was found.';
+        }
+        if (mode.startsWith('attr:')) return 'One of this cell\'s credited attribute words.';
+        if (mode.startsWith('task:')) return 'This cell\'s credited task text.';
+        return '';
+    }
+
+    /**
      * Writes `value` directly into the per-column filter input for `colIndex`
      * of `table` and triggers an immediate filter pass via a synthetic input
      * event (picked up by the existing debounced handler).
@@ -43083,9 +43185,8 @@ a { color: #1565c0; }`;
         );
         if (!input) return;
 
-        // Clear any stale multi-row state filter mode / checkbox value-set so the
-        // single text value takes effect (mutually exclusive with both).
-        delete input.dataset.mbMultirowMode;
+        // Clear any stale checkbox value-set so the single text value takes effect
+        // (mutually exclusive with it).
         delete input.dataset.mbUniqValues;
         input.value = value;
 
@@ -43101,101 +43202,19 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Activates a DOM-state based multi-row cell filter on a single column.
-     *
-     * Unlike `applyUniqVal()` which puts a text string into the column filter
-     * input, this function marks the input with `data-mb-multirow-mode` so that
-     * `getColFilters()` can emit a special `{ isMultiRowFilter, multiRowMode }`
-     * descriptor and `testRowMatch()` can filter rows by the structural state of
-     * their cell rather than by text content.
-     *
-     * Seven fixed modes are supported, plus two COMPOUND mode families
-     * (`"attr:<value>"` / `"task:<value>"`) generated dynamically by
-     * `openUniqDrop()`'s `makeValueSynItem`, one per distinct value
-     * actually present in the column — not a fixed enum, since the set of
-     * credited attribute words / task strings varies release to release:
-     *   'empty'          → keep rows where the column cell has no ul>li AND no text
-     *   'single'         → keep rows where the column cell has exactly one ul>li item
-     *   'collapsed'      → keep rows where the column toggle shows ▶ (collapsed)
-     *   'expanded'       → keep rows where the column toggle shows ◀ (expanded)
-     *   'any'            → keep rows that have a multi-row cell in this column
-     *   'title-mismatch' → ('Title' column only) keep rows where a third-party
-     *                       userscript flagged the track name as different from
-     *                       the underlying recording name (see
-     *                       `_titleHasRecNameMismatch`)
-     *   'name-variation' → (any column) keep rows where the cell contains a
-     *                       MusicBrainz `<span class="name-variation">`
-     *                       (an alias/differently-spelled credited name)
-     *   'attr:<value>'   → (credit-role columns) keep rows where the cell has a
-     *                       `<span class="mb-credit-attr">` containing `<value>`
-     *                       as one of its `/`-separated attribute words
-     *   'task:<value>'   → (credit-role columns) keep rows where the cell has a
-     *                       `<i class="mb-credit-task">` whose text equals `<value>`
-     *
-     * The display label stored in `input.value` is purely cosmetic; the actual
-     * filtering logic reads `input.dataset.mbMultirowMode` in `getColFilters()`.
-     * If the user edits the field manually the 'input' event handler deletes
-     * `dataset.mbMultirowMode` and the filter degrades to a normal text filter.
-     *
-     * @param {string}           mode      - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | `attr:${string}` | `task:${string}`
-     * @param {HTMLTableElement} table     - The table owning the column.
-     * @param {number}           colIndex  - Zero-based column index.
-     */
-    function applyMultiRowStateFilter(mode, table, colIndex) {
-        const filterRow = table.querySelector('thead tr.mb-col-filter-row');
-        if (!filterRow) return;
-        const input = filterRow.querySelector(
-            `.mb-col-filter-input[data-col-idx="${colIndex}"]`
-        );
-        if (!input) return;
-
-        // Tag the input so getColFilters produces a multi-row state filter object.
-        input.dataset.mbMultirowMode = mode;
-        // Mutually exclusive with the uniq-drop checkbox value-set filter.
-        delete input.dataset.mbUniqValues;
-
-        // Store a human-readable display label so the field looks intentionally set.
-        const label = mode === 'empty'          ? '○ empty cells'          :
-                      mode === 'collapsed'       ? '▶ multi-row: collapsed' :
-                      mode === 'expanded'        ? '◀ multi-row: expanded'  :
-                      mode === 'single'          ? '• single-row cells'     :
-                      mode === 'title-mismatch'  ? '≠ track/recording name' :
-                      mode === 'name-variation'  ? '~ has name variation'   :
-                      mode.startsWith('attr:')   ? `» attribute: ${mode.slice(5)}` :
-                      mode.startsWith('task:')   ? `» ${mode.slice(5)}` :
-                                            '▶◀ multi-row: any';
-        input.value = label;
-
-        // Visual: "active" background + green glow (same as other active col filters)
-        const activeBg = Lib.settings.sa_col_filter_active_bg || '#fff9c4';
-        input.style.backgroundColor = activeBg;
-        input.style.boxShadow       = '0 0 2px 2px green';
-        input.style.borderColor     = '';
-        input.style.borderWidth     = '';
-
-        // Call runFilter() directly instead of dispatching a synthetic 'input' event.
-        // A synthetic input event would be caught by the column filter's own input handler
-        // which unconditionally deletes dataset.mbMultirowMode before getColFilters() can
-        // read it — causing the mode to vanish and the filter to match nothing.
-        if (typeof runFilter === 'function') {
-            runFilter();
-        }
-
-        Lib.debug('filter', `Uniq-drop: multi-row state filter "${mode}" applied to col ${colIndex}`);
-    }
-
-    /**
      * Activates (or clears) a checkbox-driven multi-value filter on a single
-     * column, applying every currently-checked unique value as an OR'd set.
+     * column, applying every currently-checked unique value/item/entity/
+     * "Cell structure" mode as an OR'd set.
      *
      * Unlike `applyUniqVal()` (single value, replaces the filter, closes the
      * dropdown) this supports selecting multiple values at once: a row passes
-     * the column filter if its cell text matches ANY checked value. An empty
-     * `selectedValues` array means "no constraint" — the column filter is fully
-     * cleared, not "match nothing."
+     * the column filter if its cell text — or, for a checked "Cell structure"
+     * entry, its cell/DOM state via `_cellMatchesStructureMode()` — matches
+     * ANY checked entry. An empty `selectedValues` array means "no
+     * constraint" — the column filter is fully cleared, not "match nothing."
      *
-     * Mirrors `applyMultiRowStateFilter()`: state is stashed on
-     * `input.dataset.mbUniqValues` (JSON-encoded array), a human-readable
+     * State is stashed on `input.dataset.mbUniqValues` (JSON-encoded array),
+     * a human-readable
      * summary label is written to `input.value` so existing "is this column
      * filter active" checks elsewhere (which just test non-empty `input.value`)
      * keep working unmodified, and `runFilter()` is called directly rather than
@@ -43220,7 +43239,6 @@ a { color: #1565c0; }`;
         if (values.length === 0) {
             // Empty checked-set = "no constraint" = fully clear this column filter.
             delete input.dataset.mbUniqValues;
-            delete input.dataset.mbMultirowMode;
             input.value = '';
             input.style.backgroundColor = '';
             input.style.boxShadow       = '';
@@ -43233,23 +43251,23 @@ a { color: #1565c0; }`;
             return;
         }
 
-        // Mutually exclusive with the multi-row state filter.
-        delete input.dataset.mbMultirowMode;
         input.dataset.mbUniqValues = JSON.stringify(values);
 
         // Human-readable summary label — the authoritative state always lives in
         // dataset.mbUniqValues, never re-derived from this display string.
         // A sole checked value may be an item-prefixed entry
-        // (MB_UNIQ_ITEM_VALUE_PREFIX, openUniqDrop()'s "▤" entries) or an
+        // (MB_UNIQ_ITEM_VALUE_PREFIX, openUniqDrop()'s "▤" entries), an
         // entity-prefixed entry (MB_UNIQ_ENTITY_HREF_PREFIX, its per-entity-
         // type-glyph entries, stored as a bare href with no display name at
-        // all) — both stripped here so the raw control character never leaks
-        // into the input's displayed value. An entity entry's name isn't
-        // available in this closure (openUniqDrop()'s entityInfo map is
-        // local to that call), so it's re-resolved from the live DOM via the
-        // already-available `table` param — a plain <input> value can't
-        // render an actual glyph background-image anyway, so a text-only
-        // marker is used instead of the real worklink/placelink/etc. span.
+        // all), or a structure-mode entry (MB_UNIQ_STRUCTURE_MODE_PREFIX, its
+        // "Cell structure" checkboxes) — all three prefixes are stripped here
+        // so the raw control character never leaks into the input's displayed
+        // value. An entity entry's name isn't available in this closure
+        // (openUniqDrop()'s entityInfo map is local to that call), so it's
+        // re-resolved from the live DOM via the already-available `table`
+        // param — a plain <input> value can't render an actual glyph
+        // background-image anyway, so a text-only marker is used instead of
+        // the real worklink/placelink/etc. span.
         const _entityLabel = href => {
             const a = table.querySelector(`tbody a[href="${href}"]`);
             const bdi = a && ((a.parentElement && a.parentElement.tagName === 'BDI')
@@ -43259,6 +43277,7 @@ a { color: #1565c0; }`;
         const _label = v => {
             if (v.startsWith(MB_UNIQ_ITEM_VALUE_PREFIX)) return '▤ ' + v.slice(MB_UNIQ_ITEM_VALUE_PREFIX.length);
             if (v.startsWith(MB_UNIQ_ENTITY_HREF_PREFIX)) return '🔗 ' + _entityLabel(v.slice(MB_UNIQ_ENTITY_HREF_PREFIX.length));
+            if (v.startsWith(MB_UNIQ_STRUCTURE_MODE_PREFIX)) return _structureModeLabel(v.slice(MB_UNIQ_STRUCTURE_MODE_PREFIX.length));
             return v;
         };
         input.value = values.length === 1 ? _label(values[0]) : `${values.length} selected`;
@@ -43803,16 +43822,58 @@ a { color: #1565c0; }`;
 
         // One pass per column: collect unique-value count and multi-row count.
         headers.forEach((th, colIndex) => {
-            // ── 1. Unique-value count ─────────────────────────────────────────
+            // ── Cheap "does this column have a Cell structure section" gate ────
+            // Reuses openUniqDrop()'s own lightweight isCollapsableCol/
+            // isCaaOrEaaCol name-based gates (no extra per-row scan) — good
+            // enough to decide whether the 📊 tooltip below should mention the
+            // section; exact per-row entry counting is openUniqDrop()'s own job.
+            const _cleanColName = th.dataset.colName ||
+                th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+            const _isCollapsableCol = !!(activeDefinition && activeDefinition.features &&
+                Array.isArray(activeDefinition.features.collapsableColumns) &&
+                activeDefinition.features.collapsableColumns.includes(_cleanColName));
+            const _isCaaOrEaaCol = _cleanColName === 'CAA' || _cleanColName === 'EAA';
+
+            // ── 1. Multi-row (collapsable) cell count ──────────────────────────
+            // Computed FIRST (moved ahead of the unique-value count below) so
+            // its result is available for the "Cell structure" tooltip hint
+            // without re-reading a possibly stale DOM count from a prior render.
+            const collapseBtn = th.querySelector('.mb-col-collapse-hdr-btn');
+            let multiRowCount = 0;
+            if (collapseBtn) {
+                const countSpan = collapseBtn.querySelector('.mb-col-collapse-count');
+                if (countSpan) {
+                    // _classifyCollapseCell unifies list cells and prose cells
+                    // (e.g. "Annotation") under one multi-row concept — matches
+                    // the collapsibleCount computed by initCollapsableColumns.
+                    Array.from(tbody.rows).forEach(row => {
+                        if (row.style.display === 'none') return;
+                        const cell = row.cells[colIndex];
+                        if (!cell) return;
+                        if (_classifyCollapseCell(cell).isMultiRow) multiRowCount++;
+                    });
+                    countSpan.textContent = String(multiRowCount);
+                }
+            }
+
+            // ── 2. Unique-value count ───────────────────────────────────────────
             const uniqCountSpan = th.querySelector('.mb-col-uniq-count');
             if (uniqCountSpan) {
                 const seen = new Set();
+                let hasInlineArt = false;
                 Array.from(tbody.rows).forEach(row => {
                     if (row.style.display === 'none') return;
                     const cell = row.cells[colIndex];
                     if (!cell) return;
                     const v = getCleanColumnText(cell);
                     if (v) seen.add(v);
+                    // Piggy-back on this existing per-row scan (rather than a
+                    // third full table pass) to detect the addCAA/addEAA
+                    // inline-thumbnail "Cell structure" block openUniqDrop()
+                    // shows for this column.
+                    if (!hasInlineArt && cell.querySelector('.mb-caa-inline-ph, .mb-eaa-inline-ph')) {
+                        hasInlineArt = true;
+                    }
                 });
                 const n = seen.size;
                 uniqCountSpan.textContent = n > 0 ? String(n) : '';
@@ -43825,30 +43886,16 @@ a { color: #1565c0; }`;
                     const _kbHint = _directOn
                         ? `keyboard: ${_qKey} or ${getPrefixDisplay()} then Q when a column filter is focused`
                         : `keyboard: ${getPrefixDisplay()} then Q when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for ${_qKey})`;
-                    const tip = n > 0
+                    const hasCellStructureSection =
+                        _isCollapsableCol || _isCaaOrEaaCol || multiRowCount > 0 || hasInlineArt;
+                    const _structHint = hasCellStructureSection
+                        ? ' This column also has a "Cell structure" section — filter by empty/single/multi-row cell state and other structural flags.'
+                        : '';
+                    const tip = (n > 0
                         ? `Show the ${n} different unique values in this column, with the ability to quick filter by either clicking or selecting with the keyboard and pressing "Enter" on an entry — ${_kbHint}`
-                        : `Show unique values for this column — ${_kbHint}`;
+                        : `Show unique values for this column — ${_kbHint}`) + _structHint;
                     uniqWrap.title      = tip;
                     uniqWrap.setAttribute('aria-label', tip);
-                }
-            }
-
-            // ── 2. Multi-row (collapsable) cell count ─────────────────────────
-            const collapseBtn = th.querySelector('.mb-col-collapse-hdr-btn');
-            if (collapseBtn) {
-                const countSpan = collapseBtn.querySelector('.mb-col-collapse-count');
-                if (countSpan) {
-                    // _classifyCollapseCell unifies list cells and prose cells
-                    // (e.g. "Annotation") under one multi-row concept — matches
-                    // the collapsibleCount computed by initCollapsableColumns.
-                    let multiRowCount = 0;
-                    Array.from(tbody.rows).forEach(row => {
-                        if (row.style.display === 'none') return;
-                        const cell = row.cells[colIndex];
-                        if (!cell) return;
-                        if (_classifyCollapseCell(cell).isMultiRow) multiRowCount++;
-                    });
-                    countSpan.textContent = String(multiRowCount);
                 }
             }
         });
@@ -51853,7 +51900,7 @@ a { color: #1565c0; }`;
      * Shape mirrors the fields consumed by highlightCrossTag():
      *   globalQueryRaw  {string|null}   — raw global filter string (pre-lowercasing)
      *   colFilters      {Array}         — output of getColFilters(); each entry has
-     *                                     { val, idx } or { isMultiRowFilter, … }
+     *                                     { val, idx } or { isMultiValueFilter, … }
      *   isCaseSensitive {boolean}
      *   isRegExp        {boolean}
      *
@@ -54109,7 +54156,7 @@ a { color: #1565c0; }`;
 
         // Column-scoped filters — only apply when the filter targets this art column.
         for (const f of ctx.colFilters) {
-            if (f.isMultiRowFilter || f.isMultiValueFilter) continue;  // state/value-set filters carry no highlight text
+            if (f.isMultiValueFilter) continue;  // state/value-set filters carry no highlight text
             if (f.idx !== colIdx)   continue;  // different column — skip
             // Use per-filter flags (embedded by getColFilters from the per-subtable
             // checkboxes) with a fallback to the context-level flags for compatibility.
@@ -54227,7 +54274,7 @@ a { color: #1565c0; }`;
 
         // ── 4. Bail out early if nothing is active ───────────────────────────────
         const hasGlobal = globalQueryRaw !== '';
-        const hasCol    = colFilters.some(f => !f.isMultiRowFilter);
+        const hasCol    = colFilters.length > 0;
         if (!hasGlobal && !hasCol && !_stfRegex) return;
 
         // ── 5. Build a single context snapshot and highlight every image li ──────

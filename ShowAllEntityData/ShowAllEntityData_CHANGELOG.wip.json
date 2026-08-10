@@ -1,5 +1,19 @@
 [
   {
+    "version": "WIP.58",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Unique-values dropdown (📊): \"Cell structure\" entries (empty/single/collapsed/expanded/any multi-row cell state, title/name-variation flags, per-attribute/per-task credit-role values, and addCAA/addEAA inline-artwork presence) now get the same ☑/☐ multi-select checkbox behavior as regular value rows — checking one no longer closes the dropdown, and multiple \"Cell structure\" entries (and regular values) can be OR'd together within a column. Internally this folds the old single-select `dataset.mbMultirowMode`/`applyMultiRowStateFilter()` mechanism entirely into the existing checkbox mechanism via a new `MB_UNIQ_STRUCTURE_MODE_PREFIX` sentinel and shared `_cellMatchesStructureMode()` matcher — the legacy mechanism is fully removed, not left as dead code.",
+          "Unique-values dropdown: the column-header 📊 button's tooltip now mentions when that column also has a \"Cell structure\" section available to filter by.",
+          "Unique-values dropdown: entries with a glyph/icon (entity-type marker, flag/area icon, ▤ item marker on regular value rows; ▶/◀/✗/✓/≠/~/🖼️/∅ symbols on \"Cell structure\" entries) now explain that glyph's meaning in their hover tooltip — previously several of these glyphs (entity-type markers especially) had no explanation anywhere in the script."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.57",
     "date": "2026-08-10",
     "sections": [
