@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.69",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`extractMainColumn`'s \"Comment\" column never stripped `<i title=\"Primary alias\">` before reading comment text, so on a row whose entity comment was wholly or partly a primary alias, the alias text showed up mislabeled as a disambiguation comment (e.g. artist-works' \"An der schönen blauen Donau, op. 314\" → Comment showed its alias \"On the Beautiful Blue Danube, op. 314\" verbatim — see debug/work-comment-bug.html). The two duplicated inline extraction blocks that built `MB-Name`/`Comment` are now unified into a single new helper, `_extractMainColumnParts()`, which also splits out a new third synthetic column, `MB-Primary alias`. The identical bug in the independent `_tagCountBase()`-backed extractor family (`Name_Comment`, `Name_Date_Comment`, `Name_Comment_Artists`, `tagCount_Name_Comment`, and friends — used by tag-value/tag-count page types) is fixed the same way."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Retired 7 `columnExtractors` entries using `extractor: 'primaryAlias'` whose `sourceColumn` matched their page definition's own `extractMainColumn` — fully redundant now that `extractMainColumn` natively produces `MB-Primary alias`. `tooltipColumns` references to the old `'Primary Alias'` column were updated to `'MB-Primary alias'` on those pages. The 3 page blocks that pair `primaryAlias` with the `_tagCountBase` family (no `extractMainColumn`) keep using it unchanged, since it remains their only source of alias data."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.68",
     "date": "2026-08-10",
     "sections": [
