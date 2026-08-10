@@ -93299,3 +93299,18 @@ https://musicbrainz.org/report/DiscogsLinksWithMultipleArtists
      - ColumnDataExtractor.primaryAlias itself is not deleted — it's still
      needed by the 3 kept usages.
 
+
+* why is this not working
+
+
+#+begin_example
+            // Unconditionally remove the "MusicBrainz Nuclear Tags" bulk-tag column
+            // (foreign userscript injection; has no header text, so it can't be
+            // matched via removalMapAlways — matched by CSS class instead).
+            if (th.classList.contains('elephant-tag-col')) {
+                Lib.debug('cleanup', `Marking column ${idx} for removal: elephant-tag-col (foreign userscript column).`);
+                indicesToRemove.push(idx);
+            }
+#+end_example
+
+for the column @debug/bulk.tag-recording.html
