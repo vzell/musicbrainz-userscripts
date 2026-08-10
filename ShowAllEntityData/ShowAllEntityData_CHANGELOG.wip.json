@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.60",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': every collapsable AR credit-role column (Recording engineer, Engineer, Producer, Mixer, Recorded at place, Recorded in area, Mixed at place, Performer, Instruments, Vocals, Phonographic copyright …, Produced for label, and any dynamically-discovered AR column) permanently lost its collapse/expand toggle and multi-row collapsed state the moment ANY filter was applied (typed text or a unique-values dropdown selection) — all their cells snapped to fully expanded with no way to re-collapse them, even after clearing the filter. Root cause: `_initColHeaderGlyph()`'s entity-type glyph marker (injected into these columns' headers only, via `_guardGlyphAgainstEmptySelectorHiding()`) embeds an invisible zero-width space (U+200B) that survives both `initCollapsableColumns()`'s glyph-character-class regex strip AND `.trim()` (U+200B isn't JS whitespace). On the very first render this is harmless (`initCollapsableColumns()` runs before the glyph gets injected), but every subsequent filter re-render reuses the already-glyph-decorated `<thead>` without rebuilding it, so `initCollapsableColumns()`'s own `th.textContent`-based column-name lookup permanently failed to match these columns by name, silently skipping their re-collapse step right after its own cleanup pass had already un-hidden every `<li>` table-wide. Fixed by switching that lookup to the already-existing, already-correct `_cleanColHeaderText()` helper (prefers the stable `th.dataset.colName` `makeTableSortableUnified()` stamped once, over a `textContent` re-derivation) — the same helper `_initColHeaderGlyph()` itself already relies on for its own idempotency check."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.59",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "WIP.58's \"~ has name variation\" filter never actually highlighted the matching `<span class=\"name-variation\">` credit itself (e.g. \"Nick Didia\" on a release's \"Recording engineer\" column, or \"Bruce Springsteen\" on an artist's \"Recording artists\" column) — the checkbox correctly filtered rows but left no visual highlight on the matched name. Added `_highlightNameVariationMatch()` (mirrors `_highlightCreditValueMatch()`'s `attr:`/`task:` handling) and wired it into `testRowMatch()`'s structure-mode highlight pass. As a side effect this also fixes a multi-row cell's collapse toggle (▶N▤) never tinting to signal a hidden match when the matching name-variation credit was inside a COLLAPSED list — the existing `_COLLAPSE_MATCH_SEL`-based hidden-match signalling already looks for `.mb-column-filter-highlight` spans, it just had none to find until this fix started producing them."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.58",
     "date": "2026-08-10",
     "sections": [

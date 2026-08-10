@@ -32413,6 +32413,38 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights every `<span class="name-variation">` (MusicBrainz's own
+     * alias/differently-spelled-credit styling) inside a cell — the
+     * `'name-variation'` structure-mode counterpart of
+     * `_highlightCreditValueMatch()`'s `attr:`/`task:` handling. Unlike
+     * those two, there is no single "wanted value" to match against here
+     * (the checkbox just means "this cell has ≥1 name-variation span at
+     * all"), so the WHOLE text of each matching span is highlighted via
+     * `_buildFuzzyTextMatchRegex()` (the same whole-element approach
+     * `_highlightUniqItemMatches()`/`_highlightUniqEntityMatches()` use),
+     * rather than a targeted substring.
+     *
+     * Marking these spans with `.mb-column-filter-highlight` also makes the
+     * existing hidden-match signalling on a multi-row cell's collapse toggle
+     * (`_COLLAPSE_MATCH_SEL`, checked by `initCollapsableColumns()`/
+     * `ensureCollapseDelegate()`/`updateGlobalCollapseButtonHighlight()`)
+     * pick these matches up for free — a name-variation match hidden inside
+     * a COLLAPSED multi-row cell now correctly tints that cell's ▶ toggle,
+     * the same way any other filter-highlighted match already does.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     */
+    function _highlightNameVariationMatch(cell) {
+        if (!cell) return;
+        cell.querySelectorAll('span.name-variation').forEach(span => {
+            const t = getCleanColumnText(span);
+            if (!t) return;
+            span.normalize();
+            highlightCrossTag(span, _buildFuzzyTextMatchRegex(t), 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
      * Builds a regex that matches `t` — a value produced by
      * `getCleanColumnText()` — against the RAW, un-normalised text
      * `highlightCrossTag()` actually walks. The two are NOT positionally
@@ -32811,10 +32843,12 @@ a { color: #1565c0; }`;
                     // may fire independently on the same cell if the user has
                     // checked an overlapping item entry AND entity entry —
                     // harmless: nested mb-column-filter-highlight spans render
-                    // identically to one. Checked 'attr:'/'task:' structure modes
-                    // get the same _highlightCreditValueMatch treatment they had
-                    // under the old single-mode mechanism; the other structure
-                    // modes operate on DOM state, not text, so they get no highlight.
+                    // identically to one. Checked 'attr:'/'task:' and
+                    // 'name-variation' structure modes DO correspond to exact
+                    // visible content and get highlighted; the other structure
+                    // modes (empty/single/collapsed/expanded/any/title-mismatch/
+                    // inline-art-yes/no) operate on pure DOM state with no
+                    // single corresponding element, so they get no highlight.
                     const _fIsExclude = f.isExclude !== undefined ? f.isExclude : isExclude;
                     if (!_fIsExclude) {
                         if (f.hasItemValues)   _highlightUniqItemMatches(row.cells[f.idx], f);
@@ -32823,6 +32857,8 @@ a { color: #1565c0; }`;
                             f.structureModes.forEach(mode => {
                                 if (mode.startsWith('attr:') || mode.startsWith('task:')) {
                                     _highlightCreditValueMatch(row.cells[f.idx], mode);
+                                } else if (mode === 'name-variation') {
+                                    _highlightNameVariationMatch(row.cells[f.idx]);
                                 }
                             });
                         }
@@ -44080,13 +44116,18 @@ a { color: #1565c0; }`;
 
         collapsableColumns.forEach(colName => {
             // ── Locate column index by clean header text ──────────────────────
-            const colIndex = headers.findIndex(th => {
-                const clean = th.textContent
-                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '')
-                    .trim()
-                    .replace(/\s+/g, ' ');
-                return clean === colName;
-            });
+            // Uses _cleanColHeaderText() (prefers th.dataset.colName, the stable
+            // name makeTableSortableUnified() stamped once) rather than an ad-hoc
+            // th.textContent regex strip — release-tracks' AR-column header
+            // glyphs (_initColHeaderGlyph) inject a zero-width space (U+200B,
+            // _guardGlyphAgainstEmptySelectorHiding) that survives both a
+            // glyph-character-class strip AND .trim() (U+200B is not JS
+            // whitespace), so a live-thead re-read on a filter re-run (which
+            // reuses the already-glyph-decorated <th> without rebuilding it —
+            // see renderGroupedTable()'s "reuse existing table" branch) would
+            // otherwise permanently fail to match every glyph-bearing column,
+            // silently skipping it and losing its collapsed/toggle state.
+            const colIndex = headers.findIndex(th => _cleanColHeaderText(th) === colName);
 
             if (colIndex < 0) {
                 Lib.debug('collapse', `initCollapsableColumns: "${colName}" not found — skipping.`);
