@@ -92460,9 +92460,15 @@ compare
 ** TODO split "Recorded at place" column
 
 
-* TODO add the flag and place/area icons at the right position of each entry in the unique value drop down instead of at the very beginning of each entry
+* TODO plan: add the flag and place/area icons at the right position of each entry in the unique value drop down instead of at the very beginning of each entry
 
 add the flag and place/area icons at the right position of each entry in the unique value drop down instead of at the very beginning of each entry
+
+#+begin_example
+@debug/place-flags.html - flags at the right position (each one in front of its area name) in the original column cell from column "Recorded in area" at e.g. https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd
+@debug/place-flags-ucv.html - same data cell value, but in the unique value drop down list, the flags are in front of the area name chain
+@debug/uv-dropdown.html - complete unique value drop deon menu, where all the flags are prefixed to the actual text
+#+end_example
 
 
 * DONE add synthetic entry to the cell structure of the unique value drop when there are ANY name variations
@@ -92570,19 +92576,7 @@ the quickfilter should also filter and highlight inside the "Cell structure" sec
 The alignment of the counters inside the "Cell structure" section of the unique value drop down should be made symmetric to
 the standard section
 
-
-* TODO use the more than 1000 tracks release to fix AR bugs, specifically "instruments" with brackets
-
-
-* TODO In "Recording enineer" column, "John Cooper (engineer)" should always stay together, a bare "John Cooper" should never be extracted
-
-Currently
-
-#+begin_example
-<li><a class="wrap-anywhere" href="/artist/4844fcef-6e56-4407-be41-ead237dff686" title="Cooper, John (engineer)"><bdi>John Cooper</bdi></a>&nbsp;<span class="comment"><bdi>(engineer)</bdi></span><span class="mb-live-date-flag" title="This track is a live recording (recorded 2005-07-18), but this credit has no date attribute — it can't be confirmed to be from the same performance."> ❌</span></li>
-#+end_example
-
-
+* DONE use the more than 1000 tracks release to fix AR bugs, specifically "instruments" with brackets
 * DONE plan: add checkboxes to entries in the cell structure area of the unique value drop down and tooltips to the unique value drop down entries which additionally explain the glyph meanings
 ** DONE initial
 
@@ -92625,11 +92619,6 @@ On pageType 'release-tracks" when the final page is initially rendered, lots of 
 As soon as one of those columns has been filtered (either by typing a filter string directly in the filter box, or by
 choosing one of the values from the unique drop down menu), the collapsable state is gone, and all those columns are
 automatically uncollapsed.
-
-
-* TODO add checkboxes also to the "Relationship icons" section
-
-https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
 
 * DONE On columns with a disambiguation/primary alias allow in the unique value drop down also just the plain unique "Name"(s), the "Disambiguation"(s) and the "Primary alias"
 ** DONE initial
@@ -92840,6 +92829,129 @@ https://musicbrainz.org/report/SetInDifferentRG - "Release group" column - @debu
 #+begin_example
 https://musicbrainz.org/series/34b9e392-c076-4882-9355-8dbf2a1a52ac - "Title" column - @debug/s-rg.html
 #+end_example
+
+
+* DONE bug: in https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/events the "primary alias" should not be removed from the main column when extracted to its own column
+* DONE https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/events
+
+In the "Artists" column for e.g. https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/events @debug/event-performer.html
+support the following event roles
+
+#+begin_example
+guest performer
+main performer
+support act
+participant
+host
+#+end_example
+
+in the "Cell structure" of the unique value drop down
+
+* DONE for "Instruments" add support for '[12-string guitar]' in "guitar: Bruce Springsteen [12-string guitar]" in the "Cell structure" section of the unqiue value drop down
+** initial
+
+add support for the following special "credited-as" AR attributes in the "Cell structure" section of the unique value
+drop down menu (like for the normal AR attributes like e.g "additional", "guest", "assistant", "co" etc.) specifically for the "Vocals" and "Instruments" columns
+
+See e.g https://musicbrainz.org/release/6c8927ae-ca0b-4bd3-8c30-de11f9b737eb and the following examples which have the
+credited-as expressions inside angel brackets ("12-string guitar" or "synth strings") after the instrument (but the same is true for vocals)
+
+#+begin_example
+@debug/cr-as-original.html - original row with for example 'banjo, glockenspiel, guitar [12-string guitar], mellotron and synthesizer [synth strings]: Bruce Springsteen'
+@debug/cr-as-final.html - final rendered row
+#+end_example
+
+** bugs
+
+The following very large release (more than 100 rows) https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b
+produces e.g a header with the name "Electric bass guitar [1961 fender p-bass, ampeg b-15]" which looks like coming from the credites as section of the instrument "electric bass guitar"
+
+#+begin_example
+@debug/credited-as-original.html - original row
+@debug/credited-as-final-buggy.html - buggy final row, look specifically on the headers which seem to com from the originan row
+#+end_example
+
+* DONE fix progress on https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b to show the actual rows to fetch fetching <n> out of <m>
+
+1.)
+
+Fix progress on e.g https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b to show the actual rows to fetch:
+
+Currently it shows
+
+#+begin_example
+Loading overflow tracks: medium 1 of 1... (1001 tracks) - 1.8s left
+#+end_example
+
+See also @debug/loading.html
+
+But the original page has the info about the total number of rows already ==> 1209 (see below)
+
+#+begin_example
+This medium has too many tracks to load at once; currently showing 100 out of 1209 total. Load all tracks...
+#+end_example
+
+Please also show this number somewhere in the progess dialog
+
+2.)
+
+The following columns are missing the flag icons
+
+#+begin_example
+Engineered at
+Produced at
+#+end_example
+
+3.)
+
+Another bug, there are headers called
+
+#+begin_example
+Drums (drum set) and other vocals [shout]) ==> "Drums (drum set)" should actually be a value under the "Instruments" column, and "other vocals [shout]" under "Vocals"
+Other vocals [chant] ==> "Other vocals [chant]" should be a value under the "Vocals" column
+#+end_example
+
+* DONE add glyphs
+
+Still something to do, see @debug/header-row.html
+
+Rename the following columns e.g in https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b and add the corresponding glyph
+
+#+begin_example
+Part of --> Part of series <series glyph>
+Remix of --> Remix of recording <recording glyph>
+Edit of --> Edit of recording <recording glyph>
+#+end_example
+
+Add the corresponding glyph to the following columns
+
+#+begin_example
+Samples --> Samples <recording glyph>
+Music videos --> Music videos <recording glyph>
+Instrumental versions --> Instrumental versions <recording glyph>
+#+end_example
+
+
+* DONE raw "instruments" relationship shoud also go into the first "Instruments" column instead of creating an artificial second one
+
+raw "instruments" relationships shoud also go into the first "Instruments" column instead of creating an artificial second one
+
+@debug/inst.html - "David Kosten" and "Mike Carswell" are flagged as playing instruments, without being specific
+
+
+
+* TODO In "Recording enineer" column, "John Cooper (engineer)" should always stay together, a bare "John Cooper" should never be extracted
+
+Currently
+
+#+begin_example
+<li><a class="wrap-anywhere" href="/artist/4844fcef-6e56-4407-be41-ead237dff686" title="Cooper, John (engineer)"><bdi>John Cooper</bdi></a>&nbsp;<span class="comment"><bdi>(engineer)</bdi></span><span class="mb-live-date-flag" title="This track is a live recording (recorded 2005-07-18), but this credit has no date attribute — it can't be confirmed to be from the same performance."> ❌</span></li>
+#+end_example
+
+
+* TODO add checkboxes also to the "Relationship icons" section
+
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
 
 
 * TODO plan: review the "extractMainColumn" feature architecture
@@ -93119,13 +93231,47 @@ new plan: act on @debug/review-extract-maincolumn.org
 #+end_example
 
 ** TODO only render "Comment", "Primary alias" if at least one row has a value for it in the tabl/subtable
+*** initial
+
+Is it possible to only render the "Comment" and "MB-Primary alias" columns if at least one row in a table/subtable has a value for it (single/multi-table pagetypes)
+
+Do not code yet just check
+
+*** feasible
+
+#+begin_example
+● Yes, it's feasible — and there's already a working precedent in this codebase doing exactly this shape of thing, for two other synthetic columns.
+
+  Existing template: _suppressReleaseEventsIfNoReleaseLinks(table) and _suppressRelationshipsIfNoReleaseOrReleaseGroupLinks(table) already conditionally remove a column (header <th> + every row's <td> + the
+  matching column-filter-row cell) from a table when no row satisfies some condition. Mechanism: guard against an empty tbody (bail out — important, see below), scan all rows for the condition, and if it fails
+  everywhere, delete the header cell, every body cell at that index (descending index order), and the corresponding filter-row <input> cell, so thead/tbody/filter-row stay index-aligned.
+
+  Hook point exists in both modes already:
+  - Single-table (tableMode: 'single'): called right after cleanupHeaders()/addColumnFilterRow() and before makeTableSortableUnified(), at ShowAllEntityData.user.js:37294 / :37303.
+  - Multi-table/grouped (tableMode: 'multi'): called per-subtable inside renderGroupedTable() at :39822 / :39831, also before that subtable's makeTableSortableUnified() call — and since each subtable's header
+  is a cloneNode'd (or, for tag-value/user-ratings page types, independently rebuilt) copy, removing the column in one subtable doesn't affect siblings, satisfying "per table/subtable" naturally.
+
+  A new _suppressCommentColumnsIfEmpty(table) (checking "does any row have non-empty Comment / MB-Primary alias text" instead of "does any row link to a release") could be dropped into these same two call
+  sites.
+
+  Risks / things to decide before implementing:
+  1. Empty-tbody race during re-filtering — runFilter() clears and rebuilds tbody before re-rendering, so the emptiness check must bail out on a currently-empty tbody (the precedent already does this) or it'll
+  wrongly strip the column on a transient empty state.
+  2. Column can appear/disappear as the user filters/sorts, since suppression re-evaluates on every re-render. This is already accepted behavior for Release events/Relationships today, not a new risk class —
+  but worth confirming you're OK with Comment/MB-Primary alias doing the same.
+  3. Found a real existing gap while checking this: the disk-cache-restore render path (:50720-50725) does not call either suppression function before wiring sort, unlike the normal fetch-and-render path
+  (:37294-:37305). So today, Release events/Relationships suppression is already inconsistently applied depending on whether a page loads fresh or from the IndexedDB cache. A new Comment/MB-Primary-alias
+  suppression would either inherit this same gap or need a third call site added to fix it properly.
+  4. Persisted multi-sort state (multiTableSortStates, keyed by raw column index) could theoretically point at a stale index if a column's presence flips between re-renders — an accepted, pre-existing risk
+  class the current precedent already lives with, not something new.
+  5. Config safety is fine: tooltipColumns, collapsableColumns, integerColumns all resolve columns by name and gracefully skip if missing (no crash) — including the 'MB-Primary alias'/'italic:Comment'
+  references already added to several page definitions in the last commit.
+
+  So: architecturally sound, low-risk, and it'd reuse an established pattern rather than invent a new one. Want me to implement it (and should it also fix the cache-restore gap for consistency, or leave that
+  alone)?
+#+end_example
+
 ** TODO fix the last primaryAlias uses
-
-* DONE bug: in https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/events the "primary alias" should not be removed from the main column when extracted to its own column
-
-* TODO https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/events
-
-In the "Artists" column, support "guest performer"/"main performer" in the "Cell structure" of the unique value drop down
 
 * TODO On the 'reports' pageType add more columns if chabans statistics userscript is installed
 
@@ -93138,8 +93284,18 @@ Use our new _findCellEntityCommentParts(cell) helper (extends _findCellEntityRef
 https://musicbrainz.org/report/DiscogsLinksWithMultipleArtists
 
 
-* TODO make the "Space" key to also select inside the unique value drop down menu
+* TODO make the "Space" key also select the current entry inside the unique value drop down menu
 
-* TODO for "Instruments" add support for '[12-string guitar]' in "guitar: Bruce Springsteen [12-string guitar]" in the "Cell structure" section of the unqiue value drop down
+* TODO split "3421 w/special guest Miss Red" on https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b in column "Artist"
 
-* TODO fix pregress on https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b to show the actual rows to fetch fetching <n> out of <m>
+* TODO Not in scope
+
+     - No new alias column is added to _tagCountBase-family page blocks that
+     currently have neither extractMainColumn nor a paired primaryAlias
+     extractor (e.g. plain Name_Comment on Areas/Labels/Places/Release groups
+     entityFeatures blocks) — they simply stop leaking the alias into Comment;
+     a dedicated alias column for that family would be new-feature scope, not
+     a bug fix, and can be a separate follow-up if wanted.
+     - ColumnDataExtractor.primaryAlias itself is not deleted — it's still
+     needed by the 3 kept usages.
+
