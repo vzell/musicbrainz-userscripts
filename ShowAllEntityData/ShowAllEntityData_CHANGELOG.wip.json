@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.55",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "'release-tracks': two new buttons in the \"Tracklist\" header, right before the global filter box — \"(N) WARNING ⚠️\" and \"(N) ERROR ❌\" — each only shown when at least one matching icon (from WIP.54's live-recording date check) exists on the page. Their tooltip breaks the count down by column (e.g. \"Vocals (2), Recording engineer (1)\"). Clicking one clears every other active filter and shows only the rows containing that icon, reusing the existing global filter/\"Clear all filters\"/status-display machinery, so clearing back to all rows works exactly as it already does for any other filter."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.54",
     "date": "2026-08-10",
     "sections": [

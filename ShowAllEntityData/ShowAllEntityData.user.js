@@ -25881,6 +25881,29 @@ a { color: #1565c0; }`;
     // Enter-to-save-LRU.  We only need to hook up the ✕ clear-button sync here.
     filterInput.addEventListener('input', _syncGfClearBtn);
 
+    // ── release-tracks-only WARNING/ERROR summary buttons ─────────────────
+    // Self-scoped to release-tracks: .mb-live-date-flag spans (see
+    // _appendLiveDateFlag) are only ever created by applyExtractTrackTitleData(),
+    // so these stay hidden (display:none, toggled by _updateLiveDateFlagButtons())
+    // on every other page type without needing an explicit page-type check.
+    // Positioned as the first two children of filterContainer, right before
+    // filterWrapper (#mb-global-filter-wrapper) — filterContainer has no
+    // children yet at this point, so plain sequential appendChild is enough
+    // to land them first.
+    const warningFlagBtn = document.createElement('button');
+    warningFlagBtn.id = 'mb-live-date-warning-btn';
+    warningFlagBtn.type = 'button';
+    warningFlagBtn.style.cssText = `${uiFilterBarBtnCSS()} display:none; color:#8a6d00; border-color:#e0c14a;`;
+    warningFlagBtn.addEventListener('click', () => _applyLiveDateFlagFilter('⚠️'));
+    filterContainer.appendChild(warningFlagBtn);
+
+    const errorFlagBtn = document.createElement('button');
+    errorFlagBtn.id = 'mb-live-date-error-btn';
+    errorFlagBtn.type = 'button';
+    errorFlagBtn.style.cssText = `${uiFilterBarBtnCSS()} display:none; color:#a33; border-color:#e08a8a;`;
+    errorFlagBtn.addEventListener('click', () => _applyLiveDateFlagFilter('❌'));
+    filterContainer.appendChild(errorFlagBtn);
+
     filterContainer.appendChild(filterWrapper);
     filterContainer.appendChild(gfHistAnchor);
     filterContainer.appendChild(caseLabel);
@@ -26085,6 +26108,97 @@ a { color: #1565c0; }`;
     filterContainer.appendChild(clearAllFiltersBtn);
 
     /**
+     * Scans every rendered `table.tbl` for `.mb-live-date-flag` spans (added
+     * by the live-recording date check — see `_appendLiveDateFlag`) and
+     * tallies them by icon kind and by column. Counts EVERY flag instance
+     * (not deduped per row), and counts regardless of current row
+     * `display:none` state, so the totals stay a stable page-wide summary
+     * independent of whatever filter happens to be active when this runs.
+     *
+     * @returns {{warning: {total: number, byColumn: Map<string, number>},
+     *            error:   {total: number, byColumn: Map<string, number>}}}
+     */
+    function _countLiveDateFlags() {
+        const result = {
+            warning: { total: 0, byColumn: new Map() },
+            error:   { total: 0, byColumn: new Map() }
+        };
+        document.querySelectorAll('table.tbl').forEach(table => {
+            const headers = Array.from(table.querySelectorAll('thead tr:first-child th'))
+                .map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim());
+            table.querySelectorAll('tbody tr').forEach(row => {
+                Array.from(row.cells).forEach((cell, colIdx) => {
+                    cell.querySelectorAll('.mb-live-date-flag').forEach(flag => {
+                        const bucket = flag.textContent.includes('⚠️') ? result.warning
+                            : flag.textContent.includes('❌') ? result.error : null;
+                        if (!bucket) return;
+                        bucket.total++;
+                        const colName = headers[colIdx] || `Col ${colIdx}`;
+                        bucket.byColumn.set(colName, (bucket.byColumn.get(colName) || 0) + 1);
+                    });
+                });
+            });
+        });
+        return result;
+    }
+
+    /**
+     * Shows/hides and relabels the WARNING/ERROR summary buttons
+     * (`#mb-live-date-warning-btn`/`#mb-live-date-error-btn`) based on
+     * `_countLiveDateFlags()`'s current tally. Called from
+     * `updateFilterButtonsVisibility()` so it stays in sync with every
+     * existing render/filter-completion hook that function already covers —
+     * no new call sites needed elsewhere.
+     */
+    function _updateLiveDateFlagButtons() {
+        const warningBtn = document.getElementById('mb-live-date-warning-btn');
+        const errorBtn = document.getElementById('mb-live-date-error-btn');
+        if (!warningBtn || !errorBtn) return;
+        const counts = _countLiveDateFlags();
+        const _fmt = (kind, icon, bucket, btn) => {
+            if (bucket.total === 0) { btn.style.display = 'none'; return; }
+            btn.textContent = `(${bucket.total}) ${kind} ${icon}`;
+            const breakdown = Array.from(bucket.byColumn.entries())
+                .map(([col, n]) => `${col} (${n})`).join(', ');
+            btn.title = `${bucket.total} ${icon} ${kind} icon${bucket.total === 1 ? '' : 's'}: ${breakdown}. Click to show only rows with a ${icon} ${kind} icon.`;
+            btn.style.display = 'inline-block';
+        };
+        _fmt('WARNING', '⚠️', counts.warning, warningBtn);
+        _fmt('ERROR', '❌', counts.error, errorBtn);
+    }
+
+    /**
+     * Applies a one-off "show only rows containing this icon" filter: clears
+     * every column/sub-table filter and resets the case/regexp/exclude
+     * modifiers (so a stale "Exclude Matches" checkbox can't invert the
+     * result), sets the global filter input to the bare icon glyph, and runs
+     * the existing filter engine. `.mb-live-date-flag` is not in
+     * `_CLEAN_STRIP_SEL`, so its `⚠️`/`❌` text is already included in
+     * `testRowMatch()`'s whole-row global-query match — no changes to the
+     * filter engine itself are needed. Mirrors the exact setQuery/onApply
+     * plumbing `createFilterHistoryWidget` already uses above.
+     *
+     * @param {string} icon - `'⚠️'` or `'❌'`.
+     */
+    function _applyLiveDateFlagFilter(icon) {
+        document.querySelectorAll('.mb-col-filter-input').forEach(input => {
+            input.value = '';
+            input.style.backgroundColor = '';
+            delete input.dataset.mbMultirowMode;
+            delete input.dataset.mbUniqValues;
+        });
+        document.querySelectorAll('.mb-subtable-filter-container input[type="text"]').forEach(input => {
+            if (input.value) { input.value = ''; _dispatchInternalInputEvent(input, { bubbles: false }); }
+        });
+        caseCheckbox.checked = false;
+        regexpCheckbox.checked = false;
+        excludeCheckbox.checked = false;
+        const pfx = getFilterFocusPrefix();
+        filterInput.value = pfx + icon;
+        runFilter();
+    }
+
+    /**
      * Update visibility of filter-related buttons based on whether filters are active.
      *
      * Global bar buttons:
@@ -26204,6 +26318,11 @@ a { color: #1565c0; }`;
                 clearColStfBtn.style.display = (stfActive && tableHasColFilters) ? 'inline-block' : 'none';
             }
         });
+
+        // Keep the release-tracks-only WARNING/ERROR summary buttons in sync
+        // too — piggybacks on every existing call site of this function
+        // rather than needing its own.
+        _updateLiveDateFlagButtons();
     }
 
     // Make this function globally accessible so runFilter can call it
