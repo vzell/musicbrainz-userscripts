@@ -1761,9 +1761,9 @@
                          'each entity\'s own date attribute in five columns — "Recording engineer", ' +
                          '"Vocals", "Instruments", "Recorded at event", and "Recorded at place" — and ' +
                          'appends a small icon with an explanatory tooltip when they disagree: "⚠️" when ' +
-                         'that entity has its own date but it differs from "Recording date" (may belong ' +
-                         'to a different performance), "❌" when it has no date attribute at all (can\'t ' +
-                         'be confirmed either way). Comparison is an exact string match — no allowance ' +
+                         'that entity has no date attribute at all (can\'t be confirmed either way), "❌" ' +
+                         'when it has its own date but it differs from "Recording date" (may belong to a ' +
+                         'different performance). Comparison is an exact string match — no allowance ' +
                          'for differing date precision. A track without the "live" attribute, or with ' +
                          'no "Recording date" to compare against, is never flagged. Deliberately ' +
                          'excludes "Engineer"/"Producer"/"Mixer"/"Miscellaneous support"/ ' +
@@ -7555,8 +7555,8 @@
      *     "Recording engineer", "Vocals", "Instruments", "Recorded at
      *     event", "Recorded at place" — gets a trailing `⚠️`/`❌`
      *     `<span class="mb-live-date-flag">` (native `title` tooltip) when
-     *     its OWN date attribute doesn't exactly match "Recording date"
-     *     (`⚠️`, via `_liveDateCheckResult`) or is missing entirely (`❌`).
+     *     its OWN date attribute is missing entirely (`⚠️`) or doesn't
+     *     exactly match "Recording date" (`❌`, via `_liveDateCheckResult`).
      *     Deliberately excludes every other credit/place column
      *     ("Engineer"/"Producer"/"Mixer"/"Miscellaneous support"/
      *     "Performer"/"Produced for label"/"Mixed at place") — "Mixed at
@@ -9759,13 +9759,13 @@
     function _liveDateCheckResult(recordingDate, parsedDate) {
         if (!parsedDate) {
             return {
-                icon: '❌',
+                icon: '⚠️',
                 tooltip: `This track is a live recording (recorded ${recordingDate}), but this credit has no date attribute — it can't be confirmed to be from the same performance.`
             };
         }
         if (parsedDate.compareValue === recordingDate) return null;
         return {
-            icon: '⚠️',
+            icon: '❌',
             tooltip: `This track is a live recording (recorded ${recordingDate}), but this credit is dated "${parsedDate.raw}" — it may belong to a different performance.`
         };
     }

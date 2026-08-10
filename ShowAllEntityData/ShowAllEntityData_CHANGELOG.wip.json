@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.57",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "'release-tracks': swapped which icon WIP.54's live-recording date check uses for each case, per explicit correction — a credit with NO date attribute at all now gets \"⚠️\" (was \"❌\"), and a credit whose date attribute DIFFERS from \"Recording date\" now gets \"❌\" (was \"⚠️\"). Only `_liveDateCheckResult()`'s two icon literals changed; the underlying missing-vs-mismatch detection logic, tooltips' wording, and the WIP.55/WIP.56 WARNING/ERROR summary buttons (which just tally whichever icon is present) are all unaffected."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.56",
     "date": "2026-08-10",
     "sections": [
