@@ -92460,7 +92460,7 @@ compare
 ** TODO split "Recorded at place" column
 
 
-* TODO plan: add the flag and place/area icons at the right position of each entry in the unique value drop down instead of at the very beginning of each entry
+* DONE plan: add the flag and place/area icons at the right position of each entry in the unique value drop down instead of at the very beginning of each entry
 
 add the flag and place/area icons at the right position of each entry in the unique value drop down instead of at the very beginning of each entry
 
@@ -92469,7 +92469,6 @@ add the flag and place/area icons at the right position of each entry in the uni
 @debug/place-flags-ucv.html - same data cell value, but in the unique value drop down list, the flags are in front of the area name chain
 @debug/uv-dropdown.html - complete unique value drop deon menu, where all the flags are prefixed to the actual text
 #+end_example
-
 
 * DONE add synthetic entry to the cell structure of the unique value drop when there are ANY name variations
 ** initial
@@ -93300,8 +93299,9 @@ https://musicbrainz.org/report/DiscogsLinksWithMultipleArtists
      needed by the 3 kept usages.
 
 
-* why is this not working
+* TODO why is this not working
 
+why is this not working
 
 #+begin_example
             // Unconditionally remove the "MusicBrainz Nuclear Tags" bulk-tag column
@@ -93316,7 +93316,8 @@ https://musicbrainz.org/report/DiscogsLinksWithMultipleArtists
 for the column @debug/bulk.tag-recording.html
 
 
-* plan: how can I simplify (e.g. remove double functionality) but still use a nice interface with icons/glyphs etc.
+* TODO plan: how can I simplify (e.g. remove double functionality) but still use a nice interface with icons/glyphs etc.
+** initial
 
 @debug/uvd.html - complete unique value drop down menu for the "Artist" column in https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/artists
 
@@ -93335,4 +93336,6 @@ sections like the current "Cell structure", maybe make them collapsible by click
 maybe each section should have its own "Quick filter" input box, maybe also use a global one too
 
 think about it and discuss with me
+
+** plan
 
