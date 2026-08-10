@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.62",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Unique-values dropdown's \"Cell structure\" section now surfaces AR credit date/date-range annotations (e.g. \"on 1988-04-27\", \"in 1987\", \"from 1987-01-20 until 1987-03\", and the bare \"1988-04-27\" shape special to \"Recorded at event\") as their own per-value checkbox entries, exactly like the existing per-attribute (\"additional\"/\"guest\"/\"assistant\"/\"co\") and per-task entries — one entry per distinct date expression actually present in the column, checking one filters to matching rows and highlights the actual date text. New `<span class=\"mb-credit-date\">` sentinel (mirroring `.mb-credit-attr`/`.mb-credit-task`) is wired into every AR-credit builder that can carry a trailing date annotation: `_buildRecordedAtPlaceTd` (Recorded at place/Mixed at place), the \"Recorded at event\" bare-date cell, `_buildCreditListItem` (Vocals/Instruments/Performer/CREDIT_ROLES), and the generic `_buildKindSplitListTd`/`_buildLabelCreditListTd` (Phonographic copyright by artist/label, Produced for label, and any other AR column routed through the generic multi-kind-split builder) — the last two also correctly split MusicBrainz's own multi-date shape for a single credit (e.g. \"in 1987, in 1988\") into two separate date entries. Detection reuses the existing `_parseCreditDateAnnotation`/`_parseBareParenDate` date-shape recognizers from the live-recording-date-check feature, so both agree on exactly the same date forms."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.61",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Unique-values dropdown's \"~ has name variation\" Cell-structure entry only ever detected MusicBrainz's `<span class=\"name-variation\">` shape (nested inside a relationship/credit list item, e.g. an artist's \"Events\" Location column or \"Works\" Recording artists/Authors columns) — it never detected the CELL-LEVEL `<td class=\"artist-credit-variation\">` shape MusicBrainz uses on release/release-group listings' credited-artist column, so a genuine name variation there produced no entry at all. Replaced the three narrow `span.name-variation` lookups (counting in `openUniqDrop()`, `_cellMatchesStructureMode()`'s `'name-variation'` mode, and `_highlightNameVariationMatch()`) with a new shared `_findNameVariationElements()` helper that checks the cell's own class as well as its descendants, matched by class-name SUFFIX (`[class$=\"-variation\"]`) rather than an enumerated list — generalizes to any current or future similarly-named MusicBrainz `-variation` class, page-type-agnostically, without a new hardcoded selector each time."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.60",
     "date": "2026-08-10",
     "sections": [

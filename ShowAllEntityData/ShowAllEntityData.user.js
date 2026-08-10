@@ -8322,6 +8322,15 @@
                                     _td.appendChild(document.createTextNode(' '));
                                     _td.appendChild(_dateNode.cloneNode(true));
                                     _eventDateText = _dateNode.textContent;
+                                    // Wraps the bare "(YYYY-MM-DD)" node just
+                                    // appended in .mb-credit-date (see
+                                    // _wrapTrailingParenDateAnnotations()'s own
+                                    // JSDoc) so it's a "Cell structure"
+                                    // filterable/highlightable entry — must
+                                    // run before _appendLiveDateFlag() below,
+                                    // or its emoji span becomes _td.lastChild
+                                    // instead.
+                                    _wrapTrailingParenDateAnnotations(_td);
                                 }
                             }
                             if (_liveDateCtx) {
@@ -8874,6 +8883,12 @@
                 }
                 if (_dateText) {
                     li.appendChild(document.createTextNode(` (${_dateText})`));
+                    // Wraps the just-appended date text in .mb-credit-date
+                    // (see _wrapTrailingParenDateAnnotations()'s own JSDoc)
+                    // so it's a "Cell structure" filterable/highlightable
+                    // entry — must run before _appendLiveDateFlag() below,
+                    // or its emoji span becomes li.lastChild instead.
+                    _wrapTrailingParenDateAnnotations(li);
                 }
                 _appendLiveDateFlag(li, _liveResult);
                 ul.appendChild(li);
@@ -9228,6 +9243,16 @@
                 if (!_dd || _dd.tagName !== 'DD') return;
                 const li = document.createElement('li');
                 Array.from(_dd.childNodes).forEach(n => li.appendChild(n.cloneNode(true)));
+                // Wraps a trailing date/date-range annotation this segment
+                // may carry verbatim from the source markup (e.g. "(in
+                // 1987, in 1988)" — see debug/phonographic.html) in
+                // .mb-credit-date, so it's a "Cell structure" filterable/
+                // highlightable entry the same as every other AR column's
+                // date annotation — see _wrapTrailingParenDateAnnotations()'s
+                // own JSDoc. A no-op for the far more common case of a
+                // non-date trailing parenthetical (a disambiguation
+                // comment, etc.) or none at all.
+                _wrapTrailingParenDateAnnotations(li);
                 _uls.get('default').appendChild(li);
             });
         } else {
@@ -9267,6 +9292,8 @@
                     if (!_ul) return; // seg.kind not in the expected kinds set — defensive, dropped
                     const li = document.createElement('li');
                     seg.nodes.forEach(n => li.appendChild(n));
+                    // See the kinds.size === 0 branch above for why.
+                    _wrapTrailingParenDateAnnotations(li);
                     _ul.appendChild(li);
                 });
             });
@@ -9367,6 +9394,15 @@
                 if (!_findLabelCreditSegmentAnchor(seg)) return;
                 const li = document.createElement('li');
                 seg.forEach(n => li.appendChild(n));
+                // Wraps a trailing date/date-range annotation this segment
+                // may carry verbatim from the source markup in
+                // .mb-credit-date, so it's a "Cell structure" filterable/
+                // highlightable entry the same as every other AR column's
+                // date annotation — see _wrapTrailingParenDateAnnotations()'s
+                // own JSDoc. Must run BEFORE the "additional" attribute
+                // block below appends its OWN trailing "(word)" parenthetical,
+                // or that becomes li.lastChild instead and this is a no-op.
+                _wrapTrailingParenDateAnnotations(li);
                 if (attributes.length > 0) {
                     // Word list wrapped in the same 'mb-credit-attr' sentinel
                     // span _buildCreditListItem uses, so the unique-values
@@ -9739,6 +9775,101 @@
     }
 
     /**
+     * Tests whether `text` (already trimmed, no surrounding parens/comma)
+     * is one of this file's recognized AR-credit date-annotation shapes —
+     * `_parseCreditDateAnnotation`'s `"on/in YYYY[-MM[-DD]]"` and `"from …
+     * until …"` forms, PLUS the bare `"YYYY[-MM[-DD]]"` form special to
+     * "Recorded at event" (`_parseBareParenDate` — no `"on "`/`"in "`
+     * keyword at all). The single source of truth for "is this segment a
+     * date, as opposed to a task/instrument/disambiguation note" — used by
+     * both the DOM-wrapping helpers below (at credit-build time) and
+     * `openUniqDrop()`'s `dateValueCounts` collection pass (at render/
+     * filter time) so the two agree on exactly the same shapes.
+     *
+     * @param {string} text
+     * @returns {boolean}
+     */
+    function _isDateAnnotationText(text) {
+        return !!_parseCreditDateAnnotation(text) || /^[\d-]+$/.test(text);
+    }
+
+    /**
+     * Splits `text` on top-level `", "` separators and wraps each
+     * comma-separated segment that is itself date-shaped (see
+     * `_isDateAnnotationText`) in a `<span class="mb-credit-date">`
+     * sentinel — the date-annotation counterpart of the existing
+     * `.mb-credit-attr`/`.mb-credit-task` sentinels, letting the
+     * unique-values dropdown's "Cell structure" per-date synthetic filter
+     * entries (`openUniqDrop()`'s `dateValueCounts`) find, filter, and
+     * highlight them. Non-date segments (and the separating `", "` text
+     * itself) are returned as plain text nodes, unwrapped and unchanged.
+     *
+     * Handles BOTH the common single-date-per-parenthetical shape (e.g.
+     * `"on 1988-04-27"`) AND MusicBrainz's own multi-date shape for a
+     * single credit with more than one date range (e.g. `"in 1987, in
+     * 1988"` — see debug/phonographic.html's "Phonographic copyright (℗)
+     * by label" column) in one pass, since a no-comma string is just the
+     * one-segment case of the same split.
+     *
+     * @param {string} text - Raw annotation text, WITHOUT surrounding
+     *   parens (the caller adds those itself, matching every other
+     *   `.mb-credit-*` sentinel's convention).
+     * @returns {Node[]}
+     */
+    function _wrapDateAnnotationsInText(text) {
+        return text.split(/(,\s*)/).map(part => {
+            if (!part || /^,\s*$/.test(part)) return document.createTextNode(part);
+            if (_isDateAnnotationText(part.trim())) {
+                const span = document.createElement('span');
+                span.className = 'mb-credit-date';
+                span.textContent = part;
+                return span;
+            }
+            return document.createTextNode(part);
+        });
+    }
+
+    /**
+     * Post-processes a container's LAST child, if it is a plain text node
+     * shaped like a trailing `"(…)"` parenthetical (MusicBrainz's own
+     * free-text annotation convention for a relationship credit — a task/
+     * instrument/disambiguation note, OR a date/date-range annotation),
+     * replacing it with the same text but with any date-shaped segment
+     * inside wrapped via `_wrapDateAnnotationsInText()` — everything else
+     * (non-date text, the parens themselves) is left exactly as it was.
+     *
+     * A no-op when the container's last child isn't a bare trailing-paren
+     * text node at all (e.g. it ends in an element, or in non-parenthetical
+     * text), OR when nothing inside it turned out to be date-shaped (e.g.
+     * an ordinary `"(strings)"`/`"(additional)"` note) — this deliberately
+     * only ever touches the ONE shape `_buildKindSplitListTd()`/
+     * `_buildRecordedAtPlaceTd()`/"Recorded at event" clone-the-segment-
+     * verbatim (or single-trailing-date-node) builders can produce, never
+     * an arbitrary mid-content date string.
+     *
+     * @param {HTMLElement} container - A `<li>`/`<td>` whose content has
+     *   already been fully appended (call BEFORE any trailing
+     *   `_appendLiveDateFlag()` emoji span, or that becomes the last child
+     *   instead and this becomes a no-op).
+     * @returns {void}
+     */
+    function _wrapTrailingParenDateAnnotations(container) {
+        const _last = container.lastChild;
+        if (!_last || _last.nodeType !== Node.TEXT_NODE) return;
+        const _m = _last.textContent.match(/^(\s*)\(([\s\S]*)\)(\s*)$/);
+        if (!_m) return;
+        const [, _lead, _inner, _trail] = _m;
+        const _wrapped = _wrapDateAnnotationsInText(_inner);
+        if (!_wrapped.some(n => n.nodeType === Node.ELEMENT_NODE)) return;
+        container.removeChild(_last);
+        if (_lead) container.appendChild(document.createTextNode(_lead));
+        container.appendChild(document.createTextNode('('));
+        _wrapped.forEach(n => container.appendChild(n));
+        container.appendChild(document.createTextNode(')'));
+        if (_trail) container.appendChild(document.createTextNode(_trail));
+    }
+
+    /**
      * Compares a live track's "Recording date" against one already-parsed
      * date (see `_parseCreditDateAnnotation`/`_parseBareParenDate`) — exact
      * string match only, deliberately no allowance for differing date
@@ -9932,6 +10063,14 @@
                     _i.className = 'mb-credit-task';
                     _i.textContent = _annotation;
                     _parenNodes.push(_i);
+                } else if (_isDateAnnotationText(_annotation)) {
+                    // Date/date-range annotation (e.g. "in 1987", "on
+                    // 1988-04-27") — wrapped in .mb-credit-date (see
+                    // _wrapDateAnnotationsInText()'s own JSDoc) so it's a
+                    // "Cell structure" filterable/highlightable entry, same
+                    // as the 'mb-credit-attr'/'mb-credit-task' sentinels
+                    // above.
+                    _wrapDateAnnotationsInText(_annotation).forEach(n => _parenNodes.push(n));
                 } else {
                     _parenNodes.push(document.createTextNode(_annotation));
                 }
@@ -15978,6 +16117,42 @@
     }
 
     /**
+     * Finds every native MusicBrainz "name variation" marker within (or AS)
+     * a table cell — an element whose own class ends in `-variation`,
+     * meaning "this credited/displayed name differs from the entity's
+     * canonical name." Generalized to any class matching that suffix
+     * (`[class$="-variation"]`) rather than an enumerated list, so it picks
+     * up every known real shape without a page-type-specific call site, and
+     * any future similarly-named MusicBrainz class automatically too:
+     *
+     *   - `<span class="name-variation">…</span>` — an inline credited-name
+     *     variation NESTED inside a relationship/credit list item (e.g. an
+     *     artist's "Events" page Location column when a venue is credited
+     *     under a former name; an artist's "Works" page Recording
+     *     artists/Authors columns for an aliased credit).
+     *   - `<td class="artist-credit-variation">…</td>` — the CELL ITSELF
+     *     (not a nested span) on release/release-group listings' credited-
+     *     artist column, when the row's artist credit differs from that
+     *     artist's canonical name.
+     *
+     * Checks the cell's own class first (covers the `<td>`-level shape)
+     * before querying descendants (covers the nested `<span>` shape), since
+     * `:scope`-less `querySelectorAll` alone would miss a match on the cell
+     * element itself.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Element[]}
+     */
+    function _findNameVariationElements(cell) {
+        if (!cell) return [];
+        const sel = '[class$="-variation"]';
+        const out = [];
+        if (cell.matches(sel)) out.push(cell);
+        out.push(...cell.querySelectorAll(sel));
+        return out;
+    }
+
+    /**
      * Tests whether a table cell matches a "Cell structure" checkbox mode
      * from `openUniqDrop()`'s synthetic entries (`makeSynItem`/
      * `makeValueSynItem`/`makeInlineArtItem`) — the single source of truth
@@ -15989,7 +16164,7 @@
      * (`addCAA`/`addEAA`'s `.mb-inline-art-sort-key`) under one evaluator so
      * a mode string is matched identically everywhere it's checked.
      *
-     * @param {string} mode - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | `attr:${string}` | `task:${string}` | 'inline-art-yes' | 'inline-art-no'
+     * @param {string} mode - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | `attr:${string}` | `task:${string}` | `date:${string}` | 'inline-art-yes' | 'inline-art-no'
      * @param {HTMLTableCellElement} cell
      * @param {HTMLTableRowElement}  row
      * @param {number}  colIdx
@@ -16014,7 +16189,7 @@
         if (mode === 'expanded') return hasMultiRow && isExpanded;
         if (mode === 'single') return hasSingleRow;
         if (mode === 'title-mismatch') return !!cell && _titleHasRecNameMismatch(cell);
-        if (mode === 'name-variation') return !!cell && !!cell.querySelector('span.name-variation');
+        if (mode === 'name-variation') return _findNameVariationElements(cell).length > 0;
         if (mode.startsWith('attr:')) {
             // Compound mode (openUniqDrop()'s makeValueSynItem) — matches a
             // credit-role column's <span class="mb-credit-attr"> sentinel,
@@ -16030,6 +16205,15 @@
             // exactly (whole trimmed text, not split).
             const want = mode.slice(5);
             return !!cell && Array.from(cell.querySelectorAll('.mb-credit-task'))
+                .some(s => s.textContent.trim() === want);
+        }
+        if (mode.startsWith('date:')) {
+            // Compound mode counterpart of 'attr:'/'task:' above — matches a
+            // credit's date/date-range annotation <span class="mb-credit-date">
+            // sentinel exactly (whole trimmed text, not split) — see
+            // _wrapDateAnnotationsInText()'s own JSDoc.
+            const want = mode.slice(5);
+            return !!cell && Array.from(cell.querySelectorAll('.mb-credit-date'))
                 .some(s => s.textContent.trim() === want);
         }
         if (mode === 'inline-art-yes' || mode === 'inline-art-no') {
@@ -32358,27 +32542,31 @@ a { color: #1565c0; }`;
 
     /**
      * Highlights the exact matched value for a credit-role column's
-     * 'attr:'/'task:' compound structure-mode filter (see `openUniqDrop()`'s
-     * `makeValueSynItem` and `testRowMatch()`'s `f.isMultiValueFilter`
-     * structure-mode fallback) — unlike every OTHER structure mode (empty/single/collapsed/
-     * expanded/any/title-mismatch/name-variation), which test pure DOM
-     * structure with no single corresponding string, `'attr:'`/`'task:'`
-     * DO correspond to one exact string, so they get the same
-     * `mb-column-filter-highlight` treatment a normal text column filter
-     * would — same color/class, applied ONLY to the exact matched credit's
-     * `<span class="mb-credit-attr">`/`<i class="mb-credit-task">`
-     * sentinel (see `_buildCreditListItem`/`_buildLabelCreditListTd`), not
-     * the whole cell or the whole `<li>`.
+     * 'attr:'/'task:'/'date:' compound structure-mode filter (see
+     * `openUniqDrop()`'s `makeValueSynItem` and `testRowMatch()`'s
+     * `f.isMultiValueFilter` structure-mode fallback) — unlike every OTHER
+     * structure mode (empty/single/collapsed/expanded/any/title-mismatch/
+     * name-variation), which test pure DOM structure with no single
+     * corresponding string, these three DO correspond to one exact string,
+     * so they get the same `mb-column-filter-highlight` treatment a normal
+     * text column filter would — same color/class, applied ONLY to the
+     * exact matched credit's `<span class="mb-credit-attr">`/`<i
+     * class="mb-credit-task">`/`<span class="mb-credit-date">` sentinel
+     * (see `_buildCreditListItem`/`_buildLabelCreditListTd`/
+     * `_wrapDateAnnotationsInText`), not the whole cell or the whole `<li>`.
      *
      * Only sentinels whose OWN value matches the filter target are
      * highlighted — a merged multi-person credit can have several
-     * `.mb-credit-attr`/`.mb-credit-task` elements in one cell with
-     * DIFFERENT values, and only the row's matching credit(s) should light
-     * up. `.mb-credit-attr`'s text can be a `/`-joined multi-word list
-     * (e.g. `"assistant/co"`), so that case uses a `\b…\b` word-boundary
-     * regex to highlight just the matched word, not the whole span;
-     * `.mb-credit-task`'s text is never joined (one task per credit), so
-     * its whole text is highlighted verbatim.
+     * `.mb-credit-attr`/`.mb-credit-task`/`.mb-credit-date` elements in one
+     * cell with DIFFERENT values, and only the row's matching credit(s)
+     * should light up. `.mb-credit-attr`'s text can be a `/`-joined
+     * multi-word list (e.g. `"assistant/co"`), so that case uses a `\b…\b`
+     * word-boundary regex to highlight just the matched word, not the whole
+     * span; `.mb-credit-task`'s and `.mb-credit-date`'s text is never
+     * joined (one task/date per sentinel — a multi-date credit like "in
+     * 1987, in 1988" gets one `.mb-credit-date` span per date, see
+     * `_wrapDateAnnotationsInText`), so their whole text is highlighted
+     * verbatim.
      *
      * Reuses `highlightCrossTag()` — the same cross-tag-safe text-wrapping
      * primitive every other filter-highlight call in this file uses — so
@@ -32388,11 +32576,13 @@ a { color: #1565c0; }`;
      *
      * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
      * @param {string} multiRowMode - The compound mode string, e.g.
-     *   `"attr:additional"` or `"task:task: Second Engineer"`.
+     *   `"attr:additional"`, `"task:task: Second Engineer"`, or
+     *   `"date:on 1988-04-27"`.
      */
     function _highlightCreditValueMatch(cell, multiRowMode) {
         if (!cell) return;
         const _isAttr = multiRowMode.startsWith('attr:');
+        const _isDate = multiRowMode.startsWith('date:');
         const _want = multiRowMode.slice(5);
         const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         if (_isAttr) {
@@ -32401,6 +32591,13 @@ a { color: #1565c0; }`;
                 if (!span.textContent.split('/').includes(_want)) return;
                 span.normalize();
                 highlightCrossTag(span, _regex, 'mb-column-filter-highlight');
+            });
+        } else if (_isDate) {
+            const _regex = new RegExp(_escaped, 'g');
+            cell.querySelectorAll('.mb-credit-date').forEach(el => {
+                if (el.textContent.trim() !== _want) return;
+                el.normalize();
+                highlightCrossTag(el, _regex, 'mb-column-filter-highlight');
             });
         } else {
             const _regex = new RegExp(_escaped, 'g');
@@ -32413,20 +32610,22 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Highlights every `<span class="name-variation">` (MusicBrainz's own
-     * alias/differently-spelled-credit styling) inside a cell — the
+     * Highlights every native MusicBrainz "name variation" marker
+     * (`_findNameVariationElements()` — both the nested `<span
+     * class="name-variation">` and cell-level `<td
+     * class="artist-credit-variation">` shapes) inside a cell — the
      * `'name-variation'` structure-mode counterpart of
      * `_highlightCreditValueMatch()`'s `attr:`/`task:` handling. Unlike
      * those two, there is no single "wanted value" to match against here
-     * (the checkbox just means "this cell has ≥1 name-variation span at
-     * all"), so the WHOLE text of each matching span is highlighted via
+     * (the checkbox just means "this cell has ≥1 name-variation marker at
+     * all"), so the WHOLE text of each matching element is highlighted via
      * `_buildFuzzyTextMatchRegex()` (the same whole-element approach
      * `_highlightUniqItemMatches()`/`_highlightUniqEntityMatches()` use),
      * rather than a targeted substring.
      *
-     * Marking these spans with `.mb-column-filter-highlight` also makes the
-     * existing hidden-match signalling on a multi-row cell's collapse toggle
-     * (`_COLLAPSE_MATCH_SEL`, checked by `initCollapsableColumns()`/
+     * Marking these elements with `.mb-column-filter-highlight` also makes
+     * the existing hidden-match signalling on a multi-row cell's collapse
+     * toggle (`_COLLAPSE_MATCH_SEL`, checked by `initCollapsableColumns()`/
      * `ensureCollapseDelegate()`/`updateGlobalCollapseButtonHighlight()`)
      * pick these matches up for free — a name-variation match hidden inside
      * a COLLAPSED multi-row cell now correctly tints that cell's ▶ toggle,
@@ -32436,11 +32635,11 @@ a { color: #1565c0; }`;
      */
     function _highlightNameVariationMatch(cell) {
         if (!cell) return;
-        cell.querySelectorAll('span.name-variation').forEach(span => {
-            const t = getCleanColumnText(span);
+        _findNameVariationElements(cell).forEach(el => {
+            const t = getCleanColumnText(el);
             if (!t) return;
-            span.normalize();
-            highlightCrossTag(span, _buildFuzzyTextMatchRegex(t), 'mb-column-filter-highlight');
+            el.normalize();
+            highlightCrossTag(el, _buildFuzzyTextMatchRegex(t), 'mb-column-filter-highlight');
         });
     }
 
@@ -32843,7 +33042,7 @@ a { color: #1565c0; }`;
                     // may fire independently on the same cell if the user has
                     // checked an overlapping item entry AND entity entry —
                     // harmless: nested mb-column-filter-highlight spans render
-                    // identically to one. Checked 'attr:'/'task:' and
+                    // identically to one. Checked 'attr:'/'task:'/'date:' and
                     // 'name-variation' structure modes DO correspond to exact
                     // visible content and get highlighted; the other structure
                     // modes (empty/single/collapsed/expanded/any/title-mismatch/
@@ -32855,7 +33054,7 @@ a { color: #1565c0; }`;
                         if (f.hasEntityValues) _highlightUniqEntityMatches(row.cells[f.idx], f);
                         if (f.structureModes) {
                             f.structureModes.forEach(mode => {
-                                if (mode.startsWith('attr:') || mode.startsWith('task:')) {
+                                if (mode.startsWith('attr:') || mode.startsWith('task:') || mode.startsWith('date:')) {
                                     _highlightCreditValueMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'name-variation') {
                                     _highlightNameVariationMatch(row.cells[f.idx]);
@@ -41704,10 +41903,12 @@ a { color: #1565c0; }`;
         // testing for the inequality glyph itself is the robust signal,
         // immune to exactly which third-party script/class name produced it.
         let titleMismatchCount = 0;
-        // Any column: rows where at least one credited entity in the cell
-        // uses a MusicBrainz <span class="name-variation"> (an alias/
-        // differently-spelled name shown instead of the entity's primary
-        // one — see debug/nassua.html "Nassau Coliseum", debug/
+        // Any column: rows where the cell carries (or contains) a
+        // MusicBrainz "name variation" marker — see _findNameVariationElements()'s
+        // own JSDoc for the two known shapes (<span class="name-variation">,
+        // <td class="artist-credit-variation">) — an alias/differently-
+        // spelled/differently-credited name shown instead of the entity's
+        // canonical one (see debug/nassua.html "Nassau Coliseum", debug/
         // variant-engineer-2.html "Andres Bermudezat"), rendered with a
         // dotted underline on the live page.
         let nameVariationCount = 0;
@@ -41726,6 +41927,13 @@ a { color: #1565c0; }`;
         // Engineer") this is built from.
         const attrValueCounts = new Map();
         const taskValueCounts = new Map();
+        // Distinct date/date-range annotation values (e.g. "on 1988-04-27",
+        // "in 1987", "from 1987-01-20 until 1987-03") — the
+        // `<span class="mb-credit-date">` sentinel counterpart of
+        // attrValueCounts/taskValueCounts above; see
+        // _wrapDateAnnotationsInText()'s own JSDoc for the shapes recognized
+        // and every builder that produces this sentinel.
+        const dateValueCounts = new Map();
         // One entry per unique <li> item's own clean text, for multi-row
         // (≥2-item) list cells — e.g. "Karl Egsieker (task: Second
         // Engineer)" as its own selectable value distinct from the merged
@@ -41831,7 +42039,7 @@ a { color: #1565c0; }`;
                 });
                 _rowEntityHrefs.forEach(href => entityHrefCounts.set(href, (entityHrefCounts.get(href) || 0) + 1));
                 if (isTitleCol && _titleHasRecNameMismatch(cell)) titleMismatchCount++;
-                if (cell.querySelector('span.name-variation')) nameVariationCount++;
+                if (_findNameVariationElements(cell).length > 0) nameVariationCount++;
                 const _rowAttrWords = new Set();
                 cell.querySelectorAll('.mb-credit-attr').forEach(s => {
                     s.textContent.split('/').forEach(w => { if (w) _rowAttrWords.add(w); });
@@ -41843,6 +42051,12 @@ a { color: #1565c0; }`;
                     if (t) _rowTaskValues.add(t);
                 });
                 _rowTaskValues.forEach(t => taskValueCounts.set(t, (taskValueCounts.get(t) || 0) + 1));
+                const _rowDateValues = new Set();
+                cell.querySelectorAll('.mb-credit-date').forEach(s => {
+                    const t = s.textContent.trim();
+                    if (t) _rowDateValues.add(t);
+                });
+                _rowDateValues.forEach(t => dateValueCounts.set(t, (dateValueCounts.get(t) || 0) + 1));
             });
         }
         const vals = Array.from(valueCounts.keys()).sort((a, b) =>
@@ -42669,21 +42883,23 @@ a { color: #1565c0; }`;
 
         /**
          * Creates and appends a single per-value synthetic entry to synBox —
-         * the `attrValueCounts`/`taskValueCounts` counterpart of
-         * `makeSynItem`, for a DYNAMIC list of distinct values (one entry
-         * per distinct credit attribute word or task string actually found
-         * in this column) rather than `makeSynItem`'s fixed 5-mode set.
+         * the `attrValueCounts`/`taskValueCounts`/`dateValueCounts`
+         * counterpart of `makeSynItem`, for a DYNAMIC list of distinct
+         * values (one entry per distinct credit attribute word, task
+         * string, or date/date-range annotation actually found in this
+         * column) rather than `makeSynItem`'s fixed 5-mode set.
          *
          * Reuses the exact same checkbox/`dataset.mbUniqValues` plumbing as
          * `makeSynItem` via a colon-prefixed COMPOUND mode string
-         * (`"attr:additional"`, `"task:task: Second Engineer"`), parsed by
-         * `_cellMatchesStructureMode()` — kept on this one mechanism
-         * deliberately, rather than adding a second, parallel filter path for
-         * parameterized values.
+         * (`"attr:additional"`, `"task:task: Second Engineer"`,
+         * `"date:on 1988-04-27"`), parsed by `_cellMatchesStructureMode()` —
+         * kept on this one mechanism deliberately, rather than adding a
+         * second, parallel filter path for parameterized values.
          *
-         * @param {'attr'|'task'} kind
-         * @param {string} value  - The exact attribute word or task string
-         *   to match (embedded verbatim in the compound mode string).
+         * @param {'attr'|'task'|'date'} kind
+         * @param {string} value  - The exact attribute word, task string, or
+         *   date/date-range annotation to match (embedded verbatim in the
+         *   compound mode string).
          * @param {number} count  - Number of visible rows matching this value.
          */
         const makeValueSynItem = (kind, value, count) => {
@@ -42786,11 +43002,12 @@ a { color: #1565c0; }`;
         // Every column type can have genuinely empty cells (e.g. a primary-alias
         // column where most events have no alias, a CAA column with no artwork,
         // etc.) and being able to filter to those rows is universally useful.
-        // Sorted entries for the two dynamic per-value families (shared by
+        // Sorted entries for the three dynamic per-value families (shared by
         // both branches below).
         const _sortedAttrValues = Array.from(attrValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedTaskValues = Array.from(taskValueCounts.keys()).sort((a, b) => a.localeCompare(b));
-        const _hasValueEntries = _sortedAttrValues.length > 0 || _sortedTaskValues.length > 0;
+        const _sortedDateValues = Array.from(dateValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _hasValueEntries = _sortedAttrValues.length > 0 || _sortedTaskValues.length > 0 || _sortedDateValues.length > 0;
 
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 || _hasValueEntries)) {
             // Section header — only shown for the multi-entry collapsable section
@@ -42819,11 +43036,13 @@ a { color: #1565c0; }`;
             // still inside the same "Cell structure" section.
             if (titleMismatchCount > 0)     makeSynItem('title-mismatch', '≠ track/recording name',                                           titleMismatchCount);
             if (nameVariationCount > 0)     makeSynItem('name-variation', '~ has name variation',                                              nameVariationCount);
-            // Credit-role columns' per-attribute / per-task dynamic value
-            // entries (see attrValueCounts/taskValueCounts' own comments
-            // above) — one entry per distinct value actually present.
+            // Credit-role columns' per-attribute / per-task / per-date
+            // dynamic value entries (see attrValueCounts/taskValueCounts/
+            // dateValueCounts' own comments above) — one entry per distinct
+            // value actually present.
             _sortedAttrValues.forEach(v => makeValueSynItem('attr', v, attrValueCounts.get(v)));
             _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
+            _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
 
             appendSynDivider();
         } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 || _hasValueEntries) {
@@ -42834,7 +43053,7 @@ a { color: #1565c0; }`;
             // ('○ empty cells' alone has never needed one).
             const _entryCount = (emptyCellCount > 0 ? 1 : 0) +
                 (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0) +
-                _sortedAttrValues.length + _sortedTaskValues.length;
+                _sortedAttrValues.length + _sortedTaskValues.length + _sortedDateValues.length;
             if (_entryCount > 1) {
                 const synHdr = document.createElement('div');
                 synHdr.textContent = 'Cell structure';
@@ -42849,6 +43068,7 @@ a { color: #1565c0; }`;
             if (nameVariationCount > 0) makeSynItem('name-variation', '~ has name variation',    nameVariationCount);
             _sortedAttrValues.forEach(v => makeValueSynItem('attr', v, attrValueCounts.get(v)));
             _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
+            _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
             appendSynDivider();
         }
 
@@ -43125,7 +43345,7 @@ a { color: #1565c0; }`;
               (totalMultiRow > 1         ? 1 : 0)
             : (emptyCellCount > 0 ? 1 : 0)) +
             (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0) +
-            _sortedAttrValues.length + _sortedTaskValues.length;
+            _sortedAttrValues.length + _sortedTaskValues.length + _sortedDateValues.length;
         const dropH = Math.min(320, (combinedVals.length + synItemCount) * 29 + 50 + 38); // +50 syn header/divider, +38 qf bar
         const dropW = drop.offsetWidth || 200;
 
@@ -43173,6 +43393,7 @@ a { color: #1565c0; }`;
         if (mode === 'inline-art-no')  return '∅ NO artwork available';
         if (mode.startsWith('attr:'))  return `» attribute: ${mode.slice(5)}`;
         if (mode.startsWith('task:'))  return `» ${mode.slice(5)}`;
+        if (mode.startsWith('date:'))  return `» ${mode.slice(5)}`;
         return '▶◀ multi-row: any';
     }
 
@@ -43201,6 +43422,7 @@ a { color: #1565c0; }`;
         }
         if (mode.startsWith('attr:')) return 'One of this cell\'s credited attribute words.';
         if (mode.startsWith('task:')) return 'This cell\'s credited task text.';
+        if (mode.startsWith('date:')) return 'A date/date-range annotation attached to one of this cell\'s credits.';
         return '';
     }
 
