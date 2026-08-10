@@ -93314,3 +93314,23 @@ https://musicbrainz.org/report/DiscogsLinksWithMultipleArtists
 #+end_example
 
 for the column @debug/bulk.tag-recording.html
+
+
+* plan: how can I simplify (e.g. remove double functionality) but still use a nice interface with icons/glyphs etc.
+
+1.)
+
+can I simplify (e.g. maybe remove double functionality, but also see bullet point 2.) from the unique value drop down in
+each column but still use a nice interface with icons/glyphs etc.
+
+2.)
+
+is it possible to maybe better organize the different entries in the unique value drop down in multiple different
+sections like the current "Cell structure", maybe make them collapsible by clicking the section header
+
+3.)
+
+maybe each section should have its own "Quick filter" input box, maybe also use a global one too
+
+think about it and discuss with me
+
