@@ -9558,7 +9558,27 @@
      * An optional trailing `[altName]` bracket (MusicBrainz's credited-as
      * alternate instrument/vocal-type name, e.g. `<a href="…">baritone
      * saxophone</a> [baritone sax]:`) is captured per component and
-     * stripped before the attribute-word check.
+     * stripped before the attribute-word check. The `,`/`and` component
+     * split (below) never splits INSIDE a `[...]` bracket — the alt-name
+     * itself can be a comma-joined list (e.g. `<a href="…">electric bass
+     * guitar</a> [1961 Fender P-Bass, Ampeg B-15]:`, `<a href="…">guitar</a>
+     * [1965 Gibson Firebird, Gibson SG, 12 string PRS, Blackface Fender
+     * Super Reverb, Silvertone 40]:` — see debug/credited-as-original.html).
+     * Without that protection, a comma INSIDE the bracket would be wrongly
+     * treated as a component boundary, splitting the bracket in two: the
+     * fragment with the opening `[` never finds its closing `]` so the
+     * bracket-match fails entirely, its now-unstripped garbage words
+     * (`"[1961"`, `"fender"`, `"p-bass"`, …) fail the attribute-word check,
+     * and the WHOLE `<dt>` gets rejected
+     * — silently dumping the entire credit into its own bogus dynamic
+     * fallback column named after the raw, half-bracketed text (e.g.
+     * "Electric bass guitar [1961 fender p-bass, ampeg b-15]") instead of
+     * the shared "Instruments" column. Confirmed via
+     * debug/credited-as-final-buggy.html on a 100+-row release. This bug is
+     * independent of (and can compound with) an actually-unrecognized
+     * attribute word like `<dt>… other vocals [shout]:</dt>` — "other" is
+     * not in `INSTRUMENT_VOCAL_ATTRIBUTES`, so that `<dt>` is CORRECTLY left
+     * to the dynamic-fallback classifier regardless of this fix.
      *
      * @param {HTMLElement} dt
      * @returns {?{instruments: Array<{anchor: HTMLAnchorElement, altName: ?string, attributes: string[]}>,
@@ -9584,10 +9604,29 @@
             }
             let _text = n.textContent;
             if (i === _childNodes.length - 1) _text = _text.replace(/:\s*$/, '');
-            _text.split(/\s*,\s*|\s+and\s+/i).forEach((part, pi) => {
-                if (pi > 0) _components.push([]);
+            // Split on ","/" and ", but never inside a [...] bracket — the
+            // credited-as alt-name can itself be a comma-joined list (e.g.
+            // "electric bass guitar [1961 Fender P-Bass, Ampeg B-15]",
+            // "guitar [1965 Gibson Firebird, Gibson SG, 12 string PRS,
+            // Blackface Fender Super Reverb, Silvertone 40]" — see this
+            // function's own JSDoc for the bug this fixes). The regex
+            // alternation tries a whole "[...]" bracket first at each
+            // position; when it matches, it's consumed WITHOUT creating a
+            // split (the `continue` below just advances past it, leaving
+            // `_last` untouched) — only a bare ","/" and " match outside any
+            // bracket ends the current part.
+            const _splitRe = /\[[^\]]*\]|\s*,\s*|\s+and\s+/gi;
+            let _last = 0;
+            let _m;
+            while ((_m = _splitRe.exec(_text)) !== null) {
+                if (_m[0][0] === '[') continue;
+                const part = _text.slice(_last, _m.index);
+                _last = _splitRe.lastIndex;
                 if (part) _components[_components.length - 1].push(document.createTextNode(part));
-            });
+                _components.push([]);
+            }
+            const _lastPart = _text.slice(_last);
+            if (_lastPart) _components[_components.length - 1].push(document.createTextNode(_lastPart));
         });
 
         const _instruments = [];

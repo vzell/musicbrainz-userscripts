@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.71",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`_parseInstrumentVocalsDt()`'s component-splitting (for the shared \"Instruments\"/\"Vocals\" release-tracks columns) split on every `,`/` and ` in a `<dt>`, including ones INSIDE a credited-as `[…]` alt-name bracket — MusicBrainz's own bracket can itself be a comma-joined list, e.g. `guitar [1965 Gibson Firebird, Gibson SG, 12 string PRS, Blackface Fender Super Reverb, Silvertone 40]:` (see debug/credited-as-original.html). This split the bracket in two, left an unclosed `[` that failed the bracket-match, and its now-unstripped garbage words failed the attribute-word check — silently rejecting the whole `<dt>` and dumping the credit into its own bogus dynamic-fallback column named after the raw half-bracketed text (e.g. \"Electric bass guitar [1961 fender p-bass, ampeg b-15]\") instead of the shared \"Instruments\" column. Confirmed on a 100+-row release via debug/credited-as-final-buggy.html. The component split now skips over whole `[…]` brackets before ever considering a `,`/` and ` inside them a boundary."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.70",
     "date": "2026-08-10",
     "sections": [
