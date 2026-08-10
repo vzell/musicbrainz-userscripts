@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.70",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The unique-values dropdown's \"Cell structure\" section now has per-value entries for the \"Instruments\"/\"Vocals\" columns' credited-as alternate name — MusicBrainz's own trailing \"[…]\" bracket on a credit (e.g. `guitar [12-string guitar]`, `synthesizer [synth strings]` — see debug/cr-as-original.html / debug/cr-as-final.html). Previously this text rendered but was plain, unfilterable text; it's now wrapped in a `.mb-credit-altname` sentinel (mirroring the existing `attr:`/`task:`/`date:`/`instrument:` compound structure-modes) so it can be checkbox-filtered and highlighted like every other credit detail."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.69",
     "date": "2026-08-10",
     "sections": [

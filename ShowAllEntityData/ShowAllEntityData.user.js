@@ -10306,7 +10306,11 @@
      * says "Vocals". A credited-as `altName` (e.g. `"orchestra
      * bells"`/`"baritone sax"`, from MusicBrainz's own trailing `[…]`
      * bracket) appends after the attribute parenthetical, in the same
-     * bracket shape MusicBrainz itself uses.
+     * bracket shape MusicBrainz itself uses, its text wrapped in
+     * `.mb-credit-altname` (same convention as the sentinels above) so the
+     * unique-values dropdown's "Cell structure" per-credited-as synthetic
+     * filter entries can find and highlight it — see `openUniqDrop()`'s
+     * `altNameValueCounts`.
      *
      * Unlike the CREDIT_ROLES columns (WIP.16, which deliberately drop a
      * credit's trailing date — see `_buildCreditListTd`'s JSDoc), instrument
@@ -10411,7 +10415,19 @@
             li.appendChild(document.createTextNode(')'));
         }
         if (altName) {
-            li.appendChild(document.createTextNode(` [${altName}]`));
+            // Wrapped in .mb-credit-altname (same convention as
+            // .mb-credit-attr/.mb-credit-task/.mb-credit-date/
+            // .mb-credit-instrument above) so the unique-values dropdown's
+            // "Cell structure" per-credited-as synthetic filter entries can
+            // find and highlight it — see openUniqDrop()'s altNameValueCounts.
+            // Brackets stay outside the span, same as .mb-credit-attr's
+            // surrounding parens.
+            li.appendChild(document.createTextNode(' ['));
+            const _altSpan = document.createElement('span');
+            _altSpan.className = 'mb-credit-altname';
+            _altSpan.textContent = altName;
+            li.appendChild(_altSpan);
+            li.appendChild(document.createTextNode(']'));
         }
         if (liveDateCtx) {
             _appendLiveDateFlag(li, _liveDateCheckResult(liveDateCtx.recordingDate, _parseCreditDateAnnotation(_dateAnnotation)));
@@ -16437,6 +16453,16 @@
             // exactly (whole trimmed text, not split).
             const want = mode.slice(11);
             return !!cell && Array.from(cell.querySelectorAll('.mb-credit-instrument'))
+                .some(s => s.textContent.trim() === want);
+        }
+        if (mode.startsWith('altname:')) {
+            // Compound mode counterpart of 'attr:'/'task:'/'date:'/'instrument:'
+            // above — matches an Instruments/Vocals credit's own credited-as
+            // alternate name <span class="mb-credit-altname"> sentinel (see
+            // _buildInstrumentVocalsListItem's own JSDoc) exactly (whole
+            // trimmed text, not split).
+            const want = mode.slice(8);
+            return !!cell && Array.from(cell.querySelectorAll('.mb-credit-altname'))
                 .some(s => s.textContent.trim() === want);
         }
         if (mode === 'inline-art-yes' || mode === 'inline-art-no') {
@@ -32826,12 +32852,13 @@ a { color: #1565c0; }`;
      * should light up. `.mb-credit-attr`'s text can be a `/`-joined
      * multi-word list (e.g. `"assistant/co"`), so that case uses a `\b…\b`
      * word-boundary regex to highlight just the matched word, not the whole
-     * span; `.mb-credit-task`'s/`.mb-credit-date`'s/`.mb-credit-instrument`'s
-     * text is never joined (one task/date/instrument per sentinel — a
-     * multi-date credit like "in 1987, in 1988" gets one `.mb-credit-date`
-     * span per date, see `_wrapDateAnnotationsInText`; a cell with several
-     * instrument `<li>`s gets one `.mb-credit-instrument` anchor per `<li>`),
-     * so their whole text is highlighted verbatim.
+     * span; `.mb-credit-task`'s/`.mb-credit-date`'s/`.mb-credit-instrument`'s/
+     * `.mb-credit-altname`'s text is never joined (one task/date/instrument/
+     * credited-as name per sentinel — a multi-date credit like "in 1987, in
+     * 1988" gets one `.mb-credit-date` span per date, see
+     * `_wrapDateAnnotationsInText`; a cell with several instrument `<li>`s
+     * gets one `.mb-credit-instrument` anchor per `<li>`), so their whole
+     * text is highlighted verbatim.
      *
      * Reuses `highlightCrossTag()` — the same cross-tag-safe text-wrapping
      * primitive every other filter-highlight call in this file uses — so
@@ -32842,16 +32869,18 @@ a { color: #1565c0; }`;
      * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
      * @param {string} multiRowMode - The compound mode string, e.g.
      *   `"attr:additional"`, `"task:task: Second Engineer"`,
-     *   `"date:on 1988-04-27"`, or `"instrument:bass"`.
+     *   `"date:on 1988-04-27"`, `"instrument:bass"`, or
+     *   `"altname:12-string guitar"`.
      */
     function _highlightCreditValueMatch(cell, multiRowMode) {
         if (!cell) return;
         const _isAttr       = multiRowMode.startsWith('attr:');
         const _isDate       = multiRowMode.startsWith('date:');
         const _isInstrument = multiRowMode.startsWith('instrument:');
+        const _isAltName    = multiRowMode.startsWith('altname:');
         // Prefix length varies ('attr:'/'task:'/'date:' are 5 chars,
-        // 'instrument:' is 11) — sliced per-branch rather than a shared
-        // fixed offset.
+        // 'instrument:' is 11, 'altname:' is 8) — sliced per-branch rather
+        // than a shared fixed offset.
         if (_isAttr) {
             const _want = multiRowMode.slice(5);
             const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -32875,6 +32904,15 @@ a { color: #1565c0; }`;
             const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const _regex = new RegExp(_escaped, 'g');
             cell.querySelectorAll('.mb-credit-instrument').forEach(el => {
+                if (el.textContent.trim() !== _want) return;
+                el.normalize();
+                highlightCrossTag(el, _regex, 'mb-column-filter-highlight');
+            });
+        } else if (_isAltName) {
+            const _want = multiRowMode.slice(8);
+            const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const _regex = new RegExp(_escaped, 'g');
+            cell.querySelectorAll('.mb-credit-altname').forEach(el => {
                 if (el.textContent.trim() !== _want) return;
                 el.normalize();
                 highlightCrossTag(el, _regex, 'mb-column-filter-highlight');
@@ -33365,7 +33403,7 @@ a { color: #1565c0; }`;
                     // checked an overlapping item entry AND entity entry —
                     // harmless: nested mb-column-filter-highlight spans render
                     // identically to one. Checked 'attr:'/'task:'/'date:'/
-                    // 'instrument:'/'name:'/'comment:'/'alias:' and
+                    // 'instrument:'/'altname:'/'name:'/'comment:'/'alias:' and
                     // 'name-variation' structure modes DO correspond to
                     // exact visible content and get highlighted; the other
                     // structure modes (empty/single/collapsed/expanded/any/
@@ -33379,7 +33417,8 @@ a { color: #1565c0; }`;
                         if (f.structureModes) {
                             f.structureModes.forEach(mode => {
                                 if (mode.startsWith('attr:') || mode.startsWith('task:') ||
-                                    mode.startsWith('date:') || mode.startsWith('instrument:')) {
+                                    mode.startsWith('date:') || mode.startsWith('instrument:') ||
+                                    mode.startsWith('altname:')) {
                                     _highlightCreditValueMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('name:') || mode.startsWith('comment:') ||
                                            mode.startsWith('alias:')) {
@@ -42166,6 +42205,14 @@ a { color: #1565c0; }`;
         // for every other column, since only Instruments ever produces this
         // sentinel.
         const instrumentValueCounts = new Map();
+        // Distinct credited-as alternate names (e.g. "12-string guitar",
+        // "synth strings" — MusicBrainz's own trailing `[…]` bracket on an
+        // Instruments/Vocals credit) — the `<span class="mb-credit-altname">`
+        // sentinel counterpart of the above (see
+        // `_buildInstrumentVocalsListItem`'s own JSDoc) — a no-op Map for
+        // every other column, since only Instruments/Vocals ever produces
+        // this sentinel.
+        const altNameValueCounts = new Map();
         // Distinct entity-name / disambiguation-comment / primary-alias
         // values (e.g. Work/Authors columns' "An der schönen blauen Donau,
         // op. 314" / "On the Beautiful Blue Danube, op. 314" / "Johann
@@ -42307,6 +42354,12 @@ a { color: #1565c0; }`;
                     if (t) _rowInstrumentValues.add(t);
                 });
                 _rowInstrumentValues.forEach(t => instrumentValueCounts.set(t, (instrumentValueCounts.get(t) || 0) + 1));
+                const _rowAltNameValues = new Set();
+                cell.querySelectorAll('.mb-credit-altname').forEach(s => {
+                    const t = s.textContent.trim();
+                    if (t) _rowAltNameValues.add(t);
+                });
+                _rowAltNameValues.forEach(t => altNameValueCounts.set(t, (altNameValueCounts.get(t) || 0) + 1));
                 const _rowNameValues    = new Set();
                 const _rowCommentValues = new Set();
                 const _rowAliasValues   = new Set();
@@ -43070,6 +43123,7 @@ a { color: #1565c0; }`;
             inlineArtYes, inlineArtNo,
             ...attrValueCounts.values(), ...taskValueCounts.values(),
             ...dateValueCounts.values(), ...instrumentValueCounts.values(),
+            ...altNameValueCounts.values(),
             ...entityNameValueCounts.values(), ...entityCommentValueCounts.values(),
             ...entityAliasValueCounts.values()
         )).length + 2);
@@ -43216,11 +43270,11 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'name'|'comment'|'alias'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'} kind
          * @param {string} value  - The exact attribute word, task string,
-         *   date/date-range annotation, instrument type, entity name,
-         *   comment, or alias to match (embedded verbatim in the compound
-         *   mode string).
+         *   date/date-range annotation, instrument type, credited-as
+         *   alternate name, entity name, comment, or alias to match
+         *   (embedded verbatim in the compound mode string).
          * @param {number} count  - Number of visible rows matching this value.
          */
         const makeValueSynItem = (kind, value, count) => {
@@ -43248,6 +43302,7 @@ a { color: #1565c0; }`;
             _appendSynLabelText(item,
                 (kind === 'attr'       ? '» attribute: '
                  : kind === 'instrument' ? '» instrument: '
+                 : kind === 'altname'    ? '» credited as: '
                  : kind === 'name'       ? '» name: '
                  : kind === 'comment'    ? '» comment: '
                  : kind === 'alias'      ? '» alias: '
@@ -43334,17 +43389,19 @@ a { color: #1565c0; }`;
         // Every column type can have genuinely empty cells (e.g. a primary-alias
         // column where most events have no alias, a CAA column with no artwork,
         // etc.) and being able to filter to those rows is universally useful.
-        // Sorted entries for the seven dynamic per-value families (shared by
+        // Sorted entries for the eight dynamic per-value families (shared by
         // both branches below).
         const _sortedAttrValues = Array.from(attrValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedTaskValues = Array.from(taskValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedDateValues = Array.from(dateValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedInstrumentValues = Array.from(instrumentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedAltNameValues = Array.from(altNameValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedNameValues    = Array.from(entityNameValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedCommentValues = Array.from(entityCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedAliasValues   = Array.from(entityAliasValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _hasValueEntries = _sortedAttrValues.length > 0 || _sortedTaskValues.length > 0 ||
             _sortedDateValues.length > 0 || _sortedInstrumentValues.length > 0 ||
+            _sortedAltNameValues.length > 0 ||
             _sortedNameValues.length > 0 || _sortedCommentValues.length > 0 || _sortedAliasValues.length > 0;
 
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 || _hasValueEntries)) {
@@ -43384,6 +43441,7 @@ a { color: #1565c0; }`;
             _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
             _sortedInstrumentValues.forEach(v => makeValueSynItem('instrument', v, instrumentValueCounts.get(v)));
+            _sortedAltNameValues.forEach(v => makeValueSynItem('altname', v, altNameValueCounts.get(v)));
             _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameValueCounts.get(v)));
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => makeValueSynItem('alias', v, entityAliasValueCounts.get(v)));
@@ -43398,7 +43456,7 @@ a { color: #1565c0; }`;
             const _entryCount = (emptyCellCount > 0 ? 1 : 0) +
                 (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0) +
                 _sortedAttrValues.length + _sortedTaskValues.length + _sortedDateValues.length +
-                _sortedInstrumentValues.length +
+                _sortedInstrumentValues.length + _sortedAltNameValues.length +
                 _sortedNameValues.length + _sortedCommentValues.length + _sortedAliasValues.length;
             if (_entryCount > 1) {
                 const synHdr = document.createElement('div');
@@ -43416,6 +43474,7 @@ a { color: #1565c0; }`;
             _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
             _sortedInstrumentValues.forEach(v => makeValueSynItem('instrument', v, instrumentValueCounts.get(v)));
+            _sortedAltNameValues.forEach(v => makeValueSynItem('altname', v, altNameValueCounts.get(v)));
             _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameValueCounts.get(v)));
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => makeValueSynItem('alias', v, entityAliasValueCounts.get(v)));
@@ -43768,7 +43827,7 @@ a { color: #1565c0; }`;
             : (emptyCellCount > 0 ? 1 : 0)) +
             (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0) +
             _sortedAttrValues.length + _sortedTaskValues.length + _sortedDateValues.length +
-            _sortedInstrumentValues.length +
+            _sortedInstrumentValues.length + _sortedAltNameValues.length +
             _sortedNameValues.length + _sortedCommentValues.length + _sortedAliasValues.length;
         const dropH = Math.min(320, (combinedVals.length + synItemCount) * 29 + 50 + 38); // +50 syn header/divider, +38 qf bar
         const dropW = drop.offsetWidth || 200;
@@ -43819,6 +43878,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('task:'))  return `» ${mode.slice(5)}`;
         if (mode.startsWith('date:'))  return `» ${mode.slice(5)}`;
         if (mode.startsWith('instrument:')) return `» instrument: ${mode.slice(11)}`;
+        if (mode.startsWith('altname:'))    return `» credited as: ${mode.slice(8)}`;
         if (mode.startsWith('name:'))    return `» name: ${mode.slice(5)}`;
         if (mode.startsWith('comment:')) return `» comment: ${mode.slice(8)}`;
         if (mode.startsWith('alias:'))   return `» alias: ${mode.slice(6)}`;
@@ -43852,6 +43912,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('task:')) return 'This cell\'s credited task text.';
         if (mode.startsWith('date:')) return 'A date/date-range annotation attached to one of this cell\'s credits.';
         if (mode.startsWith('instrument:')) return 'The instrument type credited in one of this cell\'s items.';
+        if (mode.startsWith('altname:')) return 'MusicBrainz\'s own credited-as alternate instrument/vocal-type name (the trailing "[…]" bracket).';
         if (mode.startsWith('name:')) return 'An entity\'s own anchored/linked name, excluding any disambiguation comment.';
         if (mode.startsWith('comment:')) return 'An entity\'s disambiguation comment text, excluding any primary alias.';
         if (mode.startsWith('alias:')) return 'An entity\'s primary alias — an alternate name shown in its disambiguation comment.';
