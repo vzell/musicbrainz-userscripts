@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.63",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"Vocals\"/\"Instruments\" columns rendered their attribute word (e.g. \"lead\") and date/task annotation (e.g. \"on 1988-04-27\") merged into one shared comma-joined parenthetical — \"(lead, on 1988-04-27)\" — instead of each in its own separate brackets like every other AR credit column (e.g. \"Recorded at place\"'s \"(additional) (from 1987-01-20 until 1987-03)\"). `_buildInstrumentVocalsListItem()` (the actual builder `_buildInstrumentsTd`/`_buildVocalsTd` share — a separate, less-developed twin of `_buildCreditListItem` that WIP.62's date-range \"Cell structure\" feature missed entirely) now appends two independent \" (…)\" parentheticals, symmetric with `_buildRecordedAtPlaceTd`/`_buildCreditListItem`'s own convention: \"Bruce Springsteen (lead) (on 1988-04-27)\". This also closes the gap that made WIP.62's date-range feature not actually work on Vocals/Instruments at all — the date/task annotation there was still a bare, unwrapped text node; it's now wrapped in `.mb-credit-date`/`.mb-credit-task` (via `_wrapDateAnnotationsInText()`/`_isDateAnnotationText()`) the same as every other AR credit column, so the unique-values dropdown's per-date/per-task \"Cell structure\" checkbox entries and highlighting now work correctly here too."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.62",
     "date": "2026-08-10",
     "sections": [

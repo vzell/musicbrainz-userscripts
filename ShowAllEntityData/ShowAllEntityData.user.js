@@ -9962,18 +9962,20 @@
     /**
      * Builds one `<li>` for a single credited artist within
      * `_buildCreditListTd` — resolves the artist anchor from `seg` (see
-     * `_findCreditSegmentArtistAnchor`) and appends a single trailing
-     * `" (…)"` parenthetical combining, in order: this credit's attribute
-     * words (e.g. `assistant`/`co`, from the matching `<dt>`'s own prefix —
-     * see `_findCreditDts`), joined with `"/"` (e.g. `"assistant/co"`,
-     * matching how MusicBrainz itself hyphen/space-joins multiple prefix
-     * words on the `<dt>`); then, if present, this artist's own instrument
-     * or free-text annotation (see `_findCreditSegmentInstrumentAnchors`/
-     * `_findCreditSegmentTextAnnotation` — instrument takes priority,
-     * text-annotation only attempted when no instrument anchor was found).
-     * The two groups are comma-separated when both are present, e.g.
-     * `"Karl Egsieker (assistant/co, task: Second Engineer)"` — see
-     * `debug/attributes.html` (`Paul Hamingson (assistant)`, no
+     * `_findCreditSegmentArtistAnchor`) and appends up to TWO independent
+     * trailing `" (…)"` parentheticals, each in its own brackets — this
+     * credit's attribute words (e.g. `assistant`/`co`, from the matching
+     * `<dt>`'s own prefix — see `_findCreditDts`), joined with `"/"` (e.g.
+     * `"assistant/co"`, matching how MusicBrainz itself hyphen/space-joins
+     * multiple prefix words on the `<dt>`); then, separately, if present,
+     * this artist's own instrument or free-text annotation (see
+     * `_findCreditSegmentInstrumentAnchors`/`_findCreditSegmentTextAnnotation`
+     * — instrument takes priority, text-annotation only attempted when no
+     * instrument anchor was found). Symmetric with `_buildRecordedAtPlaceTd`'s
+     * own "(additional) (from … until …)" separate-brackets convention —
+     * e.g. `"Bruce Springsteen (lead) (on 1988-04-27)"` (see
+     * debug/vocals.html), NOT comma-joined into one shared parenthetical.
+     * See `debug/attributes.html` (`Paul Hamingson (assistant)`, no
      * annotation) and `debug/missing-engineer.html` (task/other-role-note
      * annotation, no attributes) for the two single-group real examples.
      * No parenthetical at all is appended when both groups are empty
@@ -10029,31 +10031,45 @@
             li.appendChild(_commentSpan.cloneNode(true));
         }
 
-        const _parenNodes = [];
         if (attributes.length > 0) {
-            // Wrapped in a sentinel <span> (not a bare text node) so the
-            // unique-values dropdown's per-attribute synthetic filter
-            // entries (see openUniqDrop()'s attrValueCounts) can reliably
-            // find and split this specific text apart from any other free
-            // text sharing the same parenthetical — a bare text node isn't
-            // distinguishable from a non-task annotation's own bare text.
+            // Own separate "(word/word)" parenthetical — symmetric with
+            // _buildRecordedAtPlaceTd's "(additional)" bracket, never merged
+            // with the instrument/annotation group below. Wrapped in a
+            // sentinel <span> (not a bare text node) so the unique-values
+            // dropdown's per-attribute synthetic filter entries (see
+            // openUniqDrop()'s attrValueCounts) can reliably find and split
+            // this specific text apart from any other free text sharing the
+            // same parenthetical — a bare text node isn't distinguishable
+            // from a non-task annotation's own bare text.
+            li.appendChild(document.createTextNode(' ('));
             const _attrSpan = document.createElement('span');
             _attrSpan.className = 'mb-credit-attr';
             _attrSpan.textContent = attributes.join('/');
-            _parenNodes.push(_attrSpan);
+            li.appendChild(_attrSpan);
+            li.appendChild(document.createTextNode(')'));
         }
 
         const _instrumentAs = _findCreditSegmentInstrumentAnchors(seg);
         if (_instrumentAs.length > 0) {
-            if (_parenNodes.length > 0) _parenNodes.push(document.createTextNode(', '));
+            // Own separate "(instrument, instrument)" parenthetical —
+            // commas here join MULTIPLE instruments within this ONE group,
+            // not this group with the attribute group above.
+            li.appendChild(document.createTextNode(' ('));
             _instrumentAs.forEach((a, i) => {
-                if (i > 0) _parenNodes.push(document.createTextNode(', '));
-                _parenNodes.push(a.cloneNode(true));
+                if (i > 0) li.appendChild(document.createTextNode(', '));
+                li.appendChild(a.cloneNode(true));
             });
+            li.appendChild(document.createTextNode(')'));
         } else {
             const _annotation = _findCreditSegmentTextAnnotation(seg);
             if (_annotation) {
-                if (_parenNodes.length > 0) _parenNodes.push(document.createTextNode(', '));
+                // Own separate "(…)" parenthetical for the free-text/task/
+                // date annotation — symmetric with _buildRecordedAtPlaceTd's
+                // "(from … until …)" bracket, never merged with the
+                // attribute group above (see debug/vocals.html: "Bruce
+                // Springsteen (lead) (on 1988-04-27)", not "(lead, on
+                // 1988-04-27)").
+                li.appendChild(document.createTextNode(' ('));
                 if (/^task:/i.test(_annotation)) {
                     // 'mb-credit-task' class (in addition to the existing
                     // <i> italics) gives the unique-values dropdown's
@@ -10062,7 +10078,7 @@
                     const _i = document.createElement('i');
                     _i.className = 'mb-credit-task';
                     _i.textContent = _annotation;
-                    _parenNodes.push(_i);
+                    li.appendChild(_i);
                 } else if (_isDateAnnotationText(_annotation)) {
                     // Date/date-range annotation (e.g. "in 1987", "on
                     // 1988-04-27") — wrapped in .mb-credit-date (see
@@ -10070,18 +10086,14 @@
                     // "Cell structure" filterable/highlightable entry, same
                     // as the 'mb-credit-attr'/'mb-credit-task' sentinels
                     // above.
-                    _wrapDateAnnotationsInText(_annotation).forEach(n => _parenNodes.push(n));
+                    _wrapDateAnnotationsInText(_annotation).forEach(n => li.appendChild(n));
                 } else {
-                    _parenNodes.push(document.createTextNode(_annotation));
+                    li.appendChild(document.createTextNode(_annotation));
                 }
+                li.appendChild(document.createTextNode(')'));
             }
         }
 
-        if (_parenNodes.length > 0) {
-            li.appendChild(document.createTextNode(' ('));
-            _parenNodes.forEach(n => li.appendChild(n));
-            li.appendChild(document.createTextNode(')'));
-        }
         if (liveDateCtx) {
             _appendLiveDateFlag(li, _liveDateCheckResult(liveDateCtx.recordingDate, _parseCreditDateAnnotation(_findCreditSegmentTextAnnotation(seg))));
         }
@@ -10208,9 +10220,17 @@
      * see debug/therising.html/debug/double-ars.html) and it's kept here,
      * via the same `_findCreditSegmentTextAnnotation` free-text-parenthetical
      * fallback the "Miscellaneous support"/bare-role columns already use for
-     * their own annotations — grouped into the SAME trailing parenthetical
-     * as the attribute words, comma-separated, mirroring
-     * `_buildCreditListItem`'s identical grouping.
+     * their own annotations — in its OWN separate trailing parenthetical,
+     * NOT merged with the attribute group (e.g. `"Bruce Springsteen (lead)
+     * (on 1988-04-27)"`, not `"(lead, on 1988-04-27)"` — see
+     * debug/vocals.html), symmetric with `_buildRecordedAtPlaceTd`'s own
+     * "(additional) (from … until …)" separate-brackets convention and
+     * `_buildCreditListItem`'s identical two-group split. A `"task:…"`
+     * annotation is wrapped in `.mb-credit-task`, a date/date-range
+     * annotation in `.mb-credit-date` (see `_wrapDateAnnotationsInText()`'s
+     * own JSDoc) — same sentinels `_buildCreditListItem` uses, so the
+     * unique-values dropdown's "Cell structure" per-task/per-date synthetic
+     * filter entries work identically here.
      *
      * @param {Node[]} seg - One artist's segment of the shared `<dd>` (see
      *   `_segmentDdByArtistMarker`).
@@ -10244,21 +10264,43 @@
             li.appendChild(_commentSpan.cloneNode(true));
         }
 
-        const _parenNodes = [];
         if (attributes.length > 0) {
+            // Own separate "(word/word)" parenthetical — symmetric with
+            // _buildRecordedAtPlaceTd's "(additional)" bracket and
+            // _buildCreditListItem's identical two-group split, never
+            // merged with the annotation group below.
+            li.appendChild(document.createTextNode(' ('));
             const _attrSpan = document.createElement('span');
             _attrSpan.className = 'mb-credit-attr';
             _attrSpan.textContent = attributes.join('/');
-            _parenNodes.push(_attrSpan);
+            li.appendChild(_attrSpan);
+            li.appendChild(document.createTextNode(')'));
         }
         const _dateAnnotation = _findCreditSegmentTextAnnotation(seg);
         if (_dateAnnotation) {
-            if (_parenNodes.length > 0) _parenNodes.push(document.createTextNode(', '));
-            _parenNodes.push(document.createTextNode(_dateAnnotation));
-        }
-        if (_parenNodes.length > 0) {
+            // Own separate "(…)" parenthetical for the free-text/task/date
+            // annotation (see debug/vocals.html: "Bruce Springsteen (lead)
+            // (on 1988-04-27)", not "(lead, on 1988-04-27)").
             li.appendChild(document.createTextNode(' ('));
-            _parenNodes.forEach(n => li.appendChild(n));
+            if (/^task:/i.test(_dateAnnotation)) {
+                // 'mb-credit-task' class (in addition to the existing <i>
+                // italics) gives the unique-values dropdown's per-task
+                // synthetic filter entries an unambiguous selector — see
+                // openUniqDrop()'s taskValueCounts.
+                const _i = document.createElement('i');
+                _i.className = 'mb-credit-task';
+                _i.textContent = _dateAnnotation;
+                li.appendChild(_i);
+            } else if (_isDateAnnotationText(_dateAnnotation)) {
+                // Date/date-range annotation (e.g. "in 1987", "on
+                // 1988-04-27") — wrapped in .mb-credit-date (see
+                // _wrapDateAnnotationsInText()'s own JSDoc) so it's a "Cell
+                // structure" filterable/highlightable entry, same as the
+                // 'mb-credit-attr'/'mb-credit-task' sentinels above.
+                _wrapDateAnnotationsInText(_dateAnnotation).forEach(n => li.appendChild(n));
+            } else {
+                li.appendChild(document.createTextNode(_dateAnnotation));
+            }
             li.appendChild(document.createTextNode(')'));
         }
         if (altName) {
