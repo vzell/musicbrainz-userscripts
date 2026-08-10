@@ -1,5 +1,66 @@
 [
   {
+    "version": "WIP.75",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The unique-values dropdown's \"Cell structure\" section now has per-value entries for an artist's own credited event role (e.g. \"main performer\", \"guest performer\", \"support act\", \"participant\", \"host\") in any column rendering a native MusicBrainz `.artist-roles` list — e.g. the \"Artists\" column on `/place/<mbid>/events` and similar event-listing pages (see debug/event-performer.html). New generic query-time extractor `_findCellArtistRoles()`, reusing `_artTooltipArtistRoles()`'s established direct-text-node-children technique, wired into a new `role:` compound structure-mode alongside the existing `name:`/`comment:`/`alias:` family."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.74",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A bare `<dt>instruments:</dt>` (MusicBrainz's own generic, unspecified-instrument credit — no `/instrument/` link at all, e.g. crediting an artist for playing unspecified instruments — see debug/instr.html) was rejected entirely by `_parseInstrumentVocalsDt`, since it neither carries an instrument link nor ends in the word \"vocals\". This dumped the credit into its own bogus dynamic-fallback column that collided in name with the real shared \"Instruments\" column. Bare \"instruments:\"/\"additional instruments:\" credits (and any recognized attribute-word prefix) now correctly join the same shared \"Instruments\" column, just without a specific instrument-type prefix on the artist's entry."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.73",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The dynamic-fallback \"Part of\" column (a track's \"part of series\" relationship) is now labeled \"Part of series\", and \"Edit of\"/\"Remix of\" are now labeled \"Edit of recording\"/\"Remix of recording\" (confirmed via MusicBrainz's own embedded relationship-type metadata in debug/g.html: `edit` is a recording-to-recording relationship type, not series) — the bare names read ambiguously next to their own glyph icon. New `DYNAMIC_ROLE_DISPLAY_NAME_OVERRIDES` map, checked by phrase key in `_dynamicRoleDisplayName()`, for any future dynamic-fallback column that needs the same treatment.",
+          "`KNOWN_ENTITY_LINK_KINDS` (the entity kinds the dynamic-fallback AR-column glyph/kind-splitting system recognizes) now includes `'recording'` — recording-to-recording relationships like \"Samples\"/\"Music videos\"/\"Instrumental versions\" now get their own recording header glyph, same as every other entity-kind-recognized dynamic column. Confirmed via debug/tracklist-overflow.html's `<span class=\"recordinglink\">` marker on these columns' `<dd>`s."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.72",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The \"Loading overflow tracks\" progress label now shows the total track count MusicBrainz already reports on the medium's own \"currently showing 100 out of 1209 total\" overflow message (e.g. \"medium 1 of 1... (1001 of 1209 tracks) - 1.8s left\"), instead of just the live count with no target to compare against."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Dynamic-fallback AR columns whose relationship is chain-shaped (a primary target plus its own nested area/country decoration, e.g. \"engineered at:\"/\"produced at:\" — a place credit followed by \" in \" and its own area, same shape as the dedicated \"Recorded at place\"/\"Mixed at place\" columns) never got a header glyph icon, because `_glyphClassForDynamicColumn` required exactly one entity kind to be present and a chain always has 2+ (its target kind plus its area/country decoration kind). Confirmed via debug/soul-days.html's \"engineered at:\" credit. Since a merged (`'default'`) dynamic column can only ever be chain-shaped when it holds more than one kind (a genuine multi-kind PEER merge is always split into separate per-kind columns instead — see `_splitColumnByEntityKind`), the glyph is now always taken from the first kind present in `KNOWN_ENTITY_LINK_KINDS`' fixed order (which already lists every real target kind before its own decoration kind), rather than requiring exactly one."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`INSTRUMENT_VOCAL_ATTRIBUTES` (the recognized attribute-word prefixes for the shared \"Instruments\"/\"Vocals\" release-tracks columns) was missing `'other'` — a real MusicBrainz credit attribute (e.g. `<dt> <a href=\"/instrument/…\">Drums (drum set)</a> and other vocals [shout]:</dt>`, `<dt>Other vocals [chant]:</dt>`). Since `_parseInstrumentVocalsDt` rejects the WHOLE `<dt>` when even one component has an unrecognized word, this silently dropped the otherwise-valid \"Drums (drum set)\" instrument component too, dumping the whole credit into its own bogus dynamic-fallback column (e.g. \"Drums (drum set) and other vocals [shout]\") instead of splitting cleanly into \"Instruments\"/\"Vocals\". Added `'other'` to the recognized list."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.71",
     "date": "2026-08-11",
     "sections": [

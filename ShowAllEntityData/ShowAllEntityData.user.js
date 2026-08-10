@@ -1741,7 +1741,7 @@
                          'glommed into the "ARs" column). Every distinct instrument shares the one ' +
                          '"Instruments" column (e.g. "cello: John Doe", "violin: Jane Doe"), and ' +
                          'every vocals variant shares the one "Vocals" column — an attribute-word ' +
-                         'prefix (Additional, Guest, Solo, Lead, Background, Spoken, Choir) renders ' +
+                         'prefix (Additional, Guest, Solo, Lead, Background, Spoken, Choir, Other) renders ' +
                          'inline after the artist\'s name, the same way the credit-role columns ' +
                          'above render theirs, e.g. "Jane Doe (guest/background)". A credit ' +
                          'combining an instrument and vocals in one relationship (e.g. "harmonium, ' +
@@ -7089,6 +7089,14 @@
         let _mediumsCompleted = 0;
         let _tracksLoadedSoFar = 0;
         let _cumulativeMediumTime = 0;
+        // The CURRENTLY loading medium's own expected total (parsed from its
+        // "...out of N total." message before clicking "Load all tracks...").
+        // null while unknown/unparseable, or between mediums. Combined with
+        // _tracksLoadedSoFar (every already-completed medium's own final row
+        // count, which by definition already equals its own total) to show
+        // MusicBrainz's own already-known total in the progress label — see
+        // _updateOverflowProgress below.
+        let _currentExpectedTotal = null;
         fetchProgressWrap.style.display = 'inline-flex';
         fetchProgressFill.style.width = '0%';
         fetchProgressFill.style.background = '#ffcccc';
@@ -7131,9 +7139,17 @@
 
             const _currentMediumNum = Math.min(_mediumsCompleted + 1, _totalMediums);
             const _totalTracksSoFar = _tracksLoadedSoFar + currentMediumRows;
+            // "of N" (MusicBrainz's own already-known total, e.g. the "1209"
+            // in "currently showing 100 out of 1209 total.") is appended
+            // whenever the current medium's total was parseable — see
+            // _currentExpectedTotal's own comment above.
+            const _grandExpectedTotal = _currentExpectedTotal !== null
+                ? _tracksLoadedSoFar + _currentExpectedTotal : null;
+            const _tracksLabel = _grandExpectedTotal !== null
+                ? `${_totalTracksSoFar} of ${_grandExpectedTotal}` : `${_totalTracksSoFar}`;
             fetchProgressLabel.textContent =
                 `Loading overflow tracks: medium ${_currentMediumNum} of ${_totalMediums}... ` +
-                `(${_totalTracksSoFar} tracks) - ${_estRemainingSeconds.toFixed(1)}s left`;
+                `(${_tracksLabel} tracks) - ${_estRemainingSeconds.toFixed(1)}s left`;
         };
         _updateOverflowProgress();
 
@@ -7146,6 +7162,7 @@
                 const _row = _link.closest('tr');
                 const _totalMatch = _row?.textContent.match(/out of (\d+) total/);
                 const _expectedTotal = _totalMatch ? parseInt(_totalMatch[1], 10) : null;
+                _currentExpectedTotal = _expectedTotal;
                 const _dataRowCount = () => _tbody.querySelectorAll(':scope > tr:not(.subh)').length;
 
                 await new Promise(resolve => {
@@ -7196,6 +7213,11 @@
             _tracksLoadedSoFar += _tbody.querySelectorAll(':scope > tr:not(.subh)').length;
             _mediumsCompleted++;
             _cumulativeMediumTime += performance.now() - _mediumStartTime;
+            // This medium is done — its own total is now folded into
+            // _tracksLoadedSoFar itself; clear it so a stale total from the
+            // just-finished medium can't leak into the next medium's label
+            // for the brief window before its own total is parsed.
+            _currentExpectedTotal = null;
             _updateOverflowProgress();
         }
 
@@ -9119,9 +9141,30 @@
      * against real release-tracks markup (debug/therising.html,
      * debug/double-ars.html) — no other `*link` marker class appears in
      * this context.
+     *
+     * `'recording'` was added 2026-08-11, placed FIRST rather than
+     * appended, for recording-to-recording dynamic AR columns like
+     * "Samples"/"Music videos"/"Instrumental versions" (confirmed via
+     * debug/tracklist-overflow.html: `<dt>samples:</dt><dd><span
+     * class="recordinglink"></span><a href="/recording/…">…</a> by <bdi>
+     * <span class="artistlink"></span><a href="/artist/…">…</a></bdi></dd>`
+     * — note the "by <artist>" credit's own `artistlink` marker is nested
+     * one level deeper, inside that `<bdi>`, so `_collectEntityKinds`'s
+     * `:scope > span.{kind}link` check never actually detects it; in
+     * practice these `<dd>`s only ever contribute `recording`). `'recording'`
+     * is still placed first rather than appended, defensively, in case a
+     * FUTURE dynamic role's `<dd>` ever puts a peer marker directly next to
+     * a `recordinglink` one (unlike this one) — `_glyphClassForDynamicColumn`
+     * picks its glyph from the first kind PRESENT in this array (see its
+     * own JSDoc), and the relationship's actual TARGET should always win
+     * over a secondary "credited by" attribution. Never reaches
+     * `_splitColumnByEntityKind`/`_buildKindSplitListTd` (both only ever
+     * see `_filterPeerKinds(kinds)`, which excludes anything outside
+     * `PEER_SPLIT_KINDS`), so this ordering change is glyph-selection-only
+     * and doesn't affect column splitting.
      * @type {string[]}
      */
-    const KNOWN_ENTITY_LINK_KINDS = ['artist', 'label', 'place', 'event', 'work', 'area', 'series'];
+    const KNOWN_ENTITY_LINK_KINDS = ['recording', 'artist', 'label', 'place', 'event', 'work', 'area', 'series'];
 
     /**
      * The subset of `KNOWN_ENTITY_LINK_KINDS` eligible to act as a
@@ -9170,12 +9213,31 @@
      * The MusicBrainz marker glyph class for one dynamic-fallback column —
      * `${kindKey}link` directly when the column was kind-split (`kindKey`
      * is an actual peer kind, e.g. `'artist'`/`'label'`), or, for a merged
-     * (`'default'`) column, `${the one kind}link` when exactly one entity
-     * kind was found ACROSS THE WHOLE PAGE for this role (via the
+     * (`'default'`) column, `${the FIRST kind present}link` (via the
      * unrestricted `kinds` — not `_filterPeerKinds`'s result — so a
      * single-kind place/event/work/area role still gets its own header
-     * glyph even though it was never peer-split). `null` when no glyph can
-     * be determined (zero or more-than-one kind merged into one column).
+     * glyph even though it was never peer-split). `null` only when NO kind
+     * at all was found for this role.
+     *
+     * A `'default'` `kindKey` with kinds.size > 1 is never an ambiguous
+     * PEER merge — `_splitColumnByEntityKind` only ever assigns `'default'`
+     * when `_filterPeerKinds(kinds)` (artist/label) has at most one entry
+     * (see its own JSDoc), so any additional kinds present here are always
+     * CHAIN-shaped decoration on a single primary target — the exact same
+     * shape `_buildRecordedAtPlaceTd`'s own dedicated "Recorded at place"
+     * column handles (a place credit's own nested area/country chain, e.g.
+     * `<span class="placelink">…</span> in <span class="arealink">…
+     * </span>`) — just for a role that never got promoted to its own fixed
+     * handler (e.g. "engineered at:"/"produced at:" — confirmed via
+     * debug/soul-days.html: `<span class="placelink"></span>…Bullseye
+     * Studios… in <span class="arealink"></span>…Miami`). Before this fix,
+     * requiring `kinds.size === 1` meant every such chain-shaped dynamic
+     * column (2+ kinds: its target plus its own decoration) got NO header
+     * glyph at all. `KNOWN_ENTITY_LINK_KINDS`'s fixed order already lists
+     * every real "target" kind (artist/label/place/event/work) before its
+     * own "decoration" kind (area/series), so the first kind PRESENT in
+     * that order is always the column's true primary, whether `kinds` holds
+     * one entry or several.
      *
      * @param {string} kindKey - `'default'` or a specific kind.
      * @param {Set<string>} kinds - The FULL (unrestricted) kinds set for
@@ -9184,7 +9246,7 @@
      */
     function _glyphClassForDynamicColumn(kindKey, kinds) {
         if (kindKey !== 'default') return `${kindKey}link`;
-        return kinds.size === 1 ? `${Array.from(kinds)[0]}link` : null;
+        return kinds.size > 0 ? `${Array.from(kinds)[0]}link` : null;
     }
 
     /**
@@ -9525,9 +9587,21 @@
      * href="/instrument/…">strings</a> arranger:</dt>` ("arranger" isn't
      * recognized here) out of the "Instruments" column, leaving it for the
      * dynamic-fallback classifier to pick up as its own column instead.
+     *
+     * `'other'` was added 2026-08-11 after `<dt> <a href="/instrument/…">
+     * Drums (drum set)</a> and other vocals [shout]:</dt>` (a real
+     * MusicBrainz credit) was confirmed rejected in its entirety — not just
+     * its "other vocals" component — because a single unrecognized word
+     * anywhere rejects the WHOLE `<dt>` (see this function's own multi-
+     * component design). That silently dropped the otherwise-valid "Drums
+     * (drum set)" instrument component too, dumping the whole credit into
+     * its own bogus dynamic-fallback column instead of splitting cleanly
+     * into "Instruments" (Drums (drum set)) and "Vocals" ("… (other)
+     * [shout]"). Same root cause independently confirmed via a standalone
+     * `<dt>Other vocals [chant]:</dt>` credit.
      * @type {string[]}
      */
-    const INSTRUMENT_VOCAL_ATTRIBUTES = ['additional', 'guest', 'solo', 'lead', 'background', 'spoken', 'choir'];
+    const INSTRUMENT_VOCAL_ATTRIBUTES = ['additional', 'guest', 'solo', 'lead', 'background', 'spoken', 'choir', 'other'];
 
     /**
      * Parses one `<dt>` into its instrument-credit and vocals-credit
@@ -9544,8 +9618,12 @@
      *
      * Each component must classify ENTIRELY as either an instrument credit
      * (at most one instrument `<a>`, every other word a member of
-     * `INSTRUMENT_VOCAL_ATTRIBUTES`) or a vocals credit (last word exactly
-     * "vocals", every word before it a member of
+     * `INSTRUMENT_VOCAL_ATTRIBUTES`), a BARE instrument credit (no
+     * `/instrument/` link at all — MusicBrainz's own generic, unspecified
+     * "instruments:"/"additional instruments:" credit, `anchor: null` in
+     * the returned entry so `_buildInstrumentVocalsListItem` omits the
+     * "<instrument>: " prefix — see debug/instr.html), or a vocals credit
+     * (last word exactly "vocals", every word before it a member of
      * `INSTRUMENT_VOCAL_ATTRIBUTES`) — a single unrecognized word anywhere
      * rejects the WHOLE `<dt>`, not just that component. This is deliberate,
      * not just a simplification: it's what correctly keeps `<dt> <a
@@ -9581,8 +9659,9 @@
      * to the dynamic-fallback classifier regardless of this fix.
      *
      * @param {HTMLElement} dt
-     * @returns {?{instruments: Array<{anchor: HTMLAnchorElement, altName: ?string, attributes: string[]}>,
+     * @returns {?{instruments: Array<{anchor: ?HTMLAnchorElement, altName: ?string, attributes: string[]}>,
      *             vocals: Array<{altName: ?string, attributes: string[]}>}}
+     *   `instruments[].anchor` is `null` for a bare "instruments:" credit.
      *   `null` when `dt` does not classify entirely as instrument/vocals —
      *   the caller must then leave it to the fixed-handler/dynamic-fallback
      *   classifiers instead.
@@ -9645,6 +9724,22 @@
             if (_instrumentAnchors.length === 1) {
                 if (!_words.every(w => INSTRUMENT_VOCAL_ATTRIBUTES.includes(w))) return null;
                 _instruments.push({ anchor: _instrumentAnchors[0], altName: _altName, attributes: INSTRUMENT_VOCAL_ATTRIBUTES.filter(a => _words.includes(a)) });
+            } else if (_words.length > 0 && _words[_words.length - 1] === 'instruments') {
+                // Bare "instruments:" (no specific /instrument/ link — MusicBrainz's
+                // own generic, unspecified instrument credit, e.g. "instruments:",
+                // "additional instruments:" — see debug/instr.html). Same
+                // attribute-word-prefix shape as the vocals branch below,
+                // just rooted on "instruments" instead of "vocals". Pushed
+                // with anchor: null — _buildInstrumentVocalsListItem already
+                // handles that (it's how the Vocals column's own entries are
+                // built), simply omitting the "<instrument>: " prefix.
+                // Without this branch, a single unrecognized-as-instrument
+                // "instruments" word rejected the WHOLE <dt>, dumping the
+                // credit into its own bogus dynamic-fallback column that
+                // collides in name with the real "Instruments" column.
+                const _prefixWords = _words.slice(0, -1);
+                if (!_prefixWords.every(w => INSTRUMENT_VOCAL_ATTRIBUTES.includes(w))) return null;
+                _instruments.push({ anchor: null, altName: _altName, attributes: INSTRUMENT_VOCAL_ATTRIBUTES.filter(a => _prefixWords.includes(a)) });
             } else {
                 if (_words.length === 0 || _words[_words.length - 1] !== 'vocals') return null;
                 const _prefixWords = _words.slice(0, -1);
@@ -10585,10 +10680,40 @@
     }
 
     /**
+     * Per-phrase-key display-name overrides for `_dynamicRoleDisplayName`,
+     * for phrase keys whose plain sentence-cased text reads ambiguously on
+     * its own. Keyed on `_dynamicRolePhraseKey`'s normalized (lowercase,
+     * colon-stripped) text — never on the display name itself.
+     *
+     * `'part of'` → `'Part of series'`: MusicBrainz's own relationship-type
+     * metadata confirms this `<dt>` is always the "part of series"
+     * relationship (`<span class="serieslink">`, e.g. debug/full.html,
+     * debug/therising.html, debug/tracklist-overflow.html) — "Part of"
+     * alone reads ambiguously next to the column's own glyph icon.
+     *
+     * `'edit of'` → `'Edit of recording'`, `'remix of'` → `'Remix of
+     * recording'`: MusicBrainz's own relationship-type metadata (embedded
+     * JSON, debug/g.html — `"type0":"recording"`, `"description":"This
+     * links an edit to its original recording."`) confirms "edit of" is a
+     * recording-to-recording relationship, NOT series (its `<dd>` carries
+     * a `<span class="recordinglink">`, same shape as "remix of" — the
+     * same relationship family). Renaming to "…series" (as briefly
+     * considered alongside "Part of") would have been factually wrong.
+     * @type {Object<string,string>}
+     */
+    const DYNAMIC_ROLE_DISPLAY_NAME_OVERRIDES = {
+        'part of': 'Part of series',
+        'edit of': 'Edit of recording',
+        'remix of': 'Remix of recording'
+    };
+
+    /**
      * The dynamic-fallback column's display name for one `<dt>` — same
      * normalized text as `_dynamicRolePhraseKey`, sentence-cased (first
      * letter only, e.g. `"conductor"` → `"Conductor"`,
-     * `"lyricist and composer"` → `"Lyricist and composer"`).
+     * `"lyricist and composer"` → `"Lyricist and composer"`), unless
+     * `DYNAMIC_ROLE_DISPLAY_NAME_OVERRIDES` has a more specific name for
+     * this exact phrase key.
      *
      * @param {HTMLElement} dt
      * @returns {?string}
@@ -10596,6 +10721,7 @@
     function _dynamicRoleDisplayName(dt) {
         const _key = _dynamicRolePhraseKey(dt);
         if (_key === null) return null;
+        if (DYNAMIC_ROLE_DISPLAY_NAME_OVERRIDES[_key]) return DYNAMIC_ROLE_DISPLAY_NAME_OVERRIDES[_key];
         return _key.charAt(0).toUpperCase() + _key.slice(1);
     }
 
@@ -16330,6 +16456,53 @@
     }
 
     /**
+     * Query-time extraction of each artist's own event-role text(s) from a
+     * native MusicBrainz `.artist-roles` list (event pages' "Artists"
+     * column — e.g. `/place/<mbid>/events` — and any other column sharing
+     * the same shape, such as the "Authors" column; see
+     * `_artTooltipArtistRoles`'s own JSDoc for the two `<li>` shapes this
+     * matches). No DOM-injection build step exists to tag this markup with
+     * a sentinel class (it's native MusicBrainz output, cloned through
+     * unmodified — same reasoning as `_findCellEntityCommentParts`), so
+     * this is the single source of truth for `openUniqDrop()`'s "Cell
+     * structure" `role:` entries, `_cellMatchesStructureMode()`'s
+     * matching, and `_highlightEventRoleMatch()`'s highlighting — all
+     * three agree on exactly the same extraction, mirroring
+     * `_artTooltipArtistRoles`'s own established technique: the role text
+     * is collected from the `<li>`'s DIRECT text-node children only,
+     * which — as a side effect — naturally skips over a `.comment`
+     * disambiguation span (an element node, not a text node) that can sit
+     * between the artist name and the role text (see
+     * `_artTooltipArtistRoles`'s "Authors" `<li>` shape) without needing to
+     * clone-and-strip it explicitly.
+     *
+     * A `<li>` with more than one role in its own parenthetical (e.g. a
+     * hypothetical `"(main performer/host)"`) is split on `/`, mirroring
+     * `.mb-credit-attr`'s established multi-value convention — unconfirmed
+     * against a real multi-role example, but harmless for (and doesn't
+     * change) the single-role case.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Array<{li: HTMLLIElement, roles: string[]}>}
+     */
+    function _findCellArtistRoles(cell) {
+        if (!cell) return [];
+        const out = [];
+        cell.querySelectorAll('ul.artist-roles > li').forEach(li => {
+            let roleRaw = '';
+            for (const node of li.childNodes) {
+                if (node.nodeType === Node.TEXT_NODE) roleRaw += node.nodeValue;
+            }
+            roleRaw = roleRaw.replace(/\s+/g, ' ').trim();
+            const m = roleRaw.match(/^\(([^()]+)\)$/);
+            if (!m) return;
+            const roles = m[1].split('/').map(s => s.trim()).filter(Boolean);
+            if (roles.length > 0) out.push({ li, roles });
+        });
+        return out;
+    }
+
+    /**
      * Classifies a table cell's "collapse structure" — unifies list cells
      * (see `_findCellListItems`, e.g. Catalog#/Label/Authors) and prose cells
      * (free-text columns like "Annotation" that overflow their height-clamp
@@ -16503,6 +16676,13 @@
             const want = mode.slice(8);
             return !!cell && Array.from(cell.querySelectorAll('.mb-credit-altname'))
                 .some(s => s.textContent.trim() === want);
+        }
+        if (mode.startsWith('role:')) {
+            // Compound mode — matches one artist's own event-role text
+            // (e.g. "main performer", "guest performer") from
+            // _findCellArtistRoles()'s own extraction — see its JSDoc.
+            const want = mode.slice(5);
+            return !!cell && _findCellArtistRoles(cell).some(r => r.roles.includes(want));
         }
         if (mode === 'inline-art-yes' || mode === 'inline-art-no') {
             // addCAA/addEAA inline-thumbnail presence — .mb-inline-art-sort-key
@@ -33009,6 +33189,37 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights the exact matched value for a `role:` compound
+     * structure-mode filter (see `openUniqDrop()`'s `makeValueSynItem` and
+     * `testRowMatch()`'s `f.isMultiValueFilter` structure-mode fallback) —
+     * the `role:` counterpart of `_highlightEntityCommentPartMatch()`,
+     * re-deriving from `_findCellArtistRoles()` (never a fresh ad hoc
+     * extraction here). Scoped to the whole `<li>` (the role text has no
+     * dedicated wrapping element of its own to scope more narrowly to,
+     * unlike `name:`/`comment:`/`alias:`) — safe since the regex is built
+     * from the exact wanted role word, via the same plain literal-escape
+     * (not `_buildFuzzyTextMatchRegex()`) `_highlightCreditValueMatch()`
+     * uses for its own whole-text-match modes (`task:`/`date:`/
+     * `instrument:`/`altname:`), since the role text is always a single
+     * flat text node with no cross-tag interruption to guard against.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"role:main performer"`.
+     */
+    function _highlightEventRoleMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(5);
+        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const _regex = new RegExp(_escaped, 'g');
+        _findCellArtistRoles(cell).forEach(r => {
+            if (!r.roles.includes(_want)) return;
+            r.li.normalize();
+            highlightCrossTag(r.li, _regex, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
      * Highlights every native MusicBrainz "name variation" marker
      * (`_findNameVariationElements()` — both the nested `<span
      * class="name-variation">` and cell-level `<td
@@ -33442,13 +33653,13 @@ a { color: #1565c0; }`;
                     // checked an overlapping item entry AND entity entry —
                     // harmless: nested mb-column-filter-highlight spans render
                     // identically to one. Checked 'attr:'/'task:'/'date:'/
-                    // 'instrument:'/'altname:'/'name:'/'comment:'/'alias:' and
-                    // 'name-variation' structure modes DO correspond to
-                    // exact visible content and get highlighted; the other
-                    // structure modes (empty/single/collapsed/expanded/any/
-                    // title-mismatch/inline-art-yes/no) operate on pure DOM
-                    // state with no single corresponding element, so they
-                    // get no highlight.
+                    // 'instrument:'/'altname:'/'name:'/'comment:'/'alias:'/
+                    // 'role:' and 'name-variation' structure modes DO
+                    // correspond to exact visible content and get
+                    // highlighted; the other structure modes (empty/single/
+                    // collapsed/expanded/any/title-mismatch/inline-art-yes/no)
+                    // operate on pure DOM state with no single corresponding
+                    // element, so they get no highlight.
                     const _fIsExclude = f.isExclude !== undefined ? f.isExclude : isExclude;
                     if (!_fIsExclude) {
                         if (f.hasItemValues)   _highlightUniqItemMatches(row.cells[f.idx], f);
@@ -33462,6 +33673,8 @@ a { color: #1565c0; }`;
                                 } else if (mode.startsWith('name:') || mode.startsWith('comment:') ||
                                            mode.startsWith('alias:')) {
                                     _highlightEntityCommentPartMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('role:')) {
+                                    _highlightEventRoleMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'name-variation') {
                                     _highlightNameVariationMatch(row.cells[f.idx]);
                                 }
@@ -42264,6 +42477,14 @@ a { color: #1565c0; }`;
         const entityNameValueCounts    = new Map();
         const entityCommentValueCounts = new Map();
         const entityAliasValueCounts   = new Map();
+        // Distinct event-role values (e.g. "main performer", "guest
+        // performer", "support act", "participant", "host") from a native
+        // MusicBrainz `.artist-roles` list — the query-time counterpart of
+        // the sentinel-class Maps above, same reasoning as
+        // entityNameValueCounts/etc.; see `_findCellArtistRoles()`'s own
+        // JSDoc. No-op Map for any column/cell with no `.artist-roles`
+        // list at all.
+        const eventRoleValueCounts = new Map();
         // One entry per unique <li> item's own clean text, for multi-row
         // (≥2-item) list cells — e.g. "Karl Egsieker (task: Second
         // Engineer)" as its own selectable value distinct from the merged
@@ -42410,6 +42631,9 @@ a { color: #1565c0; }`;
                 _rowNameValues.forEach(t => entityNameValueCounts.set(t, (entityNameValueCounts.get(t) || 0) + 1));
                 _rowCommentValues.forEach(t => entityCommentValueCounts.set(t, (entityCommentValueCounts.get(t) || 0) + 1));
                 _rowAliasValues.forEach(t => entityAliasValueCounts.set(t, (entityAliasValueCounts.get(t) || 0) + 1));
+                const _rowRoleValues = new Set();
+                _findCellArtistRoles(cell).forEach(r => r.roles.forEach(role => _rowRoleValues.add(role)));
+                _rowRoleValues.forEach(t => eventRoleValueCounts.set(t, (eventRoleValueCounts.get(t) || 0) + 1));
             });
         }
         const vals = Array.from(valueCounts.keys()).sort((a, b) =>
@@ -43164,7 +43388,7 @@ a { color: #1565c0; }`;
             ...dateValueCounts.values(), ...instrumentValueCounts.values(),
             ...altNameValueCounts.values(),
             ...entityNameValueCounts.values(), ...entityCommentValueCounts.values(),
-            ...entityAliasValueCounts.values()
+            ...entityAliasValueCounts.values(), ...eventRoleValueCounts.values()
         )).length + 2);
 
         // synBox is inserted between qfBar and listBox; always present but
@@ -43309,11 +43533,11 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'role'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
-         *   alternate name, entity name, comment, or alias to match
-         *   (embedded verbatim in the compound mode string).
+         *   alternate name, entity name, comment, alias, or event role to
+         *   match (embedded verbatim in the compound mode string).
          * @param {number} count  - Number of visible rows matching this value.
          */
         const makeValueSynItem = (kind, value, count) => {
@@ -43345,6 +43569,7 @@ a { color: #1565c0; }`;
                  : kind === 'name'       ? '» name: '
                  : kind === 'comment'    ? '» comment: '
                  : kind === 'alias'      ? '» alias: '
+                 : kind === 'role'       ? '» role: '
                  : '» ') + value
             );
 
@@ -43428,7 +43653,7 @@ a { color: #1565c0; }`;
         // Every column type can have genuinely empty cells (e.g. a primary-alias
         // column where most events have no alias, a CAA column with no artwork,
         // etc.) and being able to filter to those rows is universally useful.
-        // Sorted entries for the eight dynamic per-value families (shared by
+        // Sorted entries for the nine dynamic per-value families (shared by
         // both branches below).
         const _sortedAttrValues = Array.from(attrValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedTaskValues = Array.from(taskValueCounts.keys()).sort((a, b) => a.localeCompare(b));
@@ -43438,10 +43663,12 @@ a { color: #1565c0; }`;
         const _sortedNameValues    = Array.from(entityNameValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedCommentValues = Array.from(entityCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedAliasValues   = Array.from(entityAliasValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedRoleValues    = Array.from(eventRoleValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _hasValueEntries = _sortedAttrValues.length > 0 || _sortedTaskValues.length > 0 ||
             _sortedDateValues.length > 0 || _sortedInstrumentValues.length > 0 ||
             _sortedAltNameValues.length > 0 ||
-            _sortedNameValues.length > 0 || _sortedCommentValues.length > 0 || _sortedAliasValues.length > 0;
+            _sortedNameValues.length > 0 || _sortedCommentValues.length > 0 || _sortedAliasValues.length > 0 ||
+            _sortedRoleValues.length > 0;
 
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 || _hasValueEntries)) {
             // Section header — only shown for the multi-entry collapsable section
@@ -43484,6 +43711,7 @@ a { color: #1565c0; }`;
             _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameValueCounts.get(v)));
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => makeValueSynItem('alias', v, entityAliasValueCounts.get(v)));
+            _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
 
             appendSynDivider();
         } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 || _hasValueEntries) {
@@ -43496,7 +43724,8 @@ a { color: #1565c0; }`;
                 (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0) +
                 _sortedAttrValues.length + _sortedTaskValues.length + _sortedDateValues.length +
                 _sortedInstrumentValues.length + _sortedAltNameValues.length +
-                _sortedNameValues.length + _sortedCommentValues.length + _sortedAliasValues.length;
+                _sortedNameValues.length + _sortedCommentValues.length + _sortedAliasValues.length +
+                _sortedRoleValues.length;
             if (_entryCount > 1) {
                 const synHdr = document.createElement('div');
                 synHdr.textContent = 'Cell structure';
@@ -43517,6 +43746,7 @@ a { color: #1565c0; }`;
             _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameValueCounts.get(v)));
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => makeValueSynItem('alias', v, entityAliasValueCounts.get(v)));
+            _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
             appendSynDivider();
         }
 
@@ -43867,7 +44097,8 @@ a { color: #1565c0; }`;
             (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0) +
             _sortedAttrValues.length + _sortedTaskValues.length + _sortedDateValues.length +
             _sortedInstrumentValues.length + _sortedAltNameValues.length +
-            _sortedNameValues.length + _sortedCommentValues.length + _sortedAliasValues.length;
+            _sortedNameValues.length + _sortedCommentValues.length + _sortedAliasValues.length +
+            _sortedRoleValues.length;
         const dropH = Math.min(320, (combinedVals.length + synItemCount) * 29 + 50 + 38); // +50 syn header/divider, +38 qf bar
         const dropW = drop.offsetWidth || 200;
 
@@ -43921,6 +44152,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('name:'))    return `» name: ${mode.slice(5)}`;
         if (mode.startsWith('comment:')) return `» comment: ${mode.slice(8)}`;
         if (mode.startsWith('alias:'))   return `» alias: ${mode.slice(6)}`;
+        if (mode.startsWith('role:'))    return `» role: ${mode.slice(5)}`;
         return '▶◀ multi-row: any';
     }
 
@@ -43955,6 +44187,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('name:')) return 'An entity\'s own anchored/linked name, excluding any disambiguation comment.';
         if (mode.startsWith('comment:')) return 'An entity\'s disambiguation comment text, excluding any primary alias.';
         if (mode.startsWith('alias:')) return 'An entity\'s primary alias — an alternate name shown in its disambiguation comment.';
+        if (mode.startsWith('role:')) return 'An artist\'s own credited event role (e.g. "main performer", "guest performer", "host").';
         return '';
     }
 
