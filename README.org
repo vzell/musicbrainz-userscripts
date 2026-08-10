@@ -92336,7 +92336,7 @@ icon to the artist name(s)
 
 b.)
 
-If the date attribute on the above column values is missing append am error icon
+If the date attribute on the above column values is missing append an error icon
 
 2.)
 
@@ -92371,9 +92371,68 @@ Vocals
 Instruments
 #+end_example
 
-** TODO add two new global buttons in the h2 "Tracklist" header line right before the '<span id="mb-global-filter-wrapper" class="mb-filter-wrapper"'
+*** DONE the logic for applying ⚠️/❌ icons should actually be the other way around
 
-add two new global buttons in the h2 "Tracklist" header line right before the '<span id="mb-global-filter-wrapper" class="mb-filter-wrapper"'
+the logic for applying ⚠️/❌ icons should actually be the other way around:
+
+for each row where the "Recording of work" column has the "live" attribute on a work in a data cell, compare the
+"Recording date" column if present with the "date" attribute of the artis(s) in following columns
+
+#+begin_example
+Recording engineer
+Vocals
+Instruments
+Recorded at event
+Recorded at place
+#+end_example
+
+a.)
+
+
+If the date attribute on the above column values is missing append a WARNING ⚠️icon to the artist name(s)
+
+b.)
+
+If the date attribute on the above column values is different than the "Recording date" column value, append an ERROR ❌ 
+icon to the artist name(s)
+
+** DONE add two new global buttons in the h2 "Tracklist" header line right before the '<span id="mb-global-filter-wrapper" class="mb-filter-wrapper"'
+*** initial
+
+Implement two new global buttons in the h2 "Tracklist" header line of the pageType 'release-tracks' right before the '<span id="mb-global-filter-wrapper" class="mb-filter-wrapper"'
+which represent all WARNING and ERROR icons present on the current page
+
+1.)
+
+The buttons should ONLY be present if at least one WARNING ⚠️ or ERROR ❌ icon is present on the current page
+
+2.)
+
+The button titles should be
+
+#+begin_example
+(<warning count>) WARNING ⚠️
+(<error count>) ERROR ❌
+#+end_example
+
+and the tooltips should show how many WARNINGs/ERRORs are present in the corresponding columns where the icons show up 
+3.)
+
+a.)
+
+When clicked ONLY the rows which have at least one corresponding icon in it's row should be rendered/filtered
+
+b.)
+
+The '<button id="mb-clear-all-filters-btn"' should be shown together with a description in the '<span id="mb-status-display"'
+When clicked all rows should be shown again.
+
+*** bug
+
+No button is rendered at all, also "ERROR" icons are present at https://musicbrainz.org/release/abc6ad0c-2e02-4141-8275-6943b3553dbf in the "Recording engineer" column 
+
+@debug/h2.html
+
 
 ** TODO add colors to the synthetic extracted AR columns
 *** DONE initial
@@ -92396,8 +92455,6 @@ compare
 #+end_example
 
 
-** TODO add tooltips to the unique value drop down entries which additionally explain the glyph meanings
-
 ** TODO why can't the "Disambiguation" column be extracted in it's "Event-..." parts
 
 ** TODO split "Recorded at place" column
@@ -92408,7 +92465,8 @@ compare
 add the flag and place/area icons at the right position of each entry in the unique value drop down instead of at the very beginning of each entry
 
 
-* TODO add synthetic entry to the cell structure of the unique value drop when there are ANY name variations
+* DONE add synthetic entry to the cell structure of the unique value drop when there are ANY name variations
+** initial
 
 add a synthetic entry to the cell structure of the unique value drop when there are ANY name variations, like for the
 'release-tracks' pageType also for other pageTypes
@@ -92421,7 +92479,7 @@ On e.g. https://musicbrainz.org/release-group/85206823-9808-3da2-a9d7-2e9b8b0f4e
 <td class="artist-credit-variation"><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></bdi></td>
 #+end_example
 
-compared to the release group name
+compared to the release group name, but there is NO "~ has name variation" in the unique value drop down present
 
 2.)
 
@@ -92431,6 +92489,8 @@ On e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/even
 <span class="name-variation"><a href="/place/9132ee37-5df6-4188-a2d3-57053fe5250a" title="PHX Arena"><bdi>Mortgage Matchup Center</bdi></a></span>
 #+end_example
 
+there ACTUALLY IS a "~ has name variation" in the unique value drop down present
+
 3.)
 
 On e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works in the "Recording artists" and "Authors" columns
@@ -92439,13 +92499,647 @@ On e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/work
 <span class="name-variation"><a href="/artist/7716ddac-2f24-44fa-81b1-bfa920811445" title="José Carreras – Carreras, José (Spanish tenor)">Carreras</a></span>
 #+end_example
 
+there ACTUALLY IS a "~ has name variation" in the unique value drop down present
+
+5.)
+
+can this somehow be generalized
+
+** act on @debug/nv.org
+
+act on @debug/nv.org
+
+* DONE add support for "date-range" AR attribute in the unique value drop down menu
+
+add support for the following special "date-range" AR attributes in the "Cell structure" section of the unique value
+drop down menu (like for the normal AR attributes like e.g "additional", "guest", "assistant", "co" etc.)
+
+#+begin_example
+from 1987-01-20 until 1987-03
+in 1987
+on 1988-04-27
+1988-04-27 <-- special to "recorded at: <event>" ARs
+#+end_example
+
+When selecting them the actual date expression should be highlighted too
+
+See also from e.g https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd the following examples which have date expressions
+
+#+begin_example
+@debug/recorded-at-event.html - "Recorded at event" column
+@debug/recorded-at-event.html - "Recorded at place" column
+@debug/vocal.html - "Vocals" column
+@debug/phonographic.html - "Phonographic copyright (℗) by label" column
+#+end_example
+
+* DONE make the handling of attributes used for e.g. in the "Recorded at place" column symmetric to the "Vocals"/"Instruments" columns
+
+make the handling of attributes used for the the "Vocals"/"Instruments" columns symmetric to the e.g. "Recorded at place" column:
+
+#+begin_example
+@debug/recorded-at-place.html - "Recorded at place" column ==>  renders the attribute "additional" in it's own brackets separate from the date info: (additional) (from 1987-01-20 until 1987-03)
+@debug/vocals.html - "Vocals" column ==> renders the attribute e.g. "lead" together with the date info: (lead, on 1988-04-27)
+#+end_example
+
+So the "Vocals" column should be rendered as
+
+#+begin_example
+<artist> (lead) (on 1988-04-27)
+#+end_example
+
+* DONE add support for the instrument type itself in the "Cell structure" section of the unique value drop down
+
+Add support for the instrument type itself (e.g. "bass", drum machine", "guitar", etc) inside the "Instruments" column
+of the 'release-tracks" pageType in the "Cell structure" section of the unique value drop down, like we do for AR
+attributes and date-ranges
+
+For example in https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd in the "Instruments" column @debug/instruments-column.html
+
+* DONE the quickfilter should also filter and highlight inside the "Cell structure" section of the unique value drop down not only the rest
+
+1.)
+
+the quickfilter should also filter and highlight inside the "Cell structure" section of the unique value drop down not only the standard section
+
+#+begin_example
+<div class="mb-uniq-qf-bar"><input type="text" class="mb-uniq-qf-input" placeholder="Quick filter…" aria-label="Filter unique values"><button class="mb-uniq-qf-clear" title="Clear filter (Escape)" aria-label="Clear filter">×</button></div>
+#+end_example
+
+2.)
+
+The alignment of the counters inside the "Cell structure" section of the unique value drop down should be made symmetric to
+the standard section
+
 
 * TODO use the more than 1000 tracks release to fix AR bugs, specifically "instruments" with brackets
 
+
 * TODO In "Recording enineer" column, "John Cooper (engineer)" should always stay together, a bare "John Cooper" should never be extracted
+
+Currently
 
 #+begin_example
 <li><a class="wrap-anywhere" href="/artist/4844fcef-6e56-4407-be41-ead237dff686" title="Cooper, John (engineer)"><bdi>John Cooper</bdi></a>&nbsp;<span class="comment"><bdi>(engineer)</bdi></span><span class="mb-live-date-flag" title="This track is a live recording (recorded 2005-07-18), but this credit has no date attribute — it can't be confirmed to be from the same performance."> ❌</span></li>
 #+end_example
 
 
+* DONE plan: add checkboxes to entries in the cell structure area of the unique value drop down and tooltips to the unique value drop down entries which additionally explain the glyph meanings
+** DONE initial
+
+1.)
+
+Is it possible to add checkboxes to entries in the "Cell structure" area of the unique value drop down menu, like we
+already have for the other entries
+
+2.)
+
+change the tooltip of the unique value drop down menu in each column to also mention the "Cell structure" area if present
+
+3.)
+
+change the tooltips of entries in the unique value drop down menu to additionally explain their meaning specifically if
+glyphs/icons are present for a value
+
+** DONE bugs
+*** DONE "~ has name variation" on "Recording artists" column doesn't highligth the multi-row coun indicator if match is inside the collapsed list
+
+Columns on pageTypes which have "~ has name variation" in the unique value drop down, e.g. 
+
+#+begin_example
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works - e.g "Recording artists" column - [Image #61]
+https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd - e.g "Recording engineer" column - [Image #60]
+#+end_example
+
+1.)
+
+currently do not highlight the actual name variation - [Image #60], [Image #61]
+
+2.)
+
+do not highlight the multi-row count indicator if match is inside a collapsed list - [Image #61]
+
+*** DONE on pageType 'release-tracks" when initially rendered lots of columns are rendered as collapsable
+
+On pageType 'release-tracks" when the final page is initially rendered, lots of columns are rendered as collapsable.
+
+As soon as one of those columns has been filtered (either by typing a filter string directly in the filter box, or by
+choosing one of the values from the unique drop down menu), the collapsable state is gone, and all those columns are
+automatically uncollapsed.
+
+
+* TODO add checkboxes also to the "Relationship icons" section
+
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
+
+* DONE On columns with a disambiguation/primary alias allow in the unique value drop down also just the plain unique "Name"(s), the "Disambiguation"(s) and the "Primary alias"
+** DONE initial
+
+On columns with a disambiguation comment ('class="comment"') including the optional "Primary alias" ('<i title="Primary alias">')
+add support in the "Cell structure" of the unique value drop down menu to select rows with either the 
+
+#+begin_example
+anchored <bdi> name
+comment (without the optional primary alias)
+primary alias
+#+end_example
+
+or a combination 
+
+See e.g https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works - columns: "Work", "Authors", etc
+
+And for the typical example structures the following
+
+Work:
+#+begin_example
+<td style="position: sticky; left: 0px; z-index: 1; background: rgb(242, 242, 242);" data-mb-rest-bg="rgb(242, 242, 242)" data-mb-sticky-bg="rgb(242, 242, 242)" class="mb-sticky-col">
+  <a class="wrap-anywhere" href="/work/6763c20d-f2df-3347-8a0e-7abad42a5a56">
+    <bdi>An der schönen blauen Donau, op. 314
+    </bdi>
+  </a>&nbsp;
+  <span class="comment">
+    <bdi>(
+      <i title="Primary alias">On the Beautiful Blue Danube, op. 314
+      </i>)
+    </bdi>
+  </span>
+</td>
+#+end_example
+
+Authors:
+#+begin_example
+<td data-mb-rest-bg="rgb(242, 242, 242)" style="background: rgb(242, 242, 242);">
+  <script type="application/json">{"relations":[{"credit":"","entity":{"area":null,"primaryAlias":"Johann Strauss II","editsPending":false,"begin_area":null,"typeID":1,"gender_id":1,"last_updated":"2021-05-10T06:45:19Z","gender":null,"begin_area_id":112783,"gid":"8255db36-4902-4cf6-8612-0f2b4288bc9a","entityType":"artist","end_date":{"day":3,"year":1899,"month":6},"name":"Johann Strauss","end_area_id":653,"isni_codes":[],"begin_date":{"day":25,"year":1825,"month":10},"id":24517,"ended":true,"ipi_codes":[],"end_area":null,"comment":"Austro-German composer, „Walzerkönig“, Johann Strauss II, Sohn, Jr., the Younger, the Son","sort_name":"Strauss, Johann"},"roles":["composer"]}]}
+  </script>
+  <div class="artist-roles-container">
+    <ul aria-label="Artist roles" class="artist-roles">
+      <li>
+	<a href="/artist/8255db36-4902-4cf6-8612-0f2b4288bc9a" title="Johann Strauss II (Austro-German composer, „Walzerkönig“, Johann Strauss II, Sohn, Jr., the Younger, the Son)">
+	  <bdi>Johann Strauss
+	  </bdi>
+	</a>&nbsp;
+	<span class="comment">
+	  <bdi>(
+	    <i title="Primary alias">Johann Strauss II
+	    </i>, Austro-German composer, „Walzerkönig“, Johann Strauss II, Sohn, Jr., the Younger, the Son)
+	  </bdi>
+	</span> (composer)
+      </li>
+    </ul>
+  </div>
+</td>
+#+end_example
+
+** DONE add highlightning for the "comment" and "primary alias" case
+** DONE Why: no splitting in name, comment, primary alias
+*** initial
+
+Why is there no splitting in name, comment and "primary alias" we just introduced for the following URLs and columns
+(there are is nothing related to that feature in the corresponding unique value drop down)
+
+#+begin_example
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases - "Release" column
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships - "Title" column
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings - "Name" column
+#+end_example
+
+Just explain, do not implement anything
+
+*** explanation
+
+#+begin_example
+● Confirmed. Here's the explanation:
+
+  Root cause
+
+  The new name:/comment:/alias: "Cell structure" feature reuses _findCellEntityRefs() (line 16090) for entity discovery — deliberately, per the plan, so it wouldn't re-derive anchor-finding logic that already existed. That function only recognizes an anchor as an "entity
+  reference" if its href's first path segment is one of six types listed in _ENTITY_TYPE_GLYPH (line 16096-16097):
+
+  const glyphClass = m && _ENTITY_TYPE_GLYPH[m[1]];
+  if (!glyphClass) return;   // href type not recognized → skip this anchor entirely
+
+  const _ENTITY_TYPE_GLYPH = {
+      work: 'worklink', place: 'placelink', area: 'arealink',
+      artist: 'artistlink', label: 'labellink', event: 'eventlink'
+  };
+
+  That map's own doc comment (line 32481-32496) confirms this is a pre-existing, deliberate scope limit, not something new I introduced: it only covers "the 6 types with an already-VERIFIED glyph class precedent in this codebase," and explicitly calls out
+  recording/release/release-group/series/instrument as not yet included, "none does today" — it predates the name/comment/alias feature entirely (it was built for release-tracks' AR-column header glyphs).
+
+  Since _findCellEntityCommentParts() (my new helper) only ever iterates over whatever _findCellEntityRefs() returns, it inherited this exact same six-type restriction as a side effect:
+
+  - /artist/.../releases "Release" column — links are /release/<mbid> → release isn't in the map → every anchor is skipped → zero entity refs → zero name/comment/alias entries.
+  - /artist/.../recordings "Name" column — links are /recording/<mbid> → recording isn't in the map → same result.
+  - /artist/.../relationships "Title" column — this one shows whichever entity is on the other end of each relationship, so it's mixed; it works fine for rows targeting a work/event/etc., but any row whose target is a release/recording/release-group gets skipped the same way. For
+  this specific artist's relationships list, the visible rows are apparently dominated by types outside the six, so nothing shows up in that column's dropdown either.
+
+  By contrast, the original "Work"/"Authors" example worked because work and artist are both in the map.
+
+  This is exactly why the doc comment describes it as "a one-line addition whenever a verified glyph class exists" for a new type — extending _ENTITY_TYPE_GLYPH to include release/recording/etc. would fix all three, but that map is also used elsewhere (release-tracks
+  column-header glyphs), so adding a type there is a shared, not fully isolated, change. Let me know if you'd like me to implement that extension.
+#+end_example
+
+*** question
+
+the following also doesn't work
+
+#+begin_example
+https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e - "Release" column
+https://musicbrainz.org/series/6574dbe3-fefd-49cb-9727-fa33b3306ee2 - "Release" column
+https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/releases - "Release" column
+#+end_example
+
+What exactly should I provide so that you can implement that extension ?
+
+Will it eventually break existing functionality (a showstopper) or will it only enable the unique value drop down menu
+additions of the name, comment and "primary alias" feature on the mentioned URLs ?
+
+*** here are the snapshots
+
+here are the snapshots
+
+#+begin_example
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases - "Release" column - @debug/a-rel.html
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships - "Title" column - @debug/rec-rel.html
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships - "Title" column - @debug/rel-rel.html
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships - "Title" column - @debug/work-rel.html
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings - "Name" column - @debug/a-rec.html
+https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e - "Release" column - @debug/l-rel.html
+https://musicbrainz.org/series/6574dbe3-fefd-49cb-9727-fa33b3306ee2 - "Release" column - @debug/s-rel.html
+https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/releases - "Release" column - @debug/i.html
+#+end_example
+
+All the MusicBrainz icons are defined in https://static.metabrainz.org/MB/icons-f6c41cc.css
+downloaded at @debug/mb-icons.css
+
+*** findings
+
+#+begin_example
+● The snapshots are decisive — and they overturn something I said earlier.
+
+  Key finding
+
+  debug/mb-icons.css actually defines .recordinglink and .releaselink as real, styled classes:
+
+  grep -oE "\.[a-zA-Z-]*link\b" mb-icons.css | sort -u
+  .arealink .artistlink .collectionlink .eventlink .genrelink .instrumentlink
+  .labellink .placelink .recordinglink .releaselink .rglink .serieslink .taglink .worklink
+
+  Your rec-rel.html/rel-rel.html snapshots confirm MusicBrainz actually emits them live: <span class="recordinglink"></span> and <span class="releaselink"></span> sit right before the anchor on the relationships page's "Title" column.
+
+  This means the existing code's own comment ("no recordinglink/releaselink… class exists anywhere in this file or in real MusicBrainz markup") is simply wrong/outdated — it was written without having checked this specific page shape. That comment was the entire basis for my
+  "Option B, avoid touching the shared map" recommendation last time, since I was worried extending it would attach a glyph class with nothing behind it. That worry is gone: .releaselink/.recordinglink are real, already-styled classes, exactly matching the "trust the host page's
+  stylesheet" contract the other six types already rely on.
+
+  Revised recommendation
+
+  Option A (extend the shared _ENTITY_TYPE_GLYPH map) is now the right call, not Option B. Concretely: add
+  release:   'releaselink',
+  recording: 'recordinglink',
+  Two entries — that's all that's needed. Checking it against all six originally-broken cases:
+
+  ┌─────────────────────────────────────────────────┬─────────────────────────────┬───────────┐
+  │                  URL / column                   │ entity type behind the link │ fixed by  │
+  ├─────────────────────────────────────────────────┼─────────────────────────────┼───────────┤
+  │ artist/releases "Release"                       │ release                     │ release   │
+  ├─────────────────────────────────────────────────┼─────────────────────────────┼───────────┤
+  │ artist/relationships "Title" (rec-rel/work-rel) │ recording                   │ recording │
+  ├─────────────────────────────────────────────────┼─────────────────────────────┼───────────┤
+  │ artist/relationships "Title" (rel-rel)          │ release                     │ release   │
+  ├─────────────────────────────────────────────────┼─────────────────────────────┼───────────┤
+  │ artist/recordings "Name"                        │ recording                   │ recording │
+  ├─────────────────────────────────────────────────┼─────────────────────────────┼───────────┤
+  │ label "Release"                                 │ release                     │ release   │
+  ├─────────────────────────────────────────────────┼─────────────────────────────┼───────────┤
+  │ series "Release"                                │ release                     │ release   │
+  ├─────────────────────────────────────────────────┼─────────────────────────────┼───────────┤
+  │ instrument/releases "Release"                   │ release                     │ release   │
+  └─────────────────────────────────────────────────┴─────────────────────────────┴───────────┘
+
+  All six are release/recording-typed — none of them actually need series/instrument/release-group/etc. themselves (those URLs are pages about a series/instrument, but the "Release" column there links to releases, not back to the series/instrument). The stylesheet also confirms
+  real classes for serieslink/instrumentlink/rglink/collectionlink/genrelink if you ever want those too, but they're not needed for what you reported.
+
+  No breakage risk either way now — it's purely additive to the six already-recognized types, and the new glyph markers will render correctly (real CSS backing) rather than the blank-icon scenario I was worried about last time.
+#+end_example
+
+*** Go with 1.) but put the information about the CCS MB stylesheet in your MEMORY
+
+Go with 1.) but put the information about the CCS MB stylesheet in your MEMORY
+
+also fix the old wrong comments along the way
+
+*** missing
+
+The following still doesn't work after the last fix
+
+#+begin_example
+https://musicbrainz.org/report/SetInDifferentRG - "Release group" column - @debug/rep-rg.html
+#+end_example
+
+*** missing
+
+#+begin_example
+https://musicbrainz.org/series/34b9e392-c076-4882-9355-8dbf2a1a52ac - "Title" column - @debug/s-rg.html
+#+end_example
+
+
+* TODO plan: review the "extractMainColumn" feature architecture
+** DONE initial
+
+Review the "extractMainColumn" feature architecture which currently splits a column into the following synthetic columns
+
+#+begin_example
+MB-Name
+Comment
+#+end_example
+
+with the example of the pageType 'artist-works'
+
+#+begin_example
+        {
+            type: 'artist-works',
+            match: (path) => path.includes('/works'),
+            buttons: [ { label: 'Show all Works for Artist' } ],
+            features: {
+                collapsableColumns: [ 'Authors', 'Recording artists', 'Other artists', 'ISWC', 'Lyrics languages', 'Attributes' ],
+                injectedColumns: [ 'Relationships' ],
+                extractMainColumn: 'Work',
+                stickyColumn: 'Work'
+            },
+            tableMode: 'single'
+        },
+#+end_example
+
+and also 'place-events'
+
+#+begin_example
+        {
+            type: 'place-events',
+            match: (path) => path.match(/\/place\/[a-f0-9-]{36}\/events/),
+            buttons: [ { label: 'Show all Events for Place' } ],
+            features: {
+                columnExtractors: [
+                    { sourceColumn: 'Event', extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] },
+                    { sourceColumn: 'Event', extractor: 'caa',            syntheticColumns: ['EAA'] },
+                    { sourceColumn: 'Event', extractor: 'primaryAlias',   syntheticColumns: ['Primary Alias'] },
+                    { sourceColumn: 'Date',  extractor: 'dateParts',      syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
+                ],
+                collapsableColumns: [ 'Artists', 'EAA' ],
+                integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
+                tooltipColumns: [ 'MB-Name', 'italic:Comment', 'Primary Alias', 'Type', '---', 'Artists', ['Date', '(', 'Time', ')'], 'Cancelled' ],
+                addEAA: 'Event',
+                extractMainColumn: 'Event',
+                stickyColumn: 'Event'
+            },
+            tableMode: 'single'
+        },
+#+end_example
+
+now that we have the new generic splitting functionality into name, comment and "primary alias"
+
+1.)
+
+Is it possible to enhance "extractMainColumn" to extract into three synthetic columns instead (on all the pageTypes defined, without breaking anything)
+
+#+begin_example
+MB-Name
+Comment
+MB-Primary alias
+#+end_example
+
+2.)
+
+Would it automatically fix the following bug ?
+
+On e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
+
+It currently renders in the "Comment" column, the "Primary alias" see @debug/work-comment-bug.html
+
+3.)
+
+We also already have a feature "extractor: 'primaryAlias'" extractor function which most of the times acts on an "Event" column
+
+On e.g. https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/events
+
+#+begin_example
+@debug/place-events-original.html - orignal row which has both disambiguation comment and "primary alias"
+@debug/place-events-final.html - final render row with our current extraction implementation
+#+end_example
+
+4.)
+
+Do we really need the "extractor: 'primaryAlias'" anymore or can anything else which (maybe) uses it use, our new generic functionality
+
+5.)
+
+Lets discuss first..
+
+** DONE new plan: act on @debug/review-extract-maincolumn.org
+
+new plan: act on @debug/review-extract-maincolumn.org
+
+** DONE plan
+
+#+begin_example
+● User approved Claude's plan
+  ⎿  Plan saved to: ~/.claude/plans/1-is-it-possible-moonlit-emerson.md · /plan to edit
+     extractMainColumn: split into MB-Name / Comment / MB-Primary alias
+
+     Context
+
+     debug/review-extract-maincolumn.org asked to review extractMainColumn
+     (the feature that splits a page's main entity column, e.g. 'Work'/'Event',
+     into synthetic MB-Name + Comment columns) now that this session already
+     built a generic name/comment/primary-alias splitter for list-style entity
+     cells (_findCellEntityRefs() / _findCellEntityCommentParts()).
+
+     Investigation (reading the actual code + debug/work-comment-bug.html,
+     debug/place-events-original.html/-final.html) confirmed the bug reported
+     in the org file: extractMainColumn's "Comment" extraction never strips
+     <i title="Primary alias"> before reading the comment text, so on a row
+     whose entity comment is wholly or partly a primary alias (e.g. artist-works'
+     "An der schönen blauen Donau, op. 314" → alias "On the Beautiful Blue
+     Danube, op. 314"), the "Comment" column silently shows the alias text
+     mislabeled as a disambiguation comment.
+
+     The extraction logic is duplicated almost verbatim at exactly two call
+     sites in startFetchingProcess() (~line 36107-36175, the artist-releasegroups
+     branch, and ~line 36828-36905, the generic else-branch) — both build tdName/
+     tdComment by hand, neither ever looks for i[title="Primary alias"].
+
+     A second, independent code path has the identical root-cause bug:
+     _tagCountBase() (line 2686, backing Name_Comment, Name_Date_Comment,
+     Name_Comment_Artists, tagCount_Name_Comment, tagCount_Name_Date_Comment,
+     tagCount_Name_Comment_Artists — used by tag-value/tag-count/user-tag-value
+     page types via columnExtractors, not extractMainColumn) also reads
+     .comment bdi's raw textContent with no alias stripping.
+
+     Separately, ColumnDataExtractor.primaryAlias (line 3528) is an existing
+     DOM-mutating extractor (columnExtractors pipeline) that already solves
+     this correctly today, by removing <i title="Primary alias"> from the
+     source cell (and cleaning up the orphaned leading ", ") before
+     extractMainColumn's Comment read ever runs. Cross-referencing every
+     extractor: 'primaryAlias' usage against its page definition's
+     extractMainColumn value shows:
+     - 7 usages target the exact same source column as their own
+     extractMainColumn (confirmed directly: place-events's Events block —
+     sourceColumn: 'Event' / extractMainColumn: 'Event'; another Events
+     block — sourceColumn: 'Name' / extractMainColumn: 'Name'; the
+     artist-releasegroups Title block — sourceColumn: 'Title' /
+     extractMainColumn: 'Title'; plus 4 more of the same shape). Once
+     extractMainColumn natively splits out its own alias column, these
+     become fully redundant — same data MusicBrainz already renders once,
+     extracted twice under two different column names ("Primary Alias" vs the
+     new "MB-Primary alias").
+     - 3 usages (all sourceColumn: 'Event', entityFeatures 'Events'
+     blocks on tag-value-style page types, e.g. lines ~11700-11718,
+     ~11780-ish, ~12181-12198) do not use extractMainColumn at all —
+     they pair primaryAlias with the _tagCountBase-backed Name_Date_Comment
+     extractor instead. These stay as-is; primaryAlias remains their only
+     source of alias data.
+
+     Per discussion (see prior turn's AskUserQuestion), scope for this task is:
+     fix both code paths, and retire the 7 redundant primaryAlias
+     entries that duplicate what the enhanced extractMainColumn will now
+     produce natively. The 3 _tagCountBase-paired primaryAlias entries are
+     kept untouched.
+
+     Approach
+
+     1. New shared helper: _extractMainColumnParts(targetCell)
+
+     Add next to the two existing inline blocks (~line 36090), replacing their
+     duplicated Name/Comment-building code. Keeps the existing Name-extraction
+     logic byte-for-byte (no behavior change there — <a><bdi> preferred, then
+     first <a>, then first meaningful text node, then full text minus
+     .comment). Replaces the Comment-extraction step with an alias-aware split
+     mirroring _findCellEntityCommentParts()'s technique (remove the alias
+     element first, then read what's left; strip a leftover leading ", "):
+
+     (No paren-stripping needed — MusicBrainz renders the comment's surrounding
+     ( ) via CSS ::before/::after, confirmed absent from .textContent in
+     the actual debug snapshot; only the literal ", " separator between alias
+     and trailing comment text is a real DOM text node.)
+
+     2. Wire the third column into both row-building call sites
+
+     At both ~36107-36175 and ~36828-36905:
+     - Replace the inline extraction with a call to _extractMainColumnParts(targetCell).
+     - Register primarySyntheticCellMap.set('MB-Primary alias', tdAlias) next to
+     the existing MB-Name/Comment registrations (so syntheticColumnExtractors
+     can source from it later, consistent with how Comment is already exposed
+     to e.g. eventParts).
+     - Append newRow.appendChild(tdAlias) next to the existing tdName/tdComment
+     appends (~36241-36243 and ~36965-36968), keeping it as the third and last
+     of the trio.
+
+     3. Header + tooltip + bookkeeping (cleanupHeaders, ~34459-34523)
+
+     - Add a third <th> block for MB-Primary alias, mirroring the existing
+     Comment block (same mb-extracted-column class, headerBgColor,
+     idempotent headersText.includes(...) guard).
+     - _synthColTooltip()'s 'extractMainColumn' case (~34220-34225): add an
+     MB-Primary alias branch (short explanatory sentence, mirroring the
+     MB-Name/Comment ones).
+     - _resolvedPrimaryCols (~34470-34474): also .add('MB-Primary alias').
+     - Header-name tracking array (~35968-35972): also
+     _finalColNames.push('MB-Primary alias').
+
+     4. Fix _tagCountBase() (line 2686) the same way
+
+     Replace its raw _commentBdi.textContent read with the same
+     remove-the-alias-element-first technique used in _extractMainColumnParts
+     (no new synthetic column here — the 3 page blocks that need the alias value
+     already get it from their own untouched primaryAlias columnExtractor
+     entry; this change only stops it from also leaking into Comment). All 6
+     extractor functions built on _tagCountBase (Name_Comment,
+     Name_Date_Comment, Name_Comment_Artists, tagCount_Name_Comment,
+     tagCount_Name_Date_Comment, tagCount_Name_Comment_Artists) get the fix
+     for free since they all destructure tdComment from it.
+
+     5. Retire the 7 redundant primaryAlias entries
+
+     For each page-definition block where extractor: 'primaryAlias''s
+     sourceColumn matches that block's own extractMainColumn value:
+     - Remove the { sourceColumn: '<X>', extractor: 'primaryAlias', syntheticColumns: ['Primary Alias'] }
+     entry from columnExtractors.
+     - In that block's tooltipColumns (where present), replace any 'Primary Alias'
+     reference with 'MB-Primary alias'.
+     - Re-grep -n "extractor: 'primaryAlias'" at implementation time to get the
+     authoritative, current line numbers rather than relying on the ones found
+     during this investigation (the file shifts as earlier edits land) —
+     cross-check each hit's nearest extractMainColumn in the same
+     entityFeatures sub-block before removing it, since a naive nearest-match
+     scan (tried during investigation) misfires across adjacent sub-blocks in
+     this densely-nested region of pageDefinitions.
+     - Do not touch the 3 _tagCountBase-paired entries (no sibling
+     extractMainColumn in the same block) — leave those primaryAlias
+     entries and their 'Primary Alias' synthetic column in place.
+
+     Not in scope
+
+     - No new alias column is added to _tagCountBase-family page blocks that
+     currently have neither extractMainColumn nor a paired primaryAlias
+     extractor (e.g. plain Name_Comment on Areas/Labels/Places/Release groups
+     entityFeatures blocks) — they simply stop leaking the alias into Comment;
+     a dedicated alias column for that family would be new-feature scope, not
+     a bug fix, and can be a separate follow-up if wanted.
+     - ColumnDataExtractor.primaryAlias itself is not deleted — it's still
+     needed by the 3 kept usages.
+
+     Files touched
+
+     Only ShowAllEntityData.user.js:
+     - New function _extractMainColumnParts() (~line 36090 area)
+     - Two row-building call sites (~36107-36243, ~36828-36968)
+     - cleanupHeaders() header injection + _synthColTooltip() (~34220-34523)
+     - _tagCountBase() (line 2686)
+     - 7 pageDefinitions entries (remove redundant primaryAlias columnExtractors
+     entries + fix tooltipColumns references)
+
+     Verification
+
+     1. node --check after each edit (standing convention).
+     2. Load https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works:
+     confirm the "An der schönen blauen Donau, op. 314" row now shows an empty
+     "Comment" cell and "On the Beautiful Blue Danube, op. 314" under the new
+     "MB-Primary alias" column instead of mislabeled under "Comment".
+     3. Load https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/events:
+     confirm the Southside Johnny row's "Comment"/"MB-Primary alias" columns
+     are correct and that only ONE alias column now exists (old "Primary Alias"
+     gone, replaced by "MB-Primary alias") since this page's Events block is
+     one of the 7 being retired.
+     3b. Spot-check one of the 3 kept _tagCountBase-paired pages (e.g. a
+     user-ratings/user-tag-value-entity Events tab) still shows both a
+     correct (non-leaking) "Comment" and its original "Primary Alias" column.
+     4. Grep for any remaining 'Primary Alias' string reference in a page block
+     whose primaryAlias entry was removed, to make sure no dangling
+     tooltipColumns/collapsableColumns reference survives.
+     5. Add a ShowAllEntityData_CHANGELOG.wip.json entry (next WIP.N) per
+     project convention.     
+#+end_example
+
+** TODO only render "Comment", "Primary alias" if at least one row has a value for it in the tabl/subtable
+** TODO fix the last primaryAlias uses
+
+* DONE bug: in https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/events the "primary alias" should not be removed from the main column when extracted to its own column
+
+* TODO https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/events
+
+In the "Artists" column, support "guest performer"/"main performer" in the "Cell structure" of the unique value drop down
+
+* TODO On the 'reports' pageType add more columns if chabans statistics userscript is installed
+
+https://musicbrainz.org/reports
+
+* TODO Extract disambiguation from the "Artist" column in specific reports - use our new generic helper
+
+Use our new _findCellEntityCommentParts(cell) helper (extends _findCellEntityRefs) — the single source of truth splitting each commented entity into { name, comment, alias }
+
+https://musicbrainz.org/report/DiscogsLinksWithMultipleArtists
+
+
+* TODO make the "Space" key to also select inside the unique value drop down menu
+
+* TODO for "Instruments" add support for '[12-string guitar]' in "guitar: Bruce Springsteen [12-string guitar]" in the "Cell structure" section of the unqiue value drop down
+
+* TODO fix pregress on https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b to show the actual rows to fetch fetching <n> out of <m>
