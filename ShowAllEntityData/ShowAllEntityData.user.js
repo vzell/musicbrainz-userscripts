@@ -10207,11 +10207,15 @@
      * `_buildCreditListItem`'s shape (artist name/name-variation/comment
      * span, then a trailing `" (attr1/attr2)"` parenthetical for attribute
      * words), prefixed with the cloned instrument `<a>` for the
-     * Instruments column (e.g. `"cello: John Doe"`) — the Vocals column has
-     * no such prefix since the column name itself already says "Vocals". A
-     * credited-as `altName` (e.g. `"orchestra bells"`/`"baritone sax"`, from
-     * MusicBrainz's own trailing `[…]` bracket) appends after the attribute
-     * parenthetical, in the same bracket shape MusicBrainz itself uses.
+     * Instruments column (e.g. `"cello: John Doe"`, tagged with the
+     * `mb-credit-instrument` sentinel class so the unique-values dropdown's
+     * "Cell structure" per-instrument synthetic filter entries can find and
+     * highlight it — see `openUniqDrop()`'s `instrumentValueCounts`) — the
+     * Vocals column has no such prefix since the column name itself already
+     * says "Vocals". A credited-as `altName` (e.g. `"orchestra
+     * bells"`/`"baritone sax"`, from MusicBrainz's own trailing `[…]`
+     * bracket) appends after the attribute parenthetical, in the same
+     * bracket shape MusicBrainz itself uses.
      *
      * Unlike the CREDIT_ROLES columns (WIP.16, which deliberately drop a
      * credit's trailing date — see `_buildCreditListTd`'s JSDoc), instrument
@@ -10249,7 +10253,19 @@
         if (!_artistA) return null;
         const li = document.createElement('li');
         if (instrumentAnchor) {
-            li.appendChild(instrumentAnchor.cloneNode(true));
+            // Tags the CLONED anchor (never the live source) with a sentinel
+            // class — alongside its own native classes/href/text, never
+            // replacing them — so the unique-values dropdown's "Cell
+            // structure" per-instrument synthetic filter entries (see
+            // openUniqDrop()'s instrumentValueCounts) can reliably find and
+            // filter/highlight it, same as .mb-credit-attr/.mb-credit-date.
+            // No extra wrapper span needed (unlike those two, which wrap
+            // synthesized text): this is already a real, single element to
+            // tag directly, and its href/click-to-instrument-page behavior
+            // must survive untouched.
+            const _instrClone = instrumentAnchor.cloneNode(true);
+            _instrClone.classList.add('mb-credit-instrument');
+            li.appendChild(_instrClone);
             li.appendChild(document.createTextNode(': '));
         }
         const _artistNode = (_artistA.parentElement &&
@@ -16206,7 +16222,7 @@
      * (`addCAA`/`addEAA`'s `.mb-inline-art-sort-key`) under one evaluator so
      * a mode string is matched identically everywhere it's checked.
      *
-     * @param {string} mode - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | `attr:${string}` | `task:${string}` | `date:${string}` | 'inline-art-yes' | 'inline-art-no'
+     * @param {string} mode - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | `attr:${string}` | `task:${string}` | `date:${string}` | `instrument:${string}` | 'inline-art-yes' | 'inline-art-no'
      * @param {HTMLTableCellElement} cell
      * @param {HTMLTableRowElement}  row
      * @param {number}  colIdx
@@ -16256,6 +16272,16 @@
             // _wrapDateAnnotationsInText()'s own JSDoc.
             const want = mode.slice(5);
             return !!cell && Array.from(cell.querySelectorAll('.mb-credit-date'))
+                .some(s => s.textContent.trim() === want);
+        }
+        if (mode.startsWith('instrument:')) {
+            // Compound mode counterpart of 'attr:'/'task:'/'date:' above —
+            // matches the "Instruments" column's own instrument-type anchor
+            // (e.g. "bass", "guitar"), tagged with the 'mb-credit-instrument'
+            // sentinel class (see _buildInstrumentVocalsListItem's own JSDoc)
+            // exactly (whole trimmed text, not split).
+            const want = mode.slice(11);
+            return !!cell && Array.from(cell.querySelectorAll('.mb-credit-instrument'))
                 .some(s => s.textContent.trim() === want);
         }
         if (mode === 'inline-art-yes' || mode === 'inline-art-no') {
@@ -32584,18 +32610,20 @@ a { color: #1565c0; }`;
 
     /**
      * Highlights the exact matched value for a credit-role column's
-     * 'attr:'/'task:'/'date:' compound structure-mode filter (see
-     * `openUniqDrop()`'s `makeValueSynItem` and `testRowMatch()`'s
+     * 'attr:'/'task:'/'date:'/'instrument:' compound structure-mode filter
+     * (see `openUniqDrop()`'s `makeValueSynItem` and `testRowMatch()`'s
      * `f.isMultiValueFilter` structure-mode fallback) — unlike every OTHER
      * structure mode (empty/single/collapsed/expanded/any/title-mismatch/
      * name-variation), which test pure DOM structure with no single
-     * corresponding string, these three DO correspond to one exact string,
+     * corresponding string, these four DO correspond to one exact string,
      * so they get the same `mb-column-filter-highlight` treatment a normal
      * text column filter would — same color/class, applied ONLY to the
      * exact matched credit's `<span class="mb-credit-attr">`/`<i
-     * class="mb-credit-task">`/`<span class="mb-credit-date">` sentinel
-     * (see `_buildCreditListItem`/`_buildLabelCreditListTd`/
-     * `_wrapDateAnnotationsInText`), not the whole cell or the whole `<li>`.
+     * class="mb-credit-task">`/`<span class="mb-credit-date">`/`<a
+     * class="mb-credit-instrument">` sentinel (see
+     * `_buildCreditListItem`/`_buildLabelCreditListTd`/
+     * `_wrapDateAnnotationsInText`/`_buildInstrumentVocalsListItem`), not
+     * the whole cell or the whole `<li>`.
      *
      * Only sentinels whose OWN value matches the filter target are
      * highlighted — a merged multi-person credit can have several
@@ -32604,11 +32632,12 @@ a { color: #1565c0; }`;
      * should light up. `.mb-credit-attr`'s text can be a `/`-joined
      * multi-word list (e.g. `"assistant/co"`), so that case uses a `\b…\b`
      * word-boundary regex to highlight just the matched word, not the whole
-     * span; `.mb-credit-task`'s and `.mb-credit-date`'s text is never
-     * joined (one task/date per sentinel — a multi-date credit like "in
-     * 1987, in 1988" gets one `.mb-credit-date` span per date, see
-     * `_wrapDateAnnotationsInText`), so their whole text is highlighted
-     * verbatim.
+     * span; `.mb-credit-task`'s/`.mb-credit-date`'s/`.mb-credit-instrument`'s
+     * text is never joined (one task/date/instrument per sentinel — a
+     * multi-date credit like "in 1987, in 1988" gets one `.mb-credit-date`
+     * span per date, see `_wrapDateAnnotationsInText`; a cell with several
+     * instrument `<li>`s gets one `.mb-credit-instrument` anchor per `<li>`),
+     * so their whole text is highlighted verbatim.
      *
      * Reuses `highlightCrossTag()` — the same cross-tag-safe text-wrapping
      * primitive every other filter-highlight call in this file uses — so
@@ -32618,16 +32647,20 @@ a { color: #1565c0; }`;
      *
      * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
      * @param {string} multiRowMode - The compound mode string, e.g.
-     *   `"attr:additional"`, `"task:task: Second Engineer"`, or
-     *   `"date:on 1988-04-27"`.
+     *   `"attr:additional"`, `"task:task: Second Engineer"`,
+     *   `"date:on 1988-04-27"`, or `"instrument:bass"`.
      */
     function _highlightCreditValueMatch(cell, multiRowMode) {
         if (!cell) return;
-        const _isAttr = multiRowMode.startsWith('attr:');
-        const _isDate = multiRowMode.startsWith('date:');
-        const _want = multiRowMode.slice(5);
-        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const _isAttr       = multiRowMode.startsWith('attr:');
+        const _isDate       = multiRowMode.startsWith('date:');
+        const _isInstrument = multiRowMode.startsWith('instrument:');
+        // Prefix length varies ('attr:'/'task:'/'date:' are 5 chars,
+        // 'instrument:' is 11) — sliced per-branch rather than a shared
+        // fixed offset.
         if (_isAttr) {
+            const _want = multiRowMode.slice(5);
+            const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const _regex = new RegExp(`\\b${_escaped}\\b`, 'g');
             cell.querySelectorAll('.mb-credit-attr').forEach(span => {
                 if (!span.textContent.split('/').includes(_want)) return;
@@ -32635,13 +32668,26 @@ a { color: #1565c0; }`;
                 highlightCrossTag(span, _regex, 'mb-column-filter-highlight');
             });
         } else if (_isDate) {
+            const _want = multiRowMode.slice(5);
+            const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const _regex = new RegExp(_escaped, 'g');
             cell.querySelectorAll('.mb-credit-date').forEach(el => {
                 if (el.textContent.trim() !== _want) return;
                 el.normalize();
                 highlightCrossTag(el, _regex, 'mb-column-filter-highlight');
             });
+        } else if (_isInstrument) {
+            const _want = multiRowMode.slice(11);
+            const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const _regex = new RegExp(_escaped, 'g');
+            cell.querySelectorAll('.mb-credit-instrument').forEach(el => {
+                if (el.textContent.trim() !== _want) return;
+                el.normalize();
+                highlightCrossTag(el, _regex, 'mb-column-filter-highlight');
+            });
         } else {
+            const _want = multiRowMode.slice(5);
+            const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const _regex = new RegExp(_escaped, 'g');
             cell.querySelectorAll('.mb-credit-task').forEach(el => {
                 if (el.textContent.trim() !== _want) return;
@@ -33084,19 +33130,21 @@ a { color: #1565c0; }`;
                     // may fire independently on the same cell if the user has
                     // checked an overlapping item entry AND entity entry —
                     // harmless: nested mb-column-filter-highlight spans render
-                    // identically to one. Checked 'attr:'/'task:'/'date:' and
-                    // 'name-variation' structure modes DO correspond to exact
-                    // visible content and get highlighted; the other structure
-                    // modes (empty/single/collapsed/expanded/any/title-mismatch/
-                    // inline-art-yes/no) operate on pure DOM state with no
-                    // single corresponding element, so they get no highlight.
+                    // identically to one. Checked 'attr:'/'task:'/'date:'/
+                    // 'instrument:' and 'name-variation' structure modes DO
+                    // correspond to exact visible content and get
+                    // highlighted; the other structure modes (empty/single/
+                    // collapsed/expanded/any/title-mismatch/inline-art-yes/no)
+                    // operate on pure DOM state with no single corresponding
+                    // element, so they get no highlight.
                     const _fIsExclude = f.isExclude !== undefined ? f.isExclude : isExclude;
                     if (!_fIsExclude) {
                         if (f.hasItemValues)   _highlightUniqItemMatches(row.cells[f.idx], f);
                         if (f.hasEntityValues) _highlightUniqEntityMatches(row.cells[f.idx], f);
                         if (f.structureModes) {
                             f.structureModes.forEach(mode => {
-                                if (mode.startsWith('attr:') || mode.startsWith('task:') || mode.startsWith('date:')) {
+                                if (mode.startsWith('attr:') || mode.startsWith('task:') ||
+                                    mode.startsWith('date:') || mode.startsWith('instrument:')) {
                                     _highlightCreditValueMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'name-variation') {
                                     _highlightNameVariationMatch(row.cells[f.idx]);
@@ -41976,6 +42024,13 @@ a { color: #1565c0; }`;
         // _wrapDateAnnotationsInText()'s own JSDoc for the shapes recognized
         // and every builder that produces this sentinel.
         const dateValueCounts = new Map();
+        // Distinct instrument-type values (e.g. "bass", "guitar", "drum
+        // machine") — the "Instruments" column's own `<a
+        // class="mb-credit-instrument">` sentinel counterpart of the above
+        // (see `_buildInstrumentVocalsListItem`'s own JSDoc) — a no-op Map
+        // for every other column, since only Instruments ever produces this
+        // sentinel.
+        const instrumentValueCounts = new Map();
         // One entry per unique <li> item's own clean text, for multi-row
         // (≥2-item) list cells — e.g. "Karl Egsieker (task: Second
         // Engineer)" as its own selectable value distinct from the merged
@@ -42099,6 +42154,12 @@ a { color: #1565c0; }`;
                     if (t) _rowDateValues.add(t);
                 });
                 _rowDateValues.forEach(t => dateValueCounts.set(t, (dateValueCounts.get(t) || 0) + 1));
+                const _rowInstrumentValues = new Set();
+                cell.querySelectorAll('.mb-credit-instrument').forEach(s => {
+                    const t = s.textContent.trim();
+                    if (t) _rowInstrumentValues.add(t);
+                });
+                _rowInstrumentValues.forEach(t => instrumentValueCounts.set(t, (instrumentValueCounts.get(t) || 0) + 1));
             });
         }
         const vals = Array.from(valueCounts.keys()).sort((a, b) =>
@@ -42138,6 +42199,14 @@ a { color: #1565c0; }`;
             : 0;
         const maxDigits    = String(maxCount).length;
         const badgeChWidth = maxDigits + 2; // "(" + digits + ")"
+        // Shared badge width for the WHOLE panel, initialised to the regular
+        // section's own width above and widened (never narrowed) once every
+        // "Cell structure" count is known — see the assignment right before
+        // synBox is built, below. Keeping the two sections' "(N)" badges the
+        // same fixed width, right-aligned, is what makes their counters line
+        // up symmetrically regardless of which section a given number
+        // happens to be biggest in.
+        let panelBadgeChWidth = badgeChWidth;
 
         // ---- Build panel content -------------------------------------------
         drop.innerHTML = '';
@@ -42264,10 +42333,12 @@ a { color: #1565c0; }`;
                 badge.style.marginRight        = '5px';
                 badge.style.fontSize           = '0.85em';
                 badge.style.display            = 'inline-block';
-                // Width is fixed to the widest badge in this column so that all
-                // count numbers right-align regardless of their digit count.
-                // badgeChWidth = maxDigits + 2 ("(" + digits + ")") in monospace ch.
-                badge.style.minWidth           = `${badgeChWidth}ch`;
+                // Width is fixed to the widest badge in the WHOLE panel (this
+                // section's own values AND every "Cell structure" count — see
+                // panelBadgeChWidth's own comment) so all count numbers
+                // right-align consistently, regardless of which section's
+                // count happens to have the most digits.
+                badge.style.minWidth           = `${panelBadgeChWidth}ch`;
                 badge.style.textAlign          = 'right';
                 item.appendChild(badge);
 
@@ -42826,6 +42897,23 @@ a { color: #1565c0; }`;
             });
         }
 
+        // Widen the shared badge width (never narrow it) to also cover every
+        // "Cell structure" count — every count that can end up on a
+        // makeSynItem()/makeValueSynItem()/makeInlineArtItem() badge, now
+        // that all of them are known. Must run here: after the inline-art
+        // scan just above (the last of these counts to be computed) and
+        // before synBox/its item-builders are defined below, so their
+        // closures pick up the final, fully-widened value.
+        panelBadgeChWidth = Math.max(panelBadgeChWidth, String(Math.max(
+            0,
+            emptyCellCount, singleRowCount, multiRowCollapsedCount, multiRowExpandedCount,
+            multiRowCollapsedCount + multiRowExpandedCount,
+            titleMismatchCount, nameVariationCount,
+            inlineArtYes, inlineArtNo,
+            ...attrValueCounts.values(), ...taskValueCounts.values(),
+            ...dateValueCounts.values(), ...instrumentValueCounts.values()
+        )).length + 2);
+
         // synBox is inserted between qfBar and listBox; always present but
         // empty (zero height) when no synthetic entries apply.
         const synBox = document.createElement('div');
@@ -42882,6 +42970,26 @@ a { color: #1565c0; }`;
         };
 
         /**
+         * Appends a "Cell structure" entry's label as a dedicated
+         * `<span class="mb-uniq-syn-label-text">` (not a bare text node) and
+         * stashes the same raw label on `item.dataset.mbUniqSynLabel` — the
+         * two together let `_applySynBoxQuickFilter()` find, filter, and
+         * `<mark>`-highlight this entry exactly like `renderItems()` already
+         * does for regular value rows, without disturbing the checkbox/badge
+         * siblings on every quickfilter keystroke.
+         *
+         * @param {HTMLElement} item
+         * @param {string} label
+         */
+        const _appendSynLabelText = (item, label) => {
+            item.dataset.mbUniqSynLabel = label;
+            const labelSpan = document.createElement('span');
+            labelSpan.className = 'mb-uniq-syn-label-text';
+            labelSpan.textContent = label;
+            item.appendChild(labelSpan);
+        };
+
+        /**
          * Creates and appends a single synthetic "Cell structure" entry to
          * synBox, with a ☑/☐ checkbox (multi-select, OR'd with every other
          * checked value/entry in this column — see `_wireStructureCheckbox`).
@@ -42916,8 +43024,13 @@ a { color: #1565c0; }`;
             badge.style.marginRight     = '5px';
             badge.style.fontSize        = '0.85em';
             badge.style.display         = 'inline-block';
+            // Shared panel-wide width (see panelBadgeChWidth's own comment)
+            // so this badge right-aligns symmetrically with every other
+            // badge in the dropdown, standard section included.
+            badge.style.minWidth        = `${panelBadgeChWidth}ch`;
+            badge.style.textAlign       = 'right';
             item.appendChild(badge);
-            item.appendChild(document.createTextNode(label));
+            _appendSynLabelText(item, label);
 
             _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + mode);
             synBox.appendChild(item);
@@ -42925,23 +43038,25 @@ a { color: #1565c0; }`;
 
         /**
          * Creates and appends a single per-value synthetic entry to synBox —
-         * the `attrValueCounts`/`taskValueCounts`/`dateValueCounts`
-         * counterpart of `makeSynItem`, for a DYNAMIC list of distinct
-         * values (one entry per distinct credit attribute word, task
-         * string, or date/date-range annotation actually found in this
-         * column) rather than `makeSynItem`'s fixed 5-mode set.
+         * the `attrValueCounts`/`taskValueCounts`/`dateValueCounts`/
+         * `instrumentValueCounts` counterpart of `makeSynItem`, for a
+         * DYNAMIC list of distinct values (one entry per distinct credit
+         * attribute word, task string, date/date-range annotation, or
+         * instrument type actually found in this column) rather than
+         * `makeSynItem`'s fixed 5-mode set.
          *
          * Reuses the exact same checkbox/`dataset.mbUniqValues` plumbing as
          * `makeSynItem` via a colon-prefixed COMPOUND mode string
          * (`"attr:additional"`, `"task:task: Second Engineer"`,
-         * `"date:on 1988-04-27"`), parsed by `_cellMatchesStructureMode()` —
-         * kept on this one mechanism deliberately, rather than adding a
-         * second, parallel filter path for parameterized values.
+         * `"date:on 1988-04-27"`, `"instrument:bass"`), parsed by
+         * `_cellMatchesStructureMode()` — kept on this one mechanism
+         * deliberately, rather than adding a second, parallel filter path
+         * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'} kind
-         * @param {string} value  - The exact attribute word, task string, or
-         *   date/date-range annotation to match (embedded verbatim in the
-         *   compound mode string).
+         * @param {'attr'|'task'|'date'|'instrument'} kind
+         * @param {string} value  - The exact attribute word, task string,
+         *   date/date-range annotation, or instrument type to match
+         *   (embedded verbatim in the compound mode string).
          * @param {number} count  - Number of visible rows matching this value.
          */
         const makeValueSynItem = (kind, value, count) => {
@@ -42962,10 +43077,13 @@ a { color: #1565c0; }`;
             badge.style.marginRight     = '5px';
             badge.style.fontSize        = '0.85em';
             badge.style.display         = 'inline-block';
+            // Shared panel-wide width — see makeSynItem's identical comment.
+            badge.style.minWidth        = `${panelBadgeChWidth}ch`;
+            badge.style.textAlign       = 'right';
             item.appendChild(badge);
-            item.appendChild(document.createTextNode(
-                (kind === 'attr' ? '» attribute: ' : '» ') + value
-            ));
+            _appendSynLabelText(item,
+                (kind === 'attr' ? '» attribute: ' : kind === 'instrument' ? '» instrument: ' : '» ') + value
+            );
 
             _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + `${kind}:${value}`);
             synBox.appendChild(item);
@@ -43016,8 +43134,11 @@ a { color: #1565c0; }`;
             badge.style.marginRight     = '5px';
             badge.style.fontSize        = '0.85em';
             badge.style.display         = 'inline-block';
+            // Shared panel-wide width — see makeSynItem's identical comment.
+            badge.style.minWidth        = `${panelBadgeChWidth}ch`;
+            badge.style.textAlign       = 'right';
             item.appendChild(badge);
-            item.appendChild(document.createTextNode(label));
+            _appendSynLabelText(item, label);
 
             _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + (hasArt ? 'inline-art-yes' : 'inline-art-no'));
             synBox.appendChild(item);
@@ -43044,12 +43165,14 @@ a { color: #1565c0; }`;
         // Every column type can have genuinely empty cells (e.g. a primary-alias
         // column where most events have no alias, a CAA column with no artwork,
         // etc.) and being able to filter to those rows is universally useful.
-        // Sorted entries for the three dynamic per-value families (shared by
+        // Sorted entries for the four dynamic per-value families (shared by
         // both branches below).
         const _sortedAttrValues = Array.from(attrValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedTaskValues = Array.from(taskValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedDateValues = Array.from(dateValueCounts.keys()).sort((a, b) => a.localeCompare(b));
-        const _hasValueEntries = _sortedAttrValues.length > 0 || _sortedTaskValues.length > 0 || _sortedDateValues.length > 0;
+        const _sortedInstrumentValues = Array.from(instrumentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _hasValueEntries = _sortedAttrValues.length > 0 || _sortedTaskValues.length > 0 ||
+            _sortedDateValues.length > 0 || _sortedInstrumentValues.length > 0;
 
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 || _hasValueEntries)) {
             // Section header — only shown for the multi-entry collapsable section
@@ -43078,13 +43201,15 @@ a { color: #1565c0; }`;
             // still inside the same "Cell structure" section.
             if (titleMismatchCount > 0)     makeSynItem('title-mismatch', '≠ track/recording name',                                           titleMismatchCount);
             if (nameVariationCount > 0)     makeSynItem('name-variation', '~ has name variation',                                              nameVariationCount);
-            // Credit-role columns' per-attribute / per-task / per-date
-            // dynamic value entries (see attrValueCounts/taskValueCounts/
-            // dateValueCounts' own comments above) — one entry per distinct
-            // value actually present.
+            // Credit-role columns' per-attribute / per-task / per-date /
+            // per-instrument dynamic value entries (see attrValueCounts/
+            // taskValueCounts/dateValueCounts/instrumentValueCounts' own
+            // comments above) — one entry per distinct value actually
+            // present.
             _sortedAttrValues.forEach(v => makeValueSynItem('attr', v, attrValueCounts.get(v)));
             _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
+            _sortedInstrumentValues.forEach(v => makeValueSynItem('instrument', v, instrumentValueCounts.get(v)));
 
             appendSynDivider();
         } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 || _hasValueEntries) {
@@ -43095,7 +43220,8 @@ a { color: #1565c0; }`;
             // ('○ empty cells' alone has never needed one).
             const _entryCount = (emptyCellCount > 0 ? 1 : 0) +
                 (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0) +
-                _sortedAttrValues.length + _sortedTaskValues.length + _sortedDateValues.length;
+                _sortedAttrValues.length + _sortedTaskValues.length + _sortedDateValues.length +
+                _sortedInstrumentValues.length;
             if (_entryCount > 1) {
                 const synHdr = document.createElement('div');
                 synHdr.textContent = 'Cell structure';
@@ -43111,6 +43237,7 @@ a { color: #1565c0; }`;
             _sortedAttrValues.forEach(v => makeValueSynItem('attr', v, attrValueCounts.get(v)));
             _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
+            _sortedInstrumentValues.forEach(v => makeValueSynItem('instrument', v, instrumentValueCounts.get(v)));
             appendSynDivider();
         }
 
@@ -43254,10 +43381,73 @@ a { color: #1565c0; }`;
             }
         }
 
+        /**
+         * Applies the quickfilter to every "Cell structure" entry in synBox
+         * (built by `makeSynItem`/`makeValueSynItem`/`makeInlineArtItem` via
+         * `_appendSynLabelText` — each carries its raw label in
+         * `dataset.mbUniqSynLabel` and a dedicated
+         * `.mb-uniq-syn-label-text` span) — the synBox counterpart of
+         * `renderItems()`'s own quickfilter matching/`<mark>` highlighting
+         * for the regular value list below it.
+         *
+         * Unlike `renderItems()`, which fully rebuilds `listBox` on every
+         * keystroke, this only ever toggles `display` and rewrites each
+         * entry's OWN label span — synBox's entries (and their checkbox/
+         * checked state) are built once and must survive quickfilter
+         * typing, per synBox's own "never wiped out by quickfilter
+         * re-renders" contract (see its declaration comment).
+         *
+         * Scoped to entries carrying `dataset.mbUniqSynLabel` specifically
+         * — the separate "Relationship icons" section's entries (built
+         * inline, not via `_appendSynLabelText`) don't have it, so they're
+         * silently skipped and stay exactly as this function found them.
+         *
+         * @param {string} filter - Already-trimmed quickfilter text (may be empty).
+         */
+        function _applySynBoxQuickFilter(filter) {
+            const lf = filter.toLowerCase();
+            Array.from(synBox.children).forEach(item => {
+                const label = item.dataset ? item.dataset.mbUniqSynLabel : undefined;
+                if (label === undefined) return; // not a synLabel entry — leave untouched
+                const labelSpan = item.querySelector('.mb-uniq-syn-label-text');
+                if (!labelSpan) return;
+
+                const matches = !filter || label.toLowerCase().includes(lf);
+                item.style.display = matches ? '' : 'none';
+                if (!matches) return;
+
+                if (!filter) {
+                    item.classList.remove('mb-uniq-qf-match');
+                    labelSpan.textContent = label;
+                    return;
+                }
+
+                // Build highlighted content with a <mark> around the match —
+                // same approach as renderItems()'s own quickfilter marking.
+                item.classList.add('mb-uniq-qf-match');
+                labelSpan.innerHTML = '';
+                const ll = label.toLowerCase();
+                const start = ll.indexOf(lf);
+                const end   = start + lf.length;
+                labelSpan.appendChild(document.createTextNode(label.slice(0, start)));
+                const mark = document.createElement('mark');
+                mark.textContent = label.slice(start, end);
+                mark.style.color           = hlColor;
+                mark.style.backgroundColor = hlBg;
+                mark.style.fontWeight      = 'bold';
+                mark.style.borderRadius    = '2px';
+                mark.style.padding         = '0 1px';
+                labelSpan.appendChild(mark);
+                labelSpan.appendChild(document.createTextNode(label.slice(end)));
+            });
+        }
+
         qfInput.addEventListener('input', () => {
             updateClearBtn();
             focIdx = -1;
-            renderItems(qfInput.value.trim());
+            const _qf = qfInput.value.trim();
+            renderItems(_qf);
+            _applySynBoxQuickFilter(_qf);
         });
 
         // Clickable × clears the filter and refocuses the input
@@ -43267,6 +43457,7 @@ a { color: #1565c0; }`;
             updateClearBtn();
             focIdx = -1;
             renderItems('');
+            _applySynBoxQuickFilter('');
             qfInput.focus();
         });
 
@@ -43278,8 +43469,15 @@ a { color: #1565c0; }`;
         // initially-visible item without revealing more entries.
         let focIdx = -1;
         // allItems() collects from the whole dropdown panel (synBox + listBox) so
-        // keyboard ArrowDown/Up/Enter work on synthetic entries too.
-        const allItems = () => Array.from(drop.querySelectorAll('.mb-col-uniq-item'));
+        // keyboard ArrowDown/Up/Enter work on synthetic entries too. Excludes
+        // display:none entries — listBox's own filtered-out items are never
+        // in the DOM at all (renderItems() rebuilds it from scratch), but
+        // synBox's quickfilter-non-matching items ARE still in the DOM, just
+        // hidden (see _applySynBoxQuickFilter()'s own "in-place hide, don't
+        // rebuild" contract) — without this check arrow-key navigation could
+        // land focus on an invisible entry.
+        const allItems = () => Array.from(drop.querySelectorAll('.mb-col-uniq-item'))
+            .filter(el => el.style.display !== 'none');
 
         /**
          * Moves focus to item at position `idx` and scrolls the panel so the
@@ -43350,6 +43548,7 @@ a { color: #1565c0; }`;
                     updateClearBtn();
                     focIdx = -1;
                     renderItems('');
+                    _applySynBoxQuickFilter('');
                 } else {
                     // Second Escape (field already empty): close the panel
                     closeUniqDrop();
@@ -43387,7 +43586,8 @@ a { color: #1565c0; }`;
               (totalMultiRow > 1         ? 1 : 0)
             : (emptyCellCount > 0 ? 1 : 0)) +
             (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0) +
-            _sortedAttrValues.length + _sortedTaskValues.length + _sortedDateValues.length;
+            _sortedAttrValues.length + _sortedTaskValues.length + _sortedDateValues.length +
+            _sortedInstrumentValues.length;
         const dropH = Math.min(320, (combinedVals.length + synItemCount) * 29 + 50 + 38); // +50 syn header/divider, +38 qf bar
         const dropW = drop.offsetWidth || 200;
 
@@ -43436,6 +43636,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('attr:'))  return `» attribute: ${mode.slice(5)}`;
         if (mode.startsWith('task:'))  return `» ${mode.slice(5)}`;
         if (mode.startsWith('date:'))  return `» ${mode.slice(5)}`;
+        if (mode.startsWith('instrument:')) return `» instrument: ${mode.slice(11)}`;
         return '▶◀ multi-row: any';
     }
 
@@ -43465,6 +43666,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('attr:')) return 'One of this cell\'s credited attribute words.';
         if (mode.startsWith('task:')) return 'This cell\'s credited task text.';
         if (mode.startsWith('date:')) return 'A date/date-range annotation attached to one of this cell\'s credits.';
+        if (mode.startsWith('instrument:')) return 'The instrument type credited in one of this cell\'s items.';
         return '';
     }
 

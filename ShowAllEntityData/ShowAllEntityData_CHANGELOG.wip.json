@@ -1,5 +1,35 @@
 [
   {
+    "version": "WIP.65",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Unique-values dropdown's quickfilter now also filters and `<mark>`-highlights entries inside the \"Cell structure\" section, not just the standard value list below it — typing narrows both sections together, and Escape/the × button clears both. New `_applySynBoxQuickFilter()` toggles visibility and rewrites each entry's own label span in place (synBox's entries are built once and keep their checkbox/checked state across keystrokes, unlike the standard list which fully rebuilds), and keyboard arrow-navigation now skips quickfilter-hidden \"Cell structure\" entries the same way it already skipped filtered-out standard entries."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "\"Cell structure\" section's count badges now right-align with a shared, panel-wide fixed width instead of their own unpadded natural width — symmetric with the standard value list's badges, and now the single source of truth for column-widest-count sizing across BOTH sections, so no badge in the whole dropdown can end up misaligned or overflow its column regardless of which section's number happens to have the most digits."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.64",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "'release-tracks': unique-values dropdown's \"Cell structure\" section now surfaces the \"Instruments\" column's own instrument type (e.g. \"bass\", \"guitar\", \"drum machine\") as its own per-value checkbox entry, exactly like the existing per-attribute/per-task/per-date entries — one entry per distinct instrument actually present, checking one filters to matching rows and highlights the instrument link. `_buildInstrumentVocalsListItem()`'s cloned instrument `<a>` is now tagged with a new `mb-credit-instrument` sentinel class (its own href/click-to-instrument-page behavior untouched) alongside the existing `.mb-credit-attr`/`.mb-credit-date` sentinels, wired through the same `instrument:` compound structure-mode used for `attr:`/`task:`/`date:`."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.63",
     "date": "2026-08-10",
     "sections": [
