@@ -16468,34 +16468,53 @@
     }
 
     /**
-     * Query-time extraction of each artist's own event-role text(s) from a
-     * native MusicBrainz `.artist-roles` list (event pages' "Artists"
-     * column — e.g. `/place/<mbid>/events` — and any other column sharing
-     * the same shape, such as the "Authors" column; see
-     * `_artTooltipArtistRoles`'s own JSDoc for the two `<li>` shapes this
-     * matches). No DOM-injection build step exists to tag this markup with
-     * a sentinel class (it's native MusicBrainz output, cloned through
-     * unmodified — same reasoning as `_findCellEntityCommentParts`), so
-     * this is the single source of truth for `openUniqDrop()`'s "Cell
-     * structure" `role:` entries, `_cellMatchesStructureMode()`'s
-     * matching, and `_highlightEventRoleMatch()`'s highlighting — all
-     * three agree on exactly the same extraction, mirroring
-     * `_artTooltipArtistRoles`'s own established technique: the role text
-     * is collected from the `<li>`'s DIRECT text-node children only,
-     * which — as a side effect — naturally skips over a `.comment`
-     * disambiguation span (an element node, not a text node) that can sit
-     * between the artist name and the role text (see
-     * `_artTooltipArtistRoles`'s "Authors" `<li>` shape) without needing to
-     * clone-and-strip it explicitly.
+     * Query-time extraction of each artist's own event-role text(s), from
+     * either of two independent native MusicBrainz shapes:
      *
-     * A `<li>` with more than one role in its own parenthetical (e.g. a
-     * hypothetical `"(main performer/host)"`) is split on `/`, mirroring
-     * `.mb-credit-attr`'s established multi-value convention — unconfirmed
-     * against a real multi-role example, but harmless for (and doesn't
-     * change) the single-role case.
+     *   1. A `.artist-roles` list (event pages' "Artists" column — e.g.
+     *      `/place/<mbid>/events` — and any other column sharing the same
+     *      shape, such as the "Authors" column; see `_artTooltipArtistRoles`'s
+     *      own JSDoc for the two `<li>` shapes this matches). No DOM-injection
+     *      build step exists to tag this markup with a sentinel class (it's
+     *      native MusicBrainz output, cloned through unmodified — same
+     *      reasoning as `_findCellEntityCommentParts`), so this is the single
+     *      source of truth for `openUniqDrop()`'s "Cell structure" `role:`
+     *      entries, `_cellMatchesStructureMode()`'s matching, and
+     *      `_highlightEventRoleMatch()`'s highlighting — all three agree on
+     *      exactly the same extraction, mirroring `_artTooltipArtistRoles`'s
+     *      own established technique: the role text is collected from the
+     *      `<li>`'s DIRECT text-node children only, which — as a side effect
+     *      — naturally skips over a `.comment` disambiguation span (an
+     *      element node, not a text node) that can sit between the artist
+     *      name and the role text (see `_artTooltipArtistRoles`'s "Authors"
+     *      `<li>` shape) without needing to clone-and-strip it explicitly.
+     *      A `<li>` with more than one role in its own parenthetical (e.g. a
+     *      hypothetical `"(main performer/host)"`) is split on `/`,
+     *      mirroring `.mb-credit-attr`'s established multi-value convention
+     *      — unconfirmed against a real multi-role example, but harmless for
+     *      (and doesn't change) the single-role case.
+     *
+     *   2. The plain-text "Role" column shown ONLY when browsing one
+     *      artist's OWN events (e.g. `/artist/<mbid>/events`) — MusicBrainz's
+     *      `EventList.js` `rolesOnlyColumn` (`defineTextColumn`, title
+     *      "Role") renders that artist's own role(s) for each event as a
+     *      single flat comma-joined text node with NO wrapping markup at
+     *      all (built server-side via `commaOnlyListText()`, e.g. "main
+     *      performer, guest performer" — never parenthesized like shape 1
+     *      above). Since there's no shape-level marker to key off here
+     *      (unlike `ul.artist-roles`), this fallback only runs when shape 1
+     *      found nothing AND the cell's own column header
+     *      (`_cleanColHeaderText()`) is literally "Role" — deliberately
+     *      narrow, so an unrelated plain-text column's comma-separated
+     *      content (e.g. a "Comment" column) is never misread as a role
+     *      list.
+     *
+     * Both shapes report a `container` element (the `<li>` for shape 1, the
+     * `<td>` itself for shape 2 — it has no more specific wrapper) that
+     * `_highlightEventRoleMatch()` scopes its highlight to.
      *
      * @param {?HTMLTableCellElement} cell
-     * @returns {Array<{li: HTMLLIElement, roles: string[]}>}
+     * @returns {Array<{container: HTMLElement, roles: string[]}>}
      */
     function _findCellArtistRoles(cell) {
         if (!cell) return [];
@@ -16509,8 +16528,17 @@
             const m = roleRaw.match(/^\(([^()]+)\)$/);
             if (!m) return;
             const roles = m[1].split('/').map(s => s.trim()).filter(Boolean);
-            if (roles.length > 0) out.push({ li, roles });
+            if (roles.length > 0) out.push({ container: li, roles });
         });
+        if (out.length > 0) return out;
+
+        // Fallback: plain-text "Role" column (see shape 2 above).
+        const table = cell.closest('table');
+        const th = table ? table.querySelectorAll('thead tr:first-child th')[cell.cellIndex] : null;
+        if (th && _cleanColHeaderText(th) === 'Role') {
+            const roles = getCleanColumnText(cell).split(',').map(s => s.trim()).filter(Boolean);
+            if (roles.length > 0) out.push({ container: cell, roles });
+        }
         return out;
     }
 
@@ -33318,10 +33346,12 @@ a { color: #1565c0; }`;
      * `testRowMatch()`'s `f.isMultiValueFilter` structure-mode fallback) —
      * the `role:` counterpart of `_highlightEntityCommentPartMatch()`,
      * re-deriving from `_findCellArtistRoles()` (never a fresh ad hoc
-     * extraction here). Scoped to the whole `<li>` (the role text has no
-     * dedicated wrapping element of its own to scope more narrowly to,
-     * unlike `name:`/`comment:`/`alias:`) — safe since the regex is built
-     * from the exact wanted role word, via the same plain literal-escape
+     * extraction here). Scoped to the whole `container` element it returns
+     * — a `<li>` for the `.artist-roles` shape, or the `<td>` itself for
+     * the plain-text "Role" column shape (neither has a more specific
+     * wrapper around just the role text, unlike `name:`/`comment:`/
+     * `alias:`) — safe since the regex is built from the exact wanted role
+     * word, via the same plain literal-escape
      * (not `_buildFuzzyTextMatchRegex()`) `_highlightCreditValueMatch()`
      * uses for its own whole-text-match modes (`task:`/`date:`/
      * `instrument:`/`altname:`), since the role text is always a single
@@ -33338,8 +33368,8 @@ a { color: #1565c0; }`;
         const _regex = new RegExp(_escaped, 'g');
         _findCellArtistRoles(cell).forEach(r => {
             if (!r.roles.includes(_want)) return;
-            r.li.normalize();
-            highlightCrossTag(r.li, _regex, 'mb-column-filter-highlight');
+            r.container.normalize();
+            highlightCrossTag(r.container, _regex, 'mb-column-filter-highlight');
         });
     }
 
@@ -38478,6 +38508,25 @@ a { color: #1565c0; }`;
      * BEFORE whatever Region already holds, since it was always the more
      * specific entry). No-op if Locality is already empty.
      *
+     * Multi-row-wrapped cells (`splitLocation`/`splitArea`'s own `<ul><li>`
+     * convention — see their JSDoc's "single-item-list-cell convention",
+     * always used for a native MusicBrainz Location cell, which is ALWAYS
+     * itself `<ul><li>…</li></ul>`) hold their real content one level
+     * deeper, inside each `<li>`, not as direct `<td>` children. Moving
+     * whole `<ul>` elements around (the flat-cell path below) would nest
+     * Locality's entire `<ul>` as a SIBLING of Region's own `<ul>` instead
+     * of merging their actual content into one `<li>` — producing two
+     * adjacent `<ul><li>` lists in the same `<td>`, separated by a bare
+     * comma text node, rather than one merged entry (see
+     * debug/sirius-final.html: "SiriusXM Studio in New York City, New York"
+     * — both "New York" area levels ended up as two separate lists after
+     * this correction ran, instead of one "…, New York, New York…" entry).
+     * So when both sides carry an EQUAL number of `<ul> > li` items (the
+     * normal case — `splitLocation`'s multi-row path builds Locality/Region
+     * in lockstep, one `<li>` per source `<li>`, even when a given `<li>`'s
+     * own Region slot ended up empty), each Locality `<li>`'s children are
+     * merged into the correspondingly-indexed Region `<li>` instead.
+     *
      * @param {HTMLTableRowElement} tr
      * @param {{localityIdx: number, regionIdx: number}} trio
      */
@@ -38485,6 +38534,30 @@ a { color: #1565c0; }`;
         const localityTd = tr.cells[trio.localityIdx];
         const regionTd    = tr.cells[trio.regionIdx];
         if (!localityTd || !regionTd || !localityTd.hasChildNodes()) return;
+
+        const localityLis = Array.from(localityTd.querySelectorAll(':scope > ul > li'));
+        const regionLis    = Array.from(regionTd.querySelectorAll(':scope > ul > li'));
+        if (localityLis.length > 0 && localityLis.length === regionLis.length) {
+            localityLis.forEach((localityLi, i) => {
+                const regionLi = regionLis[i];
+                const movedNodes = Array.from(localityLi.childNodes);
+                if (movedNodes.length === 0) return;
+                if (regionLi.firstChild) {
+                    const sep = document.createTextNode(', ');
+                    regionLi.insertBefore(sep, regionLi.firstChild);
+                    movedNodes.forEach(n => regionLi.insertBefore(n, sep));
+                } else {
+                    movedNodes.forEach(n => regionLi.appendChild(n));
+                }
+            });
+            localityTd.textContent = '';
+            return;
+        }
+
+        // Flat cells (splitArea's own <td>, or a splitLocation cell whose
+        // Region side never received a <ul> at all — e.g. Region was
+        // genuinely empty, so there's nothing to merge into, just move
+        // Locality's whole <ul><li> across intact) — original direct-child move.
         const movedNodes = Array.from(localityTd.childNodes);
         localityTd.textContent = '';
         if (regionTd.firstChild) {

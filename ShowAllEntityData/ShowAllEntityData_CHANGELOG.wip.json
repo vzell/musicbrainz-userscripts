@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.80",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed a Location-column split bug where two consecutive same-shaped area levels sharing an identical name (e.g. an event at \"SiriusXM Studio\" in New York City, itself inside New York state — MusicBrainz has separate area entities both literally named \"New York\") rendered as two SEPARATE `<ul><li>` lists jammed into the \"Region\" cell (\"…</ul>, <ul>…\") instead of one merged entry, whenever a flag-decorating userscript (\"More Flags Everywhere\"/\"Canadian Province Flags Everywhere\") decorated the Locality cell's area link only AFTER this script's own extraction ran (always true for paginated rows 2..Max, fetched via a detached `DOMParser` that userscript never sees). `_forceLocalityToRegion()` — the deferred correction that moves a wrongly-placed Locality entry into Region once its subdivision-name match is confirmed — moved Locality's WHOLE `<ul>` wrapper as a sibling of Region's own `<ul>` instead of merging their `<li>` content together. It now detects the `<ul><li>` multi-row wrapping both `splitLocation`/`splitArea` cells always use and merges same-indexed `<li>` pairs' children instead, falling back to the original whole-cell move only when Region has no `<ul>` of its own to merge into (i.e. it was genuinely empty)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.79",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The unique-values dropdown's \"Roles\" section now also picks up `» role:` entries for the plain-text \"Role\" column shown when browsing one artist's OWN events (e.g. `/artist/<mbid>/events`) — previously only the `.artist-roles` list shape (event pages' \"Artists\" column, e.g. `/place/<mbid>/events`) was recognized. `_findCellArtistRoles()` now falls back to splitting that column's flat comma-joined text (MusicBrainz's `commaOnlyListText()` output, e.g. \"main performer, guest performer\", confirmed against the `EventList.js`/`tableColumns.js` source) into individual roles, gated strictly on the cell's own column being named \"Role\" (via `_cleanColHeaderText()`) so no unrelated plain-text column is misread as a role list. Its returned `{li, roles}` shape is renamed to `{container, roles}` since `container` is now a `<td>` for this shape, a `<li>` for the other."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.78",
     "date": "2026-08-11",
     "sections": [

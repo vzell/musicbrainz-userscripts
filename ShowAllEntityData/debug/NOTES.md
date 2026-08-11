@@ -5116,3 +5116,91 @@ same computed value instead of the old hardcoded `320` so the panel still
 flips correctly above the button at any configured row count.
 
 `node --check ShowAllEntityData.user.js` passed after every edit.
+
+## 2026-08-11 — "Roles" section missing on artist-events' plain-text "Role" column (WIP.79)
+
+User report: `https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events`'s
+"Role" column shows no `» role:` entries in the unique-values dropdown's
+"Roles" section, unlike the "Artists" column on
+`https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/events`
+(added in WIP.75) which works correctly.
+
+**No HTML snapshot this time** — `musicbrainz.org` is currently behind a
+JS proof-of-work bot challenge (`/__meb_verify`) that a plain `curl` can't
+pass, and this session had no headless-browser tool available. Root cause
+was instead confirmed against MusicBrainz's own public server source
+(`metabrainz/musicbrainz-server` on GitHub, fetched via
+`raw.githubusercontent.com`, unaffected by the challenge):
+`root/components/list/EventList.js`'s `rolesOnlyColumn` (only built when
+`artist && artistRoles`, i.e. viewing one artist's OWN events) is a
+`defineTextColumn` (`root/utility/tableColumns.js`) whose `Cell` returns a
+plain string — `commaOnlyListText()`
+(`root/static/scripts/common/i18n/commaOnlyList.js`) joining that artist's
+own `localizeArtistRoles()` names with `", "`. So the rendered `<td>` is a
+single flat text node, e.g. `"main performer, guest performer"` — no
+`<ul class="artist-roles">` wrapper at all, unlike the "Artists" column's
+`.artist-roles` list shape `_findCellArtistRoles()` already handled.
+
+**Fix**: `_findCellArtistRoles()` gains a second extraction shape — when
+the `.artist-roles` list scan finds nothing, it checks whether the cell's
+OWN column header (`_cleanColHeaderText()`, via `cell.closest('table')` +
+`cell.cellIndex`) is literally `"Role"`; if so, it comma-splits
+`getCleanColumnText(cell)` into individual roles. Gated strictly on that
+exact column name (not "any plain-text cell") so an unrelated
+comma-containing column (e.g. "Comment") is never misread as a role list.
+Its return shape's `li` key is renamed to `container` (a `<td>` for this
+new shape, a `<li>` for the original one) — updated at its one other
+consumer, `_highlightEventRoleMatch()`.
+
+`node --check ShowAllEntityData.user.js` passed after every edit.
+
+## 2026-08-11 — Location split renders duplicate "New York" as two separate lists (WIP.80)
+
+**Snapshots**: `sirius-initial.html` (native page-1 markup for the artist's
+`/events` listing, event `ca9546b5…`, "SiriusXM Studio" venue — confirms the
+raw "Location" `<td>` is a single `<ul><li>` chain: place link, then
+`span.area-icon`(alt "New York City") + `<a>New York</a>` (area
+`74e50e58…`), then `span.area-icon`(alt "New York") + `<a>New York</a>`
+(area `75e398a3…`, a DIFFERENT area entity — MusicBrainz has both a city
+and a state literally named "New York"), then the flag-wrapped
+`<a>United States</a>`); `sirius-final.html` (a `<tr>`-level fragment, no
+`<table>` wrapper — for a DIFFERENT event at the same venue, `20b5503f…` —
+showing the rendered bug: the split "Locality" column is EMPTY and
+"Region" contains `<ul><li>[NYC icon][NYC link]</li></ul>, <ul><li>[NY
+icon][NY link]</li></ul>` — two adjacent `<ul>` elements sharing one `<td>`,
+joined by a bare comma text node, instead of one merged `<li>`).
+
+**Investigation**: reproduced `ColumnDataExtractor.splitLocation()` +
+`_routeAreaLink()` verbatim against the `sirius-initial.html` markup in
+jsdom (installed via `npm install jsdom --no-save` in the scratchpad —
+`musicbrainz.org` itself is currently behind a JS proof-of-work bot
+challenge, same blocker as the WIP.79 investigation) — confirmed
+`splitLocation` ALONE produces the CORRECT single merged `<li>` in Region
+(both "New York" entries comma-joined, Locality empty) for this exact
+input, since `_routeAreaLink`'s `forceRegion` check does trigger for the
+first ("New York City") anchor — its text "New York" happens to
+case-insensitively match a real US STATE name in
+`AREA_FLAG_REGION_SUBDIVISIONS['united states']`, so it's a false-positive
+match, but a HARMLESS one at that point since both entries land in the
+same container either way.
+
+The actual DOM-splitting bug is downstream: `_maybeCorrectAreaFlagRegion()`
+— the deferred correction pass (`initAreaFlagRegionObserver()`'s
+`MutationObserver`) that exists specifically because paginated rows
+(pages 2..Max) are parsed from a detached `DOMParser` document that the
+flag-decorating userscript never touches, so `_routeAreaLink`'s
+`forceRegion` check sees NO icon yet at extraction time and correctly
+routes the first anchor to Locality. Once the row lands in the live tbody
+and that userscript decorates the anchor, `_maybeCorrectAreaFlagRegion()`
+re-checks and calls `_forceLocalityToRegion()` to retroactively move it —
+but that function moved Locality's ENTIRE `<ul>` wrapper as a sibling of
+Region's own `<ul>` (both cells are ALWAYS `<ul><li>`-wrapped, per
+`splitLocation`'s "single-item-list-cell convention"), instead of merging
+the two `<li>`s' content together. Reproduced the exact bug byte-for-byte
+in jsdom with a minimal two-cell test, then verified the fix (merge
+same-indexed `<li>` pairs' children when both sides carry an equal `<ul> >
+li` count; fall back to the original whole-cell move only when Region has
+no `<ul>` of its own — i.e. was genuinely empty) produces the correct
+single merged `<li>`.
+
+`node --check ShowAllEntityData.user.js` passed after every edit.
