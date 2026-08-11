@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.87",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "release-tracks: the \"Disambiguation\" column (fed by the native title/recording-name comment, and by the third-party \"mb. INLINE STUFF\" userscript's own async recording-comment lookup — see WIP.86) is decided once, page-wide, at extraction time: if the button is pressed before that comment has loaded for ANY track, the whole column is skipped, not just the individual row. Added `initDisambiguationObserver()`/`_relocateLateDisambiguation()` (mirroring the existing AcoustID/ISRC late-arrival observer): a MutationObserver now watches each medium's table and, when a comment span shows up after the fact, either moves it into the already-existing Disambiguation column reactively, or — when the column was never created at all — shows a small, dismissable \"Rebuild table\" notice next to the status line instead of silently doing nothing (deliberately not a hand-spliced column injection into the already-rendered/sorted/filtered table, and not a silent auto-reload that would discard the user's current filter/sort/scroll state — clicking the notice just re-runs the normal, already-correct fetch). New setting `sa_enable_release_tracks_disambiguation_observer` (default on)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.86",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "release-tracks: `syntheticColumnExtractors` entries sourcing from `'Disambiguation'` (the `eventParts` extractor, splitting a live-performance comment like jesus2099's \"mb. INLINE STUFF\" userscript's \"(live, 1978‐07‐07: The Roxy Theatre, West Hollywood, CA, USA)\" into Event-Type/Date/Venue/City/State/Country columns) were silently never applied on release-tracks, even though the identical config works on other page types (e.g. instrument-recordings). Root cause: both per-row synthetic-column-extractor pipelines inside `startFetchingProcess()`'s fetch loop, AND the header-injection pass in `cleanupHeaders()`, resolved `sourceColumn` only against a map/set populated exclusively from resolved `activeColumnExtractors` outputs and the `extractMainColumn`-only MB-Name/Comment/MB-Primary-alias triad — never from a plain header/cell that a page's own bespoke pre-processing (here, `applyExtractTrackTitleData()`) creates directly, like release-tracks' \"Disambiguation\" column. instrument-recordings only happened to work because it sources from `'Comment'`, which IS in that triad via its own `extractMainColumn: 'Name'`. Added a page-scoped `headerName → colIdx` lookup (built once from the already-scanned `headerNames`) as a fallback source in all three per-row synthetic-extractor call sites, plus the equivalent \"is this sourceColumn already a real header on this table\" fallback in `cleanupHeaders()`'s header-injection guard (data cells alone were appearing correctly after the first fix, but with no header above them — see debug/row.html vs debug/header.html) — general enough to fix this for any current or future page type/column, not just this one. Also documented the third-party \"mb. INLINE STUFF\" userscript (jesus2099) — whose own recording comment/disambiguation span shares the native `.comment` class and selector, so it was already picked up structurally, just never wired through — at the three code sites that build/detect the Disambiguation column."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.85",
     "date": "2026-08-11",
     "sections": [

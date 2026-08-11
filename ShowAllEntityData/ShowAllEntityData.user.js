@@ -1680,6 +1680,24 @@
                          'column settings above is on; zero overhead otherwise.'
         },
 
+        sa_enable_release_tracks_disambiguation_observer: {
+            label: 'Watch for late-arriving Disambiguation data',
+            type: 'checkbox',
+            default: true,
+            description: 'The recording comment/disambiguation shown by the third-party "mb. ' +
+                         'INLINE STUFF" userscript (jesus2099) is asynchronous and can finish ' +
+                         'after this script has already built the tracklist — if NO track had ' +
+                         'the comment yet at that point, the whole "Disambiguation" column is ' +
+                         'never created at all (unlike AcoustIDs/ISRCs above, which are always ' +
+                         'shown when their own setting is on). When on, a MutationObserver ' +
+                         'watches each medium\'s table for the comment appearing after the fact: ' +
+                         'if the Disambiguation column already exists, the late comment is moved ' +
+                         'into it reactively (mirrors the AcoustID/ISRC observer above); if the ' +
+                         'column does not exist yet, a small "Rebuild table" notice appears near ' +
+                         'the status line instead of silently doing nothing — clicking it just ' +
+                         're-runs the normal fetch, which then creates the column correctly.'
+        },
+
         sa_enable_release_tracks_recording_of_columns: {
             label: 'Show "Recording of" / "Recorded at" / "Recorded in" / "Mixed at" columns',
             type: 'checkbox',
@@ -7355,7 +7373,17 @@
      *     release has one — same page-wide-decision reasoning as "Video"
      *     below, via `_pageHasDisambig`), and the secondary "Recording
      *     Name" line (after the `<br>`) is discarded (not requested to be
-     *     kept anywhere — see debug/fix.org).
+     *     kept anywhere — see debug/fix.org). The SAME `span.comment`
+     *     selector also picks up the third-party "mb. INLINE STUFF"
+     *     userscript's own recording comment/disambiguation, injected as a
+     *     sibling `<span class="jesus2099userjs81127recdis comment">(live,
+     *     1978‐07‐07: The Roxy Theatre, West Hollywood, CA, USA)</span>`
+     *     directly inside `span.name-variation` (see
+     *     debug/tracklist-live.html) — its class list still contains
+     *     "comment", so no separate handling is needed; only its content
+     *     ships with LITERAL surrounding "(", ")" characters (unlike
+     *     native MB comments, which render theirs via CSS
+     *     `::before`/`::after`), stripped below via `_stripSurroundingParens()`.
      *   - `<div class="ars">` (bare) — the recording's general
      *     relationships (engineer, producer, recording-of-work, publisher,
      *     …), moved into a new "ARs" column, appended at the very end of
@@ -7748,6 +7776,13 @@
         const _pageHasRecArtist = _anyTitleCellMatches(
             td => td.querySelector(':scope > div.small > bdi')
         );
+        // Matches both MusicBrainz's own native disambiguation comment AND
+        // the third-party "mb. INLINE STUFF" userscript's recording
+        // comment/disambiguation span (`span.jesus2099userjs81127recdis`,
+        // nested `:scope > span.name-variation > span.comment` — see
+        // applyExtractTrackTitleData()'s own JSDoc above and
+        // debug/tracklist-live.html) — "comment" is present in its class
+        // list too, so no dedicated selector is needed for it.
         const _pageHasDisambig = _anyTitleCellMatches(
             td => td.querySelector(':scope > span.comment, :scope > span.name-variation > span.comment')
         );
@@ -8312,6 +8347,10 @@
                 // by this script (third-party-injected).
                 const _streamingDl = _streamingTh ? _titleTd.querySelector('dl.ar') : null;
 
+                // Also matches the third-party "mb. INLINE STUFF" userscript's
+                // own recording comment/disambiguation span — see
+                // _pageHasDisambig's comment above and this function's own
+                // JSDoc for the exact class/shape.
                 const _commentSpan = _titleTd.querySelector(
                     ':scope > span.comment, :scope > span.name-variation > span.comment'
                 );
@@ -10993,6 +11032,177 @@
             });
             observer.observe(tbody, { childList: true, subtree: true });
             Lib.debug('render', 'initAcoustIdIsrcObserver: watching tbody for late AcoustID/ISRC data.');
+
+            _sweep();
+            [500, 1500, 3000, 6000].forEach(delay => setTimeout(_sweep, delay));
+        });
+    }
+
+    const _disambiguationObservedTbodies = new WeakSet();
+
+    /**
+     * Scans a single rendered-table `<td>` for a Disambiguation comment span
+     * that arrived AFTER `applyExtractTrackTitleData()` already ran and
+     * cleaned it — i.e. a `span.comment` (bare, or nested inside
+     * `span.name-variation`) sitting directly in a "Title" column cell. By
+     * definition any such span found here is late-arriving: extraction
+     * already moves every comment span present at that time out of the
+     * Title cell (see `applyExtractTrackTitleData()`'s own JSDoc), so one
+     * left behind — or reappearing later, e.g. once the third-party "mb.
+     * INLINE STUFF" userscript's own async recording-comment lookup
+     * finishes — was never there when this table was built.
+     *
+     * Two outcomes, mirroring `_relocateLateAcoustIdIsrc()`:
+     *   - The "Disambiguation" column already exists on this table (i.e.
+     *     at least one OTHER track already had the comment at extraction
+     *     time) → move the late span into this row's own Disambiguation
+     *     `<td>`, paren-stripped, same as the normal extraction path.
+     *   - The column does not exist at all (no track had it yet) → nothing
+     *     to relocate into; hand off to `_offerDisambiguationRebuild()`
+     *     instead of silently dropping the data.
+     *
+     * KNOWN LIMITATION: relocation only moves the raw comment text — unlike
+     * the original extraction pass, it does NOT re-run any
+     * `syntheticColumnExtractors` (e.g. `eventParts`) configured with
+     * `sourceColumn: 'Disambiguation'`. If this table also has Event-Type/
+     * Event-Date/… columns, THIS row's own Event-* cells stay empty even
+     * though its Disambiguation cell is now populated — only a full rebuild
+     * (`_offerDisambiguationRebuild()`, or manually pressing the button
+     * again) re-derives those. Mirrors `_relocateLateAcoustIdIsrc()`, which
+     * has the same raw-data-only scope.
+     *
+     * @param {HTMLTableCellElement} titleTd
+     * @returns {void}
+     */
+    function _relocateLateDisambiguation(titleTd) {
+        if (!titleTd || titleTd.tagName !== 'TD') return;
+
+        const commentSpan = titleTd.querySelector(
+            ':scope > span.comment, :scope > span.name-variation > span.comment'
+        );
+        if (!commentSpan) return;
+
+        const table = titleTd.closest('table.tbl');
+        const row = titleTd.closest('tr');
+        if (!table || !row) return;
+
+        const headerCells = Array.from(table.querySelectorAll('thead th'));
+        const titleIdx = headerCells.findIndex(th => _cleanColHeaderText(th) === 'Title');
+        if (titleIdx === -1 || row.children[titleIdx] !== titleTd) return;
+
+        const disambigIdx = headerCells.findIndex(th => _cleanColHeaderText(th) === 'Disambiguation');
+        if (disambigIdx === -1) {
+            _offerDisambiguationRebuild();
+            return;
+        }
+        const destTd = row.children[disambigIdx];
+        if (!destTd) return;
+
+        destTd.appendChild(commentSpan); // moves — see initAcoustIdIsrcObserver()'s JSDoc
+        _stripSurroundingParens(destTd);
+        Lib.debug('render', 'initDisambiguationObserver: relocated late-arriving Disambiguation data.');
+    }
+
+    /**
+     * Shows a small, dismissable, one-time-per-page notice next to the
+     * fetch status line offering to re-run the current release-tracks
+     * fetch/render pass — used when `_relocateLateDisambiguation()` detects
+     * a late Disambiguation comment but finds no "Disambiguation" column to
+     * relocate it into (no track had the comment yet when this table was
+     * originally built, so the whole column was skipped — see
+     * `_pageHasDisambig` in `applyExtractTrackTitleData()`).
+     *
+     * Deliberately does NOT splice a new column into the already-rendered,
+     * already-sorted/filtered table by hand (would require re-deriving
+     * sort/filter wiring, `integerColumns` index resolution, and
+     * sticky-column positioning for it) or silently auto-reload (would
+     * discard the user's current filter/sort/scroll state without asking).
+     * Re-running the existing, already-correct fetch/render pipeline via
+     * `_lastActiveBtn.click()` is the simplest way to get a fully-wired
+     * Disambiguation column — mirrors this file's own "second fetch
+     * attempt" reload precedent for the same reasoning (state changed
+     * underneath the current render; cheapest safe fix is to redo it).
+     *
+     * @returns {void}
+     */
+    function _offerDisambiguationRebuild() {
+        if (document.getElementById('mb-disambig-rebuild-notice')) return; // already showing
+        if (!_lastActiveBtn) return;
+
+        const notice = document.createElement('span');
+        notice.id = 'mb-disambig-rebuild-notice';
+        notice.style.cssText = 'display:inline-flex; align-items:center; gap:6px; margin-left:8px; ' +
+                                'font-size:0.85em; color:#333;';
+        notice.textContent = '💬 New recording comment data detected.';
+
+        const rebuildBtn = document.createElement('button');
+        rebuildBtn.type = 'button';
+        rebuildBtn.textContent = 'Rebuild table';
+        rebuildBtn.title = 'Re-run the fetch so the "Disambiguation" column is included.';
+        rebuildBtn.style.cssText = 'font-size:0.95em; padding:1px 6px; border-radius:4px; cursor:pointer;';
+        rebuildBtn.addEventListener('click', () => {
+            notice.remove();
+            _lastActiveBtn.click();
+        });
+        notice.appendChild(rebuildBtn);
+
+        const dismissBtn = document.createElement('button');
+        dismissBtn.type = 'button';
+        dismissBtn.textContent = '✕';
+        dismissBtn.title = 'Dismiss';
+        dismissBtn.style.cssText = 'font-size:0.95em; padding:1px 5px; border-radius:4px; cursor:pointer;';
+        dismissBtn.addEventListener('click', () => notice.remove());
+        notice.appendChild(dismissBtn);
+
+        globalStatusDisplay.after(notice);
+        Lib.debug('render', 'initDisambiguationObserver: offered rebuild for missing Disambiguation column.');
+    }
+
+    /**
+     * Installs (or re-confirms) a MutationObserver, mirroring
+     * `initAcoustIdIsrcObserver()`'s structure, that reacts to a
+     * Disambiguation comment arriving after this script already built the
+     * release-tracks table — see `_relocateLateDisambiguation()`'s JSDoc
+     * for the two outcomes (relocate into an existing column, or offer a
+     * rebuild when the column doesn't exist at all).
+     *
+     * No-ops entirely unless the active page is `release-tracks` and
+     * `sa_enable_release_tracks_disambiguation_observer` is on. Unlike the
+     * AcoustID/ISRC observer, not gated behind any column-visibility
+     * setting — Disambiguation has none (it's shown whenever any track has
+     * the comment, not behind an opt-in checkbox).
+     *
+     * @returns {void}
+     */
+    function initDisambiguationObserver() {
+        if (activeDefinition?.type !== 'release-tracks') return;
+        if (Lib.settings.sa_enable_release_tracks_disambiguation_observer === false) return;
+
+        document.querySelectorAll('table.tbl tbody').forEach(tbody => {
+            if (_disambiguationObservedTbodies.has(tbody)) return;
+            const table = tbody.closest('table');
+            if (!table) return;
+            const headerCells = Array.from(table.querySelectorAll('thead th'));
+            if (!headerCells.some(th => _cleanColHeaderText(th) === 'Title')) return; // not a tracklist table
+            _disambiguationObservedTbodies.add(tbody);
+
+            const _sweep = () => {
+                tbody.querySelectorAll(':scope > tr > td').forEach(td => _relocateLateDisambiguation(td));
+            };
+
+            const observer = new MutationObserver(mutations => {
+                const tdsToCheck = new Set();
+                mutations.forEach(m => {
+                    m.addedNodes.forEach(node => {
+                        if (node.nodeType !== Node.ELEMENT_NODE) return;
+                        const td = node.tagName === 'TD' ? node : node.closest('td');
+                        if (td && tbody.contains(td)) tdsToCheck.add(td);
+                    });
+                });
+                tdsToCheck.forEach(td => _relocateLateDisambiguation(td));
+            });
+            observer.observe(tbody, { childList: true, subtree: true });
+            Lib.debug('render', 'initDisambiguationObserver: watching tbody for late Disambiguation data.');
 
             _sweep();
             [500, 1500, 3000, 6000].forEach(delay => setTimeout(_sweep, delay));
@@ -14239,6 +14449,9 @@
                     { sourceColumn: '#', align: 'C' },
                     { sourceColumn: 'Length', align: ':' },
                     { sourceColumn: 'Rating', align: 'C' }
+                ],
+                syntheticColumnExtractors: [
+                    { sourceColumn: 'Disambiguation', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
                 // "Disambiguation"/"Video"/"Recording artist" are
                 // deliberately excluded — plain short content, no clamp
@@ -26112,6 +26325,13 @@ a { color: #1565c0; }`;
 
     const allActionButtons = [];
 
+    // The button element from the most recent startFetchingProcess() invocation —
+    // used by _offerDisambiguationRebuild() (see initDisambiguationObserver's
+    // JSDoc) to re-trigger the same fetch/render pass the user last ran, without
+    // having to plumb a button reference through renderGroupedTable()'s own
+    // (button-less) call chain.
+    let _lastActiveBtn = null;
+
     // 4. Generate Buttons
     const buttonsToRender = activeDefinition.buttons || [
         { label: `Show all ${pageType.replace('-', ' ')}` } // Default fallback
@@ -35160,9 +35380,17 @@ a { color: #1565c0; }`;
             _resolvedPrimaryCols.add('MB-Primary alias');
         }
         activeSyntheticColumnExtractors.forEach(entry => {
-            // Skip if the source synthetic column was not produced on this page.
-            if (!_resolvedPrimaryCols.has(entry.sourceColumn)) return;
             const headersText = Array.from(theadRow.cells).map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim());
+            // Skip if the source column was neither produced by a resolved primary
+            // extractor NOR is already a real header on this table — the latter
+            // covers page types like release-tracks, whose bespoke pre-processing
+            // (applyExtractTrackTitleData) creates plain headers (e.g.
+            // "Disambiguation") directly, outside columnExtractors/extractMainColumn.
+            // Mirrors the headerNameToIdx fallback added to the per-row extraction
+            // pipeline in startFetchingProcess() — that fix alone made the DATA
+            // cells appear correctly, but this header-building pass needed the same
+            // fix independently, or the appended data cells had no header at all.
+            if (!_resolvedPrimaryCols.has(entry.sourceColumn) && !headersText.includes(entry.sourceColumn)) return;
             entry.syntheticColumns.forEach(colName => {
                 if (!headersText.includes(colName)) {
                     const th = document.createElement('th');
@@ -35848,6 +36076,7 @@ a { color: #1565c0; }`;
         }
 
         const activeBtn = e.target;
+        _lastActiveBtn = activeBtn;
         // Now access properties from the NEW activeDefinition
         const overrideParams = activeDefinition.params || null;
         const targetHeader = activeDefinition.targetHeader || null;
@@ -36172,6 +36401,11 @@ a { color: #1565c0; }`;
         // Clear relationship icon match-boxes.
         document.querySelectorAll('.mb-rel-icon-match')
             .forEach(a => a.classList.remove('mb-rel-icon-match'));
+
+        // Clear any stale "Rebuild table" notice from _offerDisambiguationRebuild() —
+        // this fetch is about to rebuild the table anyway, so the offer is moot,
+        // and a fresh one will reappear if late data is still an issue afterward.
+        document.getElementById('mb-disambig-rebuild-notice')?.remove();
 
         // Clear existing filter conditions and UI highlights for a fresh start.
         // Reset to prefix-only — the global filter always keeps the prefix in its value.
@@ -36622,6 +36856,21 @@ a { color: #1565c0; }`;
                     });
                 }
 
+                // ── headerName → colIdx lookup for syntheticColumnExtractors ───────
+                // Lets a syntheticColumnExtractors entry's sourceColumn address ANY
+                // real header present in the table — not just synthetic columns
+                // produced by activeColumnExtractors or the fixed MB-Name/Comment/
+                // MB-Primary-alias triad (extractMainColumn) that primarySyntheticCellMap
+                // is otherwise limited to below. Needed for page types like
+                // 'release-tracks' whose bespoke pre-processing (applyExtractTrackTitleData)
+                // creates plain headers (e.g. "Disambiguation") directly, outside the
+                // generic columnExtractors/extractMainColumn mechanisms — see the
+                // 'Disambiguation' → eventParts wiring further below in both row-
+                // processing branches. Indices are captured pre-deletion, matching how
+                // activeColumnExtractors' own colIdx is used.
+                const headerNameToIdx = new Map();
+                headerNames.forEach((name, idx) => { if (!headerNameToIdx.has(name)) headerNameToIdx.set(name, idx); });
+
                 // Updated Debug Output with Column Names and Extractor summary
                 const extractorSummary = activeColumnExtractors.length
                     ? activeColumnExtractors.map(e => `${e.extractor}("${e.sourceColumn}"@${e.colIdx})`).join(', ')
@@ -36860,10 +37109,26 @@ a { color: #1565c0; }`;
                                     primarySyntheticCellMap.set('Comment', tdComment);
                                     primarySyntheticCellMap.set('MB-Primary alias', tdAlias);
                                 }
+                                // Falls back to a real header cell (via headerNameToIdx, pre-
+                                // deletion) when sourceColumn isn't a primary-extractor/
+                                // extractMainColumn output — see headerNameToIdx's own comment
+                                // above for why (e.g. release-tracks' "Disambiguation").
+                                const _resolveSyntheticSource = (sourceColumn) => {
+                                    const _fromMap = primarySyntheticCellMap.get(sourceColumn);
+                                    if (_fromMap) return _fromMap;
+                                    const _hdrIdx = headerNameToIdx.get(sourceColumn);
+                                    return _hdrIdx !== undefined ? newRow.cells[_hdrIdx] : undefined;
+                                };
+                                // Resolved alongside the cells themselves (BEFORE step 2's column
+                                // deletion, while newRow.cells indices still match headerNameToIdx) —
+                                // the append guard below (4b) reuses this array rather than
+                                // re-resolving post-deletion, which would read shifted indices.
+                                const _syntheticSourceResolved = [];
                                 const syntheticExtractorCells = activeSyntheticColumnExtractors.map(entry => {
-                                    const sourceCell = primarySyntheticCellMap.get(entry.sourceColumn);
+                                    const sourceCell = _resolveSyntheticSource(entry.sourceColumn);
+                                    _syntheticSourceResolved.push(!!sourceCell);
                                     if (!sourceCell) {
-                                        Lib.warn('extract', `syntheticColumnExtractor: source synthetic column "${entry.sourceColumn}" not found in primary output map — extractor "${entry.extractor}" skipped`);
+                                        Lib.warn('extract', `syntheticColumnExtractor: source column "${entry.sourceColumn}" not found in primary output map or header list — extractor "${entry.extractor}" skipped`);
                                         return entry.syntheticColumns.map(() => document.createElement('td'));
                                     }
                                     if (typeof SyntheticColumnDataExtractor[entry.extractor] !== 'function') {
@@ -36888,12 +37153,12 @@ a { color: #1565c0; }`;
                                 });
 
                                 // 4. Append synthetic cells from synthetic-column extractors (second pass)
-                                // 4b. Skip synthetic-extractor cells when sourceColumn absent from primary map.
-                                // Uses primarySyntheticCellMap (per-row) rather than _resolvedPrimaryCols
-                                // (cleanupHeaders scope) — if the source col wasn't extracted for this row,
-                                // don't append its derived cells either.
+                                // 4b. Skip synthetic-extractor cells when sourceColumn was unresolved
+                                // (neither the primary map nor the header list had it) — uses
+                                // _syntheticSourceResolved (captured pre-deletion above) rather than
+                                // re-resolving now, since newRow.cells indices have shifted.
                                 syntheticExtractorCells.forEach((cells, i) => {
-                                    if (!primarySyntheticCellMap.has(activeSyntheticColumnExtractors[i].sourceColumn)) return;
+                                    if (!_syntheticSourceResolved[i]) return;
                                     cells.forEach(td => newRow.appendChild(td));
                                 });
 
@@ -37204,10 +37469,26 @@ a { color: #1565c0; }`;
                                     primarySyntheticCellMap.set('Comment', tdComment);
                                     primarySyntheticCellMap.set('MB-Primary alias', tdAlias);
                                 }
+                                // Falls back to a real header cell (via headerNameToIdx, pre-
+                                // deletion) when sourceColumn isn't a primary-extractor/
+                                // extractMainColumn output — see headerNameToIdx's own comment
+                                // above for why (e.g. release-tracks' "Disambiguation").
+                                const _resolveSyntheticSource = (sourceColumn) => {
+                                    const _fromMap = primarySyntheticCellMap.get(sourceColumn);
+                                    if (_fromMap) return _fromMap;
+                                    const _hdrIdx = headerNameToIdx.get(sourceColumn);
+                                    return _hdrIdx !== undefined ? newRow.cells[_hdrIdx] : undefined;
+                                };
+                                // Resolved alongside the cells themselves (BEFORE the column
+                                // deletion below, while newRow.cells indices still match
+                                // headerNameToIdx) — the append guard reuses this array rather
+                                // than re-resolving post-deletion, which would read shifted indices.
+                                const _syntheticSourceResolved = [];
                                 const syntheticExtractorCells = activeSyntheticColumnExtractors.map(entry => {
-                                    const sourceCell = primarySyntheticCellMap.get(entry.sourceColumn);
+                                    const sourceCell = _resolveSyntheticSource(entry.sourceColumn);
+                                    _syntheticSourceResolved.push(!!sourceCell);
                                     if (!sourceCell) {
-                                        Lib.warn('extract', `syntheticColumnExtractor: source synthetic column "${entry.sourceColumn}" not found — extractor "${entry.extractor}" skipped`);
+                                        Lib.warn('extract', `syntheticColumnExtractor: source column "${entry.sourceColumn}" not found in primary output map or header list — extractor "${entry.extractor}" skipped`);
                                         return entry.syntheticColumns.map(() => document.createElement('td'));
                                     }
                                     if (typeof SyntheticColumnDataExtractor[entry.extractor] !== 'function') {
@@ -37231,12 +37512,12 @@ a { color: #1565c0; }`;
                                     cells.forEach(td => newRow.appendChild(td));
                                 });
                                 // 3. Append synthetic-column extractor cells (second pass)
-                                // 4b. Skip synthetic-extractor cells when sourceColumn absent from primary map.
-                                // Uses primarySyntheticCellMap (per-row) rather than _resolvedPrimaryCols
-                                // (cleanupHeaders scope) — if the source col wasn't extracted for this row,
-                                // don't append its derived cells either.
+                                // 4b. Skip synthetic-extractor cells when sourceColumn was unresolved
+                                // (neither the primary map nor the header list had it) — uses
+                                // _syntheticSourceResolved (captured pre-deletion above) rather than
+                                // re-resolving now, since newRow.cells indices have shifted.
                                 syntheticExtractorCells.forEach((cells, i) => {
-                                    if (!primarySyntheticCellMap.has(activeSyntheticColumnExtractors[i].sourceColumn)) return;
+                                    if (!_syntheticSourceResolved[i]) return;
                                     cells.forEach(td => newRow.appendChild(td));
                                 });
                                 // 4. Append MB-Name / Comment / MB-Primary alias (when extractMainColumn is active)
@@ -37529,10 +37810,26 @@ a { color: #1565c0; }`;
                                         primarySyntheticCellMap.set('Comment', tdComment);
                                         primarySyntheticCellMap.set('MB-Primary alias', tdAlias);
                                     }
+                                    // Falls back to a real header cell (via headerNameToIdx, pre-
+                                    // deletion) when sourceColumn isn't a primary-extractor/
+                                    // extractMainColumn output — see headerNameToIdx's own comment
+                                    // above for why (e.g. release-tracks' "Disambiguation").
+                                    const _resolveSyntheticSource = (sourceColumn) => {
+                                        const _fromMap = primarySyntheticCellMap.get(sourceColumn);
+                                        if (_fromMap) return _fromMap;
+                                        const _hdrIdx = headerNameToIdx.get(sourceColumn);
+                                        return _hdrIdx !== undefined ? newRow.cells[_hdrIdx] : undefined;
+                                    };
+                                    // Resolved alongside the cells themselves (BEFORE the column
+                                    // deletion below, while newRow.cells indices still match
+                                    // headerNameToIdx) — the append guard reuses this array rather
+                                    // than re-resolving post-deletion, which would read shifted indices.
+                                    const _syntheticSourceResolved = [];
                                     const syntheticExtractorCells = activeSyntheticColumnExtractors.map(entry => {
-                                        const sourceCell = primarySyntheticCellMap.get(entry.sourceColumn);
+                                        const sourceCell = _resolveSyntheticSource(entry.sourceColumn);
+                                        _syntheticSourceResolved.push(!!sourceCell);
                                         if (!sourceCell) {
-                                            Lib.warn('extract', `syntheticColumnExtractor: source synthetic column "${entry.sourceColumn}" not found in primary output map — extractor "${entry.extractor}" skipped`);
+                                            Lib.warn('extract', `syntheticColumnExtractor: source column "${entry.sourceColumn}" not found in primary output map or header list — extractor "${entry.extractor}" skipped`);
                                             return entry.syntheticColumns.map(() => document.createElement('td'));
                                         }
                                         if (typeof SyntheticColumnDataExtractor[entry.extractor] !== 'function') {
@@ -37555,12 +37852,12 @@ a { color: #1565c0; }`;
                                 });
 
                                     // 4. Append synthetic cells from synthetic-column extractors (second pass)
-                                    // 4b. Skip synthetic-extractor cells when sourceColumn absent from primary map.
-                                // Uses primarySyntheticCellMap (per-row) rather than _resolvedPrimaryCols
-                                // (cleanupHeaders scope) — if the source col wasn't extracted for this row,
-                                // don't append its derived cells either.
+                                    // 4b. Skip synthetic-extractor cells when sourceColumn was unresolved
+                                // (neither the primary map nor the header list had it) — uses
+                                // _syntheticSourceResolved (captured pre-deletion above) rather than
+                                // re-resolving now, since newRow.cells indices have shifted.
                                 syntheticExtractorCells.forEach((cells, i) => {
-                                    if (!primarySyntheticCellMap.has(activeSyntheticColumnExtractors[i].sourceColumn)) return;
+                                    if (!_syntheticSourceResolved[i]) return;
                                     cells.forEach(td => newRow.appendChild(td));
                                 });
 
@@ -41387,6 +41684,12 @@ a { color: #1565c0; }`;
         // late-arriving AcoustID/ISRC data into their columns on
         // release-tracks pages (no-ops for every other pageType).
         initAcoustIdIsrcObserver();
+
+        // Install (or re-confirm) the MutationObserver that relocates a
+        // late-arriving Disambiguation comment into its column — or offers
+        // a "Rebuild table" notice when that column doesn't exist yet at
+        // all — on release-tracks pages (no-ops for every other pageType).
+        initDisambiguationObserver();
 
         // Re-inject the "Recording of work"/"Recorded at event"/"Recorded
         // at (place)"/"Recorded in area"/"Mixed at place" column headers'
