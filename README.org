@@ -93624,9 +93624,10 @@ increase the height (number of entries displayed initially) of the unique value 
 
 * TODO fix display of status line after loading from disk
 
-fix display of status line after loading from disk, insert loaded from disk before the comma
+Fix the display of the status line '<div id="mb-status-displays-container"' after loading from disk.
+Insert loaded from disk info before before the current starting ", ":
 
-Change
+Change, e.g
 
 #+begin_example
 , 🎨CAA: 8.2s | 🎨CAA: 8.2s 🗄️ IDB sweep: removed 1 expired entry
@@ -93811,7 +93812,26 @@ https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordin
 #+end_example
 
 
-* TODO currently my info line under the prompt looks like
+* TODO when "version 4" is alone in the disambiguation put it into the "Event-Detail" column on pageType 'release-tracks'
+
+When the "Disambiguation"/"Comment" column doesnt' start with (there must be an explicit blank " " after the ",")
+
+#+begin_example
+live, 
+soundcheck, 
+studio, 
+#+end_example
+
+so e.g. "version 4" put it into the "Event-Detail" column on pageType 'release-tracks', e.g. on
+https://musicbrainz.org/release/68136206-2939-42ed-a39d-f9c41b0defb1
+
+
+* TODO format multilist items in the unique value drop down with " and "|", " concatenated instead of just a blank " "
+
+format multilist items in the unique value drop down with " and "|", " concatenated instead of just a blank " "
+but ignore these strings when filtering ()they are just for uman display purposes
+
+* DONE currently my info line under the prompt looks like
 
 currently my info line under the prompt looks like @/home/vzell/.claude/statusline.sh
 
