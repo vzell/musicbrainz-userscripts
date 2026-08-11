@@ -1997,6 +1997,22 @@
                          'Cover/Event Art Archive in the background.'
         },
 
+        sa_enable_caa_inline_jesus2099_observer: {
+            label: 'Watch for late jesus2099 cover-art icon re-injection',
+            type: 'checkbox',
+            default: true,
+            description: 'The third-party "mb. SUPER MIND CONTROL" userscript (jesus2099) does its own ' +
+                         'asynchronous cover-art lookup and injects its own <a href="…/cover-art"><span ' +
+                         'class="caa-icon jesus2099userjs154481"> icon independently of this script — normally ' +
+                         'harmless, but on a "Show single-table" snapshot tab (a real page load, where jesus2099 ' +
+                         'runs its own fresh lookup all over again) it can land right next to this script\'s own ' +
+                         'inline CAA/EAA thumbnail (sa_caa_pics_inline), showing the cover art twice in the same ' +
+                         'cell. When on, a MutationObserver watches every table for this specific re-injection ' +
+                         'and removes it reactively, wherever this script\'s own inline thumbnail is already ' +
+                         'present in the same cell (mirrors the existing AcoustID/ISRC and Disambiguation late-' +
+                         'arrival observers). Zero overhead when sa_caa_pics_inline is off.'
+        },
+
         sa_caa_small_img_size: {
             label: 'Small CAA/EAA image fetch size (250 / 500 / 1200)',
             type: 'number',
@@ -11203,6 +11219,91 @@
             });
             observer.observe(tbody, { childList: true, subtree: true });
             Lib.debug('render', 'initDisambiguationObserver: watching tbody for late Disambiguation data.');
+
+            _sweep();
+            [500, 1500, 3000, 6000].forEach(delay => setTimeout(_sweep, delay));
+        });
+    }
+
+    const _caaJesus2099ObservedTbodies = new WeakSet();
+
+    /**
+     * Removes a late-arriving jesus2099 "mb. SUPER MIND CONTROL" cover-art
+     * icon anchor (`<a>` wrapping `span.caa-icon.jesus2099userjs154481`)
+     * from `td`, but only when this script's OWN inline CAA/EAA thumbnail
+     * (`.mb-caa-inline-ph` / `.mb-eaa-inline-ph`, injected by
+     * `_artInitInlinePics` — see `sa_caa_pics_inline`) is already present in
+     * the same cell. Mirrors `_stripTransientCellState()`'s capture-time
+     * removal of the identical element (see that function's own JSDoc for
+     * the full story of why jesus2099 re-injects this after this script's
+     * one-time columnEraser already ran), but applied reactively to a live
+     * cell instead of a one-off serialize — needed because on a "Show
+     * single-table" snapshot tab jesus2099 runs its OWN fresh lookup all
+     * over again (it's a real page load), well after the snapshot was
+     * captured, so the capture-time strip alone never sees it.
+     *
+     * Gated on the inline-thumbnail placeholder's presence (rather than
+     * stripping unconditionally) so a page where this script's own inline
+     * thumbnail is disabled or hasn't rendered yet — where jesus2099's icon
+     * is the cell's ONLY art indicator, not a duplicate — is left alone.
+     *
+     * @param {HTMLTableCellElement} td
+     * @returns {void}
+     */
+    function _stripLateJesus2099CaaIcon(td) {
+        if (!td || td.tagName !== 'TD') return;
+        if (!td.querySelector('.mb-caa-inline-ph, .mb-eaa-inline-ph')) return;
+        td.querySelectorAll('a').forEach(anchor => {
+            if (anchor.querySelector('span.caa-icon.jesus2099userjs154481')) {
+                anchor.remove();
+                Lib.debug('caa', 'initCaaInlineJesus2099Observer: removed late-arriving jesus2099 cover-art icon.');
+            }
+        });
+    }
+
+    /**
+     * Installs (or re-confirms) a MutationObserver, mirroring
+     * `initAcoustIdIsrcObserver()`'s/`initDisambiguationObserver()`'s
+     * structure, that reactively strips a jesus2099 cover-art icon
+     * re-injected into a cell that already carries this script's own inline
+     * CAA/EAA thumbnail — see `_stripLateJesus2099CaaIcon()`'s JSDoc for why
+     * this is needed specifically on "Show single-table" snapshot tabs.
+     *
+     * No-ops entirely unless `sa_enable_caa_inline_jesus2099_observer` and
+     * `sa_caa_pics_inline` are both on. Not scoped to any particular
+     * pageType — any table whose tbody already contains at least one
+     * `.mb-caa-inline-ph` / `.mb-eaa-inline-ph` placeholder is watched,
+     * since the inline-thumbnail feature itself is available on any page
+     * type with a configured addCAA/addEAA column.
+     *
+     * @returns {void}
+     */
+    function initCaaInlineJesus2099Observer() {
+        if (Lib.settings.sa_enable_caa_inline_jesus2099_observer === false) return;
+        if (!Lib.settings.sa_caa_pics_inline) return;
+
+        document.querySelectorAll('table.tbl tbody').forEach(tbody => {
+            if (_caaJesus2099ObservedTbodies.has(tbody)) return;
+            if (!tbody.querySelector('.mb-caa-inline-ph, .mb-eaa-inline-ph')) return; // nothing to protect yet
+            _caaJesus2099ObservedTbodies.add(tbody);
+
+            const _sweep = () => {
+                tbody.querySelectorAll(':scope > tr > td').forEach(td => _stripLateJesus2099CaaIcon(td));
+            };
+
+            const observer = new MutationObserver(mutations => {
+                const tdsToCheck = new Set();
+                mutations.forEach(m => {
+                    m.addedNodes.forEach(node => {
+                        if (node.nodeType !== Node.ELEMENT_NODE) return;
+                        const td = node.tagName === 'TD' ? node : node.closest('td');
+                        if (td && tbody.contains(td)) tdsToCheck.add(td);
+                    });
+                });
+                tdsToCheck.forEach(td => _stripLateJesus2099CaaIcon(td));
+            });
+            observer.observe(tbody, { childList: true, subtree: true });
+            Lib.debug('caa', 'initCaaInlineJesus2099Observer: watching tbody for late jesus2099 cover-art icon re-injection.');
 
             _sweep();
             [500, 1500, 3000, 6000].forEach(delay => setTimeout(_sweep, delay));
@@ -34759,6 +34860,7 @@ a { color: #1565c0; }`;
             _artInitQueue();
             initCaaInlinePics();
             initEaaInlinePics();
+            initCaaInlineJesus2099Observer();
             initCaaPics();
             initEaaPics();
             // Re-populate any rel cells that were not yet done when runFilter rebuilt
@@ -38513,6 +38615,7 @@ a { color: #1565c0; }`;
                 _artInitQueue();
                 initCaaInlinePics();
                 initEaaInlinePics();
+                initCaaInlineJesus2099Observer();
                 initCaaPics();
                 initEaaPics();
                 // One-shot toast when all artwork finishes loading on single-table pages.
@@ -41622,6 +41725,14 @@ a { color: #1565c0; }`;
             initCaaInlinePics();
             initEaaInlinePics();
         }
+
+        // Install (or re-confirm) the MutationObserver that strips a late-
+        // arriving jesus2099 cover-art icon out of any cell that already
+        // carries this script's own inline CAA/EAA thumbnail — covers all
+        // three branches above (entityFeatures, artist-releasegroups,
+        // standard single-feature pages), since all of them may have just
+        // injected inline placeholders.
+        initCaaInlineJesus2099Observer();
 
         // ── Small icons + big strip (pass 1), enrichment (pass 2) ────────────────
         initCaaPics();

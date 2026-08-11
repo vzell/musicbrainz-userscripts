@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.89",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"Show single-table\" (openSubtableAsSingleTableTab / _hydrateAndRenderFromSnapshotData): the third-party \"mb. SUPER MIND CONTROL\" userscript's (jesus2099) own cover-art icon reappeared next to this script's inline CAA thumbnail on a snapshot tab, doubling the visible artwork (see debug/CAA-missing-doubled.org, debug/double-caa-icons.html — a Bruce Springsteen artist-releasegroups \"Album\" sub-table). The existing capture-time strip (`_stripTransientCellState`, WIP-era commit 4432890) only cleans the payload once, on the ORIGINAL tab, before the snapshot is taken — but the \"Show single-table\" tab is a real MusicBrainz page load, so jesus2099 runs its own fresh, independent cover-art lookup there too, well after hydration, landing the icon right back in the cell. Added `initCaaInlineJesus2099Observer()`/`_stripLateJesus2099CaaIcon()`, mirroring the existing AcoustID/ISRC and Disambiguation late-arrival observers: a MutationObserver watches every table for the jesus2099 icon re-appearing in a cell that already carries this script's own `.mb-caa-inline-ph`/`.mb-eaa-inline-ph` inline thumbnail, and removes it reactively. Wired into all three inline-thumbnail call sites (runFilter's single-table branch, the initial single-table load, and renderGroupedTable's tail — covering artist-releasegroups' `_isReleaseGroupsMultiMode()` branch specifically). New setting `sa_enable_caa_inline_jesus2099_observer` (default on)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.88",
     "date": "2026-08-11",
     "sections": [
