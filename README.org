@@ -93339,3 +93339,215 @@ think about it and discuss with me
 
 ** plan
 
+#+begin_example
+● The plan is still structurally valid — I've verified against the current branch tip and refreshed the line numbers.
+
+  What changed on pull: commit b24f3bc ("fix: unique-values dropdown flag/area icons bunched at start...") reworked flag/area-icon rendering inside renderItems()/flagIconMap — a different part of the same openUniqDrop() function, unrelated to synBox/"Cell structure"/quick-filter
+  logic. It added ~140 net lines, which shifted every line number from synBox onward. I confirmed via fresh greps that makeSynItem, makeValueSynItem, appendSynDivider, makeInlineArtItem, the "Cell structure"/"Relationship icons" build blocks, _applySynBoxQuickFilter, and the
+  _sortedNameValues/_sortedAliasValues dedup sites all still exist with identical structure — just at new line numbers, which I've updated in the plan. I also confirmed the one remaining unpulled remote commit (098d2ea) only touches README.org and is irrelevant. debug/uvd.html is
+  still undocumented in NOTES.md, so that action item stands too.
+
+  No changes to the approach, section groupings, or the four decisions from before. Ready to exit plan mode when you are.
+
+● User approved Claude's plan
+  ⎿  Plan saved to: ~/.claude/plans/debug-uvd-html-complete-unique-wondrous-lemon.md · /plan to edit
+     Unique-Value Dropdown (UVD): sectioned, collapsible "Cell structure", smarter quick filter
+
+     ▎ Note: line numbers below were re-verified against the current branch
+     ▎ tip (commit b24f3bc, pulled from another machine after the original
+     ▎ exploration) — that commit reworked flag/area-icon rendering inside
+     ▎ renderItems()/flagIconMap (lines ~42816-43370 in the pre-pull file),
+     ▎ shifting everything from synBox onward by ~+95-140 lines. It does not
+     ▎ touch synBox/"Cell structure"/quick-filter code, so none of the
+     ▎ structural analysis or approach below changed — only the absolute line
+     ▎ numbers were refreshed.
+
+     Context
+
+     openUniqDrop() (ShowAllEntityData.user.js:42370-44231) builds the per-column
+     "unique value" filter dropdown (📊 button in each sortable column header). On
+     the debug/uvd.html snapshot (Artist column, /instrument/…/artists), the
+     panel renders 597 rows in one scroll area: a synBox region with 196
+     items all crammed under a single "Cell structure" header, followed by a flat
+     401-item alphabetical listBox. The "Cell structure" header currently hides
+     up to 9 unrelated families of synthetic entries with no sub-grouping:
+     structural states (empty/single/collapsed/expanded/any), flags (≠ track/rec.
+     mismatch, ~ name-variation), artwork presence (✓/✗), five credit-value
+     families (attribute/task/date/instrument/credited-as), three entity-info
+     families (name/comment/alias), and event roles — plus the already-separate
+     "Relationship icons" and inline-artwork mini-sections. This makes the panel
+     overwhelming and makes same-looking values appear 2-3 times (once as a plain
+     whole-cell row, once as an entity-glyph href row, once as a "» name:"
+     structure-mode row) with no visual explanation of why.
+
+     The user wants (discussed and agreed):
+     1. Reduce look-alike duplication without removing real functionality.
+     2. Break "Cell structure" into named, independently collapsible sections with
+     icons/glyphs, mirroring the multi-section idea already partially present
+     (Relationship icons / inline-artwork already get their own header).
+     3. Keep the single existing global quick filter (already covers listBox and
+     most of synBox) rather than adding N per-section filter boxes — but make
+     it smarter: auto-reveal matches inside collapsed sections, and close the
+     existing gap where it doesn't filter "Relationship icons" entries at all.
+
+     Decisions already made with the user (see prior AskUserQuestion):
+     - Global quick filter only, made smarter — no per-section filter inputs.
+     - Section collapse/expand state is remembered globally by section name
+     (not per-column), persisted across dropdown opens.
+     - Suppress "» name:"/"» alias:" synthetic entries when that exact text is
+     already independently selectable elsewhere in the same dropdown (as a
+     plain whole-cell value, or as an entity-glyph href row) — only genuinely
+     new information keeps its own row.
+     - The main "All values" list (listBox) stays always-expanded; only the
+     synthetic synBox sections become collapsible.
+
+     Approach
+
+     1. Introduce a section-container abstraction inside synBox
+
+     Currently every builder (makeSynItem, makeValueSynItem, makeInlineArtItem,
+     the inline "Relationship icons" block starting at 43850) appends its item
+     <div> directly as a sibling of synBox, with plain header <div>s and
+     appendSynDivider() calls in between (43490-43948). Replace this with a
+     small registry keyed by section name:
+
+     const _synSections = new Map(); // key -> { wrapper, itemsBox, headerEl }
+     function getOrCreateSynSection(key, label, glyph) { ... }
+
+     getOrCreateSynSection lazily creates, on first use, a
+     <div class="mb-uniq-section"> containing:
+     - <div class="mb-uniq-section-hdr" role="button" tabindex="0"> — a ▶/▼
+     toggle glyph + glyph icon + label text + (later) a match-count badge —
+     click/Enter toggles the section (see §3 for persistence).
+     - <div class="mb-uniq-section-items" role="group"> — the actual item rows,
+     same children makeSynItem/makeValueSynItem/etc. already build today,
+     just appended here instead of directly to synBox.
+
+     Proposed section keys/labels/glyphs (grouping the existing families 1:1, no
+     new data collection needed — every count/Map already computed at
+     42400-42638 and 43475-43492 stays exactly as-is):
+
+     ┌───────────────┬────────────────────┬───────┬─────────────────────────────────────────────────────────────────────┐
+     │      key      │       label        │ glyph │                      existing entries moved in                      │
+     ├───────────────┼────────────────────┼───────┼─────────────────────────────────────────────────────────────────────┤
+     │ structure     │ Structure          │ 🔠    │ empty/single/collapsed/expanded/any, artwork ✓/✗, inline-art yes/no │
+     ├───────────────┼────────────────────┼───────┼─────────────────────────────────────────────────────────────────────┤
+     │ flags         │ Flags              │ 🚩    │ title-mismatch ≠, name-variation ~                                  │
+     ├───────────────┼────────────────────┼───────┼─────────────────────────────────────────────────────────────────────┤
+     │ credit        │ Credit details     │ 🎚️    │ attr/task/date/instrument/altname                                   │
+     ├───────────────┼────────────────────┼───────┼─────────────────────────────────────────────────────────────────────┤
+     │ entity        │ Entity info        │ 👤    │ name/comment/alias (post-dedup, see §2)                             │
+     ├───────────────┼────────────────────┼───────┼─────────────────────────────────────────────────────────────────────┤
+     │ roles         │ Roles              │ 🎭    │ event role                                                          │
+     ├───────────────┼────────────────────┼───────┼─────────────────────────────────────────────────────────────────────┤
+     │ relationships │ Relationship icons │ 🔗    │ existing per-domain favicon rows                                    │
+     └───────────────┴────────────────────┴───────┴─────────────────────────────────────────────────────────────────────┘
+
+     Call sites to update: makeSynItem/makeValueSynItem/makeInlineArtItem
+     gain a sectionKey argument (or infer it from mode/kind — simplest is an
+     explicit argument since callers already know their family); the section
+     build blocks at 43729-43807 (collapsable-column "Cell structure" branch),
+     43808-43844 (non-collapsable-column branch), 43850-43938 (Relationship
+     icons), 43939-43971 (inline thumbnail presence) route their
+     synBox.appendChild(item) calls through getOrCreateSynSection(key, ...).itemsBox
+     instead. Remove the now-redundant standalone synHdr/appendSynDivider()
+     calls — the section wrapper supplies its own header and visual separation
+     (a border-top on .mb-uniq-section + .mb-uniq-section, CSS-only).
+
+     2. Entity-info dedup ("only show when it adds info")
+
+     At 43805/43807 (_sortedNameValues.forEach / _sortedAliasValues.forEach,
+     also mirrored at 43840/43842 in the non-collapsable-column branch): before
+     calling makeValueSynItem('name', v, …) / makeValueSynItem('alias', v, …),
+     skip v when it's already independently selectable elsewhere in the same
+     panel — i.e. v is already a key in valueCounts (a plain whole-cell value)
+     or already present as an entityInfo name for an href kept in combinedVals
+     (an entity-glyph row). Build one small Set of "already-offered bare names"
+     right after combinedVals is assembled (42659-42663) and reuse it at both
+     name/alias filter sites. » comment: entries are untouched — a
+     disambiguation comment is never independently selectable any other way, so
+     there's no redundancy to remove there.
+
+     3. Collapse/expand + persistence
+
+     - New CSS classes: .mb-uniq-section, .mb-uniq-section-hdr (clickable,
+     same visual language as the existing "Cell structure" header font:
+     font-size:0.75em; font-weight:600; color:#555; letter-spacing:0.03em,
+     plus cursor:pointer and a ▶/▼ prefix), .mb-uniq-section-items
+     (display:none when collapsed). Add near the existing .mb-col-uniq-syn-box
+     CSS block (~`27766-27881`).
+     - Persist collapse state with GM_setValue/GM_getValue, following the
+     existing non-configSchema UI-state pattern already used for column
+     visibility (ShowAllEntityData.user.js:17149/17162) and dropdown geometry
+     (29792/29812) — a single JSON object under one new key, e.g.
+     mb_sa_uniq_section_collapse, shaped { structure: false, credit: true, … }
+     (missing key = expanded, the current always-expanded behavior, so first-run
+     users see no change). Read once when openUniqDrop builds the panel, write
+     on every header click.
+     - Header click toggles itemsBox display, flips the ▶/▼ glyph, and persists
+     the new state for that section key globally (shared across every column —
+     per the user's decision, not scoped per-column).
+
+     4. Smarter global quick filter
+
+     - Fix the coverage gap: give the "Relationship icons" section's item rows a
+     dataset.mbUniqSynLabel + .mb-uniq-syn-label-text span the same way
+     _appendSynLabelText() already does for every other synBox entry
+     (43555-43561), instead of the bespoke lbl span built inline in that
+     block — this alone makes _applySynBoxQuickFilter() (44010-44046)
+     cover them for free, no separate filter logic needed.
+     - In _applySynBoxQuickFilter(filter), after computing each item's
+     matches, additionally: (a) track a per-section match count as items are
+     visited (Array.from(synBox.children) becomes a walk over each section's
+     itemsBox children instead, or an outer loop over _synSections), (b)
+     force a section's itemsBox visible (ignoring its persisted collapsed
+     state) whenever it has ≥1 match while filter is non-empty, restoring the
+     persisted collapsed/expanded state when filter is cleared, and (c) render
+     the match count in the section header, e.g. Credit details (3), while
+     filtering (revert to plain label text when the filter is cleared).
+
+     Files touched
+
+     - ShowAllEntityData.user.js — all of the above lives inside/around
+     openUniqDrop() (42370-44231) plus the CSS block for .mb-col-uniq-syn-box
+     (~27766-27881, unaffected by the recent flag-icon commit since that only
+     touched code inside openUniqDrop() itself). Also check the column-header
+     tooltip hint that says This column also has a "Cell structure" section…
+     (~`45009— grepCell structure" section` before editing, since the exact
+     line will drift further as this feature is built) — update its wording to
+     match whatever the new section names end up being, so it doesn't reference
+     a heading that no longer exists.
+     - ShowAllEntityData_CHANGELOG.wip.json — add a WIP entry (this repo's
+     convention: version bumps/changelog entries land on main only; the
+     current branch tracks work via WIP.N placeholders until merge).
+     - debug/NOTES.md — document debug/uvd.html (what it shows: the pre-change
+     597-row panel) per the project's "document snapshots" convention, since it
+     isn't documented there yet.
+
+     Verification
+
+     1. Load ShowAllEntityData.user.js in Tampermonkey (dev build) against the
+     real /instrument/63021302-86cd-4aee-80df-2270d54f4978/artists page (the
+     source of debug/uvd.html) — the highest-volume real case available.
+     2. Open the Artist column's 📊 dropdown: confirm the panel now shows
+     Structure / Flags / Credit details / Entity info / Roles /
+     Relationship icons as separate collapsible headers instead of one
+     196-item "Cell structure" block, each with a ▶/▼ glyph and icon.
+     3. Click a couple of section headers: items toggle visibility; reopen the
+     dropdown (same column and a different column) and confirm the collapsed
+     sections stay collapsed (global persistence via GM_getValue).
+     4. Type into the quick filter: confirm matches inside a collapsed section
+     auto-reveal with a match count on its header, and that a Relationship icons entry (open on the Relationships column instead) is now filterable
+     too. Clear the filter and confirm sections return to their persisted
+     collapsed/expanded state.
+     5. Compare item counts in "Entity info" before/after on the Artist column —
+     confirm names/aliases that duplicate an existing plain-value or
+     entity-glyph row no longer get their own "» name:"/"» alias:" row, while
+     » comment: rows are unchanged.
+     6. Spot-check 2-3 other page types with different synthetic families active
+     (a CAA/EAA release page for artwork presence, a credit-role column for
+     attribute/task/date, a Relationships column) to confirm no section is
+     silently empty/mis-routed after the refactor.
+#+end_example
+
+
