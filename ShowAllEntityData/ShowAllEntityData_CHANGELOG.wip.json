@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.85",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The unique-values dropdown's standard section showed one small-glyph-icon entry per distinct entity href whenever the same text (e.g. a release title) was credited to more than one distinct entity — e.g. several different releases all titled \"18 Tracks\", or a release also showing up with a disambiguation comment as a separate entry (see debug/uvd-enhancement.html, debug/uvd-title.html, debug/glyph-entity-entry.html). These entries were visually indistinguishable from each other and from the plain whole-cell value (same text, tiny unlabeled icon prefix), so there was no way to tell which specific entity a given row would filter to without clicking it and checking. Removed the per-href entity-glyph rows from the standard section entirely; the existing \"Entity info\" section's \"» name:\" entry now offers exactly ONE entry per distinct entity name (with its entity-type glyph icon), which — unlike the removed rows — matches EVERY row containing that name irrespective of its own disambiguation comment or lack of one, and is no longer restricted to entities that have a comment. `_findCellEntityCommentParts()`'s gate broadened from \"has a `.comment` span\" to \"is not a bare cell-wide name\" (`!ref.isBare`), with `comment`/`alias` falling back to `null` for a non-bare entity that has no comment of its own; `_cellMatchesStructureMode()`'s `name:` mode and `_highlightEntityCommentPartMatch()` now match/highlight directly off the ungated `_findCellEntityRefs()` list instead of the comment-scoped helper, so bare occurrences of the name are matched and highlighted too. The now-dead per-href `entityInfo`/`entityHrefCounts`/`entityEntries` aggregation in `openUniqDrop()` and `renderItems()`'s matching render branch were removed; the `MB_UNIQ_ENTITY_HREF_PREFIX`-keyed matching/highlighting/label machinery itself is untouched, so a filter selection saved before this change (e.g. loaded from a saved table export) keeps working."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.84",
     "date": "2026-08-11",
     "sections": [

@@ -5390,4 +5390,44 @@ uses (`getCleanColumnText(li)`, `f.valueSet.has(MB_UNIQ_ITEM_VALUE_PREFIX
 cases now agree between build-time/async-rebuild highlighting and
 post-build filter-change highlighting.
 
+## 2026-08-11 — indistinguishable per-href entity-glyph rows in the standard section (WIP.85)
+
+**Snapshots**:
+- `uvd-enhancement.html` — the complete final rendered page for
+  `/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1`.
+  The "Vocals release"/"Produced release"-style tables show several rows
+  sharing the same "18 Tracks" title but backed by different release
+  entities (different hrefs, different-or-absent disambiguation comments).
+- `uvd-title.html` — just the 📊 unique-values dropdown for that page's
+  "Title" column, BEFORE this fix: the standard/plain section shows a bare
+  "A Night Worth Spending In Richmond!!" entry, a `releaselink`-glyph-
+  prefixed entry with the SAME visible text, and a third plain entry for
+  "A Night Worth Spending In Richmond!! (mjk5510 transfer)".
+- `glyph-entity-entry.html` — one of those glyph-prefixed entries in
+  isolation: `title="A Night Worth Spending In Richmond!! — marks a
+  specific release, identified by its own link — not just matching
+  text"`, a `span.releaselink` icon immediately before the text. Clicking
+  it filtered to exactly ONE specific release's row — but nothing in the
+  entry itself (same text, same tiny unlabeled icon as any other such row)
+  let you tell which one without testing.
+
+**Problem**: whenever a title/name was shared by 2+ distinct entities, the
+standard section offered one of these glyph rows per distinct href, all
+rendering identically apart from the icon. The user could not visually
+distinguish them, and had no way to select "every row with this title"
+without either checking the bare entry (misses commented variants) or
+guessing which glyph row to click.
+
+**Fix (WIP.85)**: removed these per-href glyph rows from the standard
+section entirely. The existing "Entity info" section's "» name:" family
+(previously only offered for entities WITH a disambiguation comment) now
+covers every non-bare entity, offers exactly ONE entry per distinct name
+(with the entity-type glyph shown inline, e.g. 🎵/`releaselink`), and
+matches EVERY row containing that name — bare or commented — when checked.
+See `ShowAllEntityData_CHANGELOG.wip.json`'s WIP.85 entry for the full
+implementation breakdown (`_findCellEntityCommentParts()`'s broadened
+`!ref.isBare` gate, the split ungated `name:` matching/highlighting, the
+new `entityNameAnyValueCounts`/`entityNameGlyphMap` maps, and removal of
+the now-dead `entityInfo`/`entityHrefCounts`/`entityEntries` aggregation).
+
 `node --check ShowAllEntityData.user.js` passed after every edit.

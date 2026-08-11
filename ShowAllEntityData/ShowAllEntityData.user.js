@@ -16465,19 +16465,25 @@
 
     /**
      * Extends `_findCellEntityRefs()` (never re-derives its anchor-finding
-     * logic) to split each entity's own native MusicBrainz disambiguation
-     * comment into three independent, filterable pieces — the single source
-     * of truth for `openUniqDrop()`'s "Cell structure" `name:`/`comment:`/
-     * `alias:` entries, `_cellMatchesStructureMode()`'s matching, and
-     * `_highlightEntityCommentPartMatch()`'s highlighting, so all three
-     * agree on exactly the same extraction:
+     * logic) to split each NON-BARE entity (`!ref.isBare` — part of
+     * something bigger than just its own name somewhere in the table, e.g.
+     * a disambiguation comment or a trailing chain/attribute) into three
+     * independent, filterable name/comment/alias pieces — the single source
+     * of truth for `openUniqDrop()`'s "Entity info" `comment:`/`alias:`
+     * entries (and, for `name`, one further input among others — see
+     * `_cellMatchesStructureMode()`'s own `name:` branch, which matches
+     * more broadly than this function's own bareness gate) and
+     * `_highlightEntityCommentPartMatch()`'s `comment:`/`alias:` highlighting:
      *
      *   - `name`    — the entity's own `<bdi>` text, with any `.comment`
      *                 nested INSIDE that same `<bdi>` removed first (defends
      *                 against MusicBrainz's native `<bdi><a>Name</a><span
      *                 class="comment">…</span></bdi>` "Artist column" shape,
      *                 where a naive read would wrongly fold the comment into
-     *                 the name).
+     *                 the name). Falls back to `ref.name` verbatim when
+     *                 there's no `.comment` span to strip in the first place
+     *                 (a non-bare entity via a chain/attribute, not a
+     *                 comment — nothing to strip, so no cloning needed).
      *   - `comment` — the `.comment` span's own text, with any nested
      *                 `<i title="Primary alias">` removed first, and
      *                 surrounding parens / a leading ", " separator
@@ -16486,15 +16492,26 @@
      *                 cell, built on `getCleanColumnText()` instead of a
      *                 manual node walk). `null` when nothing is left after
      *                 removing the alias (a comment that was ONLY the alias,
-     *                 e.g. `debug/c-a.org`'s "Work" example).
+     *                 e.g. `debug/c-a.org`'s "Work" example) OR when the
+     *                 entity has no `.comment` span at all.
      *   - `alias`   — the `<i title="Primary alias">`'s own text, or `null`
-     *                 when absent.
+     *                 when absent (including: no `.comment` span at all).
      *
-     * Entities with NO `.comment` at all are dropped entirely — this is
-     * deliberately scoped to "columns with a disambiguation comment" (the
-     * feature request), not every entity column, since a comment-less
-     * entity's name is already independently selectable via the standard
-     * section's existing href-based entity-glyph rows.
+     * Bare entities (an entity whose containing `<li>`/cell is nothing but
+     * its own name — e.g. a plain native "Artist" column, or "Recording of
+     * work") are dropped entirely: their name is already independently
+     * selectable via the standard section's plain whole-cell value, so a
+     * `name`-only entry here would be a pure duplicate. A non-bare entity
+     * with NO comment (only reachable via `openUniqDrop()`'s own broader
+     * `name:` collection — see its own comment — since `comment`/`alias`
+     * are both `null` for these) still gets a `name` part: previously
+     * (when this function was scoped to "has a `.comment`" only) such an
+     * entity's name was offered exclusively via a per-href entity-glyph row
+     * in the standard section; that row has been replaced by one
+     * broader-matching `name:` entry per distinct name in "Entity info"
+     * (see `openUniqDrop()`'s own `entityNameAnyValueCounts`), so this
+     * function must surface those entities too, not just comment-bearing
+     * ones.
      *
      * Scoping: the associated `.comment` is looked up via
      * `container.querySelector('span.comment')`, reusing the SAME container
@@ -16506,30 +16523,40 @@
      *
      * @param {?HTMLTableCellElement} cell
      * @returns {Array<{name: string, comment: ?string, alias: ?string,
-     *   commentSpan: Element, nameNode: Element}>}
+     *   commentSpan: ?Element, nameNode: Element, glyphClass: string}>}
      */
     function _findCellEntityCommentParts(cell) {
         if (!cell) return [];
         const out = [];
         _findCellEntityRefs(cell).forEach(ref => {
+            if (ref.isBare) return; // scope: only non-bare entities
+
             const container = ref.nameNode.closest('li') || cell;
             const commentSpan = container.querySelector('span.comment');
-            if (!commentSpan) return; // scope: only entities WITH a comment
 
-            const bdi = ref.nameNode.tagName === 'BDI' ? ref.nameNode : ref.nameNode.querySelector('bdi');
-            const bdiClone = bdi ? bdi.cloneNode(true) : null;
-            if (bdiClone) bdiClone.querySelectorAll('.comment').forEach(c => c.remove());
-            const name = bdiClone ? getCleanColumnText(bdiClone) : ref.name;
+            let name, alias, comment;
+            if (commentSpan) {
+                const bdi = ref.nameNode.tagName === 'BDI' ? ref.nameNode : ref.nameNode.querySelector('bdi');
+                const bdiClone = bdi ? bdi.cloneNode(true) : null;
+                if (bdiClone) bdiClone.querySelectorAll('.comment').forEach(c => c.remove());
+                name = bdiClone ? getCleanColumnText(bdiClone) : ref.name;
 
-            const iEl = commentSpan.querySelector('i[title="Primary alias"]');
-            const alias = iEl ? getCleanColumnText(iEl) : null;
-            const commentClone = commentSpan.cloneNode(true);
-            commentClone.querySelectorAll('i[title="Primary alias"]').forEach(i => i.remove());
-            const comment = getCleanColumnText(commentClone)
-                .replace(/^\(\s*/, '').replace(/\s*\)$/, '')
-                .replace(/^\s*,\s*/, '').trim();
+                const iEl = commentSpan.querySelector('i[title="Primary alias"]');
+                alias = iEl ? getCleanColumnText(iEl) : null;
+                const commentClone = commentSpan.cloneNode(true);
+                commentClone.querySelectorAll('i[title="Primary alias"]').forEach(i => i.remove());
+                comment = getCleanColumnText(commentClone)
+                    .replace(/^\(\s*/, '').replace(/\s*\)$/, '')
+                    .replace(/^\s*,\s*/, '').trim() || null;
+            } else {
+                // Non-bare via a chain/attribute, not a comment — nothing to
+                // strip, ref.name is already clean.
+                name = ref.name;
+                alias = null;
+                comment = null;
+            }
 
-            out.push({ name, comment: comment || null, alias, commentSpan, nameNode: ref.nameNode });
+            out.push({ name, comment, alias, commentSpan, nameNode: ref.nameNode, glyphClass: ref.glyphClass });
         });
         return out;
     }
@@ -16799,11 +16826,17 @@
             return !!sk && sk.textContent.trim() === (mode === 'inline-art-yes' ? 'caa-inline-yes' : 'caa-inline-no');
         }
         if (mode.startsWith('name:')) {
-            // Compound mode — matches one entity's own anchored <bdi> name
-            // (excluding any disambiguation comment), from
-            // _findCellEntityCommentParts()'s own extraction — see its JSDoc.
+            // Compound mode — matches one entity's own anchored <bdi> name,
+            // from _findCellEntityRefs() directly (NOT
+            // _findCellEntityCommentParts(), which is scoped to non-bare
+            // entities only) — deliberately broader: this "» name:" entry
+            // replaced the old per-href entity-glyph rows in the standard
+            // section, and per the user's own request it must match EVERY
+            // row containing this entity name, bare or not, "irrespective
+            // of the comment column" — see openUniqDrop()'s
+            // entityNameAnyValueCounts, built the same ungated way.
             const want = mode.slice(5);
-            return !!cell && _findCellEntityCommentParts(cell).some(p => p.name === want);
+            return !!cell && _findCellEntityRefs(cell).some(ref => ref.name === want);
         }
         if (mode.startsWith('comment:')) {
             // Compound mode counterpart of 'name:' above — matches one
@@ -33071,17 +33104,6 @@ a { color: #1565c0; }`;
         'release-group': 'rglink'
     };
 
-    /**
-     * Inverse of `_ENTITY_TYPE_GLYPH` (glyph CSS class → human-readable
-     * entity-type word) — used by `openUniqDrop()`'s `renderItems()` to
-     * explain an entity-reference dropdown entry's glyph marker in its
-     * tooltip, since the marker itself is an unlabelled, empty MusicBrainz
-     * `<span>` with no text a screen reader or hover could otherwise surface.
-     */
-    const _GLYPH_TO_ENTITY_TYPE = Object.fromEntries(
-        Object.entries(_ENTITY_TYPE_GLYPH).map(([type, glyphClass]) => [glyphClass, type])
-    );
-
     function getColFilters(table, isCaseSensitive, isRegExp, isExclude = false) {
         if (!table) {
             const empty = [];
@@ -33374,9 +33396,16 @@ a { color: #1565c0; }`;
      * structure-mode fallback) — the query-time counterpart of
      * `_highlightCreditValueMatch()` for entity name/disambiguation-comment/
      * primary-alias text, since this markup is native MusicBrainz output
-     * with no injected sentinel class to query (see
-     * `_findCellEntityCommentParts()`'s own JSDoc, the single source of
-     * truth this re-derives from — never a fresh ad hoc extraction here).
+     * with no injected sentinel class to query.
+     *
+     * `name:` deliberately re-derives from `_findCellEntityRefs()` directly
+     * (NOT `_findCellEntityCommentParts()`, which only covers non-bare
+     * entities) — mirrors `_cellMatchesStructureMode()`'s own `name:`
+     * branch exactly, so a bare occurrence's own name node gets highlighted
+     * too, not just commented/chained ones (see that branch's own comment
+     * for why). `comment:`/`alias:` stay on `_findCellEntityCommentParts()`
+     * (the single source of truth for those two — neither concept exists
+     * for a bare entity, so no broadening is needed there).
      *
      * Scopes `highlightCrossTag()` to the SPECIFIC element each mode's value
      * came from (never the whole cell/whole comment span indiscriminately):
@@ -33394,13 +33423,21 @@ a { color: #1565c0; }`;
      */
     function _highlightEntityCommentPartMatch(cell, mode) {
         if (!cell) return;
-        const _isName    = mode.startsWith('name:');
+        if (mode.startsWith('name:')) {
+            const _want = mode.slice(5);
+            _findCellEntityRefs(cell).forEach(ref => {
+                if (ref.name !== _want) return;
+                ref.nameNode.normalize();
+                highlightCrossTag(ref.nameNode, _buildFuzzyTextMatchRegex(_want), 'mb-column-filter-highlight');
+            });
+            return;
+        }
         const _isComment = mode.startsWith('comment:');
-        const _want = mode.slice(_isName ? 5 : _isComment ? 8 : 6);
+        const _want = mode.slice(_isComment ? 8 : 6);
         _findCellEntityCommentParts(cell).forEach(p => {
-            const _target = _isName ? p.nameNode : _isComment ? p.commentSpan
+            const _target = _isComment ? p.commentSpan
                 : p.commentSpan.querySelector('i[title="Primary alias"]');
-            const _value  = _isName ? p.name : _isComment ? p.comment : p.alias;
+            const _value  = _isComment ? p.comment : p.alias;
             if (!_target || _value !== _want) return;
             _target.normalize();
             highlightCrossTag(_target, _buildFuzzyTextMatchRegex(_want), 'mb-column-filter-highlight');
@@ -42813,11 +42850,27 @@ a { color: #1565c0; }`;
         // Maps above, since this markup is native MusicBrainz output with
         // no DOM-injection build step to tag; see
         // _findCellEntityCommentParts()'s own JSDoc for the extraction and
-        // its "only entities WITH a comment" scope. No-op Maps for any
-        // column/cell with no `.comment` at all.
+        // its "only non-bare entities" scope (comment/alias are `null` for
+        // a non-bare entity with no `.comment` at all, so entityCommentValueCounts/
+        // entityAliasValueCounts stay correctly gated to comment-bearing
+        // entities regardless). No-op Maps for any column/cell with no
+        // non-bare entity at all.
         const entityNameValueCounts    = new Map();
         const entityCommentValueCounts = new Map();
         const entityAliasValueCounts   = new Map();
+        // entityNameGlyphMap: name -> first-seen glyphClass (e.g.
+        // 'releaselink'), so the "» name:" entry can show the same
+        // entity-type icon the old per-href entity-glyph row did — see
+        // openUniqDrop()'s makeValueSynItem() call sites below.
+        // entityNameAnyValueCounts: name -> row count, deliberately
+        // UNGATED by ref.isBare (unlike entityNameValueCounts above, which
+        // only counts non-bare occurrences) — this is what actually backs
+        // the "» name:" entry's badge count and must agree with
+        // _cellMatchesStructureMode()'s own broadened `name:` match (every
+        // row containing this entity name, bare or not — see that
+        // branch's own comment for why).
+        const entityNameGlyphMap      = new Map();
+        const entityNameAnyValueCounts = new Map();
         // Distinct event-role values (e.g. "main performer", "guest
         // performer", "support act", "participant", "host") from a native
         // MusicBrainz `.artist-roles` list — the query-time counterpart of
@@ -42842,27 +42895,6 @@ a { color: #1565c0; }`;
         // `_findCellListItems` returns `[]` for those. See
         // `MB_UNIQ_ITEM_VALUE_PREFIX`'s own JSDoc and debug/multi-row-cell.html.
         const itemValueCounts = new Map();
-        // Per-entity-reference counts/info, for the entity-glyph entries
-        // ("United States"/"Toby Scott"/… marked with worklink/placelink/
-        // arealink/artistlink/labellink/eventlink) — see
-        // MB_UNIQ_ENTITY_HREF_PREFIX's own JSDoc and _findCellEntityRefs().
-        // Keyed by href (stable identity), NOT by display text, since the
-        // same entity can render under different alias text and two
-        // different entities can otherwise share the same display text.
-        // `entityHrefCounts`: href -> row count (once per row, same
-        // collect-into-a-Set-first idiom as attrValueCounts/itemValueCounts).
-        // `entityInfo`: href -> { name, glyphClass, hasNonBare }, where
-        // `hasNonBare` — computed by OR-ing _findCellEntityRefs()'s per-
-        // occurrence `isBare` across every row — is the redundancy gate:
-        // only entities that are part of something bigger (a chain, a
-        // trailing date/attribute) in at least one occurrence are worth
-        // offering; an entity whose containing <li>/cell is ALWAYS just its
-        // own bare name (e.g. "Recording of work"'s cell, or MusicBrainz's
-        // plain native "Artist" column) would be a pure duplicate of the
-        // existing whole-cell entry, so those are filtered out below (see
-        // where `combinedVals` is built from `entityInfo`).
-        const entityHrefCounts = new Map();
-        const entityInfo = new Map();
         const isTitleCol = (() => {
             const headers = table.querySelectorAll('thead tr:first-child th');
             const th = headers[colIndex];
@@ -42913,23 +42945,15 @@ a { color: #1565c0; }`;
                     });
                     _rowItemTexts.forEach(t => itemValueCounts.set(t, (itemValueCounts.get(t) || 0) + 1));
                 }
-                // Entity-reference collection — deliberately unconditional
-                // (unlike the "▤" item block above, not gated on isMultiRow):
-                // a bare single-item cell still needs to be COUNTED even
-                // though it can't itself flip hasNonBare to true, and a
-                // non-list cell (e.g. "Recording of work") has no isMultiRow
-                // to gate on at all.
-                const _rowEntityHrefs = new Set();
-                _findCellEntityRefs(cell).forEach(ref => {
-                    _rowEntityHrefs.add(ref.href);
-                    let info = entityInfo.get(ref.href);
-                    if (!info) {
-                        info = { name: ref.name, glyphClass: ref.glyphClass, hasNonBare: false };
-                        entityInfo.set(ref.href, info);
-                    }
-                    if (!ref.isBare) info.hasNonBare = true;
-                });
-                _rowEntityHrefs.forEach(href => entityHrefCounts.set(href, (entityHrefCounts.get(href) || 0) + 1));
+                // Entity-name collection — deliberately unconditional
+                // (unlike the "▤" item block above, not gated on isMultiRow)
+                // and deliberately UNGATED by ref.isBare: entityNameAnyValueCounts
+                // backs the "» name:" entry's badge count and must agree with
+                // _cellMatchesStructureMode()'s own broadened `name:` match
+                // (every row containing this entity name, bare or not).
+                const _rowAnyNameValues = new Set();
+                _findCellEntityRefs(cell).forEach(ref => _rowAnyNameValues.add(ref.name));
+                _rowAnyNameValues.forEach(t => entityNameAnyValueCounts.set(t, (entityNameAnyValueCounts.get(t) || 0) + 1));
                 if (isTitleCol && _titleHasRecNameMismatch(cell)) titleMismatchCount++;
                 if (_findNameVariationElements(cell).length > 0) nameVariationCount++;
                 const _rowAttrWords = new Set();
@@ -42965,7 +42989,10 @@ a { color: #1565c0; }`;
                 const _rowCommentValues = new Set();
                 const _rowAliasValues   = new Set();
                 _findCellEntityCommentParts(cell).forEach(p => {
-                    if (p.name)    _rowNameValues.add(p.name);
+                    if (p.name) {
+                        _rowNameValues.add(p.name);
+                        if (!entityNameGlyphMap.has(p.name)) entityNameGlyphMap.set(p.name, p.glyphClass);
+                    }
                     if (p.comment) _rowCommentValues.add(p.comment);
                     if (p.alias)   _rowAliasValues.add(p.alias);
                 });
@@ -42984,43 +43011,44 @@ a { color: #1565c0; }`;
         // Merged, sorted render list combining whole-cell values (vals above)
         // with per-<li> item values (itemValueCounts) — rendered together in
         // renderItems() as one checkbox list, item entries marked with "▤".
-        // Deliberately NOT deduplicated across categories: the same text can
-        // legitimately appear as both a whole-cell value (from some other
-        // row's single-item cell) and an item value (from a different row's
-        // multi-item cell), and an entity's own name can independently equal
-        // either — they are different filter semantics (equality / item
-        // membership / entity-href membership), so all stay independently
+        // No longer includes per-href entity-glyph entries: those were
+        // visually indistinguishable from each other (and from a plain
+        // whole-cell value) whenever the same name was shared by more than
+        // one distinct entity with different — or absent — disambiguation
+        // comments (see debug/glyph-entity-entry.html, debug/uvd-title.html).
+        // Replaced by one broader-matching "» name:" entry per distinct
+        // name in the "Entity info" section instead — see
+        // entityNameAnyValueCounts/entityNameGlyphMap above and the
+        // `_sortedNameValues.forEach(...)` call sites below.
+        // Deliberately NOT deduplicated against item values: the same text
+        // can legitimately appear as both a whole-cell value (from some
+        // other row's single-item cell) and an item value (from a
+        // different row's multi-item cell) — different filter semantics
+        // (equality / item membership), so both stay independently
         // selectable.
         const itemVals = Array.from(itemValueCounts.keys());
-        // Entity entries: only hrefs with at least one non-bare occurrence
-        // (see entityInfo's own JSDoc above) — a bare-everywhere entity would
-        // be a pure duplicate of the existing whole-cell entry.
-        const entityEntries = Array.from(entityInfo.entries())
-            .filter(([, info]) => info.hasNonBare);
-        const combinedVals = vals.map(v => ({ value: v, isItem: false, isEntity: false }))
-            .concat(itemVals.map(v => ({ value: v, isItem: true, isEntity: false })))
-            .concat(entityEntries.map(([href, info]) =>
-                ({ value: info.name, isItem: false, isEntity: true, href, glyphClass: info.glyphClass })))
+        const combinedVals = vals.map(v => ({ value: v, isItem: false }))
+            .concat(itemVals.map(v => ({ value: v, isItem: true })))
             .sort((a, b) => a.value.toLowerCase().localeCompare(b.value.toLowerCase()));
 
-        // Bare name/alias strings already independently selectable elsewhere
-        // in this same panel — as a plain whole-cell value (valueCounts) or
-        // as an entity-glyph href row (entityEntries, kept in combinedVals
-        // above) — so a "» name:"/"» alias:" synBox entry for the identical
-        // text would just be a redundant-looking third way to select it.
-        // Consulted only by the 'name'/'alias' families below; 'comment' is
-        // never independently selectable any other way, so it's exempt.
+        // Bare alias strings already independently selectable elsewhere in
+        // this same panel — as a plain whole-cell value (valueCounts) — so a
+        // "» alias:" synBox entry for the identical text would just be a
+        // redundant-looking second way to select it. Consulted only by the
+        // 'alias' family below; 'name' is NOT gated by this any more (a
+        // "» name:" entry now matches every occurrence of that name, bare
+        // or not — a strict superset of the plain value, never a pure
+        // duplicate); 'comment' was never gated by it either.
         const _alreadyOfferedBareNames = new Set(valueCounts.keys());
-        entityEntries.forEach(([, info]) => _alreadyOfferedBareNames.add(info.name));
 
         // Pre-compute the width of the widest count so all badges in this column
         // are identically sized and the numbers right-align (e.g. "   (12)" vs
         // "(21345)").  maxDigits is the character count of the largest count value;
         // badgeChWidth adds 2 for the surrounding parentheses "(…)". Spans
-        // valueCounts/itemValueCounts/entityHrefCounts so badge width stays
-        // consistent across the merged combinedVals list.
-        const maxCount     = (valueCounts.size > 0 || itemValueCounts.size > 0 || entityHrefCounts.size > 0)
-            ? Math.max(0, ...valueCounts.values(), ...itemValueCounts.values(), ...entityHrefCounts.values())
+        // valueCounts/itemValueCounts/entityNameAnyValueCounts so badge width
+        // stays consistent across the merged combinedVals list.
+        const maxCount     = (valueCounts.size > 0 || itemValueCounts.size > 0 || entityNameAnyValueCounts.size > 0)
+            ? Math.max(0, ...valueCounts.values(), ...itemValueCounts.values(), ...entityNameAnyValueCounts.values())
             : 0;
         const maxDigits    = String(maxCount).length;
         const badgeChWidth = maxDigits + 2; // "(" + digits + ")"
@@ -43095,16 +43123,20 @@ a { color: #1565c0; }`;
                 return;
             }
 
-            matching.forEach(({ value: v, isItem, isEntity, href, glyphClass }) => {
+            matching.forEach(({ value: v, isItem }) => {
                 // The checked-value-set key: item entries are stored prefixed
-                // with MB_UNIQ_ITEM_VALUE_PREFIX, entity entries with
-                // MB_UNIQ_ENTITY_HREF_PREFIX (keyed by href, not by v) — both
-                // coexist with plain whole-cell values in the same
-                // checkedValues Set / dataset.mbUniqValues array without
-                // colliding — see those constants' own JSDoc.
-                const key = isEntity ? MB_UNIQ_ENTITY_HREF_PREFIX + href
-                          : isItem   ? MB_UNIQ_ITEM_VALUE_PREFIX + v
-                          : v;
+                // with MB_UNIQ_ITEM_VALUE_PREFIX — coexists with plain
+                // whole-cell values in the same checkedValues Set /
+                // dataset.mbUniqValues array without colliding — see that
+                // constant's own JSDoc. (MB_UNIQ_ENTITY_HREF_PREFIX-keyed
+                // entries no longer get created here — the per-href
+                // entity-glyph row this used to build was replaced by one
+                // broader-matching "» name:" entry per distinct name in the
+                // "Entity info" section, see openUniqDrop()'s
+                // entityNameAnyValueCounts — but the prefix itself, and the
+                // matching/highlighting that reads it, are kept so a filter
+                // checked before this change keeps working.)
+                const key = isItem ? MB_UNIQ_ITEM_VALUE_PREFIX + v : v;
                 const item = document.createElement('div');
                 const isChecked = checkedValues.has(key);
                 item.className = isChecked ? 'mb-col-uniq-item mb-col-uniq-checked' : 'mb-col-uniq-item';
@@ -43117,14 +43149,10 @@ a { color: #1565c0; }`;
                 // hover tooltip for the CSS-ellipsis-truncated row, so it
                 // must stay human-readable even for item entries.) A glyph
                 // explanation is appended when this entry carries one — the
-                // markers below (entity-type span, ▤ item marker, flag/area
-                // icon) are otherwise unlabelled and have no explanation
-                // anywhere else in the script.
+                // markers below (▤ item marker, flag/area icon) are
+                // otherwise unlabelled and have no explanation anywhere else
+                // in the script.
                 const _glyphNotes = [];
-                if (isEntity) {
-                    const _etype = _GLYPH_TO_ENTITY_TYPE[glyphClass] || 'entity';
-                    _glyphNotes.push(`marks a specific ${_etype}, identified by its own link — not just matching text`);
-                }
                 if (isItem) {
                     _glyphNotes.push('▤ matches one item inside a multi-item cell, not the cell’s entire contents');
                 }
@@ -43143,8 +43171,7 @@ a { color: #1565c0; }`;
                 item.appendChild(checkbox);
 
                 // ---- Occurrence count badge: "(n) " prefix, display only ----
-                const count = isEntity ? (entityHrefCounts.get(href) || 0)
-                            : (isItem ? itemValueCounts : valueCounts).get(v) || 0;
+                const count = (isItem ? itemValueCounts : valueCounts).get(v) || 0;
                 const badge = document.createElement('span');
                 badge.className = 'mb-uniq-count-badge';
                 badge.textContent = `(${count})`;
@@ -43176,27 +43203,6 @@ a { color: #1565c0; }`;
                     marker.className = 'mb-uniq-item-marker';
                     marker.setAttribute('aria-hidden', 'true');
                     marker.textContent = '▤';
-                    item.appendChild(marker);
-                }
-
-                // ---- Entity-type marker — MusicBrainz's own empty,
-                // site-CSS-styled glyph span for this entity's type
-                // (worklink/placelink/arealink/artistlink/labellink/
-                // eventlink — see _ENTITY_TYPE_GLYPH). No local CSS class
-                // for the marker itself: same "trust the host page's
-                // stylesheet" contract _initColHeaderGlyph() already relies
-                // on for these exact classes; spacing set inline, matching
-                // how the flag-icon clones above already do it.
-                if (isEntity) {
-                    const marker = document.createElement('span');
-                    marker.className = glyphClass;
-                    marker.setAttribute('aria-hidden', 'true');
-                    marker.style.marginRight = '4px';
-                    // Defeats a real third-party userscript's
-                    // `span.arealink:empty { display: none !important; }`
-                    // rule — see _guardGlyphAgainstEmptySelectorHiding()'s
-                    // JSDoc.
-                    _guardGlyphAgainstEmptySelectorHiding(marker);
                     item.appendChild(marker);
                 }
 
@@ -43832,7 +43838,7 @@ a { color: #1565c0; }`;
             ...attrValueCounts.values(), ...taskValueCounts.values(),
             ...dateValueCounts.values(), ...instrumentValueCounts.values(),
             ...altNameValueCounts.values(),
-            ...entityNameValueCounts.values(), ...entityCommentValueCounts.values(),
+            ...entityNameAnyValueCounts.values(), ...entityCommentValueCounts.values(),
             ...entityAliasValueCounts.values(), ...eventRoleValueCounts.values()
         )).length + 2);
 
@@ -44087,8 +44093,14 @@ a { color: #1565c0; }`;
          *   alternate name, entity name, comment, alias, or event role to
          *   match (embedded verbatim in the compound mode string).
          * @param {number} count  - Number of visible rows matching this value.
+         * @param {string} [glyphClass] - Only meaningful for `kind === 'name'`
+         *   (see `entityNameGlyphMap`) — the entity-type glyph CSS class
+         *   (`releaselink`/`artistlink`/…) to show in front of the entry,
+         *   carried over from the per-href entity-glyph row this "» name:"
+         *   family replaced in the standard section (see `renderItems()`'s
+         *   own "Entity-type marker" block, which this mirrors exactly).
          */
-        const makeValueSynItem = (kind, value, count) => {
+        const makeValueSynItem = (kind, value, count, glyphClass) => {
             const item = document.createElement('div');
             item.setAttribute('role', 'option');
             item.title = value;
@@ -44110,6 +44122,14 @@ a { color: #1565c0; }`;
             badge.style.minWidth        = `${panelBadgeChWidth}ch`;
             badge.style.textAlign       = 'right';
             item.appendChild(badge);
+            if (kind === 'name' && glyphClass) {
+                const marker = document.createElement('span');
+                marker.className = glyphClass;
+                marker.setAttribute('aria-hidden', 'true');
+                marker.style.marginRight = '4px';
+                _guardGlyphAgainstEmptySelectorHiding(marker);
+                item.appendChild(marker);
+            }
             _appendSynLabelText(item,
                 (kind === 'attr'       ? '» attribute: '
                  : kind === 'instrument' ? '» instrument: '
@@ -44254,7 +44274,7 @@ a { color: #1565c0; }`;
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
             _sortedInstrumentValues.forEach(v => makeValueSynItem('instrument', v, instrumentValueCounts.get(v)));
             _sortedAltNameValues.forEach(v => makeValueSynItem('altname', v, altNameValueCounts.get(v)));
-            _sortedNameValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('name', v, entityNameValueCounts.get(v)); });
+            _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v), entityNameGlyphMap.get(v)));
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
@@ -44269,7 +44289,7 @@ a { color: #1565c0; }`;
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
             _sortedInstrumentValues.forEach(v => makeValueSynItem('instrument', v, instrumentValueCounts.get(v)));
             _sortedAltNameValues.forEach(v => makeValueSynItem('altname', v, altNameValueCounts.get(v)));
-            _sortedNameValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('name', v, entityNameValueCounts.get(v)); });
+            _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v), entityNameGlyphMap.get(v)));
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
@@ -44744,7 +44764,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('date:')) return 'A date/date-range annotation attached to one of this cell\'s credits.';
         if (mode.startsWith('instrument:')) return 'The instrument type credited in one of this cell\'s items.';
         if (mode.startsWith('altname:')) return 'MusicBrainz\'s own credited-as alternate instrument/vocal-type name (the trailing "[…]" bracket).';
-        if (mode.startsWith('name:')) return 'An entity\'s own anchored/linked name, excluding any disambiguation comment.';
+        if (mode.startsWith('name:')) return 'An entity\'s own anchored/linked name — matches every row containing this entity, regardless of its disambiguation comment.';
         if (mode.startsWith('comment:')) return 'An entity\'s disambiguation comment text, excluding any primary alias.';
         if (mode.startsWith('alias:')) return 'An entity\'s primary alias — an alternate name shown in its disambiguation comment.';
         if (mode.startsWith('role:')) return 'An artist\'s own credited event role (e.g. "main performer", "guest performer", "host").';
@@ -44840,17 +44860,20 @@ a { color: #1565c0; }`;
         // dataset.mbUniqValues, never re-derived from this display string.
         // A sole checked value may be an item-prefixed entry
         // (MB_UNIQ_ITEM_VALUE_PREFIX, openUniqDrop()'s "▤" entries), an
-        // entity-prefixed entry (MB_UNIQ_ENTITY_HREF_PREFIX, its per-entity-
-        // type-glyph entries, stored as a bare href with no display name at
-        // all), or a structure-mode entry (MB_UNIQ_STRUCTURE_MODE_PREFIX, its
-        // "Cell structure" checkboxes) — all three prefixes are stripped here
-        // so the raw control character never leaks into the input's displayed
-        // value. An entity entry's name isn't available in this closure
-        // (openUniqDrop()'s entityInfo map is local to that call), so it's
-        // re-resolved from the live DOM via the already-available `table`
-        // param — a plain <input> value can't render an actual glyph
-        // background-image anyway, so a text-only marker is used instead of
-        // the real worklink/placelink/etc. span.
+        // entity-prefixed entry (MB_UNIQ_ENTITY_HREF_PREFIX — no longer
+        // offered by openUniqDrop() itself, but a value saved from before
+        // that change can still be loaded, stored as a bare href with no
+        // display name at all), or a structure-mode entry
+        // (MB_UNIQ_STRUCTURE_MODE_PREFIX, its "Cell structure" checkboxes
+        // and the "» name:"/"» comment:"/"» alias:" entity-info family) —
+        // all three prefixes are stripped here so the raw control character
+        // never leaks into the input's displayed value. A legacy entity
+        // entry's name isn't available in this closure (openUniqDrop() no
+        // longer keeps a per-href name map), so it's re-resolved from the
+        // live DOM via the already-available `table` param — a plain
+        // <input> value can't render an actual glyph background-image
+        // anyway, so a text-only marker is used instead of the real
+        // worklink/placelink/etc. span.
         const _entityLabel = href => {
             const a = table.querySelector(`tbody a[href="${href}"]`);
             const bdi = a && ((a.parentElement && a.parentElement.tagName === 'BDI')
