@@ -5204,3 +5204,145 @@ no `<ul>` of its own — i.e. was genuinely empty) produces the correct
 single merged `<li>`.
 
 `node --check ShowAllEntityData.user.js` passed after every edit.
+
+## 2026-08-11 — doubled CAA inline images on user-ratings "Release group ratings" (WIP.81)
+
+**Snapshots**: `cell.html` (a single rendered "Release groups" `<td>` from
+`/user/vzell/ratings`, showing BOTH icons side by side: this script's own
+`<span class="mb-caa-inline-ph">` with an `<img src="blob:...">` fetched
+via IndexedDB, AND the native `<a href=".../cover-art"><span class="caa-icon
+jesus2099userjs154481" style="background-image:url(…)">` left over from the
+page); `user-rating-initial.html` (native page — confirms the "Release
+group ratings" `<ul><li>` already carries that same jesus2099 `<a
+href=".../cover-art">…</a>` icon per release-group entry, plus a separate
+`<div class="jesus2099userjs154481bigbox">` cover-art strip above the whole
+list — both injected by the jesus2099 "mb. SUPER MIND CONTROL" userscript,
+unrelated to this script); `user-rating-final.html` (rendered page,
+confirms both icons coexist in the final `<td>`, matching `cell.html`).
+
+**Root cause**: `entityFeatures['Release groups']` on both the `user-ratings`
+(`/user/<username>/ratings`) and `user-ratings-type`
+(`/user/<username>/ratings/<entity>`, the "View all ratings" overflow page)
+page definitions set `addCAA: 'Release group'` with NO `columnErasers` entry
+— unlike the established pattern elsewhere (e.g. `artist-recordings`'s
+`columnErasers: [{ sourceColumn: 'Release groups', erasers: [...,
+'jesus2099'] }]`, `series-releases`'s `'Release groups'` block) where the
+native jesus2099 cover-art anchor is erased BEFORE `addCAA` adds its own
+inline thumbnail. Without that erasure, both icons survive into the
+rendered cell.
+
+**Fix**: added `columnErasers: [ { sourceColumn: 'Release group', erasers:
+['jesus2099'] } ]` to both page definitions' `'Release groups'` blocks.
+
+**Broader finding, confirmed and fixed too**: the identical gap (a `'Release
+groups'`/`'Releases'` `entityFeatures` block with `addCAA` but no matching
+`'jesus2099'` eraser) also existed on `artist-credit-entity`, `artist-credit`
+(both `'Release groups'`+`'Releases'`, no `columnExtractors` at all — single
+`extractMainColumn`-only blocks), `user-tag-value-entity`, `user-tag-value`,
+`tag-value-entity`, `tag-value` (all four, both `'Release groups'` AND
+`'Releases'`), `collections-releases` (`'Release groups'`/`'Releases'`, the
+`'caa'`-columnExtractor shape, sourceColumns `'Title'`/`'Release'`), `search`
+(`'Release groups'`/`'Releases'`/`'Recordings'`, sourceColumns `'Release
+group'`/`'Name'`/`'Release'`), and `series-releases`'s own `'Releases'`
+block (added `'jesus2099'` to its existing `['▶', '➕']` erasers array — its
+`'Release groups'` block already had the fix). User confirmed via
+AskUserQuestion to fix all of them in this same session; each was verified
+with an exact-match assertion (Python script over the file content, one
+`str.replace(old, new, 1)` per confirmed-unique block) before writing, and
+`node --check` passed after every batch.
+
+`node --check ShowAllEntityData.user.js` passed after every edit.
+
+## 2026-08-11 — WIP.81's eraser fix didn't actually fire on multi-entity pages (WIP.82)
+
+User reported "the error is still present" after WIP.81. No new snapshot —
+traced it directly in the source. Root cause: `/user/<username>/ratings`
+(and `tag-value`/`user-tag-value`/`instrument-list`/`artist-credit`) render
+SEVERAL entity types' tables simultaneously on one page (e.g. "Artist
+ratings", "Event ratings", …, "Release group ratings" all at once). The
+row-collection loop's per-group table-building pass (around
+`ShowAllEntityData.user.js:36985`, the `if (pageType === 'tag-value' ||
+…)` block) rebuilds `activeColumnExtractors` /
+`activeSyntheticColumnExtractors` / `activeInjectedColumnExtractors` /
+`activeIntegerColumns` from each group's OWN `entityFeatures` block (with
+per-table colIdx re-resolution against that group's own thead) — but never
+rebuilt `activeColumnErasers`. So `applyColumnErasers(newRow,
+activeColumnErasers)`, called per row a few lines later, kept using
+whatever single entity type's erasers got resolved ONCE at the very top of
+`startFetchingProcess()` (from `resolveEntityFeaturesFromH2(baseDef)` —
+which can't represent 7 simultaneous entity types at once), for every
+group's rows — so the `columnErasers: [{ sourceColumn: 'Release group',
+erasers: ['jesus2099'] }]` entries added in WIP.81 were silently never
+applied. Confirmed by reading the call site directly:
+`applyColumnErasers(newRow, activeColumnErasers)` at (post-fix) line
+~37071 runs against whatever `activeColumnErasers` currently holds, and
+nothing in the per-group block set it before this fix.
+
+**Fix**: added `activeColumnErasers = buildActiveColumnErasers(_tmpDef);`
+alongside the existing extractor rebuild, plus a per-table colIdx
+re-resolution pass for erasers mirroring the existing extractor one (reset
+every eraser's `colIdx` to `-1`, then match `sourceColumn` against the
+CURRENT table's own `<thead>` cells — a stale eraser from a previous
+group's table simply never matches a differently-named column, so this is
+safe). Also added `'artist-credit'` to the pageType list gating this
+whole block — it has the identical simultaneous-multi-entity-table shape
+(Release groups / Releases / Recordings all at once) but was missing from
+the list entirely, so its WIP.81 erasers were equally dead.
+
+Single-entity-per-page-load pages (`search`, `series-releases`,
+`tag-value-entity`, `user-tag-value-entity`, `artist-credit-entity`,
+`collections-releases`) are unaffected by this bug — they resolve ONE
+entity type once at the top of `startFetchingProcess()` and never need a
+per-group rebuild, so their WIP.81 erasers were already working.
+
+`node --check ShowAllEntityData.user.js` passed after every edit.
+
+## 2026-08-11 — EAA "Poster" dropdown selection filters but doesn't highlight (WIP.83)
+
+**Snapshots**: `EAA-filter-color-not-working.html` (selected "Poster" from
+the EAA column's unique-values dropdown on
+`/series/f4818e95-a515-4821-ad6d-270703f72dcf`) vs.
+`EAA-filter-color-works.html` (typed "Poster" directly into the same
+column filter box). Both show the SAME row correctly filtered
+(`data-mb-uniq-values="[&quot;Poster&quot;]"` / `[1 COLUMN FILTER
+['EAA':"Poster"]]` in one, the plain filter value in the other) and the
+SAME underlying cell (`<ul class="mb-caa-art-ul" data-mb-art-search="Poster">`
+present in both). The only difference: the `<span class="mb-caa-type-badge">`
+pill's own text is bare `Poster` in the "not working" snapshot, but wrapped
+`<span class="mb-column-filter-highlight"><span class="mb-column-filter-highlight">Poster</span></span>`
+in the "works" one.
+
+**Root cause**: `getCleanColumnText()` appends each image's own
+type(s)/comment — stored in `ul.dataset.mbArtSearch` by
+`_artBuildSearchText()`, never as visible text nodes (keeps sort keys
+clean) — to a CAA/EAA cell's "whole cell" text. A cell with exactly one
+image, type "Poster", no comment, therefore has "Poster" as its ENTIRE
+matchable text, so "Poster" legitimately appears as a plain (non-item,
+non-entity-prefixed) value in that column's unique-values dropdown.
+Selecting it produces a value-SET filter
+(`f.isMultiValueFilter === true`) — but BOTH places that apply
+column-filter highlighting explicitly skip ALL value-set filters:
+`testRowMatch()`'s highlight pass (`else if (f.isMultiValueFilter &&
+(f.hasItemValues || f.hasEntityValues || (f.structureModes &&
+f.structureModes.size)))` — a plain-value-only filter satisfies none of
+those, so the whole branch was skipped) and `_artHighlightImageLi()` (the
+CAA/EAA-specific highlighter used when `_artBuildMultiRowArtCell()`
+rebuilds an art cell asynchronously — `if (f.isMultiValueFilter)
+continue;`, unconditional). Typing "Poster" instead produces a plain-text
+filter, which goes through the ordinary `highlightText()` path in
+`testRowMatch()` and works today already (that path was not touched).
+
+**Fix**: new `_highlightUniqArtTypeMatches(cell, f)` — mirrors
+`_highlightUniqItemMatches()`'s "per-sub-element, not whole-cell"
+pattern: for each `li.mb-caa-art-li-image` in the cell's `ul.mb-caa-art-ul`,
+checks whether each `.mb-caa-type-badge > span` (one pill per type,
+e.g. "Front" / "Back") or `.mb-caa-art-comment` span's own text is a
+member of `f.valueSet`, and highlights just that sub-element via the
+existing `highlightCrossTag(…, 'mb-column-filter-highlight')` primitive.
+Wired into `testRowMatch()`'s `isMultiValueFilter` branch (now entered
+unconditionally, `_highlightUniqArtTypeMatches` itself is a no-op on any
+cell without a CAA/EAA `<ul>`) and into `_artHighlightImageLi()` (replacing
+its blanket `if (f.isMultiValueFilter) continue;` with a matching
+per-pill/comment check).
+
+`node --check ShowAllEntityData.user.js` passed after every edit.

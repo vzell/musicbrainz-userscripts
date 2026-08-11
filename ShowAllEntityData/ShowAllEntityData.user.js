@@ -11642,12 +11642,19 @@
             buttons: [ { label: 'Show all Artist-Credit Entities' } ],
             entityFeatures: {
                 'Release groups': {
+                    // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
+                    // CONTROL" userscript's native cover-art icon before addCAA
+                    // below adds its own inline thumbnail, or the cover art shows
+                    // twice (see debug/cell.html, WIP.81).
+                    columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
                     extractMainColumn: 'Release group',
                     stickyColumn: 'Release group'
                 },
                 'Releases': {
+                    // 'jesus2099' eraser — see 'Release groups' above (WIP.81).
+                    columnErasers: [ { sourceColumn: 'Release', erasers: ['jesus2099'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release',
                     extractMainColumn: 'Release',
@@ -11684,12 +11691,19 @@
             buttons: [ { label: 'Show all Artist-Credit Uses' } ],
             entityFeatures: {
                 'Release groups': {
+                    // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
+                    // CONTROL" userscript's native cover-art icon before addCAA
+                    // below adds its own inline thumbnail, or the cover art shows
+                    // twice (see debug/cell.html, WIP.81).
+                    columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
                     extractMainColumn: 'Release group',
                     stickyColumn: 'Release group'
                 },
                 'Releases': {
+                    // 'jesus2099' eraser — see 'Release groups' above (WIP.81).
+                    columnErasers: [ { sourceColumn: 'Release', erasers: ['jesus2099'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release',
                     extractMainColumn: 'Release',
@@ -12007,6 +12021,13 @@
                     columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
                 },
                 'Release groups': {
+                    // 'jesus2099' eraser: the source <li> list carries the jesus2099
+                    // "mb. SUPER MIND CONTROL" userscript's own <a href=".../cover-art">
+                    // <span class="caa-icon jesus2099userjs…"></span></a> cover-art icon
+                    // natively (see debug/cell.html) — without erasing it first, addCAA
+                    // below ALSO injects its own inline thumbnail into the same cell,
+                    // showing the cover art twice.
+                    columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
                     columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
@@ -12078,6 +12099,14 @@
                     columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
                 },
                 'Release groups': {
+                    // 'jesus2099' eraser: /user/<username>/ratings' "Release group
+                    // ratings" <li>s carry the jesus2099 "mb. SUPER MIND CONTROL"
+                    // userscript's own <a href=".../cover-art"><span class="caa-icon
+                    // jesus2099userjs…"></span></a> cover-art icon natively (see
+                    // debug/cell.html) — without erasing it first, addCAA below
+                    // ALSO injects its own inline thumbnail into the same cell,
+                    // showing the cover art twice.
+                    columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
                     columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
@@ -12490,12 +12519,19 @@
                     columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
                 },
                 'Release groups': {
+                    // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
+                    // CONTROL" userscript's native cover-art icon before addCAA
+                    // below adds its own inline thumbnail, or the cover art shows
+                    // twice (see debug/cell.html, WIP.81).
+                    columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
                     columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
                     tooltipColumns: [ 'Name', ['(', 'Comment', ')'], 'Artist' ]
                 },
                 'Releases': {
+                    // 'jesus2099' eraser — see 'Release groups' above (WIP.81).
+                    columnErasers: [ { sourceColumn: 'Release', erasers: ['jesus2099'] } ],
                     columnExtractors: [ { sourceColumn: 'Release', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release',
@@ -12557,12 +12593,19 @@
                     columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
                 },
                 'Release groups': {
+                    // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
+                    // CONTROL" userscript's native cover-art icon before addCAA
+                    // below adds its own inline thumbnail, or the cover art shows
+                    // twice (see debug/cell.html, WIP.81).
+                    columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
                     columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
                     tooltipColumns: [ 'Name', ['(', 'Comment' , ')'], 'Artist' ]
                 },
                 'Releases': {
+                    // 'jesus2099' eraser — see 'Release groups' above (WIP.81).
+                    columnErasers: [ { sourceColumn: 'Release', erasers: ['jesus2099'] } ],
                     columnExtractors: [ { sourceColumn: 'Release', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release',
@@ -12622,6 +12665,11 @@
                     integerColumns: [ {sourceColumn: 'Tag count', align: 'R'} ]
                 },
                 'Release groups': {
+                    // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
+                    // CONTROL" userscript's native cover-art icon before addCAA
+                    // below adds its own inline thumbnail, or the cover art shows
+                    // twice (see debug/cell.html, WIP.81).
+                    columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
                     columnExtractors: [ { sourceColumn: 'Release group', extractor: 'tagCount_Name_Comment_Artists', syntheticColumns: ['Name', 'Tag count', 'Comment', 'Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     integerColumns: [ {sourceColumn: 'Tag count', align: 'R'} ],
@@ -12629,6 +12677,8 @@
                     tooltipColumns: [ 'Name', 'Artist', '---', ['Tag count'] ]
                 },
                 'Releases': {
+                    // 'jesus2099' eraser — see 'Release groups' above (WIP.81).
+                    columnErasers: [ { sourceColumn: 'Release', erasers: ['jesus2099'] } ],
                     columnExtractors: [ { sourceColumn: 'Release', extractor: 'tagCount_Name_Comment_Artists', syntheticColumns: ['Name', 'Tag count', 'Comment', 'Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     integerColumns: [ {sourceColumn: 'Tag count', align: 'R'} ],
@@ -12686,12 +12736,19 @@
                     columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
                 },
                 'Release groups': {
+                    // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
+                    // CONTROL" userscript's native cover-art icon before addCAA
+                    // below adds its own inline thumbnail, or the cover art shows
+                    // twice (see debug/cell.html, WIP.81).
+                    columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
                     columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
                     tooltipColumns: [ 'Name', 'Artist' ]
                 },
                 'Releases': {
+                    // 'jesus2099' eraser — see 'Release groups' above (WIP.81).
+                    columnErasers: [ { sourceColumn: 'Release', erasers: ['jesus2099'] } ],
                     columnExtractors: [ { sourceColumn: 'Release', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release',
@@ -12840,6 +12897,8 @@
                     stickyColumn: 'Name'
                 },
                 'Releases': {
+                    // 'jesus2099' eraser — see WIP.81 (doubled CAA inline images).
+                    columnErasers: [ { sourceColumn: 'Release', erasers: ['jesus2099'] } ],
                     columnExtractors: [
                         { sourceColumn: 'Release',      extractor: 'caa',                syntheticColumns: ['CAA'] },
                         { sourceColumn: 'Country/Date', extractor: 'splitCountryDate',   syntheticColumns: ['Country', 'Date'] },
@@ -12859,6 +12918,8 @@
                     stickyColumn: 'Release'
                 },
                 'Release groups': {
+                    // 'jesus2099' eraser — see WIP.81 (doubled CAA inline images).
+                    columnErasers: [ { sourceColumn: 'Title', erasers: ['jesus2099'] } ],
                     columnExtractors: [
                         { sourceColumn: 'Title', extractor: 'caa', syntheticColumns: ['CAA'] }
                     ],
@@ -13031,6 +13092,8 @@
             // _urlTypeToEntityFeatureKey() from the raw URL type value.
             entityFeatures: {
                 'Releases': {
+                    // 'jesus2099' eraser — see WIP.81 (doubled CAA inline images).
+                    columnErasers: [ { sourceColumn: 'Name', erasers: ['jesus2099'] } ],
                     columnExtractors: [
                         { sourceColumn: 'Name',         extractor: 'caa',                syntheticColumns: ['CAA'] },
                         { sourceColumn: 'Country/Date', extractor: 'splitCountryDate',   syntheticColumns: ['Country', 'Date'] },
@@ -13073,6 +13136,8 @@
                     stickyColumn: 'Name'
                 },
                 'Release groups': {
+                    // 'jesus2099' eraser — see WIP.81 (doubled CAA inline images).
+                    columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
                     columnExtractors: [
                         { sourceColumn: 'Release group', extractor: 'caa', syntheticColumns: ['CAA'] }
                     ],
@@ -13084,6 +13149,8 @@
                     stickyColumn: 'Release group'
                 },
                 'Recordings': {
+                    // 'jesus2099' eraser — see WIP.81 (doubled CAA inline images).
+                    columnErasers: [ { sourceColumn: 'Release', erasers: ['jesus2099'] } ],
                     columnExtractors: [
                         { sourceColumn: 'Name', extractor: 'video', syntheticColumns: ['Video'] }
                     ],
@@ -13643,7 +13710,7 @@
             entityFeatures: {
                 'Releases': {
                     columnErasers: [
-                        { sourceColumn: 'Release', erasers: ['▶', '➕'] }
+                        { sourceColumn: 'Release', erasers: ['▶', '➕', 'jesus2099'] }
                     ],
                     columnExtractors: [
                         { sourceColumn: 'Country/Date', extractor: 'splitCountryDate', syntheticColumns: ['Country', 'Date'] },
@@ -33529,6 +33596,51 @@ a { color: #1565c0; }`;
         });
     }
 
+    /**
+     * Highlights CAA/EAA per-image type-badge pill(s)/comment for a plain
+     * whole-cell value checked in the unique-values dropdown that happens to
+     * equal one image's own type string or comment (e.g. "Poster", "Front").
+     *
+     * `getCleanColumnText()` folds each image's own type(s)/comment — stored
+     * out-of-band in `ul.dataset.mbArtSearch` by `_artBuildSearchText()`,
+     * never as visible text nodes — into the CAA/EAA cell's "whole cell"
+     * text for matching purposes (see that function's own JSDoc). So a
+     * plain (non-item/entity-prefixed) dropdown value like "Poster" can
+     * exact-match a cell whose only visible content IS that art-search
+     * text — e.g. a cell with exactly one image, type "Poster", no comment.
+     *
+     * A plain whole-cell match is deliberately left un-highlighted
+     * elsewhere (see `testRowMatch()`'s `isMultiValueFilter` branch) since
+     * it normally has no single corresponding sub-element to highlight —
+     * but here the "whole cell" text genuinely IS one or more images' own
+     * visible `.mb-caa-type-badge` pill(s)/`.mb-caa-art-comment` span(s),
+     * so highlighting those specifically is both possible and correct.
+     *
+     * Mirrors `_highlightUniqItemMatches()`'s pattern exactly, scoped to
+     * each image `<li>`'s own type-pill/comment sub-elements instead of a
+     * whole `<li>`. Also used by `_artHighlightImageLi()` so build-time and
+     * post-build (filter-change) highlighting agree.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @param {{valueSet: Set<string>, isCaseSensitive: boolean}} f - The
+     *   `isMultiValueFilter` filter descriptor from `getColFilters()`.
+     */
+    function _highlightUniqArtTypeMatches(cell, f) {
+        if (!cell) return;
+        const artUl = cell.querySelector(':scope > ul.mb-caa-art-ul');
+        if (!artUl) return;
+        artUl.querySelectorAll(':scope > li.mb-caa-art-li-image').forEach(li => {
+            li.querySelectorAll('.mb-caa-type-badge > span, .mb-caa-art-comment').forEach(span => {
+                const t = getCleanColumnText(span);
+                if (!t) return;
+                const probe = f.isCaseSensitive ? t : t.toLowerCase();
+                if (!f.valueSet.has(probe)) return;
+                span.normalize();
+                highlightCrossTag(span, _buildFuzzyTextMatchRegex(t), 'mb-column-filter-highlight');
+            });
+        });
+    }
+
     /** Returns (creating if absent) the sparse cache entry for a source row. */
     function _getOrCreateRowCache(row) {
         let c = _rowTextCache.get(row);
@@ -33783,10 +33895,13 @@ a { color: #1565c0; }`;
             // Highlighting on excluded matches would be misleading, so skip it
             if (globalQuery && !isExclude) highlightText(row, globalQueryRaw, isCaseSensitive, -1, isRegExp);
             // Value-set filters carry no matchable text for a whole-cell match —
-            // that gets no highlight — EXCEPT the item/entity fallbacks and the
-            // 'attr:'/'task:' structure-mode compound entries, which DO correspond
-            // to one exact string somewhere in the cell (see
-            // _highlightCreditValueMatch's own JSDoc).
+            // that gets no highlight — EXCEPT the item/entity fallbacks, the
+            // 'attr:'/'task:' structure-mode compound entries (which DO correspond
+            // to one exact string somewhere in the cell — see
+            // _highlightCreditValueMatch's own JSDoc), and a CAA/EAA art cell's
+            // own type/comment text (see _highlightUniqArtTypeMatches's own
+            // JSDoc — unlike a normal whole-cell value, it DOES correspond to a
+            // specific visible sub-element).
             // Use per-filter case/regexp flags so highlight patterns match what was actually tested.
             colFilters.forEach(f => {
                 if (!f.isMultiValueFilter) {
@@ -33796,8 +33911,7 @@ a { color: #1565c0; }`;
                     if (!_fIsExclude) {
                         highlightText(row, f.val, _fIsCase, f.idx, _fIsRegExp);
                     }
-                } else if (f.isMultiValueFilter &&
-                           (f.hasItemValues || f.hasEntityValues || (f.structureModes && f.structureModes.size))) {
+                } else if (f.isMultiValueFilter) {
                     // Item-value entries (openUniqDrop()'s "▤" per-<li> checkboxes)
                     // and entity-reference entries (its per-entity-type-glyph
                     // checkboxes) DO correspond to one exact <li> / one exact
@@ -33813,11 +33927,15 @@ a { color: #1565c0; }`;
                     // highlighted; the other structure modes (empty/single/
                     // collapsed/expanded/any/title-mismatch/inline-art-yes/no)
                     // operate on pure DOM state with no single corresponding
-                    // element, so they get no highlight.
+                    // element, so they get no highlight. _highlightUniqArtTypeMatches
+                    // is unconditional (not gated on hasItemValues/hasEntityValues/
+                    // structureModes like the calls below) since it's a safe no-op
+                    // on any cell without a CAA/EAA art `<ul>`.
                     const _fIsExclude = f.isExclude !== undefined ? f.isExclude : isExclude;
                     if (!_fIsExclude) {
                         if (f.hasItemValues)   _highlightUniqItemMatches(row.cells[f.idx], f);
                         if (f.hasEntityValues) _highlightUniqEntityMatches(row.cells[f.idx], f);
+                        _highlightUniqArtTypeMatches(row.cells[f.idx], f);
                         if (f.structureModes) {
                             f.structureModes.forEach(mode => {
                                 if (mode.startsWith('attr:') || mode.startsWith('task:') ||
@@ -36915,7 +37033,7 @@ a { color: #1565c0; }`;
                         // activeColumnExtractors must be re-resolved against the CURRENT
                         // table's headers — otherwise previous tables' resolved colIdx
                         // values linger and cause multiple extractors to fire on every row.
-                        if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list') {
+                        if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list' || pageType === 'artist-credit') {
                             // If this group has entity-specific features (from entityFeatures map),
                             // rebuild the active extractors and integer columns from that feature set,
                             // merged with the base features (listToTable, removeSelector, etc.).
@@ -36930,6 +37048,17 @@ a { color: #1565c0; }`;
                                 activeSyntheticColumnExtractors = buildActiveSyntheticColumnExtractors(_tmpDef);
                                 activeInjectedColumnExtractors = buildActiveInjectedColumnExtractors(_tmpDef);
                                 activeIntegerColumns = buildActiveIntegerColumns(_tmpDef);
+                                // Rebuilt alongside the extractor lists above so a group's own
+                                // entityFeatures.columnErasers (e.g. the 'jesus2099' cover-art-icon
+                                // eraser some 'Release group'/'Release' groups declare) actually
+                                // takes effect — without this, applyColumnErasers() below keeps
+                                // using whatever activeColumnErasers was resolved ONCE at the top
+                                // of startFetchingProcess() (from the page-level H2, not this row's
+                                // own group), silently never erasing anything for groups whose
+                                // eraser only lives inside their own entityFeatures block (see
+                                // debug/cell.html, WIP.81 — the doubled CAA inline image bug this
+                                // fixes for real).
+                                activeColumnErasers = buildActiveColumnErasers(_tmpDef);
                             }
 
                             // Reset all extractors for this table.
@@ -36941,6 +37070,21 @@ a { color: #1565c0; }`;
                                     .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim()
                                     .replace(/\s+/g, ' ');
                                 activeColumnExtractors.forEach(entry => {
+                                    if (_txt === entry.sourceColumn) entry.colIdx = idx;
+                                });
+                            });
+
+                            // ── Per-table eraser colIdx re-resolution ──────────────────
+                            // Mirrors the extractor resolution immediately above — erasers
+                            // also carry a colIdx that must be re-resolved against THIS
+                            // table's own headers, not left over from a previous group's
+                            // table (or unresolved from the initial page-level build).
+                            activeColumnErasers.forEach(e => { e.colIdx = -1; });
+                            _ths.forEach((th, idx) => {
+                                const _txt = (th.dataset.colName || th.textContent)
+                                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim()
+                                    .replace(/\s+/g, ' ');
+                                activeColumnErasers.forEach(entry => {
                                     if (_txt === entry.sourceColumn) entry.colIdx = idx;
                                 });
                             });
@@ -55600,8 +55744,26 @@ a { color: #1565c0; }`;
 
         // Column-scoped filters — only apply when the filter targets this art column.
         for (const f of ctx.colFilters) {
-            if (f.isMultiValueFilter) continue;  // state/value-set filters carry no highlight text
-            if (f.idx !== colIdx)   continue;  // different column — skip
+            if (f.idx !== colIdx) continue;  // different column — skip
+            if (f.isMultiValueFilter) {
+                // Most value-set (dropdown-checkbox) filters carry no matchable
+                // text for a whole-cell match. But a plain checked value can
+                // equal one image's own type/comment text — see
+                // _highlightUniqArtTypeMatches()'s own JSDoc for why that's
+                // correct here — so re-check this single li against it, mirroring
+                // testRowMatch()'s isMultiValueFilter branch so build-time/
+                // async-rebuild highlighting (this function) and post-build
+                // filter-change highlighting agree.
+                li.querySelectorAll('.mb-caa-type-badge > span, .mb-caa-art-comment').forEach(span => {
+                    const t = getCleanColumnText(span);
+                    if (!t) return;
+                    const probe = f.isCaseSensitive ? t : t.toLowerCase();
+                    if (!f.valueSet.has(probe)) return;
+                    span.normalize();
+                    highlightCrossTag(span, _buildFuzzyTextMatchRegex(t), 'mb-column-filter-highlight');
+                });
+                continue;
+            }
             // Use per-filter flags (embedded by getColFilters from the per-subtable
             // checkboxes) with a fallback to the context-level flags for compatibility.
             const _fIsRegExp = f.isRegExp        !== undefined ? f.isRegExp        : ctx.isRegExp;

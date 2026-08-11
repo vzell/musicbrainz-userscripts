@@ -1,5 +1,41 @@
 [
   {
+    "version": "WIP.83",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Selecting a CAA/EAA image type or comment value (e.g. \"Poster\") from a column's unique-values dropdown correctly filtered the row but never highlighted the matching `.mb-caa-type-badge`/`.mb-caa-art-comment` text — only typing the same value directly into the column filter box did. `getCleanColumnText()` folds each image's own type(s)/comment (stored out-of-band in `ul.dataset.mbArtSearch`, not as visible text) into the CAA/EAA cell's whole-cell value, so a plain dropdown selection like \"Poster\" can exact-match a cell whose only content IS that art-search text — but both places that apply column-filter highlighting (`testRowMatch()`'s `isMultiValueFilter` branch and the CAA/EAA-specific `_artHighlightImageLi()`, used for async art-cell rebuilds) explicitly skipped ALL value-set/dropdown filters, since a normal whole-cell value match has no single sub-element worth highlighting. Added `_highlightUniqArtTypeMatches()` (mirroring the existing `_highlightUniqItemMatches()`/`_highlightUniqEntityMatches()` per-`<li>` pattern, scoped to each image's own type-pill/comment span) and wired it into both call sites."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.82",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The WIP.81 `columnErasers` fix for doubled CAA inline images didn't actually take effect on `/user/<username>/ratings` (or `tag-value`/`user-tag-value`/`instrument-list`/`artist-credit`) — those pages show several entity types' tables at once (e.g. Artist ratings, Event ratings, Release group ratings, … all on one page), and the per-group table-building pass only rebuilt `activeColumnExtractors`/`activeSyntheticColumnExtractors`/`activeInjectedColumnExtractors`/`activeIntegerColumns` from each group's own `entityFeatures` block — never `activeColumnErasers`. So `applyColumnErasers()` kept using whichever single entity type's erasers (if any) got resolved once at the top of the page, for every group's rows, silently never applying a group's own `columnErasers` entry (including the ones just added). Added the missing `activeColumnErasers` rebuild + per-table colIdx re-resolution alongside the existing extractor rebuild, and added `'artist-credit'` to the pageType list that gets it (it has the same simultaneous-multi-entity-table shape but wasn't in that list at all)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.81",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The \"Release group ratings\" section on `/user/<username>/ratings` (and the matching `/user/<username>/ratings/release_group` \"View all ratings\" overflow page) showed each release group's cover art TWICE — the jesus2099 \"mb. SUPER MIND CONTROL\" userscript's own native `<a href=\".../cover-art\"><span class=\"caa-icon\">` icon, plus this script's own `addCAA` inline thumbnail layered on top of it, since nothing erased the native icon first (unlike other pages using `addCAA` alongside a `columnErasers: […, 'jesus2099']` entry for the same column). Added the missing `columnErasers` entry to both page definitions' 'Release groups' entity features, then audited every other `entityFeatures` block combining `addCAA` with a Release/Release-group-shaped source column and found the identical gap copy-pasted across `artist-credit-entity`, `artist-credit`, `user-tag-value-entity`, `user-tag-value`, `tag-value-entity`, `tag-value`, `collections-releases`, `search` (its 'Releases'/'Release groups'/'Recordings' blocks), and `series-releases`'s own 'Releases' block — fixed all of them the same way."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.80",
     "date": "2026-08-11",
     "sections": [
