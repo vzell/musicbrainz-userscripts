@@ -52217,6 +52217,21 @@ a { color: #1565c0; }`;
 
             const rowLabel = loadedRowCount === 1 ? 'row' : 'rows';
             Lib.debug('cache', `Successfully loaded ${loadedRowCount} ${rowLabel} from disk!`);
+
+            // ── Seed the leading globalStatusDisplay segment ───────────────────
+            // Mirrors the fetch-completion handler (which appends "Loaded N pages
+            // (M rows)" before any _sdAppend() calls). Without this, globalStatusDisplay
+            // stays empty on a disk-load, so the first later _sdAppend() (e.g. the CAA/EAA
+            // or Rels completion segment) writes its default leading ", " separator with
+            // nothing in front of it — a stray leading comma.
+            globalStatusDisplay.innerHTML = '';
+            _caaGlobalStatusDone = false;  // allow the first CAA completion to append its segment
+            _relGlobalStatusDone = false;  // allow the first Rels completion to append its segment
+            const _sdLoadedFromDisk = document.createElement('span');
+            _sdLoadedFromDisk.textContent = `Loaded ${loadedRowCount} ${rowLabel} from ${file ? `disk file ${file.name}` : sourceLabel}`;
+            _sdLoadedFromDisk.title = 'Rows loaded from a saved snapshot file.';
+            globalStatusDisplay.appendChild(_sdLoadedFromDisk);
+
             _setInfoSub('mb-info-display-generic',
                 `✓ Loaded ${loadedRowCount} ${rowLabel} from ${file ? `file ${file.name}` : sourceLabel} | Active Pre-Filter: ${!!filterQueryRaw}`,
                 filterQueryRaw

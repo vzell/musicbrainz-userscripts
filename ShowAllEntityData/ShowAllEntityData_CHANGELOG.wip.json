@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.88",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Status line (`#mb-status-displays-container`): a Load-from-Disk (or cross-tab \"Show single-table\") load never seeded the leading `globalStatusDisplay` segment the way a fetch-from-web load does (`Loaded N pages (M rows)`), so the first later CAA/EAA or Rels completion's own leading `, ` separator had nothing in front of it — a stray leading comma before e.g. `🎨CAA: 8.2s`. Added the equivalent leading segment (`Loaded N rows from disk file X.gz` / `Loaded N rows from <sourceLabel>`) in `_hydrateAndRenderFromSnapshotData`, resetting the same `_caaGlobalStatusDone`/`_relGlobalStatusDone` flags the fetch path resets so later segments still append correctly."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.87",
     "date": "2026-08-11",
     "sections": [
