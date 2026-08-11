@@ -1,5 +1,31 @@
 [
   {
+    "version": "WIP.78",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The unique-values dropdown's visible height (how many entries show before it scrolls) is now configurable via the new \"Unique-Values Dropdown Visible Rows\" setting (default 8, matching the dropdown's previous fixed height) instead of a hardcoded 320px — raise it to see more entries at once. Applied as an inline `max-height` in `openUniqDrop()` (always wins over the unchanged 320px CSS fallback on `#mb-col-uniq-dropdown`), and the same value now drives the upward-flip positioning estimate too, so the flip decision stays accurate at any configured row count."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.77",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The unique-values dropdown's synthetic entries no longer sit under one flat, always-expanded \"Cell structure\" header — they're now grouped into named, independently collapsible sections with their own icon: 🔠 Structure (empty/single/multi-row cell state, artwork/inline-thumbnail presence), 🚩 Flags (track/recording name mismatch, name variation), 🎚️ Credit details (attribute/task/date/instrument/credited-as), 👤 Entity info (name/comment/alias), 🎭 Roles (event role), and 🔗 Relationship icons. Click a section header (or Enter/Space) to collapse/expand it; state is remembered globally by section name across every column and page (GM storage key `mb_sa_uniq_section_collapse`). New `getOrCreateSynSection()`/`SYN_SECTION_META` in `openUniqDrop()` replace the old single `synHdr`/`appendSynDivider()` scattered per family.",
+          "The dropdown's quickfilter now covers the \"Relationship icons\" section too — a pre-existing gap where those entries had no `dataset.mbUniqSynLabel` and were silently skipped by `_applySynBoxQuickFilter()`. Typing a filter also auto-expands any collapsed section that has a match (showing a `(N)` match count in its header) and hides sections with zero matches, so a collapsed section can no longer hide a live search result; clearing the filter restores every section's persisted collapsed/expanded state.",
+          "The \"Entity info\" section's \"» name:\"/\"» alias:\" entries (one per distinct bare entity name/primary alias found in cells with a disambiguation comment) no longer duplicate a name/alias that's already independently selectable elsewhere in the same dropdown — as a plain whole-cell value or as an entity-glyph href row. On a page with many disambiguated same-named entities (e.g. an instrument's \"Artists\" list) this noticeably shrinks the section instead of showing the same name three different ways."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.76",
     "date": "2026-08-11",
     "sections": [

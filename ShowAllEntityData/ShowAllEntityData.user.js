@@ -753,6 +753,18 @@
                          "Place/Country-Date columns, and release-tracks' own \"Recorded at place\" column."
         },
 
+        sa_uniq_dropdown_visible_rows: {
+            label: "Unique-Values Dropdown Visible Rows",
+            type: "number",
+            default: 8,
+            min: 3,
+            max: 50,
+            description: "Number of entries shown in the 📊 unique-values filter dropdown before it " +
+                         "scrolls (applies to the combined quickfilter bar + synthetic sections + " +
+                         "regular value list). The default (8) matches this dropdown's original, " +
+                         "non-configurable height; raise it to see more entries at once without scrolling."
+        },
+
         // ============================================================
         // THRESHOLD SECTION
         // ============================================================
@@ -27770,7 +27782,9 @@ a { color: #1565c0; }`;
             border: 1px solid #aaa;
             border-radius: 5px;
             box-shadow: 0 5px 18px rgba(0,0,0,0.22);
-            max-height: 320px;
+            max-height: 320px; /* fallback only — openUniqDrop() always sets an
+                                   inline max-height from sa_uniq_dropdown_visible_rows,
+                                   which wins over this default */
             min-width: 140px;
             max-width: 440px;
             overflow-y: auto;
@@ -27883,6 +27897,66 @@ a { color: #1565c0; }`;
             color: inherit;
             font-weight: bold;
             padding: 0;
+        }
+        /* ---- Collapsible synthetic sections inside synBox (Structure,
+           Flags, Credit details, Entity info, Roles, Relationship icons) ---- */
+        .mb-uniq-section + .mb-uniq-section {
+            border-top: 1px solid #d0d0d0;
+            margin-top: 4px;
+        }
+        .mb-uniq-section-hdr {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.75em;
+            font-weight: 600;
+            color: #555;
+            padding: 4px 8px 2px 8px;
+            letter-spacing: 0.03em;
+            user-select: none;
+            cursor: pointer;
+        }
+        .mb-uniq-section-hdr:hover {
+            color: #222;
+        }
+        .mb-uniq-section-hdr:focus-visible {
+            outline: 2px solid #4a90e2;
+            outline-offset: -2px;
+            border-radius: 3px;
+        }
+        .mb-uniq-section-toggle {
+            display: inline-block;
+            width: 0.9em;
+            flex-shrink: 0;
+        }
+        .mb-uniq-section-glyph {
+            flex-shrink: 0;
+        }
+        .mb-uniq-section-label {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .mb-uniq-section-match-count {
+            flex-shrink: 0;
+            font-weight: normal;
+            opacity: 0.75;
+        }
+        .mb-uniq-section-items.mb-uniq-section-collapsed {
+            display: none;
+        }
+        /* Relationship-icon rows (badge + favicon + label, flex-aligned) —
+           a CSS class rather than inline style.display/style.alignItems so
+           _applySynBoxQuickFilter()'s item.style.display = '' restore (on a
+           quickfilter match) doesn't clobber the flex layout: an inline
+           display value would out-rank this class and never come back once
+           removed, whereas resetting to '' just falls through to this rule
+           again. */
+        .mb-uniq-rel-item {
+            display: flex;
+            align-items: center;
         }
 
         /* ============================================================
@@ -32795,6 +32869,56 @@ a { color: #1565c0; }`;
      * against `.mb-credit-attr`/`.mb-credit-task` text.
      */
     const MB_UNIQ_STRUCTURE_MODE_PREFIX = String.fromCharCode(3);
+
+    /**
+     * GM storage key for the unique-values dropdown's collapsible synthetic
+     * sections (see `SYN_SECTION_META`/`getOrCreateSynSection()` in
+     * `openUniqDrop()`). Value shape: `{ [sectionKey]: boolean }`, `true`
+     * meaning collapsed — a missing key means expanded (the pre-existing,
+     * always-expanded behavior), so a first-time user sees no change.
+     * Collapse state is remembered GLOBALLY by section key, shared across
+     * every column/page, not scoped per-column.
+     */
+    const MB_UNIQ_SECTION_COLLAPSE_KEY = 'mb_sa_uniq_section_collapse';
+
+    /**
+     * Display metadata for each collapsible synthetic-entry section inside
+     * the unique-values dropdown's `synBox` — replaces the single flat
+     * "Cell structure" header that used to lump every family together (see
+     * `getOrCreateSynSection()`). Sections appear in `synBox` in the order
+     * they're first requested, which — given the fixed call sequence in
+     * `openUniqDrop()` — always comes out in this table's own order.
+     */
+    const SYN_SECTION_META = {
+        structure:     { label: 'Structure',         glyph: '🔠' },
+        flags:         { label: 'Flags',              glyph: '🚩' },
+        credit:        { label: 'Credit details',     glyph: '🎚️' },
+        entity:        { label: 'Entity info',        glyph: '👤' },
+        roles:         { label: 'Roles',              glyph: '🎭' },
+        relationships: { label: 'Relationship icons', glyph: '🔗' },
+    };
+
+    /**
+     * Maps a `makeSynItem()` mode string to the `SYN_SECTION_META` key its
+     * entry belongs in.
+     */
+    const MB_UNIQ_MODE_TO_SECTION = {
+        empty: 'structure', single: 'structure', collapsed: 'structure',
+        expanded: 'structure', any: 'structure',
+        'inline-art-yes': 'structure', 'inline-art-no': 'structure',
+        'title-mismatch': 'flags', 'name-variation': 'flags',
+    };
+
+    /**
+     * Maps a `makeValueSynItem()` kind string to the `SYN_SECTION_META` key
+     * its entry belongs in.
+     */
+    const MB_UNIQ_KIND_TO_SECTION = {
+        attr: 'credit', task: 'credit', date: 'credit',
+        instrument: 'credit', altname: 'credit',
+        name: 'entity', comment: 'entity', alias: 'entity',
+        role: 'roles',
+    };
 
     /**
      * Maps a MusicBrainz entity type (the first path segment of its href,
@@ -42662,6 +42786,16 @@ a { color: #1565c0; }`;
                 ({ value: info.name, isItem: false, isEntity: true, href, glyphClass: info.glyphClass })))
             .sort((a, b) => a.value.toLowerCase().localeCompare(b.value.toLowerCase()));
 
+        // Bare name/alias strings already independently selectable elsewhere
+        // in this same panel — as a plain whole-cell value (valueCounts) or
+        // as an entity-glyph href row (entityEntries, kept in combinedVals
+        // above) — so a "» name:"/"» alias:" synBox entry for the identical
+        // text would just be a redundant-looking third way to select it.
+        // Consulted only by the 'name'/'alias' families below; 'comment' is
+        // never independently selectable any other way, so it's exempt.
+        const _alreadyOfferedBareNames = new Set(valueCounts.keys());
+        entityEntries.forEach(([, info]) => _alreadyOfferedBareNames.add(info.name));
+
         // Pre-compute the width of the widest count so all badges in this column
         // are identically sized and the numbers right-align (e.g. "   (12)" vs
         // "(21345)").  maxDigits is the character count of the largest count value;
@@ -43492,6 +43626,109 @@ a { color: #1565c0; }`;
         // Insert synBox right before listBox so it renders above regular values
         drop.insertBefore(synBox, listBox);
 
+        // ---- Collapsible synBox sections (Structure/Flags/Credit details/
+        // Entity info/Roles/Relationship icons) ------------------------------
+        // Collapse state is read once here and persisted GLOBALLY by section
+        // key (shared across every column) — see MB_UNIQ_SECTION_COLLAPSE_KEY's
+        // own JSDoc. `_synSections` itself is per-open, local state: `drop`'s
+        // DOM is fully rebuilt (`drop.innerHTML = ''`, above) on every open.
+        const _uniqSectionCollapseState = GM_getValue(MB_UNIQ_SECTION_COLLAPSE_KEY, {});
+        /**
+         * Records one section's collapsed/expanded state into
+         * `_uniqSectionCollapseState` and persists the whole object via
+         * `GM_setValue` — shared globally across every column/page.
+         *
+         * @param {string} key - a `SYN_SECTION_META` key
+         * @param {boolean} collapsed
+         */
+        const _setUniqSectionCollapsed = (key, collapsed) => {
+            _uniqSectionCollapseState[key] = collapsed;
+            GM_setValue(MB_UNIQ_SECTION_COLLAPSE_KEY, _uniqSectionCollapseState);
+        };
+        /** @type {Map<string, {wrapper: HTMLElement, header: HTMLElement, itemsBox: HTMLElement, toggleGlyph: HTMLElement, matchCountSpan: HTMLElement, key: string}>} */
+        const _synSections = new Map();
+
+        /**
+         * Lazily creates (on first use) or returns the existing collapsible
+         * sub-section for one synthetic-entry family, keyed by a
+         * `SYN_SECTION_META` key. Sections render inside `synBox`, in the
+         * order they're first requested — see `SYN_SECTION_META`'s own
+         * JSDoc for why that always comes out in a fixed, sensible order in
+         * practice.
+         *
+         * Clicking (or Enter/Space on) the header toggles the section's
+         * `itemsBox` via the `.mb-uniq-section-collapsed` CSS class, flips
+         * the ▶/▼ toggle glyph, and persists the new state globally via
+         * `_setUniqSectionCollapsed()`. `_applySynBoxQuickFilter()` also
+         * drives these same elements directly (via the returned section
+         * object) to force-expand/show a match count while quickfiltering.
+         *
+         * @param {string} key - a `SYN_SECTION_META` key
+         * @returns {{wrapper: HTMLElement, header: HTMLElement, itemsBox: HTMLElement, toggleGlyph: HTMLElement, matchCountSpan: HTMLElement, key: string}}
+         */
+        const getOrCreateSynSection = (key) => {
+            const existing = _synSections.get(key);
+            if (existing) return existing;
+
+            const meta = SYN_SECTION_META[key];
+            const wrapper = document.createElement('div');
+            wrapper.className = 'mb-uniq-section';
+
+            const header = document.createElement('div');
+            header.className = 'mb-uniq-section-hdr';
+            header.setAttribute('role', 'button');
+            header.setAttribute('tabindex', '0');
+
+            const collapsed = _uniqSectionCollapseState[key] === true;
+
+            const toggleGlyph = document.createElement('span');
+            toggleGlyph.className = 'mb-uniq-section-toggle';
+            toggleGlyph.setAttribute('aria-hidden', 'true');
+            toggleGlyph.textContent = collapsed ? '▶' : '▼';
+            header.appendChild(toggleGlyph);
+
+            const iconGlyph = document.createElement('span');
+            iconGlyph.className = 'mb-uniq-section-glyph';
+            iconGlyph.setAttribute('aria-hidden', 'true');
+            iconGlyph.textContent = meta.glyph;
+            header.appendChild(iconGlyph);
+
+            const labelSpan = document.createElement('span');
+            labelSpan.className = 'mb-uniq-section-label';
+            labelSpan.textContent = meta.label;
+            header.appendChild(labelSpan);
+
+            const matchCountSpan = document.createElement('span');
+            matchCountSpan.className = 'mb-uniq-section-match-count';
+            matchCountSpan.style.display = 'none';
+            header.appendChild(matchCountSpan);
+
+            const itemsBox = document.createElement('div');
+            itemsBox.className = 'mb-uniq-section-items';
+            itemsBox.setAttribute('role', 'group');
+            if (collapsed) itemsBox.classList.add('mb-uniq-section-collapsed');
+
+            const toggleSection = () => {
+                const nowCollapsed = !itemsBox.classList.contains('mb-uniq-section-collapsed');
+                itemsBox.classList.toggle('mb-uniq-section-collapsed', nowCollapsed);
+                toggleGlyph.textContent = nowCollapsed ? '▶' : '▼';
+                _setUniqSectionCollapsed(key, nowCollapsed);
+            };
+            header.addEventListener('mousedown', ev => ev.preventDefault());
+            header.addEventListener('click', toggleSection);
+            header.addEventListener('keydown', ev => {
+                if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggleSection(); }
+            });
+
+            wrapper.appendChild(header);
+            wrapper.appendChild(itemsBox);
+            synBox.appendChild(wrapper);
+
+            const section = { wrapper, header, itemsBox, toggleGlyph, matchCountSpan, key };
+            _synSections.set(key, section);
+            return section;
+        };
+
         /**
          * Appends a ☑/☐ checkbox glyph to a "Cell structure" entry and wires
          * up its click handler to toggle `checkedValues` for the given
@@ -43604,7 +43841,7 @@ a { color: #1565c0; }`;
             _appendSynLabelText(item, label);
 
             _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + mode);
-            synBox.appendChild(item);
+            getOrCreateSynSection(MB_UNIQ_MODE_TO_SECTION[mode] || 'structure').itemsBox.appendChild(item);
         };
 
         /**
@@ -43668,16 +43905,18 @@ a { color: #1565c0; }`;
             );
 
             _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + `${kind}:${value}`);
-            synBox.appendChild(item);
+            getOrCreateSynSection(MB_UNIQ_KIND_TO_SECTION[kind] || 'credit').itemsBox.appendChild(item);
         };
 
         /**
-         * Appends a thin horizontal rule between the synthetic section and the
-         * regular value list.  Only called when combinedVals.length > 0 so the
-         * divider is never rendered as the last element in an otherwise empty panel.
+         * Appends a thin horizontal rule between the synthetic sections and
+         * the regular value list below. Only called once, after every
+         * section-building block below, and only when synBox actually
+         * received at least one section (an empty synBox would otherwise
+         * get a stray leading divider with nothing above it).
          */
         const appendSynDivider = () => {
-            if (combinedVals.length === 0) return;
+            if (combinedVals.length === 0 || synBox.children.length === 0) return;
             const divider = document.createElement('div');
             divider.style.cssText = 'border-top:1px solid #d0d0d0; margin:4px 0;';
             divider.setAttribute('aria-hidden', 'true');
@@ -43723,20 +43962,25 @@ a { color: #1565c0; }`;
             _appendSynLabelText(item, label);
 
             _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + (hasArt ? 'inline-art-yes' : 'inline-art-no'));
-            synBox.appendChild(item);
+            getOrCreateSynSection('structure').itemsBox.appendChild(item);
         };
 
         // ── Synthetic entries ──────────────────────────────────────────────────
-        // Collapsable columns: show the full "Cell structure" section with all
+        // Collapsable columns: show the full "Structure" section with all
         // structural states (empty, single-row, collapsed multi-row, expanded
         // multi-row, any multi-row) so the user can filter by collapse state.
+        // makeSynItem()/makeValueSynItem() route each entry into its own
+        // collapsible synBox section via MB_UNIQ_MODE_TO_SECTION/
+        // MB_UNIQ_KIND_TO_SECTION (see getOrCreateSynSection()) — the calls
+        // below stay in one place per family for readability, but no longer
+        // all land under one flat "Cell structure" header.
         //
         // When the collapsable column is ALSO a CAA / EAA column (e.g. the
         // "CAA" column on Release-group / Artist pages where multiple artworks
         // produce ul.mb-caa-art-ul cells), the artwork-presence entries
-        // '✓ has artwork' and '✗ no artwork' are appended to the same "Cell
-        // structure" section — after the collapse-state entries — so the user
-        // can filter by artwork presence even when multi-row cells exist.
+        // '✓ has artwork' and '✗ no artwork' are appended to the same
+        // "Structure" section — after the collapse-state entries — so the
+        // user can filter by artwork presence even when multi-row cells exist.
         //
         // CAA / EAA columns that are NOT collapsable (no multi-row data, so
         // totalMultiRow === 0 and singleRowCount === 0 and emptyCellCount === 0):
@@ -43765,16 +44009,6 @@ a { color: #1565c0; }`;
             _sortedRoleValues.length > 0;
 
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 || _hasValueEntries)) {
-            // Section header — only shown for the multi-entry collapsable section
-            // so the single '○ empty cells' entry on plain columns stands alone.
-            const synHdr = document.createElement('div');
-            synHdr.textContent = 'Cell structure';
-            synHdr.style.cssText = [
-                'font-size:0.75em; font-weight:600; color:#555;',
-                'padding:4px 8px 2px 8px; letter-spacing:0.03em; user-select:none;'
-            ].join(' ');
-            synBox.appendChild(synHdr);
-
              // "empty cells" pinned first; remaining entries in ascending complexity order.
             // For CAA/EAA columns the generic structural labels are replaced with more
             // descriptive artwork-presence labels that match user intent:
@@ -43787,8 +44021,9 @@ a { color: #1565c0; }`;
             if (multiRowExpandedCount > 0)  makeSynItem('expanded',  '◀ expanded multi-row cells',                                            multiRowExpandedCount);
             if (totalMultiRow > 1)          makeSynItem('any',       isCaaOrEaaCol ? '✓ has artwork'           : '▶◀ any multi-row cells',    totalMultiRow);
             // 'Title'-only and any-column extras (see their counters' own
-            // comments above) — appended after the collapse-state entries,
-            // still inside the same "Cell structure" section.
+            // comments above) — routed into the "Flags" section (see
+            // MB_UNIQ_MODE_TO_SECTION), separate from the collapse-state
+            // entries above.
             if (titleMismatchCount > 0)     makeSynItem('title-mismatch', '≠ track/recording name',                                           titleMismatchCount);
             if (nameVariationCount > 0)     makeSynItem('name-variation', '~ has name variation',                                              nameVariationCount);
             // Credit-role columns' per-attribute / per-task / per-date /
@@ -43802,33 +44037,13 @@ a { color: #1565c0; }`;
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
             _sortedInstrumentValues.forEach(v => makeValueSynItem('instrument', v, instrumentValueCounts.get(v)));
             _sortedAltNameValues.forEach(v => makeValueSynItem('altname', v, altNameValueCounts.get(v)));
-            _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameValueCounts.get(v)));
+            _sortedNameValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('name', v, entityNameValueCounts.get(v)); });
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
-            _sortedAliasValues.forEach(v => makeValueSynItem('alias', v, entityAliasValueCounts.get(v)));
+            _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
-
-            appendSynDivider();
         } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 || _hasValueEntries) {
             // Non-collapsable column (or a collapsable one with zero rows in
-            // any multi-row-family state this render): show the header only
-            // when more than one synthetic entry will actually appear —
-            // otherwise keep the original headerless single-entry look
-            // ('○ empty cells' alone has never needed one).
-            const _entryCount = (emptyCellCount > 0 ? 1 : 0) +
-                (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0) +
-                _sortedAttrValues.length + _sortedTaskValues.length + _sortedDateValues.length +
-                _sortedInstrumentValues.length + _sortedAltNameValues.length +
-                _sortedNameValues.length + _sortedCommentValues.length + _sortedAliasValues.length +
-                _sortedRoleValues.length;
-            if (_entryCount > 1) {
-                const synHdr = document.createElement('div');
-                synHdr.textContent = 'Cell structure';
-                synHdr.style.cssText = [
-                    'font-size:0.75em; font-weight:600; color:#555;',
-                    'padding:4px 8px 2px 8px; letter-spacing:0.03em; user-select:none;'
-                ].join(' ');
-                synBox.appendChild(synHdr);
-            }
+            // any multi-row-family state this render).
             if (emptyCellCount > 0)     makeSynItem('empty',          '○ empty cells',           emptyCellCount);
             if (titleMismatchCount > 0) makeSynItem('title-mismatch', '≠ track/recording name',  titleMismatchCount);
             if (nameVariationCount > 0) makeSynItem('name-variation', '~ has name variation',    nameVariationCount);
@@ -43837,20 +44052,14 @@ a { color: #1565c0; }`;
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
             _sortedInstrumentValues.forEach(v => makeValueSynItem('instrument', v, instrumentValueCounts.get(v)));
             _sortedAltNameValues.forEach(v => makeValueSynItem('altname', v, altNameValueCounts.get(v)));
-            _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameValueCounts.get(v)));
+            _sortedNameValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('name', v, entityNameValueCounts.get(v)); });
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
-            _sortedAliasValues.forEach(v => makeValueSynItem('alias', v, entityAliasValueCounts.get(v)));
+            _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
-            appendSynDivider();
         }
 
         // ── Relationships column: unique icon entries ─────────────────────────────────────────────
         if (isRelCellCol && relIconCounts.size > 0) {
-            const relHdr = document.createElement('div');
-            relHdr.textContent = 'Relationship icons';
-            relHdr.style.cssText = 'font-size:0.75em;font-weight:600;color:#555;'
-                + 'padding:4px 8px 2px 8px;letter-spacing:0.03em;user-select:none;';
-            synBox.appendChild(relHdr);
             const _iconFor   = relIconCounts._iconFor || new Map();
             // Sort primarily by display URL (name) so that entries for the same
             // domain family (e.g. amazon.com / amazon.de / amazon.it) appear
@@ -43878,8 +44087,12 @@ a { color: #1565c0; }`;
                 item.setAttribute('role', 'option');
                 // tooltip shows the base URL so the user sees the full origin on hover
                 item.title = baseUrl;
-                item.style.display    = 'flex';
-                item.style.alignItems = 'center';
+                // Lets _applySynBoxQuickFilter() find/filter/highlight this
+                // entry exactly like every other synBox row — see
+                // _appendSynLabelText()'s own JSDoc for the two-piece
+                // contract (dataset + dedicated label span) this mirrors.
+                item.dataset.mbUniqSynLabel = baseUrl;
+                item.classList.add('mb-uniq-rel-item');
                 // ── count badge: right-aligned, fixed width ────────────────
                 const badge = document.createElement('span');
                 badge.className = 'mb-uniq-count-badge';
@@ -43916,6 +44129,7 @@ a { color: #1565c0; }`;
                 item.appendChild(ico);
                 // ── base URL label ─────────────────────────────────────────
                 const lbl = document.createElement('span');
+                lbl.className = 'mb-uniq-syn-label-text';
                 lbl.textContent = baseUrl;
                 lbl.style.fontSize   = '0.85em';
                 lbl.style.fontFamily = 'monospace';
@@ -43931,9 +44145,8 @@ a { color: #1565c0; }`;
                 item.addEventListener('click', () => {
                     applyUniqVal(domainKey, table, colIndex); closeUniqDrop();
                 });
-                synBox.appendChild(item);
+                getOrCreateSynSection('relationships').itemsBox.appendChild(item);
             }
-            appendSynDivider();
         }
 
         // ── Inline thumbnail presence entries (addCAA / addEAA feature columns) ─
@@ -43946,23 +44159,18 @@ a { color: #1565c0; }`;
         // applyUniqVal so the column filter pipeline handles filtering and reset
         // identically to the CAA/EAA icon columns.
         if (inlineArtType && (inlineArtYes > 0 || inlineArtNo > 0)) {
-            const synHdr = document.createElement('div');
-            synHdr.textContent = 'Cell structure';
-            synHdr.style.cssText = [
-                'font-size:0.75em; font-weight:600; color:#555;',
-                'padding:4px 8px 2px 8px; letter-spacing:0.03em; user-select:none;'
-            ].join(' ');
-            synBox.appendChild(synHdr);
-
             const isCaa = inlineArtType === 'caa';
             const yesLabel = isCaa ? '🖼️ front-image available'    : '🖼️ poster available';
             const noLabel  = isCaa ? '∅ NO front-image available'  : '∅ NO poster available';
 
             if (inlineArtYes > 0) makeInlineArtItem(true,  yesLabel, inlineArtYes);
             if (inlineArtNo  > 0) makeInlineArtItem(false, noLabel,  inlineArtNo);
-
-            appendSynDivider();
         }
+
+        // Single divider between every synthetic section above and the
+        // regular value list below — appendSynDivider() itself no-ops when
+        // synBox never received any section (nothing to separate from).
+        appendSynDivider();
 
         if (combinedVals.length === 0) {
             const msg = document.createElement('div');
@@ -43985,13 +44193,14 @@ a { color: #1565c0; }`;
         }
 
         /**
-         * Applies the quickfilter to every "Cell structure" entry in synBox
-         * (built by `makeSynItem`/`makeValueSynItem`/`makeInlineArtItem` via
-         * `_appendSynLabelText` — each carries its raw label in
-         * `dataset.mbUniqSynLabel` and a dedicated
-         * `.mb-uniq-syn-label-text` span) — the synBox counterpart of
-         * `renderItems()`'s own quickfilter matching/`<mark>` highlighting
-         * for the regular value list below it.
+         * Applies the quickfilter to every entry in every synBox section
+         * (built by `makeSynItem`/`makeValueSynItem`/`makeInlineArtItem`/the
+         * "Relationship icons" builder — all now via `_appendSynLabelText`
+         * or the equivalent `dataset.mbUniqSynLabel` +
+         * `.mb-uniq-syn-label-text` pair, so every family is covered, no
+         * exceptions) — the synBox counterpart of `renderItems()`'s own
+         * quickfilter matching/`<mark>` highlighting for the regular value
+         * list below it.
          *
          * Unlike `renderItems()`, which fully rebuilds `listBox` on every
          * keystroke, this only ever toggles `display` and rewrites each
@@ -44000,48 +44209,69 @@ a { color: #1565c0; }`;
          * typing, per synBox's own "never wiped out by quickfilter
          * re-renders" contract (see its declaration comment).
          *
-         * Scoped to entries carrying `dataset.mbUniqSynLabel` specifically
-         * — the separate "Relationship icons" section's entries (built
-         * inline, not via `_appendSynLabelText`) don't have it, so they're
-         * silently skipped and stay exactly as this function found them.
+         * Also drives each section's own collapse UI while filtering: a
+         * section with ≥1 match is forced open (ignoring its persisted
+         * collapse state) with a `(N)` match count shown in its header, and
+         * a section with zero matches is hidden entirely — so a collapsed
+         * section never hides a live search result. Clearing the filter
+         * restores every section to its persisted collapsed/expanded state
+         * and hides the match-count badges again.
          *
          * @param {string} filter - Already-trimmed quickfilter text (may be empty).
          */
         function _applySynBoxQuickFilter(filter) {
             const lf = filter.toLowerCase();
-            Array.from(synBox.children).forEach(item => {
-                const label = item.dataset ? item.dataset.mbUniqSynLabel : undefined;
-                if (label === undefined) return; // not a synLabel entry — leave untouched
-                const labelSpan = item.querySelector('.mb-uniq-syn-label-text');
-                if (!labelSpan) return;
+            _synSections.forEach(section => {
+                let matchCount = 0;
+                Array.from(section.itemsBox.children).forEach(item => {
+                    const label = item.dataset ? item.dataset.mbUniqSynLabel : undefined;
+                    if (label === undefined) return; // not a synLabel entry — leave untouched
+                    const labelSpan = item.querySelector('.mb-uniq-syn-label-text');
+                    if (!labelSpan) return;
 
-                const matches = !filter || label.toLowerCase().includes(lf);
-                item.style.display = matches ? '' : 'none';
-                if (!matches) return;
+                    const matches = !filter || label.toLowerCase().includes(lf);
+                    item.style.display = matches ? '' : 'none';
+                    if (!matches) return;
+                    matchCount++;
 
-                if (!filter) {
-                    item.classList.remove('mb-uniq-qf-match');
-                    labelSpan.textContent = label;
-                    return;
+                    if (!filter) {
+                        item.classList.remove('mb-uniq-qf-match');
+                        labelSpan.textContent = label;
+                        return;
+                    }
+
+                    // Build highlighted content with a <mark> around the match —
+                    // same approach as renderItems()'s own quickfilter marking.
+                    item.classList.add('mb-uniq-qf-match');
+                    labelSpan.innerHTML = '';
+                    const ll = label.toLowerCase();
+                    const start = ll.indexOf(lf);
+                    const end   = start + lf.length;
+                    labelSpan.appendChild(document.createTextNode(label.slice(0, start)));
+                    const mark = document.createElement('mark');
+                    mark.textContent = label.slice(start, end);
+                    mark.style.color           = hlColor;
+                    mark.style.backgroundColor = hlBg;
+                    mark.style.fontWeight      = 'bold';
+                    mark.style.borderRadius    = '2px';
+                    mark.style.padding         = '0 1px';
+                    labelSpan.appendChild(mark);
+                    labelSpan.appendChild(document.createTextNode(label.slice(end)));
+                });
+
+                if (filter) {
+                    section.wrapper.style.display = matchCount === 0 ? 'none' : '';
+                    section.itemsBox.classList.toggle('mb-uniq-section-collapsed', matchCount === 0);
+                    section.toggleGlyph.textContent = matchCount === 0 ? '▶' : '▼';
+                    section.matchCountSpan.textContent = `(${matchCount})`;
+                    section.matchCountSpan.style.display = '';
+                } else {
+                    const persistedCollapsed = _uniqSectionCollapseState[section.key] === true;
+                    section.wrapper.style.display = '';
+                    section.itemsBox.classList.toggle('mb-uniq-section-collapsed', persistedCollapsed);
+                    section.toggleGlyph.textContent = persistedCollapsed ? '▶' : '▼';
+                    section.matchCountSpan.style.display = 'none';
                 }
-
-                // Build highlighted content with a <mark> around the match —
-                // same approach as renderItems()'s own quickfilter marking.
-                item.classList.add('mb-uniq-qf-match');
-                labelSpan.innerHTML = '';
-                const ll = label.toLowerCase();
-                const start = ll.indexOf(lf);
-                const end   = start + lf.length;
-                labelSpan.appendChild(document.createTextNode(label.slice(0, start)));
-                const mark = document.createElement('mark');
-                mark.textContent = label.slice(start, end);
-                mark.style.color           = hlColor;
-                mark.style.backgroundColor = hlBg;
-                mark.style.fontWeight      = 'bold';
-                mark.style.borderRadius    = '2px';
-                mark.style.padding         = '0 1px';
-                labelSpan.appendChild(mark);
-                labelSpan.appendChild(document.createTextNode(label.slice(end)));
             });
         }
 
@@ -44073,14 +44303,22 @@ a { color: #1565c0; }`;
         let focIdx = -1;
         // allItems() collects from the whole dropdown panel (synBox + listBox) so
         // keyboard ArrowDown/Up/Enter work on synthetic entries too. Excludes
-        // display:none entries — listBox's own filtered-out items are never
-        // in the DOM at all (renderItems() rebuilds it from scratch), but
+        // invisible entries — listBox's own filtered-out items are never in
+        // the DOM at all (renderItems() rebuilds it from scratch), but
         // synBox's quickfilter-non-matching items ARE still in the DOM, just
         // hidden (see _applySynBoxQuickFilter()'s own "in-place hide, don't
-        // rebuild" contract) — without this check arrow-key navigation could
-        // land focus on an invisible entry.
+        // rebuild" contract), and so are a collapsed section's items (hidden
+        // via their `.mb-uniq-section-items` ancestor, not their own inline
+        // style) — without this check arrow-key navigation could land focus
+        // on an invisible entry. `offsetParent !== null` catches both cases
+        // (own display:none OR any ancestor's), unlike a plain
+        // `el.style.display !== 'none'` check which only ever sees the
+        // element's own inline style. Safe inside this fixed-position panel:
+        // offsetParent walks up to the nearest positioned ancestor — here,
+        // `#mb-col-uniq-dropdown` itself — and only returns null when a
+        // `display:none` breaks that chain.
         const allItems = () => Array.from(drop.querySelectorAll('.mb-col-uniq-item'))
-            .filter(el => el.style.display !== 'none');
+            .filter(el => el.offsetParent !== null);
 
         /**
          * Moves focus to item at position `idx` and scrolls the panel so the
@@ -44178,6 +44416,17 @@ a { color: #1565c0; }`;
         // ---- Position panel below the button (flip upward if needed) -------
         drop.style.display = 'block';
 
+        // Visible-rows cap: user-configurable via sa_uniq_dropdown_visible_rows
+        // (default 8 — the same effective cap the dropdown's original
+        // hardcoded 320px gave: 8 rows * 29px/row + 88px overhead (50 syn
+        // header/divider + 38 qf bar) = 320). Set as an inline max-height,
+        // which always wins over the CSS fallback of that same 320px
+        // default on #mb-col-uniq-dropdown, so raising it needs no
+        // stylesheet change.
+        const _uniqVisibleRows = Math.max(1, Number(Lib.settings.sa_uniq_dropdown_visible_rows) || 8);
+        const maxDropH = _uniqVisibleRows * 29 + 88;
+        drop.style.maxHeight = `${maxDropH}px`;
+
         const bRect = btn.getBoundingClientRect();
         const vw    = window.innerWidth;
         const vh    = window.innerHeight;
@@ -44193,7 +44442,7 @@ a { color: #1565c0; }`;
             _sortedInstrumentValues.length + _sortedAltNameValues.length +
             _sortedNameValues.length + _sortedCommentValues.length + _sortedAliasValues.length +
             _sortedRoleValues.length;
-        const dropH = Math.min(320, (combinedVals.length + synItemCount) * 29 + 50 + 38); // +50 syn header/divider, +38 qf bar
+        const dropH = Math.min(maxDropH, (combinedVals.length + synItemCount) * 29 + 50 + 38); // +50 syn header/divider, +38 qf bar
         const dropW = drop.offsetWidth || 200;
 
         let top  = bRect.bottom + 3;
@@ -44986,8 +45235,8 @@ a { color: #1565c0; }`;
                     if (v) seen.add(v);
                     // Piggy-back on this existing per-row scan (rather than a
                     // third full table pass) to detect the addCAA/addEAA
-                    // inline-thumbnail "Cell structure" block openUniqDrop()
-                    // shows for this column.
+                    // inline-thumbnail entries openUniqDrop()'s "Structure"
+                    // section shows for this column.
                     if (!hasInlineArt && cell.querySelector('.mb-caa-inline-ph, .mb-eaa-inline-ph')) {
                         hasInlineArt = true;
                     }
@@ -45006,7 +45255,7 @@ a { color: #1565c0; }`;
                     const hasCellStructureSection =
                         _isCollapsableCol || _isCaaOrEaaCol || multiRowCount > 0 || hasInlineArt;
                     const _structHint = hasCellStructureSection
-                        ? ' This column also has a "Cell structure" section — filter by empty/single/multi-row cell state and other structural flags.'
+                        ? ' This column also has collapsible "Structure"/"Flags" sections — filter by empty/single/multi-row cell state and other structural flags.'
                         : '';
                     const tip = (n > 0
                         ? `Show the ${n} different unique values in this column, with the ability to quick filter by either clicking or selecting with the keyboard and pressing "Enter" on an entry — ${_kbHint}`

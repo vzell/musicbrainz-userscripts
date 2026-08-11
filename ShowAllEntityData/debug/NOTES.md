@@ -5066,4 +5066,53 @@ doesn't get highlighted — an accepted, documented degradation, since the
 item's inclusion in the filtered list is still driven by the full value
 string).
 
+## 2026-08-11 — unique-values dropdown "Cell structure" overload → collapsible sections (WIP.77)
+
+**Snapshot**: `uvd.html` — the complete unique-values dropdown panel for
+the "Artist" column on
+`https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/artists`,
+captured BEFORE this change. 597 total `role="option"` rows in one scroll
+area: 196 under a single flat "Cell structure" header (99 "» name:" / 93
+"» comment:" / 4 "» alias:" entries, all mixed together with no
+sub-grouping) followed directly by 401 plain alphabetical whole-cell
+values — the highest-volume real case found for this problem. Confirms
+the entity-info family (`_findCellEntityCommentParts()`) is scoped to
+cells that already carry a MusicBrainz disambiguation comment, so every
+one of the 196 rows corresponds to an artist whose name alone isn't
+unique enough to need one.
+
+**Change**: user asked (1) whether the panel could drop look-alike
+duplicate entries, (2) whether "Cell structure" could be broken into
+named, collapsible sections, and (3) whether each section should get its
+own quick filter alongside the existing global one. Discussed and agreed:
+keep the single existing global quick filter (already covers `listBox`
+and most of `synBox`) rather than adding N per-section boxes, but make it
+smarter; split "Cell structure" into `SYN_SECTION_META`-driven collapsible
+sections (🔠 Structure / 🚩 Flags / 🎚️ Credit details / 👤 Entity info /
+🎭 Roles / 🔗 Relationship icons — see `getOrCreateSynSection()`),
+collapse state persisted globally by section name via GM storage; and
+suppress a "» name:"/"» alias:" entry when that exact text is already
+independently selectable elsewhere in the panel (a plain whole-cell value
+or an entity-glyph href row) via a `_alreadyOfferedBareNames` Set built
+right after `combinedVals`. Also closed a pre-existing gap where the
+"Relationship icons" section's entries had no `dataset.mbUniqSynLabel` and
+were silently skipped by the quickfilter. Full plan:
+`~/.claude/plans/debug-uvd-html-complete-unique-wondrous-lemon.md`.
+
+`node --check ShowAllEntityData.user.js` passed after every edit.
+
+## 2026-08-11 — unique-values dropdown height made configurable (WIP.78)
+
+User follow-up after the WIP.77 sectioning work above: the dropdown's
+visible height was a hardcoded `max-height: 320px` on
+`#mb-col-uniq-dropdown`, giving a fixed ~8 rows before scrolling
+regardless of the user's screen size. Added `sa_uniq_dropdown_visible_rows`
+(number setting, default 8 — chosen to reproduce the old fixed behavior
+exactly: `8 * 29px/row + 88px overhead (50 syn header/divider + 38 qf bar)
+= 320px`). `openUniqDrop()` now sets `drop.style.maxHeight` inline from
+this setting on every open (inline always wins over the unchanged 320px
+CSS fallback), and the `dropH` flip-upward-positioning estimate uses the
+same computed value instead of the old hardcoded `320` so the panel still
+flips correctly above the button at any configured row count.
+
 `node --check ShowAllEntityData.user.js` passed after every edit.
