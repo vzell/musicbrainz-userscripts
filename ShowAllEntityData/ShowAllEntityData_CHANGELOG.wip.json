@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.84",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "WIP.83's CAA/EAA dropdown-highlight fix missed the item-value (\"▤\") case: a CAA/EAA cell with ≥2 images (summary li + image li's) is itself a qualifying multi-row list to `_findCellListItems()`'s generic ul>li structural detection, so an image's own type text (e.g. \"Poster\") can also be offered/checked as an item-prefixed dropdown entry, not just a plain whole-cell value. `_artHighlightImageLi()` (the async art-cell-rebuild highlighter WIP.83 also touched) only re-checked the plain-value case after a rebuild, not the item-value one `_highlightUniqItemMatches()` already handled for cells built before the filter changed — so a cell that (re)built AFTER selecting the item-value entry stayed unhighlighted. Added the same item-value check `_highlightUniqItemMatches()` uses (highlighting the whole matching `<li>`, not just its badge/comment span) to `_artHighlightImageLi()`."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.83",
     "date": "2026-08-11",
     "sections": [

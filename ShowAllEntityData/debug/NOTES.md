@@ -5346,3 +5346,48 @@ its blanket `if (f.isMultiValueFilter) continue;` with a matching
 per-pill/comment check).
 
 `node --check ShowAllEntityData.user.js` passed after every edit.
+
+## 2026-08-11 — WIP.83 missed the item-value ("▤") CAA/EAA case (WIP.84)
+
+**Snapshot**: `one-item-doesnt-match.html` — the dropdown ITEM element for
+this specific "Poster" entry (not the rendered cell): `title="Poster — ▤
+matches one item inside a multi-item cell, not the cell's entire
+contents"`, `class="mb-col-uniq-item mb-col-uniq-checked"`, with the
+`.mb-uniq-item-marker` "▤" glyph — confirming this is an ITEM-prefixed
+value (`MB_UNIQ_ITEM_VALUE_PREFIX`), not the plain whole-cell value WIP.83
+fixed.
+
+**Root cause**: `_findCellListItems()` (the generic multi-row detector —
+`cell.querySelector('ul, ol')` then `:scope > li` of that list) doesn't
+special-case CAA/EAA markup at all — a `ul.mb-caa-art-ul` with even ONE
+image already has 2 `<li>` children (`li.mb-caa-art-li-summary` +
+`li.mb-caa-art-li-image`), so it's ALWAYS a qualifying "multi-row" cell to
+`openUniqDrop()`'s generic item-collection pass, independent of the
+image count. The summary li's own clean text is empty (its expand-toggle
+glyph and CAA icon span are both filtered by `getCleanColumnText()`), but
+each image li's own text ("Poster") IS non-empty, so it gets collected as
+an item-value entry ALONGSIDE the same "Poster" string already being
+offered as a plain whole-cell value (WIP.83's case) — both exist
+independently in the same dropdown, selectable separately, which is
+exactly how the user hit two different failures from what looked like
+"the same" value.
+
+`testRowMatch()`'s highlight pass already called `_highlightUniqItemMatches()`
+correctly for item-value filters (unaffected by WIP.83). But
+`_artHighlightImageLi()` — the CAA/EAA-specific highlighter re-run after
+`_artBuildMultiRowArtCell()` rebuilds a cell asynchronously (IDB/network
+timing) — only got the WIP.83 plain-value check added, never an
+item-value one. So a cell that (re)builds AFTER an item-value filter is
+already active — the same async race WIP.81/82 already dealt with for a
+different function — stayed unhighlighted even though filtering still
+worked (matching happens via a separate, already-correct code path in
+`testRowMatch()`'s column-filter membership test).
+
+**Fix**: added the same item-value check `_highlightUniqItemMatches()`
+uses (`getCleanColumnText(li)`, `f.valueSet.has(MB_UNIQ_ITEM_VALUE_PREFIX
++ probe)`, highlight the WHOLE li via `highlightCrossTag`) to
+`_artHighlightImageLi()`, ahead of the existing plain-value check, so both
+cases now agree between build-time/async-rebuild highlighting and
+post-build filter-change highlighting.
+
+`node --check ShowAllEntityData.user.js` passed after every edit.

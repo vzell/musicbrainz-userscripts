@@ -55746,14 +55746,31 @@ a { color: #1565c0; }`;
         for (const f of ctx.colFilters) {
             if (f.idx !== colIdx) continue;  // different column — skip
             if (f.isMultiValueFilter) {
-                // Most value-set (dropdown-checkbox) filters carry no matchable
-                // text for a whole-cell match. But a plain checked value can
-                // equal one image's own type/comment text — see
+                // Item-value match: a checked "▤" entry (MB_UNIQ_ITEM_VALUE_PREFIX)
+                // represents THIS li's own clean text — e.g. a CAA/EAA cell with
+                // ≥2 images is itself a qualifying multi-row list (see
+                // _findCellListItems()'s generic ul>li structural detection, which
+                // doesn't special-case CAA/EAA markup), so an image li's own type
+                // text can be offered/checked as an item value exactly like any
+                // other list cell's per-<li> item. Mirrors _highlightUniqItemMatches()
+                // exactly (same li-vs-valueSet check, same whole-li highlight) so
+                // build-time/async-rebuild highlighting (this function) and
+                // post-build filter-change highlighting agree.
+                if (f.hasItemValues) {
+                    const liText = getCleanColumnText(li);
+                    if (liText) {
+                        const liProbe = f.isCaseSensitive ? liText : liText.toLowerCase();
+                        if (f.valueSet.has(MB_UNIQ_ITEM_VALUE_PREFIX + liProbe)) {
+                            li.normalize();
+                            highlightCrossTag(li, _buildFuzzyTextMatchRegex(liText), 'mb-column-filter-highlight');
+                        }
+                    }
+                }
+                // Plain whole-cell value match: a plain checked value can equal
+                // one image's own type/comment text — see
                 // _highlightUniqArtTypeMatches()'s own JSDoc for why that's
                 // correct here — so re-check this single li against it, mirroring
-                // testRowMatch()'s isMultiValueFilter branch so build-time/
-                // async-rebuild highlighting (this function) and post-build
-                // filter-change highlighting agree.
+                // testRowMatch()'s isMultiValueFilter branch.
                 li.querySelectorAll('.mb-caa-type-badge > span, .mb-caa-art-comment').forEach(span => {
                     const t = getCleanColumnText(span);
                     if (!t) return;
