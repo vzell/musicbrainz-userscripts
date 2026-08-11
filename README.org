@@ -92476,7 +92476,7 @@ act on @debug/disambiguation.org
 
 the data is actually extracted, @debug/row.html but the header row is missing the header columns for the extracted columns @debug/header.html
 
-*** the small dismissable "Rebuild table" notice never appears next to the status line
+*** TODO the small dismissable "Rebuild table" notice never appears next to the status line
 
 The small dismissable "Rebuild table" notice never appears next to the status line. I clicked the action button on the
 initial page before the jesus2099 script could execute, the "Disambiguation" columns was NOT rendered at all as
@@ -92981,6 +92981,23 @@ raw "instruments" relationships shoud also go into the first "Instruments" colum
 
 @debug/inst.html - "David Kosten" and "Mike Carswell" are flagged as playing instruments, without being specific
 
+
+* DONE fix display of status line after loading from disk
+
+Fix the display of the status line '<div id="mb-status-displays-container"' after loading from disk.
+Insert loaded from disk info before before the current starting ", ":
+
+Change, e.g
+
+#+begin_example
+, 🎨CAA: 8.2s | 🎨CAA: 8.2s 🗄️ IDB sweep: removed 1 expired entry
+#+end_example
+
+to
+
+#+begin_example
+Loaded <number of rows> of rows from disk file <disk file.gz>, 🎨CAA: 8.2s | 🎨CAA: 8.2s 🗄️ IDB sweep: removed 1 expired entry
+#+end_example
 
 
 * TODO In "Recording enineer" column, "John Cooper (engineer)" should always stay together, a bare "John Cooper" should never be extracted
@@ -93622,24 +93639,6 @@ increase the height (number of entries displayed initially) of the unique value 
 
 * TODO Picard column not working after "Load from Disk" (when page is already displayed)
 
-* TODO fix display of status line after loading from disk
-
-Fix the display of the status line '<div id="mb-status-displays-container"' after loading from disk.
-Insert loaded from disk info before before the current starting ", ":
-
-Change, e.g
-
-#+begin_example
-, 🎨CAA: 8.2s | 🎨CAA: 8.2s 🗄️ IDB sweep: removed 1 expired entry
-#+end_example
-
-to
-
-#+begin_example
-Loaded <number of rows> of rows from disk file <disk file.gz>, 🎨CAA: 8.2s | 🎨CAA: 8.2s 🗄️ IDB sweep: removed 1 expired entry
-#+end_example
-
-
 * TODO Move disambiguation together with primary alias after e.g.label name right below the name
 ** labels
 
@@ -93799,6 +93798,92 @@ removeSelectors: [
 
 * TODO Collapsable columns on CAA/EAA columns: think about it, and why is it not consistent across pageTypes
 
+collapsable icon MISSING on - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+collapsable icon PRESENT on - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1
+
+
+* TODO CAA icons missing and sometimes doubled 
+** DONE initial
+
+CAA icons missing sometimes and sometimes doubled
+
+1.)
+
+When starting from the final rendered page at https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f and
+click on the "Show single-table" button of e.g. the first sub-table with "Album" in the h3 header line, I get the
+following "single"-table type page rendered in a new tab, see @debug/double-caa-icons.html
+
+The icons from the CAA columns seem to be doubled in the "Titel" column. This looks like something we had fixed in
+commit 'a0c7405 * [ShowAllEntityData] fix: doubled CAA cover art'
+
+2.)
+
+When starting from the final rendered page at https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships and 
+click on the "Show single-table" button of e.g. the sub-table under the h3 header "Published release", see @debug/subtable-published-release.html
+the "single"-table page (https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1) in a new tab looks like @debug/single-published-release.html
+
+The CAA column on the final rendered page in the new tab looks like it doesn't have any CAA icons, see screenshot [Image #10]
+when the column is collpased initially.
+When uncollapsing, you can actually see all the CAA images [Image #11]
+
+On the original page the collapsed column looked like this screenshot [Image #12] and the uncollapsed like this [Image #13]
+
+a.)
+
+It looks like the "Front" images are NOT rendered after the e.g. '<span data-caa-expand-btn="collapsed" title="Show all
+CAA cover art images (2) in this cell"' on the final "single"-table page
+
+b.)
+
+also there is a non functional
+
+#+begin_example
+'<span class="mb-col-collapse-hdr-btn" data-col-index="12" title="Expand ALL multi-row CAA cells (4) in this table column — keyboard: Ctrl+M then O when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for Ctrl+O)" role="button" aria-expanded="false" aria-label="Expand all multi-row cells in: CAA" style="margin-left: auto;"><span class="mb-col-collapse-glyph">▶</span><span class="mb-col-collapse-count">4</span><span class="mb-col-collapse-rack">▤</span></span>'
+#+end_example
+
+on the final "single"-table page rendered in the CAA header column
+
+** DONE act on @debug/CAA-missing-doubled.org
+
+act on @debug/CAA-missing-doubled.org
+
+** 2.) still buggy
+
+1.)
+
+I got a new snapshot @debug/single-published-release-2.html
+This time ONLY 1 icon is missing when initially collapsed.
+
+2.)
+
+I tried with other sub-tables from https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
+rendering in a new tab and they all have non deterministic behaviour in which icons are displayed or not
+
+3.)
+
+Add comprehensive debug statements for the special "single"-table in a new tab case for now and I will collect some debug logs
+
+** debug log
+
+#+begin_example
+@debug/sub-table-debug.log - sub-table logging on initial page
+@debug/single-table-debug.log - single-table logging in new table
+#+end_example
+
+** again
+
+#+begin_example
+@debug/mt-debug.log - sub-table logging on initial page
+@debug/st-debug.log - single-table logging in new table
+#+end_example
+
+* TODO sometimes the Wikipedia h2 is rendered at the very end of the final page (probably a timing issue when the action button on the initial page has been pressed to early)
+
+On e.g.https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f (when rendered as a "single"-table page in a new tab)
+sometimes the Wikipedia h2 is rendered at the very end of the final page (probably a timing issue when the action button
+on the initial page has been pressed to early), see the following final rendered page @debug/Wikipedia-end-of-the-page.html
+
+
 * TODO Add test URL(s) in front of each pageType definition as a comment
 
 Add test URL(s) in front of each pageType definition as a comment, use the @pageTypes-testing-reference.org file as a reference
@@ -93828,8 +93913,62 @@ https://musicbrainz.org/release/68136206-2939-42ed-a39d-f9c41b0defb1
 
 * TODO format multilist items in the unique value drop down with " and "|", " concatenated instead of just a blank " "
 
-format multilist items in the unique value drop down with " and "|", " concatenated instead of just a blank " "
-but ignore these strings when filtering ()they are just for uman display purposes
+1.)
+
+On e.g https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd format/render the multilist items in the unique
+value drop down e.g. in the "Producer" column, which on the original page have been rendered with the strings " and "
+and ", " concatenated, the same way instead of just a blank " " between the artist names
+
+#+begin_example
+Original page, AR in the "Title" column - "producer: Jon Landau, Chuck Plotkin and Bruce Springsteen"
+Final rendered page, corresponding entry in the unique value drop down "Jon Landau Chuck Plotkin Bruce Springsteen", see also the following complete entry
+#+end_example
+
+#+begin_example
+<div class="mb-col-uniq-item" role="option" aria-selected="false" title="Jon Landau Chuck Plotkin Bruce Springsteen"><span class="mb-col-uniq-checkbox" aria-hidden="true">☐</span><span class="mb-uniq-count-badge" aria-hidden="true" style="color: rgb(17, 17, 17); background-color: rgb(255, 250, 205); font-weight: bold; font-family: monospace; border-radius: 3px; padding: 0px 3px; margin-right: 5px; font-size: 0.85em; display: inline-block; min-width: 3ch; text-align: right;">(1)</span>Jon Landau Chuck Plotkin Bruce Springsteen</div>
+#+end_example
+
+2.)
+
+When clicking such an entry, it still should correctly filter as before, so basically ignoring these added strings (they
+should ONLY be there for human display/reading purposes)
+
+
+* plan: add a new named sub structure "CAA info"/"EAA info" (depending if the actual column is called "CAA" or "EAA") in the unique value drop down menu for the CAA/EAA columns with new values describing what image types/comments are present
+
+@debug/single-published-release.html
+
+Add a new named sub structure "CAA info"/"EAA info" (depending if the actual column is called "CAA" or "EAA") in the
+unique value drop down menu for the CAA/EAA columns with new values describing what image types/comments are present.
+
+a.)
+
+Image types like:
+#+begin_example
+Front
+Back
+Spine
+Cover
+Obi
+Sticker
+Booklet
+Matrix/Runout
+etc
+#+end_example
+
+basically the different dark grey background types like e.g. '<span style="display: inline-block; background: rgb(200, 200, 200); color: rgb(34, 34, 34); border-radius: 3px; padding: 1px 5px; font-size: 0.78em; font-weight: 600; line-height: 1.5; white-space: nowrap; cursor: default;">Matrix/Runout</span>'
+
+b)
+
+plus all the different "mb-caa-art-comment" comments e.g '<span class="mb-caa-art-comment">Front cover, booklet page i</span>':
+#+begin_example
+Front cover, booklet page i
+Page ii
+Page 1
+Page 2
+etc.
+#+end_example
+
 
 * DONE currently my info line under the prompt looks like
 
