@@ -91139,6 +91139,8 @@ second ?
 * TODO Failed to save data: Invalid string length
 
 Why do I get "Failed to save data: Invalid string length" in a native browser popup box on e.g.
+
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events
 https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/events
 
 #+begin_example
@@ -91189,8 +91191,6 @@ How much do you want to invest in fixing this — a permanent fix or a quick mit
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   5. Chat about this
   
-
- 
 
 * TODO plan: Add support for a new MusicBrainz release pageType
 ** DONE initial
@@ -92434,7 +92434,57 @@ No button is rendered at all, also "ERROR" icons are present at https://musicbra
 @debug/h2.html
 
 
-** TODO add colors to the synthetic extracted AR columns
+** TODO why can't the "Disambiguation" column be extracted in it's "Event-..." parts
+*** DONE initial
+
+E.g. on https://musicbrainz.org/release/f646ba66-7edb-4e43-8421-e9aceb3f052e the userscript "mb. INLINE STUFF" from
+@jesus2099 (if available), which loads the recording comments/disambiguations in the tracklist to each track (if available), e.g.
+
+#+begin_example
+<span class="jesus2099userjs81127recdis comment">(live, 2026‐05‐27: Nationals Park, Washington, DC, USA)</span>
+#+end_example
+
+1.)
+
+why is the following configuration directive
+
+#+begin_example
+                syntheticColumnExtractors: [
+                    { sourceColumn: 'Disambiguation', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
+                ],
+#+end_example
+
+not honoured, but in pageType "type: 'instrument-recordings'" it works, and the syntheticColumns are all rendered
+
+2.)
+
+Mention the above jesus2099 userscript in the comments of our code where its being used (e.g. where the "Disambiguation" column is defined )
+
+3.)
+
+How can a userscript (e.g ours) decide if another userscript has been finished processing. E.g if we press the action
+button on a 'release-tracks' page too early, so that the "mb. INLINE STUFF" hasn't been able to process each track in
+the tracklist, the "Disambiguation" column is NOT even rendered at all
+
+Before coding something, present your decisions
+
+*** DONE act on @debug/disambiguation.org
+
+act on @debug/disambiguation.org
+
+*** DONE bug
+
+the data is actually extracted, @debug/row.html but the header row is missing the header columns for the extracted columns @debug/header.html
+
+*** the small dismissable "Rebuild table" notice never appears next to the status line
+
+The small dismissable "Rebuild table" notice never appears next to the status line. I clicked the action button on the
+initial page before the jesus2099 script could execute, the "Disambiguation" columns was NOT rendered at all as
+expected, but NO "Rebuild table" notice.
+
+Could you add debug statements to check whats going on
+
+** TODO add colors to the synthetic extracted AR columns (or better chack why they are NOT rendered, even the synthetic extracted columns not
 *** DONE initial
 
 still not working:
@@ -92454,11 +92504,7 @@ compare
 [Image #23] - not working - https://musicbrainz.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60
 #+end_example
 
-
-** TODO why can't the "Disambiguation" column be extracted in it's "Event-..." parts
-
-** TODO split "Recorded at place" column
-
+** TODO split "Recorded at place" column (maybe)
 
 * DONE plan: add the flag and place/area icons at the right position of each entry in the unique value drop down instead of at the very beginning of each entry
 
@@ -92829,7 +92875,6 @@ https://musicbrainz.org/report/SetInDifferentRG - "Release group" column - @debu
 https://musicbrainz.org/series/34b9e392-c076-4882-9355-8dbf2a1a52ac - "Title" column - @debug/s-rg.html
 #+end_example
 
-
 * DONE bug: in https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/events the "primary alias" should not be removed from the main column when extracted to its own column
 * DONE https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/events
 
@@ -92930,7 +92975,6 @@ Music videos --> Music videos <recording glyph>
 Instrumental versions --> Instrumental versions <recording glyph>
 #+end_example
 
-
 * DONE raw "instruments" relationship shoud also go into the first "Instruments" column instead of creating an artificial second one
 
 raw "instruments" relationships shoud also go into the first "Instruments" column instead of creating an artificial second one
@@ -92951,6 +92995,8 @@ Currently
 * TODO add checkboxes also to the "Relationship icons" section
 
 https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
+
+Is that possible, to filter on multiple icons ?
 
 
 * TODO plan: review the "extractMainColumn" feature architecture
@@ -93229,7 +93275,7 @@ new plan: act on @debug/review-extract-maincolumn.org
      project convention.     
 #+end_example
 
-** TODO only render "Comment", "Primary alias" if at least one row has a value for it in the tabl/subtable
+** TODO only render "Comment", "Primary alias" if at least one row has a value for it in the table/subtable
 *** initial
 
 Is it possible to only render the "Comment" and "MB-Primary alias" columns if at least one row in a table/subtable has a value for it (single/multi-table pagetypes)
@@ -93270,7 +93316,18 @@ Do not code yet just check
   alone)?
 #+end_example
 
-** TODO fix the last primaryAlias uses
+** TODO fix the code where primaryAlias is still used
+** TODO Not in scope
+
+     - No new alias column is added to _tagCountBase-family page blocks that
+     currently have neither extractMainColumn nor a paired primaryAlias
+     extractor (e.g. plain Name_Comment on Areas/Labels/Places/Release groups
+     entityFeatures blocks) — they simply stop leaking the alias into Comment;
+     a dedicated alias column for that family would be new-feature scope, not
+     a bug fix, and can be a separate follow-up if wanted.
+     - ColumnDataExtractor.primaryAlias itself is not deleted — it's still
+     needed by the 3 kept usages.
+
 
 * TODO On the 'reports' pageType add more columns if chabans statistics userscript is installed
 
@@ -93286,18 +93343,6 @@ https://musicbrainz.org/report/DiscogsLinksWithMultipleArtists
 * TODO make the "Space" key also select the current entry inside the unique value drop down menu
 
 * TODO split "3421 w/special guest Miss Red" on https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b in column "Artist"
-
-* TODO Not in scope
-
-     - No new alias column is added to _tagCountBase-family page blocks that
-     currently have neither extractMainColumn nor a paired primaryAlias
-     extractor (e.g. plain Name_Comment on Areas/Labels/Places/Release groups
-     entityFeatures blocks) — they simply stop leaking the alias into Comment;
-     a dedicated alias column for that family would be new-feature scope, not
-     a bug fix, and can be a separate follow-up if wanted.
-     - ColumnDataExtractor.primaryAlias itself is not deleted — it's still
-     needed by the 3 kept usages.
-
 
 * TODO why is this not working
 
@@ -93316,7 +93361,7 @@ why is this not working
 for the column @debug/bulk.tag-recording.html
 
 
-* TODO plan: how can I simplify (e.g. remove double functionality) but still use a nice interface with icons/glyphs etc.
+* DONE plan: how can I simplify (e.g. remove double functionality) but still use a nice interface with icons/glyphs etc.
 ** initial
 
 @debug/uvd.html - complete unique value drop down menu for the "Artist" column in https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/artists
@@ -93337,7 +93382,7 @@ maybe each section should have its own "Quick filter" input box, maybe also use 
 
 think about it and discuss with me
 
-** plan
+** DONE plan
 
 #+begin_example
 ● The plan is still structurally valid — I've verified against the current branch tip and refreshed the line numbers.
@@ -93551,3 +93596,242 @@ think about it and discuss with me
 #+end_example
 
 
+
+
+** DONE new plan
+
+#+begin_example
+@debug/uvd-enhancement.html - complete final rendered page for https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1 (see also [Image #6])
+@debug/uvd-title.html - just the unique value drop down from the "Title" column of the complete final rendered page for https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1
+#+end_example
+
+I don't want the following type of entry (prefixed with the MusicBrainz entity glyph - @debug /glyph-entity-entry.html) in the standard section of the unique value drop down (as it "belongs
+to"/filters the row with the disambiguation comment see [Image #8], although it would be indistinguishable from other
+such same named entries, if they would have different comments, see as an example [Image #7] with multiple "18 Tracks" titles)
+
+Instead render that same entry in the "Entity info" section, but with another meaning. When selected ALL rows with that
+entity name should be filtered, irrespactable of the comment column.
+
+So we would have just ONE such entry in the "Entity info" section, instead of maybe multiple ones (indistinguishable by
+just looking at them) in the standard section
+
+* DONE increase the height (number of entries displayed initially) of the unique value drop down menu (configurable: default current number of rows)
+
+increase the height (number of entries displayed initially) of the unique value drop down menu (configurable: default current number of rows)
+
+
+* TODO Picard column not working after "Load from Disk" (when page is already displayed)
+
+* TODO fix display of status line after loading from disk
+
+fix display of status line after loading from disk, insert loaded from disk before the comma
+
+Change
+
+#+begin_example
+, 🎨CAA: 8.2s | 🎨CAA: 8.2s 🗄️ IDB sweep: removed 1 expired entry
+#+end_example
+
+to
+
+#+begin_example
+Loaded <number of rows> of rows from disk file <disk file.gz>, 🎨CAA: 8.2s | 🎨CAA: 8.2s 🗄️ IDB sweep: removed 1 expired entry
+#+end_example
+
+
+* TODO Move disambiguation together with primary alias after e.g.label name right below the name
+** labels
+
+https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e
+
+Columbia (owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX)
+
+to
+
+Columbia
+owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX
+
+** series
+
+https://musicbrainz.org/series/b90cae9c-2b72-4bdb-ac3f-9c29576ef177
+
+Bruce Springsteen Definitive Collection (Italian reissue series by Corriere della Sera and TV Sorrisi e Canzoni)
+
+https://musicbrainz.org/series/34b9e392-c076-4882-9355-8dbf2a1a52ac
+
+Tracks (Bruce Springsteen)
+
+
+
+* TODO BUGS
+** DONE https://musicbrainz.org/user/vzell/ratings - h3 "Release group ratings" has doubled CAA inline images in column "Release groups"
+
+On https://musicbrainz.org/user/vzell/ratings the h3 "Release group ratings" column has doubled CAA inline images in column "Release groups" @debug/cell.html
+
+#+begin_example
+@debug/user-rating-initial.html - initial page
+@debug/user-rating-final.html - final rendered page
+#+end_example
+
+** DONE plan: No highlightning of "Poster" when choosing it from the unique value drop down in the EAA column - https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf
+*** initial
+
+No highlightning of "Poster" (also the row IS correclty filtered) when choosing it from the unique value drop down in
+the EAA column e.g on https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf
+@debug/EAA-filter-color-not-working.html
+
+When typing the string "Poster" directly in the column filter box it filters the row and highlights the string correctly @debug/EAA-filter-color-works.html
+
+*** bug
+
+OK, that works, but it fails when selecting the following from the unique value drop down @debug/one-item-doesnt-match.html
+also it filters correctly, it doesn't highlight in that case
+
+** DONE The "Role" column in https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events doesn't show the "role:" in the unqiue value drop down 
+*** initial
+
+The "Role" column in https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events doesn't show the "role:" in the unqiue value drop down "Roles" section
+
+#+begin_example
+        // Distinct event-role values (e.g. "main performer", "guest
+        // performer", "support act", "participant", "host") from a native
+        // MusicBrainz `.artist-roles` list — the query-time counterpart of
+        // the sentinel-class Maps above, same reasoning as
+        // entityNameValueCounts/etc.; see `_findCellArtistRoles()`'s own
+        // JSDoc. No-op Map for any column/cell with no `.artist-roles`
+        // list at all.
+        const eventRoleValueCounts = new Map();
+#+end_example
+
+We already did this for the "Artists" column for e.g. https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/events
+
+*** claude
+
+#+begin_example
+  Searched for 2 patterns, read 1 file, listed 2 directories (ctrl+o to expand)
+
+● Bash(curl -s -A "Mozilla/5.0" "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events" -o /tmp/claude-1002/-home-vzell-git-musicbrainz-userscript…)
+  ⎿  21 /tmp/claude-1002/-home-vzell-git-musicbrainz-userscripts-ShowAllEntityData/63443b8f-3075-4ba6-a257-6dcc9f69521a/scratchpad/artist-events.html
+     ---
+
+  Searched for 1 pattern, read 2 files (ctrl+o to expand)
+
+● Bash(curl -s "https://api.github.com/search/code?q=artist-roles+repo:metabrainz/musicbrainz-server" 2>&1 | head -50)
+  ⎿  {
+       "message": "Requires authentication",
+       "documentation_url": "https://docs.github.com/rest",
+     … +2 lines (ctrl+o to expand)
+
+● Web Search("musicbrainz-server github "artist-roles" EventList.js role column")
+  ⎿  Did 1 search in 5s
+
+● Bash(curl -s "https://raw.githubusercontent.com/metabrainz/musicbrainz-server/master/root/components/list/EventList.js" -o /tmp/claude-1002/-home-vzell-git-musicbrai…)
+  ⎿  151 /tmp/claude-1002/-home-vzell-git-musicbrainz-userscripts-ShowAllEntityData/63443b8f-3075-4ba6-a257-6dcc9f69521a/scratchpad/EventList.js
+     /*
+      * @flow strict
+     … +18 lines (ctrl+o to expand)
+
+● Good, this is the right file. Let's read the whole thing.
+
+  Read 1 file (ctrl+o to expand)
+
+● Bash(curl -s "https://raw.githubusercontent.com/metabrainz/musicbrainz-server/master/root/utility/tableColumns.js" -o /tmp/claude-1002/-home-vzell-git-musicbrainz-us…)
+  ⎿  591:export function defineTextColumn<D>(
+     592-  props: {
+     593-    ...OrderableProps,
+     … +23 lines (ctrl+o to expand)
+
+● Bash(curl -s "https://raw.githubusercontent.com/metabrainz/musicbrainz-server/master/root/static/scripts/common/i18n/commaOnlyList.js"
+      echo "---localizeArtistRoles--…)
+  ⎿  /*
+      * @flow strict
+      * Copyright (C) 2015-2016 MetaBrainz Foundation
+     … +60 lines (ctrl+o to expand)
+#+end_example
+
+** DONE buggy rendering
+
+Buggy rendering of "SiriusXM Studio in New York City New York, New York New York, United States" where the two "New York" area flags are rendered as 2 list elements 
+
+#+begin_example
+@debug/sirius-initial.html - initial page
+@debug/sirius-final.html - final page; rendered as 2 list elements
+#+end_example
+
+** Why is there an "expand-events-toggle _toggleButton_15vyb_5" toggle button at https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf - maybe remove it from the final page when the userscript is present
+
+#+begin_example
+<button type="button" class="expand-events-toggle _toggleButton_15vyb_5" data-event-gid="3ed93c42-494e-4822-9df2-a5083279a557" aria-label="Expand event 3ed93c42-494e-4822-9df2-a5083279a557">▸</button>
+#+end_example
+
+It comes from another userscript probably "Expand events", the toggle is already on the initial page - maybe remove it from the final page when the userscript is present
+
+** https://musicbrainz.org/report/SetInDifferentRG needs "Primary alias" column, so extratMainColumn on "Release group"
+
+Maybe create a copy of
+
+#+begin_example
+        {
+            type: 'report-detail',
+            match: (path) => path.match(/^\/report\/[^/]+\/?$/),
+#+end_example
+
+and adjust the match directive for "report/SetInDifferentRG"
+
+
+* TODO change comment (vzell userscript)
+
+Change the following comment from (as the "Edit recording comments" button is NOT a MB native functionality)
+
+#+begin_example
+removeSelectors: [
+                    'h2.tracklist button.work-button-style', // native "Edit recording comments"
+#+end_example
+
+to
+
+#+begin_example
+removeSelectors: [
+                    'h2.tracklist button.work-button-style', // userscript "VZ: MusicBrainz - Generate Recording Comments For A Release" from @'Michael Wiencek, Gemini (directed by vzell)'
+#+end_example
+
+
+* TODO Collapsable columns on CAA/EAA columns: think about it, and why is it not consistent across pageTypes
+
+* TODO Add test URL(s) in front of each pageType definition as a comment
+
+Add test URL(s) in front of each pageType definition as a comment, use the @pageTypes-testing-reference.org file as a reference
+but change the URLs there in rela copy/pastable URLs inside the comments in the userscript
+
+e.g.
+
+#+begin_example
+https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf - Events for Series
+https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordings - Recordings for Instruments
+#+end_example
+
+
+* TODO currently my info line under the prompt looks like
+
+currently my info line under the prompt looks like @/home/vzell/.claude/statusline.sh
+
+#+begin_example
+  [Sonnet 5] 📁 ShowAllEntityData | 🌿 release-tracks-pagetype
+  █░░░░░░░░░ 14% | $2.00 | ⏱️ 133m 49s
+  ⏵⏵ auto mode on (shift+tab to cycle) · ← for agents
+#+end_example
+
+The /usage (actually coming from Claude Web) is showing at the same time the following
+
+#+begin_example
+Current session
+Resets in 4 hr 42 min
+7% used
+
+Weekly limits
+All models
+Resets in 11 hr 52 min
+94% used
+#+end_example
+
+How can I extend "statusline.sh" to show the "Current session" and "Weekly limits" information additionally
