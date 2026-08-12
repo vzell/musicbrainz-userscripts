@@ -52860,6 +52860,24 @@ a { color: #1565c0; }`;
                 const mainTable = document.querySelector('table.tbl');
                 if (mainTable) {
                     addColumnFilterRow(mainTable);
+
+                    // Guard Release events / Relationships columns exactly as the
+                    // live single-table fetch path does (startFetchingProcess) —
+                    // activeReleaseEventColumns/activeInjectedColumns are resolved
+                    // page-type-wide (artist-relationships/-filtered declares
+                    // injectedColumns unconditionally, with no per-sub-table-category
+                    // scoping), not per snapshotted sub-table category, so hydrating
+                    // a "Show single-table" snapshot of e.g. a Work or Recording
+                    // sub-table (which has no /release/ or /release-group/ links)
+                    // would otherwise keep an artificially-injected Relationships/
+                    // Release-events column header that can never be populated —
+                    // see debug/w-header.html. Must run before
+                    // initReleaseEventsColumn()/initRelationshipsColumn() further
+                    // below so no placeholder <td>s are created for a suppressed
+                    // table.
+                    _suppressReleaseEventsIfNoReleaseLinks(mainTable);
+                    _suppressRelationshipsIfNoReleaseOrReleaseGroupLinks(mainTable);
+
                     makeTableSortableUnified(mainTable, 'main_table');
                     // Note: initCollapsableColumns() is intentionally NOT called here.
                     // The runFilter() call below re-renders the table (possibly with a

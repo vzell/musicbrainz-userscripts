@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.104",
+    "date": "2026-08-13",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On a \"Show single-table\" cross-tab snapshot of a Work or Recording sub-table from `artist-relationships` (which correctly has NO \"Relationships\" column on the live multi-table page — it only makes sense for Release/Release-group sub-tables), the hydrated single-table tab artificially injected a \"Relationships\" column header that could never be populated. Root cause: `artist-relationships`/`artist-relationships-filtered` declare `injectedColumns: ['Relationships']` unconditionally at the page-definition level (no per-sub-table-category scoping) — on the live page, correctness comes entirely from a downstream, per-sub-table, data-driven guard, `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` (and its sibling `_suppressReleaseEventsIfNoReleaseLinks()`), which physically removes the injected column from any table whose rows contain no `/release/`or `/release-group/` links — called from both `renderGroupedTable()`'s per-group loop and the live single-table fetch path in `startFetchingProcess`. `_hydrateAndRenderFromSnapshotData()`'s own single-table render branch duplicated the rest of that live single-table sequence (`cleanupHeaders`/`addColumnFilterRow`/`makeTableSortableUnified`) but never called either guard, so a hydrated Work/Recording snapshot kept the header (and would have gone on to create empty `mb-rel-cell`/`mb-re-cell` placeholder `<td>`s once `initRelationshipsColumn()`/`initReleaseEventsColumn()` ran later). Added both guard calls to that branch, in the same relative order (after header injection, before the later `init*Column()` calls) as the live single-table path already uses."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.103",
     "date": "2026-08-13",
     "sections": [
