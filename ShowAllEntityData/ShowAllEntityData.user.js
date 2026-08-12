@@ -61393,6 +61393,36 @@ a { color: #1565c0; }`;
             return;
         }
 
+        /**
+         * Applies (full mode) or re-wires (rewireOnly mode) one row's picard
+         * cell — shared by the live-DOM pass below and the `allRows`
+         * source-array pass, so a filter re-render (which clones from
+         * `allRows`, not the live DOM — see runFilter()'s single-table
+         * branch) never loses the injected cell. Mirrors
+         * initRelationshipsColumn()'s identical `_ensureRelCell()`/`allRows`
+         * fix, needed for the same root cause: on a hydrated "Show
+         * single-table" tab, this function's own full-mode call runs AFTER
+         * runFilter() has already cloned `allRows` into the live DOM once,
+         * so without also touching `allRows` itself here, the picard cell
+         * only ever lands on that one now-orphaned clone and is silently
+         * dropped by every subsequent filter re-render.
+         * @param {HTMLTableRowElement} tr
+         */
+        function _picardApplyToRow(tr) {
+            const _entity = _picardExtractRowEntity(tr);
+            let _td = tr.querySelector('td.mb-picard-cell');
+            if (_td) {
+                _td.innerHTML = '';
+                if (_entity) _td.appendChild(_picardCreateButton(_entity.entityType, _entity.guid));
+            } else if (!rewireOnly) {
+                _td = document.createElement('td');
+                _td.className = 'mb-picard-cell';
+                _td.style.cssText = 'text-align:center; vertical-align:middle; padding:2px 4px;';
+                if (_entity) _td.appendChild(_picardCreateButton(_entity.entityType, _entity.guid));
+                tr.appendChild(_td);
+            }
+        }
+
         _tables.forEach(table => {
             // ── Universal data-driven release-link guard ──────────────────────
             // Inject the Picard column only when this table's tbody actually
@@ -61463,23 +61493,20 @@ a { color: #1565c0; }`;
             //   • Otherwise, in full mode, append a new .mb-picard-cell td.
             //     In rewire-only mode, skip rows that have no picard cell yet
             //     so column order is not disturbed.
-            table.querySelectorAll('tbody tr').forEach(tr => {
-                const _entity = _picardExtractRowEntity(tr);
-                let _td = tr.querySelector('td.mb-picard-cell');
+            table.querySelectorAll('tbody tr').forEach(_picardApplyToRow);
 
-                if (_td) {
-                    // Re-wire path: row was cloned — replace stale button.
-                    _td.innerHTML = '';
-                    if (_entity) _td.appendChild(_picardCreateButton(_entity.entityType, _entity.guid));
-                } else if (!rewireOnly) {
-                    // Full mode only: append new cell as the last column.
-                    _td = document.createElement('td');
-                    _td.className = 'mb-picard-cell';
-                    _td.style.cssText = 'text-align:center; vertical-align:middle; padding:2px 4px;';
-                    if (_entity) _td.appendChild(_picardCreateButton(_entity.entityType, _entity.guid));
-                    tr.appendChild(_td);
-                }
-            });
+            // Also apply to the `allRows` SOURCE array — single-table mode
+            // only, since in that mode this table IS allRows' table (see
+            // _picardApplyToRow's own JSDoc for why). Not needed in
+            // multi-table mode: the live-fetch pipeline's own full-mode call
+            // to this function always runs before the FIRST runFilter() ever
+            // fires there, so group.rows already carries the picard cell
+            // before any cloning happens — this hydrated-single-table-tab
+            // ordering issue doesn't arise on that path.
+            if (!rewireOnly && activeDefinition && activeDefinition.tableMode !== 'multi' &&
+                typeof allRows !== 'undefined' && allRows.length) {
+                allRows.forEach(_picardApplyToRow);
+            }
 
             Lib.debug('picard',
                 `initPicardTaggerColumn: ${rewireOnly ? 'rewired' : 'injected'} Picard column ` +

@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.102",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On a \"Show single-table\" cross-tab snapshot of a sub-table from a multi-table page (e.g. `artist-relationships`), filtering ANY column (typed filter text or a unique-value dropdown checkbox) permanently removed the Picard tagger column's icons from every row, never to return — even after clearing the filter. Root cause: `_hydrateAndRenderFromSnapshotData()` calls `runFilter()` (which clones rows from the `allRows` source array into the live DOM) BEFORE its own full-mode `initPicardTaggerColumn()` call, so the picard `<td>`s only ever landed on that one now-orphaned live-DOM clone — `allRows` itself never got them, so every subsequent filter re-render re-cloned from a picard-less `allRows` and the rewire-only call (correctly, per its own contract) had nothing to rewire. This is the exact same class of bug `initRelationshipsColumn()`'s `_ensureRelCell()`/`allRows` sync already fixed for the Relationships column, for the identical reason — `initPicardTaggerColumn()` now mirrors that pattern: its full-mode pass also applies to `allRows` directly (single-table mode only; multi-table mode's own full-mode call already runs before its first `runFilter()`, so `group.rows` was never affected). Refactored the per-row cell-creation logic into a shared `_picardApplyToRow()` helper used by both the live-DOM pass and the new `allRows` pass, avoiding duplicated logic."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.101",
     "date": "2026-08-12",
     "sections": [
