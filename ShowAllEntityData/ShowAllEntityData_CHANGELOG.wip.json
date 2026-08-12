@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.98",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Unique-values (📊) dropdown's whole-cell entry for a multi-item list cell (e.g. \"Producer\", \"Engineer\", \"Performer\", \"Instruments\", tags, genres, or any other `<ul>/<li>`-rendered column) now reads as a natural \"Jon Landau, Chuck Plotkin and Bruce Springsteen\" instead of the ungrammatical space-joined run-on `getCleanColumnText()` previously produced — the CREDIT_ROLES `<li>` builder (like every other list-cell builder) never emits any separator text into the DOM between items, so `getCleanColumnText()`'s bare-space text-node join was the only thing standing in for punctuation. New `_joinListItemsForDisplay()` helper joins each multi-item value's own per-`<li>` texts (captured via a new `valueItemSequence` map, first-occurrence keyed by the raw whole-cell value) for display and tooltip purposes only. The underlying value used for the entry's checkbox key, `checkedValues`, `dataset.mbUniqValues`, and the row-filter equality check in `testRowMatch()` is untouched — still the exact raw `getCleanColumnText(cell)` string — so clicking the entry keeps filtering rows exactly as before."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.97",
     "date": "2026-08-12",
     "sections": [

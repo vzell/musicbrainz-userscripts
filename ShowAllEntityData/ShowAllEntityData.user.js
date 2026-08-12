@@ -43685,6 +43685,14 @@ a { color: #1565c0; }`;
         // `_findCellListItems` returns `[]` for those. See
         // `MB_UNIQ_ITEM_VALUE_PREFIX`'s own JSDoc and debug/multi-row-cell.html.
         const itemValueCounts = new Map();
+        // First-occurrence ordered per-<li> item texts for each multi-item
+        // (>=2-item) whole-cell value in `valueCounts`, keyed by that same
+        // raw value string — lets the whole-cell dropdown ENTRY read as a
+        // natural "A, B and C" list (see _joinListItemsForDisplay below)
+        // while the underlying value/key used for the checkbox state and
+        // row-filter equality stays the untouched raw getCleanColumnText()
+        // string, so clicking the entry keeps filtering exactly as before.
+        const valueItemSequence = new Map();
         const isTitleCol = (() => {
             const headers = table.querySelectorAll('thead tr:first-child th');
             const th = headers[colIndex];
@@ -43734,6 +43742,9 @@ a { color: #1565c0; }`;
                         if (t) _rowItemTexts.add(t);
                     });
                     _rowItemTexts.forEach(t => itemValueCounts.set(t, (itemValueCounts.get(t) || 0) + 1));
+                    if (_rowItemTexts.size > 1 && !valueItemSequence.has(v)) {
+                        valueItemSequence.set(v, Array.from(_rowItemTexts));
+                    }
                 }
                 // Entity-name collection — deliberately unconditional
                 // (unlike the "▤" item block above, not gated on isMultiRow)
@@ -43828,9 +43839,42 @@ a { color: #1565c0; }`;
         // different row's multi-item cell) — different filter semantics
         // (equality / item membership), so both stay independently
         // selectable.
+        /**
+         * Joins list-cell item texts the way MusicBrainz's own AR credit text
+         * reads on the entity page — "A", "A and B", "A, B and C" (comma-joined,
+         * "and" before the final item, no Oxford comma) — so a multi-item
+         * unique-value dropdown entry reads the same way a human sees it there,
+         * instead of the raw space-joined run-on `getCleanColumnText()` produces
+         * (the CREDIT_ROLES `<li>` builder, like every other list-cell builder,
+         * never emits any separator text into the DOM between items — visual
+         * separation is purely each item getting its own list row).
+         * @param {string[]} items - Ordered per-item clean text.
+         * @returns {string} Human-readable joined string.
+         */
+        function _joinListItemsForDisplay(items) {
+            if (items.length <= 1) return items[0] || '';
+            if (items.length === 2) return `${items[0]} and ${items[1]}`;
+            return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+        }
+
         const itemVals = Array.from(itemValueCounts.keys());
-        const combinedVals = vals.map(v => ({ value: v, isItem: false }))
-            .concat(itemVals.map(v => ({ value: v, isItem: true })))
+        // `displayText` is the human-facing string rendered/highlighted in
+        // renderItems() below; `value` (the raw getCleanColumnText() string)
+        // stays the checkbox/filter key untouched. For a multi-item list
+        // cell's whole-cell entry, `displayText` re-joins that cell's own
+        // per-<li> item texts (captured in valueItemSequence above) into a
+        // natural "A, B and C" reading instead of the raw space-joined
+        // run-on `value` itself is. Item (▤) entries and single-value
+        // whole-cell entries just get displayText === value (nothing to
+        // join).
+        const combinedVals = vals.map(v => ({
+            value: v,
+            isItem: false,
+            displayText: valueItemSequence.has(v)
+                ? _joinListItemsForDisplay(valueItemSequence.get(v))
+                : v
+        }))
+            .concat(itemVals.map(v => ({ value: v, isItem: true, displayText: v })))
             .sort((a, b) => a.value.toLowerCase().localeCompare(b.value.toLowerCase()));
 
         // Bare alias strings already independently selectable elsewhere in
@@ -43901,10 +43945,12 @@ a { color: #1565c0; }`;
 
         /**
          * (Re-)renders the item list, showing only values that match `filter`
-         * (case-insensitive substring). Each entry is prefixed by a styled
-         * "(n)" badge showing the occurrence count of that value in the visible
-         * rows. The badge is display-only; clicking or pressing Enter copies
-         * only the raw column value into the filter field (via `item.title`).
+         * (case-insensitive substring, matched against each entry's
+         * `displayText`). Each entry is prefixed by a styled "(n)" badge
+         * showing the occurrence count of that value in the visible rows.
+         * The badge is display-only; clicking or pressing Enter toggles the
+         * entry's checkbox state (via the same `value`/`key`, never
+         * `displayText`), which is what actually drives row filtering.
          * Matching characters are wrapped in a <mark> element styled with the
          * configured highlight colors.
          *
@@ -43914,7 +43960,7 @@ a { color: #1565c0; }`;
             listBox.innerHTML = '';
             const lf = filter.toLowerCase();
             const matching = filter
-                ? combinedVals.filter(e => e.value.toLowerCase().includes(lf))
+                ? combinedVals.filter(e => e.displayText.toLowerCase().includes(lf))
                 : combinedVals;
 
             if (matching.length === 0) {
@@ -43925,7 +43971,7 @@ a { color: #1565c0; }`;
                 return;
             }
 
-            matching.forEach(({ value: v, isItem }) => {
+            matching.forEach(({ value: v, isItem, displayText }) => {
                 // The checked-value-set key: item entries are stored prefixed
                 // with MB_UNIQ_ITEM_VALUE_PREFIX — coexists with plain
                 // whole-cell values in the same checkedValues Set /
@@ -43944,16 +43990,16 @@ a { color: #1565c0; }`;
                 item.className = isChecked ? 'mb-col-uniq-item mb-col-uniq-checked' : 'mb-col-uniq-item';
                 item.setAttribute('role', 'option');
                 item.setAttribute('aria-selected', String(isChecked));
-                // title holds the raw, UNPREFIXED value — used by the
-                // Enter-key handler and applyUniqVal() so the badge text is
-                // never copied into the filter input field. (Confirmed
-                // nothing reads this back programmatically — it's a pure
-                // hover tooltip for the CSS-ellipsis-truncated row, so it
-                // must stay human-readable even for item entries.) A glyph
-                // explanation is appended when this entry carries one — the
-                // markers below (▤ item marker, flag/area icon) are
-                // otherwise unlabelled and have no explanation anywhere else
-                // in the script.
+                // title holds displayText (the human-readable, "A, B and C"
+                // -joined text for a multi-item whole-cell value, else same
+                // as the raw value) — confirmed nothing reads this back
+                // programmatically (it's a pure hover tooltip for the
+                // CSS-ellipsis-truncated row; the Enter-key handler and
+                // click handler below both act on `key`/`value`, never
+                // `.title`). A glyph explanation is appended when this entry
+                // carries one — the markers below (▤ item marker, flag/area
+                // icon) are otherwise unlabelled and have no explanation
+                // anywhere else in the script.
                 const _glyphNotes = [];
                 if (isItem) {
                     _glyphNotes.push('▤ matches one item inside a multi-item cell, not the cell’s entire contents');
@@ -43961,7 +44007,7 @@ a { color: #1565c0; }`;
                 if (hasFlagIcons && flagIconMap.get(v)) {
                     _glyphNotes.push('flag/area icon shown as it appears in the table');
                 }
-                item.title = _glyphNotes.length ? `${v} — ${_glyphNotes.join(' — ')}` : v;
+                item.title = _glyphNotes.length ? `${displayText} — ${_glyphNotes.join(' — ')}` : displayText;
 
                 // ---- Checkbox glyph: ☑/☐, enables multi-select (OR'd within column) ----
                 // Not a native <input type="checkbox"> — the whole row is the click
@@ -44062,23 +44108,23 @@ a { color: #1565c0; }`;
                     }
                 } else if (filter) {
                     // Build highlighted content with a <mark> around the match
-                    const li = v.toLowerCase();
-                    const start = li.indexOf(lf);
+                    const dl = displayText.toLowerCase();
+                    const start = dl.indexOf(lf);
                     const end   = start + lf.length;
                     item.classList.add('mb-uniq-qf-match');
-                    item.appendChild(document.createTextNode(v.slice(0, start)));
+                    item.appendChild(document.createTextNode(displayText.slice(0, start)));
                     const mark = document.createElement('mark');
-                    mark.textContent = v.slice(start, end);
+                    mark.textContent = displayText.slice(start, end);
                     mark.style.color           = hlColor;
                     mark.style.backgroundColor = hlBg;
                     mark.style.fontWeight      = 'bold';
                     mark.style.borderRadius    = '2px';
                     mark.style.padding         = '0 1px';
                     item.appendChild(mark);
-                    item.appendChild(document.createTextNode(v.slice(end)));
+                    item.appendChild(document.createTextNode(displayText.slice(end)));
                 } else {
                     // Use appendChild (not textContent) to preserve the badge node
-                    item.appendChild(document.createTextNode(v));
+                    item.appendChild(document.createTextNode(displayText));
                 }
 
                 item.addEventListener('mousedown', ev => ev.preventDefault());
