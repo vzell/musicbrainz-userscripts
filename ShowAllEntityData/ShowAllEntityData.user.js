@@ -28038,7 +28038,14 @@ a { color: #1565c0; }`;
             display: block;
         }
         .mb-caa-type-badge {
-            font-size: 0.75em;
+            /* No own font-size — each individual pill span (built by
+               _artBuildImageLi(), inline style) sets its own font-size
+               directly relative to this wrapper, so this class staying at
+               the inherited 1em keeps that value meaningful instead of
+               compounding two nested em shrinks (previously 0.75em here
+               PLUS 0.78em on the pill — effectively ~0.585em of the <li>'s
+               own 0.85em, much smaller than .mb-caa-art-comment's unstyled
+               (i.e. un-shrunk, full 0.85em) text right next to it). */
             background: #e8eaf6;
             color: #3949ab;
             border-radius: 3px;
@@ -44812,6 +44819,9 @@ a { color: #1565c0; }`;
          *
          * @param {HTMLElement} item
          * @param {string} label
+         * @returns {HTMLSpanElement} The created label span, so a caller that
+         *   needs to style this one entry differently (e.g. makeValueSynItem's
+         *   'arttype' case) doesn't have to re-query for it.
          */
         const _appendSynLabelText = (item, label) => {
             item.dataset.mbUniqSynLabel = label;
@@ -44819,6 +44829,49 @@ a { color: #1565c0; }`;
             labelSpan.className = 'mb-uniq-syn-label-text';
             labelSpan.textContent = label;
             item.appendChild(labelSpan);
+            return labelSpan;
+        };
+
+        /**
+         * Fills `labelSpan` (already `.mb-uniq-syn-label-text`, already in
+         * the DOM) with `prefix` as plain text followed by `value` rendered
+         * as an actual `.mb-caa-type-badge`-style pill (bold, dark-grey
+         * background) — matching the real pill's exact inline style from
+         * `_artBuildImageLi()` — so a "» image type: …" entry looks like the
+         * type-badge pill it represents instead of plain text.
+         *
+         * A dedicated builder (not folded into `_appendSynLabelText`) because
+         * it must ALSO be called by `_applySynBoxQuickFilter()` whenever it
+         * restores the "no active search" state — that function's generic
+         * path (`labelSpan.textContent = label`, used by every other entry
+         * kind) would otherwise silently flatten this back to plain text on
+         * the very next quickfilter keystroke/clear. See
+         * `_applySynBoxQuickFilter()`'s own `mbUniqArtType`-gated branch.
+         *
+         * Deliberately does NOT attempt to keep the pill styled while a
+         * quickfilter search is actively matching text inside `value` — the
+         * existing generic `<mark>`-splicing logic (unchanged, shared by
+         * every kind) runs in that case instead, so the entry temporarily
+         * reads as plain highlighted text, same as before this pill styling
+         * existed, until the search is cleared. Simpler and lower-risk than
+         * splicing a `<mark>` across the prefix/pill boundary, and the
+         * un-styled interval is only ever visible while the user is actively
+         * typing in the dropdown's own search box.
+         *
+         * @param {HTMLElement} labelSpan
+         * @param {string} prefix - e.g. `'» image type: '`.
+         * @param {string} value  - The type-badge text itself, e.g. `'Front'`.
+         */
+        const _buildArtTypePillLabel = (labelSpan, prefix, value) => {
+            labelSpan.innerHTML = '';
+            labelSpan.appendChild(document.createTextNode(prefix));
+            const pill = document.createElement('span');
+            pill.style.cssText =
+                'display:inline-block; background:#c8c8c8; color:#222;' +
+                ' border-radius:3px; padding:1px 5px; font-size:1em;' +
+                ' font-weight:600; line-height:1.4; white-space:nowrap;';
+            pill.textContent = value;
+            labelSpan.appendChild(pill);
         };
 
         /**
@@ -44932,7 +44985,7 @@ a { color: #1565c0; }`;
                 _guardGlyphAgainstEmptySelectorHiding(marker);
                 item.appendChild(marker);
             }
-            _appendSynLabelText(item,
+            const _synLabelPrefix =
                 (kind === 'attr'       ? '» attribute: '
                  : kind === 'instrument' ? '» instrument: '
                  : kind === 'altname'    ? '» credited as: '
@@ -44942,8 +44995,31 @@ a { color: #1565c0; }`;
                  : kind === 'role'       ? '» role: '
                  : kind === 'arttype'    ? '» image type: '
                  : kind === 'artcomment' ? '» image comment: '
-                 : '» ') + value
-            );
+                 : '» ');
+            if (kind === 'arttype') {
+                // Render the value as an actual pill (see
+                // _buildArtTypePillLabel's own JSDoc) instead of via the
+                // generic _appendSynLabelText(), which flattens everything
+                // to plain text and would defeat the pill styling the first
+                // time _applySynBoxQuickFilter() re-renders this label (its
+                // own mbUniqArtType-gated branch is what keeps this pill
+                // alive across quickfilter clears — see that function).
+                const _fullLabel = _synLabelPrefix + value;
+                item.dataset.mbUniqSynLabel  = _fullLabel;
+                item.dataset.mbUniqArtType   = '1';
+                // Stored directly (not derived from item.title at rebuild
+                // time) — _wireStructureCheckbox() below mutates item.title
+                // by appending a tooltip sentence, so it stops being equal
+                // to the raw value alone well before _applySynBoxQuickFilter()
+                // ever needs to split _fullLabel back into prefix/value.
+                item.dataset.mbUniqArtTypeValue = value;
+                const _labelSpan = document.createElement('span');
+                _labelSpan.className = 'mb-uniq-syn-label-text';
+                item.appendChild(_labelSpan);
+                _buildArtTypePillLabel(_labelSpan, _synLabelPrefix, value);
+            } else {
+                _appendSynLabelText(item, _synLabelPrefix + value);
+            }
 
             _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + `${kind}:${value}`);
             // 'arttype'/'artcomment' route dynamically to "CAA info"/"EAA info"
@@ -45291,7 +45367,18 @@ a { color: #1565c0; }`;
 
                     if (!filter) {
                         item.classList.remove('mb-uniq-qf-match');
-                        labelSpan.textContent = label;
+                        // "» image type: …" entries render their value as an
+                        // actual pill (_buildArtTypePillLabel) — restore that
+                        // structure instead of the generic plain-text
+                        // flatten below, or every quickfilter clear would
+                        // silently strip the pill styling right back off.
+                        if (item.dataset.mbUniqArtType === '1') {
+                            const _value  = item.dataset.mbUniqArtTypeValue || '';
+                            const _prefix = label.slice(0, label.length - _value.length);
+                            _buildArtTypePillLabel(labelSpan, _prefix, _value);
+                        } else {
+                            labelSpan.textContent = label;
+                        }
                         return;
                     }
 
@@ -56626,9 +56713,14 @@ a { color: #1565c0; }`;
                 badgeWrap.appendChild(document.createTextNode(' / '));
             }
             const pill = document.createElement('span');
+            // font-size: 0.85em — matches li.mb-caa-art-li-image's own
+            // font-size (its .mb-caa-type-badge parent no longer shrinks
+            // further, see that class's own comment), so this pill reads at
+            // the same size as the unstyled .mb-caa-art-comment span right
+            // next to it, instead of noticeably smaller.
             pill.style.cssText =
                 'display:inline-block; background:#c8c8c8; color:#222;' +
-                ' border-radius:3px; padding:1px 5px; font-size:0.78em;' +
+                ' border-radius:3px; padding:1px 5px; font-size:0.85em;' +
                 ' font-weight:600; line-height:1.5; white-space:nowrap; cursor:default;';
             pill.textContent = t;
             badgeWrap.appendChild(pill);

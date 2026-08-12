@@ -1,5 +1,41 @@
 [
   {
+    "version": "WIP.97",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "\"CAA info\"/\"EAA info\" dropdown section (WIP.94-96): superseded WIP.95's plain font-size bump — \"» image type: …\" entries now render the value itself as an actual pill (bold, dark-grey background, matching `.mb-caa-type-badge`'s real inline style in the table cell) instead of plain text, via a new `_buildArtTypePillLabel()` helper. `_applySynBoxQuickFilter()`'s generic label rebuild (used by every other entry kind, and previously would have silently flattened the pill back to plain text on the very next quickfilter keystroke or clear) is now gated: entries carrying a new `item.dataset.mbUniqArtType` marker rebuild the pill via the same helper when the search is cleared, restoring it every time; while a search is actively matching text, the entry deliberately falls back to the existing plain-text-plus-`<mark>` rendering unchanged (same as before this pill styling existed) rather than attempting to splice a `<mark>` across the prefix/pill boundary — simpler and lower-risk, and only visible while actively typing in the dropdown's own search box. Checkbox-driven column filtering itself (`_wireStructureCheckbox`/`_cellMatchesStructureMode`) is completely unaffected by any of this, since it only ever depends on the `kind`/`value` strings, never on label DOM structure."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.96",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "CAA/EAA cell type-badge pills (e.g. \"Schedule\"/\"Poster\" — see debug/font.html, artist-events' \"EAA\" column) rendered noticeably smaller than the \".mb-caa-art-comment\" text right next to them (e.g. \"rescheduled dates\") — two compounding nested `em` shrinks (the `.mb-caa-type-badge` wrapper's own 0.75em, then the individual pill's inline 0.78em on top of that) worked out to roughly 58% of the comment's size, which just inherits `li.mb-caa-art-li-image`'s own unshrunk 0.85em. Removed the wrapper's font-size (now inherits, no longer compounds) and bumped each pill's own inline font-size from 0.78em to 0.85em, matching the comment's effective size exactly."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.95",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "\"CAA info\"/\"EAA info\" dropdown section (WIP.94): the \"» image type: …\" entries read small/pill-like at the dropdown's default ambient font-size (0.87em, same as the source table cell's own small bold type-badge pill), noticeably smaller-feeling than the \"» image comment: …\" entries next to them. Bumped the image-type label span's own font-size to 1.05em so it reads like ordinary text, on par with the comment entries. `_appendSynLabelText()` now returns the label span it creates (harmless for existing callers that ignore the return) so `makeValueSynItem()` can style this one case without an extra DOM query."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.94",
     "date": "2026-08-12",
     "sections": [
