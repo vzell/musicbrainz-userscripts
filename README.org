@@ -92981,7 +92981,6 @@ raw "instruments" relationships shoud also go into the first "Instruments" colum
 
 @debug/inst.html - "David Kosten" and "Mike Carswell" are flagged as playing instruments, without being specific
 
-
 * DONE fix display of status line after loading from disk
 
 Fix the display of the status line '<div id="mb-status-displays-container"' after loading from disk.
@@ -92999,6 +92998,618 @@ to
 Loaded <number of rows> of rows from disk file <disk file.gz>, 🎨CAA: 8.2s | 🎨CAA: 8.2s 🗄️ IDB sweep: removed 1 expired entry
 #+end_example
 
+* DONE plan: how can I simplify (e.g. remove double functionality) but still use a nice interface with icons/glyphs etc.
+** initial
+
+@debug/uvd.html - complete unique value drop down menu for the "Artist" column in https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/artists
+
+1.)
+
+can I simplify (e.g. maybe remove double functionality, but also see bullet point 2.) from the unique value drop down in
+each column but still use a nice interface with icons/glyphs etc.
+
+2.)
+
+is it possible to maybe better organize the different entries in the unique value drop down in multiple different
+sections like the current "Cell structure", maybe make them collapsible by clicking the section header
+
+3.)
+
+maybe each section should have its own "Quick filter" input box, maybe also use a global one too
+
+think about it and discuss with me
+
+** DONE plan
+
+#+begin_example
+● The plan is still structurally valid — I've verified against the current branch tip and refreshed the line numbers.
+
+  What changed on pull: commit b24f3bc ("fix: unique-values dropdown flag/area icons bunched at start...") reworked flag/area-icon rendering inside renderItems()/flagIconMap — a different part of the same openUniqDrop() function, unrelated to synBox/"Cell structure"/quick-filter
+  logic. It added ~140 net lines, which shifted every line number from synBox onward. I confirmed via fresh greps that makeSynItem, makeValueSynItem, appendSynDivider, makeInlineArtItem, the "Cell structure"/"Relationship icons" build blocks, _applySynBoxQuickFilter, and the
+  _sortedNameValues/_sortedAliasValues dedup sites all still exist with identical structure — just at new line numbers, which I've updated in the plan. I also confirmed the one remaining unpulled remote commit (098d2ea) only touches README.org and is irrelevant. debug/uvd.html is
+  still undocumented in NOTES.md, so that action item stands too.
+
+  No changes to the approach, section groupings, or the four decisions from before. Ready to exit plan mode when you are.
+
+● User approved Claude's plan
+  ⎿  Plan saved to: ~/.claude/plans/debug-uvd-html-complete-unique-wondrous-lemon.md · /plan to edit
+     Unique-Value Dropdown (UVD): sectioned, collapsible "Cell structure", smarter quick filter
+
+     ▎ Note: line numbers below were re-verified against the current branch
+     ▎ tip (commit b24f3bc, pulled from another machine after the original
+     ▎ exploration) — that commit reworked flag/area-icon rendering inside
+     ▎ renderItems()/flagIconMap (lines ~42816-43370 in the pre-pull file),
+     ▎ shifting everything from synBox onward by ~+95-140 lines. It does not
+     ▎ touch synBox/"Cell structure"/quick-filter code, so none of the
+     ▎ structural analysis or approach below changed — only the absolute line
+     ▎ numbers were refreshed.
+
+     Context
+
+     openUniqDrop() (ShowAllEntityData.user.js:42370-44231) builds the per-column
+     "unique value" filter dropdown (📊 button in each sortable column header). On
+     the debug/uvd.html snapshot (Artist column, /instrument/…/artists), the
+     panel renders 597 rows in one scroll area: a synBox region with 196
+     items all crammed under a single "Cell structure" header, followed by a flat
+     401-item alphabetical listBox. The "Cell structure" header currently hides
+     up to 9 unrelated families of synthetic entries with no sub-grouping:
+     structural states (empty/single/collapsed/expanded/any), flags (≠ track/rec.
+     mismatch, ~ name-variation), artwork presence (✓/✗), five credit-value
+     families (attribute/task/date/instrument/credited-as), three entity-info
+     families (name/comment/alias), and event roles — plus the already-separate
+     "Relationship icons" and inline-artwork mini-sections. This makes the panel
+     overwhelming and makes same-looking values appear 2-3 times (once as a plain
+     whole-cell row, once as an entity-glyph href row, once as a "» name:"
+     structure-mode row) with no visual explanation of why.
+
+     The user wants (discussed and agreed):
+     1. Reduce look-alike duplication without removing real functionality.
+     2. Break "Cell structure" into named, independently collapsible sections with
+     icons/glyphs, mirroring the multi-section idea already partially present
+     (Relationship icons / inline-artwork already get their own header).
+     3. Keep the single existing global quick filter (already covers listBox and
+     most of synBox) rather than adding N per-section filter boxes — but make
+     it smarter: auto-reveal matches inside collapsed sections, and close the
+     existing gap where it doesn't filter "Relationship icons" entries at all.
+
+     Decisions already made with the user (see prior AskUserQuestion):
+     - Global quick filter only, made smarter — no per-section filter inputs.
+     - Section collapse/expand state is remembered globally by section name
+     (not per-column), persisted across dropdown opens.
+     - Suppress "» name:"/"» alias:" synthetic entries when that exact text is
+     already independently selectable elsewhere in the same dropdown (as a
+     plain whole-cell value, or as an entity-glyph href row) — only genuinely
+     new information keeps its own row.
+     - The main "All values" list (listBox) stays always-expanded; only the
+     synthetic synBox sections become collapsible.
+
+     Approach
+
+     1. Introduce a section-container abstraction inside synBox
+
+     Currently every builder (makeSynItem, makeValueSynItem, makeInlineArtItem,
+     the inline "Relationship icons" block starting at 43850) appends its item
+     <div> directly as a sibling of synBox, with plain header <div>s and
+     appendSynDivider() calls in between (43490-43948). Replace this with a
+     small registry keyed by section name:
+
+     const _synSections = new Map(); // key -> { wrapper, itemsBox, headerEl }
+     function getOrCreateSynSection(key, label, glyph) { ... }
+
+     getOrCreateSynSection lazily creates, on first use, a
+     <div class="mb-uniq-section"> containing:
+     - <div class="mb-uniq-section-hdr" role="button" tabindex="0"> — a ▶/▼
+     toggle glyph + glyph icon + label text + (later) a match-count badge —
+     click/Enter toggles the section (see §3 for persistence).
+     - <div class="mb-uniq-section-items" role="group"> — the actual item rows,
+     same children makeSynItem/makeValueSynItem/etc. already build today,
+     just appended here instead of directly to synBox.
+
+     Proposed section keys/labels/glyphs (grouping the existing families 1:1, no
+     new data collection needed — every count/Map already computed at
+     42400-42638 and 43475-43492 stays exactly as-is):
+
+     ┌───────────────┬────────────────────┬───────┬─────────────────────────────────────────────────────────────────────┐
+     │      key      │       label        │ glyph │                      existing entries moved in                      │
+     ├───────────────┼────────────────────┼───────┼─────────────────────────────────────────────────────────────────────┤
+     │ structure     │ Structure          │ 🔠    │ empty/single/collapsed/expanded/any, artwork ✓/✗, inline-art yes/no │
+     ├───────────────┼────────────────────┼───────┼─────────────────────────────────────────────────────────────────────┤
+     │ flags         │ Flags              │ 🚩    │ title-mismatch ≠, name-variation ~                                  │
+     ├───────────────┼────────────────────┼───────┼─────────────────────────────────────────────────────────────────────┤
+     │ credit        │ Credit details     │ 🎚️    │ attr/task/date/instrument/altname                                   │
+     ├───────────────┼────────────────────┼───────┼─────────────────────────────────────────────────────────────────────┤
+     │ entity        │ Entity info        │ 👤    │ name/comment/alias (post-dedup, see §2)                             │
+     ├───────────────┼────────────────────┼───────┼─────────────────────────────────────────────────────────────────────┤
+     │ roles         │ Roles              │ 🎭    │ event role                                                          │
+     ├───────────────┼────────────────────┼───────┼─────────────────────────────────────────────────────────────────────┤
+     │ relationships │ Relationship icons │ 🔗    │ existing per-domain favicon rows                                    │
+     └───────────────┴────────────────────┴───────┴─────────────────────────────────────────────────────────────────────┘
+
+     Call sites to update: makeSynItem/makeValueSynItem/makeInlineArtItem
+     gain a sectionKey argument (or infer it from mode/kind — simplest is an
+     explicit argument since callers already know their family); the section
+     build blocks at 43729-43807 (collapsable-column "Cell structure" branch),
+     43808-43844 (non-collapsable-column branch), 43850-43938 (Relationship
+     icons), 43939-43971 (inline thumbnail presence) route their
+     synBox.appendChild(item) calls through getOrCreateSynSection(key, ...).itemsBox
+     instead. Remove the now-redundant standalone synHdr/appendSynDivider()
+     calls — the section wrapper supplies its own header and visual separation
+     (a border-top on .mb-uniq-section + .mb-uniq-section, CSS-only).
+
+     2. Entity-info dedup ("only show when it adds info")
+
+     At 43805/43807 (_sortedNameValues.forEach / _sortedAliasValues.forEach,
+     also mirrored at 43840/43842 in the non-collapsable-column branch): before
+     calling makeValueSynItem('name', v, …) / makeValueSynItem('alias', v, …),
+     skip v when it's already independently selectable elsewhere in the same
+     panel — i.e. v is already a key in valueCounts (a plain whole-cell value)
+     or already present as an entityInfo name for an href kept in combinedVals
+     (an entity-glyph row). Build one small Set of "already-offered bare names"
+     right after combinedVals is assembled (42659-42663) and reuse it at both
+     name/alias filter sites. » comment: entries are untouched — a
+     disambiguation comment is never independently selectable any other way, so
+     there's no redundancy to remove there.
+
+     3. Collapse/expand + persistence
+
+     - New CSS classes: .mb-uniq-section, .mb-uniq-section-hdr (clickable,
+     same visual language as the existing "Cell structure" header font:
+     font-size:0.75em; font-weight:600; color:#555; letter-spacing:0.03em,
+     plus cursor:pointer and a ▶/▼ prefix), .mb-uniq-section-items
+     (display:none when collapsed). Add near the existing .mb-col-uniq-syn-box
+     CSS block (~`27766-27881`).
+     - Persist collapse state with GM_setValue/GM_getValue, following the
+     existing non-configSchema UI-state pattern already used for column
+     visibility (ShowAllEntityData.user.js:17149/17162) and dropdown geometry
+     (29792/29812) — a single JSON object under one new key, e.g.
+     mb_sa_uniq_section_collapse, shaped { structure: false, credit: true, … }
+     (missing key = expanded, the current always-expanded behavior, so first-run
+     users see no change). Read once when openUniqDrop builds the panel, write
+     on every header click.
+     - Header click toggles itemsBox display, flips the ▶/▼ glyph, and persists
+     the new state for that section key globally (shared across every column —
+     per the user's decision, not scoped per-column).
+
+     4. Smarter global quick filter
+
+     - Fix the coverage gap: give the "Relationship icons" section's item rows a
+     dataset.mbUniqSynLabel + .mb-uniq-syn-label-text span the same way
+     _appendSynLabelText() already does for every other synBox entry
+     (43555-43561), instead of the bespoke lbl span built inline in that
+     block — this alone makes _applySynBoxQuickFilter() (44010-44046)
+     cover them for free, no separate filter logic needed.
+     - In _applySynBoxQuickFilter(filter), after computing each item's
+     matches, additionally: (a) track a per-section match count as items are
+     visited (Array.from(synBox.children) becomes a walk over each section's
+     itemsBox children instead, or an outer loop over _synSections), (b)
+     force a section's itemsBox visible (ignoring its persisted collapsed
+     state) whenever it has ≥1 match while filter is non-empty, restoring the
+     persisted collapsed/expanded state when filter is cleared, and (c) render
+     the match count in the section header, e.g. Credit details (3), while
+     filtering (revert to plain label text when the filter is cleared).
+
+     Files touched
+
+     - ShowAllEntityData.user.js — all of the above lives inside/around
+     openUniqDrop() (42370-44231) plus the CSS block for .mb-col-uniq-syn-box
+     (~27766-27881, unaffected by the recent flag-icon commit since that only
+     touched code inside openUniqDrop() itself). Also check the column-header
+     tooltip hint that says This column also has a "Cell structure" section…
+     (~`45009— grepCell structure" section` before editing, since the exact
+     line will drift further as this feature is built) — update its wording to
+     match whatever the new section names end up being, so it doesn't reference
+     a heading that no longer exists.
+     - ShowAllEntityData_CHANGELOG.wip.json — add a WIP entry (this repo's
+     convention: version bumps/changelog entries land on main only; the
+     current branch tracks work via WIP.N placeholders until merge).
+     - debug/NOTES.md — document debug/uvd.html (what it shows: the pre-change
+     597-row panel) per the project's "document snapshots" convention, since it
+     isn't documented there yet.
+
+     Verification
+
+     1. Load ShowAllEntityData.user.js in Tampermonkey (dev build) against the
+     real /instrument/63021302-86cd-4aee-80df-2270d54f4978/artists page (the
+     source of debug/uvd.html) — the highest-volume real case available.
+     2. Open the Artist column's 📊 dropdown: confirm the panel now shows
+     Structure / Flags / Credit details / Entity info / Roles /
+     Relationship icons as separate collapsible headers instead of one
+     196-item "Cell structure" block, each with a ▶/▼ glyph and icon.
+     3. Click a couple of section headers: items toggle visibility; reopen the
+     dropdown (same column and a different column) and confirm the collapsed
+     sections stay collapsed (global persistence via GM_getValue).
+     4. Type into the quick filter: confirm matches inside a collapsed section
+     auto-reveal with a match count on its header, and that a Relationship icons entry (open on the Relationships column instead) is now filterable
+     too. Clear the filter and confirm sections return to their persisted
+     collapsed/expanded state.
+     5. Compare item counts in "Entity info" before/after on the Artist column —
+     confirm names/aliases that duplicate an existing plain-value or
+     entity-glyph row no longer get their own "» name:"/"» alias:" row, while
+     » comment: rows are unchanged.
+     6. Spot-check 2-3 other page types with different synthetic families active
+     (a CAA/EAA release page for artwork presence, a credit-role column for
+     attribute/task/date, a Relationships column) to confirm no section is
+     silently empty/mis-routed after the refactor.
+#+end_example
+
+
+
+
+** DONE new plan
+
+#+begin_example
+@debug/uvd-enhancement.html - complete final rendered page for https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1 (see also [Image #6])
+@debug/uvd-title.html - just the unique value drop down from the "Title" column of the complete final rendered page for https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1
+#+end_example
+
+I don't want the following type of entry (prefixed with the MusicBrainz entity glyph - @debug /glyph-entity-entry.html) in the standard section of the unique value drop down (as it "belongs
+to"/filters the row with the disambiguation comment see [Image #8], although it would be indistinguishable from other
+such same named entries, if they would have different comments, see as an example [Image #7] with multiple "18 Tracks" titles)
+
+Instead render that same entry in the "Entity info" section, but with another meaning. When selected ALL rows with that
+entity name should be filtered, irrespactable of the comment column.
+
+So we would have just ONE such entry in the "Entity info" section, instead of maybe multiple ones (indistinguishable by
+just looking at them) in the standard section
+
+* DONE increase the height (number of entries displayed initially) of the unique value drop down menu (configurable: default current number of rows)
+
+increase the height (number of entries displayed initially) of the unique value drop down menu (configurable: default current number of rows)
+
+* DONE CAA icons missing and sometimes doubled 
+** DONE initial
+
+CAA icons missing sometimes and sometimes doubled
+
+1.)
+
+When starting from the final rendered page at https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f and
+click on the "Show single-table" button of e.g. the first sub-table with "Album" in the h3 header line, I get the
+following "single"-table type page rendered in a new tab, see @debug/double-caa-icons.html
+
+The icons from the CAA columns seem to be doubled in the "Titel" column. This looks like something we had fixed in
+commit 'a0c7405 * [ShowAllEntityData] fix: doubled CAA cover art'
+
+2.)
+
+When starting from the final rendered page at https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships and 
+click on the "Show single-table" button of e.g. the sub-table under the h3 header "Published release", see @debug/subtable-published-release.html
+the "single"-table page (https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1) in a new tab looks like @debug/single-published-release.html
+
+The CAA column on the final rendered page in the new tab looks like it doesn't have any CAA icons, see screenshot [Image #10]
+when the column is collpased initially.
+When uncollapsing, you can actually see all the CAA images [Image #11]
+
+On the original page the collapsed column looked like this screenshot [Image #12] and the uncollapsed like this [Image #13]
+
+a.)
+
+It looks like the "Front" images are NOT rendered after the e.g. '<span data-caa-expand-btn="collapsed" title="Show all
+CAA cover art images (2) in this cell"' on the final "single"-table page
+
+b.)
+
+also there is a non functional
+
+#+begin_example
+'<span class="mb-col-collapse-hdr-btn" data-col-index="12" title="Expand ALL multi-row CAA cells (4) in this table column — keyboard: Ctrl+M then O when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for Ctrl+O)" role="button" aria-expanded="false" aria-label="Expand all multi-row cells in: CAA" style="margin-left: auto;"><span class="mb-col-collapse-glyph">▶</span><span class="mb-col-collapse-count">4</span><span class="mb-col-collapse-rack">▤</span></span>'
+#+end_example
+
+on the final "single"-table page rendered in the CAA header column
+
+** DONE act on @debug/CAA-missing-doubled.org
+
+act on @debug/CAA-missing-doubled.org
+
+** DONE 2.) still buggy
+
+1.)
+
+I got a new snapshot @debug/single-published-release-2.html
+This time ONLY 1 icon is missing when initially collapsed.
+
+2.)
+
+I tried with other sub-tables from https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
+rendering in a new tab and they all have non deterministic behaviour in which icons are displayed or not
+
+3.)
+
+Add comprehensive debug statements for the special "single"-table in a new tab case for now and I will collect some debug logs
+
+** DONE debug log
+
+#+begin_example
+@debug/sub-table-debug.log - sub-table logging on initial page
+@debug/single-table-debug.log - single-table logging in new table
+#+end_example
+
+** DONE again
+
+#+begin_example
+@debug/mt-debug.log - sub-table logging on initial page
+@debug/st-debug.log - single-table logging in new table
+#+end_example
+
+** DONE still
+
+Still not working, I now get the number of images instead of the image itself when collapsed
+
+#+begin_example
+@debug/mt2-debug.log - sub-table logging on initial page
+@debug/st2-debug.log - single-table logging in new table
+#+end_example
+
+Well it definitely has to do with the jesus userscript presence. I tested it in another browser just with our userscript and it worked perfect.
+
+** DONE add a new boolean flag for toggling the additional debugging only
+
+For the "TEMPORARY diagnostic instrumentation" in the versions "WIP.90"/"WIP.91":
+
+1.)
+
+leave the debug statements in the code (you never know when they come in handy again)
+
+2.)
+
+Add a new boolean flag (debug should be 'false') in the "GENERIC SETTINGS" config section for toggling these additional debugging statements on (in addition to the global "Enable debug logging" setting)
+
+* DONE when "version 4" is alone in the disambiguation put it into the "Event-Detail" column on pageType 'release-tracks'
+** initial
+
+Adjust the implementation of the function 'eventParts(sourceCell)' when acting on a "sourceColumn" like e.g
+"Disambiguation"/"Comment" in the following way:
+
+when the sourceColumn cell value starts with "<single string event type>, <event date>"
+
+#+begin_example
+live, 
+soundcheck, 
+studio, 
+interview,
+etc.
+#+end_example
+
+and there is an an explicit blank " " after the "," in the above list, that expression without the ", " lands in the
+synthetix "Event-Type" column.
+
+So do other Strings like e.g. "version 4" which do NOT fit into that schema. Currently they also land in the
+"Event-Type" column, but they should actually go to the more generic "Event-Additional-Info" column
+
+** bug
+
+Refine:
+
+1.)
+
+add
+
+#+begin_example
+audition
+live rehearsal
+#+end_example
+
+the list of EVENT_TYPE_KEYWORDS
+
+2.)
+
+when the sourceColumn cell value starts with an uppercase letter and happens to have a colon ":" and an optional string part after it like e.g.
+
+#+begin_example
+The River: Single Album version
+#+end_example
+
+it currently gets split like the following
+
+#+begin_example
+The River ==> Event-Country
+Single Album version ==> "Event-Additional-Info"
+#+end_example
+
+but the whole "The River: Single Album version" should go to "Event-Additional-Info"
+
+* DONE format multilist items in the unique value drop down with " and "|", " concatenated instead of just a blank " "
+
+1.)
+
+On e.g https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd format/render the multilist artist items in
+the unique value drop down e.g. in the "Producer" column, which on the original page have been rendered with the strings
+" and " and ", " concatenated, the same way instead of just a blank " " between the artist names
+
+#+begin_example
+Original page, AR in the "Title" column - "producer: Jon Landau, Chuck Plotkin and Bruce Springsteen"
+Final rendered page, corresponding entry in the unique value drop down "Jon Landau Chuck Plotkin Bruce Springsteen", see also the following complete entry
+#+end_example
+
+#+begin_example
+<div class="mb-col-uniq-item" role="option" aria-selected="false" title="Jon Landau Chuck Plotkin Bruce Springsteen"><span class="mb-col-uniq-checkbox" aria-hidden="true">☐</span><span class="mb-uniq-count-badge" aria-hidden="true" style="color: rgb(17, 17, 17); background-color: rgb(255, 250, 205); font-weight: bold; font-family: monospace; border-radius: 3px; padding: 0px 3px; margin-right: 5px; font-size: 0.85em; display: inline-block; min-width: 3ch; text-align: right;">(1)</span>Jon Landau Chuck Plotkin Bruce Springsteen</div>
+#+end_example
+
+2.)
+
+When clicking such an entry, it still should correctly filter as before, so basically ignoring these added strings (they
+should ONLY be there for human display/reading purposes)
+
+* DONE plan: add a new named sub structure "CAA info"/"EAA info" (depending if the actual column is called "CAA" or "EAA") in the unique value drop down menu for the CAA/EAA columns with new values describing what image types/comments are present
+** DONE initial
+
+@debug/single-published-release.html
+
+Add a new named sub structure "CAA info"/"EAA info" (depending if the actual column is called "CAA" or "EAA") in the
+unique value drop down menu for the CAA/EAA columns with new values describing what image types/comments are present.
+
+a.)
+
+Image types like:
+#+begin_example
+Front
+Back
+Spine
+Cover
+Obi
+Sticker
+Booklet
+Matrix/Runout
+etc
+#+end_example
+
+basically the different dark grey background types like e.g. '<span style="display: inline-block; background: rgb(200, 200, 200); color: rgb(34, 34, 34); border-radius: 3px; padding: 1px 5px; font-size: 0.78em; font-weight: 600; line-height: 1.5; white-space: nowrap; cursor: default;">Matrix/Runout</span>'
+
+b)
+
+plus all the different "mb-caa-art-comment" comments e.g '<span class="mb-caa-art-comment">Front cover, booklet page i</span>':
+#+begin_example
+Front cover, booklet page i
+Page ii
+Page 1
+Page 2
+etc.
+#+end_example
+
+** DONE make the font for the image type in the unique value drop down a little bigger (like the comment itself)
+*** initial
+
+make the font for the image type in the unique value drop down a little bigger (like the comment itself)
+
+*** image column
+
+also make the font for the image type in the actual CAA/EAA column a little bigger (like the comment itself), see a
+current example list-entry in the "EAA" column" of the 'artist-events' pageType @debug/font.html
+
+*** could we actually have the same appearance of the image type-badge pills (bold font and with dark grey background) in the unique value drop down but not breaking the current actual working filtering
+
+could we actually have the same appearance of the image type-badge pills (bold font and with dark grey background) in
+the unique value drop down but not breaking the current actual working filtering
+
+* DONE plan: add checkboxes also to the "Relationship icons" section
+** initial
+
+Given as an example https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1 see also screenshot [Image #25]
+
+#+begin_example
+@debug/rel-icons.html - complete HTML from final rendered https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1
+@debug/rel-icons-udb.html - just the unique value drop-down menu for the "Relationships" column
+#+end_example
+
+Is it possible, to filter on multiple (there is NO checkbox yet in the "Relationship icons" section of the unique value
+drop-down menu) base Relationship URLs (together with their main virtual pathes, without the query string) plus their
+favicon icons, so that when clicking for example multiple entries in that section all the relevant entries (inclusive their differetn query string are getting filtered))
+
+Currently clicking one of the entries in the "Relationship icons" section filters all rows which have that icon and directly closes the unique value drop-down menu
+
+Do not code yet, just investigate first
+
+** bug
+
+When filtering on the Relationships column on a single-table version (in a new tab) of a subtable from a multi-table
+pageType e.g. our https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1 from
+the last session, the picard cell icons are gone AFTER filtering and also do NOT reappear again.
+
+a.) It doesn't matter if we filter by typing in a filter string directly or by selecting a filter value from the unique value drop down menu
+
+b.) On the subtable version of the original rendered final page https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships it works
+
+* DONE change comment (vzell userscript)
+
+Change the following comment from (as the "Edit recording comments" button is NOT a MB native functionality)
+
+#+begin_example
+removeSelectors: [
+                    'h2.tracklist button.work-button-style', // native "Edit recording comments"
+#+end_example
+
+to
+
+#+begin_example
+removeSelectors: [
+                    'h2.tracklist button.work-button-style', // userscript "VZ: MusicBrainz - Generate Recording Comments For A Release" from @'Michael Wiencek, Gemini (directed by vzell)'
+#+end_example
+
+* DONE "Country/Date" and "Country" multi-row column
+
+"Country/Date" and "Country" multi-row column rendering problems in the unique column value drop down:
+
+1.) "Country/Date" column:
+
+On e.g. https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c [Image #33] the string values of a single entry in the "Country/Date" column
+are concatenated together without and blanks (multi-row entries additionally also without " and "/", ")
+
+#+begin_example
+@debug/cd-2-uvd.html - country abbrev, date and Weekday render without blank as an entry "ES2009-02-07Sun", but the tooltip is fine 
+@debug/cd-1-uvd.html - same problem as before, but additionally the 2 entries (multi-row) have now " and " in between
+#+end_example
+
+There is also artificially too much whitespace between the country flag and the country abbrev
+
+2.) "Country" column:
+
+multi-row entries render without " and " and ", " in between see 8Image #34]
+
+#+begin_example
+@debug/c-uvd.html - 2 entries (multi-row) have now " and " in between
+#+end_example
+
+3.)
+
+In all cases, the tooltips are fine
+
+4.)
+
+Create a new plan before coding anything
+
+* DONE "Relationships" column present when it shouldn't
+
+On e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
+the "Relationships" column is only present on sub-tables where the main column is either of type release or release-group (so were it actually makes sense)
+
+ON sub-tables of type e.g. work or recording, it's not present, but when rendering these sub-tables as "single"-tables in a new tab, they artificially get the "Relationships" column
+
+#+begin_example
+@debug/recording.html - sub-table for recordings in multi table pageType on https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
+@debug/work.html - sub-table for works in multi table pageType on https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
+@debug/w-header.html -single-table header for the above recordingss sub-table with "Relationships" column
+@debug/w-header.html -single-table header for the above works sub-table with "Relationships" column
+#+end_example
+
+* DONE 'artist-events' - "Location" column, "place" and "area" icons are sorted together
+
+On pageType 'artist-events' in the "Location" column, the unique value drop down
+
+renders the following entries sorted inside the "Entity info" e.g
+
+#+begin_example
+<place glyph> name: <place name 1>
+<area glyph> name: <area name 1>
+<area glyph> name: <area name 2>
+<place glyph> name: <place name 2>
+...
+#+end_example
+
+I somehow would like the place entries coming sorted first and then the area entries, e.g
+
+Maybe call the current "name" (some for place and area) instead "area name" and "place name" and sort them separately
+
+#+begin_example
+<place glyph> place name: <place name 1>
+<place glyph> place name: <place name 2>
+...
+<area glyph> area name: <area name 1>
+<area glyph> area name: <area name 2>
+...
+#+end_example
+
+* DONE which pageType is the following URL https://musicbrainz.org/series/0c7e01dd-43f6-47aa-b931-92344fa10616
+
+a.)
+
+which pageType is the following URL https://musicbrainz.org/series/0c7e01dd-43f6-47aa-b931-92344fa10616
+
+b.)
+
+why are the column headers for "MB-Name", "Comment" and MB-Primary alias" present but not the data cells ?
+
+@debug/artist-series.html
+
 
 * TODO In "Recording enineer" column, "John Cooper (engineer)" should always stay together, a bare "John Cooper" should never be extracted
 
@@ -93007,13 +93618,6 @@ Currently
 #+begin_example
 <li><a class="wrap-anywhere" href="/artist/4844fcef-6e56-4407-be41-ead237dff686" title="Cooper, John (engineer)"><bdi>John Cooper</bdi></a>&nbsp;<span class="comment"><bdi>(engineer)</bdi></span><span class="mb-live-date-flag" title="This track is a live recording (recorded 2005-07-18), but this credit has no date attribute — it can't be confirmed to be from the same performance."> ❌</span></li>
 #+end_example
-
-
-* TODO add checkboxes also to the "Relationship icons" section
-
-https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
-
-Is that possible, to filter on multiple icons ?
 
 
 * TODO plan: review the "extractMainColumn" feature architecture
@@ -93378,265 +93982,6 @@ why is this not working
 for the column @debug/bulk.tag-recording.html
 
 
-* DONE plan: how can I simplify (e.g. remove double functionality) but still use a nice interface with icons/glyphs etc.
-** initial
-
-@debug/uvd.html - complete unique value drop down menu for the "Artist" column in https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/artists
-
-1.)
-
-can I simplify (e.g. maybe remove double functionality, but also see bullet point 2.) from the unique value drop down in
-each column but still use a nice interface with icons/glyphs etc.
-
-2.)
-
-is it possible to maybe better organize the different entries in the unique value drop down in multiple different
-sections like the current "Cell structure", maybe make them collapsible by clicking the section header
-
-3.)
-
-maybe each section should have its own "Quick filter" input box, maybe also use a global one too
-
-think about it and discuss with me
-
-** DONE plan
-
-#+begin_example
-● The plan is still structurally valid — I've verified against the current branch tip and refreshed the line numbers.
-
-  What changed on pull: commit b24f3bc ("fix: unique-values dropdown flag/area icons bunched at start...") reworked flag/area-icon rendering inside renderItems()/flagIconMap — a different part of the same openUniqDrop() function, unrelated to synBox/"Cell structure"/quick-filter
-  logic. It added ~140 net lines, which shifted every line number from synBox onward. I confirmed via fresh greps that makeSynItem, makeValueSynItem, appendSynDivider, makeInlineArtItem, the "Cell structure"/"Relationship icons" build blocks, _applySynBoxQuickFilter, and the
-  _sortedNameValues/_sortedAliasValues dedup sites all still exist with identical structure — just at new line numbers, which I've updated in the plan. I also confirmed the one remaining unpulled remote commit (098d2ea) only touches README.org and is irrelevant. debug/uvd.html is
-  still undocumented in NOTES.md, so that action item stands too.
-
-  No changes to the approach, section groupings, or the four decisions from before. Ready to exit plan mode when you are.
-
-● User approved Claude's plan
-  ⎿  Plan saved to: ~/.claude/plans/debug-uvd-html-complete-unique-wondrous-lemon.md · /plan to edit
-     Unique-Value Dropdown (UVD): sectioned, collapsible "Cell structure", smarter quick filter
-
-     ▎ Note: line numbers below were re-verified against the current branch
-     ▎ tip (commit b24f3bc, pulled from another machine after the original
-     ▎ exploration) — that commit reworked flag/area-icon rendering inside
-     ▎ renderItems()/flagIconMap (lines ~42816-43370 in the pre-pull file),
-     ▎ shifting everything from synBox onward by ~+95-140 lines. It does not
-     ▎ touch synBox/"Cell structure"/quick-filter code, so none of the
-     ▎ structural analysis or approach below changed — only the absolute line
-     ▎ numbers were refreshed.
-
-     Context
-
-     openUniqDrop() (ShowAllEntityData.user.js:42370-44231) builds the per-column
-     "unique value" filter dropdown (📊 button in each sortable column header). On
-     the debug/uvd.html snapshot (Artist column, /instrument/…/artists), the
-     panel renders 597 rows in one scroll area: a synBox region with 196
-     items all crammed under a single "Cell structure" header, followed by a flat
-     401-item alphabetical listBox. The "Cell structure" header currently hides
-     up to 9 unrelated families of synthetic entries with no sub-grouping:
-     structural states (empty/single/collapsed/expanded/any), flags (≠ track/rec.
-     mismatch, ~ name-variation), artwork presence (✓/✗), five credit-value
-     families (attribute/task/date/instrument/credited-as), three entity-info
-     families (name/comment/alias), and event roles — plus the already-separate
-     "Relationship icons" and inline-artwork mini-sections. This makes the panel
-     overwhelming and makes same-looking values appear 2-3 times (once as a plain
-     whole-cell row, once as an entity-glyph href row, once as a "» name:"
-     structure-mode row) with no visual explanation of why.
-
-     The user wants (discussed and agreed):
-     1. Reduce look-alike duplication without removing real functionality.
-     2. Break "Cell structure" into named, independently collapsible sections with
-     icons/glyphs, mirroring the multi-section idea already partially present
-     (Relationship icons / inline-artwork already get their own header).
-     3. Keep the single existing global quick filter (already covers listBox and
-     most of synBox) rather than adding N per-section filter boxes — but make
-     it smarter: auto-reveal matches inside collapsed sections, and close the
-     existing gap where it doesn't filter "Relationship icons" entries at all.
-
-     Decisions already made with the user (see prior AskUserQuestion):
-     - Global quick filter only, made smarter — no per-section filter inputs.
-     - Section collapse/expand state is remembered globally by section name
-     (not per-column), persisted across dropdown opens.
-     - Suppress "» name:"/"» alias:" synthetic entries when that exact text is
-     already independently selectable elsewhere in the same dropdown (as a
-     plain whole-cell value, or as an entity-glyph href row) — only genuinely
-     new information keeps its own row.
-     - The main "All values" list (listBox) stays always-expanded; only the
-     synthetic synBox sections become collapsible.
-
-     Approach
-
-     1. Introduce a section-container abstraction inside synBox
-
-     Currently every builder (makeSynItem, makeValueSynItem, makeInlineArtItem,
-     the inline "Relationship icons" block starting at 43850) appends its item
-     <div> directly as a sibling of synBox, with plain header <div>s and
-     appendSynDivider() calls in between (43490-43948). Replace this with a
-     small registry keyed by section name:
-
-     const _synSections = new Map(); // key -> { wrapper, itemsBox, headerEl }
-     function getOrCreateSynSection(key, label, glyph) { ... }
-
-     getOrCreateSynSection lazily creates, on first use, a
-     <div class="mb-uniq-section"> containing:
-     - <div class="mb-uniq-section-hdr" role="button" tabindex="0"> — a ▶/▼
-     toggle glyph + glyph icon + label text + (later) a match-count badge —
-     click/Enter toggles the section (see §3 for persistence).
-     - <div class="mb-uniq-section-items" role="group"> — the actual item rows,
-     same children makeSynItem/makeValueSynItem/etc. already build today,
-     just appended here instead of directly to synBox.
-
-     Proposed section keys/labels/glyphs (grouping the existing families 1:1, no
-     new data collection needed — every count/Map already computed at
-     42400-42638 and 43475-43492 stays exactly as-is):
-
-     ┌───────────────┬────────────────────┬───────┬─────────────────────────────────────────────────────────────────────┐
-     │      key      │       label        │ glyph │                      existing entries moved in                      │
-     ├───────────────┼────────────────────┼───────┼─────────────────────────────────────────────────────────────────────┤
-     │ structure     │ Structure          │ 🔠    │ empty/single/collapsed/expanded/any, artwork ✓/✗, inline-art yes/no │
-     ├───────────────┼────────────────────┼───────┼─────────────────────────────────────────────────────────────────────┤
-     │ flags         │ Flags              │ 🚩    │ title-mismatch ≠, name-variation ~                                  │
-     ├───────────────┼────────────────────┼───────┼─────────────────────────────────────────────────────────────────────┤
-     │ credit        │ Credit details     │ 🎚️    │ attr/task/date/instrument/altname                                   │
-     ├───────────────┼────────────────────┼───────┼─────────────────────────────────────────────────────────────────────┤
-     │ entity        │ Entity info        │ 👤    │ name/comment/alias (post-dedup, see §2)                             │
-     ├───────────────┼────────────────────┼───────┼─────────────────────────────────────────────────────────────────────┤
-     │ roles         │ Roles              │ 🎭    │ event role                                                          │
-     ├───────────────┼────────────────────┼───────┼─────────────────────────────────────────────────────────────────────┤
-     │ relationships │ Relationship icons │ 🔗    │ existing per-domain favicon rows                                    │
-     └───────────────┴────────────────────┴───────┴─────────────────────────────────────────────────────────────────────┘
-
-     Call sites to update: makeSynItem/makeValueSynItem/makeInlineArtItem
-     gain a sectionKey argument (or infer it from mode/kind — simplest is an
-     explicit argument since callers already know their family); the section
-     build blocks at 43729-43807 (collapsable-column "Cell structure" branch),
-     43808-43844 (non-collapsable-column branch), 43850-43938 (Relationship
-     icons), 43939-43971 (inline thumbnail presence) route their
-     synBox.appendChild(item) calls through getOrCreateSynSection(key, ...).itemsBox
-     instead. Remove the now-redundant standalone synHdr/appendSynDivider()
-     calls — the section wrapper supplies its own header and visual separation
-     (a border-top on .mb-uniq-section + .mb-uniq-section, CSS-only).
-
-     2. Entity-info dedup ("only show when it adds info")
-
-     At 43805/43807 (_sortedNameValues.forEach / _sortedAliasValues.forEach,
-     also mirrored at 43840/43842 in the non-collapsable-column branch): before
-     calling makeValueSynItem('name', v, …) / makeValueSynItem('alias', v, …),
-     skip v when it's already independently selectable elsewhere in the same
-     panel — i.e. v is already a key in valueCounts (a plain whole-cell value)
-     or already present as an entityInfo name for an href kept in combinedVals
-     (an entity-glyph row). Build one small Set of "already-offered bare names"
-     right after combinedVals is assembled (42659-42663) and reuse it at both
-     name/alias filter sites. » comment: entries are untouched — a
-     disambiguation comment is never independently selectable any other way, so
-     there's no redundancy to remove there.
-
-     3. Collapse/expand + persistence
-
-     - New CSS classes: .mb-uniq-section, .mb-uniq-section-hdr (clickable,
-     same visual language as the existing "Cell structure" header font:
-     font-size:0.75em; font-weight:600; color:#555; letter-spacing:0.03em,
-     plus cursor:pointer and a ▶/▼ prefix), .mb-uniq-section-items
-     (display:none when collapsed). Add near the existing .mb-col-uniq-syn-box
-     CSS block (~`27766-27881`).
-     - Persist collapse state with GM_setValue/GM_getValue, following the
-     existing non-configSchema UI-state pattern already used for column
-     visibility (ShowAllEntityData.user.js:17149/17162) and dropdown geometry
-     (29792/29812) — a single JSON object under one new key, e.g.
-     mb_sa_uniq_section_collapse, shaped { structure: false, credit: true, … }
-     (missing key = expanded, the current always-expanded behavior, so first-run
-     users see no change). Read once when openUniqDrop builds the panel, write
-     on every header click.
-     - Header click toggles itemsBox display, flips the ▶/▼ glyph, and persists
-     the new state for that section key globally (shared across every column —
-     per the user's decision, not scoped per-column).
-
-     4. Smarter global quick filter
-
-     - Fix the coverage gap: give the "Relationship icons" section's item rows a
-     dataset.mbUniqSynLabel + .mb-uniq-syn-label-text span the same way
-     _appendSynLabelText() already does for every other synBox entry
-     (43555-43561), instead of the bespoke lbl span built inline in that
-     block — this alone makes _applySynBoxQuickFilter() (44010-44046)
-     cover them for free, no separate filter logic needed.
-     - In _applySynBoxQuickFilter(filter), after computing each item's
-     matches, additionally: (a) track a per-section match count as items are
-     visited (Array.from(synBox.children) becomes a walk over each section's
-     itemsBox children instead, or an outer loop over _synSections), (b)
-     force a section's itemsBox visible (ignoring its persisted collapsed
-     state) whenever it has ≥1 match while filter is non-empty, restoring the
-     persisted collapsed/expanded state when filter is cleared, and (c) render
-     the match count in the section header, e.g. Credit details (3), while
-     filtering (revert to plain label text when the filter is cleared).
-
-     Files touched
-
-     - ShowAllEntityData.user.js — all of the above lives inside/around
-     openUniqDrop() (42370-44231) plus the CSS block for .mb-col-uniq-syn-box
-     (~27766-27881, unaffected by the recent flag-icon commit since that only
-     touched code inside openUniqDrop() itself). Also check the column-header
-     tooltip hint that says This column also has a "Cell structure" section…
-     (~`45009— grepCell structure" section` before editing, since the exact
-     line will drift further as this feature is built) — update its wording to
-     match whatever the new section names end up being, so it doesn't reference
-     a heading that no longer exists.
-     - ShowAllEntityData_CHANGELOG.wip.json — add a WIP entry (this repo's
-     convention: version bumps/changelog entries land on main only; the
-     current branch tracks work via WIP.N placeholders until merge).
-     - debug/NOTES.md — document debug/uvd.html (what it shows: the pre-change
-     597-row panel) per the project's "document snapshots" convention, since it
-     isn't documented there yet.
-
-     Verification
-
-     1. Load ShowAllEntityData.user.js in Tampermonkey (dev build) against the
-     real /instrument/63021302-86cd-4aee-80df-2270d54f4978/artists page (the
-     source of debug/uvd.html) — the highest-volume real case available.
-     2. Open the Artist column's 📊 dropdown: confirm the panel now shows
-     Structure / Flags / Credit details / Entity info / Roles /
-     Relationship icons as separate collapsible headers instead of one
-     196-item "Cell structure" block, each with a ▶/▼ glyph and icon.
-     3. Click a couple of section headers: items toggle visibility; reopen the
-     dropdown (same column and a different column) and confirm the collapsed
-     sections stay collapsed (global persistence via GM_getValue).
-     4. Type into the quick filter: confirm matches inside a collapsed section
-     auto-reveal with a match count on its header, and that a Relationship icons entry (open on the Relationships column instead) is now filterable
-     too. Clear the filter and confirm sections return to their persisted
-     collapsed/expanded state.
-     5. Compare item counts in "Entity info" before/after on the Artist column —
-     confirm names/aliases that duplicate an existing plain-value or
-     entity-glyph row no longer get their own "» name:"/"» alias:" row, while
-     » comment: rows are unchanged.
-     6. Spot-check 2-3 other page types with different synthetic families active
-     (a CAA/EAA release page for artwork presence, a credit-role column for
-     attribute/task/date, a Relationships column) to confirm no section is
-     silently empty/mis-routed after the refactor.
-#+end_example
-
-
-
-
-** DONE new plan
-
-#+begin_example
-@debug/uvd-enhancement.html - complete final rendered page for https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1 (see also [Image #6])
-@debug/uvd-title.html - just the unique value drop down from the "Title" column of the complete final rendered page for https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1
-#+end_example
-
-I don't want the following type of entry (prefixed with the MusicBrainz entity glyph - @debug /glyph-entity-entry.html) in the standard section of the unique value drop down (as it "belongs
-to"/filters the row with the disambiguation comment see [Image #8], although it would be indistinguishable from other
-such same named entries, if they would have different comments, see as an example [Image #7] with multiple "18 Tracks" titles)
-
-Instead render that same entry in the "Entity info" section, but with another meaning. When selected ALL rows with that
-entity name should be filtered, irrespactable of the comment column.
-
-So we would have just ONE such entry in the "Entity info" section, instead of maybe multiple ones (indistinguishable by
-just looking at them) in the standard section
-
-* DONE increase the height (number of entries displayed initially) of the unique value drop down menu (configurable: default current number of rows)
-
-increase the height (number of entries displayed initially) of the unique value drop down menu (configurable: default current number of rows)
-
-
 * TODO Picard column not working after "Load from Disk" (when page is already displayed)
 
 * TODO Move disambiguation together with primary alias after e.g. label name right below the name
@@ -93776,23 +94121,6 @@ Maybe create a copy of
 #+end_example
 
 and adjust the match directive for "report/SetInDifferentRG"
-
-
-* TODO change comment (vzell userscript)
-
-Change the following comment from (as the "Edit recording comments" button is NOT a MB native functionality)
-
-#+begin_example
-removeSelectors: [
-                    'h2.tracklist button.work-button-style', // native "Edit recording comments"
-#+end_example
-
-to
-
-#+begin_example
-removeSelectors: [
-                    'h2.tracklist button.work-button-style', // userscript "VZ: MusicBrainz - Generate Recording Comments For A Release" from @'Michael Wiencek, Gemini (directed by vzell)'
-#+end_example
 
 
 * TODO What about the header colllapsable" toggle icon
@@ -93938,239 +94266,11 @@ Do not code anything just explain first
 #+end_example
 
 
-* DONE CAA icons missing and sometimes doubled 
-** DONE initial
-
-CAA icons missing sometimes and sometimes doubled
-
-1.)
-
-When starting from the final rendered page at https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f and
-click on the "Show single-table" button of e.g. the first sub-table with "Album" in the h3 header line, I get the
-following "single"-table type page rendered in a new tab, see @debug/double-caa-icons.html
-
-The icons from the CAA columns seem to be doubled in the "Titel" column. This looks like something we had fixed in
-commit 'a0c7405 * [ShowAllEntityData] fix: doubled CAA cover art'
-
-2.)
-
-When starting from the final rendered page at https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships and 
-click on the "Show single-table" button of e.g. the sub-table under the h3 header "Published release", see @debug/subtable-published-release.html
-the "single"-table page (https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1) in a new tab looks like @debug/single-published-release.html
-
-The CAA column on the final rendered page in the new tab looks like it doesn't have any CAA icons, see screenshot [Image #10]
-when the column is collpased initially.
-When uncollapsing, you can actually see all the CAA images [Image #11]
-
-On the original page the collapsed column looked like this screenshot [Image #12] and the uncollapsed like this [Image #13]
-
-a.)
-
-It looks like the "Front" images are NOT rendered after the e.g. '<span data-caa-expand-btn="collapsed" title="Show all
-CAA cover art images (2) in this cell"' on the final "single"-table page
-
-b.)
-
-also there is a non functional
-
-#+begin_example
-'<span class="mb-col-collapse-hdr-btn" data-col-index="12" title="Expand ALL multi-row CAA cells (4) in this table column — keyboard: Ctrl+M then O when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for Ctrl+O)" role="button" aria-expanded="false" aria-label="Expand all multi-row cells in: CAA" style="margin-left: auto;"><span class="mb-col-collapse-glyph">▶</span><span class="mb-col-collapse-count">4</span><span class="mb-col-collapse-rack">▤</span></span>'
-#+end_example
-
-on the final "single"-table page rendered in the CAA header column
-
-** DONE act on @debug/CAA-missing-doubled.org
-
-act on @debug/CAA-missing-doubled.org
-
-** DONE 2.) still buggy
-
-1.)
-
-I got a new snapshot @debug/single-published-release-2.html
-This time ONLY 1 icon is missing when initially collapsed.
-
-2.)
-
-I tried with other sub-tables from https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
-rendering in a new tab and they all have non deterministic behaviour in which icons are displayed or not
-
-3.)
-
-Add comprehensive debug statements for the special "single"-table in a new tab case for now and I will collect some debug logs
-
-** DONE debug log
-
-#+begin_example
-@debug/sub-table-debug.log - sub-table logging on initial page
-@debug/single-table-debug.log - single-table logging in new table
-#+end_example
-
-** DONE again
-
-#+begin_example
-@debug/mt-debug.log - sub-table logging on initial page
-@debug/st-debug.log - single-table logging in new table
-#+end_example
-
-** DONE still
-
-Still not working, I now get the number of images instead of the image itself when collapsed
-
-#+begin_example
-@debug/mt2-debug.log - sub-table logging on initial page
-@debug/st2-debug.log - single-table logging in new table
-#+end_example
-
-Well it definitely has to do with the jesus userscript presence. I tested it in another browser just with our userscript and it worked perfect.
-
-** DONE add a new boolean flag for toggling the additional debugging only
-
-For the "TEMPORARY diagnostic instrumentation" in the versions "WIP.90"/"WIP.91":
-
-1.)
-
-leave the debug statements in the code (you never know when they come in handy again)
-
-2.)
-
-Add a new boolean flag (debug should be 'false') in the "GENERIC SETTINGS" config section for toggling these additional debugging statements on (in addition to the global "Enable debug logging" setting)
-
-
 * TODO sometimes the Wikipedia h2 is rendered at the very end of the final page (probably a timing issue when the action button on the initial page has been pressed to early)
 
 On e.g.https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f (when rendered as a "single"-table page in a new tab)
 sometimes the Wikipedia h2 is rendered at the very end of the final page (probably a timing issue when the action button
 on the initial page has been pressed to early), see the following final rendered page @debug/Wikipedia-end-of-the-page.html
-
-
-* DONE when "version 4" is alone in the disambiguation put it into the "Event-Detail" column on pageType 'release-tracks'
-** initial
-
-Adjust the implementation of the function 'eventParts(sourceCell)' when acting on a "sourceColumn" like e.g
-"Disambiguation"/"Comment" in the following way:
-
-when the sourceColumn cell value starts with "<single string event type>, <event date>"
-
-#+begin_example
-live, 
-soundcheck, 
-studio, 
-interview,
-etc.
-#+end_example
-
-and there is an an explicit blank " " after the "," in the above list, that expression without the ", " lands in the
-synthetix "Event-Type" column.
-
-So do other Strings like e.g. "version 4" which do NOT fit into that schema. Currently they also land in the
-"Event-Type" column, but they should actually go to the more generic "Event-Additional-Info" column
-
-** bug
-
-Refine:
-
-1.)
-
-add
-
-#+begin_example
-audition
-live rehearsal
-#+end_example
-
-the list of EVENT_TYPE_KEYWORDS
-
-2.)
-
-when the sourceColumn cell value starts with an uppercase letter and happens to have a colon ":" and an optional string part after it like e.g.
-
-#+begin_example
-The River: Single Album version
-#+end_example
-
-it currently gets split like the following
-
-#+begin_example
-The River ==> Event-Country
-Single Album version ==> "Event-Additional-Info"
-#+end_example
-
-but the whole "The River: Single Album version" should go to "Event-Additional-Info"
-
-* DONE format multilist items in the unique value drop down with " and "|", " concatenated instead of just a blank " "
-
-1.)
-
-On e.g https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd format/render the multilist artist items in
-the unique value drop down e.g. in the "Producer" column, which on the original page have been rendered with the strings
-" and " and ", " concatenated, the same way instead of just a blank " " between the artist names
-
-#+begin_example
-Original page, AR in the "Title" column - "producer: Jon Landau, Chuck Plotkin and Bruce Springsteen"
-Final rendered page, corresponding entry in the unique value drop down "Jon Landau Chuck Plotkin Bruce Springsteen", see also the following complete entry
-#+end_example
-
-#+begin_example
-<div class="mb-col-uniq-item" role="option" aria-selected="false" title="Jon Landau Chuck Plotkin Bruce Springsteen"><span class="mb-col-uniq-checkbox" aria-hidden="true">☐</span><span class="mb-uniq-count-badge" aria-hidden="true" style="color: rgb(17, 17, 17); background-color: rgb(255, 250, 205); font-weight: bold; font-family: monospace; border-radius: 3px; padding: 0px 3px; margin-right: 5px; font-size: 0.85em; display: inline-block; min-width: 3ch; text-align: right;">(1)</span>Jon Landau Chuck Plotkin Bruce Springsteen</div>
-#+end_example
-
-2.)
-
-When clicking such an entry, it still should correctly filter as before, so basically ignoring these added strings (they
-should ONLY be there for human display/reading purposes)
-
-* DONE plan: add a new named sub structure "CAA info"/"EAA info" (depending if the actual column is called "CAA" or "EAA") in the unique value drop down menu for the CAA/EAA columns with new values describing what image types/comments are present
-** DONE initial
-
-@debug/single-published-release.html
-
-Add a new named sub structure "CAA info"/"EAA info" (depending if the actual column is called "CAA" or "EAA") in the
-unique value drop down menu for the CAA/EAA columns with new values describing what image types/comments are present.
-
-a.)
-
-Image types like:
-#+begin_example
-Front
-Back
-Spine
-Cover
-Obi
-Sticker
-Booklet
-Matrix/Runout
-etc
-#+end_example
-
-basically the different dark grey background types like e.g. '<span style="display: inline-block; background: rgb(200, 200, 200); color: rgb(34, 34, 34); border-radius: 3px; padding: 1px 5px; font-size: 0.78em; font-weight: 600; line-height: 1.5; white-space: nowrap; cursor: default;">Matrix/Runout</span>'
-
-b)
-
-plus all the different "mb-caa-art-comment" comments e.g '<span class="mb-caa-art-comment">Front cover, booklet page i</span>':
-#+begin_example
-Front cover, booklet page i
-Page ii
-Page 1
-Page 2
-etc.
-#+end_example
-
-** DONE make the font for the image type in the unique value drop down a little bigger (like the comment itself)
-*** initial
-
-make the font for the image type in the unique value drop down a little bigger (like the comment itself)
-
-*** image column
-
-also make the font for the image type in the actual CAA/EAA column a little bigger (like the comment itself), see a
-current example list-entry in the "EAA" column" of the 'artist-events' pageType @debug/font.html
-
-*** could we actually have the same appearance of the image type-badge pills (bold font and with dark grey background) in the unique value drop down but not breaking the current actual working filtering
-
-could we actually have the same appearance of the image type-badge pills (bold font and with dark grey background) in
-the unique value drop down but not breaking the current actual working filtering
-
 
 
 * TODO Add test URL(s) in front of each pageType definition as a comment
@@ -94184,6 +94284,42 @@ e.g.
 https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf - Events for Series
 https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordings - Recordings for Instruments
 #+end_example
+
+
+* TODO problem with "Eventdate" appearing before main column
+
+* Checking CAA columns on different pageTypes
+
+| pageType              | subtable                                                         | URL                 | single/multi     | CAA               | multi-row collapse symbol present | Relationships | Picard |
+|-----------------------+------------------------------------------------------------------+---------------------+------------------+-------------------+-----------------------------------+---------------+--------|
+| releasegroup-releases | "Official release" / "Promotion release"                         | "Greetings ..."     | multi            | OK                | yes                               | OK            | OK     |
+| -->                   | "Promotion release"                                              |                     | single (new tab) | OK                | yes                               | OK            | OK     |
+|-----------------------+------------------------------------------------------------------+---------------------+------------------+-------------------+-----------------------------------+---------------+--------|
+| artist-releasegroups  | "Album"                                                          | "Bruce Springsteen" | multi            | OK                | no                                | OK            | OK     |
+| -->                   | "Album"                                                          |                     | single (new tab) |                   |                                   |               |        |
+|-----------------------+------------------------------------------------------------------+---------------------+------------------+-------------------+-----------------------------------+---------------+--------|
+| artist-releationships | "Arranged recording" / "Published release" / "Tribute albums RG" | "Bruce Springsteen" | multi            | -                 | - / yes / yes                     | -             | -      |
+| -->                   | "Arranged recording"                                             |                     | single           | -                 | -                                 | OK            | -      |
+| -->                   | "Published release"                                              |                     | single           | OK                | yes                               | OK            | OK     |
+| -->                   | "Tribute albums RG"                                              |                     | single           | OK                | yes                               |               | -      |
+|-----------------------+------------------------------------------------------------------+---------------------+------------------+-------------------+-----------------------------------+---------------+--------|
+| artist-releases       | -                                                                | "Bruce Springsteen" | single           | OK                | yes                               | OK            | OK     |
+|-----------------------+------------------------------------------------------------------+---------------------+------------------+-------------------+-----------------------------------+---------------+--------|
+| artist-recordings     | -                                                                | "Bruce Springsteen" | single           | -                 | -                                 | -             | -      |
+| artist-works          | -                                                                | "Bruce Springsteen" | single           | -                 | -                                 | OK            | -      |
+| artist-events         | -                                                                | "Bruce Springsteen" | single           | EAA - OK          | yes                               | -             | -      |
+|-----------------------+------------------------------------------------------------------+---------------------+------------------+-------------------+-----------------------------------+---------------+--------|
+| label-releases        |                                                                  | "Columbia"          | single           | NOT OK (no types) | no                                | OK            | OK     |
+| area-artists          | -                                                                | "United States"     | single           | -                 | -                                 | -             | -      |
+|                       |                                                                  |                     |                  |                   |                                   |               |        |
+
+
+
+* TODO There is also artificially too much whitespace between the country flag and the country abbrev
+
+"Country/Date" column:
+
+On e.g. https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
 
 
 * DONE currently my info line under the prompt looks like
