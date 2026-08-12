@@ -4264,7 +4264,18 @@
          * Expected source format (all segments are optional):
          * [Event-Type][, Event-Date][, Event-Detail][: Venue[, Venue-Detail][, City][, State][, Country[; Additional-Info]]]
          *
-         * Location Parsing Rules:
+         * The colon/comma-delimited Type/Date/Detail/Location schema above is only
+         * attempted when the leading pre-colon segment is one of the recognized
+         * keywords in EVENT_TYPE_KEYWORDS (e.g. "live" in "live, 1978-07-07: ...").
+         * Anything else — free text with no colon at all (e.g. "version 4"), or
+         * free text that happens to contain a ": " despite not being event
+         * metadata (e.g. "The River: Single Album version", where "The River"
+         * is a release title, not an Event-Type) — does not get split across
+         * Event-Type/.../Event-Country at all. The ENTIRE raw source text goes
+         * into Event-Additional-Info instead, verbatim, and every other column
+         * stays empty.
+         *
+         * Location Parsing Rules (only reached when Event-Type was recognized):
          * - USA / Canada / UK:
          * - 5 parts: [Venue, Venue-Detail, City, State, Country]
          * - 4 parts: [Venue, City, State, Country] (Venue-Detail empty)
@@ -4272,6 +4283,13 @@
          * Additional-Info: if the last location segment contains '; extra text',
          * the country is split at the first ';' — the trimmed left part goes into
          * Event-Country, the trimmed right part into Event-Additional-Info.
+         *
+         * Synthetic columns: ['Event-Type', 'Event-Date', 'Event-Detail',
+         * 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State',
+         * 'Event-Country', 'Event-Additional-Info']
+         *
+         * @param   {HTMLTableCellElement} sourceCell  Source Comment/Disambiguation <td>.
+         * @returns {HTMLTableCellElement[]}            Nine synthetic <td> elements in declaration order.
          */
         eventParts(sourceCell) {
             const tds = Array.from({ length: 9 }, () => document.createElement('td'));
@@ -4288,7 +4306,18 @@
 
             // ── Pre-colon extraction (Type, Date, Detail) ──────────────────────
             const preParts = prePart.split(', ').map(s => s.trim()).filter(s => s.length > 0);
-            if (preParts.length > 0) tds[0].textContent = preParts[0]; // Event-Type
+            const EVENT_TYPE_KEYWORDS = ['live', 'soundcheck', 'studio', 'interview', 'audition', 'live rehearsal'];
+            if (preParts.length === 0 || !EVENT_TYPE_KEYWORDS.includes(preParts[0])) {
+                // Doesn't start with a recognized event-type keyword, so the whole
+                // string isn't Event-Type/Date/Detail/Location metadata at all —
+                // e.g. "version 4", or "The River: Single Album version" (a release
+                // title that merely happens to contain ": "). Route the entire raw
+                // text to Event-Additional-Info rather than splitting it across
+                // unrelated columns, and skip the rest of this parse entirely.
+                tds[8].textContent = raw; // Event-Additional-Info
+                return tds;
+            }
+            tds[0].textContent = preParts[0]; // Event-Type (recognized keyword)
 
             const DATE_RE = /^\d{4}(?:-\d{2}(?:-\d{2})?)?$/;
             if (preParts.length > 1) {

@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.99",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`eventParts` synthetic-column extractor (Comment/Disambiguation → Event-Type/Event-Date/Event-Detail/Event-Venue/.../Event-Additional-Info, used by 11 page definitions) unconditionally wrote the first pre-colon comma segment into `Event-Type`, regardless of its content, and would still attempt to split any post-colon text into Venue/City/State/Country even when that leading segment wasn't event metadata at all — so \"version 4\" landed in `Event-Type`, and \"The River: Single Album version\" (a release title that merely happens to contain \": \") got incorrectly split across `Event-Country`/`Event-Additional-Info`. Now the whole Type/Date/Detail/Location schema is only attempted when the leading segment is one of the recognized keywords `live`, `soundcheck`, `studio`, `interview`, `audition`, `live rehearsal` — anything else routes the ENTIRE raw disambiguation/comment text verbatim into `Event-Additional-Info` instead, with every other synthetic column left empty."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.98",
     "date": "2026-08-12",
     "sections": [
