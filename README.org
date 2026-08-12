@@ -93639,7 +93639,7 @@ increase the height (number of entries displayed initially) of the unique value 
 
 * TODO Picard column not working after "Load from Disk" (when page is already displayed)
 
-* TODO Move disambiguation together with primary alias after e.g.label name right below the name
+* TODO Move disambiguation together with primary alias after e.g. label name right below the name
 ** labels
 
 https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e
@@ -93660,7 +93660,6 @@ Bruce Springsteen Definitive Collection (Italian reissue series by Corriere dell
 https://musicbrainz.org/series/34b9e392-c076-4882-9355-8dbf2a1a52ac
 
 Tracks (Bruce Springsteen)
-
 
 
 * TODO BUGS
@@ -93796,13 +93795,150 @@ removeSelectors: [
 #+end_example
 
 
-* TODO Collapsable columns on CAA/EAA columns: think about it, and why is it not consistent across pageTypes
+* TODO What about the header colllapsable" toggle icon
+* TODO plan: Collapsable columns on CAA/EAA columns: think about it, and why is it not consistent across pageTypes
+** initial
 
-collapsable icon MISSING on - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
-collapsable icon PRESENT on - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1
+Currently lots of pageTypes configure the following setting
+
+#+begin_example
+collapsableColumns: [ 'CAA' ]
+#+end_example
+
+Could you check if that configuration is actually really needed, because the collapsing/uncollapsing for CAA/EAA columns is done with the following symbol @debug/CAA-collapse-toggle.html
+and not the normal collapse/uncollapse button @debug/normal-collapse-button.html
+
+The following are complete header column header examples with these buttons
+
+#+begin_example
+@debug/CAA-without-collapse-symbol.html - collapsable icon MISSING on - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f - the "Performed release" sub-table
+@debug/CAA-with-collapse-symbol.html - collapsable icon PRESENT (but not functional anyway) on - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1 - same table rendered as single-table on a new tab
+#+end_example
+
+Do not code anything just explain first
+
+** explanation
+
+#+begin_example
+ Explanation: is collapsableColumns: [ 'CAA' ] / [ 'EAA' ] actually needed?
+
+ This is a research/explanation deliverable, not an implementation plan — per your
+ request, no code has been changed. Findings below, with exact line numbers in
+ ShowAllEntityData.user.js.
+
+ Short answer
+
+ There are two completely separate, independently-wired collapse/expand systems
+ for CAA/EAA columns, and only one of them actually works:
+
+ 1. The dedicated CAA/EAA system — .mb-caa-col-hdr-btn/.mb-eaa-col-hdr-btn
+ (the icon+thumbnail button, debug/CAA-collapse-toggle.html). Built by
+ _artInitCaaColHeaderToggle() (lines 59528-59674), called from the tail of
+ initCaaPics()/initEaaPics(). Gated only on sa_enable_caa_pics/
+ sa_enable_eaa_pics and "does this table have a CAA/EAA column" —
+ it does not read collapsableColumns at all. This is the one that
+ actually collapses/expands the images (via [data-caa-expand-btn] clicks
+ routed through ensureCollapseDelegate()'s dedicated CAA branch,
+ lines 46227-46278).
+ 2. The generic collapsableColumns system — .mb-col-collapse-hdr-btn
+ (the ▶/count/▤ button, debug/normal-collapse-button.html). Built by
+ initCollapsableColumns() (lines 46598-47290) for any column named in
+ features.collapsableColumns. For CAA/EAA columns this button is
+ either missing or present-but-completely-inert — see below. It never
+ successfully collapses/expands a CAA/EAA cell.
+
+ So: for its apparent purpose (driving expand/collapse), collapsableColumns: ['CAA']/['EAA'] is not needed — that job is already done, correctly and
+ independently, by system #1. But it is not entirely side-effect-free to remove
+ — see "Before removing anything" below.
+
+ Why the generic button is broken for CAA/EAA (root cause)
+
+ _findCellListItems()/_classifyCollapseCell() (lines 16898-16927,
+ 17194-17204) are purely structural — they match any <ul>/<ol> in a cell, with
+ no CAA/EAA awareness at all. Once _artBuildMultiRowArtCell() (lines
+ 57173-57317) has built a cell's ul.mb-caa-art-ul > li.mb-caa-art-li-summary + li.mb-caa-art-li-image×N, _findCellListItems() happily matches it as a
+ qualifying "multi-row list cell" — exactly like a Producer/Instruments cell.
+
+ initCollapsableColumns() deliberately still counts these cells toward
+ multiRowCells/its header button's existence and displayed count (explicit
+ comment at lines 46804-46812: doing so is enough to "drive
+ anyColumnHasMultiRow → column-header button creation" since "the header
+ button's click handler finds and clicks their existing toggles"). That
+ assumption is stale: as part of the CAA/EAA rework, _artBuildMultiRowArtCell()
+ stopped injecting .mb-cell-collapse-toggle into art cells at all — its
+ own doc comment (57148-57152) says so explicitly, replacing it with
+ [data-caa-expand-btn]. But every click handler in the generic system
+ (the per-column header button, the global "expand all" button, and
+ _applyCollapseState() itself) only ever looks for .mb-cell-collapse-toggle
+ — which no longer exists on these cells. So clicking the generic button
+ silently does nothing to CAA/EAA cells: no error, just inert.
+
+ Why it's missing on one page and present (but dead) on the other — matches your two fixtures exactly
+
+ - initCollapsableColumns() runs synchronously, immediately during
+ renderFinalTable()/renderGroupedTable().
+ - CAA/EAA images are fetched asynchronously — initCaaPics()/initEaaPics()
+ enqueue network/IDB work that eventually calls _artBuildMultiRowArtCell()
+ well after the synchronous render pass finishes.
+ - debug/CAA-without-collapse-symbol.html (fresh render of the "Performed
+ release" sub-table, a multi-table page): initCollapsableColumns() ran
+ before any cell had a ul.mb-caa-art-ul yet → zero cells counted → the
+ generic button was never created at all (matches: no
+ .mb-col-collapse-hdr-btn in that snippet).
+ - debug/CAA-with-collapse-symbol.html (the same table re-rendered as a
+ "Show single-table" cross-tab snapshot): captureSubtableSnapshot() captures
+ getCleanCellHtml(cell) from the source tab — by the time you actually click
+ "Show single-table", the async CAA fetch has almost always already finished,
+ so the captured HTML already contains the built <ul>. When the new tab
+ hydrates and its own initCollapsableColumns() runs, it now finds 4
+ qualifying cells → builds the button, showing "Expand ALL multi-row CAA cells (4)" — but clicking it is a no-op, for the reason above.
+ (This isn't unique to cross-tab hydration — any re-render that happens to
+ run after the async art build completes, e.g. a later filter/sort, would
+ reproduce the same "present but dead" state on the original page too.)
+
+ Is it "needed"? — nuanced
+
+ Not needed for expand/collapse — that's fully covered by the separate,
+ always-correctly-wired CAA-specific system regardless of what
+ collapsableColumns says.
+
+ But not provably side-effect-free to remove, because _classifyCollapseCell/
+ _findCellListItems — the same functions that (mis)drive the dead button —
+ are also the shared source of truth for other features documented in
+ CLAUDE.md, all scoped to columns declared in collapsableColumns:
+ - _updateAllColHeaderCounts() (.mb-col-collapse-count bookkeeping)
+ - _syncCollapseHasMatchInTable() — which has its own explicit CAA/EAA-aware
+ "Pass 2" branch (lines 17456-17474), suggesting someone did intend
+ CAA/EAA to participate in at least this part of the generic system
+ - openUniqDrop()'s "Cell structure" empty/single/multi-row counts and
+ structure-mode column filters
+ - testRowMatch()'s multi-row column filter matching (per CLAUDE.md's own
+ note that _classifyCollapseCell is "the single source of truth" these all
+ route through)
+
+ I have not yet confirmed whether these are scoped strictly to columns
+ literally listed in collapsableColumns (in which case removing 'CAA'/'EAA'
+ would also silently drop "filter by cells with multiple images" / structure
+ counts for that column, alongside removing the dead button), or whether they
+ run for CAA/EAA columns unconditionally regardless of this config. That's the
+ one open question worth resolving before touching anything.
+
+ Suggested next step (not yet done — just naming the option)
+
+ If you want to proceed, the natural follow-up would be a short, targeted
+ investigation of exactly that gating question (does initCollapsableColumns's
+ activeCollapsableColumns scoping also gate _updateAllColHeaderCounts/
+ _syncCollapseHasMatchInTable/openUniqDrop's structure filters for a column,
+ or are those independent), so any removal of 'CAA'/'EAA' from the 21
+ collapsableColumns arrays that list it can be scoped correctly — e.g. maybe
+ the dead generic button should simply be suppressed specifically for CAA/EAA
+ columns (skip building .mb-col-collapse-hdr-btn for them) while keeping the
+ rest of the classification/filtering machinery intact, rather than removing
+ the collapsableColumns declaration outright.
+#+end_example
 
 
-* TODO CAA icons missing and sometimes doubled 
+* DONE CAA icons missing and sometimes doubled 
 ** DONE initial
 
 CAA icons missing sometimes and sometimes doubled
@@ -93888,9 +94024,17 @@ Still not working, I now get the number of images instead of the image itself wh
 
 Well it definitely has to do with the jesus userscript presence. I tested it in another browser just with our userscript and it worked perfect.
 
-** TODO add a new boolean flag for toggling the additional debugging only
+** DONE add a new boolean flag for toggling the additional debugging only
 
-Add a new boolean flag (debug should be off by default for the implementation in commit "") for toggling the additional debugging only
+For the "TEMPORARY diagnostic instrumentation" in the versions "WIP.90"/"WIP.91":
+
+1.)
+
+leave the debug statements in the code (you never know when they come in handy again)
+
+2.)
+
+Add a new boolean flag (debug should be 'false') in the "GENERIC SETTINGS" config section for toggling these additional debugging statements on (in addition to the global "Enable debug logging" setting)
 
 
 * TODO sometimes the Wikipedia h2 is rendered at the very end of the final page (probably a timing issue when the action button on the initial page has been pressed to early)
@@ -93900,41 +94044,67 @@ sometimes the Wikipedia h2 is rendered at the very end of the final page (probab
 on the initial page has been pressed to early), see the following final rendered page @debug/Wikipedia-end-of-the-page.html
 
 
-* TODO Add test URL(s) in front of each pageType definition as a comment
+* DONE when "version 4" is alone in the disambiguation put it into the "Event-Detail" column on pageType 'release-tracks'
+** initial
 
-Add test URL(s) in front of each pageType definition as a comment, use the @pageTypes-testing-reference.org file as a reference
-but change the URLs there in rela copy/pastable URLs inside the comments in the userscript
+Adjust the implementation of the function 'eventParts(sourceCell)' when acting on a "sourceColumn" like e.g
+"Disambiguation"/"Comment" in the following way:
 
-e.g.
-
-#+begin_example
-https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf - Events for Series
-https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordings - Recordings for Instruments
-#+end_example
-
-
-* TODO when "version 4" is alone in the disambiguation put it into the "Event-Detail" column on pageType 'release-tracks'
-
-When the "Disambiguation"/"Comment" column doesn't start with
+when the sourceColumn cell value starts with "<single string event type>, <event date>"
 
 #+begin_example
 live, 
 soundcheck, 
 studio, 
+interview,
+etc.
 #+end_example
 
-(there must be an explicit blank " " after the "," in the above list) so e.g. "version 4", put "version 4" into the
-"Event-Detail" column on pageType 'release-tracks', e.g. on
-https://musicbrainz.org/release/68136206-2939-42ed-a39d-f9c41b0defb1
+and there is an an explicit blank " " after the "," in the above list, that expression without the ", " lands in the
+synthetix "Event-Type" column.
 
+So do other Strings like e.g. "version 4" which do NOT fit into that schema. Currently they also land in the
+"Event-Type" column, but they should actually go to the more generic "Event-Additional-Info" column
 
-* TODO format multilist items in the unique value drop down with " and "|", " concatenated instead of just a blank " "
+** bug
+
+Refine:
 
 1.)
 
-On e.g https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd format/render the multilist items in the unique
-value drop down e.g. in the "Producer" column, which on the original page have been rendered with the strings " and "
-and ", " concatenated, the same way instead of just a blank " " between the artist names
+add
+
+#+begin_example
+audition
+live rehearsal
+#+end_example
+
+the list of EVENT_TYPE_KEYWORDS
+
+2.)
+
+when the sourceColumn cell value starts with an uppercase letter and happens to have a colon ":" and an optional string part after it like e.g.
+
+#+begin_example
+The River: Single Album version
+#+end_example
+
+it currently gets split like the following
+
+#+begin_example
+The River ==> Event-Country
+Single Album version ==> "Event-Additional-Info"
+#+end_example
+
+but the whole "The River: Single Album version" should go to "Event-Additional-Info"
+
+* DONE format multilist items in the unique value drop down with " and "|", " concatenated instead of just a blank " "
+
+1.)
+
+On e.g https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd format/render the multilist artist items in
+the unique value drop down e.g. in the "Producer" column, which on the original page have been rendered with the strings
+" and " and ", " concatenated, the same way instead of just a blank " " between the artist names
 
 #+begin_example
 Original page, AR in the "Title" column - "producer: Jon Landau, Chuck Plotkin and Bruce Springsteen"
@@ -93950,8 +94120,7 @@ Final rendered page, corresponding entry in the unique value drop down "Jon Land
 When clicking such an entry, it still should correctly filter as before, so basically ignoring these added strings (they
 should ONLY be there for human display/reading purposes)
 
-
-* TODO plan: add a new named sub structure "CAA info"/"EAA info" (depending if the actual column is called "CAA" or "EAA") in the unique value drop down menu for the CAA/EAA columns with new values describing what image types/comments are present
+* DONE plan: add a new named sub structure "CAA info"/"EAA info" (depending if the actual column is called "CAA" or "EAA") in the unique value drop down menu for the CAA/EAA columns with new values describing what image types/comments are present
 ** DONE initial
 
 @debug/single-published-release.html
@@ -93987,11 +94156,35 @@ Page 2
 etc.
 #+end_example
 
-** TODO make the font for the image type in the unique value drop down a little bigger (like the comment itself)
+** DONE make the font for the image type in the unique value drop down a little bigger (like the comment itself)
+*** initial
 
 make the font for the image type in the unique value drop down a little bigger (like the comment itself)
 
-** TODO What about the header colllapsable" toggle icon
+*** image column
+
+also make the font for the image type in the actual CAA/EAA column a little bigger (like the comment itself), see a
+current example list-entry in the "EAA" column" of the 'artist-events' pageType @debug/font.html
+
+*** could we actually have the same appearance of the image type-badge pills (bold font and with dark grey background) in the unique value drop down but not breaking the current actual working filtering
+
+could we actually have the same appearance of the image type-badge pills (bold font and with dark grey background) in
+the unique value drop down but not breaking the current actual working filtering
+
+
+
+* TODO Add test URL(s) in front of each pageType definition as a comment
+
+Add test URL(s) in front of each pageType definition as a comment, use the @pageTypes-testing-reference.org file as a reference
+but change the URLs there in rela copy/pastable URLs inside the comments in the userscript
+
+e.g.
+
+#+begin_example
+https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf - Events for Series
+https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordings - Recordings for Instruments
+#+end_example
+
 
 * DONE currently my info line under the prompt looks like
 
@@ -94017,3 +94210,4 @@ Resets in 11 hr 52 min
 #+end_example
 
 How can I extend "statusline.sh" to show the "Current session" and "Weekly limits" information additionally
+
