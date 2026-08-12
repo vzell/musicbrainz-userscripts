@@ -14756,7 +14756,7 @@
                 // Artist backfill above.
                 extractTitleData: true,
                 removeSelectors: [
-                    'h2.tracklist button.work-button-style', // native "Edit recording comments"
+                    'h2.tracklist button.work-button-style', // userscript "VZ: MusicBrainz - Generate Recording Comments For A Release" from @'Michael Wiencek, Gemini (directed by vzell)'
                     'h2.tracklist span#settings-icon',
                     'span#medium-toolbox' // native toggle-credits/expand/collapse controls — inert post-render
                 ],
@@ -44228,7 +44228,10 @@ a { color: #1565c0; }`;
                         if (seg.type === 'icon') {
                             const iconClone = seg.node.cloneNode(true);
                             iconClone.setAttribute('aria-hidden', 'true');
-                            iconClone.style.marginRight = '4px';
+                            // _bakeFlagIconNode()/verbatim area-icon clones already
+                            // carry the real live cell's own icon-to-text margin —
+                            // this is only a fallback for a clone with none baked.
+                            if (!iconClone.style.marginRight) iconClone.style.marginRight = '4px';
                             item.appendChild(iconClone);
                             continue;
                         }
@@ -44450,6 +44453,7 @@ a { color: #1565c0; }`;
                     borderRadius:       cs.borderRadius,
                     boxShadow:          cs.boxShadow,
                     verticalAlign:      cs.verticalAlign,
+                    marginRight:        cs.marginRight,
                 };
             };
             const li = span.closest('li');
@@ -44573,6 +44577,10 @@ a { color: #1565c0; }`;
                 flagClone.style.borderRadius  = visual.borderRadius;
                 flagClone.style.boxShadow     = visual.boxShadow;
                 flagClone.style.verticalAlign = visual.verticalAlign;
+                // Real cell's own icon-to-text gap — renderItems()'s render
+                // loop only applies its small fallback margin when this is
+                // empty, so a genuine (even zero) live value wins here.
+                flagClone.style.marginRight = visual.marginRight;
             }
             return flagClone;
         }
@@ -44641,30 +44649,38 @@ a { color: #1565c0; }`;
             const segMap = new Map();
             if (!tbody) return segMap;
             const iconSel = 'span[class*="flag-"], span.area-icon';
-            for (const row of tbody.rows) {
-                if (row.style.display === 'none') continue;
-                const cell = row.cells[colIndex];
-                if (!cell) continue;
-                const label = getCleanColumnText(cell);
-                if (!label || !valueCounts.has(label) || segMap.has(label)) continue;
-                if (!cell.querySelector(iconSel)) continue;
 
+            /**
+             * Builds ONE root element's (a single `<li>` item, or a whole
+             * non-list cell) ordered text/icon segment array by walking it
+             * with a TreeWalker — same left-to-right document order /
+             * script-style-head + _CLEAN_STRIP_SEL rejection / isDecorativeIcon()
+             * text skip as getCleanColumnText(). Text-node pieces are joined
+             * with a space at every node boundary (mirrors
+             * getCleanColumnText()'s own `textParts.join(' ')`) so adjacent
+             * sibling elements with no whitespace text node between them in
+             * the source DOM (e.g. .release-country/.release-date) still
+             * read with a space instead of raw per-node concatenation.
+             * @param {Element} root
+             * @returns {Array<{type:'text',text:string}|{type:'icon',node:HTMLElement}>}
+             */
+            function _buildFlagSegmentsForRoot(root) {
                 const segments = [];
-                let textBuf = '';
+                let textParts = [];
                 const flushText = () => {
-                    if (!textBuf) return;
+                    if (!textParts.length) return;
                     // Mirrors normalizeExtractedText()'s whitespace-collapse
                     // and bracket/comma tightening (minus the final trim,
                     // handled once across the whole segment list below).
-                    const clean = textBuf
+                    const clean = textParts.join(' ')
                         .replace(/\s+/g, ' ')
                         .replace(/\( /g, '(').replace(/ \)/g, ')')
                         .replace(/\[ /g, '[').replace(/ \]/g, ']')
                         .replace(/ ,/g, ',');
                     segments.push({ type: 'text', text: clean });
-                    textBuf = '';
+                    textParts = [];
                 };
-                const walker = document.createTreeWalker(cell, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+                const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
                     acceptNode(node) {
                         if (node.nodeType === Node.ELEMENT_NODE) {
                             const tag = node.tagName.toLowerCase();
@@ -44686,13 +44702,60 @@ a { color: #1565c0; }`;
                     const text = node.nodeValue;
                     const trimmed = text.trim();
                     if (trimmed && !isDecorativeIcon(trimmed)) {
-                        textBuf += text;
+                        textParts.push(text);
                     }
                 }
                 flushText();
+                return segments;
+            }
+
+            /**
+             * Joins per-item flag-icon segment arrays the same way
+             * _joinListItemsForDisplay() joins plain-text items — "A", "A
+             * and B", "A, B and C" (comma between all but the last pair,
+             * " and " before the last) — by splicing a synthetic
+             * {type:'text', text} separator segment between consecutive
+             * items' own segment arrays. Single-item input (the common
+             * case) returns that one item's segments unchanged, with no
+             * separator inserted.
+             * @param {Array<Array<{type:'text',text:string}|{type:'icon',node:HTMLElement}>>} itemSegArrays
+             * @returns {Array<{type:'text',text:string}|{type:'icon',node:HTMLElement}>}
+             */
+            function _joinFlagSegmentItems(itemSegArrays) {
+                const out = [];
+                itemSegArrays.forEach((segs, i) => {
+                    if (i > 0) {
+                        out.push({ type: 'text', text: i === itemSegArrays.length - 1 ? ' and ' : ', ' });
+                    }
+                    out.push(...segs);
+                });
+                return out;
+            }
+
+            for (const row of tbody.rows) {
+                if (row.style.display === 'none') continue;
+                const cell = row.cells[colIndex];
+                if (!cell) continue;
+                const label = getCleanColumnText(cell);
+                if (!label || !valueCounts.has(label) || segMap.has(label)) continue;
+                if (!cell.querySelector(iconSel)) continue;
+
+                // Build segments per list-item (natural item boundary — one
+                // <li> per release-event/country entry, per
+                // _findCellListItems()) so a multi-item cell's segments can
+                // be joined with the same "A, B and C" separator
+                // _joinListItemsForDisplay() uses for the non-flag-icon
+                // rendering path. A non-list (single-value) cell falls back
+                // to treating the whole cell as one pseudo-item, identical
+                // to the previous whole-cell-walk behavior.
+                const items = _findCellListItems(cell);
+                const itemRoots = items.length ? items : [cell];
+                const segments = _joinFlagSegmentItems(itemRoots.map(_buildFlagSegmentsForRoot));
+
                 // Trim only at the very ends of the whole entry — interior
-                // segment boundaries keep their natural spacing so text
-                // reads correctly on both sides of a spliced-out icon.
+                // segment boundaries (including the synthetic ", "/" and "
+                // item separators) keep their natural spacing so text reads
+                // correctly on both sides of a spliced-out icon.
                 const firstText = segments.find(s => s.type === 'text');
                 if (firstText) firstText.text = firstText.text.replace(/^\s+/, '');
                 for (let i = segments.length - 1; i >= 0; i--) {

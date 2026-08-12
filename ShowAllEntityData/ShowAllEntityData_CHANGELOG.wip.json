@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.103",
+    "date": "2026-08-13",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Unique-values (📊) dropdown entries for flag-decorated columns (\"Country/Date\", \"Country\", \"Locality\", \"Region\", etc.) had three rendering bugs, all confined to `openUniqDrop()`'s `flagIconMap`/`renderItems()` flag-rendering path (the tooltip, built from `getCleanColumnText()`, was always correct): (1) text glued together with no space, e.g. \"ES2009-02-08Sun\" instead of \"ES 2009-02-08 Sun\" — `flagIconMap`'s text accumulation raw-concatenated text nodes instead of joining them with `' '` at each boundary the way `getCleanColumnText()` does; (2) multi-row (multi-`<li>`) cells rendered with no \"and\"/\", \" between items, e.g. \"AT2003-05-05MonXE2003-05-05Mon\" instead of \"AT 2003-05-05 Mon and XE 2003-05-05 Mon\" — `flagIconMap` walked the whole `<td>` with one flat pass, with no `<li>` item-boundary awareness, so the existing `_joinListItemsForDisplay()`/`displayText` \"A, B and C\" join (from an earlier session) never applied to the flag-icon rendering branch at all. Fixed by extracting the per-cell walk into `_buildFlagSegmentsForRoot()` (now called once per `_findCellListItems()` item instead of once for the whole cell) and a new `_joinFlagSegmentItems()` helper mirroring `_joinListItemsForDisplay()`'s exact separator rule to splice synthetic `', '`/`' and '` segments between items. (3) The icon-to-text gap in the dropdown didn't match the real table cell's own spacing — `renderItems()` hardcoded `marginRight: '4px'` on every icon clone, while `resolveFlagVisual()`'s `pick()` never captured the live cell's own `marginRight` at all. Now captured and baked onto the clone in `_bakeFlagIconNode()`; the hardcoded `4px` in `renderItems()` is only a fallback for a clone with no baked margin."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.102",
     "date": "2026-08-12",
     "sections": [
