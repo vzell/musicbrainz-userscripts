@@ -17336,6 +17336,25 @@
             const want = mode.slice(6);
             return !!cell && _findCellEntityCommentParts(cell).some(p => p.alias === want);
         }
+        if (mode.startsWith('arttype:')) {
+            // Compound mode (openUniqDrop()'s makeValueSynItem, the "CAA
+            // info"/"EAA info" section) — matches one image's own type-badge
+            // pill text (e.g. "Front", "Obi") from _artBuildImageLi()'s
+            // per-image <li>, exact trimmed match. Same DOM shape/classes
+            // for both CAA and EAA columns — _artBuildImageLi() is not
+            // context-parameterized.
+            const want = mode.slice(8);
+            return !!cell && Array.from(cell.querySelectorAll('.mb-caa-type-badge > span'))
+                .some(s => s.textContent.trim() === want);
+        }
+        if (mode.startsWith('artcomment:')) {
+            // Compound mode counterpart of 'arttype:' above — matches one
+            // image's own free-text comment (e.g. "Front cover, booklet
+            // page i").
+            const want = mode.slice(11);
+            return !!cell && Array.from(cell.querySelectorAll('.mb-caa-art-comment'))
+                .some(s => s.textContent.trim() === want);
+        }
         return false;
     }
 
@@ -33570,6 +33589,8 @@ a { color: #1565c0; }`;
         entity:        { label: 'Entity info',        glyph: '👤' },
         roles:         { label: 'Roles',              glyph: '🎭' },
         relationships: { label: 'Relationship icons', glyph: '🔗' },
+        caaInfo:       { label: 'CAA info',           glyph: '🎨' },
+        eaaInfo:       { label: 'EAA info',           glyph: '🎫' },
     };
 
     /**
@@ -33586,6 +33607,13 @@ a { color: #1565c0; }`;
     /**
      * Maps a `makeValueSynItem()` kind string to the `SYN_SECTION_META` key
      * its entry belongs in.
+     *
+     * `'arttype'`/`'artcomment'` (CAA/EAA per-image type-badge/comment
+     * values) are deliberately ABSENT here — unlike every other kind, their
+     * target section depends on which column is actually open ("CAA info"
+     * vs "EAA info"), which this static map can't express. `makeValueSynItem()`
+     * special-cases those two kinds itself, resolving the section from the
+     * `_caaOrEaaColName` captured once per `openUniqDrop()` call instead.
      */
     const MB_UNIQ_KIND_TO_SECTION = {
         attr: 'credit', task: 'credit', date: 'credit',
@@ -34054,6 +34082,36 @@ a { color: #1565c0; }`;
             if (!t) return;
             el.normalize();
             highlightCrossTag(el, _buildFuzzyTextMatchRegex(t), 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
+     * Highlights the exact matched value for an `arttype:`/`artcomment:`
+     * compound structure-mode filter (see `openUniqDrop()`'s
+     * `makeValueSynItem`, the "CAA info"/"EAA info" section, and
+     * `_cellMatchesStructureMode()`'s own matching branches) — the
+     * query-time counterpart of `_highlightCreditValueMatch()` for a CAA/EAA
+     * image's own type-badge pill / free-text comment.
+     *
+     * Uses `_buildFuzzyTextMatchRegex()` (not a plain literal-escape) to
+     * match the convention already used by the sibling functions touching
+     * these exact selectors — `_highlightUniqArtTypeMatches()` and
+     * `_artHighlightImageLi()`'s own plain-value fallback — since
+     * `artcomment:` values are free text worth fuzzy-matching.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"arttype:Front"` or `"artcomment:Front cover, booklet page i"`.
+     */
+    function _highlightArtValueMatch(cell, mode) {
+        if (!cell) return;
+        const _isType = mode.startsWith('arttype:');
+        const _sel    = _isType ? '.mb-caa-type-badge > span' : '.mb-caa-art-comment';
+        const _want   = mode.slice(_isType ? 8 : 11);
+        cell.querySelectorAll(_sel).forEach(el => {
+            if (el.textContent.trim() !== _want) return;
+            el.normalize();
+            highlightCrossTag(el, _buildFuzzyTextMatchRegex(_want), 'mb-column-filter-highlight');
         });
     }
 
@@ -34532,6 +34590,8 @@ a { color: #1565c0; }`;
                                     _highlightEventRoleMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'name-variation') {
                                     _highlightNameVariationMatch(row.cells[f.idx]);
+                                } else if (mode.startsWith('arttype:') || mode.startsWith('artcomment:')) {
+                                    _highlightArtValueMatch(row.cells[f.idx], mode);
                                 }
                             });
                         }
@@ -43593,6 +43653,15 @@ a { color: #1565c0; }`;
         // JSDoc. No-op Map for any column/cell with no `.artist-roles`
         // list at all.
         const eventRoleValueCounts = new Map();
+        // Distinct CAA/EAA per-image type-badge pill values (e.g. "Front",
+        // "Obi", "Matrix/Runout") and free-text comment values (e.g. "Front
+        // cover, booklet page i") — the "CAA info"/"EAA info" section's own
+        // families, from `.mb-caa-type-badge > span`/`.mb-caa-art-comment`
+        // (see `_artBuildImageLi()`'s own JSDoc — not context-parameterized,
+        // so these classes are identical for both CAA and EAA columns).
+        // No-op Maps for any column that isn't a CAA/EAA art column.
+        const artTypeValueCounts    = new Map();
+        const artCommentValueCounts = new Map();
         // One entry per unique <li> item's own clean text, for multi-row
         // (≥2-item) list cells — e.g. "Karl Egsieker (task: Second
         // Engineer)" as its own selectable value distinct from the merged
@@ -43716,6 +43785,18 @@ a { color: #1565c0; }`;
                 const _rowRoleValues = new Set();
                 _findCellArtistRoles(cell).forEach(r => r.roles.forEach(role => _rowRoleValues.add(role)));
                 _rowRoleValues.forEach(t => eventRoleValueCounts.set(t, (eventRoleValueCounts.get(t) || 0) + 1));
+                const _rowArtTypeValues = new Set();
+                cell.querySelectorAll('.mb-caa-type-badge > span').forEach(s => {
+                    const t = s.textContent.trim();
+                    if (t) _rowArtTypeValues.add(t);
+                });
+                _rowArtTypeValues.forEach(t => artTypeValueCounts.set(t, (artTypeValueCounts.get(t) || 0) + 1));
+                const _rowArtCommentValues = new Set();
+                cell.querySelectorAll('.mb-caa-art-comment').forEach(s => {
+                    const t = s.textContent.trim();
+                    if (t) _rowArtCommentValues.add(t);
+                });
+                _rowArtCommentValues.forEach(t => artCommentValueCounts.set(t, (artCommentValueCounts.get(t) || 0) + 1));
             });
         }
         const vals = Array.from(valueCounts.keys()).sort((a, b) =>
@@ -44036,14 +44117,20 @@ a { color: #1565c0; }`;
         // Is this a CAA or EAA column?  Both embed an invisible mb-caa-sort-key
         // span with "yes" / "no" text so they already appear in valueCounts.
         // The special section is built from those pre-counted values.
-        const isCaaOrEaaCol = (() => {
+        //
+        // Resolves (and keeps) the literal column name — not just a boolean —
+        // so `makeValueSynItem()` (a closure over this same scope) can route
+        // its 'arttype'/'artcomment' entries to the matching "CAA info" /
+        // "EAA info" section for THIS column specifically.
+        const _caaOrEaaColName = (() => {
             const headers = table.querySelectorAll('thead tr:first-child th');
             const th = headers[colIndex];
-            if (!th) return false;
+            if (!th) return null;
             const name = th.dataset.colName ||
                 th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
-            return name === 'CAA' || name === 'EAA';
+            return (name === 'CAA' || name === 'EAA') ? name : null;
         })();
+        const isCaaOrEaaCol = _caaOrEaaColName !== null;
         const caaYesCount = 0; // unused after 9.99.569 — artwork-presence filtered via makeSynItem rename
         const caaNoCount  = 0;
 
@@ -44801,11 +44888,12 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'role'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'role'|'arttype'|'artcomment'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
-         *   alternate name, entity name, comment, alias, or event role to
-         *   match (embedded verbatim in the compound mode string).
+         *   alternate name, entity name, comment, alias, event role, CAA/EAA
+         *   image type, or CAA/EAA image comment to match (embedded verbatim
+         *   in the compound mode string).
          * @param {number} count  - Number of visible rows matching this value.
          * @param {string} [glyphClass] - Only meaningful for `kind === 'name'`
          *   (see `entityNameGlyphMap`) — the entity-type glyph CSS class
@@ -44852,11 +44940,20 @@ a { color: #1565c0; }`;
                  : kind === 'comment'    ? '» comment: '
                  : kind === 'alias'      ? '» alias: '
                  : kind === 'role'       ? '» role: '
+                 : kind === 'arttype'    ? '» image type: '
+                 : kind === 'artcomment' ? '» image comment: '
                  : '» ') + value
             );
 
             _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + `${kind}:${value}`);
-            getOrCreateSynSection(MB_UNIQ_KIND_TO_SECTION[kind] || 'credit').itemsBox.appendChild(item);
+            // 'arttype'/'artcomment' route dynamically to "CAA info"/"EAA info"
+            // depending on THIS column's actual name — see MB_UNIQ_KIND_TO_SECTION's
+            // own JSDoc for why a static lookup can't express this. Every other
+            // kind keeps the static MB_UNIQ_KIND_TO_SECTION lookup unchanged.
+            const sectionKey = (kind === 'arttype' || kind === 'artcomment')
+                ? (_caaOrEaaColName === 'EAA' ? 'eaaInfo' : 'caaInfo')
+                : (MB_UNIQ_KIND_TO_SECTION[kind] || 'credit');
+            getOrCreateSynSection(sectionKey).itemsBox.appendChild(item);
         };
 
         /**
@@ -44942,7 +45039,7 @@ a { color: #1565c0; }`;
         // Every column type can have genuinely empty cells (e.g. a primary-alias
         // column where most events have no alias, a CAA column with no artwork,
         // etc.) and being able to filter to those rows is universally useful.
-        // Sorted entries for the nine dynamic per-value families (shared by
+        // Sorted entries for the eleven dynamic per-value families (shared by
         // both branches below).
         const _sortedAttrValues = Array.from(attrValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedTaskValues = Array.from(taskValueCounts.keys()).sort((a, b) => a.localeCompare(b));
@@ -44953,11 +45050,14 @@ a { color: #1565c0; }`;
         const _sortedCommentValues = Array.from(entityCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedAliasValues   = Array.from(entityAliasValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRoleValues    = Array.from(eventRoleValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedArtTypeValues    = Array.from(artTypeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedArtCommentValues = Array.from(artCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _hasValueEntries = _sortedAttrValues.length > 0 || _sortedTaskValues.length > 0 ||
             _sortedDateValues.length > 0 || _sortedInstrumentValues.length > 0 ||
             _sortedAltNameValues.length > 0 ||
             _sortedNameValues.length > 0 || _sortedCommentValues.length > 0 || _sortedAliasValues.length > 0 ||
-            _sortedRoleValues.length > 0;
+            _sortedRoleValues.length > 0 ||
+            _sortedArtTypeValues.length > 0 || _sortedArtCommentValues.length > 0;
 
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 || _hasValueEntries)) {
              // "empty cells" pinned first; remaining entries in ascending complexity order.
@@ -44992,6 +45092,8 @@ a { color: #1565c0; }`;
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
+            _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
+            _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
         } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 || _hasValueEntries) {
             // Non-collapsable column (or a collapsable one with zero rows in
             // any multi-row-family state this render).
@@ -45007,6 +45109,8 @@ a { color: #1565c0; }`;
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
+            _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
+            _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
         }
 
         // ── Relationships column: unique icon entries ─────────────────────────────────────────────
@@ -45447,6 +45551,8 @@ a { color: #1565c0; }`;
         if (mode.startsWith('comment:')) return `» comment: ${mode.slice(8)}`;
         if (mode.startsWith('alias:'))   return `» alias: ${mode.slice(6)}`;
         if (mode.startsWith('role:'))    return `» role: ${mode.slice(5)}`;
+        if (mode.startsWith('arttype:'))    return `» image type: ${mode.slice(8)}`;
+        if (mode.startsWith('artcomment:')) return `» image comment: ${mode.slice(11)}`;
         return '▶◀ multi-row: any';
     }
 
@@ -45482,6 +45588,8 @@ a { color: #1565c0; }`;
         if (mode.startsWith('comment:')) return 'An entity\'s disambiguation comment text, excluding any primary alias.';
         if (mode.startsWith('alias:')) return 'An entity\'s primary alias — an alternate name shown in its disambiguation comment.';
         if (mode.startsWith('role:')) return 'An artist\'s own credited event role (e.g. "main performer", "guest performer", "host").';
+        if (mode.startsWith('arttype:')) return 'One of this CAA/EAA image\'s own type-badge pill labels (Front/Back/Booklet/…).';
+        if (mode.startsWith('artcomment:')) return 'One of this CAA/EAA image\'s own free-text comment.';
         return '';
     }
 
@@ -56645,6 +56753,29 @@ a { color: #1565c0; }`;
                     span.normalize();
                     highlightCrossTag(span, _buildFuzzyTextMatchRegex(t), 'mb-column-filter-highlight');
                 });
+                // 'arttype:'/'artcomment:' structure-mode match: the "CAA info"/
+                // "EAA info" section's own compound-mode entries (see
+                // openUniqDrop()'s makeValueSynItem and
+                // _cellMatchesStructureMode()'s matching branches). Scoped to
+                // THIS li only, deliberately duplicating _highlightArtValueMatch()'s
+                // logic rather than sharing it, mirroring this function's own
+                // existing convention (e.g. the hasItemValues block above) of
+                // keeping build-time and post-build highlighting in sync by
+                // inspection rather than a runtime dependency between the
+                // async (this function) and sync (testRowMatch()) call sites.
+                if (f.structureModes && f.structureModes.size > 0) {
+                    f.structureModes.forEach(mode => {
+                        let sel = null, want = null;
+                        if (mode.startsWith('arttype:'))         { sel = '.mb-caa-type-badge > span'; want = mode.slice(8); }
+                        else if (mode.startsWith('artcomment:')) { sel = '.mb-caa-art-comment';        want = mode.slice(11); }
+                        if (!sel) return;
+                        li.querySelectorAll(sel).forEach(span => {
+                            if (span.textContent.trim() !== want) return;
+                            span.normalize();
+                            highlightCrossTag(span, _buildFuzzyTextMatchRegex(want), 'mb-column-filter-highlight');
+                        });
+                    });
+                }
                 continue;
             }
             // Use per-filter flags (embedded by getColFilters from the per-subtable

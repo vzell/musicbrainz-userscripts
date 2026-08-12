@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.94",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added a \"CAA info\"/\"EAA info\" (named after the actual column header) section to the per-column unique-values dropdown for CAA/EAA art columns, listing every distinct per-image type-badge pill value (e.g. \"Front\", \"Obi\", \"Matrix/Runout\", from `.mb-caa-type-badge > span`) and every distinct per-image free-text comment (e.g. \"Front cover, booklet page i\", from `.mb-caa-art-comment`) — see debug/single-published-release.html — each independently checkable/filterable/highlightable, following the same pattern as the existing attr/task/date/instrument/altname/name/comment/alias/role families. New `makeValueSynItem` kinds `'arttype'`/`'artcomment'` (compound `MB_UNIQ_STRUCTURE_MODE_PREFIX` modes, so filtering needed zero changes to the generic `getColFilters()`/`testRowMatch()` dispatch — only two new branches in `_cellMatchesStructureMode()`). Since the target section depends on which column is actually open (\"CAA info\" vs \"EAA info\"), unlike every other kind these two are deliberately absent from the static `MB_UNIQ_KIND_TO_SECTION` map and instead routed dynamically inside `makeValueSynItem()` from `_caaOrEaaColName` (the `isCaaOrEaaCol` IIFE now resolves and keeps the literal column name, not just a boolean). New `SYN_SECTION_META` entries `caaInfo`/`eaaInfo`. Highlighting required two separate additions, not one: `testRowMatch()`'s dispatch (new `_highlightArtValueMatch()`) for the normal synchronous case, AND `_artHighlightImageLi()` (called from `_artBuildMultiRowArtCell()` when CAA/EAA artwork is (re)built — which happens asynchronously after the table's initial render/filter pass) for the async-rebuild case — without the second one, filtering would work but the highlight would silently fail to appear whenever an art cell (re)builds after a matching filter was already applied, which is the common case for these columns. Also extended `_structureModeLabel()`/`_structureModeTooltip()` for the two new compound modes."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.93",
     "date": "2026-08-12",
     "sections": [
