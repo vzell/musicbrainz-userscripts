@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.100",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The TEMPORARY diagnostic instrumentation added in WIP.90/WIP.91 while chasing a hollow CAA/EAA-icon \"Show single-table\" bug (cross-tab snapshot capture/hydration fingerprints in `captureSubtableSnapshot`/`openSubtableAsSingleTableTab`/`_hydrateAndRenderFromSnapshotData`, per-call counters and entry/branch logs in `_artInitPics`/`_artEnrichTable`/`_artEnrichIcon`/`_artBuildMultiRowArtCell`, the `_debugDumpCaaColumnState()` pipeline-stage dumper and its 5 call sites in `runFilter`'s single-table branch including 3 delayed `setTimeout` follow-ups, and the `_debugWatchCaaColumnForRegression()` MutationObserver regression watchdog) is being kept permanently rather than removed — useful to have on hand if a similar CAA/EAA regression needs chasing again. Added a new \"GENERIC SETTINGS\" checkbox, `sa_enable_art_diagnostic_logging` (default `false`), that every one of these sites is now gated behind — `_debugDumpCaaColumnState()`/`_debugWatchCaaColumnForRegression()` early-return (and, for the latter, skip installing their MutationObserver / scheduling their `setTimeout`s) when it's off, and every other individual log call site checks it directly, mirroring the existing `sa_enable_tooltip_debug` pattern (requires the global \"Enable debug logging\" setting to also be on). No behavior changes when the new setting is off (the default) — purely a toggle, matching the pre-existing behavior of this instrumentation being effectively silent unless deliberately dug into."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.99",
     "date": "2026-08-12",
     "sections": [

@@ -236,6 +236,19 @@
                          "to also be active."
         },
 
+        sa_enable_art_diagnostic_logging: {
+            label: "Enable CAA/EAA artwork diagnostic logging",
+            type: "checkbox",
+            default: false,
+            description: "Enable extra diagnostic console logging for the CAA/EAA artwork " +
+                         "pipeline: cross-tab snapshot capture/hydration fingerprints, per-call " +
+                         "counters, and a MutationObserver-based regression watchdog on the " +
+                         "CAA/EAA column. Originally added to chase a hollow-icon 'Show " +
+                         "single-table' bug (see debug/CAA-missing-doubled.org) and kept " +
+                         "around for future use. Uses the 'caa'/'eaa'/'cache'/'navigation' " +
+                         "channels — requires 'Enable debug logging' to also be active."
+        },
+
         // ============================================================
         // EXPERIMENTAL FEATURES SECTION
         // ============================================================
@@ -11259,7 +11272,9 @@
     // TEMP DEBUG (bug 2 investigation) — per-function call counters so a
     // suspiciously-repeated call to _artInitPics()/_artEnrichIcon()/
     // _artBuildMultiRowArtCell() within one hydration+render cycle stands out
-    // in the console. Remove once bug 2 is root-caused.
+    // in the console. Kept permanently (gated behind sa_enable_art_diagnostic_logging
+    // at every log site that uses it) rather than removed, for reuse if a similar
+    // CAA/EAA regression ever needs chasing again.
     const _debugCallCounters = new Map();
     function _debugCallCount(fnName) {
         const n = (_debugCallCounters.get(fnName) || 0) + 1;
@@ -11309,14 +11324,17 @@
      * in the render/init pipeline (initCollapsableColumns, initCaaPics,
      * runFilter's clone/strip loop, etc.) can be diffed against each other
      * in the console to see exactly which step a summary <li>'s icon+badge
-     * go missing at. No-op if no table.tbl / no CAA / EAA column exists.
-     * Remove once bug 2 is root-caused.
+     * go missing at. No-op if no table.tbl / no CAA / EAA column exists, or if
+     * the `sa_enable_art_diagnostic_logging` setting is off (checked first, so
+     * this is a cheap no-op call otherwise). Kept permanently for reuse rather
+     * than removed once bug 2 is root-caused.
      *
      * @param {string} label  Short marker identifying the call site, e.g.
      *   'before-initCollapsableColumns'.
      * @returns {void}
      */
     function _debugDumpCaaColumnState(label) {
+        if (!Lib.settings.sa_enable_art_diagnostic_logging) return;
         const table = document.querySelector('table.tbl');
         if (!table) { Lib.debug('caa', `_debugDumpCaaColumnState[${label}]: no table.tbl`); return; }
         ['CAA', 'EAA'].forEach(colLabel => {
@@ -11359,12 +11377,15 @@
      * _artBuildMultiRowArtCell / initCollapsableColumns).
      *
      * Installed once per table (idempotent via `_debugCaaRegressionWatchedTables`),
-     * for the lifetime of that table element. Remove once bug 2 is root-caused.
+     * for the lifetime of that table element. No-op (no observer installed) unless
+     * the `sa_enable_art_diagnostic_logging` setting is on. Kept permanently for
+     * reuse rather than removed once bug 2 is root-caused.
      *
      * @param {HTMLTableElement} table
      * @returns {void}
      */
     function _debugWatchCaaColumnForRegression(table) {
+        if (!Lib.settings.sa_enable_art_diagnostic_logging) return;
         if (_debugCaaRegressionWatchedTables.has(table)) return;
         const tbody = table.tBodies[0];
         if (!tbody) return;
@@ -25008,21 +25029,23 @@ a { color: #1565c0; }`;
         // CAA/EAA cell state before anything touches it, so a hollow captured cell
         // can be attributed to either "already hollow on the live page, before
         // getCleanCellHtml ever ran" or "getCleanCellHtml/_stripTransientCellState
-        // stripped it during capture" — two very different bugs. Remove once bug 2
-        // is root-caused.
+        // stripped it during capture" — two very different bugs. Gated on
+        // sa_enable_art_diagnostic_logging — kept around for future use.
         const _debugRawArtFp = {};
-        ['CAA', 'EAA'].forEach(colLabel => {
-            const colIdx = caaFindColumnByName(table, colLabel);
-            if (colIdx === -1) return;
-            _debugRawArtFp[colLabel] = Array.from(table.tBodies[0] ? table.tBodies[0].rows : [])
-                .map((tr, rIdx) => {
-                    const td = tr.cells[colIdx];
-                    if (!td) return `row${rIdx}:no-cell`;
-                    const hasAnchor = !!td.querySelector('a[href$="/cover-art"], a[href$="/event-art"]');
-                    const hasBadge  = !!td.querySelector('.mb-caa-count-badge, .mb-eaa-count-badge');
-                    return `row${rIdx}:[anchor=${hasAnchor} badge=${hasBadge}]`;
-                });
-        });
+        if (Lib.settings.sa_enable_art_diagnostic_logging) {
+            ['CAA', 'EAA'].forEach(colLabel => {
+                const colIdx = caaFindColumnByName(table, colLabel);
+                if (colIdx === -1) return;
+                _debugRawArtFp[colLabel] = Array.from(table.tBodies[0] ? table.tBodies[0].rows : [])
+                    .map((tr, rIdx) => {
+                        const td = tr.cells[colIdx];
+                        if (!td) return `row${rIdx}:no-cell`;
+                        const hasAnchor = !!td.querySelector('a[href$="/cover-art"], a[href$="/event-art"]');
+                        const hasBadge  = !!td.querySelector('.mb-caa-count-badge, .mb-eaa-count-badge');
+                        return `row${rIdx}:[anchor=${hasAnchor} badge=${hasBadge}]`;
+                    });
+            });
+        }
 
         const rows = Array.from(table.tBodies[0] ? table.tBodies[0].rows : [])
             .map(row => Array.from(row.cells)
@@ -25042,25 +25065,27 @@ a { color: #1565c0; }`;
         // attributed to either "already hollow at capture time" (bug is in the
         // ORIGINAL page's own enrichment / capture-time strip) or "still had
         // its icon+badge here" (bug is somewhere in the hydration/re-render
-        // pipeline instead). Remove once bug 2 is root-caused.
-        ['CAA', 'EAA'].forEach(colLabel => {
-            const colIdx = caaFindColumnByName(table, colLabel);
-            if (colIdx === -1) return;
-            const rowSummaries = rows.map((rowCells, rIdx) => {
-                const cell = rowCells[colIdx];
-                if (!cell) return `row${rIdx}:no-cell`;
-                const html = cell.html;
-                const hasUl     = /class="mb-caa-art-ul|class="mb-eaa-art-ul/.test(html);
-                const hasAnchor = /<a\s[^>]*cover-art|<a\s[^>]*event-art/.test(html);
-                const hasBadge  = /mb-caa-count-badge|mb-eaa-count-badge/.test(html);
-                const hasSortYes = /mb-caa-sort-key[^>]*>yes|mb-eaa-sort-key[^>]*>yes/.test(html);
-                return `row${rIdx}:[ul=${hasUl} anchor=${hasAnchor} badge=${hasBadge} sortYes=${hasSortYes} len=${html.length}]`;
+        // pipeline instead). Gated on sa_enable_art_diagnostic_logging.
+        if (Lib.settings.sa_enable_art_diagnostic_logging) {
+            ['CAA', 'EAA'].forEach(colLabel => {
+                const colIdx = caaFindColumnByName(table, colLabel);
+                if (colIdx === -1) return;
+                const rowSummaries = rows.map((rowCells, rIdx) => {
+                    const cell = rowCells[colIdx];
+                    if (!cell) return `row${rIdx}:no-cell`;
+                    const html = cell.html;
+                    const hasUl     = /class="mb-caa-art-ul|class="mb-eaa-art-ul/.test(html);
+                    const hasAnchor = /<a\s[^>]*cover-art|<a\s[^>]*event-art/.test(html);
+                    const hasBadge  = /mb-caa-count-badge|mb-eaa-count-badge/.test(html);
+                    const hasSortYes = /mb-caa-sort-key[^>]*>yes|mb-eaa-sort-key[^>]*>yes/.test(html);
+                    return `row${rIdx}:[ul=${hasUl} anchor=${hasAnchor} badge=${hasBadge} sortYes=${hasSortYes} len=${html.length}]`;
+                });
+                Lib.debug('cache',
+                    `captureSubtableSnapshot: [${colLabel}] category="${categoryName}" col=${colIdx} — ` +
+                    `RAW(pre-getCleanCellHtml): ${(_debugRawArtFp[colLabel] || []).join(' | ')} —— ` +
+                    `STRIPPED(captured payload): ${rowSummaries.join(' | ')}`);
             });
-            Lib.debug('cache',
-                `captureSubtableSnapshot: [${colLabel}] category="${categoryName}" col=${colIdx} — ` +
-                `RAW(pre-getCleanCellHtml): ${(_debugRawArtFp[colLabel] || []).join(' | ')} —— ` +
-                `STRIPPED(captured payload): ${rowSummaries.join(' | ')}`);
-        });
+        }
 
         // entityType/sectionSuffix derivation mirrors _assembleExportFilename's
         // pageTypeSlug split — but that helper's detailSlug comes from the
@@ -25131,11 +25156,13 @@ a { color: #1565c0; }`;
         // TEMP DEBUG (bug 2 investigation) — capture-time wall-clock, correlate
         // against _hydrateAndRenderFromSnapshotData's own entry timestamp in the
         // new tab's console to see how much time (and how many _caaQueue items)
-        // elapsed between capture and hydration.
-        Lib.debug('navigation',
-            `openSubtableAsSingleTableTab: uid=${uid} category="${categoryName}" ` +
-            `rows=${payload.rowCount} capturedAt=${payload.timestampReadable} ` +
-            `perfNow=${performance.now().toFixed(1)}`);
+        // elapsed between capture and hydration. Gated on sa_enable_art_diagnostic_logging.
+        if (Lib.settings.sa_enable_art_diagnostic_logging) {
+            Lib.debug('navigation',
+                `openSubtableAsSingleTableTab: uid=${uid} category="${categoryName}" ` +
+                `rows=${payload.rowCount} capturedAt=${payload.timestampReadable} ` +
+                `perfNow=${performance.now().toFixed(1)}`);
+        }
         Lib.debug('navigation', `Opening "${categoryName}" as a single-table snapshot in a new tab: ${targetUrl}`);
         window.open(targetUrl, '_blank');
     }
@@ -35136,8 +35163,8 @@ a { color: #1565c0; }`;
             // TEMP DEBUG (bug 2 investigation) — fingerprint the CLONED rows that
             // are ABOUT to be inserted by renderFinalTable(), using the CURRENT
             // (pre-replacement) table's own header to resolve the CAA/EAA colIdx.
-            // Remove once bug 2 is root-caused.
-            {
+            // Gated on sa_enable_art_diagnostic_logging.
+            if (Lib.settings.sa_enable_art_diagnostic_logging) {
                 const _preTable = document.querySelector('table.tbl');
                 if (_preTable) {
                     ['CAA', 'EAA'].forEach(colLabel => {
@@ -35174,7 +35201,8 @@ a { color: #1565c0; }`;
             // this call is a cheap no-op on non-collapsable pages.
             const _collapseTable = document.querySelector('table.tbl');
             if (_collapseTable) initCollapsableColumns(_collapseTable);
-            // TEMP DEBUG (bug 2 investigation) — remove once bug 2 is root-caused.
+            // TEMP DEBUG (bug 2 investigation) — kept permanently, no-op unless
+            // sa_enable_art_diagnostic_logging is on.
             _debugDumpCaaColumnState('runFilter:post-initCollapsableColumns');
 
             // Re-inject erg expand buttons into the freshly rendered DOM rows.
@@ -35207,7 +35235,8 @@ a { color: #1565c0; }`;
             initCaaInlinePics();
             initEaaInlinePics();
             initCaaInlineJesus2099Observer();
-            // TEMP DEBUG (bug 2 investigation) — remove once bug 2 is root-caused.
+            // TEMP DEBUG (bug 2 investigation) — kept permanently, no-op unless
+            // sa_enable_art_diagnostic_logging is on.
             _debugDumpCaaColumnState('runFilter:pre-initCaaPics');
             initCaaPics();
             initEaaPics();
@@ -35215,11 +35244,13 @@ a { color: #1565c0; }`;
             // initCaaPics()/initEaaPics() return. Note _artEnrichIcon's own async
             // tiers (IDB await / network fetch) may still be in flight at this
             // point — a follow-up delayed dump below catches what settles later.
-            // Remove once bug 2 is root-caused.
+            // Kept permanently, no-op unless sa_enable_art_diagnostic_logging is on.
             _debugDumpCaaColumnState('runFilter:post-initCaaPics-sync');
-            setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+500ms'), 500);
-            setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+2000ms'), 2000);
-            setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+5000ms'), 5000);
+            if (Lib.settings.sa_enable_art_diagnostic_logging) {
+                setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+500ms'), 500);
+                setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+2000ms'), 2000);
+                setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+5000ms'), 5000);
+            }
             // Re-populate any rel cells that were not yet done when runFilter rebuilt
             // the DOM (race: Phase-2 fetch queue was mid-flight when the user typed).
             if (document.querySelector('td.mb-rel-cell:not([data-rel-done="1"])')) {
@@ -52055,8 +52086,8 @@ a { color: #1565c0; }`;
             // correlated against openSubtableAsSingleTableTab's own capture-time
             // log (in the ORIGINAL tab's console) to see how much real time and
             // how many _caaQueue items elapsed between capture and hydration.
-            // Remove once bug 2 is root-caused.
-            if (isCrossTabSnapshot) {
+            // Gated on sa_enable_art_diagnostic_logging.
+            if (isCrossTabSnapshot && Lib.settings.sa_enable_art_diagnostic_logging) {
                 Lib.debug('cache',
                     `_hydrateAndRenderFromSnapshotData: CROSS-TAB SNAPSHOT hydration starting — ` +
                     `pageType=${data.pageType} tableMode(data)=${data.tableMode} ` +
@@ -52421,7 +52452,7 @@ a { color: #1565c0; }`;
                 // sniff, reused before AND after _stripTransientCellState() below so
                 // a cell that goes from "has icon/badge" to "hollow" (or was already
                 // hollow from the captured payload itself) is unambiguous either way.
-                // Remove once bug 2 is root-caused.
+                // Gated on sa_enable_art_diagnostic_logging.
                 const _caaArtDebugFingerprint = (html) => {
                     if (!html) return null;
                     const hasUl     = /class="mb-caa-art-ul|class="mb-eaa-art-ul/.test(html);
@@ -52439,15 +52470,14 @@ a { color: #1565c0; }`;
                         td.innerHTML = cellData.html;
                         if (cellData.colSpan > 1) td.colSpan = cellData.colSpan;
                         if (cellData.rowSpan > 1) td.rowSpan = cellData.rowSpan;
-                        const _beforeFp = _caaArtDebugFingerprint(cellData.html);
+                        const _beforeFp = Lib.settings.sa_enable_art_diagnostic_logging
+                            ? _caaArtDebugFingerprint(cellData.html) : null;
+                        _stripTransientCellState(td);
                         if (_beforeFp !== null) {
-                            _stripTransientCellState(td);
                             const _afterFp = _caaArtDebugFingerprint(td.innerHTML);
                             Lib.debug('cache',
                                 `_hydrateAndRenderFromSnapshotData: row${rowIndex} col${cellIdx} CAA/EAA cell — ` +
                                 `BEFORE strip: [${_beforeFp}] AFTER strip: [${_afterFp}]`);
-                        } else {
-                            _stripTransientCellState(td);
                         }
                         tr.appendChild(td);
                     });
@@ -52500,12 +52530,14 @@ a { color: #1565c0; }`;
             // collapsableColumns resolve to at this point, regardless of whether the
             // entityFeatures merge above fired (artist-relationships-filtered has no
             // entityFeatures, so it never does — this log still fires for it).
-            // Remove once bug 2 is root-caused.
-            Lib.debug('cache',
-                `_hydrateAndRenderFromSnapshotData: post-merge activeDefinition — ` +
-                `type=${activeDefinition?.type} tableMode=${activeDefinition?.tableMode} ` +
-                `addCAA=${activeDefinition?.features?.addCAA} addEAA=${activeDefinition?.features?.addEAA} ` +
-                `collapsableColumns=${JSON.stringify(activeDefinition?.features?.collapsableColumns || [])}`);
+            // Gated on sa_enable_art_diagnostic_logging.
+            if (Lib.settings.sa_enable_art_diagnostic_logging) {
+                Lib.debug('cache',
+                    `_hydrateAndRenderFromSnapshotData: post-merge activeDefinition — ` +
+                    `type=${activeDefinition?.type} tableMode=${activeDefinition?.tableMode} ` +
+                    `addCAA=${activeDefinition?.features?.addCAA} addEAA=${activeDefinition?.features?.addEAA} ` +
+                    `collapsableColumns=${JSON.stringify(activeDefinition?.features?.collapsableColumns || [])}`);
+            }
             if (!activeInjectedColumns.length) {
                 activeInjectedColumns = buildActiveInjectedColumns(activeDefinition);
                 Lib.debug('cache', `disk-load: rebuilt activeInjectedColumns (${activeInjectedColumns.length})`);
@@ -52808,8 +52840,8 @@ a { color: #1565c0; }`;
                 // TEMP DEBUG (bug 2 investigation) — timestamp immediately before the
                 // runFilter() call that (per its own single-table branch) is
                 // responsible for calling initCaaPics()/initEaaPics() post-hydration.
-                // Remove once bug 2 is root-caused.
-                if (isCrossTabSnapshot) {
+                // Gated on sa_enable_art_diagnostic_logging.
+                if (isCrossTabSnapshot && Lib.settings.sa_enable_art_diagnostic_logging) {
                     Lib.debug('cache',
                         `_hydrateAndRenderFromSnapshotData: calling runFilter() — ` +
                         `perfNow=${performance.now().toFixed(1)} allRows.length=${allRows.length} ` +
@@ -57139,15 +57171,19 @@ a { color: #1565c0; }`;
      * @param {Object[]}             images   Array of image objects from the API.
      */
     function _artBuildMultiRowArtCell(ctx, artCell, images) {
-        // TEMP DEBUG (bug 2 investigation) — remove once bug 2 is root-caused.
+        // TEMP DEBUG (bug 2 investigation) — call counter and row lookup kept
+        // unconditional (cheap, reused by the second TEMP DEBUG block below);
+        // the logs themselves are gated on sa_enable_art_diagnostic_logging.
         const _callN = _debugCallCount('_artBuildMultiRowArtCell');
         const _trDbg = artCell.closest('tr');
-        Lib.debug(ctx.key,
-            `_artBuildMultiRowArtCell: ENTRY call#${_callN} row=${_trDbg?.dataset?.mbRowIdx ?? '?'} ` +
-            `cellIndex=${artCell.cellIndex} isConnected=${artCell.isConnected} ` +
-            `images.length=${Array.isArray(images) ? images.length : 'n/a'} ` +
-            `artCell.children.length(before)=${artCell.children.length} ` +
-            `artCell.innerHTML(before, first 200 chars)=${artCell.innerHTML.slice(0, 200)}`);
+        if (Lib.settings.sa_enable_art_diagnostic_logging) {
+            Lib.debug(ctx.key,
+                `_artBuildMultiRowArtCell: ENTRY call#${_callN} row=${_trDbg?.dataset?.mbRowIdx ?? '?'} ` +
+                `cellIndex=${artCell.cellIndex} isConnected=${artCell.isConnected} ` +
+                `images.length=${Array.isArray(images) ? images.length : 'n/a'} ` +
+                `artCell.children.length(before)=${artCell.children.length} ` +
+                `artCell.innerHTML(before, first 200 chars)=${artCell.innerHTML.slice(0, 200)}`);
+        }
         if (!Array.isArray(images) || images.length === 0) return;
 
         // Resolve the column index once — passed to _artHighlightImageLi() so it can
@@ -57156,10 +57192,12 @@ a { color: #1565c0; }`;
 
         // Detect whether the <ul> wrapper already exists (rebuild case).
         const existingUl = artCell.querySelector(':scope > ul.mb-caa-art-ul');
-        // TEMP DEBUG (bug 2 investigation) — remove once bug 2 is root-caused.
-        Lib.debug(ctx.key,
-            `_artBuildMultiRowArtCell: call#${_callN} row=${_trDbg?.dataset?.mbRowIdx ?? '?'} ` +
-            `branch=${existingUl ? 'REBUILD' : 'FIRST-BUILD'}`);
+        // TEMP DEBUG (bug 2 investigation) — gated on sa_enable_art_diagnostic_logging.
+        if (Lib.settings.sa_enable_art_diagnostic_logging) {
+            Lib.debug(ctx.key,
+                `_artBuildMultiRowArtCell: call#${_callN} row=${_trDbg?.dataset?.mbRowIdx ?? '?'} ` +
+                `branch=${existingUl ? 'REBUILD' : 'FIRST-BUILD'}`);
+        }
 
         if (existingUl) {
             // ── Rebuild: replace image lis, update toggle title ────────────────
@@ -57561,17 +57599,23 @@ a { color: #1565c0; }`;
      * @returns {Promise<void>}
      */
     async function _artEnrichIcon(ctx, anchor) {
-        // TEMP DEBUG (bug 2 investigation) — remove once bug 2 is root-caused.
+        // TEMP DEBUG (bug 2 investigation) — call counter and row-idx lookup kept
+        // unconditional (cheap, reused by later TEMP DEBUG blocks in this function);
+        // the logs themselves are gated on sa_enable_art_diagnostic_logging.
         const _callN = _debugCallCount(`_artEnrichIcon(${ctx.key})`);
         const _trAtEntry = anchor.closest('tr');
         const _rowIdxAtEntry = _trAtEntry?.dataset?.mbRowIdx ?? '?';
-        Lib.debug(ctx.key,
-            `${ctx.key}EnrichIcon: ENTRY call#${_callN} row=${_rowIdxAtEntry} ` +
-            `href=${anchor.getAttribute('href')} isConnected=${anchor.isConnected} ` +
-            `alreadyEnriched=${anchor.dataset[ctx.enrichedAttr] === '1'} perfNow=${performance.now().toFixed(1)}`);
+        if (Lib.settings.sa_enable_art_diagnostic_logging) {
+            Lib.debug(ctx.key,
+                `${ctx.key}EnrichIcon: ENTRY call#${_callN} row=${_rowIdxAtEntry} ` +
+                `href=${anchor.getAttribute('href')} isConnected=${anchor.isConnected} ` +
+                `alreadyEnriched=${anchor.dataset[ctx.enrichedAttr] === '1'} perfNow=${performance.now().toFixed(1)}`);
+        }
 
         if (anchor.dataset[ctx.enrichedAttr] === '1') {
-            Lib.debug(ctx.key, `${ctx.key}EnrichIcon: call#${_callN} row=${_rowIdxAtEntry} EARLY-RETURN (already enriched)`);
+            if (Lib.settings.sa_enable_art_diagnostic_logging) {
+                Lib.debug(ctx.key, `${ctx.key}EnrichIcon: call#${_callN} row=${_rowIdxAtEntry} EARLY-RETURN (already enriched)`);
+            }
             return;
         }
 
@@ -57632,11 +57676,13 @@ a { color: #1565c0; }`;
                             // (and therefore artCellI, its ancestor) is STILL connected to
                             // the live document after the IDB await — a disconnected anchor
                             // here means this whole build lands on an orphaned clone the
-                            // user will never see. Remove once bug 2 is root-caused.
-                            Lib.debug(ctx.key,
-                                `${ctx.key}EnrichIcon: call#${_callN} row=${_rowIdxAtEntry} ` +
-                                `IDB-tier pre-buildMultiRow isConnected=${anchor.isConnected} ` +
-                                `artCellIsConnected=${artCellI.isConnected}`);
+                            // user will never see. Gated on sa_enable_art_diagnostic_logging.
+                            if (Lib.settings.sa_enable_art_diagnostic_logging) {
+                                Lib.debug(ctx.key,
+                                    `${ctx.key}EnrichIcon: call#${_callN} row=${_rowIdxAtEntry} ` +
+                                    `IDB-tier pre-buildMultiRow isConnected=${anchor.isConnected} ` +
+                                    `artCellIsConnected=${artCellI.isConnected}`);
+                            }
                             _artBuildMultiRowArtCell(ctx, artCellI, images);
                             // Re-highlight image lis on the live td after the async IDB
                             // await has settled — _activeFilterHighlightCtx is read here
@@ -57801,11 +57847,13 @@ a { color: #1565c0; }`;
             // BEFORE this async chain (any of the awaits above) resolved, this
             // entire build lands on an orphaned clone the user will never see,
             // while the CURRENTLY-VISIBLE row's own (different) anchor never
-            // gets its own enrichment pass. Remove once bug 2 is root-caused.
-            Lib.debug(ctx.key,
-                `${ctx.key}EnrichIcon: call#${_callN} row=${_rowIdxAtEntry} entityPath=${entityPath} ` +
-                `pre-buildMultiRow anchor.isConnected=${anchor.isConnected} ` +
-                `artCell.isConnected=${artCell.isConnected} count=${count} perfNow=${performance.now().toFixed(1)}`);
+            // gets its own enrichment pass. Gated on sa_enable_art_diagnostic_logging.
+            if (Lib.settings.sa_enable_art_diagnostic_logging) {
+                Lib.debug(ctx.key,
+                    `${ctx.key}EnrichIcon: call#${_callN} row=${_rowIdxAtEntry} entityPath=${entityPath} ` +
+                    `pre-buildMultiRow anchor.isConnected=${anchor.isConnected} ` +
+                    `artCell.isConnected=${artCell.isConnected} count=${count} perfNow=${performance.now().toFixed(1)}`);
+            }
             _artBuildMultiRowArtCell(ctx, artCell, images);
             // Re-highlight image lis on the live td immediately after the cell is
             // fully built.  This is the authoritative highlight call — it executes
@@ -57870,7 +57918,8 @@ a { color: #1565c0; }`;
      * @param {HTMLTableElement} table
      */
     function _artEnrichTable(ctx, table) {
-        // TEMP DEBUG (bug 2 investigation) — remove once bug 2 is root-caused.
+        // TEMP DEBUG (bug 2 investigation) — call counter kept unconditional (cheap);
+        // the logs that use it below are gated on sa_enable_art_diagnostic_logging.
         const _callN = _debugCallCount(`_artEnrichTable(${ctx.key})`);
         const icons = table.querySelectorAll(ctx.iconSel);
 
@@ -57880,12 +57929,14 @@ a { color: #1565c0; }`;
             // TEMP DEBUG (bug 2 investigation) — identify each enqueued anchor by
             // its row idx / href / pre-existing enrichedAttr state, so a row that
             // ends up empty later can be traced back to whether it was even
-            // enqueued here at all. Remove once bug 2 is root-caused.
-            const _tr = anchor.closest('tr');
-            Lib.debug(ctx.key,
-                `${ctx.key}EnrichTable: call#${_callN} enqueue row=${_tr?.dataset?.mbRowIdx ?? '?'} ` +
-                `href=${anchor.getAttribute('href')} alreadyEnriched=${anchor.dataset[ctx.enrichedAttr] === '1'} ` +
-                `synthetic=${anchor.dataset.caaSynthetic === '1'}`);
+            // enqueued here at all. Gated on sa_enable_art_diagnostic_logging.
+            if (Lib.settings.sa_enable_art_diagnostic_logging) {
+                const _tr = anchor.closest('tr');
+                Lib.debug(ctx.key,
+                    `${ctx.key}EnrichTable: call#${_callN} enqueue row=${_tr?.dataset?.mbRowIdx ?? '?'} ` +
+                    `href=${anchor.getAttribute('href')} alreadyEnriched=${anchor.dataset[ctx.enrichedAttr] === '1'} ` +
+                    `synthetic=${anchor.dataset.caaSynthetic === '1'}`);
+            }
             if (_caaQueue) {
                 _caaQueue.enqueue(() => _artEnrichIcon(ctx, anchor));
             } else {
@@ -57893,8 +57944,11 @@ a { color: #1565c0; }`;
             }
         });
 
-        Lib.debug(ctx.key, `${ctx.key}EnrichTable: call#${_callN} enqueued ${icons.length} enrichment request(s) ` +
-            `(queue: ${_caaQueue ? _caaQueue.runningCount + ' running, ' + _caaQueue.pendingCount + ' pending' : 'unavailable'})`);
+        // TEMP DEBUG (bug 2 investigation) — gated on sa_enable_art_diagnostic_logging.
+        if (Lib.settings.sa_enable_art_diagnostic_logging) {
+            Lib.debug(ctx.key, `${ctx.key}EnrichTable: call#${_callN} enqueued ${icons.length} enrichment request(s) ` +
+                `(queue: ${_caaQueue ? _caaQueue.runningCount + ' running, ' + _caaQueue.pendingCount + ' pending' : 'unavailable'})`);
+        }
     }
 
     /**
@@ -59356,9 +59410,12 @@ a { color: #1565c0; }`;
      * @param {ArtCtx} ctx  Archive context descriptor.
      */
     function _artInitPics(ctx) {
-        // TEMP DEBUG (bug 2 investigation) — remove once bug 2 is root-caused.
+        // TEMP DEBUG (bug 2 investigation) — call counter kept unconditional (cheap);
+        // the log itself is gated on sa_enable_art_diagnostic_logging.
         const _callN = _debugCallCount(`_artInitPics(${ctx.key})`);
-        Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}Pics: ENTRY call#${_callN} perfNow=${performance.now().toFixed(1)}`);
+        if (Lib.settings.sa_enable_art_diagnostic_logging) {
+            Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}Pics: ENTRY call#${_callN} perfNow=${performance.now().toFixed(1)}`);
+        }
 
         const tables = document.querySelectorAll('table.tbl');
         if (!tables.length) {
@@ -59372,12 +59429,14 @@ a { color: #1565c0; }`;
             const hasAddFeature = !!(activeDefinition &&
                                      activeDefinition.features &&
                                      activeDefinition.features[ctx.addFeature]);
-            // TEMP DEBUG (bug 2 investigation) — remove once bug 2 is root-caused.
-            const _iconsAtEntry = table.querySelectorAll(ctx.iconSel).length;
-            Lib.debug(ctx.key,
-                `init${ctx.key.toUpperCase()}Pics: table${i} call#${_callN} hasColumn=${hasColumn} ` +
-                `hasAddFeature=${hasAddFeature} addFeatureVal=${activeDefinition?.features?.[ctx.addFeature]} ` +
-                `iconsFoundViaIconSel=${_iconsAtEntry}`);
+            // TEMP DEBUG (bug 2 investigation) — gated on sa_enable_art_diagnostic_logging.
+            if (Lib.settings.sa_enable_art_diagnostic_logging) {
+                const _iconsAtEntry = table.querySelectorAll(ctx.iconSel).length;
+                Lib.debug(ctx.key,
+                    `init${ctx.key.toUpperCase()}Pics: table${i} call#${_callN} hasColumn=${hasColumn} ` +
+                    `hasAddFeature=${hasAddFeature} addFeatureVal=${activeDefinition?.features?.[ctx.addFeature]} ` +
+                    `iconsFoundViaIconSel=${_iconsAtEntry}`);
+            }
 
             if (!hasColumn && !hasAddFeature) {
                 Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}Pics: table ${i} has no ${ctx.column} column and no ${ctx.addFeature} feature — skipping`);
@@ -59387,7 +59446,8 @@ a { color: #1565c0; }`;
             // TEMP DEBUG (bug 2 investigation) — install the regression watchdog on
             // every table with a CAA/EAA column, on every call (idempotent via its
             // own dedup set) — covers both the original multi-table page and a
-            // hydrated single-table page. Remove once bug 2 is root-caused.
+            // hydrated single-table page. Kept permanently for reuse (the watchdog
+            // itself no-ops unless sa_enable_art_diagnostic_logging is on).
             if (hasColumn) {
                 _debugWatchCaaColumnForRegression(table);
             }
