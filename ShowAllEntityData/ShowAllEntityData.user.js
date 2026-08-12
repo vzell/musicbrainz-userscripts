@@ -11227,6 +11227,17 @@
 
     const _caaJesus2099ObservedTbodies = new WeakSet();
 
+    // TEMP DEBUG (bug 2 investigation) — per-function call counters so a
+    // suspiciously-repeated call to _artInitPics()/_artEnrichIcon()/
+    // _artBuildMultiRowArtCell() within one hydration+render cycle stands out
+    // in the console. Remove once bug 2 is root-caused.
+    const _debugCallCounters = new Map();
+    function _debugCallCount(fnName) {
+        const n = (_debugCallCounters.get(fnName) || 0) + 1;
+        _debugCallCounters.set(fnName, n);
+        return n;
+    }
+
     /**
      * Removes a late-arriving jesus2099 "mb. SUPER MIND CONTROL" cover-art
      * icon anchor (`<a>` wrapping `span.caa-icon.jesus2099userjs154481`)
@@ -11259,6 +11270,166 @@
                 Lib.debug('caa', 'initCaaInlineJesus2099Observer: removed late-arriving jesus2099 cover-art icon.');
             }
         });
+    }
+
+    /**
+     * TEMP DEBUG (bug 2 investigation — see debug/CAA-missing-doubled.org,
+     * WIP.89 follow-up): dumps a one-line-per-row fingerprint of every live
+     * "CAA"/"EAA" column cell in `document.querySelector('table.tbl')`,
+     * tagged with `label` so a sequence of calls placed at different points
+     * in the render/init pipeline (initCollapsableColumns, initCaaPics,
+     * runFilter's clone/strip loop, etc.) can be diffed against each other
+     * in the console to see exactly which step a summary <li>'s icon+badge
+     * go missing at. No-op if no table.tbl / no CAA / EAA column exists.
+     * Remove once bug 2 is root-caused.
+     *
+     * @param {string} label  Short marker identifying the call site, e.g.
+     *   'before-initCollapsableColumns'.
+     * @returns {void}
+     */
+    function _debugDumpCaaColumnState(label) {
+        const table = document.querySelector('table.tbl');
+        if (!table) { Lib.debug('caa', `_debugDumpCaaColumnState[${label}]: no table.tbl`); return; }
+        ['CAA', 'EAA'].forEach(colLabel => {
+            const colIdx = caaFindColumnByName(table, colLabel);
+            if (colIdx === -1) return;
+            const rows = Array.from(table.tBodies[0] ? table.tBodies[0].rows : []);
+            const summary = rows.map((tr, rIdx) => {
+                const td = tr.cells[colIdx];
+                if (!td) return `row${rIdx}:no-cell`;
+                const li0 = td.querySelector(':scope > ul.mb-caa-art-ul > li.mb-caa-art-li-summary, ' +
+                                              ':scope > ul.mb-eaa-art-ul > li.mb-eaa-art-li-summary');
+                const hasUl     = !!td.querySelector(':scope > ul.mb-caa-art-ul, :scope > ul.mb-eaa-art-ul');
+                const hasAnchor = !!td.querySelector('a[href$="/cover-art"], a[href$="/event-art"]');
+                const hasIcon   = !!td.querySelector('span.artwork-icon.caa-icon, span.artwork-icon.eaa-icon, span.caa-icon, span.eaa-icon');
+                const hasBadge  = !!td.querySelector('.mb-caa-count-badge, .mb-eaa-count-badge');
+                const enriched  = td.querySelector('a[data-caa-enriched], a[data-eaa-enriched]')
+                    ? (td.querySelector('a[data-caa-enriched="1"], a[data-eaa-enriched="1"]') ? 'yes' : 'no')
+                    : 'no-marker';
+                const synthetic = !!td.querySelector('a[data-caa-synthetic="1"]');
+                return `row${rIdx}:[li0=${!!li0} ul=${hasUl} anchor=${hasAnchor} icon=${hasIcon} badge=${hasBadge} enriched=${enriched} synthetic=${synthetic}]`;
+            });
+            Lib.debug('caa', `_debugDumpCaaColumnState[${label}] [${colLabel}] col=${colIdx} perfNow=${performance.now().toFixed(1)} — ` + summary.join(' | '));
+        });
+    }
+
+    // TEMP DEBUG (bug 2 investigation) — dedup set for _debugWatchCaaColumnForRegression.
+    const _debugCaaRegressionWatchedTables = new WeakSet();
+
+    /**
+     * TEMP DEBUG (bug 2 investigation — see debug/CAA-missing-doubled.org,
+     * WIP.90 follow-up): installs a MutationObserver on `table`'s tbody that
+     * tracks, per row, whether the "CAA"/"EAA" column cell currently has an
+     * art anchor + count badge. Whenever a row transitions from "had both"
+     * to "missing either" — the exact regression this investigation is
+     * chasing — logs the mutation's removedNodes summary and a best-effort
+     * stack trace (captured inside the observer callback, so it shows the
+     * microtask/promise continuation the mutation was OBSERVED in, not
+     * necessarily the original synchronous call site — still useful to
+     * correlate against the call-numbered logs from _artEnrichIcon /
+     * _artBuildMultiRowArtCell / initCollapsableColumns).
+     *
+     * Installed once per table (idempotent via `_debugCaaRegressionWatchedTables`),
+     * for the lifetime of that table element. Remove once bug 2 is root-caused.
+     *
+     * @param {HTMLTableElement} table
+     * @returns {void}
+     */
+    function _debugWatchCaaColumnForRegression(table) {
+        if (_debugCaaRegressionWatchedTables.has(table)) return;
+        const tbody = table.tBodies[0];
+        if (!tbody) return;
+
+        const _colIdxByLabel = {};
+        ['CAA', 'EAA'].forEach(colLabel => {
+            const idx = caaFindColumnByName(table, colLabel);
+            if (idx !== -1) _colIdxByLabel[colLabel] = idx;
+        });
+        if (Object.keys(_colIdxByLabel).length === 0) return; // nothing to watch
+
+        _debugCaaRegressionWatchedTables.add(table);
+
+        const _rowFp = (td) => {
+            if (!td) return null;
+            const hasAnchor = !!td.querySelector('a[href$="/cover-art"], a[href$="/event-art"]');
+            const hasBadge  = !!td.querySelector('.mb-caa-count-badge, .mb-eaa-count-badge');
+            return { hasAnchor, hasBadge, str: `anchor=${hasAnchor} badge=${hasBadge}` };
+        };
+
+        // colLabel -> (tr -> fingerprint string)
+        const _prevState = new Map(Object.keys(_colIdxByLabel).map(l => [l, new WeakMap()]));
+        Object.entries(_colIdxByLabel).forEach(([colLabel, colIdx]) => {
+            Array.from(tbody.rows).forEach(tr => {
+                _prevState.get(colLabel).set(tr, _rowFp(tr.cells[colIdx]));
+            });
+        });
+
+        Lib.debug('caa',
+            `_debugWatchCaaColumnForRegression: installed on table (cols: ` +
+            Object.entries(_colIdxByLabel).map(([l, i]) => `${l}@${i}`).join(', ') +
+            `), ${tbody.rows.length} row(s) tracked, perfNow=${performance.now().toFixed(1)}`);
+
+        const observer = new MutationObserver(mutations => {
+            Object.entries(_colIdxByLabel).forEach(([colLabel, colIdx]) => {
+                const affectedRows = new Set();
+                mutations.forEach(m => {
+                    const node = m.target;
+                    const tr = node.nodeType === Node.ELEMENT_NODE
+                        ? node.closest('tr')
+                        : node.parentElement?.closest('tr');
+                    if (tr && tbody.contains(tr)) affectedRows.add(tr);
+                });
+                affectedRows.forEach(tr => {
+                    const td = tr.cells[colIdx];
+                    const newFp = _rowFp(td);
+                    const oldFp = _prevState.get(colLabel).get(tr);
+                    if (oldFp === undefined) { _prevState.get(colLabel).set(tr, newFp); return; }
+                    const changed = !oldFp || !newFp || oldFp.str !== newFp.str;
+                    if (changed) {
+                        const wasGood = oldFp && oldFp.hasAnchor && oldFp.hasBadge;
+                        const isBad   = !newFp || !newFp.hasAnchor || !newFp.hasBadge;
+                        const isRegression = wasGood && isBad;
+                        Lib.debug('caa',
+                            `_debugWatchCaaColumnForRegression: [${colLabel}] row=${tr.dataset.mbRowIdx ?? '?'} ` +
+                            `FINGERPRINT CHANGED perfNow=${performance.now().toFixed(1)} ` +
+                            `${oldFp ? oldFp.str : 'null'} -> ${newFp ? newFp.str : 'null'}` +
+                            (isRegression ? ' *** REGRESSION: anchor/badge LOST ***' : ''));
+                        if (isRegression) {
+                            const _relevantMuts = mutations.filter(m => {
+                                const node = m.target;
+                                const mtr = node.nodeType === Node.ELEMENT_NODE
+                                    ? node.closest('tr') : node.parentElement?.closest('tr');
+                                return mtr === tr;
+                            });
+                            _relevantMuts.forEach((m, i) => {
+                                const removed = Array.from(m.removedNodes).map(n =>
+                                    n.nodeType === Node.ELEMENT_NODE
+                                        ? `<${n.tagName.toLowerCase()} class="${n.className}">${n.outerHTML.slice(0, 150)}`
+                                        : `#text:"${n.textContent.slice(0, 50)}"`
+                                );
+                                const added = Array.from(m.addedNodes).map(n =>
+                                    n.nodeType === Node.ELEMENT_NODE
+                                        ? `<${n.tagName.toLowerCase()} class="${n.className}">${n.outerHTML.slice(0, 150)}`
+                                        : `#text:"${n.textContent.slice(0, 50)}"`
+                                );
+                                Lib.debug('caa',
+                                    `_debugWatchCaaColumnForRegression: row=${tr.dataset.mbRowIdx ?? '?'} mutation#${i} ` +
+                                    `type=${m.type} target=<${m.target.tagName}> ` +
+                                    `removedNodes=[${removed.join(' | ')}] addedNodes=[${added.join(' | ')}]`);
+                            });
+                            Lib.debug('caa',
+                                `_debugWatchCaaColumnForRegression: row=${tr.dataset.mbRowIdx ?? '?'} ` +
+                                `current td.outerHTML(first 500 chars)=${td.outerHTML.slice(0, 500)}`);
+                            Lib.debug('caa',
+                                `_debugWatchCaaColumnForRegression: row=${tr.dataset.mbRowIdx ?? '?'} ` +
+                                `best-effort stack (observed inside MutationObserver callback):\n${new Error().stack}`);
+                        }
+                        _prevState.get(colLabel).set(tr, newFp);
+                    }
+                });
+            });
+        });
+        observer.observe(tbody, { childList: true, subtree: true });
     }
 
     /**
@@ -24785,6 +24956,26 @@ a { color: #1565c0; }`;
                     })))
             : [];
 
+        // TEMP DEBUG (bug 2 investigation) — capture the LIVE (pre-getCleanCellHtml)
+        // CAA/EAA cell state before anything touches it, so a hollow captured cell
+        // can be attributed to either "already hollow on the live page, before
+        // getCleanCellHtml ever ran" or "getCleanCellHtml/_stripTransientCellState
+        // stripped it during capture" — two very different bugs. Remove once bug 2
+        // is root-caused.
+        const _debugRawArtFp = {};
+        ['CAA', 'EAA'].forEach(colLabel => {
+            const colIdx = caaFindColumnByName(table, colLabel);
+            if (colIdx === -1) return;
+            _debugRawArtFp[colLabel] = Array.from(table.tBodies[0] ? table.tBodies[0].rows : [])
+                .map((tr, rIdx) => {
+                    const td = tr.cells[colIdx];
+                    if (!td) return `row${rIdx}:no-cell`;
+                    const hasAnchor = !!td.querySelector('a[href$="/cover-art"], a[href$="/event-art"]');
+                    const hasBadge  = !!td.querySelector('.mb-caa-count-badge, .mb-eaa-count-badge');
+                    return `row${rIdx}:[anchor=${hasAnchor} badge=${hasBadge}]`;
+                });
+        });
+
         const rows = Array.from(table.tBodies[0] ? table.tBodies[0].rows : [])
             .map(row => Array.from(row.cells)
                 .filter(cell => !cell.classList.contains('mb-rel-cell') &&
@@ -24796,6 +24987,32 @@ a { color: #1565c0; }`;
                     colSpan: cell.colSpan || 1,
                     rowSpan: cell.rowSpan || 1
                 })));
+
+        // ── TEMP DEBUG (bug 2 investigation — see debug/CAA-missing-doubled.org,
+        // WIP.89 follow-up): dump the CAPTURED CAA/EAA column state per row —
+        // BEFORE it ever reaches the new tab — so a hollow summary cell can be
+        // attributed to either "already hollow at capture time" (bug is in the
+        // ORIGINAL page's own enrichment / capture-time strip) or "still had
+        // its icon+badge here" (bug is somewhere in the hydration/re-render
+        // pipeline instead). Remove once bug 2 is root-caused.
+        ['CAA', 'EAA'].forEach(colLabel => {
+            const colIdx = caaFindColumnByName(table, colLabel);
+            if (colIdx === -1) return;
+            const rowSummaries = rows.map((rowCells, rIdx) => {
+                const cell = rowCells[colIdx];
+                if (!cell) return `row${rIdx}:no-cell`;
+                const html = cell.html;
+                const hasUl     = /class="mb-caa-art-ul|class="mb-eaa-art-ul/.test(html);
+                const hasAnchor = /<a\s[^>]*cover-art|<a\s[^>]*event-art/.test(html);
+                const hasBadge  = /mb-caa-count-badge|mb-eaa-count-badge/.test(html);
+                const hasSortYes = /mb-caa-sort-key[^>]*>yes|mb-eaa-sort-key[^>]*>yes/.test(html);
+                return `row${rIdx}:[ul=${hasUl} anchor=${hasAnchor} badge=${hasBadge} sortYes=${hasSortYes} len=${html.length}]`;
+            });
+            Lib.debug('cache',
+                `captureSubtableSnapshot: [${colLabel}] category="${categoryName}" col=${colIdx} — ` +
+                `RAW(pre-getCleanCellHtml): ${(_debugRawArtFp[colLabel] || []).join(' | ')} —— ` +
+                `STRIPPED(captured payload): ${rowSummaries.join(' | ')}`);
+        });
 
         // entityType/sectionSuffix derivation mirrors _assembleExportFilename's
         // pageTypeSlug split — but that helper's detailSlug comes from the
@@ -24863,6 +25080,14 @@ a { color: #1565c0; }`;
         GM_setValue(`mb_sa_subtable_snapshot_${uid}`, payload);
         const query = SA_SNAPSHOT_LINK_TYPE_ID_PAGETYPES.has(pageType) ? '?link_type_id=1' : '';
         const targetUrl = `${window.location.origin}${window.location.pathname}${query}#mb-sa-snapshot=${uid}`;
+        // TEMP DEBUG (bug 2 investigation) — capture-time wall-clock, correlate
+        // against _hydrateAndRenderFromSnapshotData's own entry timestamp in the
+        // new tab's console to see how much time (and how many _caaQueue items)
+        // elapsed between capture and hydration.
+        Lib.debug('navigation',
+            `openSubtableAsSingleTableTab: uid=${uid} category="${categoryName}" ` +
+            `rows=${payload.rowCount} capturedAt=${payload.timestampReadable} ` +
+            `perfNow=${performance.now().toFixed(1)}`);
         Lib.debug('navigation', `Opening "${categoryName}" as a single-table snapshot in a new tab: ${targetUrl}`);
         window.open(targetUrl, '_blank');
     }
@@ -34812,8 +35037,31 @@ a { color: #1565c0; }`;
                 finalizeSplitAlignedColumns(filteredRows, activeIntegerColumns);
                 finalizeRLCColumnWidths(filteredRows, activeIntegerColumns);
             }
+            // TEMP DEBUG (bug 2 investigation) — fingerprint the CLONED rows that
+            // are ABOUT to be inserted by renderFinalTable(), using the CURRENT
+            // (pre-replacement) table's own header to resolve the CAA/EAA colIdx.
+            // Remove once bug 2 is root-caused.
+            {
+                const _preTable = document.querySelector('table.tbl');
+                if (_preTable) {
+                    ['CAA', 'EAA'].forEach(colLabel => {
+                        const colIdx = caaFindColumnByName(_preTable, colLabel);
+                        if (colIdx === -1) return;
+                        const fp = filteredRows.map((tr, i) => {
+                            const td = tr.cells[colIdx];
+                            if (!td) return `row${i}:no-cell`;
+                            const hasUl = !!td.querySelector(':scope > ul.mb-caa-art-ul, :scope > ul.mb-eaa-art-ul');
+                            const hasAnchor = !!td.querySelector('a[href$="/cover-art"], a[href$="/event-art"]');
+                            const hasBadge = !!td.querySelector('.mb-caa-count-badge, .mb-eaa-count-badge');
+                            return `row${i}:[ul=${hasUl} anchor=${hasAnchor} badge=${hasBadge}]`;
+                        });
+                        Lib.debug('caa', `runFilter: pre-renderFinalTable clones [${colLabel}] col=${colIdx} — ` + fp.join(' | '));
+                    });
+                }
+            }
             renderFinalTable(filteredRows);
             updateH2Count(filteredRows.length, totalAbsolute);
+            _debugDumpCaaColumnState('runFilter:post-renderFinalTable');
 
             // Re-apply collapsable-column toggles on the freshly rendered DOM rows.
             //
@@ -34830,6 +35078,8 @@ a { color: #1565c0; }`;
             // this call is a cheap no-op on non-collapsable pages.
             const _collapseTable = document.querySelector('table.tbl');
             if (_collapseTable) initCollapsableColumns(_collapseTable);
+            // TEMP DEBUG (bug 2 investigation) — remove once bug 2 is root-caused.
+            _debugDumpCaaColumnState('runFilter:post-initCollapsableColumns');
 
             // Re-inject erg expand buttons into the freshly rendered DOM rows.
             // renderFinalTable() inserts cloneNode(true) copies — event listeners are
@@ -34861,8 +35111,19 @@ a { color: #1565c0; }`;
             initCaaInlinePics();
             initEaaInlinePics();
             initCaaInlineJesus2099Observer();
+            // TEMP DEBUG (bug 2 investigation) — remove once bug 2 is root-caused.
+            _debugDumpCaaColumnState('runFilter:pre-initCaaPics');
             initCaaPics();
             initEaaPics();
+            // TEMP DEBUG (bug 2 investigation) — synchronous state right after
+            // initCaaPics()/initEaaPics() return. Note _artEnrichIcon's own async
+            // tiers (IDB await / network fetch) may still be in flight at this
+            // point — a follow-up delayed dump below catches what settles later.
+            // Remove once bug 2 is root-caused.
+            _debugDumpCaaColumnState('runFilter:post-initCaaPics-sync');
+            setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+500ms'), 500);
+            setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+2000ms'), 2000);
+            setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+5000ms'), 5000);
             // Re-populate any rel cells that were not yet done when runFilter rebuilt
             // the DOM (race: Phase-2 fetch queue was mid-flight when the user typed).
             if (document.querySelector('td.mb-rel-cell:not([data-rel-done="1"])')) {
@@ -38913,7 +39174,14 @@ a { color: #1565c0; }`;
      *     time — but that only protects what gets serialized from the
      *     SOURCE page; it does nothing to stop jesus2099 separately
      *     re-injecting this same icon into the DESTINATION tab's own live
-     *     DOM once this script's rows exist there.
+     *     DOM once this script's rows exist there. `_stripJesus2099CaaAnchor`
+     *     (below) is gated to skip this script's own synthetic "CAA"/"EAA"
+     *     column, though — on pages whose Title column has no 'jesus2099'
+     *     columnEraser configured (e.g. artist-relationships),
+     *     `ColumnDataExtractor.caa`'s Path A moves MusicBrainz's own native
+     *     (jesus2099-decorated) anchor straight into that column, where it
+     *     is the cell's ONLY art content, not a duplicate; an earlier
+     *     unconditional strip destroyed it outright (WIP.93).
      *
      * Disconnects itself after `SA_JESUS2099_WATCH_MS` — the race window is
      * inherently short (this mirrors the bounded `setTimeout(_relCreateRetryButtons, 200)`
@@ -38971,11 +39239,43 @@ a { color: #1565c0; }`;
         // "Title" column, and present at all in the synthetic "MB-Name"
         // column, which never had an eraser configured because its source
         // was clean when the row was first extracted).
+        //
+        // GATED: never strip when this anchor sits inside this script's OWN
+        // synthetic "CAA"/"EAA" column. That is exactly where
+        // ColumnDataExtractor.caa's Path A/B puts a row's one authoritative
+        // art anchor — and on pages whose Title column has no 'jesus2099'
+        // columnEraser configured (e.g. artist-relationships), that anchor
+        // legitimately carries the jesus2099 class, because Path A simply
+        // moved MusicBrainz's own native (jesus2099-decorated) anchor
+        // straight into the CAA column. There it is the cell's ONLY art
+        // content, not a duplicate — stripping it unconditionally destroyed
+        // it outright (confirmed via debug/mt2-debug.log / debug/st2-debug.log:
+        // the anchor was present and correct immediately after hydration,
+        // then gone within the same render pass, with this observer's own
+        // "removed a late jesus2099 caa-icon anchor" log firing in between).
+        // Every OTHER column (sticky Title, MB-Name, …) legitimately never
+        // holds a raw cover-art anchor of its own, so a jesus2099-classed one
+        // appearing there is unambiguously foreign/duplicate content, still
+        // safe to remove unconditionally. Mirrors the identical column-
+        // agnostic gate already applied to _stripTransientCellState /
+        // _stripLateJesus2099CaaIcon (both gate on the presence of this
+        // script's own separate .mb-caa-inline-ph, which works there because
+        // both only ever see the sticky Title column; generalized here to a
+        // colIdx check since this function also has to handle non-Title
+        // columns like MB-Name that never carry an inline-ph placeholder at
+        // all) — WIP.93.
         const _stripJesus2099CaaAnchor = (el) => {
-            if (el.tagName === 'A' && el.querySelector('span.caa-icon.jesus2099userjs154481') && el.closest('table.tbl')) {
-                el.remove();
-                Lib.debug('cleanup', '_watchForLateJesus2099Injections: removed a late jesus2099 caa-icon anchor.');
-            }
+            if (el.tagName !== 'A' || !el.querySelector('span.caa-icon.jesus2099userjs154481')) return;
+            const table = el.closest('table.tbl');
+            if (!table) return;
+            const cell = el.closest('td');
+            if (!cell) return;
+            const isCaaOrEaaColumn =
+                cell.cellIndex === caaFindColumnByName(table, 'CAA') ||
+                cell.cellIndex === caaFindColumnByName(table, 'EAA');
+            if (isCaaOrEaaColumn) return;
+            el.remove();
+            Lib.debug('cleanup', '_watchForLateJesus2099Injections: removed a late jesus2099 caa-icon anchor.');
         };
 
         const observer = new MutationObserver(mutations => {
@@ -48738,10 +49038,13 @@ a { color: #1565c0; }`;
      *     a page reload.
      *   - .mb-art-cache-hint-col wrappers (cache-hint column overlays) and
      *     .mb-art-cache-hint-big overlays on bigbox wrappers — cosmetic,
-     *     will be re-created on the next render.
-     *   - .mb-caa-count-badge / .mb-eaa-count-badge spans outside an art ul
-     *     (standalone badges created before the ul wrapper was built) — these
-     *     are re-created by _artEnrichIcon and must not accumulate.
+     *     will be re-created on the next render. .mb-art-cache-hint-col-wrap
+     *     specifically may have a .mb-caa-count-badge / .mb-eaa-count-badge
+     *     adopted inside it (see _artEnrichIcon's "Resource Timing wrapper
+     *     adoption") — that badge is pulled back out as the wrap's own
+     *     sibling before the wrap itself is removed, so the badge survives
+     *     (WIP.91 — an earlier unconditional removal silently took real
+     *     count badges down with the wrap).
      *
      *   ERG (Expand Release-Groups) feature
      *   - [data-erg-btn] span glyph reset from ▼ (expanded) to ▶ (collapsed)
@@ -48762,7 +49065,11 @@ a { color: #1565c0; }`;
      *   - Any <a> wrapping a <span class="caa-icon jesus2099userjs154481">
      *     (jesus2099's own cover-art icon, re-injected into the live DOM
      *     well after this script's one-time columnEraser already ran —
-     *     see _stripTransientCellState's own comment for the full story).
+     *     see _stripTransientCellState's own comment for the full story) —
+     *     but ONLY when this same cell also has its own inline CAA/EAA
+     *     thumbnail, i.e. only when the jesus2099 icon is a genuine
+     *     duplicate (WIP.91 — on pages with no Title-column jesus2099
+     *     eraser, this can be the CAA column's ONLY content).
      *
      * @param {HTMLTableCellElement} cell - The live <td> or <th> to serialize.
      * @returns {string} Clean innerHTML with no highlight wrapper spans and no
@@ -48806,12 +49113,24 @@ a { color: #1565c0; }`;
      *   - Expanded .mb-cell-collapse-toggle (◀ U+25C0) reset to ▶
      *   - background-image / background-size removed from artwork-icon spans
      *   - .mb-caa-inline-ph / .mb-eaa-inline-ph placeholder spans removed
-     *   - .mb-art-cache-hint-col-wrap, .mb-art-cache-hint-col,
-     *     .mb-art-cache-hint-big, .mb-art-cache-hint-inline removed
+     *   - .mb-art-cache-hint-col-wrap removed, but any .mb-caa-count-badge /
+     *     .mb-eaa-count-badge adopted inside it (see _artEnrichIcon's
+     *     "Resource Timing wrapper adoption") is pulled back out first so
+     *     the badge itself survives; .mb-art-cache-hint-col,
+     *     .mb-art-cache-hint-big, .mb-art-cache-hint-inline removed outright
      *   - [data-erg-btn] glyph reset from ▼ to ▶
      *   - Direct-child <table> elements (ERG ghost tables) removed
+     *   - Any <a> wrapping a jesus2099 caa-icon (span.caa-icon.jesus2099userjs154481)
+     *     removed, but ONLY when this cell also had its own
+     *     .mb-caa-inline-ph / .mb-eaa-inline-ph placeholder (checked before
+     *     that placeholder is itself removed above) — i.e. only when the
+     *     jesus2099 icon is a genuine duplicate of this script's own inline
+     *     thumbnail elsewhere in the same cell. On pages whose Title column
+     *     has no 'jesus2099' columnEraser configured, the `caa` column
+     *     extractor's Path A moves jesus2099's own anchor straight into the
+     *     synthetic CAA column, where it is the cell's ONLY art content —
+     *     stripping it unconditionally destroyed it outright (WIP.91)
      *   - data-erg-injected dataset marker removed
-     *   - Any <a> wrapping a jesus2099 caa-icon (span.caa-icon.jesus2099userjs154481) removed
      *
      * @param {HTMLElement} el - The <td> element to clean in-place.
      */
@@ -48880,6 +49199,13 @@ a { color: #1565c0; }`;
             span.style.removeProperty('background-size');
         });
 
+        // Captured BEFORE the inline-thumbnail placeholder is removed below —
+        // used further down to decide whether a jesus2099 caa-icon anchor in
+        // THIS cell is a genuine duplicate (this script's own separate inline
+        // thumbnail is/was also present here) or the cell's only art content
+        // (see that block's own comment for the full story — WIP.91).
+        const _hadInlineArtPh = !!el.querySelector('.mb-caa-inline-ph, .mb-eaa-inline-ph');
+
         // Inline-thumbnail placeholder spans (_artInitInlinePics re-injects them)
         el.querySelectorAll('.mb-caa-inline-ph, .mb-eaa-inline-ph').forEach(ph => ph.remove());
         // NOTE: .mb-inline-art-sort-key spans are intentionally NOT removed here.
@@ -48890,8 +49216,18 @@ a { color: #1565c0; }`;
         // _artSetInlineSortKey() updates it in-place after every fetch cycle — so no
         // explicit removal is ever needed.
 
-        // Cache-hint overlays (cosmetic, rebuilt on render)
-        el.querySelectorAll('.mb-art-cache-hint-col-wrap').forEach(wrap => wrap.remove());
+        // Cache-hint overlays (cosmetic, rebuilt on render) — EXCEPT the CAA/EAA
+        // count badge, which _artEnrichIcon's "Resource Timing wrapper adoption"
+        // step (see its own comment) moves INSIDE .mb-art-cache-hint-col-wrap to
+        // stack it under the cache-hint emoji. Removing the wrap outright would
+        // silently take the badge down with it (confirmed via debug/CAA-missing-
+        // doubled.org's captureSubtableSnapshot RAW-vs-STRIPPED fingerprint log,
+        // WIP.91) — pull the badge back out as the wrap's own sibling first.
+        el.querySelectorAll('.mb-art-cache-hint-col-wrap').forEach(wrap => {
+            const badge = wrap.querySelector('.mb-caa-count-badge, .mb-eaa-count-badge');
+            if (badge) wrap.before(badge);
+            wrap.remove();
+        });
         el.querySelectorAll('.mb-art-cache-hint-col').forEach(hint => hint.remove());
         el.querySelectorAll('.mb-art-cache-hint-big, .mb-art-cache-hint-inline').forEach(e => e.remove());
 
@@ -48903,9 +49239,9 @@ a { color: #1565c0; }`;
 
         // jesus2099 caa-icon anchor — mirrors applyColumnErasers()'s
         // Strategy 2 (the 'jesus2099' columnEraser sentinel), but applied
-        // unconditionally to every captured/serialized cell rather than only
-        // the columns a pageDefinition explicitly configured an eraser for.
-        // That extraction-time eraser runs exactly once, when a row is first
+        // to every captured/serialized cell rather than only the columns a
+        // pageDefinition explicitly configured an eraser for. That
+        // extraction-time eraser runs exactly once, when a row is first
         // built from a freshly-fetched page; it does not run again later.
         // On artist-releasegroups, jesus2099's "mb. SUPER MIND CONTROL"
         // userscript re-injects this same <a href="…/cover-art"><span
@@ -48917,14 +49253,30 @@ a { color: #1565c0; }`;
         // never did because the source it's cloned from was clean at
         // extraction time) already carries this re-injected icon, and
         // getCleanCellHtml/captureSubtableSnapshot faithfully — and
-        // wrongly — capture it. Stripping it here, unconditionally, on
-        // every serialize catches it regardless of which column it landed
-        // in or when jesus2099 injected it.
-        el.querySelectorAll('a').forEach(anchor => {
-            if (anchor.querySelector('span.caa-icon.jesus2099userjs154481')) {
-                anchor.remove();
-            }
-        });
+        // wrongly — capture it.
+        //
+        // GATED on _hadInlineArtPh (captured above, before the inline-ph
+        // placeholder was removed): only strip when THIS cell also carries
+        // this script's own separate inline CAA/EAA thumbnail — i.e. only
+        // when the jesus2099 icon is a genuine duplicate. On pages whose
+        // Title column has no 'jesus2099' columnEraser configured (e.g.
+        // artist-relationships), ColumnDataExtractor.caa's Path A moves
+        // jesus2099's own anchor straight into the synthetic "CAA" column —
+        // there it is the cell's ONLY art content, not a duplicate, and an
+        // unconditional strip destroyed it outright (confirmed via
+        // debug/CAA-missing-doubled.org's captureSubtableSnapshot RAW-vs-
+        // STRIPPED fingerprint log: row1's anchor went from present to
+        // completely gone, with no separate inline thumbnail in that same
+        // cell to have been the "real" copy — WIP.91). Mirrors the same
+        // per-cell gate `_stripLateJesus2099CaaIcon()` already uses for the
+        // reactive (live, post-hydration) case — see that function's JSDoc.
+        if (_hadInlineArtPh) {
+            el.querySelectorAll('a').forEach(anchor => {
+                if (anchor.querySelector('span.caa-icon.jesus2099userjs154481')) {
+                    anchor.remove();
+                }
+            });
+        }
     }
 
     /**
@@ -51427,6 +51779,25 @@ a { color: #1565c0; }`;
 
             Lib.debug('cache', `Loaded data version ${data.version} from ${data.timestampReadable} (File total: ${data.rowCount} rows)`);
 
+            // TEMP DEBUG (bug 2 investigation — see debug/CAA-missing-doubled.org,
+            // WIP.89 follow-up): entry marker for the cross-tab "Show single-table"
+            // path specifically, with a wall-clock/perfNow pair so this can be
+            // correlated against openSubtableAsSingleTableTab's own capture-time
+            // log (in the ORIGINAL tab's console) to see how much real time and
+            // how many _caaQueue items elapsed between capture and hydration.
+            // Remove once bug 2 is root-caused.
+            if (isCrossTabSnapshot) {
+                Lib.debug('cache',
+                    `_hydrateAndRenderFromSnapshotData: CROSS-TAB SNAPSHOT hydration starting — ` +
+                    `pageType=${data.pageType} tableMode(data)=${data.tableMode} ` +
+                    `sourceLabel=${sourceLabel} rowCount=${data.rowCount} ` +
+                    `detailSegment=${data.detailSegment} entityName=${data.entityName} ` +
+                    `capturedAt=${data.timestampReadable} nowPerf=${performance.now().toFixed(1)} ` +
+                    `nowWall=${new Date().toISOString()} ` +
+                    `activeDefinition.type=${activeDefinition?.type} ` +
+                    `activeDefinition.tableMode(pre-hydrate)=${activeDefinition?.tableMode}`);
+            }
+
             // Prepare the page for re-hydration.
             // First, strip any focus-mode prefix and background tint from column
             // filter inputs that may still be in the DOM (e.g. if a field had
@@ -51776,15 +52147,38 @@ a { color: #1565c0; }`;
                 _areaFlagRegionCorrected.clear();
                 _editsProseDefaultExpandedCols.clear();
                 _mbRowIdxCounter = 0;
+                // TEMP DEBUG (bug 2 investigation) — cheap per-cell CAA/EAA marker
+                // sniff, reused before AND after _stripTransientCellState() below so
+                // a cell that goes from "has icon/badge" to "hollow" (or was already
+                // hollow from the captured payload itself) is unambiguous either way.
+                // Remove once bug 2 is root-caused.
+                const _caaArtDebugFingerprint = (html) => {
+                    if (!html) return null;
+                    const hasUl     = /class="mb-caa-art-ul|class="mb-eaa-art-ul/.test(html);
+                    if (!hasUl && !/data-caa-synthetic|caa-icon|eaa-icon|artwork-icon/.test(html)) return null;
+                    const hasAnchor = /<a\s[^>]*(?:cover-art|event-art)/.test(html);
+                    const hasBadge  = /mb-caa-count-badge|mb-eaa-count-badge/.test(html);
+                    const hasSortYes = /mb-caa-sort-key[^>]*>yes|mb-eaa-sort-key[^>]*>yes/.test(html);
+                    return `ul=${hasUl} anchor=${hasAnchor} badge=${hasBadge} sortYes=${hasSortYes} len=${html.length}`;
+                };
                 data.rows.forEach((rowCells, rowIndex) => {
                     const tr = document.createElement('tr');
                     tr.className = rowIndex % 2 === 0 ? 'even' : 'odd';
-                    rowCells.forEach(cellData => {
+                    rowCells.forEach((cellData, cellIdx) => {
                         const td = document.createElement('td');
                         td.innerHTML = cellData.html;
                         if (cellData.colSpan > 1) td.colSpan = cellData.colSpan;
                         if (cellData.rowSpan > 1) td.rowSpan = cellData.rowSpan;
-                        _stripTransientCellState(td);
+                        const _beforeFp = _caaArtDebugFingerprint(cellData.html);
+                        if (_beforeFp !== null) {
+                            _stripTransientCellState(td);
+                            const _afterFp = _caaArtDebugFingerprint(td.innerHTML);
+                            Lib.debug('cache',
+                                `_hydrateAndRenderFromSnapshotData: row${rowIndex} col${cellIdx} CAA/EAA cell — ` +
+                                `BEFORE strip: [${_beforeFp}] AFTER strip: [${_afterFp}]`);
+                        } else {
+                            _stripTransientCellState(td);
+                        }
                         tr.appendChild(td);
                     });
 
@@ -51832,6 +52226,16 @@ a { color: #1565c0; }`;
                         'keys: ' + Object.keys(_diskEntityFeatures).join(', '));
                 }
             }
+            // TEMP DEBUG (bug 2 investigation) — confirm exactly what addCAA/addEAA/
+            // collapsableColumns resolve to at this point, regardless of whether the
+            // entityFeatures merge above fired (artist-relationships-filtered has no
+            // entityFeatures, so it never does — this log still fires for it).
+            // Remove once bug 2 is root-caused.
+            Lib.debug('cache',
+                `_hydrateAndRenderFromSnapshotData: post-merge activeDefinition — ` +
+                `type=${activeDefinition?.type} tableMode=${activeDefinition?.tableMode} ` +
+                `addCAA=${activeDefinition?.features?.addCAA} addEAA=${activeDefinition?.features?.addEAA} ` +
+                `collapsableColumns=${JSON.stringify(activeDefinition?.features?.collapsableColumns || [])}`);
             if (!activeInjectedColumns.length) {
                 activeInjectedColumns = buildActiveInjectedColumns(activeDefinition);
                 Lib.debug('cache', `disk-load: rebuilt activeInjectedColumns (${activeInjectedColumns.length})`);
@@ -52131,6 +52535,16 @@ a { color: #1565c0; }`;
             filterStatusDisplay.textContent = '';
             sortStatusDisplay.textContent = '';
             if (typeof runFilter === 'function') {
+                // TEMP DEBUG (bug 2 investigation) — timestamp immediately before the
+                // runFilter() call that (per its own single-table branch) is
+                // responsible for calling initCaaPics()/initEaaPics() post-hydration.
+                // Remove once bug 2 is root-caused.
+                if (isCrossTabSnapshot) {
+                    Lib.debug('cache',
+                        `_hydrateAndRenderFromSnapshotData: calling runFilter() — ` +
+                        `perfNow=${performance.now().toFixed(1)} allRows.length=${allRows.length} ` +
+                        `activeDefinition.tableMode=${activeDefinition?.tableMode}`);
+                }
                 runFilter();
             }
             if (typeof window.updateFilterButtonsVisibility === 'function') {
@@ -56427,6 +56841,15 @@ a { color: #1565c0; }`;
      * @param {Object[]}             images   Array of image objects from the API.
      */
     function _artBuildMultiRowArtCell(ctx, artCell, images) {
+        // TEMP DEBUG (bug 2 investigation) — remove once bug 2 is root-caused.
+        const _callN = _debugCallCount('_artBuildMultiRowArtCell');
+        const _trDbg = artCell.closest('tr');
+        Lib.debug(ctx.key,
+            `_artBuildMultiRowArtCell: ENTRY call#${_callN} row=${_trDbg?.dataset?.mbRowIdx ?? '?'} ` +
+            `cellIndex=${artCell.cellIndex} isConnected=${artCell.isConnected} ` +
+            `images.length=${Array.isArray(images) ? images.length : 'n/a'} ` +
+            `artCell.children.length(before)=${artCell.children.length} ` +
+            `artCell.innerHTML(before, first 200 chars)=${artCell.innerHTML.slice(0, 200)}`);
         if (!Array.isArray(images) || images.length === 0) return;
 
         // Resolve the column index once — passed to _artHighlightImageLi() so it can
@@ -56435,6 +56858,10 @@ a { color: #1565c0; }`;
 
         // Detect whether the <ul> wrapper already exists (rebuild case).
         const existingUl = artCell.querySelector(':scope > ul.mb-caa-art-ul');
+        // TEMP DEBUG (bug 2 investigation) — remove once bug 2 is root-caused.
+        Lib.debug(ctx.key,
+            `_artBuildMultiRowArtCell: call#${_callN} row=${_trDbg?.dataset?.mbRowIdx ?? '?'} ` +
+            `branch=${existingUl ? 'REBUILD' : 'FIRST-BUILD'}`);
 
         if (existingUl) {
             // ── Rebuild: replace image lis, update toggle title ────────────────
@@ -56836,7 +57263,19 @@ a { color: #1565c0; }`;
      * @returns {Promise<void>}
      */
     async function _artEnrichIcon(ctx, anchor) {
-        if (anchor.dataset[ctx.enrichedAttr] === '1') return;
+        // TEMP DEBUG (bug 2 investigation) — remove once bug 2 is root-caused.
+        const _callN = _debugCallCount(`_artEnrichIcon(${ctx.key})`);
+        const _trAtEntry = anchor.closest('tr');
+        const _rowIdxAtEntry = _trAtEntry?.dataset?.mbRowIdx ?? '?';
+        Lib.debug(ctx.key,
+            `${ctx.key}EnrichIcon: ENTRY call#${_callN} row=${_rowIdxAtEntry} ` +
+            `href=${anchor.getAttribute('href')} isConnected=${anchor.isConnected} ` +
+            `alreadyEnriched=${anchor.dataset[ctx.enrichedAttr] === '1'} perfNow=${performance.now().toFixed(1)}`);
+
+        if (anchor.dataset[ctx.enrichedAttr] === '1') {
+            Lib.debug(ctx.key, `${ctx.key}EnrichIcon: call#${_callN} row=${_rowIdxAtEntry} EARLY-RETURN (already enriched)`);
+            return;
+        }
 
         const entityPath = anchor.getAttribute('ref')
             || anchor.getAttribute('href').replace(new RegExp(ctx.artSuffix + '$'), '');
@@ -56891,6 +57330,15 @@ a { color: #1565c0; }`;
                             }
                         }
                         if (artCellI) {
+                            // TEMP DEBUG (bug 2 investigation) — check whether the anchor
+                            // (and therefore artCellI, its ancestor) is STILL connected to
+                            // the live document after the IDB await — a disconnected anchor
+                            // here means this whole build lands on an orphaned clone the
+                            // user will never see. Remove once bug 2 is root-caused.
+                            Lib.debug(ctx.key,
+                                `${ctx.key}EnrichIcon: call#${_callN} row=${_rowIdxAtEntry} ` +
+                                `IDB-tier pre-buildMultiRow isConnected=${anchor.isConnected} ` +
+                                `artCellIsConnected=${artCellI.isConnected}`);
                             _artBuildMultiRowArtCell(ctx, artCellI, images);
                             // Re-highlight image lis on the live td after the async IDB
                             // await has settled — _activeFilterHighlightCtx is read here
@@ -57046,6 +57494,20 @@ a { color: #1565c0; }`;
         }
 
         if (artCell) {
+            // TEMP DEBUG (bug 2 investigation) — THE key check: is `anchor` (and
+            // therefore `artCell`, resolved from it via .closest('td')) STILL
+            // attached to the live document at this point? closest() happily
+            // walks a DETACHED tree too, so artCell being non-null does NOT
+            // prove it's visible — if a later render pass (runFilter/
+            // renderGroupedTable, which clone rows wholesale) replaced this row
+            // BEFORE this async chain (any of the awaits above) resolved, this
+            // entire build lands on an orphaned clone the user will never see,
+            // while the CURRENTLY-VISIBLE row's own (different) anchor never
+            // gets its own enrichment pass. Remove once bug 2 is root-caused.
+            Lib.debug(ctx.key,
+                `${ctx.key}EnrichIcon: call#${_callN} row=${_rowIdxAtEntry} entityPath=${entityPath} ` +
+                `pre-buildMultiRow anchor.isConnected=${anchor.isConnected} ` +
+                `artCell.isConnected=${artCell.isConnected} count=${count} perfNow=${performance.now().toFixed(1)}`);
             _artBuildMultiRowArtCell(ctx, artCell, images);
             // Re-highlight image lis on the live td immediately after the cell is
             // fully built.  This is the authoritative highlight call — it executes
@@ -57110,11 +57572,22 @@ a { color: #1565c0; }`;
      * @param {HTMLTableElement} table
      */
     function _artEnrichTable(ctx, table) {
+        // TEMP DEBUG (bug 2 investigation) — remove once bug 2 is root-caused.
+        const _callN = _debugCallCount(`_artEnrichTable(${ctx.key})`);
         const icons = table.querySelectorAll(ctx.iconSel);
 
         icons.forEach(icon => {
             const anchor = icon.closest('a[href]');
             if (!anchor) return;
+            // TEMP DEBUG (bug 2 investigation) — identify each enqueued anchor by
+            // its row idx / href / pre-existing enrichedAttr state, so a row that
+            // ends up empty later can be traced back to whether it was even
+            // enqueued here at all. Remove once bug 2 is root-caused.
+            const _tr = anchor.closest('tr');
+            Lib.debug(ctx.key,
+                `${ctx.key}EnrichTable: call#${_callN} enqueue row=${_tr?.dataset?.mbRowIdx ?? '?'} ` +
+                `href=${anchor.getAttribute('href')} alreadyEnriched=${anchor.dataset[ctx.enrichedAttr] === '1'} ` +
+                `synthetic=${anchor.dataset.caaSynthetic === '1'}`);
             if (_caaQueue) {
                 _caaQueue.enqueue(() => _artEnrichIcon(ctx, anchor));
             } else {
@@ -57122,7 +57595,7 @@ a { color: #1565c0; }`;
             }
         });
 
-        Lib.debug(ctx.key, `${ctx.key}EnrichTable: enqueued ${icons.length} enrichment request(s) ` +
+        Lib.debug(ctx.key, `${ctx.key}EnrichTable: call#${_callN} enqueued ${icons.length} enrichment request(s) ` +
             `(queue: ${_caaQueue ? _caaQueue.runningCount + ' running, ' + _caaQueue.pendingCount + ' pending' : 'unavailable'})`);
     }
 
@@ -58585,6 +59058,10 @@ a { color: #1565c0; }`;
      * @param {ArtCtx} ctx  Archive context descriptor.
      */
     function _artInitPics(ctx) {
+        // TEMP DEBUG (bug 2 investigation) — remove once bug 2 is root-caused.
+        const _callN = _debugCallCount(`_artInitPics(${ctx.key})`);
+        Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}Pics: ENTRY call#${_callN} perfNow=${performance.now().toFixed(1)}`);
+
         const tables = document.querySelectorAll('table.tbl');
         if (!tables.length) {
             Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}Pics: no table.tbl found — skipping`);
@@ -58597,10 +59074,24 @@ a { color: #1565c0; }`;
             const hasAddFeature = !!(activeDefinition &&
                                      activeDefinition.features &&
                                      activeDefinition.features[ctx.addFeature]);
+            // TEMP DEBUG (bug 2 investigation) — remove once bug 2 is root-caused.
+            const _iconsAtEntry = table.querySelectorAll(ctx.iconSel).length;
+            Lib.debug(ctx.key,
+                `init${ctx.key.toUpperCase()}Pics: table${i} call#${_callN} hasColumn=${hasColumn} ` +
+                `hasAddFeature=${hasAddFeature} addFeatureVal=${activeDefinition?.features?.[ctx.addFeature]} ` +
+                `iconsFoundViaIconSel=${_iconsAtEntry}`);
 
             if (!hasColumn && !hasAddFeature) {
                 Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}Pics: table ${i} has no ${ctx.column} column and no ${ctx.addFeature} feature — skipping`);
                 return;
+            }
+
+            // TEMP DEBUG (bug 2 investigation) — install the regression watchdog on
+            // every table with a CAA/EAA column, on every call (idempotent via its
+            // own dedup set) — covers both the original multi-table page and a
+            // hydrated single-table page. Remove once bug 2 is root-caused.
+            if (hasColumn) {
+                _debugWatchCaaColumnForRegression(table);
             }
 
             // Small-pic icon loading only applies when there is a dedicated column

@@ -1,5 +1,53 @@
 [
   {
+    "version": "WIP.93",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"Show single-table\" (bug 2, continued — see WIP.90/91/92): WIP.92's fix wasn't sufficient — the count badge now survived, but the icon/thumbnail itself still vanished (\"the number of images instead of the image itself when collapsed\"), and only when the third-party jesus2099 \"mb. SUPER MIND CONTROL\" userscript was installed (confirmed by the reporter: perfect in a browser with only this script). Root cause: a second, independent mechanism — `_watchForLateJesus2099Injections()`'s `_stripJesus2099CaaAnchor`, installed specifically for the cross-tab snapshot bootstrap right before `_hydrateAndRenderFromSnapshotData()` runs — has the exact same unconditional-removal bug WIP.92 fixed in `_stripTransientCellState`, just in a separate code path untouched by that fix. It reactively strips any `<a>` wrapping jesus2099's cover-art icon class the instant it's added anywhere inside `table.tbl` (plus a final sweep at its 5s watch-window boundary), which fires the moment renderFinalTable inserts the hydrated rows — removing the anchor within the same render pass, confirmed via debug/mt2-debug.log / debug/st2-debug.log (anchor present and correct immediately post-hydration, gone moments later, with this function's own \"removed a late jesus2099 caa-icon anchor\" log in between). Regated `_stripJesus2099CaaAnchor` to skip this script's own synthetic \"CAA\"/\"EAA\" column (checked via `cell.cellIndex` against `caaFindColumnByName`) — that column is exactly where ColumnDataExtractor.caa's Path A/B puts a row's one authoritative art anchor, which on pages without a Title-column 'jesus2099' columnEraser (e.g. artist-relationships) legitimately carries the jesus2099 class as the cell's ONLY content, not a duplicate. Every other column (sticky Title, MB-Name, …) never legitimately holds a raw cover-art anchor, so those keep the unconditional strip — this generalizes WIP.92's `.mb-caa-inline-ph`-presence gate (which only ever sees the sticky Title column) to also cover MB-Name-style columns that gate can't reach."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.92",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"Show single-table\" (bug 2, see WIP.90/WIP.91): root-caused via the round-2 debug logs (debug/mt-debug.log, debug/st-debug.log) — captureSubtableSnapshot's new RAW-vs-STRIPPED fingerprint showed all 4 \"published release\" rows had a correct anchor+badge on the LIVE page at the exact moment of capture, but 3 lost their badge and 1 lost its anchor entirely after getCleanCellHtml/_stripTransientCellState ran. Two distinct over-eager cleanup steps in _stripTransientCellState: (1) _artEnrichIcon's \"Resource Timing wrapper adoption\" moves the CAA/EAA count badge inside `.mb-art-cache-hint-col-wrap` to stack it under the cache-hint emoji, but the wrap's cosmetic cleanup removed the whole wrap — badge included; now the badge is pulled back out as the wrap's own sibling first. (2) The jesus2099 cover-art-icon strip (added in commit 4432890 for artist-releasegroups' sticky Title column, where a LATE-arriving jesus2099 icon duplicates this script's own separate inline thumbnail) ran unconditionally on every cell — but artist-relationships' Title column has no 'jesus2099' columnEraser configured, so ColumnDataExtractor.caa's Path A moves jesus2099's OWN anchor straight into the synthetic \"CAA\" column, where it is the cell's ONLY art content, not a duplicate; stripping it unconditionally destroyed it outright. Now gated on `_hadInlineArtPh` (captured before the inline-thumbnail placeholder is itself removed) — only strips when this same cell also carries this script's own separate inline CAA/EAA thumbnail, mirroring the same per-cell gate `_stripLateJesus2099CaaIcon()` (WIP.89) already uses for the reactive/live case. All debug-only instrumentation from WIP.90/WIP.91 is left in place (no behavior effect, gated by sa_enable_debug_logging) pending confirmation this fully resolves bug 2."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.91",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "TEMPORARY diagnostic instrumentation, round 2 for bug 2 (see WIP.90). The first round's logs (debug/sub-table-debug.log, debug/single-table-debug.log) disproved the detached-clone-race theory: the row that ends up hollow (release 8aeb338a, \"row 914\", published-release category) was built CORRECTLY by _artBuildMultiRowArtCell on the ORIGINAL multi-table page — confirmed via the logged artCell.innerHTML snapshot showing a properly-titled anchor — and no further instrumented call touches that row again before it's captured hollow ~29s later by captureSubtableSnapshot, while three sibling rows built in the same batch survive untouched. Something un-instrumented reverts it. Added `_debugWatchCaaColumnForRegression(table)`: a MutationObserver installed on every table with a CAA/EAA column (wired into `_artInitPics`) that tracks each row's anchor+badge presence and, on any row transitioning from \"had both\" to \"missing either\", logs the triggering mutation's removedNodes/addedNodes and a best-effort stack trace — the direct smoking-gun catcher for whatever is reverting it. Also added the missing RAW (pre-getCleanCellHtml) fingerprint to captureSubtableSnapshot's existing per-row debug log, alongside the already-captured post-strip one, to distinguish \"already hollow on the live page before capture\" from \"getCleanCellHtml/_stripTransientCellState broke it during capture\" (the first round only logged the post-strip state). No behavior changes — logging only. Remove once bug 2 is root-caused."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.90",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "TEMPORARY diagnostic instrumentation for the still-open bug 2 (missing CAA icons + dead collapse-header button on a \"Show single-table\" hydrated single-table page — non-deterministic per debug/single-published-release-2.html, unlike the first snapshot). Added extensive Lib.debug() logging across the whole cross-tab snapshot path: captureSubtableSnapshot/openSubtableAsSingleTableTab (per-row CAA/EAA marker fingerprint + capture timestamp), _hydrateAndRenderFromSnapshotData (entry marker, per-cell before/after _stripTransientCellState fingerprint, resolved addCAA/addEAA, pre-runFilter timestamp), runFilter's single-table branch (pre/post-renderFinalTable, pre/post-initCollapsableColumns, pre/post-initCaaPics with +500ms/+2000ms/+5000ms delayed follow-up dumps), and the CAA enrichment chain itself (_artInitPics/_artEnrichTable/_artEnrichIcon/_artBuildMultiRowArtCell — call counters, per-anchor row/href/enriched-state, and critically anchor.isConnected/artCell.isConnected right before each DOM write, to catch a suspected detached-clone race where a later re-render replaces a row while an earlier _artEnrichIcon async chain — IDB await or network fetch — is still in flight, landing its result on an orphaned clone). New shared helper `_debugDumpCaaColumnState(label)` snapshots every CAA/EAA cell's live state at a named checkpoint. No behavior changes — logging only, gated by the existing sa_enable_debug_logging toggle. Remove once bug 2 is root-caused."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.89",
     "date": "2026-08-12",
     "sections": [
