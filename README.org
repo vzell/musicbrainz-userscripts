@@ -93847,7 +93847,7 @@ on the final "single"-table page rendered in the CAA header column
 
 act on @debug/CAA-missing-doubled.org
 
-** 2.) still buggy
+** DONE 2.) still buggy
 
 1.)
 
@@ -93863,19 +93863,35 @@ rendering in a new tab and they all have non deterministic behaviour in which ic
 
 Add comprehensive debug statements for the special "single"-table in a new tab case for now and I will collect some debug logs
 
-** debug log
+** DONE debug log
 
 #+begin_example
 @debug/sub-table-debug.log - sub-table logging on initial page
 @debug/single-table-debug.log - single-table logging in new table
 #+end_example
 
-** again
+** DONE again
 
 #+begin_example
 @debug/mt-debug.log - sub-table logging on initial page
 @debug/st-debug.log - single-table logging in new table
 #+end_example
+
+** DONE still
+
+Still not working, I now get the number of images instead of the image itself when collapsed
+
+#+begin_example
+@debug/mt2-debug.log - sub-table logging on initial page
+@debug/st2-debug.log - single-table logging in new table
+#+end_example
+
+Well it definitely has to do with the jesus userscript presence. I tested it in another browser just with our userscript and it worked perfect.
+
+** TODO add a new boolean flag for toggling the additional debugging only
+
+Add a new boolean flag (debug should be off by default for the implementation in commit "") for toggling the additional debugging only
+
 
 * TODO sometimes the Wikipedia h2 is rendered at the very end of the final page (probably a timing issue when the action button on the initial page has been pressed to early)
 
@@ -93899,7 +93915,7 @@ https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordin
 
 * TODO when "version 4" is alone in the disambiguation put it into the "Event-Detail" column on pageType 'release-tracks'
 
-When the "Disambiguation"/"Comment" column doesnt' start with (there must be an explicit blank " " after the ",")
+When the "Disambiguation"/"Comment" column doesn't start with
 
 #+begin_example
 live, 
@@ -93907,7 +93923,8 @@ soundcheck,
 studio, 
 #+end_example
 
-so e.g. "version 4" put it into the "Event-Detail" column on pageType 'release-tracks', e.g. on
+(there must be an explicit blank " " after the "," in the above list) so e.g. "version 4", put "version 4" into the
+"Event-Detail" column on pageType 'release-tracks', e.g. on
 https://musicbrainz.org/release/68136206-2939-42ed-a39d-f9c41b0defb1
 
 
@@ -93934,7 +93951,8 @@ When clicking such an entry, it still should correctly filter as before, so basi
 should ONLY be there for human display/reading purposes)
 
 
-* plan: add a new named sub structure "CAA info"/"EAA info" (depending if the actual column is called "CAA" or "EAA") in the unique value drop down menu for the CAA/EAA columns with new values describing what image types/comments are present
+* TODO plan: add a new named sub structure "CAA info"/"EAA info" (depending if the actual column is called "CAA" or "EAA") in the unique value drop down menu for the CAA/EAA columns with new values describing what image types/comments are present
+** DONE initial
 
 @debug/single-published-release.html
 
@@ -93969,6 +93987,11 @@ Page 2
 etc.
 #+end_example
 
+** TODO make the font for the image type in the unique value drop down a little bigger (like the comment itself)
+
+make the font for the image type in the unique value drop down a little bigger (like the comment itself)
+
+** TODO What about the header colllapsable" toggle icon
 
 * DONE currently my info line under the prompt looks like
 
