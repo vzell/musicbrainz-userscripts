@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.101",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Relationships column's unique-values (📊) dropdown \"Relationship icons\" section (one entry per distinct relationship base URL, e.g. \"https://www.amazon.com/\") now supports multi-select checkboxes like every other section in the dropdown, instead of applying a single value and immediately closing the panel. Clicking an entry now toggles a ☑/☐ checkbox and re-applies the OR'd set via `applyUniqValueSet()`, keeping the panel open for continued selection — implemented as a new `rel:` compound structure mode (`_cellMatchesStructureMode()`), wired through the existing `_wireStructureCheckbox()` helper the same way \"» name:\"/\"» role:\" entries already work. Extracted a new `_findCellRelIcons()` helper (grouping a cell's relationship-icon URLs into base-URL \"domainKey\"s, including the existing path-sensitive-host handling for e.g. springsteenlyrics.com) as the single source of truth shared by both the dropdown-building pass and the new row-match branch — previously this grouping logic only existed inline inside the dropdown builder. Per-icon match highlighting (the red-outline `.mb-rel-icon-match` box) now also fires for this new multi-select path via the existing `_highlightRelCellIcons()` helper. Query-string-agnostic matching (e.g. `bootlegs.php?item=2616` still matches a `bootlegs.php` filter entry) is unchanged."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.100",
     "date": "2026-08-12",
     "sections": [

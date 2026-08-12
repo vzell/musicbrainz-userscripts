@@ -16999,6 +16999,74 @@
     }
 
     /**
+     * Finds every distinct relationship-icon base URL inside a `.mb-rel-cell`
+     * `cell` — one entry per distinct grouped "domainKey" among the cell's
+     * relationship-icon `<a href>`s, each of which carries its raw, exact
+     * target URL (untouched by browser href normalisation) in a hidden
+     * `<span class="mb-rel-filter-key">` sibling, added by `_relAppendIcon()`.
+     *
+     * Groups by hostname alone, except for `PATH_SENSITIVE_HOSTS` (currently
+     * just springsteenlyrics.com), where the pathname (stripped of query
+     * string/fragment) is also part of the grouping key, so e.g.
+     * `bootlegs.php` and `collection.php` stay distinct entries instead of
+     * collapsing into one hostname entry. Add more base domains to that set
+     * as needed.
+     *
+     * Single source of truth for this grouping — used by BOTH
+     * `openUniqDrop()`'s "Relationship icons" dropdown section (its own
+     * per-column, per-row summary loop) AND `_cellMatchesStructureMode()`'s
+     * `rel:` branch (per-cell row-match test). Must not be re-derived at a
+     * new call site — see `_findCellListItems()`'s own JSDoc for why
+     * duplicated ad hoc versions of a "does this cell contain X" check have
+     * regressed this codebase before.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Array<{domainKey: string, baseUrl: string}>} One entry per
+     *   distinct base URL present in the cell, in document order. `baseUrl`
+     *   is the display/favicon-source form (`origin + '/'`, or
+     *   `origin + pathname` for path-sensitive hosts); `domainKey` is the
+     *   filter/matching value.
+     */
+    function _findCellRelIcons(cell) {
+        if (!cell) return [];
+        const PATH_SENSITIVE_HOSTS = new Set(['springsteenlyrics.com']);
+        function _isPathSensitive(hostname) {
+            for (const h of PATH_SENSITIVE_HOSTS) {
+                if (hostname === h || hostname.endsWith('.' + h)) return true;
+            }
+            return false;
+        }
+        const seen = new Map(); // domainKey -> baseUrl (first occurrence wins)
+        for (const keySpan of cell.querySelectorAll('.mb-rel-filter-key')) {
+            const href = keySpan.textContent;
+            if (!href) continue;
+            let domainKey;
+            let baseUrl;
+            if (href.startsWith('http')) {
+                try {
+                    const u = new URL(href);
+                    if (_isPathSensitive(u.hostname)) {
+                        // Normalise: treat root path "/" the same as no path
+                        // so bare-domain URLs still collapse to one entry.
+                        const path = (u.pathname && u.pathname !== '/') ? u.pathname : '';
+                        domainKey = u.hostname + path;
+                        baseUrl   = path ? u.origin + path : u.origin + '/';
+                    } else {
+                        domainKey = u.hostname;
+                        baseUrl   = u.origin + '/';
+                    }
+                } catch (_) { domainKey = href; baseUrl = href; }
+            } else {
+                const m = href.match(/^\/([^/]+)/);
+                domainKey = m ? m[1] : href;
+                baseUrl   = domainKey;
+            }
+            if (!seen.has(domainKey)) seen.set(domainKey, baseUrl);
+        }
+        return Array.from(seen, ([domainKey, baseUrl]) => ({ domainKey, baseUrl }));
+    }
+
+    /**
      * Extends `_findCellEntityRefs()` (never re-derives its anchor-finding
      * logic) to split each NON-BARE entity (`!ref.isBare` — part of
      * something bigger than just its own name somewhere in the table, e.g.
@@ -17274,7 +17342,7 @@
      * (`addCAA`/`addEAA`'s `.mb-inline-art-sort-key`) under one evaluator so
      * a mode string is matched identically everywhere it's checked.
      *
-     * @param {string} mode - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | `attr:${string}` | `task:${string}` | `date:${string}` | `instrument:${string}` | `name:${string}` | `comment:${string}` | `alias:${string}` | 'inline-art-yes' | 'inline-art-no'
+     * @param {string} mode - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | `attr:${string}` | `task:${string}` | `date:${string}` | `instrument:${string}` | `name:${string}` | `comment:${string}` | `alias:${string}` | `rel:${string}` | 'inline-art-yes' | 'inline-art-no'
      * @param {HTMLTableCellElement} cell
      * @param {HTMLTableRowElement}  row
      * @param {number}  colIdx
@@ -17352,6 +17420,16 @@
             // _findCellArtistRoles()'s own extraction — see its JSDoc.
             const want = mode.slice(5);
             return !!cell && _findCellArtistRoles(cell).some(r => r.roles.includes(want));
+        }
+        if (mode.startsWith('rel:')) {
+            // Compound mode (openUniqDrop()'s "Relationship icons" section) —
+            // matches one relationship-icon's own base-URL "domainKey" from
+            // _findCellRelIcons()'s own extraction/grouping — see its JSDoc.
+            // Query-string-agnostic: domainKey never includes a query string,
+            // so e.g. "bootlegs.php?item=2616" and "bootlegs.php?item=9999"
+            // both match a "bootlegs.php" filter entry.
+            const want = mode.slice(4);
+            return !!cell && _findCellRelIcons(cell).some(r => r.domainKey === want);
         }
         if (mode === 'inline-art-yes' || mode === 'inline-art-no') {
             // addCAA/addEAA inline-thumbnail presence — .mb-inline-art-sort-key
@@ -34655,6 +34733,15 @@ a { color: #1565c0; }`;
                                     _highlightNameVariationMatch(row.cells[f.idx]);
                                 } else if (mode.startsWith('arttype:') || mode.startsWith('artcomment:')) {
                                     _highlightArtValueMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('rel:')) {
+                                    // Reuse _highlightRelCellIcons() (the same helper the
+                                    // plain-text/global filter path already uses) — domainKey
+                                    // is always a literal substring of the full raw URL text
+                                    // (hostname[+path], immediately after "https://"), so a
+                                    // case-sensitive, non-regex substring test against it is
+                                    // exactly equivalent to _cellMatchesStructureMode()'s own
+                                    // exact domainKey === want comparison.
+                                    _highlightRelCellIcons(row.cells[f.idx], mode.slice(4), true, false);
                                 }
                             });
                         }
@@ -44633,27 +44720,6 @@ a { color: #1565c0; }`;
         })();
 
         const relIconCounts = isRelCellCol ? (() => {
-            // Hosts for which the URL pathname (stripped of query string and
-            // fragment) is used as an additional grouping dimension so that e.g.
-            //   https://springsteenlyrics.com/bootlegs.php
-            //   https://springsteenlyrics.com/collection.php
-            // appear as separate dropdown entries instead of collapsing to a
-            // single hostname entry.  Add more base domains here as needed.
-            const PATH_SENSITIVE_HOSTS = new Set(['springsteenlyrics.com']);
-
-            /**
-             * Returns true when `hostname` equals or is a subdomain of any
-             * PATH_SENSITIVE_HOSTS entry, handling bare and www.-prefixed variants.
-             * @param {string} hostname - Parsed URL hostname (lower-case per spec)
-             * @returns {boolean}
-             */
-            function _isPathSensitive(hostname) {
-                for (const h of PATH_SENSITIVE_HOSTS) {
-                    if (hostname === h || hostname.endsWith('.' + h)) return true;
-                }
-                return false;
-            }
-
             const counts  = new Map(); // domainKey → row count
             const iconFor = new Map(); // domainKey → display URL (for label + favicon)
             if (!tbody) return counts;
@@ -44661,41 +44727,11 @@ a { color: #1565c0; }`;
                 if (row.style.display === 'none') continue;
                 const cell = row.cells[colIndex];
                 if (!cell) continue;
-                const seenKeysInRow = new Set();
-                // Read URLs from the hidden .mb-rel-filter-key spans — these
-                // always carry the raw target URL exactly as stored in
-                // MusicBrainz, without any browser href normalisation.
-                for (const keySpan of cell.querySelectorAll('.mb-rel-filter-key')) {
-                    const href = keySpan.textContent;
-                    if (!href) continue;
-                    let domainKey;
-                    let baseUrl; // display label: origin+pathname for path-sensitive
-                                 // hosts, origin+"/" for all others
-                    if (href.startsWith('http')) {
-                        try {
-                            const u = new URL(href);
-                            if (_isPathSensitive(u.hostname)) {
-                                // Normalise: treat root path "/" the same as no
-                                // path so that bare-domain URLs still collapse to
-                                // one entry (e.g. https://springsteenlyrics.com/).
-                                const path = (u.pathname && u.pathname !== '/') ? u.pathname : '';
-                                domainKey = u.hostname + path;
-                                baseUrl   = path ? u.origin + path : u.origin + '/';
-                            } else {
-                                // Default: group by hostname only.
-                                domainKey = u.hostname;
-                                baseUrl   = u.origin + '/';
-                            }
-                        } catch(_) { domainKey = href; baseUrl = href; }
-                    } else {
-                        const m = href.match(/^\/([^/]+)/);
-                        domainKey = m ? m[1] : href;
-                        baseUrl   = domainKey;
-                    }
-                    if (seenKeysInRow.has(domainKey)) continue;
-                    seenKeysInRow.add(domainKey);
+                // _findCellRelIcons() already dedups within the cell and applies
+                // the PATH_SENSITIVE_HOSTS grouping — single source of truth
+                // shared with _cellMatchesStructureMode()'s 'rel:' branch.
+                for (const { domainKey, baseUrl } of _findCellRelIcons(cell)) {
                     counts.set(domainKey, (counts.get(domainKey) || 0) + 1);
-                    // Store display URL for the first occurrence of each key.
                     if (!iconFor.has(domainKey)) iconFor.set(domainKey, baseUrl);
                 }
             }
@@ -45375,13 +45411,14 @@ a { color: #1565c0; }`;
                 lbl.style.textOverflow = 'ellipsis';
                 lbl.style.whiteSpace = 'nowrap';
                 item.appendChild(lbl);
-                item.addEventListener('mousedown', ev => ev.preventDefault());
-                // applyUniqVal uses domainKey (hostname, or hostname+pathname for
-                // path-sensitive hosts) as the filter string; testRowMatch() finds
-                // it as a substring of the full URL text in .mb-rel-filter-key spans.
-                item.addEventListener('click', () => {
-                    applyUniqVal(domainKey, table, colIndex); closeUniqDrop();
-                });
+                // Checkbox-based multi-select (same 'rel:' compound structure mode
+                // _cellMatchesStructureMode() matches against _findCellRelIcons()'s
+                // own domainKey) — mirrors every other section (Structure, "»
+                // name:", etc.): toggles checkedValues, re-applies the whole set via
+                // applyUniqValueSet(), and leaves the dropdown open for continued
+                // multi-select, instead of the old single-value applyUniqVal() +
+                // closeUniqDrop() this used to call.
+                _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + 'rel:' + domainKey);
                 getOrCreateSynSection('relationships').itemsBox.appendChild(item);
             }
         }
@@ -45746,6 +45783,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('role:'))    return `» role: ${mode.slice(5)}`;
         if (mode.startsWith('arttype:'))    return `» image type: ${mode.slice(8)}`;
         if (mode.startsWith('artcomment:')) return `» image comment: ${mode.slice(11)}`;
+        if (mode.startsWith('rel:'))        return `🔗 ${mode.slice(4)}`;
         return '▶◀ multi-row: any';
     }
 
@@ -45783,6 +45821,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('role:')) return 'An artist\'s own credited event role (e.g. "main performer", "guest performer", "host").';
         if (mode.startsWith('arttype:')) return 'One of this CAA/EAA image\'s own type-badge pill labels (Front/Back/Booklet/…).';
         if (mode.startsWith('artcomment:')) return 'One of this CAA/EAA image\'s own free-text comment.';
+        if (mode.startsWith('rel:')) return 'A relationship target URL\'s base (host + path) — matches regardless of query string.';
         return '';
     }
 
