@@ -14264,6 +14264,28 @@
                     extractMainColumn: 'Release',
                     stickyColumn: 'Release'
                 },
+                // Was missing entirely — resolveEntityFeaturesFromH2() fell back to
+                // the first-declared key ('Releases', extractMainColumn: 'Release')
+                // for the Artists sub-table, whose real main column is 'Artist'.
+                // Since mainColIdx never resolved, cleanupHeaders() still
+                // unconditionally injected the MB-Name/Comment/MB-Primary alias
+                // headers (gated only on "is extractMainColumn configured", not on
+                // whether it actually matches a real column) while the row-building
+                // code correctly produced no data cells for them — see
+                // debug/artist-series.html. Mirrors collections-releases' own
+                // working 'Artists' entry.
+                'Artists': {
+                    columnExtractors: [
+                        { sourceColumn: 'Area',       extractor: 'splitArea', syntheticColumns: ['MB-Locality', 'MB-Region', 'Country'] },
+                        { sourceColumn: 'Begin area', extractor: 'splitArea', syntheticColumns: ['MB-Begin locality', 'MB-Begin region', 'Begin country'] },
+                        { sourceColumn: 'End area',   extractor: 'splitArea', syntheticColumns: ['MB-End locality', 'MB-End region', 'End country'] },
+                        { sourceColumn: 'Begin',      extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
+                        { sourceColumn: 'End',        extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
+                    ],
+                    integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'B-DD', align: 'R'}, {sourceColumn: 'B-MM', align: 'R'}, {sourceColumn: 'B-YYYY', align: 'C'}, {sourceColumn: 'E-DD', align: 'R'}, {sourceColumn: 'E-MM', align: 'R'}, {sourceColumn: 'E-YYYY', align: 'C'} ],
+                    extractMainColumn: 'Artist',
+                    stickyColumn: 'Artist'
+                },
                 'Events': {
                     columnExtractors: [
                         { sourceColumn: 'Event', extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] },
@@ -17159,7 +17181,7 @@
                 comment = null;
             }
 
-            out.push({ name, comment, alias, commentSpan, nameNode: ref.nameNode, glyphClass: ref.glyphClass });
+            out.push({ name, comment, alias, commentSpan, nameNode: ref.nameNode, glyphClass: ref.glyphClass, type: ref.type });
         });
         return out;
     }
@@ -33819,6 +33841,36 @@ a { color: #1565c0; }`;
         'release-group': 'rglink'
     };
 
+    /**
+     * Fixed display-priority order for `openUniqDrop()`'s "» <type> name:"
+     * entities (Entity info section) — lower number sorts first. Entries of
+     * the SAME type still sort alphabetically among themselves (see
+     * `_sortedNameValues`'s comparator); this only decides the priority
+     * between different types when more than one appears in the same
+     * dropdown (e.g. `artist-events`' "Location" column mixes `place` and
+     * `area` references from the same "Recorded at"-style chain).
+     * Creative/production entities (who or what made something) are
+     * grouped first, an `event` next (a specific happening), then
+     * geographic entities ordered from most specific to broadest —
+     * `place` (a single venue/address) before `area` (a city/region/
+     * country that CONTAINS places) — mirroring the general
+     * specific-before-broad principle. A type with no entry here (should
+     * not happen — every type `_ENTITY_TYPE_GLYPH` recognizes is listed)
+     * falls back to sorting after all known types, per
+     * `ENTITY_NAME_TYPE_SORT_ORDER`'s own lookup call site.
+     */
+    const ENTITY_NAME_TYPE_SORT_ORDER = {
+        artist:          0,
+        label:           1,
+        work:            2,
+        'release-group': 3,
+        release:         4,
+        recording:       5,
+        event:           6,
+        place:           7,
+        area:            8
+    };
+
     function getColFilters(table, isCaseSensitive, isRegExp, isExclude = false) {
         if (!table) {
             const empty = [];
@@ -43798,6 +43850,13 @@ a { color: #1565c0; }`;
         // row containing this entity name, bare or not — see that
         // branch's own comment for why).
         const entityNameGlyphMap      = new Map();
+        // entityNameTypeMap: name -> first-seen entity type string (e.g.
+        // 'place'/'area'/'artist' — see _ENTITY_TYPE_GLYPH), populated the
+        // same first-seen-wins way as entityNameGlyphMap right below. Drives
+        // _sortedNameValues' type-then-alphabetical sort and each "»
+        // <type> name:" entry's label — see ENTITY_NAME_TYPE_SORT_ORDER and
+        // makeValueSynItem()'s 'name'-kind branch.
+        const entityNameTypeMap       = new Map();
         const entityNameAnyValueCounts = new Map();
         // Distinct event-role values (e.g. "main performer", "guest
         // performer", "support act", "participant", "host") from a native
@@ -43940,6 +43999,7 @@ a { color: #1565c0; }`;
                     if (p.name) {
                         _rowNameValues.add(p.name);
                         if (!entityNameGlyphMap.has(p.name)) entityNameGlyphMap.set(p.name, p.glyphClass);
+                        if (!entityNameTypeMap.has(p.name)) entityNameTypeMap.set(p.name, p.type);
                     }
                     if (p.comment) _rowCommentValues.add(p.comment);
                     if (p.alias)   _rowAliasValues.add(p.alias);
@@ -45159,8 +45219,14 @@ a { color: #1565c0; }`;
          *   carried over from the per-href entity-glyph row this "» name:"
          *   family replaced in the standard section (see `renderItems()`'s
          *   own "Entity-type marker" block, which this mirrors exactly).
+         * @param {string} [entityType] - Only meaningful for `kind === 'name'`
+         *   (see `entityNameTypeMap`) — the entity type string
+         *   (`'place'`/`'artist'`/… — a key of `_ENTITY_TYPE_GLYPH`), used to
+         *   label the entry `"» <type> name: "` instead of a generic
+         *   `"» name: "` so different entity types sharing this same section
+         *   (e.g. `place`/`area` on a "Location" column) read distinctly.
          */
-        const makeValueSynItem = (kind, value, count, glyphClass) => {
+        const makeValueSynItem = (kind, value, count, glyphClass, entityType) => {
             const item = document.createElement('div');
             item.setAttribute('role', 'option');
             item.title = value;
@@ -45194,7 +45260,7 @@ a { color: #1565c0; }`;
                 (kind === 'attr'       ? '» attribute: '
                  : kind === 'instrument' ? '» instrument: '
                  : kind === 'altname'    ? '» credited as: '
-                 : kind === 'name'       ? '» name: '
+                 : kind === 'name'       ? (entityType ? `» ${entityType} name: ` : '» name: ')
                  : kind === 'comment'    ? '» comment: '
                  : kind === 'alias'      ? '» alias: '
                  : kind === 'role'       ? '» role: '
@@ -45327,7 +45393,15 @@ a { color: #1565c0; }`;
         const _sortedDateValues = Array.from(dateValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedInstrumentValues = Array.from(instrumentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedAltNameValues = Array.from(altNameValueCounts.keys()).sort((a, b) => a.localeCompare(b));
-        const _sortedNameValues    = Array.from(entityNameValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        // Type-then-alphabetical: entries of a shared type stay grouped
+        // together (per ENTITY_NAME_TYPE_SORT_ORDER) instead of interleaving
+        // with other types purely by name, e.g. so all `place` entries come
+        // before all `area` entries on a column that mixes both.
+        const _sortedNameValues    = Array.from(entityNameValueCounts.keys()).sort((a, b) => {
+            const ta = ENTITY_NAME_TYPE_SORT_ORDER[entityNameTypeMap.get(a)] ?? 999;
+            const tb = ENTITY_NAME_TYPE_SORT_ORDER[entityNameTypeMap.get(b)] ?? 999;
+            return ta !== tb ? ta - tb : a.localeCompare(b);
+        });
         const _sortedCommentValues = Array.from(entityCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedAliasValues   = Array.from(entityAliasValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRoleValues    = Array.from(eventRoleValueCounts.keys()).sort((a, b) => a.localeCompare(b));
@@ -45369,7 +45443,7 @@ a { color: #1565c0; }`;
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
             _sortedInstrumentValues.forEach(v => makeValueSynItem('instrument', v, instrumentValueCounts.get(v)));
             _sortedAltNameValues.forEach(v => makeValueSynItem('altname', v, altNameValueCounts.get(v)));
-            _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v), entityNameGlyphMap.get(v)));
+            _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v), entityNameGlyphMap.get(v), entityNameTypeMap.get(v)));
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
@@ -45386,7 +45460,7 @@ a { color: #1565c0; }`;
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
             _sortedInstrumentValues.forEach(v => makeValueSynItem('instrument', v, instrumentValueCounts.get(v)));
             _sortedAltNameValues.forEach(v => makeValueSynItem('altname', v, altNameValueCounts.get(v)));
-            _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v), entityNameGlyphMap.get(v)));
+            _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v), entityNameGlyphMap.get(v), entityNameTypeMap.get(v)));
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));

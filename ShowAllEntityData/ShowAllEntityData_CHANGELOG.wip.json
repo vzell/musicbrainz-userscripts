@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.106",
+    "date": "2026-08-13",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The per-column unique-values (📊) dropdown's \"Entity info\" section — its \"» name:\" entries (e.g. `artist-events`' \"Location\" column, which mixes `place` and `area` references) — sorted purely alphabetically, interleaving different entity types together (e.g. \"Albany\" (area), \"Alberta\" (area), \"Alice Tully Hall\" (place), \"American Airlines Center\" (place), \"Amsterdam\" (area), …). Now sorts by entity type first (new `ENTITY_NAME_TYPE_SORT_ORDER`: artist, label, work, release-group, release, recording, event, place, area — creative/production entities first, then event, then geographic entities from most specific to broadest), alphabetically within each type, and relabels each entry from the generic \"» name: …\" to a type-specific \"» place name: …\"/\"» area name: …\"/etc. so the groups read distinctly. Generic across all 9 entity types `_ENTITY_TYPE_GLYPH` recognizes (this section is shared by many other entity-reference columns — Recording of work, Recorded at place, credit-role columns, etc. — not just Location), via a new `entityNameTypeMap` threaded alongside the existing `entityNameGlyphMap` from `_findCellEntityRefs()`'s own `type` field (now also forwarded by `_findCellEntityCommentParts()`). `makeValueSynItem()` gained a new optional `entityType` parameter driving the label; falls back to the previous generic \"» name: \" when no type is known."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.105",
+    "date": "2026-08-13",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The `series-releases` page definition (bare `/series/<mbid>` overview page) was missing an `'Artists'` `entityFeatures` key — `Releases`/`Events`/`Release groups`/`Recordings`/`Works` were declared, but not `Artists`. When the page's H2 read \"Artists\", `resolveEntityFeaturesFromH2()`'s fallback silently applied the FIRST-declared feature set (`'Releases'`, `extractMainColumn: 'Release'`) instead — wrong for the Artists sub-table, whose real main column is `'Artist'`. Since `mainColIdx` never resolved, `cleanupHeaders()` still unconditionally created the \"MB-Name\"/\"Comment\"/\"MB-Primary alias\" `<th>` headers (gated only on \"is `extractMainColumn` configured at all\", not on whether it resolves to a real column on this table) while the row-building code correctly produced no data `<td>`s for them, leaving every row 3 columns short of its own header row — see `debug/artist-series.html`. Added the missing `'Artists'` entry, mirroring `collections-releases`' own already-correct one (`extractMainColumn: 'Artist'`, plus its Area/Begin area/End area/Begin/End column extractors)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.104",
     "date": "2026-08-13",
     "sections": [
