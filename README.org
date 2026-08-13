@@ -94349,6 +94349,23 @@ How can I extend "statusline.sh" to show the "Current session" and "Weekly limit
 
 
 * current state of affairs
+** newest
+
+#+begin_example
+  {
+    "version": "9.99.861",
+    "date": "2026-08-13",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The per-column unique-values (📊) dropdown's \"Entity info\" section — its \"» name:\" entries (e.g. `artist-events`' \"Location\" column, which mixes `place` and `area` references) — sorted purely alphabetically, interleaving different entity types together (e.g. \"Albany\" (area), \"Alberta\" (area), \"Alice Tully Hall\" (place), \"American Airlines Center\" (place), \"Amsterdam\" (area), …). Now sorts by entity type first (new `ENTITY_NAME_TYPE_SORT_ORDER`: artist, label, work, release-group, release, recording, event, place, area — creative/production entities first, then event, then geographic entities from most specific to broadest), alphabetically within each type, and relabels each entry from the generic \"» name: …\" to a type-specific \"» place name: …\"/\"» area name: …\"/etc. so the groups read distinctly. Generic across all 9 entity types `_ENTITY_TYPE_GLYPH` recognizes (this section is shared by many other entity-reference columns — Recording of work, Recorded at place, credit-role columns, etc. — not just Location), via a new `entityNameTypeMap` threaded alongside the existing `entityNameGlyphMap` from `_findCellEntityRefs()`'s own `type` field (now also forwarded by `_findCellEntityCommentParts()`). `makeValueSynItem()` gained a new optional `entityType` parameter driving the label; falls back to the previous generic \"» name: \" when no type is known."
+        ]
+      }
+    ]
+  },
+#+end_example
+
 ** latest on forum
 
 #+begin_example
@@ -94365,6 +94382,7 @@ How can I extend "statusline.sh" to show the "Current session" and "Weekly limit
     ]
   },
 #+end_example
+
 ** main
 
 #+begin_example
@@ -94400,7 +94418,7 @@ How can I extend "statusline.sh" to show the "Current session" and "Weekly limit
 #+end_example
 
 
-* plan: merge current branch in main, commit and push
+* DONE plan: merge current branch in main, commit and push
 
 Merge current branch in main, commit and push:
 
