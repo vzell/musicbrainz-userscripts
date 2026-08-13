@@ -94123,7 +94123,7 @@ Maybe create a copy of
 and adjust the match directive for "report/SetInDifferentRG"
 
 
-* TODO What about the header colllapsable" toggle icon
+* TODO What about the header collapsable" toggle icon
 * TODO plan: Collapsable columns on CAA/EAA columns: think about it, and why is it not consistent across pageTypes
 ** initial
 
