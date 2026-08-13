@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.863+2026-08-13
+// @version      9.99.864+2026-08-14
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -28657,13 +28657,14 @@ a { color: #1565c0; }`;
             color: #111;
             line-height: 1.35;
         }
-        .mb-col-uniq-item:hover,
         .mb-col-uniq-item.mb-uniq-focused {
             background: #d8eaff;
         }
         /* Synthetic "Cell structure" entries get a distinct resting background.
-           This is set via a CSS class (not inline style) so that the higher-
-           specificity :hover and .mb-uniq-focused rules above can override it. */
+           This is set via a CSS class (not inline style) so that the
+           genuinely higher-specificity .mb-col-uniq-item.mb-uniq-focused
+           rule above (2 classes vs. this rule's 1) always overrides it,
+           regardless of source order. */
         .mb-col-uniq-multirow-item {
             background: #f0f4f8;
             font-style: italic;
@@ -28688,11 +28689,23 @@ a { color: #1565c0; }`;
             user-select: none;
         }
         /* Checked state: distinct resting background so multi-selected items
-           remain visually identifiable even when not hovered/focused. The
-           higher-specificity :hover / .mb-uniq-focused rules above still win. */
+           remain visually identifiable even when not hovered/focused. This
+           has the SAME specificity as .mb-col-uniq-item.mb-uniq-focused
+           above (2 classes each) — the combined rule right below is what
+           actually resolves a checked+focused item, via genuinely higher
+           specificity, not source order. */
         .mb-col-uniq-item.mb-col-uniq-checked {
             background: #eaf7e6;
             font-weight: 600;
+        }
+        /* Checked AND hovered/keyboard-focused at once: a distinct blended
+           color (arithmetic RGB midpoint of the focused blue above and the
+           checked green above) so the highlight is visible on an
+           already-checked item instead of being hidden behind its checked
+           background. 3 classes beats either 2-class rule above regardless
+           of source order. */
+        .mb-col-uniq-item.mb-col-uniq-checked.mb-uniq-focused {
+            background: #e1f1f3;
         }
         .mb-col-uniq-empty {
             padding: 7px 12px;
@@ -44338,6 +44351,10 @@ a { color: #1565c0; }`;
                 }
 
                 item.addEventListener('mousedown', ev => ev.preventDefault());
+                // Unify mouse hover with keyboard arrow-key focus onto the same
+                // moveFocus()/focIdx state, so exactly one entry is ever
+                // highlighted regardless of which input method moved it last.
+                item.addEventListener('mouseenter', () => moveFocus(allItems().indexOf(item)));
                 item.addEventListener('click', () => {
                     // Toggle membership in the checked-value set and re-apply the
                     // whole set as an OR'd column filter. Deliberately do NOT call
@@ -45059,6 +45076,9 @@ a { color: #1565c0; }`;
             item.insertBefore(checkbox, item.firstChild);
 
             item.addEventListener('mousedown', ev => ev.preventDefault());
+            // Unify mouse hover with keyboard arrow-key focus — see the
+            // matching listener in renderItems() for the shared rationale.
+            item.addEventListener('mouseenter', () => moveFocus(allItems().indexOf(item)));
             item.addEventListener('click', () => {
                 if (checkedValues.has(key)) {
                     checkedValues.delete(key);
@@ -45699,7 +45719,11 @@ a { color: #1565c0; }`;
 
         qfInput.addEventListener('input', () => {
             updateClearBtn();
-            focIdx = -1;
+            // moveFocus(-1) (not a bare focIdx reset) so any stale
+            // .mb-uniq-focused class left on a synBox item — which
+            // _applySynBoxQuickFilter() never rebuilds/clears — is stripped
+            // too, not just the index.
+            moveFocus(-1);
             const _qf = qfInput.value.trim();
             renderItems(_qf);
             _applySynBoxQuickFilter(_qf);
@@ -45710,7 +45734,7 @@ a { color: #1565c0; }`;
         qfClear.addEventListener('click', () => {
             qfInput.value = '';
             updateClearBtn();
-            focIdx = -1;
+            moveFocus(-1);
             renderItems('');
             _applySynBoxQuickFilter('');
             qfInput.focus();
@@ -45803,7 +45827,7 @@ a { color: #1565c0; }`;
                     // First Escape: clear the filter
                     qfInput.value = '';
                     updateClearBtn();
-                    focIdx = -1;
+                    moveFocus(-1);
                     renderItems('');
                     _applySynBoxQuickFilter('');
                 } else {

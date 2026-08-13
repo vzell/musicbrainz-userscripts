@@ -1,5 +1,18 @@
 [
   {
+    "version": "9.99.864",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The per-column unique-values (📊) dropdown's mouse-hover and keyboard arrow-key highlight were two independent, unsynchronized indicators — hovering one entry while keyboard focus sat on another showed two highlighted rows at once. Mouse hover now drives the same focus state as keyboard navigation (moveFocus()), so exactly one entry is ever highlighted regardless of input method, and Enter/Space after hovering now act on the hovered entry too.",
+          "An already-checked entry's background always visually won over the hover/keyboard-focus highlight color, because the two CSS rules had identical specificity and cascade fell back to source order — the reverse of what the adjacent code comments claimed. Added a genuinely higher-specificity combined rule for \"checked AND highlighted\" with its own distinct in-between color (#e1f1f3, the midpoint of the existing highlight blue and checked green), so a checked entry's highlight is now visible again when hovered or keyboard-focused."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.863",
     "date": "2026-08-13",
     "sections": [
