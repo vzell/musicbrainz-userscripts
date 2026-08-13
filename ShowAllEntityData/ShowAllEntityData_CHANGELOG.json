@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.865",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Closing the per-column unique-values (📊) dropdown — via Escape, re-clicking the 📊 button, or scrolling — left keyboard focus nowhere, even when a column's filter input had focus right before the 📊 button was clicked. Focus is now restored to that filter input on close, so typing can continue right where it left off. Covers real mouse clicks on 📊 plus the Ctrl+Q and prefix-mode `q` keyboard shortcuts; clicking outside the dropdown to a different element intentionally does not restore focus, so it doesn't fight that click."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.864",
     "date": "2026-08-14",
     "sections": [

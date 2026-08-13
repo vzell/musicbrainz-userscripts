@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.864+2026-08-14
+// @version      9.99.865+2026-08-14
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -43638,6 +43638,12 @@ a { color: #1565c0; }`;
     /** @type {HTMLSpanElement|null} The 📊 button that currently owns the open dropdown. */
     let _uniqDropOwner = null;
 
+    /** @type {HTMLInputElement|null} Column filter input to refocus when the panel closes (see openUniqDrop()/closeUniqDrop()). */
+    let _uniqDropReturnFocusEl = null;
+
+    /** @type {Element|null} Set by uniqWrap's own mousedown listener; consumed exactly once by openUniqDrop(). */
+    let _uniqDropPreMousedownEl = null;
+
     /**
      * Returns (creating exactly once) the shared #mb-col-uniq-dropdown element
      * and wires up global close-on-outside-click / close-on-page-scroll listeners.
@@ -43663,7 +43669,11 @@ a { color: #1565c0; }`;
             if (!_uniqDropOwner) return;
             if (ev.target === _uniqDropOwner) return; // button click handled separately
             if (el.contains(ev.target)) return;       // click inside panel — keep open
-            closeUniqDrop();
+            // Don't restore focus to the original filter input here — the
+            // user's own click is already about to move focus elsewhere (or
+            // intentionally clicked a non-focusable area); forcing it back
+            // would fight that action.
+            closeUniqDrop(false);
         }, true);
 
         // Close on page scroll — but NOT when the scroll happens inside the
@@ -43694,14 +43704,24 @@ a { color: #1565c0; }`;
     /**
      * Closes the unique-values dropdown and removes the active highlight from
      * its owner button.
+     *
+     * @param {boolean} [restoreFocus=true] - Whether to refocus the column
+     *   filter input that had focus when the dropdown was opened (see
+     *   `_uniqDropReturnFocusEl`, set in `openUniqDrop()`). Pass `false`
+     *   from close paths where the user's own action is already moving
+     *   focus elsewhere (e.g. an outside click) so this doesn't fight it.
      */
-    function closeUniqDrop() {
+    function closeUniqDrop(restoreFocus = true) {
         if (!_uniqDropEl) return;
         _uniqDropEl.style.display = 'none';
         if (_uniqDropOwner) {
             _uniqDropOwner.classList.remove('mb-col-uniq-active');
             _uniqDropOwner = null;
         }
+        if (restoreFocus && _uniqDropReturnFocusEl && document.contains(_uniqDropReturnFocusEl)) {
+            _uniqDropReturnFocusEl.focus();
+        }
+        _uniqDropReturnFocusEl = null;
     }
 
     /**
@@ -43741,6 +43761,16 @@ a { color: #1565c0; }`;
     function openUniqDrop(btn, table, colIndex) {
         const drop = getUniqDropEl();
 
+        // Prefer whatever had focus immediately before btn's own mousedown
+        // stole it (real-click path — see btn's mousedown listener); falls
+        // back to document.activeElement, which is still correct/untouched
+        // for synthetic btn.click() invocations (Ctrl+Q / prefix-mode 'q' —
+        // see _resolveColFilter()). Consumed exactly once, before the
+        // toggle-close branch below, so a stale value can't leak into a
+        // later, unrelated open.
+        const _preOpenActiveEl = _uniqDropPreMousedownEl || document.activeElement;
+        _uniqDropPreMousedownEl = null;
+
         // Toggle: close if this button already owns the open panel
         if (_uniqDropOwner === btn && drop.style.display !== 'none') {
             closeUniqDrop();
@@ -43753,6 +43783,12 @@ a { color: #1565c0; }`;
         }
         _uniqDropOwner = btn;
         btn.classList.add('mb-col-uniq-active');
+
+        // Column filter input to refocus when this panel closes (if any had
+        // focus when the button was pressed) — see closeUniqDrop().
+        _uniqDropReturnFocusEl = (_preOpenActiveEl && _preOpenActiveEl.matches('.mb-col-filter-input'))
+            ? _preOpenActiveEl
+            : null;
 
         // ---- Restore prior checkbox selection (if any) --------------------------
         // Read the column's filter input's dataset.mbUniqValues so re-opening the
@@ -48042,6 +48078,14 @@ a { color: #1565c0; }`;
             uniqWrap.appendChild(uniqCountSpan);
             uniqWrap.appendChild(uniqBtn);
 
+            // Captures document.activeElement BEFORE the browser's own
+            // mousedown default action moves focus onto this button, so
+            // openUniqDrop() can later restore focus to a column filter
+            // input that was focused right before the click — see
+            // _uniqDropPreMousedownEl.
+            uniqWrap.addEventListener('mousedown', () => {
+                _uniqDropPreMousedownEl = document.activeElement;
+            });
             uniqWrap.addEventListener('click', (ev) => {
                 ev.preventDefault();
                 ev.stopPropagation();
