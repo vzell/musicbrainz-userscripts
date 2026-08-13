@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.862+2026-08-13
+// @version      9.99.863+2026-08-13
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -43717,7 +43717,7 @@ a { color: #1565c0; }`;
      * Keyboard navigation (focus stays on `btn` while the panel is open):
      *   ArrowDown / ArrowUp  – move focused item one step
      *   Home / End           – jump to first / last item
-     *   Enter                – select currently focused item
+     *   Enter / Space        – toggle currently focused item's checkbox (stays open)
      *   Escape               – close without selecting
      *   Any printable char   – jump to first item whose text starts with that char
      *
@@ -45787,21 +45787,15 @@ a { color: #1565c0; }`;
             } else if (ev.key === 'End') {
                 ev.preventDefault(); ev.stopPropagation();
                 moveFocus(items.length - 1);
-            } else if (ev.key === 'Enter') {
+            } else if (ev.key === 'Enter' || ev.key === ' ') {
+                // Toggle the highlighted entry's checkbox via the same click
+                // handler renderItems()/_wireStructureCheckbox wired up,
+                // keeping the panel open for continued multi-select (mirrors
+                // the mouse-click behavior in every section — do NOT close
+                // the dropdown; Escape is the only key that does that).
                 ev.preventDefault(); ev.stopPropagation();
                 if (focIdx >= 0 && items[focIdx]) {
-                    const focused = items[focIdx];
-                    if (focused.classList.contains('mb-col-uniq-multirow-item')) {
-                        // Synthetic multi-row entry: delegate to state filter
-                        focused.click();
-                        closeUniqDrop();
-                    } else {
-                        // Regular value entry: toggle its checkbox state via the
-                        // same click handler renderItems() wired up, keeping the
-                        // panel open for continued multi-select (mirrors the
-                        // mouse-click behavior — do NOT close the dropdown).
-                        focused.click();
-                    }
+                    items[focIdx].click();
                 }
             } else if (ev.key === 'Escape') {
                 ev.preventDefault(); ev.stopPropagation();

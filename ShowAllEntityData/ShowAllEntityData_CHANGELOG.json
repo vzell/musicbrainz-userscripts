@@ -1,5 +1,23 @@
 [
   {
+    "version": "9.99.863",
+    "date": "2026-08-13",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The per-column unique-values (📊) dropdown's Enter key closed the panel when toggling an entry inside a \"Cell structure\"/\"Flags\"/\"Entity info\"/etc. synthetic section, but left it open when toggling a standard value entry — an inconsistency that silently broke keyboard-driven multi-select in those synthetic sections (mouse click already worked fine there). Enter now always toggles the highlighted entry in place and leaves the panel open, in every section — matching mouse-click behavior everywhere. Escape remains the only key that closes the panel."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The per-column unique-values (📊) dropdown now supports the Space key to toggle the checkbox of the currently arrow-key-highlighted entry, identical to Enter and to a mouse click (stays open for continued multi-select). Previously Space only typed a literal space into the quickfilter text field."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.862",
     "date": "2026-08-13",
     "sections": [
