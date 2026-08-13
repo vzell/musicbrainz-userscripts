@@ -94399,3 +94399,11 @@ How can I extend "statusline.sh" to show the "Current session" and "Weekly limit
   },
 #+end_example
 
+
+* plan: merge current branch in main, commit and push
+
+Merge current branch in main, commit and push:
+
+check if it would cleanly merge
+
+Commit and push README.org before merging
