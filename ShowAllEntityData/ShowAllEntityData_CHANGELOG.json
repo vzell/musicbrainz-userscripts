@@ -1,5 +1,1358 @@
 [
   {
+    "version": "9.99.861",
+    "date": "2026-08-13",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The per-column unique-values (📊) dropdown's \"Entity info\" section — its \"» name:\" entries (e.g. `artist-events`' \"Location\" column, which mixes `place` and `area` references) — sorted purely alphabetically, interleaving different entity types together (e.g. \"Albany\" (area), \"Alberta\" (area), \"Alice Tully Hall\" (place), \"American Airlines Center\" (place), \"Amsterdam\" (area), …). Now sorts by entity type first (new `ENTITY_NAME_TYPE_SORT_ORDER`: artist, label, work, release-group, release, recording, event, place, area — creative/production entities first, then event, then geographic entities from most specific to broadest), alphabetically within each type, and relabels each entry from the generic \"» name: …\" to a type-specific \"» place name: …\"/\"» area name: …\"/etc. so the groups read distinctly. Generic across all 9 entity types `_ENTITY_TYPE_GLYPH` recognizes (this section is shared by many other entity-reference columns — Recording of work, Recorded at place, credit-role columns, etc. — not just Location), via a new `entityNameTypeMap` threaded alongside the existing `entityNameGlyphMap` from `_findCellEntityRefs()`'s own `type` field (now also forwarded by `_findCellEntityCommentParts()`). `makeValueSynItem()` gained a new optional `entityType` parameter driving the label; falls back to the previous generic \"» name: \" when no type is known."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.860",
+    "date": "2026-08-13",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The `series-releases` page definition (bare `/series/<mbid>` overview page) was missing an `'Artists'` `entityFeatures` key — `Releases`/`Events`/`Release groups`/`Recordings`/`Works` were declared, but not `Artists`. When the page's H2 read \"Artists\", `resolveEntityFeaturesFromH2()`'s fallback silently applied the FIRST-declared feature set (`'Releases'`, `extractMainColumn: 'Release'`) instead — wrong for the Artists sub-table, whose real main column is `'Artist'`. Since `mainColIdx` never resolved, `cleanupHeaders()` still unconditionally created the \"MB-Name\"/\"Comment\"/\"MB-Primary alias\" `<th>` headers (gated only on \"is `extractMainColumn` configured at all\", not on whether it resolves to a real column on this table) while the row-building code correctly produced no data `<td>`s for them, leaving every row 3 columns short of its own header row — see `debug/artist-series.html`. Added the missing `'Artists'` entry, mirroring `collections-releases`' own already-correct one (`extractMainColumn: 'Artist'`, plus its Area/Begin area/End area/Begin/End column extractors)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.859",
+    "date": "2026-08-13",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On a \"Show single-table\" cross-tab snapshot of a Work or Recording sub-table from `artist-relationships` (which correctly has NO \"Relationships\" column on the live multi-table page — it only makes sense for Release/Release-group sub-tables), the hydrated single-table tab artificially injected a \"Relationships\" column header that could never be populated. Root cause: `artist-relationships`/`artist-relationships-filtered` declare `injectedColumns: ['Relationships']` unconditionally at the page-definition level (no per-sub-table-category scoping) — on the live page, correctness comes entirely from a downstream, per-sub-table, data-driven guard, `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` (and its sibling `_suppressReleaseEventsIfNoReleaseLinks()`), which physically removes the injected column from any table whose rows contain no `/release/`or `/release-group/` links — called from both `renderGroupedTable()`'s per-group loop and the live single-table fetch path in `startFetchingProcess`. `_hydrateAndRenderFromSnapshotData()`'s own single-table render branch duplicated the rest of that live single-table sequence (`cleanupHeaders`/`addColumnFilterRow`/`makeTableSortableUnified`) but never called either guard, so a hydrated Work/Recording snapshot kept the header (and would have gone on to create empty `mb-rel-cell`/`mb-re-cell` placeholder `<td>`s once `initRelationshipsColumn()`/`initReleaseEventsColumn()` ran later). Added both guard calls to that branch, in the same relative order (after header injection, before the later `init*Column()` calls) as the live single-table path already uses."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.858",
+    "date": "2026-08-13",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Unique-values (📊) dropdown entries for flag-decorated columns (\"Country/Date\", \"Country\", \"Locality\", \"Region\", etc.) had three rendering bugs, all confined to `openUniqDrop()`'s `flagIconMap`/`renderItems()` flag-rendering path (the tooltip, built from `getCleanColumnText()`, was always correct): (1) text glued together with no space, e.g. \"ES2009-02-08Sun\" instead of \"ES 2009-02-08 Sun\" — `flagIconMap`'s text accumulation raw-concatenated text nodes instead of joining them with `' '` at each boundary the way `getCleanColumnText()` does; (2) multi-row (multi-`<li>`) cells rendered with no \"and\"/\", \" between items, e.g. \"AT2003-05-05MonXE2003-05-05Mon\" instead of \"AT 2003-05-05 Mon and XE 2003-05-05 Mon\" — `flagIconMap` walked the whole `<td>` with one flat pass, with no `<li>` item-boundary awareness, so the existing `_joinListItemsForDisplay()`/`displayText` \"A, B and C\" join (from an earlier session) never applied to the flag-icon rendering branch at all. Fixed by extracting the per-cell walk into `_buildFlagSegmentsForRoot()` (now called once per `_findCellListItems()` item instead of once for the whole cell) and a new `_joinFlagSegmentItems()` helper mirroring `_joinListItemsForDisplay()`'s exact separator rule to splice synthetic `', '`/`' and '` segments between items. (3) The icon-to-text gap in the dropdown didn't match the real table cell's own spacing — `renderItems()` hardcoded `marginRight: '4px'` on every icon clone, while `resolveFlagVisual()`'s `pick()` never captured the live cell's own `marginRight` at all. Now captured and baked onto the clone in `_bakeFlagIconNode()`; the hardcoded `4px` in `renderItems()` is only a fallback for a clone with no baked margin."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.857",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On a \"Show single-table\" cross-tab snapshot of a sub-table from a multi-table page (e.g. `artist-relationships`), filtering ANY column (typed filter text or a unique-value dropdown checkbox) permanently removed the Picard tagger column's icons from every row, never to return — even after clearing the filter. Root cause: `_hydrateAndRenderFromSnapshotData()` calls `runFilter()` (which clones rows from the `allRows` source array into the live DOM) BEFORE its own full-mode `initPicardTaggerColumn()` call, so the picard `<td>`s only ever landed on that one now-orphaned live-DOM clone — `allRows` itself never got them, so every subsequent filter re-render re-cloned from a picard-less `allRows` and the rewire-only call (correctly, per its own contract) had nothing to rewire. This is the exact same class of bug `initRelationshipsColumn()`'s `_ensureRelCell()`/`allRows` sync already fixed for the Relationships column, for the identical reason — `initPicardTaggerColumn()` now mirrors that pattern: its full-mode pass also applies to `allRows` directly (single-table mode only; multi-table mode's own full-mode call already runs before its first `runFilter()`, so `group.rows` was never affected). Refactored the per-row cell-creation logic into a shared `_picardApplyToRow()` helper used by both the live-DOM pass and the new `allRows` pass, avoiding duplicated logic."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.856",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Relationships column's unique-values (📊) dropdown \"Relationship icons\" section (one entry per distinct relationship base URL, e.g. \"https://www.amazon.com/\") now supports multi-select checkboxes like every other section in the dropdown, instead of applying a single value and immediately closing the panel. Clicking an entry now toggles a ☑/☐ checkbox and re-applies the OR'd set via `applyUniqValueSet()`, keeping the panel open for continued selection — implemented as a new `rel:` compound structure mode (`_cellMatchesStructureMode()`), wired through the existing `_wireStructureCheckbox()` helper the same way \"» name:\"/\"» role:\" entries already work. Extracted a new `_findCellRelIcons()` helper (grouping a cell's relationship-icon URLs into base-URL \"domainKey\"s, including the existing path-sensitive-host handling for e.g. springsteenlyrics.com) as the single source of truth shared by both the dropdown-building pass and the new row-match branch — previously this grouping logic only existed inline inside the dropdown builder. Per-icon match highlighting (the red-outline `.mb-rel-icon-match` box) now also fires for this new multi-select path via the existing `_highlightRelCellIcons()` helper. Query-string-agnostic matching (e.g. `bootlegs.php?item=2616` still matches a `bootlegs.php` filter entry) is unchanged."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.855",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The TEMPORARY diagnostic instrumentation added in 9.99.845/9.99.846 while chasing a hollow CAA/EAA-icon \"Show single-table\" bug (cross-tab snapshot capture/hydration fingerprints in `captureSubtableSnapshot`/`openSubtableAsSingleTableTab`/`_hydrateAndRenderFromSnapshotData`, per-call counters and entry/branch logs in `_artInitPics`/`_artEnrichTable`/`_artEnrichIcon`/`_artBuildMultiRowArtCell`, the `_debugDumpCaaColumnState()` pipeline-stage dumper and its 5 call sites in `runFilter`'s single-table branch including 3 delayed `setTimeout` follow-ups, and the `_debugWatchCaaColumnForRegression()` MutationObserver regression watchdog) is being kept permanently rather than removed — useful to have on hand if a similar CAA/EAA regression needs chasing again. Added a new \"GENERIC SETTINGS\" checkbox, `sa_enable_art_diagnostic_logging` (default `false`), that every one of these sites is now gated behind — `_debugDumpCaaColumnState()`/`_debugWatchCaaColumnForRegression()` early-return (and, for the latter, skip installing their MutationObserver / scheduling their `setTimeout`s) when it's off, and every other individual log call site checks it directly, mirroring the existing `sa_enable_tooltip_debug` pattern (requires the global \"Enable debug logging\" setting to also be on). No behavior changes when the new setting is off (the default) — purely a toggle, matching the pre-existing behavior of this instrumentation being effectively silent unless deliberately dug into."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.854",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`eventParts` synthetic-column extractor (Comment/Disambiguation → Event-Type/Event-Date/Event-Detail/Event-Venue/.../Event-Additional-Info, used by 11 page definitions) unconditionally wrote the first pre-colon comma segment into `Event-Type`, regardless of its content, and would still attempt to split any post-colon text into Venue/City/State/Country even when that leading segment wasn't event metadata at all — so \"version 4\" landed in `Event-Type`, and \"The River: Single Album version\" (a release title that merely happens to contain \": \") got incorrectly split across `Event-Country`/`Event-Additional-Info`. Now the whole Type/Date/Detail/Location schema is only attempted when the leading segment is one of the recognized keywords `live`, `soundcheck`, `studio`, `interview`, `audition`, `live rehearsal` — anything else routes the ENTIRE raw disambiguation/comment text verbatim into `Event-Additional-Info` instead, with every other synthetic column left empty."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.853",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Unique-values (📊) dropdown's whole-cell entry for a multi-item list cell (e.g. \"Producer\", \"Engineer\", \"Performer\", \"Instruments\", tags, genres, or any other `<ul>/<li>`-rendered column) now reads as a natural \"Jon Landau, Chuck Plotkin and Bruce Springsteen\" instead of the ungrammatical space-joined run-on `getCleanColumnText()` previously produced — the CREDIT_ROLES `<li>` builder (like every other list-cell builder) never emits any separator text into the DOM between items, so `getCleanColumnText()`'s bare-space text-node join was the only thing standing in for punctuation. New `_joinListItemsForDisplay()` helper joins each multi-item value's own per-`<li>` texts (captured via a new `valueItemSequence` map, first-occurrence keyed by the raw whole-cell value) for display and tooltip purposes only. The underlying value used for the entry's checkbox key, `checkedValues`, `dataset.mbUniqValues`, and the row-filter equality check in `testRowMatch()` is untouched — still the exact raw `getCleanColumnText(cell)` string — so clicking the entry keeps filtering rows exactly as before."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.852",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "\"CAA info\"/\"EAA info\" dropdown section (9.99.849-851): superseded 9.99.850's plain font-size bump — \"» image type: …\" entries now render the value itself as an actual pill (bold, dark-grey background, matching `.mb-caa-type-badge`'s real inline style in the table cell) instead of plain text, via a new `_buildArtTypePillLabel()` helper. `_applySynBoxQuickFilter()`'s generic label rebuild (used by every other entry kind, and previously would have silently flattened the pill back to plain text on the very next quickfilter keystroke or clear) is now gated: entries carrying a new `item.dataset.mbUniqArtType` marker rebuild the pill via the same helper when the search is cleared, restoring it every time; while a search is actively matching text, the entry deliberately falls back to the existing plain-text-plus-`<mark>` rendering unchanged (same as before this pill styling existed) rather than attempting to splice a `<mark>` across the prefix/pill boundary — simpler and lower-risk, and only visible while actively typing in the dropdown's own search box. Checkbox-driven column filtering itself (`_wireStructureCheckbox`/`_cellMatchesStructureMode`) is completely unaffected by any of this, since it only ever depends on the `kind`/`value` strings, never on label DOM structure."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.851",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "CAA/EAA cell type-badge pills (e.g. \"Schedule\"/\"Poster\" — see debug/font.html, artist-events' \"EAA\" column) rendered noticeably smaller than the \".mb-caa-art-comment\" text right next to them (e.g. \"rescheduled dates\") — two compounding nested `em` shrinks (the `.mb-caa-type-badge` wrapper's own 0.75em, then the individual pill's inline 0.78em on top of that) worked out to roughly 58% of the comment's size, which just inherits `li.mb-caa-art-li-image`'s own unshrunk 0.85em. Removed the wrapper's font-size (now inherits, no longer compounds) and bumped each pill's own inline font-size from 0.78em to 0.85em, matching the comment's effective size exactly."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.850",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "\"CAA info\"/\"EAA info\" dropdown section (9.99.849): the \"» image type: …\" entries read small/pill-like at the dropdown's default ambient font-size (0.87em, same as the source table cell's own small bold type-badge pill), noticeably smaller-feeling than the \"» image comment: …\" entries next to them. Bumped the image-type label span's own font-size to 1.05em so it reads like ordinary text, on par with the comment entries. `_appendSynLabelText()` now returns the label span it creates (harmless for existing callers that ignore the return) so `makeValueSynItem()` can style this one case without an extra DOM query."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.849",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added a \"CAA info\"/\"EAA info\" (named after the actual column header) section to the per-column unique-values dropdown for CAA/EAA art columns, listing every distinct per-image type-badge pill value (e.g. \"Front\", \"Obi\", \"Matrix/Runout\", from `.mb-caa-type-badge > span`) and every distinct per-image free-text comment (e.g. \"Front cover, booklet page i\", from `.mb-caa-art-comment`) — see debug/single-published-release.html — each independently checkable/filterable/highlightable, following the same pattern as the existing attr/task/date/instrument/altname/name/comment/alias/role families. New `makeValueSynItem` kinds `'arttype'`/`'artcomment'` (compound `MB_UNIQ_STRUCTURE_MODE_PREFIX` modes, so filtering needed zero changes to the generic `getColFilters()`/`testRowMatch()` dispatch — only two new branches in `_cellMatchesStructureMode()`). Since the target section depends on which column is actually open (\"CAA info\" vs \"EAA info\"), unlike every other kind these two are deliberately absent from the static `MB_UNIQ_KIND_TO_SECTION` map and instead routed dynamically inside `makeValueSynItem()` from `_caaOrEaaColName` (the `isCaaOrEaaCol` IIFE now resolves and keeps the literal column name, not just a boolean). New `SYN_SECTION_META` entries `caaInfo`/`eaaInfo`. Highlighting required two separate additions, not one: `testRowMatch()`'s dispatch (new `_highlightArtValueMatch()`) for the normal synchronous case, AND `_artHighlightImageLi()` (called from `_artBuildMultiRowArtCell()` when CAA/EAA artwork is (re)built — which happens asynchronously after the table's initial render/filter pass) for the async-rebuild case — without the second one, filtering would work but the highlight would silently fail to appear whenever an art cell (re)builds after a matching filter was already applied, which is the common case for these columns. Also extended `_structureModeLabel()`/`_structureModeTooltip()` for the two new compound modes."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.848",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"Show single-table\" (bug 2, continued — see 9.99.845/846/847): 9.99.847's fix wasn't sufficient — the count badge now survived, but the icon/thumbnail itself still vanished (\"the number of images instead of the image itself when collapsed\"), and only when the third-party jesus2099 \"mb. SUPER MIND CONTROL\" userscript was installed (confirmed by the reporter: perfect in a browser with only this script). Root cause: a second, independent mechanism — `_watchForLateJesus2099Injections()`'s `_stripJesus2099CaaAnchor`, installed specifically for the cross-tab snapshot bootstrap right before `_hydrateAndRenderFromSnapshotData()` runs — has the exact same unconditional-removal bug 9.99.847 fixed in `_stripTransientCellState`, just in a separate code path untouched by that fix. It reactively strips any `<a>` wrapping jesus2099's cover-art icon class the instant it's added anywhere inside `table.tbl` (plus a final sweep at its 5s watch-window boundary), which fires the moment renderFinalTable inserts the hydrated rows — removing the anchor within the same render pass, confirmed via debug/mt2-debug.log / debug/st2-debug.log (anchor present and correct immediately post-hydration, gone moments later, with this function's own \"removed a late jesus2099 caa-icon anchor\" log in between). Regated `_stripJesus2099CaaAnchor` to skip this script's own synthetic \"CAA\"/\"EAA\" column (checked via `cell.cellIndex` against `caaFindColumnByName`) — that column is exactly where ColumnDataExtractor.caa's Path A/B puts a row's one authoritative art anchor, which on pages without a Title-column 'jesus2099' columnEraser (e.g. artist-relationships) legitimately carries the jesus2099 class as the cell's ONLY content, not a duplicate. Every other column (sticky Title, MB-Name, …) never legitimately holds a raw cover-art anchor, so those keep the unconditional strip — this generalizes 9.99.847's `.mb-caa-inline-ph`-presence gate (which only ever sees the sticky Title column) to also cover MB-Name-style columns that gate can't reach."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.847",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"Show single-table\" (bug 2, see 9.99.845/9.99.846): root-caused via the round-2 debug logs (debug/mt-debug.log, debug/st-debug.log) — captureSubtableSnapshot's new RAW-vs-STRIPPED fingerprint showed all 4 \"published release\" rows had a correct anchor+badge on the LIVE page at the exact moment of capture, but 3 lost their badge and 1 lost its anchor entirely after getCleanCellHtml/_stripTransientCellState ran. Two distinct over-eager cleanup steps in _stripTransientCellState: (1) _artEnrichIcon's \"Resource Timing wrapper adoption\" moves the CAA/EAA count badge inside `.mb-art-cache-hint-col-wrap` to stack it under the cache-hint emoji, but the wrap's cosmetic cleanup removed the whole wrap — badge included; now the badge is pulled back out as the wrap's own sibling first. (2) The jesus2099 cover-art-icon strip (added in commit 4432890 for artist-releasegroups' sticky Title column, where a LATE-arriving jesus2099 icon duplicates this script's own separate inline thumbnail) ran unconditionally on every cell — but artist-relationships' Title column has no 'jesus2099' columnEraser configured, so ColumnDataExtractor.caa's Path A moves jesus2099's OWN anchor straight into the synthetic \"CAA\" column, where it is the cell's ONLY art content, not a duplicate; stripping it unconditionally destroyed it outright. Now gated on `_hadInlineArtPh` (captured before the inline-thumbnail placeholder is itself removed) — only strips when this same cell also carries this script's own separate inline CAA/EAA thumbnail, mirroring the same per-cell gate `_stripLateJesus2099CaaIcon()` (9.99.844) already uses for the reactive/live case. All debug-only instrumentation from 9.99.845/9.99.846 is left in place (no behavior effect, gated by sa_enable_debug_logging) pending confirmation this fully resolves bug 2."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.846",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "TEMPORARY diagnostic instrumentation, round 2 for bug 2 (see 9.99.845). The first round's logs (debug/sub-table-debug.log, debug/single-table-debug.log) disproved the detached-clone-race theory: the row that ends up hollow (release 8aeb338a, \"row 914\", published-release category) was built CORRECTLY by _artBuildMultiRowArtCell on the ORIGINAL multi-table page — confirmed via the logged artCell.innerHTML snapshot showing a properly-titled anchor — and no further instrumented call touches that row again before it's captured hollow ~29s later by captureSubtableSnapshot, while three sibling rows built in the same batch survive untouched. Something un-instrumented reverts it. Added `_debugWatchCaaColumnForRegression(table)`: a MutationObserver installed on every table with a CAA/EAA column (wired into `_artInitPics`) that tracks each row's anchor+badge presence and, on any row transitioning from \"had both\" to \"missing either\", logs the triggering mutation's removedNodes/addedNodes and a best-effort stack trace — the direct smoking-gun catcher for whatever is reverting it. Also added the missing RAW (pre-getCleanCellHtml) fingerprint to captureSubtableSnapshot's existing per-row debug log, alongside the already-captured post-strip one, to distinguish \"already hollow on the live page before capture\" from \"getCleanCellHtml/_stripTransientCellState broke it during capture\" (the first round only logged the post-strip state). No behavior changes — logging only. Remove once bug 2 is root-caused."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.845",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "TEMPORARY diagnostic instrumentation for the still-open bug 2 (missing CAA icons + dead collapse-header button on a \"Show single-table\" hydrated single-table page — non-deterministic per debug/single-published-release-2.html, unlike the first snapshot). Added extensive Lib.debug() logging across the whole cross-tab snapshot path: captureSubtableSnapshot/openSubtableAsSingleTableTab (per-row CAA/EAA marker fingerprint + capture timestamp), _hydrateAndRenderFromSnapshotData (entry marker, per-cell before/after _stripTransientCellState fingerprint, resolved addCAA/addEAA, pre-runFilter timestamp), runFilter's single-table branch (pre/post-renderFinalTable, pre/post-initCollapsableColumns, pre/post-initCaaPics with +500ms/+2000ms/+5000ms delayed follow-up dumps), and the CAA enrichment chain itself (_artInitPics/_artEnrichTable/_artEnrichIcon/_artBuildMultiRowArtCell — call counters, per-anchor row/href/enriched-state, and critically anchor.isConnected/artCell.isConnected right before each DOM write, to catch a suspected detached-clone race where a later re-render replaces a row while an earlier _artEnrichIcon async chain — IDB await or network fetch — is still in flight, landing its result on an orphaned clone). New shared helper `_debugDumpCaaColumnState(label)` snapshots every CAA/EAA cell's live state at a named checkpoint. No behavior changes — logging only, gated by the existing sa_enable_debug_logging toggle. Remove once bug 2 is root-caused."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.844",
+    "date": "2026-08-12",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"Show single-table\" (openSubtableAsSingleTableTab / _hydrateAndRenderFromSnapshotData): the third-party \"mb. SUPER MIND CONTROL\" userscript's (jesus2099) own cover-art icon reappeared next to this script's inline CAA thumbnail on a snapshot tab, doubling the visible artwork (see debug/CAA-missing-doubled.org, debug/double-caa-icons.html — a Bruce Springsteen artist-releasegroups \"Album\" sub-table). The existing capture-time strip (`_stripTransientCellState`, WIP-era commit 4432890) only cleans the payload once, on the ORIGINAL tab, before the snapshot is taken — but the \"Show single-table\" tab is a real MusicBrainz page load, so jesus2099 runs its own fresh, independent cover-art lookup there too, well after hydration, landing the icon right back in the cell. Added `initCaaInlineJesus2099Observer()`/`_stripLateJesus2099CaaIcon()`, mirroring the existing AcoustID/ISRC and Disambiguation late-arrival observers: a MutationObserver watches every table for the jesus2099 icon re-appearing in a cell that already carries this script's own `.mb-caa-inline-ph`/`.mb-eaa-inline-ph` inline thumbnail, and removes it reactively. Wired into all three inline-thumbnail call sites (runFilter's single-table branch, the initial single-table load, and renderGroupedTable's tail — covering artist-releasegroups' `_isReleaseGroupsMultiMode()` branch specifically). New setting `sa_enable_caa_inline_jesus2099_observer` (default on)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.843",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Status line (`#mb-status-displays-container`): a Load-from-Disk (or cross-tab \"Show single-table\") load never seeded the leading `globalStatusDisplay` segment the way a fetch-from-web load does (`Loaded N pages (M rows)`), so the first later CAA/EAA or Rels completion's own leading `, ` separator had nothing in front of it — a stray leading comma before e.g. `🎨CAA: 8.2s`. Added the equivalent leading segment (`Loaded N rows from disk file X.gz` / `Loaded N rows from <sourceLabel>`) in `_hydrateAndRenderFromSnapshotData`, resetting the same `_caaGlobalStatusDone`/`_relGlobalStatusDone` flags the fetch path resets so later segments still append correctly."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.842",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "release-tracks: the \"Disambiguation\" column (fed by the native title/recording-name comment, and by the third-party \"mb. INLINE STUFF\" userscript's own async recording-comment lookup — see 9.99.841) is decided once, page-wide, at extraction time: if the button is pressed before that comment has loaded for ANY track, the whole column is skipped, not just the individual row. Added `initDisambiguationObserver()`/`_relocateLateDisambiguation()` (mirroring the existing AcoustID/ISRC late-arrival observer): a MutationObserver now watches each medium's table and, when a comment span shows up after the fact, either moves it into the already-existing Disambiguation column reactively, or — when the column was never created at all — shows a small, dismissable \"Rebuild table\" notice next to the status line instead of silently doing nothing (deliberately not a hand-spliced column injection into the already-rendered/sorted/filtered table, and not a silent auto-reload that would discard the user's current filter/sort/scroll state — clicking the notice just re-runs the normal, already-correct fetch). New setting `sa_enable_release_tracks_disambiguation_observer` (default on)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.841",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "release-tracks: `syntheticColumnExtractors` entries sourcing from `'Disambiguation'` (the `eventParts` extractor, splitting a live-performance comment like jesus2099's \"mb. INLINE STUFF\" userscript's \"(live, 1978‐07‐07: The Roxy Theatre, West Hollywood, CA, USA)\" into Event-Type/Date/Venue/City/State/Country columns) were silently never applied on release-tracks, even though the identical config works on other page types (e.g. instrument-recordings). Root cause: both per-row synthetic-column-extractor pipelines inside `startFetchingProcess()`'s fetch loop, AND the header-injection pass in `cleanupHeaders()`, resolved `sourceColumn` only against a map/set populated exclusively from resolved `activeColumnExtractors` outputs and the `extractMainColumn`-only MB-Name/Comment/MB-Primary-alias triad — never from a plain header/cell that a page's own bespoke pre-processing (here, `applyExtractTrackTitleData()`) creates directly, like release-tracks' \"Disambiguation\" column. instrument-recordings only happened to work because it sources from `'Comment'`, which IS in that triad via its own `extractMainColumn: 'Name'`. Added a page-scoped `headerName → colIdx` lookup (built once from the already-scanned `headerNames`) as a fallback source in all three per-row synthetic-extractor call sites, plus the equivalent \"is this sourceColumn already a real header on this table\" fallback in `cleanupHeaders()`'s header-injection guard (data cells alone were appearing correctly after the first fix, but with no header above them — see debug/row.html vs debug/header.html) — general enough to fix this for any current or future page type/column, not just this one. Also documented the third-party \"mb. INLINE STUFF\" userscript (jesus2099) — whose own recording comment/disambiguation span shares the native `.comment` class and selector, so it was already picked up structurally, just never wired through — at the three code sites that build/detect the Disambiguation column."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.840",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The unique-values dropdown's standard section showed one small-glyph-icon entry per distinct entity href whenever the same text (e.g. a release title) was credited to more than one distinct entity — e.g. several different releases all titled \"18 Tracks\", or a release also showing up with a disambiguation comment as a separate entry (see debug/uvd-enhancement.html, debug/uvd-title.html, debug/glyph-entity-entry.html). These entries were visually indistinguishable from each other and from the plain whole-cell value (same text, tiny unlabeled icon prefix), so there was no way to tell which specific entity a given row would filter to without clicking it and checking. Removed the per-href entity-glyph rows from the standard section entirely; the existing \"Entity info\" section's \"» name:\" entry now offers exactly ONE entry per distinct entity name (with its entity-type glyph icon), which — unlike the removed rows — matches EVERY row containing that name irrespective of its own disambiguation comment or lack of one, and is no longer restricted to entities that have a comment. `_findCellEntityCommentParts()`'s gate broadened from \"has a `.comment` span\" to \"is not a bare cell-wide name\" (`!ref.isBare`), with `comment`/`alias` falling back to `null` for a non-bare entity that has no comment of its own; `_cellMatchesStructureMode()`'s `name:` mode and `_highlightEntityCommentPartMatch()` now match/highlight directly off the ungated `_findCellEntityRefs()` list instead of the comment-scoped helper, so bare occurrences of the name are matched and highlighted too. The now-dead per-href `entityInfo`/`entityHrefCounts`/`entityEntries` aggregation in `openUniqDrop()` and `renderItems()`'s matching render branch were removed; the `MB_UNIQ_ENTITY_HREF_PREFIX`-keyed matching/highlighting/label machinery itself is untouched, so a filter selection saved before this change (e.g. loaded from a saved table export) keeps working."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.839",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "9.99.838's CAA/EAA dropdown-highlight fix missed the item-value (\"▤\") case: a CAA/EAA cell with ≥2 images (summary li + image li's) is itself a qualifying multi-row list to `_findCellListItems()`'s generic ul>li structural detection, so an image's own type text (e.g. \"Poster\") can also be offered/checked as an item-prefixed dropdown entry, not just a plain whole-cell value. `_artHighlightImageLi()` (the async art-cell-rebuild highlighter 9.99.838 also touched) only re-checked the plain-value case after a rebuild, not the item-value one `_highlightUniqItemMatches()` already handled for cells built before the filter changed — so a cell that (re)built AFTER selecting the item-value entry stayed unhighlighted. Added the same item-value check `_highlightUniqItemMatches()` uses (highlighting the whole matching `<li>`, not just its badge/comment span) to `_artHighlightImageLi()`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.838",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Selecting a CAA/EAA image type or comment value (e.g. \"Poster\") from a column's unique-values dropdown correctly filtered the row but never highlighted the matching `.mb-caa-type-badge`/`.mb-caa-art-comment` text — only typing the same value directly into the column filter box did. `getCleanColumnText()` folds each image's own type(s)/comment (stored out-of-band in `ul.dataset.mbArtSearch`, not as visible text) into the CAA/EAA cell's whole-cell value, so a plain dropdown selection like \"Poster\" can exact-match a cell whose only content IS that art-search text — but both places that apply column-filter highlighting (`testRowMatch()`'s `isMultiValueFilter` branch and the CAA/EAA-specific `_artHighlightImageLi()`, used for async art-cell rebuilds) explicitly skipped ALL value-set/dropdown filters, since a normal whole-cell value match has no single sub-element worth highlighting. Added `_highlightUniqArtTypeMatches()` (mirroring the existing `_highlightUniqItemMatches()`/`_highlightUniqEntityMatches()` per-`<li>` pattern, scoped to each image's own type-pill/comment span) and wired it into both call sites."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.837",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The 9.99.836 `columnErasers` fix for doubled CAA inline images didn't actually take effect on `/user/<username>/ratings` (or `tag-value`/`user-tag-value`/`instrument-list`/`artist-credit`) — those pages show several entity types' tables at once (e.g. Artist ratings, Event ratings, Release group ratings, … all on one page), and the per-group table-building pass only rebuilt `activeColumnExtractors`/`activeSyntheticColumnExtractors`/`activeInjectedColumnExtractors`/`activeIntegerColumns` from each group's own `entityFeatures` block — never `activeColumnErasers`. So `applyColumnErasers()` kept using whichever single entity type's erasers (if any) got resolved once at the top of the page, for every group's rows, silently never applying a group's own `columnErasers` entry (including the ones just added). Added the missing `activeColumnErasers` rebuild + per-table colIdx re-resolution alongside the existing extractor rebuild, and added `'artist-credit'` to the pageType list that gets it (it has the same simultaneous-multi-entity-table shape but wasn't in that list at all)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.836",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The \"Release group ratings\" section on `/user/<username>/ratings` (and the matching `/user/<username>/ratings/release_group` \"View all ratings\" overflow page) showed each release group's cover art TWICE — the jesus2099 \"mb. SUPER MIND CONTROL\" userscript's own native `<a href=\".../cover-art\"><span class=\"caa-icon\">` icon, plus this script's own `addCAA` inline thumbnail layered on top of it, since nothing erased the native icon first (unlike other pages using `addCAA` alongside a `columnErasers: […, 'jesus2099']` entry for the same column). Added the missing `columnErasers` entry to both page definitions' 'Release groups' entity features, then audited every other `entityFeatures` block combining `addCAA` with a Release/Release-group-shaped source column and found the identical gap copy-pasted across `artist-credit-entity`, `artist-credit`, `user-tag-value-entity`, `user-tag-value`, `tag-value-entity`, `tag-value`, `collections-releases`, `search` (its 'Releases'/'Release groups'/'Recordings' blocks), and `series-releases`'s own 'Releases' block — fixed all of them the same way."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.835",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed a Location-column split bug where two consecutive same-shaped area levels sharing an identical name (e.g. an event at \"SiriusXM Studio\" in New York City, itself inside New York state — MusicBrainz has separate area entities both literally named \"New York\") rendered as two SEPARATE `<ul><li>` lists jammed into the \"Region\" cell (\"…</ul>, <ul>…\") instead of one merged entry, whenever a flag-decorating userscript (\"More Flags Everywhere\"/\"Canadian Province Flags Everywhere\") decorated the Locality cell's area link only AFTER this script's own extraction ran (always true for paginated rows 2..Max, fetched via a detached `DOMParser` that userscript never sees). `_forceLocalityToRegion()` — the deferred correction that moves a wrongly-placed Locality entry into Region once its subdivision-name match is confirmed — moved Locality's WHOLE `<ul>` wrapper as a sibling of Region's own `<ul>` instead of merging their `<li>` content together. It now detects the `<ul><li>` multi-row wrapping both `splitLocation`/`splitArea` cells always use and merges same-indexed `<li>` pairs' children instead, falling back to the original whole-cell move only when Region has no `<ul>` of its own to merge into (i.e. it was genuinely empty)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.834",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The unique-values dropdown's \"Roles\" section now also picks up `» role:` entries for the plain-text \"Role\" column shown when browsing one artist's OWN events (e.g. `/artist/<mbid>/events`) — previously only the `.artist-roles` list shape (event pages' \"Artists\" column, e.g. `/place/<mbid>/events`) was recognized. `_findCellArtistRoles()` now falls back to splitting that column's flat comma-joined text (MusicBrainz's `commaOnlyListText()` output, e.g. \"main performer, guest performer\", confirmed against the `EventList.js`/`tableColumns.js` source) into individual roles, gated strictly on the cell's own column being named \"Role\" (via `_cleanColHeaderText()`) so no unrelated plain-text column is misread as a role list. Its returned `{li, roles}` shape is renamed to `{container, roles}` since `container` is now a `<td>` for this shape, a `<li>` for the other."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.833",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The unique-values dropdown's visible height (how many entries show before it scrolls) is now configurable via the new \"Unique-Values Dropdown Visible Rows\" setting (default 8, matching the dropdown's previous fixed height) instead of a hardcoded 320px — raise it to see more entries at once. Applied as an inline `max-height` in `openUniqDrop()` (always wins over the unchanged 320px CSS fallback on `#mb-col-uniq-dropdown`), and the same value now drives the upward-flip positioning estimate too, so the flip decision stays accurate at any configured row count."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.832",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The unique-values dropdown's synthetic entries no longer sit under one flat, always-expanded \"Cell structure\" header — they're now grouped into named, independently collapsible sections with their own icon: 🔠 Structure (empty/single/multi-row cell state, artwork/inline-thumbnail presence), 🚩 Flags (track/recording name mismatch, name variation), 🎚️ Credit details (attribute/task/date/instrument/credited-as), 👤 Entity info (name/comment/alias), 🎭 Roles (event role), and 🔗 Relationship icons. Click a section header (or Enter/Space) to collapse/expand it; state is remembered globally by section name across every column and page (GM storage key `mb_sa_uniq_section_collapse`). New `getOrCreateSynSection()`/`SYN_SECTION_META` in `openUniqDrop()` replace the old single `synHdr`/`appendSynDivider()` scattered per family.",
+          "The dropdown's quickfilter now covers the \"Relationship icons\" section too — a pre-existing gap where those entries had no `dataset.mbUniqSynLabel` and were silently skipped by `_applySynBoxQuickFilter()`. Typing a filter also auto-expands any collapsed section that has a match (showing a `(N)` match count in its header) and hides sections with zero matches, so a collapsed section can no longer hide a live search result; clearing the filter restores every section's persisted collapsed/expanded state.",
+          "The \"Entity info\" section's \"» name:\"/\"» alias:\" entries (one per distinct bare entity name/primary alias found in cells with a disambiguation comment) no longer duplicate a name/alias that's already independently selectable elsewhere in the same dropdown — as a plain whole-cell value or as an entity-glyph href row. On a page with many disambiguated same-named entities (e.g. an instrument's \"Artists\" list) this noticeably shrinks the section instead of showing the same name three different ways."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.831",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The unique-values dropdown's flag/area icon(s) (Country/Locality/Region/Area/Location/Country-Date/Recorded-at-place/Mixed-at-place columns) now render inline, immediately in front of the place/area/country name each one decorates, instead of every icon being bunched at the very start of the entry — e.g. \"Southern Tracks in [flag]Atlanta, [flag]Georgia, [flag]United States\" instead of \"[flag][flag][flag]Southern Tracks in Atlanta, Georgia, United States\" (see debug/place-flags.html, debug/place-flags-ucv.html, debug/uv-dropdown.html). `flagIconMap` now stores an ordered array of text/icon segments (built by walking the live cell with a TreeWalker, mirroring `getCleanColumnText()`'s own document-order text extraction) instead of a flat array of cloned icons; `renderItems()` renders those segments inline, preserving the existing quickfilter `<mark>` highlight for the common case of a match that doesn't straddle an icon."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.830",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The unique-values dropdown's \"Cell structure\" section now has per-value entries for an artist's own credited event role (e.g. \"main performer\", \"guest performer\", \"support act\", \"participant\", \"host\") in any column rendering a native MusicBrainz `.artist-roles` list — e.g. the \"Artists\" column on `/place/<mbid>/events` and similar event-listing pages (see debug/event-performer.html). New generic query-time extractor `_findCellArtistRoles()`, reusing `_artTooltipArtistRoles()`'s established direct-text-node-children technique, wired into a new `role:` compound structure-mode alongside the existing `name:`/`comment:`/`alias:` family."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.829",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A bare `<dt>instruments:</dt>` (MusicBrainz's own generic, unspecified-instrument credit — no `/instrument/` link at all, e.g. crediting an artist for playing unspecified instruments — see debug/instr.html) was rejected entirely by `_parseInstrumentVocalsDt`, since it neither carries an instrument link nor ends in the word \"vocals\". This dumped the credit into its own bogus dynamic-fallback column that collided in name with the real shared \"Instruments\" column. Bare \"instruments:\"/\"additional instruments:\" credits (and any recognized attribute-word prefix) now correctly join the same shared \"Instruments\" column, just without a specific instrument-type prefix on the artist's entry."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.828",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The dynamic-fallback \"Part of\" column (a track's \"part of series\" relationship) is now labeled \"Part of series\", and \"Edit of\"/\"Remix of\" are now labeled \"Edit of recording\"/\"Remix of recording\" (confirmed via MusicBrainz's own embedded relationship-type metadata in debug/g.html: `edit` is a recording-to-recording relationship type, not series) — the bare names read ambiguously next to their own glyph icon. New `DYNAMIC_ROLE_DISPLAY_NAME_OVERRIDES` map, checked by phrase key in `_dynamicRoleDisplayName()`, for any future dynamic-fallback column that needs the same treatment.",
+          "`KNOWN_ENTITY_LINK_KINDS` (the entity kinds the dynamic-fallback AR-column glyph/kind-splitting system recognizes) now includes `'recording'` — recording-to-recording relationships like \"Samples\"/\"Music videos\"/\"Instrumental versions\" now get their own recording header glyph, same as every other entity-kind-recognized dynamic column. Confirmed via debug/tracklist-overflow.html's `<span class=\"recordinglink\">` marker on these columns' `<dd>`s."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.827",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The \"Loading overflow tracks\" progress label now shows the total track count MusicBrainz already reports on the medium's own \"currently showing 100 out of 1209 total\" overflow message (e.g. \"medium 1 of 1... (1001 of 1209 tracks) - 1.8s left\"), instead of just the live count with no target to compare against."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Dynamic-fallback AR columns whose relationship is chain-shaped (a primary target plus its own nested area/country decoration, e.g. \"engineered at:\"/\"produced at:\" — a place credit followed by \" in \" and its own area, same shape as the dedicated \"Recorded at place\"/\"Mixed at place\" columns) never got a header glyph icon, because `_glyphClassForDynamicColumn` required exactly one entity kind to be present and a chain always has 2+ (its target kind plus its area/country decoration kind). Confirmed via debug/soul-days.html's \"engineered at:\" credit. Since a merged (`'default'`) dynamic column can only ever be chain-shaped when it holds more than one kind (a genuine multi-kind PEER merge is always split into separate per-kind columns instead — see `_splitColumnByEntityKind`), the glyph is now always taken from the first kind present in `KNOWN_ENTITY_LINK_KINDS`' fixed order (which already lists every real target kind before its own decoration kind), rather than requiring exactly one."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`INSTRUMENT_VOCAL_ATTRIBUTES` (the recognized attribute-word prefixes for the shared \"Instruments\"/\"Vocals\" release-tracks columns) was missing `'other'` — a real MusicBrainz credit attribute (e.g. `<dt> <a href=\"/instrument/…\">Drums (drum set)</a> and other vocals [shout]:</dt>`, `<dt>Other vocals [chant]:</dt>`). Since `_parseInstrumentVocalsDt` rejects the WHOLE `<dt>` when even one component has an unrecognized word, this silently dropped the otherwise-valid \"Drums (drum set)\" instrument component too, dumping the whole credit into its own bogus dynamic-fallback column (e.g. \"Drums (drum set) and other vocals [shout]\") instead of splitting cleanly into \"Instruments\"/\"Vocals\". Added `'other'` to the recognized list."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.826",
+    "date": "2026-08-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`_parseInstrumentVocalsDt()`'s component-splitting (for the shared \"Instruments\"/\"Vocals\" release-tracks columns) split on every `,`/` and ` in a `<dt>`, including ones INSIDE a credited-as `[…]` alt-name bracket — MusicBrainz's own bracket can itself be a comma-joined list, e.g. `guitar [1965 Gibson Firebird, Gibson SG, 12 string PRS, Blackface Fender Super Reverb, Silvertone 40]:` (see debug/credited-as-original.html). This split the bracket in two, left an unclosed `[` that failed the bracket-match, and its now-unstripped garbage words failed the attribute-word check — silently rejecting the whole `<dt>` and dumping the credit into its own bogus dynamic-fallback column named after the raw half-bracketed text (e.g. \"Electric bass guitar [1961 fender p-bass, ampeg b-15]\") instead of the shared \"Instruments\" column. Confirmed on a 100+-row release via debug/credited-as-final-buggy.html. The component split now skips over whole `[…]` brackets before ever considering a `,`/` and ` inside them a boundary."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.825",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The unique-values dropdown's \"Cell structure\" section now has per-value entries for the \"Instruments\"/\"Vocals\" columns' credited-as alternate name — MusicBrainz's own trailing \"[…]\" bracket on a credit (e.g. `guitar [12-string guitar]`, `synthesizer [synth strings]` — see debug/cr-as-original.html / debug/cr-as-final.html). Previously this text rendered but was plain, unfilterable text; it's now wrapped in a `.mb-credit-altname` sentinel (mirroring the existing `attr:`/`task:`/`date:`/`instrument:` compound structure-modes) so it can be checkbox-filtered and highlighted like every other credit detail."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.824",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`extractMainColumn`'s \"Comment\" column never stripped `<i title=\"Primary alias\">` before reading comment text, so on a row whose entity comment was wholly or partly a primary alias, the alias text showed up mislabeled as a disambiguation comment (e.g. artist-works' \"An der schönen blauen Donau, op. 314\" → Comment showed its alias \"On the Beautiful Blue Danube, op. 314\" verbatim — see debug/work-comment-bug.html). The two duplicated inline extraction blocks that built `MB-Name`/`Comment` are now unified into a single new helper, `_extractMainColumnParts()`, which also splits out a new third synthetic column, `MB-Primary alias`. The identical bug in the independent `_tagCountBase()`-backed extractor family (`Name_Comment`, `Name_Date_Comment`, `Name_Comment_Artists`, `tagCount_Name_Comment`, and friends — used by tag-value/tag-count page types) is fixed the same way."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Retired 7 `columnExtractors` entries using `extractor: 'primaryAlias'` whose `sourceColumn` matched their page definition's own `extractMainColumn` — fully redundant now that `extractMainColumn` natively produces `MB-Primary alias`. `tooltipColumns` references to the old `'Primary Alias'` column were updated to `'MB-Primary alias'` on those pages. The 3 page blocks that pair `primaryAlias` with the `_tagCountBase` family (no `extractMainColumn`) keep using it unchanged, since it remains their only source of alias data."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.823",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Same gap as 9.99.822, for `release-group`-typed entity links (e.g. a report page's \"Release group\" column, `/report/SetInDifferentRG\"` — see debug/rep-rg.html) — `_ENTITY_TYPE_GLYPH` didn't recognize the `/release-group/{mbid}` URL path segment at all. Added `'release-group': 'rglink'` — note the CSS class is `rglink`, not a hyphenated `release-grouplink`; the map's key (URL path segment) and its value (CSS class name) are independently-confirmed facts about two different things, not derived from each other."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.822",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The unique-values dropdown's entity-glyph rows, and the new `name:`/`comment:`/`alias:` \"Cell structure\" filtering, silently did nothing for `release`/`recording`-typed entity links — e.g. an artist's \"Releases\"/\"Recordings\" pages, a label/series/instrument page's \"Release\" column, or an artist's \"Relationships\" page \"Title\" column. Root cause: `_ENTITY_TYPE_GLYPH` (the map `_findCellEntityRefs()`/`_findCellEntityCommentParts()` use to recognize an entity link at all) only listed 6 of MusicBrainz's own glyph-marker types, based on an in-code comment claiming no `recordinglink`/`releaselink` CSS class existed anywhere in real MusicBrainz markup — confirmed WRONG via live page snapshots (`<span class=\"recordinglink\">`/`<span class=\"releaselink\">` genuinely render on an artist's Relationships page) and MusicBrainz's own icons stylesheet, which defines both (plus `serieslink`/`instrumentlink`/`rglink`/`collectionlink`/`genrelink`, not added here since nothing reported needs them yet). Added `release: 'releaselink'` and `recording: 'recordinglink'` to `_ENTITY_TYPE_GLYPH` and corrected every stale comment repeating the old 6-type claim."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.821",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Unique-values dropdown's \"Cell structure\" section now supports filtering/highlighting by an entity's own anchored name, its disambiguation comment (excluding any primary alias), and its primary alias, independently combinable — e.g. an artist-works page's \"Work\"/\"Authors\" columns' `<a><bdi>Name</bdi></a> <span class=\"comment\">(<i title=\"Primary alias\">Alias</i>, extra text)</span>` shape. Unlike the existing attr:/task:/date:/instrument: entries (which scan DOM sentinel classes this script injects when building release-tracks' bespoke AR columns), this works on NATIVE, unmodified MusicBrainz markup at query time — via a new `_findCellEntityCommentParts()` helper (extends `_findCellEntityRefs()`) reused identically by the counting pass, `_cellMatchesStructureMode()`'s new `name:`/`comment:`/`alias:` compound modes, and a new `_highlightEntityCommentPartMatch()` — so it works generically across every page/column with this shape (artist Works, report-detail, collection Works tab, search Works tab, and any other column sharing the same native markup), not just release-tracks. Scoped to entities that actually have a disambiguation comment; comment-less entities are unaffected (their name remains independently selectable via the existing href-based entity-glyph rows in the standard section)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.820",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Unique-values dropdown's quickfilter now also filters and `<mark>`-highlights entries inside the \"Cell structure\" section, not just the standard value list below it — typing narrows both sections together, and Escape/the × button clears both. New `_applySynBoxQuickFilter()` toggles visibility and rewrites each entry's own label span in place (synBox's entries are built once and keep their checkbox/checked state across keystrokes, unlike the standard list which fully rebuilds), and keyboard arrow-navigation now skips quickfilter-hidden \"Cell structure\" entries the same way it already skipped filtered-out standard entries."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "\"Cell structure\" section's count badges now right-align with a shared, panel-wide fixed width instead of their own unpadded natural width — symmetric with the standard value list's badges, and now the single source of truth for column-widest-count sizing across BOTH sections, so no badge in the whole dropdown can end up misaligned or overflow its column regardless of which section's number happens to have the most digits."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.819",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "'release-tracks': unique-values dropdown's \"Cell structure\" section now surfaces the \"Instruments\" column's own instrument type (e.g. \"bass\", \"guitar\", \"drum machine\") as its own per-value checkbox entry, exactly like the existing per-attribute/per-task/per-date entries — one entry per distinct instrument actually present, checking one filters to matching rows and highlights the instrument link. `_buildInstrumentVocalsListItem()`'s cloned instrument `<a>` is now tagged with a new `mb-credit-instrument` sentinel class (its own href/click-to-instrument-page behavior untouched) alongside the existing `.mb-credit-attr`/`.mb-credit-date` sentinels, wired through the same `instrument:` compound structure-mode used for `attr:`/`task:`/`date:`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.818",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"Vocals\"/\"Instruments\" columns rendered their attribute word (e.g. \"lead\") and date/task annotation (e.g. \"on 1988-04-27\") merged into one shared comma-joined parenthetical — \"(lead, on 1988-04-27)\" — instead of each in its own separate brackets like every other AR credit column (e.g. \"Recorded at place\"'s \"(additional) (from 1987-01-20 until 1987-03)\"). `_buildInstrumentVocalsListItem()` (the actual builder `_buildInstrumentsTd`/`_buildVocalsTd` share — a separate, less-developed twin of `_buildCreditListItem` that 9.99.817's date-range \"Cell structure\" feature missed entirely) now appends two independent \" (…)\" parentheticals, symmetric with `_buildRecordedAtPlaceTd`/`_buildCreditListItem`'s own convention: \"Bruce Springsteen (lead) (on 1988-04-27)\". This also closes the gap that made 9.99.817's date-range feature not actually work on Vocals/Instruments at all — the date/task annotation there was still a bare, unwrapped text node; it's now wrapped in `.mb-credit-date`/`.mb-credit-task` (via `_wrapDateAnnotationsInText()`/`_isDateAnnotationText()`) the same as every other AR credit column, so the unique-values dropdown's per-date/per-task \"Cell structure\" checkbox entries and highlighting now work correctly here too."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.817",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Unique-values dropdown's \"Cell structure\" section now surfaces AR credit date/date-range annotations (e.g. \"on 1988-04-27\", \"in 1987\", \"from 1987-01-20 until 1987-03\", and the bare \"1988-04-27\" shape special to \"Recorded at event\") as their own per-value checkbox entries, exactly like the existing per-attribute (\"additional\"/\"guest\"/\"assistant\"/\"co\") and per-task entries — one entry per distinct date expression actually present in the column, checking one filters to matching rows and highlights the actual date text. New `<span class=\"mb-credit-date\">` sentinel (mirroring `.mb-credit-attr`/`.mb-credit-task`) is wired into every AR-credit builder that can carry a trailing date annotation: `_buildRecordedAtPlaceTd` (Recorded at place/Mixed at place), the \"Recorded at event\" bare-date cell, `_buildCreditListItem` (Vocals/Instruments/Performer/CREDIT_ROLES), and the generic `_buildKindSplitListTd`/`_buildLabelCreditListTd` (Phonographic copyright by artist/label, Produced for label, and any other AR column routed through the generic multi-kind-split builder) — the last two also correctly split MusicBrainz's own multi-date shape for a single credit (e.g. \"in 1987, in 1988\") into two separate date entries. Detection reuses the existing `_parseCreditDateAnnotation`/`_parseBareParenDate` date-shape recognizers from the live-recording-date-check feature, so both agree on exactly the same date forms."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.816",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Unique-values dropdown's \"~ has name variation\" Cell-structure entry only ever detected MusicBrainz's `<span class=\"name-variation\">` shape (nested inside a relationship/credit list item, e.g. an artist's \"Events\" Location column or \"Works\" Recording artists/Authors columns) — it never detected the CELL-LEVEL `<td class=\"artist-credit-variation\">` shape MusicBrainz uses on release/release-group listings' credited-artist column, so a genuine name variation there produced no entry at all. Replaced the three narrow `span.name-variation` lookups (counting in `openUniqDrop()`, `_cellMatchesStructureMode()`'s `'name-variation'` mode, and `_highlightNameVariationMatch()`) with a new shared `_findNameVariationElements()` helper that checks the cell's own class as well as its descendants, matched by class-name SUFFIX (`[class$=\"-variation\"]`) rather than an enumerated list — generalizes to any current or future similarly-named MusicBrainz `-variation` class, page-type-agnostically, without a new hardcoded selector each time."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.815",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': every collapsable AR credit-role column (Recording engineer, Engineer, Producer, Mixer, Recorded at place, Recorded in area, Mixed at place, Performer, Instruments, Vocals, Phonographic copyright …, Produced for label, and any dynamically-discovered AR column) permanently lost its collapse/expand toggle and multi-row collapsed state the moment ANY filter was applied (typed text or a unique-values dropdown selection) — all their cells snapped to fully expanded with no way to re-collapse them, even after clearing the filter. Root cause: `_initColHeaderGlyph()`'s entity-type glyph marker (injected into these columns' headers only, via `_guardGlyphAgainstEmptySelectorHiding()`) embeds an invisible zero-width space (U+200B) that survives both `initCollapsableColumns()`'s glyph-character-class regex strip AND `.trim()` (U+200B isn't JS whitespace). On the very first render this is harmless (`initCollapsableColumns()` runs before the glyph gets injected), but every subsequent filter re-render reuses the already-glyph-decorated `<thead>` without rebuilding it, so `initCollapsableColumns()`'s own `th.textContent`-based column-name lookup permanently failed to match these columns by name, silently skipping their re-collapse step right after its own cleanup pass had already un-hidden every `<li>` table-wide. Fixed by switching that lookup to the already-existing, already-correct `_cleanColHeaderText()` helper (prefers the stable `th.dataset.colName` `makeTableSortableUnified()` stamped once, over a `textContent` re-derivation) — the same helper `_initColHeaderGlyph()` itself already relies on for its own idempotency check."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.814",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "9.99.813's \"~ has name variation\" filter never actually highlighted the matching `<span class=\"name-variation\">` credit itself (e.g. \"Nick Didia\" on a release's \"Recording engineer\" column, or \"Bruce Springsteen\" on an artist's \"Recording artists\" column) — the checkbox correctly filtered rows but left no visual highlight on the matched name. Added `_highlightNameVariationMatch()` (mirrors `_highlightCreditValueMatch()`'s `attr:`/`task:` handling) and wired it into `testRowMatch()`'s structure-mode highlight pass. As a side effect this also fixes a multi-row cell's collapse toggle (▶N▤) never tinting to signal a hidden match when the matching name-variation credit was inside a COLLAPSED list — the existing `_COLLAPSE_MATCH_SEL`-based hidden-match signalling already looks for `.mb-column-filter-highlight` spans, it just had none to find until this fix started producing them."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.813",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Unique-values dropdown (📊): \"Cell structure\" entries (empty/single/collapsed/expanded/any multi-row cell state, title/name-variation flags, per-attribute/per-task credit-role values, and addCAA/addEAA inline-artwork presence) now get the same ☑/☐ multi-select checkbox behavior as regular value rows — checking one no longer closes the dropdown, and multiple \"Cell structure\" entries (and regular values) can be OR'd together within a column. Internally this folds the old single-select `dataset.mbMultirowMode`/`applyMultiRowStateFilter()` mechanism entirely into the existing checkbox mechanism via a new `MB_UNIQ_STRUCTURE_MODE_PREFIX` sentinel and shared `_cellMatchesStructureMode()` matcher — the legacy mechanism is fully removed, not left as dead code.",
+          "Unique-values dropdown: the column-header 📊 button's tooltip now mentions when that column also has a \"Cell structure\" section available to filter by.",
+          "Unique-values dropdown: entries with a glyph/icon (entity-type marker, flag/area icon, ▤ item marker on regular value rows; ▶/◀/✗/✓/≠/~/🖼️/∅ symbols on \"Cell structure\" entries) now explain that glyph's meaning in their hover tooltip — previously several of these glyphs (entity-type markers especially) had no explanation anywhere in the script."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.812",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "'release-tracks': swapped which icon 9.99.809's live-recording date check uses for each case, per explicit correction — a credit with NO date attribute at all now gets \"⚠️\" (was \"❌\"), and a credit whose date attribute DIFFERS from \"Recording date\" now gets \"❌\" (was \"⚠️\"). Only `_liveDateCheckResult()`'s two icon literals changed; the underlying missing-vs-mismatch detection logic, tooltips' wording, and the 9.99.810/9.99.811 WARNING/ERROR summary buttons (which just tally whichever icon is present) are all unaffected."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.811",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': 9.99.810's WARNING/ERROR summary buttons never appeared even when ⚠️/❌ icons were genuinely present on the page (e.g. real \"Recording engineer\" errors on /release/abc6ad0c-2e02-4141-8275-6943b3553dbf — see debug/h2.html) — both buttons existed in the DOM but stayed permanently empty and hidden. Root cause: `_updateLiveDateFlagButtons()` was only ever called from inside `updateFilterButtonsVisibility()`, and every one of that function's call sites is interaction-driven (`runFilter()`, editing a sub-table filter, \"Load from Disk\") — none of them fire on a plain initial page load with no user interaction, so the buttons were never populated after the first (and typically only) render. Fixed by also calling `updateFilterButtonsVisibility()` from the tail of `finalCleanup()` — the one page-type-agnostic function already called unconditionally once the initial render (single- or multi-table) is fully complete, as well as after disk-load. Also added `Lib.debug('filter', …)` logging to `_countLiveDateFlags()`/`_updateLiveDateFlagButtons()`/`_applyLiveDateFlagFilter()` to make any future issue in this area easier to diagnose."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.810",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "'release-tracks': two new buttons in the \"Tracklist\" header, right before the global filter box — \"(N) WARNING ⚠️\" and \"(N) ERROR ❌\" — each only shown when at least one matching icon (from 9.99.809's live-recording date check) exists on the page. Their tooltip breaks the count down by column (e.g. \"Vocals (2), Recording engineer (1)\"). Clicking one clears every other active filter and shows only the rows containing that icon, reusing the existing global filter/\"Clear all filters\"/status-display machinery, so clearing back to all rows works exactly as it already does for any other filter."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.809",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "'release-tracks': for a live-recording track (\"Recording of work\" carries the \"live\" attribute) with a known \"Recording date\", each entity credited in \"Recording engineer\", \"Vocals\", \"Instruments\", \"Recorded at event\", and \"Recorded at place\" now gets a small ⚠️/❌ icon (native tooltip) whenever its own date attribute doesn't exactly match \"Recording date\": ⚠️ when it has a date but it differs (may be from a different performance), ❌ when it has no date attribute at all. Comparison is an exact string match, with no leniency for differing date precision. Deliberately excludes \"Engineer\"/\"Producer\"/\"Mixer\"/\"Miscellaneous support\"/\"Performer\"/\"Produced for label\"/\"Mixed at place\". New setting: \"Flag live-recording credit dates that don't match 'Recording date'\" (default on), depends on the existing \"Recording of\"/\"Recorded at\"/\"Recorded in\"/\"Mixed at\" columns setting for the \"Recording date\" data itself."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.808",
+    "date": "2026-08-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': fixed the \"Recorded in area\" column header, and any area-typed entry in the 📊 unique-values dropdown (e.g. \"Manhattan\"/\"New York\" inside \"Recorded in area\"'s dropdown), silently rendering with no area icon at all — despite the correct `<span class=\"arealink\">` marker genuinely being present in the DOM with MusicBrainz's own real background-image glyph correctly resolved (confirmed live via DevTools Computed panel: `background-image` resolved to the actual icon, but `display: none` won). Root-caused via a live DevTools Styles-panel walk (with the user) to a real, currently-installed third-party userscript's own injected stylesheet: `span.arealink:empty, a[href*=\"/area/\"] > span.arealink:empty { display: none !important; }` — that script (a \"More Flags Everywhere\"-style enhancement) deliberately hides MusicBrainz's generic native area icon whenever the marker span is EMPTY, since it normally replaces it with a real per-area flag `<img>` (which, once inserted as a child, makes the span no longer `:empty` and the rule stops applying). Our own glyph spans — both the column-header one (`_initColHeaderGlyph`) and the unique-values dropdown's generic per-entity-type marker (`_findCellEntityRefs`'s `glyphClass`, rendered in the dropdown's item-building loop) — are always genuinely empty (a header or a generic \"this entity is an area\" marker has no specific area to show a flag FOR), so they matched `:empty` too and got `!important`-hidden right along with the fallback icon they were never meant to suppress. MusicBrainz's own CSS was never the problem — confirmed via a separately-downloaded, unminified `mb-icons.css`: `.arealink`'s own rule is a plain, unscoped `background-image`, identical in shape/specificity to the already-working `.placelink`/`.eventlink`/`.worklink`/etc.",
+          "New shared `_guardGlyphAgainstEmptySelectorHiding(glyphSpan)` appends a zero-width space (`\\u200B`) text node to any glyph span we create/clone ourselves — a text node with `data.length === 1` does not satisfy the CSS `:empty` pseudo-class's own spec definition (\"no children, or only comment/processing-instruction nodes and zero-LENGTH text nodes\"), so this reliably defeats the third-party selector while staying visually invisible. Called from both `_initColHeaderGlyph()` and the dropdown's entity-marker builder. Applied to every glyph class unconditionally (not just `arealink`, the only one currently affected) since it's cheap and harmless — a pure no-op for users without that userscript installed, since MusicBrainz's own CSS never keys off `:empty` at all — and future-proofs against the same third-party treatment being extended to other entity-type classes later."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.807",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': fixed \"Recorded at event\" silently dropping its own trailing date attribute — e.g. the anchor text already spells out \"1988‐04‐27: Los Angeles Memorial Sports Arena, Los Angeles, CA, USA\", but the separate trailing \" (1988-04-27)\" sibling text right after the anchor (confirmed in `debug/double-ars.html`) was never read at all, only the anchor itself. Now found and appended the same way \"Recording of\"/\"Recorded at place\" already handle their own trailing parentheticals.",
+          "Fixed \"Recorded at place\" silently dropping an ENTIRE second place — reported live against https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd: a track with a separate \"additionally recorded at: The Hit Factory…\" `<dt>` AND a separate \"recorded at: Thrill Hill East…\" `<dt>` (two different studios during the same recording — NOT two places joined inside one `<dd>`, which was already handled) only ever showed the first. Root cause: `_findRecordedAtDt` used a first-match-only `.find()`, exactly the same bug class already fixed once for \"Phonographic copyright (℗) by:\" (see 9.99.783) but never applied here. `_findRecordedAtDt`/`_findMixedAtDt` are now `.filter()`-based, returning every matching `<dt>`; `_buildRecordedAtPlaceTd` now accepts and merges the whole array into one cell, checking each source `<dt>`'s own \"additionally recorded at:\" wording independently (so a merged cell can correctly show \"(additional)\" on one dt's places but not another's).",
+          "Fixed \"Recorded at place\" (and, since it shares the same builder, \"Mixed at place\" — 9.99.805) unconditionally DROPPING its own trailing date attribute (e.g. \"(from 1987-01-20 until 1987-03)\", \"(on 1988-04-27)\") — this was deliberate for the ORIGINAL \"Recorded at place\"-only design (no per-place date context existed), but is wrong now that dates are expected here too (see \"Recorded in area\", 9.99.805, which already keeps its own trailing date). The date is now extracted from each source `<dt>`'s `<dd>` and re-appended AFTER the \"(additional)\" marker on every place `<li>` that `<dt>` produces, e.g. \"The Hit Factory in Manhattan, … United States (additional) (from 1987-01-20 until 1987-03)\" — matching the requested format exactly.",
+          "Fixed the 📊 unique-values dropdown's flag-icon decoration (9.99.785) not covering the new \"Mixed at place\" column (9.99.805) — it shares the exact same `_buildRecordedAtPlaceTd`-built `<span class=\"area-icon\">`/`<span class=\"flag flag-XX\">` shapes as \"Recorded at place\", so — like that column — this was purely a missing name-recognition entry in the dropdown's column allow-list, no new scan logic needed. \"Recorded in area\" needed no equivalent fix — its name already matches the allow-list's generic `endsWith('rea')` check."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.806",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': fixed the \"Vocals\"/\"Instruments\" columns (9.99.802) silently dropping a credited artist's own trailing date attribute — e.g. \"Bruce Springsteen (on 2002-08-29)\"/\"Toby Scott (from 1987-01-20 until 1987-03)\" (confirmed against real data in `debug/therising.html`/`debug/double-ars.html`) rendered as just the bare artist name, date gone — spotted by comparing against a dynamic-fallback column (\"Creative direction\") built via `_buildKindSplitListTd`'s blanket-clone-the-whole-`<dd>` approach, which had ALREADY been preserving trailing dates correctly the whole time, unlike `_buildInstrumentVocalsListItem`'s selective artist-anchor-plus-known-annotations extraction, which never looked for one. `_buildInstrumentVocalsListItem` now also calls the existing `_findCreditSegmentTextAnnotation` (the same free-text-parenthetical fallback \"Miscellaneous support\"/bare-role CREDIT_ROLES columns already use for their own annotations) and merges its result into the SAME trailing parenthetical as the attribute words, comma-separated — e.g. \"Jane Doe (guest/background, on 2002-08-29)\" — mirroring `_buildCreditListItem`'s identical grouping. Deliberately NOT applied to the CREDIT_ROLES columns themselves (9.99.773 already established they drop trailing dates on purpose, and no regression was reported there)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.805",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': fixed the dynamic-fallback AR-column machinery (9.99.804) fragmenting a single place/area \"chain\" credit into multiple columns and/or multiple rows — reported live: \"Mixed at place\"/\"Mixed at area\" split \"A&M Studios in Hollywood\" into two separate columns instead of one (`<span class=\"placelink\">`+`<span class=\"arealink\">` both appearing as direct children of the same `<dd>`, per real markup — `_collectEntityKinds` correctly detected BOTH kinds present, but `_buildKindSplitListTd`'s marker-boundary check unconditionally treated ANY of `KNOWN_ENTITY_LINK_KINDS`'s 7 classes as a segment boundary, regardless of what the caller actually asked to split by), and \"Recorded in\" showed only \"Asbury Park\" instead of the full \"Asbury Park, New Jersey, United States (on 2002-09-20)\" chain (an area's OWN parent-area ancestry legitimately reuses the SAME `arealink` marker class repeatedly — a fundamentally different shape from place-vs-area, where marker-KIND alone can no longer distinguish \"the credited target\" from \"its own decoration\"). New `PEER_SPLIT_KINDS` (`['artist', 'label']` — the only two kinds ever proven to have genuine multiple-PEER-entity semantics, e.g. `_buildPhonographicCopyrightTds`'s mixed artist+label case) restricts `_buildKindSplitListTd`'s boundary detection to markers the CALLER's own `kinds` parameter actually requested — any other recognized-but-unrequested kind marker is now left as ordinary content instead of fragmenting the segment. The dynamic-fallback discovery scan now filters its collected kinds through `_filterPeerKinds` before ever calling `_splitColumnByEntityKind`/`_buildKindSplitListTd`, so a place/event/work/area/series-shaped role safely falls back to `_buildKindSplitListTd`'s existing `kinds.size === 0` \"clone whole `<dd>` verbatim, one row\" behavior — never fragments — protecting any FUTURE unknown relationship shaped this way, not just the two observed cases.",
+          "Added \"Mixed at place\" (new `_findMixedAtDt`, reusing `_buildRecordedAtPlaceTd` as-is — same place-primary/area-decoration shape as the existing \"Recorded at place\") and \"Recorded in area\" (new `_findRecordedInDt`/`_buildRecordedInAreaTd` — cardinality-1 per MusicBrainz's own relationship-type metadata, so no segmentation is attempted at all: only the very first `arealink` marker is dropped, everything else — the full ancestor-area chain, flags, AND the trailing date — is cloned verbatim into one row) as their own DEDICATED fixed handlers rather than relying on the generic dynamic-fallback path, so they get exactly the chain-preserving treatment \"Recorded at place\" already has. `_dtMatchesAnyFixedHandler`/`_classifyArDt` updated to recognize both (plus a bare \"performer:\" — see the Feature entry below) so none of the three can be shadowed by a duplicate auto-discovered dynamic column.",
+          "Wired up the missing column-header relationship glyph icons (`_initColHeaderGlyph`) for \"Instruments\"/\"Vocals\"/\"Performer\" (all `artistlink`), \"Recorded in area\" (`arealink`), and \"Mixed at place\" (`placelink`) — these five new/9.99.802 columns never got the same post-render glyph re-injection every other release-tracks AR column already receives from `renderGroupedTable()`'s tail, so their headers showed no icon at all (confirmed via a side-by-side screenshot comparison against \"Recording engineer\"/\"Mixer\"/etc., which do). New `_glyphClassForDynamicColumn`/`def.features._dynamicArColumnGlyphs` runtime registration (mirroring the existing runtime `collapsableColumns` registration mechanism) extends the same glyph re-injection to dynamically-discovered fallback columns too, whenever exactly one entity kind is present for that role."
+        ]
+      },
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "'release-tracks': added a dedicated \"Performer\" column (each track's bare \"performer:\" relationship, via the existing `_findCreditDts`/`_buildCreditListTd` machinery, no attribute-word prefix), positioned before \"Vocals\"/\"Instruments\" rather than lumped in with the CREDIT_ROLES columns — its own gate/setting reuses `sa_enable_release_tracks_credit_role_columns`."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "'release-tracks': reordered the release-tracks AR columns to the requested final sequence: Recording of work, Recording date, Recorded at event, Recorded at place, Recorded in area, Performer, Vocals, Instruments, Recording engineer, Engineer, Producer, Mixer, Miscellaneous support, Mixed at place, Phonographic copyright (℗) by artist/label, Produced for label, [dynamic-fallback columns], ARs — swapping Vocals before Instruments (previously Instruments-then-Vocals), and reordering `CREDIT_ROLES` to Recording engineer/Engineer/Producer/Mixer/Miscellaneous support (previously …/Mixer/Engineer/Producer/…) so \"Mixer\" sits immediately before the new \"Mixed at place\". The whole header-insertion block now computes its shared \"ARs\" `<th>` reference ONCE (`_arsHeaderRef`) instead of four separate, identically-computed copies — the final column order is simply the order the insertion blocks now run in, following this same shared reference throughout."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.804",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "'release-tracks': every AR relationship type not already covered by a dedicated column (Recording of/date, Recorded at event/place, the credit-role columns, Phonographic copyright, Produced for label, Instruments/Vocals — 9.99.801-803) now gets its own auto-discovered column instead of only ever surfacing as raw text inside \"ARs\" — e.g. \"Conductor\", \"Publisher\", \"Mixed at\", \"Lyricist and composer\", \"Creative direction\", \"Shot at\", \"Version of\", \"Concertmaster\" (all observed in `debug/therising.html`/`debug/double-ars.html`), and any relationship type MusicBrainz adds in the future, with zero code changes needed. New `_classifyArDt(dt)` is the single source of truth for what kind of relationship a given `<dt>` is — checked in priority order: an already-handled fixed column (`_dtMatchesAnyFixedHandler`, covering everything above via the same `roleWords`/`_creditDtMatch` machinery those columns already use, plus the \"recording of:\"/\"recorded at:\" text+glyph checks), then Instruments/Vocals (`_parseInstrumentVocalsDt`), then the dynamic fallback — used by both the page-wide discovery scan and the per-row `<td>` builder so the two always agree. A page-wide scan (mirroring the existing `_pageHasCopyrightByArtist`-style gates) buckets every track's unclaimed `<dt>`s into a `Map<key, {displayName, kinds}>` keyed on the relationship's own literal phrase text (lowercased, trailing \":\" stripped) — so e.g. \"strings arranger:\" and \"cello arranger:\" become two distinct columns, never merged, matching the confirmed keying decision — with the display name sentence-cased from the same text. Map insertion order (first-encountered-in-page) becomes the final left-to-right column order, inserted as a block right after \"Produced for label\", before \"ARs\": reading order becomes curated specific columns → auto-discovered generic columns → full raw ARs. Each discovered column can itself split by entity kind via the 9.99.803 `_splitColumnByEntityKind`/`_buildKindSplitListTd` machinery (e.g. a hypothetical role crediting both an artist and a place on the same release). Gated by a new dedicated setting, `sa_enable_release_tracks_dynamic_ar_columns` (default on), independent of every other release-tracks column setting, since this is the most exploratory/unpredictable piece of the feature. Dynamically-discovered column names are pushed into `def.features.collapsableColumns` at creation time (dedup-guarded) rather than pre-declared in the page definition, since `initCollapsableColumns()` only matches by exact header-text string and the set of names isn't known at authoring time — `def` is the same object as `activeDefinition`, so this registration is visible by the time `initCollapsableColumns()` actually runs. Verified via a standalone jsdom-free unit test covering every previously-unhandled phrase above, plus regression checks confirming \"live recording of:\", \"assistant engineer:\", \"producer and mixer:\", \"phonographic copyright (℗) by:\", and \"produced for:\" all still classify as already-fixed (never shadowed by a duplicate dynamic column), and that a \"strings arranger:\" `<dt>` — rejected by the Instruments parser (9.99.802) specifically because \"arranger\" isn't a recognized attribute word — correctly falls through to become its own \"Strings arranger\" dynamic column instead of silently vanishing."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.803",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Generalized the \"Phonographic copyright (℗) by artist\"/\"…by label\" column-name-uniqueness pattern (the ONLY place this file previously disambiguated a relationship's column name by target entity kind) into reusable machinery, in preparation for the dynamic-fallback AR columns (9.99.804), which need the identical rule applied to an unbounded, unknown-in-advance set of relationship types. New `KNOWN_ENTITY_LINK_KINDS` (`artist`/`label`/`place`/`event`/`work`/`area`/`series` — every native MusicBrainz `<span class=\"{kind}link\">` marker class confirmed present in `dl.ars` credit data) backs `_collectEntityKinds(dd)`/`_collectEntityKindsAcrossDts(dts)` (which entity kinds does a `<dd>`, or set of `<dt>`s, actually credit), `_splitColumnByEntityKind(baseColumnName, kinds)` (decides the final column name(s) — unchanged when `kinds.size <= 1`, one `` `${base} ${kind}` `` per kind otherwise), and `_buildKindSplitListTd(dts, kinds)` (generalizes the original 2-hardcoded-marker `<dd>` segmentation to any number of kinds at once, always returning a `<td>` for every EXPECTED kind — even one that happens to be empty on a particular row — so a caller iterating a fixed column set never gets a missing entry; a `kinds.size === 0` \"no recognized marker at all\" case, not seen in real data, falls back to cloning each `<dd>` verbatim rather than attempting to parse sub-pieces, same philosophy as `_buildLabelCreditListTd`). `_phonographicCopyrightHasKind`/`_buildPhonographicCopyrightTds` are now thin wrappers over the general functions (unconditionally split by `{artist, label}`, preserving this pair's existing independently-gated-columns behavior exactly), and the two header strings are re-derived from `_splitColumnByEntityKind('Phonographic copyright (℗) by', new Set(['artist', 'label']))` instead of being separately hardcoded, so there is exactly one implementation of the naming rule left. Verified byte-identical output against the original two-hardcoded-marker version via a standalone unit test covering `debug/double-ars.html`'s two-separate-dt/dd (artist then label) shape and a `debug/copyright.html`-style single-`<dd>`-with-3-labels shape."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.802",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "'release-tracks': added shared \"Instruments\" and \"Vocals\" columns, extracted from each track's instrument (e.g. \"cello:\", \"harmonium, tabla and vocals:\") and vocals (e.g. \"vocals:\", \"lead vocals:\", \"guest background vocals:\") relationship data (`debug/therising.html`) — previously only ever visible as raw text inside \"ARs\". New `_parseInstrumentVocalsDt(dt)` splits a `<dt>`'s child-node stream into components at \",\"/\"and\" TEXT-node boundaries (an instrument `<a href=\"/instrument/…\">` is never itself a boundary, since a component can embed one), classifying each component as either an instrument credit (at most one instrument anchor, every other word a recognized attribute — Additional/Guest/Solo/Lead/Background/Spoken/Choir) or a vocals credit (last word exactly \"vocals\", every word before it a recognized attribute) — a single unrecognized word anywhere rejects the WHOLE `<dt>`, not just that component, which is what correctly keeps a non-credit phrase like `<dt><a href=\"/instrument/…\">strings</a> arranger:</dt>` (real data) OUT of \"Instruments\": \"arranger\" isn't a recognized attribute word, so the whole `<dt>` is left unclaimed for the dynamic-fallback classifier (9.99.804) to pick up as its own \"Strings arranger\" column instead. A combined credit crediting an artist with both an instrument and vocals in one relationship (e.g. \"harmonium, tabla and vocals:\", confirmed in `debug/therising.html`'s Asif Ali Khan and Group example) is split across both columns for the same artist rather than creating a third \"combined\" column. Every distinct instrument shares the ONE \"Instruments\" column (not one column per instrument) and every vocals variant shares the ONE \"Vocals\" column, each attribute word rendering inline after the artist's name via the same `.mb-credit-attr` sentinel convention every `CREDIT_ROLES` column already uses (9.99.780), so the unique-values dropdown's per-attribute filter entries (9.99.788) work identically here for free. An optional trailing `[altName]` bracket (MusicBrainz's own credited-as alternate instrument/vocal-type name, e.g. \"baritone saxophone [baritone sax]\") is captured per component and appended after the artist's entry. Positioned as their own block between \"Recorded at place\" and the `CREDIT_ROLES` columns (instrumentalists/vocalists read before production credits, matching typical liner-note ordering), gated by a new dedicated setting `sa_enable_release_tracks_instrument_vocal_columns` (default on), independent of the existing credit-role columns setting. Verified against 14 real-markup shapes captured from `debug/therising.html` via a standalone unit test, including the multi-instrument \"guest harmonium, guest tabla and guest vocals:\" case and the bracketed-alt-name \"bell [orchestra bells] and glockenspiel:\" case, plus regression checks confirming \"strings arranger:\"/\"producer and mixer:\"/\"recording engineer:\"/\"phonographic copyright (℗) by:\" are all correctly rejected by this parser."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.801",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Extracted the \"find this track's bare `div.ars` (the sibling with no `AcoustID…`/`ISRC…`-prefixed class), then its direct-child `<dt>`s\" lookup — duplicated verbatim across `_findRecOfDt`, `_findRecordedAtDt`, `_findPhonographicCopyrightDts`, and `_findCreditDts` — into two shared helpers, `_findBareArsDiv(titleTd)` and `_findAllArDts(titleTd)`, and rewired all four onto them with zero behavior change. Also extracted `_findCreditDts`'s per-`<dt>` role-matching body (component-splitting on \",\"/\"and\", strict attribute-word-prefix check) into a standalone `_creditDtMatch(dt, roleWords, attributeVocab)`, usable against one already-in-hand `<dt>` without re-scanning `titleTd` from scratch. Prerequisite refactor for the Instruments/Vocals (9.99.802) and dynamic-fallback (9.99.804) AR-column work — both need to walk EVERY `<dt>` on a track exactly once, classify it, and only fall back to the fixed extractors' own matching rules (via `_creditDtMatch`) for already-handled roles, rather than duplicating this lookup a fifth and sixth time."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.800",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The 📊 unique-values dropdown now offers a fourth entry category: one checkbox per distinct MusicBrainz ENTITY REFERENCE (work/place/area — including country, which MusicBrainz models as just another area — artist/label/event) found anywhere inside a cell, marked with that entity type's own MB glyph (`worklink`/`placelink`/`arealink`/`artistlink`/`labellink`/`eventlink` — the same classes `_initColHeaderGlyph()` already reuses for release-tracks column headers). Generalizes well beyond the \"▤\" per-`<li>`-item feature (9.99.799): it applies to ANY cell — list or not — and surfaces sub-parts of a single value, e.g. \"Recorded at place\" (`debug/expand.html`, `/release/52c6808b-037d-47d5-b0c7-17331c9d36cd`): \"The Hit Factory in Manhattan, New York, New York, United States (from … until …) (additional)\" now offers the place, each area, AND the country as five INDEPENDENTLY selectable/filterable/highlightable entries, instead of only the one giant flattened string. \"Recording engineer\"/\"Phonographic copyright (℗) by artist\" similarly offer the bare credited artist's name (e.g. \"Toby Scott\", \"Bruce Springsteen\"), letting a filter match regardless of the trailing date range/year annotation. Keyed by the entity's own href/MBID (`MB_UNIQ_ENTITY_HREF_PREFIX`, sibling to 9.99.799's `MB_UNIQ_ITEM_VALUE_PREFIX` in the same `dataset.mbUniqValues` checked-value set) rather than by display text — required for correctness, since the same entity can legitimately render under different alias text (a name-variation credit) and two different entities can otherwise share the same display text.",
+          "New shared `_findCellEntityRefs(cell)` (single source of truth for collection, matching, AND highlighting — unlike a naive implementation, this avoids three separate re-implementations of the same DOM-walk) finds every `<a href=\"/{type}/{mbid}\">`+`<bdi>` pair in a cell, in EITHER nesting direction (`<a><bdi>…</bdi></a>`, the common case, or `<bdi><a>…</a></bdi>`, MusicBrainz's plain native \"Artist\" column). Deliberately never requires a glyph span to be present for detection: this script's own cell builders strip the glyph from a column's own PRIMARY entity (already shown once in the column header), so `href`+`<bdi>` is the only reliable signal — confirmed against `debug/expand.html`'s real markup, where \"Recorded at place\"'s country entity uses a THIRD, different glyph shape again (`<span class=\"flag flag-US\">` WRAPPING the anchor, vs. every other area's plain empty SIBLING `<span class=\"arealink\">`).",
+          "An entity only gets offered as its own entry when it's part of something bigger than just its own name in at least one occurrence (`ref.isBare`, computed by comparing the nearest containing `<li>`/cell's cleaned text against the bare entity name) — replaces any raw row-count threshold, and for free correctly skips a column whose cell is ALWAYS just the bare entity (e.g. \"Recording of work\"'s non-list cell, or MusicBrainz's plain `<bdi><a>` \"Artist\" column — both would otherwise just duplicate the existing whole-cell entry with an identical row-set) while still offering one for every entity in a chain or with a trailing annotation. `testRowMatch()`'s value-set filter gains a third, href-membership fallback (`f.hasEntityValues`, mirroring 9.99.799's item-membership fallback's cheap-phase-1/expensive-phase-2 shape) attempted only after the cheaper whole-cell and item checks both miss. Checking an entity entry highlights ONLY its resolved name node (e.g. just \"United States\", never \"Manhattan\"/\"New York\"/\"The Hit Factory\" in the same chain) via the existing `_buildFuzzyTextMatchRegex()`/`highlightCrossTag()` — reused as-is, no new fuzzy-matching logic needed. Verified end-to-end in an isolated jsdom harness against `debug/expand.html`'s real \"Recorded at place\" chain, confirming exactly one entity (the checked one) gets highlighted out of five in the same `<li>`, plus a full re-run of every 9.99.799 regression case to confirm the `combinedVals`/`renderItems()` restructuring (now a 4-way merge: whole-cell / item / entity) introduces no regressions."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.799",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The 📊 unique-values dropdown now offers each unique `<li>` item's own text as a separate checkbox entry (marked with a \"▤\" glyph) for multi-row (≥2-item) list-cell columns, e.g. \"Engineer\" (`debug/multi-row-cell.html`: \"Billy Bowers (US engineer) (additional)\" and \"Karl Egsieker (task: Second Engineer)\" now each get their own entry, alongside the existing merged whole-cell value) — lets you filter to just the rows crediting one specific person even when they usually appear alongside others in a merged cell. Multi-select, OR'd, panel stays open — same interaction as today's plain values; item entries are stored in the same `dataset.mbUniqValues` checked-value set as whole-cell values, distinguished by a reserved-prefix encoding (`MB_UNIQ_ITEM_VALUE_PREFIX`) so no new dataset attribute or restore-on-reopen plumbing was needed. Scoped purely structurally (`_findCellListItems(cell).length >= 2`, the same threshold `_classifyCollapseCell()`'s own \"isMultiRow\" already uses) rather than to any specific column list, so it works generically on every list-cell column, not just credit-role ones — and correctly excludes single-item cells (whose one item is already the existing whole-cell entry) and Annotation/prose cells (no `<li>`s at all). `testRowMatch()`'s value-set filter falls back to per-`<li>` membership testing only when a checked item entry is actually present, so ordinary whole-cell filters pay zero extra cost.",
+          "Checking an item entry highlights the exact matching `<li>` (unlike whole-cell value matches, which are deliberately never highlighted). Building this exposed a real, previously-latent bug: `getCleanColumnText()` (used to compute the checkable value) normalizes whitespace across DOM-node boundaries and strips paren-adjacent spaces, while `highlightCrossTag()` (used to paint the highlight) matches against the RAW, un-normalized text — for any value spanning more than one element (which every credit `<li>` does: artist `<a>`, `<span class=\"comment\">`, `<span class=\"mb-credit-attr\">`/`<i class=\"mb-credit-task\">` are all separate nodes), a literal escaped-string regex silently failed to match at all. New `_buildFuzzyTextMatchRegex()` reverses `getCleanColumnText()`'s specific whitespace/paren-space transformations into a tolerant regex so cross-node highlighting actually lands. Confirmed against the real Karl Egsieker `<li>` in an isolated jsdom harness — its raw DOM text is `\"Karl Egsieker\\n\\t (\\n      task: Second Engineer\\n      )\\n    \"`, nothing like the cleaned, single-spaced value a naive literal-match regex would have required.",
+          "Fixed a second, harder case of the same cross-node-highlight problem, reported live: \"Roger Talkov (engineer) (assistant)\" checked and correctly filtering, but rendering with zero highlight anywhere in the `<li>` (a sibling \"Tim Leitner (assistant)\" entry in the same cell highlighted fine). Root cause: the first fix's regex used `\\s+` (one-or-more) for each normalized space, assuming a real raw whitespace character always exists at that boundary — but `<a>…Roger Talkov</a>&nbsp;<span class=\"comment\">(engineer)</span>` connects the artist name to its disambiguation comment via an ISOLATED `&nbsp;` text node, which `.trim()`s to empty (non-breaking space IS whitespace) and is therefore entirely `FILTER_REJECT`ed by `highlightCrossTag()`'s own walker — contributing ZERO characters to the raw text being matched, not even one whitespace char, so the mandatory `\\s+` failed outright. `_buildFuzzyTextMatchRegex()` now uses `\\s*` (zero-or-more) for every normalized space instead, correctly covering both \"real whitespace bridges this gap\" and \"the only bridging node was itself whitespace-only and vanished entirely\". Verified against the actual live DOM captured from https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd's Engineer column, plus a full re-run of every earlier regression case (Billy Bowers/Karl Egsieker, both checked simultaneously) to confirm no loss of precision from the looser `\\s*`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.798",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "'release-tracks': added a \"Streaming/Downloads\" column, right after \"ARs\" (before AcoustIDs/ISRCs), sourced from the third-party \"MB: Inline per-recording streaming & download links\" userscript's own `<dl class=\"ar\">` container it glues into the Title cell — one `<li>` per site (glyph + name + link, e.g. \"🟢 open.spotify.com: [free streaming]\"), a collapsable multi-row list when more than one site is present (`debug/streaming-downloads.html`). The userscript's own collapsed/expanded toggle state at scrape time (`<dd style=\"display:none\">`, `debug/streaming.html`) is irrelevant — only the content is read. Same page-wide-decision reasoning as \"Video\"/\"Disambiguation\"/\"Recording artist\": only added once ANY track on the release actually has a link (`_pageHasStreaming`, keyed on the `<dd>` having at least one `<a>`, not on string-matching the userscript's own empty-state sentence) — a release with the userscript not installed, or that found nothing anywhere, gets zero overhead and no column at all. When only SOME tracks have data, tracks with the userscript's own \"No streaming or download links found.\" state (`debug/streaming-downloads-empty.html`) just render an empty cell, same as any other page-wide-gated column."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.797",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': fixed column/global filter highlighting silently never appearing on the \"Length\" column specifically (`debug/no-color.html`) — reproduced end-to-end in an isolated jsdom harness against the real extracted `testRowMatch()`/`highlightText()`/`highlightCrossTag()` code, which proved the highlight mechanism itself is correct; the wipe happens one step later. Root cause: jesus2099's \"mb. SUPER MIND CONTROL\" userscript mutates the native Length `<td>` in place, setting `class=\"treleases\"` (see `_repairTreleasesTd()`'s own JSDoc and `debug/tracklist-single-medium.html`, which shows this class co-occurring with jesus2099's own toolzone `<div>`s on a real page). The existing `'jesus2099-any'` columnEraser (9.99.759) already strips those nested toolzone/editbutt/openEdits `<div>`s from the Length column at scrape time, but never touched the `treleases` class living on the `<td>` itself — so it survived into this script's own captured row and every future `cloneNode(true)` copy of it. `runFilter()`'s multi-table path clones from that captured row on every keystroke and inserts the clone into a fresh `<tbody>`; `initTreleasesObserver()`'s `MutationObserver` cannot distinguish that routine self-triggered insertion from a genuine live jesus2099 mutation, so it fired `_repairTreleasesTd()` on our OWN freshly-highlighted cell — which rebuilds the cell from plain `textContent` (correctly preserving the visible \"4:35\" value and its numeric-alignment styling) but has no notion of the active filter, silently discarding the `mb-column-filter-highlight`/`mb-global-filter-highlight` `<span>` `testRowMatch()` had just added. Only the Length column is affected since it's the only column jesus2099 marks this way. Fixed by stripping `class=\"treleases\"` (plus jesus2099's plugin `title`/inline `style`) from the cell in the SAME `'jesus2099-any'` eraser pass, once, at scrape time — this script's own rows are now permanently free of the marker, while `initTreleasesObserver()`/`_repairTreleasesTd()` still correctly react to and repair genuine future jesus2099 mutations on the live page, exactly as before."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.796",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Root-caused the \"vzell\" ISRC-filter injection via cross-browser testing with the user: reproduces on Chrome and Vivaldi, NOT on Firefox, Opera, or Brave — despite Opera/Brave also being Chromium-based, ruling out a generic engine quirk. Vivaldi is documented to license and use Google's own proprietary autofill/prediction backend (the same one Chrome uses); Brave and Opera implement their own independent autofill without it. Confirms this is Chrome's/Vivaldi's NATIVE, built-in credential-autofill — which has a long-standing, deliberate policy (crbug.com/468153) of ignoring `autocomplete=\"off\"` for anything its heuristics decide looks like a login-form field, explaining why neither 9.99.795's `isTrusted` guard nor `autocomplete=\"off\"` stopped it (both target other mechanisms — synthetic JS-dispatched events and the browser's separate form-field-history feature — not this).",
+          "Rewrote `_hardenFilterInputAgainstPasswordManagers()` into `_hardenFilterInputAgainstAutofill()`, adding two techniques specifically documented to defeat Chrome's own native credential-autofill (neither of which respects `autocomplete=\"off\"`): (1) `type=\"search\"` instead of `text` — Chrome's credential heuristic keys off `text`/`email`-type inputs, not `search`-type ones (also more semantically correct for a filter box); new CSS neutralizes the resulting native search-input chrome (rounded corners, native ✕ button) so the visual appearance is unchanged. (2) The field starts `readonly` and only becomes editable on a genuinely trusted `mousedown`/`focus` (gated on `event.isTrusted`, so it can't be defeated by a script/autofill mechanism synthetically dispatching those events either) — Chrome generally will not attempt to autofill a `readonly` field. The global filter's own auto-focus-after-render code (a PROGRAMMATIC, untrusted focus) now explicitly clears `.readOnly` itself right before focusing, since the trusted-only guard would otherwise leave it readonly (blocking the user's very next keystroke) until a second, real interaction. **Confirmed fixed by the user** on the real Chrome session that reproduced the bug.",
+          "'release-tracks': the yomo widget is still hidden (not removed, per 9.99.794's revision) as a first layer of defense, though the newly-confirmed native-Chrome-autofill root cause means the widget's presence/absence was likely never the actual determining factor — kept regardless since it's still a reasonable, low-risk step and satisfies keeping the widget off the final rendered page.",
+          "The `readonly`-until-interaction trick (above) has a visible side effect: Chrome/Vivaldi paint their own default grey background on any `:read-only` input, so every column filter looked greyed-out until clicked at least once (reported by the user with a screenshot right after confirming the main fix). Added a `:read-only { background-color: #fff; }` CSS override for all three filter input types — lower specificity than the yellow `sa_col_filter_active_bg` inline style applied when a filter actually has a value, so an active filter still shows its yellow highlight correctly; only the idle/empty appearance was affected."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.795",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Found the REAL cause of the \"tracklist not rendering with 'Batch Add Recording Aliases' active\" report (9.99.794's widget removal, while still worth keeping, was not actually the fix): the \"ISRCs\" column filter was silently getting populated with the user's own MusicBrainz username (\"vzell\") the moment that other userscript activates, filtering every row out — the table WAS rendering, just with 0 visible rows after an unwanted filter, which looks identical to \"nothing rendered\" at a glance. Confirmed via a real browser console capture (`debug/fail.debug`): our own filter machinery logged `Column filter updated on column 19: \"vzell\"` — a legitimate-looking filter update, not a crash. No Chrome-style yellow `-webkit-autofill` highlight was visible on the field, ruling out Chrome's OWN native credential autofill specifically (that highlight is painted unconditionally via a UA stylesheet no page CSS can suppress) — but not third-party password-manager browser extensions, which insert values through their own content-script logic and don't necessarily show that highlight.",
+          "Hardened all three filter input types (global filter, per-column filter, per-sub-table filter) against exactly this class of interference, three layers deep: (1) their 'input' listeners now reject any event that is neither genuinely user-triggered (`event.isTrusted`, true only for real keystrokes/paste and for events some password-manager extensions and techniques like `document.execCommand('insertText', ...)` produce — impossible to spoof via a bare JS `dispatchEvent`) nor one of our own legitimate internal re-triggers (filter-history entries, \"Clear ALL filters\", a unique-values dropdown entry, the Unicode character picker — all of which now dispatch their synthetic 'input' events through a new shared `_dispatchInternalInputEvent()` helper that marks the event so it still passes) — any other 'input' event is dropped and the injected value discarded before it can silently activate as an active filter; (2) `autocomplete=\"off\"` set on all three (none had it before); (3) the widely-recognized `data-lpignore`/`data-1p-ignore`/`data-bwignore`/`data-form-type=\"other\"`/`data-protonpass-ignore` \"leave this field alone\" attributes (LastPass/1Password/Bitwarden/Dashlane/Proton Pass respectively) via a new shared `_hardenFilterInputAgainstPasswordManagers()` helper — these extensions frequently ignore `autocomplete=\"off\"` on a target field by design (treating it as a common site-authoring mistake) but DO honor their own explicit opt-out markers.",
+          "Got the other userscript's actual source (`debug/other-userscript.js`) and confirmed it contains no code that reads/writes anything resembling a username, and never touches any element outside its own `#yomo-*` fields — ruling out its own JS as the direct writer. Revised theory: a password-manager extension targets `#yomo-src` (a fresh, unlabeled input that script adds near the top of the page) for autofill; 9.99.794's `_removeYomoRecordingAliasesWidget()` used to `.remove()` that whole widget outright, and if an extension's fill attempt against `#yomo-src` gets interrupted by its removal, some extensions retry against a new nearby candidate once their original target vanishes — which could land on our column filter. Changed the function to HIDE the widget (`display: none`, DOM nodes kept, not removed) instead of deleting it, so any pending fill can complete harmlessly against a field nobody reads, rather than being forced to look elsewhere. Unconfirmed against a live password-manager extension — still being diagnosed with the user."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.794",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': when the \"Batch Add Recording Aliases from another Release\" userscript (by YoGo9) is active, its widget (`#yomo-src`/`#yomo-preview`/`#yomo-table`/… controls) — injected as the FIRST CHILD of `div#content`, ahead of the native release header — is now detected via its distinctive `#yomo-preview` id and hidden (`display: none`, DOM nodes kept — see 9.99.795 for why not removed) as the very first release-tracks pre-processing step, before anything else touches the DOM. Keeps the widget off the final rendered page. A safe no-op when that userscript isn't installed. See `debug/other-userscript.html`/`debug/other-userscript.js` (the widget's markup/source) and `debug/tt2a.html` (a full page capture with it present)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.793",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': fixed the h2 \"Credits\" section (native `<div id=\"bottom-credits\">`) still rendering AFTER the Tracklist section on the final page instead of before it, despite 9.99.792's fix keeping its `<h3>` sub-headings intact. Root cause: `_relocateTrailingH2Sections()`'s whole-wrapper relocation (added in 9.99.792) walked the Credits `<h2>` up to the first ancestor that is a direct child of `#content` and inserted it before the Tracklist `<h2>` — but on a real release page both the Tracklist and Credits sections share a common native `<div class=\"tracklist-and-credits\">` wrapper several levels below `#content` (see `debug/credits.html`), so that walk produced `<div class=\"tracklist-and-credits\">` itself — an ANCESTOR of the Tracklist `<h2>` it was about to be inserted before — throwing a DOM `HierarchyRequestError` that the function's own try/catch silently swallowed, aborting relocation for every trailing section, not just Credits. Now finds the lowest common ancestor (\"LCA\") the candidate `<h2>` actually shares with the Tracklist `<h2>` (rather than assuming it's always `#content`) and reorders siblings within that LCA instead — `<div id=\"bottom-credits\">` now correctly moves as one intact unit to sit immediately before the Tracklist section."
+        ]
+      },
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "'release-tracks': the native \"Release\"/\"Release group\" `<h3>` sub-headings inside the h2 \"Credits\" section are now independently collapsible by clicking their text — each toggles only its own following content (`table.details` rows, the release-group cover-art bigbox) within its own `<div id=\"release-relationships\">`/`<div id=\"release-group-relationships\">`, independent of the other and of the outer `<h2>Credits</h2>` toggle. Tooltips are toggle-aware (\"Click to collapse this section\" / \"Click to expand this section\", updated live as the section's state changes) rather than a single static label. Deliberately implemented as its own class (`mb-credits-toggle-h3`) rather than reusing the script's `mb-toggle-h3` data-group-header class — that class drives a large web of unrelated logic (Ctrl+click toggle-all, discography-view filtering, CAA/EAA bigbox restoration) these native, non-data headers have no business participating in; only its visual style (background/hover colors, cursor) is mirrored via a dedicated CSS rule."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.792",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': fixed the h2 \"Credits\" section on the final rendered page losing its native \"Release\"/\"Release group\" `<h3>` sub-headings (everything else inside — `table.details`, the release-group cover-art bigbox — stayed intact). Root cause 1: `renderGroupedTable()`'s initial-render cleanup pass swept EVERY `<h3>` on the page (not just the script's own generated `h3.mb-toggle-h3` section headers) before rebuilding, so the two native `<h3>` inside `<div id=\"bottom-credits\">` were being deleted outright; now skipped via a targeted `el.closest('#bottom-credits')` guard alongside the existing `span.worklink` exception.",
+          "'release-tracks': fixed `_relocateTrailingH2Sections()` (which moves the native \"Credits\" `<h2>` to sit before the main Tracklist `<h2>` on the final page) tearing apart `<div id=\"bottom-credits\">` in the process — it walked the Credits `<h2>`'s own `nextSibling` chain assuming the h2 was a direct child of `#content`, but the h2 is actually nested one level inside `#bottom-credits`, so its \"siblings\" were really `#bottom-credits`'s own children (`div#release-relationships`/`div#release-group-relationships`), which got individually re-parented onto `#content`, abandoning `#bottom-credits` empty. Now detects when the candidate h2 isn't a direct child of `#content` and relocates its whole wrapper element as one intact unit instead. See `debug/credits-original.html` / `debug/credits-final.html`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.791",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': before scraping a release's tracklist, now detects whether native per-track relationship credits (Recording engineer/Mixer/Engineer/Producer/Miscellaneous support) are currently rendered inline vs. consolidated into one combined block at the bottom of the page (MusicBrainz's own `#toggle-credits` control in `<span id=\"medium-toolbox\">`, read via its own button label — \"Display credits at bottom\" means already inline, \"Display credits inline\" means currently at bottom), and if at bottom, clicks the control and awaits its re-render (`MutationObserver` on the button, idle-settle + 5s hard-timeout fallback, same shape as the existing overflow-tracks loader) before any row extraction runs — otherwise each row's own `dl.ars` credit block is missing/incomplete and the credit columns silently under-populate. See `debug/toolbox.org`.",
+          "'release-tracks': the native `<span id=\"medium-toolbox\">` (toggle-credits/expand-all-mediums/collapse-all-mediums controls) is now stripped from the final rendered page via the existing `removeSelectors` mechanism, alongside the two other native `h2.tracklist` controls already removed there — its buttons re-render inert once the page has been restructured."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.790",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Reverted \"Recording of work\"'s attribute words (Acappella/Cover/Demo/Instrumental/Karaoke/Live/Medley/Partial) and \"Recorded at place\"'s \"additional\" attribute from their own separate columns (a word-per-column loop, and a standalone \"Additional\" column respectively) to render INLINE instead — the same `.mb-credit-attr` sentinel convention every `CREDIT_ROLES` column (\"Engineer\"/\"Mixer\"/etc.) already uses, e.g. \"Rave On (live)\" in \"Recording of work\", \"Some Venue (additional)\" appended to every place row in \"Recorded at place\" when a single relationship credits more than one place. Since the unique-values dropdown's per-attribute synthetic filter entries (9.99.788) already scan `.mb-credit-attr` generically with no column-name gating, both columns get that filtering — and its matching-text highlight (9.99.789) — for free, with zero new dropdown code. No more separate attribute-word/\"Additional\" columns to page-wide-gate, so that whole scan (`_presentRecOfAttributes`/`_pageHasRecordedAtPlaceAdditional`) was also removed."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.789",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Rows matching one of the new per-attribute/per-task synthetic dropdown filters (9.99.788) now get the exact matched string highlighted in the same color as any other active column filter — e.g. clicking \"additional\" in the \"Engineer\" column's dropdown highlights just the word \"additional\" inside each matching credit's parenthetical, not the whole cell or the whole `<li>`. A merged multi-person credit with several different attribute/task values in one cell only highlights the specific credit(s) whose own value actually matched."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.788",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added two more synthetic entries to the unique-values dropdown's \"Cell structure\" block, this time dynamic per-distinct-value filters rather than fixed checks: one entry per unique credit attribute word (e.g. \"additional\", \"assistant\", \"co\", \"executive\") and one per unique task string (e.g. \"task: Second Engineer\") actually present anywhere in a credit-role column's visible cells — e.g. the \"Engineer\" column on https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd (`debug/unique-attribute-task.html`). Clicking one filters straight to every row where that specific attribute or task is credited, without typing free text. Attribute-word entries cover every credit-role column (\"Recording engineer\"/\"Mixer\"/\"Engineer\"/\"Producer\"/\"Miscellaneous support\") and \"Produced for label\"; task-value entries cover the 5 credit-role columns only (\"Produced for label\" has no task concept). `_buildCreditListItem`/`_buildLabelCreditListTd` now wrap attribute-word text in a `<span class=\"mb-credit-attr\">` sentinel (and stamp the existing task `<i>` with `mb-credit-task`) so these values are reliably distinguishable from other free text sharing the same parenthetical; both new entry families reuse the exact `dataset.mbMultirowMode` → `testRowMatch()` plumbing every other synthetic entry in this block already uses, via a colon-prefixed compound mode string (`\"attr:additional\"`, `\"task:task: Second Engineer\"`) rather than a parallel filter mechanism."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.787",
+    "date": "2026-08-09",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added two new synthetic entries to the unique-values dropdown's optional \"Cell structure\" block, for additional structural filtering beyond plain text-value matching: \"≠ track/recording name\" for the \"Title\" column, matching rows where a third-party userscript (e.g. jesus2099's) has flagged the displayed track title as different from the underlying recording name — detected via the literal \"≠\" character in the title-anchor's own tooltip (`title=\"track name: …\\n≠rec. name: …\"`), immune to exactly which third-party script produced it; and \"~ has name variation\" for ANY column, matching rows where at least one credited entity (artist, label, place, …) uses a MusicBrainz `<span class=\"name-variation\">` — the same alias/differently-spelled name rendered with a dotted underline on the live page (e.g. \"Nassau Coliseum\" in \"Recorded at place\", \"Andres Bermudezat\" in \"Engineer\"). Both entries appear even on columns that aren't otherwise collapsable (e.g. \"Title\"), showing a \"Cell structure\" header only when more than one synthetic entry would actually appear, matching the existing single-entry \"○ empty cells\" convention."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.786",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the \"extracted column\" header background (9.99.785) never actually appearing on release-tracks' AR-derived columns, despite being applied at `<th>`-creation time in `applyExtractTrackTitleData()`. Root cause: that function's `<th>`s are built during pre-processing against the NATIVE page's own table, BEFORE the real `table.tbl` this script renders even exists — only their text is scraped into the final header list, and those original DOM nodes are discarded, never reused, so styling them has no visible effect. This is the exact same underlying problem 9.99.783 already diagnosed and fixed for the header glyph icons (`_initColHeaderGlyph()`), just not recognized as the same class of bug at the time. New `_stampArColumnHeaderBg(columnName)` mirrors `_initColHeaderGlyph()`'s already-proven approach: a post-render, by-name lookup against the actual rendered `table.tbl`, called from `renderGroupedTable()`'s tail alongside the glyph re-injection calls."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.785",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Every column release-tracks extracts from the Title cell's \"ARs\" data (\"ARs\"/\"AcoustIDs\"/\"ISRCs\", the \"Recording of work\"/\"Recorded at\" family and its attribute columns, and the engineer/mixer/producer/copyright credit columns) now gets the same header background color a generic synthetic column gets on other page types (`mb-extracted-column` + the existing `sa_ui_thead_th_extracted_bg` setting, default a greenish grey) instead of looking identical to the page's own native columns. \"Video\"/\"Disambiguation\"/\"Recording artist\" are unaffected — they're extracted from other parts of the Title/Artist cells, not from `dl.ars`.",
+          "The 📊 unique-values dropdown's flag-icon decoration (`sa_enable_dropdown_flag_icons` setting, existing feature already covering Country/Area/Locality/Region/Location/Place/Country-Date columns) now also covers release-tracks' \"Recorded at place\" column — each dropdown entry gets the same region/country flag icons shown in the table cell itself. No new icon-scanning logic was needed: \"Recorded at place\" cells already use the identical `<span class=\"area-icon\"><img></span>`/`<span class=\"flag flag-XX\">` shapes the existing scan already recognizes; the column just needed to be added to the column-name allow-list."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.784",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the credit-role columns (\"Recording engineer\"/\"Mixer\"/\"Engineer\"/\"Producer\"/\"Miscellaneous support\") silently dropping a credited artist's `<span class=\"comment\">` disambiguation note entirely — e.g. a name-variation-wrapped credit's \"primary alias\" cross-reference (`debug/artist-name-variation-and-primary-alias.html`: \"Louis Lehav\" crediting engineer, with a `(Louis Lahav)` note pointing at the artist's primary alias) rendered as just the bare name, with the note gone. `_findCreditSegmentTextAnnotation` only reads a segment's own TEXT nodes, but this note's parenthesis characters live inside the `<span class=\"comment\">` element itself, not as sibling text, so it was invisible to that lookup. New `_findCreditSegmentCommentSpan` finds this element (also covers a plain artist disambiguation with no name-variation, e.g. \"Clarence Clemons (American saxophonist)\") and clones it verbatim right after the artist anchor, independent of the existing attribute/instrument/task parenthetical.",
+          "Fixed a name-variation-wrapped credit (e.g. \"Louis Lehav\" above) losing its underline styling once extracted, even though the text/link itself was already correct — MusicBrainz underlines a `<span class=\"name-variation\">`-wrapped credit via that span's own CSS class, to visually flag it as an alias rather than the artist's primary name, but the credit-role columns only ever cloned the bare `<a>` inside it, discarding the wrapper. `_buildCreditListItem` (\"Recording engineer\"/\"Mixer\"/\"Engineer\"/\"Producer\"/\"Miscellaneous support\") and the \"Recorded at event\" cell builder both now clone the wrapping `<span class=\"name-variation\">` instead of the bare anchor whenever the credited artist/event uses one."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Renamed the \"Recording of\" column to \"Recording of work\" and \"Produced for\" to \"Produced for label\" (glyphs unchanged) — clarifies what each column actually links to."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.783",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added a \"Produced for\" column to `release-tracks`, extracted from each track's \"produced for:\" relationship (`debug/copyright.html`'s \"Laurel Canyon Ltd.\" example) — labels only, optionally prefixed with \"co\"/\"executive\" attribute words rendered inline after the label's name (e.g. \"Laurel Canyon Ltd. (executive)\"), matching the credit-role columns' own attribute convention. Reuses the existing `sa_enable_release_tracks_credit_role_columns` setting; positioned after both \"Phonographic copyright\" columns, still before \"ARs\"."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed \"Phonographic copyright (℗) by label\" (WIP.26) never appearing at all, even on a release with real label credits for it (`debug/greetings-original.html`). MusicBrainz can render a track's ARs as multiple SIBLING `<dl class=\"ars\">` blocks inside the same bare `div.ars` — one `<dl>` crediting an artist directly, followed by a separate sibling `<dl>` crediting labels, both using the exact same `<dt>phonographic copyright (℗) by:</dt>` phrase. The lookup used a first-match-only `.find()`, so every `<dt>` after the first (the label one, in this case) was silently dropped, both in the page-wide \"does this column exist\" gate and in the per-row cell builder. It now collects every matching `<dt>` across every sibling `<dl>` and merges their `<dd>`s, mirroring `_findCreditDts`'s own \"collect every match\" convention (which was never `.find()`-based and so was unaffected by this bug).",
+          "Fixed every credit-role column header (\"Recording engineer\", \"Mixer\", \"Engineer\", \"Producer\", \"Miscellaneous support\") and both \"Phonographic copyright\" headers (WIP.26) never actually showing MusicBrainz's marker glyph, despite that being WIP.26's stated intent (`debug/greetings-rendered.html`). The glyph `<span>` was appended directly to the `<th>` at creation time, but `makeTableSortableUnified()` unconditionally rebuilds every `<th>` from a plain `textContent` string shortly after (as part of the existing sort-icon/unique-value-count UI setup), discarding any child element added before that point — the same root cause already diagnosed and fixed for \"Recording of\"'s own glyph in an earlier session. The glyph is now injected post-render by the existing `_initColHeaderGlyph()` helper instead, called from `renderGroupedTable()`'s tail alongside the pre-existing \"Recording of\"/\"Recorded at event\"/\"Recorded at place\" calls — the established, already-working pattern for this exact problem, which this feature should have reused from the start."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.782",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the \"Recorded at place\" column (9.99.771/9.99.774) rendering MusicBrainz's empty `<span class=\"placelink\"></span>` glyph marker in front of every place, once per list item (`debug/place-icon.html`) — redundant since that same glyph is already shown once in the column header. The marker is used purely to detect where each place's own content starts (`_buildRecordedAtPlaceTd`'s per-place segmentation), but was also being appended as part of that segment's content into the rendered `<li>`. It's now dropped as soon as it's used as a segment boundary, never appended to the cell. No other content changes — area chains, flags, instrument attributions, and multi-place splitting are all unaffected."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.781",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the \"Engineer\"/\"Mixer\" (and any other pair of) credit columns rendering empty for a track whose `<dt>` credits the same artists under multiple roles at once, e.g. `<dt>engineer and mixer:</dt>` (`debug/Nightshift.html`) — the whole `<dt>` was matched as one unit against a single role's `roleWords`, so `\"engineer and mixer:\"` matched neither the bare \"engineer\" role (trailing word is \"mixer\", not \"engineer\") nor the \"mixer\" role (leading words \"engineer and\" aren't recognized attribute words), leaving both columns empty despite ARs clearly crediting both. `_findCreditDts` now splits each `<dt>`'s body into role components on `,`/` and ` (the same separators MusicBrainz uses to join multiple artists in a `<dd>`) before matching, so `\"engineer and mixer:\"` → `[\"engineer\", \"mixer\"]`, each checked independently — the same `<dd>`'s artists now correctly appear in BOTH \"Engineer\" and \"Mixer\". A `<dt>` with no `,`/` and ` (the common case) splits into one component, so single-role credits are completely unaffected; the per-component attribute-word strictness (e.g. \"recording engineer\" still never matching bare \"engineer\") is unchanged, just applied per component instead of to the whole `<dt>`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.780",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Reverted the per-role attribute-word columns (e.g. \"Mixer (Assistant)\") added in 9.99.773. A credited artist's own attribute words (Additional/Assistant/Associate/Co/Executive) now render inline right after their name, inside the role's own column, instead of as a separate page-wide-gated column per attribute word — e.g. the \"Mixer\" cell now shows a two-item list \"Paul Hamingson (assistant)\" / \"Bob Clearmountain\" instead of a flag in a separate \"Mixer (Assistant)\" column (`debug/attributes.html`). Applies to every credit-role column that can have attribute words: \"Recording engineer\", \"Mixer\", \"Engineer\", \"Producer\". `_creditRoleState`'s page-wide attribute-word union tracking, and the header/row-population code that built one `<th>`/`<td>` per attribute word, are removed — the page-wide scan now only needs to know WHICH roles are used anywhere on the release, not which attribute words."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "When a credited artist has both attribute words and an instrument/task/other annotation, both now render together in one parenthetical, comma-separated, e.g. \"Karl Egsieker (assistant/co, task: Second Engineer)\" instead of the attribute words being dropped from the artist's own list item entirely (they only ever showed up in the now-removed separate attribute column). Multiple attribute words on one credit are joined with \"/\", matching the order they appear in `attributeVocab` (e.g. \"assistant/co\").",
+          "Any per-artist annotation whose text starts with \"task:\" (case-insensitive — MusicBrainz's own \"miscellaneous support:\" wording, but the same check applies to a task annotation on any other credit role too) now renders in italics, e.g. \"Sandy Park (task: string contractor)\" with the task text italicized. Every other annotation kind (a linked instrument, or other free text like \"other vocals [...]\") stays plain, unchanged from 9.99.777/9.99.779."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.779",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the credit-role columns (9.99.773/9.99.777/9.99.778) silently dropping a credited artist's own parenthetical note whenever it's free text rather than a linked instrument or the specific \"(task: …)\" wording — e.g. a bare \"engineer:\" credit's \"(other vocals [Sam Moore vocal])\" note (`debug/missing-engineer.html`/`debug/soul-days.html`) rendered as a bare artist name with the note gone. `_findCreditSegmentTaskAnnotation` (9.99.778, matched only `(task: …)`) is replaced by `_findCreditSegmentTextAnnotation`, which matches ANY `(…)` parenthetical across the segment's text nodes rather than special-casing each wording MusicBrainz happens to use — still only consulted when no instrument anchor was found in the segment, so it can't shadow the instrument case. \"(task: string contractor)\" still renders exactly as before; \"(other vocals [Sam Moore vocal])\" now renders too."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.778",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed a bare \"engineer:\" (and any other) credit column (9.99.773/9.99.777) silently dropping an artist entirely whenever MusicBrainz wraps that artist's anchor in `<span class=\"name-variation\">…</span>` (an alias/disambiguated name), instead of just that one artist's instrument/task annotation being lost. `_buildCreditListTd`'s per-artist segmentation looked for the artist `<a>` only as a direct child of the segment; a name-variation-wrapped artist's only direct child is the wrapping `<span>`, so that segment produced no `<li>` at all — e.g. a bare \"engineer:\" crediting 3 artists where the first is name-variation-wrapped rendered only the other 2, with the first missing without any indication. New `_findCreditSegmentArtistAnchor`/`_findCreditSegmentInstrumentAnchors` now search each segment node's descendants too (not just the node itself), mirroring 9.99.772's identical `_recordedAtDdAnchor` fix for the same name-variation-nesting problem in \"Recorded at place\"."
+        ]
+      },
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added a \"Miscellaneous support\" credit column, extracted from `<dt>miscellaneous support:</dt>` the same way as the other 4 credit-role columns (9.99.773), reusing `CREDIT_ROLES`/`_findCreditDts`/`_buildCreditListTd` with an empty `attributeVocab` (no attribute-word prefix is recognized for this role, so it gets no attribute columns). Each credited artist is paired with their own task annotation when MusicBrainz provides one — rendered as plain parenthetical text, not a link, e.g. \"(task: string contractor)\" — via new `_findCreditSegmentTaskAnnotation`, appended the same way the instrument annotation already is for the other 4 roles, so an artist with a task reads as \"Sandy Park (task: string contractor)\". Gated by the same `sa_enable_release_tracks_credit_role_columns` setting as the other 4 credit-role columns; positioned last in that group, still before \"Recorded at place\"/\"ARs\"."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.777",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the \"Recording engineer\"/\"Mixer\"/\"Engineer\"/\"Producer\" credit columns (9.99.773) turning a credited instrument into a spurious extra list item instead of keeping it attached to the artist it belongs to. MusicBrainz renders a per-artist instrument attribution as \"<artist> <!-- -->(<a href=\\\"/instrument/…\\\">strings</a>)<!-- -->\" right after that artist's own anchor — the previous implementation flattened every `<a>` inside the `<dd>` (both artist AND instrument anchors) into one `<li>` each, so e.g. 3 credited engineers each with an instrument attribution rendered as 6 list items (\"Ian Kagey\", \"strings\", \"Rob Lebret\", \"strings\", …) instead of 3 (\"Ian Kagey (strings)\", \"Rob Lebret (strings)\", …). `_buildCreditListTd` now segments each `<dd>` structurally on its own `<span class=\"artistlink\">` marker (mirroring \"Recorded at place\"'s (9.99.774) `span.placelink`-marker segmentation) so any instrument anchor found within an artist's own segment is appended to that artist's `<li>` as \" (strings)\" instead of becoming its own item. Multiple instrument anchors within one artist's segment (e.g. \"(guitar, bass)\") are all kept, comma-joined — untested against real data, no such example found in any debug snapshot."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.776",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added support for individual ISRC pages (/isrc/<code>, e.g. /isrc/USSM19500019), new pageType 'isrc'. The native page already renders a fixed, fully-populated `<table class=\"tbl mergeable-table\">` (checkbox / Title / Artist / Length) directly below its own correct `<h1>`/`<h2>`, so the new page definition needs no listToTable/insertH2/renameH2ToH3 and no fetch pagination (`non_paginated: true`) — mirrors the existing 'cd-stub'/'auto-editor-election' page definitions. Title's native `.comment` disambiguation span (often live-performance metadata, e.g. \"live, 1975-10-18, early show: The Roxy Theatre, West Hollywood, CA, USA\") is split into a synthetic Comment column via `extractMainColumn: 'Title'`, then further parsed by the existing `eventParts` extractor into Event-Type/Event-Date/Event-Detail/Event-Venue/Event-Venue-Detail/Event-City/Event-State/Event-Country/Event-Additional-Info columns — the same convention already used by 'work-recordings-filtered' and others. Artist's native multi-artist-credit markup is handled by the existing generic column pipeline with no new extractor; Length uses the standard `integerColumns` mm:ss sort convention. The native checkbox `<th>` carries no `checkbox-cell` CSS class (unlike other MusicBrainz merge-tables), so a small pageType==='isrc'-scoped pre-processing step stamps that class on before the header scan runs, letting the existing `sa_remove_checkbox_cell` setting govern it exactly like every other merge-checkbox column, without introducing a new removal mechanism."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.775",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added an \"Additional\" column, right before \"Recorded at place\", for that relationship's own \"additional\" attribute — MusicBrainz renders it as the adverb \"additionally recorded at:\" (confirmed via the embedded relationship-type metadata on the edit-relationships page; unlike the engineer/mixer/producer credit columns' adjective \"additional recording engineer:\" wording), shown here as the canonical word \"additional\" when present, empty otherwise, matching every other attribute column's convention. \"Recorded at event\" gets no equivalent column — its own \"additional\" attribute is never actually rendered in that direction by MusicBrainz. No real-data example of this attribute exists in any captured snapshot; verified via a synthetic jsdom test against the confirmed MB relationship-type template only."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.774",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "\"Recorded at place\" (9.99.771/9.99.772) now renders as a collapsible multi-row list when a single \"recorded at:\" relationship credits more than one place (e.g. a track recorded partly at one studio and partly at another) — one `<li>` per place, each with its own full \"in <area>, <area>, <country>\" chain and flags, instead of previously running every place's content together into one unreadable flat cell. Splitting is structural (a new place starts at each place's own leading glyph marker in the source markup), not by reading the \"and\"/\",\" separator text, so it's immune to wording variations. Per-place extra context (e.g. an \"(<instrument>)\" attribution noting which instrument was recorded at that specific place) is preserved on the correct place's row; only the literal \"and\"/\",\" joining two places is dropped. Single-place rows are unaffected in content (still exactly the place + its area chain), just now wrapped in a one-item list like every other collapsible column in this family — no behavior change for the common case."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.773",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added \"Recording engineer\", \"Mixer\", \"Engineer\", and \"Producer\" credit columns to `release-tracks`, extracted from the same bare `div.ars` as \"Recording of\"/\"Recorded at\" (9.99.770/9.99.771), sourced from sibling `<dl class=\"ars\"><dt>recording engineer:</dt>`/`<dt>mixer:</dt>`/`<dt>engineer:</dt>`/`<dt>producer:</dt>` relationships. Each role can be prefixed with attribute words (Additional, Assistant, Associate, Co, and — Engineer/Producer only — Executive); one column per attribute word actually used on the release is added per role, header-prefixed with the role's own label to avoid collisions (e.g. \"Mixer (Assistant)\"), showing the attribute word when present, empty otherwise — mirrors the existing \"Recording of\" attribute-column pattern. When a `<dd>` credits multiple artists (comma/\"and\"-joined), the cell renders as a collapsible multi-row list, reusing the existing `_findCellListItems`/`initCollapsableColumns` machinery with zero new wiring. Gated by a new dedicated setting, `sa_enable_release_tracks_credit_role_columns` (default on), independent of the existing \"Recording of\"/\"Recorded at\" toggle. Positioned after \"Recorded at place\", still directly before \"ARs\", which is left completely unchanged as always.",
+          "When a track has more than one matching credit for the same role (confirmed in real data: a track with both a bare `<dt>mixer:</dt>` and a separate `<dt>assistant mixer:</dt>`), all matching credits are MERGED into one multi-person list for that role's column, rather than keeping only the first match in document order (the convention every other column in this family uses) — no credited person is silently dropped from a column literally named after their role. Attribute columns become row-level \"was this attribute used by any of the merged entries\" flags rather than tied to one specific person.",
+          "The bare `<dt>engineer:</dt>` role is disambiguated from the compound `<dt>recording engineer:</dt>` role via a strict prefix-word check (every word before the matched role phrase must itself be a recognized attribute word, or the whole `<dt>` is rejected for that role) — a lenient check (silently dropping unrecognized words, like the existing \"Recording of\" attribute parser does) would wrongly accept \"recording engineer:\" as a bare \"engineer\" credit too, since its last word literally is \"engineer:\". Word-splitting uses `/[\\s-]+/` (whitespace OR hyphen), not just whitespace, since MusicBrainz hyphen-attaches the \"co\" attribute to the following word (e.g. \"co-recording engineer:\") — confirmed only in the spec examples (`debug/artist-roles.org`), no real-data example of any hyphenated-prefix or \"co\"/\"executive\"/\"additional\"/\"associate\" combo exists in `debug/full.html`, so this path is unit-tested synthetically only, not against real MusicBrainz markup.",
+          "Trailing dates on these credits (e.g. \"(on 1975-10-18)\", \"(in 2015)\") are dropped entirely — unlike \"Recording of\", which has its own \"Recording date\" column, these 4 roles get no equivalent; the date stays visible in \"ARs\" only. Achieved for free since only `<a>` anchors are ever extracted, never trailing text/comment nodes."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.772",
+    "date": "2026-08-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"Recorded at place\" (9.99.771) now includes the following \"in <area>, <area>, <country>\" chain (area links, region-flag image, CSS-flag-background country span) alongside the place link itself, instead of just the bare venue name — e.g. \"Meadowlands Arena\" now also shows \"in East Rutherford, New Jersey, United States\" with both flags. \"Recorded at event\" is unchanged: its own anchor text already spells out date/venue/location, so no area chain is added there. Both cells still drop the trailing \" (on YYYY-MM-DD)\" (stays in \"ARs\" only, same as before).",
+          "Fixed \"Recorded at place\"/\"Recorded at event\" extracting nothing at all for tracks whose place/event has a name-variation (an alias name differing from the entity's canonical one — MusicBrainz wraps the link one level deeper as `<span class=\"name-variation\"><a>...</a></span>` in that case, mirroring the Title cell's own name-variation markup). The anchor lookup was scoped to `:scope > a`, a direct-child-only query that silently found nothing once the anchor sat inside that extra `<span>`; relaxed to search any depth, since the href-prefix filter (`/place/` vs. `/event/`, disjoint from area links' `/area/`) already picks the right anchor unambiguously regardless of nesting."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.771",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added \"Recorded at event\" and \"Recorded at place\" columns to `release-tracks`, extracted from the same bare `div.ars`'s sibling `<dl class=\"ars\"><dt>recorded at:</dt>...</dl>` relationship (a sibling of \"recording of:\", not nested inside it) already partly covered by the \"Recording of\" feature. MusicBrainz's `<dt>` wording for this relationship varies (`\"recorded at:\"`, `\"recorded at and mixed at:\"`, other \"mixed at\" combinations), so classification is instead by the `<dd>`'s leading native glyph span — `span.eventlink` vs. `span.placelink` — matched via a loose case-insensitive `\"recorded at\"` substring test against the `<dt>` rather than an exact/anchored pattern. Two separate columns (not one shared \"Recorded at\") because the standard sort/filter header pipeline derives each column's identity fresh from its header text on every render — two headers both showing literal \"Recorded at\" would collide and the second would never be created. Cell value is just the cloned event/place link (no \"in <area>, <area>, <country>\" chain, no trailing date — no date extraction this round, deferred). A row with more than one \"recorded at\" entry of the same kind only yields the first, in document order. Reuses the existing `sa_enable_release_tracks_recording_of_columns` setting (label/description updated) rather than adding a new one — same purely-additive family. Positioned after \"Recording date\", still directly before \"ARs\"; \"ARs\" itself is left completely untouched, same contract as \"Recording of\".",
+          "Generalized the post-render column-header glyph injector (`_recOfInitColHeaderGlyph` → `_initColHeaderGlyph(columnName, glyphClass)`) so the same technique now serves all three glyph columns (\"Recording of\"/`worklink`, \"Recorded at event\"/`eventlink`, \"Recorded at place\"/`placelink`) instead of duplicating the function body. The `height`/`margin` CSS fixes already established for `worklink` (see 9.99.770) are reused as-is for the two new glyph classes, since the root cause — any direct child of `.mb-col-hdr-flex`, a flex container, gets its outer display blockified regardless of its own `display` value — is unrelated to the specific glyph class; this is however **unverified in a live browser** for `eventlink`/`placelink` and may need the same kind of Computed-panel comparison `worklink` needed if either icon turns out missing, mis-sized, or misaligned."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.770",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added a new \"Recording of \" column (label includes MusicBrainz's own empty, CSS-styled work-glyph icon, matching the convention it's always shown with) to `release-tracks`, extracted from the \"ARs\" relationship data's `<dt>recording of:</dt><dd><a href=\"/work/...\">Work Name</a>...</dd>` block (see e.g. `/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd`'s DVD-Video medium) — keeps the work link, same as every other entity reference extracted this session. Also adds one column per recording attribute actually used somewhere on the release (`Acappella`, `Cover`, `Demo`, `Instrumental`, `Karaoke`, `Live`, `Medley`, `Partial` — MusicBrainz prefixes the `<dt>` with these, e.g. `\"live cover recording of:\"`), showing the attribute name itself when present (e.g. \"live\") and an empty cell when absent. Both gated by the existing page-wide \"only render when at least one track has a value\" pattern, plus a new master setting `sa_enable_release_tracks_recording_of_columns` (default **on**) for the whole feature. Positioned directly before \"ARs\" (not chained after Title like every other column added this session), attribute columns first, then \"Recording of\", then \"Recording date\" (see below).",
+          "Unlike every prior extraction this session, this one is purely additive: the work link is *cloned*, and the \"ARs\" column's underlying `div.ars` content is never touched, removed, or modified — \"ARs\" keeps showing the exact same full relationship data (work link included, now duplicated) it always has. Per explicit instruction, since the source `dl.ars`'s `<dd>` also holds nested writer/lyricist/publisher `dl.ars` blocks that have no column of their own and must not be lost.",
+          "Fixed the \"Recording of\" column's work-glyph icon not actually appearing in the rendered header — the column's `<th>` is later completely rebuilt from a plain text string by the standard sort/filter header pipeline, which destroys any child element appended to it beforehand. The glyph is now injected afterward instead, mirroring the same established pattern already used for the CAA/EAA column-header thumbnail toggle button. A second issue then surfaced: the glyph element existed in the DOM but stayed invisible, because any direct child of a flex container (`.mb-col-hdr-flex`) has its `display` forced to a block type by the CSS spec regardless of its own `display` value, which strips the line-height-derived height an inline icon normally gets from its native, non-flex context — a childless block box with no explicit height is just 0px tall. Fixed by giving the injected glyph an explicit height. A third issue then surfaced: a trailing space text node after the glyph (added so it wouldn't sit flush against the sort icons) turned out not to survive CSS whitespace-collapsing between two flex-blockified siblings — replaced with an explicit `margin-right` on the glyph itself, which isn't subject to that collapsing. A fourth, mirror-image issue then surfaced on the OTHER side of the glyph: the leading space already baked into the header template's text node (`\"Recording of \"`) collapses for the identical reason, leaving no gap between the label and the glyph — fixed the same way, with an explicit `margin-left` on the glyph.",
+          "Added a new \"Recording date\" column to `release-tracks`, positioned directly after \"Recording of\", extracting the optional `(on YYYY-MM-DD)` date MusicBrainz appends after the work link in the same \"recording of\" `<dd>` (e.g. \"(on 1978-07-07)\" → \"1978-07-07\") — same purely-additive/page-wide-gated pattern as \"Recording of\" itself, under the same `sa_enable_release_tracks_recording_of_columns` master setting.",
+          "Reordered the whole \"Recording of\"/\"Recording date\"/attribute-column group: the attribute columns (`Acappella`/`Cover`/…/`Partial`) now come first, followed by \"Recording of\", then \"Recording date\", then \"ARs\" — previously \"Recording of\" and (then-named) \"Date\" preceded the attribute columns. Renamed \"Date\" to \"Recording date\" at the same time, since a bare \"Date\" read ambiguously next to the release-level tracklist."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.769",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "`release-tracks`' \"Disambiguation\" column no longer keeps the literal `(`/`)` MusicBrainz wraps the comment's text in (e.g. \"(version 1)\" → \"version 1\", \"(live, 1978‐07‐07: …)\" → \"live, 1978‐07‐07: …\") — redundant once the comment has its own dedicated column. New `_stripSurroundingParens()` helper strips a leading `(`/trailing `)` from the cell's first/last actual text node via a `TreeWalker`, handling both structural shapes the comment can appear in (bare text directly in `span.comment`, or wrapped in a nested `<bdi>`).",
+          "`release-tracks`' `integerColumns` now also center-aligns (`align: 'C'`) the native `#` track-number column, matching `Rating`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.768",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the overflow-tracklist progress bar (9.99.766) only ever showing its static initial \"medium 1 of 1...\" text with no fill, instead of live progress. It was previously only updated once a medium fully finished loading — for the common case of a single overflowing medium (often the release's ONLY one), that meant the bar showed nothing but the initial text for the entire load (which can itself take as long as a whole paginated fetch), then flashed a completed state for a moment before the next phase's progress bar overwrote it. Now updates live as each medium's own AJAX response streams rows in, reusing the same `MutationObserver` that already detects completion — fill percentage, track count, and the remaining-time estimate all progress continuously during a medium's own load, not just between mediums.",
+          "Fixed the same progress bar's label text getting clipped on both ends (e.g. \"Loading\" losing its \"Load\") — its container's `min-width` (420px) was sized for the original, shorter paginated-fetch label and never grows to fit longer content since its fill/label children are both `position:absolute` and so don't contribute to the container's own auto width. Bumped to 600px, comfortably fitting the overflow-tracks label's worst case (~73 characters) while staying under the existing 750px cap."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.767",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "`release-tracks`' \"Disambiguation\" column is no longer unconditional — it's now only created once at least one track on the release has the parenthetical comment, same page-wide decision as \"Video\"/\"Recording artist\" (`renderGroupedTable()`'s shared header template forces this to be decided once across the whole release, not per medium). \"AcoustIDs\"/\"ISRCs\" deliberately keep their current behavior (created whenever their setting is on, independent of whether data is present yet) — their data arrives via an async third-party lookup that's often still in progress when this script runs, which is exactly why the late-arrival `MutationObserver` (added earlier this session) exists; gating their column creation on data already being present would make that observer's job impossible most of the time, since it has nowhere to place data once its destination column doesn't exist."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.766",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added a progress indicator for `release-tracks`' \"Load all tracks...\" overflow handling (`loadAllOverflowMediumTracks`), reusing the same inline progress bar the paginated-fetch loop already shows (\"Loading page X of Y... (Z rows) - Ns left\"). On a release with several overflowing mediums (each its own AJAX round trip that can take a few seconds), this phase previously ran silently before the real fetch loop even started, which could look like a hang. Now shows \"Loading overflow tracks: medium X of Y... (Z tracks) - Ns left\", updated once per medium (not continuously during each medium's own wait)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.765",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added a new \"Recording artist\" column to `release-tracks`, extracted from the native `<div class=\"small\">Recording artist:<!-- --> <bdi>…joined artist links…</bdi></div>` MusicBrainz glomms into the Title cell when a track's recording is credited to a different artist than the release itself (e.g. a live cover, a guest performance — see e.g. the \"2 - DVD-Video\" medium on `/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd`). The whole `<bdi>` — preserving every joined artist link and join phrase verbatim, same reasoning as the release-level Artist backfill — is moved (not cloned) into the new column. Like \"Video\", the column's presence is decided once, page-wide (any track on the release has the credit), not per medium, since `renderGroupedTable()`'s single shared header template would otherwise silently drop a `<th>` present on only some mediums' native theads. Positioned directly after \"Artist\" — the release-level credit reads first, with the recording's own (possibly different) credit immediately beside it."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.764",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Renamed `release-tracks`' (9.99.761) \"AcoustID\"/\"ISRC\" columns to \"AcoustIDs\"/\"ISRCs\" (plural, since each cell can hold more than one entry).",
+          "Added a new, conditionally-created \"Video\" column to `release-tracks`, extracted from the native `<span class=\"video\" title=\"This recording is a video\">` icon MusicBrainz glomms into the Title cell for video recordings (see e.g. the \"2 - DVD-Video\" medium on `/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd`) — reuses the existing, generic `ColumnDataExtractor.video` extractor (already used by several other pageTypes, e.g. `artist-recordings`, via a normal `columnExtractors` entry) rather than duplicating its move-the-span/audio-video-sort-key logic. Unlike a normal `columnExtractors` entry, which always creates its synthetic column, the \"Video\" `<th>` is only added when at least one track ANYWHERE ON THE RELEASE (any medium) has the icon, so a release with no video tracks at all never gets a permanently empty column — decided once, page-wide, not per medium: `renderGroupedTable()` builds a single header `<thead>` template from the first `table.tbl` in the document and clones it for every medium, so a `<th>` present on only some mediums' native theads would silently vanish from every rendered table (row data still carries through per group, the header does not). Positioned directly after \"Title\" (before \"Disambiguation\")."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.763",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added a new (default on) `sa_enable_release_tracks_acoustid_isrc_observer` setting: a `MutationObserver`-based reactive fix for the \"AcoustID\"/\"ISRC\" columns (9.99.761) so late-arriving data from a third-party userscript's async AcoustID lookup (e.g. jesus2099's, a network round-trip to acoustid.org per recording — routinely still in progress by the time this script's own one-shot extraction pass ran) reaches those columns instead of being silently missed. Watches each medium's table for AcoustID/ISRC data appearing after the fact and relocates it into the right column reactively, mirroring the existing area-flag/region-correction observer (`initAreaFlagRegionObserver`). Only does anything when at least one of the AcoustID/ISRC column settings is on; zero overhead otherwise. Required switching `applyExtractTrackTitleData()`'s Title-cell cleanup from cloning the recording link/ARs/AcoustID/ISRC content to *moving* it — a clone would silently break this fix, since whatever the decorating userscript is tracking (a live object reference, or a re-query matching the same class/attributes) needs the actual live node to still be present in the rendered table for its own late decoration to land anywhere this observer can see it."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.762",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the \"ARs\"/\"AcoustID\"/\"ISRC\" columns (9.99.761) never getting a collapse toggle on any release-tracks page with more than one medium, even when a cell's content clearly overflowed the clamp. Root cause: `renderGroupedTable()`'s `shouldStayOpen` heuristic (which decides whether a sub-table starts expanded or `display:none`) only recognizes a lone sub-table or the literal categories `album`/`official` — release-tracks' medium-title categories (\"1 - CD\", \"2 - DVD-Video\", …) matched neither, so every medium on a multi-medium release started hidden. `initCollapsableColumns()`/`makeColumnsResizable()` then ran immediately afterward against that still-hidden table — measuring `scrollHeight`/`clientHeight` on a `display:none` element always reads 0 in a real browser, so the overflow check permanently found nothing to add a toggle to, even after the section was later expanded by hand. This bug predates this session but was invisible until `collapsableColumns` was added to release-tracks in 9.99.761. Fixed by keeping every release-tracks sub-table expanded by default regardless of medium count — matching the feature's whole point (consolidating a release's tracklists into one always-visible view) and avoiding the hidden-at-measurement-time trap entirely."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.761",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "`release-tracks`' \"Title\" column no longer shows the raw glommed cell MusicBrainz (and, once it has run, the third-party jesus2099 \"SUPER MIND CONTROL\" script) builds it from — just the clean track title now. Everything else that used to be crammed into that cell is extracted into its own new column: a \"Disambiguation\" column (the parenthetical comment shown when a track's title differs from its recording, e.g. \"(live, 1978‐07‐07: The Roxy Theatre, West Hollywood, CA, USA)\"); an always-present, collapsible \"ARs\" column at the end of the table (the recording's general relationships — engineer, producer, recording-of-work, publisher, … — previously glommed into the Title cell as a `<div class=\"ars\">`), with its own independent collapse-height settings (`sa_enable_ars_collapse`, `sa_ars_column_max_height_em`, `sa_ars_column_max_width`) rather than sharing the \"Annotation\" column's; and two new off-by-default multi-row columns, \"AcoustID\" and \"ISRC\" (`sa_enable_release_tracks_acoustid_column` / `sa_enable_release_tracks_isrc_column`), each entry rendered as its own list row instead of one long comma-separated line — AcoustID entries keep their native ×/+ link/unlink action link. The secondary \"recording name\" line MusicBrainz shows under a track's title when it differs from the underlying recording's name is dropped (not kept in any column, per explicit confirmation). Implemented via a new `applyExtractTrackTitleData()` DOM-surgery pass (mirroring the existing Artist-column backfill's approach) rather than the additive `columnExtractors` mechanism, since cleaning the Title cell in place isn't something that mechanism supports."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.760",
+    "date": "2026-08-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed `release-tracks`' backfilled \"Artist\" column (9.99.758) truncating a multi-artist release credit down to just the first artist — e.g. a release credited to \"Bruce Springsteen & The E Street Band\" rendered as just \"Bruce Springsteen\" in every row. `applyNormalizeMediumTracklists()` was capturing and cloning only the first `<a href=\"/artist/...\">` found inside `p.subheader`'s `<bdi>`, dropping the join text (\" & \", \", \", \" feat. \", …) and any subsequent artist links; it now captures and clones the entire `<bdi>` artist-credit element, matching how MusicBrainz's own native Various-Artists per-track Artist cells already render multi-artist credits."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.759",
+    "date": "2026-08-06",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed `release-tracks`' \"Load all tracks...\" overflow handling (9.99.758) resolving after only a few milliseconds and still rendering the truncated 100-row tracklist: MusicBrainz replaces the triggering `<tr>` with a loading placeholder almost instantly on click, long before the AJAX response with the real rows has arrived, so waiting for that `<tr>` to leave the DOM (the original signal) fired a false-positive completion. `loadAllOverflowMediumTracks()` now parses the expected final track count from the overflow message (\"...out of 1209 total.\") and waits for the `<tbody>`'s actual data-row count to reach it, falling back to an idle-mutation heuristic only when that count can't be parsed; the per-medium timeout was also raised from 15s to 30s to give large tracklists room to load.",
+          "Fixed jesus2099 \"SUPER MIND CONTROL\" hover-toolzone artifacts (Merge/Edit/Open-edits quick-action `<div>`s, e.g. `<div class=\"jesus2099userjs81127toolzone\" style=\"display:block\">`) being cloned into the final rendered Length column with a baked-in `display:block` from whatever hover state was active at scrape time. Added a new generic `'jesus2099-any'` `columnErasers` sentinel (removes any element whose class starts with \"jesus2099userjs\", by prefix rather than one hardcoded suffix, since that userscript embeds an install/version-specific numeric ID) alongside the existing exact-class `'jesus2099'` sentinel, and applied it to `release-tracks`' Length column."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.758",
+    "date": "2026-08-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added a new `release-tracks` pageType for bare release pages (musicbrainz.org/release/<mbid>), consolidating every medium's native tracklist into the standard filterable/sortable multi-table view via a new \"Show all Tracks for Release\" button (gated by the new `sa_enable_release_tracks` setting, default on). Each medium's `<thead>`-embedded title (e.g. \"1 - CD\") is synthesized into a sibling `<h3>` so the existing release-group h3-sibling-walk grouping pipeline can be reused unmodified; the native `<tr class=\"subh\">` header row is promoted into a proper `<thead>`; an `Artist` column is always present, backfilled with the release's main artist credit on non-Various-Artists releases. Mediums truncated by MusicBrainz's own \"Load all tracks...\" overflow link (>100 tracks) are auto-loaded and awaited before the tracklist is scraped, so no tracks are missed. The native \"Edit recording comments\" button and settings-icon are stripped from the reused `h2.tracklist` header once it becomes the global filter/master-toggle anchor. Also adds a new additive `features.removeSelectors` (plural array) post-render step alongside the existing singular `removeSelector`."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.757",
     "date": "2026-08-05",
     "sections": [
