@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.862",
+    "date": "2026-08-13",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Resynced ShowAllEntityData_HELP.txt against every user-facing change since 9.99.746 (114 entries, through 9.99.861). Added: a new RELEASE-TRACKS PAGE section covering the new consolidated release-tracklist page type (pre-processing, always-present/conditional columns, the Recording-of/Recorded-at/Recorded-in/Mixed-at column family, credit-role columns, Instruments/Vocals, auto-discovered dynamic AR columns, the live-recording-date ⚠️/❌ consistency check, AcoustIDs/ISRCs, the ARs column, and the relocated Credits section); a new SHOW SINGLE-TABLE BUTTON section covering the opt-in client-side sub-table snapshot feature. Substantially expanded UNIQUE-VALUES COLUMN DROPDOWN with the configurable visible-row-count setting and a full explanation of the collapsible \"Cell structure\" sub-sections (🔠 Structure, 🚩 Flags, 🎚️ Credit details, 👤 Entity info — now type-labeled/type-sorted, 🎭 Roles, 🔗 Relationship icons — now multi-select, and dynamic \"CAA info\"/\"EAA info\"), entity-reference rows, and human-readable multi-item joins. Added cross-reference bullets to SUPPORTED PAGES, RELATIONSHIPS COLUMN, MULTI-TABLE PAGES, and PROGRESS BAR; updated COLUMN MANAGEMENT's extracted-columns list for the new \"MB-Primary alias\" column. Added the 📑 SHOW SINGLE-TABLE BUTTON and 💿 RELEASE TRACKLIST settings groups to SETTINGS, and extended 🖼️ CAA/EAA ILLUSTRATED DISCOGRAPHY, 🎨 TABLE FILTER CONFIGURATION, and 🛠️ GENERIC SETTINGS with their new settings."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.861",
     "date": "2026-08-13",
     "sections": [

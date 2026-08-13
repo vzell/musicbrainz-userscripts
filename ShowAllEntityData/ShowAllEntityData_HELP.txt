@@ -35,6 +35,8 @@ SUPPORTED PAGES
   individual CD stub pages (/cdstub/<disc-id>), and individual ISRC pages
   (/isrc/<code>)
 • Privileged user accounts (/privileged)
+• Release pages (/release/<mbid>) — full tracklist consolidation across all
+  mediums, see RELEASE-TRACKS PAGE below
 • Also works on the musicbrainz.eu mirror domain, in addition to
   musicbrainz.org
 
@@ -188,10 +190,18 @@ every distinct non-empty value currently visible in that column.
    (21345) value C
   Badge text and background colors are configurable in ⚙️ Settings →
   🎨 TABLE FILTER CONFIGURATION ("Unique-Values Count Badge" settings).
+• Visible row count — the number of entries shown before the panel scrolls
+  is configurable via "Unique-Values Dropdown Visible Rows" in ⚙️ Settings
+  (default 8, min 3, max 50); it also drives the panel's upward-flip
+  positioning decision.
 • Quick-filter bar — a "Quick filter…" input at the top of the panel is
   auto-focused when the panel opens.  Type to narrow the item list in real
   time; matching substrings are highlighted (configurable colors).  A ×
-  button clears the filter.
+  button clears the filter.  The quickfilter narrows every section together,
+  including "Cell structure" and Relationship-icons entries below — a
+  collapsed section auto-expands when it has a match (showing a match
+  count), and a section with zero matches is hidden; clearing the quickfilter
+  restores each section's prior collapsed/expanded state.
 • Multi-select checkboxes — each value shows a ☑/☐ checkbox. Clicking a
   value (or pressing Enter on a keyboard-focused value) toggles its
   checkbox and keeps the panel open instead of replacing the filter and
@@ -199,6 +209,58 @@ every distinct non-empty value currently visible in that column.
   filter. Typing plain text or picking a "Cell structure" entry is mutually
   exclusive with checkbox selection — whichever you use last wins and
   clears the other.
+• "Cell structure" — an optional block of synthetic filter entries below the
+  regular value list, offering structural/derived filters beyond plain text
+  matching.  Appears only when at least one such entry actually applies to
+  the open column, grouped into collapsible named sub-sections (independently
+  collapsed/expanded by clicking their header; state remembered globally by
+  section name, across every column and page):
+    — 🔠 Structure   — empty / single / collapsed / expanded / multi-row cell
+                       state, and inline-artwork presence, each with its own
+                       glyph (▶/◀/✗/✓/≠/~/🖼️/∅ — explained in its own tooltip)
+    — 🚩 Flags        — "≠ track/recording name" (title differs from the
+                       underlying recording name, per a third-party
+                       userscript's tooltip marker) and "~ has name
+                       variation" (an aliased/differently-spelled credited
+                       entity name)
+    — 🎚️ Credit details — one checkbox per distinct credit attribute word
+                       (e.g. "additional"), task value (e.g. "task: Second
+                       Engineer"), date/date-range annotation (e.g. "on
+                       1988-04-27", "from 1987-01-20 until 1987-03"),
+                       instrument type, or credited-as alternate name
+                       (a trailing "[…]" bracket) — each independently
+                       checkable, filtering to matching rows and
+                       highlighting just the matched text
+    — 👤 Entity info   — "» name:"/"» comment:"/"» alias:" entries (labelled
+                       and sorted by entity type, e.g. "» place name:", "»
+                       area name:" — most-specific creative/production
+                       entities first, then event, then geographic), one per
+                       distinct bare entity name / disambiguation comment /
+                       primary alias found in a cell — works on native
+                       unmodified MusicBrainz markup too, not just this
+                       script's own columns
+    — 🎭 Roles         — "» role:" entries, one per distinct artist event-role
+                       found in a native artist-roles list or the plain-text
+                       "Role" column on an artist's own Events tab
+    — 🔗 Relationship icons — one entry per distinct relationship base URL,
+                       multi-select (checkbox, OR'd, panel stays open) like
+                       every other section, with per-icon highlighting on
+                       match
+    — "CAA info" / "EAA info" (CAA/EAA columns only, named after the actual
+                       column header) — "» image type: …" (rendered as an
+                       actual pill matching the table's own style) and "»
+                       image comment: …", one entry per distinct value found
+                       across every image in the column
+• Entity-reference rows (standard section, not "Cell structure") — one
+  checkbox per distinct MusicBrainz entity reference (work/place/area/
+  country/artist/label/event/release/release-group/recording) found
+  anywhere in a cell, each with that entity type's own MB glyph, matched and
+  highlighted independently of surrounding text (e.g. "Recorded at place"'s
+  place + each area + the country are five separately selectable entries).
+• Human-readable multi-item joins — a whole-cell value for a multi-item list
+  (Producer, Engineer, Instruments, tags, …) reads as "Jon Landau, Chuck
+  Plotkin and Bruce Springsteen" instead of a run-on string, for display/
+  tooltip purposes (the underlying filter value is unchanged).
 • Navigate with ↑/↓ / Home / End; Enter toggles the keyboard-focused value's
   checkbox the same way clicking it does.
 • Escape — first press clears the quickfilter (if non-empty); second press
@@ -211,7 +273,8 @@ every distinct non-empty value currently visible in that column.
 • Flag icons (optional, off by default) — enable "Show Flag Icons In
   Unique-Values Dropdown" in ⚙️ Settings to decorate each entry with the same
   flag icon shown in the table cell, for Country/Area/Locality/Region/
-  Location/Place/Country-Date columns (including subdivision icons added by
+  Location/Place/Country-Date columns (including release-tracks' "Recorded
+  at place"/"Mixed at place" columns, and subdivision icons added by
   separately-installed userscripts such as "More Flags Everywhere").
 
 PRE-FILTER (Load from Disk — three-phase dialog)
@@ -450,10 +513,13 @@ COLUMN MANAGEMENT
     — "Video"                   extracted from the Title cell on recording pages
     — "Cancelled"               extracted from the Event cell on event pages
     — "Primary Alias"           extracted from the main entity name cell on
-                                applicable pages
-    — "MB-Name" + "Comment"     extracted from the main entity name cell on
-                                pages that expose the raw MusicBrainz entity
-                                name alongside its disambiguation comment
+                                a handful of tag-value/tag-count-family pages
+                                that have no "MB-Name"/"Comment" split (below)
+    — "MB-Name" + "Comment" + "MB-Primary alias"  extracted from the main
+                                entity name cell on pages that expose the raw
+                                MusicBrainz entity name, its disambiguation
+                                comment, and its primary alias as separate
+                                columns
     — "Last edited date" + "Last edited time"  split from report pages'
                                 native "Last edited" timestamp column
     — "Annotation chars"        character count of the "Annotation" column,
@@ -559,6 +625,91 @@ Web Service.  Relationship icons (favicons) appear after the table renders.
 • Relationship data is cached in IndexedDB (7-day TTL) to avoid re-fetching
   on repeated visits.  Retry buttons (⟳) force a fresh network fetch with
   IDB cache invalidation.
+• The 🔗 Relationship icons section in the unique-values dropdown supports
+  multi-select filtering, like every other section there (see UNIQUE-VALUES
+  COLUMN DROPDOWN above).
+
+RELEASE-TRACKS PAGE  (💿 RELEASE TRACKLIST in ⚙️ Settings)
+--------------------------------------------------------------
+On a bare release page (musicbrainz.org/release/<mbid>) a "Show all Tracks
+for Release" button consolidates every medium's native tracklist into the
+standard filterable/sortable multi-table view (one sub-table per medium).
+• Before scraping, the page is prepared automatically: the third-party
+  "Batch Add Recording Aliases" widget is hidden if present; if per-track
+  credits are shown collapsed at the bottom of the page, MusicBrainz's own
+  "Display credits inline" toggle is clicked and awaited; any native "Load
+  all tracks..." overflow link is auto-clicked and awaited, with its own
+  "Loading overflow tracks: medium X of Y... (Z of N tracks)" progress bar.
+• Always-present columns: "#" (track number), Title (cleaned to just the
+  track title), Length, Rating, and Artist (always backfilled with the
+  release's full multi-artist credit, not just the first artist).
+• Conditional columns, added only when at least one track on the release
+  has the data: Disambiguation (the track/recording comment — late-arriving
+  data is picked up reactively, or a dismissable "Rebuild table" notice
+  appears if the column didn't exist yet), Video (MusicBrainz's own
+  video-recording icon), Recording artist (shown when a track's recording
+  is credited to someone other than the release's own artist, e.g. a
+  cover/guest performance), and Streaming/Downloads (from the third-party
+  "MB: Inline per-recording streaming & download links" userscript).
+• "Recording of"/"Recorded at"/"Recorded in"/"Mixed at" column family —
+  "Recording of work" (with any Acappella/Cover/Demo/Instrumental/Karaoke/
+  Live/Medley/Partial attribute rendered inline), "Recording date",
+  "Recorded at event"/"Recorded at place" (multi-place chains supported,
+  each with its own area/flag chain and "(additional)" marker), "Recorded
+  in area" (full area/flag chain plus date), and "Mixed at place".
+• Credit-role columns — Recording engineer, Engineer, Producer, Mixer,
+  Miscellaneous support, Performer, Phonographic copyright (℗) by artist /
+  by label, and Produced for label; attribute words (Additional, Assistant,
+  Associate, Co, Executive) and instrument/task notes render inline in one
+  parenthetical per credited person, e.g. "Paul Hamingson (assistant)".
+• Instruments / Vocals columns — one shared column each regardless of which
+  instrument or vocal type; attribute-word prefixes (Additional, Guest,
+  Solo, Lead, Background, Spoken, Choir, Other) and a credited-as "[alt
+  name]" bracket render inline after the artist's name.
+• Every other relationship type not covered above gets its own
+  auto-discovered column, named after its own literal relationship phrase
+  (e.g. "Conductor", "Publisher") — splitting into one column per entity
+  kind when the same phrase credits more than one kind of entity.
+• Live-recording date consistency check — for a live-attributed track with
+  a known Recording date, credits in Recording engineer/Vocals/Instruments/
+  Recorded at event/Recorded at place get a ⚠️ (no date attribute at all) or
+  ❌ (date present but differs) icon with an explanatory tooltip when they
+  disagree with Recording date. Two summary buttons, "(N) WARNING ⚠️" and
+  "(N) ERROR ❌", appear in the Tracklist header — clicking one filters to
+  just those rows.
+• AcoustIDs / ISRCs columns (both off by default) — one row per entry,
+  native unlink/suggested-link actions preserved; late-arriving data from
+  third-party lookups is picked up reactively.
+• "ARs" column — every relationship extracted into the columns above still
+  appears here too, unchanged; independently collapsible (▶/▼) with its own
+  configurable clamp height and auto-resize max width.
+• The native "Credits" section is relocated to appear before the Tracklist
+  section; its "Release"/"Release group" sub-headings stay independently
+  collapsible.
+• Relationship-type column headers (work/place/area/artist) carry
+  MusicBrainz's own marker icon once, not repeated on every row.
+
+SHOW SINGLE-TABLE BUTTON  (📑 SHOW SINGLE-TABLE BUTTON in ⚙️ Settings)
+--------------------------------------------------------------------------
+Off by default. When enabled, a relationship/performance/release-listing
+sub-table category that has no MusicBrainz overflow (every row already on
+screen — artist-relationships, label-relationships, place-performances,
+artist-releasegroups, releasegroup-releases) shows a "Show single-table"
+button instead of the usual "Show all N rows" overflow expander.
+• Clicking it opens the currently-rendered rows as a standalone single-table
+  view in a new browser tab, via a client-side snapshot — no MusicBrainz
+  re-fetch, and no data leaves the browser.
+• This differs from "Show all N rows": that button re-fetches from
+  MusicBrainz for genuinely overflowing categories (more rows than shown);
+  "Show single-table" is a client-side snapshot for categories that already
+  show every row, just split across a multi-table layout.
+• Button colours (initial and post-click) are independently configurable in
+  ⚙️ Settings, distinct from the "Show all N rows" button's own colours.
+• On the resulting snapshot tab every h1 action button is disabled (with a
+  tooltip explaining why — using one would trigger a real fetch and replace
+  the frozen snapshot); the heading shows the actual captured category name;
+  CAA/EAA thumbnails, sticky columns, the Relationships column, Picard
+  tagger-column icons, and filtering all work identically to the live page.
 
 EDIT-LISTING PAGES  (🎨 EDITS PAGE in ⚙️ Settings)
 ----------------------------------------------------
@@ -630,6 +781,9 @@ PROGRESS BAR
   light orange → light green as pages are fetched (0 % / 50 % / 100 %).
 • The action button for the current load changes colour in sync.
 • A time estimate ("est. X.Xs left") is shown inside the bar.
+• Release-tracks pages show an additional "Loading overflow tracks" progress
+  bar during pre-processing, before the main fetch's own progress bar
+  appears.
 
 STATISTICS PANEL (📊 or Ctrl+I)
 --------------------------------
@@ -687,6 +841,9 @@ labels and descriptions.  Major setting groups:
     — Enable debug logging
     — Render overflow tables in a new tab (sub-tables limited to 100 rows on
       pages like Artist-Relationships; enable to open them in a new tab)
+    — Enable CAA/EAA artwork diagnostic logging (default: OFF) — extra
+      console logging for the CAA/EAA pipeline, kept on hand for chasing
+      regressions
 
 • 🔬 EXPERIMENTAL FEATURES
     — Collapsible sidebar
@@ -735,6 +892,7 @@ labels and descriptions.  Major setting groups:
     — Unique-Values quickfilter highlight foreground and background colors
     — Unique-Values count badge text and background colors
     — Show Flag Icons In Unique-Values Dropdown (default: OFF)
+    — Unique-Values Dropdown Visible Rows (default: 8, min 3, max 50)
 
 • 📝 ANNOTATION COLUMNS
     — Enable / disable collapsible free-text "Annotation"-style columns
@@ -812,6 +970,29 @@ labels and descriptions.  Major setting groups:
 • 🔍 EXPAND RELEASE GROUPS
     — Enable / disable inline ▶/▼ release-group expand buttons
 
+• 📑 SHOW SINGLE-TABLE BUTTON
+    — Enable "Show single-table" button (default: OFF) — offers a
+      client-side single-table snapshot, opened in a new tab, on
+      non-overflowing relationship/performance/release-listing sub-tables
+    — Button initial and clicked background colors
+
+• 💿 RELEASE TRACKLIST
+    — Enable Release Tracklist consolidation (default: ON) — adds the "Show
+      all Tracks for Release" button on release pages
+    — Show "AcoustIDs" / "ISRCs" columns (both default: OFF)
+    — Watch for late-arriving AcoustID/ISRC data (default: ON)
+    — Watch for late-arriving Disambiguation data (default: ON)
+    — Show "Recording of"/"Recorded at"/"Recorded in"/"Mixed at" columns
+      (default: ON)
+    — Show engineer/producer/mixer/performer/copyright credit columns
+      (default: ON)
+    — Show "Instruments"/"Vocals" columns (default: ON)
+    — Flag live-recording credit dates that don't match "Recording date"
+      (default: ON)
+    — Auto-discover columns for every other relationship type (default: ON)
+    — Enable collapsible "ARs" column (default: ON), collapsed height (em,
+      default 5.6), and max width (px, default 480)
+
 • 🔖 BARCODE HIGHLIGHT
     — Enable / disable identical-barcode highlighting in the Barcode column
 
@@ -828,6 +1009,8 @@ labels and descriptions.  Major setting groups:
     — Big image max display height (px)
     — CAA/EAA hover highlight colour
     — Request concurrency limit
+    — Watch for late jesus2099 cover-art icon re-injection (default: ON) —
+      prevents doubled cover art on "Show single-table" snapshot tabs
 
 • 🗄️ ART ARCHIVE INDEXEDDB CACHE
     — Enable / disable the three-tier IDB artwork image cache
@@ -908,6 +1091,9 @@ MULTI-TABLE PAGES
 • Ctrl+Click sort applies independently per sub-table.
 • Overflow sub-tables exceeding 100 rows can optionally be opened in a new
   browser tab (configurable in ⚙️ Settings → 🛠️ Generic Settings).
+• Sub-tables with no MusicBrainz overflow can optionally offer a "Show
+  single-table" button instead — see SHOW SINGLE-TABLE BUTTON above (off by
+  default).
 
 PAGE RELOAD NOTICE
 ------------------
