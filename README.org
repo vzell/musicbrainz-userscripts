@@ -93961,7 +93961,23 @@ Use our new _findCellEntityCommentParts(cell) helper (extends _findCellEntityRef
 https://musicbrainz.org/report/DiscogsLinksWithMultipleArtists
 
 
-* TODO make the "Space" key also select the current entry inside the unique value drop down menu
+* TODO plan: make the "Space" key also select the current entry inside the unique value drop down menu
+
+Currently the space key doesn't select an entry in the unique value drop down, only when clicking with the mouse.
+
+1.)
+
+Initially when the unique drop down is opened, the quick filter has the focus, which is the right thing in case the user want to enter a filter experssion
+
+2.)
+
+The up/down arrow keys correctly move the cursor over the entries therby highlighning the curretn row. Also the "Pos1"
+and "End" key correctly position the highlight bar on the first/last entry in the unique value drop down menu
+
+3.)
+
+It should be possible to additionally use the "Space" key to toggle the checkbox on the currently select entry
+
 
 * TODO split "3421 w/special guest Miss Red" on https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b in column "Artist"
 
