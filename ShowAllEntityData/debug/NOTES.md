@@ -5431,3 +5431,52 @@ new `entityNameAnyValueCounts`/`entityNameGlyphMap` maps, and removal of
 the now-dead `entityInfo`/`entityHrefCounts`/`entityEntries` aggregation).
 
 `node --check ShowAllEntityData.user.js` passed after every edit.
+
+---
+
+## 2026-08-14 — /reports: extract chaban's report-change-indicator (v9.99.867)
+
+**Snapshot**: `chaban.html` — the full `/reports` page DOM with the
+third-party "MusicBrainz: Reports Statistics" userscript (by chaban)
+active. Each `<li>` under a category `<h2>`/`<ul>` shows, after its report
+`<a>` link:
+```html
+<span> <span class="report-change-indicator" style="color: green;">▼ -1 (-0.0%) (1 day ago)</span></span><span> </span>
+```
+Color is `green`/`red`/`grey` depending on direction. Confirmed variants
+across the snapshot: with percent (`▼ -1 (-0.0%) (1 day ago)`), without
+percent (`↔ 0 (1 day ago)`, on `style="display:none"` rows like
+`DuplicateRelationshipsReleaseGroups`), and a "no prior baseline" shape
+with no arrow/when at all (`(New: 260790 items)`, on
+`RecordingTrackDifferentName`).
+
+`applyListToTable`'s Structure J (the `reports-index` `<h2>`+`<ul>` → table
+converter, `_root.querySelectorAll('h3, h2')` branch) clones every child
+node of each `<li>` into the single "Report" `<td>` — so this indicator
+span, when chaban's script is active, ends up living inside that same cell
+alongside the report link.
+
+**Feature (9.99.867)**: new `ColumnDataExtractor.reportChangeIndicator`
+extractor, wired via `reports-index`'s page definition
+(`columnExtractors: [{ sourceColumn: 'Report', extractor:
+'reportChangeIndicator', syntheticColumns: ['Delta', 'When'] }]`), splits
+`.report-change-indicator`'s text on a trailing `(<when> ago)` into "Delta"
+(everything before) and "When" (the "ago" phrase, parens stripped) — the
+"(New: … items)" shape doesn't match that pattern, so it's left whole in
+Delta with When blank. Both synthetic cells get `.style.color` copied from
+the source span so they match the original page's coloring. Source
+"Report" cell is left untouched (matches every other extractor in this
+registry). Columns are always declared for this page (per
+`AskUserQuestion` decision during planning) — empty for every row when
+chaban's script isn't active, exactly like every other extracted column in
+this script (e.g. "Cancelled" on Events). Tooltip text added to
+`_synthColTooltip()`'s `'reportChangeIndicator'` case, naming the source
+userscript explicitly.
+
+Confirmed via research that the existing `columnExtractors` pipeline
+already works unmodified for `tableMode: 'multi'` pages — `reports-index`
+already routes through it (Branch B of `startFetchingProcess`'s row loop,
+and `renderGroupedTable()`'s single `cleanupHeaders(templateHead)` +
+per-group `cloneNode(true)`) with no additional wiring needed.
+
+`node --check ShowAllEntityData.user.js` passed after every edit.

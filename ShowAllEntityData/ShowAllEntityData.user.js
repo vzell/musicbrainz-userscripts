@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.866+2026-08-14
+// @version      9.99.867+2026-08-14
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -4149,6 +4149,64 @@
             }
 
             return [tdName, tdComment, tdDescription];
+        },
+
+        /**
+         * Splits the optional "MusicBrainz: Reports Statistics" userscript's
+         * (by chaban) change-indicator span — injected into each /reports row
+         * before this script runs, shaped
+         * `<span class="report-change-indicator" style="color: green;">
+         * ▼ -1 (-0.0%) (1 day ago)</span>` — into two synthetic columns:
+         * "Delta" (the arrow + count [+ percent] prefix, e.g. "▼ -1 (-0.0%)")
+         * and "When" (the trailing "N ago" phrase, with its wrapping
+         * parentheses stripped, e.g. "1 day ago"). Both synthetic cells are
+         * colored to match the original span's inline `color` (green/red/
+         * grey) so they read the same as the native page. The source
+         * "Report" cell is left untouched, same as every other extractor in
+         * this registry (e.g. splitLocation/dateParts keep their own source
+         * column intact alongside the derived columns).
+         *
+         * Gracefully returns two empty <td>s when the span isn't present —
+         * i.e. when the chaban script isn't installed/active, or hasn't
+         * rendered yet. No error, no placeholder text.
+         *
+         * A trailing "(<when> ago)" is the only shape reliably shared across
+         * chaban's variants ("▼ -1 (-0.0%) (1 day ago)", "↔ 0 (1 day ago)").
+         * A report with no prior baseline renders a differently-shaped
+         * "(New: 260790 items)" instead — that doesn't match the "ago"
+         * pattern, so it's left whole in Delta, with When blank.
+         *
+         * Synthetic columns: ['Delta', 'When']
+         *
+         * @param   {HTMLTableCellElement} sourceCell  The "Report" column's <td>.
+         * @returns {HTMLTableCellElement[]}            [tdDelta, tdWhen]
+         */
+        reportChangeIndicator(sourceCell) {
+            const tdDelta = document.createElement('td');
+            const tdWhen  = document.createElement('td');
+
+            const indicator = sourceCell && sourceCell.querySelector('.report-change-indicator');
+            if (indicator) {
+                const text  = indicator.textContent.trim();
+                const color = indicator.style.color || '';
+                const m = text.match(/^(.*)\s\(([^()]*\bago)\)$/);
+                const deltaText = (m ? m[1] : text).trim();
+                const whenText  = m ? m[2].trim() : '';
+
+                const deltaSpan = document.createElement('span');
+                deltaSpan.textContent = deltaText;
+                if (color) deltaSpan.style.color = color;
+                tdDelta.appendChild(deltaSpan);
+
+                if (whenText) {
+                    const whenSpan = document.createElement('span');
+                    whenSpan.textContent = whenText;
+                    if (color) whenSpan.style.color = color;
+                    tdWhen.appendChild(whenSpan);
+                }
+            }
+
+            return [tdDelta, tdWhen];
         }
     };
 
@@ -12693,6 +12751,15 @@
         // Reports index (/reports) — 14 category sections (Artists, Events, Labels,
         // Release groups, …), each a static <h2>+<ul> list of report links. No
         // pagination (complete single-page list) → non_paginated: true.
+        //
+        // Delta/When: extracted from the optional "MusicBrainz: Reports
+        // Statistics" userscript's (chaban) change-indicator span, when that
+        // script is installed/active (its markup ends up cloned into the
+        // "Report" cell by applyListToTable's Structure J — see
+        // ColumnDataExtractor.reportChangeIndicator). Always declared, same
+        // as every other extracted column in this script (e.g. Cancelled on
+        // Events) — the cells are simply empty for every row when that
+        // script isn't active.
         {
             type: 'reports-index',
             match: (path) => path.match(/^\/reports\/?$/),
@@ -12700,7 +12767,10 @@
             features: {
                 renameH2ToH3: true,
                 insertH2: 'Reports',
-                listToTable: [ '' ]
+                listToTable: [ '' ],
+                columnExtractors: [
+                    { sourceColumn: 'Report', extractor: 'reportChangeIndicator', syntheticColumns: ['Delta', 'When'] }
+                ]
             },
             tableMode: 'multi',
             non_paginated: true
@@ -35825,6 +35895,12 @@ a { color: #1565c0; }`;
                 return `Injected column — populated asynchronously after the table renders via the ` +
                        `MusicBrainz Web Service (${src} url-rels). ` +
                        `Icons link to external databases, streaming services, and discography pages.`;
+            case 'reportChangeIndicator':
+                if (colName === 'Delta')
+                    return `Extracted from '${src}': the report's recent count change (arrow, count, and percent), read from the change-indicator injected by the "MusicBrainz: Reports Statistics" userscript (by chaban). Empty if that userscript isn't installed/active.`;
+                if (colName === 'When')
+                    return `Extracted from '${src}': how long ago the report's statistics were last updated, read from the same change-indicator injected by the "MusicBrainz: Reports Statistics" userscript (by chaban). Empty if that userscript isn't installed/active.`;
+                break;
             default:
                 // Custom extractor — provide a generic tooltip.
                 return `Synthetic column extracted from '${src}' via extractor '${extractor}'.`;

@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.867",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The Reports index page (/reports) now extracts two new synthetic columns, \"Delta\" and \"When\", when the third-party \"MusicBrainz: Reports Statistics\" userscript (by chaban) is installed and active. That userscript injects a change-indicator into each report link (e.g. \"▼ -1 (-0.0%) (1 day ago)\"); \"Delta\" now shows just the arrow/count/percent part and \"When\" shows the trailing time phrase on its own, with the wrapping parentheses removed (e.g. \"1 day ago\"). Both columns are colored to match the original indicator (green/red/grey). The columns are always present on this page, same as every other extracted column in this script — they're simply empty for every row when that other userscript isn't active."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.866",
     "date": "2026-08-14",
     "sections": [
