@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.866",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "When the per-column unique-values (📊) dropdown was opened with nothing previously focused (e.g. a plain mouse click into empty page space, or straight after page load), checking one or more entries and then closing the dropdown left focus nowhere, even though the column filter's display text now read \"<n> selected\". Closing now focuses that filter input (cursor placed after the text) whenever the selection actually changed during the session. If nothing was selected before closing — e.g. Escape pressed immediately after opening — focus is left untouched, preserving the state from before the dropdown opened."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.865",
     "date": "2026-08-14",
     "sections": [

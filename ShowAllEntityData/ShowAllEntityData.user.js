@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.865+2026-08-14
+// @version      9.99.866+2026-08-14
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -43644,6 +43644,12 @@ a { color: #1565c0; }`;
     /** @type {Element|null} Set by uniqWrap's own mousedown listener; consumed exactly once by openUniqDrop(). */
     let _uniqDropPreMousedownEl = null;
 
+    /** @type {HTMLInputElement|null} The currently-open dropdown's own column filter input (set every open, regardless of prior focus) — closeUniqDrop()'s fallback focus target when a selection was made this session. */
+    let _uniqDropColFilterEl = null;
+
+    /** @type {string} dataset.mbUniqValues snapshot taken at open time, to detect at close time whether the user actually changed the selection this session. */
+    let _uniqDropOpenValuesSnapshot = '';
+
     /**
      * Returns (creating exactly once) the shared #mb-col-uniq-dropdown element
      * and wires up global close-on-outside-click / close-on-page-scroll listeners.
@@ -43705,11 +43711,23 @@ a { color: #1565c0; }`;
      * Closes the unique-values dropdown and removes the active highlight from
      * its owner button.
      *
-     * @param {boolean} [restoreFocus=true] - Whether to refocus the column
-     *   filter input that had focus when the dropdown was opened (see
-     *   `_uniqDropReturnFocusEl`, set in `openUniqDrop()`). Pass `false`
-     *   from close paths where the user's own action is already moving
-     *   focus elsewhere (e.g. an outside click) so this doesn't fight it.
+     * @param {boolean} [restoreFocus=true] - Whether to refocus a column
+     *   filter input on close. Pass `false` from close paths where the
+     *   user's own action is already moving focus elsewhere (e.g. an
+     *   outside click) so this doesn't fight it. When `true`, the target is:
+     *     1. `_uniqDropReturnFocusEl` (set in `openUniqDrop()`) — the filter
+     *        input that already had focus when the 📊 button was pressed, if
+     *        any; or otherwise
+     *     2. `_uniqDropColFilterEl` (this column's own filter input), but
+     *        ONLY if the checked-value set actually changed this session
+     *        (`_uniqDropOpenValuesSnapshot` differs from its current
+     *        `dataset.mbUniqValues`) — so a selection made while nothing had
+     *        focus still lands the user back in the now-updated "<n>
+     *        selected" filter, while dismissing the panel without selecting
+     *        anything (e.g. an immediate Escape) leaves focus untouched,
+     *        preserving whatever state existed before the panel opened.
+     *   Either way, the cursor is placed after the input's text, not a full
+     *   selection.
      */
     function closeUniqDrop(restoreFocus = true) {
         if (!_uniqDropEl) return;
@@ -43718,10 +43736,23 @@ a { color: #1565c0; }`;
             _uniqDropOwner.classList.remove('mb-col-uniq-active');
             _uniqDropOwner = null;
         }
-        if (restoreFocus && _uniqDropReturnFocusEl && document.contains(_uniqDropReturnFocusEl)) {
-            _uniqDropReturnFocusEl.focus();
+        if (restoreFocus) {
+            let _focusTarget = _uniqDropReturnFocusEl;
+            if (!_focusTarget && _uniqDropColFilterEl &&
+                (_uniqDropColFilterEl.dataset.mbUniqValues || '') !== _uniqDropOpenValuesSnapshot) {
+                _focusTarget = _uniqDropColFilterEl;
+            }
+            if (_focusTarget && document.contains(_focusTarget)) {
+                _focusTarget.focus();
+                const _len = _focusTarget.value.length;
+                if (typeof _focusTarget.setSelectionRange === 'function') {
+                    _focusTarget.setSelectionRange(_len, _len);
+                }
+            }
         }
         _uniqDropReturnFocusEl = null;
+        _uniqDropColFilterEl = null;
+        _uniqDropOpenValuesSnapshot = '';
     }
 
     /**
@@ -43797,6 +43828,18 @@ a { color: #1565c0; }`;
         const _uniqColInput  = _uniqFilterRow
             ? _uniqFilterRow.querySelector(`.mb-col-filter-input[data-col-idx="${colIndex}"]`)
             : null;
+
+        // This column's own filter input, and a snapshot of its checked-value
+        // state as of this open — used by closeUniqDrop() as a fallback focus
+        // target: if the user made a selection this session (even though
+        // nothing had focus when the panel was opened), focus should land on
+        // the now-updated "<n> selected" filter input rather than nowhere.
+        // If nothing changes (e.g. Escape pressed right away), closeUniqDrop()
+        // leaves focus untouched, preserving whatever state existed before
+        // the panel opened.
+        _uniqDropColFilterEl = _uniqColInput;
+        _uniqDropOpenValuesSnapshot = _uniqColInput ? (_uniqColInput.dataset.mbUniqValues || '') : '';
+
         const checkedValues = new Set();
         if (_uniqColInput && _uniqColInput.dataset.mbUniqValues) {
             try {
