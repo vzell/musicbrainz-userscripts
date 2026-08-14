@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.873+2026-08-14
+// @version      9.99.874+2026-08-14
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -12774,6 +12774,45 @@
             },
             tableMode: 'multi',
             non_paginated: true
+        },
+        // "<Identifier> linked to multiple <Entity>" reports (e.g.
+        // /report/ASINsWithMultipleReleases, /report/DiscogsLinksWithMultipleLabels,
+        // /report/ISRCsWithManyRecordings) — MusicBrainz's
+        // "...With(Multiple|Many)..." report family. Unlike report-detail's flat
+        // per-row table, these group rows by a shared identifier via a "group
+        // header" row followed by one plain <tr> per linked entity with an EMPTY
+        // first <td>. Two DOM shapes seen so far — see the row-loop's own comment
+        // (search "report-multiple-linked: \"group header\" row") for the exact
+        // per-shape breakdown, and debug/URLs-linked.html-original.html /
+        // debug/ISRC-initial.html for raw examples. Matched by name pattern (not
+        // by DOM, which isn't available at match() time) — must be registered
+        // ahead of the generic 'report-detail' catch-all below so it wins
+        // first-match.
+        {
+            type: 'report-multiple-linked',
+            match: (path) => path.match(/^\/report\/\w+With(?:Multiple|Many)\w+\/?$/),
+            buttons: [
+                { label: 'Show all (unfiltered)', params: { filter: '0' } },
+                { label: 'Show all (subscribed only)', params: { filter: '1' } }
+            ],
+            features: {
+                // Numeric fallback only — the linked-entity column's POSITION
+                // varies by report (e.g. ISRCsWithManyRecordings renders
+                // ISRC/Artist/Recording/Length, where 'Artist' sits BEFORE the
+                // true target column 'Recording'), so startFetchingProcess
+                // overrides this at runtime with the real header name derived
+                // from the report's own URL — see
+                // _reportMultipleLinkedMainColumnName's JSDoc. This numeric `1`
+                // only matters as the enabling truthy value (turns on the
+                // MB-Name/Comment/MB-Primary-alias header injection) and as a
+                // last-resort fallback if that derivation ever comes up empty.
+                extractMainColumn: 1,
+                addCAA: [ 'Release', 'Release group' ],
+                addEAA: 'Event',
+                insertH2: 'Report',
+                removeSelector: 'li:has(a[href*="?filter=1"])'
+            },
+            tableMode: 'single'
         },
         // Individual report (/report/<ReportName>?filter=0|1) — native paginated
         // table.tbl, already in the exact DOM shape renderFinalTable expects, so no
@@ -37479,6 +37518,59 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Derives the `extractMainColumn` candidate header name(s) for a
+     * 'report-multiple-linked' page (e.g. /report/ASINsWithMultipleReleases,
+     * /report/ISRCsWithManyRecordings) from the report's own URL, instead of
+     * a fixed column index or a per-report hardcoded name. These reports are
+     * named after their own linked entity ("...WithMultipleReleases",
+     * "...WithManyRecordings"), but that entity's actual COLUMN POSITION
+     * varies across the family — e.g. ISRCsWithManyRecordings renders
+     * ISRC/Artist/Recording/Length, where 'Artist' sits BEFORE the true
+     * target column 'Recording' — so a fixed numeric index cannot reliably
+     * pick the right column for every report in the family. Returns an
+     * empty array (caller keeps its own numeric fallback) when the URL
+     * doesn't end in a recognized "With(Multiple|Many)<Entity>" suffix.
+     *
+     * @param   {string} reportPath - The page's pathname (e.g.
+     *   "/report/DiscogsLinksWithMultipleReleaseGroups").
+     * @returns {string[]} Candidate header name(s) to match against the live
+     *   thead, exactly as MusicBrainz renders them — empty when nothing
+     *   could be derived from the URL.
+     */
+    function _reportMultipleLinkedMainColumnName(reportPath) {
+        const m = reportPath.match(/\/report\/\w+With(?:Multiple|Many)([A-Za-z]+)\/?$/);
+        if (!m) return [];
+        const entityPlural = m[1];
+
+        // Known MusicBrainz entity plurals seen in this report family —
+        // exact header text as MusicBrainz itself renders it (sentence
+        // case, e.g. "Release group" not "Release Group").
+        const KNOWN = {
+            Releases: 'Release',
+            ReleaseGroups: 'Release group',
+            Recordings: 'Recording',
+            Labels: 'Label',
+            Artists: 'Artist',
+            Works: 'Work',
+            Events: 'Event',
+            Places: 'Place',
+            Series: 'Series',
+            Areas: 'Area',
+            Instruments: 'Instrument',
+            Genres: 'Genre'
+        };
+        if (KNOWN[entityPlural]) return [KNOWN[entityPlural]];
+
+        // Best-effort fallback for an entity plural not in the table above:
+        // split CamelCase into words and singularize the last one.
+        const words = entityPlural.replace(/([a-z])([A-Z])/g, '$1 $2').split(' ');
+        const last = words[words.length - 1];
+        words[words.length - 1] = last.endsWith('ies') ? last.slice(0, -3) + 'y'
+            : (last.endsWith('s') ? last.slice(0, -1) : last);
+        return [words.join(' ')];
+    }
+
+    /**
      * Main entry point for a data-fetch cycle.  Called by action button click
      * handlers; orchestrates the complete pipeline from pre-processing through
      * fetch, parse, render, and post-render cleanup.
@@ -38119,6 +38211,10 @@ a { color: #1565c0; }`;
         let cumulativeFetchTime = 0;
         let lastCategorySeenAcrossPages = null;
         let totalRowsAccumulated = 0;
+        // report-multiple-linked: carries the colspan group-header cell forward
+        // across rows (and across page boundaries — a group's rows can
+        // legitimately be split across a pagination boundary).
+        let pendingUrlLinkedGroupCell = null;
 
         try {
             for (let p = 1; p <= maxPage; p++) {
@@ -38190,7 +38286,16 @@ a { color: #1565c0; }`;
                 const headerNames = []; // Array to store header names for debugging
 
                 // Retrieve configuration for the main column extraction
-                const mainColConfig = activeDefinition.features?.extractMainColumn;
+                let mainColConfig = activeDefinition.features?.extractMainColumn;
+
+                // report-multiple-linked: override the page definition's numeric
+                // fallback with the real header name derived from this report's
+                // own URL — see _reportMultipleLinkedMainColumnName's JSDoc for
+                // why a fixed column index can't work across the whole family.
+                if (pageType === 'report-multiple-linked') {
+                    const _dynamicMainColNames = _reportMultipleLinkedMainColumnName(path);
+                    if (_dynamicMainColNames.length) mainColConfig = _dynamicMainColNames;
+                }
 
                 // If configuration is a specific number, force that index immediately
                 if (typeof mainColConfig === 'number') {
@@ -39237,6 +39342,23 @@ a { color: #1565c0; }`;
                                         Lib.debug('parse', `top-cd-stub: merged lastupdate info into preceding row: "${_infoText}"`);
                                     }
                                     // Skip — do not add to allRows
+                                } else if (pageType === 'report-multiple-linked' &&
+                                           Array.from(node.cells).some(td => td.colSpan > 1) &&
+                                           Array.from(node.cells).slice(1).every(td => !td.textContent.trim() && !td.firstElementChild)) {
+                                    // ── report-multiple-linked: "group header" row carrying the
+                                    //    shared identifier for the rows that follow ─────────────────
+                                    // Two DOM shapes seen in the wild, both matched by this same
+                                    // test (at least one cell has colSpan > 1, and every cell after
+                                    // the first is empty): the URL family renders ONE cell whose OWN
+                                    // colSpan spans every column (debug/URLs-linked.html-original.html
+                                    // — node.cells.length === 1); the ISRC family (e.g.
+                                    // ISRCsWithManyRecordings) renders the identifier in a real
+                                    // cell[0] followed by a SEPARATE empty filler
+                                    // <td colspan="N"> (debug/ISRC-initial.html — node.cells.length
+                                    // === 2). Stash a clone of cell[0]; the data-row branch below
+                                    // fills each subsequent row's empty first <td> from it.
+                                    pendingUrlLinkedGroupCell = node.cells[0].cloneNode(true);
+                                    // Skip — do not add to allRows
                                 } else if (
                                     (node.cells.length > 1 ||
                                      // Allow single-cell rows only when the cell does NOT span multiple
@@ -39272,6 +39394,15 @@ a { color: #1565c0; }`;
                                     }
 
                                     const newRow = document.importNode(node, true);
+
+                                    // report-multiple-linked: fill this row's empty first <td> (the
+                                    // shared identifier column) from the most recent colspan group
+                                    // header row, when present — see the pendingUrlLinkedGroupCell
+                                    // capture branch above.
+                                    if (pageType === 'report-multiple-linked' && pendingUrlLinkedGroupCell &&
+                                        newRow.cells[0] && !newRow.cells[0].textContent.trim() && !newRow.cells[0].firstElementChild) {
+                                        newRow.cells[0].innerHTML = pendingUrlLinkedGroupCell.innerHTML;
+                                    }
 
                                     // ── Apply column erasers (remove marker spans) ────────────────
                                     // Must run before extractors so that copied cell content is clean.

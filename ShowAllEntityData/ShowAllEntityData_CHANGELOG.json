@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.874",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "MusicBrainz's \"...With(Multiple|Many)...\" report family (e.g. \"Amazon URLs linked to multiple releases\" at /report/ASINsWithMultipleReleases, \"Discogs URLs linked to multiple labels/artists/release groups\", \"ISRCs with multiple recordings\" at /report/ISRCsWithManyRecordings) groups its rows under a shared identifier rendered once, followed by one plain row per linked entity with an empty first cell — the identifier row was either silently dropped (URL-style reports, whose identifier cell alone spans every column) or, worse, kept as a spurious extra row with blank Artist/Recording/Length cells (ISRC-style reports, whose identifier cell is followed by a separate empty colspan filler cell), and every real per-entity row's identifier column stayed blank either way. A new page type, report-multiple-linked, now recognizes any /report/*With(Multiple|Many)* report by name, detects both group-header row shapes, carries the identifier forward (across pages too, since a group's rows can span a pagination boundary) into each following row's empty first cell instead of emitting it as its own row, and derives the linked-entity column to auto-split into MB-Name/Comment/MB-Primary alias from the report's own URL (not a fixed column position) — needed because that column's position varies per report (e.g. ISRCsWithManyRecordings renders ISRC/Artist/Recording/Length, where Artist sits before the true target column Recording)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.873",
     "date": "2026-08-14",
     "sections": [
