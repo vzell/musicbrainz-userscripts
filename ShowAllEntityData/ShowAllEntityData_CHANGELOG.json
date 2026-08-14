@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.872",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The per-column unique-values (📊) dropdown's \"Entity info\" section — previously one flat collapsible list mixing every \"» name:\"/\"comment:\"/\"alias:\" entry together — is now split into one independently-collapsible sub-section per entity type actually present (\"Entity info - Artist name\", \"Entity info - Event name\", \"Entity info - Place name\", etc., using the same native MusicBrainz entity-type icon shown per entry), plus separate \"Entity info - Comment\" and \"Entity info - Alias\" sections. Each collapses/remembers its own state independently, same as every other section in the panel. Entry labels and filtering/highlighting behavior are unchanged."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.871",
     "date": "2026-08-14",
     "sections": [

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.871+2026-08-14
+// @version      9.99.872+2026-08-14
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -34014,7 +34014,30 @@ a { color: #1565c0; }`;
         structure:     { label: 'Structure',         glyph: '🔠' },
         flags:         { label: 'Flags',              glyph: '🚩' },
         credit:        { label: 'Credit details',     glyph: '🎚️' },
-        entity:        { label: 'Entity info',        glyph: '👤' },
+        // "Entity info" is split into one collapsible sub-section per
+        // entity type (plus comment/alias) — see the `entity_*`/
+        // `entityComment`/`entityAlias` keys below — rather than one flat
+        // section lumping every "» name:"/"comment:"/"alias:" entry
+        // together. `markerClass` (in place of `glyph`) renders the SAME
+        // native MusicBrainz entity-type icon class (`artistlink`/
+        // `eventlink`/…) `makeValueSynItem()`'s own per-entry glyph marker
+        // already uses, instead of a plain emoji — see
+        // `getOrCreateSynSection()`'s own handling of this field.
+        entity_artist:            { label: 'Entity info - Artist name',         markerClass: 'artistlink' },
+        entity_label:             { label: 'Entity info - Label name',         markerClass: 'labellink' },
+        entity_work:              { label: 'Entity info - Work name',          markerClass: 'worklink' },
+        'entity_release-group':   { label: 'Entity info - Release group name', markerClass: 'rglink' },
+        entity_release:           { label: 'Entity info - Release name',       markerClass: 'releaselink' },
+        entity_recording:         { label: 'Entity info - Recording name',     markerClass: 'recordinglink' },
+        entity_event:             { label: 'Entity info - Event name',         markerClass: 'eventlink' },
+        entity_place:             { label: 'Entity info - Place name',         markerClass: 'placelink' },
+        entity_area:              { label: 'Entity info - Area name',          markerClass: 'arealink' },
+        // Fallback for a name entry whose entity type isn't one of
+        // `_ENTITY_TYPE_GLYPH`'s known keys (mirrors makeValueSynItem's
+        // own `entityType ? … : '» name: '` generic fallback).
+        entity_other:             { label: 'Entity info - Other name',         glyph: '👤' },
+        entityComment:            { label: 'Entity info - Comment',            glyph: '👤' },
+        entityAlias:              { label: 'Entity info - Alias',              glyph: '👤' },
         joinPhrase:    { label: 'Join phrases',        glyph: '🔀' },
         nameVariation: { label: 'Name variations',    glyph: '🪪' },
         roles:         { label: 'Roles',              glyph: '🎭' },
@@ -34044,11 +34067,16 @@ a { color: #1565c0; }`;
      * vs "EAA info"), which this static map can't express. `makeValueSynItem()`
      * special-cases those two kinds itself, resolving the section from the
      * `_caaOrEaaColName` captured once per `openUniqDrop()` call instead.
+     *
+     * `'name'` is likewise ABSENT — its target section depends on the
+     * entry's own `entityType` (artist/event/place/…), split across the
+     * `entity_*` keys — `makeValueSynItem()` special-cases it the same way
+     * as `arttype`/`artcomment`, immediately below that branch.
      */
     const MB_UNIQ_KIND_TO_SECTION = {
         attr: 'credit', task: 'credit', date: 'credit',
         instrument: 'credit', altname: 'credit',
-        name: 'entity', comment: 'entity', alias: 'entity',
+        comment: 'entityComment', alias: 'entityAlias',
         joinphrase: 'joinPhrase',
         namevariation: 'nameVariation',
         role: 'roles',
@@ -45421,6 +45449,11 @@ a { color: #1565c0; }`;
          * drives these same elements directly (via the returned section
          * object) to force-expand/show a match count while quickfiltering.
          *
+         * The header glyph renders `meta.markerClass` (a native MusicBrainz
+         * entity-type icon class, e.g. `artistlink`) when present, otherwise
+         * `meta.glyph` (a plain emoji character) — see `SYN_SECTION_META`'s
+         * own JSDoc on the `entity_*` keys for why.
+         *
          * @param {string} key - a `SYN_SECTION_META` key
          * @returns {{wrapper: HTMLElement, header: HTMLElement, itemsBox: HTMLElement, toggleGlyph: HTMLElement, matchCountSpan: HTMLElement, key: string}}
          */
@@ -45448,7 +45481,27 @@ a { color: #1565c0; }`;
             const iconGlyph = document.createElement('span');
             iconGlyph.className = 'mb-uniq-section-glyph';
             iconGlyph.setAttribute('aria-hidden', 'true');
-            iconGlyph.textContent = meta.glyph;
+            if (meta.markerClass) {
+                // Native MusicBrainz entity-type icon (artistlink/eventlink/…)
+                // — same class makeValueSynItem()'s own per-entry glyph
+                // marker uses, instead of a plain emoji.
+                iconGlyph.classList.add(meta.markerClass);
+                // .mb-uniq-section-hdr is `display: flex`, and this glyph is
+                // its DIRECT child — the exact same flex-item "display
+                // blockification" root cause _initColHeaderGlyph() already
+                // diagnosed and fixed for .mb-col-hdr-flex (see that
+                // function's own JSDoc): a flex item's outer display gets
+                // blockified regardless of the native glyph rule's own
+                // `display` value, which strips the height its background-
+                // image sizing relies on, cutting the icon off. Force it back
+                // explicitly, mirroring that fix's own value. (No margin
+                // needed here, unlike that fix — .mb-uniq-section-hdr's own
+                // `gap: 5px` already spaces every header child consistently.)
+                iconGlyph.style.height = '14px';
+                _guardGlyphAgainstEmptySelectorHiding(iconGlyph);
+            } else {
+                iconGlyph.textContent = meta.glyph;
+            }
             header.appendChild(iconGlyph);
 
             const labelSpan = document.createElement('span');
@@ -45761,11 +45814,17 @@ a { color: #1565c0; }`;
 
             _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + `${kind}:${value}`);
             // 'arttype'/'artcomment' route dynamically to "CAA info"/"EAA info"
-            // depending on THIS column's actual name — see MB_UNIQ_KIND_TO_SECTION's
-            // own JSDoc for why a static lookup can't express this. Every other
-            // kind keeps the static MB_UNIQ_KIND_TO_SECTION lookup unchanged.
+            // depending on THIS column's actual name; 'name' routes dynamically
+            // to one of the `entity_*` sections depending on THIS entry's own
+            // entityType (artist/event/place/…), splitting what used to be one
+            // flat "Entity info" section into one collapsible sub-section per
+            // entity type — see MB_UNIQ_KIND_TO_SECTION's own JSDoc for why a
+            // static lookup can't express either case. Every other kind keeps
+            // the static MB_UNIQ_KIND_TO_SECTION lookup unchanged.
             const sectionKey = (kind === 'arttype' || kind === 'artcomment')
                 ? (_caaOrEaaColName === 'EAA' ? 'eaaInfo' : 'caaInfo')
+                : kind === 'name'
+                ? (entityType && _ENTITY_TYPE_GLYPH[entityType] ? `entity_${entityType}` : 'entity_other')
                 : (MB_UNIQ_KIND_TO_SECTION[kind] || 'credit');
             getOrCreateSynSection(sectionKey).itemsBox.appendChild(item);
         };

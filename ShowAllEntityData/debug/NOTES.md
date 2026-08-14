@@ -5718,3 +5718,83 @@ No changes needed anywhere else — `_findCellEntityCommentParts()`,
 aggregation/rendering already re-derive from these two functions' output.
 
 `node --check ShowAllEntityData.user.js` passed after every edit.
+
+---
+
+## 2026-08-14 — Split "Entity info" into per-type sections (v9.99.872)
+
+User request: split the flat "Entity info" (👤) section — one collapsible
+list mixing every "» artist name:"/"» event name:"/"» place name:"/"»
+area name:"/"comment:"/"alias:" entry together — into one independently-
+collapsible sub-section per entity type, plus separate comment/alias
+sections. Requested each sub-section header show the same type-specific
+glyph already shown per entry (e.g. the artist-icon, not a generic emoji).
+
+**Key research finding**: `getOrCreateSynSection()` (the shared renderer
+for every top-level section: Structure, Flags, Credit details, Roles, …)
+only supported plain emoji text for section headers
+(`iconGlyph.textContent = meta.glyph`) — no existing support for the
+native MusicBrainz entity-type icon CSS classes (`artistlink`/`eventlink`/
+etc.) `makeValueSynItem()`'s own per-entry glyph marker already uses.
+Extended it with an optional `markerClass` field on `SYN_SECTION_META`
+entries: when present, applies that CSS class (plus
+`_guardGlyphAgainstEmptySelectorHiding()`, the same ad-blocker-hiding
+guard the per-entry markers already get) instead of setting `.textContent`
+to an emoji. Confirmed via grep that these marker classes (`.artistlink`
+etc.) aren't defined anywhere in this userscript's own injected CSS — they
+rely entirely on musicbrainz.org's own native page stylesheet, same as
+the already-working per-entry markers, so no new CSS needed here either.
+
+**Section keys**: one new `SYN_SECTION_META` entry per
+`_ENTITY_TYPE_GLYPH` key (a small, fixed set of 9: artist, label, work,
+release-group, release, recording, event, place, area — confirmed the
+complete set already exercised by "» name:" entries via
+`ENTITY_NAME_TYPE_SORT_ORDER`), named `entity_artist`/`entity_event`/etc.,
+plus `entity_other` (fallback for an unrecognized/missing entityType,
+mirroring `makeValueSynItem`'s own generic `'» name: '` fallback) and
+`entityComment`/`entityAlias`. The old flat `entity` key was removed
+entirely (nothing else referenced it).
+
+**Routing**: `makeValueSynItem()`'s `sectionKey` resolution gained a new
+`kind === 'name'` branch — computes `` `entity_${entityType}` `` (or falls
+back to `entity_other`) — modeled directly on the existing `arttype`/
+`artcomment` → `_caaOrEaaColName`-based dynamic-section precedent right
+above it. `comment`/`alias` stayed on the static `MB_UNIQ_KIND_TO_SECTION`
+map, just pointed at the new `entityComment`/`entityAlias` keys instead of
+the removed `entity` key.
+
+**No changes needed** to: `_sortedNameValues`'s existing type-then-alpha
+sort (already produces entries in the right per-type groupings/order,
+`ENTITY_NAME_TYPE_SORT_ORDER`), the two `_sortedNameValues.forEach(...)`
+render call sites (already pass `entityType` as the 5th arg to
+`makeValueSynItem`), section-order logic (`getOrCreateSynSection` already
+inserts purely "first key requested wins" — new per-type sections
+naturally appear in `ENTITY_NAME_TYPE_SORT_ORDER` priority as a side
+effect of the pre-sorted array), collapse-state persistence
+(`MB_UNIQ_SECTION_COLLAPSE_KEY`, plain string-keyed object, zero
+validation against a fixed key enum — new keys "just work"), or
+`_applySynBoxQuickFilter()` (iterates `_synSections` generically). Entry
+labels/filtering/highlighting inside each new section are byte-for-byte
+unchanged from before the split.
+
+`node --check ShowAllEntityData.user.js` passed after every edit.
+
+**Follow-up fix (same v9.99.872, not yet committed when found)**: user
+screenshotted the new `entity_*` section headers (e.g. "Entity info -
+Release name") and the entity-type glyph rendered visibly cut off/
+mis-sized. Root cause: `.mb-uniq-section-hdr` is `display: flex` (confirmed
+via grep), and the new marker-class glyph span is a DIRECT CHILD of it —
+the EXACT same "flex-item display blockification strips the native glyph's
+height" bug `_initColHeaderGlyph()`'s own JSDoc already diagnosed and fixed
+for `.mb-col-hdr-flex` (also a flex container) when injecting `worklink`/
+`eventlink`/`placelink` icons into release-tracks column headers. Confirmed
+`.mb-col-uniq-item` (the per-entry row, where these same marker classes
+already render correctly) is NOT a flex container — explaining why only
+the NEW section-header usage hit this, not the pre-existing per-entry
+usage. Fix: added `iconGlyph.style.height = '14px'` (matching
+`_initColHeaderGlyph`'s own established value) when `meta.markerClass` is
+set — mirrors that fix precisely rather than inventing a new sizing value.
+No margin needed (unlike that fix) since `.mb-uniq-section-hdr`'s own
+`gap: 5px` already spaces every header child.
+
+`node --check ShowAllEntityData.user.js` passed after this edit too.
