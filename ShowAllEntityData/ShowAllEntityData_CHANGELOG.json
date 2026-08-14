@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.875",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The per-column unique-values (📊) dropdown's \"Entity info\" section (the collapsible \"» area name: …\"/\"» place name: …\" groups) now shows a country's real flag instead of the generic area icon for entries backed by a flagged area/country cell (native `<span class=\"flag flag-XX\">`, or a third-party \"More Flags Everywhere\"-style subdivision icon) — a non-country area (e.g. \"Ohio\") still shows the generic icon as before. Gated behind the existing `sa_enable_dropdown_flag_icons` setting (off by default), the same one that already puts flags in the dropdown's plain value list for Location/Country/Locality/Region/Area-type columns. Since flag and generic-icon markers can render at different sizes, both are now centered inside a small fixed-width slot so the \"»\" label text lines up consistently regardless of which icon a given entry shows."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.874",
     "date": "2026-08-14",
     "sections": [

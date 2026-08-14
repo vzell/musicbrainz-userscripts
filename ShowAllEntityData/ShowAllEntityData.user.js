@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.874+2026-08-14
+// @version      9.99.875+2026-08-14
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -17110,9 +17110,22 @@
      * two "+"-joined artists, both wrapped) is still found instead of
      * silently returning nothing for it.
      *
+     * `flagEl` (only ever set for `type === 'area'`) is the live
+     * flag/subdivision-icon element decorating THIS anchor, if any — the
+     * same two shapes `_routeAreaLink()` already recognizes (line ~2987):
+     * a native `<span class="flag flag-XX">` WRAPPING the anchor
+     * (`a.closest('.flag')`), or a third-party "More Flags Everywhere"/
+     * "Canadian Province Flags Everywhere" `<span class="area-icon">`
+     * immediately preceding it. `null` for every non-area type, and for an
+     * area with no flag decoration at all (most areas — flags only exist
+     * for countries, or subdivisions when that third-party script is
+     * installed). Consumed by `openUniqDrop()`'s "Entity info" section to
+     * show a real flag instead of the generic `arealink` glyph — see
+     * `_bakeFlagIconNode()`.
+     *
      * @param {?HTMLTableCellElement} cell
      * @returns {Array<{type: string, glyphClass: string, href: string,
-     *   name: string, nameNode: Element, isBare: boolean}>}
+     *   name: string, nameNode: Element, isBare: boolean, flagEl: ?Element}>}
      */
     function _findCellEntityRefs(cell) {
         if (!cell) return [];
@@ -17166,9 +17179,14 @@
                 ? nameVariationSpan
                 : (bdiShared ? a : (bdi.contains(a) ? bdi : a));
             const container = a.closest('li') || cell;
+            const flagEl = m[1] !== 'area' ? null :
+                (a.closest('.flag') ||
+                 (a.previousElementSibling && a.previousElementSibling.matches('span.area-icon')
+                     ? a.previousElementSibling : null));
             out.push({
                 type: m[1], glyphClass, href, name, nameNode,
-                isBare: getCleanColumnText(container) === name
+                isBare: getCleanColumnText(container) === name,
+                flagEl
             });
         });
         return out;
@@ -17302,7 +17320,8 @@
      *
      * @param {?HTMLTableCellElement} cell
      * @returns {Array<{name: string, comment: ?string, alias: ?string,
-     *   commentSpan: ?Element, nameNode: Element, glyphClass: string}>}
+     *   commentSpan: ?Element, nameNode: Element, glyphClass: string,
+     *   type: string, flagEl: ?Element}>}
      */
     function _findCellEntityCommentParts(cell) {
         if (!cell) return [];
@@ -17335,7 +17354,7 @@
                 comment = null;
             }
 
-            out.push({ name, comment, alias, commentSpan, nameNode: ref.nameNode, glyphClass: ref.glyphClass, type: ref.type });
+            out.push({ name, comment, alias, commentSpan, nameNode: ref.nameNode, glyphClass: ref.glyphClass, type: ref.type, flagEl: ref.flagEl });
         });
         return out;
     }
@@ -34455,11 +34474,16 @@ a { color: #1565c0; }`;
      * against debug/expand.html's "Recorded at place" chain: `<span
      * class="flag flag-US"><a href="/area/…">​<bdi>United States</bdi></a>
      * </span>`, a DIFFERENT, wrapping glyph shape from every other area/place
-     * in the same chain, which use a plain empty SIBLING span). Detecting
-     * that wrapping-flag shape specifically to show a national flag instead
-     * of the generic area glyph would only change a cosmetic detail, so it's
-     * deliberately not attempted — countries get the plain `arealink` glyph
-     * like any other area.
+     * in the same chain, which use a plain empty SIBLING span). This map
+     * still has no country-specific glyph key — `area` still resolves to
+     * the generic `arealink` class here — but `openUniqDrop()`'s "Entity
+     * info" section no longer stops there: `_findCellEntityRefs()` detects
+     * that same wrapping-flag shape per `area` ref (`flagEl`), and
+     * `entityNameFlagMap`/`makeValueSynItem()` swap in a baked real flag
+     * icon in place of this generic glyph whenever one is found (gated on
+     * `sa_enable_dropdown_flag_icons`) — see `entityNameFlagMap`'s own
+     * JSDoc. A non-country area with no flag decoration still falls back to
+     * this plain `arealink` glyph.
      *
      * `release`/`recording` were added 2026-08-10 after confirming BOTH real
      * live markup (`<span class="releaselink">`/`<span
@@ -44994,6 +45018,18 @@ a { color: #1565c0; }`;
         // <type> name:" entry's label — see ENTITY_NAME_TYPE_SORT_ORDER and
         // makeValueSynItem()'s 'name'-kind branch.
         const entityNameTypeMap       = new Map();
+        // entityNameFlagMap: name -> first-seen BAKED flag icon master node
+        // (see _bakeFlagIconNode()), only ever populated for
+        // entityType === 'area' entries whose row actually carries a real
+        // flag (country, or a flagged subdivision when a third-party
+        // "More Flags Everywhere"-style script is installed) AND only when
+        // sa_enable_dropdown_flag_icons is on — same gate the value-list
+        // flagIconMap feature below already uses, so one setting controls
+        // both. Lets makeValueSynItem() show the real flag instead of the
+        // generic 'arealink' glyph for that specific entry; absent (no
+        // entry in this Map) for every non-country area, which keeps
+        // today's generic-glyph behavior unchanged.
+        const entityNameFlagMap       = new Map();
         const entityNameAnyValueCounts = new Map();
         // Distinct "join phrase" values (e.g. " & ", " and ", " with ", or
         // arbitrary free text an editor typed like " w/special guest ") —
@@ -45269,6 +45305,10 @@ a { color: #1565c0; }`;
                         _rowNameValues.add(p.name);
                         if (!entityNameGlyphMap.has(p.name)) entityNameGlyphMap.set(p.name, p.glyphClass);
                         if (!entityNameTypeMap.has(p.name)) entityNameTypeMap.set(p.name, p.type);
+                        if (Lib.settings.sa_enable_dropdown_flag_icons && p.type === 'area' &&
+                            p.flagEl && !entityNameFlagMap.has(p.name)) {
+                            entityNameFlagMap.set(p.name, _bakeFlagIconNode(p.flagEl));
+                        }
                     }
                     if (p.comment) _rowCommentValues.add(p.comment);
                     if (p.alias)   _rowAliasValues.add(p.alias);
@@ -46556,8 +46596,18 @@ a { color: #1565c0; }`;
          *   label the entry `"» <type> name: "` instead of a generic
          *   `"» name: "` so different entity types sharing this same section
          *   (e.g. `place`/`area` on a "Location" column) read distinctly.
+         * @param {?Element} [flagNode] - Only meaningful for `kind === 'name'`
+         *   (see `entityNameFlagMap`) — a baked flag icon master node
+         *   (`_bakeFlagIconNode()`'s return value) for this entity, when one
+         *   exists (`sa_enable_dropdown_flag_icons` on AND this is a
+         *   flagged area/country). When present, a CLONE of it replaces the
+         *   generic `glyphClass` marker entirely rather than being shown
+         *   alongside it — a country-level "area" entry shows its real flag
+         *   instead of the generic globe-ish `arealink` glyph; a non-country
+         *   area (no entry in `entityNameFlagMap`) keeps that generic glyph
+         *   unchanged.
          */
-        const makeValueSynItem = (kind, value, count, glyphClass, entityType) => {
+        const makeValueSynItem = (kind, value, count, glyphClass, entityType, flagNode) => {
             const item = document.createElement('div');
             item.setAttribute('role', 'option');
             item.title = value;
@@ -46580,17 +46630,38 @@ a { color: #1565c0; }`;
             badge.style.textAlign       = 'right';
             item.appendChild(badge);
             if ((kind === 'name' || kind === 'revcountry' || kind === 'countrycode') && glyphClass) {
-                // For 'revcountry'/'countrycode', glyphClass is the
-                // combined `flag flag-XX` class string (both native
-                // classes together, matching the native `class="flag
-                // flag-XX"` shape) — see the two country-code aggregation
-                // call sites in openUniqDrop().
-                const marker = document.createElement('span');
-                marker.className = glyphClass;
-                marker.setAttribute('aria-hidden', 'true');
-                marker.style.marginRight = '4px';
-                _guardGlyphAgainstEmptySelectorHiding(marker);
-                item.appendChild(marker);
+                // Fixed-width, centered slot so the label text right after
+                // it (starting with "» ") always starts at the same
+                // horizontal position regardless of whether this entry ends
+                // up showing the generic glyph icon or a baked flag icon —
+                // the two render at different native pixel sizes (see
+                // entityNameFlagMap's own JSDoc) and would otherwise make
+                // the "»" prefix jump left/right between entries.
+                const markerSlot = document.createElement('span');
+                markerSlot.setAttribute('aria-hidden', 'true');
+                markerSlot.style.display        = 'inline-flex';
+                markerSlot.style.alignItems     = 'center';
+                markerSlot.style.justifyContent = 'center';
+                markerSlot.style.width          = '16px';
+                markerSlot.style.marginRight    = '4px';
+                markerSlot.style.verticalAlign  = 'middle';
+                if (kind === 'name' && flagNode) {
+                    // Real flag takes priority over the generic area glyph
+                    // — clone the shared master node (flagIconMap's own
+                    // convention; see _bakeFlagIconNode()'s JSDoc).
+                    markerSlot.appendChild(flagNode.cloneNode(true));
+                } else {
+                    // For 'revcountry'/'countrycode', glyphClass is the
+                    // combined `flag flag-XX` class string (both native
+                    // classes together, matching the native `class="flag
+                    // flag-XX"` shape) — see the two country-code
+                    // aggregation call sites in openUniqDrop().
+                    const marker = document.createElement('span');
+                    marker.className = glyphClass;
+                    _guardGlyphAgainstEmptySelectorHiding(marker);
+                    markerSlot.appendChild(marker);
+                }
+                item.appendChild(markerSlot);
             }
             const _synLabelPrefix =
                 (kind === 'attr'       ? '» attribute: '
@@ -46822,7 +46893,7 @@ a { color: #1565c0; }`;
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
             _sortedInstrumentValues.forEach(v => makeValueSynItem('instrument', v, instrumentValueCounts.get(v)));
             _sortedAltNameValues.forEach(v => makeValueSynItem('altname', v, altNameValueCounts.get(v)));
-            _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v), entityNameGlyphMap.get(v), entityNameTypeMap.get(v)));
+            _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v), entityNameGlyphMap.get(v), entityNameTypeMap.get(v), entityNameFlagMap.get(v)));
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedJoinPhraseValues.forEach(v => makeValueSynItem('joinphrase', v, joinPhraseValueCounts.get(v)));
@@ -46857,7 +46928,7 @@ a { color: #1565c0; }`;
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
             _sortedInstrumentValues.forEach(v => makeValueSynItem('instrument', v, instrumentValueCounts.get(v)));
             _sortedAltNameValues.forEach(v => makeValueSynItem('altname', v, altNameValueCounts.get(v)));
-            _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v), entityNameGlyphMap.get(v), entityNameTypeMap.get(v)));
+            _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v), entityNameGlyphMap.get(v), entityNameTypeMap.get(v), entityNameFlagMap.get(v)));
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedJoinPhraseValues.forEach(v => makeValueSynItem('joinphrase', v, joinPhraseValueCounts.get(v)));
