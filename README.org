@@ -83861,7 +83861,6 @@ function applyH1CommentSpanRelocation(callSite)
 
 * TODO add a quickfilter with search string highlightning to the unicode popup
 
-
 * TODO Implement column movement
 
 
@@ -94066,6 +94065,7 @@ https://musicbrainz.org/report/DiscogsLinksWithMultipleArtists
 
 
 * TODO split "3421 w/special guest Miss Red" on https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b in column "Artist"
+** DONE
 
 If an artist type column has multiple artists joined with a "join phrase" like e.g. on
 https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f and column "Artist"
@@ -94086,7 +94086,7 @@ and
 
 #+begin_example
 @debug/slash.html
-@debug/
+@debug/and.html
 #+end_example
 
 1.)
@@ -94098,6 +94098,84 @@ it's own section, or we will reuse an existing one)
 
 also, beside listing the complete artist string (with the join phrase), also render each individual artist joined as a
 separate entry in the unique value drop down menu
+
+** DONE bug
+
+Actually the joined artists are NOT presented separately in the unique value drop down menu, e.g. @debug/slash.html
+
+I would expect each artist
+
+#+begin_example
+Albert Hammond
+Bruce Springsteen
+Loudon Wainwright III
+Taj Mahal
+#+end_example
+
+listed separately in the generic unique drop down entry list
+
+** TODO name variations in general, offer each variant in it's own variant section withthe prefix "name variant:"
+*** DONE i
+
+When the jesus2099 userscript is present, which displays name variations on entities like e.g. artists, add support for
+name variations in the unique value drop down in it's own section, prefix entries with "name variation:"
+
+1.)
+
+Offer each variant in it's own variant section with the prefix "name variant:", e.g.
+
+#+begin_example
+<td class="wrap-anywhere" data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">
+  <bdi>
+    <span class="name-variation">
+      <a href="/artist/9dcdd9b0-d644-4faa-9f56-c35ba16f44c8" title="山崎千裕 – Yamazaki, Chihiro">Chihiro Yamazaki
+      </a>
+    </span> +
+    <span class="name-variation">
+      <a href="/artist/3395233b-086d-4339-9e46-7b2cde99050c" title="ROUTE14band – ROUTE14band">ROUTE 14 Band
+      </a>
+    </span>
+  </bdi>
+</td>
+#+end_example
+
+2.)
+
+Offer the complete name variation entry inside the "title" attribute 
+
+#+begin_example
+山崎千裕 – Yamazaki, Chihiro
+#+end_example
+
+but also the individual ones, e.g.
+
+#+begin_example
+山崎千裕
+Yamazaki, Chihiro
+#+end_example
+
+3.)
+
+Here some other examples
+
+#+begin_example
+<td class="wrap-anywhere" data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"><bdi><span class="name-variation"><a href="/artist/82322886-4c92-4509-9611-ac2173438469" title="Riders Against the Storm – Riders Against the Storm (husband/wife hip hop duo)">(RAS) Riders Against the Storm</a></span></bdi></td>
+<td class="wrap-anywhere" data-mb-rest-bg="#ffffff"><bdi><span class="name-variation"><a href="/artist/3116b008-9d92-4699-9311-2d0ca93c6a20" title="Farzad Golpayegani – Golpayegani, Farzad">Farzad Golpayegani's Band</a></span></bdi></td>
+<td class="wrap-anywhere" data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"><bdi><span class="name-variation"><a href="/artist/e68abd50-e5ec-4b5c-87dd-0fd0437cafd1" title="Bernie Worrell – Worrell, Bernie (keyboardist, composer and record producer)">Bernie Worrell Orchestra</a></span></bdi></td>
+#+end_example
+
+*** DONE act on @debug/nv.org
+
+act on @debug/nv.org
+
+*** TODO Important finding
+
+Important finding along the way: neither _findCellEntityRefs() nor _findCellJoinPhrases() (both touched earlier this
+session) can see this exact shape at all — <span class="name-variation"> sits between <bdi> and <a>, which both
+functions' bdi-resolution logic misses. So "Entity info" and "Join phrases" are currently blind to jesus2099-wrapped
+artist credits — a related but separate gap I did not fix here (it would need its own extension to that bdi-resolution
+logic), flagged in debug/NOTES.md as a possible follow-up. Let me know if you'd like that addressed too.
+
 
 
 * TODO why is this not working
