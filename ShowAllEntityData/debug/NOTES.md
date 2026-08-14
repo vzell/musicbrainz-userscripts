@@ -6090,3 +6090,45 @@ second follow-up round.
   on the same page) — any future report-detail columnExtractors addition
   must check its synthetic column names against every other entry already
   in that array, not just the ones it superficially resembles.
+
+## 2026-08-14 — "Event" column dropdown missing "date:" entries (v9.99.882)
+
+- `data-missing.html` (single `<td>` snapshot from /user/vzell/tag/england
+  and /user/vzell/tag/rescheduled — user-tag-value pageType, 'Events'
+  entityFeatures): `<a href="/event/…"><bdi>2024‐05‐25: Orange Vélodrome,
+  Marseille, France</bdi></a> (2024-05-25) <span class="cancelled">(
+  cancelled)</span>`. Note the link's OWN text repeats the date using
+  U+2010 HYPHEN ("2024‐05‐25"), while the trailing bare parenthetical after
+  the link uses plain ASCII hyphens ("2024-05-25") — the two must not be
+  confused; only the ASCII trailing one is "the date" for filtering/
+  highlighting purposes (matches `Name_Date_Comment`'s own extraction into
+  the synthetic "Date" column, ShowAllEntityData.user.js:4098).
+- Root cause: `openUniqDrop()`'s "date:" dropdown entries were fed
+  exclusively by `dateValueCounts`, itself fed exclusively by
+  `cell.querySelectorAll('.mb-credit-date')` — a sentinel span injected
+  only by `_wrapDateAnnotationsInText()`, itself only ever called from the
+  AR-credit relationship cell builders (release-tracks-style credits like
+  "Producer (on 1988-04-27)"). A plain native "Event" cell on a tag-listing
+  page never passes through those builders, so its trailing "(date)" text
+  was never wrapped in that sentinel and never counted.
+- Fixed by adding a second, independent pair mirroring the "name:"/
+  "comment:" family's own native-markup-parsing precedent
+  (`_findCellEntityCommentParts()`) rather than trying to extend the
+  sentinel-based mechanism: `_findCellEventDateParts(cell)` (near
+  `_findCellCatalogParts`) walks the cell's own childNodes for the bare
+  trailing `"(YYYY-MM-DD)"` text node right after the entity `<a>` link
+  (reusing `_parseBareParenDate()`'s existing regex — the same one
+  "Recorded at event" already uses on release-tracks — rather than a third
+  copy of it), feeding a new `eventDateValueCounts` Map, gated to the
+  "Event" column by name (`isEventCol`, mirrors `isTracksCol`/
+  `isCatalogCol`'s own column-name gating — this is plain free-text
+  parsing with no CSS-class safety net, unlike the sentinel-based one).
+  Wired into `_cellMatchesStructureMode()` (`eventdate:` compound mode) and
+  a new cell-wide word-boundary highlight (`_highlightEventDateMatch()`,
+  mirrors `_highlightTracksPerMediumMatch()`'s own "no wrapper element to
+  scope to" reasoning) exactly like every other `makeValueSynItem()` kind.
+  Routed into its own new "Event info" section (`SYN_SECTION_META.eventInfo`)
+  rather than reusing "Credit info" (where the sentinel-based "date:" kind
+  lives) — an Event cell's date isn't a credit, and the two Maps/kinds
+  ('date' vs 'eventdate') must stay fully independent since they're fed by
+  completely different extraction mechanisms.

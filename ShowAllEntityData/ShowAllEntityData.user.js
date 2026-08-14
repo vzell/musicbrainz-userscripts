@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.881+2026-08-14
+// @version      9.99.882+2026-08-14
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -17964,6 +17964,47 @@
     }
 
     /**
+     * Extracts the bare trailing `"(YYYY[-MM[-DD]])"` date text immediately
+     * following an entity link in a plain "Event" cell — e.g. the native
+     * MusicBrainz tag-value Event listing shape: `<a
+     * href="/event/…">Name</a> (2024-05-28) <span class="cancelled">…
+     * </span>` (see debug/data-missing.html). Mirrors `Name_Date_Comment`'s
+     * own text-node walk (`ColumnDataExtractor`) exactly — both must agree
+     * on the same shape — reusing `_parseBareParenDate()` for the actual
+     * paren/date regex rather than a third slightly-different copy of it.
+     *
+     * This is deliberately separate from `dateValueCounts`/`.mb-credit-date`
+     * (see `_wrapDateAnnotationsInText()`'s own JSDoc): that sentinel is
+     * only ever injected by the AR-credit relationship builders (e.g.
+     * `release-tracks`' "Producer (on 1988-04-27)" style credits), a
+     * completely different code path from this plain native-markup Event
+     * cell, which never passes through those builders.
+     *
+     * Deliberately only called for the "Event" column itself (gated by
+     * column name at the `openUniqDrop()` call site) — plain free-text
+     * parsing with no CSS-class safety net.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {string[]} distinct dates found (usually zero or one; an
+     *   array in case a future multi-entity Event cell shape appears)
+     */
+    function _findCellEventDateParts(cell) {
+        if (!cell) return [];
+        let _pastLink = false;
+        for (const node of cell.childNodes) {
+            if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'A') {
+                _pastLink = true;
+                continue;
+            }
+            if (_pastLink && node.nodeType === Node.TEXT_NODE) {
+                const parsed = _parseBareParenDate(node.nodeValue);
+                if (parsed) return [parsed.compareValue];
+            }
+        }
+        return [];
+    }
+
+    /**
      * Tests whether a table cell matches a "Cell structure" checkbox mode
      * from `openUniqDrop()`'s synthetic entries (`makeSynItem`/
      * `makeValueSynItem`/`makeInlineArtItem`) — the single source of truth
@@ -18186,6 +18227,13 @@
             // Binary flag — true when the "Tracks" cell shows more than
             // one medium's track count (joined by "+").
             return !!cell && _findCellTracksPerMedium(cell).length > 1;
+        }
+        if (mode.startsWith('eventdate:')) {
+            // Compound mode — matches an "Event" cell's own bare trailing
+            // "(YYYY-MM-DD)" date text, from _findCellEventDateParts()'s
+            // own extraction.
+            const want = mode.slice(10);
+            return !!cell && _findCellEventDateParts(cell).includes(want);
         }
         if (mode.startsWith('catalogprefix:')) {
             // Compound mode — matches one "Catalog#" list item's own
@@ -34545,6 +34593,7 @@ a { color: #1565c0; }`;
         countryCodeInfo: { label: 'Country code details', glyph: '🏳️' },
         tracksInfo:    { label: 'Tracks info',        glyph: '🎵' },
         catalogInfo:   { label: 'Catalog info',       glyph: '🏷️' },
+        eventInfo:     { label: 'Event info',         glyph: '📅' },
     };
 
     /**
@@ -34588,6 +34637,7 @@ a { color: #1565c0; }`;
         countryname: 'countryNameInfo', countrycode: 'countryCodeInfo',
         trackspermedium: 'tracksInfo',
         catalogprefix: 'catalogInfo',
+        eventdate: 'eventInfo',
     };
 
     /**
@@ -35237,6 +35287,31 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights the exact matched value for an `eventdate:` compound
+     * structure-mode filter — re-derives from `_findCellEventDateParts()`'s
+     * own grammar. The trailing "(YYYY-MM-DD)" text is a bare text node
+     * with no wrapper element to scope to (unlike Catalog#'s
+     * `.catalog-number`), so this is a plain cell-wide, word-boundary-
+     * anchored literal match, same reasoning as
+     * `_highlightTracksPerMediumMatch()` above — safe here because the
+     * ASCII-hyphenated date only ever appears once, in the trailing
+     * parenthetical (the entity link's own title text, when it repeats the
+     * date, uses a different Unicode dash — see debug/data-missing.html).
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g. `"eventdate:2024-05-28"`.
+     */
+    function _highlightEventDateMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(10);
+        if (!_want) return;
+        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const _regex = new RegExp(`\\b${_escaped}\\b`, 'g');
+        cell.normalize();
+        highlightCrossTag(cell, _regex, 'mb-column-filter-highlight');
+    }
+
+    /**
      * Highlights the exact matched value for a `formatsize:`/`formatcount:`/
      * `formatcombo:`/`formattype:` compound structure-mode filter —
      * "Format" has no per-group wrapper element either, so this is a
@@ -35839,7 +35914,7 @@ a { color: #1565c0; }`;
                     // 'instrument:'/'altname:'/'name:'/'comment:'/'alias:'/
                     // 'joinphrase:'/'namevariation:'/'revcountry:'/'countryname:'/
                     // 'countrycode:'/'revdate:'/'revweekday:'/'catalogprefix:'/
-                    // 'catalog-none'/'trackspermedium:'/
+                    // 'catalog-none'/'trackspermedium:'/'eventdate:'/
                     // 'formatsize:'/'formatcount:'/'formatcombo:'/'formattype:'/
                     // 'role:' and 'name-variation' structure modes DO
                     // correspond to exact visible content and get
@@ -35878,6 +35953,8 @@ a { color: #1565c0; }`;
                                     _highlightCatalogNoneMatch(row.cells[f.idx]);
                                 } else if (mode.startsWith('trackspermedium:')) {
                                     _highlightTracksPerMediumMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('eventdate:')) {
+                                    _highlightEventDateMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('formatsize:') || mode.startsWith('formatcount:') ||
                                            mode.startsWith('formatcombo:') || mode.startsWith('formattype:')) {
                                     _highlightFormatMatch(row.cells[f.idx], mode);
@@ -45109,6 +45186,16 @@ a { color: #1565c0; }`;
         // _wrapDateAnnotationsInText()'s own JSDoc for the shapes recognized
         // and every builder that produces this sentinel.
         const dateValueCounts = new Map();
+        // Distinct "Event" cell trailing-date values (e.g. "2024-05-28" from
+        // native `<a>…</a> (2024-05-28)` tag-value Event listings — see
+        // debug/data-missing.html) — the plain-native-markup counterpart of
+        // dateValueCounts above, via `_findCellEventDateParts()`'s own
+        // JSDoc for why this needs its own separate Map (that one is fed
+        // exclusively by the `.mb-credit-date` sentinel, which an Event
+        // cell's bare trailing date never carries). Column-gated (isEventCol
+        // below): a no-op Map for any other column, since this is plain
+        // free-text parsing with no CSS-class safety net.
+        const eventDateValueCounts = new Map();
         // Distinct instrument-type values (e.g. "bass", "guitar", "drum
         // machine") — the "Instruments" column's own `<a
         // class="mb-credit-instrument">` sentinel counterpart of the above
@@ -45291,6 +45378,7 @@ a { color: #1565c0; }`;
         const isFormatCol  = _colHeaderName === 'Format';
         const isTracksCol  = _colHeaderName === 'Tracks';
         const isCatalogCol = _colHeaderName === 'Catalog#';
+        const isEventCol   = _colHeaderName === 'Event';
         const tbody = table.tBodies[0];
         if (tbody) {
             Array.from(tbody.rows).forEach(row => {
@@ -45407,6 +45495,10 @@ a { color: #1565c0; }`;
                     // flag; see catalogNoneCount below instead.
                     if (_catalogParts.some(p => !p.prefix && !p.none)) catalogNoPrefixCount++;
                     if (_catalogParts.some(p => p.none)) catalogNoneCount++;
+                }
+                if (isEventCol) {
+                    const _eventDates = _findCellEventDateParts(cell);
+                    new Set(_eventDates).forEach(t => eventDateValueCounts.set(t, (eventDateValueCounts.get(t) || 0) + 1));
                 }
                 const _rowAttrWords = new Set();
                 cell.querySelectorAll('.mb-credit-attr').forEach(s => {
@@ -46717,7 +46809,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'role'|'arttype'|'artcomment'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'role'|'arttype'|'artcomment'|'eventdate'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -46823,6 +46915,7 @@ a { color: #1565c0; }`;
                  : kind === 'countrycode' ? '» country code: '
                  : kind === 'trackspermedium' ? '» tracks: '
                  : kind === 'catalogprefix' ? '» prefix: '
+                 : kind === 'eventdate'  ? '» date: '
                  : kind === 'role'       ? '» role: '
                  : kind === 'arttype'    ? '» image type: '
                  : kind === 'artcomment' ? '» image comment: '
@@ -46957,6 +47050,7 @@ a { color: #1565c0; }`;
         const _sortedAttrValues = Array.from(attrValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedTaskValues = Array.from(taskValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedDateValues = Array.from(dateValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedEventDateValues = Array.from(eventDateValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedInstrumentValues = Array.from(instrumentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedAltNameValues = Array.from(altNameValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         // Type-then-alphabetical: entries of a shared type stay grouped
@@ -46988,7 +47082,7 @@ a { color: #1565c0; }`;
         const _sortedArtTypeValues    = Array.from(artTypeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedArtCommentValues = Array.from(artCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _hasValueEntries = _sortedAttrValues.length > 0 || _sortedTaskValues.length > 0 ||
-            _sortedDateValues.length > 0 || _sortedInstrumentValues.length > 0 ||
+            _sortedDateValues.length > 0 || _sortedEventDateValues.length > 0 || _sortedInstrumentValues.length > 0 ||
             _sortedAltNameValues.length > 0 ||
             _sortedNameValues.length > 0 || _sortedCommentValues.length > 0 || _sortedAliasValues.length > 0 ||
             _sortedJoinPhraseValues.length > 0 || _sortedNameVariationValues.length > 0 ||
@@ -47031,6 +47125,7 @@ a { color: #1565c0; }`;
             _sortedAttrValues.forEach(v => makeValueSynItem('attr', v, attrValueCounts.get(v)));
             _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
+            _sortedEventDateValues.forEach(v => makeValueSynItem('eventdate', v, eventDateValueCounts.get(v)));
             _sortedInstrumentValues.forEach(v => makeValueSynItem('instrument', v, instrumentValueCounts.get(v)));
             _sortedAltNameValues.forEach(v => makeValueSynItem('altname', v, altNameValueCounts.get(v)));
             _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v), entityNameGlyphMap.get(v), entityNameTypeMap.get(v), entityNameFlagMap.get(v)));
@@ -47066,6 +47161,7 @@ a { color: #1565c0; }`;
             _sortedAttrValues.forEach(v => makeValueSynItem('attr', v, attrValueCounts.get(v)));
             _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
+            _sortedEventDateValues.forEach(v => makeValueSynItem('eventdate', v, eventDateValueCounts.get(v)));
             _sortedInstrumentValues.forEach(v => makeValueSynItem('instrument', v, instrumentValueCounts.get(v)));
             _sortedAltNameValues.forEach(v => makeValueSynItem('altname', v, altNameValueCounts.get(v)));
             _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v), entityNameGlyphMap.get(v), entityNameTypeMap.get(v), entityNameFlagMap.get(v)));
