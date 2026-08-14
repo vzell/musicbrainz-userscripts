@@ -5798,3 +5798,234 @@ No margin needed (unlike that fix) since `.mb-uniq-section-hdr`'s own
 `gap: 5px` already spaces every header child.
 
 `node --check ShowAllEntityData.user.js` passed after this edit too.
+
+---
+
+## 2026-08-14 — Format/Country-Date/Country/Tracks/Catalog# sections (v9.99.873)
+
+**Snapshots**: `format.html` (`"2×12\" Vinyl"`, `"12\" Vinyl"`, `"7\"
+Vinyl"`, `"10\" Acetate"`), `country-date.html` (three release events:
+full date+country+weekday; year-only+country, no weekday; year-only, no
+country at all — `<span class="release-country no-country">`),
+`country.html` (`"United States (US)"` — confirmed byte-for-byte identical
+to what `splitCountryDate()` itself synthesizes for its own "Country"
+output column, i.e. NOT a separate native column), `tracks.html` (`"7"`,
+`"5 + 6"`), `catalog.html` (`"S CBS 86061"`, `"CBS 32542"`, and a row with
+BOTH `"32210"` and `"CBS 32210"` as separate `<li>`s).
+
+Five new sections added, all following the exact `_findCellXxx()` →
+`SYN_SECTION_META` → `MB_UNIQ_KIND_TO_SECTION` → `makeValueSynItem` →
+`_cellMatchesStructureMode` → (optional highlight) →
+`_structureModeLabel`/`_structureModeTooltip` pipeline established
+earlier this session for Join phrases/Name variations/the Entity-info
+split:
+
+- **Format info** (💿) — `_findCellFormatParts()` mirrors the EXISTING
+  `extractFormatTypes()` extractor's own documented grammar exactly
+  (`ColumnDataExtractor`, ~line 3259: `^\d+[x×]` count prefix, `" + "`-
+  joined groups) rather than inventing a new one. Confirmed with the user
+  before implementing: the "<n>x<type>" meta entry (e.g. "2xVinyl") is
+  ONE ENTRY PER distinct combo actually present (only for count>1 groups)
+  — not a simple yes/no flag — since checked entries within a column OR
+  together, so separate size/count checkboxes can't express an AND; only
+  a dedicated combo entry can filter an exact count+type combination.
+- **Release events** (📅, "Country/Date") / **Country details** (🌍, the
+  synthetic "Country" column) — `_findCellReleaseEventParts()`/
+  `_findCellCountryNameParts()` mirror `splitCountryDate()`'s own DOM walk
+  (`.release-event` → `.release-country`/`.release-date`, including its
+  `.no-country` handling and its `.mb-day-of-week` stripping — here
+  surfaced as its own `weekday` field instead of discarded). Confirmed
+  with the user: the "Country" bullet's mention of "date expression,
+  weekday" was a copy-paste artifact from the Country/Date bullet above
+  it (debug/country.html has no date data at all) — dropped. The two
+  extraction functions naturally never cross-fire on each other's column
+  (Country/Date's bare abbr text like "NL" never matches the "Name (XX)"
+  pattern `_findCellCountryNameParts()` requires), so no explicit gating
+  was needed to keep them apart. Country-code entries show the SAME
+  native flag icon class the source markup uses as their glyph marker —
+  required extending `makeValueSynItem`'s existing `kind === 'name'`-only
+  marker block to also fire for `revcountry`/`countrycode`.
+- **Tracks info** (🎵) — `_findCellTracksPerMedium()` mirrors the
+  EXISTING `sumTracks()` extractor's own `text.split('+')` grammar. The
+  "multiple mediums" meta entry (confirmed with the user) IS a simple
+  binary flag here (unlike Format's parameterized combo) since there's no
+  further "type" dimension to parameterize by — routed via
+  `MB_UNIQ_MODE_TO_SECTION`/`makeSynItem`, mirroring the existing
+  `title-mismatch`/`name-variation` flags exactly.
+- **Catalog info** (🏷️) — `_findCellCatalogParts()` reuses
+  `_findCellListItems()` (CLAUDE.md's own explicit warning against a
+  fresh ad hoc `ul > li` query at a new call site — this has regressed
+  before) rather than treating the cell as flat text, since
+  `renderMultiRowCell: [..., 'Catalog#']` always list-wraps it. TWO
+  independent meta flags ("has prefix" / "no prefix"), not one toggle —
+  confirmed necessary by `catalog.html`'s own third row, whose list
+  contains BOTH a prefixed (`"CBS 32210"`) and an unprefixed (`"32210"`)
+  item as separate `<li>`s, so a single row can (and does) match both
+  flags simultaneously.
+
+**Safety consideration new to this batch**: Format/Tracks/Catalog# parse
+plain free text with NO CSS-class safety net (unlike every other
+`_findCellXxx()` added this session, which are all safely scoped by class
+presence) — a `Title`/`Comment` cell could coincidentally contain a `+` or
+a `\d+x` pattern. Gated all three by column header name (`_colHeaderName`,
+mirroring the existing `isTitleCol` computation) at the `openUniqDrop()`
+call site, so their extraction functions are simply never invoked outside
+their own column. Country/Date and Country needed no such gating (safely
+scoped by `.release-event`/`.release-country` class presence).
+
+**Highlighting decision**: only `revcountry`/`countrycode` got a dedicated
+highlight function (`_highlightCountryMatch`, handling both) — their
+matched value is genuinely the visible text (a literal substring of the
+displayed country code/name). Every other new kind (size, count, combo,
+date, weekday, tracks-per-medium, catalog prefix) is derived from cell-
+wide or per-`<li>` free text with no single exact sub-node worth
+isolating — deliberately left with no highlight dispatch branch, matching
+the established "operates on pure text/state with no single corresponding
+element, so it gets no highlight" precedent already documented for the
+structural (empty/single/collapsed/…) modes.
+
+`_findCellReleaseEventParts()`/`_findCellCountryNameParts()` needed a
+small revision after first being written: added `abbrEl`/`a` element
+references to their returned objects specifically so the highlight
+function could re-derive its target from the SAME extraction function
+(never a fresh independent DOM query at the highlight call site — this
+session's own repeatedly-reinforced precedent).
+
+`node --check ShowAllEntityData.user.js` passed after every edit.
+
+**Follow-up round (same v9.99.873, not yet committed when found)** — user
+reported via screenshots after trying the feature live:
+
+1. **Split combined sections further.** "Country details" → "Country name
+   details" + "Country code details"; "Release events" → "Release events
+   - country"/"- date"/"- weekday". Mechanical: each kind already had its
+   own extraction/aggregation, just needed its own `SYN_SECTION_META` key
+   instead of sharing one — no other code touched.
+
+2. **Format: add a plain "type" entry** (e.g. "Vinyl", "Acetate") that
+   matches regardless of size — `_findCellFormatParts()` already extracted
+   `type` per group, it just was never surfaced as its own kind (`size`/
+   `count`/`combo` were, `type` wasn't). New `formattype` kind, same
+   pipeline as the other three. User's request literally said "Tracks"
+   column but described Vinyl/Acetate/size-specifications, which are
+   unambiguously Format concepts (confirmed by debug/format.html) — very
+   likely a slip given how many columns this session covers; implemented
+   under Format and flagged the assumption rather than blocking on it.
+
+3. **Highlighting was broken for every new structural entry except
+   country CODE.** Root cause, traced per-column:
+   - `countryname:` — simply never wired into `_highlightCountryMatch()`
+     at all (only `revcountry:`/`countrycode:` were) despite having just
+     as valid a target (the same anchor element, matching the "Full Name"
+     half instead of the "(XX)" half). Fixed by extending that one
+     function.
+   - `catalogprefix:` — needed a NEW highlight function, which needed
+     `_findCellCatalogParts()` to be revised to also carry an element
+     reference (`el`, the `.catalog-number` span) — it only returned
+     `{prefix, number}` before, no node to highlight.
+   - `trackspermedium:` / `formatsize:`/`formatcount:`/`formatcombo:`/
+     `formattype:` — these were DELIBERATELY left with no highlight
+     dispatch branch in the original design, reasoning "derived from
+     cell-wide free text with no single exact sub-node worth isolating."
+     That reasoning was wrong for these five: Tracks/Format cells ARE
+     plain flat text with no wrapper, but a precise, escaped,
+     word-boundary-anchored regex applied directly to the whole cell
+     (mirroring `_highlightCreditValueMatch()`'s own established
+     literal-escape pattern for its `attr:`/`task:`/etc. branches, just
+     without a sentinel-class element to scope to first) works safely,
+     since the cell's ENTIRE text content is nothing but the structured
+     data being parsed — no unrelated text for a bare regex to
+     accidentally cross-match. Two new functions:
+     `_highlightTracksPerMediumMatch()` (word-boundary around the exact
+     number) and `_highlightFormatMatch()` (handles all four Format
+     kinds: `formatsize`/`formattype` are literal-word matches;
+     `formatcount`/`formatcombo` deliberately highlight ONLY the leading
+     "N×"/"Nx" count-prefix token, not a bare number — a bare "2" could
+     collide with the "2" inside an unrelated "12"", so the regex
+     specifically requires the digit to be immediately followed by `x`/`×`
+     — `formatcombo` parses its own value string, e.g. "2xVinyl", back
+     apart to recover just the count for this purpose, matching exactly
+     what the user reported missing ("the '2x' are not highlighted").
+
+`node --check ShowAllEntityData.user.js` passed after every edit in this
+follow-up round too.
+
+**Second follow-up round (still v9.99.873, not yet committed when found)**
+— user reported 3 more issues via screenshots after trying the round-1
+fixes live:
+
+1. **Catalog#: `"[none]"` (MusicBrainz's own literal placeholder for "no
+   catalog number set on this medium") had no dedicated entry.**
+   `_findCellCatalogParts()`'s grammar (`^(?:(.+?)\s+)?(\d+)$`) simply
+   never matched it — it silently produced zero parts for that `<li>`, not
+   an error, so this was invisible until the user pointed at a specific
+   cell. Added a new shape check ahead of the numeric regex
+   (`t === '[none]'` → `{prefix: null, number: null, none: true, el}`),
+   a third independent counter `catalogNoneCount` (a row's list can mix
+   `"[none]"` items with real prefixed/unprefixed ones, so this is NOT
+   mutually exclusive with the other two flags), a `catalog-none` mode in
+   `MB_UNIQ_MODE_TO_SECTION`/`_cellMatchesStructureMode`/both render
+   branches/`_structureModeLabel`/`_structureModeTooltip`, and a new
+   `_highlightCatalogNoneMatch()` (mirrors `_highlightCatalogPrefixMatch()`'s
+   shape, highlights the literal `[none]` text via the same `el` field).
+   **Self-caught bug while doing this**: `"[none]"` items also have
+   `prefix: null`, exactly like a genuine unprefixed catalog NUMBER — the
+   existing `catalog-no-prefix` aggregation/matching would have silently
+   double-counted them as "no prefix" entries. Fixed by adding `&& !p.none`
+   to both the aggregation check and the `_cellMatchesStructureMode`
+   branch for `catalog-no-prefix` before it ever shipped.
+
+2. **Country/Date: `revdate:`/`revweekday:` highlighting was designed out
+   for the wrong reason.** Screenshot showed "date: 1973-06" and "weekday:
+   Fri" checked with zero highlighting in the rows, despite the filter
+   itself working (rows correctly narrowed). Root cause:
+   `_findCellReleaseEventParts()` only ever captured `abbrEl` (the country
+   code's own element) — `dateText`/`weekday` were read as plain strings
+   with NO element reference kept, so there was nothing for a highlight
+   function to target. This is the exact same class of mistake just fixed
+   in round 1 for Tracks/Format ("cell-wide text has no single sub-node
+   worth isolating, skip highlighting") recurring for a different pair of
+   kinds — except here an exact element WAS available (`.release-date`
+   itself, and the nested `.mb-day-of-week` span for weekday) and was just
+   never threaded through. Fixed: extended `_findCellReleaseEventParts()`
+   to also return `dateSpanEl` (the `.release-date` span itself — matching
+   must run against the LIVE span, not the detached clone used to compute
+   `dateText`, since the clone has already had `.mb-day-of-week` stripped
+   out and would throw off `highlightCrossTag`'s text-node walk) and
+   `dowEl` (the `.mb-day-of-week` span). Verified against
+   `debug/country-date.html`'s markup that date text always precedes the
+   nested weekday span in DOM order (`<span class="release-date">1975-08-25<span
+   class="mb-day-of-week">Mon</span></span>`), so `highlightCrossTag`
+   walking `dateSpanEl`'s full concatenated text ("1975-08-25Mon") still
+   matches only the date portion correctly — no interleaving risk. New
+   `_highlightReleaseEventMatch(cell, mode)` function (kept separate from
+   `_highlightCountryMatch()` — different concept, date/weekday vs.
+   country), wired into the dispatch chain alongside the existing
+   `revcountry:`/`countryname:`/`countrycode:` branch.
+
+3. **Format info badge alignment was a session-wide gap, not
+   Format-specific.** Screenshot showed count badges in the "Format info"
+   section looking center- rather than right-aligned relative to each
+   other. Root cause: `panelBadgeChWidth` (the shared badge width in `ch`
+   units computed once via `Math.max(...)` over every possible count value
+   across ALL sections in the panel, so every "(N)" badge right-aligns
+   consistently against the SAME width) was missing numerous
+   `*ValueCounts` Maps/counters — not just the newest Format/Release-events/
+   Country/Tracks/Catalog# batch, but also `joinPhraseValueCounts` and
+   `nameVariationValueCounts` from earlier this session. None of these
+   have a broader "any"/superset map the way entity names do
+   (`entityNameAnyValueCounts` already covers those), so their own raw
+   values are exactly what ends up on a badge — omitting them from the
+   `Math.max(...)` call left the shared width silently too narrow for any
+   section whose digit counts happened to exceed whatever the width WAS
+   computed from. This wasn't literally "center-aligned" (the CSS itself
+   right-aligns correctly) — it was every OTHER section's badges sized to
+   a too-narrow shared width while Format's own values needed more room,
+   making Format's column look visually different/misaligned relative to
+   the rest of the panel. Fixed comprehensively: audited every
+   `*ValueCounts` Map and standalone counter added this entire session and
+   added every one missing from the `Math.max(...)` computation in one
+   edit, rather than patching in only the Format-specific ones.
+
+`node --check ShowAllEntityData.user.js` passed after every edit in this
+second follow-up round.

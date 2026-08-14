@@ -1,5 +1,23 @@
 [
   {
+    "version": "9.99.873",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The per-column unique-values (📊) dropdown now offers several new synthetic sections extracting finer-grained structure from columns that previously only offered a whole-cell value: \"Format info\" (💿 — distinct disc sizes like 7\"/10\"/12\", medium counts, a type entry (e.g. \"Vinyl\"/\"Acetate\") that matches regardless of size, and combined \"2xVinyl\"-style entries for filtering an exact count+type combination in one click), \"Release events - country\"/\"- date\"/\"- weekday\" (🌐/📅/📆, on \"Country/Date\": distinct country codes with their native flag icon, date text, and chaban weekday abbreviations, each independently optional, now each its own collapsible section), \"Country name details\"/\"Country code details\" (🌍/🏷️, on the synthetic \"Country\" column splitCountryDate() produces, likewise split into two sections), \"Tracks info\" (🎵, distinct per-medium track counts, plus a \"multiple mediums\" flag for rows joined by \"+\"), and \"Catalog info\" (🏷️, distinct catalog-number prefixes like \"CBS\"/\"S CBS\", plus three independent flags: \"has prefix\" / \"no prefix\" (a single row's catalog list can match both) and a new \"no catalog number\" flag for list items that are literally MusicBrainz's own \"[none]\" placeholder. Checking any of these new entries now correctly highlights the matching text/number/prefix/placeholder within the full cell content, not just the filtered rows themselves — including \"Release events - date\" and \"- weekday\", whose highlighting was missing an element reference to scope to and has now been added."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the per-column unique-values (📊) dropdown's shared badge-width computation (panelBadgeChWidth), which right-aligns every \"(N)\" count badge across every section in the panel: it was missing numerous value-count maps and counters added across this session (Join phrases, Name variations, and the newest Format/Release-events/Country/Tracks/Catalog# sections), so any section whose own counts happened to exceed whatever width the panel HAD been sized from rendered with inconsistent right-alignment — reported as the \"Format info\" section's count numbers looking center-aligned. The computation is now comprehensive over every value-count map/counter in the panel."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.872",
     "date": "2026-08-14",
     "sections": [

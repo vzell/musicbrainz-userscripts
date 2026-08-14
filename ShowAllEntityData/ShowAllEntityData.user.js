@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.872+2026-08-14
+// @version      9.99.873+2026-08-14
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -17589,6 +17589,203 @@
     }
 
     /**
+     * Splits a "Format" cell into its per-group size/count parts — e.g.
+     * `"2×12\" Vinyl"` → `{count: 2, size: '12"', type: 'Vinyl', combo:
+     * '2xVinyl'}`. Mirrors `extractFormatTypes()`'s own documented grammar
+     * (`ColumnDataExtractor`) exactly: groups are `" + "`-joined, each
+     * optionally prefixed by a leading count factor (`\d+` followed by
+     * lowercase `x` or the Unicode multiplication sign `×`, U+00D7).
+     * `count` defaults to 1 when that prefix is absent. `combo` (the
+     * `` `${count}x${type}` `` string, e.g. `"2xVinyl"`) is only populated
+     * for `count > 1` — it exists so a single checkbox can filter an EXACT
+     * count+type combination, which checking the separate size/count
+     * entries can't express (checked entries within one column OR
+     * together, not AND).
+     *
+     * Deliberately only called for the "Format" column itself (gated by
+     * column name at the `openUniqDrop()` call site) — this is plain
+     * free-text parsing with no CSS-class safety net, unlike every other
+     * `_findCellXxx()` extractor in this file.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Array<{count: number, size: ?string, type: string, combo: ?string}>}
+     */
+    function _findCellFormatParts(cell) {
+        if (!cell) return [];
+        const text = getCleanColumnText(cell);
+        if (!text) return [];
+        return text.split(' + ').map(s => s.trim()).filter(Boolean).map(group => {
+            const m = group.match(/^(?:(\d+)[x×])?(\d+")?\s*(.*)$/);
+            const count = (m && m[1]) ? parseInt(m[1], 10) : 1;
+            const size  = (m && m[2]) ? m[2] : null;
+            const type  = (m && m[3]) ? m[3].trim() : '';
+            return { count, size, type, combo: (count > 1 && type) ? `${count}x${type}` : null };
+        });
+    }
+
+    /**
+     * Extracts country/date/weekday parts from a "Country/Date" cell, one
+     * entry per `.release-event` — mirrors `splitCountryDate()`'s own DOM
+     * walk (`ColumnDataExtractor`) exactly, including its handling of a
+     * missing country (`.release-country.no-country`, debug/country-date.html's
+     * third row) and its stripping of the optional chaban
+     * `<span class="mb-day-of-week">` weekday indicator out of the date
+     * text (here surfaced as its own `weekday` field instead of discarded).
+     * All four fields are independently optional, matching the source
+     * markup — a row can have a date with no country, a country with no
+     * weekday, etc.
+     *
+     * Safely unconditional (no column-name gating needed): scoped entirely
+     * by `.release-event`/`.release-country` class presence, which only
+     * ever appears in this exact native shape.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Array<{flagClass: ?string, countryCode: ?string, dateText: ?string, weekday: ?string, abbrEl: ?Element, dateSpanEl: ?Element, dowEl: ?Element}>}
+     */
+    function _findCellReleaseEventParts(cell) {
+        if (!cell) return [];
+        const out = [];
+        cell.querySelectorAll('.release-event').forEach(ev => {
+            const countrySpan = ev.querySelector('.release-country');
+            const dateSpan    = ev.querySelector('.release-date');
+            let flagClass = null, countryCode = null, abbrEl = null;
+            if (countrySpan && !countrySpan.classList.contains('no-country')) {
+                const abbr = countrySpan.querySelector('abbr');
+                countryCode = abbr ? (abbr.textContent.trim() || null) : null;
+                flagClass = Array.from(countrySpan.classList).find(c => c.startsWith('flag-')) || null;
+                abbrEl = abbr;
+            }
+            let dateText = null, weekday = null, dowEl = null;
+            if (dateSpan) {
+                const dow = dateSpan.querySelector('.mb-day-of-week');
+                if (dow) { weekday = dow.textContent.trim() || null; dowEl = dow; }
+                const clone = dateSpan.cloneNode(true);
+                clone.querySelectorAll('.mb-day-of-week').forEach(el => el.remove());
+                dateText = clone.textContent.trim() || null;
+            }
+            // abbrEl/dateSpanEl/dowEl: each part's own tightly-scoped
+            // element (used for highlighting — see _highlightCountryMatch()/
+            // _highlightReleaseEventMatch()). Never a fresh independent
+            // query at the highlight call site. dateSpanEl is the whole
+            // <span class="release-date"> (dateText is read AFTER cloning
+            // and stripping .mb-day-of-week out, so highlightCrossTag must
+            // run against the live dateSpan, not a detached clone).
+            out.push({ flagClass, countryCode, dateText, weekday, abbrEl, dateSpanEl: dateSpan, dowEl });
+        });
+        return out;
+    }
+
+    /**
+     * Extracts country name/code parts from a "Country" cell — the
+     * SYNTHETIC output `splitCountryDate()` itself produces from a
+     * "Country/Date" column (confirmed by direct comparison:
+     * `debug/country.html`'s markup is byte-for-byte what
+     * `spanContainer.innerHTML = \`${flagImg} <a href="${countryHref}">
+     * ${countryFull} (${countryCode})</a>\`;` builds), not a separate
+     * native column. Bare `.release-country` spans (no `.release-event`
+     * wrapper), anchor text shaped `"Full Name (XX)"`.
+     *
+     * Naturally produces nothing when run against a "Country/Date"
+     * column's own `.release-country` spans instead (their anchor text is
+     * just the bare 2-letter code, e.g. `"NL"` — no `"Name (XX)"` pattern
+     * to match), so no explicit gating is needed to keep the two sections
+     * from cross-firing on each other's column.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Array<{flagClass: ?string, name: string, code: string, a: Element}>}
+     */
+    function _findCellCountryNameParts(cell) {
+        if (!cell) return [];
+        const out = [];
+        cell.querySelectorAll('.release-country').forEach(span => {
+            if (span.classList.contains('no-country')) return;
+            const a = span.querySelector('a');
+            if (!a) return;
+            const flagClass = Array.from(span.classList).find(c => c.startsWith('flag-')) || null;
+            const full = getCleanColumnText(a);
+            const m = full.match(/^(.*)\s\(([A-Z]{2})\)$/);
+            if (!m) return;
+            // a: the anchor itself (used for highlighting — see
+            // _highlightCountryMatch()). Never a fresh independent query
+            // at the highlight call site.
+            out.push({ flagClass, name: m[1].trim(), code: m[2], a });
+        });
+        return out;
+    }
+
+    /**
+     * Splits a "Tracks" cell into its per-medium track counts — e.g.
+     * `"5 + 6"` → `['5', '6']`. Mirrors `sumTracks()`'s own `text.split('+')`
+     * grammar (`ColumnDataExtractor`) exactly.
+     *
+     * Deliberately only called for the "Tracks" column itself (gated by
+     * column name at the `openUniqDrop()` call site) — plain free-text
+     * parsing with no CSS-class safety net.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {string[]}
+     */
+    function _findCellTracksPerMedium(cell) {
+        if (!cell) return [];
+        const text = getCleanColumnText(cell);
+        if (!text) return [];
+        return text.split('+').map(s => s.trim()).filter(s => /^\d+$/.test(s));
+    }
+
+    /**
+     * Splits each item of a "Catalog#" cell into its optional leading
+     * string prefix and trailing numeric catalog number — e.g. `"S CBS
+     * 86061"` → `{prefix: 'S CBS', number: '86061', none: false}`,
+     * `"32210"` → `{prefix: null, number: '32210', none: false}`. A
+     * multi-word prefix (`"S CBS"`) is kept as one atomic string, never
+     * further split. MusicBrainz's own literal placeholder text `"[none]"`
+     * (a medium with no catalog number set at all) is recognized as its
+     * own distinct shape — `{prefix: null, number: null, none: true}` —
+     * rather than silently dropped for not matching the prefix+number
+     * grammar.
+     *
+     * Reuses `_findCellListItems()` (never a fresh ad hoc `ul > li` query —
+     * see that function's own JSDoc for why a new hand-rolled version of
+     * "does this cell have a qualifying list" has regressed this codebase
+     * before) for the per-`<li>` walk, since `renderMultiRowCell: [...,
+     * 'Catalog#']` always wraps this column in `<ul><li class=
+     * "catalog-number">`, even for a single entry; falls back to the whole
+     * cell's own text when no list is found (defensive — matches this
+     * column's shape everywhere it's been observed).
+     *
+     * Deliberately only called for the "Catalog#" column itself (gated by
+     * column name at the `openUniqDrop()` call site) — plain free-text
+     * parsing with no CSS-class safety net.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Array<{prefix: ?string, number: ?string, none: boolean, el: Element}>}
+     */
+    function _findCellCatalogParts(cell) {
+        if (!cell) return [];
+        const items = _findCellListItems(cell);
+        const sources = items.length ? items : [cell];
+        const out = [];
+        sources.forEach(source => {
+            const t = getCleanColumnText(source);
+            if (!t) return;
+            // el: the tightest available highlight scope (used by
+            // _highlightCatalogPrefixMatch()/_highlightCatalogNoneMatch()
+            // — never a fresh independent query at the highlight call
+            // site) — the native <span class="catalog-number"> wrapper
+            // when present, else the <li>/cell itself.
+            const el = source.querySelector ? (source.querySelector('.catalog-number') || source) : source;
+            if (t === '[none]') {
+                out.push({ prefix: null, number: null, none: true, el });
+                return;
+            }
+            const m = t.match(/^(?:(.+?)\s+)?(\d+)$/);
+            if (!m) return;
+            out.push({ prefix: m[1] ? m[1].trim() : null, number: m[2], none: false, el });
+        });
+        return out;
+    }
+
+    /**
      * Tests whether a table cell matches a "Cell structure" checkbox mode
      * from `openUniqDrop()`'s synthetic entries (`makeSynItem`/
      * `makeValueSynItem`/`makeInlineArtItem`) — the single source of truth
@@ -17737,6 +17934,109 @@
             const want = mode.slice(14);
             return !!cell && _findCellNameVariations(cell).some(nv =>
                 nv.full === want || nv.real === want || nv.sort === want);
+        }
+        if (mode.startsWith('formatsize:')) {
+            // Compound mode — matches one "Format" group's own size token
+            // (e.g. '12"'), from _findCellFormatParts()'s own extraction.
+            const want = mode.slice(11);
+            return !!cell && _findCellFormatParts(cell).some(p => p.size === want);
+        }
+        if (mode.startsWith('formatcount:')) {
+            // Compound mode counterpart of 'formatsize:' above — matches
+            // one "Format" group's own medium count (e.g. "2").
+            const want = mode.slice(12);
+            return !!cell && _findCellFormatParts(cell).some(p => String(p.count) === want);
+        }
+        if (mode.startsWith('formatcombo:')) {
+            // Compound mode counterpart of 'formatsize:'/'formatcount:'
+            // above — matches one "Format" group's own "<n>x<type>" combo
+            // string (e.g. "2xVinyl"), only present for count > 1 groups.
+            const want = mode.slice(12);
+            return !!cell && _findCellFormatParts(cell).some(p => p.combo === want);
+        }
+        if (mode.startsWith('formattype:')) {
+            // Compound mode counterpart of 'formatsize:'/'formatcount:'/
+            // 'formatcombo:' above — matches one "Format" group's own type
+            // word ALONE (e.g. "Vinyl"), regardless of size, so a table
+            // mixing 7"/10"/12" Vinyl can still be filtered to "any Vinyl"
+            // in one click.
+            const want = mode.slice(11);
+            return !!cell && _findCellFormatParts(cell).some(p => p.type === want);
+        }
+        if (mode.startsWith('revcountry:')) {
+            // Compound mode — matches one "Country/Date" release event's
+            // own 2-letter country code, from
+            // _findCellReleaseEventParts()'s own extraction.
+            const want = mode.slice(11);
+            return !!cell && _findCellReleaseEventParts(cell).some(p => p.countryCode === want);
+        }
+        if (mode.startsWith('revdate:')) {
+            // Compound mode counterpart of 'revcountry:' above — matches
+            // one release event's own date text as displayed (weekday
+            // stripped out, matching splitCountryDate()'s own Date column).
+            const want = mode.slice(8);
+            return !!cell && _findCellReleaseEventParts(cell).some(p => p.dateText === want);
+        }
+        if (mode.startsWith('revweekday:')) {
+            // Compound mode counterpart of 'revcountry:'/'revdate:' above —
+            // matches one release event's own chaban weekday abbreviation
+            // (e.g. "Mon"), when present.
+            const want = mode.slice(11);
+            return !!cell && _findCellReleaseEventParts(cell).some(p => p.weekday === want);
+        }
+        if (mode.startsWith('countryname:')) {
+            // Compound mode — matches one entry's own full country name
+            // (e.g. "United States"), from _findCellCountryNameParts()'s
+            // own extraction of the synthetic "Country" column.
+            const want = mode.slice(12);
+            return !!cell && _findCellCountryNameParts(cell).some(p => p.name === want);
+        }
+        if (mode.startsWith('countrycode:')) {
+            // Compound mode counterpart of 'countryname:' above — matches
+            // one entry's own 2-letter country code (e.g. "US").
+            const want = mode.slice(12);
+            return !!cell && _findCellCountryNameParts(cell).some(p => p.code === want);
+        }
+        if (mode.startsWith('trackspermedium:')) {
+            // Compound mode — matches one "Tracks" cell's own per-medium
+            // track count (e.g. "6"), from _findCellTracksPerMedium()'s
+            // own extraction.
+            const want = mode.slice(16);
+            return !!cell && _findCellTracksPerMedium(cell).includes(want);
+        }
+        if (mode === 'multi-medium') {
+            // Binary flag — true when the "Tracks" cell shows more than
+            // one medium's track count (joined by "+").
+            return !!cell && _findCellTracksPerMedium(cell).length > 1;
+        }
+        if (mode.startsWith('catalogprefix:')) {
+            // Compound mode — matches one "Catalog#" list item's own
+            // leading string prefix (e.g. "CBS", "S CBS"), from
+            // _findCellCatalogParts()'s own extraction.
+            const want = mode.slice(14);
+            return !!cell && _findCellCatalogParts(cell).some(p => p.prefix === want);
+        }
+        if (mode === 'catalog-has-prefix') {
+            // Binary flag — true when at least one "Catalog#" list item has
+            // a leading string prefix.
+            return !!cell && _findCellCatalogParts(cell).some(p => p.prefix);
+        }
+        if (mode === 'catalog-no-prefix') {
+            // Binary flag counterpart of 'catalog-has-prefix' above — true
+            // when at least one "Catalog#" list item has NO prefix (a bare
+            // number). Independent, not mutually exclusive with the flag
+            // above: a cell's list can contain both kinds of item. Excludes
+            // "[none]" items (also prefix: null) — see 'catalog-none' below,
+            // which is the dedicated flag for those.
+            return !!cell && _findCellCatalogParts(cell).some(p => !p.prefix && !p.none);
+        }
+        if (mode === 'catalog-none') {
+            // Binary flag — true when at least one "Catalog#" list item is
+            // MusicBrainz's own literal "[none]" placeholder (no catalog
+            // number set at all for that medium). Independent of both
+            // flags above: a cell's list can mix "[none]" items with real
+            // prefixed/unprefixed catalog numbers.
+            return !!cell && _findCellCatalogParts(cell).some(p => p.none);
         }
         if (mode.startsWith('arttype:')) {
             // Compound mode (openUniqDrop()'s makeValueSynItem, the "CAA
@@ -34044,6 +34344,14 @@ a { color: #1565c0; }`;
         relationships: { label: 'Relationship icons', glyph: '🔗' },
         caaInfo:       { label: 'CAA info',           glyph: '🎨' },
         eaaInfo:       { label: 'EAA info',           glyph: '🎫' },
+        formatInfo:    { label: 'Format info',        glyph: '💿' },
+        releaseEventsCountry: { label: 'Release events - country', glyph: '🌐' },
+        releaseEventsDate:    { label: 'Release events - date',    glyph: '📅' },
+        releaseEventsWeekday: { label: 'Release events - weekday', glyph: '📆' },
+        countryNameInfo: { label: 'Country name details', glyph: '🌍' },
+        countryCodeInfo: { label: 'Country code details', glyph: '🏳️' },
+        tracksInfo:    { label: 'Tracks info',        glyph: '🎵' },
+        catalogInfo:   { label: 'Catalog info',       glyph: '🏷️' },
     };
 
     /**
@@ -34055,6 +34363,8 @@ a { color: #1565c0; }`;
         expanded: 'structure', any: 'structure',
         'inline-art-yes': 'structure', 'inline-art-no': 'structure',
         'title-mismatch': 'flags', 'name-variation': 'flags',
+        'multi-medium': 'tracksInfo',
+        'catalog-has-prefix': 'catalogInfo', 'catalog-no-prefix': 'catalogInfo', 'catalog-none': 'catalogInfo',
     };
 
     /**
@@ -34080,6 +34390,11 @@ a { color: #1565c0; }`;
         joinphrase: 'joinPhrase',
         namevariation: 'nameVariation',
         role: 'roles',
+        formatsize: 'formatInfo', formatcount: 'formatInfo', formatcombo: 'formatInfo', formattype: 'formatInfo',
+        revcountry: 'releaseEventsCountry', revdate: 'releaseEventsDate', revweekday: 'releaseEventsWeekday',
+        countryname: 'countryNameInfo', countrycode: 'countryCodeInfo',
+        trackspermedium: 'tracksInfo',
+        catalogprefix: 'catalogInfo',
     };
 
     /**
@@ -34578,6 +34893,205 @@ a { color: #1565c0; }`;
             el.normalize();
             highlightCrossTag(el, _buildFuzzyTextMatchRegex(t), 'mb-column-filter-highlight');
         });
+    }
+
+    /**
+     * Highlights the exact matched value for a `revcountry:`/`countryname:`/
+     * `countrycode:` compound structure-mode filter (see `openUniqDrop()`'s
+     * `makeValueSynItem` and `testRowMatch()`'s `f.isMultiValueFilter`
+     * structure-mode fallback) — re-derives from `_findCellReleaseEventParts()`/
+     * `_findCellCountryNameParts()` directly. Unlike `namevariation:`, the
+     * matched VALUE here is itself the visible text (a "Country/Date"
+     * event's `<abbr>NL</abbr>`, or a literal substring of a synthetic
+     * "Country" column's `"Full Name (XX)"` anchor text — either the
+     * `"Full Name"` half for `countryname:` or the `"XX"` half for
+     * `countrycode:`), so the regex is built from the wanted value
+     * directly rather than from the target element's own full text.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"revcountry:NL"`, `"countryname:Israel"`, or `"countrycode:US"`.
+     */
+    function _highlightCountryMatch(cell, mode) {
+        if (!cell) return;
+        if (mode.startsWith('revcountry:')) {
+            const _want = mode.slice(11);
+            if (!_want) return;
+            const regex = _buildFuzzyTextMatchRegex(_want);
+            _findCellReleaseEventParts(cell).forEach(p => {
+                if (p.countryCode !== _want || !p.abbrEl) return;
+                p.abbrEl.normalize();
+                highlightCrossTag(p.abbrEl, regex, 'mb-column-filter-highlight');
+            });
+            return;
+        }
+        // 'countryname:' and 'countrycode:' are both 12 characters.
+        const isName = mode.startsWith('countryname:');
+        const _want = mode.slice(12);
+        if (!_want) return;
+        const regex = _buildFuzzyTextMatchRegex(_want);
+        _findCellCountryNameParts(cell).forEach(p => {
+            const val = isName ? p.name : p.code;
+            if (val !== _want || !p.a) return;
+            p.a.normalize();
+            highlightCrossTag(p.a, regex, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
+     * Highlights the exact matched value for a `revdate:`/`revweekday:`
+     * compound structure-mode filter (see `openUniqDrop()`'s
+     * `makeValueSynItem` and `testRowMatch()`'s structure-mode fallback) —
+     * re-derives from `_findCellReleaseEventParts()` directly, scoped to
+     * that event's own `dateSpanEl`/`dowEl` (kept separate from
+     * `_highlightCountryMatch()` since it targets the date/weekday half of
+     * a "Country/Date" cell, not the country half).
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"revdate:1975-08-25"` or `"revweekday:Mon"`.
+     */
+    function _highlightReleaseEventMatch(cell, mode) {
+        if (!cell) return;
+        const isDate = mode.startsWith('revdate:');
+        const _want = mode.slice(isDate ? 8 : 11);
+        if (!_want) return;
+        const regex = _buildFuzzyTextMatchRegex(_want);
+        _findCellReleaseEventParts(cell).forEach(p => {
+            if (isDate) {
+                if (p.dateText !== _want || !p.dateSpanEl) return;
+                p.dateSpanEl.normalize();
+                highlightCrossTag(p.dateSpanEl, regex, 'mb-column-filter-highlight');
+            } else {
+                if (p.weekday !== _want || !p.dowEl) return;
+                p.dowEl.normalize();
+                highlightCrossTag(p.dowEl, regex, 'mb-column-filter-highlight');
+            }
+        });
+    }
+
+    /**
+     * Highlights the exact matched value for a `catalogprefix:` compound
+     * structure-mode filter — re-derives from `_findCellCatalogParts()`
+     * directly, scoped to that entry's own `el` (the native
+     * `<span class="catalog-number">` wrapper, or the `<li>`/cell as a
+     * fallback). No word-boundary needed: the prefix is always the exact
+     * leading substring of that element's own text (per
+     * `_findCellCatalogParts()`'s own `^(?:(.+?)\s+)?(\d+)$` grammar), and
+     * that element contains nothing else the literal prefix string could
+     * ambiguously match within.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g. `"catalogprefix:CBS"`.
+     */
+    function _highlightCatalogPrefixMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(14);
+        if (!_want) return;
+        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const _regex = new RegExp(_escaped, 'g');
+        _findCellCatalogParts(cell).forEach(p => {
+            if (p.prefix !== _want || !p.el) return;
+            p.el.normalize();
+            highlightCrossTag(p.el, _regex, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
+     * Highlights every MusicBrainz "[none]" placeholder in a "Catalog#"
+     * cell for the `catalog-none` binary flag — re-derives from
+     * `_findCellCatalogParts()` directly, matching `_highlightCatalogPrefixMatch()`'s
+     * own established shape for this column.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     */
+    function _highlightCatalogNoneMatch(cell) {
+        if (!cell) return;
+        _findCellCatalogParts(cell).forEach(p => {
+            if (!p.none || !p.el) return;
+            p.el.normalize();
+            highlightCrossTag(p.el, /\[none\]/g, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
+     * Highlights the exact matched value for a `trackspermedium:` compound
+     * structure-mode filter — re-derives from `_findCellTracksPerMedium()`'s
+     * own grammar (`text.split('+')`), but "Tracks" has no per-medium
+     * wrapper element to scope to (unlike Catalog#'s `.catalog-number`) —
+     * a plain cell-wide, word-boundary-anchored literal match (mirroring
+     * `_highlightCreditValueMatch()`'s own `attr:` branch) is safe here:
+     * the boundary prevents "4" from matching inside "24", and the whole
+     * cell text is nothing but digits and " + " separators, so there's
+     * nothing else a bare number could ambiguously match against.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g. `"trackspermedium:6"`.
+     */
+    function _highlightTracksPerMediumMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(16);
+        if (!_want) return;
+        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const _regex = new RegExp(`\\b${_escaped}\\b`, 'g');
+        cell.normalize();
+        highlightCrossTag(cell, _regex, 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights the exact matched value for a `formatsize:`/`formatcount:`/
+     * `formatcombo:`/`formattype:` compound structure-mode filter —
+     * "Format" has no per-group wrapper element either, so this is a
+     * plain cell-wide regex match, same reasoning as
+     * `_highlightTracksPerMediumMatch()` above:
+     *   - `formatsize:` — the size token verbatim (e.g. `12"`), leading
+     *     word-boundary only (the trailing `"` already can't be confused
+     *     with a longer number, and isn't a word character itself).
+     *   - `formatcount:` — NOT a bare number match (a bare "2" could
+     *     collide with the "2" inside an unrelated "12""); highlights the
+     *     "<n>x"/"<n>×" COUNT-PREFIX token specifically, matching
+     *     `_findCellFormatParts()`'s own extraction pattern.
+     *   - `formatcombo:` — parses its own leading `"<n>x<type>"` shape
+     *     back apart and highlights that SAME count-prefix token (the
+     *     part the user reported missing) — the type word is left
+     *     unhighlighted, matching the filter's own "» " (bare value)
+     *     label, which likewise doesn't re-state the type separately.
+     *   - `formattype:` — the type word verbatim, word-boundary both
+     *     sides (a bare word never collides with a digit/quote/× run).
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"formatsize:12\""`, `"formatcount:2"`, `"formatcombo:2xVinyl"`,
+     *   or `"formattype:Vinyl"`.
+     */
+    function _highlightFormatMatch(cell, mode) {
+        if (!cell) return;
+        let _regex;
+        if (mode.startsWith('formatsize:')) {
+            const _want = mode.slice(11);
+            if (!_want) return;
+            const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            _regex = new RegExp(`\\b${_escaped}`, 'g');
+        } else if (mode.startsWith('formatcount:')) {
+            const _want = mode.slice(12);
+            if (!_want) return;
+            const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            _regex = new RegExp(`\\b${_escaped}[x×]`, 'g');
+        } else if (mode.startsWith('formatcombo:')) {
+            const _want = mode.slice(12);
+            const _m = _want.match(/^(\d+)x/);
+            if (!_m) return;
+            _regex = new RegExp(`\\b${_m[1]}[x×]`, 'g');
+        } else if (mode.startsWith('formattype:')) {
+            const _want = mode.slice(11);
+            if (!_want) return;
+            const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            _regex = new RegExp(`\\b${_escaped}\\b`, 'g');
+        } else {
+            return;
+        }
+        cell.normalize();
+        highlightCrossTag(cell, _regex, 'mb-column-filter-highlight');
     }
 
     /**
@@ -35125,8 +35639,11 @@ a { color: #1565c0; }`;
                     // harmless: nested mb-column-filter-highlight spans render
                     // identically to one. Checked 'attr:'/'task:'/'date:'/
                     // 'instrument:'/'altname:'/'name:'/'comment:'/'alias:'/
-                    // 'joinphrase:'/'namevariation:'/'role:' and 'name-variation'
-                    // structure modes DO
+                    // 'joinphrase:'/'namevariation:'/'revcountry:'/'countryname:'/
+                    // 'countrycode:'/'revdate:'/'revweekday:'/'catalogprefix:'/
+                    // 'catalog-none'/'trackspermedium:'/
+                    // 'formatsize:'/'formatcount:'/'formatcombo:'/'formattype:'/
+                    // 'role:' and 'name-variation' structure modes DO
                     // correspond to exact visible content and get
                     // highlighted; the other structure modes (empty/single/
                     // collapsed/expanded/any/title-mismatch/inline-art-yes/no)
@@ -35153,6 +35670,19 @@ a { color: #1565c0; }`;
                                     _highlightJoinPhraseMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('namevariation:')) {
                                     _highlightNameVariationValueMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('revcountry:') || mode.startsWith('countryname:') || mode.startsWith('countrycode:')) {
+                                    _highlightCountryMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('revdate:') || mode.startsWith('revweekday:')) {
+                                    _highlightReleaseEventMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('catalogprefix:')) {
+                                    _highlightCatalogPrefixMatch(row.cells[f.idx], mode);
+                                } else if (mode === 'catalog-none') {
+                                    _highlightCatalogNoneMatch(row.cells[f.idx]);
+                                } else if (mode.startsWith('trackspermedium:')) {
+                                    _highlightTracksPerMediumMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('formatsize:') || mode.startsWith('formatcount:') ||
+                                           mode.startsWith('formatcombo:') || mode.startsWith('formattype:')) {
+                                    _highlightFormatMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('role:')) {
                                     _highlightEventRoleMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'name-variation') {
@@ -44245,6 +44775,23 @@ a { color: #1565c0; }`;
         // variant-engineer-2.html "Andres Bermudezat"), rendered with a
         // dotted underline on the live page.
         let nameVariationCount = 0;
+        // "Tracks" column only (isTracksCol): rows whose cell shows more
+        // than one medium's track count (joined by "+") — see
+        // _findCellTracksPerMedium()'s own JSDoc.
+        let multiMediumCount = 0;
+        // "Catalog#" column only (isCatalogCol): rows whose list has AT
+        // LEAST ONE item with/without a leading string prefix,
+        // respectively — independently incremented (not mutually
+        // exclusive) since one row's list can contain both kinds of item
+        // — see _findCellCatalogParts()'s own JSDoc.
+        let catalogHasPrefixCount = 0;
+        let catalogNoPrefixCount = 0;
+        // "Catalog#" column only (isCatalogCol): rows whose list has AT
+        // LEAST ONE item literally reading MusicBrainz's own "[none]"
+        // placeholder (a medium with no catalog number set at all) —
+        // independent of catalogHasPrefixCount/catalogNoPrefixCount above,
+        // since a row's list can mix "[none]" items with real ones.
+        let catalogNoneCount = 0;
         // Any column: distinct credit attribute words (e.g. "additional",
         // "assistant", "co", "executive" — the credit-role columns' own
         // `<span class="mb-credit-attr">` sentinel, see
@@ -44334,6 +44881,43 @@ a { color: #1565c0; }`;
         // Map for any column/cell with no such marker (jesus2099 not
         // installed/active, or no credited-name variation on this row).
         const nameVariationValueCounts = new Map();
+        // Distinct "Format" cell size/mediums-count/combo/type values (e.g.
+        // '12"', "2", "2xVinyl", "Vinyl") — see `_findCellFormatParts()`'s
+        // own JSDoc. formatTypeValueCounts lets "Vinyl"/"Acetate" be
+        // filtered as their own entry regardless of size (e.g. a table
+        // mixing 7"/10"/12" Vinyl). Column-gated (isFormatCol below):
+        // no-op Maps for any other column, since this is plain free-text
+        // parsing with no CSS-class safety net.
+        const formatSizeValueCounts  = new Map();
+        const formatCountValueCounts = new Map();
+        const formatComboValueCounts = new Map();
+        const formatTypeValueCounts  = new Map();
+        // Distinct "Country/Date" per-release-event country-code/date/
+        // weekday values — see `_findCellReleaseEventParts()`'s own JSDoc.
+        // revCountryFlagMap: code -> first-seen flag CSS class (e.g.
+        // "flag-NL"), for the entry's glyph marker — same first-seen-wins
+        // convention as entityNameGlyphMap. No-op Maps for any column
+        // without `.release-event` markup.
+        const revCountryValueCounts = new Map();
+        const revCountryFlagMap     = new Map();
+        const revDateValueCounts    = new Map();
+        const revWeekdayValueCounts = new Map();
+        // Distinct "Country" (the synthetic column splitCountryDate()
+        // itself produces from "Country/Date") name/code values — see
+        // `_findCellCountryNameParts()`'s own JSDoc. countryCodeFlagMap
+        // mirrors revCountryFlagMap above. No-op Maps for any column
+        // without bare `.release-country` markup.
+        const countryNameValueCounts = new Map();
+        const countryCodeValueCounts = new Map();
+        const countryCodeFlagMap     = new Map();
+        // Distinct "Tracks" cell per-medium track-count values (e.g. "6")
+        // — see `_findCellTracksPerMedium()`'s own JSDoc. Column-gated
+        // (isTracksCol below).
+        const tracksPerMediumValueCounts = new Map();
+        // Distinct "Catalog#" list-item prefix values (e.g. "CBS", "S
+        // CBS") — see `_findCellCatalogParts()`'s own JSDoc. Column-gated
+        // (isCatalogCol below).
+        const catalogPrefixValueCounts = new Map();
         // Distinct event-role values (e.g. "main performer", "guest
         // performer", "support act", "participant", "host") from a native
         // MusicBrainz `.artist-roles` list — the query-time counterpart of
@@ -44383,6 +44967,23 @@ a { color: #1565c0; }`;
                 th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
             return name === 'Title';
         })();
+        // Column-name gate for Format/Tracks/Catalog# — unlike every other
+        // _findCellXxx() extractor added this session, these three are
+        // plain free-text pattern matching with no CSS-class safety net
+        // (a Title/Comment cell could coincidentally contain a "+" or a
+        // "\d+x" pattern), so their extraction must be scoped to the
+        // column it's actually meant for. Mirrors isTitleCol's own
+        // header-name resolution above.
+        const _colHeaderName = (() => {
+            const headers = table.querySelectorAll('thead tr:first-child th');
+            const th = headers[colIndex];
+            if (!th) return '';
+            return th.dataset.colName ||
+                th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+        })();
+        const isFormatCol  = _colHeaderName === 'Format';
+        const isTracksCol  = _colHeaderName === 'Tracks';
+        const isCatalogCol = _colHeaderName === 'Catalog#';
         const tbody = table.tBodies[0];
         if (tbody) {
             Array.from(tbody.rows).forEach(row => {
@@ -44439,6 +45040,67 @@ a { color: #1565c0; }`;
                 _rowAnyNameValues.forEach(t => entityNameAnyValueCounts.set(t, (entityNameAnyValueCounts.get(t) || 0) + 1));
                 if (isTitleCol && _titleHasRecNameMismatch(cell)) titleMismatchCount++;
                 if (_findNameVariationElements(cell).length > 0) nameVariationCount++;
+                if (isFormatCol) {
+                    const _rowSizeValues = new Set(), _rowCountValues = new Set(), _rowComboValues = new Set(), _rowTypeValues = new Set();
+                    _findCellFormatParts(cell).forEach(p => {
+                        if (p.size) _rowSizeValues.add(p.size);
+                        _rowCountValues.add(String(p.count));
+                        if (p.combo) _rowComboValues.add(p.combo);
+                        if (p.type) _rowTypeValues.add(p.type);
+                    });
+                    _rowSizeValues.forEach(t => formatSizeValueCounts.set(t, (formatSizeValueCounts.get(t) || 0) + 1));
+                    _rowCountValues.forEach(t => formatCountValueCounts.set(t, (formatCountValueCounts.get(t) || 0) + 1));
+                    _rowComboValues.forEach(t => formatComboValueCounts.set(t, (formatComboValueCounts.get(t) || 0) + 1));
+                    _rowTypeValues.forEach(t => formatTypeValueCounts.set(t, (formatTypeValueCounts.get(t) || 0) + 1));
+                }
+                {
+                    const _rowRevCountryValues = new Set(), _rowRevDateValues = new Set(), _rowRevWeekdayValues = new Set();
+                    _findCellReleaseEventParts(cell).forEach(p => {
+                        if (p.countryCode) {
+                            _rowRevCountryValues.add(p.countryCode);
+                            // Store the combined "flag flag-XX" class string (not just
+                            // the bare flagClass half) so a missing flagClass safely
+                            // yields a falsy map value instead of the literal string
+                            // "flag null" being passed to makeValueSynItem() as glyphClass.
+                            if (!revCountryFlagMap.has(p.countryCode)) revCountryFlagMap.set(p.countryCode, p.flagClass ? `flag ${p.flagClass}` : null);
+                        }
+                        if (p.dateText) _rowRevDateValues.add(p.dateText);
+                        if (p.weekday)  _rowRevWeekdayValues.add(p.weekday);
+                    });
+                    _rowRevCountryValues.forEach(t => revCountryValueCounts.set(t, (revCountryValueCounts.get(t) || 0) + 1));
+                    _rowRevDateValues.forEach(t => revDateValueCounts.set(t, (revDateValueCounts.get(t) || 0) + 1));
+                    _rowRevWeekdayValues.forEach(t => revWeekdayValueCounts.set(t, (revWeekdayValueCounts.get(t) || 0) + 1));
+                }
+                {
+                    const _rowCountryNameValues = new Set(), _rowCountryCodeValues = new Set();
+                    _findCellCountryNameParts(cell).forEach(p => {
+                        _rowCountryNameValues.add(p.name);
+                        _rowCountryCodeValues.add(p.code);
+                        // Same "flag flag-XX" combined-string convention as
+                        // revCountryFlagMap above.
+                        if (!countryCodeFlagMap.has(p.code)) countryCodeFlagMap.set(p.code, p.flagClass ? `flag ${p.flagClass}` : null);
+                    });
+                    _rowCountryNameValues.forEach(t => countryNameValueCounts.set(t, (countryNameValueCounts.get(t) || 0) + 1));
+                    _rowCountryCodeValues.forEach(t => countryCodeValueCounts.set(t, (countryCodeValueCounts.get(t) || 0) + 1));
+                }
+                if (isTracksCol) {
+                    const _perMedium = _findCellTracksPerMedium(cell);
+                    new Set(_perMedium).forEach(t => tracksPerMediumValueCounts.set(t, (tracksPerMediumValueCounts.get(t) || 0) + 1));
+                    if (_perMedium.length > 1) multiMediumCount++;
+                }
+                if (isCatalogCol) {
+                    const _catalogParts = _findCellCatalogParts(cell);
+                    const _rowPrefixValues = new Set();
+                    _catalogParts.forEach(p => { if (p.prefix) _rowPrefixValues.add(p.prefix); });
+                    _rowPrefixValues.forEach(t => catalogPrefixValueCounts.set(t, (catalogPrefixValueCounts.get(t) || 0) + 1));
+                    if (_catalogParts.some(p => p.prefix)) catalogHasPrefixCount++;
+                    // Excludes "[none]" items (also prefix: null) — that's
+                    // "no catalog number at all", not "an unprefixed
+                    // catalog NUMBER", so it must not count toward this
+                    // flag; see catalogNoneCount below instead.
+                    if (_catalogParts.some(p => !p.prefix && !p.none)) catalogNoPrefixCount++;
+                    if (_catalogParts.some(p => p.none)) catalogNoneCount++;
+                }
                 const _rowAttrWords = new Set();
                 cell.querySelectorAll('.mb-credit-attr').forEach(s => {
                     s.textContent.split('/').forEach(w => { if (w) _rowAttrWords.add(w); });
@@ -45397,12 +46059,32 @@ a { color: #1565c0; }`;
             emptyCellCount, singleRowCount, multiRowCollapsedCount, multiRowExpandedCount,
             multiRowCollapsedCount + multiRowExpandedCount,
             titleMismatchCount, nameVariationCount,
+            multiMediumCount, catalogHasPrefixCount, catalogNoPrefixCount, catalogNoneCount,
             inlineArtYes, inlineArtNo,
             ...attrValueCounts.values(), ...taskValueCounts.values(),
             ...dateValueCounts.values(), ...instrumentValueCounts.values(),
             ...altNameValueCounts.values(),
             ...entityNameAnyValueCounts.values(), ...entityCommentValueCounts.values(),
-            ...entityAliasValueCounts.values(), ...eventRoleValueCounts.values()
+            ...entityAliasValueCounts.values(), ...eventRoleValueCounts.values(),
+            ...artTypeValueCounts.values(), ...artCommentValueCounts.values(),
+            // Every *ValueCounts Map added this session (Join phrases,
+            // Name variations, Format/Country-Date/Country/Tracks/
+            // Catalog#) was missing from this computation until now —
+            // each has NO "any"/broader counterpart map the way entity
+            // names do (entityNameAnyValueCounts already covers those), so
+            // its own raw values are exactly what ends up on a badge and
+            // must be included directly, or the shared width silently
+            // stays too narrow for it — inconsistent (not literally
+            // mis-aligned) right-alignment across entries whose digit
+            // counts happen to exceed whatever the width WAS computed
+            // from, reported as "the count numbers seem to be center
+            // aligned" for the Format section specifically.
+            ...joinPhraseValueCounts.values(), ...nameVariationValueCounts.values(),
+            ...formatSizeValueCounts.values(), ...formatCountValueCounts.values(),
+            ...formatComboValueCounts.values(), ...formatTypeValueCounts.values(),
+            ...revCountryValueCounts.values(), ...revDateValueCounts.values(), ...revWeekdayValueCounts.values(),
+            ...countryNameValueCounts.values(), ...countryCodeValueCounts.values(),
+            ...tracksPerMediumValueCounts.values(), ...catalogPrefixValueCounts.values()
         )).length + 2);
 
         // synBox is inserted between qfBar and listBox; always present but
@@ -45724,7 +46406,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'role'|'arttype'|'artcomment'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'role'|'arttype'|'artcomment'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -45766,7 +46448,12 @@ a { color: #1565c0; }`;
             badge.style.minWidth        = `${panelBadgeChWidth}ch`;
             badge.style.textAlign       = 'right';
             item.appendChild(badge);
-            if (kind === 'name' && glyphClass) {
+            if ((kind === 'name' || kind === 'revcountry' || kind === 'countrycode') && glyphClass) {
+                // For 'revcountry'/'countrycode', glyphClass is the
+                // combined `flag flag-XX` class string (both native
+                // classes together, matching the native `class="flag
+                // flag-XX"` shape) — see the two country-code aggregation
+                // call sites in openUniqDrop().
                 const marker = document.createElement('span');
                 marker.className = glyphClass;
                 marker.setAttribute('aria-hidden', 'true');
@@ -45783,6 +46470,17 @@ a { color: #1565c0; }`;
                  : kind === 'alias'      ? '» alias: '
                  : kind === 'joinphrase' ? '» join phrase: '
                  : kind === 'namevariation' ? '» name variation: '
+                 : kind === 'formatsize' ? '» size: '
+                 : kind === 'formatcount' ? '» mediums: '
+                 : kind === 'formatcombo' ? '» '
+                 : kind === 'formattype' ? '» type: '
+                 : kind === 'revcountry' ? '» country: '
+                 : kind === 'revdate'    ? '» date: '
+                 : kind === 'revweekday' ? '» weekday: '
+                 : kind === 'countryname' ? '» country name: '
+                 : kind === 'countrycode' ? '» country code: '
+                 : kind === 'trackspermedium' ? '» tracks: '
+                 : kind === 'catalogprefix' ? '» prefix: '
                  : kind === 'role'       ? '» role: '
                  : kind === 'arttype'    ? '» image type: '
                  : kind === 'artcomment' ? '» image comment: '
@@ -45932,6 +46630,18 @@ a { color: #1565c0; }`;
         const _sortedAliasValues   = Array.from(entityAliasValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedJoinPhraseValues = Array.from(joinPhraseValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedNameVariationValues = Array.from(nameVariationValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        // Numeric sort (not lexicographic) so "2" sorts before "10".
+        const _sortedFormatSizeValues  = Array.from(formatSizeValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+        const _sortedFormatCountValues = Array.from(formatCountValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+        const _sortedFormatComboValues = Array.from(formatComboValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedFormatTypeValues  = Array.from(formatTypeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedRevCountryValues = Array.from(revCountryValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedRevDateValues    = Array.from(revDateValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedRevWeekdayValues = Array.from(revWeekdayValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedCountryNameValues = Array.from(countryNameValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedCountryCodeValues = Array.from(countryCodeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedTracksPerMediumValues = Array.from(tracksPerMediumValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+        const _sortedCatalogPrefixValues = Array.from(catalogPrefixValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRoleValues    = Array.from(eventRoleValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedArtTypeValues    = Array.from(artTypeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedArtCommentValues = Array.from(artCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
@@ -45940,10 +46650,15 @@ a { color: #1565c0; }`;
             _sortedAltNameValues.length > 0 ||
             _sortedNameValues.length > 0 || _sortedCommentValues.length > 0 || _sortedAliasValues.length > 0 ||
             _sortedJoinPhraseValues.length > 0 || _sortedNameVariationValues.length > 0 ||
+            _sortedFormatSizeValues.length > 0 || _sortedFormatCountValues.length > 0 || _sortedFormatComboValues.length > 0 || _sortedFormatTypeValues.length > 0 ||
+            _sortedRevCountryValues.length > 0 || _sortedRevDateValues.length > 0 || _sortedRevWeekdayValues.length > 0 ||
+            _sortedCountryNameValues.length > 0 || _sortedCountryCodeValues.length > 0 ||
+            _sortedTracksPerMediumValues.length > 0 || _sortedCatalogPrefixValues.length > 0 ||
             _sortedRoleValues.length > 0 ||
             _sortedArtTypeValues.length > 0 || _sortedArtCommentValues.length > 0;
 
-        if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 || _hasValueEntries)) {
+        if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 ||
+            multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 || _hasValueEntries)) {
              // "empty cells" pinned first; remaining entries in ascending complexity order.
             // For CAA/EAA columns the generic structural labels are replaced with more
             // descriptive artwork-presence labels that match user intent:
@@ -45961,6 +46676,10 @@ a { color: #1565c0; }`;
             // entries above.
             if (titleMismatchCount > 0)     makeSynItem('title-mismatch', '≠ track/recording name',                                           titleMismatchCount);
             if (nameVariationCount > 0)     makeSynItem('name-variation', '~ has name variation',                                              nameVariationCount);
+            if (multiMediumCount > 0)       makeSynItem('multi-medium', '➕ multiple mediums',                                                  multiMediumCount);
+            if (catalogHasPrefixCount > 0)  makeSynItem('catalog-has-prefix', '🏷️ has catalog prefix',                                          catalogHasPrefixCount);
+            if (catalogNoPrefixCount > 0)   makeSynItem('catalog-no-prefix', '🔢 no catalog prefix',                                            catalogNoPrefixCount);
+            if (catalogNoneCount > 0)       makeSynItem('catalog-none', '🚫 no catalog number',                                                  catalogNoneCount);
             // Credit-role columns' per-attribute / per-task / per-date /
             // per-instrument dynamic value entries (see attrValueCounts/
             // taskValueCounts/dateValueCounts/instrumentValueCounts' own
@@ -45977,15 +46696,31 @@ a { color: #1565c0; }`;
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedJoinPhraseValues.forEach(v => makeValueSynItem('joinphrase', v, joinPhraseValueCounts.get(v)));
             _sortedNameVariationValues.forEach(v => makeValueSynItem('namevariation', v, nameVariationValueCounts.get(v)));
+            _sortedFormatSizeValues.forEach(v => makeValueSynItem('formatsize', v, formatSizeValueCounts.get(v)));
+            _sortedFormatCountValues.forEach(v => makeValueSynItem('formatcount', v, formatCountValueCounts.get(v)));
+            _sortedFormatComboValues.forEach(v => makeValueSynItem('formatcombo', v, formatComboValueCounts.get(v)));
+            _sortedFormatTypeValues.forEach(v => makeValueSynItem('formattype', v, formatTypeValueCounts.get(v)));
+            _sortedRevCountryValues.forEach(v => makeValueSynItem('revcountry', v, revCountryValueCounts.get(v), revCountryFlagMap.get(v)));
+            _sortedRevDateValues.forEach(v => makeValueSynItem('revdate', v, revDateValueCounts.get(v)));
+            _sortedRevWeekdayValues.forEach(v => makeValueSynItem('revweekday', v, revWeekdayValueCounts.get(v)));
+            _sortedCountryNameValues.forEach(v => makeValueSynItem('countryname', v, countryNameValueCounts.get(v)));
+            _sortedCountryCodeValues.forEach(v => makeValueSynItem('countrycode', v, countryCodeValueCounts.get(v), countryCodeFlagMap.get(v)));
+            _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
+            _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
             _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
-        } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 || _hasValueEntries) {
+        } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 ||
+                   multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 || _hasValueEntries) {
             // Non-collapsable column (or a collapsable one with zero rows in
             // any multi-row-family state this render).
             if (emptyCellCount > 0)     makeSynItem('empty',          '○ empty cells',           emptyCellCount);
             if (titleMismatchCount > 0) makeSynItem('title-mismatch', '≠ track/recording name',  titleMismatchCount);
             if (nameVariationCount > 0) makeSynItem('name-variation', '~ has name variation',    nameVariationCount);
+            if (multiMediumCount > 0)      makeSynItem('multi-medium', '➕ multiple mediums',        multiMediumCount);
+            if (catalogHasPrefixCount > 0) makeSynItem('catalog-has-prefix', '🏷️ has catalog prefix', catalogHasPrefixCount);
+            if (catalogNoPrefixCount > 0)  makeSynItem('catalog-no-prefix', '🔢 no catalog prefix',   catalogNoPrefixCount);
+            if (catalogNoneCount > 0)      makeSynItem('catalog-none', '🚫 no catalog number',        catalogNoneCount);
             _sortedAttrValues.forEach(v => makeValueSynItem('attr', v, attrValueCounts.get(v)));
             _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
@@ -45996,6 +46731,17 @@ a { color: #1565c0; }`;
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedJoinPhraseValues.forEach(v => makeValueSynItem('joinphrase', v, joinPhraseValueCounts.get(v)));
             _sortedNameVariationValues.forEach(v => makeValueSynItem('namevariation', v, nameVariationValueCounts.get(v)));
+            _sortedFormatSizeValues.forEach(v => makeValueSynItem('formatsize', v, formatSizeValueCounts.get(v)));
+            _sortedFormatCountValues.forEach(v => makeValueSynItem('formatcount', v, formatCountValueCounts.get(v)));
+            _sortedFormatComboValues.forEach(v => makeValueSynItem('formatcombo', v, formatComboValueCounts.get(v)));
+            _sortedFormatTypeValues.forEach(v => makeValueSynItem('formattype', v, formatTypeValueCounts.get(v)));
+            _sortedRevCountryValues.forEach(v => makeValueSynItem('revcountry', v, revCountryValueCounts.get(v), revCountryFlagMap.get(v)));
+            _sortedRevDateValues.forEach(v => makeValueSynItem('revdate', v, revDateValueCounts.get(v)));
+            _sortedRevWeekdayValues.forEach(v => makeValueSynItem('revweekday', v, revWeekdayValueCounts.get(v)));
+            _sortedCountryNameValues.forEach(v => makeValueSynItem('countryname', v, countryNameValueCounts.get(v)));
+            _sortedCountryCodeValues.forEach(v => makeValueSynItem('countrycode', v, countryCodeValueCounts.get(v), countryCodeFlagMap.get(v)));
+            _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
+            _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
             _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
@@ -46440,6 +47186,10 @@ a { color: #1565c0; }`;
         if (mode === 'name-variation') return '~ has name variation';
         if (mode === 'inline-art-yes') return '🖼️ artwork available';
         if (mode === 'inline-art-no')  return '∅ NO artwork available';
+        if (mode === 'multi-medium')          return '➕ multiple mediums';
+        if (mode === 'catalog-has-prefix')    return '🏷️ has catalog prefix';
+        if (mode === 'catalog-no-prefix')     return '🔢 no catalog prefix';
+        if (mode === 'catalog-none')          return '🚫 no catalog number';
         if (mode.startsWith('attr:'))  return `» attribute: ${mode.slice(5)}`;
         if (mode.startsWith('task:'))  return `» ${mode.slice(5)}`;
         if (mode.startsWith('date:'))  return `» ${mode.slice(5)}`;
@@ -46450,6 +47200,17 @@ a { color: #1565c0; }`;
         if (mode.startsWith('alias:'))   return `» alias: ${mode.slice(6)}`;
         if (mode.startsWith('joinphrase:')) return `» join phrase: ${mode.slice(11)}`;
         if (mode.startsWith('namevariation:')) return `» name variation: ${mode.slice(14)}`;
+        if (mode.startsWith('formatsize:'))  return `» size: ${mode.slice(11)}`;
+        if (mode.startsWith('formatcount:')) return `» mediums: ${mode.slice(12)}`;
+        if (mode.startsWith('formatcombo:')) return `» ${mode.slice(12)}`;
+        if (mode.startsWith('formattype:')) return `» type: ${mode.slice(11)}`;
+        if (mode.startsWith('revcountry:'))  return `» country: ${mode.slice(11)}`;
+        if (mode.startsWith('revdate:'))     return `» date: ${mode.slice(8)}`;
+        if (mode.startsWith('revweekday:'))  return `» weekday: ${mode.slice(11)}`;
+        if (mode.startsWith('countryname:')) return `» country name: ${mode.slice(12)}`;
+        if (mode.startsWith('countrycode:')) return `» country code: ${mode.slice(12)}`;
+        if (mode.startsWith('trackspermedium:')) return `» tracks: ${mode.slice(16)}`;
+        if (mode.startsWith('catalogprefix:'))   return `» prefix: ${mode.slice(14)}`;
         if (mode.startsWith('role:'))    return `» role: ${mode.slice(5)}`;
         if (mode.startsWith('arttype:'))    return `» image type: ${mode.slice(8)}`;
         if (mode.startsWith('artcomment:')) return `» image comment: ${mode.slice(11)}`;
@@ -46480,6 +47241,10 @@ a { color: #1565c0; }`;
         if (mode === 'inline-art-yes' || mode === 'inline-art-no') {
             return '🖼️ = a thumbnail was found and loaded for this row; ∅ = none was found.';
         }
+        if (mode === 'multi-medium') return '➕ = this "Tracks" cell shows more than one medium\'s track count, joined by "+".';
+        if (mode === 'catalog-has-prefix') return '🏷️ = at least one of this "Catalog#" cell\'s list items has a leading string prefix (e.g. "CBS").';
+        if (mode === 'catalog-no-prefix') return '🔢 = at least one of this "Catalog#" cell\'s list items has NO prefix (a bare number). Not mutually exclusive with "has catalog prefix" — a cell\'s list can contain both.';
+        if (mode === 'catalog-none') return '🚫 = at least one of this "Catalog#" cell\'s list items is MusicBrainz\'s own "[none]" placeholder (no catalog number set at all).';
         if (mode.startsWith('attr:')) return 'One of this cell\'s credited attribute words.';
         if (mode.startsWith('task:')) return 'This cell\'s credited task text.';
         if (mode.startsWith('date:')) return 'A date/date-range annotation attached to one of this cell\'s credits.';
@@ -46490,6 +47255,17 @@ a { color: #1565c0; }`;
         if (mode.startsWith('alias:')) return 'An entity\'s primary alias — an alternate name shown in its disambiguation comment.';
         if (mode.startsWith('joinphrase:')) return 'The literal separator text between two credited entities in this cell (e.g. "&", "and", "with", or free text an editor typed).';
         if (mode.startsWith('namevariation:')) return 'A jesus2099-marked name variation: the full "Real – Sort" title text, or either half on its own, for a credit whose displayed name differs from the entity\'s real/canonical name.';
+        if (mode.startsWith('formatsize:')) return 'One "Format" group\'s own size token (e.g. \'12"\'), split from the combined cell text.';
+        if (mode.startsWith('formatcount:')) return 'One "Format" group\'s own medium count (the leading "N×"/"Nx" factor, defaulting to 1 when absent).';
+        if (mode.startsWith('formatcombo:')) return 'One "Format" group\'s own "<count>x<type>" combination (e.g. "2xVinyl") — only offered for groups with more than one medium.';
+        if (mode.startsWith('formattype:')) return 'One "Format" group\'s own type word alone (e.g. "Vinyl"), regardless of size — matches every group of that type even when different rows use different sizes (7"/10"/12").';
+        if (mode.startsWith('revcountry:')) return 'One "Country/Date" release event\'s own 2-letter country code.';
+        if (mode.startsWith('revdate:')) return 'One release event\'s own date text as displayed (weekday stripped out).';
+        if (mode.startsWith('revweekday:')) return 'One release event\'s own chaban-injected weekday abbreviation (e.g. "Mon").';
+        if (mode.startsWith('countryname:')) return 'One entry\'s own full country name, from the synthetic "Country" column.';
+        if (mode.startsWith('countrycode:')) return 'One entry\'s own 2-letter country code, from the synthetic "Country" column.';
+        if (mode.startsWith('trackspermedium:')) return 'One "Tracks" cell\'s own per-medium track count.';
+        if (mode.startsWith('catalogprefix:')) return 'One "Catalog#" list item\'s own leading string prefix (e.g. "CBS", "S CBS").';
         if (mode.startsWith('role:')) return 'An artist\'s own credited event role (e.g. "main performer", "guest performer", "host").';
         if (mode.startsWith('arttype:')) return 'One of this CAA/EAA image\'s own type-badge pill labels (Front/Back/Booklet/…).';
         if (mode.startsWith('artcomment:')) return 'One of this CAA/EAA image\'s own free-text comment.';
