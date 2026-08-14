@@ -6054,3 +6054,39 @@ second follow-up round.
   excluding this one report path from `report-multiple-linked`'s `match()`
   so it falls through to `report-detail`, which already has 'Artist' in its
   new candidate list.
+
+## 2026-08-14 — PlacesWithoutCoordinates "Area" column not extracted (v9.99.881)
+
+- `coordinates.html` (/report/PlacesWithoutCoordinates?filter=0): 4 native
+  columns (Place, Address, Area, "Search for coordinates"). Unlike
+  AnnotationsPlaces (see `## 2026-07-01` entry above, `debug/place.html`),
+  the 'Place' cell here is JUST `<a href="/place/...">name</a>` — no
+  embedded "in <area chain>" text. The district/region/country chain
+  instead lives entirely in the separate 'Area' column, same per-anchor
+  shape `splitArea` already handles elsewhere (first non-flag '/area/' link
+  = locality, subsequent non-flag links = region, flag-wrapped link =
+  country; e.g. `<a>Songpa District</a>, <span class="area-icon">…</span>
+  <a>Seoul</a>, <span class="flag flag-KR"><a>South Korea</a></span>`).
+  report-detail's `columnExtractors` had no entry reading 'Area' at all, so
+  Locality/Region/Country stayed empty for every row even though the data
+  was right there in the native table.
+- Fixed by adding `{ sourceColumn: 'Area', extractor: 'splitArea',
+  syntheticColumns: ['MB-Locality', 'MB-Region', 'MB-Country'] }`. Named
+  'MB-Country' instead of the usual bare 'Country' (which is what every
+  OTHER page definition's own splitArea/'Area' entry uses, e.g. around line
+  13582/13623/13921/13996/14086/14124/14232/14487) because
+  PlacesWithoutCoordinates has BOTH 'Place' and 'Area' as real columns at
+  once — report-detail's existing 'Place' entry already claims
+  'Locality'/'Region'/'Country'. Row-level cell appending
+  (`extractedSyntheticCells.forEach` → unconditional `newRow.appendChild`)
+  has no dedup against already-injected headers the way header injection
+  does — two *resolved* extractor entries emitting the same synthetic
+  column name would each unconditionally append their own `<td>` per row,
+  so the row would carry more cells than the (deduped) header row has
+  columns, silently shifting every subsequent column's data one or more
+  cells to the left. This is a general landmine for report-detail
+  specifically (it's the one page type deliberately column-agnostic enough
+  that two normally-mutually-exclusive extractor entries CAN both resolve
+  on the same page) — any future report-detail columnExtractors addition
+  must check its synthetic column names against every other entry already
+  in that array, not just the ones it superficially resembles.

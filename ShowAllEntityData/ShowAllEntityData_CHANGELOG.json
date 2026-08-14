@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.881",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`/report/PlacesWithoutCoordinates` rendered empty \"Locality\"/\"Region\"/\"Country\" cells for every row (confirmed against debug/coordinates.html): its 'Place' column carries only the place name, with the district/region/country chain instead living in a separate native 'Area' column that report-detail's `columnExtractors` never read. Added a `splitArea`-based extractor for the 'Area' column, named 'MB-Locality'/'MB-Region'/'MB-Country' (not the usual 'Locality'/'Region'/'Country' other pages' own 'Area' entries use) specifically because this report has both 'Place' and 'Area' as real columns at once, and reusing those names would have appended duplicate cells per row and desynced every column after them."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.880",
     "date": "2026-08-14",
     "sections": [

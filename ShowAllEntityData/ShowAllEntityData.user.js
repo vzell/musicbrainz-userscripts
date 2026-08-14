@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.880+2026-08-14
+// @version      9.99.881+2026-08-14
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -12923,6 +12923,26 @@
                     // kept as-is (it carries the place name plus the full area/country
                     // chain), while 'MB-Place' isolates just the place name.
                     { sourceColumn: 'Place', extractor: 'splitLocation', syntheticColumns: ['MB-Place', 'Locality', 'Region', 'Country'] },
+                    // 'Area' is a separate, standalone area-hierarchy column on some
+                    // Place-category reports (e.g. PlacesWithoutCoordinates — see
+                    // debug/coordinates.html): unlike AnnotationsPlaces above, its
+                    // 'Place' cell there carries ONLY the place name (no embedded area
+                    // chain) — the district/region/country chain instead lives in this
+                    // separate 'Area' column, which is exactly the plain
+                    // area-hierarchy-with-no-place-link shape 'splitArea' exists for
+                    // (see its JSDoc). PlacesWithoutCoordinates has BOTH 'Place' and
+                    // 'Area' as real columns simultaneously, so this entry's synthetic
+                    // names must NOT reuse 'Locality'/'Region'/'Country' from the
+                    // 'Place'/'Location' entries above — activeColumnExtractors has no
+                    // row-level dedup for cells sharing a synthetic column name (only
+                    // header injection is idempotent), so two resolved entries emitting
+                    // the same name would append duplicate <td>s per row and desync
+                    // every column to the right of it. 'MB-Country' (not the
+                    // conventional 'Country' used by other page definitions' own
+                    // 'Area' entries, which never coexist with a 'Place'/'Location'
+                    // entry on the same page) is the deliberate deviation that avoids
+                    // that collision here.
+                    { sourceColumn: 'Area', extractor: 'splitArea', syntheticColumns: ['MB-Locality', 'MB-Region', 'MB-Country'] },
                     { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] },
                     { sourceColumn: 'Last edited', extractor: 'dateTimeParts', syntheticColumns: ['Last edited date', 'Last edited time'] },
                     { sourceColumn: 'Annotation', extractor: 'numberOfChars', syntheticColumns: ['Annotation chars'] }
