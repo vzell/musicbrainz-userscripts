@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.869+2026-08-14
+// @version      9.99.870+2026-08-14
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -17510,6 +17510,54 @@
     }
 
     /**
+     * Finds every `<span class="name-variation">` marker in `cell` and
+     * parses the credited/real-name pair out of its `<a>`'s own `title`
+     * attribute — MusicBrainz's own tooltip convention for a name
+     * variation: `"<RealName> – <SortName[, optionally with a trailing
+     * (disambiguation)]>"` (separator: U+2013 EN DASH, surrounded by single
+     * spaces — confirmed via hexdump against debug/nv.org's captured
+     * markup, NOT a plain hyphen). Example:
+     * `<span class="name-variation"><a href="/artist/…" title="山崎千裕 –
+     * Yamazaki, Chihiro">Chihiro Yamazaki</a></span>` → `{full: "山崎千裕 –
+     * Yamazaki, Chihiro", real: "山崎千裕", sort: "Yamazaki, Chihiro"}`.
+     *
+     * Deliberately independent of `_findCellEntityRefs()`/
+     * `_findCellJoinPhrases()` — a `<span class="name-variation">` sits
+     * directly between `<bdi>` and `<a>` on the native "Artist" column
+     * shape, which neither of those functions' bdi-resolution logic
+     * recognizes (confirmed by tracing `_findCellEntityRefs()` against this
+     * exact shape: `a.parentElement` is the `<span>`, not a `<bdi>`, and
+     * `<a>` has no nested `<bdi>` either, so it returns nothing for this
+     * shape today) — this walks `span.name-variation` directly instead,
+     * mirroring `_findNameVariationElements()`'s own directness.
+     *
+     * Scoped to `span.name-variation` only (not the broader
+     * `[class$="-variation"]` `_findNameVariationElements()` matches,
+     * which also covers a `<td class="artist-credit-variation">` shape
+     * with no comparable `<a title>` pair to parse).
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Array<{full: string, real: string, sort: string,
+     *   span: Element, a: Element}>}
+     */
+    function _findCellNameVariations(cell) {
+        if (!cell) return [];
+        const out = [];
+        cell.querySelectorAll('span.name-variation a[href][title]').forEach(a => {
+            const span = a.closest('span.name-variation');
+            if (!span) return;
+            const title = a.getAttribute('title') || '';
+            const idx = title.indexOf(' – ');
+            if (idx === -1) return; // not the expected "Real – Sort" shape
+            const real = title.slice(0, idx).trim();
+            const sort = title.slice(idx + 3).trim();
+            if (!real || !sort) return;
+            out.push({ full: title.trim(), real, sort, span, a });
+        });
+        return out;
+    }
+
+    /**
      * Tests whether a table cell matches a "Cell structure" checkbox mode
      * from `openUniqDrop()`'s synthetic entries (`makeSynItem`/
      * `makeValueSynItem`/`makeInlineArtItem`) — the single source of truth
@@ -17649,6 +17697,15 @@
             // from _findCellJoinPhrases()'s own extraction.
             const want = mode.slice(11);
             return !!cell && _findCellJoinPhrases(cell).some(jp => jp.phrase === want);
+        }
+        if (mode.startsWith('namevariation:')) {
+            // Compound mode — matches the full "Real – Sort" title string OR
+            // either of its two dash-split halves, from a jesus2099
+            // <span class="name-variation">'s own <a title> attribute (see
+            // _findCellNameVariations()'s own extraction).
+            const want = mode.slice(14);
+            return !!cell && _findCellNameVariations(cell).some(nv =>
+                nv.full === want || nv.real === want || nv.sort === want);
         }
         if (mode.startsWith('arttype:')) {
             // Compound mode (openUniqDrop()'s makeValueSynItem, the "CAA
@@ -33928,6 +33985,7 @@ a { color: #1565c0; }`;
         credit:        { label: 'Credit details',     glyph: '🎚️' },
         entity:        { label: 'Entity info',        glyph: '👤' },
         joinPhrase:    { label: 'Join phrases',        glyph: '🔀' },
+        nameVariation: { label: 'Name variations',    glyph: '🪪' },
         roles:         { label: 'Roles',              glyph: '🎭' },
         relationships: { label: 'Relationship icons', glyph: '🔗' },
         caaInfo:       { label: 'CAA info',           glyph: '🎨' },
@@ -33961,6 +34019,7 @@ a { color: #1565c0; }`;
         instrument: 'credit', altname: 'credit',
         name: 'entity', comment: 'entity', alias: 'entity',
         joinphrase: 'joinPhrase',
+        namevariation: 'nameVariation',
         role: 'roles',
     };
 
@@ -34416,6 +34475,49 @@ a { color: #1565c0; }`;
             span.className = 'mb-column-filter-highlight';
             jp.node.parentNode.replaceChild(span, jp.node);
             span.appendChild(jp.node);
+        });
+    }
+
+    /**
+     * Highlights the credited display text for a `namevariation:` compound
+     * structure-mode filter (see `openUniqDrop()`'s `makeValueSynItem` and
+     * `testRowMatch()`'s `f.isMultiValueFilter` structure-mode fallback) —
+     * re-derives from `_findCellNameVariations()` directly.
+     *
+     * Unlike `name:`/`comment:`/`alias:`/`joinphrase:`, the matched VALUE
+     * here (the full "Real – Sort" string, or either half) lives only in
+     * the `<a>`'s `title` attribute — it never appears as visible text
+     * anywhere in the cell, so there is nothing to literally substring-match
+     * against. Instead, this highlights the credited DISPLAY text itself
+     * (e.g. "Chihiro Yamazaki") using a regex built from THAT text, exactly
+     * mirroring `_highlightNameVariationMatch()`'s own established
+     * self-text-matching technique for the binary "~ has name variation"
+     * flag — "this whole credited name is highlighted because its own
+     * real/sort/full title matched." Reuses `highlightCrossTag()`, which
+     * only ever wraps TEXT NODES inside the given root — critically, this
+     * means the `<a href>` element itself is never replaced or rewrapped,
+     * only its inner text node gets a nested highlight span. This matters
+     * because `testRowMatch()`'s highlight-reset step
+     * (`n.replaceWith(document.createTextNode(n.textContent))`) would
+     * destroy the artist link entirely on the next filter cycle if a
+     * highlight span ever wrapped the `<a>`/`<span class="name-variation">`
+     * element directly instead of just its text.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"namevariation:Yamazaki, Chihiro"`.
+     */
+    function _highlightNameVariationValueMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(14);
+        _findCellNameVariations(cell).forEach(nv => {
+            if (nv.full !== _want && nv.real !== _want && nv.sort !== _want) return;
+            const el = nv.span || nv.a;
+            if (!el) return;
+            const t = getCleanColumnText(el);
+            if (!t) return;
+            el.normalize();
+            highlightCrossTag(el, _buildFuzzyTextMatchRegex(t), 'mb-column-filter-highlight');
         });
     }
 
@@ -34964,7 +35066,8 @@ a { color: #1565c0; }`;
                     // harmless: nested mb-column-filter-highlight spans render
                     // identically to one. Checked 'attr:'/'task:'/'date:'/
                     // 'instrument:'/'altname:'/'name:'/'comment:'/'alias:'/
-                    // 'joinphrase:'/'role:' and 'name-variation' structure modes DO
+                    // 'joinphrase:'/'namevariation:'/'role:' and 'name-variation'
+                    // structure modes DO
                     // correspond to exact visible content and get
                     // highlighted; the other structure modes (empty/single/
                     // collapsed/expanded/any/title-mismatch/inline-art-yes/no)
@@ -34989,6 +35092,8 @@ a { color: #1565c0; }`;
                                     _highlightEntityCommentPartMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('joinphrase:')) {
                                     _highlightJoinPhraseMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('namevariation:')) {
+                                    _highlightNameVariationValueMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('role:')) {
                                     _highlightEventRoleMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'name-variation') {
@@ -44163,6 +44268,13 @@ a { color: #1565c0; }`;
         // "canonical" one (two different phrases never merge). No-op Map
         // for any column/cell with fewer than two entities in one <bdi>.
         const joinPhraseValueCounts = new Map();
+        // Distinct "name variation" values (the full "Real – Sort" title
+        // string, and each of its two dash-split halves) — from a
+        // jesus2099 <span class="name-variation">'s own <a title>
+        // attribute (see `_findCellNameVariations()`'s own JSDoc). No-op
+        // Map for any column/cell with no such marker (jesus2099 not
+        // installed/active, or no credited-name variation on this row).
+        const nameVariationValueCounts = new Map();
         // Distinct event-role values (e.g. "main performer", "guest
         // performer", "support act", "participant", "host") from a native
         // MusicBrainz `.artist-roles` list — the query-time counterpart of
@@ -44315,6 +44427,13 @@ a { color: #1565c0; }`;
                 const _rowJoinPhraseValues = new Set();
                 _findCellJoinPhrases(cell).forEach(jp => _rowJoinPhraseValues.add(jp.phrase));
                 _rowJoinPhraseValues.forEach(t => joinPhraseValueCounts.set(t, (joinPhraseValueCounts.get(t) || 0) + 1));
+                const _rowNameVariationValues = new Set();
+                _findCellNameVariations(cell).forEach(nv => {
+                    _rowNameVariationValues.add(nv.full);
+                    _rowNameVariationValues.add(nv.real);
+                    _rowNameVariationValues.add(nv.sort);
+                });
+                _rowNameVariationValues.forEach(t => nameVariationValueCounts.set(t, (nameVariationValueCounts.get(t) || 0) + 1));
                 const _rowRoleValues = new Set();
                 _findCellArtistRoles(cell).forEach(r => r.roles.forEach(role => _rowRoleValues.add(role)));
                 _rowRoleValues.forEach(t => eventRoleValueCounts.set(t, (eventRoleValueCounts.get(t) || 0) + 1));
@@ -45521,7 +45640,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'role'|'arttype'|'artcomment'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'role'|'arttype'|'artcomment'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -45579,6 +45698,7 @@ a { color: #1565c0; }`;
                  : kind === 'comment'    ? '» comment: '
                  : kind === 'alias'      ? '» alias: '
                  : kind === 'joinphrase' ? '» join phrase: '
+                 : kind === 'namevariation' ? '» name variation: '
                  : kind === 'role'       ? '» role: '
                  : kind === 'arttype'    ? '» image type: '
                  : kind === 'artcomment' ? '» image comment: '
@@ -45721,6 +45841,7 @@ a { color: #1565c0; }`;
         const _sortedCommentValues = Array.from(entityCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedAliasValues   = Array.from(entityAliasValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedJoinPhraseValues = Array.from(joinPhraseValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedNameVariationValues = Array.from(nameVariationValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRoleValues    = Array.from(eventRoleValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedArtTypeValues    = Array.from(artTypeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedArtCommentValues = Array.from(artCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
@@ -45728,7 +45849,7 @@ a { color: #1565c0; }`;
             _sortedDateValues.length > 0 || _sortedInstrumentValues.length > 0 ||
             _sortedAltNameValues.length > 0 ||
             _sortedNameValues.length > 0 || _sortedCommentValues.length > 0 || _sortedAliasValues.length > 0 ||
-            _sortedJoinPhraseValues.length > 0 ||
+            _sortedJoinPhraseValues.length > 0 || _sortedNameVariationValues.length > 0 ||
             _sortedRoleValues.length > 0 ||
             _sortedArtTypeValues.length > 0 || _sortedArtCommentValues.length > 0;
 
@@ -45765,6 +45886,7 @@ a { color: #1565c0; }`;
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedJoinPhraseValues.forEach(v => makeValueSynItem('joinphrase', v, joinPhraseValueCounts.get(v)));
+            _sortedNameVariationValues.forEach(v => makeValueSynItem('namevariation', v, nameVariationValueCounts.get(v)));
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
             _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
@@ -45783,6 +45905,7 @@ a { color: #1565c0; }`;
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedJoinPhraseValues.forEach(v => makeValueSynItem('joinphrase', v, joinPhraseValueCounts.get(v)));
+            _sortedNameVariationValues.forEach(v => makeValueSynItem('namevariation', v, nameVariationValueCounts.get(v)));
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
             _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
@@ -46236,6 +46359,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('comment:')) return `» comment: ${mode.slice(8)}`;
         if (mode.startsWith('alias:'))   return `» alias: ${mode.slice(6)}`;
         if (mode.startsWith('joinphrase:')) return `» join phrase: ${mode.slice(11)}`;
+        if (mode.startsWith('namevariation:')) return `» name variation: ${mode.slice(14)}`;
         if (mode.startsWith('role:'))    return `» role: ${mode.slice(5)}`;
         if (mode.startsWith('arttype:'))    return `» image type: ${mode.slice(8)}`;
         if (mode.startsWith('artcomment:')) return `» image comment: ${mode.slice(11)}`;
@@ -46275,6 +46399,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('comment:')) return 'An entity\'s disambiguation comment text, excluding any primary alias.';
         if (mode.startsWith('alias:')) return 'An entity\'s primary alias — an alternate name shown in its disambiguation comment.';
         if (mode.startsWith('joinphrase:')) return 'The literal separator text between two credited entities in this cell (e.g. "&", "and", "with", or free text an editor typed).';
+        if (mode.startsWith('namevariation:')) return 'A jesus2099-marked name variation: the full "Real – Sort" title text, or either half on its own, for a credit whose displayed name differs from the entity\'s real/canonical name.';
         if (mode.startsWith('role:')) return 'An artist\'s own credited event role (e.g. "main performer", "guest performer", "host").';
         if (mode.startsWith('arttype:')) return 'One of this CAA/EAA image\'s own type-badge pill labels (Front/Back/Booklet/…).';
         if (mode.startsWith('artcomment:')) return 'One of this CAA/EAA image\'s own free-text comment.';

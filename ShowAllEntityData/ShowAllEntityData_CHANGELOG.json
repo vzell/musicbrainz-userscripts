@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.870",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The per-column unique-values (📊) dropdown now offers a dedicated \"Name variations\" (🪪) section when the third-party jesus2099 userscript marks a credited name as differing from the entity's real/canonical name (`<span class=\"name-variation\">`). Each marker's `title` attribute (MusicBrainz's own \"RealName – SortName\" tooltip convention) is offered as three checkable/filterable entries: the full \"RealName – SortName\" string, and each half on its own (e.g. \"山崎千裕\" and \"Yamazaki, Chihiro\" separately, in addition to \"山崎千裕 – Yamazaki, Chihiro\" as one entry) — prefixed \"» name variation: \". Checking an entry highlights the credited display text itself, since the matched value only ever lives in the tooltip, never as visible cell text."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.869",
     "date": "2026-08-14",
     "sections": [

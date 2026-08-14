@@ -5613,3 +5613,69 @@ unchanged) — matching the section's existing "don't duplicate a
 whole-cell entry" design intent.
 
 `node --check ShowAllEntityData.user.js` passed after every edit.
+
+---
+
+## 2026-08-14 — 📊 dropdown: "Name variations" section (v9.99.870)
+
+**Snapshot**: `nv.org` — jesus2099's "MusicBrainz: Nuclear Tags"-family
+name-variation marker: `<span class="name-variation"><a href="..."
+title="RealName – SortName[, optionally with (disambiguation)]">Displayed
+Text</a></span>`, wrapping an artist link whose credited display name
+differs from the entity's real/canonical name. Separator confirmed via
+hexdump: U+2013 EN DASH surrounded by single spaces (`" – "`), not a plain
+hyphen. Examples: `"山崎千裕 – Yamazaki, Chihiro"` (displayed "Chihiro
+Yamazaki"), `"ROUTE14band – ROUTE14band"` (both halves identical),
+`"Riders Against the Storm – Riders Against the Storm (husband/wife hip
+hop duo)"`, `"Farzad Golpayegani – Golpayegani, Farzad"`, `"Bernie Worrell
+– Worrell, Bernie (keyboardist, composer and record producer)"`.
+
+**Requirement**: offer each name-variation's title-derived data in its own
+dropdown section — the full "Real – Sort" string, AND each dash-split half
+on its own — prefixed "» name variation: ".
+
+**Key research finding before implementing**: neither `_findCellEntityRefs()`
+nor `_findCellJoinPhrases()` (both recently touched this session) find
+ANYTHING for this exact shape. `<span class="name-variation">` sits
+directly between `<bdi>` and `<a>` — `_findCellEntityRefs()`'s bdi
+resolution requires `a.parentElement` to literally BE a `<bdi>` (it's a
+`<span>` here) or `<a>` to contain a nested `<bdi>` (it doesn't) — so it
+returns `[]`, and `_findCellJoinPhrases()`'s direct-child-of-`<bdi>` check
+also fails for the same reason (the `<bdi>`'s direct children are
+`<span>`s, not `<a>`s). **This means "Entity info" and "Join phrases" are
+currently BOTH blind to jesus2099 name-variation-wrapped artist credits**
+— a related-but-separate gap from what this session implemented, flagged
+to the user as a possible follow-up rather than fixed here (would need
+its own bdi-resolution extension, out of scope for "add a name-variation
+section").
+
+**Implementation**: new `_findCellNameVariations(cell)` (deliberately
+independent of the two functions above — walks `span.name-variation
+a[href][title]` directly, mirroring `_findNameVariationElements()`'s own
+directness), splitting `title` on the confirmed `" – "` separator into
+`{full, real, sort}`. New `SYN_SECTION_META.nameVariation` ("Name
+variations", 🪪), `MB_UNIQ_KIND_TO_SECTION.namevariation`, full
+aggregation/render/matching pipeline mirroring `joinphrase`'s exact
+footprint from the previous session (Map, per-row Set-dedup, sorted array,
+`_hasValueEntries`, two render branches, `_cellMatchesStructureMode()`
+branch, `_structureModeLabel()`/`_structureModeTooltip()` entries).
+
+**Highlighting design note (important, nearly got this wrong)**: the
+matched value (full/real/sort) lives ONLY in the `title` attribute — it
+never appears as cell TEXT, so there's nothing to substring-match/wrap via
+the normal `highlightCrossTag()`-on-visible-text pattern. Considered
+directly adding the highlight class to (or wrapping) the existing
+`<span class="name-variation">`/`<a>` element — traced this against
+`testRowMatch()`'s highlight-reset step (`row.querySelectorAll(
+'.mb-column-filter-highlight').forEach(n => n.replaceWith(
+document.createTextNode(n.textContent)))`) and confirmed it would
+DESTROY the `<a href>` link entirely on the very next filter cycle
+(flattens the whole matched element — link and all — to plain text).
+Fixed by mirroring `_highlightNameVariationMatch()`'s (the existing binary
+flag's) own established technique instead: build a regex from the
+element's OWN visible text (e.g. "Chihiro Yamazaki") and run it through
+`highlightCrossTag()`, which only ever wraps TEXT NODES, never the `<a>`
+itself — safe against the reset step, and semantically reads as "this
+credited name is highlighted because its own title matched."
+
+`node --check ShowAllEntityData.user.js` passed after every edit.
