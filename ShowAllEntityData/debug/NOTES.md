@@ -5679,3 +5679,42 @@ itself — safe against the reset step, and semantically reads as "this
 credited name is highlighted because its own title matched."
 
 `node --check ShowAllEntityData.user.js` passed after every edit.
+
+---
+
+## 2026-08-14 — Follow-up closed: Entity info/Join phrases now see jesus2099 wraps (v9.99.871)
+
+Closes the follow-up flagged in the previous entry. User asked for a
+concrete example before agreeing to fix it — walked through
+`debug/nv.org`'s two "+"-joined, both-name-variation-wrapped artists,
+showing: (a) "Join phrases" found no "+" entry for that row, (b) "Entity
+info" found zero per-artist entries for either artist, and (c) the
+*displayed* credited name ("Chihiro Yamazaki") had no extraction path
+anywhere — the "Name variations" section only exposes the tooltip-derived
+`real`/`sort` strings ("山崎千裕"/"Yamazaki, Chihiro"), never the display
+text. User confirmed they wanted it fixed.
+
+**Fix**: both `_findCellEntityRefs()` and `_findCellJoinPhrases()` now
+walk through an optional `<span class="name-variation">` sitting directly
+between `<bdi>` and `<a>` before doing their existing bdi-resolution
+(`_findCellEntityRefs()`) / direct-child-anchor detection
+(`_findCellJoinPhrases()`'s `isEntityAnchor()`). Confirmed via trace: for
+`_findCellEntityRefs()`, `nameVariationSpan` is resolved once and reused
+for both `bdiHost` (walk-through) and `nameNode` (still preferring the
+span for highlighting, unchanged from before) — the existing `bdiShared`
+sibling-count check needed NO change at all, since
+`parentBdi.querySelectorAll('a[href]')` is already a descendant selector
+that finds `<a>`s through span wrappers once `parentBdi` itself resolves
+correctly. For `_findCellJoinPhrases()`, `isEntityAnchor()` gained a
+second branch recognizing `<span class="name-variation">` wrapping
+exactly one qualifying `<a>` as a boundary marker equivalent to a bare
+`<a>` — the `entityIdx`/`between`-slicing logic downstream needed no
+change, since it operates purely on whatever indices `isEntityAnchor`
+flags.
+
+No changes needed anywhere else — `_findCellEntityCommentParts()`,
+`_highlightJoinPhraseMatch()`, `_highlightEntityCommentPartMatch()`,
+`_highlightUniqEntityMatches()`, and all of `openUniqDrop()`'s
+aggregation/rendering already re-derive from these two functions' output.
+
+`node --check ShowAllEntityData.user.js` passed after every edit.

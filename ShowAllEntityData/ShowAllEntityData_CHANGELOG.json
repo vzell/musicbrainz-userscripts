@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.871",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The per-column unique-values (📊) dropdown's \"Entity info\" and \"Join phrases\" sections were both blind to a credit whose artist(s) are wrapped by the third-party jesus2099 userscript's name-variation marker (`<span class=\"name-variation\">`, injected directly between `<bdi>` and `<a>` when a credited display name differs from the entity's real name) — such rows contributed no per-artist \"» artist name: …\" entries and no join-phrase entry at all, even though a plain (non-wrapped) multi-artist credit already worked correctly. Both extraction functions now recognize a `<span class=\"name-variation\">` wrapping a single artist link as transparently equivalent to that `<a>` itself, so these rows are found like any other. As a side effect, the artist's actually-displayed credited name is now offered as its own \"Entity info\" entry for the first time (previously only the tooltip-derived real/sort name strings were exposed, via the separate \"Name variations\" section)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.870",
     "date": "2026-08-14",
     "sections": [

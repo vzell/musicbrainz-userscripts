@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.870+2026-08-14
+// @version      9.99.871+2026-08-14
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -17064,6 +17064,13 @@
      * `openUniqDrop()`'s "Entity info" section (see debug/join.html,
      * debug/and.html, debug/slash.html).
      *
+     * A jesus2099 `<span class="name-variation">` can also sit directly
+     * between `<bdi>` and `<a>` (see `_findCellNameVariations()`) — walked
+     * through transparently before checking for the enclosing `<bdi>`, so
+     * a `<bdi>`-shared, name-variation-wrapped credit (e.g. debug/nv.org's
+     * two "+"-joined artists, both wrapped) is still found instead of
+     * silently returning nothing for it.
+     *
      * @param {?HTMLTableCellElement} cell
      * @returns {Array<{type: string, glyphClass: string, href: string,
      *   name: string, nameNode: Element, isBare: boolean}>}
@@ -17094,7 +17101,18 @@
             // whole cell's own text), silently hiding every joined entity
             // from the "Entity info" section entirely (see debug/join.html,
             // debug/and.html, debug/slash.html).
-            const parentBdi = (a.parentElement && a.parentElement.tagName === 'BDI') ? a.parentElement : null;
+            //
+            // A jesus2099 <span class="name-variation"> can also sit
+            // directly between <bdi> and <a> (see
+            // _findCellNameVariations()) — walk through at most one such
+            // wrapper before checking whether the host is a <bdi>, or a
+            // name-variation-wrapped credit inside a shared <bdi> (e.g.
+            // debug/nv.org's two "+"-joined artists) is missed entirely
+            // (bdiHost would be the <span>, never a <bdi>).
+            const nameVariationSpan = (a.parentElement && a.parentElement.tagName === 'SPAN' &&
+                a.parentElement.classList.contains('name-variation')) ? a.parentElement : null;
+            const bdiHost = nameVariationSpan ? nameVariationSpan.parentElement : a.parentElement;
+            const parentBdi = (bdiHost && bdiHost.tagName === 'BDI') ? bdiHost : null;
             const bdi = parentBdi || a.querySelector('bdi');
             if (!bdi) return;
             const bdiShared = !!parentBdi && Array.from(parentBdi.querySelectorAll('a[href]'))
@@ -17105,9 +17123,8 @@
             // credit) so highlighting covers MusicBrainz's own underline
             // styling too — same resolution `_buildCreditListItem`/
             // `_recordedAtDdAnchor` already use elsewhere in this file.
-            const nameNode = (a.parentElement && a.parentElement.tagName === 'SPAN' &&
-                               a.parentElement.classList.contains('name-variation'))
-                ? a.parentElement
+            const nameNode = nameVariationSpan
+                ? nameVariationSpan
                 : (bdiShared ? a : (bdi.contains(a) ? bdi : a));
             const container = a.closest('li') || cell;
             out.push({
@@ -17292,16 +17309,20 @@
      * "Artist" column) — inside `cell`.
      *
      * Only text sitting strictly BETWEEN two qualifying entity-reference
-     * `<a href="/{type}/{mbid}">` elements (same href-type check
-     * `_findCellEntityRefs()` uses via `_ENTITY_TYPE_GLYPH`), as DIRECT
-     * children of the same `<bdi>`, counts — matching the exact shape
-     * MusicBrainz renders a joined artist credit in (see debug/join.html,
-     * debug/and.html, debug/slash.html). Leading/trailing text elsewhere in
-     * the cell, or a `<bdi>` with fewer than two such entities, is not a
-     * join phrase. Deliberately scoped to this one shape only — the
-     * reverse `<a><bdi>Name</bdi></a>` nesting `_findCellEntityRefs()` also
-     * recognizes (e.g. "Recording of work") has no evidenced multi-entity
-     * joined-by-phrase case to cover here.
+     * boundary markers — a DIRECT-child `<a href="/{type}/{mbid}">` (same
+     * href-type check `_findCellEntityRefs()` uses via `_ENTITY_TYPE_GLYPH`),
+     * OR a DIRECT-child jesus2099 `<span class="name-variation">` wrapping
+     * exactly one such `<a>` (see `_findCellNameVariations()` — this span
+     * can sit directly between `<bdi>` and `<a>`, e.g. debug/nv.org's two
+     * "+"-joined, both-wrapped artists) — of the same `<bdi>`, counts,
+     * matching the exact shape MusicBrainz (optionally decorated by
+     * jesus2099) renders a joined artist credit in (see debug/join.html,
+     * debug/and.html, debug/slash.html, debug/nv.org). Leading/trailing
+     * text elsewhere in the cell, or a `<bdi>` with fewer than two such
+     * entities, is not a join phrase. Deliberately scoped to this one shape
+     * only — the reverse `<a><bdi>Name</bdi></a>` nesting
+     * `_findCellEntityRefs()` also recognizes (e.g. "Recording of work")
+     * has no evidenced multi-entity joined-by-phrase case to cover here.
      *
      * Join phrases are free text with no fixed enum — an editor can type
      * anything (e.g. "w/special guest", debug/join.html's third row), not
@@ -17317,11 +17338,21 @@
     function _findCellJoinPhrases(cell) {
         if (!cell) return [];
         const out = [];
-        const isEntityAnchor = (node) => {
-            if (node.nodeType !== Node.ELEMENT_NODE || node.tagName !== 'A') return false;
-            const href = node.getAttribute('href') || '';
-            const m = href.match(/^\/([a-z][a-z-]*)\/[0-9a-f-]+/i);
+        const isQualifyingHref = (href) => {
+            const m = (href || '').match(/^\/([a-z][a-z-]*)\/[0-9a-f-]+/i);
             return !!(m && _ENTITY_TYPE_GLYPH[m[1]]);
+        };
+        const isEntityAnchor = (node) => {
+            if (node.nodeType !== Node.ELEMENT_NODE) return false;
+            if (node.tagName === 'A') return isQualifyingHref(node.getAttribute('href'));
+            // A jesus2099 <span class="name-variation"> can sit directly
+            // between <bdi> and <a> — treat it as the entity boundary too
+            // when it wraps exactly one qualifying <a>.
+            if (node.tagName === 'SPAN' && node.classList.contains('name-variation')) {
+                const innerA = node.querySelector(':scope > a[href]');
+                return !!innerA && isQualifyingHref(innerA.getAttribute('href'));
+            }
+            return false;
         };
         cell.querySelectorAll('bdi').forEach(bdi => {
             const kids = Array.from(bdi.childNodes);
