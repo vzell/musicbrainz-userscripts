@@ -5553,3 +5553,63 @@ aggregation in this dropdown), and all three get highlighted independently
 when checked.
 
 `node --check ShowAllEntityData.user.js` passed after every edit.
+
+---
+
+## 2026-08-14 — _findCellEntityRefs(): shared-<bdi> name bug (v9.99.869)
+
+User caught this via a live screenshot after 9.99.868 shipped: on the
+`slash.html` Artist column ("Albert Hammond / Bruce Springsteen / Loudon
+Wainwright III / Taj Mahal"), the new "Join phrases" section correctly
+showed "/" and "&" entries, but "Entity info" (👤) was MISSING entirely —
+no per-artist "» name: …" entries at all, for any row on that table.
+
+**Root cause**: `_findCellEntityRefs()`'s `<bdi><a>` branch (line
+`const bdi = (a.parentElement && a.parentElement.tagName === 'BDI') ?
+a.parentElement : ...`) assumed a `<bdi>` found this way always belongs
+SOLELY to the one `<a>` being processed — true for a single-artist cell
+(`<bdi><a>Name</a></bdi>`), but false when multiple joined artists share
+ONE `<bdi>` (`<bdi><a>A</a> / <a>B</a> / <a>C</a></bdi>` — confirmed
+exactly this shape in join.html/and.html/slash.html). For every `<a>` in
+that shared bdi, `a.parentElement` IS the same bdi, so `name =
+getCleanColumnText(bdi)` computed the FULL COMBINED credit string
+("Albert Hammond / Bruce Springsteen / …") as every single artist's own
+"name". Then `isBare: getCleanColumnText(container) === name` (container
+= cell, since no `<li>`) trivially came out `true` for all of them (the
+"name" literally equals the whole cell's own text) — and
+`_findCellEntityCommentParts()` filters out every bare ref
+(`if (ref.isBare) return;`), so `entityNameValueCounts` stayed empty for
+every row on the table, and the "Entity info" section (gated on
+`_sortedNameValues.length > 0`) never rendered — even though
+`_findCellEntityRefs()` itself wasn't returning zero refs (confirmed
+indirectly: `entityNameAnyValueCounts`, populated ungated straight off
+`_findCellEntityRefs()`, would have had entries too, just never surfaced
+visibly since nothing reads it independently of `_sortedNameValues`).
+
+This bug pre-dates the join-phrase feature entirely — it's been silently
+breaking "Entity info" for every joined-artist-credit cell since that
+section shipped; the join.html/and.html/slash.html snapshots just happened
+to be the first cells anyone actually opened the 📊 dropdown on.
+
+**Fix**: added a `bdiShared` check — count qualifying entity-ref `<a
+href>` siblings inside the resolved `parentBdi`; if more than one, scope
+`name`/`nameNode` to the individual `<a>` itself instead of the whole
+`<bdi>`. A `<bdi>` wrapping exactly one entity (the overwhelmingly common
+case) is unaffected — `bdiShared` is `false`, so `name`/`nameNode`
+resolution is byte-for-byte identical to before. Also fixes
+`_highlightUniqEntityMatches()` (the `MB_UNIQ_ENTITY_HREF_PREFIX`
+per-entity-glyph highlight path, which reuses `ref.nameNode`) — previously
+it would have highlighted the ENTIRE joined credit string when checking
+just one artist's href-based entry on such a cell, not just that artist's
+own name.
+
+Verified by hand against all three snapshots: join.html's 2-artist "&"/
+"with" rows and 2-artist free-text "w/special guest" row, and.html's "&"
+vs "and" rows, and slash.html's 4-artist "/" row all now produce one
+correctly-isolated, non-bare "» artist name: …" Entity-info entry per
+artist. Single-artist bare rows (the 586-count plain "Bruce Springsteen"
+rows) remain correctly excluded from Entity info (still `isBare: true`,
+unchanged) — matching the section's existing "don't duplicate a
+whole-cell entry" design intent.
+
+`node --check ShowAllEntityData.user.js` passed after every edit.

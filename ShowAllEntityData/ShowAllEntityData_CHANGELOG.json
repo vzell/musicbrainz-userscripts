@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.869",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The per-column unique-values (📊) dropdown's \"Entity info\" (👤) section never offered individual entries for entities credited jointly in one cell (e.g. the native \"Artist\" column's \"Bruce Springsteen & The E Street Band\", or a 4-artist \"A / B / C / D\" credit) — the section was silently empty for every such row, even though each entity is independently filterable/checkable in every other way. Root cause: _findCellEntityRefs() resolved each entity's own \"name\" from the whole shared `<bdi>` wrapping ALL joined entities, rather than from that one entity's own `<a>` — every joined entity ended up reporting the full combined credit string as its own name, making the internal \"is this a bare cell\" check trivially true for all of them and hiding them from Entity info entirely. Each entity's name/highlight scope is now correctly isolated to its own `<a>` whenever it shares a `<bdi>` with other entities; a `<bdi>` wrapping just one entity (the common case) is unaffected."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.868",
     "date": "2026-08-14",
     "sections": [

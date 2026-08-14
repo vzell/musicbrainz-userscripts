@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.868+2026-08-14
+// @version      9.99.869+2026-08-14
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -17054,6 +17054,16 @@
      * (e.g. every entity in a "Recorded at place" chain, or a credit with a
      * trailing date range/attribute).
      *
+     * A `<bdi><a>` cell's `<bdi>` can wrap MULTIPLE joined entities in one
+     * credit (e.g. "Bruce Springsteen & The E Street Band" — see
+     * `_findCellJoinPhrases()`), not just one. When it does, `name`/
+     * `nameNode` are scoped to that ONE `<a>` alone (`bdiShared`), not the
+     * whole shared `<bdi>` — otherwise every joined entity would report the
+     * full combined credit string as its own "name", making `isBare`
+     * trivially true for all of them and silently hiding every one from
+     * `openUniqDrop()`'s "Entity info" section (see debug/join.html,
+     * debug/and.html, debug/slash.html).
+     *
      * @param {?HTMLTableCellElement} cell
      * @returns {Array<{type: string, glyphClass: string, href: string,
      *   name: string, nameNode: Element, isBare: boolean}>}
@@ -17061,17 +17071,35 @@
     function _findCellEntityRefs(cell) {
         if (!cell) return [];
         const out = [];
+        // Used only to test a BDI SIBLING <a> for entity-ref eligibility
+        // (see bdiShared below) — the main per-anchor check right below
+        // stays inline/unchanged to keep this a minimal, low-risk fix.
+        const isEntityHref = (href) => {
+            const sm = (href || '').match(/^\/([a-z][a-z-]*)\/[0-9a-f-]+/i);
+            return !!(sm && _ENTITY_TYPE_GLYPH[sm[1]]);
+        };
         cell.querySelectorAll('a[href]').forEach(a => {
             const href = a.getAttribute('href') || '';
             const m = href.match(/^\/([a-z][a-z-]*)\/[0-9a-f-]+/i);
             const glyphClass = m && _ENTITY_TYPE_GLYPH[m[1]];
             if (!glyphClass) return;
-            // <a><bdi> (common) vs. <bdi><a> (native "Artist" column).
-            const bdi = (a.parentElement && a.parentElement.tagName === 'BDI')
-                ? a.parentElement
-                : a.querySelector('bdi');
+            // <a><bdi> (common) vs. <bdi><a> (native "Artist" column). A
+            // <bdi> can also wrap MULTIPLE joined entities in one credit
+            // (e.g. "Bruce Springsteen & The E Street Band" — see
+            // _findCellJoinPhrases()) — in that case each <a>'s own name/
+            // highlight scope must be the <a> ITSELF, not the whole shared
+            // <bdi>, or every joined entity would wrongly report the full
+            // combined credit text as its own name — and `isBare` would
+            // then always come out true (the "name" trivially equals the
+            // whole cell's own text), silently hiding every joined entity
+            // from the "Entity info" section entirely (see debug/join.html,
+            // debug/and.html, debug/slash.html).
+            const parentBdi = (a.parentElement && a.parentElement.tagName === 'BDI') ? a.parentElement : null;
+            const bdi = parentBdi || a.querySelector('bdi');
             if (!bdi) return;
-            const name = getCleanColumnText(bdi);
+            const bdiShared = !!parentBdi && Array.from(parentBdi.querySelectorAll('a[href]'))
+                .filter(sib => isEntityHref(sib.getAttribute('href'))).length > 1;
+            const name = getCleanColumnText(bdiShared ? a : bdi);
             if (!name) return;
             // Prefer the wrapping <span class="name-variation"> (an alias
             // credit) so highlighting covers MusicBrainz's own underline
@@ -17080,7 +17108,7 @@
             const nameNode = (a.parentElement && a.parentElement.tagName === 'SPAN' &&
                                a.parentElement.classList.contains('name-variation'))
                 ? a.parentElement
-                : (bdi.contains(a) ? bdi : a);
+                : (bdiShared ? a : (bdi.contains(a) ? bdi : a));
             const container = a.closest('li') || cell;
             out.push({
                 type: m[1], glyphClass, href, name, nameNode,
