@@ -1,5 +1,29 @@
 [
   {
+    "version": "9.99.880",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`/report/ArtistsWithMultipleOccurrencesInArtistCredits` coincidentally matches the `report-multiple-linked` page type's \"...With(Multiple|Many)...\" URL pattern (v9.99.879 and earlier), but its table is actually report-detail's flat, one-row-per-artist shape — the report's subject entity (\"Artist\") is the URL segment before \"With\", not a linked entity derivable from the suffix the way that page type expects, so `mainColIdx` never resolved and the injected \"MB-Name\"/\"Comment\"/\"MB-Primary alias\" columns stayed empty for every row (confirmed against debug/a.html). This report is now excluded from `report-multiple-linked` and falls through to the generic `report-detail` definition instead, whose `extractMainColumn` candidate list (added in 9.99.879) already includes 'Artist'."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.879",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The generic `report-detail` report page (`/report/<Name>`) now extracts the \"MB-Name\", \"Comment\", and \"MB-Primary alias\" synthetic columns from whichever main entity column is present — Release, Release group, Recording, Label, Artist, Event, Place, Series, Work, or Collaborator — mirroring the extraction already done for the `report-multiple-linked` family (e.g. ISRCsWithManyRecordings). Covers reports such as ReleasesWithDownloadRelationships, SetInDifferentRG, ReleaseGroupsWithoutVALink, AnnotationsEvents, DuplicateRelationshipsRecordings, DeprecatedRelationshipLabels, CollaborationRelationships, PlacesWithoutCoordinates, SeriesContainingDuplicates, and WorkSameTypeAsParent."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.878",
     "date": "2026-08-14",
     "sections": [

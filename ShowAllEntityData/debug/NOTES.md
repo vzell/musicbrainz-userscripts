@@ -6029,3 +6029,28 @@ fixes live:
 
 `node --check ShowAllEntityData.user.js` passed after every edit in this
 second follow-up round.
+
+## 2026-08-14 — report-detail extractMainColumn rollout + report-multiple-linked mismatch (v9.99.879/880)
+
+- Added `extractMainColumn: ['Release', 'Release group', 'Recording', 'Label',
+  'Artist', 'Event', 'Place', 'Series', 'Work', 'Collaborator']` to
+  `report-detail`'s features (v9.99.879) so the "MB-Name"/"Comment"/
+  "MB-Primary alias" split — previously only wired up for the
+  `report-multiple-linked` family (e.g. ISRCsWithManyRecordings) — also
+  fires on ordinary `/report/<Name>` pages whose table has one of these
+  columns.
+- `a.html` (/report/ArtistsWithMultipleOccurrencesInArtistCredits?filter=0):
+  flat table, 2 native columns (Artist, Type), one row per artist — same
+  shape as `report_filter0.html` above, NOT the grouped/colspan shape
+  `report-multiple-linked` exists for. Its URL nonetheless matches that page
+  type's `\w+With(?:Multiple|Many)\w+$` regex (`Artists` + `With` +
+  `Multiple` + `OccurrencesInArtistCredits`), so
+  `_reportMultipleLinkedMainColumnName` derived "Occurrences In Artist
+  Credit" from the URL suffix instead of the real header ("Artist" — the
+  URL PREFIX here, not the suffix), leaving `mainColIdx` at -1 and every
+  MB-Name/Comment/MB-Primary-alias cell empty despite the headers being
+  injected (header injection is gated only on `extractMainColumn` being
+  configured, not on `mainColIdx` actually resolving). Fixed (v9.99.880) by
+  excluding this one report path from `report-multiple-linked`'s `match()`
+  so it falls through to `report-detail`, which already has 'Artist' in its
+  new candidate list.

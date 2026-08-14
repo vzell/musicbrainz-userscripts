@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.878+2026-08-14
+// @version      9.99.880+2026-08-14
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -12848,9 +12848,32 @@
         // by DOM, which isn't available at match() time) — must be registered
         // ahead of the generic 'report-detail' catch-all below so it wins
         // first-match.
+        //
+        // REPORT_MULTIPLE_LINKED_EXCEPTIONS below carves out reports whose URL
+        // coincidentally matches this family's "...With(Multiple|Many)..."
+        // naming pattern but whose table is actually report-detail's flat,
+        // one-row-per-subject-entity shape (no colspan group-header rows) —
+        // see debug/a.html for ArtistsWithMultipleOccurrencesInArtistCredits:
+        // a plain Artist/Type table, one row per artist. For those, the report
+        // name's SUBJECT entity is the URL segment BEFORE "With", not a linked
+        // entity derived from the suffix the way
+        // _reportMultipleLinkedMainColumnName expects (it derived "Occurrences
+        // In Artist Credit" from the "...MultipleOccurrencesInArtistCredits"
+        // suffix, which never matches the real "Artist" header) — so
+        // mainColIdx never resolved and MB-Name/Comment/MB-Primary-alias
+        // stayed empty. Routing these through 'report-detail' instead fixes
+        // them with no bespoke code: it's a superset of this page type's
+        // features (same insertH2/addCAA/addEAA/removeSelector, plus its own
+        // extractMainColumn candidate list already includes 'Artist').
         {
             type: 'report-multiple-linked',
-            match: (path) => path.match(/^\/report\/\w+With(?:Multiple|Many)\w+\/?$/),
+            match: (path) => {
+                if (!path.match(/^\/report\/\w+With(?:Multiple|Many)\w+\/?$/)) return false;
+                const REPORT_MULTIPLE_LINKED_EXCEPTIONS = [
+                    '/report/ArtistsWithMultipleOccurrencesInArtistCredits'
+                ];
+                return !REPORT_MULTIPLE_LINKED_EXCEPTIONS.includes(path.replace(/\/$/, ''));
+            },
             buttons: [
                 { label: 'Show all (unfiltered)', params: { filter: '0' } },
                 { label: 'Show all (subscribed only)', params: { filter: '1' } }
@@ -12903,6 +12926,22 @@
                     { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] },
                     { sourceColumn: 'Last edited', extractor: 'dateTimeParts', syntheticColumns: ['Last edited date', 'Last edited time'] },
                     { sourceColumn: 'Annotation', extractor: 'numberOfChars', syntheticColumns: ['Annotation chars'] }
+                ],
+                // Splits the "MB-Name" / "Comment" / "MB-Primary alias" synthetic
+                // columns off whichever of these headers is actually present on a
+                // given report's table (mirrors the extraction already done for
+                // the 'report-multiple-linked' family, e.g. ISRCsWithManyRecordings
+                // — see _extractMainColumnParts's JSDoc). report-detail is
+                // column-agnostic (117 differently-shaped reports), so this is a
+                // candidate list, not a single fixed header: the shared header-
+                // matching loop picks whichever one of these is present. Scoped to
+                // entity-column names verified against known report categories
+                // (debug/reports.html) — categories with unverified header text
+                // (Disc IDs, URLs, Artist credits, Medium/Track reports) are
+                // intentionally left out until confirmed against a live page.
+                extractMainColumn: [
+                    'Release', 'Release group', 'Recording', 'Label', 'Artist',
+                    'Event', 'Place', 'Series', 'Work', 'Collaborator'
                 ],
                 collapsableColumns: [ 'Artists', 'Authors', 'Recording artists', 'Annotation' ],
                 integerColumns: [
