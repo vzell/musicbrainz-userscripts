@@ -1,5 +1,41 @@
 [
   {
+    "version": "9.99.878",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On alias-listing pages, `normalizeAliasTable()` (v9.99.877) removed the invisible \"Actions\" (Edit/Remove) `<td>` from every body row but left its `<th>` header in place, so the rendered table still showed an \"Actions\" column — with sort buttons and a unique-values dropdown — that was now always empty in every row (confirmed against debug/action.html). The header cell is now removed too, so the column disappears entirely instead of rendering dead."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.877",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On alias-listing pages, whenever a row's Alias text equals its Sort name, MusicBrainz renders that row's leading cell with `colspan=\"2\"` — one fewer real `<td>` than the header count, which silently shifted every later column's positional cell lookup left by one for that row. The existing fix for this (`normalizeAliasTable()`, which also strips the invisible Actions/Edit-Remove column) was gated behind a manually-curated allowlist that covered only 6 of the 11 `*-aliases` page types and explicitly excluded `artist-aliases` — so on that page the \"Edit | Remove\" Actions text leaked into the Type/Locale/\"Locale language\"/Actions columns' cell data and unique-values dropdowns (most visibly since the new `localeParts` \"Locale\"/\"Locale language\"/\"Primary locale\" extraction landed, but the same column-shift already silently corrupted Begin/End-date extraction there too). `work-aliases`/`releasegroup-aliases`/`release-aliases`/`recording-aliases` had the identical latent gap. Normalization now runs unconditionally for every `*-aliases` page type — `normalizeAliasTable()` is already a no-op for any row/table that doesn't actually have the Actions column or a colspan'd cell, so this is safe everywhere."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.876",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The artist Aliases page (`/artist/{mbid}/aliases`) now splits the native \"Locale\" column into two synthetic columns: \"Locale language\" (the plain locale text, e.g. \"English\", with any locale that already legitimately has its own parenthetical, e.g. \"Chinese (China)\", preserved intact) and \"Primary locale\" (\"true\" when that row's locale carries MusicBrainz's own \"(primary)\" role indicator, left empty otherwise — including alias types like \"Legal name\"/\"Search hint\" that have no locale at all, e.g. \"English (primary)\" → language \"English\" + primary \"true\"; \"English\" → language \"English\" + primary empty)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.875",
     "date": "2026-08-14",
     "sections": [

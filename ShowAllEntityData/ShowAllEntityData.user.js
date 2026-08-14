@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.875+2026-08-14
+// @version      9.99.878+2026-08-14
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -3816,6 +3816,66 @@
             }
 
             return [tdDD, tdMM, tdYYYY, tdDay, tdMonth];
+        },
+
+        /**
+         * localeParts — splits a native MusicBrainz Alias-table "Locale" `<td>`
+         * cell into the locale's own language/region text and a boolean-ish
+         * "is this alias's primary locale" flag.
+         *
+         * Native markup (see debug/locale.html): plain locale text (e.g.
+         * "English", or a locale that already legitimately contains its own
+         * parenthetical, e.g. "Chinese (China)"), optionally followed by a
+         * MusicBrainz `<span class="comment">primary</span>` role indicator
+         * wrapped in literal `" ("`/`")"` text nodes — e.g. `English (<span
+         * class="comment">primary</span>)`. This is plain text, NOT an
+         * entity link, so (unlike `extractMainColumn`) it must never be
+         * treated as an MB-Name/Comment/Primary-alias split — see the
+         * `*-aliases` page definitions' own comment on why
+         * `extractMainColumn: 'Locale'` was removed. Some alias `Type`s
+         * (e.g. "Legal name", "Search hint") carry no Locale at all — an
+         * entirely empty source cell — in which case both synthetic columns
+         * stay empty.
+         *
+         * Detection reads a clone's `span.comment` presence (never mutates
+         * `sourceCell` — the original "Locale" column stays untouched
+         * alongside these two synthetic ones, mirroring `dateParts`'
+         * read-only convention above rather than `primaryAlias`'s
+         * in-place-cleanup one). After removing the clone's comment span,
+         * the leftover empty `" ()"` wrapper it leaves behind is stripped
+         * from the tail of the remaining text — never from elsewhere in the
+         * string, so a locale like "Chinese (China)" keeps its own
+         * parenthetical intact when it is ALSO primary
+         * ("Chinese (China) (primary)" → "Chinese (China)").
+         *
+         * Input examples        →  Output examples
+         *   "English (primary)" →  language: "English",        primary: "true"
+         *   "English"           →  language: "English",        primary: ""
+         *   "Chinese (China) (primary)" → language: "Chinese (China)", primary: "true"
+         *   "" (no locale set)  →  language: "",                primary: ""
+         *
+         * Synthetic columns: two columns, language then primary flag (names
+         * assigned by the page definition, e.g. ['Locale language', 'Primary
+         * locale']).
+         *
+         * @param   {HTMLTableCellElement} sourceCell  Original "Locale" <td>.
+         * @returns {HTMLTableCellElement[]}            Two synthetic <td> elements: [language, primary].
+         */
+        localeParts(sourceCell) {
+            const tdLanguage = document.createElement('td');
+            const tdPrimary  = document.createElement('td');
+
+            if (!sourceCell) return [tdLanguage, tdPrimary];
+
+            const hasPrimary = !!sourceCell.querySelector('span.comment');
+            const clone = sourceCell.cloneNode(true);
+            clone.querySelectorAll('span.comment').forEach(c => c.remove());
+            const language = clone.textContent.replace(/\s*\(\s*\)\s*$/, '').trim();
+
+            if (language)   tdLanguage.textContent = language;
+            if (hasPrimary) tdPrimary.textContent  = 'true';
+
+            return [tdLanguage, tdPrimary];
         },
 
         /**
@@ -14659,7 +14719,8 @@
             features: {
                 columnExtractors: [
                     { sourceColumn: 'Begin date', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
-                    { sourceColumn: 'End date',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
+                    { sourceColumn: 'End date',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] },
+                    { sourceColumn: 'Locale',     extractor: 'localeParts', syntheticColumns: ['Locale language', 'Primary locale'] }
                 ],
                 integerColumns: [
                     { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
@@ -32216,21 +32277,36 @@ a { color: #1565c0; }`;
      * MusicBrainz aliases page so it is compatible with the script's row-processing
      * pipeline.
      *
-     * Two transformations are applied to every `<tbody tr>`:
-     *   1. The invisible `.actions` column cell (edit / remove links) is removed
-     *      from body rows.
-     *   2. When the first cell spans both "Alias" and "Sort name" columns (colspan 2),
+     * Three transformations are applied:
+     *   1. The invisible `.actions` HEADER cell (edit / remove links column) is
+     *      removed from `<thead>`. Without this, removing only the body `.actions`
+     *      `<td>`s (step 2) leaves a header with no corresponding data in any row
+     *      — an always-empty "Actions" column that still renders with a header,
+     *      sort buttons, and a unique-values dropdown (see debug/action.html,
+     *      reported after v9.99.877 first landed the body-only removal).
+     *   2. The invisible `.actions` column cell (edit / remove links) is removed
+     *      from EVERY body row.
+     *   3. When the first cell spans both "Alias" and "Sort name" columns (colspan 2),
      *      it is split into two separate cells — one for the alias text and one for
      *      the sort name — matching the two-column header structure so column indices
      *      remain consistent across all rows.
      *
      * Operates on the live DOM element in-place.  Safe to call multiple times on
-     * the same table (idempotent via the colspan guard).
+     * the same table (idempotent via the colspan guard and the header already
+     * being gone after the first call).
      *
      * @param {HTMLTableElement} table - The alias table to normalise.
      */
     function normalizeAliasTable(table) {
         if (!table) return;
+
+        // Remove invisible actions column header (thead) — must happen before
+        // the body removal below so BOTH sides of the "no more Actions column
+        // at all" contract are satisfied together.
+        const actionsTh = table.querySelector('thead th.actions');
+        if (actionsTh) {
+            actionsTh.remove();
+        }
 
         const rows = table.querySelectorAll('tbody tr');
 
@@ -32253,7 +32329,7 @@ a { color: #1565c0; }`;
             }
         });
 
-        Lib.debug('cleanup', 'Normalized alias table structure (actions removed, colspan expanded).');
+        Lib.debug('cleanup', 'Normalized alias table structure (actions header+cells removed, colspan expanded).');
     }
 
     /**
@@ -38382,29 +38458,34 @@ a { color: #1565c0; }`;
                 // Use parseDocumentForTables to filter which tables we actually process
                 const tablesToProcess = parseDocumentForTables(doc, targetHeader);
 
-                // Alias pageTypes that REQUIRE table normalization
-                const ALIAS_PAGES_WITH_ACTIONS_COLUMN = new Set([
-                    'instrument-aliases',
-                    'label-aliases',
-                    'place-aliases',
-                    'series-aliases',
-                    'event-aliases',
-                    'area-aliases',
-                    // add more here when discovered
-                ]);
-
-                // Alias pageTypes that explicitly do NOT need normalization
-                const ALIAS_PAGES_WITHOUT_ACTIONS_COLUMN = new Set([
-                    'artist-aliases',
-                ]);
-
-                // 🔥 Alias pages need structural normalization BEFORE row extraction
-                // 🔥 Alias pages with known broken table structure
-                if (
-                    pageType.endsWith('-aliases') &&
-                    ALIAS_PAGES_WITH_ACTIONS_COLUMN.has(pageType) &&
-                    !ALIAS_PAGES_WITHOUT_ACTIONS_COLUMN.has(pageType)
-                ) {
+                // 🔥 Alias pages need structural normalization BEFORE row extraction.
+                // Every `*-aliases` page type shares the exact same native
+                // MusicBrainz alias-table template — `td.actions` (Edit/Remove
+                // links) and, whenever a row's Alias text equals its Sort name,
+                // a `colspan="2"` leading cell that drops the row's real <td>
+                // count one below the header count, silently shifting every
+                // later column's positional lookup left by one (see
+                // debug/locale-final.html: rows 2/4 have 18 <td>s instead of
+                // 19, exactly matching this). `normalizeAliasTable()` fixes
+                // both, unconditionally, for every table on the page — it is
+                // a no-op for any row/table that doesn't actually have
+                // `td.actions`/a colspan'd cell, so calling it here for every
+                // `-aliases` pageType is safe. Previously gated behind a
+                // manually-curated two-Set allowlist that only covered 6 of
+                // the 11 `-aliases` types (instrument/label/place/series/
+                // event/area) and explicitly EXCLUDED artist-aliases — that
+                // gap is what let `td.actions`'s "Edit | Remove" text leak
+                // into the Type/Locale/Locale-language/Actions columns'
+                // unique-values dropdowns once a real (non-empty) column
+                // extractor was added after the colspan'd cell (the
+                // `localeParts` "Locale"/"Locale language"/"Primary locale"
+                // extraction, v9.99.876) — the same latent bug exists for
+                // work/releasegroup/release/recording-aliases too (never
+                // added to that allowlist, same template, same
+                // Begin-date/End-date `dateParts` extractors after the
+                // colspan'd cell), just invisible there so far because those
+                // extracted date columns happen to be empty for most rows.
+                if (pageType.endsWith('-aliases')) {
                     tablesToProcess.forEach(normalizeAliasTable);
                 }
 
