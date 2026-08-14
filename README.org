@@ -85083,13 +85083,6 @@ type: 'user-tag-value'
 #+end_example
 
 
-* TODO new extractor for alias pages: Locale ==> Locale + Type
-
-https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/aliases
-
-English(primary) => English | primary
-
-
 * TODO on multi-table pages with different table structures, enable entityFeatures
 
 on multi-table pages with different table structures, enable entityFeatures
@@ -91135,7 +91128,11 @@ second ?
 #+end_example
 
 
-* TODO Failed to save data: Invalid string length
+* TODO plan: Failed to save data: Invalid string length - actually check on which PC I have done this before, probably on vzell-lap
+
+We already discussed the following:
+
+1.)
 
 Why do I get "Failed to save data: Invalid string length" in a native browser popup box on e.g.
 
@@ -91179,16 +91176,15 @@ Planning: /home/vzell/.claude/plans/quirky-mixing-kernighan.md
 
 How much do you want to invest in fixing this — a permanent fix or a quick mitigation?
 
+2.)
+
+I want the following implemented, but in a new branch:
+
+#+begin_example
 ❯ 1. Full streaming/chunked rewrite (Recommended)
      Rewrite saveTableDataToDisk to build the JSON payload in chunks and stream-compress with pako's chunked Deflate API instead of one giant JSON.stringify + gzip call. Eliminates the failure mode entirely, no matter how large the dataset gets. More invasive — touches the core save logic and needs careful testing
      with a large dataset.
-  2. Quick mitigation only
-     Drop the pretty-print indentation (', null, 2' -> compact JSON) to shrink the string ~30-40%, and catch RangeError specifically to show an actionable message (e.g. 'dataset too large to save, try filtering first') instead of the generic alert. Low risk, fast, but a big enough area could still hit the limit.
-  3. Quick mitigation now, full rewrite tracked separately
-     Ship the compact-JSON + clear-error-message fix in this session as a stopgap, and note the streaming rewrite as follow-up work (e.g. in debug/ notes or a WIP changelog entry) rather than doing it now.
-  4. Type something.
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  5. Chat about this
+#+end_example
 
 
 * TODO plan: Add support for a new MusicBrainz release pageType
@@ -92432,7 +92428,6 @@ No button is rendered at all, also "ERROR" icons are present at https://musicbra
 
 @debug/h2.html
 
-
 ** TODO why can't the "Disambiguation" column be extracted in it's "Event-..." parts
 *** DONE initial
 
@@ -92483,7 +92478,7 @@ expected, but NO "Rebuild table" notice.
 
 Could you add debug statements to check whats going on
 
-** TODO add colors to the synthetic extracted AR columns (or better chack why they are NOT rendered, even the synthetic extracted columns not
+** TODO add colors to the synthetic extracted AR columns (or better check why they are NOT rendered, even the synthetic extracted columns not
 *** DONE initial
 
 still not working:
@@ -92504,6 +92499,7 @@ compare
 #+end_example
 
 ** TODO split "Recorded at place" column (maybe)
+
 
 * DONE plan: add the flag and place/area icons at the right position of each entry in the unique value drop down instead of at the very beginning of each entry
 
@@ -93691,7 +93687,6 @@ then you select one/more entries, the artificial filter entry "<n selected>" sho
 when nothing is select right awy (e.g. by clicking the "Escape" key right after opening the unique value drop don menu,
 the original state should be preserved
 
-
 * DONE On the 'reports' pageType add more columns if chabans statistics userscript is installed
 
 On the pageType 'reports' https://musicbrainz.org/reports add more columns if the userscript "MusicBrainz: Reports Statistics" from @chaban is installed/active, see @debug/chaban.html
@@ -93715,17 +93710,7 @@ Use the same colors in the extracted synthetic columns on the final rendered pag
 
 add a tooltip to the extracted columns mentioning the userscript from chaban if present
 
-
-* TODO In "Recording enineer" column, "John Cooper (engineer)" should always stay together, a bare "John Cooper" should never be extracted
-
-Currently
-
-#+begin_example
-<li><a class="wrap-anywhere" href="/artist/4844fcef-6e56-4407-be41-ead237dff686" title="Cooper, John (engineer)"><bdi>John Cooper</bdi></a>&nbsp;<span class="comment"><bdi>(engineer)</bdi></span><span class="mb-live-date-flag" title="This track is a live recording (recorded 2005-07-18), but this credit has no date attribute — it can't be confirmed to be from the same performance."> ❌</span></li>
-#+end_example
-
-
-* TODO plan: review the "extractMainColumn" feature architecture
+* DONE plan: review the "extractMainColumn" feature architecture
 ** DONE initial
 
 Review the "extractMainColumn" feature architecture which currently splits a column into the following synthetic columns
@@ -94042,7 +94027,27 @@ Do not code yet just check
   alone)?
 #+end_example
 
-** TODO fix the code where primaryAlias is still used
+
+
+* TODO In "Recording enineer" column, "John Cooper (engineer)" should always stay together, a bare "John Cooper" should never be extracted
+
+Currently
+
+#+begin_example
+<li><a class="wrap-anywhere" href="/artist/4844fcef-6e56-4407-be41-ead237dff686" title="Cooper, John (engineer)"><bdi>John Cooper</bdi></a>&nbsp;<span class="comment"><bdi>(engineer)</bdi></span><span class="mb-live-date-flag" title="This track is a live recording (recorded 2005-07-18), but this credit has no date attribute — it can't be confirmed to be from the same performance."> ❌</span></li>
+#+end_example
+
+
+* TODO fix the code where primaryAlias is still used
+** current functions to refactor into our shared helper
+
+#+begin_example
+extractor: 'Name_Comment',  syntheticColumns: ['Name', 'Comment'] }
+extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ]
+extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
+extractor: 'Name_Date_Comment', syntheticColumns: ['Name', 'Date', 'Comment'] } ],
+#+end_example
+
 ** TODO Not in scope
 
      - No new alias column is added to _tagCountBase-family page blocks that
@@ -94055,16 +94060,117 @@ Do not code yet just check
      needed by the 3 kept usages.
 
 
+* DONE https://musicbrainz.org/report/SetInDifferentRG needs "Primary alias" column, so extractMainColumn on "Release group"
 
-* TODO Extract disambiguation from the "Artist" column in specific reports - use our new generic helper
+Maybe create a copy of
+
+#+begin_example
+        {
+            type: 'report-detail',
+            match: (path) => path.match(/^\/report\/[^/]+\/?$/),
+#+end_example
+
+and adjust the match directive for "report/SetInDifferentRG"
+
+* DONE plan: Extract disambiguation comment from the "Artist" column in specific reports - use our new generic helper
+** i
+
+Most of the report pages referenced from the main 'reports' pageType at https://musicbrainz.org/reports (see @debug/reports.html) e.g.
+
+#+begin_example
+https://musicbrainz.org/report/ReleasesWithDownloadRelationships - Non-digital releases with digital relationships - "Release" column
+https://musicbrainz.org/report/SetInDifferentRG - Release groups that might need to be merged - "Release group" column
+https://musicbrainz.org/report/ReleaseGroupsWithoutVALink - Release groups credited to "Various Artists" but not linked to VA - "Release group" column
+https://musicbrainz.org/report/AnnotationsEvents - Event annotations - "Event" column
+https://musicbrainz.org/report/DuplicateRelationshipsRecordings - Recordings with possible duplicate relationships - "Recording" column
+https://musicbrainz.org/report/DeprecatedRelationshipLabels - Labels with deprecated relationships - "Label" column
+https://musicbrainz.org/report/CollaborationRelationships - Artists with collaboration relationships - "Collaborator" column
+https://musicbrainz.org/report/PlacesWithoutCoordinates - Places without coordinates - "Place" column
+https://musicbrainz.org/report/SeriesContainingDuplicates - Series containing duplicates - "Series" column
+https://musicbrainz.org/report/WorkSameTypeAsParent - Works with the same type as their parent - "Work" column
+
+#+end_example
+
+do not currently extract the synthetical columns 'MB-Name', "Comment" and 'MB-Primary alias'
+from the main column.
+
+Check the implementation, what we did for the following report page
+
+#+begin_example
+https://musicbrainz.org/report/ISRCsWithManyRecordings
+#+end_example
+
+how to identify the column from which the extraction needs to be done
 
 Use our new _findCellEntityCommentParts(cell) helper (extends _findCellEntityRefs) — the single source of truth
 splitting each commented entity into { name, comment, alias }
 
-https://musicbrainz.org/report/DiscogsLinksWithMultipleArtists
+** bug
 
+The following do NOT work, empty cells for the synthetic columns
 
-* TODO split "3421 w/special guest Miss Red" on https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b in column "Artist"
+#+begin_example
+https://musicbrainz.org/report/ArtistsWithMultipleOccurrencesInArtistCredits - @debug/a.html
+#+end_example
+
+* DONE Empty columns at the end: https://musicbrainz.org/report/PlacesWithoutCoordinates
+
+Why are the synthetic columns "Locality", "Region", "Country" (see @debug/coordinates.html) empty for the report page https://musicbrainz.org/report/PlacesWithoutCoordinates
+
+* DONE 'date' is not extracted from the "Event" column at https://musicbrainz.org/user/vzell/tag/rescheduled
+
+The bracketed unique 'date' parts
+
+#+begin_example
+2024‐05‐28: Letnany Airport, Prague, Czech Republic (2024-05-28) (cancelled) - "2024-05-28" missing
+#+end_example
+
+on e.g.
+
+#+begin_example
+https://musicbrainz.org/user/vzell/tag/england
+https://musicbrainz.org/user/vzell/tag/rescheduled
+#+end_example
+
+@debug/data-missing.html
+are not extracted from the "Event" column into the unique value drop down of the "Event" column special section, why ?
+
+* DONE plan: fix the "... URLs linked ..." reports pages
+** i
+
+1.)
+
+Fix the "<prefix> URLs linked <postfix>" reports pages (maybe create a new pageType for them) e.g.
+
+#+begin_example
+https://musicbrainz.org/report/DiscogsLinksWithMultipleArtists - Discogs URLs linked to multiple artists
+https://musicbrainz.org/report/DiscogsLinksWithMultipleLabels - Discogs URLs linked to multiple labels
+https://musicbrainz.org/report/ASINsWithMultipleReleases - Amazon URLs linked to multiple releases
+https://musicbrainz.org/report/DiscogsLinksWithMultipleReleaseGroups - Discogs URLs linked to multiple release groups
+#+end_example
+
+Here example HTML
+
+#+begin_example
+@debug/URLs-linked.html-original.html - original raw HTML, has a colspanned  URL entry typically followed by a couple of rows which logically belong to the multi-spanned entry and which have an empty value for the "URL" column
+@debug/URLs-linked.html-rendered.html - currently render final page, missing the "URL" column values 
+#+end_example
+
+2.)
+
+Always configure the second column after the "URL column (e.g. "Release" in https://musicbrainz.org/report/ASINsWithMultipleReleases) in the final rendered page with "extractMainColumn: '<second column name>'"
+so that the splitting in the 'MB-Name', "Comment" and 'MB-Primary alias' columns automatically happens
+
+** bug
+
+It works fine for the reported "... URLs linked ..." cases but not for e.g https://musicbrainz.org/report/ISRCsWithManyRecordings - ISRCs with multiple recordings
+
+#+begin_example
+ISRC-initial.html - Initial HTML page
+ISRC-final.html - Final rendered HTML page
+#+end_example
+
+* DONE split "3421 w/special guest Miss Red" on https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b in column "Artist"
 ** DONE
 
 If an artist type column has multiple artists joined with a "join phrase" like e.g. on
@@ -94114,7 +94220,7 @@ Taj Mahal
 
 listed separately in the generic unique drop down entry list
 
-** TODO name variations in general, offer each variant in it's own variant section withthe prefix "name variant:"
+** DONE name variations in general, offer each variant in it's own variant section withthe prefix "name variant:"
 *** DONE i
 
 When the jesus2099 userscript is present, which displays name variations on entities like e.g. artists, add support for
@@ -94168,14 +94274,187 @@ Here some other examples
 
 act on @debug/nv.org
 
-*** TODO Important finding
+*** DONE Important finding
 
+create a new plan for the last finding mentioned:
+
+#+begin_example
 Important finding along the way: neither _findCellEntityRefs() nor _findCellJoinPhrases() (both touched earlier this
 session) can see this exact shape at all — <span class="name-variation"> sits between <bdi> and <a>, which both
 functions' bdi-resolution logic misses. So "Entity info" and "Join phrases" are currently blind to jesus2099-wrapped
 artist credits — a related but separate gap I did not fix here (it would need its own extension to that bdi-resolution
 logic), flagged in debug/NOTES.md as a possible follow-up. Let me know if you'd like that addressed too.
+#+end_example
 
+I don't understand what you mean here. Can you give me an example with real data, what (when implemented) we would gain,
+and what currently would be missing
+
+* DONE The "Entity info" section in the unique value drop down menu in each column header tends to have very many entries, and it's not easy to spot the different type like e.g.
+** i
+
+#+begin_example
+<event glyph> event name:
+<artist glyph> artist name:
+<place glyph> place name:
+<area glyph> area name:
+  -> in general ==> <type glyph> <type> name: 
+comment:
+alias:
+etc.
+#+end_example
+
+put each of these different groups in their on collapsable section e.g.
+
+#+begin_example
+Entity info - <event glyph> event name:
+Entity info - <artist glyph> artist name:
+etc
+Entity info - comment:
+Entity info - alias:
+etc.
+#+end_example
+
+** bug
+
+There is a visual glitch when the section header has the additional <type glyph>, it's not completely rendered but cut
+off, as can be seen in the following screen shots
+
+* DONE plan: Extract even more structural information in the unique value drop down menu for the following columns e.g. in https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases
+** DONE i
+
+Extract even more structural information in the unique value drop down menu for the following columns e.g. in
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases
+
+#+begin_example
+Format - show an entry for each different size specification like e.g. '7"', '10"', '12"' etc. see @debug/format.html and each different <number of mediums> like e.g. "2x" (but strip of the "x" in that case), put the info in a new "Format info:" section (also add a meta entry which when selected filters all rows when there are multiple (n) mediums involved, "<n>x<format type>")
+Country/Date - show an entry for each different flag glyph, two letter country abbrev, date expression and weekday (note that all these different parts are optional) see @debug/country-date.html, put the info in a new section (use a nice section name which accurately describes the situation)
+Country - show an entry for each different country flag glyph, country name and two letter country abbrev (note that all these different parts are optional) see @debug/country.html, put the info in a new section (use a nice section name which accurately describes the situation)
+Tracks - show an entry for each different number of track per medium, see debug/tracks.html, put the info in a new "Tracks info:" section (also add a meta entry which when selected filters all rows when there are multiple mediums involved, (when there is at least one "+" symbol in the data cell)
+#+end_example
+
+** DONE add to this list the following column
+
+add to this list the following column
+
+#+begin_example
+Catalog# - show an entry for each different string based prefix like e.g. "CBS", "S CBS, etc before a typical numeric catalog number like e.g. see debug/catalog.html, put the info in a new "Catalog info:" section (also add two meta entries which when selected filters all rows with/without these prefixes)
+#+end_example
+
+** DONE adjust
+
+1.)
+
+add multiple sections instead of just a single section to the following:
+
+#+begin_example
+"Country details" ==> "Country name details" and "Country code details"
+"Release events" ==> "Release events - country", "Release events - date" and "Release events - weekday"
+#+end_example
+
+2.)
+
+in the "Format" column there should be an additional entry e.g. just "Vinyl" and "Acetate" when there are these types of
+formats but have different size specifications
+
+3.)
+
+make sure that all new structurual information when filtered is also correctly highlighted in the complete cell data
+expression, e.g.
+
+#+begin_example
+Country column - [Image #19], the two letter country abbrev is correctly highlighted, but the country name like e.g. "Israel" NOT
+Catalog# column - [Image #20], the catalog prefixes are NOT highlighted at all
+Tracks column - [Image #21], the tracks numbers are NOT highlighted at all
+Format column - [Image #22], the "2x" are not highlighted at all
+#+end_example
+
+** DONE adjust further
+
+1.)
+
+in the "Catalog#" column there should be an additional entry e.g. just "no catalog number" when the cell data has the value "[none]"
+
+2.)
+
+the new structurual information when filtered is NOT correctly highlighted in the complete cell data for the "Country/Date" column, see [Image #24] 
+
+3.)
+
+In the "Format" column, in the "Format info" section, the alignment is NOT correct... the count numbers seem to be center aligned [Image #25] 
+
+* DONE Extract even more structural information in the unique value drop down menu
+
+1.)
+
+Currently the pageType e.g. https://musicbrainz.org/series/b43664d3-4f40-47ac-a9d0-38ee624b2ab4 in it's "Location" column renders just the "» area name: <name>" e.g
+
+#+begin_example
+<div role="option" title="Cleveland — An entity's own anchored/linked name — matches every row containing this entity, regardless of its disambiguation comment." data-mb-uniq-syn-label="» area name: Cleveland" class="mb-col-uniq-item mb-col-uniq-multirow-item mb-uniq-focused" aria-selected="false"><span class="mb-col-uniq-checkbox" aria-hidden="true">☐</span><span class="mb-uniq-count-badge" aria-hidden="true" style="color: rgb(17, 17, 17); background-color: rgb(255, 250, 205); font-weight: bold; font-family: monospace; border-radius: 3px; padding: 0px 3px; margin-right: 5px; font-size: 0.85em; display: inline-block; min-width: 3ch; text-align: right;">(1)</span><span class="arealink" aria-hidden="true" style="margin-right: 4px;">​</span><span class="mb-uniq-syn-label-text">» area name: Cleveland</span></div>
+#+end_example
+
+without the flag if present
+
+Is it possible to include the fla icon ?
+
+The same holds true for other pageTypes e.g.
+
+a.)
+
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events in the columns
+
+#+begin_example
+Location
+Locality
+Region
+Country
+etc.
+#+end_example
+
+b.)
+
+https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/artists in the columns
+
+#+begin_example
+Area
+Begin Erea
+End Erea
+ -> and the extracted columns from these
+#+end_example
+
+and so on
+
+* DONE new extractor for alias pages: Locale ==> Locale + Type
+** DONE i
+
+Add a new extractor for the pageType  https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/aliases
+and extract the two synthetic columns
+
+#+begin_example
+Locale language
+Primary locale (boolean)
+#+end_example
+
+So e.g
+
+#+begin_example
+"English(primary)" => "Locale language: English" and "Primary locale: true"
+"English" => "Locale language: English" and "Primary locale: <leave empty if not available>"
+#+end_example
+
+** DONE bug
+
+Somehow cell data from the "Action" column leaks into other columns unique value drop down menu, see @debug/locale-final.html (the current final
+rendered HTML)
+
+#+begin_example
+[Image #32] - "Edit | Remove" leaks into the "Locale" column unique value drop down
+[Image #33] - "Japanese (primary)" leaks into the "Type" column  unique value drop down
+[Image #34] - "The synthetic column "Locale language" has "Edit | Remove" from the "Actions" column in it's cell data
+#+end_example
+
+** DONE "Actions" column header is still present, but data cells are gone
+
+"Actions" column header is still present, but data cells are gone, see @debug/action.html
 
 
 * TODO why is this not working
@@ -94315,25 +94594,13 @@ Buggy rendering of "SiriusXM Studio in New York City New York, New York New York
 @debug/sirius-final.html - final page; rendered as 2 list elements
 #+end_example
 
-** Why is there an "expand-events-toggle _toggleButton_15vyb_5" toggle button at https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf - maybe remove it from the final page when the userscript is present
+** TODO Why is there an "expand-events-toggle _toggleButton_15vyb_5" toggle button at https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf - maybe remove it from the final page when the userscript is present
 
 #+begin_example
 <button type="button" class="expand-events-toggle _toggleButton_15vyb_5" data-event-gid="3ed93c42-494e-4822-9df2-a5083279a557" aria-label="Expand event 3ed93c42-494e-4822-9df2-a5083279a557">▸</button>
 #+end_example
 
 It comes from another userscript probably "Expand events", the toggle is already on the initial page - maybe remove it from the final page when the userscript is present
-
-** https://musicbrainz.org/report/SetInDifferentRG needs "Primary alias" column, so extratMainColumn on "Release group"
-
-Maybe create a copy of
-
-#+begin_example
-        {
-            type: 'report-detail',
-            match: (path) => path.match(/^\/report\/[^/]+\/?$/),
-#+end_example
-
-and adjust the match directive for "report/SetInDifferentRG"
 
 
 * TODO What about the header collapsable" toggle icon
@@ -94479,6 +94746,13 @@ Do not code anything just explain first
 #+end_example
 
 
+* TODO There is also artificially too much whitespace between the country flag and the country abbrev
+
+"Country/Date" column:
+
+On e.g. https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
+
+
 * TODO sometimes the Wikipedia h2 is rendered at the very end of the final page (probably a timing issue when the action button on the initial page has been pressed to early)
 
 On e.g.https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f (when rendered as a "single"-table page in a new tab)
@@ -94526,13 +94800,6 @@ https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordin
 | area-artists          | -                                                                | "United States"     | single           | -                 | -                                 | -             | -      |
 |                       |                                                                  |                     |                  |                   |                                   |               |        |
 
-
-
-* TODO There is also artificially too much whitespace between the country flag and the country abbrev
-
-"Country/Date" column:
-
-On e.g. https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
 
 
 * DONE currently my info line under the prompt looks like
