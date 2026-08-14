@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.868",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The per-column unique-values (📊) dropdown now offers a new \"Join phrases\" (🔀) section on any column whose cells credit two or more entities joined by a literal separator inside one shared name element (e.g. the native \"Artist\" column's \"Bruce Springsteen & The E Street Band\", \"... with The Sessions Band\", or free-text editor phrasing like \"... w/special guest ...\"). Each distinct observed phrase (\"&\", \"and\", \"with\", \"feat.\", \"/\", or any arbitrary text an editor typed) becomes its own checkable, filterable, highlightable entry — phrases are never normalized toward a \"canonical\" spelling, so \"&\" and \"and\" stay distinct. The existing \"Entity info\" section already offers each individual credited entity (e.g. \"Bruce Springsteen\" and \"The E Street Band\" separately) as its own entry on such cells — no change needed there, it already worked correctly."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.867",
     "date": "2026-08-14",
     "sections": [

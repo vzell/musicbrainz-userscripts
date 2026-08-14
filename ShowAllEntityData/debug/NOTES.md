@@ -5480,3 +5480,76 @@ and `renderGroupedTable()`'s single `cleanupHeaders(templateHead)` +
 per-group `cloneNode(true)`) with no additional wiring needed.
 
 `node --check ShowAllEntityData.user.js` passed after every edit.
+
+---
+
+## 2026-08-14 — 📊 dropdown: join-phrase entries (v9.99.868)
+
+**Snapshots**: `join.html` (three `<bdi>` cells: " & ", " with ", and the
+free-text " w/special guest " variant), `and.html` (" & " vs " and " side
+by side, confirming distinct phrases must never merge), `slash.html` (four
+artists joined by three " / " separators in one `<bdi>`) —
+`https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f`'s
+"Artist" column. Shape: `<bdi><a href="/artist/…">Name</a> <phrase>
+<a href="/artist/…">Name</a></bdi>`, native MusicBrainz markup, direct
+children of `<bdi>`.
+
+**Requirement 2 (individual artist as its own dropdown entry) was already
+fully implemented** — confirmed via research, not assumed: `_findCellEntityRefs()`
+already enumerates every `<a href>` in a cell (never take-first), and
+`isBare` (`getCleanColumnText(container) === name`) already comes out
+`false` for both artists once a join-phrase text node is present, since
+the whole-cell text then differs from either bare name. So
+`_findCellEntityCommentParts()` → `entityNameValueCounts`/
+`entityNameAnyValueCounts` → the existing "Entity info" (👤) section's
+"» name: …" entries already fire independently per artist. No code change
+needed for this half of the request.
+
+**Requirement 1 (join-phrase dropdown entries) was net-new.** No existing
+code walked a cell's childNodes to isolate the TEXT_NODE sitting between
+two `<a>` siblings. Added:
+- `_findCellJoinPhrases(cell)` (new function, next to
+  `_findCellEntityCommentParts()`) — for every `<bdi>` in the cell, finds
+  `<a href="/{type}/{mbid}">` DIRECT children recognized by
+  `_ENTITY_TYPE_GLYPH` (same check `_findCellEntityRefs()` uses), and for
+  every adjacent pair, joins+trims+whitespace-collapses the TEXT_NODE(s)
+  between them into one phrase string. Deliberately scoped to the
+  `<bdi><a>phrase<a></bdi>` shape only (not the reverse `<a><bdi>` nesting
+  `_findCellEntityRefs()` also recognizes — no evidenced multi-entity case
+  there). Phrases are free text with no fixed enum (MusicBrainz's editor
+  offers suggestions, not a closed picklist — `join.html`'s "w/special
+  guest" proves it) — grouped by exact literal string, never normalized,
+  mirroring `release-tracks`' `_dynamicRolePhraseKey` philosophy ("two
+  different phrases NEVER merge").
+- New `SYN_SECTION_META.joinPhrase` ("Join phrases", 🔀) — doesn't fit
+  "Entity info" (whose entries are strictly 1:1 with one entity ref) or any
+  other existing section's actual scope; a join phrase is a property of the
+  GAP between two entities, not an entity itself.
+- `MB_UNIQ_KIND_TO_SECTION.joinphrase = 'joinPhrase'`, a `'» join phrase: '`
+  label prefix in `makeValueSynItem()`, a new `joinPhraseValueCounts` Map +
+  per-row Set-dedup aggregation (mirrors `entityNameValueCounts`'s own
+  pattern exactly), `_sortedJoinPhraseValues` wired into both
+  `openUniqDrop()` render branches and the `_hasValueEntries` gate.
+- `_cellMatchesStructureMode()`'s new `joinphrase:` branch — re-derives
+  from `_findCellJoinPhrases()` directly (never a fresh ad hoc query),
+  mirroring `name:`/`role:`/`rel:`'s established compound-mode pattern.
+- New `_highlightJoinPhraseMatch()` — unlike `name:`/`comment:`/`alias:`
+  (which highlight via `highlightCrossTag()` scoped to an existing wrapping
+  element), a join phrase has no wrapping element of its own: it directly
+  wraps the exact already-identified Text node reference in a
+  `mb-column-filter-highlight` span, rather than a regex scan over a
+  shared container (which could over-match if the phrase text happened to
+  also appear inside an entity's own name). Wired into the highlight
+  dispatch block alongside the other compound-mode branches.
+- `_structureModeLabel()`/`_structureModeTooltip()` also got `joinphrase:`
+  branches for consistency with every other compound mode.
+
+Verified by hand against all three snapshots: join.html's three variants
+extract to "&", "with", "w/special guest" respectively (never merged);
+and.html confirms "&" and "and" stay two distinct entries; slash.html's
+four-artist/three-separator cell extracts three "/" occurrences that
+Set-dedupe to one per-row count (matching every other multi-occurrence
+aggregation in this dropdown), and all three get highlighted independently
+when checked.
+
+`node --check ShowAllEntityData.user.js` passed after every edit.

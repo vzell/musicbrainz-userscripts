@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.867+2026-08-14
+// @version      9.99.868+2026-08-14
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -17257,6 +17257,65 @@
     }
 
     /**
+     * Finds every "join phrase" — the literal plain-text separator
+     * MusicBrainz stores between two credited entities sharing one `<bdi>`
+     * (e.g. `<bdi><a href="/artist/…">Bruce Springsteen</a> &amp;
+     * <a href="/artist/…">The E Street Band</a></bdi>` on the native
+     * "Artist" column) — inside `cell`.
+     *
+     * Only text sitting strictly BETWEEN two qualifying entity-reference
+     * `<a href="/{type}/{mbid}">` elements (same href-type check
+     * `_findCellEntityRefs()` uses via `_ENTITY_TYPE_GLYPH`), as DIRECT
+     * children of the same `<bdi>`, counts — matching the exact shape
+     * MusicBrainz renders a joined artist credit in (see debug/join.html,
+     * debug/and.html, debug/slash.html). Leading/trailing text elsewhere in
+     * the cell, or a `<bdi>` with fewer than two such entities, is not a
+     * join phrase. Deliberately scoped to this one shape only — the
+     * reverse `<a><bdi>Name</bdi></a>` nesting `_findCellEntityRefs()` also
+     * recognizes (e.g. "Recording of work") has no evidenced multi-entity
+     * joined-by-phrase case to cover here.
+     *
+     * Join phrases are free text with no fixed enum — an editor can type
+     * anything (e.g. "w/special guest", debug/join.html's third row), not
+     * just MusicBrainz's own suggested " & "/" and "/" with "/" feat. "/etc.
+     * Grouped by exact trimmed+whitespace-collapsed string, never
+     * normalized toward a "canonical" phrase — mirrors this codebase's
+     * `_dynamicRolePhraseKey` philosophy (release-tracks' dynamic AR
+     * columns): two different phrases never merge.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Array<{phrase: string, node: Text, container: Element}>}
+     */
+    function _findCellJoinPhrases(cell) {
+        if (!cell) return [];
+        const out = [];
+        const isEntityAnchor = (node) => {
+            if (node.nodeType !== Node.ELEMENT_NODE || node.tagName !== 'A') return false;
+            const href = node.getAttribute('href') || '';
+            const m = href.match(/^\/([a-z][a-z-]*)\/[0-9a-f-]+/i);
+            return !!(m && _ENTITY_TYPE_GLYPH[m[1]]);
+        };
+        cell.querySelectorAll('bdi').forEach(bdi => {
+            const kids = Array.from(bdi.childNodes);
+            const entityIdx = [];
+            kids.forEach((n, i) => { if (isEntityAnchor(n)) entityIdx.push(i); });
+            if (entityIdx.length < 2) return; // need two entities for a "between" phrase
+            for (let k = 0; k < entityIdx.length - 1; k++) {
+                const between = kids.slice(entityIdx[k] + 1, entityIdx[k + 1])
+                    .filter(n => n.nodeType === Node.TEXT_NODE);
+                if (!between.length) continue;
+                const phrase = between.map(n => n.nodeValue).join('').trim().replace(/\s+/g, ' ');
+                if (!phrase) continue;
+                // Highlighting needs the actual text node reference — the first
+                // (and, for every observed shape, only) text node between the
+                // two anchors.
+                out.push({ phrase, node: between[0], container: bdi });
+            }
+        });
+        return out;
+    }
+
+    /**
      * Query-time extraction of each artist's own event-role text(s), from
      * either of two independent native MusicBrainz shapes:
      *
@@ -17555,6 +17614,13 @@
             // matches one entity's own <i title="Primary alias"> text.
             const want = mode.slice(6);
             return !!cell && _findCellEntityCommentParts(cell).some(p => p.alias === want);
+        }
+        if (mode.startsWith('joinphrase:')) {
+            // Compound mode — matches the literal separator text between two
+            // credited entities sharing one <bdi> (e.g. "&", "and", "with"),
+            // from _findCellJoinPhrases()'s own extraction.
+            const want = mode.slice(11);
+            return !!cell && _findCellJoinPhrases(cell).some(jp => jp.phrase === want);
         }
         if (mode.startsWith('arttype:')) {
             // Compound mode (openUniqDrop()'s makeValueSynItem, the "CAA
@@ -33833,6 +33899,7 @@ a { color: #1565c0; }`;
         flags:         { label: 'Flags',              glyph: '🚩' },
         credit:        { label: 'Credit details',     glyph: '🎚️' },
         entity:        { label: 'Entity info',        glyph: '👤' },
+        joinPhrase:    { label: 'Join phrases',        glyph: '🔀' },
         roles:         { label: 'Roles',              glyph: '🎭' },
         relationships: { label: 'Relationship icons', glyph: '🔗' },
         caaInfo:       { label: 'CAA info',           glyph: '🎨' },
@@ -33865,6 +33932,7 @@ a { color: #1565c0; }`;
         attr: 'credit', task: 'credit', date: 'credit',
         instrument: 'credit', altname: 'credit',
         name: 'entity', comment: 'entity', alias: 'entity',
+        joinphrase: 'joinPhrase',
         role: 'roles',
     };
 
@@ -34291,6 +34359,35 @@ a { color: #1565c0; }`;
             if (!_target || _value !== _want) return;
             _target.normalize();
             highlightCrossTag(_target, _buildFuzzyTextMatchRegex(_want), 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
+     * Highlights the exact matched value for a `joinphrase:` compound
+     * structure-mode filter (see `openUniqDrop()`'s `makeValueSynItem` and
+     * `testRowMatch()`'s `f.isMultiValueFilter` structure-mode fallback) —
+     * re-derives from `_findCellJoinPhrases()` directly.
+     *
+     * Unlike `name:`/`comment:`/`alias:`, a join phrase has no wrapping
+     * element of its own to scope `highlightCrossTag()` to — it's a bare
+     * text node sitting between two `<a>` entity refs — so this wraps that
+     * exact already-identified node directly instead of a regex scan over
+     * a shared container (which risks over-matching if the same literal
+     * text happened to appear elsewhere in the cell, e.g. inside an
+     * entity's own name).
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g. `"joinphrase:&"`.
+     */
+    function _highlightJoinPhraseMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(11);
+        _findCellJoinPhrases(cell).forEach(jp => {
+            if (jp.phrase !== _want || !jp.node || !jp.node.parentNode) return;
+            const span = document.createElement('span');
+            span.className = 'mb-column-filter-highlight';
+            jp.node.parentNode.replaceChild(span, jp.node);
+            span.appendChild(jp.node);
         });
     }
 
@@ -34839,7 +34936,7 @@ a { color: #1565c0; }`;
                     // harmless: nested mb-column-filter-highlight spans render
                     // identically to one. Checked 'attr:'/'task:'/'date:'/
                     // 'instrument:'/'altname:'/'name:'/'comment:'/'alias:'/
-                    // 'role:' and 'name-variation' structure modes DO
+                    // 'joinphrase:'/'role:' and 'name-variation' structure modes DO
                     // correspond to exact visible content and get
                     // highlighted; the other structure modes (empty/single/
                     // collapsed/expanded/any/title-mismatch/inline-art-yes/no)
@@ -34862,6 +34959,8 @@ a { color: #1565c0; }`;
                                 } else if (mode.startsWith('name:') || mode.startsWith('comment:') ||
                                            mode.startsWith('alias:')) {
                                     _highlightEntityCommentPartMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('joinphrase:')) {
+                                    _highlightJoinPhraseMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('role:')) {
                                     _highlightEventRoleMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'name-variation') {
@@ -44026,6 +44125,16 @@ a { color: #1565c0; }`;
         // makeValueSynItem()'s 'name'-kind branch.
         const entityNameTypeMap       = new Map();
         const entityNameAnyValueCounts = new Map();
+        // Distinct "join phrase" values (e.g. " & ", " and ", " with ", or
+        // arbitrary free text an editor typed like " w/special guest ") —
+        // the literal separator text MusicBrainz stores between two
+        // credited entities sharing one <bdi> (e.g. the native "Artist"
+        // column's "Bruce Springsteen & The E Street Band"). See
+        // `_findCellJoinPhrases()`'s own JSDoc. Free text, no fixed enum —
+        // grouped by exact observed phrase, never normalized toward a
+        // "canonical" one (two different phrases never merge). No-op Map
+        // for any column/cell with fewer than two entities in one <bdi>.
+        const joinPhraseValueCounts = new Map();
         // Distinct event-role values (e.g. "main performer", "guest
         // performer", "support act", "participant", "host") from a native
         // MusicBrainz `.artist-roles` list — the query-time counterpart of
@@ -44175,6 +44284,9 @@ a { color: #1565c0; }`;
                 _rowNameValues.forEach(t => entityNameValueCounts.set(t, (entityNameValueCounts.get(t) || 0) + 1));
                 _rowCommentValues.forEach(t => entityCommentValueCounts.set(t, (entityCommentValueCounts.get(t) || 0) + 1));
                 _rowAliasValues.forEach(t => entityAliasValueCounts.set(t, (entityAliasValueCounts.get(t) || 0) + 1));
+                const _rowJoinPhraseValues = new Set();
+                _findCellJoinPhrases(cell).forEach(jp => _rowJoinPhraseValues.add(jp.phrase));
+                _rowJoinPhraseValues.forEach(t => joinPhraseValueCounts.set(t, (joinPhraseValueCounts.get(t) || 0) + 1));
                 const _rowRoleValues = new Set();
                 _findCellArtistRoles(cell).forEach(r => r.roles.forEach(role => _rowRoleValues.add(role)));
                 _rowRoleValues.forEach(t => eventRoleValueCounts.set(t, (eventRoleValueCounts.get(t) || 0) + 1));
@@ -45381,7 +45493,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'role'|'arttype'|'artcomment'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'role'|'arttype'|'artcomment'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -45438,6 +45550,7 @@ a { color: #1565c0; }`;
                  : kind === 'name'       ? (entityType ? `» ${entityType} name: ` : '» name: ')
                  : kind === 'comment'    ? '» comment: '
                  : kind === 'alias'      ? '» alias: '
+                 : kind === 'joinphrase' ? '» join phrase: '
                  : kind === 'role'       ? '» role: '
                  : kind === 'arttype'    ? '» image type: '
                  : kind === 'artcomment' ? '» image comment: '
@@ -45579,6 +45692,7 @@ a { color: #1565c0; }`;
         });
         const _sortedCommentValues = Array.from(entityCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedAliasValues   = Array.from(entityAliasValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedJoinPhraseValues = Array.from(joinPhraseValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRoleValues    = Array.from(eventRoleValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedArtTypeValues    = Array.from(artTypeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedArtCommentValues = Array.from(artCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
@@ -45586,6 +45700,7 @@ a { color: #1565c0; }`;
             _sortedDateValues.length > 0 || _sortedInstrumentValues.length > 0 ||
             _sortedAltNameValues.length > 0 ||
             _sortedNameValues.length > 0 || _sortedCommentValues.length > 0 || _sortedAliasValues.length > 0 ||
+            _sortedJoinPhraseValues.length > 0 ||
             _sortedRoleValues.length > 0 ||
             _sortedArtTypeValues.length > 0 || _sortedArtCommentValues.length > 0;
 
@@ -45621,6 +45736,7 @@ a { color: #1565c0; }`;
             _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v), entityNameGlyphMap.get(v), entityNameTypeMap.get(v)));
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
+            _sortedJoinPhraseValues.forEach(v => makeValueSynItem('joinphrase', v, joinPhraseValueCounts.get(v)));
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
             _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
@@ -45638,6 +45754,7 @@ a { color: #1565c0; }`;
             _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v), entityNameGlyphMap.get(v), entityNameTypeMap.get(v)));
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
+            _sortedJoinPhraseValues.forEach(v => makeValueSynItem('joinphrase', v, joinPhraseValueCounts.get(v)));
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
             _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
@@ -46090,6 +46207,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('name:'))    return `» name: ${mode.slice(5)}`;
         if (mode.startsWith('comment:')) return `» comment: ${mode.slice(8)}`;
         if (mode.startsWith('alias:'))   return `» alias: ${mode.slice(6)}`;
+        if (mode.startsWith('joinphrase:')) return `» join phrase: ${mode.slice(11)}`;
         if (mode.startsWith('role:'))    return `» role: ${mode.slice(5)}`;
         if (mode.startsWith('arttype:'))    return `» image type: ${mode.slice(8)}`;
         if (mode.startsWith('artcomment:')) return `» image comment: ${mode.slice(11)}`;
@@ -46128,6 +46246,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('name:')) return 'An entity\'s own anchored/linked name — matches every row containing this entity, regardless of its disambiguation comment.';
         if (mode.startsWith('comment:')) return 'An entity\'s disambiguation comment text, excluding any primary alias.';
         if (mode.startsWith('alias:')) return 'An entity\'s primary alias — an alternate name shown in its disambiguation comment.';
+        if (mode.startsWith('joinphrase:')) return 'The literal separator text between two credited entities in this cell (e.g. "&", "and", "with", or free text an editor typed).';
         if (mode.startsWith('role:')) return 'An artist\'s own credited event role (e.g. "main performer", "guest performer", "host").';
         if (mode.startsWith('arttype:')) return 'One of this CAA/EAA image\'s own type-badge pill labels (Front/Back/Booklet/…).';
         if (mode.startsWith('artcomment:')) return 'One of this CAA/EAA image\'s own free-text comment.';
