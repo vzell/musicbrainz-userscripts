@@ -1,0 +1,15 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-08-14",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Unified the legacy `Name_Comment`/`Name_Comment_Artists`/`Name_Comment_Description`/`Name_Date_Comment` column extractors' output naming with the generic `extractMainColumn`/`_extractMainColumnParts` shape used by `report-detail`: their synthetic \"Name\" column is now named \"MB-Name\" everywhere they're used (`user-ratings-type`, `user-ratings`, `instrument-list`, `user-tag-value-entity`, `user-tag-value`, `tag-value`). No change to `extractMainColumn`/`_extractMainColumnParts` itself or to the sibling `tagCount_*` family (still used only by `tag-value-entity`).",
+          "Added a new \"MB-Primary alias\" synthetic column — via the existing `primaryAlias` columnExtractor, already proven for the 'Event' entity kind — alongside every Name_Comment-family entry for entity kinds that support a MusicBrainz primary alias (Area, Artist, Event, Instrument, Label, Place, Series, Work). Skipped for Release/Release group/Recording, which have no alias support in MusicBrainz. Renamed the 3 pre-existing 'Event' `primaryAlias` entries' synthetic column from \"Primary Alias\" to \"MB-Primary alias\" for naming consistency, and added the previously-missing `primaryAlias` entry to the 2 'Event' blocks (`user-tag-value`, `tag-value`) that didn't already have one."
+        ]
+      }
+    ]
+  }
+]

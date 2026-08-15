@@ -2728,7 +2728,12 @@
     //   3. Declare the synthetic column header names in `syntheticColumns`.
 
     /**
-     * Shared base extraction helper for tagCount_* extractors.
+     * Shared base extraction helper for tagCount_* extractors AND for the
+     * Name_Comment/Name_Date_Comment/Name_Comment_Artists/Name_Comment_Description
+     * family below (page definitions declare its Name output as synthetic
+     * column 'MB-Name', matching the naming used by extractMainColumn's
+     * _extractMainColumnParts() — see that function's own JSDoc for why
+     * Comment already excludes primary-alias text here too).
      *
      * Handles the common fields present in all tag-value-entity cell structures:
      *   Tag count — leading integer in the first direct text node ("26 -").
@@ -2737,6 +2742,13 @@
      *               tdName so the flag renders alongside the entity name.
      *   Comment   — text of the <bdi> inside the first span.comment child of
      *               the <td> (not nested deeper), or empty if absent.
+     *
+     * A cell's primary-alias text (if any) is intentionally excluded here —
+     * pages that want it exposed as its own column declare a separate
+     * `primaryAlias` columnExtractor entry (synthetic column 'MB-Primary
+     * alias') on the same sourceColumn, alongside the Name_Comment family
+     * entry; see the 'Event' entityFeatures blocks for the established
+     * ordering convention.
      *
      * @param   {HTMLTableCellElement|null} sourceCell
      * @returns {[HTMLTableCellElement, HTMLTableCellElement, HTMLTableCellElement]}
@@ -4082,8 +4094,12 @@
 
         /**
          * Name_Comment — extracts Name and Comment from a tag-value entity cell.
-         * Mirrors tagCount_Name_Comment without the Tag count field.
-         * Synthetic columns: ['Name', 'Comment']
+         * Mirrors tagCount_Name_Comment without the Tag count field. Page
+         * definitions declare the Name output as synthetic column 'MB-Name'
+         * (matching extractMainColumn's naming); pair with a `primaryAlias`
+         * columnExtractor entry on the same sourceColumn for entity kinds
+         * that support a primary alias, to surface it as 'MB-Primary alias'.
+         * Synthetic columns: ['MB-Name', 'Comment']
          */
         Name_Comment(sourceCell) {
             const [tdName, , tdComment] = _tagCountBase(sourceCell);
@@ -4093,7 +4109,11 @@
         /**
          * Name_Date_Comment — extracts Name, Date and Comment from a tag-value
          * Events cell.  Mirrors tagCount_Name_Date_Comment without Tag count.
-         * Synthetic columns: ['Name', 'Date', 'Comment']
+         * Page definitions declare the Name output as synthetic column
+         * 'MB-Name' (matching extractMainColumn's naming) and pair this with
+         * a `primaryAlias` columnExtractor entry on the same sourceColumn,
+         * surfacing 'MB-Primary alias'.
+         * Synthetic columns: ['MB-Name', 'Date', 'Comment']
          */
         Name_Date_Comment(sourceCell) {
             const [tdName, , tdComment] = _tagCountBase(sourceCell);
@@ -4119,8 +4139,12 @@
         /**
          * Name_Comment_Artists — extracts Name, Comment and Artists from a
          * tag-value Releases/Release groups/Recordings cell.
-         * Mirrors tagCount_Name_Comment_Artists without Tag count.
-         * Synthetic columns: ['Name', 'Comment', 'Artists']
+         * Mirrors tagCount_Name_Comment_Artists without Tag count. Page
+         * definitions declare the Name output as synthetic column 'MB-Name'
+         * (matching extractMainColumn's naming). No `primaryAlias`
+         * columnExtractor is paired with this one — Release/Release
+         * group/Recording are not aliasable MusicBrainz entity types.
+         * Synthetic columns: ['MB-Name', 'Comment', 'Artists']
          */
         Name_Comment_Artists(sourceCell) {
             const [tdName, , tdComment] = _tagCountBase(sourceCell);
@@ -4179,12 +4203,15 @@
          *   [— <!-- -->Description text, which may itself contain nested
          *     <a> links (e.g. a family entry naming its member instruments)]
          * Name and Comment reuse the same extraction _tagCountBase uses for
-         * every other entity-list cell. Description is everything found
-         * after the first "—" (em dash) text node — cloned verbatim (not
-         * reduced to plain text) so nested links survive — with the
-         * MusicBrainz `<!-- -->` marker-comment artifact that immediately
-         * follows the dash skipped.
-         * Synthetic columns: ['Name', 'Comment', 'Description']
+         * every other entity-list cell — page definitions declare the Name
+         * output as synthetic column 'MB-Name' (matching extractMainColumn's
+         * naming), paired with a `primaryAlias` columnExtractor entry on the
+         * same sourceColumn to surface 'MB-Primary alias'. Description is
+         * everything found after the first "—" (em dash) text node — cloned
+         * verbatim (not reduced to plain text) so nested links survive —
+         * with the MusicBrainz `<!-- -->` marker-comment artifact that
+         * immediately follows the dash skipped.
+         * Synthetic columns: ['MB-Name', 'Comment', 'Description']
          */
         Name_Comment_Description(sourceCell) {
             const [tdName, , tdComment] = _tagCountBase(sourceCell);
@@ -12651,24 +12678,24 @@
             },
             entityFeatures: {
                 'Artists': {
-                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Artist', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Events': {
                     columnExtractors: [
-			{ sourceColumn: 'Event',    extractor: 'Name_Date_Comment', syntheticColumns: ['Name', 'Date', 'Comment'] },
+			{ sourceColumn: 'Event',    extractor: 'Name_Date_Comment', syntheticColumns: ['MB-Name', 'Date', 'Comment'] },
                         { sourceColumn: 'Event',    extractor: 'cancelledEvent',    syntheticColumns: ['Cancelled'] },
-                        { sourceColumn: 'Event',    extractor: 'primaryAlias',      syntheticColumns: ['Primary Alias'] },
+                        { sourceColumn: 'Event',    extractor: 'primaryAlias',      syntheticColumns: ['MB-Primary alias'] },
 		    ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
                     addEAA: 'Event',
-                    tooltipColumns: [ 'Name', ['(', 'Comment', ')'], '---', 'Date' ]
+                    tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], '---', 'Date' ]
                 },
                 'Labels': {
-                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Label', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Places': {
-                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Place', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Release groups': {
                     // 'jesus2099' eraser: the source <li> list carries the jesus2099
@@ -12678,22 +12705,22 @@
                     // below ALSO injects its own inline thumbnail into the same cell,
                     // showing the cover art twice.
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ],
+                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
-                    tooltipColumns: [ 'Name', 'Artist' ]
+                    tooltipColumns: [ 'MB-Name', 'Artist' ]
                 },
                 'Recordings': {
                     columnExtractors: [
                         { sourceColumn: 'Recording', extractor: 'video',         syntheticColumns: ['Video'] },
-                        { sourceColumn: 'Recording', extractor: 'Name_Comment',  syntheticColumns: ['Name', 'Comment'] }
+                        { sourceColumn: 'Recording', extractor: 'Name_Comment',  syntheticColumns: ['MB-Name', 'Comment'] }
                     ],
                     syntheticColumnExtractors: [
                         { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                     ],
                 },
                 'Works': {
-                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Work', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 }
             },
             tableMode: 'single'
@@ -12729,24 +12756,24 @@
             },
             entityFeatures: {
                 'Artists': {
-                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Artist', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Events': {
                     columnExtractors: [
-			{ sourceColumn: 'Event',    extractor: 'Name_Date_Comment', syntheticColumns: ['Name', 'Date', 'Comment'] },
+			{ sourceColumn: 'Event',    extractor: 'Name_Date_Comment', syntheticColumns: ['MB-Name', 'Date', 'Comment'] },
                         { sourceColumn: 'Event',    extractor: 'cancelledEvent',    syntheticColumns: ['Cancelled'] },
-                        { sourceColumn: 'Event',    extractor: 'primaryAlias',      syntheticColumns: ['Primary Alias'] },
+                        { sourceColumn: 'Event',    extractor: 'primaryAlias',      syntheticColumns: ['MB-Primary alias'] },
 		    ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, { sourceColumn: 'Rating', align: 'C' } ],
                     addEAA: 'Event',
-                    tooltipColumns: [ 'Name', ['(', 'Comment', ')'], '---', 'Date' ]
+                    tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], '---', 'Date' ]
                 },
                 'Labels': {
-                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Label', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Places': {
-                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Place', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Release groups': {
                     // 'jesus2099' eraser: /user/<username>/ratings' "Release group
@@ -12757,22 +12784,22 @@
                     // ALSO injects its own inline thumbnail into the same cell,
                     // showing the cover art twice.
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ],
+                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
-                    tooltipColumns: [ 'Name', 'Artist' ]
+                    tooltipColumns: [ 'MB-Name', 'Artist' ]
                 },
                 'Recordings': {
                     columnExtractors: [
                         { sourceColumn: 'Recording', extractor: 'video',         syntheticColumns: ['Video'] },
-                        { sourceColumn: 'Recording', extractor: 'Name_Comment',  syntheticColumns: ['Name', 'Comment'] }
+                        { sourceColumn: 'Recording', extractor: 'Name_Comment',  syntheticColumns: ['MB-Name', 'Comment'] }
                     ],
                     syntheticColumnExtractors: [
                         { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                     ],
                 },
                 'Works': {
-                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Work', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 }
             },
             tableMode: 'multi'
@@ -13186,28 +13213,28 @@
             buttons: [ { label: 'Show all Instruments' } ],
             entityFeatures: {
                 'Wind instrument': {
-                    columnExtractors: [ { sourceColumn: 'Wind instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
+                    columnExtractors: [ { sourceColumn: 'Wind instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['MB-Name', 'Comment', 'Description'] }, { sourceColumn: 'Wind instrument', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'String instrument': {
-                    columnExtractors: [ { sourceColumn: 'String instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
+                    columnExtractors: [ { sourceColumn: 'String instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['MB-Name', 'Comment', 'Description'] }, { sourceColumn: 'String instrument', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Percussion instrument': {
-                    columnExtractors: [ { sourceColumn: 'Percussion instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
+                    columnExtractors: [ { sourceColumn: 'Percussion instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['MB-Name', 'Comment', 'Description'] }, { sourceColumn: 'Percussion instrument', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Electronic instrument': {
-                    columnExtractors: [ { sourceColumn: 'Electronic instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
+                    columnExtractors: [ { sourceColumn: 'Electronic instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['MB-Name', 'Comment', 'Description'] }, { sourceColumn: 'Electronic instrument', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Other instrument': {
-                    columnExtractors: [ { sourceColumn: 'Other instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
+                    columnExtractors: [ { sourceColumn: 'Other instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['MB-Name', 'Comment', 'Description'] }, { sourceColumn: 'Other instrument', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Ensemble': {
-                    columnExtractors: [ { sourceColumn: 'Ensemble', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
+                    columnExtractors: [ { sourceColumn: 'Ensemble', extractor: 'Name_Comment_Description', syntheticColumns: ['MB-Name', 'Comment', 'Description'] }, { sourceColumn: 'Ensemble', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Family': {
-                    columnExtractors: [ { sourceColumn: 'Family', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
+                    columnExtractors: [ { sourceColumn: 'Family', extractor: 'Name_Comment_Description', syntheticColumns: ['MB-Name', 'Comment', 'Description'] }, { sourceColumn: 'Family', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Unclassified instrument': {
-                    columnExtractors: [ { sourceColumn: 'Unclassified instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
+                    columnExtractors: [ { sourceColumn: 'Unclassified instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['MB-Name', 'Comment', 'Description'] }, { sourceColumn: 'Unclassified instrument', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 }
             },
             features: {
@@ -13253,30 +13280,30 @@
             ],
             entityFeatures: {
                 'Areas': {
-                    columnExtractors: [ { sourceColumn: 'Area', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Area', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Area', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Artists': {
-                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Artist', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Events': {
                     columnExtractors: [
-			{ sourceColumn: 'Event',    extractor: 'Name_Date_Comment', syntheticColumns: ['Name', 'Date', 'Comment'] },
+			{ sourceColumn: 'Event',    extractor: 'Name_Date_Comment', syntheticColumns: ['MB-Name', 'Date', 'Comment'] },
                         { sourceColumn: 'Event',    extractor: 'cancelledEvent',    syntheticColumns: ['Cancelled'] },
-                        { sourceColumn: 'Event',    extractor: 'primaryAlias',      syntheticColumns: ['Primary Alias'] },
+                        { sourceColumn: 'Event',    extractor: 'primaryAlias',      syntheticColumns: ['MB-Primary alias'] },
 		    ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
                     addEAA: 'Event',
-                    tooltipColumns: [ 'Name', ['(', 'Comment', ')'], 'Date' ]
+                    tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], 'Date' ]
                 },
                 'Instruments': {
-                    columnExtractors: [ { sourceColumn: 'Instrument', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Instrument', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Instrument', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Labels': {
-                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Label', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Places': {
-                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Place', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Release groups': {
                     // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
@@ -13284,27 +13311,27 @@
                     // below adds its own inline thumbnail, or the cover art shows
                     // twice (see debug/cell.html, WIP.81).
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ],
+                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
-                    tooltipColumns: [ 'Name', ['(', 'Comment', ')'], 'Artist' ]
+                    tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], 'Artist' ]
                 },
                 'Releases': {
                     // 'jesus2099' eraser — see 'Release groups' above (WIP.81).
                     columnErasers: [ { sourceColumn: 'Release', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ],
+                    columnExtractors: [ { sourceColumn: 'Release', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release',
-                    tooltipColumns: [ 'Name', ['(', 'Comment', ')'], 'Artist' ]
+                    tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], 'Artist' ]
                 },
                 'Recordings': {
-                    columnExtractors: [ { sourceColumn: 'Recording', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ]
+                    columnExtractors: [ { sourceColumn: 'Recording', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ]
                 },
                 'Series': {
-                    columnExtractors: [ { sourceColumn: 'Series', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Series', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Series', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Works': {
-                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Work', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 }
             },
             features: {
@@ -13331,26 +13358,26 @@
             ],
             entityFeatures: {
                 'Areas': {
-                    columnExtractors: [ { sourceColumn: 'Area', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Area', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Area', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Artists': {
-                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Artist', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Events': {
-                    columnExtractors: [ { sourceColumn: 'Event', extractor: 'Name_Date_Comment', syntheticColumns: ['Name', 'Date', 'Comment'] } ],
+                    columnExtractors: [ { sourceColumn: 'Event', extractor: 'Name_Date_Comment', syntheticColumns: ['MB-Name', 'Date', 'Comment'] }, { sourceColumn: 'Event', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
                     addEAA: 'Event',
-                    tooltipColumns: [ 'Name', ['(', 'Comment', ')'], 'Date' ]
+                    tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], 'Date' ]
                 },
                 'Instruments': {
-                    columnExtractors: [ { sourceColumn: 'Instrument', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Instrument', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Instrument', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Labels': {
-                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Label', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Places': {
-                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Place', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Release groups': {
                     // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
@@ -13358,27 +13385,27 @@
                     // below adds its own inline thumbnail, or the cover art shows
                     // twice (see debug/cell.html, WIP.81).
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ],
+                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
-                    tooltipColumns: [ 'Name', ['(', 'Comment' , ')'], 'Artist' ]
+                    tooltipColumns: [ 'MB-Name', ['(', 'Comment' , ')'], 'Artist' ]
                 },
                 'Releases': {
                     // 'jesus2099' eraser — see 'Release groups' above (WIP.81).
                     columnErasers: [ { sourceColumn: 'Release', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ],
+                    columnExtractors: [ { sourceColumn: 'Release', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release',
-                    tooltipColumns: [ 'Name', ['(', 'Comment' , ')'], 'Artist' ]
+                    tooltipColumns: [ 'MB-Name', ['(', 'Comment' , ')'], 'Artist' ]
                 },
                 'Recordings': {
-                    columnExtractors: [ { sourceColumn: 'Recording', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ]
+                    columnExtractors: [ { sourceColumn: 'Recording', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ]
                 },
                 'Series': {
-                    columnExtractors: [ { sourceColumn: 'Series', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Series', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Series', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Works': {
-                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Work', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 }
             },
             features: {
@@ -13474,26 +13501,26 @@
             buttons: [ { label: 'Show all Entities tagged' } ],
             entityFeatures: {
                 'Areas': {
-                    columnExtractors: [ { sourceColumn: 'Area', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Area', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Area', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Artists': {
-                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Artist', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Events': {
-                    columnExtractors: [ { sourceColumn: 'Event', extractor: 'Name_Date_Comment', syntheticColumns: ['Name', 'Date', 'Comment'] } ],
+                    columnExtractors: [ { sourceColumn: 'Event', extractor: 'Name_Date_Comment', syntheticColumns: ['MB-Name', 'Date', 'Comment'] }, { sourceColumn: 'Event', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
                     addEAA: 'Event',
-                    tooltipColumns: [ 'Name', ['(', 'Comment', ')'], '---', 'Date' ]
+                    tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], '---', 'Date' ]
                 },
                 'Instruments': {
-                    columnExtractors: [ { sourceColumn: 'Instrument', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Instrument', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Instrument', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Labels': {
-                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Label', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Places': {
-                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Place', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Release groups': {
                     // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
@@ -13501,27 +13528,27 @@
                     // below adds its own inline thumbnail, or the cover art shows
                     // twice (see debug/cell.html, WIP.81).
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ],
+                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
-                    tooltipColumns: [ 'Name', 'Artist' ]
+                    tooltipColumns: [ 'MB-Name', 'Artist' ]
                 },
                 'Releases': {
                     // 'jesus2099' eraser — see 'Release groups' above (WIP.81).
                     columnErasers: [ { sourceColumn: 'Release', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ],
+                    columnExtractors: [ { sourceColumn: 'Release', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release',
-                    tooltipColumns: [ 'Name', 'Artist' ]
+                    tooltipColumns: [ 'MB-Name', 'Artist' ]
                 },
                 'Recordings': {
-                    columnExtractors: [ { sourceColumn: 'Recording', extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ]
+                    columnExtractors: [ { sourceColumn: 'Recording', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ]
                 },
                 'Series': {
-                    columnExtractors: [ { sourceColumn: 'Series', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Series', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Series', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 },
                 'Works': {
-                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'Name_Comment', syntheticColumns: ['Name', 'Comment'] } ]
+                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Work', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
                 }
             },
             features: {
@@ -36966,26 +36993,34 @@ a { color: #1565c0; }`;
                     return `Extracted from '${src}': the artist credit following "by" in the release/recording cell.`;
                 break;
             case 'Name_Comment':
-                if (colName === 'Name')
+                if (colName === 'MB-Name')
                     return `Extracted from '${src}': the entity name link, split from the entity cell on tag-value pages.`;
                 if (colName === 'Comment')
-                    return `Extracted from '${src}': the disambiguation comment in parentheses, split from the entity cell.`;
+                    return `Extracted from '${src}': the disambiguation comment in parentheses, split from the entity cell (excludes any primary alias, which has its own 'MB-Primary alias' column).`;
                 break;
             case 'Name_Date_Comment':
-                if (colName === 'Name')
+                if (colName === 'MB-Name')
                     return `Extracted from '${src}': the event name link, split from the event cell.`;
                 if (colName === 'Date')
                     return `Extracted from '${src}': the event date in parentheses after the entity link (e.g. "2019-07-05").`;
                 if (colName === 'Comment')
-                    return `Extracted from '${src}': the disambiguation comment, split from the event cell.`;
+                    return `Extracted from '${src}': the disambiguation comment, split from the event cell (excludes any primary alias, which has its own 'MB-Primary alias' column).`;
                 break;
             case 'Name_Comment_Artists':
-                if (colName === 'Name')
+                if (colName === 'MB-Name')
                     return `Extracted from '${src}': the release/recording name link, split from the combined cell.`;
                 if (colName === 'Comment')
-                    return `Extracted from '${src}': the disambiguation comment, split from the release/recording cell.`;
+                    return `Extracted from '${src}': the disambiguation comment, split from the release/recording cell (excludes any primary alias, which has its own 'MB-Primary alias' column).`;
                 if (colName === 'Artist')
                     return `Extracted from '${src}': the artist credit following "by" in the release/recording cell.`;
+                break;
+            case 'Name_Comment_Description':
+                if (colName === 'MB-Name')
+                    return `Extracted from '${src}': the instrument name link, split from the combined cell.`;
+                if (colName === 'Comment')
+                    return `Extracted from '${src}': the disambiguation comment, split from the instrument cell (excludes any primary alias, which has its own 'MB-Primary alias' column).`;
+                if (colName === 'Description')
+                    return `Extracted from '${src}': the description text following the "—" dash in the instrument cell.`;
                 break;
             case 'injectedColumns':
                 return `Injected column — populated asynchronously after the table renders via the ` +
