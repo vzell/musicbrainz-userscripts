@@ -94041,12 +94041,17 @@ Currently
 * TODO fix the code where primaryAlias is still used
 ** current functions to refactor into our shared helper
 
+Can the following extract definitions
+
 #+begin_example
 extractor: 'Name_Comment',  syntheticColumns: ['Name', 'Comment'] }
 extractor: 'Name_Comment_Artists', syntheticColumns: ['Name', 'Comment', 'Artist'] } ]
 extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
 extractor: 'Name_Date_Comment', syntheticColumns: ['Name', 'Date', 'Comment'] } ],
 #+end_example
+
+somehow be replaced by our generic extraction into 'MB-Name', "Comment" and 'MB-Primary alias' columns without breaking
+current pageTypes and only influence pageTypes which still use these legacy extractors
 
 ** TODO Not in scope
 
