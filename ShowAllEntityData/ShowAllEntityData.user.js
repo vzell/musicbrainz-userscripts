@@ -2728,12 +2728,7 @@
     //   3. Declare the synthetic column header names in `syntheticColumns`.
 
     /**
-     * Shared base extraction helper for tagCount_* extractors AND for the
-     * Name_Comment/Name_Date_Comment/Name_Comment_Artists/Name_Comment_Description
-     * family below (page definitions declare its Name output as synthetic
-     * column 'MB-Name', matching the naming used by extractMainColumn's
-     * _extractMainColumnParts() — see that function's own JSDoc for why
-     * Comment already excludes primary-alias text here too).
+     * Shared base extraction helper for tagCount_* extractors.
      *
      * Handles the common fields present in all tag-value-entity cell structures:
      *   Tag count — leading integer in the first direct text node ("26 -").
@@ -2742,13 +2737,6 @@
      *               tdName so the flag renders alongside the entity name.
      *   Comment   — text of the <bdi> inside the first span.comment child of
      *               the <td> (not nested deeper), or empty if absent.
-     *
-     * A cell's primary-alias text (if any) is intentionally excluded here —
-     * pages that want it exposed as its own column declare a separate
-     * `primaryAlias` columnExtractor entry (synthetic column 'MB-Primary
-     * alias') on the same sourceColumn, alongside the Name_Comment family
-     * entry; see the 'Event' entityFeatures blocks for the established
-     * ordering convention.
      *
      * @param   {HTMLTableCellElement|null} sourceCell
      * @returns {[HTMLTableCellElement, HTMLTableCellElement, HTMLTableCellElement]}
@@ -2798,10 +2786,7 @@
         // A comment can itself contain a <i title="Primary alias"> — must be
         // removed from a CLONE before reading text, otherwise the alias text
         // leaks into Comment unlabeled (2026-08-10 fix; mirrors the same
-        // clone-and-remove technique in _extractMainColumnParts()). Pages
-        // that also declare a `primaryAlias` columnExtractor on this same
-        // sourceColumn still get the alias value from that extractor's own
-        // 'Primary Alias' synthetic column — this only stops the leak here.
+        // clone-and-remove technique in _extractMainColumnParts()).
         const _commentSpan = sourceCell.querySelector(':scope > span.comment');
         const _commentBdi  = _commentSpan ? _commentSpan.querySelector('bdi') : null;
         if (_commentBdi) {
@@ -3654,91 +3639,6 @@
         },
 
         /**
-         * primaryAlias — extracts the MusicBrainz "Primary alias" indicator from a
-         * title/event cell into a dedicated synthetic "Primary Alias" column, and
-         * removes it from the source cell.
-         *
-         * Source structure (optional — only present when a primary alias is set):
-         *
-         *   <span class="comment">(
-         *     <bdi>
-         *       <i title="Primary alias">Some Primary Alias Text
-         *       </i>[, Optional disambiguation text]
-         *     </bdi>)
-         *   </span>
-         *
-         * The extractor performs the following steps:
-         *   1. Finds the <i title="Primary alias"> element inside the source cell.
-         *      Returns an empty synthetic cell immediately when none is found.
-         *   2. Copies its trimmed text content into the synthetic "Primary Alias" cell.
-         *   3. Removes the <i> element from the source cell DOM.
-         *   4. Walks the text nodes remaining in the parent <bdi> and strips any
-         *      leading ", " prefix from the first non-empty text node encountered.
-         *      This comma-space is produced by MusicBrainz only when BOTH a primary
-         *      alias AND a disambiguation comment are present; once the <i> is gone the
-         *      leading separator becomes orphaned and must be removed so the residual
-         *      disambiguation text stands alone.
-         *   5. If the containing <span class="comment"> is left with no meaningful
-         *      visible text (i.e. only the outer parentheses remain), the entire
-         *      comment span is also removed from the source cell to keep it clean.
-         *
-         * Synthetic columns: ['Primary Alias']
-         *
-         * @param   {HTMLTableCellElement} sourceCell  The source <td> element.
-         * @returns {HTMLTableCellElement[]}            Array of one synthetic <td>.
-         */
-        primaryAlias(sourceCell) {
-            const tdAlias = document.createElement('td');
-
-            if (!sourceCell) return [tdAlias];
-
-            const iTag = sourceCell.querySelector('i[title="Primary alias"]');
-            if (!iTag) return [tdAlias];
-
-            // Step 1: capture the alias text before mutating the DOM.
-            tdAlias.textContent = iTag.textContent.trim();
-
-            // Step 2: find the containing <bdi> before removing the <i> so we can
-            // still walk its remaining child nodes afterward.
-            const parentBdi = iTag.closest('bdi');
-
-            // Step 3: remove the <i> from the source cell.
-            iTag.remove();
-
-            if (parentBdi) {
-                // Step 4: strip the orphaned leading ", " from the first non-whitespace
-                // text node that follows where the <i> used to be.
-                // MusicBrainz renders the comment bdi as:
-                //   <i title="Primary alias">…</i>, disambiguation text
-                // so after <i> removal the first substantive text node starts with ", ".
-                for (const node of parentBdi.childNodes) {
-                    if (node.nodeType !== Node.TEXT_NODE) continue;
-                    const raw = node.textContent;
-                    const trimmed = raw.trimStart();
-                    if (trimmed === '') continue;          // pure-whitespace node — skip
-                    if (trimmed.startsWith(', ')) {
-                        // Replace only the leading ", "; preserve any surrounding
-                        // indentation/newline whitespace so rendered spacing is intact.
-                        node.textContent = raw.replace(/, /, '');
-                    }
-                    break;                                 // first non-empty node handled
-                }
-
-                // Step 5: if the comment span now contains nothing beyond the literal
-                // parentheses wrapper, remove it entirely from the source cell.
-                const commentSpan = parentBdi.closest('span.comment');
-                if (commentSpan) {
-                    const remaining = commentSpan.textContent.replace(/[()]/g, '').trim();
-                    if (remaining === '') {
-                        commentSpan.remove();
-                    }
-                }
-            }
-
-            return [tdAlias];
-        },
-
-        /**
          * dateParts — parses a partial or complete ISO 8601 date string from a
          * native MusicBrainz `<td>` cell (e.g. the "Date" column on event pages)
          * and produces separate synthetic columns for numeric day, numeric month,
@@ -3852,8 +3752,7 @@
          * Detection reads a clone's `span.comment` presence (never mutates
          * `sourceCell` — the original "Locale" column stays untouched
          * alongside these two synthetic ones, mirroring `dateParts`'
-         * read-only convention above rather than `primaryAlias`'s
-         * in-place-cleanup one). After removing the clone's comment span,
+         * read-only convention above). After removing the clone's comment span,
          * the leftover empty `" ()"` wrapper it leaves behind is stripped
          * from the tail of the remaining text — never from elsewhere in the
          * string, so a locale like "Chinese (China)" keeps its own
@@ -4083,40 +3982,25 @@
             return [tdName, tdCount, tdComment, tdArtists];
         },
 
-        // ── tag-value page extractors (no Tag count column) ──────────────────
+        // ── extractMainColumn companion extractors ────────────────────────────
         //
-        // These mirror the tagCount_* family above but omit the Tag count cell.
-        // Used for pageType 'tag-value' (/tag/<value>) where the entity cells
-        // do not carry a leading vote count number.
+        // Used on pages that resolve MB-Name/Comment/MB-Primary alias via
+        // `features.extractMainColumn` (see _extractMainColumnParts()) but whose
+        // main-column cell also carries a trailing date (Events) or artist
+        // credit (Releases/Release groups/Recordings) that extractMainColumn
+        // itself does not extract. Both are read-only — sourceCell is never
+        // mutated — so they compose safely with extractMainColumn's own
+        // non-destructive read of the same cell, and with each other.
         //
         // Structure:
         //   <li><a href="…"><bdi>Name</bdi></a> <span class="comment">(…)</span></li>
 
         /**
-         * Name_Comment — extracts Name and Comment from a tag-value entity cell.
-         * Mirrors tagCount_Name_Comment without the Tag count field. Page
-         * definitions declare the Name output as synthetic column 'MB-Name'
-         * (matching extractMainColumn's naming); pair with a `primaryAlias`
-         * columnExtractor entry on the same sourceColumn for entity kinds
-         * that support a primary alias, to surface it as 'MB-Primary alias'.
-         * Synthetic columns: ['MB-Name', 'Comment']
+         * eventDate — extracts the trailing "(YYYY-MM-DD)" (or "(YYYY-MM)"/
+         * "(YYYY)") date that follows the entity link in an Event cell.
+         * Synthetic columns: ['Date']
          */
-        Name_Comment(sourceCell) {
-            const [tdName, , tdComment] = _tagCountBase(sourceCell);
-            return [tdName, tdComment];
-        },
-
-        /**
-         * Name_Date_Comment — extracts Name, Date and Comment from a tag-value
-         * Events cell.  Mirrors tagCount_Name_Date_Comment without Tag count.
-         * Page definitions declare the Name output as synthetic column
-         * 'MB-Name' (matching extractMainColumn's naming) and pair this with
-         * a `primaryAlias` columnExtractor entry on the same sourceColumn,
-         * surfacing 'MB-Primary alias'.
-         * Synthetic columns: ['MB-Name', 'Date', 'Comment']
-         */
-        Name_Date_Comment(sourceCell) {
-            const [tdName, , tdComment] = _tagCountBase(sourceCell);
+        eventDate(sourceCell) {
             const tdDate = document.createElement('td');
 
             if (sourceCell) {
@@ -4133,21 +4017,18 @@
                 }
             }
 
-            return [tdName, tdDate, tdComment];
+            return [tdDate];
         },
 
         /**
-         * Name_Comment_Artists — extracts Name, Comment and Artists from a
-         * tag-value Releases/Release groups/Recordings cell.
-         * Mirrors tagCount_Name_Comment_Artists without Tag count. Page
-         * definitions declare the Name output as synthetic column 'MB-Name'
-         * (matching extractMainColumn's naming). No `primaryAlias`
-         * columnExtractor is paired with this one — Release/Release
-         * group/Recording are not aliasable MusicBrainz entity types.
-         * Synthetic columns: ['MB-Name', 'Comment', 'Artists']
+         * artistCredit — extracts the artist-credit <bdi> following "by" in a
+         * Release/Release group/Recording cell. The artist <bdi> is the last
+         * direct-child <bdi> of the <td> — see tagCount_Name_Comment_Artists
+         * for the full structural rationale (simple/with-comment/multiple
+         * shapes).
+         * Synthetic columns: ['Artist']
          */
-        Name_Comment_Artists(sourceCell) {
-            const [tdName, , tdComment] = _tagCountBase(sourceCell);
+        artistCredit(sourceCell) {
             const tdArtists = document.createElement('td');
 
             if (sourceCell) {
@@ -4157,7 +4038,7 @@
                 }
             }
 
-            return [tdName, tdComment, tdArtists];
+            return [tdArtists];
         },
 
         /**
@@ -4203,15 +4084,12 @@
          *   [— <!-- -->Description text, which may itself contain nested
          *     <a> links (e.g. a family entry naming its member instruments)]
          * Name and Comment reuse the same extraction _tagCountBase uses for
-         * every other entity-list cell — page definitions declare the Name
-         * output as synthetic column 'MB-Name' (matching extractMainColumn's
-         * naming), paired with a `primaryAlias` columnExtractor entry on the
-         * same sourceColumn to surface 'MB-Primary alias'. Description is
-         * everything found after the first "—" (em dash) text node — cloned
-         * verbatim (not reduced to plain text) so nested links survive —
-         * with the MusicBrainz `<!-- -->` marker-comment artifact that
-         * immediately follows the dash skipped.
-         * Synthetic columns: ['MB-Name', 'Comment', 'Description']
+         * every other entity-list cell. Description is everything found
+         * after the first "—" (em dash) text node — cloned verbatim (not
+         * reduced to plain text) so nested links survive — with the
+         * MusicBrainz `<!-- -->` marker-comment artifact that immediately
+         * follows the dash skipped.
+         * Synthetic columns: ['Name', 'Comment', 'Description']
          */
         Name_Comment_Description(sourceCell) {
             const [tdName, , tdComment] = _tagCountBase(sourceCell);
@@ -12687,29 +12565,26 @@
             ],
             features: {
                 listToTable: [ '' ],
-                integerColumns: [ { sourceColumn: 'Rating', align: 'C' } ]
+                integerColumns: [ { sourceColumn: 'Rating', align: 'C' } ],
+                // Entity column always sits at index 1 (Rating is always index 0 —
+                // see Structure H's _colHeaders build). MB-Name/Comment/MB-Primary
+                // alias are extracted uniformly for every entity kind on this page.
+                extractMainColumn: 1
             },
             entityFeatures: {
-                'Artists': {
-                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Artist', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
+                'Artists': {},
                 'Events': {
                     columnExtractors: [
-			{ sourceColumn: 'Event',    extractor: 'Name_Date_Comment', syntheticColumns: ['MB-Name', 'Date', 'Comment'] },
-                        { sourceColumn: 'Event',    extractor: 'cancelledEvent',    syntheticColumns: ['Cancelled'] },
-                        { sourceColumn: 'Event',    extractor: 'primaryAlias',      syntheticColumns: ['MB-Primary alias'] },
-		    ],
+                        { sourceColumn: 'Event', extractor: 'eventDate',      syntheticColumns: ['Date'] },
+                        { sourceColumn: 'Event', extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] }
+                    ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
                     addEAA: 'Event',
                     tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], '---', 'Date' ]
                 },
-                'Labels': {
-                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Label', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
-                'Places': {
-                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Place', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
+                'Labels': {},
+                'Places': {},
                 'Release groups': {
                     // 'jesus2099' eraser: the source <li> list carries the jesus2099
                     // "mb. SUPER MIND CONTROL" userscript's own <a href=".../cover-art">
@@ -12718,23 +12593,20 @@
                     // below ALSO injects its own inline thumbnail into the same cell,
                     // showing the cover art twice.
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ],
+                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
                     tooltipColumns: [ 'MB-Name', 'Artist' ]
                 },
                 'Recordings': {
                     columnExtractors: [
-                        { sourceColumn: 'Recording', extractor: 'video',         syntheticColumns: ['Video'] },
-                        { sourceColumn: 'Recording', extractor: 'Name_Comment',  syntheticColumns: ['MB-Name', 'Comment'] }
+                        { sourceColumn: 'Recording', extractor: 'video', syntheticColumns: ['Video'] }
                     ],
                     syntheticColumnExtractors: [
                         { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                     ],
                 },
-                'Works': {
-                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Work', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                }
+                'Works': {}
             },
             tableMode: 'single'
         },
@@ -12764,30 +12636,26 @@
                 insertH2: 'Ratings',
                 listToTable: [ '' ],
                 integerColumns: [ { sourceColumn: 'Rating', align: 'C' } ],
-                extractMainColumn: null,
+                // Entity column always sits at index 1 (Rating is always index 0 —
+                // see Structure H's _colHeaders build). MB-Name/Comment/MB-Primary
+                // alias are extracted uniformly for every entity kind on this page.
+                extractMainColumn: 1,
                 stickyColumn: null,
             },
             entityFeatures: {
-                'Artists': {
-                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Artist', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
+                'Artists': {},
                 'Events': {
                     columnExtractors: [
-			{ sourceColumn: 'Event',    extractor: 'Name_Date_Comment', syntheticColumns: ['MB-Name', 'Date', 'Comment'] },
-                        { sourceColumn: 'Event',    extractor: 'cancelledEvent',    syntheticColumns: ['Cancelled'] },
-                        { sourceColumn: 'Event',    extractor: 'primaryAlias',      syntheticColumns: ['MB-Primary alias'] },
-		    ],
+                        { sourceColumn: 'Event', extractor: 'eventDate',      syntheticColumns: ['Date'] },
+                        { sourceColumn: 'Event', extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] }
+                    ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, { sourceColumn: 'Rating', align: 'C' } ],
                     addEAA: 'Event',
                     tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], '---', 'Date' ]
                 },
-                'Labels': {
-                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Label', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
-                'Places': {
-                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Place', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
+                'Labels': {},
+                'Places': {},
                 'Release groups': {
                     // 'jesus2099' eraser: /user/<username>/ratings' "Release group
                     // ratings" <li>s carry the jesus2099 "mb. SUPER MIND CONTROL"
@@ -12797,23 +12665,20 @@
                     // ALSO injects its own inline thumbnail into the same cell,
                     // showing the cover art twice.
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ],
+                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
                     tooltipColumns: [ 'MB-Name', 'Artist' ]
                 },
                 'Recordings': {
                     columnExtractors: [
-                        { sourceColumn: 'Recording', extractor: 'video',         syntheticColumns: ['Video'] },
-                        { sourceColumn: 'Recording', extractor: 'Name_Comment',  syntheticColumns: ['MB-Name', 'Comment'] }
+                        { sourceColumn: 'Recording', extractor: 'video', syntheticColumns: ['Video'] }
                     ],
                     syntheticColumnExtractors: [
                         { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                     ],
                 },
-                'Works': {
-                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Work', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                }
+                'Works': {}
             },
             tableMode: 'multi'
         },
@@ -13226,28 +13091,28 @@
             buttons: [ { label: 'Show all Instruments' } ],
             entityFeatures: {
                 'Wind instrument': {
-                    columnExtractors: [ { sourceColumn: 'Wind instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['MB-Name', 'Comment', 'Description'] }, { sourceColumn: 'Wind instrument', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
+                    columnExtractors: [ { sourceColumn: 'Wind instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
                 },
                 'String instrument': {
-                    columnExtractors: [ { sourceColumn: 'String instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['MB-Name', 'Comment', 'Description'] }, { sourceColumn: 'String instrument', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
+                    columnExtractors: [ { sourceColumn: 'String instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
                 },
                 'Percussion instrument': {
-                    columnExtractors: [ { sourceColumn: 'Percussion instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['MB-Name', 'Comment', 'Description'] }, { sourceColumn: 'Percussion instrument', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
+                    columnExtractors: [ { sourceColumn: 'Percussion instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
                 },
                 'Electronic instrument': {
-                    columnExtractors: [ { sourceColumn: 'Electronic instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['MB-Name', 'Comment', 'Description'] }, { sourceColumn: 'Electronic instrument', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
+                    columnExtractors: [ { sourceColumn: 'Electronic instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
                 },
                 'Other instrument': {
-                    columnExtractors: [ { sourceColumn: 'Other instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['MB-Name', 'Comment', 'Description'] }, { sourceColumn: 'Other instrument', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
+                    columnExtractors: [ { sourceColumn: 'Other instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
                 },
                 'Ensemble': {
-                    columnExtractors: [ { sourceColumn: 'Ensemble', extractor: 'Name_Comment_Description', syntheticColumns: ['MB-Name', 'Comment', 'Description'] }, { sourceColumn: 'Ensemble', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
+                    columnExtractors: [ { sourceColumn: 'Ensemble', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
                 },
                 'Family': {
-                    columnExtractors: [ { sourceColumn: 'Family', extractor: 'Name_Comment_Description', syntheticColumns: ['MB-Name', 'Comment', 'Description'] }, { sourceColumn: 'Family', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
+                    columnExtractors: [ { sourceColumn: 'Family', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
                 },
                 'Unclassified instrument': {
-                    columnExtractors: [ { sourceColumn: 'Unclassified instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['MB-Name', 'Comment', 'Description'] }, { sourceColumn: 'Unclassified instrument', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
+                    columnExtractors: [ { sourceColumn: 'Unclassified instrument', extractor: 'Name_Comment_Description', syntheticColumns: ['Name', 'Comment', 'Description'] } ]
                 }
             },
             features: {
@@ -13292,39 +13157,28 @@
                 { label: 'Tag for Entities downvoted', params: { show_downvoted: '1' } }
             ],
             entityFeatures: {
-                'Areas': {
-                    columnExtractors: [ { sourceColumn: 'Area', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Area', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
-                'Artists': {
-                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Artist', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
+                'Areas': {},
+                'Artists': {},
                 'Events': {
                     columnExtractors: [
-			{ sourceColumn: 'Event',    extractor: 'Name_Date_Comment', syntheticColumns: ['MB-Name', 'Date', 'Comment'] },
-                        { sourceColumn: 'Event',    extractor: 'cancelledEvent',    syntheticColumns: ['Cancelled'] },
-                        { sourceColumn: 'Event',    extractor: 'primaryAlias',      syntheticColumns: ['MB-Primary alias'] },
-		    ],
+                        { sourceColumn: 'Event', extractor: 'eventDate',      syntheticColumns: ['Date'] },
+                        { sourceColumn: 'Event', extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] }
+                    ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
                     addEAA: 'Event',
                     tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], 'Date' ]
                 },
-                'Instruments': {
-                    columnExtractors: [ { sourceColumn: 'Instrument', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Instrument', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
-                'Labels': {
-                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Label', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
-                'Places': {
-                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Place', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
+                'Instruments': {},
+                'Labels': {},
+                'Places': {},
                 'Release groups': {
                     // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
                     // CONTROL" userscript's native cover-art icon before addCAA
                     // below adds its own inline thumbnail, or the cover art shows
                     // twice (see debug/cell.html, WIP.81).
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ],
+                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
                     tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], 'Artist' ]
@@ -13332,20 +13186,16 @@
                 'Releases': {
                     // 'jesus2099' eraser — see 'Release groups' above (WIP.81).
                     columnErasers: [ { sourceColumn: 'Release', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ],
+                    columnExtractors: [ { sourceColumn: 'Release', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release',
                     tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], 'Artist' ]
                 },
                 'Recordings': {
-                    columnExtractors: [ { sourceColumn: 'Recording', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ]
+                    columnExtractors: [ { sourceColumn: 'Recording', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ]
                 },
-                'Series': {
-                    columnExtractors: [ { sourceColumn: 'Series', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Series', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
-                'Works': {
-                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Work', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                }
+                'Series': {},
+                'Works': {}
             },
             features: {
                 // Empty sectionId triggers Structure C in applyListToTable: the
@@ -13356,7 +13206,9 @@
                 listToTable: [ '' ],
                 // Remove the vote/sort form after rendering since the two buttons
                 // above replace its function and the form is no longer needed.
-                removeSelector: 'form[style*="margin-top"]'
+                removeSelector: 'form[style*="margin-top"]',
+                // Single native column always at index 0 (one entity kind per page).
+                extractMainColumn: 0
             },
             tableMode: 'single'
         },
@@ -13370,35 +13222,27 @@
                 { label: 'Tag for Entities downvoted', params: { show_downvoted: '1' } }
             ],
             entityFeatures: {
-                'Areas': {
-                    columnExtractors: [ { sourceColumn: 'Area', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Area', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
-                'Artists': {
-                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Artist', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
+                'Areas': {},
+                'Artists': {},
                 'Events': {
-                    columnExtractors: [ { sourceColumn: 'Event', extractor: 'Name_Date_Comment', syntheticColumns: ['MB-Name', 'Date', 'Comment'] }, { sourceColumn: 'Event', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ],
+                    columnExtractors: [
+                        { sourceColumn: 'Event', extractor: 'eventDate', syntheticColumns: ['Date'] }
+                    ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
                     addEAA: 'Event',
                     tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], 'Date' ]
                 },
-                'Instruments': {
-                    columnExtractors: [ { sourceColumn: 'Instrument', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Instrument', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
-                'Labels': {
-                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Label', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
-                'Places': {
-                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Place', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
+                'Instruments': {},
+                'Labels': {},
+                'Places': {},
                 'Release groups': {
                     // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
                     // CONTROL" userscript's native cover-art icon before addCAA
                     // below adds its own inline thumbnail, or the cover art shows
                     // twice (see debug/cell.html, WIP.81).
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ],
+                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
                     tooltipColumns: [ 'MB-Name', ['(', 'Comment' , ')'], 'Artist' ]
@@ -13406,27 +13250,25 @@
                 'Releases': {
                     // 'jesus2099' eraser — see 'Release groups' above (WIP.81).
                     columnErasers: [ { sourceColumn: 'Release', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ],
+                    columnExtractors: [ { sourceColumn: 'Release', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release',
                     tooltipColumns: [ 'MB-Name', ['(', 'Comment' , ')'], 'Artist' ]
                 },
                 'Recordings': {
-                    columnExtractors: [ { sourceColumn: 'Recording', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ]
+                    columnExtractors: [ { sourceColumn: 'Recording', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ]
                 },
-                'Series': {
-                    columnExtractors: [ { sourceColumn: 'Series', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Series', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
-                'Works': {
-                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Work', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                }
+                'Series': {},
+                'Works': {}
             },
             features: {
                 // Empty sectionId triggers Structure D in applyListToTable.
                 listToTable: [ '' ],
                 // Remove the vote/sort form after rendering since the two buttons
                 // above replace its function and the form is no longer needed.
-                removeSelector: 'form:has(select[name="show_downvoted"])'
+                removeSelector: 'form:has(select[name="show_downvoted"])',
+                // Single native column always at index 0 (one entity kind per group table).
+                extractMainColumn: 0
             },
             tableMode: 'multi'
         },
@@ -13513,35 +13355,27 @@
             match: (path) => path.match(/\/tag\//),
             buttons: [ { label: 'Show all Entities tagged' } ],
             entityFeatures: {
-                'Areas': {
-                    columnExtractors: [ { sourceColumn: 'Area', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Area', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
-                'Artists': {
-                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Artist', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
+                'Areas': {},
+                'Artists': {},
                 'Events': {
-                    columnExtractors: [ { sourceColumn: 'Event', extractor: 'Name_Date_Comment', syntheticColumns: ['MB-Name', 'Date', 'Comment'] }, { sourceColumn: 'Event', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ],
+                    columnExtractors: [
+                        { sourceColumn: 'Event', extractor: 'eventDate', syntheticColumns: ['Date'] }
+                    ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
                     addEAA: 'Event',
                     tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], '---', 'Date' ]
                 },
-                'Instruments': {
-                    columnExtractors: [ { sourceColumn: 'Instrument', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Instrument', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
-                'Labels': {
-                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Label', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
-                'Places': {
-                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Place', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
+                'Instruments': {},
+                'Labels': {},
+                'Places': {},
                 'Release groups': {
                     // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
                     // CONTROL" userscript's native cover-art icon before addCAA
                     // below adds its own inline thumbnail, or the cover art shows
                     // twice (see debug/cell.html, WIP.81).
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ],
+                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
                     tooltipColumns: [ 'MB-Name', 'Artist' ]
@@ -13549,24 +13383,22 @@
                 'Releases': {
                     // 'jesus2099' eraser — see 'Release groups' above (WIP.81).
                     columnErasers: [ { sourceColumn: 'Release', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ],
+                    columnExtractors: [ { sourceColumn: 'Release', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release',
                     tooltipColumns: [ 'MB-Name', 'Artist' ]
                 },
                 'Recordings': {
-                    columnExtractors: [ { sourceColumn: 'Recording', extractor: 'Name_Comment_Artists', syntheticColumns: ['MB-Name', 'Comment', 'Artist'] } ]
+                    columnExtractors: [ { sourceColumn: 'Recording', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ]
                 },
-                'Series': {
-                    columnExtractors: [ { sourceColumn: 'Series', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Series', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                },
-                'Works': {
-                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'Name_Comment', syntheticColumns: ['MB-Name', 'Comment'] }, { sourceColumn: 'Work', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] } ]
-                }
+                'Series': {},
+                'Works': {}
             },
             features: {
                 // Empty sectionId triggers Structure D in applyListToTable.
-                listToTable: [ '' ]
+                listToTable: [ '' ],
+                // Single native column always at index 0 (one entity kind per group table).
+                extractMainColumn: 0
             },
             tableMode: 'multi'
         },
@@ -18009,8 +17841,8 @@
      * following an entity link in a plain "Event" cell — e.g. the native
      * MusicBrainz tag-value Event listing shape: `<a
      * href="/event/…">Name</a> (2024-05-28) <span class="cancelled">…
-     * </span>` (see debug/data-missing.html). Mirrors `Name_Date_Comment`'s
-     * own text-node walk (`ColumnDataExtractor`) exactly — both must agree
+     * </span>` (see debug/data-missing.html). Mirrors `eventDate`'s own
+     * text-node walk (`ColumnDataExtractor`) exactly — both must agree
      * on the same shape — reusing `_parseBareParenDate()` for the actual
      * paren/date regex rather than a third slightly-different copy of it.
      *
@@ -36944,8 +36776,10 @@ a { color: #1565c0; }`;
                 return `Extracted from '${src}': artwork archive icon column (extractor: ${extractor}).`;
             case 'cancelledEvent':
                 return `Extracted from '${src}': cancellation flag, copied from the Event cell. Filter/sort values: 'yes' (cancelled) or 'no'. The original '(cancelled)' label remains in the source column.`;
-            case 'primaryAlias':
-                return `Extracted from '${src}': the MusicBrainz primary alias (\u003ci title="Primary alias"\u003e), removed from the source cell and placed here for standalone sorting and filtering.`;
+            case 'eventDate':
+                return `Extracted from '${src}': the event date in parentheses after the entity link (e.g. "2019-07-05"), split from the event cell. The name/comment/primary-alias split of this same cell comes from the separate 'extractMainColumn' feature.`;
+            case 'artistCredit':
+                return `Extracted from '${src}': the artist credit following "by" in the release/recording cell. The name/comment/primary-alias split of this same cell comes from the separate 'extractMainColumn' feature.`;
             case 'video':
                 return `Extracted from '${src}': the video indicator icon, moved here from the '${src}' column. Filter/sort values: 'video' or 'audio'.`;
             case 'dateParts':
@@ -37006,33 +36840,11 @@ a { color: #1565c0; }`;
                 if (colName === 'Artist')
                     return `Extracted from '${src}': the artist credit following "by" in the release/recording cell.`;
                 break;
-            case 'Name_Comment':
-                if (colName === 'MB-Name')
-                    return `Extracted from '${src}': the entity name link, split from the entity cell on tag-value pages.`;
-                if (colName === 'Comment')
-                    return `Extracted from '${src}': the disambiguation comment in parentheses, split from the entity cell (excludes any primary alias, which has its own 'MB-Primary alias' column).`;
-                break;
-            case 'Name_Date_Comment':
-                if (colName === 'MB-Name')
-                    return `Extracted from '${src}': the event name link, split from the event cell.`;
-                if (colName === 'Date')
-                    return `Extracted from '${src}': the event date in parentheses after the entity link (e.g. "2019-07-05").`;
-                if (colName === 'Comment')
-                    return `Extracted from '${src}': the disambiguation comment, split from the event cell (excludes any primary alias, which has its own 'MB-Primary alias' column).`;
-                break;
-            case 'Name_Comment_Artists':
-                if (colName === 'MB-Name')
-                    return `Extracted from '${src}': the release/recording name link, split from the combined cell.`;
-                if (colName === 'Comment')
-                    return `Extracted from '${src}': the disambiguation comment, split from the release/recording cell (excludes any primary alias, which has its own 'MB-Primary alias' column).`;
-                if (colName === 'Artist')
-                    return `Extracted from '${src}': the artist credit following "by" in the release/recording cell.`;
-                break;
             case 'Name_Comment_Description':
-                if (colName === 'MB-Name')
+                if (colName === 'Name')
                     return `Extracted from '${src}': the instrument name link, split from the combined cell.`;
                 if (colName === 'Comment')
-                    return `Extracted from '${src}': the disambiguation comment, split from the instrument cell (excludes any primary alias, which has its own 'MB-Primary alias' column).`;
+                    return `Extracted from '${src}': the disambiguation comment, split from the instrument cell.`;
                 if (colName === 'Description')
                     return `Extracted from '${src}': the description text following the "—" dash in the instrument cell.`;
                 break;
@@ -38979,13 +38791,12 @@ a { color: #1565c0; }`;
                                 // page type via `features.extractMainColumn` or `columnExtractors`
                                 // work correctly here too.
                                 //
-                                // ORDERING: column extractors run FIRST so that any mutating
-                                // extractor (e.g. primaryAlias, which removes <i title="Primary alias">
-                                // from the source cell) cleans the DOM before MB-Name / Comment
-                                // reads it.  Without this order, Comment would capture both the
-                                // primary alias text and the disambiguation comment together.
+                                // ORDERING: column extractors run FIRST, before MB-Name / Comment
+                                // extraction reads the same source cell — so any extractor that
+                                // legitimately needs to mutate the cell in place has already done
+                                // so by the time MB-Name / Comment reads it.
 
-                                // 1. Active column extractors (e.g. splitCountryDate, primaryAlias)
+                                // 1. Active column extractors (e.g. splitCountryDate)
                                 // Capture synthetic cells BEFORE column deletion so colIdx stays valid.
                                 const extractedSyntheticCells = activeColumnExtractors.map(entry => {
                                     if (entry.colIdx === -1) {
@@ -39008,8 +38819,8 @@ a { color: #1565c0; }`;
                                 // 1b. Extract MB-Name / Comment / MB-Primary alias cells (only when
                                 //     configured) via the shared _extractMainColumnParts() helper.
                                 //     Must run AFTER primary column extractors (step 1) — any
-                                //     mutating extractor (e.g. primaryAlias) must have already
-                                //     cleaned the source cell before Comment reads it.
+                                //     mutating extractor must have already cleaned the source cell
+                                //     before Comment reads it.
                                 //     Must run BEFORE the synthetic-column cell map (step 1c) so
                                 //     that 'MB-Name' and 'Comment' are available as source cells
                                 //     for syntheticColumnExtractors (e.g. eventParts uses 'Comment').
@@ -39705,11 +39516,10 @@ a { color: #1565c0; }`;
                                     applyRenderMultiRowCells(newRow, activeRenderMultiRowCols);
 
                                     // ── Extraction pipeline ───────────────────────────────────────
-                                    // ORDERING: column extractors run FIRST so that any mutating
-                                    // extractor (e.g. primaryAlias, which removes <i title="Primary alias">
-                                    // from the source cell) cleans the DOM before MB-Name / Comment
-                                    // reads it.  Without this order, Comment would capture both the
-                                    // primary alias text and the disambiguation comment together.
+                                    // ORDERING: column extractors run FIRST, before MB-Name / Comment
+                                    // extraction reads the same source cell — so any extractor that
+                                    // legitimately needs to mutate the cell in place has already done
+                                    // so by the time MB-Name / Comment reads it.
 
                                     // 1. Run all active column extractors BEFORE column deletion and
                                     //    BEFORE MB-Name / Comment extraction.
@@ -39741,8 +39551,8 @@ a { color: #1565c0; }`;
                                     // 1b. Extract MB-Name / Comment / MB-Primary alias cells (only when
                                     //     configured) via the shared _extractMainColumnParts() helper.
                                     //     Must run AFTER primary column extractors (step 1) — any
-                                    //     mutating extractor (e.g. primaryAlias) must have already
-                                    //     cleaned the source cell before Comment reads it.
+                                    //     mutating extractor must have already cleaned the source cell
+                                    //     before Comment reads it.
                                     //     Must run BEFORE the synthetic-column cell map (step 1c) so
                                     //     that 'MB-Name' and 'Comment' are available as source cells
                                     //     for syntheticColumnExtractors (e.g. eventParts uses 'Comment').
@@ -42660,9 +42470,19 @@ a { color: #1565c0; }`;
                         });
                         _theadForGroup.appendChild(_hRow);
                         // If this group has entity-specific features, rebuild active
-                        // extractors, resolve colIdx from the freshly built thead cells,
-                        // then call cleanupHeaders to inject synthetic <th>s (e.g. Name,
-                        // Comment) — mirrors the tag-value per-group thead path.
+                        // extractors before resolving colIdx below. Must run OUTSIDE this
+                        // conditional too (see the unconditional block right after it) —
+                        // extractMainColumn is a PAGE-level feature (applies uniformly to
+                        // every group), so cleanupHeaders() must still run and inject the
+                        // MB-Name/Comment/MB-Primary alias headers even for a group with no
+                        // per-group entityFeatures of its own (e.g. Artists/Labels/Places/
+                        // Works, which declare `{}`) — gating the whole block, including
+                        // cleanupHeaders(), on "has entity-specific features" left those
+                        // groups' <thead> at their original 2 headers while every row still
+                        // unconditionally grew 3 MB-Name/Comment/MB-Primary-alias <td>s,
+                        // desyncing header count from cell count. Mirrors the tag-value/
+                        // user-tag-value/instrument-list per-group thead path just below,
+                        // which already calls cleanupHeaders() unconditionally.
                         const _urGroupEF = group.entityFeatures || {};
                         if (Object.keys(_urGroupEF).length > 0) {
                             const _urMf = { ...(activeDefinition.features || {}), ..._urGroupEF };
@@ -42682,16 +42502,21 @@ a { color: #1565c0; }`;
                             } else {
                                 delete table.dataset.mbEntityExtractMainColumn;
                             }
-                            // Resolve colIdx for each extractor by scanning the thead cells.
-                            activeColumnExtractors.forEach(e => { e.colIdx = -1; });
-                            Array.from(_hRow.cells).forEach((th, idx) => {
-                                const _txt = (th.dataset.colName || th.textContent).trim().replace(/\s+/g, ' ');
-                                activeColumnExtractors.forEach(ext => {
-                                    if (ext.colIdx === -1 && ext.sourceColumn === _txt) ext.colIdx = idx;
-                                });
-                            });
-                            cleanupHeaders(_theadForGroup);
                         }
+                        // Resolve colIdx for each extractor by scanning the thead cells, then
+                        // call cleanupHeaders — unconditionally, so MB-Name/Comment/MB-Primary
+                        // alias (and any other extractMainColumn-driven headers) always get
+                        // injected. A stale colIdx left over from a previous group's rebuild
+                        // simply won't match any of THIS group's 2-or-3 header cells below,
+                        // resolving harmlessly to -1 (no header, no cell) for that entry.
+                        activeColumnExtractors.forEach(e => { e.colIdx = -1; });
+                        Array.from(_hRow.cells).forEach((th, idx) => {
+                            const _txt = (th.dataset.colName || th.textContent).trim().replace(/\s+/g, ' ');
+                            activeColumnExtractors.forEach(ext => {
+                                if (ext.colIdx === -1 && ext.sourceColumn === _txt) ext.colIdx = idx;
+                            });
+                        });
+                        cleanupHeaders(_theadForGroup);
                     } else if ((pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'instrument-list') && rawTemplateHead) {
                         // ── Per-group thead for tag-value / instrument-list multi-table
                         //    mode ─────────────────────────────────────────────────────
@@ -42734,11 +42559,18 @@ a { color: #1565c0; }`;
                         // 1. Reset all extractors.
                         activeColumnExtractors.forEach(e => { e.colIdx = -1; });
                         // 2. Resolve: the group's source column is group.colName (singular),
-                        //    always at index 0 in the single-original-column table.
-                        const _matchEntry = activeColumnExtractors.find(
-                            e => e.sourceColumn === group.colName
-                        );
-                        if (_matchEntry) _matchEntry.colIdx = 0;
+                        //    always at index 0 in the single-original-column table. Must set
+                        //    colIdx on EVERY entry matching group.colName, not just the first
+                        //    (a group can legitimately declare 2+ columnExtractors entries on
+                        //    the same sourceColumn, e.g. Events' own extra extractor alongside
+                        //    its date one) — a .find()-based single-match resolver here left
+                        //    every entry after the first at colIdx=-1, so cleanupHeaders()
+                        //    silently skipped its header while the row-extraction pass (which
+                        //    already resolves every matching entry) still appended its cell,
+                        //    desyncing header count from cell count by one per extra entry.
+                        activeColumnExtractors.forEach(e => {
+                            if (e.sourceColumn === group.colName) e.colIdx = 0;
+                        });
                         // 3. Clone raw thead and run cleanupHeaders with correct colIdx.
                         _theadForGroup = rawTemplateHead.cloneNode(true);
                         cleanupHeaders(_theadForGroup);
@@ -46016,12 +45848,13 @@ a { color: #1565c0; }`;
         //     subdivision icon followed by the country's own flag — see
         //     debug/with-flag.html), so it needs both scans at once.
         //   - 'Location'/'Place' (exact match — the SOURCE column
-        //     splitLocation operates on; 'Place' is ambiguous with an
-        //     unrelated Name_Comment source column of the same name on
-        //     Place-entity listings, but those cells simply have no
-        //     flag/area-icon span to find, so the scan below is a harmless
-        //     no-op there): same combined Locality/Region + Country flag
-        //     shape as the unsplit Area column above (debug/with-flag.html).
+        //     splitLocation operates on; 'Place' is ambiguous with the
+        //     unrelated native 'Place' column on Place-entity tag-value
+        //     listings (extracted via extractMainColumn, not a named
+        //     columnExtractor), but those cells simply have no flag/area-icon
+        //     span to find, so the scan below is a harmless no-op there):
+        //     same combined Locality/Region + Country flag shape as the
+        //     unsplit Area column above (debug/with-flag.html).
         //   - 'Country/Date' (exact match — the native, un-split SOURCE
         //     column splitCountryDate operates on, e.g. release-group
         //     release lists): native MusicBrainz markup, per release event,
