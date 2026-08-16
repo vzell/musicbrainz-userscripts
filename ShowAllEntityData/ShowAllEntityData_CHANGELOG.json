@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.887",
+    "date": "2026-08-16",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Added the `video` columnExtractor (synthetic \"Video\" column, e.g. `debug/tag-2024.html`'s Recording cells carrying `<span class=\"video\" title=\"This recording is a video\">`) to the \"Recordings\" sub-table's \"Recording\" column on `tag-value` and `user-tag-value`, alongside the existing `artistCredit` extractor already there — matching the same `video` extractor already used for the \"Recording\" column on `report-detail`/`user-ratings`."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.886",
     "date": "2026-08-16",
     "sections": [

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.886+2026-08-16
+// @version      9.99.887+2026-08-16
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -13150,7 +13150,10 @@
                     tooltipColumns: [ 'MB-Name', ['(', 'Comment' , ')'], 'Artist' ]
                 },
                 'Recordings': {
-                    columnExtractors: [ { sourceColumn: 'Recording', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ]
+                    columnExtractors: [
+                        { sourceColumn: 'Recording', extractor: 'artistCredit', syntheticColumns: ['Artist'] },
+                        { sourceColumn: 'Recording', extractor: 'video',        syntheticColumns: ['Video'] }
+                    ]
                 },
                 'Series': {},
                 'Works': {}
@@ -13298,7 +13301,10 @@
                     tooltipColumns: [ 'MB-Name', 'Artist' ]
                 },
                 'Recordings': {
-                    columnExtractors: [ { sourceColumn: 'Recording', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ]
+                    columnExtractors: [
+                        { sourceColumn: 'Recording', extractor: 'artistCredit', syntheticColumns: ['Artist'] },
+                        { sourceColumn: 'Recording', extractor: 'video',        syntheticColumns: ['Video'] }
+                    ]
                 },
                 'Series': {},
                 'Works': {}

@@ -94694,8 +94694,7 @@ See @debug/tag-count.html
 
 Values from "Entity info - Tag count" when filtered are not yet highlighted as the other structural entities
 
-
-* TODO If the FIRST column name is actually "Event" also extract all unique "cancelled" events
+* DONE If the FIRST column name is actually "Event" also extract all unique "cancelled" events
 ** i
 
 1.)
@@ -94756,6 +94755,7 @@ event date: 2020-05-02
 ** act on @debug/xxx-events.org
 
 act on @debug/xxx-events.org
+
 
 * add a "Video" column
 
