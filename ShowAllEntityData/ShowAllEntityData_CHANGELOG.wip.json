@@ -16,6 +16,12 @@
           "Removed `_tagCountBase`, whose only remaining caller (`Name_Comment_Description`, `instrument-list`) used just 2 of its 3 outputs (Name, Comment — never Tag count) and never needed its flag-span-before-the-link fallback (instruments are never flagged) or its primary-alias stripping (instrument is not an aliasable MusicBrainz entity type). `Name_Comment_Description` now does its own minimal, inline Name/Comment extraction instead of going through the shared helper.",
           "Renamed the synthetic \"MB-Primary alias\" column (and every internal reference to it — header text, `dataset.colName`, `primarySyntheticCellMap` key, tooltip case, debug logs, comments) to plain \"Primary alias\", matching the `MB-Primary alias`-less casing MusicBrainz itself uses for the native `<i title=\"Primary alias\">` marker this column is extracted from. This is a global, file-wide rename — the column is produced by `_extractMainColumnParts()`/`features.extractMainColumn`, shared by every page type using it (roughly 70-85), not just the ones touched earlier in this branch; also updated the 6 pre-existing, unrelated page types (`collections-releases`, `search`, `area-events`, `place-events`, `series-releases`, `artist-events`) whose own `tooltipColumns` arrays hardcoded the old name. No collision with any existing column name; the `MB-` prefix carried no functional meaning anywhere in the file."
         ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Added a new `columnErasers` sentinel, `'expandEvents'`, that strips `<button class=\"expand-events-toggle\" data-event-gid=\"…\">▸</button>` — the inline expand/collapse control Dvir Yitzchaki's \"Expand events\" userscript injects into an Event cell, already present on the page before this script's own fetch/scrape runs — from the consolidated table's Event column. Matches on the stable `expand-events-toggle` class only, not the userscript's own CSS-modules-generated hash class (which changes between its versions/builds). Wired into all 5 page types that render an Event main column via native MusicBrainz markup: `area-events`, `place-events`, `artist-events`, and the `Events` sub-block of `collections-releases` and `series-releases`."
+        ]
       }
     ]
   }

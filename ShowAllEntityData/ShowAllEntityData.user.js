@@ -4692,6 +4692,15 @@
      *    link/cell carries a jesus2099 marker class (e.g. a recording title `<a
      *    class="jesus2099userjs...recording">`), since that would delete the content too.
      *
+     * 4. **"Expand events" toggle-button erasure** (sentinel string `'expandEvents'`):
+     *    Removes `<button class="expand-events-toggle …" data-event-gid="…">▸</button>`
+     *    — the inline expand/collapse control injected into an Event cell, before this
+     *    script's own fetch/scrape ever runs, by Dvir Yitzchaki's "Expand events"
+     *    userscript. Matched by the stable `expand-events-toggle` class only; the
+     *    userscript also appends a CSS-modules-generated hash class (e.g.
+     *    `_toggleButton_15vyb_5`) that changes between its versions/builds, so that part
+     *    must never be matched on.
+     *
      * Must be called BEFORE active column extractors run on the same row so that extractor
      * output is based on the already-cleaned cell content.
      *
@@ -4713,10 +4722,11 @@
             }
 
             // Partition erasers into glyph-symbol erasers and the named sentinels
-            const textErasers       = entry.erasers.filter(e => e !== 'jesus2099' && e !== 'jesus2099-any' && e !== 'wiencek');
+            const textErasers       = entry.erasers.filter(e => e !== 'jesus2099' && e !== 'jesus2099-any' && e !== 'wiencek' && e !== 'expandEvents');
             const eraseJesus2099    = entry.erasers.includes('jesus2099');
             const eraseJesus2099Any = entry.erasers.includes('jesus2099-any');
             const eraseWiencek      = entry.erasers.includes('wiencek');
+            const eraseExpandEvents = entry.erasers.includes('expandEvents');
 
             let removedCount = 0;
 
@@ -4811,6 +4821,20 @@
                     div.remove();
                     removedCount++;
                     Lib.debug('extract', `columnEraser: removed wiencek div.${div.className.trim().split(/\s+/)[0]} from column "${entry.sourceColumn}" (colIdx=${entry.colIdx})`);
+                });
+            }
+
+            // Strategy 5: "Expand events" (by Dvir Yitzchaki) toggle-button erasure
+            // Removes the <button class="expand-events-toggle …" data-event-gid="…">▸</button>
+            // injected into an Event cell before this script's own fetch/scrape runs.
+            // Matches by the stable "expand-events-toggle" class only — the userscript
+            // also appends a CSS-modules-generated hash class (e.g. "_toggleButton_15vyb_5")
+            // that changes between its versions/builds, so must not be matched on.
+            if (eraseExpandEvents) {
+                cell.querySelectorAll('button.expand-events-toggle').forEach(btn => {
+                    btn.remove();
+                    removedCount++;
+                    Lib.debug('extract', `columnEraser: removed expand-events-toggle button from column "${entry.sourceColumn}" (colIdx=${entry.colIdx})`);
                 });
             }
 
@@ -13374,6 +13398,10 @@
                     stickyColumn: 'Artist'
                 },
                 'Events': {
+                    // 'expandEvents' eraser: strips the "Expand events" (Dvir Yitzchaki)
+                    // userscript's inline ▸ toggle button, already present on the initial
+                    // page before this script's own fetch/scrape runs.
+                    columnErasers: [ { sourceColumn: 'Event', erasers: ['expandEvents'] } ],
                     columnExtractors: [
                         { sourceColumn: 'Event',    extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] },
                         { sourceColumn: 'Event',    extractor: 'caa',            syntheticColumns: ['EAA'] },
@@ -13884,6 +13912,10 @@
             match: (path) => path.match(/\/area\/[a-f0-9-]{36}\/events/),
             buttons: [ { label: 'Show all Events for Area' } ],
             features: {
+                // 'expandEvents' eraser: strips the "Expand events" (Dvir Yitzchaki)
+                // userscript's inline ▸ toggle button, already present on the initial
+                // page before this script's own fetch/scrape runs.
+                columnErasers: [ { sourceColumn: 'Event', erasers: ['expandEvents'] } ],
                 columnExtractors: [
                     { sourceColumn: 'Event',    extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] },
                     { sourceColumn: 'Event',    extractor: 'caa',            syntheticColumns: ['EAA'] },
@@ -14102,6 +14134,10 @@
             match: (path) => path.match(/\/place\/[a-f0-9-]{36}\/events/),
             buttons: [ { label: 'Show all Events for Place' } ],
             features: {
+                // 'expandEvents' eraser: strips the "Expand events" (Dvir Yitzchaki)
+                // userscript's inline ▸ toggle button, already present on the initial
+                // page before this script's own fetch/scrape runs.
+                columnErasers: [ { sourceColumn: 'Event', erasers: ['expandEvents'] } ],
                 columnExtractors: [
                     { sourceColumn: 'Event', extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] },
                     { sourceColumn: 'Event', extractor: 'caa',            syntheticColumns: ['EAA'] },
@@ -14231,6 +14267,10 @@
                     stickyColumn: 'Artist'
                 },
                 'Events': {
+                    // 'expandEvents' eraser: strips the "Expand events" (Dvir Yitzchaki)
+                    // userscript's inline ▸ toggle button, already present on the initial
+                    // page before this script's own fetch/scrape runs.
+                    columnErasers: [ { sourceColumn: 'Event', erasers: ['expandEvents'] } ],
                     columnExtractors: [
                         { sourceColumn: 'Event', extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] },
                         { sourceColumn: 'Event', extractor: 'caa', syntheticColumns: ['EAA'] },
@@ -14738,6 +14778,10 @@
             match: (path) => path.includes('/events'),
             buttons: [ { label: 'Show all Events for Artist' } ],
             features: {
+                // 'expandEvents' eraser: strips the "Expand events" (Dvir Yitzchaki)
+                // userscript's inline ▸ toggle button, already present on the initial
+                // page before this script's own fetch/scrape runs.
+                columnErasers: [ { sourceColumn: 'Event', erasers: ['expandEvents'] } ],
                 columnExtractors: [
                     { sourceColumn: 'Event',    extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] },
                     { sourceColumn: 'Event',    extractor: 'caa',            syntheticColumns: ['EAA'] },
