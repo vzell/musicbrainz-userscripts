@@ -2728,7 +2728,12 @@
     //   3. Declare the synthetic column header names in `syntheticColumns`.
 
     /**
-     * Shared base extraction helper for tagCount_* extractors.
+     * Shared base extraction helper for tag-value-entity-shaped cells. Its
+     * sole remaining caller is `Name_Comment_Description` (`instrument-list`),
+     * which only uses the returned tdName/tdComment (ignores tdCount) — every
+     * other former caller (the `tagCount_*` family) has been replaced by
+     * `features.extractMainColumn` (see `_extractMainColumnParts()`) plus the
+     * standalone `tagCount` extractor.
      *
      * Handles the common fields present in all tag-value-entity cell structures:
      *   Tag count — leading integer in the first direct text node ("26 -").
@@ -3868,129 +3873,16 @@
             return [tdChars];
         },
 
-        /**
-         * tagCount_Name_Comment — splits an entity row on tag-value entity pages
-         * into three synthetic columns: Name, Tag count, and Comment.
-         *
-         * Also handles an optional country-flag span before the entity link:
-         *
-         *   <td>6 -
-         *     <span class="flag flag-US">
-         *       <a href="/area/…"><bdi>United States</bdi></a>
-         *     </span>
-         *   </td>
-         *
-         * In that case the Name cell contains the cloned flag span + link.
-         *
-         * Standard structure:
-         *   <td>26 -
-         *     <a href="/artist/…"><bdi>Johnny Cash</bdi></a>
-         *     <span class="comment">(<bdi>country music legend</bdi>)</span>
-         *   </td>
-         *
-         * Extraction rules:
-         *   Tag count — leading integer in the first direct text node.
-         *   Name      — if a flag span precedes the link, clone flag+link together;
-         *               otherwise clone just the entity <a> link.
-         *   Comment   — <bdi> inside the first span.comment (if any).
-         *
-         * Synthetic columns: ['Name', 'Tag count', 'Comment']
-         */
-        tagCount_Name_Comment(sourceCell) {
-            const [tdName, tdCount, tdComment] = _tagCountBase(sourceCell);
-            return [tdName, tdCount, tdComment];
-        },
-
-        /**
-         * tagCount_Name_Date_Comment — like tagCount_Name_Comment but also extracts
-         * a Date column.  Used for Events where the date appears in parentheses
-         * immediately after the closing </a>:
-         *
-         *   <td>1 -
-         *     <a href="/event/…"><bdi>Roots &amp; Boots …</bdi></a> (2019-07-05)
-         *     <span class="comment">(<bdi>Kamas, Utah</bdi>)</span>
-         *   </td>
-         *
-         * Extraction rules:
-         *   Tag count — leading integer in the first direct text node.
-         *   Name      — entity <a> link (see tagCount_Name_Comment).
-         *   Date      — text inside the first "(…)" that follows the entity link
-         *               in direct text nodes (brackets stripped).
-         *   Comment   — <bdi> inside the first span.comment (if any).
-         *
-         * Synthetic columns: ['Name', 'Tag count', 'Date', 'Comment']
-         */
-        tagCount_Name_Date_Comment(sourceCell) {
-            const [tdName, tdCount, tdComment] = _tagCountBase(sourceCell);
-            const tdDate = document.createElement('td');
-
-            if (sourceCell) {
-                // Walk direct text nodes looking for "(YYYY-MM-DD)" or "(YYYY-MM)" after
-                // the entity anchor.  We skip text nodes that precede any <a>.
-                let _pastLink = false;
-                for (const node of sourceCell.childNodes) {
-                    if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'A') {
-                        _pastLink = true;
-                        continue;
-                    }
-                    if (_pastLink && node.nodeType === Node.TEXT_NODE) {
-                        const _m = node.nodeValue.match(/\(\s*([\d\-]+)\s*\)/);
-                        if (_m) { tdDate.textContent = _m[1].trim(); break; }
-                    }
-                }
-            }
-
-            return [tdName, tdCount, tdDate, tdComment];
-        },
-
-        /**
-         * tagCount_Name_Comment_Artists — like tagCount_Name_Comment but also
-         * extracts an Artists column.  Used for Releases, Release groups, and
-         * Recordings where artists follow "by" after the entity link.
-         *
-         * Possible structures:
-         *
-         *   Simple:   <a>…</a> by <bdi><a>Kyle Keller</a></bdi>
-         *
-         *   With comment on artist:
-         *             <a>…</a> by <bdi><a>Johnny Cash</a><span class="comment">…</span></bdi>
-         *
-         *   Multiple: <a>…</a> <span class="comment">(studio…)</span> by
-         *             <bdi><a>…</a>… and <a>…</a></bdi>
-         *
-         * Extraction: find the last top-level <bdi> sibling of the entity <a>
-         * (i.e. not inside span.comment) and clone its full HTML content.
-         * The <bdi> following "by" is always the last direct-child <bdi> of the <td>.
-         *
-         * Synthetic columns: ['Name', 'Tag count', 'Comment', 'Artists']
-         */
-        tagCount_Name_Comment_Artists(sourceCell) {
-            const [tdName, tdCount, tdComment] = _tagCountBase(sourceCell);
-            const tdArtists = document.createElement('td');
-
-            if (sourceCell) {
-                // The artists <bdi> is the last direct-child <bdi> of the <td>.
-                // It follows "by" in the text and is distinct from any <bdi> inside
-                // <a> or inside span.comment (those are nested, not direct children).
-                const _allBdi = Array.from(sourceCell.querySelectorAll(':scope > bdi'));
-                if (_allBdi.length > 0) {
-                    const _artistsBdi = _allBdi[_allBdi.length - 1];
-                    tdArtists.appendChild(_artistsBdi.cloneNode(true));
-                }
-            }
-
-            return [tdName, tdCount, tdComment, tdArtists];
-        },
-
         // ── extractMainColumn companion extractors ────────────────────────────
         //
         // Used on pages that resolve MB-Name/Comment/MB-Primary alias via
         // `features.extractMainColumn` (see _extractMainColumnParts()) but whose
-        // main-column cell also carries a trailing date (Events) or artist
-        // credit (Releases/Release groups/Recordings) that extractMainColumn
-        // itself does not extract. Both are read-only — sourceCell is never
-        // mutated — so they compose safely with extractMainColumn's own
-        // non-destructive read of the same cell, and with each other.
+        // main-column cell also carries a trailing date (Events), artist
+        // credit (Releases/Release groups/Recordings), or a leading tag-vote
+        // count (tag-value-entity) that extractMainColumn itself does not
+        // extract. All three are read-only — sourceCell is never mutated — so
+        // they compose safely with extractMainColumn's own non-destructive
+        // read of the same cell, and with each other.
         //
         // Structure:
         //   <li><a href="…"><bdi>Name</bdi></a> <span class="comment">(…)</span></li>
@@ -4023,9 +3915,18 @@
         /**
          * artistCredit — extracts the artist-credit <bdi> following "by" in a
          * Release/Release group/Recording cell. The artist <bdi> is the last
-         * direct-child <bdi> of the <td> — see tagCount_Name_Comment_Artists
-         * for the full structural rationale (simple/with-comment/multiple
-         * shapes).
+         * direct-child <bdi> of the <td> — it follows "by" in the text and is
+         * distinct from any <bdi> inside the entity <a> or inside span.comment
+         * (those are nested, not direct children). Possible structures:
+         *
+         *   Simple:   <a>…</a> by <bdi><a>Kyle Keller</a></bdi>
+         *
+         *   With comment on artist:
+         *             <a>…</a> by <bdi><a>Johnny Cash</a><span class="comment">…</span></bdi>
+         *
+         *   Multiple: <a>…</a> <span class="comment">(studio…)</span> by
+         *             <bdi><a>…</a>… and <a>…</a></bdi>
+         *
          * Synthetic columns: ['Artist']
          */
         artistCredit(sourceCell) {
@@ -4039,6 +3940,30 @@
             }
 
             return [tdArtists];
+        },
+
+        /**
+         * tagCount — extracts the leading integer tag-vote count (e.g. "26"
+         * from "26 - Johnny Cash") from a tag-value-entity cell.
+         * Synthetic columns: ['Tag count']
+         */
+        tagCount(sourceCell) {
+            const tdCount = document.createElement('td');
+
+            if (sourceCell) {
+                let _rawLeading = '';
+                for (const node of sourceCell.childNodes) {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        _rawLeading += node.nodeValue;
+                        break;
+                    }
+                }
+                const _countMatch = _rawLeading.match(/^\s*(\d[\d,]*)/);
+                tdCount.textContent = _countMatch ? _countMatch[1].replace(/,/g, '') : '';
+                tdCount.style.fontVariantNumeric = 'tabular-nums';
+            }
+
+            return [tdCount];
         },
 
         /**
@@ -13281,30 +13206,33 @@
             buttons: [ { label: 'Show all Entities tagged' } ],
             entityFeatures: {
                 'Areas': {
-                    columnExtractors: [ { sourceColumn: 'Area', extractor: 'tagCount_Name_Comment', syntheticColumns: ['Name', 'Tag count', 'Comment'] } ],
+                    columnExtractors: [ { sourceColumn: 'Area', extractor: 'tagCount', syntheticColumns: ['Tag count'] } ],
                     integerColumns: [ {sourceColumn: 'Tag count', align: 'R'} ]
                 },
                 'Artists': {
-                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'tagCount_Name_Comment', syntheticColumns: ['Name', 'Tag count', 'Comment'] } ],
+                    columnExtractors: [ { sourceColumn: 'Artist', extractor: 'tagCount', syntheticColumns: ['Tag count'] } ],
                     integerColumns: [ {sourceColumn: 'Tag count', align: 'R'} ]
                 },
                 'Events': {
-                    columnExtractors: [ { sourceColumn: 'Event', extractor: 'tagCount_Name_Date_Comment', syntheticColumns: ['Name', 'Tag count', 'Date', 'Comment'] } ],
+                    columnExtractors: [
+                        { sourceColumn: 'Event', extractor: 'tagCount',  syntheticColumns: ['Tag count'] },
+                        { sourceColumn: 'Event', extractor: 'eventDate', syntheticColumns: ['Date'] }
+                    ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
                     integerColumns: [ {sourceColumn: 'Tag count', align: 'R'}, {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
                     addEAA: 'Event',
-                    tooltipColumns: [ 'Name', ['(', 'Comment', ')'], '---', 'Date', 'Tag count' ]
+                    tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], '---', 'Date', 'Tag count' ]
                 },
                 'Instruments': {
-                    columnExtractors: [ { sourceColumn: 'Instrument', extractor: 'tagCount_Name_Comment', syntheticColumns: ['Name', 'Tag count', 'Comment'] } ],
+                    columnExtractors: [ { sourceColumn: 'Instrument', extractor: 'tagCount', syntheticColumns: ['Tag count'] } ],
                     integerColumns: [ {sourceColumn: 'Tag count', align: 'R'} ]
                 },
                 'Labels': {
-                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'tagCount_Name_Comment', syntheticColumns: ['Name', 'Tag count', 'Comment'] } ],
+                    columnExtractors: [ { sourceColumn: 'Label', extractor: 'tagCount', syntheticColumns: ['Tag count'] } ],
                     integerColumns: [ {sourceColumn: 'Tag count', align: 'R'} ]
                 },
                 'Places': {
-                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'tagCount_Name_Comment', syntheticColumns: ['Name', 'Tag count', 'Comment'] } ],
+                    columnExtractors: [ { sourceColumn: 'Place', extractor: 'tagCount', syntheticColumns: ['Tag count'] } ],
                     integerColumns: [ {sourceColumn: 'Tag count', align: 'R'} ]
                 },
                 'Release groups': {
@@ -13313,31 +13241,40 @@
                     // below adds its own inline thumbnail, or the cover art shows
                     // twice (see debug/cell.html, WIP.81).
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'tagCount_Name_Comment_Artists', syntheticColumns: ['Name', 'Tag count', 'Comment', 'Artist'] } ],
+                    columnExtractors: [
+                        { sourceColumn: 'Release group', extractor: 'tagCount',     syntheticColumns: ['Tag count'] },
+                        { sourceColumn: 'Release group', extractor: 'artistCredit', syntheticColumns: ['Artist'] }
+                    ],
                     injectedColumns: [ 'Relationships' ],
                     integerColumns: [ {sourceColumn: 'Tag count', align: 'R'} ],
                     addCAA: 'Release group',
-                    tooltipColumns: [ 'Name', 'Artist', '---', ['Tag count'] ]
+                    tooltipColumns: [ 'MB-Name', 'Artist', '---', ['Tag count'] ]
                 },
                 'Releases': {
                     // 'jesus2099' eraser — see 'Release groups' above (WIP.81).
                     columnErasers: [ { sourceColumn: 'Release', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release', extractor: 'tagCount_Name_Comment_Artists', syntheticColumns: ['Name', 'Tag count', 'Comment', 'Artist'] } ],
+                    columnExtractors: [
+                        { sourceColumn: 'Release', extractor: 'tagCount',     syntheticColumns: ['Tag count'] },
+                        { sourceColumn: 'Release', extractor: 'artistCredit', syntheticColumns: ['Artist'] }
+                    ],
                     injectedColumns: [ 'Relationships' ],
                     integerColumns: [ {sourceColumn: 'Tag count', align: 'R'} ],
                     addCAA: 'Release',
-                    tooltipColumns: [ 'Name', 'Artist', '---', ['Tag count'] ]
+                    tooltipColumns: [ 'MB-Name', 'Artist', '---', ['Tag count'] ]
                 },
                 'Recordings': {
-                    columnExtractors: [ { sourceColumn: 'Recording', extractor: 'tagCount_Name_Comment_Artists', syntheticColumns: ['Name', 'Tag count', 'Comment', 'Artist'] } ],
+                    columnExtractors: [
+                        { sourceColumn: 'Recording', extractor: 'tagCount',     syntheticColumns: ['Tag count'] },
+                        { sourceColumn: 'Recording', extractor: 'artistCredit', syntheticColumns: ['Artist'] }
+                    ],
                     integerColumns: [ {sourceColumn: 'Tag count', align: 'R'} ]
                 },
                 'Series': {
-                    columnExtractors: [ { sourceColumn: 'Series', extractor: 'tagCount_Name_Comment', syntheticColumns: ['Name', 'Tag count', 'Comment'] } ],
+                    columnExtractors: [ { sourceColumn: 'Series', extractor: 'tagCount', syntheticColumns: ['Tag count'] } ],
                     integerColumns: [ {sourceColumn: 'Tag count', align: 'R'} ]
                 },
                 'Works': {
-                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'tagCount_Name_Comment', syntheticColumns: ['Name', 'Tag count', 'Comment'] } ],
+                    columnExtractors: [ { sourceColumn: 'Work', extractor: 'tagCount', syntheticColumns: ['Tag count'] } ],
                     integerColumns: [ {sourceColumn: 'Tag count', align: 'R'} ]
                 }
             },
@@ -13346,7 +13283,9 @@
                 // function scans for <h2>…<ul> pairs in the content area and uses
                 // the h2 text up to "tagged", then singularises it as the column name
                 // (e.g. "Release groups tagged as «gig»" → "Release group").
-                listToTable: [ '' ]
+                listToTable: [ '' ],
+                // Single native column always at index 0 (one entity kind per page).
+                extractMainColumn: 0
             },
             tableMode: 'single'
         },
@@ -36782,6 +36721,8 @@ a { color: #1565c0; }`;
                 return `Extracted from '${src}': the event date in parentheses after the entity link (e.g. "2019-07-05"), split from the event cell. The name/comment/primary-alias split of this same cell comes from the separate 'extractMainColumn' feature.`;
             case 'artistCredit':
                 return `Extracted from '${src}': the artist credit following "by" in the release/recording cell. The name/comment/primary-alias split of this same cell comes from the separate 'extractMainColumn' feature.`;
+            case 'tagCount':
+                return `Extracted from '${src}': the leading integer tag vote count (e.g. "26" from "26 - Johnny Cash"), split from the entity cell. The name/comment/primary-alias split of this same cell comes from the separate 'extractMainColumn' feature.`;
             case 'video':
                 return `Extracted from '${src}': the video indicator icon, moved here from the '${src}' column. Filter/sort values: 'video' or 'audio'.`;
             case 'dateParts':
@@ -36813,34 +36754,6 @@ a { color: #1565c0; }`;
                     return `Extracted from '${src}': the disambiguation comment, split from the '${src}' column (excludes any primary alias, which has its own 'MB-Primary alias' column).`;
                 if (colName === 'MB-Primary alias')
                     return `Extracted from '${src}': the MusicBrainz primary alias (<i title="Primary alias">), split from the '${src}' column's disambiguation comment for standalone sorting and filtering.`;
-                break;
-            case 'tagCount_Name_Comment':
-                if (colName === 'Name')
-                    return `Extracted from '${src}': the entity name (text of the <bdi> link), split from the combined entity cell on tag-value pages.`;
-                if (colName === 'Tag count')
-                    return `Extracted from '${src}': the leading integer tag vote count (e.g. "26" from "26 - Johnny Cash"), split from the entity cell.`;
-                if (colName === 'Comment')
-                    return `Extracted from '${src}': the disambiguation comment in parentheses (e.g. "country music legend"), split from the entity cell.`;
-                break;
-            case 'tagCount_Name_Date_Comment':
-                if (colName === 'Name')
-                    return `Extracted from '${src}': the event name link, split from the combined event cell.`;
-                if (colName === 'Tag count')
-                    return `Extracted from '${src}': the leading integer tag vote count, split from the event cell.`;
-                if (colName === 'Date')
-                    return `Extracted from '${src}': the event date in parentheses after the entity link (e.g. "2019-07-05").`;
-                if (colName === 'Comment')
-                    return `Extracted from '${src}': the disambiguation comment (e.g. location text), split from the event cell.`;
-                break;
-            case 'tagCount_Name_Comment_Artists':
-                if (colName === 'Name')
-                    return `Extracted from '${src}': the release/recording name link, split from the combined cell.`;
-                if (colName === 'Tag count')
-                    return `Extracted from '${src}': the leading integer tag vote count, split from the release/recording cell.`;
-                if (colName === 'Comment')
-                    return `Extracted from '${src}': the disambiguation comment, split from the release/recording cell.`;
-                if (colName === 'Artist')
-                    return `Extracted from '${src}': the artist credit following "by" in the release/recording cell.`;
                 break;
             case 'Name_Comment_Description':
                 if (colName === 'Name')
