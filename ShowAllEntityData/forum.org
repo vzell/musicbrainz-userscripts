@@ -1,0 +1,94 @@
+* actual forum post
+
+# [VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities](https://github.com/vzell/mb-userscripts/tree/master?tab=readme-ov-file#mb_show_all_entity_data)
+
+## Changes since last version (9.99.746 -> 9.99.861)
+
+### New: consolidated Release tracklists
+
+* **Every track on a release, in one table** --- a new button on any release page pulls every disc/medium's tracklist into a single view you can filter and sort, instead of scrolling through separate native tables per medium.
+[SCREENSHOT: the new "Show all Tracks for Release" button and the resulting consolidated tracklist table]
+
+* **No more manual "Load all tracks" clicks** --- MusicBrainz hides a medium's tracklist beyond the first 100 tracks behind its own "Load all tracks..." link; the script now clicks that automatically and waits for every remaining track to arrive (showing a progress bar as it goes) before building the table, so a medium with hundreds of tracks --- e.g. https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b --- always ends up complete instead of silently cut off at 100.
+
+* **Who recorded it, where, and when** --- the underlying work, recording date, and the event or place a track was recorded (or mixed) at now get their own columns, pulled out of the wall of relationship text MusicBrainz normally buries them in.
+
+* **Engineers, producers, mixers and performers, each in their own column** --- recording engineer, producer, mixer, performer, and copyright/label credits are split out individually, with qualifiers like "additional" or "assistant" shown right next to the name.
+
+* **Instruments and vocals, sorted out** --- who played what and who sang what now show in their own columns instead of being buried in one long credits list.
+[SCREENSHOT: release tracklist showing the credit/instrument/vocals columns]
+
+* **Catches live-recording date mix-ups** --- for a track marked "live", a small warning or error icon flags any credit whose date doesn't match the track's own recording date --- handy for spotting data-entry mistakes at a glance.
+
+* **Optional AcoustID/ISRC columns and streaming links** --- turn on dedicated columns for AcoustID fingerprints and ISRC codes if you need them, and see streaming/download links per track when the companion streaming-links script is installed.
+
+* Added support for **individual ISRC pages** --- an /isrc/<code> page (listing every recording sharing that code) now loads and filters like everything else.
+
+### Enhancements
+
+* **"Show single-table" button** (off by default) --- for a relationship or discography list that already fits without needing MusicBrainz's own "load more" step, this opens a plain, single, unified table in a new tab instead of the usual split-by-category layout.
+[SCREENSHOT: the "Show single-table" button next to a relationship category]
+
+* **Column filter dropdown reorganised into collapsible sections** --- the little 📊 dropdown's extra filter options (structure, flags, credit details, names, roles, relationship icons, cover-art details) are now grouped under clickable, collapsible headings instead of one long undifferentiated list, and the quick-search box now searches across all of them at once.
+[SCREENSHOT: the reorganised unique-values dropdown with its collapsible sections]
+
+--> https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd -> DVD Video "Recording artist" column -> uvd menu open
+
+
+* **Smarter name/role/credit filters** --- the dropdown now offers ready-made filters for individual artist/place/work names, artist roles, and credit details (like "additional", a specific instrument, or a date range) wherever they're relevant, without you having to type them out.
+
+* **Multi-select relationship-icon filtering** --- relationship icons in the filter dropdown can now be checked and unchecked like any other filter option, instead of only letting you pick one at a time.
+
+* **Cover-art filter details** --- cover-art and event-art columns get their own filter section for image type and image comment.
+
+* **Friendlier multi-value lists** --- a cell listing several people or tags now reads naturally, e.g. "Jon Landau, Chuck Plotkin and Bruce Springsteen", instead of a plain comma-separated run.
+
+* **Configurable filter dropdown height** --- how many entries show before the dropdown list scrolls is now adjustable in settings.
+
+* **Relationships column** now also available on an artist's Works listing.
+
+### Fixes
+
+* Several display glitches on the new "Show single-table" snapshot tabs are fixed --- cover art no longer occasionally appears twice, relationship/tagger icons no longer disappear after filtering, and page headings/columns now always match the live page exactly.
+* Country/state columns correctly tell flagged US/Canada states apart from flagged cities, instead of occasionally mixing the two up.
+* The column filter no longer gets tripped up by the browser's own address/autofill suggestions popping into the field.
+* A handful of small bugs in the new release-tracklist credit columns are fixed --- missing or duplicated location chains, merged-together credits, and a few columns not appearing when they should.
+* The unique-values filter dropdown's flag icons and multi-word entries now space and align correctly.
+* Minor: name/comment/alias filtering now also works correctly for release, recording, and release-group references, not just the entity types it worked for before.
+* Minor: the Series page's Artists listing works again after a regression.
+
+## Changes since last version (9.99.861 -> 9.99.887)
+
+### Enhancements: a smarter filter dropdown
+
+* **One highlight, not two** --- hovering an entry with the mouse and moving the keyboard cursor no longer show two different highlighted rows at once; the two now stay in sync.
+* **Your cursor comes back where it was** --- closing the column filter dropdown (Escape, clicking away, or scrolling) now returns your typing cursor to the filter box you were in, so you can keep typing without re-clicking it.
+* **New "Join phrases" filter** --- for a cell crediting several people or entities joined by "&", "with", "feat.", and the like, every distinct joining phrase is now its own filterable entry.
+* **New "Name variations" filter** --- when a companion script marks a credited name as different from an entity's real name, you can now filter and highlight by either the credited name or the real one.
+* **"Entity info" filters organized by type** --- that filter section is now split into its own collapsible group per entity type (artist, event, place, ...) instead of one long mixed list.
+* **New structural filters for release and media details** --- distinct disc formats and sizes, release country/date/weekday, catalog-number prefixes, per-medium track counts, and more are now each their own filterable, checkable entries.
+[SCREENSHOT: the reorganised 📊 dropdown showing the new Format/Release events/Catalog sections]
+* **Country flags show up more consistently** in the filter dropdown for country/area columns.
+* **Filter by tag-vote count or "(cancelled)" event marker** where relevant.
+
+### Enhancements: report pages
+
+* **More report pages get clean name/comment/alias columns** --- around a dozen more `/report/...` pages (covering releases, recordings, labels, artists, places, series and works) now automatically split out a clean name, comment, and primary-alias column for their main entity, matching what other report pages already did.
+* **Grouped report rows keep their shared label** --- reports that group several rows under one shared identifier (e.g. "Amazon URLs linked to multiple releases") now correctly carry that identifier down onto every row in the group, instead of leaving it blank or turning it into a stray empty row.
+* **Reports Statistics companion script now feeds two new columns** --- when the third-party "MusicBrainz: Reports Statistics" script is installed, the Reports index page gets its own "Delta" and "When" columns pulled straight out of that script's own change indicators.
+
+### Enhancements: aliases pages
+
+* **Locale split into language + primary flag** --- an artist's Aliases page now shows the locale's language and whether it's marked primary as two separate, filterable columns.
+* **All 11 "Aliases" pages tidied up and unified** --- artist, release, recording, work, label and the rest of the aliases pages now share one consistent, more reliable implementation, fixing a long-standing issue where a row's later columns could silently shift left by one.
+
+### Fixes
+
+* Fixed several pages (`/instruments`, `/genres`, edit-related pages, and every entity's sub-pages) not loading the script at all when the URL had a trailing slash.
+* Added the missing "Show all Tags" button on an Event's tags page --- the one taggable entity type that didn't have it yet.
+* Fixed a report (`PlacesWithoutCoordinates`) always showing empty locality/region/country cells.
+* Fixed a report (`ArtistsWithMultipleOccurrencesInArtistCredits`) never filling in its name/comment/alias columns.
+* Fixed the "Actions" (Edit/Remove) column lingering as an empty header on alias pages after its content was already being hidden.
+* Fixed several columns silently losing a row of data on tag/rating/report pages whenever a page produced more than one column from the same source.
+* Renamed the "MB-Primary alias" column to plain "Primary alias" everywhere, matching MusicBrainz's own wording.
+* The video icon column now also appears for the Recordings list on tag/user-tag pages, matching other pages that already had it.

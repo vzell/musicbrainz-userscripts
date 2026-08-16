@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.888",
+    "date": "2026-08-17",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Resynced `ShowAllEntityData_HELP.txt` against every user-facing change from 9.99.864 through 9.99.887: documented the six new 📊 unique-values dropdown \"Cell structure\" sub-sections (Join phrases, Name variations, Format info, Release events - country/date/weekday, Country name/code details, Tracks info, Catalog info), the \"Entity info\" section's split into per-entity-type collapsible sub-sections plus its two page-specific variants (Tag count, Event cancelled), the mouse-hover/keyboard-focus sync and post-close filter-input focus restoration, the new \"Locale language\"/\"Primary locale\" columns on Aliases pages, the \"Video\"/\"Cancelled\" columns now also covering tag-value/user-tag-value's Recordings/Events sub-tables, and the \"MB-Primary alias\" → \"Primary alias\" rename (including report pages' now much broader automatic MB-Name/Comment/Primary-alias extraction). Also corrected stale text describing the long-removed `tagCount_*`/`primaryAlias` legacy extractor family."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.887",
     "date": "2026-08-16",
     "sections": [

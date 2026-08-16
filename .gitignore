@@ -6,3 +6,7 @@
 *~
 \#*#
 .\#*
+
+# Per-project debug snapshots (HTML captures, console logs) — scratch material,
+# not meant to be tracked
+debug/

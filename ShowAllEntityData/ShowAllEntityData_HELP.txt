@@ -223,6 +223,16 @@ every distinct non-empty value currently visible in that column.
                        userscript's tooltip marker) and "~ has name
                        variation" (an aliased/differently-spelled credited
                        entity name)
+    — 🔀 Join phrases — one entry per distinct literal phrase joining two or
+                       more credited entities inside one shared name element
+                       (e.g. "&", "and", "with", "feat.", "/") — phrases are
+                       never normalized toward a "canonical" spelling, so "&"
+                       and "and" stay distinct entries
+    — 🪪 Name variations — when a third-party userscript (e.g. jesus2099)
+                       marks a credited name as differing from the entity's
+                       real/canonical name, offers the full "RealName –
+                       SortName" tooltip string plus each half on its own,
+                       each prefixed "» name variation: "
     — 🎚️ Credit details — one checkbox per distinct credit attribute word
                        (e.g. "additional"), task value (e.g. "task: Second
                        Engineer"), date/date-range annotation (e.g. "on
@@ -231,14 +241,40 @@ every distinct non-empty value currently visible in that column.
                        (a trailing "[…]" bracket) — each independently
                        checkable, filtering to matching rows and
                        highlighting just the matched text
-    — 👤 Entity info   — "» name:"/"» comment:"/"» alias:" entries (labelled
-                       and sorted by entity type, e.g. "» place name:", "»
-                       area name:" — most-specific creative/production
-                       entities first, then event, then geographic), one per
-                       distinct bare entity name / disambiguation comment /
-                       primary alias found in a cell — works on native
-                       unmodified MusicBrainz markup too, not just this
-                       script's own columns
+    — 👤 Entity info   — one independently-collapsible sub-section per entity
+                       type actually present (e.g. "Entity info - Artist
+                       name", "Entity info - Event name", "Entity info -
+                       Place name" — using that entity type's own native MB
+                       icon), plus separate "Entity info - Comment" and
+                       "Entity info - Alias" sub-sections; each collapses and
+                       remembers its own state independently. "» name:"/
+                       "» comment:"/"» alias:" entries, one per distinct bare
+                       entity name / disambiguation comment / primary alias
+                       found in a cell — works on native unmodified
+                       MusicBrainz markup too, not just this script's own
+                       columns. Two page-specific sub-sections also appear
+                       here when relevant: "Entity info - Tag count"
+                       (tag-value-entity's own per-entity-kind column) and
+                       "Entity info - Event cancelled" (the Event column on
+                       area/place/artist-events pages and the Events
+                       sub-table of tag/user-tag pages)
+    — 💿 Format info   — distinct disc sizes (7"/10"/12"), medium counts, a
+                       format type (e.g. "Vinyl") that matches regardless of
+                       size, and combined "2xVinyl"-style entries for an
+                       exact count+type combination in one click
+    — 🌐/📅/📆 Release events — on the "Country/Date" column: distinct
+                       country codes with their native flag (🌐), date text
+                       (📅), and — when the chaban companion script is
+                       installed — weekday abbreviation (📆), each its own
+                       collapsible sub-section
+    — 🌍/🏷️ Country details — on the synthetic "Country" column produced by
+                       splitting "Country/Date": country name (🌍) and
+                       country code (🏷️) in two separate sub-sections
+    — 🎵 Tracks info   — distinct per-medium track counts, plus a "multiple
+                       mediums" flag for rows joined by "+"
+    — 🏷️ Catalog info  — distinct catalog-number prefixes (e.g. "CBS"), plus
+                       independent "has prefix" / "no prefix" / "no catalog
+                       number" (MusicBrainz's own "[none]" placeholder) flags
     — 🎭 Roles         — "» role:" entries, one per distinct artist event-role
                        found in a native artist-roles list or the plain-text
                        "Role" column on an artist's own Events tab
@@ -261,12 +297,17 @@ every distinct non-empty value currently visible in that column.
   (Producer, Engineer, Instruments, tags, …) reads as "Jon Landau, Chuck
   Plotkin and Bruce Springsteen" instead of a run-on string, for display/
   tooltip purposes (the underlying filter value is unchanged).
-• Navigate with ↑/↓ / Home / End; Enter toggles the keyboard-focused value's
-  checkbox the same way clicking it does.
+• Navigate with ↑/↓ / Home / End; Enter or Space toggles the keyboard-focused
+  value's checkbox the same way clicking it does. Hovering a value with the
+  mouse moves the same keyboard-focus highlight, so exactly one entry is
+  highlighted at a time regardless of which input method you use.
 • Escape — first press clears the quickfilter (if non-empty); second press
   (or first press when quickfilter is already empty) closes the panel.
 • The panel closes automatically when clicking outside it or when the page
-  is scrolled (scrolling inside the panel itself does not close it).
+  is scrolled (scrolling inside the panel itself does not close it). Closing
+  it — by any of the methods above — returns keyboard focus to the column's
+  filter input if you had checked/unchecked anything during the session, so
+  you can keep typing right where you left off.
 • Cache-status emoji (🟢/🟡/🔵/🗄️/⚠️) injected into CAA/EAA artwork columns
   are automatically excluded so that release/event title text is never mixed
   with artwork metadata in the dropdown values.
@@ -508,18 +549,26 @@ COLUMN MANAGEMENT
     — "Format Types"            strips quantity prefixes (e.g. "8×") from
                                 the Format column on release-group, label, and
                                 series pages
+    — "Locale language" + "Primary locale"  split from the "Locale" column on
+                                Aliases pages — the plain locale text (e.g.
+                                "English"), and "true" when that row's locale
+                                carries MusicBrainz's own "(primary)" marker
     — "CAA" / "EAA"             cover / event art thumbnail column on pages
                                 that carry artwork
-    — "Video"                   extracted from the Title cell on recording pages
+    — "Video"                   extracted from the Title cell on recording
+                                pages, and on the Recordings sub-table of
+                                tag/user-tag pages
     — "Cancelled"               extracted from the Event cell on event pages
-    — "Primary Alias"           extracted from the main entity name cell on
-                                a handful of tag-value/tag-count-family pages
-                                that have no "MB-Name"/"Comment" split (below)
-    — "MB-Name" + "Comment" + "MB-Primary alias"  extracted from the main
-                                entity name cell on pages that expose the raw
-                                MusicBrainz entity name, its disambiguation
-                                comment, and its primary alias as separate
-                                columns
+                                and the Events sub-table of tag/user-tag pages
+    — "MB-Name" + "Comment" + "Primary alias"  extracted from the main entity
+                                name cell on tag/rating/report pages, exposing
+                                the raw MusicBrainz entity name, its
+                                disambiguation comment, and its primary alias
+                                as separate columns; report pages additionally
+                                get this split automatically for whichever
+                                main entity column they carry (Release,
+                                Release group, Recording, Label, Artist,
+                                Event, Place, Series, Work, or Collaborator)
     — "Last edited date" + "Last edited time"  split from report pages'
                                 native "Last edited" timestamp column
     — "Annotation chars"        character count of the "Annotation" column,
