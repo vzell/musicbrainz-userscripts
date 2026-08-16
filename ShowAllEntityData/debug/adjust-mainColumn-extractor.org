@@ -38,3 +38,15 @@ first column on the final rendered page) can NEVER have a primary alias
 #+end_example
 
 
+1.)
+
+Currently ONLY the following URL https://musicbrainz.org/instruments is matched by the pageType 'instrument-list'
+The URL https://musicbrainz.org/instruments/ also produced the same output and should be added to.
+
+Mybe the userscript "@include" directive has to be adjusted to
+
+2.)
+
+Currently the following URLs e.g https://musicbrainz.org/event/a350d5fd-4481-43c1-8eab-57fe5e55b8f3/tags
+are not handled by the one of the entity tags sub-pages (/<entity>/<mbid>/tags)
+
