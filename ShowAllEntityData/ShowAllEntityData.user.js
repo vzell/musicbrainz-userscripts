@@ -12575,8 +12575,8 @@
                 'Artists': {},
                 'Events': {
                     columnExtractors: [
-                        { sourceColumn: 'Event', extractor: 'eventDate',      syntheticColumns: ['Date'] },
-                        { sourceColumn: 'Event', extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] }
+                        { sourceColumn: 'Event', extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] },
+                        { sourceColumn: 'Event', extractor: 'eventDate',      syntheticColumns: ['Date'] }
                     ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
@@ -12646,8 +12646,8 @@
                 'Artists': {},
                 'Events': {
                     columnExtractors: [
-                        { sourceColumn: 'Event', extractor: 'eventDate',      syntheticColumns: ['Date'] },
-                        { sourceColumn: 'Event', extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] }
+                        { sourceColumn: 'Event', extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] },
+                        { sourceColumn: 'Event', extractor: 'eventDate',      syntheticColumns: ['Date'] }
                     ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, { sourceColumn: 'Rating', align: 'C' } ],
@@ -13161,8 +13161,8 @@
                 'Artists': {},
                 'Events': {
                     columnExtractors: [
-                        { sourceColumn: 'Event', extractor: 'eventDate',      syntheticColumns: ['Date'] },
-                        { sourceColumn: 'Event', extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] }
+                        { sourceColumn: 'Event', extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] },
+                        { sourceColumn: 'Event', extractor: 'eventDate',      syntheticColumns: ['Date'] }
                     ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
@@ -13226,7 +13226,8 @@
                 'Artists': {},
                 'Events': {
                     columnExtractors: [
-                        { sourceColumn: 'Event', extractor: 'eventDate', syntheticColumns: ['Date'] }
+                        { sourceColumn: 'Event', extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] },
+                        { sourceColumn: 'Event', extractor: 'eventDate',      syntheticColumns: ['Date'] }
                     ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
@@ -13359,7 +13360,8 @@
                 'Artists': {},
                 'Events': {
                     columnExtractors: [
-                        { sourceColumn: 'Event', extractor: 'eventDate', syntheticColumns: ['Date'] }
+                        { sourceColumn: 'Event', extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] },
+                        { sourceColumn: 'Event', extractor: 'eventDate',      syntheticColumns: ['Date'] }
                     ],
                     syntheticColumnExtractors: [ { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] } ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
