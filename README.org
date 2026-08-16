@@ -95142,6 +95142,13 @@ https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordin
 * TODO problem with "Eventdate" appearing before main column
 
 
+* TODO Bug: when filtering on a join condition like "&" (plus additioanlly a artist) and then closing and reopening the udv, the "&" is gone from the uvd menu
+
+Bug: when filtering on a join condition like "&" (plus additioanlly a artist) and then closing and reopening the udv, the "&" is gone from the uvd menu
+
+https://musicbrainz.org/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances
+
+
 * Checking CAA columns on different pageTypes
 
 | pageType              | subtable                                                         | URL                 | single/multi     | CAA               | multi-row collapse symbol present | Relationships | Picard |
