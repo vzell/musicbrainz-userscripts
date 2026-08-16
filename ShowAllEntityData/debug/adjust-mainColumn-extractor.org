@@ -1,0 +1,72 @@
+** adjust mainColumn extractor to account for the legacy extractors
+
+1.)
+
+First of all, I merged some fixes from the main branch into our current one. Make sure to account for this if neccessary.
+
+2.)
+
+The actual implementation is broken at least for the following cases
+
+#+begin_example
+user-username-tag-value-original.html - original https://musicbrainz.org/user/vzell/tag/rescheduled
+user-username-tag-value-final.html - final rendered ttps://musicbrainz.org/user/vzell/tag/rescheduled - number of "column headers"/"column row cells" differ by one
+user-username-tag-value-cancelled-original.html - original https://musicbrainz.org/user/vzell/tag/cancelled
+user-username-tag-value-cancelled-final.html - final rendered ttps://musicbrainz.org/user/vzell/tag/cancelled - number of "column headers"/"column row cells" differ by one
+tag-value-original.html - original https://musicbrainz.org/tag/rock
+tag-value-final.html - final rendered https://musicbrainz.org/tag/rock - number of "column headers"/"column row cells" differ by one in the "Areas", "Events" and "Places" sections/subtables
+#+end_example
+
+3.)
+
+The three older ColumnDataExtractor entries
+
+#+begin_example
+Name_Comment
+Name_Comment_Artists
+Name_Date_Comment
+#+end_example
+
+never surfaced the primary-alias text as its own column (it was just stripped out of "Comment")
+
+a.)
+
+What I really want is that the original column on which this extraction is defined should never be touched.
+
+b.)
+
+I always want the "MB-Name", "Comment" and "MB-Primary alias" (the last two are optional on the initial pages)
+extracted, so they should always be there (even empty) on the final rendered pages.
+
+So maybe we should enhance our current "features.extractMainColumn driving _extractMainColumnParts()" functionality to
+also support "Artists" (like in the "Name_Comment_Artists" extractor function) and "Date (like in the "Name_Date_Comment"
+extractor function) if available in the "mainColumn", as all three older ColumnDataExtractors already extract name and comment.
+
+c.)
+
+So basically we then would probably get rid of the following extractor entries introduced in the last session
+
+#+begin_example
+{ sourceColumn: '<entity>', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] }
+#+end_example
+
+d.)
+
+and maybe we can also remove the "primaryAlias(sourceCell)" function from our code base altogether if not needed
+somewhere else. Specifically check the following configurations and their code
+
+#+begin_example
+    276:            label: "Relocate H1 comment-span alias block (initial page)",
+    283:            label: "Relocate H1 comment-span alias block (final rendered page)",
+#+end_example
+
+if "primaryAlias(sourceCell)" is used there, or could be used there.
+
+3.)
+
+The function "Name_Comment_Description(sourceCell)" which is used just for pageType "instrument-list" should stay
+untouched, it's a MB entity which can never been edited by an enduser itself (onyl by special editors which are allowed
+to add new instruments to the MB database). So a hyperlinked instrument entity on the initial page (or the "<Instrument type> instrument"
+first column on the final rendered page) can NEVER have a primary alias
+
+
