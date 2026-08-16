@@ -94027,7 +94027,6 @@ Do not code yet just check
   alone)?
 #+end_example
 
-
 * DONE fixes to trailing / handling and missing 'event-tags" support
 
 1.)
@@ -94320,7 +94319,6 @@ so basically everywhere where we currently have
 ** DONE add "cancelledEvent" also to the tag-value/user-tag-value's Events blocks
 
 add "cancelledEvent" also to the tag-value/user-tag-value's Events blocks
-
 
 * DONE https://musicbrainz.org/report/SetInDifferentRG needs "Primary alias" column, so extractMainColumn on "Release group"
 
@@ -95179,7 +95177,7 @@ How can I extend "statusline.sh" to show the "Current session" and "Weekly limit
 #+end_example
 
 
-* TODO plan: merge current branch in main, commit and push
+* DONE plan: merge current branch in main, commit and push
 
 Merge current branch in main, commit and push:
 
