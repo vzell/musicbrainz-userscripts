@@ -94063,8 +94063,9 @@ current pageTypes and only influence pageTypes which still use these legacy extr
      a bug fix, and can be a separate follow-up if wanted.
      - ColumnDataExtractor.primaryAlias itself is not deleted — it's still
      needed by the 3 kept usages.
-
-
+     
+** adjust mainColumn extractor to account for the legacy extractors
+     
 * DONE https://musicbrainz.org/report/SetInDifferentRG needs "Primary alias" column, so extractMainColumn on "Release group"
 
 Maybe create a copy of

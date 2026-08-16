@@ -1,0 +1,40 @@
+** adjust mainColumn extractor to account for the legacy extractors
+
+1.)
+
+
+Separately, four older ColumnDataExtractor entries — Name_Comment,
+     Name_Comment_Artists, Name_Comment_Description, Name_Date_Comment
+     (ShowAllEntityData.user.js:4088-4212) — do a near-identical Name/Comment
+     split via a shared helper, _tagCountBase() (:2745-2804), but output a
+     column named plain Name, and never surface the primary-alias text as
+     its own column (it's just stripped out of Comment so it doesn't leak in
+     mislabeled). These four are used across 6 page types (user-ratings-type,
+     user-ratings, instrument-list, user-tag-value-entity, user-tag-value,
+     tag-value), 55 columnExtractors entries total, covering entity kinds
+     Area/Artist/Event/Instrument/Label/Place/Recording/Release/Release
+     group/Series/Work.
+     
+primaryAlias (:3678) already does exactly this job: finds
+     <i title="Primary alias"> in the source cell, copies its text to its own
+     synthetic column, and removes it from the cell (idempotent — safe to run
+     whether or not another extractor already cloned/read that cell). It's
+     already wired for Event at 3 sites.
+          
+
+3.)
+
+
+The functin "Name_Comment_Description(sourceCell)" which is used just for pageType "instrument-list" should stay
+untouched, its a MB entity which can never been edited by an enduser itself (onyl by special editors which are allowed
+to add new instruments to the MB database). So a hyperlinked instrument entity on the initial page (or the "<Instrument type> instrument"
+first column on the final rendered page) can NEVER have a primary alias
+
+4.)
+
+#+begin_example
+    276:            label: "Relocate H1 comment-span alias block (initial page)",
+    283:            label: "Relocate H1 comment-span alias block (final rendered page)",
+#+end_example
+
+
