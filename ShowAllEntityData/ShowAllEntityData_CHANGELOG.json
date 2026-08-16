@@ -1,5 +1,18 @@
 [
   {
+    "version": "9.99.886",
+    "date": "2026-08-16",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Added a new \"Entity info - Event cancelled\" section to the unique-values dropdown for `area-events`/`place-events`/`artist-events`'s \"Event\" column, and a new \"Event info - Event cancelled\" section (sibling of the renamed \"Event info - Event date\") for `tag-value`/`user-tag-value`'s \"Events\" group's \"Event\" column — both list the \"(cancelled)\" marker with how many events carry it, and highlight the matched \"cancelled\" text when checked. `_findCellEventCancelled()` re-derives the marker the same way `ColumnDataExtractor.cancelledEvent` already does for the synthetic \"Cancelled\" column. Deliberately scoped to only these 5 named page types (via `activeDefinition.type`, reliable even on `tag-value`/`user-tag-value`'s `tableMode: 'multi'` pages where `activeColumnExtractors` itself is not) even though several OTHER page types (`user-ratings`/`user-ratings-type`/`user-tag-value-entity`/`collections-releases`/`search`/`series-releases`) also have a `cancelledEvent` extractor on their own Event column — their dropdown behavior is intentionally left unchanged.",
+          "Renamed the unique-values dropdown's \"Event info\" section to \"Event info - Event date\", and its `date: <value>` entries to `event date: <value>`, to disambiguate now that a sibling \"Event info - Event cancelled\" section exists alongside it. Unrelated to `revdate:` (the \"Release events - date\" family's own `date:` entries), which keeps its existing label."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.885",
     "date": "2026-08-16",
     "sections": [

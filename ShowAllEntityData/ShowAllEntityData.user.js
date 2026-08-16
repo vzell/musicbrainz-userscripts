@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.885+2026-08-16
+// @version      9.99.886+2026-08-16
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -17694,6 +17694,31 @@
     }
 
     /**
+     * Extracts the "(cancelled)" marker's own text (e.g. "cancelled") from
+     * an Events "Event" cell — re-derives from `span.cancelled` the exact
+     * same way `ColumnDataExtractor.cancelledEvent` already does for its
+     * synthetic "Cancelled" column (`sourceCell.querySelector('span.cancelled')`,
+     * preferring the inner `<bdi>` text, falling back to the span's own
+     * text with the surrounding "(" ")" stripped), so both agree on the
+     * same shape. Deliberately only called for the "Event" column on the
+     * specific page types that request it (gated at the `openUniqDrop()`
+     * call site, since this DOM marker is present on several OTHER page
+     * types too whose dropdown behavior isn't being changed here) — see
+     * debug/entity-event.html, debug/cancelled.html, debug/tag-2024.html.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?string} the marker text (normally "cancelled"), or null if absent
+     */
+    function _findCellEventCancelled(cell) {
+        if (!cell) return null;
+        const cancelledSpan = cell.querySelector('span.cancelled');
+        if (!cancelledSpan) return null;
+        const bdi = cancelledSpan.querySelector('bdi');
+        const text = bdi ? bdi.textContent.trim() : cancelledSpan.textContent.replace(/[()]/g, '').trim();
+        return text || null;
+    }
+
+    /**
      * Tests whether a table cell matches a "Cell structure" checkbox mode
      * from `openUniqDrop()`'s synthetic entries (`makeSynItem`/
      * `makeValueSynItem`/`makeInlineArtItem`) — the single source of truth
@@ -17930,6 +17955,17 @@
             // _findCellTagCount()'s own extraction.
             const want = mode.slice(9);
             return !!cell && _findCellTagCount(cell) === want;
+        }
+        if (mode.startsWith('entitycancelled:') || mode.startsWith('eventcancelled:')) {
+            // Compound mode — matches the "(cancelled)" marker's own text
+            // in an Events "Event" cell, from _findCellEventCancelled()'s
+            // own extraction. Two kind prefixes ('entitycancelled:' for
+            // area-events/place-events/artist-events, 'eventcancelled:'
+            // for tag-value/user-tag-value) route to two different
+            // unique-values sections (see MB_UNIQ_KIND_TO_SECTION) but
+            // share identical matching semantics, so both are handled here.
+            const want = mode.slice(mode.indexOf(':') + 1);
+            return !!cell && _findCellEventCancelled(cell) === want;
         }
         if (mode.startsWith('catalogprefix:')) {
             // Compound mode — matches one "Catalog#" list item's own
@@ -34276,6 +34312,13 @@ a { color: #1565c0; }`;
         entityComment:            { label: 'Entity info - Comment',            glyph: '👤' },
         entityAlias:              { label: 'Entity info - Alias',              glyph: '👤' },
         entityTagCount:           { label: 'Entity info - Tag count',          glyph: '🏷️' },
+        // 'Entity info - Event cancelled' — area-events/place-events/
+        // artist-events only (see MB_UNIQ_KIND_TO_SECTION's 'entitycancelled'
+        // key); a plain "Event info - Event cancelled" (below) is used
+        // instead when the surrounding page IS one of the "Event info"
+        // family (tag-value/user-tag-value), since those pages already
+        // have an "Event info" section for the event's own date.
+        entityEventCancelled:     { label: 'Entity info - Event cancelled',    glyph: '🚫' },
         joinPhrase:    { label: 'Join phrases',        glyph: '🔀' },
         nameVariation: { label: 'Name variations',    glyph: '🪪' },
         roles:         { label: 'Roles',              glyph: '🎭' },
@@ -34290,7 +34333,8 @@ a { color: #1565c0; }`;
         countryCodeInfo: { label: 'Country code details', glyph: '🏳️' },
         tracksInfo:    { label: 'Tracks info',        glyph: '🎵' },
         catalogInfo:   { label: 'Catalog info',       glyph: '🏷️' },
-        eventInfo:     { label: 'Event info',         glyph: '📅' },
+        eventInfo:     { label: 'Event info - Event date',       glyph: '📅' },
+        eventCancelled: { label: 'Event info - Event cancelled', glyph: '🚫' },
     };
 
     /**
@@ -34335,6 +34379,8 @@ a { color: #1565c0; }`;
         trackspermedium: 'tracksInfo',
         catalogprefix: 'catalogInfo',
         eventdate: 'eventInfo',
+        entitycancelled: 'entityEventCancelled',
+        eventcancelled: 'eventCancelled',
     };
 
     /**
@@ -35036,6 +35082,32 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights the "(cancelled)" marker's own text for an
+     * `entitycancelled:`/`eventcancelled:` compound structure-mode filter
+     * — re-derives from `_findCellEventCancelled()` directly (same
+     * "verify before highlighting" pattern as `_highlightTagCountMatch()`
+     * above), then scopes the highlight to the cell's own `span.cancelled`
+     * wrapper (mirroring `_highlightCatalogPrefixMatch()`'s "scope to the
+     * one element this value came from" approach) so only the bare word
+     * "cancelled" itself gets wrapped — not the surrounding "(" ")" —
+     * with zero risk of colliding with anything else in the cell.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"entitycancelled:cancelled"` or `"eventcancelled:cancelled"`.
+     */
+    function _highlightEventCancelledMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(mode.indexOf(':') + 1);
+        if (!_want) return;
+        if (_findCellEventCancelled(cell) !== _want) return;
+        const cancelledSpan = cell.querySelector('span.cancelled');
+        if (!cancelledSpan) return;
+        cancelledSpan.normalize();
+        highlightCrossTag(cancelledSpan, /cancelled/gi, 'mb-column-filter-highlight');
+    }
+
+    /**
      * Highlights the exact matched value for a `formatsize:`/`formatcount:`/
      * `formatcombo:`/`formattype:` compound structure-mode filter —
      * "Format" has no per-group wrapper element either, so this is a
@@ -35639,6 +35711,7 @@ a { color: #1565c0; }`;
                     // 'joinphrase:'/'namevariation:'/'revcountry:'/'countryname:'/
                     // 'countrycode:'/'revdate:'/'revweekday:'/'catalogprefix:'/
                     // 'catalog-none'/'trackspermedium:'/'eventdate:'/'tagcount:'/
+                    // 'entitycancelled:'/'eventcancelled:'/
                     // 'formatsize:'/'formatcount:'/'formatcombo:'/'formattype:'/
                     // 'role:' and 'name-variation' structure modes DO
                     // correspond to exact visible content and get
@@ -35681,6 +35754,8 @@ a { color: #1565c0; }`;
                                     _highlightEventDateMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('tagcount:')) {
                                     _highlightTagCountMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('entitycancelled:') || mode.startsWith('eventcancelled:')) {
+                                    _highlightEventCancelledMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('formatsize:') || mode.startsWith('formatcount:') ||
                                            mode.startsWith('formatcombo:') || mode.startsWith('formattype:')) {
                                     _highlightFormatMatch(row.cells[f.idx], mode);
@@ -44940,6 +45015,16 @@ a { color: #1565c0; }`;
         // below (computed from activeColumnExtractors), a no-op Map for
         // any other column/page.
         const entityTagCountValueCounts = new Map();
+        // Distinct "(cancelled)" marker values (normally just "cancelled")
+        // from an Events "Event" cell — see _findCellEventCancelled()'s own
+        // JSDoc. Gated below (computed from activeDefinition.type + the
+        // "Event" column name) to only the specific page types that
+        // requested it; a no-op Map on every other page/column. Shared by
+        // both the 'entitycancelled' and 'eventcancelled' kinds — which
+        // page type is active decides which of the two kind strings is
+        // actually used at collection time (see _eventCancelledKind below),
+        // not which Map.
+        const eventCancelledValueCounts = new Map();
         // entityNameGlyphMap: name -> first-seen glyphClass (e.g.
         // 'releaselink'), so the "» name:" entry can show the same
         // entity-type icon the old per-href entity-glyph row did — see
@@ -45103,6 +45188,26 @@ a { color: #1565c0; }`;
         // 'user-tag-value-entity' (no 'tagCount' extractor exists there)
         // and every other page type.
         const isTagEntityCol = activeColumnExtractors.some(e => e.extractor === 'tagCount' && e.sourceColumn === _colHeaderName);
+        // Which 'cancelled' kind (if any) applies to the currently-open
+        // "Event" column, decided purely by `activeDefinition.type` — the
+        // page-load-scoped page type, unaffected by activeColumnExtractors'
+        // own per-group reassignment on multi-table pages (tag-value/
+        // user-tag-value are tableMode: 'multi'), so this stays reliable
+        // regardless of which entity-kind group's table is actually open.
+        // `isEventCol` (a per-table, DOM-derived column-name check) still
+        // does the real work of scoping to the right column/table — e.g. on
+        // tag-value's other entity-kind tables (Areas/Artists/...), which
+        // have no "Event" column at all, this is null regardless of page
+        // type. Deliberately scoped to only the page types that requested
+        // this (see debug/entity-event.html, debug/cancelled.html,
+        // debug/tag-2024.html) — NOT every page type with a 'cancelledEvent'
+        // extractor (e.g. user-ratings/search/collections-releases/
+        // series-releases/user-tag-value-entity also have one but were not
+        // asked for).
+        const _eventCancelledKind = !isEventCol ? null
+            : ['area-events', 'place-events', 'artist-events'].includes(activeDefinition && activeDefinition.type) ? 'entitycancelled'
+            : ['tag-value', 'user-tag-value'].includes(activeDefinition && activeDefinition.type) ? 'eventcancelled'
+            : null;
         const tbody = table.tBodies[0];
         if (tbody) {
             Array.from(tbody.rows).forEach(row => {
@@ -45227,6 +45332,10 @@ a { color: #1565c0; }`;
                 if (isTagEntityCol) {
                     const _tagCount = _findCellTagCount(cell);
                     if (_tagCount !== null) entityTagCountValueCounts.set(_tagCount, (entityTagCountValueCounts.get(_tagCount) || 0) + 1);
+                }
+                if (_eventCancelledKind) {
+                    const _cancelled = _findCellEventCancelled(cell);
+                    if (_cancelled !== null) eventCancelledValueCounts.set(_cancelled, (eventCancelledValueCounts.get(_cancelled) || 0) + 1);
                 }
                 const _rowAttrWords = new Set();
                 cell.querySelectorAll('.mb-credit-attr').forEach(s => {
@@ -46645,7 +46754,8 @@ a { color: #1565c0; }`;
                  : kind === 'countrycode' ? '» country code: '
                  : kind === 'trackspermedium' ? '» tracks: '
                  : kind === 'catalogprefix' ? '» prefix: '
-                 : kind === 'eventdate'  ? '» date: '
+                 : kind === 'eventdate'  ? '» event date: '
+                 : (kind === 'entitycancelled' || kind === 'eventcancelled') ? '» event cancelled: '
                  : kind === 'role'       ? '» role: '
                  : kind === 'arttype'    ? '» image type: '
                  : kind === 'artcomment' ? '» image comment: '
@@ -46796,6 +46906,7 @@ a { color: #1565c0; }`;
         const _sortedAliasValues   = Array.from(entityAliasValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         // Numeric sort (not lexicographic) so "2" sorts before "10".
         const _sortedTagCountValues = Array.from(entityTagCountValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+        const _sortedEventCancelledValues = Array.from(eventCancelledValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedJoinPhraseValues = Array.from(joinPhraseValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedNameVariationValues = Array.from(nameVariationValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         // Numeric sort (not lexicographic) so "2" sorts before "10".
@@ -46817,7 +46928,7 @@ a { color: #1565c0; }`;
             _sortedDateValues.length > 0 || _sortedEventDateValues.length > 0 || _sortedInstrumentValues.length > 0 ||
             _sortedAltNameValues.length > 0 ||
             _sortedNameValues.length > 0 || _sortedCommentValues.length > 0 || _sortedAliasValues.length > 0 ||
-            _sortedTagCountValues.length > 0 ||
+            _sortedTagCountValues.length > 0 || _sortedEventCancelledValues.length > 0 ||
             _sortedJoinPhraseValues.length > 0 || _sortedNameVariationValues.length > 0 ||
             _sortedFormatSizeValues.length > 0 || _sortedFormatCountValues.length > 0 || _sortedFormatComboValues.length > 0 || _sortedFormatTypeValues.length > 0 ||
             _sortedRevCountryValues.length > 0 || _sortedRevDateValues.length > 0 || _sortedRevWeekdayValues.length > 0 ||
@@ -46865,6 +46976,7 @@ a { color: #1565c0; }`;
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedTagCountValues.forEach(v => makeValueSynItem('tagcount', v, entityTagCountValueCounts.get(v)));
+            if (_eventCancelledKind) _sortedEventCancelledValues.forEach(v => makeValueSynItem(_eventCancelledKind, v, eventCancelledValueCounts.get(v)));
             _sortedJoinPhraseValues.forEach(v => makeValueSynItem('joinphrase', v, joinPhraseValueCounts.get(v)));
             _sortedNameVariationValues.forEach(v => makeValueSynItem('namevariation', v, nameVariationValueCounts.get(v)));
             _sortedFormatSizeValues.forEach(v => makeValueSynItem('formatsize', v, formatSizeValueCounts.get(v)));
@@ -46902,6 +47014,7 @@ a { color: #1565c0; }`;
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedTagCountValues.forEach(v => makeValueSynItem('tagcount', v, entityTagCountValueCounts.get(v)));
+            if (_eventCancelledKind) _sortedEventCancelledValues.forEach(v => makeValueSynItem(_eventCancelledKind, v, eventCancelledValueCounts.get(v)));
             _sortedJoinPhraseValues.forEach(v => makeValueSynItem('joinphrase', v, joinPhraseValueCounts.get(v)));
             _sortedNameVariationValues.forEach(v => makeValueSynItem('namevariation', v, nameVariationValueCounts.get(v)));
             _sortedFormatSizeValues.forEach(v => makeValueSynItem('formatsize', v, formatSizeValueCounts.get(v)));

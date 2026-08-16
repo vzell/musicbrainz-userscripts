@@ -94696,6 +94696,7 @@ Values from "Entity info - Tag count" when filtered are not yet highlighted as t
 
 
 * TODO If the FIRST column name is actually "Event" also extract all unique "cancelled" events
+** i
 
 1.)
 
@@ -94714,14 +94715,17 @@ See an example how it currently renders at the final page for "type: 'place-even
 
 2.)
 
-a.)
-
-If the FIRST column name is actually "Event" also extract all unique "cancelled" events for the pageTypes
+For the pageTypes
 
 #+begin_example
-https://musicbrainz.org/user/vzell/tag/cancelled
-https://musicbrainz.org/tag/2024
+https://musicbrainz.org/user/vzell/tag/cancelled - final rendered page at @debug/cancelled.html
+https://musicbrainz.org/tag/2024 - final rendered page at @debug/tag-2024.html
 #+end_example
+
+a.)
+
+If the FIRST column name is also actually "Event" also extract all unique "cancelled" events 
+under a new section "Event info - Event cancelled". When filtered the string "cancelled" should be highlighted.
 
 b.)
 
@@ -94736,6 +94740,37 @@ to
 #+begin_example
 <span class="mb-uniq-section-label">Event info - Event date</span>
 #+end_example
+
+and rename a typical entry like
+
+#+begin_example
+date: 2020-05-02
+#+end_example
+
+to
+
+#+begin_example
+event date: 2020-05-02
+#+end_example
+
+** act on @debug/xxx-events.org
+
+act on @debug/xxx-events.org
+
+* add a "Video" column
+
+Add a column extractor
+
+#+begin_example
+                    columnExtractors: [
+                        { sourceColumn: 'Recording', extractor: 'video', syntheticColumns: ['Video'] }
+                    ],
+#+end_example
+
+to the "Recording" column of the section/sub-table "Recordings" on the multi-table pageType 'tag-value' e.g. https://musicbrainz.org/tag/2024
+see @debug/tag-2024.html
+
+But also to the "Recordings" section of pageType 'user-tag-value' 
 
 
 * DONE new extractor for alias pages: Locale ==> Locale + Type

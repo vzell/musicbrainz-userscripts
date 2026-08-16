@@ -6132,3 +6132,59 @@ second follow-up round.
   lives) — an Event cell's date isn't a credit, and the two Maps/kinds
   ('date' vs 'eventdate') must stay fully independent since they're fed by
   completely different extraction mechanisms.
+
+## 2026-08-16 — "Event info" split into date/cancelled, entity-events cancelled section (v9.99.886)
+
+- `entity-event.html` (`place-events` pageType final render): confirms the
+  "Event" column's `<a href="/event/…"><bdi>…</bdi></a> <span
+  class="cancelled">(<bdi>cancelled</bdi>)</span>` shape — no trailing
+  bare "(YYYY-MM-DD)" text here (unlike `tag-value`/`user-tag-value`
+  below), since `area-events`/`place-events`/`artist-events` all have a
+  SEPARATE native "Date" column instead.
+- `cancelled.html` (`/user/vzell/tag/cancelled`, `user-tag-value`
+  pageType) and `tag-2024.html` (`/tag/2024`, `tag-value` pageType): both
+  confirm the "Events" group's "Event" cell carries BOTH the trailing bare
+  date AND the `span.cancelled` marker in the same cell: `<a…>…</a>
+  (2024-05-25)<!-- --> <span class="cancelled">(<bdi>cancelled</bdi>)
+  </span>` — the pre-existing `_findCellEventDateParts()`/`eventdate:`
+  machinery and the new cancelled-marker extraction below coexist without
+  conflict since they parse different parts of the same cell.
+- Added `_findCellEventCancelled(cell)` (near `_findCellTagCount`),
+  mirroring `ColumnDataExtractor.cancelledEvent`'s own
+  `sourceCell.querySelector('span.cancelled')` extraction exactly, so both
+  agree on the same shape.
+- Gating this to ONLY the 5 requested page types
+  (`area-events`/`place-events`/`artist-events` → new "Entity info - Event
+  cancelled" section; `tag-value`/`user-tag-value` → new "Event info -
+  Event cancelled" section) needed a DIFFERENT mechanism than
+  `isTagEntityCol` (v9.99.885)'s `activeColumnExtractors` lookup:
+  `tag-value`/`user-tag-value` are `tableMode: 'multi'`, and
+  `activeColumnExtractors` gets REASSIGNED per group during the multi-table
+  fetch loop, so by the time `openUniqDrop()` runs it only reflects
+  whichever entity-kind group was processed LAST — unreliable for
+  per-table gating on these two page types specifically. Used
+  `activeDefinition.type` instead (page-load-scoped, never reassigned
+  per-group, confirmed by grepping every `activeDefinition =` assignment
+  site) combined with the pre-existing `isEventCol` (a per-table,
+  DOM-derived column-name check, already correct on multi-table pages
+  since it reads directly from the currently-open table's own thead).
+  Two kind strings ('entitycancelled'/'eventcancelled', chosen once at
+  collection time from `activeDefinition.type` into `_eventCancelledKind`)
+  route to the two different sections via a static `MB_UNIQ_KIND_TO_SECTION`
+  lookup, sharing one Map/extraction/highlight function — deliberately NOT
+  using the dynamic per-value routing precedent (`name`/`arttype`) since
+  which section applies is decided once per page load, not per matched
+  value.
+- Deliberately did NOT extend this to the other page types that also carry
+  a `cancelledEvent` extractor on their own "Event" column
+  (`user-ratings`/`user-ratings-type`/`user-tag-value-entity`/
+  `collections-releases`/`search`/`series-releases`) — only the 5 page
+  types actually requested get the new sections; the others' dropdown
+  behavior is unchanged.
+- Renamed `SYN_SECTION_META.eventInfo`'s label from "Event info" to "Event
+  info - Event date", and the `eventdate` kind's `makeValueSynItem()` label
+  prefix from `'» date: '` to `'» event date: '`, to disambiguate now that
+  the sibling "Event info - Event cancelled" section exists. Left
+  `revdate` (the UNRELATED "Release events - date" family, release
+  country/date/weekday) untouched — it keeps its own separate `'» date: '`
+  prefix; the two must not be confused despite the similar name.
