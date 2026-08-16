@@ -1,5 +1,18 @@
 [
   {
+    "version": "9.99.883",
+    "date": "2026-08-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "All four `@include` header patterns now tolerate a trailing slash (e.g. `/instruments/` as well as `/instruments`). Previously only patterns using a bare `.*` alternative (like `tags.*`, `report/.*`) happened to already allow it; every alternative built from the stricter `(?:\\?.*)?` optional-query suffix — `/instruments`, `/genres`, `/elections`, `/privileged`, `/doc/Edit_Types`, `/account/applications`, `/search/edits`, `/edit/subscribed(_editors)?`, `/edit/notes-received`, every `/user/<name>/...` subpage, and the entire `/<entity>/<mbid>[/<subpath>]` family (11 entity types × 17 subpaths) — silently failed to inject the script at all on a trailing-slash URL, since Tampermonkey never even loads the script when no `@include` matches. Paired with matching trailing-slash tolerance added to the 12 `pageDefinitions` match functions that were anchored with a bare `$` (no `\\/?`) and would otherwise have loaded the script via the fixed `@include` but then matched no page type: `ratings-entity`, `user-ratings-type`, `user-ratings`, `edits` (including its `/search/edits` and `/edit/subscribed(_editors)?` exact-path checks), `notes-received`, `user-open-edits`, `user-edits`, `artist-releasegroups`, `artist-releases`, `artist-recordings`, and `release-tracks`.",
+          "Added the missing `event-tags` page type for `/event/<mbid>/tags` — the only one of the 11 taggable core entity kinds (artist, release-group, release, recording, work, label, series, place, area, instrument, event) that had no dedicated `*-tags` page definition, so the \"Show all Tags\" button never appeared on an event's tags page even though the page loaded fine."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.882",
     "date": "2026-08-14",
     "sections": [

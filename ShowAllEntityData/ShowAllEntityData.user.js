@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.882+2026-08-14
+// @version      9.99.883+2026-08-16
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -13,10 +13,10 @@
 // @require      https://cdn.jsdelivr.net/npm/@jaames/iro@5
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
 // @require      https://raw.githubusercontent.com/vzell/mb-userscripts/master/lib/VZ_MBLibrary.user.js
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\?.*)?$/
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits)(?:\?.*)?$/
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)(?:\?.*)?|account\/applications(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections(?:\?.*)?|election\/.*|genres(?:\?.*)?|cdstub\/.*|isrc\/.*|doc\/Edit_Types(?:\?.*)?|instruments(?:\?.*)?|privileged(?:\?.*)?)$/
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers(?:\?.*)?|collections(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?(?:\?.*)?)$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits)\/?(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?\/?(?:\?.*)?)$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -12602,6 +12602,19 @@
                 listToTable: [ 'genres', 'tags' ]
             }
         },
+        {
+            type: 'event-tags',
+            match: (path) => path.match(/\/event\/[a-f0-9-]{36}\/tags/),
+            buttons: [ { label: 'Show all Tags for Event' } ],
+            tableMode: 'multi',
+            features: {
+                showAllTags: true,
+                removeSelector: 'div.all-tags',
+                renameH2ToH3: true,
+                insertH2: 'Event tags',
+                listToTable: [ 'genres', 'tags' ]
+            }
+        },
         // User tags pages (/user/<username>/tags e.g. /user/vzell/tags, /user/vzell/tags?show_downvoted=1)
         //
         // Native MusicBrainz DOM structure (no div#content — uses div#page directly):
@@ -12652,7 +12665,7 @@
         // to appear between the <h2> and the rendered table.
         {
             type: 'ratings-entity',
-            match: (path) => path.match(/\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\/ratings$/),
+            match: (path) => path.match(/\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\/ratings\/?$/),
             buttons: [ { label: 'Show all Ratings', labelFromPathEntity: true } ],
             features: {
                 listToTable: [ '' ],
@@ -12668,7 +12681,7 @@
         // Column structure mirrors the corresponding sub-table on the user-ratings page.
         {
             type: 'user-ratings-type',
-            match: (path) => path.match(/\/user\/[^/]+\/ratings\/[^/]+$/),
+            match: (path) => path.match(/\/user\/[^/]+\/ratings\/[^/]+\/?$/),
             buttons: [
                 { label: 'Show Ratings', labelFromPath: true }
             ],
@@ -12742,7 +12755,7 @@
         //                     button in renderGroupedTable
         {
             type: 'user-ratings',
-            match: (path) => path.match(/\/user\/[^/]+\/ratings$/),
+            match: (path) => path.match(/\/user\/[^/]+\/ratings\/?$/),
             buttons: [
                 { label: 'Show Ratings for User' }
             ],
@@ -13748,11 +13761,12 @@
         {
             type: 'edits',
             match: (path) => {
-                if (path === '/search/edits') return true;
-                if (path === '/edit/subscribed' || path === '/edit/subscribed_editors') return true;
+                if (path === '/search/edits' || path === '/search/edits/') return true;
+                if (path === '/edit/subscribed' || path === '/edit/subscribed/' ||
+                    path === '/edit/subscribed_editors' || path === '/edit/subscribed_editors/') return true;
                 // Generic "/<entity>/<mbid>/edits" — e.g. /release/<mbid>/edits,
                 // /artist/<mbid>/edits, /work/<mbid>/edits, …
-                return /^\/[a-z-]+\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/edits$/.test(path);
+                return /^\/[a-z-]+\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/edits\/?$/.test(path);
             },
             buttons: [ { label: 'Show all Edits' } ],
             features: {
@@ -13796,7 +13810,7 @@
         // notesReceivedToTable feature/converter instead of editsToTable.
         {
             type: 'notes-received',
-            match: (path) => path === '/edit/notes-received',
+            match: (path) => path === '/edit/notes-received' || path === '/edit/notes-received/',
             buttons: [ { label: 'Show all Notes Received' } ],
             features: {
                 notesReceivedToTable: true,
@@ -13832,7 +13846,7 @@
         // mirror the tag-page convention (entity tags before generic 'tags').
         {
             type: 'user-open-edits',
-            match: (path) => /^\/user\/[^/]+\/edits\/open$/.test(path),
+            match: (path) => /^\/user\/[^/]+\/edits\/open\/?$/.test(path),
             buttons: [ { label: 'Show all Open Edits for User' } ],
             features: {
                 editsToTable: true,
@@ -13846,7 +13860,7 @@
         },
         {
             type: 'user-edits',
-            match: (path) => /^\/user\/[^/]+\/edits$/.test(path),
+            match: (path) => /^\/user\/[^/]+\/edits\/?$/.test(path),
             buttons: [ { label: 'Show all Edits for User' } ],
             features: {
                 editsToTable: true,
@@ -14817,7 +14831,7 @@
         {
             type: 'artist-releasegroups',
             // Root artist page (Official/Non-Official views handled by specific buttons on the final rendered page)
-            match: (path, params) => path.match(/\/artist\/[a-f0-9-]{36}$/) && !path.endsWith('/releases'),
+            match: (path, params) => path.match(/\/artist\/[a-f0-9-]{36}\/?$/) && !path.endsWith('/releases'),
             buttons: [
                 // These two narrow buttons (official only) are superseded by the
                 // per-view toggle buttons injected after the full render: "Official
@@ -14847,7 +14861,7 @@
         },
         {
             subType: 'artist-releasegroups',
-            match: (path, params) => path.match(/\/artist\/[a-f0-9-]{36}$/) && !path.endsWith('/releases'),
+            match: (path, params) => path.match(/\/artist\/[a-f0-9-]{36}\/?$/) && !path.endsWith('/releases'),
             buttons: [
                 { mainLabel: '🧮 Artist RGs',         pre_fetch_type: 'Official', params: { all: '0', va: '0' } },
                 { mainLabel: '🧮 Various Artists RGs', pre_fetch_type: 'Official', params: { all: '0', va: '1' } },
@@ -14856,7 +14870,7 @@
         {
             type: 'artist-releases',
             // Artist Releases page (Official/VA views handled by specific buttons)
-            match: (path, params) => path.match(/\/artist\/[a-f0-9-]{36}\/releases$/),
+            match: (path, params) => path.match(/\/artist\/[a-f0-9-]{36}\/releases\/?$/),
             buttons: [
                 { label: '🧮 Artist releases', params: { va: '0' } },
                 { label: '🧮 VA releases',     params: { va: '1' } }
@@ -14887,7 +14901,7 @@
         },
         {
             type: 'artist-recordings',
-            match: (path, params) => path.match(/\/artist\/[a-f0-9-]{36}\/recordings$/),
+            match: (path, params) => path.match(/\/artist\/[a-f0-9-]{36}\/recordings\/?$/),
             buttons: [
                 { label: '⊚ All recordings', params: { all: '1' } },
                 { label: '♫ Standalone',     params: { standalone: '1' } },
@@ -15005,7 +15019,7 @@
             // matches a sub-path like /release/<mbid>/aliases (those have their own
             // dedicated pageDefinitions above). Gated by sa_enable_release_tracks so
             // the whole feature (and its toolbar button) can be turned off.
-            match: (path) => Lib.settings.sa_enable_release_tracks && path.match(/^\/release\/[a-f0-9-]{36}$/),
+            match: (path) => Lib.settings.sa_enable_release_tracks && path.match(/^\/release\/[a-f0-9-]{36}\/?$/),
             buttons: [ { label: 'Show all Tracks for Release' } ],
             features: {
                 removeYomoWidget: true,          // strip the "Batch Add Recording Aliases" userscript's widget, if present
