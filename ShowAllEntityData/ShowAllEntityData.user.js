@@ -2728,84 +2728,6 @@
     //   3. Declare the synthetic column header names in `syntheticColumns`.
 
     /**
-     * Shared base extraction helper for tag-value-entity-shaped cells. Its
-     * sole remaining caller is `Name_Comment_Description` (`instrument-list`),
-     * which only uses the returned tdName/tdComment (ignores tdCount) — every
-     * other former caller (the `tagCount_*` family) has been replaced by
-     * `features.extractMainColumn` (see `_extractMainColumnParts()`) plus the
-     * standalone `tagCount` extractor.
-     *
-     * Handles the common fields present in all tag-value-entity cell structures:
-     *   Tag count — leading integer in the first direct text node ("26 -").
-     *   Name      — entity link, optionally preceded by a country-flag span.
-     *               The flag span (if any) and the link are cloned together into
-     *               tdName so the flag renders alongside the entity name.
-     *   Comment   — text of the <bdi> inside the first span.comment child of
-     *               the <td> (not nested deeper), or empty if absent.
-     *
-     * @param   {HTMLTableCellElement|null} sourceCell
-     * @returns {[HTMLTableCellElement, HTMLTableCellElement, HTMLTableCellElement]}
-     *          [tdName, tdCount, tdComment]
-     */
-    function _tagCountBase(sourceCell) {
-        const tdName    = document.createElement('td');
-        const tdCount   = document.createElement('td');
-        const tdComment = document.createElement('td');
-
-        if (!sourceCell) return [tdName, tdCount, tdComment];
-
-        // ── Tag count — leading integer in first direct text node ────────────
-        let _rawLeading = '';
-        for (const node of sourceCell.childNodes) {
-            if (node.nodeType === Node.TEXT_NODE) {
-                _rawLeading += node.nodeValue;
-                break;
-            }
-        }
-        const _countMatch = _rawLeading.match(/^\s*(\d[\d,]*)/);
-        tdCount.textContent = _countMatch ? _countMatch[1].replace(/,/g, '') : '';
-        tdCount.style.fontVariantNumeric = 'tabular-nums';
-
-        // ── Name — entity link, with optional preceding country-flag span ────
-        // Detect a flag span as a direct child of the <td> that precedes the <a>.
-        // Structure: <span class="flag flag-XX"><a>…</a></span>
-        const _flagSpan = Array.from(sourceCell.children).find(
-            el => el.tagName === 'SPAN' && /\bflag\b/.test(el.className) && el.querySelector('a')
-        );
-        if (_flagSpan) {
-            // Clone the entire flag+link span — flag sprite + entity link in one.
-            tdName.appendChild(_flagSpan.cloneNode(true));
-        } else {
-            // Standard: find the first top-level <a> (entity link).
-            const _a = sourceCell.querySelector(':scope > a, :scope > span:not(.comment) > a');
-            if (_a) {
-                const _aClone = _a.cloneNode(true);
-                _aClone.querySelectorAll('.comment').forEach(el => el.remove());
-                tdName.appendChild(_aClone);
-            }
-        }
-
-        // ── Comment — <bdi> inside the first direct span.comment ────────────
-        // Use :scope > span.comment to avoid matching artist comment spans
-        // that are nested inside <bdi> (for Artists columns).
-        // A comment can itself contain a <i title="Primary alias"> — must be
-        // removed from a CLONE before reading text, otherwise the alias text
-        // leaks into Comment unlabeled (2026-08-10 fix; mirrors the same
-        // clone-and-remove technique in _extractMainColumnParts()).
-        const _commentSpan = sourceCell.querySelector(':scope > span.comment');
-        const _commentBdi  = _commentSpan ? _commentSpan.querySelector('bdi') : null;
-        if (_commentBdi) {
-            const _clone = _commentBdi.cloneNode(true);
-            _clone.querySelectorAll('i[title="Primary alias"]').forEach(i => i.remove());
-            tdComment.textContent = _clone.textContent.replace(/\s+/g, ' ').trim().replace(/^,\s*/, '').trim();
-        } else {
-            tdComment.textContent = '';
-        }
-
-        return [tdName, tdCount, tdComment];
-    }
-
-    /**
      * _extractMainColumnParts — the single source of truth for
      * `features.extractMainColumn`'s per-row split of a page's main entity
      * cell into three synthetic `<td>`s: `MB-Name`, `Comment`, and
@@ -4008,19 +3930,41 @@
          *   [<span class="comment">(<bdi>Comment</bdi>)</span>]
          *   [— <!-- -->Description text, which may itself contain nested
          *     <a> links (e.g. a family entry naming its member instruments)]
-         * Name and Comment reuse the same extraction _tagCountBase uses for
-         * every other entity-list cell. Description is everything found
-         * after the first "—" (em dash) text node — cloned verbatim (not
-         * reduced to plain text) so nested links survive — with the
-         * MusicBrainz `<!-- -->` marker-comment artifact that immediately
-         * follows the dash skipped.
+         *
+         * Name — the first top-level <a> (entity link), cloned verbatim.
+         * Instrument entities never carry a preceding country-flag span, so
+         * unlike the generic tag-value-entity shape this doesn't need to
+         * check for one.
+         *
+         * Comment — text of the <bdi> inside the first direct span.comment
+         * child of the <td> (not nested deeper — `:scope > span.comment`
+         * avoids matching a comment span nested inside some other element).
+         * No primary-alias stripping here — instrument is not an aliasable
+         * MusicBrainz entity type, so `<i title="Primary alias">` can never
+         * appear in this cell.
+         *
+         * Description is everything found after the first "—" (em dash) text
+         * node — cloned verbatim (not reduced to plain text) so nested links
+         * survive — with the MusicBrainz `<!-- -->` marker-comment artifact
+         * that immediately follows the dash skipped.
+         *
          * Synthetic columns: ['Name', 'Comment', 'Description']
          */
         Name_Comment_Description(sourceCell) {
-            const [tdName, , tdComment] = _tagCountBase(sourceCell);
+            const tdName = document.createElement('td');
+            const tdComment = document.createElement('td');
             const tdDescription = document.createElement('td');
 
             if (sourceCell) {
+                const _a = sourceCell.querySelector(':scope > a');
+                if (_a) tdName.appendChild(_a.cloneNode(true));
+
+                const _commentSpan = sourceCell.querySelector(':scope > span.comment');
+                const _commentBdi  = _commentSpan ? _commentSpan.querySelector('bdi') : null;
+                if (_commentBdi) {
+                    tdComment.textContent = _commentBdi.textContent.replace(/\s+/g, ' ').trim();
+                }
+
                 let _dashSeen = false;
                 for (const node of sourceCell.childNodes) {
                     if (!_dashSeen) {
