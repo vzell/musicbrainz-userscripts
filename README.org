@@ -94683,6 +94683,61 @@ End Erea
 
 and so on
 
+* DONE Extract the unique tag count for the FIRST column for the pageType 'tag-value-entity' to the structural information in the unique value drop down menu under a new section "tag count"
+** DONE i
+
+Extract the unique tag count for the FIRST column of the pageType 'tag-value-entity' to the structural information in
+the unique value drop down menu under a new section "Entity info - Tag count"
+See @debug/tag-count.html
+
+** DONE bug
+
+Values from "Entity info - Tag count" when filtered are not yet highlighted as the other structural entities
+
+
+* TODO If the FIRST column name is actually "Event" also extract all unique "cancelled" events
+
+1.)
+
+For the following pageTypes
+
+#+begin_example
+type: 'area-events'
+type: 'place-events'
+type: 'artist-events'
+#+end_example
+
+in the "Event" column, extract all unique "cancelled" events to the structural information in the unique value drop down
+menu under a new section "Entity info - Event cancelled". When filtered the string "cancelled" should be highlighted.
+
+See an example how it currently renders at the final page for "type: 'place-events'" @debug/entity-event.html
+
+2.)
+
+a.)
+
+If the FIRST column name is actually "Event" also extract all unique "cancelled" events for the pageTypes
+
+#+begin_example
+https://musicbrainz.org/user/vzell/tag/cancelled
+https://musicbrainz.org/tag/2024
+#+end_example
+
+b.)
+
+Also rename the current section name for these pagetypes from
+
+#+begin_example
+<span class="mb-uniq-section-label">Event info</span>
+#+end_example
+
+to
+
+#+begin_example
+<span class="mb-uniq-section-label">Event info - Event date</span>
+#+end_example
+
+
 * DONE new extractor for alias pages: Locale ==> Locale + Type
 ** DONE i
 

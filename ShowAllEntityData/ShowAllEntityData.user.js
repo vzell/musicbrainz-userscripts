@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.884+2026-08-16
+// @version      9.99.885+2026-08-16
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -17669,6 +17669,31 @@
     }
 
     /**
+     * Extracts the leading integer tag-vote count (e.g. "26" from "26 -
+     * Johnny Cash") from a tag-value-entity cell — the same text-node walk
+     * and regex as `ColumnDataExtractor.tagCount`, so both agree on the
+     * same shape. Deliberately only called for the original tag-value-entity
+     * column itself (gated by the `tagCount` extractor lookup at the
+     * `openUniqDrop()` call site) — plain free-text parsing with no
+     * CSS-class safety net.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?string} the count as a string, or null if not found
+     */
+    function _findCellTagCount(cell) {
+        if (!cell) return null;
+        let _rawLeading = '';
+        for (const node of cell.childNodes) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                _rawLeading += node.nodeValue;
+                break;
+            }
+        }
+        const _countMatch = _rawLeading.match(/^\s*(\d[\d,]*)/);
+        return _countMatch ? _countMatch[1].replace(/,/g, '') : null;
+    }
+
+    /**
      * Tests whether a table cell matches a "Cell structure" checkbox mode
      * from `openUniqDrop()`'s synthetic entries (`makeSynItem`/
      * `makeValueSynItem`/`makeInlineArtItem`) — the single source of truth
@@ -17898,6 +17923,13 @@
             // own extraction.
             const want = mode.slice(10);
             return !!cell && _findCellEventDateParts(cell).includes(want);
+        }
+        if (mode.startsWith('tagcount:')) {
+            // Compound mode — matches the leading integer tag-vote count of
+            // the original tag-value-entity column, from
+            // _findCellTagCount()'s own extraction.
+            const want = mode.slice(9);
+            return !!cell && _findCellTagCount(cell) === want;
         }
         if (mode.startsWith('catalogprefix:')) {
             // Compound mode — matches one "Catalog#" list item's own
@@ -34243,6 +34275,7 @@ a { color: #1565c0; }`;
         entity_other:             { label: 'Entity info - Other name',         glyph: '👤' },
         entityComment:            { label: 'Entity info - Comment',            glyph: '👤' },
         entityAlias:              { label: 'Entity info - Alias',              glyph: '👤' },
+        entityTagCount:           { label: 'Entity info - Tag count',          glyph: '🏷️' },
         joinPhrase:    { label: 'Join phrases',        glyph: '🔀' },
         nameVariation: { label: 'Name variations',    glyph: '🪪' },
         roles:         { label: 'Roles',              glyph: '🎭' },
@@ -34292,7 +34325,7 @@ a { color: #1565c0; }`;
     const MB_UNIQ_KIND_TO_SECTION = {
         attr: 'credit', task: 'credit', date: 'credit',
         instrument: 'credit', altname: 'credit',
-        comment: 'entityComment', alias: 'entityAlias',
+        comment: 'entityComment', alias: 'entityAlias', tagcount: 'entityTagCount',
         joinphrase: 'joinPhrase',
         namevariation: 'nameVariation',
         role: 'roles',
@@ -34976,6 +35009,33 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights the exact matched value for a `tagcount:` compound
+     * structure-mode filter — re-derives from `_findCellTagCount()` directly
+     * (matching `_highlightCatalogPrefixMatch()`'s own established
+     * "verify via the same extraction function before highlighting"
+     * pattern) rather than building a regex from `mode`'s own
+     * comma-stripped value: the leading count's ORIGINAL on-page text may
+     * still carry a thousands comma (e.g. "1,234") that a literal match
+     * against the stripped "1234" would miss. Once confirmed equal, a
+     * `^`-anchored match against the cell's own clean text — always the
+     * leading tag-vote count itself, per `_findCellTagCount()`'s own
+     * JSDoc — highlights the ORIGINAL formatting with no risk of colliding
+     * with a coincidentally-matching number elsewhere in the entity name/
+     * comment.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g. `"tagcount:26"`.
+     */
+    function _highlightTagCountMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(9);
+        if (!_want) return;
+        if (_findCellTagCount(cell) !== _want) return;
+        cell.normalize();
+        highlightCrossTag(cell, /^\s*\d[\d,]*/g, 'mb-column-filter-highlight');
+    }
+
+    /**
      * Highlights the exact matched value for a `formatsize:`/`formatcount:`/
      * `formatcombo:`/`formattype:` compound structure-mode filter —
      * "Format" has no per-group wrapper element either, so this is a
@@ -35578,7 +35638,7 @@ a { color: #1565c0; }`;
                     // 'instrument:'/'altname:'/'name:'/'comment:'/'alias:'/
                     // 'joinphrase:'/'namevariation:'/'revcountry:'/'countryname:'/
                     // 'countrycode:'/'revdate:'/'revweekday:'/'catalogprefix:'/
-                    // 'catalog-none'/'trackspermedium:'/'eventdate:'/
+                    // 'catalog-none'/'trackspermedium:'/'eventdate:'/'tagcount:'/
                     // 'formatsize:'/'formatcount:'/'formatcombo:'/'formattype:'/
                     // 'role:' and 'name-variation' structure modes DO
                     // correspond to exact visible content and get
@@ -35619,6 +35679,8 @@ a { color: #1565c0; }`;
                                     _highlightTracksPerMediumMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('eventdate:')) {
                                     _highlightEventDateMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('tagcount:')) {
+                                    _highlightTagCountMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('formatsize:') || mode.startsWith('formatcount:') ||
                                            mode.startsWith('formatcombo:') || mode.startsWith('formattype:')) {
                                     _highlightFormatMatch(row.cells[f.idx], mode);
@@ -44872,6 +44934,12 @@ a { color: #1565c0; }`;
         const entityNameValueCounts    = new Map();
         const entityCommentValueCounts = new Map();
         const entityAliasValueCounts   = new Map();
+        // Distinct leading tag-vote-count values (e.g. "26" from "26 -
+        // Johnny Cash") from the original tag-value-entity column itself —
+        // see _findCellTagCount()'s own JSDoc. Gated by isTagEntityCol
+        // below (computed from activeColumnExtractors), a no-op Map for
+        // any other column/page.
+        const entityTagCountValueCounts = new Map();
         // entityNameGlyphMap: name -> first-seen glyphClass (e.g.
         // 'releaselink'), so the "» name:" entry can show the same
         // entity-type icon the old per-href entity-glyph row did — see
@@ -45025,6 +45093,16 @@ a { color: #1565c0; }`;
         const isTracksCol  = _colHeaderName === 'Tracks';
         const isCatalogCol = _colHeaderName === 'Catalog#';
         const isEventCol   = _colHeaderName === 'Event';
+        // 'tag-value-entity' is tableMode: 'single' — its resolved
+        // entityFeatures block is merged into activeDefinition once, and
+        // activeColumnExtractors is built once from it (not re-assigned
+        // per group like the multi-table path), so this module-level
+        // lookup reliably identifies the ORIGINAL per-entity-kind column
+        // (Artist/Label/Area/...) that 'tagCount' was actually extracted
+        // from — see _findCellTagCount()'s own JSDoc. Naturally false for
+        // 'user-tag-value-entity' (no 'tagCount' extractor exists there)
+        // and every other page type.
+        const isTagEntityCol = activeColumnExtractors.some(e => e.extractor === 'tagCount' && e.sourceColumn === _colHeaderName);
         const tbody = table.tBodies[0];
         if (tbody) {
             Array.from(tbody.rows).forEach(row => {
@@ -45145,6 +45223,10 @@ a { color: #1565c0; }`;
                 if (isEventCol) {
                     const _eventDates = _findCellEventDateParts(cell);
                     new Set(_eventDates).forEach(t => eventDateValueCounts.set(t, (eventDateValueCounts.get(t) || 0) + 1));
+                }
+                if (isTagEntityCol) {
+                    const _tagCount = _findCellTagCount(cell);
+                    if (_tagCount !== null) entityTagCountValueCounts.set(_tagCount, (entityTagCountValueCounts.get(_tagCount) || 0) + 1);
                 }
                 const _rowAttrWords = new Set();
                 cell.querySelectorAll('.mb-credit-attr').forEach(s => {
@@ -46549,6 +46631,7 @@ a { color: #1565c0; }`;
                  : kind === 'name'       ? (entityType ? `» ${entityType} name: ` : '» name: ')
                  : kind === 'comment'    ? '» comment: '
                  : kind === 'alias'      ? '» alias: '
+                 : kind === 'tagcount'   ? '» tag count: '
                  : kind === 'joinphrase' ? '» join phrase: '
                  : kind === 'namevariation' ? '» name variation: '
                  : kind === 'formatsize' ? '» size: '
@@ -46711,6 +46794,8 @@ a { color: #1565c0; }`;
         });
         const _sortedCommentValues = Array.from(entityCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedAliasValues   = Array.from(entityAliasValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        // Numeric sort (not lexicographic) so "2" sorts before "10".
+        const _sortedTagCountValues = Array.from(entityTagCountValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         const _sortedJoinPhraseValues = Array.from(joinPhraseValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedNameVariationValues = Array.from(nameVariationValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         // Numeric sort (not lexicographic) so "2" sorts before "10".
@@ -46732,6 +46817,7 @@ a { color: #1565c0; }`;
             _sortedDateValues.length > 0 || _sortedEventDateValues.length > 0 || _sortedInstrumentValues.length > 0 ||
             _sortedAltNameValues.length > 0 ||
             _sortedNameValues.length > 0 || _sortedCommentValues.length > 0 || _sortedAliasValues.length > 0 ||
+            _sortedTagCountValues.length > 0 ||
             _sortedJoinPhraseValues.length > 0 || _sortedNameVariationValues.length > 0 ||
             _sortedFormatSizeValues.length > 0 || _sortedFormatCountValues.length > 0 || _sortedFormatComboValues.length > 0 || _sortedFormatTypeValues.length > 0 ||
             _sortedRevCountryValues.length > 0 || _sortedRevDateValues.length > 0 || _sortedRevWeekdayValues.length > 0 ||
@@ -46778,6 +46864,7 @@ a { color: #1565c0; }`;
             _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v), entityNameGlyphMap.get(v), entityNameTypeMap.get(v), entityNameFlagMap.get(v)));
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
+            _sortedTagCountValues.forEach(v => makeValueSynItem('tagcount', v, entityTagCountValueCounts.get(v)));
             _sortedJoinPhraseValues.forEach(v => makeValueSynItem('joinphrase', v, joinPhraseValueCounts.get(v)));
             _sortedNameVariationValues.forEach(v => makeValueSynItem('namevariation', v, nameVariationValueCounts.get(v)));
             _sortedFormatSizeValues.forEach(v => makeValueSynItem('formatsize', v, formatSizeValueCounts.get(v)));
@@ -46814,6 +46901,7 @@ a { color: #1565c0; }`;
             _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v), entityNameGlyphMap.get(v), entityNameTypeMap.get(v), entityNameFlagMap.get(v)));
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
+            _sortedTagCountValues.forEach(v => makeValueSynItem('tagcount', v, entityTagCountValueCounts.get(v)));
             _sortedJoinPhraseValues.forEach(v => makeValueSynItem('joinphrase', v, joinPhraseValueCounts.get(v)));
             _sortedNameVariationValues.forEach(v => makeValueSynItem('namevariation', v, nameVariationValueCounts.get(v)));
             _sortedFormatSizeValues.forEach(v => makeValueSynItem('formatsize', v, formatSizeValueCounts.get(v)));

@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.885",
+    "date": "2026-08-16",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Added a new \"Entity info - Tag count\" section to the unique-values dropdown for `tag-value-entity`'s original per-entity-kind column (Artist/Label/Area/Event/...) — mirrors the existing \"Entity info - Comment\"/\"Entity info - Alias\" sections, showing each distinct leading tag-vote count (e.g. \"26\" from \"26 - Johnny Cash\") with how many entities carry it, and filtering the table to those rows when checked. Scoped via `activeColumnExtractors` (reliable here since `tag-value-entity` is `tableMode: 'single'`), so it only ever appears on the column the `tagCount` extractor actually ran against — never on `user-tag-value-entity` (no `tagCount` extractor there) or any other page type. Also wired `tagcount:` into `runFilter()`'s per-mode highlight dispatcher (`_highlightTagCountMatch`, alongside the other structure-mode highlighters), which the initial implementation missed — checking a \"» tag count: N\" entry now visually highlights the matched leading count the same way every other structural entity/value entry already does, re-deriving from `_findCellTagCount()` itself before highlighting so a comma-formatted original count (e.g. \"1,234\") is matched correctly even though the filter's own stored value has commas stripped."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.884",
     "date": "2026-08-16",
     "sections": [
