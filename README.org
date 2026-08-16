@@ -94038,8 +94038,142 @@ Currently
 #+end_example
 
 
-* TODO fix the code where primaryAlias is still used
-** current functions to refactor into our shared helper
+* DONE fixes to trailing / handling and missing 'event-tags" support
+
+1.)
+
+Currently ONLY the following URL https://musicbrainz.org/instruments is matched by the pageType 'instrument-list'
+The URL https://musicbrainz.org/instruments/ also produced the same output and should be added to.
+
+Mybe the userscript "@include" directive has to be adjusted to
+
+2.)
+
+Currently the following URLs e.g https://musicbrainz.org/event/a350d5fd-4481-43c1-8eab-57fe5e55b8f3/tags
+are not handled by the one of the entity tags sub-pages (/<entity>/<mbid>/tags)
+
+* DONE plan: maybe consolidate the "type: '<entity>-aliases'," pageTypes into one configuration
+** i
+
+Is it possible to consolidate the "type: '<entity>-aliases'," pageTypes into one configuration, they all seem to have
+the same structure but up to now are missing the following "columnExtractor"
+
+#+begin_example
+                    { sourceColumn: 'Locale',     extractor: 'localeParts', syntheticColumns: ['Locale language', 'Primary locale'] }
+#+end_example
+
+see e.g. the pageType 'instrument-aliases'
+
+#+begin_example
+        {
+            type: 'instrument-aliases',
+            match: (path) => path.match(/\/instrument\/[a-f0-9-]{36}\/aliases/),
+            buttons: [ { label: 'Show all Aliases for Instrument' } ],
+            // extractMainColumn: 'Locale' was intentionally removed for all *-aliases page definitions.
+            // The Locale column on alias tables contains plain locale text (e.g. "English United States")
+            // followed by a <span class="comment">primary</span> role indicator, NOT an entity link.
+            // Extracting it as MB-Name / Comment incorrectly polluted those synthetic columns.
+            // (Bug fix: v9.99.35)
+            //features: {
+            //    extractMainColumn: 'Locale' // Specific header
+            //},
+            features: {
+                columnExtractors: [
+                    { sourceColumn: 'Begin date', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
+                    { sourceColumn: 'End date',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
+                ],
+                integerColumns: [
+                    { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
+                    { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
+                ]
+            },
+            tableMode: 'single'
+        },
+#+end_example
+
+except the 'artist-aliases' pageType which has two "buttons" definitions
+
+#+begin_example
+        {
+            type: 'artist-aliases',
+            match: (path) => path.match(/\/artist\/[a-f0-9-]{36}\/aliases/),
+            buttons: [
+                {
+                    label: 'Show all Aliases for Artist',
+                    targetHeader: 'Aliases',
+                    tableMode: 'single'
+                },
+                {
+                    label: 'Show all Artist Credits for Artist',
+                    targetHeader: 'Artist credits',
+                    tableMode: 'single'
+                }
+            ],
+            features: {
+                columnExtractors: [
+                    { sourceColumn: 'Begin date', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
+                    { sourceColumn: 'End date',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] },
+                    { sourceColumn: 'Locale',     extractor: 'localeParts', syntheticColumns: ['Locale language', 'Primary locale'] }
+                ],
+                integerColumns: [
+                    { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
+                    { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
+                ]
+            },
+        },
+#+end_example
+
+** act on @debug/locale.org
+
+act on @debug/locale.org
+
+* DONE remove the last tagCount function and replace with one thats only extracting stuff which is really needed
+
+What would be needed to remove the function "_tagCountBase" and replace with one that's only extracting stuff which is
+really needed by the caller "`Name_Comment_Description`"
+
+* DONE consolidate the "tagCount" family
+** DONE Not in scope
+
+     - No new alias column is added to _tagCountBase-family page blocks that
+     currently have neither extractMainColumn nor a paired primaryAlias
+     extractor (e.g. plain Name_Comment on Areas/Labels/Places/Release groups
+     entityFeatures blocks) — they simply stop leaking the alias into Comment;
+     a dedicated alias column for that family would be new-feature scope, not
+     a bug fix, and can be a separate follow-up if wanted.
+
+** DONE fix 'tag-value-entity'
+
+The pageType 'tag-value-entity' should also get the same treatment we introduced in this long session:
+
+Currently we have the following functions
+
+#+begin_example
+tagCount_Name_Comment
+tagCount_Name_Comment_Artists
+tagCount_Name_Date_Comment
+#+end_example
+
+which all extract the name and comment parts but are missing the primary alias.
+
+1)
+
+So lets reuse our generic mainColumn approach for extracting these
+
+2.)
+
+and lets check if we can reuse the helpers for extracting the artist and date information
+
+3.)
+
+introduce a new helper for extracting just the "Tag count" info along the helpers for artist/date extraction
+
+4.)
+
+Probably we then can get rid of the "tagCount_*" function family
+
+* DONE fix the code where primaryAlias is still used
+** DONE current functions to refactor into our shared helper
 
 Can the following extract definitions
 
@@ -94053,19 +94187,151 @@ extractor: 'Name_Date_Comment', syntheticColumns: ['Name', 'Date', 'Comment'] } 
 somehow be replaced by our generic extraction into 'MB-Name', "Comment" and 'MB-Primary alias' columns without breaking
 current pageTypes and only influence pageTypes which still use these legacy extractors
 
-** TODO Not in scope
+** DONE adjust mainColumn extractor to account for the legacy extractors
 
-     - No new alias column is added to _tagCountBase-family page blocks that
-     currently have neither extractMainColumn nor a paired primaryAlias
-     extractor (e.g. plain Name_Comment on Areas/Labels/Places/Release groups
-     entityFeatures blocks) — they simply stop leaking the alias into Comment;
-     a dedicated alias column for that family would be new-feature scope, not
-     a bug fix, and can be a separate follow-up if wanted.
-     - ColumnDataExtractor.primaryAlias itself is not deleted — it's still
-     needed by the 3 kept usages.
-     
-** adjust mainColumn extractor to account for the legacy extractors
-     
+1.)
+
+First of all, I merged some fixes from the main branch into our current one. Make sure to account for this if neccessary.
+
+2.)
+
+The actual implementation is broken at least for the following cases
+
+#+begin_example
+user-username-tag-value-original.html - original https://musicbrainz.org/user/vzell/tag/rescheduled
+user-username-tag-value-final.html - final rendered ttps://musicbrainz.org/user/vzell/tag/rescheduled - number of "column headers"/"column row cells" differ by one
+user-username-tag-value-cancelled-original.html - original https://musicbrainz.org/user/vzell/tag/cancelled
+user-username-tag-value-cancelled-final.html - final rendered ttps://musicbrainz.org/user/vzell/tag/cancelled - number of "column headers"/"column row cells" differ by one
+tag-value-original.html - original https://musicbrainz.org/tag/rock
+tag-value-final.html - final rendered https://musicbrainz.org/tag/rock - number of "column headers"/"column row cells" differ by one in the "Areas", "Events" and "Places" sections/subtables
+#+end_example
+
+3.)
+
+The three older ColumnDataExtractor entries
+
+#+begin_example
+Name_Comment
+Name_Comment_Artists
+Name_Date_Comment
+#+end_example
+
+never surfaced the primary-alias text as its own column (it was just stripped out of "Comment")
+
+a.)
+
+What I really want is that the original column on which this extraction is defined should never be touched.
+
+b.)
+
+I always want the "MB-Name", "Comment" and "MB-Primary alias" (the last two are optional on the initial pages)
+extracted, so they should always be there (even empty) on the final rendered pages.
+
+So maybe we should enhance our current "features.extractMainColumn driving _extractMainColumnParts()" functionality to
+also support "Artists" (like in the "Name_Comment_Artists" extractor function) and "Date (like in the "Name_Date_Comment"
+extractor function) if available in the "mainColumn", as all three older ColumnDataExtractors already extract name and comment.
+
+c.)
+
+So basically we then would probably get rid of the following extractor entries introduced in the last session
+
+#+begin_example
+{ sourceColumn: '<entity>', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] }
+#+end_example
+
+d.)
+
+and maybe we can also remove the "primaryAlias(sourceCell)" function from our code base altogether if not needed
+somewhere else. Specifically check the following configurations and their code
+
+#+begin_example
+    276:            label: "Relocate H1 comment-span alias block (initial page)",
+    283:            label: "Relocate H1 comment-span alias block (final rendered page)",
+#+end_example
+
+if "primaryAlias(sourceCell)" is used there, or could be used there.
+
+3.)
+
+The function "Name_Comment_Description(sourceCell)" which is used just for pageType "instrument-list" should stay
+untouched, it's a MB entity which can never been edited by an enduser itself (onyl by special editors which are allowed
+to add new instruments to the MB database). So a hyperlinked instrument entity on the initial page (or the "<Instrument type> instrument"
+first column on the final rendered page) can NEVER have a primary alias
+
+** DONE act on @debug/adjust-mainColumn-extractor.org
+
+act on @debug/adjust-mainColumn-extractor.org
+
+** DONE bugs
+
+Everything so far looks good except
+
+1.)
+
+#+begin_src bash
+@debug/user-ratings-original.html - orginal page for https://musicbrainz.org/user/vzell/ratings
+@debug/user-ratings-final.html - final rendered page for https://musicbrainz.org/user/vzell/ratings - number of "column headers"/"column row cells" differ by one in the "Artist/Label/Place/Work ratings" sections/subtables
+#+end_src
+
+2.)
+
+The tooltips for the "Name_Comment_Description" extracted columns are missing I think. Someting like
+
+#+begin_example
+case 'Name_Comment_Description':
+     if (colName === 'MB-Name')
+         return `Extracted from '${src}': the instrument name link, split from the combined cell.`;
+     if (colName === 'Comment')
+         return `Extracted from '${src}': the disambiguation comment, split from the instrument cell (excludes any primary alias, which has its own 'MB-Primary alias' column).`;
+     if (colName === 'Description')
+         return `Extracted from '${src}': the description text following the "—" dash in the instrument cell.`;
+     break;
+#+end_example
+
+** DONE tooltips for the "Name_Comment_Description" extracted columns are missing I think
+
+tooltips for the "Name_Comment_Description" extracted columns are missing I think
+
+#+begin_example
+case 'Name_Comment_Description':
+     if (colName === 'MB-Name')
+         return `Extracted from '${src}': the instrument name link, split from the combined cell.`;
+     if (colName === 'Comment')
+         return `Extracted from '${src}': the disambiguation comment, split from the instrument cell (excludes any primary alias, which has its own 'MB-Primary alias' column).`;
+     if (colName === 'Description')
+         return `Extracted from '${src}': the description text following the "—" dash in the instrument cell.`;
+     break;
+#+end_example
+
+** DONE change the column order
+
+change the column order for the following columns from
+
+#+begin_example
+Date
+Cancelled
+#+end_example
+
+to
+
+#+begin_example
+Cancelled
+Date
+#+end_example
+
+so basically everywhere where we currently have
+
+#+begin_example
+                    columnExtractors: [
+                        { sourceColumn: 'Event', extractor: 'eventDate',      syntheticColumns: ['Date'] },
+                        { sourceColumn: 'Event', extractor: 'cancelledEvent', syntheticColumns: ['Cancelled'] }
+#+end_example
+
+** DONE add "cancelledEvent" also to the tag-value/user-tag-value's Events blocks
+
+add "cancelledEvent" also to the tag-value/user-tag-value's Events blocks
+
+
 * DONE https://musicbrainz.org/report/SetInDifferentRG needs "Primary alias" column, so extractMainColumn on "Release group"
 
 Maybe create a copy of
@@ -94462,6 +94728,11 @@ rendered HTML)
 
 "Actions" column header is still present, but data cells are gone, see @debug/action.html
 
+
+* Is it safe to rename all occurences for "MB-Primary alias" to just "Primary alias" in the whole code base
+
+Is it safe to rename all occurences for the extracted "MB-Primary alias" column to just "Primary alias" in the whole
+code base (plus comments)
 
 * TODO why is this not working
 

@@ -2,51 +2,71 @@
 
 1.)
 
+First of all, I merged some fixes from the main branch into our current one. Make sure to account for this if neccessary.
 
-Separately, four older ColumnDataExtractor entries — Name_Comment,
-     Name_Comment_Artists, Name_Comment_Description, Name_Date_Comment
-     (ShowAllEntityData.user.js:4088-4212) — do a near-identical Name/Comment
-     split via a shared helper, _tagCountBase() (:2745-2804), but output a
-     column named plain Name, and never surface the primary-alias text as
-     its own column (it's just stripped out of Comment so it doesn't leak in
-     mislabeled). These four are used across 6 page types (user-ratings-type,
-     user-ratings, instrument-list, user-tag-value-entity, user-tag-value,
-     tag-value), 55 columnExtractors entries total, covering entity kinds
-     Area/Artist/Event/Instrument/Label/Place/Recording/Release/Release
-     group/Series/Work.
-     
-primaryAlias (:3678) already does exactly this job: finds
-     <i title="Primary alias"> in the source cell, copies its text to its own
-     synthetic column, and removes it from the cell (idempotent — safe to run
-     whether or not another extractor already cloned/read that cell). It's
-     already wired for Event at 3 sites.
-          
+2.)
+
+The actual implementation is broken at least for the following cases
+
+#+begin_example
+user-username-tag-value-original.html - original https://musicbrainz.org/user/vzell/tag/rescheduled
+user-username-tag-value-final.html - final rendered ttps://musicbrainz.org/user/vzell/tag/rescheduled - number of "column headers"/"column row cells" differ by one
+user-username-tag-value-cancelled-original.html - original https://musicbrainz.org/user/vzell/tag/cancelled
+user-username-tag-value-cancelled-final.html - final rendered ttps://musicbrainz.org/user/vzell/tag/cancelled - number of "column headers"/"column row cells" differ by one
+tag-value-original.html - original https://musicbrainz.org/tag/rock
+tag-value-final.html - final rendered https://musicbrainz.org/tag/rock - number of "column headers"/"column row cells" differ by one in the "Areas", "Events" and "Places" sections/subtables
+#+end_example
 
 3.)
 
+The three older ColumnDataExtractor entries
 
-The functin "Name_Comment_Description(sourceCell)" which is used just for pageType "instrument-list" should stay
-untouched, its a MB entity which can never been edited by an enduser itself (onyl by special editors which are allowed
-to add new instruments to the MB database). So a hyperlinked instrument entity on the initial page (or the "<Instrument type> instrument"
-first column on the final rendered page) can NEVER have a primary alias
+#+begin_example
+Name_Comment
+Name_Comment_Artists
+Name_Date_Comment
+#+end_example
 
-4.)
+never surfaced the primary-alias text as its own column (it was just stripped out of "Comment")
+
+a.)
+
+What I really want is that the original column on which this extraction is defined should never be touched.
+
+b.)
+
+I always want the "MB-Name", "Comment" and "MB-Primary alias" (the last two are optional on the initial pages)
+extracted, so they should always be there (even empty) on the final rendered pages.
+
+So maybe we should enhance our current "features.extractMainColumn driving _extractMainColumnParts()" functionality to
+also support "Artists" (like in the "Name_Comment_Artists" extractor function) and "Date (like in the "Name_Date_Comment"
+extractor function) if available in the "mainColumn", as all three older ColumnDataExtractors already extract name and comment.
+
+c.)
+
+So basically we then would probably get rid of the following extractor entries introduced in the last session
+
+#+begin_example
+{ sourceColumn: '<entity>', extractor: 'primaryAlias', syntheticColumns: ['MB-Primary alias'] }
+#+end_example
+
+d.)
+
+and maybe we can also remove the "primaryAlias(sourceCell)" function from our code base altogether if not needed
+somewhere else. Specifically check the following configurations and their code
 
 #+begin_example
     276:            label: "Relocate H1 comment-span alias block (initial page)",
     283:            label: "Relocate H1 comment-span alias block (final rendered page)",
 #+end_example
 
+if "primaryAlias(sourceCell)" is used there, or could be used there.
 
-1.)
+3.)
 
-Currently ONLY the following URL https://musicbrainz.org/instruments is matched by the pageType 'instrument-list'
-The URL https://musicbrainz.org/instruments/ also produced the same output and should be added to.
+The function "Name_Comment_Description(sourceCell)" which is used just for pageType "instrument-list" should stay
+untouched, it's a MB entity which can never been edited by an enduser itself (onyl by special editors which are allowed
+to add new instruments to the MB database). So a hyperlinked instrument entity on the initial page (or the "<Instrument type> instrument"
+first column on the final rendered page) can NEVER have a primary alias
 
-Mybe the userscript "@include" directive has to be adjusted to
-
-2.)
-
-Currently the following URLs e.g https://musicbrainz.org/event/a350d5fd-4481-43c1-8eab-57fe5e55b8f3/tags
-are not handled by the one of the entity tags sub-pages (/<entity>/<mbid>/tags)
 
