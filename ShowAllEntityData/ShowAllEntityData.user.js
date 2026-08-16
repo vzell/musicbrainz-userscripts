@@ -17181,7 +17181,7 @@
      * columns): two different phrases never merge.
      *
      * @param {?HTMLTableCellElement} cell
-     * @returns {Array<{phrase: string, node: Text, container: Element}>}
+     * @returns {Array<{phrase: string, node: ?Text, container: Element}>}
      */
     function _findCellJoinPhrases(cell) {
         if (!cell) return [];
@@ -17202,6 +17202,21 @@
             }
             return false;
         };
+        // A previous _highlightJoinPhraseMatch() (or a global-filter
+        // highlightCrossTag() pass — both use these two classes, see the
+        // paired ".mb-global-filter-highlight, .mb-column-filter-highlight"
+        // selector used throughout this file) can leave the join-phrase text
+        // node wrapped in a <span> instead of sitting bare between the two
+        // entity anchors. openUniqDrop() reopens the dropdown WITHOUT an
+        // intervening runFilter() pass (the only place that clears these
+        // spans back to plain text, at testRowMatch()'s own top), so this
+        // function must tolerate its own highlighter's leftover markup or a
+        // re-scan right after filtering silently finds nothing — this is
+        // exactly what made the "Join phrases" section vanish on reopen.
+        const isOwnHighlightSpan = (node) =>
+            node.nodeType === Node.ELEMENT_NODE && node.tagName === 'SPAN' &&
+            (node.classList.contains('mb-column-filter-highlight') ||
+             node.classList.contains('mb-global-filter-highlight'));
         cell.querySelectorAll('bdi').forEach(bdi => {
             const kids = Array.from(bdi.childNodes);
             const entityIdx = [];
@@ -17209,14 +17224,20 @@
             if (entityIdx.length < 2) return; // need two entities for a "between" phrase
             for (let k = 0; k < entityIdx.length - 1; k++) {
                 const between = kids.slice(entityIdx[k] + 1, entityIdx[k + 1])
-                    .filter(n => n.nodeType === Node.TEXT_NODE);
+                    .filter(n => n.nodeType === Node.TEXT_NODE || isOwnHighlightSpan(n));
                 if (!between.length) continue;
-                const phrase = between.map(n => n.nodeValue).join('').trim().replace(/\s+/g, ' ');
+                const phrase = between
+                    .map(n => n.nodeType === Node.TEXT_NODE ? n.nodeValue : n.textContent)
+                    .join('').trim().replace(/\s+/g, ' ');
                 if (!phrase) continue;
-                // Highlighting needs the actual text node reference — the first
-                // (and, for every observed shape, only) text node between the
-                // two anchors.
-                out.push({ phrase, node: between[0], container: bdi });
+                // Highlighting needs a real text-node reference. Prefer a
+                // bare text node; if the only "between" content is an
+                // already-highlighted span, fall back to the text node
+                // nested inside it (the exact node that span wraps).
+                const rawTextNode = between.find(n => n.nodeType === Node.TEXT_NODE);
+                const node = rawTextNode ||
+                    (between.find(isOwnHighlightSpan)?.firstChild ?? null);
+                out.push({ phrase, node, container: bdi });
             }
         });
         return out;
