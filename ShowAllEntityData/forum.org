@@ -2,7 +2,7 @@
 
 # [VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities](https://github.com/vzell/mb-userscripts/tree/master?tab=readme-ov-file#mb_show_all_entity_data)
 
-## Changes since last version (9.99.746 -> 9.99.861)
+## Changes since last version (9.99.746 -> 9.99.887)
 
 ### New: consolidated Release tracklists
 
@@ -24,52 +24,37 @@
 
 * Added support for **individual ISRC pages** --- an /isrc/<code> page (listing every recording sharing that code) now loads and filters like everything else.
 
-### Enhancements
+### Enhancements: a smarter filter dropdown
 
-* **"Show single-table" button** (off by default) --- for a relationship or discography list that already fits without needing MusicBrainz's own "load more" step, this opens a plain, single, unified table in a new tab instead of the usual split-by-category layout.
-[SCREENSHOT: the "Show single-table" button next to a relationship category]
-
-* **Column filter dropdown reorganised into collapsible sections** --- the little 📊 dropdown's extra filter options (structure, flags, credit details, names, roles, relationship icons, cover-art details) are now grouped under clickable, collapsible headings instead of one long undifferentiated list, and the quick-search box now searches across all of them at once.
+* **Column filter dropdown reorganised into collapsible sections** --- the little 📊 dropdown's extra filter options (structure, flags, credit details, names, roles, relationship icons, cover-art details, and more added since) are now grouped under clickable, collapsible headings instead of one long undifferentiated list, and the quick-search box searches across all of them at once. The "names" section was later split further into its own collapsible group per entity type (artist, event, place, ...).
 [SCREENSHOT: the reorganised unique-values dropdown with its collapsible sections]
 
 --> https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd -> DVD Video "Recording artist" column -> uvd menu open
 
 
-* **Smarter name/role/credit filters** --- the dropdown now offers ready-made filters for individual artist/place/work names, artist roles, and credit details (like "additional", a specific instrument, or a date range) wherever they're relevant, without you having to type them out.
+* **Smarter name/role/credit filters** --- ready-made filters for individual artist/place/work names, artist roles, and credit details (like "additional", a specific instrument, or a date range) show up wherever they're relevant, without you having to type them out. Later additions cover how several people are joined together in one credit ("&", "with", "feat.", ...) and names a companion script has flagged as differing from an entity's real/canonical name.
+
+* **New structural filters for release and media details** --- distinct disc formats and sizes, release country/date/weekday, catalog-number prefixes, per-medium track counts, tag-vote counts, and the "(cancelled)" event marker are now each their own filterable, checkable entries where relevant.
+[SCREENSHOT: the reorganised 📊 dropdown showing the new Format/Release events/Catalog sections]
 
 * **Multi-select relationship-icon filtering** --- relationship icons in the filter dropdown can now be checked and unchecked like any other filter option, instead of only letting you pick one at a time.
 
 * **Cover-art filter details** --- cover-art and event-art columns get their own filter section for image type and image comment.
 
-* **Friendlier multi-value lists** --- a cell listing several people or tags now reads naturally, e.g. "Jon Landau, Chuck Plotkin and Bruce Springsteen", instead of a plain comma-separated run.
+* **Country flags show up more consistently** in the filter dropdown for country/area columns.
 
 * **Configurable filter dropdown height** --- how many entries show before the dropdown list scrolls is now adjustable in settings.
 
+* **Smoother keyboard/mouse use** --- hovering an entry with the mouse and moving the keyboard cursor no longer show two different highlighted rows at once, and closing the dropdown returns your typing cursor to the filter box you were in.
+
+### Enhancements: other
+
+* **"Show single-table" button** (off by default) --- for a relationship or discography list that already fits without needing MusicBrainz's own "load more" step, this opens a plain, single, unified table in a new tab instead of the usual split-by-category layout.
+[SCREENSHOT: the "Show single-table" button next to a relationship category]
+
+* **Friendlier multi-value lists** --- a cell listing several people or tags now reads naturally, e.g. "Jon Landau, Chuck Plotkin and Bruce Springsteen", instead of a plain comma-separated run.
+
 * **Relationships column** now also available on an artist's Works listing.
-
-### Fixes
-
-* Several display glitches on the new "Show single-table" snapshot tabs are fixed --- cover art no longer occasionally appears twice, relationship/tagger icons no longer disappear after filtering, and page headings/columns now always match the live page exactly.
-* Country/state columns correctly tell flagged US/Canada states apart from flagged cities, instead of occasionally mixing the two up.
-* The column filter no longer gets tripped up by the browser's own address/autofill suggestions popping into the field.
-* A handful of small bugs in the new release-tracklist credit columns are fixed --- missing or duplicated location chains, merged-together credits, and a few columns not appearing when they should.
-* The unique-values filter dropdown's flag icons and multi-word entries now space and align correctly.
-* Minor: name/comment/alias filtering now also works correctly for release, recording, and release-group references, not just the entity types it worked for before.
-* Minor: the Series page's Artists listing works again after a regression.
-
-## Changes since last version (9.99.861 -> 9.99.887)
-
-### Enhancements: a smarter filter dropdown
-
-* **One highlight, not two** --- hovering an entry with the mouse and moving the keyboard cursor no longer show two different highlighted rows at once; the two now stay in sync.
-* **Your cursor comes back where it was** --- closing the column filter dropdown (Escape, clicking away, or scrolling) now returns your typing cursor to the filter box you were in, so you can keep typing without re-clicking it.
-* **New "Join phrases" filter** --- for a cell crediting several people or entities joined by "&", "with", "feat.", and the like, every distinct joining phrase is now its own filterable entry.
-* **New "Name variations" filter** --- when a companion script marks a credited name as different from an entity's real name, you can now filter and highlight by either the credited name or the real one.
-* **"Entity info" filters organized by type** --- that filter section is now split into its own collapsible group per entity type (artist, event, place, ...) instead of one long mixed list.
-* **New structural filters for release and media details** --- distinct disc formats and sizes, release country/date/weekday, catalog-number prefixes, per-medium track counts, and more are now each their own filterable, checkable entries.
-[SCREENSHOT: the reorganised 📊 dropdown showing the new Format/Release events/Catalog sections]
-* **Country flags show up more consistently** in the filter dropdown for country/area columns.
-* **Filter by tag-vote count or "(cancelled)" event marker** where relevant.
 
 ### Enhancements: report pages
 
@@ -84,6 +69,13 @@
 
 ### Fixes
 
+* Several display glitches on the new "Show single-table" snapshot tabs are fixed --- cover art no longer occasionally appears twice, relationship/tagger icons no longer disappear after filtering, and page headings/columns now always match the live page exactly.
+* Country/state columns correctly tell flagged US/Canada states apart from flagged cities, instead of occasionally mixing the two up.
+* The column filter no longer gets tripped up by the browser's own address/autofill suggestions popping into the field.
+* A handful of small bugs in the new release-tracklist credit columns are fixed --- missing or duplicated location chains, merged-together credits, and a few columns not appearing when they should.
+* The unique-values filter dropdown's flag icons and multi-word entries now space and align correctly.
+* Minor: name/comment/alias filtering now also works correctly for release, recording, and release-group references, not just the entity types it worked for before.
+* Minor: the Series page's Artists listing works again after a regression.
 * Fixed several pages (`/instruments`, `/genres`, edit-related pages, and every entity's sub-pages) not loading the script at all when the URL had a trailing slash.
 * Added the missing "Show all Tags" button on an Event's tags page --- the one taggable entity type that didn't have it yet.
 * Fixed a report (`PlacesWithoutCoordinates`) always showing empty locality/region/country cells.

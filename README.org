@@ -95322,4 +95322,13 @@ a bullet point about the fact of automatically "Loading all tracks" ALL of relea
 
 act on @debug/forum.org
 
+** merge
 
+merge the changes from the sections
+
+#+begin_example
+## Changes since last version (9.99.746 -> 9.99.861)
+## Changes since last version (9.99.861 -> 9.99.887)
+#+end_example
+
+in one, specifically checking for doubled stuff regarding the column filter drop down
