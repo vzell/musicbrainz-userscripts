@@ -13886,22 +13886,28 @@
             },
             tableMode: 'single'
         },
+        // Consolidated alias page for every entity kind except Artist (whose
+        // /artist/<mbid>/aliases page has a second "Artist credits" section
+        // and therefore its own two-button, per-button-tableMode shape — see
+        // the separate 'artist-aliases' entry below). All of these entities'
+        // native alias-table markup is otherwise identical.
+        //
+        // extractMainColumn: '<entity>' was intentionally never used here.
+        // The Locale column on alias tables contains plain locale text (e.g.
+        // "English United States") followed by a <span class="comment">primary
+        // </span> role indicator, NOT an entity link — extracting it as
+        // MB-Name/Comment would incorrectly pollute those synthetic columns
+        // (bug fix: v9.99.35). `localeParts` (see ColumnDataExtractor) is the
+        // correct, purpose-built extractor for this plain-text shape instead.
         {
-            type: 'instrument-aliases',
-            match: (path) => path.match(/\/instrument\/[a-f0-9-]{36}\/aliases/),
-            buttons: [ { label: 'Show all Aliases for Instrument' } ],
-            // extractMainColumn: 'Locale' was intentionally removed for all *-aliases page definitions.
-            // The Locale column on alias tables contains plain locale text (e.g. "English United States")
-            // followed by a <span class="comment">primary</span> role indicator, NOT an entity link.
-            // Extracting it as MB-Name / Comment incorrectly polluted those synthetic columns.
-            // (Bug fix: v9.99.35)
-            //features: {
-            //    extractMainColumn: 'Locale' // Specific header
-            //},
+            type: 'entity-aliases',
+            match: (path) => path.match(/\/(?:instrument|area|place|series|label|work|release-group|release|recording|event)\/[a-f0-9-]{36}\/aliases/),
+            buttons: [ { label: 'Show all Aliases', labelFromPathEntity: true } ],
             features: {
                 columnExtractors: [
-                    { sourceColumn: 'Begin date', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
-                    { sourceColumn: 'End date',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
+                    { sourceColumn: 'Begin date', extractor: 'dateParts',   syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
+                    { sourceColumn: 'End date',   extractor: 'dateParts',   syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] },
+                    { sourceColumn: 'Locale',     extractor: 'localeParts', syntheticColumns: ['Locale language', 'Primary locale'] }
                 ],
                 integerColumns: [
                     { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
@@ -14071,22 +14077,6 @@
             tableMode: 'single'
         },
         {
-            type: 'area-aliases',
-            match: (path) => path.match(/\/area\/[a-f0-9-]{36}\/aliases/),
-            buttons: [ { label: 'Show all Aliases for Area' } ],
-            features: {
-                columnExtractors: [
-                    { sourceColumn: 'Begin date', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
-                    { sourceColumn: 'End date',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
-                ],
-                integerColumns: [
-                    { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
-                    { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
-                ]
-            },
-            tableMode: 'single'
-        },
-        {
             type: 'area-recordings-filtered',
             match: (path, params) => path.match(/\/area\/[a-f0-9-]{36}\/recordings/) && params.has('link_type_id'),
             buttons: [ { label: 'Show all Recordings for Area (complete)' } ],
@@ -14164,22 +14154,6 @@
         },
         // Place pages
         {
-            type: 'place-aliases',
-            match: (path) => path.match(/\/place\/[a-f0-9-]{36}\/aliases/),
-            buttons: [ { label: 'Show all Aliases for Place' } ],
-            features: {
-                columnExtractors: [
-                    { sourceColumn: 'Begin date', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
-                    { sourceColumn: 'End date',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
-                ],
-                integerColumns: [
-                    { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
-                    { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
-                ]
-            },
-            tableMode: 'single'
-        },
-        {
             type: 'place-events',
             match: (path) => path.match(/\/place\/[a-f0-9-]{36}\/events/),
             buttons: [ { label: 'Show all Events for Place' } ],
@@ -14252,22 +14226,6 @@
             non_paginated: true
         },
         // Series pages
-        {
-            type: 'series-aliases',
-            match: (path) => path.match(/\/series\/[a-f0-9-]{36}\/aliases/),
-            buttons: [ { label: 'Show all Aliases for Series' } ],
-            features: {
-                columnExtractors: [
-                    { sourceColumn: 'Begin date', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
-                    { sourceColumn: 'End date',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
-                ],
-                integerColumns: [
-                    { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
-                    { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
-                ]
-            },
-            tableMode: 'single'
-        },
         {
             type: 'series-releases',
             match: (path) => path.includes('/series'),
@@ -14374,22 +14332,6 @@
         },
         // Label pages
         {
-            type: 'label-aliases',
-            match: (path) => path.match(/\/label\/[a-f0-9-]{36}\/aliases/),
-            buttons: [ { label: 'Show all Aliases for Label' } ],
-            features: {
-                columnExtractors: [
-                    { sourceColumn: 'Begin date', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
-                    { sourceColumn: 'End date',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
-                ],
-                integerColumns: [
-                    { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
-                    { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
-                ]
-            },
-            tableMode: 'single'
-        },
-        {
             type: 'label-relationships-filtered',
             match: (path, params) => path.match(/\/label\/[a-f0-9-]{36}\/relationships/) && params.has('link_type_id'),
             buttons: [ { label: 'Show all Relationships for Label (complete)' } ],
@@ -14471,22 +14413,6 @@
             tableMode: 'single'
         },
         // Work pages
-        {
-            type: 'work-aliases',
-            match: (path) => path.match(/\/work\/[a-f0-9-]{36}\/aliases/),
-            buttons: [ { label: 'Show all Aliases for Work' } ],
-            features: {
-                columnExtractors: [
-                    { sourceColumn: 'Begin date', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
-                    { sourceColumn: 'End date',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
-                ],
-                integerColumns: [
-                    { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
-                    { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
-                ]
-            },
-            tableMode: 'single'
-        },
         {
             type: 'work-recordings-filtered',
             match: (path, params) => path.match(/\/work\/[a-f0-9-]{36}/) && params.has('link_type_id'),
@@ -14714,22 +14640,6 @@
         },
         // ReleaseGroups pages
         {
-            type: 'releasegroup-aliases',
-            match: (path) => path.match(/\/release-group\/[a-f0-9-]{36}\/aliases/),
-            buttons: [ { label: 'Show all Aliases for Releasegroup' } ],
-            features: {
-                columnExtractors: [
-                    { sourceColumn: 'Begin date', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
-                    { sourceColumn: 'End date',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
-                ],
-                integerColumns: [
-                    { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
-                    { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
-                ]
-            },
-            tableMode: 'single'
-        },
-        {
             type: 'releasegroup-releases',
             match: (path) => path.includes('/release-group/'),
             buttons: [ { label: 'Show all Releases for ReleaseGroup' } ],
@@ -14763,22 +14673,6 @@
             non_paginated: false
         },
         // Release pages
-        {
-            type: 'release-aliases',
-            match: (path) => path.match(/\/release\/[a-f0-9-]{36}\/aliases/),
-            buttons: [ { label: 'Show all Aliases for Release' } ],
-            features: {
-                columnExtractors: [
-                    { sourceColumn: 'Begin date', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
-                    { sourceColumn: 'End date',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
-                ],
-                integerColumns: [
-                    { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
-                    { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
-                ]
-            },
-            tableMode: 'single'
-        },
         {
             type: 'release-discids',
             match: (path) => path.match(/\/release\/[a-f0-9-]{36}\/discids/),
@@ -14862,22 +14756,6 @@
         },
         // Recording pages
         {
-            type: 'recording-aliases',
-            match: (path) => path.match(/\/recording\/[a-f0-9-]{36}\/aliases/),
-            buttons: [ { label: 'Show all Aliases for Recording' } ],
-            features: {
-                columnExtractors: [
-                    { sourceColumn: 'Begin date', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
-                    { sourceColumn: 'End date',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
-                ],
-                integerColumns: [
-                    { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
-                    { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
-                ]
-            },
-            tableMode: 'single'
-        },
-        {
             type: 'recording-fingerprints',
             match: (path) => path.match(/\/recording\/[a-f0-9-]{36}\/fingerprints/),
             buttons: [ { label: 'Show all Fingerprints for Recording' } ],
@@ -14911,22 +14789,6 @@
             non_paginated: false
         },
         // Event pages
-        {
-            type: 'event-aliases',
-            match: (path) => path.match(/\/event\/[a-f0-9-]{36}\/aliases/),
-            buttons: [ { label: 'Show all Aliases for Event' } ],
-            features: {
-                columnExtractors: [
-                    { sourceColumn: 'Begin date', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
-                    { sourceColumn: 'End date',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
-                ],
-                integerColumns: [
-                    { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
-                    { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
-                ]
-            },
-            tableMode: 'single'
-        },
         {
             type: 'artist-events',
             match: (path) => path.includes('/events'),
