@@ -2731,7 +2731,7 @@
      * _extractMainColumnParts — the single source of truth for
      * `features.extractMainColumn`'s per-row split of a page's main entity
      * cell into three synthetic `<td>`s: `MB-Name`, `Comment`, and
-     * `MB-Primary alias`. Replaces two byte-for-byte-duplicated inline
+     * `Primary alias`. Replaces two byte-for-byte-duplicated inline
      * blocks that both used to build only `MB-Name`/`Comment` and never
      * stripped `<i title="Primary alias">` before reading Comment text —
      * on a row whose comment is wholly or partly a primary alias, that
@@ -3797,7 +3797,7 @@
 
         // ── extractMainColumn companion extractors ────────────────────────────
         //
-        // Used on pages that resolve MB-Name/Comment/MB-Primary alias via
+        // Used on pages that resolve MB-Name/Comment/Primary alias via
         // `features.extractMainColumn` (see _extractMainColumnParts()) but whose
         // main-column cell also carries a trailing date (Events), artist
         // credit (Releases/Release groups/Recordings), or a leading tag-vote
@@ -12721,7 +12721,7 @@
                     { sourceColumn: 'Last edited', extractor: 'dateTimeParts', syntheticColumns: ['Last edited date', 'Last edited time'] },
                     { sourceColumn: 'Annotation', extractor: 'numberOfChars', syntheticColumns: ['Annotation chars'] }
                 ],
-                // Splits the "MB-Name" / "Comment" / "MB-Primary alias" synthetic
+                // Splits the "MB-Name" / "Comment" / "Primary alias" synthetic
                 // columns off whichever of these headers is actually present on a
                 // given report's table (mirrors the extraction already done for
                 // the 'report-multiple-linked' family, e.g. ISRCsWithManyRecordings
@@ -13382,7 +13382,7 @@
                     ],
                     collapsableColumns: [ 'Artists', 'Location', 'EAA', 'Place', 'Locality', 'Region', 'Country' ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
-                    tooltipColumns: [ 'MB-Name', 'italic:Comment', 'MB-Primary alias', '---', 'Artists', 'Location', ['Date', '(', 'Time', ')'], 'Cancelled' ],
+                    tooltipColumns: [ 'MB-Name', 'italic:Comment', 'Primary alias', '---', 'Artists', 'Location', ['Date', '(', 'Time', ')'], 'Cancelled' ],
                     addEAA: 'Event',
                     extractMainColumn: 'Event',
                     stickyColumn: 'Event'
@@ -13648,7 +13648,7 @@
                         { sourceColumn: 'MM',   align: 'R' },
                         { sourceColumn: 'YYYY', align: 'C' }
                     ],
-                    tooltipColumns: [ 'MB-Name', 'italic:Comment', 'MB-Primary alias', '---', 'Artists', 'Location', ['Date', '(', 'Time', ')'], 'Cancelled' ],
+                    tooltipColumns: [ 'MB-Name', 'italic:Comment', 'Primary alias', '---', 'Artists', 'Location', ['Date', '(', 'Time', ')'], 'Cancelled' ],
                     addEAA: 'Name',
                     extractMainColumn: 'Name',
                     stickyColumn: 'Name'
@@ -13892,7 +13892,7 @@
                 ],
                 collapsableColumns: [ 'Artists', 'Location', 'EAA', 'Place', 'Locality', 'Region', 'Country' ],
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
-                tooltipColumns: [ 'MB-Name', 'italic:Comment', 'MB-Primary alias', 'Type', '---', 'Artists', 'Location', ['Date', '(', 'Time', ')'], 'Cancelled' ],
+                tooltipColumns: [ 'MB-Name', 'italic:Comment', 'Primary alias', 'Type', '---', 'Artists', 'Location', ['Date', '(', 'Time', ')'], 'Cancelled' ],
                 addEAA: 'Event',
                 extractMainColumn: 'Event',
                 stickyColumn: 'Event'
@@ -14109,7 +14109,7 @@
                 ],
                 collapsableColumns: [ 'Artists', 'EAA' ],
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
-                tooltipColumns: [ 'MB-Name', 'italic:Comment', 'MB-Primary alias', 'Type', '---', 'Artists', ['Date', '(', 'Time', ')'], 'Cancelled' ],
+                tooltipColumns: [ 'MB-Name', 'italic:Comment', 'Primary alias', 'Type', '---', 'Artists', ['Date', '(', 'Time', ')'], 'Cancelled' ],
                 addEAA: 'Event',
                 extractMainColumn: 'Event',
                 stickyColumn: 'Event'
@@ -14212,7 +14212,7 @@
                 // the first-declared key ('Releases', extractMainColumn: 'Release')
                 // for the Artists sub-table, whose real main column is 'Artist'.
                 // Since mainColIdx never resolved, cleanupHeaders() still
-                // unconditionally injected the MB-Name/Comment/MB-Primary alias
+                // unconditionally injected the MB-Name/Comment/Primary alias
                 // headers (gated only on "is extractMainColumn configured", not on
                 // whether it actually matches a real column) while the row-building
                 // code correctly produced no data cells for them — see
@@ -14239,7 +14239,7 @@
                     ],
                     collapsableColumns: [ 'Artists', 'Location', 'EAA', 'Place', 'Locality', 'Region', 'Country' ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
-                    tooltipColumns: [ 'MB-Name', 'italic:Comment', 'MB-Primary alias', '---', 'Artists', 'Location', ['Date', '(', 'Time', ')'], 'Cancelled' ],
+                    tooltipColumns: [ 'MB-Name', 'italic:Comment', 'Primary alias', '---', 'Artists', 'Location', ['Date', '(', 'Time', ')'], 'Cancelled' ],
                     addEAA: 'Event',
                     extractMainColumn: 'Event',
                     stickyColumn: 'Event'
@@ -14746,7 +14746,7 @@
                 ],
                 collapsableColumns: [ 'Location', 'EAA', 'Place', 'Locality', 'Region', 'Country' ],
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'} ],
-                tooltipColumns: [ 'MB-Name', 'italic:Comment', 'MB-Primary alias', 'Type', '---', 'Role', 'Location', ['Date', '(', 'Time', ')'], 'Cancelled' ],
+                tooltipColumns: [ 'MB-Name', 'italic:Comment', 'Primary alias', 'Type', '---', 'Role', 'Location', ['Date', '(', 'Time', ')'], 'Cancelled' ],
                 addEAA: 'Event',
                 extractMainColumn: 'Event',
                 stickyColumn: 'Event'
@@ -26047,7 +26047,7 @@ a { color: #1565c0; }`;
 
                     // Also measure each <li> individually (hidden or visible) so that
                     // collapsed multi-row cells and single-li synthetic columns like
-                    // 'Primary Alias' are measured at their full single-line width.
+                    // 'Primary alias' are measured at their full single-line width.
                     cell.querySelectorAll('ul > li').forEach(li => {
                         if (li.classList.contains('mb-caa-art-li')) return;
                         const liClone = li.cloneNode(true);
@@ -36557,8 +36557,8 @@ a { color: #1565c0; }`;
                 if (colName === 'MB-Name')
                     return `Extracted from '${src}': the entity name, split from the '${src}' column. The original column retains links and supplementary markup.`;
                 if (colName === 'Comment')
-                    return `Extracted from '${src}': the disambiguation comment, split from the '${src}' column (excludes any primary alias, which has its own 'MB-Primary alias' column).`;
-                if (colName === 'MB-Primary alias')
+                    return `Extracted from '${src}': the disambiguation comment, split from the '${src}' column (excludes any primary alias, which has its own 'Primary alias' column).`;
+                if (colName === 'Primary alias')
                     return `Extracted from '${src}': the MusicBrainz primary alias (<i title="Primary alias">), split from the '${src}' column's disambiguation comment for standalone sorting and filtering.`;
                 break;
             case 'Name_Comment_Description':
@@ -36769,11 +36769,11 @@ a { color: #1565c0; }`;
                 .filter(e => e.colIdx !== -1)
                 .flatMap(e => e.syntheticColumns)
         );
-        // Also include MB-Name, Comment, and MB-Primary alias when extractMainColumn is active.
+        // Also include MB-Name, Comment, and Primary alias when extractMainColumn is active.
         if (activeDefinition?.features?.extractMainColumn) {
             _resolvedPrimaryCols.add('MB-Name');
             _resolvedPrimaryCols.add('Comment');
-            _resolvedPrimaryCols.add('MB-Primary alias');
+            _resolvedPrimaryCols.add('Primary alias');
         }
         activeSyntheticColumnExtractors.forEach(entry => {
             const headersText = Array.from(theadRow.cells).map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim());
@@ -36807,7 +36807,7 @@ a { color: #1565c0; }`;
         const isMainColEnabled = mainColConfig !== undefined && mainColConfig !== null;
 
         // On pages where the configuration is enabled, create the "MB-Name", "Comment",
-        // and "MB-Primary alias" columns
+        // and "Primary alias" columns
         if (isMainColEnabled) {
             const headersText = Array.from(theadRow.cells).map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim());
             if (!headersText.includes('MB-Name')) {
@@ -36832,15 +36832,15 @@ a { color: #1565c0; }`;
                 Lib.debug('cleanup', 'Injecting synthetic header: Comment');
                 theadRow.appendChild(thC);
             }
-            if (!headersText.includes('MB-Primary alias')) {
+            if (!headersText.includes('Primary alias')) {
                 const thA = document.createElement('th');
-                thA.textContent = 'MB-Primary alias';
-                thA.dataset.colName = 'MB-Primary alias';
+                thA.textContent = 'Primary alias';
+                thA.dataset.colName = 'Primary alias';
                 thA.classList.add('mb-extracted-column');
                 thA.style.backgroundColor = headerBgColor;
-                const tipA = _synthColTooltip('extractMainColumn', String(mainColConfig), 'MB-Primary alias');
+                const tipA = _synthColTooltip('extractMainColumn', String(mainColConfig), 'Primary alias');
                 if (tipA) thA.title = tipA;
-                Lib.debug('cleanup', 'Injecting synthetic header: MB-Primary alias');
+                Lib.debug('cleanup', 'Injecting synthetic header: Primary alias');
                 theadRow.appendChild(thA);
             }
         }
@@ -38380,11 +38380,11 @@ a { color: #1565c0; }`;
                         if (!_srcPresent) return;
                         entry.syntheticColumns.forEach(cn => _finalColNames.push(cn));
                     });
-                    // 4. MB-Name / Comment / MB-Primary alias (when extractMainColumn is configured)
+                    // 4. MB-Name / Comment / Primary alias (when extractMainColumn is configured)
                     if (mainColIdx !== -1) {
                         _finalColNames.push('MB-Name');
                         _finalColNames.push('Comment');
-                        _finalColNames.push('MB-Primary alias');
+                        _finalColNames.push('Primary alias');
                     }
                     // 5. Release events injected column (populated async by initReleaseEventsColumn).
                     activeReleaseEventColumns.forEach(entry => _finalColNames.push(entry.colName));
@@ -38537,7 +38537,7 @@ a { color: #1565c0; }`;
                                     return result.slice(0, entry.syntheticColumns.length);
                                 });
 
-                                // 1b. Extract MB-Name / Comment / MB-Primary alias cells (only when
+                                // 1b. Extract MB-Name / Comment / Primary alias cells (only when
                                 //     configured) via the shared _extractMainColumnParts() helper.
                                 //     Must run AFTER primary column extractors (step 1) — any
                                 //     mutating extractor must have already cleaned the source cell
@@ -38549,7 +38549,7 @@ a { color: #1565c0; }`;
                                 const { tdName, tdComment, tdAlias } = _extractMainColumnParts(targetCell);
 
                                 // 1c. Build a name-keyed map from primary extractor outputs AND from
-                                //     the MB-Name / Comment / MB-Primary alias cells, then run
+                                //     the MB-Name / Comment / Primary alias cells, then run
                                 //     synthetic-column extractors (second pass).  Including 'MB-Name'
                                 //     and 'Comment' in the map allows syntheticColumnExtractors to use
                                 //     them as source columns (e.g. eventParts sources from 'Comment').
@@ -38568,12 +38568,12 @@ a { color: #1565c0; }`;
                                         if (cell) primarySyntheticCellMap.set(colName, cell);
                                     });
                                 });
-                                // Register MB-Name / Comment / MB-Primary alias so synthetic extractors
+                                // Register MB-Name / Comment / Primary alias so synthetic extractors
                                 // can source from them
                                 if (mainColIdx !== -1) {
                                     primarySyntheticCellMap.set('MB-Name', tdName);
                                     primarySyntheticCellMap.set('Comment', tdComment);
-                                    primarySyntheticCellMap.set('MB-Primary alias', tdAlias);
+                                    primarySyntheticCellMap.set('Primary alias', tdAlias);
                                 }
                                 // Falls back to a real header cell (via headerNameToIdx, pre-
                                 // deletion) when sourceColumn isn't a primary-extractor/
@@ -38628,7 +38628,7 @@ a { color: #1565c0; }`;
                                     cells.forEach(td => newRow.appendChild(td));
                                 });
 
-                                // 5. Append MB-Name / Comment / MB-Primary alias when extractMainColumn is active
+                                // 5. Append MB-Name / Comment / Primary alias when extractMainColumn is active
                                 if (mainColIdx !== -1) {
                                     newRow.appendChild(tdName);
                                     newRow.appendChild(tdComment);
@@ -38911,7 +38911,7 @@ a { color: #1565c0; }`;
                                     return result.slice(0, entry.syntheticColumns.length);
                                 });
 
-                                // ── MB-Name / Comment / MB-Primary alias extraction ───────
+                                // ── MB-Name / Comment / Primary alias extraction ───────
                                 const targetCell = mainColIdx !== -1 ? getCellByLogicalIndex(newRow, mainColIdx) : null;
                                 const { tdName, tdComment, tdAlias } = _extractMainColumnParts(targetCell);
 
@@ -38933,7 +38933,7 @@ a { color: #1565c0; }`;
                                 if (mainColIdx !== -1) {
                                     primarySyntheticCellMap.set('MB-Name', tdName);
                                     primarySyntheticCellMap.set('Comment', tdComment);
-                                    primarySyntheticCellMap.set('MB-Primary alias', tdAlias);
+                                    primarySyntheticCellMap.set('Primary alias', tdAlias);
                                 }
                                 // Falls back to a real header cell (via headerNameToIdx, pre-
                                 // deletion) when sourceColumn isn't a primary-extractor/
@@ -38986,7 +38986,7 @@ a { color: #1565c0; }`;
                                     if (!_syntheticSourceResolved[i]) return;
                                     cells.forEach(td => newRow.appendChild(td));
                                 });
-                                // 4. Append MB-Name / Comment / MB-Primary alias (when extractMainColumn is active)
+                                // 4. Append MB-Name / Comment / Primary alias (when extractMainColumn is active)
                                 if (mainColIdx !== -1) {
                                     newRow.appendChild(tdName);
                                     newRow.appendChild(tdComment);
@@ -39269,7 +39269,7 @@ a { color: #1565c0; }`;
                                         return result.slice(0, entry.syntheticColumns.length);
                                     });
 
-                                    // 1b. Extract MB-Name / Comment / MB-Primary alias cells (only when
+                                    // 1b. Extract MB-Name / Comment / Primary alias cells (only when
                                     //     configured) via the shared _extractMainColumnParts() helper.
                                     //     Must run AFTER primary column extractors (step 1) — any
                                     //     mutating extractor must have already cleaned the source cell
@@ -39281,7 +39281,7 @@ a { color: #1565c0; }`;
                                     const { tdName, tdComment, tdAlias } = _extractMainColumnParts(targetCell);
 
                                     // 1c. Build a name-keyed map from primary extractor outputs AND from
-                                    //     the MB-Name / Comment / MB-Primary alias cells, then run
+                                    //     the MB-Name / Comment / Primary alias cells, then run
                                     //     synthetic-column extractors (second pass).  Including 'MB-Name'
                                     //     and 'Comment' in the map allows syntheticColumnExtractors to
                                     //     use them as source columns (e.g. eventParts sources from 'Comment').
@@ -39294,12 +39294,12 @@ a { color: #1565c0; }`;
                                             if (cell) primarySyntheticCellMap.set(colName, cell);
                                         });
                                     });
-                                    // Register MB-Name / Comment / MB-Primary alias so synthetic
+                                    // Register MB-Name / Comment / Primary alias so synthetic
                                     // extractors can source from them
                                     if (mainColIdx !== -1) {
                                         primarySyntheticCellMap.set('MB-Name', tdName);
                                         primarySyntheticCellMap.set('Comment', tdComment);
-                                        primarySyntheticCellMap.set('MB-Primary alias', tdAlias);
+                                        primarySyntheticCellMap.set('Primary alias', tdAlias);
                                     }
                                     // Falls back to a real header cell (via headerNameToIdx, pre-
                                     // deletion) when sourceColumn isn't a primary-extractor/
@@ -39352,7 +39352,7 @@ a { color: #1565c0; }`;
                                     cells.forEach(td => newRow.appendChild(td));
                                 });
 
-                                    // 5. Append MB-Name / Comment / MB-Primary alias when extractMainColumn is active.
+                                    // 5. Append MB-Name / Comment / Primary alias when extractMainColumn is active.
                                     // The artist-releasegroups branch has its own identical pipeline
                                     // above; this else-branch never handles that pageType, so the
                                     // former `pageType !== 'artist-releasegroups'` guard is gone.
@@ -42195,7 +42195,7 @@ a { color: #1565c0; }`;
                         // conditional too (see the unconditional block right after it) —
                         // extractMainColumn is a PAGE-level feature (applies uniformly to
                         // every group), so cleanupHeaders() must still run and inject the
-                        // MB-Name/Comment/MB-Primary alias headers even for a group with no
+                        // MB-Name/Comment/Primary alias headers even for a group with no
                         // per-group entityFeatures of its own (e.g. Artists/Labels/Places/
                         // Works, which declare `{}`) — gating the whole block, including
                         // cleanupHeaders(), on "has entity-specific features" left those
