@@ -94028,16 +94028,6 @@ Do not code yet just check
 #+end_example
 
 
-
-* TODO In "Recording enineer" column, "John Cooper (engineer)" should always stay together, a bare "John Cooper" should never be extracted
-
-Currently
-
-#+begin_example
-<li><a class="wrap-anywhere" href="/artist/4844fcef-6e56-4407-be41-ead237dff686" title="Cooper, John (engineer)"><bdi>John Cooper</bdi></a>&nbsp;<span class="comment"><bdi>(engineer)</bdi></span><span class="mb-live-date-flag" title="This track is a live recording (recorded 2005-07-18), but this credit has no date attribute — it can't be confirmed to be from the same performance."> ❌</span></li>
-#+end_example
-
-
 * DONE fixes to trailing / handling and missing 'event-tags" support
 
 1.)
@@ -94728,55 +94718,12 @@ rendered HTML)
 
 "Actions" column header is still present, but data cells are gone, see @debug/action.html
 
-
-* Is it safe to rename all occurences for "MB-Primary alias" to just "Primary alias" in the whole code base
+* DONE Is it safe to rename all occurences for "MB-Primary alias" to just "Primary alias" in the whole code base
 
 Is it safe to rename all occurences for the extracted "MB-Primary alias" column to just "Primary alias" in the whole
 code base (plus comments)
 
-* TODO why is this not working
-
-why is this not working
-
-#+begin_example
-            // Unconditionally remove the "MusicBrainz Nuclear Tags" bulk-tag column
-            // (foreign userscript injection; has no header text, so it can't be
-            // matched via removalMapAlways — matched by CSS class instead).
-            if (th.classList.contains('elephant-tag-col')) {
-                Lib.debug('cleanup', `Marking column ${idx} for removal: elephant-tag-col (foreign userscript column).`);
-                indicesToRemove.push(idx);
-            }
-#+end_example
-
-for the column @debug/bulk.tag-recording.html
-
-
-* TODO Picard column not working after "Load from Disk" (when page is already displayed)
-
-* TODO Move disambiguation together with primary alias after e.g. label name right below the name
-** labels
-
-https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e
-
-Columbia (owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX)
-
-to
-
-Columbia
-owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX
-
-** series
-
-https://musicbrainz.org/series/b90cae9c-2b72-4bdb-ac3f-9c29576ef177
-
-Bruce Springsteen Definitive Collection (Italian reissue series by Corriere della Sera and TV Sorrisi e Canzoni)
-
-https://musicbrainz.org/series/34b9e392-c076-4882-9355-8dbf2a1a52ac
-
-Tracks (Bruce Springsteen)
-
-
-* TODO BUGS
+* DONE BUGS
 ** DONE https://musicbrainz.org/user/vzell/ratings - h3 "Release group ratings" has doubled CAA inline images in column "Release groups"
 
 On https://musicbrainz.org/user/vzell/ratings the h3 "Release group ratings" column has doubled CAA inline images in column "Release groups" @debug/cell.html
@@ -94871,13 +94818,69 @@ Buggy rendering of "SiriusXM Studio in New York City New York, New York New York
 @debug/sirius-final.html - final page; rendered as 2 list elements
 #+end_example
 
-** TODO Why is there an "expand-events-toggle _toggleButton_15vyb_5" toggle button at https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf - maybe remove it from the final page when the userscript is present
+* DONE Why is there an "expand-events-toggle _toggleButton_15vyb_5" toggle button at https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf - maybe remove it from the final page when the userscript is present
+
+On the following pageType, e.g. https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf
+there is the following button present in the "Event" column, e.g.
 
 #+begin_example
 <button type="button" class="expand-events-toggle _toggleButton_15vyb_5" data-event-gid="3ed93c42-494e-4822-9df2-a5083279a557" aria-label="Expand event 3ed93c42-494e-4822-9df2-a5083279a557">▸</button>
 #+end_example
 
-It comes from another userscript probably "Expand events", the toggle is already on the initial page - maybe remove it from the final page when the userscript is present
+It comes from the userscript "Expand events" by @Dvir Yitzchaki <dvirtz@gmail.com>, the toggle is already on the initial page.
+Remove it from the final rendered page when the userscript is present/active
+
+
+* TODO In "Recording enineer" column, "John Cooper (engineer)" should always stay together, a bare "John Cooper" should never be extracted
+
+Currently
+
+#+begin_example
+<li><a class="wrap-anywhere" href="/artist/4844fcef-6e56-4407-be41-ead237dff686" title="Cooper, John (engineer)"><bdi>John Cooper</bdi></a>&nbsp;<span class="comment"><bdi>(engineer)</bdi></span><span class="mb-live-date-flag" title="This track is a live recording (recorded 2005-07-18), but this credit has no date attribute — it can't be confirmed to be from the same performance."> ❌</span></li>
+#+end_example
+
+
+* TODO why is this not working
+
+why is this not working
+
+#+begin_example
+            // Unconditionally remove the "MusicBrainz Nuclear Tags" bulk-tag column
+            // (foreign userscript injection; has no header text, so it can't be
+            // matched via removalMapAlways — matched by CSS class instead).
+            if (th.classList.contains('elephant-tag-col')) {
+                Lib.debug('cleanup', `Marking column ${idx} for removal: elephant-tag-col (foreign userscript column).`);
+                indicesToRemove.push(idx);
+            }
+#+end_example
+
+for the column @debug/bulk.tag-recording.html
+
+
+* TODO Picard column not working after "Load from Disk" (when page is already displayed)
+
+
+* TODO Move disambiguation together with primary alias after e.g. label name right below the name
+** labels
+
+https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e
+
+Columbia (owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX)
+
+to
+
+Columbia
+owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX
+
+** series
+
+https://musicbrainz.org/series/b90cae9c-2b72-4bdb-ac3f-9c29576ef177
+
+Bruce Springsteen Definitive Collection (Italian reissue series by Corriere della Sera and TV Sorrisi e Canzoni)
+
+https://musicbrainz.org/series/34b9e392-c076-4882-9355-8dbf2a1a52ac
+
+Tracks (Bruce Springsteen)
 
 
 * TODO What about the header collapsable" toggle icon
@@ -95052,6 +95055,7 @@ https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordin
 
 * TODO problem with "Eventdate" appearing before main column
 
+
 * Checking CAA columns on different pageTypes
 
 | pageType              | subtable                                                         | URL                 | single/multi     | CAA               | multi-row collapse symbol present | Relationships | Picard |
@@ -95175,10 +95179,9 @@ How can I extend "statusline.sh" to show the "Current session" and "Weekly limit
 #+end_example
 
 
-* DONE plan: merge current branch in main, commit and push
+* TODO plan: merge current branch in main, commit and push
 
 Merge current branch in main, commit and push:
 
-check if it would cleanly merge
-
-Commit and push README.org before merging
+- Check if it would cleanly merge
+- Commit and push README.org before merging
