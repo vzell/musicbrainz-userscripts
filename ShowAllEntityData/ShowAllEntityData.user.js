@@ -318,7 +318,7 @@
         sa_sidebar_collapsed: {
             label: "Start with sidebar collapsed",
             type: "checkbox",
-            default: false,
+            default: true,
             description: "Automatically collapse the sidebar when the consolidated view is first rendered, freeing up horizontal space immediately. Only takes effect when 'Collabsable sidebar' is also enabled."
         },
 
@@ -760,7 +760,7 @@
         sa_enable_dropdown_flag_icons: {
             label: "Show Flag Icons In Unique-Values Dropdown",
             type: "checkbox",
-            default: false,
+            default: true,
             description: "Decorate each entry in the 📊 unique-values filter dropdown with the same " +
                          "flag icon shown in the table cell, for Country/Area/Locality/Region/Location/" +
                          "Place/Country-Date columns, and release-tracks' own \"Recorded at place\" column."
@@ -769,12 +769,12 @@
         sa_uniq_dropdown_visible_rows: {
             label: "Unique-Values Dropdown Visible Rows",
             type: "number",
-            default: 8,
+            default: 30,
             min: 3,
             max: 50,
             description: "Number of entries shown in the 📊 unique-values filter dropdown before it " +
                          "scrolls (applies to the combined quickfilter bar + synthetic sections + " +
-                         "regular value list). The default (8) matches this dropdown's original, " +
+                         "regular value list). The default (30) matches this dropdown's original, " +
                          "non-configurable height; raise it to see more entries at once without scrolling."
         },
 
@@ -1358,7 +1358,7 @@
         sa_auto_resize_columns: {
             label: 'Auto-resize columns on load',
             type: 'checkbox',
-            default: false,
+            default: true,
             description: 'When enabled, automatically triggers the "↔️ Resize" button ' +
                          '(same as clicking it manually) immediately after the table is rendered, ' +
                          'so columns are fitted to their content on every page load without manual clicks.'
@@ -1623,14 +1623,13 @@
         sa_enable_show_single_table_btn: {
             label: 'Enable "Show single-table" button',
             type: 'checkbox',
-            default: false,
+            default: true,
             description: 'Adds a "Show single-table" button to relationship/performance/' +
                          'release-listing sub-tables that have no MusicBrainz overflow ' +
                          '(artist-relationships, label-relationships, place-performances, ' +
                          'artist-releasegroups, releasegroup-releases). Clicking it opens the ' +
                          'currently-rendered rows as a standalone single-table view in a new ' +
-                         'browser tab via a client-side snapshot — no re-fetch. Off by default ' +
-                         'while this feature is new.'
+                         'browser tab via a client-side snapshot — no re-fetch.'
         },
 
         // ============================================================
@@ -1837,7 +1836,7 @@
         sa_enable_ars_collapse: {
             label: 'Enable collapsible "ARs" column',
             type: 'checkbox',
-            default: true,
+            default: false,
             description: 'Height-clamp the "ARs" column (recording-level relationships — ' +
                          'engineer, producer, recording-of-work, publisher, etc. — extracted ' +
                          'from the release tracklist\'s Title cell) behind a ▶/▼ "show ' +
@@ -2449,7 +2448,7 @@
         sa_enable_annotation_auto_expand: {
             label: 'Auto-expand native "Annotation" section',
             type: 'checkbox',
-            default: false,
+            default: true,
             description: 'Automatically click MusicBrainz\'s native "Show more..." ' +
                          '(`a.annotation-toggle`) link on entity pages (e.g. an ' +
                          'artist/release/work/... page\'s own "Annotation" section), so a ' +

@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.2",
+        "date": "2026-08-17",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Adjusted several configuration setting defaults to more sensible out-of-the-box values: `sa_sidebar_collapsed` (\"Start with sidebar collapsed\") false→true; `sa_enable_dropdown_flag_icons` (\"Show Flag Icons In Unique-Values Dropdown\") false→true; `sa_uniq_dropdown_visible_rows` (\"Unique-Values Dropdown Visible Rows\") 8→30; `sa_auto_resize_columns` (\"Auto-resize columns on load\") false→true; `sa_enable_show_single_table_btn` (\"Enable 'Show single-table' button\") false→true, and dropped its now-stale \"Off by default while this feature is new\" description text; `sa_enable_ars_collapse` (\"Enable collapsible 'ARs' column\") true→false; `sa_enable_annotation_auto_expand` (\"Auto-expand native 'Annotation' section\") false→true. Only affects fresh installs / users who haven't explicitly overridden these settings — anyone with an existing explicit value keeps it."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.1",
         "date": "2026-08-17",
         "sections": [
