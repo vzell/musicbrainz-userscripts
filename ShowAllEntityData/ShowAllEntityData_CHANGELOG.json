@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.892",
+    "date": "2026-08-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`release-tracks`: vocal-range/type credits (e.g. \"alto vocals\", \"bass vocals [Gaoler]\", \"soprano vocals [Soprano I]\", \"guest baritone vocals\") no longer spawn their own one-off throwaway columns — they're now recognized and consolidated into the shared \"Vocals\" column alongside the existing \"choir vocals\"/\"lead vocals\"/etc. credits, each rendered with a \"(range)\" or \"(attribute/range)\" parenthetical."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.891",
     "date": "2026-08-17",
     "sections": [

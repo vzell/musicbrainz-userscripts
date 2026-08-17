@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.891+2026-08-17
+// @version      9.99.892+2026-08-17
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -9626,6 +9626,31 @@
     const INSTRUMENT_VOCAL_ATTRIBUTES = ['additional', 'guest', 'solo', 'lead', 'background', 'spoken', 'choir', 'other'];
 
     /**
+     * Vocal-range/type words that may prefix a "vocals" `<dt>` component,
+     * checked alongside (but separately from) `INSTRUMENT_VOCAL_ATTRIBUTES`
+     * — MusicBrainz's own child values of the "Vocal" relationship attribute
+     * (see https://musicbrainz.org/relationship-attributes). Real credits
+     * like `<dt>alto vocals:</dt>`, `<dt>bass vocals [Gaoler]:</dt>`,
+     * `<dt>soprano vocals [Soprano I]:</dt>`, `<dt>tenor vocals [Tenor
+     * II]:</dt>` (see debug/vocals-row-1.html, debug/vocals-row-2.html — a
+     * real Beethoven "Choral Fantasy" / Puccini "Tosca" release) were
+     * previously rejected in their entirety by `_parseInstrumentVocalsDt`
+     * (none of these words were recognized) and fell through to the
+     * dynamic-fallback classifier, spawning one throwaway column per
+     * distinct phrase ("Alto vocals", "Bass vocals", "Soprano vocals
+     * [soprano i]", …) instead of landing in the shared "Vocals" column.
+     * `<dt>guest baritone vocals:</dt>` (also seen on the same release)
+     * confirms an `INSTRUMENT_VOCAL_ATTRIBUTES` word and a vocal-range word
+     * must be allowed to combine within the same prefix.
+     *
+     * Checked ONLY in the vocals branch of `_parseInstrumentVocalsDt` —
+     * never the instrument-anchor or bare-"instruments" branches, since a
+     * vocal-range word has no meaning as an instrument attribute.
+     * @type {string[]}
+     */
+    const VOCAL_RANGE_ATTRIBUTES = ['soprano', 'mezzo-soprano', 'contralto', 'alto', 'countertenor', 'tenor', 'baritone', 'bass-baritone', 'bass', 'treble', 'meane'];
+
+    /**
      * Parses one `<dt>` into its instrument-credit and vocals-credit
      * components, for the shared "Instruments"/"Vocals" columns. Splits the
      * `<dt>`'s child-node stream into components at `,`/`and` TEXT-node
@@ -9646,7 +9671,7 @@
      * the returned entry so `_buildInstrumentVocalsListItem` omits the
      * "<instrument>: " prefix — see debug/instr.html), or a vocals credit
      * (last word exactly "vocals", every word before it a member of
-     * `INSTRUMENT_VOCAL_ATTRIBUTES`) — a single unrecognized word anywhere
+     * `INSTRUMENT_VOCAL_ATTRIBUTES` or `VOCAL_RANGE_ATTRIBUTES`) — a single unrecognized word anywhere
      * rejects the WHOLE `<dt>`, not just that component. This is deliberate,
      * not just a simplification: it's what correctly keeps `<dt> <a
      * href="/instrument/…">strings</a> arranger:</dt>` (real data) OUT of
@@ -9765,8 +9790,8 @@
             } else {
                 if (_words.length === 0 || _words[_words.length - 1] !== 'vocals') return null;
                 const _prefixWords = _words.slice(0, -1);
-                if (!_prefixWords.every(w => INSTRUMENT_VOCAL_ATTRIBUTES.includes(w))) return null;
-                _vocals.push({ altName: _altName, attributes: INSTRUMENT_VOCAL_ATTRIBUTES.filter(a => _prefixWords.includes(a)) });
+                if (!_prefixWords.every(w => INSTRUMENT_VOCAL_ATTRIBUTES.includes(w) || VOCAL_RANGE_ATTRIBUTES.includes(w))) return null;
+                _vocals.push({ altName: _altName, attributes: [...INSTRUMENT_VOCAL_ATTRIBUTES, ...VOCAL_RANGE_ATTRIBUTES].filter(a => _prefixWords.includes(a)) });
             }
         }
         if (_instruments.length === 0 && _vocals.length === 0) return null;
