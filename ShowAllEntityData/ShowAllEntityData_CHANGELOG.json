@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.895",
+    "date": "2026-08-18",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "`artist-releases` and every other page splitting a \"Country/Date\" column: release events MusicBrainz truncates behind a native \"(show N more)\" toggle (common for widely-released digital releases) are now fully reconstructed before row extraction, from the same JSON data MusicBrainz already embeds in the page — no click simulation or extra network requests needed, so it works identically for fetched pages, not just the current one. New \"Auto-expand truncated \\\"Country/Date\\\" release-event cells\" setting (default: on, ▶️ EXPAND TRUNCATED CELLS section) lets you opt out on very large discography pages if this adds noticeable overhead."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.894",
     "date": "2026-08-17",
     "sections": [

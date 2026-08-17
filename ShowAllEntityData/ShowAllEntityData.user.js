@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.894+2026-08-17
+// @version      9.99.895+2026-08-18
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -2181,6 +2181,32 @@
             default: false,
             description: 'Enable detailed console logging for the Release events column pipeline. '
                          + 'Uses Lib.debug(\'release-events\', ...).'
+        },
+
+        // ============================================================
+        // EXPAND TRUNCATED CELLS SECTION
+        // ============================================================
+        divider_expand_show_all: {
+            type: 'divider',
+            label: '▶️ EXPAND TRUNCATED CELLS'
+        },
+
+        sa_enable_expand_release_events: {
+            label: 'Auto-expand truncated "Country/Date" release-event cells',
+            type: 'checkbox',
+            default: true,
+            description: 'MusicBrainz truncates the native "Country/Date" column behind a '
+                         + '"(show N more)" toggle for releases with many release events '
+                         + '(common for widely-released digital releases). When enabled, '
+                         + 'every hidden release event is reconstructed — before row '
+                         + 'extraction — from the same JSON data MusicBrainz itself embeds '
+                         + 'in the page; no click simulation or extra network requests '
+                         + 'involved, so this works identically for fetched pages, not just '
+                         + 'the currently-open one. Disable to leave the "(show N more)" '
+                         + 'toggle in place and skip the extra work, e.g. on very large '
+                         + 'discography pages where this could add noticeable per-page '
+                         + 'overhead. Unrelated to "Enable Release events column" above, '
+                         + 'which is a separate injected column fed by the Web Service.'
         },
 
         // ============================================================
@@ -50868,6 +50894,27 @@ a { color: #1565c0; }`;
      *   Note: MusicBrainz may render the LAST entry of the full list AFTER li.show-all.
      *   The before/after counting in expandShowAllCells handles this correctly.
      *
+     * "events"     — "Country/Date" column (`release-events-container`), e.g.
+     *                 artist-releases and every other page declaring
+     *                 `splitCountryDate` on that column
+     *   Each entry: { country: { gid, name, iso_3166_1_codes[], primary_code,
+     *                 country_code, … }, date: { year, month, day } }
+     *   Rendered:   <li aria-label="Release event" class="release-event">
+     *                 <span class="flag flag-{code} release-country">
+     *                   <a href="/area/{gid}"><abbr title="{name}">{code}</abbr></a>
+     *                 </span>
+     *                 <span class="release-date">{YYYY[-MM[-DD]]}</span></li>
+     *   Deliberately omits the chaban-userscript `.mb-day-of-week` weekday span —
+     *   that's injected client-side by a companion script running on the LIVE
+     *   page only, never present in raw fetched HTML (confirmed against
+     *   `splitCountryDate`'s own defensive stripping of it), so a reconstructed
+     *   `<li>` correctly matches what a *fetched* page's native (non-truncated)
+     *   `<li>`s already look like. Gated by `sa_enable_expand_release_events` —
+     *   unlike every other shape here, this one is large/common enough
+     *   (artists with hundreds of digital-release territories) that a user
+     *   may want to opt out for performance; see the gating check in
+     *   `expandShowAllCells()`.
+     *
      * To add support for a new JSON shape, append a new entry to this object.
      */
     const SHOW_ALL_JSON_HANDLERS = {
@@ -50983,6 +51030,54 @@ a { color: #1565c0; }`;
                 li.appendChild(a);
                 return li;
             }
+        },
+
+        // ── "events": "Country/Date" column (splitCountryDate consumers) ─────────────
+        events: {
+            description: 'Release events (e.g. "Country/Date" column, feeds splitCountryDate)',
+            buildLi(doc, entry) {
+                const country = entry?.country;
+                const date    = entry?.date;
+                if (!country && !date) return null;
+
+                const li = doc.createElement('li');
+                li.setAttribute('aria-label', 'Release event');
+                li.className = 'release-event';
+
+                if (country) {
+                    const code = country.iso_3166_1_codes?.[0] || country.primary_code || country.country_code || '';
+                    const name = country.name || country.primaryAlias || '';
+                    const gid  = country.gid || '';
+
+                    const span = doc.createElement('span');
+                    span.className = `flag flag-${code} release-country`;
+                    const a    = doc.createElement('a');
+                    a.href     = `/area/${gid}`;
+                    const abbr = doc.createElement('abbr');
+                    abbr.title = name;
+                    abbr.textContent = code;
+                    a.appendChild(abbr);
+                    span.appendChild(a);
+                    li.appendChild(span);
+                }
+
+                if (date && date.year) {
+                    // 'YYYY' / 'YYYY-MM' / 'YYYY-MM-DD', zero-padded — the exact
+                    // format dateParts (ColumnDataExtractor/SyntheticColumnDataExtractor)
+                    // already expects from a native "Date" cell.
+                    let dateText = String(date.year);
+                    if (date.month) {
+                        dateText += '-' + String(date.month).padStart(2, '0');
+                        if (date.day) dateText += '-' + String(date.day).padStart(2, '0');
+                    }
+                    const dateSpan = doc.createElement('span');
+                    dateSpan.className = 'release-date';
+                    dateSpan.textContent = dateText;
+                    li.appendChild(dateSpan);
+                }
+
+                return li;
+            }
         }
 
     }; // end SHOW_ALL_JSON_HANDLERS
@@ -51014,8 +51109,13 @@ a { color: #1565c0; }`;
      * Works identically on the live document and on DOMParser documents — no JS
      * execution, no iframes, and no extra network requests required.
      *
-     * This expansion is always applied; it is integral to correct row extraction
-     * for pages with truncated columns (e.g. "Place-Events", "Artist-Works").
+     * This expansion is always applied for every known JSON shape except
+     * "events" (release-event country/date data — see `SHOW_ALL_JSON_HANDLERS`'
+     * own JSDoc); every other shape is integral to correct row extraction for
+     * pages with truncated columns (e.g. "Place-Events", "Artist-Works") and
+     * has no opt-out. "events" is gated by `sa_enable_expand_release_events`
+     * (default on) since it can be large/common enough on prolific artists'
+     * discography pages to matter for performance-conscious users.
      *
      * @param {Document} doc     - The document to process (live page or DOMParser).
      * @param {number}   pageNum - 1-based page number for log context.
@@ -51078,6 +51178,19 @@ a { color: #1565c0; }`;
             const topKey = Object.keys(jsonData ?? {})[0];
             const entries = topKey ? jsonData[topKey] : null;
             const handler = topKey ? SHOW_ALL_JSON_HANDLERS[topKey] : null;
+
+            // "events" (release-event country/date truncation) is the only
+            // shape gated by its own opt-out setting — see SHOW_ALL_JSON_HANDLERS'
+            // own JSDoc for why. Every other shape stays unconditional.
+            if (topKey === 'events' && handler && !Lib.settings.sa_enable_expand_release_events) {
+                Lib.debug(
+                    'expand',
+                    `Page ${pageNum}: [${i}] "events" shape at ${ctx} — ` +
+                    `sa_enable_expand_release_events is off. Leaving truncated.`
+                );
+                skippedCount++;
+                return;
+            }
 
             if (!handler || !Array.isArray(entries) || entries.length === 0) {
                 Lib.warn(

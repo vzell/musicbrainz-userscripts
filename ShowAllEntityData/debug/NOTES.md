@@ -6188,3 +6188,74 @@ second follow-up round.
   `revdate` (the UNRELATED "Release events - date" family, release
   country/date/weekday) untouched — it keeps its own separate `'» date: '`
   prefix; the two must not be confused despite the similar name.
+
+## 2026-08-18 — "Country/Date" (show N more) release-event expansion (v9.99.895)
+
+- `show-more-cell.html` — an isolated "Country/Date" `<td>`'s inner `<ul
+  class="release-events abbreviated">`: only 2 leading `<li
+  class="release-event">` + `<li class="show-all"><a …>(show 204
+  more)</a></li>` + 1 trailing (pinned) `<li class="release-event">`
+  actually render — 204 of 207 total release events are genuinely absent
+  from the `<li>` markup, not just CSS-hidden.
+- `show-more.html` — the full `artist-releases` page (BoDeans) this cell
+  came from. Confirms the missing data is NOT fetched via AJAX on click:
+  every `.release-events-container` div is immediately preceded by a
+  sibling `<script type="application/json">{"events":[...]}</script>`
+  containing the COMPLETE list (verified: 207 entries in the JSON for the
+  204-more cell, `{country:{gid,name,iso_3166_1_codes,primary_code,
+  country_code,…}, date:{year,month,day}}` per entry) — React reads this
+  same JSON on mount and simply limits how many `<li>`s it renders;
+  clicking "(show N more)" is a pure client-side re-render, not a network
+  round-trip.
+- This is exactly the shape `expandShowAllCells()`/`SHOW_ALL_JSON_HANDLERS`
+  (added earlier for Place-Events "Artists"/Artist-Works "Recording
+  artists"/"Attributes"/"ISWC" columns) already generalizes over — it was
+  simply missing a handler for the `"events"` top-level JSON key. Added
+  one: builds `<li aria-label="Release event" class="release-event"><span
+  class="flag flag-{code} release-country"><a
+  href="/area/{gid}"><abbr title="{name}">{code}</abbr></a></span><span
+  class="release-date">{YYYY[-MM[-DD]]}</span></li>`, verified byte-for-
+  byte identical to the native markup for real entries via a throwaway
+  Node script with a minimal fake-DOM shim (no jsdom in this environment)
+  against `show-more.html`'s own embedded JSON — entries 0/1/206 matched
+  exactly, and the before(2)+after(1)+missing(204)=207 count matched
+  "(show 204 more)" precisely. Also verified the `[Worldwide]`/`"XW"`
+  pseudo-country case (present natively elsewhere in the same snapshot,
+  `<span class="flag flag-XW release-country">…<abbr
+  title="[Worldwide]">XW</abbr>…`) and partial dates (year-only,
+  year+month) render correctly.
+- Deliberately did NOT reproduce the `<span class="mb-day-of-week …">`
+  weekday decoration seen in the LIVE-page snapshot — confirmed via
+  `splitCountryDate`'s own existing comment that this is injected by the
+  chaban companion userscript client-side on the live page only, never
+  present in raw fetched HTML. A reconstructed `<li>` on a *fetched* page
+  correctly has no weekday span either way, matching what that page's own
+  native (non-truncated) `<li>`s would look like without chaban installed.
+- Unlike every other `SHOW_ALL_JSON_HANDLERS` shape (always applied, no
+  opt-out — they're integral to correct row extraction), gated the new
+  `events` handler behind a new `sa_enable_expand_release_events` setting
+  (default: on, new "▶️ EXPAND TRUNCATED CELLS" section) since artists with
+  hundreds of digital-release territories could make this add real
+  per-page overhead some users may want to skip. Checked inside
+  `expandShowAllCells()` right where `topKey === 'events'` resolves to a
+  handler, with its own dedicated debug log distinguishing "off by
+  setting" from "unknown shape" — the two must read differently to anyone
+  debugging via `Lib.debug('expand', …)`.
+- Did NOT reuse the existing `sa_enable_release_events_column` setting
+  name/section — that's a completely unrelated feature (an *injected*
+  "Release events" column fetched via the WS2 API on pages declaring
+  `injectedColumns: ['Release events']`), confirmed by reading
+  `buildActiveReleaseEventColumns`/`_rePopulateCell`.
+- No changes needed to `splitCountryDate` (`ColumnDataExtractor`) — it
+  already does a plain `sourceCell.querySelectorAll('.release-event')`
+  with no awareness of truncation, so once `expandShowAllCells()` builds
+  the missing `<li>`s into the DOM before extraction runs, it picks them
+  all up for free. Confirmed call order: `expandShowAllCells(doc, p)` runs
+  inside the per-page fetch loop before any row extraction, uniformly for
+  both the live `document` and every `DOMParser`-parsed page.
+- This fix is generic to `expandShowAllCells()`, so it benefits every page
+  definition that declares `splitCountryDate` on a "Country/Date" column
+  (`artist-releases` plus several others), not just the one the user
+  reported.
+
+`node --check ShowAllEntityData.user.js` passed after every edit.
