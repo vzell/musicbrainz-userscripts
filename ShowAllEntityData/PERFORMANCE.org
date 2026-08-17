@@ -1,0 +1,129 @@
+* Performance improvement plan
+
+Tracking doc for filter/render/dropdown performance work on ShowAllEntityData.
+
+Each implementation step below is its own top-level heading with a TODO/DONE
+keyword. Flip TODO -> DONE (and add a short note: what changed, which commit
+range / branch) as each step lands. Do not delete completed steps — the
+history of what was tried and why is the point of this file.
+
+** Context
+
+~runFilter()~ currently clones every matching row with ~cloneNode(true)~ on
+every keystroke, replaces the tbody, and re-runs the full post-render hook
+chain (CAA/EAA artwork, ~initExpandRGsFeature~, ~initCollapsableColumns~,
+CDtoc, Picard tagger, nested-~<h2>~ rewiring). The abandoned
+~filter-performance-fix~ branch ("Fix C") replaced this with in-place
+~display:none~/~display:''~ toggling on live DOM rows, so the hook chain
+runs once at initial load instead of once per keystroke, plus
+IntersectionObserver-based lazy CAA/EAA loading for large tables
+("Pattern 5").
+
+That branch diverged from ~main~ at commit ~0683c23~ and was never merged;
+~main~ has since moved ~347 commits ahead (~23k lines changed in the
+userscript alone). It cannot be merged cleanly (4 real conflicts, one
+~740 lines) and the surrounding systems it touches (CAA/EAA pipeline,
+collapsable-columns, disk-load restore) have all changed since. It has been
+archived (not deleted) as ~archive/filter-performance-fix-v1-single-table~
+for reference — the ideas need a fresh reimplementation against current
+~main~, not a merge.
+
+** Findings: is the underlying problem still real?
+
+Yes, confirmed directly against current ~main~ (~ShowAllEntityData.user.js~):
+
+- ~runFilter()~'s single-table branch (~:36407-36434~) still clones every
+  matching row and fully rebuilds the tbody on every keystroke.
+- The multi-table branch (~:36240-36280~) does the same per group.
+- No ~IntersectionObserver~ exists anywhere in the file — lazy CAA/EAA
+  loading was never independently reimplemented.
+- The "Show single-table" button (~:1070-1626~) now lets any non-overflowing
+  multi-table sub-table be viewed as its own single-table snapshot tab, which
+  makes a single-table-only fix cover *more* ground than when the old branch
+  was written. Performance work should keep targeting single-table mode
+  first, same as the old branch already did (its own WIP changelog scoped
+  Fix C to single-table mode only).
+
+*** The dominant, previously-underweighted cost: ~_updateAllColHeaderCounts~
+
+The file's own comments (~:48541-48543~, ~:49212-49216~) document that this
+O(rows x columns) per-column unique-value + multi-row-count scan can take
+"30-120s synchronously" for 8k+ rows — enough to trigger Chrome's "Page
+Unresponsive" dialog, which is why it's already deferred via
+~setTimeout(0)~ rather than fixed at the root. It runs at the tail of
+~initCollapsableColumns()~, which today fires on *every* single-table filter
+keystroke (~:36480~), every sort (~:40029~, ~:54785~), every global
+expand/collapse-all click (~:16555~, ~:52626~, ~:52637~), and every
+multi-table render (~:42703~, ~:43249~). Scaled to 5,000 rows that's roughly
+19-75s of background work re-triggered on every one of those actions —
+larger than the cloneNode/DOM-rebuild cost the old branch was framed around.
+
+** Ranked areas + estimated impact (5,000-row, ~20-column table)
+
+Estimates are engineering estimates from operation-count analysis (Big-O
+comparison, anchored to the one concrete empirical number in the codebase:
+the documented 30-120s/8k-rows cost above), not measured browser profiles.
+Real DevTools Performance-tab profiling before/after is the actual
+acceptance check for each step.
+
+| # | Area                                             | Est. improvement                                |
+|---+---------------------------------------------------+--------------------------------------------------|
+| 1 | Filter re-render (Fix C)                         | ~95-99% per-keystroke latency (wide tables)      |
+| 2 | Same fix extended to Sort                        | ~90-99% per-sort-click latency                   |
+| 3 | Cache ~_updateAllColHeaderCounts~                | ~90%+ on toggle / multi-table triggers           |
+| 4 | ~openUniqDrop()~ per-open caching                | ~90-98% on repeat dropdown opens                 |
+| 5 | Lazy CAA/EAA loading (IntersectionObserver)      | ~99% fewer art requests queued at initial load   |
+
+** Implementation steps
+
+*** TODO Step 1: Filter re-render (Fix C) — single-table mode only
+
+In-place ~display:none~/~display:''~ toggling on live DOM rows instead of
+~cloneNode(true)~ + tbody rebuild on every keystroke. Hoist
+~initCollapsableColumns()~ (and the CAA/EAA/ERG/CDtoc/nested-~<h2>~ hook
+chain it drives) to run once at initial render instead of once per filter
+pass. Reference: ~archive/filter-performance-fix-v1-single-table~'s WIP.1
+entry — reuse the approach, not the diff (too much of the surrounding code
+has changed to apply it directly). Branch: ~filter-performance-fix~.
+
+Scope: single-table mode only (~runFilter()~'s non-multi branch). Multi-table
+mode is out of scope for this step — see the "Show single-table" button
+note above for why single-table-first still covers the important case.
+
+*** TODO Step 2: Extend the Fix-C approach to Sort
+
+Sort currently still calls ~renderFinalTable(allRows)~ after
+~sortLargeArray()~ completes, which triggers the same full tbody rebuild +
+~initCollapsableColumns()~ re-run as the old filter path. Not covered by the
+old branch (its WIP.1 only touched ~runFilter()~). Apply the same
+"rows are live DOM nodes, reorder in place, don't re-run the hook chain
+unless something actually changed" treatment to the sort-apply path.
+
+*** TODO Step 3: Cache ~_updateAllColHeaderCounts~
+
+Memoize per-column unique-value/multi-row counts, invalidated only when the
+visible row set actually changes (not on every trigger). Needed even after
+Steps 1-2, since global expand/collapse-all clicks and multi-table renders
+still call it unconditionally.
+
+*** TODO Step 4: ~openUniqDrop()~ per-open caching
+
+~openUniqDrop()~ (~ShowAllEntityData.user.js:45002-47611~) does >=5 full
+~tbody.rows~ passes from scratch on every dropdown open with zero caching.
+Same caching primitive as Step 3 — build alongside it.
+
+*** TODO Step 5: Lazy CAA/EAA loading (IntersectionObserver)
+
+Defer CAA/EAA icon loads + JSON-API enrichment until a row's art cell
+scrolls near the viewport, instead of firing for every row at initial
+render. Reference: ~archive/filter-performance-fix-v1-single-table~'s WIP.2
+("Pattern 5") — ~sa_caa_io_threshold~ setting, per-ctx persistent observer.
+Independent of Steps 1-4 (different subsystem); can be done in any order
+relative to them.
+
+** Resuming after /clear
+
+Point a fresh session at this file plus the step number, e.g.:
+"Implement Step 1 from ShowAllEntityData/PERFORMANCE.org". Each step is
+self-contained (branch, scope, and approach are documented in its own
+heading) so no prior conversation context is needed.
