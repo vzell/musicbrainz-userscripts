@@ -2,7 +2,7 @@
 
 ## Project overview
 
-`ShowAllEntityData.user.js` is a Tampermonkey userscript (~44,000 lines, ~2.4 MB) for
+`ShowAllEntityData.user.js` is a Tampermonkey userscript (~63,500 lines, ~3.4 MB) for
 MusicBrainz. It consolidates paginated and non-paginated entity table lists into a single
 view with real-time multi-column filtering and sorting.
 
@@ -19,36 +19,46 @@ Everything lives inside a single IIFE `(function() { 'use strict'; … })()`.
 There are no ES modules. Key sections in order:
 
 ```
-lines 1-57     ==UserScript== header + attribution comments
-lines 60-139   Third-party script attribution block (do not edit)
-lines 140-163  Script constants: SCRIPT_BASE_NAME, SCRIPT_ID, remote URLs
-lines 164-1941 configSchema — settings menu definitions (checkboxes, colour pickers, etc.)
-line 1942      const Lib = new VZ_MBLibrary(…)  — library initialisation
-lines 1999-    ColumnDataExtractor registry (named extractor functions)
-lines 3090-    SyntheticColumnDataExtractor registry
-lines 3352-    buildActive* helpers (column extractors, erasers, injected columns)
-lines 3913-    DOM pre-processing helpers: applyListToTable, applyRenameH2ToH3,
+lines 1-35     ==UserScript== header + attribution comments
+lines 37-132   Third-party script attribution block (do not edit)
+lines 137-211  Script constants: SCRIPT_BASE_NAME, SCRIPT_ID, remote URLs
+lines 212-2670 configSchema — settings menu definitions (checkboxes, colour pickers, etc.)
+line 2671      const Lib = (typeof VZ_MBLibrary !== 'undefined') ? new VZ_MBLibrary(…) : {…}
+               — library initialisation, with a fallback stub object if the
+               @require'd library failed to load
+lines 2950-    ColumnDataExtractor registry (named extractor functions)
+lines 4067-    SyntheticColumnDataExtractor registry
+lines 4380-    buildActive* helpers (column extractors, erasers, injected columns)
+lines 5102-    DOM pre-processing helpers: applyListToTable, applyRenameH2ToH3,
                applyRenameH2ToH1, applyInsertH2, applyInsertPrependH2, applyShowAllTags
-lines 4954-    pageDefinitions[] array — one entry per recognised URL pattern
-lines 16400-   Init block: page type detection, header location, button injection
-lines 22828-   runFilter() — real-time filter logic
-lines 24295-   startFetchingProcess() — main fetch pipeline entry point
-lines 26806-   renderFinalTable() — single-table render (tableMode: 'single')
-lines 27830-   renderGroupedTable() — multi-table render (tableMode: 'multi')
-lines 29593-   makeH2sCollapsible()
-lines 31973-   Sort click handler and sortLargeArray() delegation
-lines 38009-   initExpandRGsFeature() — release-group expand/collapse
-lines 39158-   CAA_CTX / EAA_CTX context descriptors
-lines 44338-   initCaaPics() / initEaaPics() — artwork feature entry points
-lines 44837-   initBarcodeHighlight()
-line 44860-    ctrlMFunctionMap — keyboard shortcut registry
+lines 12051-   pageDefinitions[] array — one entry per recognised URL pattern
+lines 27220-   Init block: page type detection, header location, button injection
+lines 36023-   runFilter() — real-time filter logic
+lines 37737-   startFetchingProcess() — main fetch pipeline entry point
+lines 41071-   renderFinalTable() — single-table render (tableMode: 'single')
+lines 42175-   renderGroupedTable() — multi-table render (tableMode: 'multi')
+lines 44413-   makeH2sCollapsible()
+line 15315     sortLargeArray() — async row-array sort, defined much earlier
+               than its callers
+lines 49225-   makeTableSortableUnified() — attaches column-header sort click
+               handlers, delegates to sortLargeArray()
+lines 56187-   initExpandRGsFeature() — release-group expand/collapse
+lines 57414-   CAA_CTX / EAA_CTX context descriptors
+lines 62927-   initCaaPics() / initEaaPics() — artwork feature entry points
+lines 63430-   initBarcodeHighlight()
+line 14836     ctrlMFunctionMap declared empty (`let ctrlMFunctionMap = {}`);
+               populated with real entries at line 63453, right after
+               initBarcodeHighlight() — keyboard shortcut registry
 ```
+
+Line numbers above drift as the file grows — re-grep the symbol name if a
+number looks stale rather than trusting it blindly.
 
 ---
 
 ## Page definition anatomy
 
-All supported URL patterns are registered in `const pageDefinitions` (line 4954).
+All supported URL patterns are registered in `const pageDefinitions` (line 12051).
 Each entry follows this shape:
 
 ```javascript
@@ -97,6 +107,12 @@ Each entry follows this shape:
 **`tableMode: 'multi'`** → fetches grouped data, calls `renderGroupedTable()` which creates
 one `<h3>` + `<table class="tbl">` pair per group.
 
+Entity-driven page types (e.g. `series-releases`, `user-ratings-type`,
+`collections-releases`) can also carry an `entityFeatures` map, resolved per
+`<h2>` heading at fetch time by `resolveEntityFeaturesFromH2()` and merged in
+*before* `baseDef.features`/`buttonConfig.features` — see the Render
+pipeline section below.
+
 ---
 
 ## Render pipeline (`startFetchingProcess` → render)
@@ -104,6 +120,10 @@ one `<h3>` + `<table class="tbl">` pair per group.
 ```
 startFetchingProcess(e, buttonConfig, baseDef)
   │
+  ├─ resolveEntityFeaturesFromH2(baseDef) → entitySpecificFeatures (entity-
+  │     driven page types only; can even override activeDefinition.tableMode
+  │     at runtime — e.g. collections-releases' "Release groups" sub-entity
+  │     is 'multi' even though the page's base tableMode is 'single')
   ├─ merges baseDef.features + buttonConfig.features → activeDefinition
   ├─ buildActive* helpers populate: activeColumnExtractors, activeColumnErasers, etc.
   ├─ applyRenameH2ToH3 / applyInsertH2 / applyListToTable  (DOM pre-processing)
@@ -164,20 +184,38 @@ The native `<h2>Tags vzell upvoted</h2>` is already the correct targetHeader.
 | `.mb-rel-cell` | Relationship icon cell |
 | `.mb-sticky-col` | Sticky first column |
 | `.mb-cell-collapse-toggle` | Per-cell ▶/▼ collapse toggle — drives BOTH list cells (`ul>li`) and prose cells (`.mb-text-clamp-inner`) |
+| `.mb-text-clamp-marker` | Unconditional marker on every prose-collapse column's wrapper — `_isProseCollapseColumn` keys off this, independent of the `.mb-text-clamp-inner` clamp itself (see `collapsableColumns` below) |
 | `.mb-text-clamp-inner` | Wrapper around a "prose" collapsable cell's content (e.g. "Annotation"); height-clamped by default |
 | `.mb-text-clamp-expanded` | Toggled on `.mb-text-clamp-inner` to lift the height clamp |
+| `.mb-col-collapse-hdr-btn` | Column-header collapse/expand-all button |
+| `.mb-col-collapse-count` | Per-column live multi-row count badge, kept in sync by `_updateAllColHeaderCounts` |
+| `[data-caa-expand-btn]` | CAA/EAA cell-expand button attribute — the precedent `collapsableColumns` below points to for a "fourth cell kind" |
+| `.mb-uniq-section` / `.mb-uniq-section-hdr` | Unique-values dropdown's collapsible section wrapper/header (see `SYN_SECTION_META` below) |
+| `.mb-col-uniq-item` | Unique-values dropdown row item |
 
 ---
 
 ## Settings keys (GM storage via `Lib.settings`)
 
-All settings are prefixed `sa_`. Key ones:
+All settings are prefixed `sa_`. This is a curated "key ones" subset, not
+exhaustive — `configSchema` (~212-2670) currently defines 216 distinct
+`sa_*` keys in total.
 
 - `sa_enable_debug_logging` — enables `Lib.debug(channel, …)` output
 - `sa_ui_h2_bg`, `sa_ui_h3_bg` — h2/h3 header background colours
 - `sa_ui_thead_th_bg/color` — table header colours
-- `sa_enable_barcode_highlight`, `sa_enable_caa_pics`, `sa_enable_eaa_pics`
-- `sa_enable_picard_tagger_column`, `sa_enable_expand_rg`
+- `sa_enable_barcode_highlight` — gates `initBarcodeHighlight()`
+- `sa_enable_caa_pics` — shared CAA/EAA master toggle (there is no separate
+  `sa_enable_eaa_pics` — EAA reuses this same key)
+- `sa_enable_picard_tagger` — gates the Picard-tagger column feature
+- `sa_enable_expand_rg` — gates `initExpandRGsFeature()`
+- `sa_enable_annotation_collapse`, `sa_annotation_column_max_width`,
+  `sa_annotation_column_max_height_em`, `sa_annotation_h2_bg`/
+  `sa_annotation_h2_color` — prose-cell (Annotation) collapse/clamp behavior
+  (see `collapsableColumns` below)
+- `sa_enable_ars_collapse`, `sa_ars_column_max_width`,
+  `sa_ars_column_max_height_em` — the "ARs" column's own independent
+  collapse/clamp settings (release-tracks only, not shared with Annotation)
 
 ---
 
@@ -185,7 +223,9 @@ All settings are prefixed `sa_`. Key ones:
 
 `init`, `render`, `fetch`, `filter`, `sort`, `parse`, `extract`, `caa`, `eaa`,
 `idb`, `cache`, `collapse`, `expand`, `cleanup`, `highlight`, `ui`, `settings`,
-`picard`, `barcode`, `erg`, `cdtoc`, `navigation`, `meta`, `density`, `export`
+`picard`, `barcode`, `erg`, `cdtoc`, `navigation`, `meta`, `density`, `export`,
+`shortcuts`, `resize`, `tooltips`, `relationships`, `unicode`, `stats`,
+`success`, `indices`
 
 Enable via the `sa_enable_debug_logging` setting or the Tampermonkey menu.
 
@@ -202,7 +242,9 @@ Enable via the `sa_enable_debug_logging` setting or the Tampermonkey menu.
 
 ## Adding a new page type — checklist
 
-1. Add entry to `pageDefinitions` array (maintain alphabetical grouping within entity class)
+1. Add entry to `pageDefinitions` array (grouped by entity class, in
+   MusicBrainz's own tab/entity ordering — NOT alphabetical; find the
+   closest existing sibling in the same entity class and insert near it)
 2. Set `type`, `match`, `buttons`, `features`, `tableMode`
 3. Check DOM structure of the actual page — use a snapshot in `debug/`
 4. If the page has no `div#content`, verify `renderGroupedTable`'s container re-root
@@ -212,8 +254,10 @@ Enable via the `sa_enable_debug_logging` setting or the Tampermonkey menu.
 7. If the page has no native h1 at all (its only heading is a `<h2>`), add
    `renameH2ToH1: true` plus `insertH2: '…'` — otherwise the page-load button
    toolbar and the post-render filter/count UI both end up crammed onto the
-   same native heading (see `applyRenameH2ToH1`'s JSDoc,
-   `debug/user-edits-wrong.org`)
+   same native heading (see `applyRenameH2ToH1`'s JSDoc; the standalone
+   `debug/user-edits-wrong.org` snapshot this used to point to is gone — see
+   `debug/NOTES.md`'s `## 2026-07-29 — user-edits/user-open-edits cram
+   everything onto one heading` entry instead)
 8. Bump version, add changelog entry
 
 ---
@@ -273,13 +317,26 @@ declared column — no separate feature key or page-definition change needed:
   the clamp get a toggle. When the setting is off, cells stay bare (full,
   unclamped text, no toggle).
 
+Two prose-cell columns carve out their own gating, independent of the
+generic `sa_enable_annotation_collapse` behavior described above:
+- **"Edit details"/"Edit notes"** (`edits` pageType) — always get the
+  clamp/toggle regardless of `sa_enable_annotation_collapse` (that setting
+  isn't consulted for them at all); `sa_edits_enable_details_collapse`/
+  `sa_edits_enable_notes_collapse` control only their *initial* expand
+  state instead.
+- **"ARs"** (`release-tracks`) — gated by its own independent
+  `sa_enable_ars_collapse` setting, with its own independent
+  `sa_ars_column_max_width`/`sa_ars_column_max_height_em` clamp settings,
+  not the generic `sa_annotation_*` ones.
+
 Auto-resize (`toggleColumn`, `toggleColumnInTable`, `toggleSubTableAutoResize`,
 `toggleAutoResizeColumns`) caps prose columns' measured width via
 `_getProseColumnMaxWidth()` (reads `sa_annotation_column_max_width`, default
-`480`) instead of sizing them to a paragraph's unwrapped nowrap width. This
-cap is **always active** for any column `_isProseCollapseColumn` identifies
-(via the always-present `.mb-text-clamp-marker`) — independent of
-`sa_enable_annotation_collapse`.
+`480` — except the "ARs" column, which reads `sa_ars_column_max_width`
+instead, per the carve-out above) instead of sizing them to a paragraph's
+unwrapped nowrap width. This cap is **always active** for any column
+`_isProseCollapseColumn` identifies (via the always-present
+`.mb-text-clamp-marker`) — independent of `sa_enable_annotation_collapse`.
 
 Both share the same `.mb-cell-collapse-toggle` DOM shape, the same
 `ensureCollapseDelegate` click delegate, `_applyCollapseState` (driven by the
@@ -377,8 +434,10 @@ independently at a new call site, or the two can silently disagree.
 copyright (℗) by artist"/"…by label" special case): when a relationship's
 targets span more than one entity kind on the page (detected via each
 target's own `<span class="{kind}link">` marker — `KNOWN_ENTITY_LINK_KINDS`
-lists every kind actually seen: artist/label/place/event/work/area/series),
-the column CAN split into one per kind, named `` `${baseColumnName} ${kind}` ``.
+lists every kind actually seen: recording/artist/label/place/event/work/
+area/series — `recording` was added later, for dynamic recording-to-
+recording columns like "Samples"/"Music videos"), the column CAN split into
+one per kind, named `` `${baseColumnName} ${kind}` ``.
 A single-kind relationship's column name is never suffixed.
 
 **`PEER_SPLIT_KINDS` — only `artist`/`label` may ever trigger that split.**
@@ -417,9 +476,11 @@ exact header-text string only — no wildcard support — so a
 dynamically-discovered column's name (unknown at authoring time) can't be a
 pre-declared page-definition entry or a static `_initColHeaderGlyph()` call.
 Instead, `applyExtractTrackTitleData(def)` pushes each dynamic column's name
-onto `def.features.collapsableColumns`, and — when exactly one entity kind
-is known for it (see `_glyphClassForDynamicColumn`) — a
-`{columnName, glyphClass}` pair onto `def.features._dynamicArColumnGlyphs`,
+onto `def.features.collapsableColumns`, and — via `_glyphClassForDynamicColumn`,
+which picks the first entity kind present by priority order (whether the
+column carries exactly one kind or several, e.g. a chain-shaped multi-kind
+decoration) — a `{columnName, glyphClass}` pair onto
+`def.features._dynamicArColumnGlyphs`,
 both at `<th>`-creation time (dedup-guarded, since this function can re-run
 per its own idempotency design). This works because `def` is the exact same
 object reference as `activeDefinition`, and `applyExtractTrackTitleData`
@@ -430,6 +491,82 @@ needs its OWN explicit `_initColHeaderGlyph('Column Name', 'kindlink')` call
 added to that tail, mirroring the existing ones for "Recording of
 work"/CREDIT_ROLES/etc. — don't forget it, or the header silently renders
 with no icon (exactly the second half of the bug above).
+
+---
+
+## Unique-values dropdown: `SYN_SECTION_META` section-splitting
+
+The per-column unique-values filter dropdown (`openUniqDrop()`) renders
+collapsible sections inside a `synBox`, driven by three module-level tables
+(defined together, just above `openUniqDrop()` itself):
+
+- **`SYN_SECTION_META`** — `{ key: { label, glyph|markerClass } }`, the
+  display metadata (name + icon) for every possible section.
+- **`MB_UNIQ_MODE_TO_SECTION`** — maps a `makeSynItem()` "mode" string (a
+  fixed structural/flag state, e.g. `empty`/`collapsed`/`title-mismatch`/
+  `multi-medium`) to a `SYN_SECTION_META` key.
+- **`MB_UNIQ_KIND_TO_SECTION`** — maps a `makeValueSynItem()` "kind" string
+  (a dynamic per-value entry, e.g. `attr`/`date`/`formatsize`/`role`) to a
+  `SYN_SECTION_META` key.
+
+`getOrCreateSynSection(key)` lazily creates each section's DOM (header +
+collapsible items box) on first use and caches it — sections render in
+`synBox` purely in first-requested order, driven by the fixed call sequence
+of `makeSynItem()`/`makeValueSynItem()` calls inside `openUniqDrop()`, not
+by `SYN_SECTION_META`'s own object-key order (which just mirrors it for
+readability).
+
+Two kinds bypass the static `MB_UNIQ_KIND_TO_SECTION` table entirely and
+resolve their target section dynamically inside `makeValueSynItem()`'s own
+`sectionKey` ternary, because a static kind→section map can't express a
+target that depends on data outside the kind string itself:
+- `'name'` → routes to `` `entity_${entityType}` `` (falls back to
+  `entity_other`), keyed by the entry's own `entityType`.
+- `'arttype'`/`'artcomment'` → route to `caaInfoType`/`caaInfoComment` or
+  `eaaInfoType`/`eaaInfoComment`, keyed by BOTH which column is actually
+  open (`_caaOrEaaColName`) AND the kind itself.
+
+One caveat: `makeInlineArtItem()` (inline-artwork-presence entries) is a
+bespoke sibling function that bypasses `MB_UNIQ_MODE_TO_SECTION` altogether
+and hardcodes its target section (`structureInlineArt`) directly — don't
+assume every mode in that table is actually routed through it; check the
+mode's real caller first.
+
+**Naming convention**: every section label follows `"Topic - Capitalized
+subtopic"` (a dash, capitalizing only the first word after the dash — e.g.
+`'Credit details - Attribute'`, `'Release events - Country'`). This is the
+single convention in force as of this file's latest revision; two earlier
+deviations (`'Release events - country'` lowercase, and `'Country name
+details'`/`'Country code details'` with no dash at all) were normalized to
+match it. Any new section should follow this convention.
+
+**Recognizing a split candidate**: when a `SYN_SECTION_META` key is fed by
+2+ semantically distinct `kind`/`mode` strings — grep both lookup tables for
+every value pointing at the same key — that's the same shape as every split
+below. To split it: give each kind/mode its own `SYN_SECTION_META` key (or
+extend the dynamic `sectionKey` branch in `makeValueSynItem()` if the
+target genuinely depends on runtime data, not just the kind/mode string),
+then update whichever lookup table(s) fed the old flat key. No other code
+needs to change — `getOrCreateSynSection()`, `_applySynBoxQuickFilter()`
+(iterates `_synSections` generically), and `MB_UNIQ_SECTION_COLLAPSE_KEY`
+persistence (a plain string-keyed object, no fixed-key validation) all key
+off the section key generically already. Not every multi-kind bucket is a
+split candidate, though — `structure`'s own five cell-shape modes
+(`empty`/`single`/`collapsed`/`expanded`/`any`) and `catalogPresence`'s
+three prefix-flags stay merged deliberately: each group is genuinely one
+topic (mutually-exclusive facets of one question), unlike the buckets
+below, which mixed unrelated topics under one header.
+
+**Split history**, for context:
+
+| Version | What split |
+|---|---|
+| v9.99.872 | "Entity info" → one sub-section per entity type (`entity_*`) plus Comment/Alias |
+| v9.99.873 | New sections carved out: Format info, Release events (country/date/weekday), Country name/code details, Tracks info, Catalog info |
+| v9.99.882 | New "Event info" section (event dates on native tag-value listings) |
+| v9.99.886 | "Event info" renamed to "Event info - Event date"; new sibling "Event info - Event cancelled" |
+| v9.99.893 | "Credit details" → `creditAttr`/`creditTask`/`creditDate`/`creditInstrument`/`creditAltName` |
+| next | Structure/Flags/Format info/Tracks info/Catalog info/CAA info/EAA info each split further; "Release events"/"Country details" labels normalized to the current naming convention (see `// @version` header for the exact version) |
 
 ---
 
@@ -462,8 +599,11 @@ with no icon (exactly the second half of the bug above).
   `_cdtocInitTracklistToggles()`, `_rewireNestedTableH2Toggles()` (nested `<h2>`
   headings inside table cells, e.g. wiki-rendered Annotation sub-sections — see
   `makeH2sCollapsible()` for the page-level h2 mechanism this mirrors at a smaller
-  scale). A new interactive element injected into table cells needs the same
-  treatment if it uses `addEventListener` directly instead of event delegation.
+  scale), and `initPicardTaggerColumn(/* rewireOnly */ true)` (identical
+  "cloneNode(true) strips listeners, this call only re-attaches them"
+  rationale, called from the same two places). A new interactive element
+  injected into table cells needs the same treatment if it uses
+  `addEventListener` directly instead of event delegation.
 - **`release-tracks` AR finders: never `.find()`/take-first on a "does this track
   have this relationship" lookup.** MusicBrainz can render the SAME relationship
   phrase (or a closely related one, e.g. "recorded at:" and "additionally recorded

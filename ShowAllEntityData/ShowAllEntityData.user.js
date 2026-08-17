@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.893+2026-08-17
+// @version      9.99.894+2026-08-17
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -34333,8 +34333,21 @@ a { color: #1565c0; }`;
      * `openUniqDrop()` — always comes out in this table's own order.
      */
     const SYN_SECTION_META = {
-        structure:     { label: 'Structure',         glyph: '🔠' },
-        flags:         { label: 'Flags',              glyph: '🚩' },
+        // "Structure" covers only the mutually-exclusive multi-row CELL
+        // SHAPE states (empty/single/collapsed/expanded/any) — inline-
+        // artwork presence is a materially different question (does a
+        // thumbnail exist for this row, only meaningful on addCAA/addEAA
+        // columns) that used to share this section purely for
+        // implementation convenience. Split into its own
+        // `structureInlineArt` sub-section below.
+        structure:         { label: 'Structure',                   glyph: '🔠' },
+        structureInlineArt: { label: 'Structure - Inline artwork', glyph: '🖼️' },
+        // "Flags" is split into one sub-section per flag SOURCE —
+        // `title-mismatch` (a third-party userscript's own DOM marker) and
+        // `name-variation` (this script's own name-variation detection)
+        // are unrelated concepts that used to share one flat header.
+        flagsTitleMismatch: { label: 'Flags - Title mismatch',  glyph: '⚠️' },
+        flagsNameVariation: { label: 'Flags - Name variation',  glyph: '🔁' },
         // "Credit details" is split into one collapsible sub-section per
         // credit-family kind (attribute/task/date/instrument/credited-as)
         // rather than one flat section lumping every "» attribute:"/
@@ -34387,16 +34400,51 @@ a { color: #1565c0; }`;
         nameVariation: { label: 'Name variations',    glyph: '🪪' },
         roles:         { label: 'Roles',              glyph: '🎭' },
         relationships: { label: 'Relationship icons', glyph: '🔗' },
-        caaInfo:       { label: 'CAA info',           glyph: '🎨' },
-        eaaInfo:       { label: 'EAA info',           glyph: '🎫' },
-        formatInfo:    { label: 'Format info',        glyph: '💿' },
-        releaseEventsCountry: { label: 'Release events - country', glyph: '🌐' },
-        releaseEventsDate:    { label: 'Release events - date',    glyph: '📅' },
-        releaseEventsWeekday: { label: 'Release events - weekday', glyph: '📆' },
-        countryNameInfo: { label: 'Country name details', glyph: '🌍' },
-        countryCodeInfo: { label: 'Country code details', glyph: '🏳️' },
-        tracksInfo:    { label: 'Tracks info',        glyph: '🎵' },
-        catalogInfo:   { label: 'Catalog info',       glyph: '🏷️' },
+        // "CAA info"/"EAA info" each split into "- Type"/"- Comment" —
+        // the image-type badge (controlled vocabulary, e.g. "Front") and
+        // the free-text image comment are two distinct data facets that
+        // used to share one column-scoped header (see the dynamic
+        // sectionKey resolution in makeValueSynItem() below).
+        caaInfoType:    { label: 'CAA info - Type',    glyph: '🎨' },
+        caaInfoComment: { label: 'CAA info - Comment', glyph: '💬' },
+        eaaInfoType:    { label: 'EAA info - Type',    glyph: '🎫' },
+        // 💬 intentionally reused from caaInfoComment — same facet
+        // (free-text image comment), sibling CAA/EAA family, same reuse
+        // rationale as 📅 across creditDate/releaseEventsDate/eventInfo.
+        eaaInfoComment: { label: 'EAA info - Comment', glyph: '💬' },
+        // "Format info" is split into one sub-section per format facet —
+        // size/medium-count/combo/type used to share one flat header
+        // despite being four independently-checkable value families (same
+        // shape as the old flat Credit details bucket).
+        formatSize:    { label: 'Format info - Size',         glyph: '📏' },
+        formatCount:   { label: 'Format info - Medium count', glyph: '🔢' },
+        formatCombo:   { label: 'Format info - Combo',        glyph: '🧩' },
+        formatType:    { label: 'Format info - Type',         glyph: '💿' },
+        releaseEventsCountry: { label: 'Release events - Country', glyph: '🌐' },
+        releaseEventsDate:    { label: 'Release events - Date',    glyph: '📅' },
+        releaseEventsWeekday: { label: 'Release events - Weekday', glyph: '📆' },
+        // Merged under one shared "Country details" topic (previously two
+        // fully independent label strings with no dash at all) to match
+        // the "Topic - Capitalized subtopic" convention used everywhere
+        // else in this table.
+        countryNameInfo: { label: 'Country details - Name', glyph: '🌍' },
+        countryCodeInfo: { label: 'Country details - Code', glyph: '🏳️' },
+        // "Tracks info" is split into the actual per-medium track-count
+        // VALUES (`trackspermedium`, a kind) and the "multiple mediums"
+        // binary FLAG (`multi-medium`, a mode) — two different data shapes
+        // that used to share one flat header.
+        tracksCount:       { label: 'Tracks info - Tracks',        glyph: '🎵' },
+        tracksMultiMedium: { label: 'Tracks info - Multi-medium',  glyph: '💽' },
+        // "Catalog info" is split the same way: the actual catalog-prefix
+        // VALUES (`catalogprefix`, a kind) vs. the three prefix-presence
+        // structural FLAGS (`catalog-has-prefix`/`catalog-no-prefix`/
+        // `catalog-none`, all modes) — grouped as one "Presence"
+        // sub-section since they're three mutually-related facets of the
+        // same question, not three separate topics (mirrors how
+        // `structure` itself stays one section for its five related cell-
+        // shape states).
+        catalogPrefix:   { label: 'Catalog info - Prefix',   glyph: '🧾' },
+        catalogPresence: { label: 'Catalog info - Presence', glyph: '🔍' },
         eventInfo:     { label: 'Event info - Event date',       glyph: '📅' },
         eventCancelled: { label: 'Event info - Event cancelled', glyph: '🚫' },
     };
@@ -34404,14 +34452,24 @@ a { color: #1565c0; }`;
     /**
      * Maps a `makeSynItem()` mode string to the `SYN_SECTION_META` key its
      * entry belongs in.
+     *
+     * `'inline-art-yes'`/`'inline-art-no'` are never actually passed
+     * through `makeSynItem()` — `makeInlineArtItem()` (a bespoke sibling
+     * function) builds those entries itself and hardcodes its target
+     * section directly rather than consulting this table. The two entries
+     * below are kept anyway since they're this table's documented JSDoc
+     * contract for those two modes (see `_cellMatchesStructureMode()`) —
+     * a future caller routing a NEW inline-art-style mode through
+     * `makeSynItem()` itself should not assume this table is unused just
+     * because today's only caller bypasses it.
      */
     const MB_UNIQ_MODE_TO_SECTION = {
         empty: 'structure', single: 'structure', collapsed: 'structure',
         expanded: 'structure', any: 'structure',
-        'inline-art-yes': 'structure', 'inline-art-no': 'structure',
-        'title-mismatch': 'flags', 'name-variation': 'flags',
-        'multi-medium': 'tracksInfo',
-        'catalog-has-prefix': 'catalogInfo', 'catalog-no-prefix': 'catalogInfo', 'catalog-none': 'catalogInfo',
+        'inline-art-yes': 'structureInlineArt', 'inline-art-no': 'structureInlineArt',
+        'title-mismatch': 'flagsTitleMismatch', 'name-variation': 'flagsNameVariation',
+        'multi-medium': 'tracksMultiMedium',
+        'catalog-has-prefix': 'catalogPresence', 'catalog-no-prefix': 'catalogPresence', 'catalog-none': 'catalogPresence',
     };
 
     /**
@@ -34420,10 +34478,12 @@ a { color: #1565c0; }`;
      *
      * `'arttype'`/`'artcomment'` (CAA/EAA per-image type-badge/comment
      * values) are deliberately ABSENT here — unlike every other kind, their
-     * target section depends on which column is actually open ("CAA info"
-     * vs "EAA info"), which this static map can't express. `makeValueSynItem()`
-     * special-cases those two kinds itself, resolving the section from the
-     * `_caaOrEaaColName` captured once per `openUniqDrop()` call instead.
+     * target section depends on BOTH which column is actually open ("CAA
+     * info" vs "EAA info") AND the kind itself ("- Type" vs "- Comment"),
+     * neither of which this static map can express alone.
+     * `makeValueSynItem()` special-cases those two kinds itself, resolving
+     * the section from the `_caaOrEaaColName` captured once per
+     * `openUniqDrop()` call, crossed with `kind`, instead.
      *
      * `'name'` is likewise ABSENT — its target section depends on the
      * entry's own `entityType` (artist/event/place/…), split across the
@@ -34445,11 +34505,11 @@ a { color: #1565c0; }`;
         joinphrase: 'joinPhrase',
         namevariation: 'nameVariation',
         role: 'roles',
-        formatsize: 'formatInfo', formatcount: 'formatInfo', formatcombo: 'formatInfo', formattype: 'formatInfo',
+        formatsize: 'formatSize', formatcount: 'formatCount', formatcombo: 'formatCombo', formattype: 'formatType',
         revcountry: 'releaseEventsCountry', revdate: 'releaseEventsDate', revweekday: 'releaseEventsWeekday',
         countryname: 'countryNameInfo', countrycode: 'countryCodeInfo',
-        trackspermedium: 'tracksInfo',
-        catalogprefix: 'catalogInfo',
+        trackspermedium: 'tracksCount',
+        catalogprefix: 'catalogPrefix',
         eventdate: 'eventInfo',
         entitycancelled: 'entityEventCancelled',
         eventcancelled: 'eventCancelled',
@@ -46857,16 +46917,20 @@ a { color: #1565c0; }`;
             }
 
             _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + `${kind}:${value}`);
-            // 'arttype'/'artcomment' route dynamically to "CAA info"/"EAA info"
-            // depending on THIS column's actual name; 'name' routes dynamically
-            // to one of the `entity_*` sections depending on THIS entry's own
-            // entityType (artist/event/place/…), splitting what used to be one
-            // flat "Entity info" section into one collapsible sub-section per
-            // entity type — see MB_UNIQ_KIND_TO_SECTION's own JSDoc for why a
-            // static lookup can't express either case. Every other kind keeps
-            // the static MB_UNIQ_KIND_TO_SECTION lookup unchanged.
+            // 'arttype'/'artcomment' route dynamically to "CAA info -
+            // Type"/"- Comment" or "EAA info - Type"/"- Comment" depending
+            // on BOTH which column is actually open AND the kind itself;
+            // 'name' routes dynamically to one of the `entity_*` sections
+            // depending on THIS entry's own entityType (artist/event/
+            // place/…), splitting what used to be one flat "Entity info"
+            // section into one collapsible sub-section per entity type —
+            // see MB_UNIQ_KIND_TO_SECTION's own JSDoc for why a static
+            // lookup can't express either case. Every other kind keeps the
+            // static MB_UNIQ_KIND_TO_SECTION lookup unchanged.
             const sectionKey = (kind === 'arttype' || kind === 'artcomment')
-                ? (_caaOrEaaColName === 'EAA' ? 'eaaInfo' : 'caaInfo')
+                ? (_caaOrEaaColName === 'EAA'
+                    ? (kind === 'arttype' ? 'eaaInfoType' : 'eaaInfoComment')
+                    : (kind === 'arttype' ? 'caaInfoType' : 'caaInfoComment'))
                 : kind === 'name'
                 ? (entityType && _ENTITY_TYPE_GLYPH[entityType] ? `entity_${entityType}` : 'entity_other')
                 : (MB_UNIQ_KIND_TO_SECTION[kind] || 'credit');
@@ -46927,7 +46991,7 @@ a { color: #1565c0; }`;
             _appendSynLabelText(item, label);
 
             _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + (hasArt ? 'inline-art-yes' : 'inline-art-no'));
-            getOrCreateSynSection('structure').itemsBox.appendChild(item);
+            getOrCreateSynSection('structureInlineArt').itemsBox.appendChild(item);
         };
 
         // ── Synthetic entries ──────────────────────────────────────────────────

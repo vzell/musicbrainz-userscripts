@@ -1,5 +1,23 @@
 [
   {
+    "version": "9.99.894",
+    "date": "2026-08-17",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Unique-values dropdown: split six more flat \"Cell structure\" sections the same way \"Credit details\" was split last version — \"Structure\" (core cell-shape states vs. a new \"Structure - Inline artwork\" sub-section), \"Flags\" (\"- Title mismatch\"/\"- Name variation\"), \"Format info\" (\"- Size\"/\"- Medium count\"/\"- Combo\"/\"- Type\"), \"Tracks info\" (\"- Tracks\"/\"- Multi-medium\"), \"Catalog info\" (\"- Prefix\"/\"- Presence\"), and \"CAA info\"/\"EAA info\" (each into \"- Type\"/\"- Comment\") — each independently collapsible with its own remembered state. Also normalized two older section-label deviations onto the now-established \"Topic - Capitalized subtopic\" convention: \"Release events - country/date/weekday\" → \"- Country\"/\"- Date\"/\"- Weekday\", and the previously dash-less \"Country name details\"/\"Country code details\" merged into \"Country details - Name\"/\"- Code\"."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "`ShowAllEntityData/CLAUDE.md`: added a new section documenting the unique-values dropdown's `SYN_SECTION_META`/`MB_UNIQ_MODE_TO_SECTION`/`MB_UNIQ_KIND_TO_SECTION` section-splitting mechanism, its naming convention, and a split-history table, plus a full accuracy pass against the current codebase — corrected every stale line-number anchor in the \"File structure\" table, two fabricated/wrong settings-key names (`sa_enable_eaa_pics`, `sa_enable_picard_tagger_column`), an incomplete debug-channel list, missing DOM-convention classes, an inaccurate \"alphabetical grouping\" checklist claim, a dangling `debug/user-edits-wrong.org` reference, and several sections that no longer fully described current behavior (ARs/Edit-details prose-clamp carve-outs, a 4th clone-rewire function, `KNOWN_ENTITY_LINK_KINDS`'s 8th entry)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.893",
     "date": "2026-08-17",
     "sections": [

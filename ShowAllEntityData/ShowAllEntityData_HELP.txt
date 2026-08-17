@@ -216,13 +216,17 @@ every distinct non-empty value currently visible in that column.
   collapsed/expanded by clicking their header; state remembered globally by
   section name, across every column and page):
     — 🔠 Structure   — empty / single / collapsed / expanded / multi-row cell
-                       state, and inline-artwork presence, each with its own
-                       glyph (▶/◀/✗/✓/≠/~/🖼️/∅ — explained in its own tooltip)
-    — 🚩 Flags        — "≠ track/recording name" (title differs from the
-                       underlying recording name, per a third-party
-                       userscript's tooltip marker) and "~ has name
-                       variation" (an aliased/differently-spelled credited
-                       entity name)
+                       state, each with its own glyph (▶/◀/✗/✓ — explained
+                       in its own tooltip)
+    — 🖼️ Structure - Inline artwork — presence of a loaded inline thumbnail
+                       (addCAA/addEAA feature columns only, e.g. "Release"/
+                       "Event"): "🖼️ front-image available"/"poster
+                       available" vs. "∅ NO front-image/poster available"
+    — ⚠️ Flags - Title mismatch — "≠ track/recording name" (title differs
+                       from the underlying recording name, per a third-
+                       party userscript's tooltip marker)
+    — 🔁 Flags - Name variation — "~ has name variation" (an aliased/
+                       differently-spelled credited entity name)
     — 🔀 Join phrases — one entry per distinct literal phrase joining two or
                        more credited entities inside one shared name element
                        (e.g. "&", "and", "with", "feat.", "/") — phrases are
@@ -260,23 +264,27 @@ every distinct non-empty value currently visible in that column.
                        "Entity info - Event cancelled" (the Event column on
                        area/place/artist-events pages and the Events
                        sub-table of tag/user-tag pages)
-    — 💿 Format info   — distinct disc sizes (7"/10"/12"), medium counts, a
-                       format type (e.g. "Vinyl") that matches regardless of
-                       size, and combined "2xVinyl"-style entries for an
-                       exact count+type combination in one click
+    — 📏/🔢/🧩/💿 Format info — one independently-collapsible sub-section per
+                       format facet: "- Size" (distinct disc sizes, e.g.
+                       7"/10"/12"), "- Medium count", "- Combo" (an exact
+                       "2xVinyl"-style count+type combination in one click),
+                       and "- Type" (e.g. "Vinyl", matching regardless of
+                       size)
     — 🌐/📅/📆 Release events — on the "Country/Date" column: distinct
                        country codes with their native flag (🌐), date text
                        (📅), and — when the chaban companion script is
                        installed — weekday abbreviation (📆), each its own
-                       collapsible sub-section
-    — 🌍/🏷️ Country details — on the synthetic "Country" column produced by
-                       splitting "Country/Date": country name (🌍) and
-                       country code (🏷️) in two separate sub-sections
-    — 🎵 Tracks info   — distinct per-medium track counts, plus a "multiple
-                       mediums" flag for rows joined by "+"
-    — 🏷️ Catalog info  — distinct catalog-number prefixes (e.g. "CBS"), plus
-                       independent "has prefix" / "no prefix" / "no catalog
-                       number" (MusicBrainz's own "[none]" placeholder) flags
+                       collapsible sub-section: "- Country"/"- Date"/
+                       "- Weekday"
+    — 🌍/🏳️ Country details — on the synthetic "Country" column produced by
+                       splitting "Country/Date": "- Name" (🌍) and "- Code"
+                       (🏳️) in two separate sub-sections
+    — 🎵/💽 Tracks info — "- Tracks" (distinct per-medium track counts) and
+                       "- Multi-medium" (a flag for rows joined by "+")
+    — 🧾/🔍 Catalog info — "- Prefix" (distinct catalog-number prefixes, e.g.
+                       "CBS") and "- Presence" (independent "has prefix" /
+                       "no prefix" / "no catalog number" — MusicBrainz's own
+                       "[none]" placeholder — flags)
     — 🎭 Roles         — "» role:" entries, one per distinct artist event-role
                        found in a native artist-roles list or the plain-text
                        "Role" column on an artist's own Events tab
@@ -285,9 +293,9 @@ every distinct non-empty value currently visible in that column.
                        every other section, with per-icon highlighting on
                        match
     — "CAA info" / "EAA info" (CAA/EAA columns only, named after the actual
-                       column header) — "» image type: …" (rendered as an
-                       actual pill matching the table's own style) and "»
-                       image comment: …", one entry per distinct value found
+                       column header) — each split into "- Type" (rendered
+                       as an actual pill matching the table's own style) and
+                       "- Comment", one entry per distinct value found
                        across every image in the column
 • Entity-reference rows (standard section, not "Cell structure") — one
   checkbox per distinct MusicBrainz entity reference (work/place/area/
