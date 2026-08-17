@@ -95469,7 +95469,8 @@ not automatically are overflow tables to shop as singel tables in a new tab
 Do not mention fixes in the "### Fixes" section which are actually part of the changes after "version: 9.99.746", as
 they are not userfacing anymore anyway
 
-* plan: check branch filter-performance-fix
+* TODO plan: check branch filter-performance-fix
+** i
 
 check branch filter-performance-fix:
 
@@ -95493,4 +95494,135 @@ so every performance related improvement should first always got to single-table
 3.)
 
 Are there any new areas where performance related coding can be applied (maybe the new new unique value drop down improvements)
+
+** plan
+
+#+begin_example
+
+● I've updated the plan file with the full sizing analysis. Summary:
+
+  The biggest lever isn't cloneNode — it's _updateAllColHeaderCounts. The code itself documents this O(rows×columns) per-column count scan as taking "30-120s for 8k+ rows" (that's why it's already deferred via
+  setTimeout(0) rather than fixed). Scaled to 5,000 rows, that's ~19-75s of background work re-triggered on every filter keystroke, every sort, every global expand/collapse-all click, and every multi-table
+  render — because initCollapsableColumns() (which schedules it) is called from all of those sites.
+
+  Two new areas beyond what we discussed last time:
+  - Sort pays the same tax Fix C removes from filter. The branch's WIP.1 only touched runFilter(); applying a sort still calls renderFinalTable(allRows) → full rebuild → the same expensive header-count scan.
+  Same fix, different trigger site, not yet done anywhere.
+  - The header-count scan itself has zero caching, independent of what triggers it — even after fixing filter and sort, global collapse/expand-all clicks and multi-table renders would still force a full
+  recompute.
+
+  Rough sizing for a 5,000-row/~20-column table (estimates from operation-count analysis against the code's own documented cost baseline, not live profiling):
+
+  ┌─────┬─────────────────────────────────────┬────────────────────────────────────────┐
+  │  #  │                 Fix                 │            Est. improvement            │
+  ├─────┼─────────────────────────────────────┼────────────────────────────────────────┤
+  │ 1   │ Fix C (filter)                      │ 95-99% per-keystroke                   │
+  ├─────┼─────────────────────────────────────┼────────────────────────────────────────┤
+  │ 2   │ Same fix, extended to Sort          │ 90-99% per-sort-click                  │
+  ├─────┼─────────────────────────────────────┼────────────────────────────────────────┤
+  │ 3   │ Cache _updateAllColHeaderCounts     │ 90%+ on toggle/multi-table triggers    │
+  ├─────┼─────────────────────────────────────┼────────────────────────────────────────┤
+  │ 4   │ openUniqDrop() caching              │ 90-98% on repeat opens                 │
+  ├─────┼─────────────────────────────────────┼────────────────────────────────────────┤
+  │ 5   │ Lazy CAA/EAA (IntersectionObserver) │ ~99% fewer initial art requests queued │
+  └─────┴─────────────────────────────────────┴────────────────────────────────────────┘
+
+  Recommended order: 1 → 2 → 3 → 4 → 5. The first four share one theme ("stop re-scanning everything on every action") and build on the same caching/invalidation primitive, so doing them in sequence compounds
+  the wins; #5 is an independent subsystem (artwork/network) and can slot in anytime.
+#+end_example
+
+** q
+
+1.)
+
+should we do each step by first /clear and then do the step
+
+2.)
+
+how do we reference each step when clearing in between
+
+3.)
+
+will the plan be stored anyway
+
+4.)
+
+what if I want to do step 1 and 2 on this machine and the oterh steps on anoterh machine, how do they know about the plan
+
+5.)
+
+should we remove the current performance fix branch
+
+** a
+
+#+begin_example
+
+  1) Should we /clear then do each step?
+  Yes, that's a good pattern here. This file is 63.5k lines and we've already burned a fair amount of context just analyzing it. Since the plan is fully written to disk (not dependent on conversation memory),
+  each step can start clean: /clear → fresh session → point it at the plan file → implement just that one item. Keeps each step focused and avoids drift from unrelated context piling up.
+
+  2) How do you reference a step after clearing?
+  Point at the plan file path plus the step number, e.g.:
+
+  ▎ "Implement step 1 (Fix C) from /home/vzell/.claude/plans/check-branch-filter-performance-fix-1-cheeky-blanket.md"
+
+  The filename is a stable, unique slug auto-generated for this plan — it won't get overwritten by a future /plan run. Fresh session, no memory needed, just the path.
+
+  3) Will the plan be stored anyway?
+  Yes — it's already a real file on disk at that path (I wrote it with the Write/Edit tools, not just displayed it). It survives /clear, survives closing the terminal, survives indefinitely until deleted.
+
+  4) Splitting steps across machines — how does the other machine know about the plan?
+  This is the actual gap: ~/.claude/plans/ is local to this machine's home directory — it's not part of the git repo, so a second machine has no access to it at all. Three ways to fix that:
+
+  - Copy the file over (scp, cloud drive, paste it) — simplest, but a manual step you'd have to remember each time you switch machines.
+  - Commit it into the repo — you're already doing exactly this pattern: this very plan's original 3 questions are already sitting in README.org from the cd9a09d "add performance README" commit. I could append
+  the findings/sizing table/step order there too, so git pull on the other machine gets it automatically.
+  - Use the project's own established convention for this — CLAUDE.md already defines a feature-branch + <project>_CHANGELOG.wip.json workflow for exactly "work in progress that needs to survive across
+  sessions/machines." Since each of the 5 steps is a natural standalone feature branch, doing steps 1-2 as commits on a branch and pushing it means the other machine just pulls that branch and has full context
+  (code + WIP changelog) — no dependency on ~/.claude/plans at all.
+
+  I'd recommend the last option since it's already your established pattern in this repo and travels via git automatically. Want me to append the step list to README.org (git-tracked) so it's portable, and/or
+  set up the first feature branch for step 1? Note: I'm still in plan mode, so I can only touch the plan file right now — I'd need to exit plan mode to make repo edits.
+
+✻ Worked for 44s
+
+❯ should we remove the current performance fix branch
+
+● My recommendation: don't delete it — rename/archive it instead.
+
+  Reasoning:
+  - The branch's commits are the actual reference implementation of the approach (the exact _artInitLazyPics IntersectionObserver logic, the show/hide pass replacing clone+re-render, the WIP changelog's own
+  writeup of the bugs it hit and fixed along the way — e.g. the bigbox-filter-sync regression in WIP.3). Since we already established the idea is still valid but needs a fresh reimplementation against current
+  main rather than a merge, that code is worth keeping as a blueprint to reference/port from, not just prose to remember.
+  - Branches cost nothing to keep around in git. Deleting loses nothing today, but it's a one-way door if you ever want to diff against the old approach or copy a snippet (e.g. the observer setup) instead of
+  rewriting it from scratch.
+  - What actually needs to happen isn't "get rid of the branch," it's "make clear this branch won't be merged as-is." A rename communicates that without discarding anything:
+  git branch -m filter-performance-fix archive/filter-performance-fix-v1-single-table
+  - (and same on origin if you want it reflected there). That frees up a clean filter-performance-fix name for the actual redo, and the archive/ prefix signals "reference only, not mergeable" to future-you.
+
+  If you do want it gone rather than archived, deleting a branch is exactly the kind of hard-to-reverse action I'd want explicit confirmation on before running — say the word and I'll do it (note: I'm still in
+  plan mode right now, so I can't run either the rename or a delete until we're out of it).
+#+end_example
+
+** ok
+
+a.)
+
+OK, write the plan in a PERFORMANCE.org file in the same directory with our current CLAUDE.md and commit it to
+git. Always edit/mark it if some step has been implemented.
+
+b.)
+
+rename/archive the old branch
+
+c.)
+
+start with implementing, set up the first feature branch for step 1
+
+
+* TODO /clear: session can point straight at ShowAllEntityData/PERFORMANCE.org Step 1
+
+Implement Step 1 from ShowAllEntityData/PERFORMANCE.org
+
+
 
