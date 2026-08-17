@@ -95469,5 +95469,28 @@ not automatically are overflow tables to shop as singel tables in a new tab
 Do not mention fixes in the "### Fixes" section which are actually part of the changes after "version: 9.99.746", as
 they are not userfacing anymore anyway
 
+* plan: check branch filter-performance-fix
 
+check branch filter-performance-fix:
+
+1.)
+
+Is it possible to merge current main branch to it
+
+2.)
+ 
+Is the implementation still a valid performance improvement to the current code base ?
+
+a.)
+
+At least now we have the option to render every subtable in multi-table pagetypes as single-table pagetypes in a new
+tab.
+
+b.)
+
+so every performance related improvement should first always got to single-table pagetypes
+
+3.)
+
+Are there any new areas where performance related coding can be applied (maybe the new new unique value drop down improvements)
 
