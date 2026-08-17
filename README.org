@@ -95142,11 +95142,26 @@ https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordin
 * TODO problem with "Eventdate" appearing before main column
 
 
-* TODO Bug: when filtering on a join condition like "&" (plus additioanlly a artist) and then closing and reopening the udv, the "&" is gone from the uvd menu
+* TODO plan - Bug: when filtering on a join condition like "&" (plus additioanlly a artist) and then closing and reopening the udv, the "&" is gone from the uvd menu
 
-Bug: when filtering on a join condition like "&" (plus additioanlly a artist) and then closing and reopening the udv, the "&" is gone from the uvd menu
+Currently, initially when opening the unique value drop down list of a column, the entries visible in the unique
+value. When starting filtering on entries by clicking on entries in the menu, only rows which meet the logical ORed
+filter criteria are shown, but in the unique value drop down still ALL entries are available (since initially opening
+the menu) for choosing additional filter criteria.
 
-https://musicbrainz.org/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances
+Bug: when filtering on a join phrase like "&" (plus lets say additionally on an "artist name") in the unique value drop
+down of the "Artist" column of the "Recording location for recording" subtable/secion of the multi-table page
+https://musicbrainz.org/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances (see [Image #50]), then closing and reopening the unique value drop down again,
+the join phrase "&" is gone from the menu of selectable entries but still filtered and highlighted.
+
+I would expect, after reopening, that all entries visible in the unique value drop down list, to be based on what's CURRENTLY filtered
+
+#+begin_example
+@debug/st-unfiltered.html - complete final rendered initial subtable
+@debug/st-filtered-reopened.html - complete final rendered subtable when it was filtered and reopened
+#+end_example
+
+Create a new branch for fixes.
 
 
 * Checking CAA columns on different pageTypes
@@ -95339,3 +95354,7 @@ merge the changes from the sections
 #+end_example
 
 in one, specifically checking for doubled stuff regarding the column filter drop down
+
+* Adjusted configuration boolean variable defaults to sensible values.
+
+I adjusted configuration boolean variable defaults to sensible values. Add an entry to the ShowAllEntityData_CHANGELOG.wip.json commenting these, cimmit, push
