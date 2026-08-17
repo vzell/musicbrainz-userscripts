@@ -94916,6 +94916,89 @@ there is the following button present in the "Event" column, e.g.
 It comes from the userscript "Expand events" by @Dvir Yitzchaki <dvirtz@gmail.com>, the toggle is already on the initial page.
 Remove it from the final rendered page when the userscript is present/active
 
+* DONE Adjusted configuration boolean variable defaults to sensible values.
+
+I adjusted configuration boolean variable defaults to sensible values. Add an entry to the ShowAllEntityData_CHANGELOG.wip.json commenting these, cimmit, push
+
+* DONE vocal credits not under "Vocals" column
+
+On the following release page https://musicbrainz.org/release/052b78f1-c2b3-45ca-94b6-dacf06e6a589 there are a couple of additional vocal columns like e.g.
+
+#+begin_example
+Alto vocals
+Bass vocals
+Soprano vocals [soprano i]
+Soprano vocals [soprano ii]
+Tenor vocals [tenor i]
+Tenor vocals [tenor ii]
+Bass vocals [gaoler]
+Soprano vocals [tosca]
+Tenor vocals [mario cavaradossi]
+#+end_example
+
+see also
+
+#+begin_example
+@debug/vocals-header.html - column header row
+@debug/vocals-row-1.html - sample row 1 with values in the artificial vocal columns on the final rendered page - @debug/450.html - original row
+@debug/vocals-row-2.html - sample row 2 with values in the artificial vocal columns on the final rendered page - @debug/510.html - original row
+#+end_example
+
+instead of being rendered in the "Vocals" column with the right attributes/credited as data
+
+* DONE plan: Split the current "Credit details" section in subsection
+
+In version "9.99.892" vocal-range/type credits have been introduced in the "Vocals" column of the pageType 'release-tracks'
+
+They are rendered now as credit details
+
+#+begin_example
+attribute
+date
+credited as
+#+end_example
+
+in the current "Credit details" section of the unique value drop down. See []
+
+Split the current "Credit details" section in subsections for the different credit details above.
+
+Use nice names for the subsections (check what has been done so far on other columns)
+
+* DONE plan: check the whole code base for other potential unique value column section splitting 
+
+1.)
+
+check the whole code base for other potential unique value column section splitting, so basically what we have done now multiple times, and maybe have overlooked
+
+2.)
+
+also check for consistency in naming the subsections
+
+3.)
+
+Write a block about these facts in the @CLAUDE.md file
+
+4.)
+
+While you're at it, do a complete recheck of the current CLAUDE.md against the current code base, if it's still valid
+and rewrite if necessary
+
+* DONE "Country/Date" column, ckick the "(show 204 more)" link before rendering
+
+On pageTypes 'artist-release' e.g. https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases
+in the  "Country/Date" column, there could be a button e.g.
+
+#+begin_example
+<li class="show-all"><a href="#" role="button" title="Show all release events">(show 204 more)</a></li>
+#+end_example
+
+with text "(show <N> more)" especially for digital releases.
+
+1.)
+
+add a new boolean configuration variable (default: true), when enabled emulate a click on all these links (if present)
+to render all country/date values in each such data cell before rendering the final page
+
 
 * TODO In "Recording enineer" column, "John Cooper (engineer)" should always stay together, a bare "John Cooper" should never be extracted
 
@@ -95296,7 +95379,7 @@ Merge current branch in main, commit and push:
 
 
 * DONE Instructions for creating a MusicBrainz forum entry about changes since last version in this userscript
-** i
+** DONE i
 
 1.)
 
@@ -95340,11 +95423,11 @@ Add additionally after the new feature
 
 a bullet point about the fact of automatically "Loading all tracks" ALL of releases with more than 100, see e.g. https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b
 
-** act on @debug/forum.org
+** DONE act on @debug/forum.org
 
 act on @debug/forum.org
 
-** merge
+** DONE merge
 
 merge the changes from the sections
 
@@ -95385,43 +95468,6 @@ not automatically are overflow tables to shop as singel tables in a new tab
 
 Do not mention fixes in the "### Fixes" section which are actually part of the changes after "version: 9.99.746", as
 they are not userfacing anymore anyway
-
-
-* DONE Adjusted configuration boolean variable defaults to sensible values.
-
-I adjusted configuration boolean variable defaults to sensible values. Add an entry to the ShowAllEntityData_CHANGELOG.wip.json commenting these, cimmit, push
-
-* vocal credits not under "Vocals" column
-
-On the following release page https://musicbrainz.org/release/052b78f1-c2b3-45ca-94b6-dacf06e6a589 there are a couple of additional vocal columns like e.g.
-
-#+begin_example
-Alto vocals
-Bass vocals
-Soprano vocals [soprano i]
-Soprano vocals [soprano ii]
-Tenor vocals [tenor i]
-Tenor vocals [tenor ii]
-Bass vocals [gaoler]
-Soprano vocals [tosca]
-Tenor vocals [mario cavaradossi]
-#+end_example
-
-see also
-
-#+begin_example
-@debug/vocals-header.html - column header row
-@debug/vocals-row-1.html - sample row 1 with values in the artificial vocal columns on the final rendered page - @debug/450.html - original row
-@debug/vocals-row-2.html - sample row 2 with values in the artificial vocal columns on the final rendered page - @debug/510.html - original row
-#+end_example
-
-instead of being rendered in the "Vocals" column with the right attributes/credited as data
-
-
-
-
-
-
 
 
 
