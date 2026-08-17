@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.893",
+    "date": "2026-08-17",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Unique-values dropdown: split the flat \"Credit details\" section into independently-collapsible \"Credit details - Attribute\"/\"- Task\"/\"- Date\"/\"- Instrument\"/\"- Credited as\" sub-sections (mirroring the existing \"Entity info\"/\"Release events\" splits), so columns with many credit annotations — e.g. \"Vocals\" now that vocal-range/type credits are consolidated into it — stay readable instead of one long mixed list."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.892",
     "date": "2026-08-17",
     "sections": [

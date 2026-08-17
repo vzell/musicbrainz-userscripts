@@ -233,14 +233,16 @@ every distinct non-empty value currently visible in that column.
                        real/canonical name, offers the full "RealName –
                        SortName" tooltip string plus each half on its own,
                        each prefixed "» name variation: "
-    — 🎚️ Credit details — one checkbox per distinct credit attribute word
-                       (e.g. "additional"), task value (e.g. "task: Second
-                       Engineer"), date/date-range annotation (e.g. "on
-                       1988-04-27", "from 1987-01-20 until 1987-03"),
-                       instrument type, or credited-as alternate name
-                       (a trailing "[…]" bracket) — each independently
-                       checkable, filtering to matching rows and
-                       highlighting just the matched text
+    — 🔖/🛠️/📅/🎸/📛 Credit details — one independently-collapsible sub-
+                       section per credit-detail kind: "- Attribute" (e.g.
+                       "additional"), "- Task" (e.g. "task: Second
+                       Engineer"), "- Date" (date/date-range annotations,
+                       e.g. "on 1988-04-27", "from 1987-01-20 until
+                       1987-03"), "- Instrument", and "- Credited as" (a
+                       trailing "[…]" bracket alternate name) — each
+                       collapses and remembers its own state independently;
+                       entries filter to matching rows and highlight just
+                       the matched text
     — 👤 Entity info   — one independently-collapsible sub-section per entity
                        type actually present (e.g. "Entity info - Artist
                        name", "Entity info - Event name", "Entity info -

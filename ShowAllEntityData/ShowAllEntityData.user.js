@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.892+2026-08-17
+// @version      9.99.893+2026-08-17
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -34335,7 +34335,22 @@ a { color: #1565c0; }`;
     const SYN_SECTION_META = {
         structure:     { label: 'Structure',         glyph: '🔠' },
         flags:         { label: 'Flags',              glyph: '🚩' },
-        credit:        { label: 'Credit details',     glyph: '🎚️' },
+        // "Credit details" is split into one collapsible sub-section per
+        // credit-family kind (attribute/task/date/instrument/credited-as)
+        // rather than one flat section lumping every "» attribute:"/
+        // "» credited as:"/etc. entry together — mirrors the entity_*
+        // split below. `credit` itself survives only as a generic
+        // fallback (mirrors entity_other's role) for the `|| 'credit'`
+        // default in makeValueSynItem()'s sectionKey resolution — every
+        // credit-family kind already has an explicit
+        // MB_UNIQ_KIND_TO_SECTION entry below, so this path is not
+        // expected to be hit in practice.
+        creditAttr:       { label: 'Credit details - Attribute',   glyph: '🔖' },
+        creditTask:       { label: 'Credit details - Task',        glyph: '🛠️' },
+        creditDate:       { label: 'Credit details - Date',        glyph: '📅' },
+        creditInstrument: { label: 'Credit details - Instrument',  glyph: '🎸' },
+        creditAltName:    { label: 'Credit details - Credited as', glyph: '📛' },
+        credit:           { label: 'Credit details - Other',       glyph: '🎚️' },
         // "Entity info" is split into one collapsible sub-section per
         // entity type (plus comment/alias) — see the `entity_*`/
         // `entityComment`/`entityAlias` keys below — rather than one flat
@@ -34414,10 +34429,18 @@ a { color: #1565c0; }`;
      * entry's own `entityType` (artist/event/place/…), split across the
      * `entity_*` keys — `makeValueSynItem()` special-cases it the same way
      * as `arttype`/`artcomment`, immediately below that branch.
+     *
+     * The five credit-family kinds (`attr`/`task`/`date`/`instrument`/
+     * `altname`) each route to their OWN dedicated `credit*` section key
+     * below — unlike `name`/`arttype`/`artcomment`, none of these needs
+     * dynamic-resolution treatment in `makeValueSynItem()`, since the kind
+     * string alone (always static at every call site) already fully
+     * determines the target section, same as every other entry in this
+     * table.
      */
     const MB_UNIQ_KIND_TO_SECTION = {
-        attr: 'credit', task: 'credit', date: 'credit',
-        instrument: 'credit', altname: 'credit',
+        attr: 'creditAttr', task: 'creditTask', date: 'creditDate',
+        instrument: 'creditInstrument', altname: 'creditAltName',
         comment: 'entityComment', alias: 'entityAlias', tagcount: 'entityTagCount',
         joinphrase: 'joinPhrase',
         namevariation: 'nameVariation',
