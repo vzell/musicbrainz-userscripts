@@ -95355,6 +95355,73 @@ merge the changes from the sections
 
 in one, specifically checking for doubled stuff regarding the column filter drop down
 
-* Adjusted configuration boolean variable defaults to sensible values.
+** DONE mention the userscript name and author in the @forum.org file when a bullet point mentions a userscript
+
+1.)
+
+mention the userscript name and author in the @forum.org file when a bullet point mentions a userscript
+
+2.) 
+
+for the "Optional AcoustID/ISRC columns and streaming links" mention the corresponding userscripts/authors which must be
+installed for this feature to be available
+
+3.)
+
+for "Country flags show up more consistently" mention the userscript/author which must be installed
+
+4.)
+
+For "**Every track on a release, in one table** --- a new button on any release page pulls every disc/medium's tracklist
+into a single view you can filter and sort, instead of scrolling through separate native tables per medium." mention
+that it's configurable (by default true)
+
+5.)
+
+For **"Show single-table" button**" mention that this feature works in multi-table pages and enables subtables which do
+not automatically are overflow tables to shop as singel tables in a new tab
+
+6.)
+
+Do not mention fixes in the "### Fixes" section which are actually part of the changes after "version: 9.99.746", as
+they are not userfacing anymore anyway
+
+
+* DONE Adjusted configuration boolean variable defaults to sensible values.
 
 I adjusted configuration boolean variable defaults to sensible values. Add an entry to the ShowAllEntityData_CHANGELOG.wip.json commenting these, cimmit, push
+
+* vocal credits not under "Vocals" column
+
+On the following release page https://musicbrainz.org/release/052b78f1-c2b3-45ca-94b6-dacf06e6a589 there are a couple of additional vocal columns like e.g.
+
+#+begin_example
+Alto vocals
+Bass vocals
+Soprano vocals [soprano i]
+Soprano vocals [soprano ii]
+Tenor vocals [tenor i]
+Tenor vocals [tenor ii]
+Bass vocals [gaoler]
+Soprano vocals [tosca]
+Tenor vocals [mario cavaradossi]
+#+end_example
+
+see also
+
+#+begin_example
+@debug/vocals-header.html - column header row
+@debug/vocals-row-1.html - sample row 1 with values in the artificial vocal columns on the final rendered page - @debug/450.html - original row
+@debug/vocals-row-2.html - sample row 2 with values in the artificial vocal columns on the final rendered page - @debug/510.html - original row
+#+end_example
+
+instead of being rendered in the "Vocals" column with the right attributes/credited as data
+
+
+
+
+
+
+
+
+
