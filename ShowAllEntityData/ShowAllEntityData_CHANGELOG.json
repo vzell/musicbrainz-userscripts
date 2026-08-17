@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.891",
+    "date": "2026-08-17",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Removed references to the obsolete \"MusicBrainz: Canadian Province Flags Everywhere\" companion userscript from code comments — only \"MusicBrainz: More Flags Everywhere\" remains current."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.890",
     "date": "2026-08-17",
     "sections": [

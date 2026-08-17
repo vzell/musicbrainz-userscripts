@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.890+2026-08-17
+// @version      9.99.891+2026-08-17
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -152,11 +152,10 @@
 
     // Countries — exactly as MusicBrainz renders them, e.g. "United Kingdom" —
     // for which `splitLocation`/`splitArea` force a flagged subdivision link
-    // (added by a separately-installed userscript such as "MusicBrainz: More
-    // Flags Everywhere" or "MusicBrainz: Canadian Province Flags Everywhere",
-    // @Lotheric) into "Region" instead of "Locality". See `_flagRegionCountrySet()`
-    // for the full rationale. Not user-configurable — editing this list
-    // requires a code change, not a settings toggle.
+    // (added by the separately-installed "MusicBrainz: More Flags Everywhere"
+    // userscript, @Lotheric) into "Region" instead of "Locality". See
+    // `_flagRegionCountrySet()` for the full rationale. Not user-configurable —
+    // editing this list requires a code change, not a settings toggle.
     //
     // 'United States' and 'Canada' were removed once "More Flags Everywhere"
     // started decorating CITY-level area links (not just state/province) for
@@ -2867,12 +2866,11 @@
      *
      * The real country flag is always `a.closest('.flag')` — a
      * `<span class="flag flag-XX">` WRAPPING the anchor. This must not be
-     * confused with subdivision-flag decorations added by separately-installed
-     * userscripts — e.g. "MusicBrainz: Canadian Province Flags Everywhere" or
-     * "MusicBrainz: More Flags Everywhere" (@Lotheric, see debug/flags.org for
-     * its full country list) — which render a SIBLING
-     * `<span class="area-icon"><img class="flag ..."></span>` immediately
-     * before the subdivision's own (unwrapped) anchor. Because
+     * confused with subdivision-flag decorations added by the
+     * separately-installed "MusicBrainz: More Flags Everywhere" userscript
+     * (@Lotheric, see debug/flags.org for its full country list) — which
+     * renders a SIBLING `<span class="area-icon"><img class="flag ..."></span>`
+     * immediately before the subdivision's own (unwrapped) anchor. Because
      * `a.closest('.flag')` only walks the anchor's own ancestor chain, that
      * sibling icon never matches it, so the subdivision anchor correctly falls
      * into the Locality/Region branch below, with its icon carried along.
@@ -16903,13 +16901,13 @@
      * flag/subdivision-icon element decorating THIS anchor, if any — the
      * same two shapes `_routeAreaLink()` already recognizes (line ~2987):
      * a native `<span class="flag flag-XX">` WRAPPING the anchor
-     * (`a.closest('.flag')`), or a third-party "More Flags Everywhere"/
-     * "Canadian Province Flags Everywhere" `<span class="area-icon">`
-     * immediately preceding it. `null` for every non-area type, and for an
-     * area with no flag decoration at all (most areas — flags only exist
-     * for countries, or subdivisions when that third-party script is
-     * installed). Consumed by `openUniqDrop()`'s "Entity info" section to
-     * show a real flag instead of the generic `arealink` glyph — see
+     * (`a.closest('.flag')`), or a third-party "More Flags Everywhere"
+     * `<span class="area-icon">` immediately preceding it. `null` for every
+     * non-area type, and for an area with no flag decoration at all (most
+     * areas — flags only exist for countries, or subdivisions when that
+     * third-party script is installed). Consumed by `openUniqDrop()`'s
+     * "Entity info" section to show a real flag instead of the generic
+     * `arealink` glyph — see
      * `_bakeFlagIconNode()`.
      *
      * @param {?HTMLTableCellElement} cell
@@ -40789,9 +40787,9 @@ a { color: #1565c0; }`;
      * Checks one row against one Locality/Region/Country trio and, if its
      * Locality cell has just been decorated with a subdivision flag icon
      * (`a[data-flag-processed]`, set by the "MusicBrainz: More Flags
-     * Everywhere" / "Canadian Province Flags Everywhere" userscripts,
-     * @Lotheric), moves that Locality value into Region — on both the live
-     * row (immediate visual feedback) and the master row (so the correction
+     * Everywhere" userscript, @Lotheric), moves that Locality value into
+     * Region — on both the live row (immediate visual feedback) and the
+     * master row (so the correction
      * survives future re-renders; see `_findMasterRowByIdx`). Whether it
      * qualifies mirrors `_routeAreaLink`'s `forceRegion` check exactly: for
      * countries in `AREA_FLAG_REGION_COUNTRIES` (UK/Australia) any flagged
@@ -46089,9 +46087,8 @@ a { color: #1565c0; }`;
          *     icon; the walk below re-adds the inner text as its own
          *     segment right after.
          *   - Third-party subdivision icon: <span class="area-icon"><img
-         *     class="flag ..."></span>, injected by "More Flags Everywhere"/
-         *     "Canadian Province Flags Everywhere" — a self-contained <img>
-         *     with no text of its own.
+         *     class="flag ..."></span>, injected by "More Flags Everywhere" —
+         *     a self-contained <img> with no text of its own.
          *
          * Segments are built by walking the LIVE cell with a TreeWalker, in
          * the same left-to-right document order `getCleanColumnText()` uses

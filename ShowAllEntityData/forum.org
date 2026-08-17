@@ -6,7 +6,7 @@
 
 ### New: consolidated Release tracklists
 
-* **Every track on a release, in one table** --- a new button on any release page pulls every disc/medium's tracklist into a single view you can filter and sort, instead of scrolling through separate native tables per medium.
+* **Every track on a release, in one table** --- a new button on any release page pulls every disc/medium's tracklist into a single view you can filter and sort, instead of scrolling through separate native tables per medium. Configurable in settings (on by default).
 [SCREENSHOT: the new "Show all Tracks for Release" button and the resulting consolidated tracklist table]
 
 * **No more manual "Load all tracks" clicks** --- MusicBrainz hides a medium's tracklist beyond the first 100 tracks behind its own "Load all tracks..." link; the script now clicks that automatically and waits for every remaining track to arrive (showing a progress bar as it goes) before building the table, so a medium with hundreds of tracks --- e.g. https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b --- always ends up complete instead of silently cut off at 100.
@@ -20,7 +20,7 @@
 
 * **Catches live-recording date mix-ups** --- for a track marked "live", a small warning or error icon flags any credit whose date doesn't match the track's own recording date --- handy for spotting data-entry mistakes at a glance.
 
-* **Optional AcoustID/ISRC columns and streaming links** --- turn on dedicated columns for AcoustID fingerprints and ISRC codes if you need them, and see streaming/download links per track when the companion streaming-links script is installed.
+* **Optional AcoustID/ISRC columns and streaming links** --- turn on dedicated columns for AcoustID fingerprints and ISRC codes if you need them (requires jesus2099's ["mb. INLINE STUFF"](https://github.com/jesus2099/konami-command/raw/master/mb_INLINE-STUFF.user.js) userscript), and see streaming/download links per track when the "MB: Inline per-recording streaming & download links" companion script is installed.
 
 * Added support for **individual ISRC pages** --- an /isrc/<code> page (listing every recording sharing that code) now loads and filters like everything else.
 
@@ -41,7 +41,7 @@
 
 * **Cover-art filter details** --- cover-art and event-art columns get their own filter section for image type and image comment.
 
-* **Country flags show up more consistently** in the filter dropdown for country/area columns.
+* **Country flags show up more consistently** in the filter dropdown for country/area columns when the ["MusicBrainz: More Flags Everywhere"](https://github.com/Lotheric/metabrainz-userscripts/raw/refs/heads/main/MusicBrainz_More_Flags_Everywhere.user.js) userscript (@Lotheric) is installed.
 
 * **Configurable filter dropdown height** --- how many entries show before the dropdown list scrolls is now adjustable in settings.
 
@@ -49,7 +49,7 @@
 
 ### Enhancements: other
 
-* **"Show single-table" button** (off by default) --- for a relationship or discography list that already fits without needing MusicBrainz's own "load more" step, this opens a plain, single, unified table in a new tab instead of the usual split-by-category layout.
+* **"Show single-table" button** (on by default) --- on pages that split results across several category sub-tables (relationship listings, place performances, an artist's release groups, a release group's releases), any sub-table that MusicBrainz itself doesn't already paginate behind its own "see all" link gets this button: click it to open that sub-table's already-rendered rows as a plain, single, unified table in a new tab, instead of the usual split-by-category layout.
 [SCREENSHOT: the "Show single-table" button next to a relationship category]
 
 * **Friendlier multi-value lists** --- a cell listing several people or tags now reads naturally, e.g. "Jon Landau, Chuck Plotkin and Bruce Springsteen", instead of a plain comma-separated run.
@@ -60,7 +60,7 @@
 
 * **More report pages get clean name/comment/alias columns** --- around a dozen more `/report/...` pages (covering releases, recordings, labels, artists, places, series and works) now automatically split out a clean name, comment, and primary-alias column for their main entity, matching what other report pages already did.
 * **Grouped report rows keep their shared label** --- reports that group several rows under one shared identifier (e.g. "Amazon URLs linked to multiple releases") now correctly carry that identifier down onto every row in the group, instead of leaving it blank or turning it into a stray empty row.
-* **Reports Statistics companion script now feeds two new columns** --- when the third-party "MusicBrainz: Reports Statistics" script is installed, the Reports index page gets its own "Delta" and "When" columns pulled straight out of that script's own change indicators.
+* **Reports Statistics companion script now feeds two new columns** --- when the third-party ["MusicBrainz: Reports Statistics"](https://github.com/chaban-mb/userscripts/raw/main/src/MusicBrainz%20Reports%20Statistics.user.js) (@chaban) script is installed, the Reports index page gets its own "Delta" and "When" columns pulled straight out of that script's own change indicators.
 
 ### Enhancements: aliases pages
 
@@ -69,18 +69,12 @@
 
 ### Fixes
 
-* Several display glitches on the new "Show single-table" snapshot tabs are fixed --- cover art no longer occasionally appears twice, relationship/tagger icons no longer disappear after filtering, and page headings/columns now always match the live page exactly.
 * Country/state columns correctly tell flagged US/Canada states apart from flagged cities, instead of occasionally mixing the two up.
-* The column filter no longer gets tripped up by the browser's own address/autofill suggestions popping into the field.
-* A handful of small bugs in the new release-tracklist credit columns are fixed --- missing or duplicated location chains, merged-together credits, and a few columns not appearing when they should.
 * The unique-values filter dropdown's flag icons and multi-word entries now space and align correctly.
-* Minor: name/comment/alias filtering now also works correctly for release, recording, and release-group references, not just the entity types it worked for before.
 * Minor: the Series page's Artists listing works again after a regression.
 * Fixed several pages (`/instruments`, `/genres`, edit-related pages, and every entity's sub-pages) not loading the script at all when the URL had a trailing slash.
 * Added the missing "Show all Tags" button on an Event's tags page --- the one taggable entity type that didn't have it yet.
 * Fixed a report (`PlacesWithoutCoordinates`) always showing empty locality/region/country cells.
-* Fixed a report (`ArtistsWithMultipleOccurrencesInArtistCredits`) never filling in its name/comment/alias columns.
 * Fixed the "Actions" (Edit/Remove) column lingering as an empty header on alias pages after its content was already being hidden.
-* Fixed several columns silently losing a row of data on tag/rating/report pages whenever a page produced more than one column from the same source.
 * Renamed the "MB-Primary alias" column to plain "Primary alias" everywhere, matching MusicBrainz's own wording.
 * The video icon column now also appears for the Recordings list on tag/user-tag pages, matching other pages that already had it.
