@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(node --check *)",
+      "Bash(python3 *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path'); case \"$f\" in *.user.js) node --check \"$f\" 2>/dev/null || echo \"{\\\"systemMessage\\\": \\\"⚠️ node --check failed on $f\\\"}\" ;; esac",
+            "statusMessage": "Checking userscript syntax..."
+          }
+        ]
+      }
+    ]
+  }
+}
