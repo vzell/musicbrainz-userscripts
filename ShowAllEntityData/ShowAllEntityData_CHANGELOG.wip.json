@@ -1,0 +1,62 @@
+[
+  {
+    "version": "WIP.5",
+    "date": "2026-08-18",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "PERFORMANCE.org Step 5 (lazy CAA/EAA loading via IntersectionObserver): for tables at or above a new sa_caa_io_threshold setting (default 500 data rows), CAA/EAA icon background-image loads and JSON-API enrichment are deferred until each artwork-icon cell scrolls within 200px of the viewport, instead of firing for every row at initial render. A persistent per-archive IntersectionObserver (_caaArtIO / _eaaArtIO) is created once by the new _artInitLazyPics() and observes every icon in the table; on intersect it unobserves the element and enqueues the same _artLoadIcon()/_artEnrichIcon() calls the eager path already used, through the shared _caaQueue. The observer survives filter/sort passes since WIP.1 keeps allRows as live DOM rows and initCaaPics()/initEaaPics() now run once per render instead of per keystroke; _artInitQueue() (the shared once-per-render-pass reset point already used for _caaQueue) now also disconnects and nulls any previous _caaArtIO/_eaaArtIO so a fresh render observes the current DOM set. Below the threshold, when IntersectionObserver is unavailable, or when the setting is 0, both paths run eagerly exactly as before. Reimplemented from archive/filter-performance-fix-v1-single-table's WIP.2 (\"Pattern 5\") against current main; the big-picture strip above the table (_artInitBigPics) is unaffected — only the per-row icon column and its enrichment are deferred, matching the archived branch's scope."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.4",
+    "date": "2026-08-18",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "PERFORMANCE.org Step 4 (openUniqDrop() per-open caching): the unique-values dropdown's 5 full tbody.rows scan passes (whole-cell value counts, flag-icon segment map, relationship-cell detection, relationship icon counts, inline CAA/EAA-thumbnail counts) now share Step 3's exact caching primitive — a per-(table, column) WeakMap cache keyed by a signature of the currently visible rows' data-mb-row-idx values, via a new shared _visibleRowSetSignature() (factored out of _updateAllColHeaderCounts's own inline loop, which now calls it too instead of duplicating the loop). Reopening the same column's dropdown with no filter/sort change in between skips straight past all 5 passes. Found and fixed one correctness gap while implementing: the \"Cell structure\" section's collapsed/expanded split is read from expandedCells (individually-toggled cells), not derivable from the visible-row signature, so a lone cell expand/collapse click would otherwise leave a reopened dropdown showing a stale split. Added _invalidateUniqDropDataCache(table, colIndex) and wired it into all 5 places expandedCells is mutated by user interaction (_applyCollapseState()'s two branches, ensureCollapseDelegate()'s three inline toggle branches)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-08-18",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "PERFORMANCE.org Step 3 (cache _updateAllColHeaderCounts): the per-column unique-value/multi-row header-count scan (O(rows x columns), the file's own documented worst case) now memoizes its result per <table> against a cheap O(rows) signature of the currently visible rows' data-mb-row-idx values, and skips the full recompute whenever that signature is unchanged since the last call. This makes syncCollapseButtonsWithColumnVisibility's column show/hide re-init (:16555) and multi-table sub-table re-renders (:42643, :43189) free when the visible row set hasn't actually changed. The one known call site that mutates cell CONTENT in place without changing which rows are visible — initReleaseEventsColumn()'s two post-population re-scans of initCollapsableColumns() (:52605, :52616), which fill previously-empty Release events/country/date cells — now explicitly calls the new _invalidateColHeaderCountsCache() first so those counts still refresh correctly instead of reading stale (pre-population) cached values."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-08-18",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "PERFORMANCE.org Step 2 (extend Fix C to Sort, single-table mode): applyMultiSortColumnTints() now skips filter-hidden rows when computing shade-toggle boundaries, so tint bands reflect only the visible rows again — after WIP.1 the tbody permanently holds the full row set (hidden rows kept as display:none instead of removed), which previously let hidden rows shift the tint boundaries. The CAA/EAA big-picture strip's image order no longer freezes at its original fetch-time order after a sort: WIP.1 stopped calling initCaaPics()/initEaaPics() on every action, which used to rebuild the strip (and incidentally re-sort it) on every filter/sort pass; a new _artReorderBigBoxForTable() (plus caaReorderBigBoxForTable()/eaaReorderBigBoxForTable() wrappers) now cheaply moves the existing wrapper elements to match the table's new row order via box.appendChild — no rebuild, called once per sort from the sort handler right after it reorders the live tbody rows. The single-table sort path's own live-DOM-reorder (rows moved to match the new sort order before runFilter()'s show/hide pass runs, including the cdtoc tracklist sub-row fix) had already landed as part of WIP.1."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-08-18",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "PERFORMANCE.org Step 1 (filter re-render, single-table mode): runFilter() no longer clones matching rows, replaces the tbody, or re-runs the post-render hook chain (initCollapsableColumns and the CAA/EAA/ERG/CDtoc it drives, plus Picard rewiring) on every keystroke. allRows are now kept as the live DOM rows throughout the session; each filter pass strips stale highlight spans and applies display:none / display:'' directly on those rows, then syncs the CAA/EAA bigbox via the existing caaUpdateBigBoxForTable()/eaaUpdateBigBoxForTable() helpers (previously only used by sub-table filters). The hook chain now runs exactly once — already true for the live fetch pipeline (startFetchingProcess), and newly hoisted into the disk-load/hydration path (initCollapsableColumns moved after updateH2Count() so its global toggle button can find filterContainer already attached; initCaaPics/initEaaPics/initCaaInlinePics/initEaaInlinePics called directly there since runFilter() no longer initialises them for single-table mode). Sort reorders the live tbody rows in place (appendChild loop) before the show/hide filter pass runs, so visible rows stay in sorted order. Fixed a regression the show/hide approach would otherwise introduce for cdtoc pages: a filtered-out or re-sorted row's tracklist sub-row (a synthetic sibling <tr> from _cdtocInitTracklistToggles(), not part of allRows) is now hidden/moved alongside its parent row instead of being orphaned."
+        ]
+      }
+    ]
+  }
+]

@@ -76,7 +76,7 @@ acceptance check for each step.
 
 ** Implementation steps
 
-*** TODO Step 1: Filter re-render (Fix C) — single-table mode only
+*** DONE Step 1: Filter re-render (Fix C) — single-table mode only
 
 In-place ~display:none~/~display:''~ toggling on live DOM rows instead of
 ~cloneNode(true)~ + tbody rebuild on every keystroke. Hoist
@@ -90,7 +90,40 @@ Scope: single-table mode only (~runFilter()~'s non-multi branch). Multi-table
 mode is out of scope for this step — see the "Show single-table" button
 note above for why single-table-first still covers the important case.
 
-*** TODO Step 2: Extend the Fix-C approach to Sort
+*Landed*: branch ~filter-performance-fix~, see
+~ShowAllEntityData_CHANGELOG.wip.json~ WIP.1. Findings while implementing,
+beyond the archived branch's own approach:
+
+- The live fetch pipeline (~startFetchingProcess~) already called the whole
+  post-render hook chain (~initCollapsableColumns~, ERG, Picard, CAA/EAA)
+  exactly once, independent of this fix — it had evolved that way across
+  main's 347 commits since the archived branch diverged. Only the disk-load/
+  hydration path still relied on ~runFilter()~'s old per-keystroke behaviour
+  for the *first* post-hydration hook-chain run; that path now calls
+  ~initCollapsableColumns()~ and the CAA/EAA init functions directly, moved
+  to after ~updateH2Count()~ so ~initCollapsableColumns~'s global toggle
+  button can find ~filterContainer~ already attached to the h2.
+- ~applyZebraStriping~, the CSV/JSON/org/HTML export functions, and the
+  sub-table-filter (STF) CAA/EAA bigbox sync were already
+  ~display:none~-aware (skip hidden rows/cells) before this change — this
+  significantly de-risked the show/hide approach; no changes needed there.
+- New regression this approach would otherwise introduce, now fixed: cdtoc
+  pages' tracklist sub-rows are a synthetic sibling ~<tr>~ inserted by
+  ~_cdtocInitTracklistToggles()~, not part of ~allRows~. The filter show/hide
+  pass now hides a row's tracklist sub-row alongside it, and the sort
+  reorder pass now moves it along with its parent (both keyed on
+  ~.mb-cdtoc-tracklist-row~) — otherwise a hidden/reordered row would leave
+  its sub-row orphaned.
+- ~_updateAllColHeaderCounts~ (the dominant cost per the Findings above) and
+  ~openUniqDrop()~'s unique-values scan are NOT visibility-aware — after this
+  step they reflect counts as of the last full hook-chain run (initial
+  render or disk-load), not the currently-filtered row set, since they're no
+  longer re-triggered per keystroke. This is the accepted, intended effect
+  of hoisting described above; making them reflect the live filtered set
+  again is Steps 3/4's job (caching with proper invalidation), not this
+  step's.
+
+*** DONE Step 2: Extend the Fix-C approach to Sort
 
 Sort currently still calls ~renderFinalTable(allRows)~ after
 ~sortLargeArray()~ completes, which triggers the same full tbody rebuild +
@@ -99,20 +132,143 @@ old branch (its WIP.1 only touched ~runFilter()~). Apply the same
 "rows are live DOM nodes, reorder in place, don't re-run the hook chain
 unless something actually changed" treatment to the sort-apply path.
 
-*** TODO Step 3: Cache ~_updateAllColHeaderCounts~
+*Landed*: branch ~filter-performance-fix~, see
+~ShowAllEntityData_CHANGELOG.wip.json~ WIP.2. Scoped to single-table mode
+only, matching Step 1 (confirmed with the user before implementing).
+
+- The "reorder live DOM rows in place, don't re-run the hook chain" part of
+  this step was already substantially done as a side effect of Step 1's own
+  implementation: single-table sort has always delegated to ~runFilter()~ for
+  its actual DOM update (never called ~renderFinalTable()~ directly, despite
+  this heading's original wording — that described the OLD indirect effect of
+  runFilter()'s single-table branch), and Step 1 already made that branch
+  reorder-and-show/hide instead of clone-and-rebuild. What Step 1 had not yet
+  added was the DOM row reorder itself (rows must be physically moved to the
+  new sort order BEFORE the show/hide pass runs, since nothing rebuilds the
+  tbody afterward) — that landed as part of Step 1 already.
+- What Step 2 actually found and fixed, auditing the sort path for remaining
+  full-rebuild/hook-rerun spots per the above:
+  1. ~applyMultiSortColumnTints()~ walked every ~tbody tr~ including
+     filter-hidden ones (tbody now always holds the full row set — see Step
+     1) when computing shade-toggle run boundaries, shifting tint bands away
+     from what the visible rows alone would show. Fixed by filtering to
+     ~tr.style.display !== 'none'~ before the walk.
+  2. The CAA/EAA big-picture strip's image order silently froze at its
+     original fetch-time order on every subsequent sort: before Step 1,
+     sorting triggered ~initCaaPics()~/~initEaaPics()~ on every action, and
+     ~_artInitBigPics()~ fully rebuilt the strip from the (by-then sorted)
+     tbody, so its order tracked sort order for free as a side effect. Step 1
+     removed that per-action rebuild. Fixed with a new, cheap
+     ~_artReorderBigBoxForTable()~ (+ ~caaReorderBigBoxForTable()~/
+     ~eaaReorderBigBoxForTable()~ wrappers, mirroring the existing
+     ~_artUpdateBigBoxForTable()~/~caaUpdateBigBoxForTable()~/
+     ~eaaUpdateBigBoxForTable()~ pattern) that only *moves* existing wrapper
+     elements to match the new row order via ~box.appendChild~ — no rebuild,
+     so none of ~_artInitBigPics~'s badge/generation-counter double-count
+     risk. Called once per sort (not per filter keystroke, since filtering
+     alone never changes row order) from the sort handler, right after it
+     reorders the live tbody rows.
+
+*** DONE Step 3: Cache ~_updateAllColHeaderCounts~
 
 Memoize per-column unique-value/multi-row counts, invalidated only when the
 visible row set actually changes (not on every trigger). Needed even after
 Steps 1-2, since global expand/collapse-all clicks and multi-table renders
 still call it unconditionally.
 
-*** TODO Step 4: ~openUniqDrop()~ per-open caching
+*Landed*: branch ~filter-performance-fix~, see
+~ShowAllEntityData_CHANGELOG.wip.json~ WIP.3.
+
+- Added ~_colHeaderCountsSigCache~, a ~WeakMap<table, signature>~. The
+  signature is a cheap O(rows) join of the visible rows' ~data-mb-row-idx~
+  values (an existing per-row identity, already stamped on every ~<tr>~ at
+  extraction time and preserved through ~cloneNode(true)~ — see the
+  ~_mbRowIdxCounter~ comment near ~:29997~). ~_updateAllColHeaderCounts~ now
+  computes this signature first and returns early when it matches the last
+  one computed for that table, skipping the O(rows x columns) scan.
+  Keying by the live ~<table>~ element means a brand-new table (new fetch,
+  disk-load, or multi-table sub-table) is always a cache miss — no manual
+  reset needed.
+- This correctly turns into a no-op skip for the call sites the "Findings"
+  section above flagged as redundant:
+  ~syncCollapseButtonsWithColumnVisibility~'s column show/hide re-init, and
+  multi-table's per-sub-table re-render/reuse branches (row content there is
+  always freshly cloned from the same source rows, so the signature is
+  stable across a rebuild that reproduces the same filtered set). The global
+  expand/collapse-all button was checked and does NOT call
+  ~initCollapsableColumns~/this function at all (it drives
+  ~_applyCollapseState~ directly), and ~getCleanColumnText~/
+  ~_classifyCollapseCell~ were confirmed to read full DOM content
+  independent of collapse/expand toggle state — so cached counts stay
+  correct across expand/collapse-all clicks even though nothing re-triggers
+  them.
+- One real correctness hazard found and fixed while implementing: the
+  signature only tracks WHICH rows are visible, not what their cells
+  contain. ~initReleaseEventsColumn()~ mutates cell content in place (fills
+  previously-empty Release events/country/date cells) with no row
+  show/hide, then deliberately re-runs ~initCollapsableColumns()~ twice to
+  pick up that new content (its own pre-existing comments: "it ran before
+  cells were populated so found 0 ul>li items"). Naively caching purely on
+  row visibility would have made those re-runs silently skip and leave the
+  header counts frozen at their pre-population (mostly empty) values. Fixed
+  by adding ~_invalidateColHeaderCountsCache(table)~ and calling it at both
+  of that function's re-scan sites, right before ~initCollapsableColumns~.
+  Any FUTURE call site that mutates cell content post-render without a row
+  visibility change needs the same explicit invalidation — checked
+  ~initRelationshipsColumn~ and ~initPicardTaggerColumn~ (both populate
+  cells asynchronously) and confirmed neither one re-triggers
+  ~initCollapsableColumns~/this function at all today, so their header
+  counts were already not kept fresh before this change either — no new
+  regression, but a pre-existing gap outside this step's scope if that ever
+  changes.
+
+*** DONE Step 4: ~openUniqDrop()~ per-open caching
 
 ~openUniqDrop()~ (~ShowAllEntityData.user.js:45002-47611~) does >=5 full
 ~tbody.rows~ passes from scratch on every dropdown open with zero caching.
 Same caching primitive as Step 3 — build alongside it.
 
-*** TODO Step 5: Lazy CAA/EAA loading (IntersectionObserver)
+*Landed*: branch ~filter-performance-fix~, see
+~ShowAllEntityData_CHANGELOG.wip.json~ WIP.4.
+
+- Reused Step 3's exact primitive: a `WeakMap`-based per-(table, column)
+  cache keyed by a signature of the currently visible rows'
+  ~data-mb-row-idx~ values, factored out of ~_updateAllColHeaderCounts~'s
+  own inline loop into a new shared ~_visibleRowSetSignature(table)~ (both
+  it and the equivalent ~_updateAllColHeaderCounts~ change now call the
+  same function, rather than duplicating the loop).
+- All 5 of the function's ~tbody.rows~ passes (the big value-scan loop, the
+  flag-icon segment map, the relationship-cell detector, the relationship
+  icon counts, and the inline-CAA/EAA-thumbnail scan) are gated behind a
+  single cache-hit check computed once at the top of the function. Deliberately
+  did NOT restructure the ~40+ Maps/counters into a bundled accumulator
+  object or move any code — each declaration's default value became a
+  `_uniqCacheHit ? _uniqCacheHit.name : <original initial value>` ternary
+  in place, and each scan loop got an `if (!_uniqCacheHit)` guard around its
+  existing body, unchanged. This kept the diff to declaration lines and loop
+  guards only, with zero changes to the hundreds of `.set()`/`.get()`/`++`
+  call sites inside the loop bodies.
+- Correctness hazard found and fixed while implementing, same shape as
+  Step 3's release-events case but with a different root cause here: the
+  "Cell structure" section's collapsed/expanded split
+  (~multiRowCollapsedCount~/~multiRowExpandedCount~) is read from
+  ~expandedCells~ (a Map of individually toggled cells), NOT re-derived from
+  the visible-row signature — so a single cell's expand/collapse click
+  changes these counts WITHOUT changing which rows are visible, and would
+  otherwise leave a re-opened dropdown showing a stale split forever (until
+  some unrelated filter/sort happened to invalidate it). Fixed by adding
+  ~_invalidateUniqDropDataCache(table, colIndex)~ and calling it at all 5
+  places ~expandedCells~ is mutated by user interaction: both branches of
+  ~_applyCollapseState()~ (header/global-button-driven toggles) and all 3
+  branches of ~ensureCollapseDelegate()~'s own inline per-cell click
+  handling (CAA/EAA inline expand, prose clamp toggle, list-cell toggle). A
+  6th mutation site (~initCollapsableColumns~'s one-time "start expanded by
+  default" pre-population for Edit details/notes columns) was checked and
+  needs no invalidation call — it only ever runs on the first pass over a
+  column for a given fetch, before any dropdown cache for that render could
+  exist.
+
+*** DONE Step 5: Lazy CAA/EAA loading (IntersectionObserver)
 
 Defer CAA/EAA icon loads + JSON-API enrichment until a row's art cell
 scrolls near the viewport, instead of firing for every row at initial
@@ -120,6 +276,41 @@ render. Reference: ~archive/filter-performance-fix-v1-single-table~'s WIP.2
 ("Pattern 5") — ~sa_caa_io_threshold~ setting, per-ctx persistent observer.
 Independent of Steps 1-4 (different subsystem); can be done in any order
 relative to them.
+
+*Landed*: branch ~filter-performance-fix~, see
+~ShowAllEntityData_CHANGELOG.wip.json~ WIP.5. Reimplemented against current
+~main~ rather than merged — the archived branch's shape (~ArtCtx~-generic
+~_artInitPics~/~_artInitSmallPics~/~_artEnrichTable~/~_caaQueue~) turned out
+to still match current ~main~ closely, so the port was mostly a straight
+carry-over:
+
+- New ~sa_caa_io_threshold~ setting (default 500 rows, 0 disables), new
+  module-level ~_caaArtIO~/~_eaaArtIO~ next to the existing ~_caaQueue~, and
+  new ~_artInitLazyPics(ctx, table)~ (creates/reuses a per-ctx
+  ~IntersectionObserver~, 200px root margin, unobserve-on-intersect, enqueues
+  ~_artLoadIcon~/~_artEnrichIcon~ through the existing ~_caaQueue~).
+- ~_artInitPics(ctx)~ computes ~_useIO~ once (`allRows.length >=
+  sa_caa_io_threshold`, guarded on ~IntersectionObserver~ existing) and
+  branches both the small-icon pass (~_artInitSmallPics~ vs
+  ~_artInitLazyPics~) and the enrichment pass (~_artEnrichTable~, now
+  skipped entirely when ~_useIO~ since the observer enqueues enrichment
+  itself per icon) on it. The big-picture strip
+  (~_artCountLinks~/~_artInitBigPics~) is untouched — same scope boundary as
+  the archived branch, only the per-row icon column + its enrichment defer.
+- Disconnect/reset of both observers was placed in ~_artInitQueue()~ — the
+  function current ~main~ already runs exactly once per render pass, before
+  ~initCaaPics()~/~initEaaPics()~, to recreate ~_caaQueue~ — rather than
+  inside ~initCaaPics()~ itself as the archived branch did (queue creation
+  and IO reset live in two different functions on current ~main~ now,
+  ~_artInitQueue()~ vs ~initCaaPics()~/~initEaaPics()~, whereas the archived
+  branch still had them combined in one). This keeps both observers reset
+  exactly once per render pass, matching the queue's own lifecycle, and
+  means the observer persists correctly across Step 1/2's now-single-pass
+  filter/sort actions (they never call ~_artInitQueue()~).
+- ~_artRetryTable()~'s forced-reload path (cache-busted, per-table "Retry"
+  button) was left calling ~_artInitSmallPics~ eagerly, unchanged — the
+  archived branch did the same; a manual retry should not silently re-defer
+  behind the viewport.
 
 ** Resuming after /clear
 

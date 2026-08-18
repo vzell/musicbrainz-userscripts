@@ -2082,6 +2082,19 @@
                          'decrease if CORS errors still appear in the console.'
         },
 
+        sa_caa_io_threshold: {
+            label: 'Lazy-load art threshold (rows)',
+            type: 'number',
+            default: 500,
+            min: 0,
+            max: 50000,
+            description: 'When the number of data rows meets or exceeds this value, CAA/EAA artwork ' +
+                         'icons and JSON-API enrichment are loaded lazily via IntersectionObserver: ' +
+                         'only cells that scroll into the viewport trigger a request. For tables ' +
+                         'smaller than the threshold all artwork is loaded eagerly (existing ' +
+                         'behaviour). Set to 0 to always use eager loading regardless of table size.'
+        },
+
         sa_caa_hover_preview: {
             label: 'Enable hover preview of artwork',
             type: 'checkbox',
@@ -36404,132 +36417,72 @@ a { color: #1565c0; }`;
                 _incrLastPartialKey  = _partialKey;
                 _incrMatchSet        = _matchingSrc;
             }
-            const filteredRows = _matchingSrc.map(row => {
-                const clone = row.cloneNode(true);
-                // Strip CAA/EAA enrichment markers from every cell in the clone.
-                //
-                // Single-table source rows in allRows carry data-caa-enriched / data-eaa-enriched
-                // markers stamped by _artEnrichIcon during the initial render.  cloneNode(true)
-                // copies those markers to the filtered clone.  When initCaaPics() / initEaaPics()
-                // runs after renderFinalTable(), _artEnrichIcon sees the copied marker on each
-                // art anchor and returns early without calling _artBuildMultiRowArtCell — so
-                // the clone keeps the li elements from the source row but never calls
-                // _artHighlightImageLi, leaving art li items un-highlighted after every filter.
-                //
-                // Stripping the markers here ensures _artBuildMultiRowArtCell is called fresh
-                // for each rendered clone, which triggers _artHighlightImageLi to apply the
-                // active filter highlights.  The source rows in allRows keep their markers, so
-                // subsequent runFilter calls (user typing) are still served from the IDB/memory
-                // cache without redundant network calls — exactly the same approach used in the
-                // multi-table path's groupedRows.forEach clone loop.
-                Array.from(clone.cells).forEach(td => _stripTransientCellState(td));
-                // Restore art-cell expand state from the authoritative expandedCells
-                // map.  allRows are detached source rows that never carry live expand
-                // state, so expandedCells is the only way to replay the user's
-                // expand/collapse choices onto clones after every filter re-render.
-                _restoreArtExpandState(clone);
-                testRowMatch(clone, matchCtx);
-                return clone;
-            });
-            singleTableFilteredCount = filteredRows.length; // capture before async render
-            // Finalize colon-aligned columns on the filtered subset before re-render
-            if (Lib.settings.sa_enable_numeric_alignment !== false) {
-                finalizeSplitAlignedColumns(filteredRows, activeIntegerColumns);
-                finalizeRLCColumnWidths(filteredRows, activeIntegerColumns);
-            }
-            // TEMP DEBUG (bug 2 investigation) — fingerprint the CLONED rows that
-            // are ABOUT to be inserted by renderFinalTable(), using the CURRENT
-            // (pre-replacement) table's own header to resolve the CAA/EAA colIdx.
-            // Gated on sa_enable_art_diagnostic_logging.
-            if (Lib.settings.sa_enable_art_diagnostic_logging) {
-                const _preTable = document.querySelector('table.tbl');
-                if (_preTable) {
-                    ['CAA', 'EAA'].forEach(colLabel => {
-                        const colIdx = caaFindColumnByName(_preTable, colLabel);
-                        if (colIdx === -1) return;
-                        const fp = filteredRows.map((tr, i) => {
-                            const td = tr.cells[colIdx];
-                            if (!td) return `row${i}:no-cell`;
-                            const hasUl = !!td.querySelector(':scope > ul.mb-caa-art-ul, :scope > ul.mb-eaa-art-ul');
-                            const hasAnchor = !!td.querySelector('a[href$="/cover-art"], a[href$="/event-art"]');
-                            const hasBadge = !!td.querySelector('.mb-caa-count-badge, .mb-eaa-count-badge');
-                            return `row${i}:[ul=${hasUl} anchor=${hasAnchor} badge=${hasBadge}]`;
-                        });
-                        Lib.debug('caa', `runFilter: pre-renderFinalTable clones [${colLabel}] col=${colIdx} — ` + fp.join(' | '));
-                    });
+            // In-place filter: show/hide allRows directly instead of cloning +
+            // rebuilding the tbody. allRows are the live DOM rows inserted once
+            // at initial render (fetch pipeline / disk-load); the post-render
+            // hook chain that used to re-run on every keystroke
+            // (initCollapsableColumns and the CAA/EAA/ERG/CDtoc/nested-h2 hooks
+            // it drives, plus Picard rewiring) now runs exactly once there
+            // instead - see PERFORMANCE.org Step 1. Because row identity never
+            // changes here, none of those hooks need to re-run per filter pass.
+            //
+            // Matched rows: testRowMatch(row, matchCtx) strips any stale
+            // highlight spans and re-applies new ones for the current query, in
+            // place. Non-matched rows: highlight spans are stripped manually (no
+            // need to run the full match scan again) and the row is hidden with
+            // display:none - it stays in the DOM so sort order is preserved.
+            const _matchSet    = new Set(_matchingSrc);
+            const _filterTable = document.querySelector('table.tbl');
+            const _filterTbody = _filterTable ? _filterTable.querySelector('tbody') : null;
+            if (_filterTbody) {
+                allRows.forEach(row => {
+                    if (_matchSet.has(row)) {
+                        testRowMatch(row, matchCtx); // strips old highlights, adds new
+                        row.style.display = '';
+                    } else {
+                        row.querySelectorAll('.mb-global-filter-highlight, .mb-column-filter-highlight')
+                            .forEach(n => n.replaceWith(document.createTextNode(n.textContent)));
+                        row.querySelectorAll('.mb-rel-icon-match')
+                            .forEach(a => a.classList.remove('mb-rel-icon-match'));
+                        row.style.display = 'none';
+                        // cdtoc pages: also hide the row's tracklist sub-row (a synthetic
+                        // sibling <tr> inserted by _cdtocInitTracklistToggles(), not part
+                        // of allRows) so a hidden row never leaves an orphaned visible
+                        // tracklist behind. A visible row's sub-row is left exactly as the
+                        // user last toggled it.
+                        const _cdtocSub = row.nextElementSibling;
+                        if (_cdtocSub && _cdtocSub.classList.contains('mb-cdtoc-tracklist-row')) {
+                            _cdtocSub.style.display = 'none';
+                        }
+                    }
+                });
+                // Sync the CAA/EAA bigbox: hide images for hidden rows, show for
+                // visible rows, and update the toggle-button badge count.
+                // Before this in-place filter, initCaaPics() rebuilt the bigbox
+                // from scratch on every filter pass (only matching rows were
+                // re-rendered). Now that it runs once at initial render, the
+                // bigbox must be synced explicitly after each show/hide pass -
+                // the same helper the sub-table-filter (STF) path already uses.
+                const _bbTblIdx = Array.from(document.querySelectorAll('table.tbl')).indexOf(_filterTable);
+                if (_bbTblIdx !== -1) {
+                    caaUpdateBigBoxForTable(_filterTable, _bbTblIdx);
+                    eaaUpdateBigBoxForTable(_filterTable, _bbTblIdx);
                 }
             }
-            renderFinalTable(filteredRows);
-            updateH2Count(filteredRows.length, totalAbsolute);
-            _debugDumpCaaColumnState('runFilter:post-renderFinalTable');
-
-            // Re-apply collapsable-column toggles on the freshly rendered DOM rows.
-            //
-            // Background: renderFinalTable() inserts *clones* of allRows into the DOM
-            // and leaves the originals in allRows (detached).  initCollapsableColumns()
-            // adds toggle spans and hides extra <li> items only on the rows that are in
-            // the DOM at the time it runs.  Because runFilter() is called from many
-            // places — user typing, column-filter changes, disk-load reset — the
-            // toggle state must be re-established here so that every re-render produces
-            // a fully functional collapsable-column table.
-            //
-            // initCollapsableColumns() is idempotent (cleans up stale state first) and
-            // returns immediately when the active page has no collapsableColumns, so
-            // this call is a cheap no-op on non-collapsable pages.
-            const _collapseTable = document.querySelector('table.tbl');
-            if (_collapseTable) initCollapsableColumns(_collapseTable);
-            // TEMP DEBUG (bug 2 investigation) — kept permanently, no-op unless
-            // sa_enable_art_diagnostic_logging is on.
-            _debugDumpCaaColumnState('runFilter:post-initCollapsableColumns');
-
-            // Re-inject erg expand buttons into the freshly rendered DOM rows.
-            // renderFinalTable() inserts cloneNode(true) copies — event listeners are
-            // not cloned, so ▶ buttons become inert after every sort or filter re-render.
-            // initExpandRGsFeature() removes stale [data-erg-btn] clones and re-injects
-            // a fresh live button into each qualifying <td>.
-            initExpandRGsFeature();
-
-            // CDtoc: re-inject tracklist sub-rows and re-wire toggle links after
-            // every re-render (cloneNode(true) strips event listeners).
-            _cdtocInitTracklistToggles();
-
-            // Re-wire wiki-rendered <h2> headings nested inside table cells
-            // (e.g. "Annotation" column sub-sections) — same
-            // cloneNode(true)-drops-listeners reason as initExpandRGsFeature()
-            // and _cdtocInitTracklistToggles() above.
-            _rewireNestedTableH2Toggles();
-
-            // Refresh the Picard tagger column after every filter / sort re-render.
-            // rewireOnly=true: only re-attach listeners on existing picard cells;
-            // never append new tds.  During load-from-disk runFilter fires before
-            // initRelationshipsColumn — full injection there would append picard_td
-            // before rel_td, corrupting column order.  After the initial render,
-            // allRows source rows already carry picard_td so rewire-only is sufficient.
-            initPicardTaggerColumn(/* rewireOnly */ true);
-            // Inline thumbnails first — _artInitQueue creates _caaQueue so they
-            // land ahead of small icons and the big strip in the fetch queue.
-            _artInitQueue();
-            initCaaInlinePics();
-            initEaaInlinePics();
-            initCaaInlineJesus2099Observer();
-            // TEMP DEBUG (bug 2 investigation) — kept permanently, no-op unless
-            // sa_enable_art_diagnostic_logging is on.
-            _debugDumpCaaColumnState('runFilter:pre-initCaaPics');
-            initCaaPics();
-            initEaaPics();
-            // TEMP DEBUG (bug 2 investigation) — synchronous state right after
-            // initCaaPics()/initEaaPics() return. Note _artEnrichIcon's own async
-            // tiers (IDB await / network fetch) may still be in flight at this
-            // point — a follow-up delayed dump below catches what settles later.
-            // Kept permanently, no-op unless sa_enable_art_diagnostic_logging is on.
-            _debugDumpCaaColumnState('runFilter:post-initCaaPics-sync');
-            if (Lib.settings.sa_enable_art_diagnostic_logging) {
-                setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+500ms'), 500);
-                setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+2000ms'), 2000);
-                setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+5000ms'), 5000);
+            singleTableFilteredCount = _matchingSrc.length;
+            // Finalize colon-aligned columns on the filtered (visible) subset -
+            // alignment/width is computed only from currently-visible rows.
+            if (Lib.settings.sa_enable_numeric_alignment !== false) {
+                finalizeSplitAlignedColumns(_matchingSrc, activeIntegerColumns);
+                finalizeRLCColumnWidths(_matchingSrc, activeIntegerColumns);
             }
-            // Re-populate any rel cells that were not yet done when runFilter rebuilt
-            // the DOM (race: Phase-2 fetch queue was mid-flight when the user typed).
+            updateH2Count(_matchingSrc.length, totalAbsolute);
+            // TEMP DEBUG (bug 2 investigation) — kept permanently, no-op unless
+            // sa_enable_art_diagnostic_logging is on.
+            _debugDumpCaaColumnState('runFilter:post-showhide');
+
+            // Re-populate any rel cells that were not yet done when the filter ran
+            // (race: Phase-2 fetch queue was mid-flight when the user typed).
             if (document.querySelector('td.mb-rel-cell:not([data-rel-done="1"])')) {
                 initRelationshipsColumn();
             }
@@ -36547,7 +36500,7 @@ a { color: #1565c0; }`;
         if (filterStatusDisplay) {
             const rowCount = activeDefinition.tableMode === 'multi'
                 ? filteredArray.reduce((sum, g) => sum + g.rows.length, 0)
-                : singleTableFilteredCount; // use in-memory count; DOM may still be rendering chunks
+                : singleTableFilteredCount; // in-memory count from the show/hide pass above
 
             // Build filter info string
             const filterParts = [];
@@ -44965,6 +44918,96 @@ a { color: #1565c0; }`;
         _uniqDropOpenValuesSnapshot = '';
     }
 
+    // Per-(table, column) memo of openUniqDrop()'s expensive row-scan results
+    // (valueCounts, all the per-column-family Maps, flag/rel/inline-art
+    // structural scans — see openUniqDrop()'s own comments at each pass).
+    // Keyed first by the live <table> element (so a brand-new table is
+    // always a cache miss), then by column index. Each entry also stores the
+    // visible-row-set signature (see _visibleRowSetSignature()) it was
+    // computed against, so a stale entry for an unchanged column index but a
+    // since-filtered/sorted table is detected and recomputed.
+    const _uniqDropDataCache = new WeakMap();
+
+    /**
+     * Cheap O(rows) signature of which rows of `table` are currently
+     * visible, built from each row's `data-mb-row-idx` (a stable per-row
+     * identity assigned once at extraction time and preserved through
+     * `cloneNode(true)` — see the `_mbRowIdxCounter` comment near :29997).
+     * Two calls return the same string iff exactly the same set of rows is
+     * visible, regardless of row order. Shared by
+     * `_updateAllColHeaderCounts()`'s per-table cache and
+     * `openUniqDrop()`'s per-column cache — both invalidate when this
+     * signature changes.
+     * @param {HTMLTableElement} table
+     * @returns {string}
+     */
+    function _visibleRowSetSignature(table) {
+        const tbody = table.tBodies[0];
+        if (!tbody) return '';
+        let sig = '';
+        for (const row of tbody.rows) {
+            if (row.style.display !== 'none') sig += row.dataset.mbRowIdx + ',';
+        }
+        return sig;
+    }
+
+    /**
+     * Returns the cached row-scan bundle for `table`/`colIndex` if one
+     * exists and was computed against the CURRENT visible-row-set signature
+     * — null on a miss (no entry yet, or the visible rows changed since it
+     * was cached).
+     * @param {HTMLTableElement} table
+     * @param {number} colIndex
+     * @param {string} sig - result of `_visibleRowSetSignature(table)`
+     * @returns {?Object}
+     */
+    function _getUniqDropDataCache(table, colIndex, sig) {
+        const perCol = _uniqDropDataCache.get(table);
+        if (!perCol) return null;
+        const entry = perCol.get(colIndex);
+        return (entry && entry.sig === sig) ? entry.data : null;
+    }
+
+    /**
+     * Stores `data` (openUniqDrop()'s freshly-computed row-scan bundle) in
+     * the cache for `table`/`colIndex`, tagged with the signature it was
+     * computed against.
+     * @param {HTMLTableElement} table
+     * @param {number} colIndex
+     * @param {string} sig
+     * @param {Object} data
+     */
+    function _setUniqDropDataCache(table, colIndex, sig, data) {
+        let perCol = _uniqDropDataCache.get(table);
+        if (!perCol) {
+            perCol = new Map();
+            _uniqDropDataCache.set(table, perCol);
+        }
+        perCol.set(colIndex, { sig, data });
+    }
+
+    /**
+     * Forces the next `openUniqDrop(btn, table, colIndex)` call for this
+     * column to recompute instead of reusing its cached row-scan bundle.
+     *
+     * The signature cache above only tracks WHICH rows are visible, not
+     * per-cell expand/collapse state (`expandedCells`) — the "Cell
+     * structure" section's collapsed/expanded split is read straight from
+     * that Map, not re-derived from the visible-row signature. Every site
+     * that mutates `expandedCells` (`_applyCollapseState()` and
+     * `ensureCollapseDelegate()`'s own inline toggle handling) must call
+     * this for the affected column, or that split silently goes stale the
+     * moment a user expands/collapses one cell without triggering any
+     * filter/sort.
+     * @param {?HTMLTableElement} table
+     * @param {number} colIndex
+     */
+    function _invalidateUniqDropDataCache(table, colIndex) {
+        if (!table) return;
+        const perCol = _uniqDropDataCache.get(table);
+        if (perCol) perCol.delete(colIndex);
+    }
+
     /**
      * Opens (or toggles closed) the unique-values dropdown for one column.
      *
@@ -45057,8 +45100,19 @@ a { color: #1565c0; }`;
             } catch (e) { /* corrupt dataset — start with an empty selection */ }
         }
 
+        // ---- Cache check: skip every row-scan pass below when the visible ----
+        // row set for this table/column hasn't changed since this column's
+        // dropdown was last opened — see _getUniqDropDataCache()'s own JSDoc.
+        // Each Map/counter declaration below defaults to the cached value
+        // instead of an empty Map/0 so the rest of this function (which reads
+        // them unconditionally) works identically on a hit or a miss; each
+        // scan loop itself is additionally skipped via `!_uniqCacheHit` so a
+        // hit doesn't waste time recomputing what it just reused.
+        const _uniqSig      = _visibleRowSetSignature(table);
+        const _uniqCacheHit = _getUniqDropDataCache(table, colIndex, _uniqSig);
+
         // ---- Collect distinct non-empty values with occurrence counts from visible tbody rows ----
-        const valueCounts = new Map();
+        const valueCounts = _uniqCacheHit ? _uniqCacheHit.valueCounts : new Map();
         // Counts for synthetic cell-structure entries (only shown for collapsable columns):
         //   emptyCellCount         -- rows where the cell has no ul>li AND no text content
         //   singleRowCount         -- rows where ul>li count === 1
@@ -45067,10 +45121,10 @@ a { color: #1565c0; }`;
         // Derived from expandedCells (the authoritative source of truth) + ul>li count,
         // NOT from the DOM toggle textContent which is reset to '▶' by initCollapsableColumns
         // after every renderFinalTable call.
-        let emptyCellCount         = 0;
-        let multiRowCollapsedCount = 0;
-        let multiRowExpandedCount  = 0;
-        let singleRowCount         = 0;
+        let emptyCellCount         = _uniqCacheHit ? _uniqCacheHit.emptyCellCount         : 0;
+        let multiRowCollapsedCount = _uniqCacheHit ? _uniqCacheHit.multiRowCollapsedCount : 0;
+        let multiRowExpandedCount  = _uniqCacheHit ? _uniqCacheHit.multiRowExpandedCount  : 0;
+        let singleRowCount         = _uniqCacheHit ? _uniqCacheHit.singleRowCount         : 0;
         // 'Title' column only: rows where a third-party userscript (e.g.
         // jesus2099's) has flagged the recording's Title-cell display name as
         // different from its underlying recording name, via a "≠" character
@@ -45078,7 +45132,7 @@ a { color: #1565c0; }`;
         // (see debug/title.html) — "=" is presumed used when they match, so
         // testing for the inequality glyph itself is the robust signal,
         // immune to exactly which third-party script/class name produced it.
-        let titleMismatchCount = 0;
+        let titleMismatchCount = _uniqCacheHit ? _uniqCacheHit.titleMismatchCount : 0;
         // Any column: rows where the cell carries (or contains) a
         // MusicBrainz "name variation" marker — see _findNameVariationElements()'s
         // own JSDoc for the two known shapes (<span class="name-variation">,
@@ -45087,24 +45141,24 @@ a { color: #1565c0; }`;
         // canonical one (see debug/nassua.html "Nassau Coliseum", debug/
         // variant-engineer-2.html "Andres Bermudezat"), rendered with a
         // dotted underline on the live page.
-        let nameVariationCount = 0;
+        let nameVariationCount = _uniqCacheHit ? _uniqCacheHit.nameVariationCount : 0;
         // "Tracks" column only (isTracksCol): rows whose cell shows more
         // than one medium's track count (joined by "+") — see
         // _findCellTracksPerMedium()'s own JSDoc.
-        let multiMediumCount = 0;
+        let multiMediumCount = _uniqCacheHit ? _uniqCacheHit.multiMediumCount : 0;
         // "Catalog#" column only (isCatalogCol): rows whose list has AT
         // LEAST ONE item with/without a leading string prefix,
         // respectively — independently incremented (not mutually
         // exclusive) since one row's list can contain both kinds of item
         // — see _findCellCatalogParts()'s own JSDoc.
-        let catalogHasPrefixCount = 0;
-        let catalogNoPrefixCount = 0;
+        let catalogHasPrefixCount = _uniqCacheHit ? _uniqCacheHit.catalogHasPrefixCount : 0;
+        let catalogNoPrefixCount = _uniqCacheHit ? _uniqCacheHit.catalogNoPrefixCount : 0;
         // "Catalog#" column only (isCatalogCol): rows whose list has AT
         // LEAST ONE item literally reading MusicBrainz's own "[none]"
         // placeholder (a medium with no catalog number set at all) —
         // independent of catalogHasPrefixCount/catalogNoPrefixCount above,
         // since a row's list can mix "[none]" items with real ones.
-        let catalogNoneCount = 0;
+        let catalogNoneCount = _uniqCacheHit ? _uniqCacheHit.catalogNoneCount : 0;
         // Any column: distinct credit attribute words (e.g. "additional",
         // "assistant", "co", "executive" — the credit-role columns' own
         // `<span class="mb-credit-attr">` sentinel, see
@@ -45118,15 +45172,15 @@ a { color: #1565c0; }`;
         // debug/unique-attribute-task.html for the real two-credit example
         // (Billy Bowers/"additional", Karl Egsieker/"task: Second
         // Engineer") this is built from.
-        const attrValueCounts = new Map();
-        const taskValueCounts = new Map();
+        const attrValueCounts = _uniqCacheHit ? _uniqCacheHit.attrValueCounts : new Map();
+        const taskValueCounts = _uniqCacheHit ? _uniqCacheHit.taskValueCounts : new Map();
         // Distinct date/date-range annotation values (e.g. "on 1988-04-27",
         // "in 1987", "from 1987-01-20 until 1987-03") — the
         // `<span class="mb-credit-date">` sentinel counterpart of
         // attrValueCounts/taskValueCounts above; see
         // _wrapDateAnnotationsInText()'s own JSDoc for the shapes recognized
         // and every builder that produces this sentinel.
-        const dateValueCounts = new Map();
+        const dateValueCounts = _uniqCacheHit ? _uniqCacheHit.dateValueCounts : new Map();
         // Distinct "Event" cell trailing-date values (e.g. "2024-05-28" from
         // native `<a>…</a> (2024-05-28)` tag-value Event listings — see
         // debug/data-missing.html) — the plain-native-markup counterpart of
@@ -45136,14 +45190,14 @@ a { color: #1565c0; }`;
         // cell's bare trailing date never carries). Column-gated (isEventCol
         // below): a no-op Map for any other column, since this is plain
         // free-text parsing with no CSS-class safety net.
-        const eventDateValueCounts = new Map();
+        const eventDateValueCounts = _uniqCacheHit ? _uniqCacheHit.eventDateValueCounts : new Map();
         // Distinct instrument-type values (e.g. "bass", "guitar", "drum
         // machine") — the "Instruments" column's own `<a
         // class="mb-credit-instrument">` sentinel counterpart of the above
         // (see `_buildInstrumentVocalsListItem`'s own JSDoc) — a no-op Map
         // for every other column, since only Instruments ever produces this
         // sentinel.
-        const instrumentValueCounts = new Map();
+        const instrumentValueCounts = _uniqCacheHit ? _uniqCacheHit.instrumentValueCounts : new Map();
         // Distinct credited-as alternate names (e.g. "12-string guitar",
         // "synth strings" — MusicBrainz's own trailing `[…]` bracket on an
         // Instruments/Vocals credit) — the `<span class="mb-credit-altname">`
@@ -45151,7 +45205,7 @@ a { color: #1565c0; }`;
         // `_buildInstrumentVocalsListItem`'s own JSDoc) — a no-op Map for
         // every other column, since only Instruments/Vocals ever produces
         // this sentinel.
-        const altNameValueCounts = new Map();
+        const altNameValueCounts = _uniqCacheHit ? _uniqCacheHit.altNameValueCounts : new Map();
         // Distinct entity-name / disambiguation-comment / primary-alias
         // values (e.g. Work/Authors columns' "An der schönen blauen Donau,
         // op. 314" / "On the Beautiful Blue Danube, op. 314" / "Johann
@@ -45164,15 +45218,15 @@ a { color: #1565c0; }`;
         // entityAliasValueCounts stay correctly gated to comment-bearing
         // entities regardless). No-op Maps for any column/cell with no
         // non-bare entity at all.
-        const entityNameValueCounts    = new Map();
-        const entityCommentValueCounts = new Map();
-        const entityAliasValueCounts   = new Map();
+        const entityNameValueCounts    = _uniqCacheHit ? _uniqCacheHit.entityNameValueCounts    : new Map();
+        const entityCommentValueCounts = _uniqCacheHit ? _uniqCacheHit.entityCommentValueCounts : new Map();
+        const entityAliasValueCounts   = _uniqCacheHit ? _uniqCacheHit.entityAliasValueCounts   : new Map();
         // Distinct leading tag-vote-count values (e.g. "26" from "26 -
         // Johnny Cash") from the original tag-value-entity column itself —
         // see _findCellTagCount()'s own JSDoc. Gated by isTagEntityCol
         // below (computed from activeColumnExtractors), a no-op Map for
         // any other column/page.
-        const entityTagCountValueCounts = new Map();
+        const entityTagCountValueCounts = _uniqCacheHit ? _uniqCacheHit.entityTagCountValueCounts : new Map();
         // Distinct "(cancelled)" marker values (normally just "cancelled")
         // from an Events "Event" cell — see _findCellEventCancelled()'s own
         // JSDoc. Gated below (computed from activeDefinition.type + the
@@ -45182,7 +45236,7 @@ a { color: #1565c0; }`;
         // page type is active decides which of the two kind strings is
         // actually used at collection time (see _eventCancelledKind below),
         // not which Map.
-        const eventCancelledValueCounts = new Map();
+        const eventCancelledValueCounts = _uniqCacheHit ? _uniqCacheHit.eventCancelledValueCounts : new Map();
         // entityNameGlyphMap: name -> first-seen glyphClass (e.g.
         // 'releaselink'), so the "» name:" entry can show the same
         // entity-type icon the old per-href entity-glyph row did — see
@@ -45194,14 +45248,14 @@ a { color: #1565c0; }`;
         // _cellMatchesStructureMode()'s own broadened `name:` match (every
         // row containing this entity name, bare or not — see that
         // branch's own comment for why).
-        const entityNameGlyphMap      = new Map();
+        const entityNameGlyphMap      = _uniqCacheHit ? _uniqCacheHit.entityNameGlyphMap      : new Map();
         // entityNameTypeMap: name -> first-seen entity type string (e.g.
         // 'place'/'area'/'artist' — see _ENTITY_TYPE_GLYPH), populated the
         // same first-seen-wins way as entityNameGlyphMap right below. Drives
         // _sortedNameValues' type-then-alphabetical sort and each "»
         // <type> name:" entry's label — see ENTITY_NAME_TYPE_SORT_ORDER and
         // makeValueSynItem()'s 'name'-kind branch.
-        const entityNameTypeMap       = new Map();
+        const entityNameTypeMap       = _uniqCacheHit ? _uniqCacheHit.entityNameTypeMap       : new Map();
         // entityNameFlagMap: name -> first-seen BAKED flag icon master node
         // (see _bakeFlagIconNode()), only ever populated for
         // entityType === 'area' entries whose row actually carries a real
@@ -45213,8 +45267,8 @@ a { color: #1565c0; }`;
         // generic 'arealink' glyph for that specific entry; absent (no
         // entry in this Map) for every non-country area, which keeps
         // today's generic-glyph behavior unchanged.
-        const entityNameFlagMap       = new Map();
-        const entityNameAnyValueCounts = new Map();
+        const entityNameFlagMap       = _uniqCacheHit ? _uniqCacheHit.entityNameFlagMap       : new Map();
+        const entityNameAnyValueCounts = _uniqCacheHit ? _uniqCacheHit.entityNameAnyValueCounts : new Map();
         // Distinct "join phrase" values (e.g. " & ", " and ", " with ", or
         // arbitrary free text an editor typed like " w/special guest ") —
         // the literal separator text MusicBrainz stores between two
@@ -45224,14 +45278,14 @@ a { color: #1565c0; }`;
         // grouped by exact observed phrase, never normalized toward a
         // "canonical" one (two different phrases never merge). No-op Map
         // for any column/cell with fewer than two entities in one <bdi>.
-        const joinPhraseValueCounts = new Map();
+        const joinPhraseValueCounts = _uniqCacheHit ? _uniqCacheHit.joinPhraseValueCounts : new Map();
         // Distinct "name variation" values (the full "Real – Sort" title
         // string, and each of its two dash-split halves) — from a
         // jesus2099 <span class="name-variation">'s own <a title>
         // attribute (see `_findCellNameVariations()`'s own JSDoc). No-op
         // Map for any column/cell with no such marker (jesus2099 not
         // installed/active, or no credited-name variation on this row).
-        const nameVariationValueCounts = new Map();
+        const nameVariationValueCounts = _uniqCacheHit ? _uniqCacheHit.nameVariationValueCounts : new Map();
         // Distinct "Format" cell size/mediums-count/combo/type values (e.g.
         // '12"', "2", "2xVinyl", "Vinyl") — see `_findCellFormatParts()`'s
         // own JSDoc. formatTypeValueCounts lets "Vinyl"/"Acetate" be
@@ -45239,36 +45293,36 @@ a { color: #1565c0; }`;
         // mixing 7"/10"/12" Vinyl). Column-gated (isFormatCol below):
         // no-op Maps for any other column, since this is plain free-text
         // parsing with no CSS-class safety net.
-        const formatSizeValueCounts  = new Map();
-        const formatCountValueCounts = new Map();
-        const formatComboValueCounts = new Map();
-        const formatTypeValueCounts  = new Map();
+        const formatSizeValueCounts  = _uniqCacheHit ? _uniqCacheHit.formatSizeValueCounts  : new Map();
+        const formatCountValueCounts = _uniqCacheHit ? _uniqCacheHit.formatCountValueCounts : new Map();
+        const formatComboValueCounts = _uniqCacheHit ? _uniqCacheHit.formatComboValueCounts : new Map();
+        const formatTypeValueCounts  = _uniqCacheHit ? _uniqCacheHit.formatTypeValueCounts  : new Map();
         // Distinct "Country/Date" per-release-event country-code/date/
         // weekday values — see `_findCellReleaseEventParts()`'s own JSDoc.
         // revCountryFlagMap: code -> first-seen flag CSS class (e.g.
         // "flag-NL"), for the entry's glyph marker — same first-seen-wins
         // convention as entityNameGlyphMap. No-op Maps for any column
         // without `.release-event` markup.
-        const revCountryValueCounts = new Map();
-        const revCountryFlagMap     = new Map();
-        const revDateValueCounts    = new Map();
-        const revWeekdayValueCounts = new Map();
+        const revCountryValueCounts = _uniqCacheHit ? _uniqCacheHit.revCountryValueCounts : new Map();
+        const revCountryFlagMap     = _uniqCacheHit ? _uniqCacheHit.revCountryFlagMap     : new Map();
+        const revDateValueCounts    = _uniqCacheHit ? _uniqCacheHit.revDateValueCounts    : new Map();
+        const revWeekdayValueCounts = _uniqCacheHit ? _uniqCacheHit.revWeekdayValueCounts : new Map();
         // Distinct "Country" (the synthetic column splitCountryDate()
         // itself produces from "Country/Date") name/code values — see
         // `_findCellCountryNameParts()`'s own JSDoc. countryCodeFlagMap
         // mirrors revCountryFlagMap above. No-op Maps for any column
         // without bare `.release-country` markup.
-        const countryNameValueCounts = new Map();
-        const countryCodeValueCounts = new Map();
-        const countryCodeFlagMap     = new Map();
+        const countryNameValueCounts = _uniqCacheHit ? _uniqCacheHit.countryNameValueCounts : new Map();
+        const countryCodeValueCounts = _uniqCacheHit ? _uniqCacheHit.countryCodeValueCounts : new Map();
+        const countryCodeFlagMap     = _uniqCacheHit ? _uniqCacheHit.countryCodeFlagMap     : new Map();
         // Distinct "Tracks" cell per-medium track-count values (e.g. "6")
         // — see `_findCellTracksPerMedium()`'s own JSDoc. Column-gated
         // (isTracksCol below).
-        const tracksPerMediumValueCounts = new Map();
+        const tracksPerMediumValueCounts = _uniqCacheHit ? _uniqCacheHit.tracksPerMediumValueCounts : new Map();
         // Distinct "Catalog#" list-item prefix values (e.g. "CBS", "S
         // CBS") — see `_findCellCatalogParts()`'s own JSDoc. Column-gated
         // (isCatalogCol below).
-        const catalogPrefixValueCounts = new Map();
+        const catalogPrefixValueCounts = _uniqCacheHit ? _uniqCacheHit.catalogPrefixValueCounts : new Map();
         // Distinct event-role values (e.g. "main performer", "guest
         // performer", "support act", "participant", "host") from a native
         // MusicBrainz `.artist-roles` list — the query-time counterpart of
@@ -45276,7 +45330,7 @@ a { color: #1565c0; }`;
         // entityNameValueCounts/etc.; see `_findCellArtistRoles()`'s own
         // JSDoc. No-op Map for any column/cell with no `.artist-roles`
         // list at all.
-        const eventRoleValueCounts = new Map();
+        const eventRoleValueCounts = _uniqCacheHit ? _uniqCacheHit.eventRoleValueCounts : new Map();
         // Distinct CAA/EAA per-image type-badge pill values (e.g. "Front",
         // "Obi", "Matrix/Runout") and free-text comment values (e.g. "Front
         // cover, booklet page i") — the "CAA info"/"EAA info" section's own
@@ -45284,8 +45338,8 @@ a { color: #1565c0; }`;
         // (see `_artBuildImageLi()`'s own JSDoc — not context-parameterized,
         // so these classes are identical for both CAA and EAA columns).
         // No-op Maps for any column that isn't a CAA/EAA art column.
-        const artTypeValueCounts    = new Map();
-        const artCommentValueCounts = new Map();
+        const artTypeValueCounts    = _uniqCacheHit ? _uniqCacheHit.artTypeValueCounts    : new Map();
+        const artCommentValueCounts = _uniqCacheHit ? _uniqCacheHit.artCommentValueCounts : new Map();
         // One entry per unique <li> item's own clean text, for multi-row
         // (≥2-item) list cells — e.g. "Karl Egsieker (task: Second
         // Engineer)" as its own selectable value distinct from the merged
@@ -45301,7 +45355,7 @@ a { color: #1565c0; }`;
         // not a list) correctly contribute nothing since
         // `_findCellListItems` returns `[]` for those. See
         // `MB_UNIQ_ITEM_VALUE_PREFIX`'s own JSDoc and debug/multi-row-cell.html.
-        const itemValueCounts = new Map();
+        const itemValueCounts = _uniqCacheHit ? _uniqCacheHit.itemValueCounts : new Map();
         // First-occurrence ordered per-<li> item texts for each multi-item
         // (>=2-item) whole-cell value in `valueCounts`, keyed by that same
         // raw value string — lets the whole-cell dropdown ENTRY read as a
@@ -45309,7 +45363,7 @@ a { color: #1565c0; }`;
         // while the underlying value/key used for the checkbox state and
         // row-filter equality stays the untouched raw getCleanColumnText()
         // string, so clicking the entry keeps filtering exactly as before.
-        const valueItemSequence = new Map();
+        const valueItemSequence = _uniqCacheHit ? _uniqCacheHit.valueItemSequence : new Map();
         const isTitleCol = (() => {
             const headers = table.querySelectorAll('thead tr:first-child th');
             const th = headers[colIndex];
@@ -45367,7 +45421,7 @@ a { color: #1565c0; }`;
             : ['tag-value', 'user-tag-value'].includes(activeDefinition && activeDefinition.type) ? 'eventcancelled'
             : null;
         const tbody = table.tBodies[0];
-        if (tbody) {
+        if (!_uniqCacheHit && tbody) {
             Array.from(tbody.rows).forEach(row => {
                 if (row.style.display === 'none') return;
                 const cell = row.cells[colIndex];
@@ -46255,7 +46309,7 @@ a { color: #1565c0; }`;
          *
          * @type {Map<string, Array<{type: 'text', text: string}|{type: 'icon', node: HTMLElement}>>}
          */
-        const flagIconMap = hasFlagIcons ? (() => {
+        const flagIconMap = _uniqCacheHit ? _uniqCacheHit.flagIconMap : hasFlagIcons ? (() => {
             const segMap = new Map();
             if (!tbody) return segMap;
             const iconSel = 'span[class*="flag-"], span.area-icon';
@@ -46382,7 +46436,7 @@ a { color: #1565c0; }`;
             return segMap;
         })() : new Map();
 
-        const isRelCellCol = (() => {
+        const isRelCellCol = _uniqCacheHit ? _uniqCacheHit.isRelCellCol : (() => {
             if (!tbody) return false;
             for (const row of tbody.rows) {
                 if (row.style.display === 'none') continue;
@@ -46392,7 +46446,7 @@ a { color: #1565c0; }`;
             return false;
         })();
 
-        const relIconCounts = isRelCellCol ? (() => {
+        const relIconCounts = _uniqCacheHit ? _uniqCacheHit.relIconCounts : isRelCellCol ? (() => {
             const counts  = new Map(); // domainKey → row count
             const iconFor = new Map(); // domainKey → display URL (for label + favicon)
             if (!tbody) return counts;
@@ -46419,10 +46473,10 @@ a { color: #1565c0; }`;
         //     means the thumbnail loaded successfully → image IS available.
         //   • A cell with a ph span but WITHOUT .mb-art-cache-hint-inline means
         //     the fetch found no artwork → image is NOT available.
-        let inlineArtType    = null; // 'caa' | 'eaa' | null
-        let inlineArtYes     = 0;   // cells with a loaded inline thumbnail
-        let inlineArtNo      = 0;   // cells with ph span but no loaded thumbnail
-        if (tbody) {
+        let inlineArtType    = _uniqCacheHit ? _uniqCacheHit.inlineArtType : null; // 'caa' | 'eaa' | null
+        let inlineArtYes     = _uniqCacheHit ? _uniqCacheHit.inlineArtYes : 0;   // cells with a loaded inline thumbnail
+        let inlineArtNo      = _uniqCacheHit ? _uniqCacheHit.inlineArtNo  : 0;   // cells with ph span but no loaded thumbnail
+        if (!_uniqCacheHit && tbody) {
             Array.from(tbody.rows).forEach(row => {
                 if (row.style.display === 'none') return;
                 const cell = row.cells[colIndex];
@@ -46442,6 +46496,32 @@ a { color: #1565c0; }`;
                 if (!sk) return; // fetch not yet settled — skip this cell
                 if (sk.textContent === 'caa-inline-yes')     inlineArtYes++;
                 else if (sk.textContent === 'caa-inline-no') inlineArtNo++;
+            });
+        }
+
+        // Cache store: on a miss, every Map/counter above was just freshly
+        // (re)computed against _uniqSig — save the bundle so the next open of
+        // this column, with no visible-row-set change in between, can skip
+        // straight past all 5 tbody.rows passes above (see _uniqCacheHit).
+        if (!_uniqCacheHit) {
+            _setUniqDropDataCache(table, colIndex, _uniqSig, {
+                valueCounts, itemValueCounts, valueItemSequence,
+                emptyCellCount, multiRowCollapsedCount, multiRowExpandedCount, singleRowCount,
+                titleMismatchCount, nameVariationCount, multiMediumCount,
+                catalogHasPrefixCount, catalogNoPrefixCount, catalogNoneCount,
+                attrValueCounts, taskValueCounts, dateValueCounts, eventDateValueCounts,
+                instrumentValueCounts, altNameValueCounts,
+                entityNameValueCounts, entityCommentValueCounts, entityAliasValueCounts,
+                entityTagCountValueCounts, eventCancelledValueCounts,
+                entityNameGlyphMap, entityNameTypeMap, entityNameFlagMap, entityNameAnyValueCounts,
+                joinPhraseValueCounts, nameVariationValueCounts,
+                formatSizeValueCounts, formatCountValueCounts, formatComboValueCounts, formatTypeValueCounts,
+                revCountryValueCounts, revCountryFlagMap, revDateValueCounts, revWeekdayValueCounts,
+                countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap,
+                tracksPerMediumValueCounts, catalogPrefixValueCounts,
+                eventRoleValueCounts, artTypeValueCounts, artCommentValueCounts,
+                flagIconMap, isRelCellCol, relIconCounts,
+                inlineArtType, inlineArtYes, inlineArtNo,
             });
         }
 
@@ -47983,6 +48063,7 @@ a { color: #1565c0; }`;
                         const key = `${rowIdx}:${colIdx}`;
                         if (expand) expandedCells.set(key, true);
                         else        expandedCells.delete(key);
+                        _invalidateUniqDropDataCache(td.closest('table.tbl'), colIdx);
                     }
                 }
 
@@ -48034,6 +48115,7 @@ a { color: #1565c0; }`;
                 const key = `${rowIdx}:${colIdx}`;
                 if (expand) expandedCells.set(key, true);
                 else        expandedCells.delete(key);
+                _invalidateUniqDropDataCache(td.closest('table.tbl'), colIdx);
             }
         }
 
@@ -48206,6 +48288,7 @@ a { color: #1565c0; }`;
                         const key = `${rowIdx}:${colIdx}`;
                         if (nowExpanding) expandedCells.set(key, true);
                         else              expandedCells.delete(key);
+                        _invalidateUniqDropDataCache(table, colIdx);
                     }
                 }
                 return;
@@ -48247,6 +48330,7 @@ a { color: #1565c0; }`;
                         const _pKey = `${_pRowIdx}:${_pColIdx}`;
                         if (proseExpanding) expandedCells.set(_pKey, true);
                         else                 expandedCells.delete(_pKey);
+                        _invalidateUniqDropDataCache(table, _pColIdx);
                     }
                 }
 
@@ -48310,6 +48394,7 @@ a { color: #1565c0; }`;
                         const key = `${rowIdx}:${colIdx}`;
                         if (nowExpanding) expandedCells.set(key, true);
                         else             expandedCells.delete(key);
+                        _invalidateUniqDropDataCache(table, colIdx);
                     }
                 }
             }
@@ -48350,6 +48435,30 @@ a { color: #1565c0; }`;
         Lib.debug('collapse', 'ensureCollapseDelegate: delegation listener installed on tbody.');
     }
 
+    // Per-table memo of the last visible-row-set signature _updateAllColHeaderCounts
+    // computed its counts against (see below). Keyed by the live <table> element,
+    // so a brand-new table (new fetch / disk-load / multi-table sub-table) is
+    // always a cache miss with no manual reset needed.
+    const _colHeaderCountsSigCache = new WeakMap();
+
+    /**
+     * Forces the next `_updateAllColHeaderCounts(table)` call to recompute
+     * instead of reusing its cached visible-row-set signature.
+     *
+     * The signature cache below only tracks WHICH rows are visible, not what
+     * their cells contain — so any call site that mutates cell CONTENT in
+     * place (without a corresponding row show/hide) must invalidate here
+     * first, or the header counts silently go stale. `initReleaseEventsColumn()`
+     * is the one known case today (it fills previously-empty Release
+     * events/country/date cells, then re-runs `initCollapsableColumns()` to
+     * pick up the new content) — see its call sites for the pattern.
+     *
+     * @param {HTMLTableElement} table
+     */
+    function _invalidateColHeaderCountsCache(table) {
+        _colHeaderCountsSigCache.delete(table);
+    }
+
     /**
      * Updates the two live count indicators in every column header of `table`:
      *
@@ -48366,7 +48475,13 @@ a { color: #1565c0; }`;
      *      columns; other columns have no collapse button.
      *
      * Called at the tail of initCollapsableColumns() so it runs automatically
-     * at every render-completion and filter-cycle site.
+     * at every render-completion and filter-cycle site. Several of those call
+     * sites (column show/hide, multi-table sub-table re-renders) invoke it
+     * without the set of visible rows having actually changed since the last
+     * computation, so the O(rows × columns) scan below is skipped whenever a
+     * cheap O(rows) signature of the visible `data-mb-row-idx` values matches
+     * the last one computed for this table — see `_colHeaderCountsSigCache`
+     * and `_invalidateColHeaderCountsCache()` above.
      *
      * @param {HTMLTableElement} table
      */
@@ -48374,6 +48489,14 @@ a { color: #1565c0; }`;
         const tbody = table.tBodies[0];
         const headers = Array.from(table.querySelectorAll('thead tr:first-child th'));
         if (!tbody || headers.length === 0) return;
+
+        // ── Skip recompute when the visible row set hasn't changed ──────────
+        const _rowSetSig = _visibleRowSetSignature(table);
+        if (_colHeaderCountsSigCache.get(table) === _rowSetSig) {
+            Lib.debug('collapse', '_updateAllColHeaderCounts: visible row set unchanged since last computation — skipping.');
+            return;
+        }
+        _colHeaderCountsSigCache.set(table, _rowSetSig);
 
         // One pass per column: collect unique-value count and multi-row count.
         headers.forEach((th, colIndex) => {
@@ -49333,7 +49456,13 @@ a { color: #1565c0; }`;
                 'mb-mscol-hdr-4','mb-mscol-hdr-5','mb-mscol-hdr-6','mb-mscol-hdr-7'
             ];
 
-            const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
+            // Skip filter-hidden rows (PERFORMANCE.org Step 1's single-table show/hide
+            // filter keeps every row in the tbody, toggling display:none instead of
+            // removing it) — otherwise a hidden row's value would still count as a step
+            // in the shade-toggle run, shifting tint band boundaries away from what the
+            // visible rows alone would produce.
+            const bodyRows = Array.from(table.querySelectorAll('tbody tr'))
+                .filter(tr => tr.style.display !== 'none');
             const mainHeaderRow = table.querySelector('thead tr:first-child');
 
             columnsToPaint.forEach((sortCol, priorityIdx) => {
@@ -49671,6 +49800,39 @@ a { color: #1565c0; }`;
                                 targetGroup.rows = sortedData;
                             } else {
                                 allRows = sortedData;
+                                // Reorder the live DOM rows to match the new sort order.
+                                // runFilter()'s single-table branch no longer rebuilds the
+                                // tbody (see PERFORMANCE.org Step 1) — it only toggles
+                                // display:none on the existing row nodes — so the rows must
+                                // already be in the correct sequence before it runs.
+                                const _sortTbody = table.querySelector('tbody');
+                                if (_sortTbody) {
+                                    allRows.forEach(tr => {
+                                        // cdtoc pages: a tracklist sub-row (synthetic sibling
+                                        // <tr> from _cdtocInitTracklistToggles(), not part of
+                                        // allRows) must move with its parent, or appendChild
+                                        // would leave it behind at its old position. Captured
+                                        // BEFORE moving tr, since moving it first would make
+                                        // nextElementSibling point past the end instead.
+                                        const _cdtocSub = tr.nextElementSibling;
+                                        const _hasCdtocSub = _cdtocSub &&
+                                            _cdtocSub.classList.contains('mb-cdtoc-tracklist-row');
+                                        _sortTbody.appendChild(tr);
+                                        if (_hasCdtocSub) _sortTbody.appendChild(_cdtocSub);
+                                    });
+                                }
+                                // Reorder the CAA/EAA bigbox strip to match — see
+                                // _artReorderBigBoxForTable's own doc comment for why a
+                                // sort must move these wrappers explicitly now that
+                                // initCaaPics()/initEaaPics() no longer rebuild the bigbox
+                                // on every action (PERFORMANCE.org Step 1). A no-op on
+                                // pages without a bigbox (function guards on settings and
+                                // on the box element existing).
+                                const _bbSortIdx = Array.from(document.querySelectorAll('table.tbl')).indexOf(table);
+                                if (_bbSortIdx !== -1) {
+                                    caaReorderBigBoxForTable(table, _bbSortIdx);
+                                    eaaReorderBigBoxForTable(table, _bbSortIdx);
+                                }
                             }
 
                             _invalidateFilterCache();
@@ -52622,8 +52784,14 @@ a { color: #1565c0; }`;
         _dbg('initReleaseEventsColumn: complete');
         // Re-run initCollapsableColumns: it ran before cells were populated so
         // found 0 ul>li items. Now that cells have real content, install toggles.
+        // Cell content just changed with no corresponding row show/hide, so the
+        // header-count cache (_colHeaderCountsSigCache) must be force-invalidated
+        // here — its visible-row-set signature alone wouldn't notice.
         if (activeReleaseEventColumns.length) {
-            document.querySelectorAll('table.tbl').forEach(t => initCollapsableColumns(t));
+            document.querySelectorAll('table.tbl').forEach(t => {
+                _invalidateColHeaderCountsCache(t);
+                initCollapsableColumns(t);
+            });
         }
         // Third-pass: derive synthetic columns from the now-populated injected columns
         // (e.g. split 'Release events' into 'Release country' + 'Release date').
@@ -52633,8 +52801,12 @@ a { color: #1565c0; }`;
             // actually fills 'Release country'/'Release date' ICE cells, and
             // nothing re-scans for collapsable columns after it. Safe to call
             // a third time — initCollapsableColumns() is idempotent (it does
-            // a cleanup pass before rebuilding).
-            document.querySelectorAll('table.tbl').forEach(t => initCollapsableColumns(t));
+            // a cleanup pass before rebuilding). Same cache-invalidation need
+            // as the pass above — new cell content, same visible row set.
+            document.querySelectorAll('table.tbl').forEach(t => {
+                _invalidateColHeaderCountsCache(t);
+                initCollapsableColumns(t);
+            });
         }
     }
 
@@ -54807,12 +54979,14 @@ a { color: #1565c0; }`;
 
                     makeTableSortableUnified(mainTable, 'main_table');
                     // Note: initCollapsableColumns() is intentionally NOT called here.
-                    // The runFilter() call below re-renders the table (possibly with a
-                    // pre-filter applied) and its single-table branch calls
-                    // initCollapsableColumns() on the final DOM rows.  Calling it here
-                    // would operate on allRows before runFilter() clones and replaces
-                    // them, so all modifications would be discarded — and the global
-                    // collapse button would not yet have filterContainer in the DOM.
+                    // Its global ▶/◀ toggle button lives inside filterContainer, which
+                    // is only appended to the h2 by updateH2Count() — and for disk-load
+                    // that call happens later (after finalCleanup(), well below this
+                    // block), unlike the live fetch path where updateH2Count() runs
+                    // before rendering starts. Calling initCollapsableColumns() here
+                    // would silently fail to find the button. It is called further
+                    // below instead, alongside the other single-table-mode post-render
+                    // hooks (initExpandRGsFeature/CAA/EAA), once updateH2Count() has run.
                 }
             }
 
@@ -55013,27 +55187,47 @@ a { color: #1565c0; }`;
             const _diskLoadFilterTable = document.querySelector('table.tbl');
             if (_diskLoadFilterTable) addColumnFilterRow(_diskLoadFilterTable);
 
+            // Initialise collapsable multi-row columns. Deferred to here (rather
+            // than the render block above) because its global ▶/◀ toggle button
+            // needs filterContainer already attached to the h2, which only
+            // happens once updateH2Count() has run — see the comment at the
+            // render block above. Must run BEFORE initCaaPics()/initEaaPics()
+            // below: CAA/EAA multi-row art cells are deliberately excluded from
+            // initCollapsableColumns()'s cleanup pass, and running it afterward
+            // would strip the toggle/state those calls are about to build.
+            if (activeDefinition.tableMode !== 'multi' && _diskLoadFilterTable) {
+                initCollapsableColumns(_diskLoadFilterTable);
+            }
+
             // CAA / EAA art thumbnails and big-pic strip:
-            // Do NOT call initCaaPics / initEaaPics / initCaaInlinePics /
-            // initEaaInlinePics here.
             //
-            // For multi-table pages renderGroupedTable() calls them at its own
-            // tail — once for the initial `await renderGroupedTable(groupedRows)`
-            // above, and once more inside the `runFilter()` call below (which
-            // also calls renderGroupedTable).  Any additional explicit call here
-            // would create a third set of pending img.onload closures; because
-            // all three sets are async (browser image loads are never synchronous
-            // even for cache hits) they all fire after JS yields, incrementing
-            // the badge three times over — tripling the displayed count.
+            // For multi-table pages renderGroupedTable() already called them at
+            // its own tail — once for the initial
+            // `await renderGroupedTable(groupedRows)` above, and once more inside
+            // the `runFilter()` call above (which also calls renderGroupedTable).
+            // Any additional explicit call here would create a third set of
+            // pending img.onload closures; because all three sets are async
+            // (browser image loads are never synchronous even for cache hits)
+            // they all fire after JS yields, incrementing the badge three times
+            // over — tripling the displayed count.  Do NOT call them here for
+            // multi-table pages.
             //
-            // For single-table pages the runFilter() call below takes the
-            // single-table branch of runFilter(), which calls initCaaPics() /
-            // initEaaPics() / initCaaInlinePics() / initEaaInlinePics()
-            // directly.  An extra call here would double the badge count for
-            // the same reason.
-            //
-            // In both cases runFilter() (or renderGroupedTable via runFilter)
-            // is the authoritative and sufficient call site.
+            // For single-table pages, runFilter() no longer initialises CAA/EAA
+            // (its single-table branch now only shows/hides the existing live
+            // rows — see PERFORMANCE.org Step 1), so they MUST be called here.
+            if (activeDefinition.tableMode !== 'multi') {
+                // Inline thumbnails first — _artInitQueue creates _caaQueue so
+                // they land ahead of small icons and the big strip in the queue.
+                _artInitQueue();
+                initCaaInlinePics();
+                initEaaInlinePics();
+                initCaaInlineJesus2099Observer();
+                initCaaPics();
+                initEaaPics();
+                if (_caaQueue && Lib.settings.sa_enable_caa_pics) {
+                    _caaQueue.onIdle(_showCaaCompletionToast);
+                }
+            }
 
             // Explicitly place the CAA/EAA global toggle buttons in the h2
             // after the count stat has been created.
@@ -56690,6 +56884,12 @@ a { color: #1565c0; }`;
     // pass so the concurrency setting is always picked up fresh.
     // Null before the first render; never accessed outside the CAA feature block.
     let _caaQueue = null;
+
+    // IntersectionObserver instances for lazy CAA/EAA artwork loading.
+    // Created by _artInitLazyPics when allRows.length >= sa_caa_io_threshold.
+    // Disconnected and reset to null by _artInitQueue() on every render pass.
+    let _caaArtIO = null;
+    let _eaaArtIO = null;
 
     /**
      * Active filter highlight context, set by runFilter() before the filter pass
@@ -59912,6 +60112,49 @@ a { color: #1565c0; }`;
         anchor.dataset[ctx.enrichedAttr] = '1';
     }
 
+    /**
+     * Lazy counterpart of `_artInitSmallPics` + `_artEnrichTable`.
+     *
+     * Creates (or reuses) a per-ctx IntersectionObserver stored in `_caaArtIO` /
+     * `_eaaArtIO` and observes every artwork-icon span in `table`. When a span
+     * scrolls into the viewport the observer fires once (then unobserves the
+     * element) and enqueues both the icon background-image load (if
+     * `sa_caa_pics_small` is enabled) and the JSON-API enrichment call.
+     *
+     * Called from `_artInitPics` when `allRows.length >= sa_caa_io_threshold`.
+     * The observer persists across filter passes because allRows are the live
+     * DOM rows — the observer is never recreated by runFilter().
+     *
+     * @param {ArtCtx}           ctx
+     * @param {HTMLTableElement} table
+     */
+    function _artInitLazyPics(ctx, table) {
+        let io = ctx.key === 'caa' ? _caaArtIO : _eaaArtIO;
+        if (!io) {
+            io = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    const icon = entry.target;
+                    io.unobserve(icon);
+                    const anchor = icon.closest('a[href]');
+                    if (Lib.settings.sa_caa_pics_small) {
+                        if (_caaQueue) _caaQueue.enqueue(() => _artLoadIcon(ctx, icon));
+                        else           _artLoadIcon(ctx, icon);
+                    }
+                    if (anchor) {
+                        if (_caaQueue) _caaQueue.enqueue(() => _artEnrichIcon(ctx, anchor));
+                        else           _artEnrichIcon(ctx, anchor);
+                    }
+                });
+            }, { rootMargin: '200px 0px' });
+            if (ctx.key === 'caa') _caaArtIO = io;
+            else                   _eaaArtIO = io;
+        }
+        const icons = table.querySelectorAll(ctx.iconSel);
+        icons.forEach(icon => io.observe(icon));
+        Lib.debug(ctx.key,
+            `${ctx.key}InitLazyPics: observing ${icons.length} icon(s) via IntersectionObserver`);
+    }
 
     /**
      * Loads thumbnails into all artwork-icon spans in `table` that are wrapped in
@@ -60820,6 +61063,67 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Reorders the existing big-picture strip wrappers above `table` to match
+     * `table`'s current row order, without rebuilding any of them.
+     *
+     * Before PERFORMANCE.org Step 1, sorting a single table went through
+     * runFilter()'s old clone-and-rebuild path, which re-called initCaaPics()/
+     * initEaaPics() on every sort — _artInitBigPics() fully rebuilt the bigbox
+     * from the (now sorted) tbody rows, so the strip's image order always
+     * tracked the table's sort order for free. Steps 1-2 removed that
+     * per-action rebuild (initCaaPics()/initEaaPics() now run exactly once, at
+     * initial render), so without this the strip would silently stay frozen in
+     * its original fetch-time order forever, no matter how the table is
+     * re-sorted. Fix: after the sort handler reorders the live tbody rows (see
+     * its own DOM-reorder comment), call this to walk the table in its new row
+     * order and move each corresponding bigbox wrapper to match via
+     * `box.appendChild` — a cheap DOM move, not a rebuild, so it carries none
+     * of `_artInitBigPics`'s badge/generation-counter double-count risk.
+     *
+     * Walks ALL rows, not just currently-visible ones, so a row's wrapper ends
+     * up in the right relative position even while filtered out — no separate
+     * reorder is needed once the filter later reveals it again. This is why
+     * the reorder lives here rather than inside `_artUpdateBigBoxForTable()`
+     * itself: that function already re-runs on every filter keystroke (order
+     * never changes on a pure filter pass, only visibility), so folding this
+     * extra per-row DOM-query pass into it would add needless per-keystroke
+     * cost for zero visible benefit.
+     *
+     * Guards / no-ops exactly like `_artUpdateBigBoxForTable()`: settings off,
+     * or no bigbox element for this table, and it's a safe no-op.
+     *
+     * @param {ArtCtx}           ctx        Archive context descriptor.
+     * @param {HTMLTableElement} table
+     * @param {number}           tableIndex Must match the index used by _artInitPics.
+     */
+    function _artReorderBigBoxForTable(ctx, table, tableIndex) {
+        if (!Lib.settings.sa_enable_caa_pics) return;
+        if (!Lib.settings.sa_caa_pics_big)   return;
+
+        const box = document.getElementById(ctx.boxPrefix + '-' + tableIndex);
+        if (!box) return;
+
+        const seen = new Set();
+        let moved = 0;
+        table.querySelectorAll('tbody tr').forEach(row => {
+            row.querySelectorAll('td a[href]').forEach(a => {
+                const href = a.getAttribute('href');
+                if (seen.has(href)) return;
+                for (const type of ctx.entityTypes) {
+                    if (new RegExp('^/' + type + '/' + _ART_GUID_RE_STR + '$').test(href)) {
+                        seen.add(href);
+                        const wrapper = box.querySelector('a[' + ctx.hrefAttrName + '="' + href + '"]');
+                        if (wrapper) { box.appendChild(wrapper); moved++; }
+                        break;
+                    }
+                }
+            });
+        });
+
+        Lib.debug(ctx.key, `${ctx.key}ReorderBigBoxForTable: table ${tableIndex} — reordered ${moved} wrapper(s)`);
+    }
+
+    /**
      * Hides all art bigbox div elements (CAA/EAA) that sit immediately before
      * `table` in the DOM, without modifying their tracked visibility state
      * (the `caaVisible` / `eaaVisible` dataset attributes).
@@ -61470,6 +61774,17 @@ a { color: #1565c0; }`;
             return;
         }
 
+        // For large tables, defer both icon background-image loads and
+        // JSON-API enrichment to an IntersectionObserver that fires as each
+        // art-icon cell scrolls near the viewport, keeping the initial render
+        // fast and the request queue empty until artwork cells are actually
+        // visible. Below the threshold (or when IO is unavailable / threshold
+        // is 0) both run eagerly as before.
+        const _ioThreshold = Lib.settings.sa_caa_io_threshold ?? 500;
+        const _useIO = typeof IntersectionObserver !== 'undefined' &&
+                       _ioThreshold > 0 &&
+                       allRows.length >= _ioThreshold;
+
         let processed = 0;
         tables.forEach((table, i) => {
             const hasColumn     = caaFindColumnByName(table, ctx.column) !== -1;
@@ -61502,7 +61817,11 @@ a { color: #1565c0; }`;
             // Small-pic icon loading only applies when there is a dedicated column
             // containing artwork-icon spans inside art-anchor elements.
             if (hasColumn) {
-                _artInitSmallPics(ctx, table);
+                if (_useIO) {
+                    _artInitLazyPics(ctx, table);
+                } else {
+                    _artInitSmallPics(ctx, table);
+                }
             }
 
             // Single-pass strategy: scan links first (read-only), create the
@@ -61539,12 +61858,16 @@ a { color: #1565c0; }`;
         // small icons and big-strip loads have priority in _caaQueue.  Users who
         // start filtering immediately will see visual feedback before count badges
         // and multi-row art cells arrive.  _artEnrichIcon's own idempotency guard
-        // prevents double-work on re-renders.
-        tables.forEach(table => {
-            if (caaFindColumnByName(table, ctx.column) !== -1) {
-                _artEnrichTable(ctx, table);
-            }
-        });
+        // prevents double-work on re-renders.  Skipped when _useIO — the
+        // IntersectionObserver installed above already enqueues enrichment
+        // itself, per icon, once that icon actually scrolls into view.
+        if (!_useIO) {
+            tables.forEach(table => {
+                if (caaFindColumnByName(table, ctx.column) !== -1) {
+                    _artEnrichTable(ctx, table);
+                }
+            });
+        }
 
         // For multi-table pages, create/refresh the global art toggle button that
         // sits in the h2 header and controls all sub-table bigboxes at once.
@@ -63002,6 +63325,13 @@ a { color: #1565c0; }`;
         // recalled once submitted to the browser.
         if (_caaQueue) _caaQueue.cancel();
 
+        // Disconnect any lazy-load IntersectionObservers from a previous
+        // initialisation (e.g. disk-load after initial fetch, or page re-use).
+        // Observed elements from the old DOM set are discarded so the next
+        // call to _artInitLazyPics starts fresh with the current table rows.
+        if (_caaArtIO) { _caaArtIO.disconnect(); _caaArtIO = null; }
+        if (_eaaArtIO) { _eaaArtIO.disconnect(); _eaaArtIO = null; }
+
         // (Re-)create the shared request queue so the current sa_caa_fetch_concurrency
         // setting is picked up on every render pass.
         const concurrency = Math.max(1, Math.min(20, Lib.settings.sa_caa_fetch_concurrency || 4));
@@ -63090,6 +63420,28 @@ a { color: #1565c0; }`;
      */
     function eaaUpdateBigBoxForTable(table, tableIndex) {
         _artUpdateBigBoxForTable(EAA_CTX, table, tableIndex);
+    }
+
+    /**
+     * Reorders the CAA bigbox wrappers for `table` to match its current row
+     * order. Called from the single-table sort handler, right after it
+     * reorders the live tbody rows — see PERFORMANCE.org Step 2.
+     * @param {HTMLTableElement} table
+     * @param {number}           tableIndex
+     */
+    function caaReorderBigBoxForTable(table, tableIndex) {
+        _artReorderBigBoxForTable(CAA_CTX, table, tableIndex);
+    }
+
+    /**
+     * Reorders the EAA bigbox wrappers for `table` to match its current row
+     * order. Called from the single-table sort handler, right after it
+     * reorders the live tbody rows — see PERFORMANCE.org Step 2.
+     * @param {HTMLTableElement} table
+     * @param {number}           tableIndex
+     */
+    function eaaReorderBigBoxForTable(table, tableIndex) {
+        _artReorderBigBoxForTable(EAA_CTX, table, tableIndex);
     }
 
     // ── end Art Archive (CAA / EAA) shared feature engine ─────────────────────
