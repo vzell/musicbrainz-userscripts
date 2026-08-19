@@ -60389,20 +60389,17 @@ a { color: #1565c0; }`;
         let io = ctx.key === 'caa' ? _caaArtIO : _eaaArtIO;
         if (!io) {
             io = new IntersectionObserver(entries => {
-                entries.forEach(entry => {
-                    if (!entry.isIntersecting) return;
-                    const icon = entry.target;
-                    io.unobserve(icon);
-                    const anchor = icon.closest('a[href]');
-                    if (Lib.settings.sa_caa_pics_small) {
-                        if (_caaQueue) _caaQueue.enqueue(() => _artLoadIcon(ctx, icon));
-                        else           _artLoadIcon(ctx, icon);
-                    }
-                    if (anchor) {
-                        if (_caaQueue) _caaQueue.enqueue(() => _artEnrichIcon(ctx, anchor));
-                        else           _artEnrichIcon(ctx, anchor);
-                    }
-                });
+                // A large scrollbar-drag jump can bring dozens/hundreds of icons
+                // within the 200px root margin in a single callback invocation.
+                // Kicking off that whole burst's DOM work (unobserve + enqueue,
+                // and — once queued tasks start resolving — the onload handlers'
+                // background-image/badge/multi-row-<ul> DOM writes) synchronously
+                // in one tick competes with the browser for the same main thread
+                // it needs to paint the just-scrolled-to rows, which is what
+                // produces the "blank until it catches up" flash on huge tables.
+                // _artProcessIoEntriesBatched() spreads the burst across several
+                // animation frames instead so each frame stays cheap.
+                _artProcessIoEntriesBatched(ctx, io, entries);
             }, { rootMargin: '200px 0px' });
             if (ctx.key === 'caa') _caaArtIO = io;
             else                   _eaaArtIO = io;
@@ -60411,6 +60408,48 @@ a { color: #1565c0; }`;
         icons.forEach(icon => io.observe(icon));
         Lib.debug(ctx.key,
             `${ctx.key}InitLazyPics: observing ${icons.length} icon(s) via IntersectionObserver`);
+    }
+
+    /**
+     * Number of intersecting entries processed per animation frame by
+     * `_artProcessIoEntriesBatched()`. Small enough that one frame's worth of
+     * unobserve + enqueue calls stays well under a frame budget (~16ms) even
+     * on a slow machine, large enough that a normal (non-fling) scroll still
+     * drains its (typically single-digit) batch within one frame.
+     */
+    const _ART_IO_BATCH_SIZE = 20;
+
+    /**
+     * Processes a `IntersectionObserver` callback's `entries` in
+     * `_ART_IO_BATCH_SIZE`-sized chunks, one chunk per `requestAnimationFrame`,
+     * instead of synchronously looping over the whole (possibly huge, after a
+     * fast scrollbar-drag jump) batch in a single task. See `_artInitLazyPics`.
+     *
+     * @param {ArtCtx}                ctx
+     * @param {IntersectionObserver}  io
+     * @param {IntersectionObserverEntry[]} entries
+     */
+    function _artProcessIoEntriesBatched(ctx, io, entries) {
+        const intersecting = entries.filter(e => e.isIntersecting);
+        let i = 0;
+        const processChunk = () => {
+            const end = Math.min(i + _ART_IO_BATCH_SIZE, intersecting.length);
+            for (; i < end; i++) {
+                const icon = intersecting[i].target;
+                io.unobserve(icon);
+                const anchor = icon.closest('a[href]');
+                if (Lib.settings.sa_caa_pics_small) {
+                    if (_caaImgQueue) _caaImgQueue.enqueue(() => _artLoadIcon(ctx, icon));
+                    else              _artLoadIcon(ctx, icon);
+                }
+                if (anchor) {
+                    if (_caaMetaQueue) _caaMetaQueue.enqueue(() => _artEnrichIcon(ctx, anchor));
+                    else               _artEnrichIcon(ctx, anchor);
+                }
+            }
+            if (i < intersecting.length) requestAnimationFrame(processChunk);
+        };
+        if (intersecting.length) processChunk();
     }
 
     /**

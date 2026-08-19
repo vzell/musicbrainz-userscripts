@@ -320,6 +320,87 @@ carry-over:
   archived branch did the same; a manual retry should not silently re-defer
   behind the viewport.
 
+**** Fix: batch the IntersectionObserver callback across animation frames
+
+Reported symptom (large ~series/events~ page, 800 rows, ~sa_caa_io_threshold~
+default 500 so lazy-loading is active): dragging the scrollbar quickly to a
+distant part of the table showed only the header row — the already-rendered
+~<tr>~ content stayed blank/unpainted for a noticeable moment before
+appearing all at once. Not a row-data problem (all rows are fully built at
+initial render, same as before Step 5) — a scroll-jank/checkerboard symptom:
+the browser had already-painted-content-eligible DOM but couldn't composite
+it because the main thread was busy.
+
+Root cause: a fast scrollbar-drag jump brings dozens/hundreds of
+previously-off-screen icons within the observer's 200px root margin at once,
+and the callback's ~entries.forEach~ ran the whole batch's ~unobserve~ +
+~enqueue~ calls synchronously in a single task, right as the browser needed
+the main thread free to paint the just-scrolled-to rows. Before Step 5, all
+of this work happened once at initial render, before the user had started
+interacting — Step 5 moved it to run exactly when the user scrolls, which is
+what turned it into a visible stall.
+
+Fix: new ~_artProcessIoEntriesBatched()~ splits the callback's intersecting
+entries into ~_ART_IO_BATCH_SIZE~ (20) -sized chunks and processes one chunk
+per ~requestAnimationFrame~ instead of the whole batch in one tick.
+~_artInitLazyPics~'s observer callback now just delegates to it. Doesn't
+change any request-concurrency queue at all — only spreads out the
+DOM-mutation cost of *starting* observer-triggered loads/enrichment across
+frames, so no single frame does more than 20 icons' worth of
+unobserve+enqueue work.
+
+Landed: see ~ShowAllEntityData_CHANGELOG.wip.json~ ~WIP.7~.
+
+** Known limitations (out of scope)
+
+*** Flag-image rasterization cost on flag-heavy tables
+
+Reported symptom, distinct from the Step 5 scroll-jank fix above: on tables
+whose rows carry inline flag imagery from the "More Flags Everywhere"/
+"Canadian Province Flags Everywhere" companion userscripts (custom/
+subdivision-level flags, e.g. a venue's city rendered as its own icon — see
+~debug/flags-rendering.html~), a fast scrollbar-drag shows the sticky column
+(entity name) painting immediately while the rest of the row stays blank for
+a noticeable moment. Confirmed NOT the same mechanism as the CAA/EAA fix
+above (that's the "Location"/area column's flags, an entirely different
+column and a different, third-party-injected DOM subtree — CAA/EAA's
+~IntersectionObserver~ never touches it) and NOT a regression from this
+branch: ~debug/flags-rendering.html~'s single sampled ~<td>~ is 305KB,
+carrying two inline ~data:image/svg+xml;base64,…~ images (~84KB and ~221KB
+of base64 text — up to ~230KB of raw SVG vector art combined) for one row's
+venue location. A single-table render has always fully materialized every
+row's DOM at once (true on unmodified ~main~ too, long before this work) —
+what's new here is just that this particular kind of page makes that
+already-large DOM dramatically larger per row.
+
+Mechanism (browser compositing, not our JS): ~applyStickyColumn~ sets
+~position: sticky~ on the sticky column's cells, which Chromium typically
+promotes to its own compositor layer — a thin, text-only layer that paints
+independently and cheaply. The rest of a flag-heavy row sits in the table's
+main content layer alongside hundreds of KB of embedded vector art; that
+layer's raster tile takes real, measurable time to decode/paint the first
+time it scrolls into view. A fast scrollbar-drag jump exposes a large batch
+of never-yet-rasterized rows in one step, so the (already fully built,
+already in the DOM) main-layer content stays visually blank until the raster
+catches up — while the sticky layer, having nothing expensive to paint,
+shows immediately.
+
+Not implemented — deliberately deferred rather than folded into Step 5,
+since a real fix (the standards mechanism for "skip layout/paint of
+off-screen content until it's about to be needed" is CSS
+~content-visibility: auto~ + ~contain-intrinsic-size~ on ~<tr>~) is a
+structural change with real risk: every place that reads a row/cell's
+dimensions while it *could* be off-screen — auto-resize column-width
+measurement, the sticky-column left-offset calculation, anything using
+~getBoundingClientRect~/~offsetWidth~/~offsetHeight~ on a row not currently
+in the viewport — would need auditing, since ~content-visibility: auto~
+makes an element report placeholder (contain-intrinsic-size) dimensions
+while off-screen rather than its real laid-out size. Candidate for its own
+dedicated, independently-verifiable step if picked up later. Not pursued on
+this branch — CAA/EAA request-throughput tuning (Steps 6-8 on the source
+branches) is out of scope for this port; see this file's git history on
+~filter-performance-fix-caa-throughput~ if that work is wanted later.
+
 ** Resuming after /clear
 
 Point a fresh session at this file plus the step number, e.g.:
