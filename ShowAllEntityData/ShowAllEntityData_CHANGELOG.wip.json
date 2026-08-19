@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.7",
+    "date": "2026-08-19",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "PERFORMANCE.org Step 5 follow-up: fixed a visible stall on large lazy-loaded tables (sa_caa_io_threshold, e.g. an 800-row series/events page) where dragging the scrollbar quickly to a distant part of the table showed only the header row for a moment before rows appeared — a scroll-jank/checkerboard symptom, not missing row data (all rows are fully built at initial render, unchanged since before Step 5). Root cause: a fast scrollbar-drag jump brings dozens/hundreds of off-screen icons within the IntersectionObserver's 200px root margin at once, and the callback previously ran that whole batch's unobserve+enqueue work synchronously in a single task, competing with the browser for the main thread it needed to paint the just-scrolled-to rows — a collision that couldn't happen before Step 5, since all artwork loaded once at initial render, before the user had started scrolling. Fixed with a new _artProcessIoEntriesBatched(), which splits the callback's intersecting entries into 20-entry chunks (_ART_IO_BATCH_SIZE) and processes one chunk per requestAnimationFrame instead of the whole burst in one tick; _artInitLazyPics()'s observer callback now delegates to it. Does not change Step 6's request-concurrency queues — only spreads the DOM-mutation cost of starting observer-triggered loads/enrichment across frames."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.6",
     "date": "2026-08-19",
     "sections": [
