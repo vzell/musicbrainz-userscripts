@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-08-19",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "PERFORMANCE.org Step 6 (CAA/EAA request-throughput tuning): the single shared _caaQueue (concurrency 4, sa_caa_fetch_concurrency) is split into two independent queues — _caaImgQueue for image loads (icon thumbnails, inline thumbnails, big-picture strip) and _caaMetaQueue for _artEnrichIcon's JSON count-lookup fetch() calls. Investigating why debug/jesus-coverart.js (jesus2099's mb_FUNKEY-ILLUSTRATED-RECORDS, the script this feature was originally modeled on) loads inline cover art dramatically faster found that its unthrottled requests never hit a CORS/rate-limit wall because native <img src> loads (and its GM_xmlhttpRequest-equivalent unthrottled XHR) are never CORS-bound in the first place — CORS only gates script code reading response bytes (fetch()/XHR body, canvas pixels), not the browser displaying an image. Our own image paths (_artLoadIcon's GM_xmlhttpRequest CORS-bypass fetch, and its native <img src> fallback) are equally CORS-free, yet were sharing the same 4-slot budget as _artEnrichIcon's fetch() JSON calls — the one CAA/EAA request path that IS CORS-sensitive. New settings sa_caa_img_concurrency (default 12, was 4) and sa_caa_meta_concurrency (default 6) replace sa_caa_fetch_concurrency; _artInitQueue() now creates and cancels both queues each render pass, and a new _caaQueuesOnIdle() helper fires the completion toast once both queues (rather than one shared queue) have drained. All 10 former _caaQueue.enqueue() call sites were reclassified by request kind: 8 image-load sites (ergInjectCaaInlineThumbnails, _artLoadIcon's retry handler, _artInitLazyPics's icon branch, _artInitSmallPics, _loadBigImgIdb/_loadBigImg, the inline-pics refetch task, init{CAA,EAA}InlinePics's loadTask) now enqueue on _caaImgQueue; the 2 _artEnrichIcon sites (_artInitLazyPics's enrichment branch, _artEnrichTable) now enqueue on _caaMetaQueue. No behavior change to WHEN requests fire (PERFORMANCE.org Step 5's IntersectionObserver lazy-loading and sa_caa_io_threshold are untouched) — only how many of each kind can run concurrently. A more invasive follow-up idea surfaced during this investigation — rendering icons immediately via the plain URL like jesus2099's script, with GM_xmlhttpRequest→Blob→IndexedDB persistence moved to a background-only step instead of gating the visible render — is documented as PERFORMANCE.org Step 7 (not yet implemented)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.5",
     "date": "2026-08-18",
     "sections": [

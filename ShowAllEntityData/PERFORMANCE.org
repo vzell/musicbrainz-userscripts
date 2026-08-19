@@ -312,6 +312,83 @@ carry-over:
   archived branch did the same; a manual retry should not silently re-defer
   behind the viewport.
 
+*** DONE Step 6: CAA/EAA request-throughput tuning
+
+Split the single shared ~_caaQueue~ (concurrency 4, ~sa_caa_fetch_concurrency~)
+into two independent queues — ~_caaImgQueue~ for image loads and
+~_caaMetaQueue~ for ~_artEnrichIcon~'s JSON count-lookup ~fetch()~ calls.
+Independent of Steps 1-5 (different dimension of the same CAA/EAA subsystem
+Step 5 touches: this fixes *how fast* an already-fired request completes,
+not *when* it fires).
+
+Trigger: comparing against ~debug/jesus-coverart.js~ (jesus2099's
+~mb_FUNKEY-ILLUSTRATED-RECORDS~, the script this feature was originally
+modeled on) — its inline cover-art icons load dramatically faster and never
+seem to hit the Cover Art Archive's request limit, despite firing every
+request completely unthrottled.
+
+*Landed*: branch ~filter-performance-fix-caa-throughput~ (branched from
+~filter-performance-fix~, not ~main~ — Step 5's ~IntersectionObserver~/
+~_caaQueue~ code only exists on ~filter-performance-fix~), see
+~ShowAllEntityData_CHANGELOG.wip.json~ ~WIP.6~.
+
+- Root cause: jesus2099's script never needs manual throttling because
+  neither of its request kinds is actually CORS-bound — native
+  ~<img src>~ loads are never subject to CORS (CORS only gates script code
+  *reading* response bytes via ~fetch()~/XHR/canvas, not the browser
+  displaying an image), and its RG-count lookups are unthrottled ~XHR~ calls
+  that simply never got flagged in practice. Our own two CAA/EAA request
+  kinds have asymmetric CORS exposure: ~_artLoadIcon~'s image loads (IDB
+  path via ~GM_xmlhttpRequest~, which explicitly bypasses CORS; native
+  fallback via plain ~<img src>~) are equally CORS-free, but
+  ~_artEnrichIcon~'s JSON count lookups use a page-context ~fetch()~, which
+  *is* subject to CORS. Both kinds were nonetheless sharing one 4-slot
+  queue, so on any table with more than a handful of rows nearly everything
+  serialized behind a cap that was only ever necessary for the JSON path.
+- New settings ~sa_caa_img_concurrency~ (default 12, was 4) and
+  ~sa_caa_meta_concurrency~ (default 6) replace ~sa_caa_fetch_concurrency~.
+  ~_artInitQueue()~ now creates/cancels both queues every render pass; a new
+  ~_caaQueuesOnIdle()~ helper fires the completion toast once both queues
+  (not one shared queue) have drained.
+- All 10 former ~_caaQueue.enqueue()~ call sites were reclassified by what
+  they enqueue: 8 image-load sites (~ergInjectCaaInlineThumbnails~,
+  ~_artLoadIcon~'s retry handler, ~_artInitLazyPics~'s icon branch,
+  ~_artInitSmallPics~, ~_loadBigImgIdb~/~_loadBigImg~, the inline-pics
+  refetch task, ~init{CAA,EAA}InlinePics~'s ~loadTask~) now enqueue on
+  ~_caaImgQueue~; the 2 ~_artEnrichIcon~ sites (~_artInitLazyPics~'s
+  enrichment branch, ~_artEnrichTable~) now enqueue on ~_caaMetaQueue~.
+- No change to *when* requests fire — Step 5's ~sa_caa_io_threshold~/
+  ~IntersectionObserver~ lazy-loading is untouched; only how many of each
+  request kind can run concurrently changed.
+
+*** TODO Step 7: Decouple IDB caching from the icon-render hot path
+
+Found alongside Step 6 but deliberately not implemented there — bigger risk
+profile (changes ~_artLoadIcon~'s IDB-path/native-fallback branching and the
+cache-hint telemetry semantics), so it gets its own independently-verifiable
+step, same pattern as every prior step in this file.
+
+Today, when IDB caching is enabled (~sa_art_idb_enable~, the default) and an
+icon is a cache miss, ~_artLoadIcon~ gates the *visible* render on a full
+~GM_xmlhttpRequest → Blob → URL.createObjectURL~ round-trip before the
+background-image is ever assigned — jesus2099's script, by contrast, just
+assigns ~img.src~ to the plain URL immediately and lets the browser's own
+(streaming, off-main-thread-decoding) image pipeline take over, which is a
+meaningful part of why it *feels* faster even independent of Step 6's
+concurrency fix.
+
+Proposed approach: assign the plain remote URL immediately for display (no
+~GM_xmlhttpRequest~, no blob, minimal/no queue wait) — matching jesus2099's
+~<img src>~ exactly — then, in the background and without blocking the
+visible render, fetch the same URL via ~GM_xmlhttpRequest~ and write the
+blob into IndexedDB purely so a *future* page load (or "Load from Disk")
+can skip the network. IDB becomes a background accelerator for next-session
+speed rather than something the current page's first paint waits on. Needs
+its own before/after telemetry check on the cache-hint reporting (a
+cold-cache load would report as "browser" instead of "network" even with
+IDB enabled, since the blob fetch would no longer be what puts pixels on
+screen).
+
 ** Resuming after /clear
 
 Point a fresh session at this file plus the step number, e.g.:

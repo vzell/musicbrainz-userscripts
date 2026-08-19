@@ -2066,20 +2066,37 @@
                          'row is hovered. Maps to jesus2099\'s var colour = "yellow".'
         },
 
-        sa_caa_fetch_concurrency: {
-            label: 'CAA/EAA request concurrency limit',
+        sa_caa_img_concurrency: {
+            label: 'CAA/EAA image request concurrency limit',
             type: 'number',
-            default: 4,
+            default: 12,
+            min: 1,
+            max: 30,
+            description: 'Maximum number of simultaneous Cover/Event Art Archive image requests (icon ' +
+                         'thumbnails, inline thumbnails, and the big-picture strip). These loads are never ' +
+                         'subject to CORS — the IndexedDB-cache path uses GM_xmlhttpRequest (which bypasses ' +
+                         'CORS entirely) and the fallback path is a plain <img src> (CORS only applies to ' +
+                         'reading a response\'s bytes, not to the browser displaying an image), so this can ' +
+                         'safely run much higher than the JSON metadata limit below. A higher value mainly ' +
+                         'matters on large tables — it lets icons/thumbnails paint sooner instead of ' +
+                         'serializing behind a small queue. Lower it only if you see a browser ' +
+                         'ERR_INSUFFICIENT_RESOURCES error in the console (the per-host connection pool ' +
+                         'being exhausted), which is unrelated to CORS.'
+        },
+
+        sa_caa_meta_concurrency: {
+            label: 'CAA/EAA metadata request concurrency limit',
+            type: 'number',
+            default: 6,
             min: 1,
             max: 20,
-            description: 'Maximum number of simultaneous Cover/Event Art Archive requests (both image loads and ' +
-                         'JSON API calls). All CAA/EAA requests are serialised through a shared FIFO queue ' +
-                         'that enforces this limit. Firing too many requests simultaneously causes the ' +
-                         'CAA/EAA CDN to return responses without the required CORS header, which the browser ' +
-                         'blocks entirely. A value of 4 stays safely below the typical browser per-host ' +
-                         'connection limit (6) and avoids triggering CDN rate-limiting. Increase if your ' +
-                         'network is fast and you see thumbnails loading slowly on very large tables; ' +
-                         'decrease if CORS errors still appear in the console.'
+            description: 'Maximum number of simultaneous Cover/Event Art Archive JSON count-lookup requests ' +
+                         '(the fetch() calls that populate count badges and multi-row artwork cells). Unlike ' +
+                         'image loads, these ARE subject to CORS, so this stays more conservative — firing too ' +
+                         'many at once can cause the archive CDN to return a response without the required ' +
+                         'CORS header under load, which the browser blocks entirely. Runs on its own queue, ' +
+                         'independent of the image concurrency limit above, so count badges no longer wait ' +
+                         'behind a burst of icon/thumbnail loads.'
         },
 
         sa_caa_io_threshold: {
@@ -25853,8 +25870,9 @@ a { color: #1565c0; }`;
         const targetUrl = `${window.location.origin}${window.location.pathname}${query}#mb-sa-snapshot=${uid}`;
         // TEMP DEBUG (bug 2 investigation) — capture-time wall-clock, correlate
         // against _hydrateAndRenderFromSnapshotData's own entry timestamp in the
-        // new tab's console to see how much time (and how many _caaQueue items)
-        // elapsed between capture and hydration. Gated on sa_enable_art_diagnostic_logging.
+        // new tab's console to see how much time (and how many _caaImgQueue/
+        // _caaMetaQueue items) elapsed between capture and hydration. Gated on
+        // sa_enable_art_diagnostic_logging.
         if (Lib.settings.sa_enable_art_diagnostic_logging) {
             Lib.debug('navigation',
                 `openSubtableAsSingleTableTab: uid=${uid} category="${categoryName}" ` +
@@ -40291,8 +40309,8 @@ a { color: #1565c0; }`;
             //             Without this block the CAA/EAA bigboxes and inline thumbnails are
             //             never initialised on the initial load of any single-table page.
             if (activeDefinition.tableMode !== 'multi') {
-                // Inline thumbnails first — _artInitQueue creates _caaQueue so they
-                // land ahead of small icons and the big strip in the fetch queue.
+                // Inline thumbnails first — _artInitQueue creates the CAA/EAA
+                // queues so they land ahead of small icons and the big strip.
                 _artInitQueue();
                 initCaaInlinePics();
                 initEaaInlinePics();
@@ -40300,8 +40318,8 @@ a { color: #1565c0; }`;
                 initCaaPics();
                 initEaaPics();
                 // One-shot toast when all artwork finishes loading on single-table pages.
-                if (_caaQueue && Lib.settings.sa_enable_caa_pics) {
-                    _caaQueue.onIdle(_showCaaCompletionToast);
+                if ((_caaImgQueue || _caaMetaQueue) && Lib.settings.sa_enable_caa_pics) {
+                    _caaQueuesOnIdle(_showCaaCompletionToast);
                 }
             }
 
@@ -43394,7 +43412,7 @@ a { color: #1565c0; }`;
             }
         }
 
-        // Create a fresh _caaQueue before any art function runs.
+        // Create fresh CAA/EAA request queues before any art function runs.
         _artInitQueue();
 
         // ── Inline thumbnails first ─────────────────────────────────────────────
@@ -43485,12 +43503,12 @@ a { color: #1565c0; }`;
             activeDefinition = { ...activeDefinition, features: _origFeaturesPreCaa };
         }
 
-        // Register a one-shot toast for when the full queue drains (all artwork loaded).
+        // Register a one-shot toast for when both queues drain (all artwork loaded).
         // Only fires on the final render pass — runFilter re-runs are excluded because
         // they do not represent a "first load" event.  The toast is non-intrusive and
         // auto-dismisses per the sa_caa_completion_toast_duration setting.
-        if (_caaQueue && Lib.settings.sa_enable_caa_pics) {
-            _caaQueue.onIdle(_showCaaCompletionToast);
+        if ((_caaImgQueue || _caaMetaQueue) && Lib.settings.sa_enable_caa_pics) {
+            _caaQueuesOnIdle(_showCaaCompletionToast);
         }
 
         // Apply zebra striping + sticky columns after every grouped-table render.
@@ -43601,14 +43619,14 @@ a { color: #1565c0; }`;
      * Mirrors the single-table path inside `_artInitPics` but operates on an
      * already-known table element without the full querySelectorAll pass.
      *
-     * Guards: `Lib.settings.sa_enable_caa_pics` must be true; `_caaQueue` must
+     * Guards: `Lib.settings.sa_enable_caa_pics` must be true; `_caaImgQueue` must
      * be initialised (initCaaPics must have run before this call).
      *
      * @param {HTMLTableElement} table  The table whose bigbox should be rebuilt.
      */
     function _artRebuildBigPicsForTable(table) {
         if (!Lib.settings.sa_enable_caa_pics) return;
-        if (!_caaQueue) return; // queue not yet initialised
+        if (!_caaImgQueue) return; // queue not yet initialised
 
         // Determine this table's DOM index among all table.tbl elements — the
         // bigbox and toggle button are keyed by this index.
@@ -44304,7 +44322,7 @@ a { color: #1565c0; }`;
         // We intentionally use initCaaPics()/initEaaPics() rather than calling
         // _artRebuildBigPicsForTable() for each table individually.  The reason:
         //
-        //   _artRebuildBigPicsForTable enqueues new tasks into the SHARED _caaQueue,
+        //   _artRebuildBigPicsForTable enqueues new tasks into the SHARED _caaImgQueue,
         //   which already holds in-flight tasks from every previous _artInitBigPics
         //   call (initial render, earlier view switches, …).  Even though the per-
         //   button render-generation counter (data-art-render-gen) should invalidate
@@ -44313,12 +44331,12 @@ a { color: #1565c0; }`;
         //   unexpected ways (e.g. IDB cache hits fire synchronously inside the task
         //   body, advancing state before the caller expects it).
         //
-        //   _artInitQueue() creates a BRAND-NEW _caaQueue.  The old queue object is
-        //   abandoned: pending tasks are never started (the old pending[] array is
-        //   unreferenced and GC'd), and the few tasks that are already running will
-        //   complete but their _onBigLoaded callbacks will fail the gen-check and
-        //   become no-ops.  This is a much stronger guarantee than the gen counter
-        //   alone.
+        //   _artInitQueue() creates BRAND-NEW _caaImgQueue/_caaMetaQueue instances.
+        //   The old queue objects are abandoned: pending tasks are never started
+        //   (the old pending[] array is unreferenced and GC'd), and the few tasks
+        //   that are already running will complete but their _onBigLoaded callbacks
+        //   will fail the gen-check and become no-ops.  This is a much stronger
+        //   guarantee than the gen counter alone.
         //
         //   initCaaPics()/initEaaPics() also call _artCreateOrUpdateGlobalToggleButton
         //   internally, so we skip the separate call in this branch.
@@ -54286,7 +54304,7 @@ a { color: #1565c0; }`;
             // path specifically, with a wall-clock/perfNow pair so this can be
             // correlated against openSubtableAsSingleTableTab's own capture-time
             // log (in the ORIGINAL tab's console) to see how much real time and
-            // how many _caaQueue items elapsed between capture and hydration.
+            // how many _caaImgQueue/_caaMetaQueue items elapsed between capture and hydration.
             // Gated on sa_enable_art_diagnostic_logging.
             if (isCrossTabSnapshot && Lib.settings.sa_enable_art_diagnostic_logging) {
                 Lib.debug('cache',
@@ -55216,16 +55234,16 @@ a { color: #1565c0; }`;
             // (its single-table branch now only shows/hides the existing live
             // rows — see PERFORMANCE.org Step 1), so they MUST be called here.
             if (activeDefinition.tableMode !== 'multi') {
-                // Inline thumbnails first — _artInitQueue creates _caaQueue so
-                // they land ahead of small icons and the big strip in the queue.
+                // Inline thumbnails first — _artInitQueue creates the CAA/EAA
+                // queues so they land ahead of small icons and the big strip.
                 _artInitQueue();
                 initCaaInlinePics();
                 initEaaInlinePics();
                 initCaaInlineJesus2099Observer();
                 initCaaPics();
                 initEaaPics();
-                if (_caaQueue && Lib.settings.sa_enable_caa_pics) {
-                    _caaQueue.onIdle(_showCaaCompletionToast);
+                if ((_caaImgQueue || _caaMetaQueue) && Lib.settings.sa_enable_caa_pics) {
+                    _caaQueuesOnIdle(_showCaaCompletionToast);
                 }
             }
 
@@ -56046,12 +56064,12 @@ a { color: #1565c0; }`;
      * contain a `[data-erg-btn]` span and a release `<a>` link), extracts the
      * release MBID from the href, builds a `mb-caa-inline-ph` placeholder, inserts
      * it immediately after the ERG ▶ button, and queues a throttled fetch through
-     * `_caaQueue`.
+     * `_caaImgQueue`.
      *
      * Guards:
      *   - `Lib.settings.sa_enable_caa_pics` must be true (master CAA toggle).
      *   - `Lib.settings.sa_caa_pics_inline` must be true (inline thumbnail toggle).
-     *   - `_caaQueue` must be initialised (initCaaPics() must have run first).
+     *   - `_caaImgQueue` must be initialised (initCaaPics() must have run first).
      *
      * Respects the full fetch stack used by `_artInitInlinePics`:
      *   - IDB path  (`sa_art_idb_enable`): `_artFetchCachedImage` → blob: URL.
@@ -56065,8 +56083,8 @@ a { color: #1565c0; }`;
     function ergInjectCaaInlineThumbnails(table) {
         if (!Lib.settings.sa_enable_caa_pics)  return;
         if (!Lib.settings.sa_caa_pics_inline)  return;
-        if (!_caaQueue) {
-            Lib.warn('caa', 'ergInjectCaaInlineThumbnails: _caaQueue not initialised — skipping');
+        if (!_caaImgQueue) {
+            Lib.warn('caa', 'ergInjectCaaInlineThumbnails: _caaImgQueue not initialised — skipping');
             return;
         }
 
@@ -56208,7 +56226,7 @@ a { color: #1565c0; }`;
                 });
             };
 
-            _caaQueue.enqueue(loadTask);
+            _caaImgQueue.enqueue(loadTask);
             Lib.debug('caa', `ergInjectCaaInlineThumbnails: enqueued ${imgurl}`);
         });
     }
@@ -56797,11 +56815,13 @@ a { color: #1565c0; }`;
      *     when a task finishes regardless of success or failure.
      *
      * @param   {number} maxConcurrent  Maximum simultaneous in-flight tasks.
+     * @param   {string} [label='queue']  Short name used in debug/cancel logging,
+     *   so console output can tell the image queue and metadata queue apart.
      * @returns {{ enqueue: function(function(): Promise): Promise,
      *             pendingCount: number,
      *             runningCount: number }}
      */
-    function makeCaaQueue(maxConcurrent) {
+    function makeCaaQueue(maxConcurrent, label = 'queue') {
         let running = 0;
         const pending = [];
         let _onIdleCb  = null;  // called once when queue drains to idle (running=0 and pending=[])
@@ -56871,7 +56891,7 @@ a { color: #1565c0; }`;
                 const dropped = pending.length;
                 _cancelled    = true;
                 pending.length = 0;
-                Lib.debug('caa', `_caaQueue: cancel() — dropped ${dropped} pending task(s), ${running} still running`);
+                Lib.debug('caa', `${label}: cancel() — dropped ${dropped} pending task(s), ${running} still running`);
             },
             /** Number of tasks waiting for a free slot. */
             get pendingCount() { return pending.length; },
@@ -56880,10 +56900,41 @@ a { color: #1565c0; }`;
         };
     }
 
-    // Shared CAA request queue — recreated by initCaaPics() before each render
-    // pass so the concurrency setting is always picked up fresh.
-    // Null before the first render; never accessed outside the CAA feature block.
-    let _caaQueue = null;
+    // Two independent CAA/EAA request queues, both recreated by _artInitQueue()
+    // before each render pass so their concurrency settings are always picked up
+    // fresh. Null before the first render; never accessed outside the CAA feature
+    // block.
+    //
+    // Split (PERFORMANCE.org Step 6) because the two request kinds have very
+    // different CORS exposure:
+    //   _caaImgQueue  — image loads (`_artLoadIcon`, big-picture strip, inline
+    //                   thumbnails). Never CORS-bound: the IDB-enabled path uses
+    //                   `GM_xmlhttpRequest` (explicitly bypasses CORS), and the
+    //                   native fallback is a plain `<img src>` (CORS never applies
+    //                   to displaying an image, only to reading its bytes). Can
+    //                   run at a much higher concurrency than the JSON path.
+    //   _caaMetaQueue — `_artEnrichIcon`'s JSON count-lookup `fetch()` calls. This
+    //                   is the one path that IS subject to CORS, so it keeps a
+    //                   conservative cap.
+    let _caaImgQueue  = null;
+    let _caaMetaQueue = null;
+
+    /**
+     * Registers `cb` to fire once, after BOTH the image and metadata queues have
+     * drained to idle. Mirrors the single-queue `queue.onIdle()` contract (fires
+     * asynchronously via the underlying queues' own `setTimeout(cb, 0)` when
+     * already idle at registration time) but requires both queues to report idle
+     * before `cb` runs, since art loading (image queue) and count enrichment
+     * (metadata queue) now progress independently.
+     *
+     * @param {function} cb
+     */
+    function _caaQueuesOnIdle(cb) {
+        let doneCount = 0;
+        const _checkIn = () => { doneCount++; if (doneCount === 2) cb(); };
+        if (_caaImgQueue)  _caaImgQueue.onIdle(_checkIn);  else _checkIn();
+        if (_caaMetaQueue) _caaMetaQueue.onIdle(_checkIn); else _checkIn();
+    }
 
     // IntersectionObserver instances for lazy CAA/EAA artwork loading.
     // Created by _artInitLazyPics when allRows.length >= sa_caa_io_threshold.
@@ -56920,7 +56971,7 @@ a { color: #1565c0; }`;
      * render pass so re-renders get a fresh measurement.
      *
      * startTime  — performance.now() snapshot taken when initCaaPics() creates
-     *              the new _caaQueue; used to compute total elapsed time.
+     *              the new queues; used to compute total elapsed time.
      *
      * Counts are split by image type (icon column vs inline thumbnail) and by
      * the cache tier / source that served the image:
@@ -56962,7 +57013,11 @@ a { color: #1565c0; }`;
     //   • API: https://musicbrainz.org/doc/Event_Art_Archive/API
     //
     // Both archives share:
-    //   • The same _caaQueue concurrency budget (sa_caa_fetch_concurrency).
+    //   • The same two request-queue concurrency budgets: _caaImgQueue
+    //     (sa_caa_img_concurrency, image loads) and _caaMetaQueue
+    //     (sa_caa_meta_concurrency, JSON count-lookup fetch() calls) — split
+    //     because only the metadata path is CORS-sensitive (PERFORMANCE.org
+    //     Step 6).
     //   • The same settings switches (sa_enable_caa_pics, sa_caa_pics_small, …).
     //   • A single set of generic _art* implementations parameterised by an
     //     archive context descriptor (CAA_CTX / EAA_CTX), eliminating ~450 lines
@@ -56974,7 +57029,7 @@ a { color: #1565c0; }`;
     //   caaUpdateBigBoxForTable  eaaUpdateBigBoxForTable   (called from STF)
     //
     // Call-order contract (enforced at all 4 render-completion call sites):
-    //   1. _artInitQueue()       — creates _caaQueue first.
+    //   1. _artInitQueue()       — creates _caaImgQueue/_caaMetaQueue first.
     //   2. initCaaInlinePics()   — enqueues inline thumbnails first (most visible).
     //   3. initEaaInlinePics()   — enqueues EAA inline thumbnails.
     //   4. initCaaPics()         — enqueues small icons + big strip.
@@ -59763,8 +59818,8 @@ a { color: #1565c0; }`;
                 hintSpan.title        = 'Retrying…';
                 hintSpan.style.cursor = 'default';
                 delete artIcon.dataset.cacheHint;
-                if (_caaQueue) {
-                    _caaQueue.enqueue(() => _artLoadIcon(ctx, artIcon, true));
+                if (_caaImgQueue) {
+                    _caaImgQueue.enqueue(() => _artLoadIcon(ctx, artIcon, true));
                 } else {
                     _artLoadIcon(ctx, artIcon, true);
                 }
@@ -60138,12 +60193,12 @@ a { color: #1565c0; }`;
                     io.unobserve(icon);
                     const anchor = icon.closest('a[href]');
                     if (Lib.settings.sa_caa_pics_small) {
-                        if (_caaQueue) _caaQueue.enqueue(() => _artLoadIcon(ctx, icon));
-                        else           _artLoadIcon(ctx, icon);
+                        if (_caaImgQueue) _caaImgQueue.enqueue(() => _artLoadIcon(ctx, icon));
+                        else              _artLoadIcon(ctx, icon);
                     }
                     if (anchor) {
-                        if (_caaQueue) _caaQueue.enqueue(() => _artEnrichIcon(ctx, anchor));
-                        else           _artEnrichIcon(ctx, anchor);
+                        if (_caaMetaQueue) _caaMetaQueue.enqueue(() => _artEnrichIcon(ctx, anchor));
+                        else               _artEnrichIcon(ctx, anchor);
                     }
                 });
             }, { rootMargin: '200px 0px' });
@@ -60166,8 +60221,10 @@ a { color: #1565c0; }`;
      * fully separated — multi-row cells are populated regardless of whether the
      * small-icon thumbnail setting is enabled.
      *
-     * All requests are serialised through `_caaQueue`; without throttling large
-     * pages cause the CDN burst / CORS / ERR_INSUFFICIENT_RESOURCES failure pattern.
+     * All requests are serialised through `_caaImgQueue`; without throttling large
+     * pages cause a browser ERR_INSUFFICIENT_RESOURCES failure pattern (exhausting
+     * the per-host connection pool). Not CORS-bound — see the `_caaImgQueue`
+     * declaration comment (PERFORMANCE.org Step 6).
      *
      * @param {ArtCtx}           ctx
      * @param {HTMLTableElement} table
@@ -60180,15 +60237,15 @@ a { color: #1565c0; }`;
         const icons = table.querySelectorAll(ctx.iconSel);
 
         icons.forEach(icon => {
-            if (_caaQueue) {
-                _caaQueue.enqueue(() => _artLoadIcon(ctx, icon, cacheBust));
+            if (_caaImgQueue) {
+                _caaImgQueue.enqueue(() => _artLoadIcon(ctx, icon, cacheBust));
             } else {
                 _artLoadIcon(ctx, icon, cacheBust);
             }
         });
 
         Lib.debug(ctx.key, `${ctx.key}InitSmallPics: enqueued ${icons.length} load request(s) ` +
-            `(queue: ${_caaQueue ? _caaQueue.runningCount + ' running, ' + _caaQueue.pendingCount + ' pending' : 'unavailable'})`);
+            `(queue: ${_caaImgQueue ? _caaImgQueue.runningCount + ' running, ' + _caaImgQueue.pendingCount + ' pending' : 'unavailable'})`);
     }
 
     /**
@@ -60227,8 +60284,8 @@ a { color: #1565c0; }`;
                     `href=${anchor.getAttribute('href')} alreadyEnriched=${anchor.dataset[ctx.enrichedAttr] === '1'} ` +
                     `synthetic=${anchor.dataset.caaSynthetic === '1'}`);
             }
-            if (_caaQueue) {
-                _caaQueue.enqueue(() => _artEnrichIcon(ctx, anchor));
+            if (_caaMetaQueue) {
+                _caaMetaQueue.enqueue(() => _artEnrichIcon(ctx, anchor));
             } else {
                 _artEnrichIcon(ctx, anchor);
             }
@@ -60237,7 +60294,7 @@ a { color: #1565c0; }`;
         // TEMP DEBUG (bug 2 investigation) — gated on sa_enable_art_diagnostic_logging.
         if (Lib.settings.sa_enable_art_diagnostic_logging) {
             Lib.debug(ctx.key, `${ctx.key}EnrichTable: call#${_callN} enqueued ${icons.length} enrichment request(s) ` +
-                `(queue: ${_caaQueue ? _caaQueue.runningCount + ' running, ' + _caaQueue.pendingCount + ' pending' : 'unavailable'})`);
+                `(queue: ${_caaMetaQueue ? _caaMetaQueue.runningCount + ' running, ' + _caaMetaQueue.pendingCount + ' pending' : 'unavailable'})`);
         }
     }
 
@@ -60909,7 +60966,7 @@ a { color: #1565c0; }`;
                     // called directly without going through a DOM img.onload event.
                     // On failure (404 / network error) remove the wrapper silently.
                     //
-                    // Both paths are routed through _caaQueue so that bigbox requests
+                    // Both paths are routed through _caaImgQueue so that bigbox requests
                     // share the same concurrency budget as small-pic icon loads.
                     // Without queuing, _artInitBigPics fired img.src (or called
                     // _artFetchCachedImage) for every image in every sub-table in one
@@ -60927,8 +60984,8 @@ a { color: #1565c0; }`;
                                 // 404 or network failure — remove placeholder wrapper.
                                 if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
                             });
-                        if (_caaQueue) {
-                            _caaQueue.enqueue(_loadBigImgIdb);
+                        if (_caaImgQueue) {
+                            _caaImgQueue.enqueue(_loadBigImgIdb);
                         } else {
                             _loadBigImgIdb();
                         }
@@ -60946,8 +61003,8 @@ a { color: #1565c0; }`;
                             });
                             img.src = imgurl; // triggers the browser request
                         });
-                        if (_caaQueue) {
-                            _caaQueue.enqueue(_loadBigImg);
+                        if (_caaImgQueue) {
+                            _caaImgQueue.enqueue(_loadBigImg);
                         } else {
                             _loadBigImg();
                         }
@@ -61854,11 +61911,16 @@ a { color: #1565c0; }`;
 
         Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}Pics: processed ${processed} table(s) with ${ctx.column} column`);
 
-        // Pass 2: enqueue JSON-API enrichment after all image fetches so that
-        // small icons and big-strip loads have priority in _caaQueue.  Users who
-        // start filtering immediately will see visual feedback before count badges
-        // and multi-row art cells arrive.  _artEnrichIcon's own idempotency guard
-        // prevents double-work on re-renders.  Skipped when _useIO — the
+        // Pass 2: enqueue JSON-API enrichment after all image fetches.  Since the
+        // image (_caaImgQueue) and metadata (_caaMetaQueue) queues run
+        // independently (PERFORMANCE.org Step 6), enrichment no longer waits
+        // behind image loads for a shared concurrency slot — it proceeds in
+        // parallel on its own queue.  The two-pass structure is kept anyway
+        // for code clarity (image-cell setup, then enrichment) and because
+        // small icons/big-strip elements must already exist in the DOM before
+        // _artEnrichIcon can find and decorate them.  _artEnrichIcon's own
+        // idempotency guard prevents double-work on re-renders.  Skipped when
+        // _useIO — the
         // IntersectionObserver installed above already enqueues enrichment
         // itself, per icon, once that icon actually scrolls into view.
         if (!_useIO) {
@@ -62277,9 +62339,10 @@ a { color: #1565c0; }`;
      * Stale markers on cloned rows are cleared so fresh injection occurs when
      * renderFinalTable / renderGroupedTable rebuilds the DOM.
      *
-     * Concurrency: the actual `img.src` assignment is deferred through `_caaQueue`
-     * so all inline-thumbnail requests share the same concurrency budget as the
-     * _artInitSmallPics icon loads.
+     * Concurrency: the actual `img.src` assignment is deferred through
+     * `_caaImgQueue` so all inline-thumbnail requests share the same concurrency
+     * budget as the _artInitSmallPics icon loads (both are image loads, not
+     * subject to CORS — see the `_caaImgQueue` declaration comment).
      *
      * Guards:
      *   - `Lib.settings.sa_enable_caa_pics` master toggle.
@@ -62798,8 +62861,8 @@ a { color: #1565c0; }`;
                                 });
                             };
 
-                            if (_caaQueue) {
-                                _caaQueue.enqueue(refetchTask);
+                            if (_caaImgQueue) {
+                                _caaImgQueue.enqueue(refetchTask);
                             } else {
                                 refetchTask();
                             }
@@ -62876,7 +62939,7 @@ a { color: #1565c0; }`;
                     injected++;
                     anyInjected = true;
 
-                    // ── Defer fetch through _caaQueue (concurrency-throttled) ───
+                    // ── Defer fetch through _caaImgQueue (concurrency-throttled) ───
                     // When IDB is enabled AND this is not a cache-busted retry, the
                     // loadTask uses _artFetchCachedImage (three-tier: session Map →
                     // IDB → GM_xhr network) so cached blobs are served without a
@@ -63052,12 +63115,12 @@ a { color: #1565c0; }`;
                         });
                     };
 
-                    if (_caaQueue) {
-                        _caaQueue.enqueue(loadTask);
+                    if (_caaImgQueue) {
+                        _caaImgQueue.enqueue(loadTask);
                         enqueued++;
                     } else {
                         Lib.warn(ctx.key,
-                            `init${ctx.key.toUpperCase()}InlinePics: _caaQueue unavailable` +
+                            `init${ctx.key.toUpperCase()}InlinePics: _caaImgQueue unavailable` +
                             ` — fetching ${imgurl} unthrottled`);
                         loadTask();
                     }
@@ -63072,7 +63135,7 @@ a { color: #1565c0; }`;
                 //   2. runFilter() immediately clones every source row via
                 //      cloneNode(true) — the clone inherits the marker AND the
                 //      ph span (with img src='' because the queue task hasn't
-                //      fired yet; initCaaPics recreated _caaQueue, abandoning it).
+                //      fired yet; initCaaPics recreated _caaImgQueue, abandoning it).
                 //   3. Second renderGroupedTable(filteredArray) inserts the clones
                 //      and runs initCaaInlinePics again.  The clone td has the
                 //      marker and a ph with src='' → Case A (skip) → img stays
@@ -63085,7 +63148,7 @@ a { color: #1565c0; }`;
         Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: done — injected=${injected} enqueued=${enqueued} ` +
             `skipped(done=${skippedDone} noLink=${skippedNoLink} noGuid=${skippedNoGuid}) ` +
             `column="${colName}" ` +
-            `(queue: ${_caaQueue ? _caaQueue.runningCount + ' running, ' + _caaQueue.pendingCount + ' pending' : 'unavailable'})`);
+            `(queue: ${_caaImgQueue ? _caaImgQueue.runningCount + ' running, ' + _caaImgQueue.pendingCount + ' pending' : 'unavailable'})`);
     }
 
     // ── Public entry points ───────────────────────────────────────────────────
@@ -63302,28 +63365,38 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Cancels the current `_caaQueue` (if any) and creates a fresh one with the
-     * configured concurrency.  Also resets per-session fetch telemetry.
+     * Cancels the current `_caaImgQueue`/`_caaMetaQueue` (if any) and creates
+     * fresh ones with their configured concurrency.  Also resets per-session
+     * fetch telemetry.
      *
      * Must be called once per render pass, before any art init function.
      * Separating queue creation from `initCaaPics` allows `initCaaInlinePics` /
      * `initEaaInlinePics` to be enqueued first so inline thumbnails appear before
      * small icons and the big picture strip.
      *
+     * Two independent queues (PERFORMANCE.org Step 6): image loads
+     * (`_caaImgQueue`, `sa_caa_img_concurrency`) are not CORS-bound (native
+     * `<img src>` / `GM_xmlhttpRequest` both bypass CORS entirely — see the
+     * `_caaImgQueue` declaration comment) so they can run at a much higher
+     * concurrency than the JSON count-lookup `fetch()` calls
+     * (`_caaMetaQueue`, `sa_caa_meta_concurrency`), which are the one path
+     * genuinely subject to CORS.
+     *
      * Guards: `Lib.settings.sa_enable_caa_pics` must be true.
      */
     function _artInitQueue() {
         if (!Lib.settings.sa_enable_caa_pics) return;
 
-        // Cancel the old queue before replacing it so its pending tasks are
-        // discarded immediately.  Without this, the previous queue (possibly
-        // processing thousands of images from the pre-filter render) keeps
+        // Cancel the old queues before replacing them so their pending tasks are
+        // discarded immediately.  Without this, the previous queues (possibly
+        // processing thousands of images from the pre-filter render) keep
         // running in the background, saturating the browser's connection pool
-        // and causing the new queue's requests to stall or never complete.
-        // Currently-running tasks (at most sa_caa_fetch_concurrency) are
-        // allowed to finish naturally — their in-flight requests cannot be
+        // and causing the new queues' requests to stall or never complete.
+        // Currently-running tasks (at most each queue's own concurrency budget)
+        // are allowed to finish naturally — their in-flight requests cannot be
         // recalled once submitted to the browser.
-        if (_caaQueue) _caaQueue.cancel();
+        if (_caaImgQueue)  _caaImgQueue.cancel();
+        if (_caaMetaQueue) _caaMetaQueue.cancel();
 
         // Disconnect any lazy-load IntersectionObservers from a previous
         // initialisation (e.g. disk-load after initial fetch, or page re-use).
@@ -63332,11 +63405,14 @@ a { color: #1565c0; }`;
         if (_caaArtIO) { _caaArtIO.disconnect(); _caaArtIO = null; }
         if (_eaaArtIO) { _eaaArtIO.disconnect(); _eaaArtIO = null; }
 
-        // (Re-)create the shared request queue so the current sa_caa_fetch_concurrency
-        // setting is picked up on every render pass.
-        const concurrency = Math.max(1, Math.min(20, Lib.settings.sa_caa_fetch_concurrency || 4));
-        _caaQueue = makeCaaQueue(concurrency);
-        Lib.debug('caa', `_artInitQueue: request queue created (concurrency=${concurrency})`);
+        // (Re-)create both request queues so their current concurrency settings
+        // are picked up on every render pass.
+        const imgConcurrency  = Math.max(1, Math.min(30, Lib.settings.sa_caa_img_concurrency  || 12));
+        const metaConcurrency = Math.max(1, Math.min(20, Lib.settings.sa_caa_meta_concurrency || 6));
+        _caaImgQueue  = makeCaaQueue(imgConcurrency,  '_caaImgQueue');
+        _caaMetaQueue = makeCaaQueue(metaConcurrency, '_caaMetaQueue');
+        Lib.debug('caa', `_artInitQueue: request queues created ` +
+            `(img concurrency=${imgConcurrency}, meta concurrency=${metaConcurrency})`);
 
         // Reset per-session fetch telemetry so every render pass gets a fresh
         // count and elapsed-time measurement.  _caaFetchStats counters are
@@ -63369,7 +63445,7 @@ a { color: #1565c0; }`;
      */
     function initCaaPics() {
         if (!Lib.settings.sa_enable_caa_pics) return;
-        if (!_caaQueue) _artInitQueue();
+        if (!_caaImgQueue || !_caaMetaQueue) _artInitQueue();
         _artInitPics(CAA_CTX);
     }
 
@@ -63377,14 +63453,15 @@ a { color: #1565c0; }`;
      * Entry point for the EAA Illustrated Events feature.
      *
      * Guards: `Lib.settings.sa_enable_caa_pics` (shared master toggle) must be true;
-     *         `_caaQueue` must already be initialised (initCaaPics() must run first).
+     *         `_caaImgQueue`/`_caaMetaQueue` must already be initialised
+     *         (initCaaPics() must run first).
      *
      * Called from: same 4 render-completion sites as initCaaPics(), immediately after.
      */
     function initEaaPics() {
         if (!Lib.settings.sa_enable_caa_pics) return;
-        if (!_caaQueue) {
-            Lib.warn('eaa', 'initEaaPics: _caaQueue not initialised — initCaaPics() must run first');
+        if (!_caaImgQueue || !_caaMetaQueue) {
+            Lib.warn('eaa', 'initEaaPics: request queues not initialised — initCaaPics() must run first');
             return;
         }
         _artInitPics(EAA_CTX);
