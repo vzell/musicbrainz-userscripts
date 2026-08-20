@@ -95247,6 +95247,48 @@ I would expect, after reopening, that all entries visible in the unique value dr
 Create a new branch for fixes.
 
 
+* TODO add new pageType for URLs of the following form e.g. https://musicbrainz.org/release/1a9ccefd-5599-45f3-83da-f2fb7b64ae87/annotations
+
+1.)
+
+add a new pageType for URLs of the following form https://musicbrainz.org/release/<MBID>/annotations
+
+e.g. https://musicbrainz.org/release/1a9ccefd-5599-45f3-83da-f2fb7b64ae87/annotations 
+
+2.)
+
+and maybe more for other <entities>
+
+https://musicbrainz.org/<entity>/<MBID>/annotations
+
+* TODO add colors
+
+on pageType 'release-tracks' e.g. https://musicbrainz.org/release/31f6eb4a-d4a6-44e0-add8-da445566e4a1 add support for
+
+1.)
+
+Colorizing the attribute of a vocal or instrument AR (advanced relationship) type in light green by default (make the
+color configurable). The columns on the final rendered page are "Vocals" and "Instruments".
+
+A typical attribute is e.g. "lead" or "solo"
+
+@debug/colorize.html - rendered example entries
+
+If there are other columns where attributes are supported do this there too.
+
+2.)
+
+render the "credited as" info of a vocal or an instrument AR in italic
+
+E.g. for the instrument "drums (drum set)" it's typically credited as just "drums" (currently rendered in angle brackets)
+
+Maybe there are other entities/columns where the "credited as" exists, do the same there too.
+
+3.)
+
+make sure to not break the unique value drop down entries when these entries now have colorization/"italic font" support
+
+
 * Checking CAA columns on different pageTypes
 
 | pageType              | subtable                                                         | URL                 | single/multi     | CAA               | multi-row collapse symbol present | Relationships | Picard |
