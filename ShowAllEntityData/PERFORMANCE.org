@@ -418,19 +418,16 @@ cold-cache load would report as "browser" instead of "network" even with
 IDB enabled, since the blob fetch would no longer be what puts pixels on
 screen).
 
-** Known limitations (out of scope)
+*** TODO Step 8: ~content-visibility: auto~ for off-screen rows
 
-*** Flag-image rasterization cost on flag-heavy tables
-
-Reported symptom, distinct from the Step 5 scroll-jank fix above: on tables
-whose rows carry inline flag imagery from the "More Flags Everywhere"/
-"Canadian Province Flags Everywhere" companion userscripts (custom/
-subdivision-level flags, e.g. a venue's city rendered as its own icon — see
-~debug/flags-rendering.html~), a fast scrollbar-drag shows the sticky column
-(entity name) painting immediately while the rest of the row stays blank for
-a noticeable moment. Confirmed NOT the same mechanism as the CAA/EAA fix
-above (that's the "Location"/area column's flags, an entirely different
-column and a different, third-party-injected DOM subtree — CAA/EAA's
+Trigger: on tables whose rows carry inline flag imagery from the "More
+Flags Everywhere"/"Canadian Province Flags Everywhere" companion userscripts
+(custom/subdivision-level flags, e.g. a venue's city rendered as its own
+icon — see ~debug/flags-rendering.html~), a fast scrollbar-drag shows the
+sticky column (entity name) painting immediately while the rest of the row
+stays blank for a noticeable moment. Confirmed NOT the same mechanism as
+Step 5's fix (that's the "Location"/area column's flags, an entirely
+different column and a different, third-party-injected DOM subtree — CAA/EAA's
 ~IntersectionObserver~ never touches it) and NOT a regression from this
 branch: ~debug/flags-rendering.html~'s single sampled ~<td>~ is 305KB,
 carrying two inline ~data:image/svg+xml;base64,…~ images (~84KB and ~221KB
@@ -452,18 +449,106 @@ already in the DOM) main-layer content stays visually blank until the raster
 catches up — while the sticky layer, having nothing expensive to paint,
 shows immediately.
 
-Not implemented — deliberately deferred rather than folded into Step 5/6,
-since a real fix (the standards mechanism for "skip layout/paint of
-off-screen content until it's about to be needed" is CSS
-~content-visibility: auto~ + ~contain-intrinsic-size~ on ~<tr>~) is a
-structural change with real risk: every place that reads a row/cell's
-dimensions while it *could* be off-screen — auto-resize column-width
-measurement, the sticky-column left-offset calculation, anything using
-~getBoundingClientRect~/~offsetWidth~/~offsetHeight~ on a row not currently
-in the viewport — would need auditing, since ~content-visibility: auto~
-makes an element report placeholder (contain-intrinsic-size) dimensions
-while off-screen rather than its real laid-out size. Candidate for its own
-dedicated, independently-verifiable step if picked up later.
+Goal: stop the browser from doing ANY layout/paint work for rows that are
+nowhere near the viewport, so a fast scroll never has a large batch of
+never-yet-rasterized heavy rows to catch up on — a fix at the actual
+mechanism (browser rendering), not a workaround in our JS (there is no
+practical way to "lazy load" a ~data:~ URI's decode cost the way Step 5
+lazy-loads a network request — the bytes are already inline in the DOM;
+the only lever is whether the browser bothers to lay out/paint them yet).
+
+**** Proposed approach
+
+~content-visibility: auto~ + ~contain-intrinsic-size: auto <estimate>px~ on
+every ~<tr>~ in ~table.tbl tbody~ (single-table mode first, matching every
+prior step's scoping precedent). Semantics that matter for this codebase
+specifically:
+
+- While a ~<tr>~ is off-screen (outside an internal "near viewport" margin,
+  conceptually similar to ~IntersectionObserver~), the browser skips layout,
+  style recalc for layout purposes, paint, and hit-testing for its entire
+  subtree — but does NOT remove or hide the DOM. ~textContent~, attributes,
+  ~querySelectorAll~, ~cloneNode~, and non-geometric ~getComputedStyle~
+  reads (colours, etc.) all keep working normally on a skipped row.
+- What DOES break: any read of *layout geometry* on a skipped row or its
+  descendants — ~getBoundingClientRect()~, ~offsetWidth~/~offsetHeight~,
+  ~scrollWidth~/~scrollHeight~, ~clientWidth~/~clientHeight~ — reports
+  placeholder/zero values while skipped, not the row's real laid-out size.
+- ~contain-intrinsic-size~ is the row's OWN placeholder height (so total
+  ~scrollHeight~/scrollbar-thumb size stay stable while rows skip in and
+  out) — it does not, by itself, fix geometry reads on a skipped row's
+  *descendants*, which is the actual audit concern below.
+
+**** Audit checklist
+
+Preliminary pass already done (grepped every ~getBoundingClientRect~/
+~offsetWidth~/~offsetHeight~/~scrollWidth~/~scrollHeight~ call site — 83
+total hits, most on dialogs/tooltips/dropdowns unrelated to table rows):
+
+- *Safe, confirmed* — auto-resize column-width measurement
+  (~:26247-26277~, the "Measure ALL data rows — no sampling" loop): clones
+  each cell's child nodes (~cloneNode(true)~) into a separate, always-
+  rendered ~measureDiv~ appended to ~document.body~, then reads
+  ~measureDiv.offsetWidth~ — never reads the live row's own geometry, so
+  content-visibility skipping a row doesn't affect it. (Note: this also
+  means the pass's own O(rows) cost is NOT reduced by this step either —
+  it clones every visible-per-filter row's cells regardless of scroll
+  position, both before and after. Not a goal of this step, not a risk.)
+- *Safe, confirmed* — ~applyStickyColumn~'s per-row loop
+  (~:16036-16111~): reads ~getComputedStyle(cell).backgroundColor~ only
+  (non-geometric, unaffected by skipping); ~_leftOffset()~
+  (~:15970-15972~) is hardcoded to return ~0~, no geometry read at all.
+- *Safe, confirmed* — ~_findCellListItems~ (~:16897~),
+  ~_classifyCollapseCell~ (~:17419~), ~initBarcodeHighlight~ (~:64011~),
+  ~_cdtocInitTracklistToggles~ (~:50256~): none read
+  offsetWidth/offsetHeight/getBoundingClientRect/scrollWidth/scrollHeight
+  anywhere in their bodies (grepped directly).
+- *Safe by construction* — every tooltip/hover-preview positioning call
+  site (~getBoundingClientRect~ on hover targets, e.g. ~:53454~, ~:59054~,
+  ~:60981~, ~:62578~): these only run on ~mouseenter~ of an element the
+  user is currently pointing at, which by definition cannot be in the
+  skipped (off-screen) state at that moment.
+- *Not yet checked* — ~_updateAllColHeaderCounts~/~openUniqDrop~'s row
+  scans: expected safe (textContent/DOM-structure based per Steps 3-4's own
+  analysis, no geometry reads spotted in the preliminary grep), but not
+  individually re-verified line-by-line.
+- *Not yet checked* — the CSV/JSON/org/HTML export functions: iterate every
+  row regardless of scroll position; must confirm they read only
+  ~textContent~/attributes, never geometry.
+- *Not yet checked* — sizing ~contain-intrinsic-size~ itself: row height
+  varies a lot by content (collapsed vs. expanded prose-clamp cells,
+  single- vs. multi-line lists, CAA/EAA multi-image cells) — a single fixed
+  estimate will either overshoot (wasted scroll-height padding for typical
+  rows) or undershoot (visible layout shift as a row expands past its
+  placeholder on first real render). Needs a measured-not-guessed default,
+  e.g. sampling the first N already-rendered rows' real heights at initial
+  render.
+- *Not yet checked* — Steps 1/2's show/hide (~display:none~) and reorder
+  (~appendChild~) passes: both already skip/move rows without reading their
+  geometry (confirmed for Step 2's tint-boundary walk, which was already
+  fixed to check ~tr.style.display~ only), but should be re-confirmed
+  against a ~content-visibility~-skipped row specifically, since ~appendChild~
+  on a skipped element is untested territory in this codebase.
+
+**** Verification plan
+
+DevTools Performance recording of the exact fast-scrollbar-drag gesture on
+a flags-heavy ~series/events~ page, before/after — the actual acceptance
+check per this file's own standard (see "Ranked areas" above), not the
+operation-count estimates. Confirm: reduced/eliminated blank-paint duration
+during the drag; auto-resize column widths, sticky column, filtering,
+sorting, and CAA/EAA Step-5 lazy-loading all still behave correctly for a
+row that was skipped and later scrolled into view; no scrollbar-thumb
+jumping from a bad ~contain-intrinsic-size~ estimate.
+
+**** Browser support
+
+Chromium ~85+ and Firefox 125+; not yet in Safari as of this writing. Needs
+a feature-detect guard (~CSS.supports('content-visibility', 'auto')~,
+mirroring Step 5's ~typeof IntersectionObserver !== 'undefined'~ pattern) —
+unsupported browsers simply don't get the property applied, no fallback
+behaviour needed since it's purely a rendering hint with no functional
+dependency elsewhere in the script.
 
 ** Resuming after /clear
 
