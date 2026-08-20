@@ -6259,3 +6259,47 @@ second follow-up round.
   reported.
 
 `node --check ShowAllEntityData.user.js` passed after every edit.
+
+## 2026-08-20 — "DJ-mix of" dynamic AR column collapsed to one row instead of 26 (v9.99.897)
+
+- `DJ-mix-of-original.html` — the native `release-tracks` page for
+  https://musicbrainz.org/release/a24eb845-0b82-44a7-8227-d13d4c1200dd (Paul
+  Oakenfold's "1993-11-06: BBC Radio 1 Essential Mix" broadcast, a single
+  continuous-mix track). Its Title `<td>`'s bare `div.ars > dl.ars` has
+  exactly ONE `<dt>DJ-mix of:</dt>`, whose single `<dd>` credits 26 separate
+  source recordings, comma/"and"-joined: each item's own direct-child marker
+  is `<span class="recordinglink">`, immediately followed by
+  `<a href="/recording/…">` (the recording title) then literal text `" by "`
+  then a `<bdi>` wrapping `<span class="artistlink"></span><a
+  href="/artist/…">` (the credited artist) — i.e. the artist's own marker
+  sits nested one level deeper inside `<bdi>`, never as a direct child of
+  `<dd>`.
+- `DJ-mix-of-final.html` — this script's rendered output. The "Dj-mix of"
+  column (dynamic-fallback, correctly discovered and given its own `<th>`,
+  header count badge reading "1") crammed ALL 26 recording+artist credits
+  into a SINGLE `<li>` instead of one `<li>` per recording — confirmed by
+  extracting the row's `<td><ul><li>…</li></ul></td>` and finding all 26
+  `recordinglink`/artist pairs inside that one `<li>`, run together with no
+  row boundaries.
+- Root cause: `_collectEntityKinds(dd)` only detects DIRECT-child
+  `<span class="{kind}link">` markers (`:scope > span.{kind}link`). Since the
+  artist marker here is nested inside `<bdi>` (not a direct child), only
+  `recording` is ever collected — but `PEER_SPLIT_KINDS` (consulted via
+  `_filterPeerKinds` at both dynamic-fallback call sites, page-wide `<th>`
+  discovery and per-row `<td>` building) only listed `artist`/`label`, so
+  `recording` was stripped to an empty Set. `_buildKindSplitListTd` then took
+  its `kinds.size === 0` "no recognized marker — clone the whole `<dd>`
+  verbatim into one `<li>`" branch, exactly the observed bug.
+- Fix: added `'recording'` to `PEER_SPLIT_KINDS`. A `recordinglink` marker in
+  a dynamic-fallback AR's `<dd>` is always a genuine distinct credited
+  recording, never a recording's own nested "decoration" the way an area
+  nests its own parent-area ancestry (the reason place/event/work/area/series
+  stay excluded) — so it's safe to always treat as a row/segment boundary.
+  `_splitColumnByEntityKind` still collapses a single-kind set to one
+  `'default'` column (no "Dj-mix of recording" suffix), since the artist's
+  nested marker never contributes a second kind here. Affects every
+  recording-to-recording dynamic column with 2+ targets on the same `<dd>`
+  (DJ-mix of, Samples, remix of, edit of, Music videos, …), not just this one
+  release; single-target cases were already correct by coincidence (one
+  clone into one `<li>` looks right when there's only one item).
+- `node --check ShowAllEntityData.user.js` passed after the edit.

@@ -440,14 +440,21 @@ recording columns like "Samples"/"Music videos"), the column CAN split into
 one per kind, named `` `${baseColumnName} ${kind}` ``.
 A single-kind relationship's column name is never suffixed.
 
-**`PEER_SPLIT_KINDS` — only `artist`/`label` may ever trigger that split.**
-This is a load-bearing distinction, not an arbitrary restriction — two
-different relationship *shapes* share the same `<span class="{kind}link">`
-marker syntax but need opposite treatment:
-- **Peer-shaped** (artist/label): repeated markers of the same or different
-  peer kind mean MULTIPLE DISTINCT credited entities (comma/"and"-joined
-  artists, or a mix of artists and labels — see
-  `_buildPhonographicCopyrightTds`). Each marker is a real segment boundary.
+**`PEER_SPLIT_KINDS` — only `artist`/`label`/`recording` may ever trigger
+that split.** This is a load-bearing distinction, not an arbitrary
+restriction — two different relationship *shapes* share the same
+`<span class="{kind}link">` marker syntax but need opposite treatment:
+- **Peer-shaped** (artist/label/recording): repeated markers of the same or
+  different peer kind mean MULTIPLE DISTINCT credited entities
+  (comma/"and"-joined artists, or a mix of artists and labels — see
+  `_buildPhonographicCopyrightTds`; comma/"and"-joined source recordings on a
+  dynamic-fallback column like "DJ-mix of" — see `debug/DJ-mix-of-original.html`,
+  a 26-target credit). Each marker is a real segment boundary. `recording` is
+  safe here specifically because a credited recording's own artist marker
+  (`<span class="artistlink">`) always sits nested inside a `<bdi>`, never as
+  a direct child of `<dd>` — so it never itself competes as a second kind, and
+  `_collectEntityKinds` reports only `{recording}`, keeping the column
+  unsplit/unsuffixed even with multiple targets.
 - **Chain-shaped** (place/event/work/area/series): a SINGLE primary target
   (if any) accompanied by its own nested geographic/hierarchical decoration
   that legitimately reuses `arealink` repeatedly — e.g. a place's own "in
@@ -456,6 +463,9 @@ marker syntax but need opposite treatment:
   Marker KIND alone can't tell "the credited target" from "its own
   decoration" here, sometimes not even marker IDENTITY (an area's own
   ancestry reuses the exact same `arealink` class as the area itself).
+  `recording` deliberately stays OUT of this category: a dynamic-fallback
+  recording-to-recording relationship never nests a `recordinglink` inside
+  another as its own "decoration" the way an area nests its own ancestry.
 
 Treating a chain-shaped relationship as peer-splittable is exactly the bug
 that shipped once already: "mixed at:" fragmented into separate "…place"/
