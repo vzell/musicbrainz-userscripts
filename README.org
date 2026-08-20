@@ -94999,6 +94999,62 @@ with text "(show <N> more)" especially for digital releases.
 add a new boolean configuration variable (default: true), when enabled emulate a click on all these links (if present)
 to render all country/date values in each such data cell before rendering the final page
 
+* DONE add colors
+** i
+
+on pageType 'release-tracks' e.g. https://musicbrainz.org/release/31f6eb4a-d4a6-44e0-add8-da445566e4a1 add support for
+
+1.)
+
+Colorizing the attribute of a vocal or instrument AR (advanced relationship) type in light green by default (make the
+color configurable). The columns on the final rendered page are "Vocals" and "Instruments".
+
+A typical attribute is e.g. "lead" or "solo"
+
+@debug/colorize.html - rendered example entries
+
+If there are other columns where attributes are supported do this there too.
+
+2.)
+
+render the "credited as" info of a vocal or an instrument AR in italic
+
+E.g. for the instrument "drums (drum set)" it's typically credited as just "drums" (currently rendered in angle brackets)
+
+Maybe there are other entities/columns where the "credited as" exists, do the same there too.
+
+3.)
+
+make sure to not break the unique value drop down entries when these entries now have colorization/"italic font" support
+
+** b
+
+actually choose another green based color, as it's almost invisible against the current color palette
+
+** b
+
+actually also make the current green colored implementation also render in italic
+
+* DONE add "Order" support to e.g. "compilation of / compiled in" "DJ-mix of / DJ-mixes"
+
+MusicBrainz releases support "<type> of" ARs which optionally can have an "Order" attribute like e.g.
+
+#+begin_example
+compilation of / compiled in
+DJ-mix of / DJ-mixes
+etc.
+#+end_example
+
+Typically there are multiple entries involved in such cases, see e.g. "DJ-mix of" on the release https://musicbrainz.org/release/a24eb845-0b82-44a7-8227-d13d4c1200dd
+
+#+begin_example
+@debug/DJ-mix-of-original.html - complete original page
+@debug/DJ-mix-of-fiinal.html - final rendered page where currently the column "Dj-mix of" isn't rendered as a multi-row column
+#+end_example
+
+In such cases where ARs in general have multiple entries, render the associated columns as multi-row columns
+
+
 
 * TODO In "Recording enineer" column, "John Cooper (engineer)" should always stay together, a bare "John Cooper" should never be extracted
 
@@ -95261,32 +95317,10 @@ and maybe more for other <entities>
 
 https://musicbrainz.org/<entity>/<MBID>/annotations
 
-* TODO add colors
 
-on pageType 'release-tracks' e.g. https://musicbrainz.org/release/31f6eb4a-d4a6-44e0-add8-da445566e4a1 add support for
+* TODO Add support for userscript "Tracklist Display" by @Better DJ-mix when present
 
-1.)
-
-Colorizing the attribute of a vocal or instrument AR (advanced relationship) type in light green by default (make the
-color configurable). The columns on the final rendered page are "Vocals" and "Instruments".
-
-A typical attribute is e.g. "lead" or "solo"
-
-@debug/colorize.html - rendered example entries
-
-If there are other columns where attributes are supported do this there too.
-
-2.)
-
-render the "credited as" info of a vocal or an instrument AR in italic
-
-E.g. for the instrument "drums (drum set)" it's typically credited as just "drums" (currently rendered in angle brackets)
-
-Maybe there are other entities/columns where the "credited as" exists, do the same there too.
-
-3.)
-
-make sure to not break the unique value drop down entries when these entries now have colorization/"italic font" support
+Add support for userscript "Tracklist Display" by @Better DJ-mix at https://github.com/djkhjg/musicbrainz-userscripts/tree/main/dj-mix-tracklist when present
 
 
 * Checking CAA columns on different pageTypes
@@ -95667,4 +95701,19 @@ start with implementing, set up the first feature branch for step 1
 Implement Step 1 from ShowAllEntityData/PERFORMANCE.org
 
 
+* DONE fix annoying console error
+
+fix the following annoying console error
+
+#+begin_example
+Uncaught TypeError: Cannot set properties of null (setting 'style')
+    at window.onresize (userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:1238:15)
+#+end_example
+
+in the userscript "sanojjonas visualise stuff" by @sanojjonas
+
+#+begin_example
+@debug/san-live.js - userscript
+@debug/console-san.log - console log when rendering the following page, https://musicbrainz.org/release/a24eb845-0b82-44a7-8227-d13d4c1200dd
+#+end_example
 
