@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.896+2026-08-20
+// @version      9.99.897+2026-08-20
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -9234,28 +9234,41 @@
      * kinds where multiple occurrences within one `<dd>` genuinely mean
      * multiple DISTINCT credited entities (comma/"and"-joined artists or
      * labels, confirmed for `_buildPhonographicCopyrightTds`'s mixed
-     * artist+label case). Deliberately excludes `place`/`event`/`work`/
-     * `area`/`series`: those kinds' relationships are "chain"-shaped
-     * instead — a SINGLE primary target (if any) accompanied by its own
-     * nested geographic/hierarchical decoration that legitimately reuses
-     * `arealink` markers repeatedly (e.g. a place's own "in `<area>`,
-     * `<area>`, `<country>`" chain, or an area crediting ITS OWN parent
-     * area — see `debug/therising.html`'s "recorded in:"/"mixed at:"
-     * examples). Treating those as peer-splittable fragmented a single
-     * "A&M Studios in Hollywood" place credit into two separate "…place"/
-     * "…area" columns, and fragmented a single "Asbury Park, New Jersey,
-     * United States" area chain into multiple rows — both real regressions
-     * this constant fixes. Any relationship shaped like that needs its own
-     * dedicated handler (see `_buildRecordedAtPlaceTd`/`_buildRecordedInAreaTd`)
-     * rather than relying on generic peer-splitting; the dynamic AR-column
-     * fallback (`_classifyArDt`) only ever passes this restricted set to
+     * artist+label case; comma/"and"-joined source recordings, confirmed for
+     * a dynamic-fallback "DJ-mix of" credit listing 26 separate source
+     * recordings — see `debug/DJ-mix-of-original.html`). Deliberately
+     * excludes `place`/`event`/`work`/`area`/`series`: those kinds'
+     * relationships are "chain"-shaped instead — a SINGLE primary target (if
+     * any) accompanied by its own nested geographic/hierarchical decoration
+     * that legitimately reuses `arealink` markers repeatedly (e.g. a place's
+     * own "in `<area>`, `<area>`, `<country>`" chain, or an area crediting
+     * ITS OWN parent area — see `debug/therising.html`'s "recorded in:"/
+     * "mixed at:" examples). Treating those as peer-splittable fragmented a
+     * single "A&M Studios in Hollywood" place credit into two separate
+     * "…place"/"…area" columns, and fragmented a single "Asbury Park, New
+     * Jersey, United States" area chain into multiple rows — both real
+     * regressions this constant fixes. `recording` carries no such risk: a
+     * dynamic-fallback recording-to-recording relationship (DJ-mix of,
+     * Samples, remix of, edit of, Music videos, …) never nests a
+     * `recordinglink` inside another as its own "decoration" the way an area
+     * nests its own ancestry — every `recordinglink` marker is always a
+     * distinct credited recording, so it's safe to always treat as a peer
+     * boundary. (The credited artist's own `<span class="artistlink">` for
+     * each recording sits nested inside a `<bdi>`, never as a direct child
+     * of `<dd>`, so it never itself contributes a second, competing kind
+     * here — `_collectEntityKinds` only reports `{recording}`, keeping the
+     * column unsplit/unsuffixed even with `recording` now included.) Any
+     * relationship shaped like the chain kinds above needs its own dedicated
+     * handler (see `_buildRecordedAtPlaceTd`/`_buildRecordedInAreaTd`) rather
+     * than relying on generic peer-splitting; the dynamic AR-column fallback
+     * (`_classifyArDt`) only ever passes this restricted set to
      * `_splitColumnByEntityKind`/`_buildKindSplitListTd`, so an unknown
      * FUTURE place/event/work/area-shaped relationship safely falls back to
      * `_buildKindSplitListTd`'s `kinds.size === 0` "clone whole `<dd>`
      * verbatim, one row" behavior instead of fragmenting.
      * @type {string[]}
      */
-    const PEER_SPLIT_KINDS = ['artist', 'label'];
+    const PEER_SPLIT_KINDS = ['artist', 'label', 'recording'];
 
     /**
      * `kinds` filtered down to `PEER_SPLIT_KINDS` — the set the

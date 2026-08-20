@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.897",
+    "date": "2026-08-20",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'release-tracks': a dynamic-fallback AR column crediting MULTIPLE distinct source recordings in one `<dd>` (e.g. \"DJ-mix of\" — confirmed via `debug/DJ-mix-of-original.html`, a 26-target credit on https://musicbrainz.org/release/a24eb845-0b82-44a7-8227-d13d4c1200dd) collapsed all of them into a single `<li>` instead of one row per recording — the column's own multi-row count badge silently read \"1\". Root cause: `_collectEntityKinds(dd)` only detects a DIRECT-child `<span class=\"recordinglink\">` marker (the credited artist's own `<span class=\"artistlink\">` sits nested inside a `<bdi>`, one level deeper, so it's never itself detected here), yielding `{recording}` — but `PEER_SPLIT_KINDS` (the set `_filterPeerKinds` restricts peer/row-boundary markers to) only listed `artist`/`label`, so `recording` was stripped to an empty set and `_buildKindSplitListTd` fell into its `kinds.size === 0` \"no recognized marker — clone the whole `<dd>` verbatim into one `<li>`\" branch. Added `'recording'` to `PEER_SPLIT_KINDS`: every `recordinglink` marker in a dynamic-fallback AR's `<dd>` is always a genuine distinct credited recording (never a recording's own nested \"decoration\", unlike the already-excluded place/event/work/area/series chain-shaped kinds), so it's safe to always treat as a row boundary. Affects every recording-to-recording dynamic column with 2+ targets (DJ-mix of, Samples, remix of, edit of, Music videos, …), not just this one release; single-target cases were already correct by coincidence (one clone into one `<li>` looks right when there's only one item) and remain unaffected. The column name stays unsuffixed (\"Dj-mix of\", not \"Dj-mix of recording\") since `_collectEntityKinds` still only ever reports the single `recording` kind for this shape."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.896",
     "date": "2026-08-20",
     "sections": [
