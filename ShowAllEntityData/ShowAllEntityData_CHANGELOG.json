@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.896",
+    "date": "2026-08-20",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "`release-tracks`: credit \"attribute\" words (e.g. \"lead\"/\"solo\" on a Vocals credit, \"additional\"/\"assistant\" on Engineer/Producer/Mixer, \"live\"/\"cover\" on \"Recording of work\") now render in italics and in a configurable color (new \"Credit attribute color\" setting, default a medium-dark green #2e7d32 chosen for readable contrast against the table's alternating row backgrounds) — applies to every column sharing the `.mb-credit-attr` sentinel, not just Vocals/Instruments. A credit's \"credited as\" alternate name (e.g. \"drums\" for \"drums (drum set)\", Vocals/Instruments only) now renders in italics too. All pure styling changes — unique-values dropdown per-attribute/per-credited-as filter entries are unaffected."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.895",
     "date": "2026-08-18",
     "sections": [
