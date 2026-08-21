@@ -95054,8 +95054,7 @@ Typically there are multiple entries involved in such cases, see e.g. "DJ-mix of
 
 In such cases where ARs in general have multiple entries, render the associated columns as multi-row columns
 
-
-* TODO plan: add unique values for each distinct role in the data cells for the "Authors"/"Other artists"
+* DONE plan: add unique values for each distinct role in the data cells for the "Authors"/"Other artists"
 ** i
 
 Currently for the pageType 'artist-works' e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
@@ -95086,11 +95085,26 @@ Call this section "Entity info - Role"
 
 actually the whole "WIP.9" change should go into the main branch directly, is that possible
 
-* TODO filtering on a e.g. "join phrase" like "Featuring" filters the right rows, but doesn't highlight the filter string if it's inside a collapsed multi-row data cell
 
-This is on e.g. the pageType 'artist-works' e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
+* TODO plan: filtering on a e.g. "join phrase" like "Featuring" filters the right rows, but doesn't highlight the filter string if it's inside a collapsed multi-row data cell
 
-Filtering on a e.g. "join phrase" like "Featuring" filters the right rows, but doesn't highlight the filter string if it's inside a collapsed multi-row data cell
+This is still on e.g. the pageType 'artist-works' e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
+
+Filtering on a e.g. "join phrase" like "Featuring" filters the right rows, but doesn't highlight the multi-row cell
+indicator in red with a yellow background
+
+#+begin_example
+<span class="mb-cell-collapse-toggle mb-collapse-toggle-has-match" title="Show all multi-row cell items (184)" role="button"
+#+end_example
+
+if it's inside a collapsed multi-row data cell, only if a data cell gets uncollpased and then collapsed again, the
+highlightning is applied
+
+#+begin_example
+@debug/filtered-1.html - Filtering on "join phrase" equal "Featuring" in column "Recording artists", - no highlight on multi-row indicator
+@debug/cell-uncollapsed.html - uncollapsed cell with the actual entry which matches the filter highlighted
+@debug/cell-collapsed.html - when collapsed again the same cell gets its multi-row indicator highlighted to indicate there is at least one non visible entry which fits to the filter string
+#+end_example
 
 
 * TODO add "Ctrl"-clicking to the current unique value drop down section headers with tooltip support
