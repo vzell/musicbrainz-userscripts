@@ -95762,3 +95762,27 @@ in the userscript "sanojjonas visualise stuff" by @sanojjonas
 @debug/console-san.log - console log when rendering the following page, https://musicbrainz.org/release/a24eb845-0b82-44a7-8227-d13d4c1200dd
 #+end_example
 
+
+* discussion
+** i
+
+My userscript '"VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities"' when rendering the pageType 'artist-events'
+e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events with about 4300 rows and the third party userscript 'MusicBrainz: More Flags Everywhere' active:
+
+During a fast scrollbar-drag it shows the sticky column (entity name) painting immediately while the rest of the row
+stays blank for a noticeable moment. ~debug/flags-rendering.html~'s single sampled ~<td>~ is 305KB, carrying two inline
+~data:image/svg+xml;base64,…~ images (~84KB and ~221KB of base64 text — up to ~230KB of raw SVG vector art combined) for
+one row's venue location.
+
+Please discuss ideas what we can do about it, inclusive contacting the original author of the thirdparty userscript
+
+** f
+
+If
+
+#+begin_example
+Add decoding="async" (and loading="lazy") to the <img> created in createFlagIcon().
+#+end_example
+
+would be implemented by the author, will our unique value drop down implementation still work and still show all flags
+
