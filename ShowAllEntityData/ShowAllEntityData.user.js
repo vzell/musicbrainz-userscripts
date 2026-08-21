@@ -869,6 +869,27 @@
             description: 'Show/hide the "👁️ Visible Columns" button for toggling column visibility'
         },
 
+        // Configurable lookup table for pre-hiding columns on first render.
+        // Each entry pairs a pageType (pageDefinitions `type` string) with a
+        // comma-separated, quoted list of column names to start unchecked in
+        // the "👁️ Visible" popup. Applied once per pageType — after that,
+        // whatever the user leaves the popup in is remembered instead.
+        sa_default_hidden_columns: {
+            label: 'Default Hidden Columns per Page Type',
+            type: 'table',
+            table_name: 'Default Hidden Columns',
+            columns: ['Page Type', 'Hidden Columns (comma-separated)'],
+            description: 'Columns pre-hidden (unchecked in the 👁️ Visible menu) the ' +
+                         'first time a given pageType\'s table is rendered. "Page Type" ' +
+                         'must match a pageDefinitions `type` string exactly (e.g. ' +
+                         '"release-tracks"). Quote each column name and separate with ' +
+                         'commas: "Column one","Column two" (quoting lets names contain ' +
+                         'blanks). Only applies once per pageType — if you manually change ' +
+                         'a column\'s visibility afterwards, your choice is remembered and ' +
+                         'this default is not re-applied. Populates a lookup consulted ' +
+                         'just before the 👁️ Visible button is built.'
+        },
+
         sa_enable_density_control: {
             label: 'Enable Table Density Control',
             type: 'checkbox',
@@ -18504,6 +18525,121 @@
         return { moveFocusTo, menuKeyHandler };
     }
 
+    // Column visibility is stored per pageType in GM storage as a plain object
+    // mapping  { "Column Name": true|false }.  Column names are used as keys
+    // (not indices) so that the state survives pages where injected columns shift
+    // the index layout between sessions.
+    const COLVIS_KEY_PREFIX = 'vz-mb-colvis-';
+
+    // Built-in seed for sa_default_hidden_columns (row-array shape: one
+    // [pageType, columnsCell] pair per pageDefinitions `type`). Written to
+    // GM storage the first time _loadDefaultHiddenColumnsMap() runs with no
+    // stored rows yet.
+    const SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT = [
+        { pageType: 'release-tracks', columns: '"ARs"' }
+    ];
+
+    /**
+     * Splits a `sa_default_hidden_columns` cell value into individual column
+     * names. Prefers quoted segments ("Column one","Column two") so names
+     * containing blanks parse correctly; falls back to a plain comma-split
+     * when the cell has no quotes at all.
+     * @param {string} str - Raw cell text from the "Hidden Columns" column
+     * @returns {string[]} Trimmed, non-empty column names
+     */
+    function _parseHiddenColumnsList(str) {
+        if (!str) return [];
+        const quoted = str.match(/"([^"]*)"/g);
+        if (quoted) {
+            return quoted.map(s => s.slice(1, -1).trim()).filter(Boolean);
+        }
+        return str.split(',').map(s => s.trim()).filter(Boolean);
+    }
+
+    /**
+     * Loads the `sa_default_hidden_columns` table setting into a
+     * `{ pageType: string[] }` lookup, seeding GM storage from
+     * SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT on first use (mirrors
+     * `_loadUnicodeCharsMappings()`'s lazy-seed pattern).
+     * @returns {Object<string, string[]>} Map of pageType to hidden column names
+     */
+    function _loadDefaultHiddenColumnsMap() {
+        const rows = (typeof Lib.getTableRows === 'function')
+            ? Lib.getTableRows('sa_default_hidden_columns') : [];
+        if (!Array.isArray(rows) || rows.length === 0) {
+            if (typeof GM_setValue !== 'undefined') {
+                const seedRows = SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT.map(e => [e.pageType, e.columns]);
+                GM_setValue('sa_default_hidden_columns', seedRows);
+            }
+            const map = {};
+            SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT.forEach(e => {
+                map[e.pageType] = _parseHiddenColumnsList(e.columns);
+            });
+            return map;
+        }
+        const map = {};
+        rows.filter(row => row[0]).forEach(row => {
+            map[row[0]] = _parseHiddenColumnsList(row[1]);
+        });
+        return map;
+    }
+
+    // Tracks, independently of the colvis state itself, whether the
+    // configured defaults have already been applied for a pageType.
+    // Deliberately NOT a sentinel key nested inside the vz-mb-colvis-{pt}
+    // object: saveColVisState() (inside addColumnVisibilityToggle()) fully
+    // OVERWRITES that whole object from the live checkboxes on every popup
+    // close — even one where nothing was changed — so a marker stored there
+    // would be silently dropped the next time the user merely opens and
+    // closes the menu, causing the defaults to wrongly re-apply (and
+    // re-hide a column the user had deliberately re-shown) on a later visit.
+    const COLVIS_DEFAULTS_APPLIED_PREFIX = 'vz-mb-colvis-defaults-applied-';
+
+    /**
+     * Applies this pageType's configured default hidden columns to its
+     * column-visibility GM storage, exactly once ever (tracked via
+     * COLVIS_DEFAULTS_APPLIED_PREFIX) — merged into whatever is already
+     * stored there rather than gated on it being empty, since merely
+     * opening and closing the 👁️ Visible popup already writes a full
+     * "everything visible" snapshot with no deliberate customization
+     * involved. The existing `loadColVisState()` restore path (inside
+     * `addColumnVisibilityToggle()`) then applies the merged result exactly
+     * as if the user had unchecked those columns and closed the popup.
+     * Also lazily seeds the `sa_default_hidden_columns` config table itself
+     * (via `_loadDefaultHiddenColumnsMap()`) on every call, unconditionally,
+     * so the settings-dialog table editor is never left empty regardless of
+     * which pageType happens to render first.
+     * @param {string} pt - The current pageType
+     */
+    function _seedDefaultHiddenColumnsForPageType(pt) {
+        if (typeof GM_getValue === 'undefined' || typeof GM_setValue === 'undefined') return;
+
+        const defaultsMap = _loadDefaultHiddenColumnsMap();
+        const hiddenColumns = defaultsMap[pt];
+        if (!Array.isArray(hiddenColumns) || hiddenColumns.length === 0) return;
+
+        const appliedKey = COLVIS_DEFAULTS_APPLIED_PREFIX + pt;
+        if (GM_getValue(appliedKey, false) === true) return; // already applied once
+
+        const colvisStorageKey = COLVIS_KEY_PREFIX + pt;
+        let state = {};
+        try {
+            const raw = GM_getValue(colvisStorageKey, null);
+            if (raw) state = JSON.parse(raw);
+        } catch (err) {
+            Lib.warn('ui', `Failed to read existing column visibility for "${pt}" before applying defaults:`, err);
+        }
+        hiddenColumns.forEach(colName => { state[colName] = false; });
+
+        try {
+            GM_setValue(colvisStorageKey, JSON.stringify(state));
+            GM_setValue(appliedKey, true);
+            Lib.debug('ui', `Applied default hidden columns for pageType "${pt}":`, state);
+        } catch (err) {
+            Lib.warn('ui', `Failed to apply default hidden columns for "${pt}":`, err);
+        }
+    }
+
     /**
      * Add a column visibility toggle button and menu to the controls
      * Allows users to show/hide columns in the table
@@ -18527,9 +18663,9 @@
         // Column visibility is stored per pageType in GM storage as a plain object
         // mapping  { "Column Name": true|false }.  Column names are used as keys
         // (not indices) so that the state survives pages where injected columns shift
-        // the index layout between sessions.
-        const COLVIS_KEY_PREFIX = 'vz-mb-colvis-';
-        const colvisStorageKey  = COLVIS_KEY_PREFIX + pageType;
+        // the index layout between sessions. (COLVIS_KEY_PREFIX is declared at
+        // module scope, above, so _seedDefaultHiddenColumnsForPageType() can share it.)
+        const colvisStorageKey = COLVIS_KEY_PREFIX + pageType;
 
         /**
          * Reads the current checkbox state as a plain `{ colName: bool }` object.
@@ -40272,6 +40408,7 @@ a { color: #1565c0; }`;
 
             // Add column visibility toggle for all tables
             if (Lib.settings.sa_enable_column_visibility) {
+                _seedDefaultHiddenColumnsForPageType(pageType);
                 document.querySelectorAll('table.tbl').forEach((table, index) => {
                     // Only add toggle for the first table to avoid duplicate buttons
                     if (index === 0) {
@@ -54982,6 +55119,7 @@ a { color: #1565c0; }`;
 
             // Add column visibility toggle for loaded table
             if (Lib.settings.sa_enable_column_visibility) {
+                _seedDefaultHiddenColumnsForPageType(pageType);
                 const mainTable = document.querySelector('table.tbl');
                 if (mainTable) {
                     addColumnVisibilityToggle(mainTable);

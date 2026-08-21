@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-08-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "New table-style setting `sa_default_hidden_columns` (Page Type → comma-separated, quoted column list) lets you pre-hide columns the first time a given pageType's table renders, without touching the 👁️ Visible popup manually. Applied once per pageType by seeding the existing per-pageType column-visibility GM storage before the popup is built — a column you later re-check yourself is remembered and never re-hidden. Ships with one default: `release-tracks` → `\"ARs\"`, so the ARs column starts collapsed/hidden on release-tracks pages instead of visible by default."
+        ]
+      }
+    ]
+  }
+]
