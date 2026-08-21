@@ -121,6 +121,71 @@ render. Reference: ~archive/filter-performance-fix-v1-single-table~'s WIP.2
 Independent of Steps 1-4 (different subsystem); can be done in any order
 relative to them.
 
+*** DONE Step 6: Flag-images hide/show toggle button
+
+Independent of Steps 1-5 above (different subsystem, different root cause):
+a manual, immediately-shippable complement to the eventual
+~content-visibility: auto~ fix for flag-heavy rows (see the "Trigger"
+paragraph below for the underlying scroll-jank problem this also addresses).
+Rather than changing how/when the browser paints already-present heavy DOM,
+this just removes the option to render it at all until asked for.
+
+Trigger: on tables whose rows carry inline flag imagery from the "More
+Flags Everywhere"/"Canadian Province Flags Everywhere" companion userscripts
+(custom/subdivision-level flags, e.g. a venue's city rendered as its own
+icon — see ~debug/flags-rendering.html~), a fast scrollbar-drag shows the
+sticky column (entity name) painting immediately while the rest of the row
+stays blank for a noticeable moment. ~debug/flags-rendering.html~'s single
+sampled ~<td>~ is 305KB, carrying two inline
+~data:image/svg+xml;base64,…~ images (~84KB and ~221KB of base64 text —
+up to ~230KB of raw SVG vector art combined) for one row's venue location.
+
+*Landed*: branch ~flags-toggle-button~, see
+~ShowAllEntityData_CHANGELOG.wip.json~ ~WIP.1~.
+
+- Confirmed via ~debug/flags-rendering.html~ and a full grep of every other
+  ~.flag~/~flag-XX~ use in the file: MusicBrainz's own native flags render
+  as ~<span class="flag flag-XX">~ (or ~<li class="flag flag-XX">~ in
+  script-rebuilt list cells) — CSS-only, no ~<img>~ at all. Only the
+  companion scripts inject an actual ~<img class="flag flag-custom-region">~
+  / ~<img class="flag flag-XX-prov">~ element carrying the heavy embedded
+  base64 SVG. A selector scoped to the ~<img>~ tag specifically
+  (~table.tbl img.flag~) therefore hides only the heavy third-party images
+  and never touches native flag rendering.
+- New settings key ~sa_enable_flags_toggle_button~ (default on). New global
+  toolbar button (~🚩~, id ~mb-flags-toggle-btn~), modeled directly on
+  ~addBarcodeHighlightToggleButton()~'s existing idempotent/visibility-guarded
+  pattern: inserted next to the barcode-highlight button, only injected once
+  at least one flag ~<img>~ is actually present (~_hasFlagImages()~), toggles
+  a ~body.mb-flags-hidden~ class that a single ~GM_addStyle~ rule
+  (~display:none !important~ on ~table.tbl img.flag~) reacts to — a pure CSS
+  toggle, no re-render or post-render hook-chain re-run needed, and immune to
+  the ~cloneNode(true)~-strips-listeners pitfall since the button itself
+  never lives inside a table row.
+- Detection timing: flag ~<img>~ injection is asynchronous (the companion
+  script decorates the DOM after the fact), unlike the native "Barcode"
+  column the barcode button's own visibility guard relies on being
+  synchronously present at fetch time. ~initAreaFlagRegionObserver()~ (a
+  pre-existing observer for a different purpose — Locality/Region
+  reclassification) was checked and rejected as a reuse target: it hard-requires
+  a Locality/Region/Country column trio and only watches a
+  ~data-flag-processed~ attribute on an existing anchor, so it would never
+  fire for an arbitrary chain-shaped AR column with no such trio (e.g.
+  ~release-tracks~' "Recorded at place" — exactly the shape
+  ~debug/flags-rendering.html~ was sampled from). Added a new, deliberately
+  broader ~initFlagsToggleButtonObserver()~ instead: sweeps immediately,
+  attaches a ~MutationObserver~ per ~table.tbl tbody~ (WeakSet-tracked,
+  mirroring ~_areaFlagObservedTbodies~) watching any childList mutation, plus
+  a few bounded fallback retries — mirroring
+  ~initAreaFlagRegionObserver()~'s own "belt and suspenders" pattern. Once
+  the button is successfully injected, all open observers disconnect
+  themselves.
+- Called from the same two render-pipeline hook points
+  ~addBarcodeHighlightToggleButton()~ already runs from (the live fetch
+  pipeline's render tail and the load-from-disk pipeline) — both already run
+  once per full page load regardless of single-/multi-table mode, so no
+  third call site was needed.
+
 ** Resuming after /clear
 
 Point a fresh session at this file plus the step number, e.g.:

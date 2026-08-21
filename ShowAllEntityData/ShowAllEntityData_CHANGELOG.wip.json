@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-08-21",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New toolbar toggle button (`🚩`, only injected once flag images are actually detected on the page) to hide/show the heavy inline `<img>` flag icons injected by the \"More Flags Everywhere\" / \"Canadian Province Flags Everywhere\" companion userscripts — each icon can carry 80-200KB+ of inline base64 SVG, and hiding them avoids the scroll-paint stall large tables can hit as a result. Native MusicBrainz country flags (plain CSS `<span class=\"flag flag-XX\">`, no `<img>`) are unaffected. New `sa_enable_flags_toggle_button` setting (default on)."
+        ]
+      }
+    ]
+  }
+]

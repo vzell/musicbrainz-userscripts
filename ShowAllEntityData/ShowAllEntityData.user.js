@@ -1926,6 +1926,30 @@
         },
 
         // ============================================================
+        // FLAGS TOGGLE SECTION
+        // Hides the heavy inline <img> flag icons injected by the
+        // "More Flags Everywhere" / "Canadian Province Flags Everywhere"
+        // companion userscripts (each icon can carry 80-200KB+ of inline
+        // base64 SVG), which can cause a noticeable scroll-paint stall on
+        // large tables. Native MusicBrainz country flags (plain CSS
+        // <span class="flag flag-XX">, no <img>) are never affected.
+        // ============================================================
+        divider_flags_toggle: {
+            type: 'divider',
+            label: '🚩 FLAGS TOGGLE'
+        },
+
+        sa_enable_flags_toggle_button: {
+            label: 'Enable Flags Toggle Button',
+            type: 'checkbox',
+            default: true,
+            description: 'Show a toolbar button (only when flag images are actually detected on the page) ' +
+                         'that hides/shows the heavy inline flag icons injected by the "More Flags Everywhere" / ' +
+                         '"Canadian Province Flags Everywhere" companion userscripts, to avoid the scroll-paint ' +
+                         'stall those large inline images can cause on big tables.'
+        },
+
+        // ============================================================
         // ARTIST ROLE COLOURS (used in tooltip for place-events "Artists" column)
         divider_artist_role_colours: {
             type: 'divider',
@@ -24947,6 +24971,133 @@ a { color: #1565c0; }`;
         ensureSettingsButtonIsLast();
     }
 
+    // ── Flags Toggle feature ────────────────────────────────────────────────
+
+    // Whether flag images are currently hidden. Starts false (visible) —
+    // the user opts in to hiding them via the toolbar button.
+    let areFlagsHidden = false;
+
+    /**
+     * Injects the CSS rule that hides every flag `<img>` when `<body>` carries
+     * `.mb-flags-hidden`. Scoped to the `<img>` tag specifically (not just the
+     * `.flag` class) so native MusicBrainz `<span class="flag flag-XX">` /
+     * `<li class="flag flag-XX">` markup (CSS-only, no `<img>`) is never
+     * affected — only the heavy third-party `<img class="flag …">` icons are.
+     * Idempotent: does nothing if the style has already been injected.
+     */
+    function _ensureFlagsToggleStyle() {
+        if (document.getElementById('mb-flags-toggle-style')) return;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            body.mb-flags-hidden table.tbl img.flag {
+                display: none !important;
+            }
+        `);
+        style.id = 'mb-flags-toggle-style';
+    }
+
+    /**
+     * Whether at least one third-party flag `<img>` (from "More Flags
+     * Everywhere" / "Canadian Province Flags Everywhere") is currently present
+     * anywhere in a rendered table. Native MusicBrainz flags render as a plain
+     * `<span>`/`<li>` with no `<img>`, so this never true-positives on those.
+     *
+     * @returns {boolean}
+     */
+    function _hasFlagImages() {
+        return document.querySelector('table.tbl img.flag') !== null;
+    }
+
+    /**
+     * Updates the flags toggle button appearance to reflect the current
+     * `areFlagsHidden` state.
+     * Visible (default) → default button style, tooltip "Hide flag images".
+     * Hidden            → dark-grey background + white text, tooltip "Show flag images".
+     *
+     * @param {HTMLButtonElement} btn - The `#mb-flags-toggle-btn` element.
+     */
+    function updateFlagsToggleBtnState(btn) {
+        if (!btn) return;
+        if (!areFlagsHidden) {
+            btn.style.background  = '';
+            btn.style.borderColor = '';
+            btn.style.color       = '';
+            btn.title = 'Hide flag images (from "More Flags Everywhere" / "Canadian Province Flags Everywhere") — reduces scroll-paint stalls on large tables';
+        } else {
+            btn.style.background  = '#555555';
+            btn.style.borderColor = '#333333';
+            btn.style.color       = '#ffffff';
+            btn.title = 'Show flag images again';
+        }
+    }
+
+    /**
+     * Adds the flags toggle button to the controls bar, positioned right after
+     * the barcode-highlight button (or before `#mb-density-btn` if that button
+     * isn't present).
+     *
+     * Visibility guard: only injected once at least one third-party flag
+     * `<img>` is actually present on the page (see `_hasFlagImages()`) — flag
+     * injection by the companion userscripts is asynchronous, so callers
+     * should use `initFlagsToggleButtonObserver()` rather than calling this
+     * directly when the flags may not have been decorated yet.
+     *
+     * Clicking toggles `areFlagsHidden` and `document.body`'s
+     * `.mb-flags-hidden` class — a pure CSS toggle (see `_ensureFlagsToggleStyle`),
+     * no re-render/hook-chain re-run needed.
+     *
+     * Idempotent: does nothing if the button already exists in the DOM.
+     * Guarded by `Lib.settings.sa_enable_flags_toggle_button`.
+     */
+    function addFlagsToggleButton() {
+        if (!Lib.settings.sa_enable_flags_toggle_button) return;
+
+        const controlsContainer = document.getElementById('mb-show-all-controls-container');
+        if (!controlsContainer) return;
+
+        if (document.getElementById('mb-flags-toggle-btn')) return;
+
+        if (!_hasFlagImages()) return;
+
+        _ensureFlagsToggleStyle();
+
+        const btn = document.createElement('button');
+        btn.id      = 'mb-flags-toggle-btn';
+        btn.type    = 'button';
+        btn.innerHTML = '<span>🚩</span>';
+        btn.style.cssText = uiActionBtnBaseCSS()
+            .replace(/font-size:[^;]+;/, 'font-size:0.9em;')
+            .replace(/padding:(\S+)\s+(\S+);/, (_, v) => `padding:${v} 4px;`);
+
+        updateFlagsToggleBtnState(btn);
+
+        btn.addEventListener('click', () => {
+            areFlagsHidden = !areFlagsHidden;
+            document.body.classList.toggle('mb-flags-hidden', areFlagsHidden);
+            updateFlagsToggleBtnState(btn);
+            Lib.debug('render', `Flags toggle button: flags now ${areFlagsHidden ? 'HIDDEN' : 'visible'}`);
+        });
+
+        // Insert right after the barcode button (Visible | Barcode | Flags | Density);
+        // fall back to before Density if the barcode button isn't present.
+        const barcodeBtn = document.getElementById('mb-barcode-highlight-btn');
+        const densityBtn = document.getElementById('mb-density-btn');
+        if (barcodeBtn && barcodeBtn.nextSibling) {
+            controlsContainer.insertBefore(btn, barcodeBtn.nextSibling);
+        } else if (barcodeBtn) {
+            controlsContainer.appendChild(btn);
+        } else if (densityBtn) {
+            controlsContainer.insertBefore(btn, densityBtn);
+        } else {
+            controlsContainer.appendChild(btn);
+        }
+
+        Lib.debug('ui', 'Flags toggle button added to controls');
+        ensureSettingsButtonIsLast();
+    }
+
+    // ── end Flags Toggle feature ────────────────────────────────────────────
+
     /**
      * Table density configurations
      * Defines padding, font size, and line height for different density levels
@@ -40283,6 +40434,9 @@ a { color: #1565c0; }`;
             // Add barcode highlight toggle button (between Visible and Density)
             addBarcodeHighlightToggleButton();
 
+            // Add flags toggle button, once flag images actually appear (async)
+            initFlagsToggleButtonObserver();
+
             // Add density control
             if (Lib.settings.sa_enable_density_control) {
                 addDensityControl();
@@ -41110,6 +41264,58 @@ a { color: #1565c0; }`;
                 setTimeout(() => _sweepAreaFlagRegionCorrections(tbody, trios), delay);
             });
         });
+    }
+
+    const _flagsToggleObservedTbodies = new WeakSet();
+    /**
+     * Ensures the flags toggle button (`addFlagsToggleButton()`) gets injected
+     * as soon as a third-party flag `<img>` actually appears on the page, even
+     * though that decoration happens asynchronously (the "More Flags
+     * Everywhere" / "Canadian Province Flags Everywhere" companion userscripts
+     * inject it after the fact, not synchronously at fetch time the way a
+     * native "Barcode" column is).
+     *
+     * NOT a reuse of `initAreaFlagRegionObserver()` — that observer hard-requires
+     * a Locality/Region/Country column trio (`_flagRegionColumnTrios`) and only
+     * watches a `data-flag-processed` attribute on an existing anchor, so it
+     * would never fire for an arbitrary chain-shaped AR column with no such
+     * trio (e.g. `release-tracks`' "Recorded at place" — see `debug/flags-rendering.html`,
+     * the exact shape that motivated this feature). This watcher is
+     * deliberately broader: any `<img>`/`<span class="area-icon">` insertion
+     * anywhere in a `table.tbl` tbody is enough.
+     *
+     * Belt-and-suspenders, mirroring `initAreaFlagRegionObserver()`'s own
+     * pattern: runs `addFlagsToggleButton()` immediately (covers decoration
+     * that already finished), attaches a `MutationObserver` per tbody
+     * (WeakSet-tracked in `_flagsToggleObservedTbodies` so repeated calls,
+     * e.g. from a filter/sort re-render, don't attach duplicates) that retries
+     * on every subsequent mutation, and schedules a few bounded fallback
+     * retries. Once the button is successfully injected, all still-open
+     * observers disconnect themselves — there is nothing left to watch for.
+     */
+    function initFlagsToggleButtonObserver() {
+        addFlagsToggleButton();
+        if (document.getElementById('mb-flags-toggle-btn')) return;
+
+        const observers = [];
+        const tryInject = () => {
+            if (document.getElementById('mb-flags-toggle-btn')) return;
+            addFlagsToggleButton();
+            if (document.getElementById('mb-flags-toggle-btn')) {
+                observers.forEach(o => o.disconnect());
+            }
+        };
+
+        document.querySelectorAll('table.tbl tbody').forEach(tbody => {
+            if (_flagsToggleObservedTbodies.has(tbody)) return;
+            _flagsToggleObservedTbodies.add(tbody);
+
+            const observer = new MutationObserver(tryInject);
+            observer.observe(tbody, { childList: true, subtree: true });
+            observers.push(observer);
+        });
+
+        [500, 1500, 3000, 6000].forEach(delay => setTimeout(tryInject, delay));
     }
 
     /**
@@ -54990,6 +55196,9 @@ a { color: #1565c0; }`;
 
             // Add barcode highlight toggle button (between Visible and Density)
             addBarcodeHighlightToggleButton();
+
+            // Add flags toggle button, once flag images actually appear (async)
+            initFlagsToggleButtonObserver();
 
             // Add density control
             if (Lib.settings.sa_enable_density_control) {
