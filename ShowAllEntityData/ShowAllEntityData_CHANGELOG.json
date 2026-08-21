@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.900",
+    "date": "2026-08-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Unique-values dropdown: Ctrl+Click (or Ctrl+Enter/Ctrl+Space) on any section header now collapses/expands EVERY section at once, using that header's own new state — a plain click still toggles just the one section clicked. Mirrors the existing column-header collapse button's own 'this modifier means apply to everything' Ctrl+Click convention. Each header now also shows a tooltip describing what a click (and Ctrl+Click) will do, kept in sync by a new shared _applyUniqSectionState()/_uniqSectionTitle() pair that both the click handler and _applySynBoxQuickFilter()'s quickfilter-driven section show/hide go through, so the tooltip never goes stale relative to the section's actual expand/collapse state."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.899",
     "date": "2026-08-21",
     "sections": [

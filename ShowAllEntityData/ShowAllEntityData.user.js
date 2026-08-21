@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.899+2026-08-21
+// @version      9.99.900+2026-08-21
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -46995,6 +46995,38 @@ a { color: #1565c0; }`;
             _uniqSectionCollapseState[key] = collapsed;
             GM_setValue(MB_UNIQ_SECTION_COLLAPSE_KEY, _uniqSectionCollapseState);
         };
+        /**
+         * Builds a section header's tooltip text, reflecting the action a
+         * plain click would currently perform and mentioning the Ctrl+Click
+         * "apply to every section at once" shortcut.
+         *
+         * @param {string} label - `SYN_SECTION_META[key].label`
+         * @param {boolean} collapsed - the section's CURRENT (pre-click) state
+         * @returns {string}
+         */
+        const _uniqSectionTitle = (label, collapsed) => collapsed
+            ? `Expand "${label}" section (Ctrl+Click to expand ALL sections at once)`
+            : `Collapse "${label}" section (Ctrl+Click to collapse ALL sections at once)`;
+        /**
+         * Applies one collapsed/expanded state to a single section's DOM
+         * (items box, toggle glyph, header tooltip) and persists it via
+         * `_setUniqSectionCollapsed()`. The single place both a plain click
+         * (one section) and a Ctrl+Click (every section in `_synSections`,
+         * see `getOrCreateSynSection()`'s `toggleSection`) go through, so
+         * the two never drift out of sync with each other.
+         *
+         * @param {HTMLElement} itemsBoxEl
+         * @param {HTMLElement} glyphEl
+         * @param {HTMLElement} headerEl
+         * @param {string} sectionKey
+         * @param {boolean} collapsed
+         */
+        const _applyUniqSectionState = (itemsBoxEl, glyphEl, headerEl, sectionKey, collapsed) => {
+            itemsBoxEl.classList.toggle('mb-uniq-section-collapsed', collapsed);
+            glyphEl.textContent = collapsed ? '▶' : '▼';
+            headerEl.title = _uniqSectionTitle(SYN_SECTION_META[sectionKey].label, collapsed);
+            _setUniqSectionCollapsed(sectionKey, collapsed);
+        };
         /** @type {Map<string, {wrapper: HTMLElement, header: HTMLElement, itemsBox: HTMLElement, toggleGlyph: HTMLElement, matchCountSpan: HTMLElement, key: string}>} */
         const _synSections = new Map();
 
@@ -47035,6 +47067,7 @@ a { color: #1565c0; }`;
             header.setAttribute('tabindex', '0');
 
             const collapsed = _uniqSectionCollapseState[key] === true;
+            header.title = _uniqSectionTitle(meta.label, collapsed);
 
             const toggleGlyph = document.createElement('span');
             toggleGlyph.className = 'mb-uniq-section-toggle';
@@ -47083,16 +47116,25 @@ a { color: #1565c0; }`;
             itemsBox.setAttribute('role', 'group');
             if (collapsed) itemsBox.classList.add('mb-uniq-section-collapsed');
 
-            const toggleSection = () => {
+            // Plain click toggles just this section; Ctrl+Click applies THIS
+            // section's own new state to every section currently in
+            // _synSections at once (mass collapse/expand) — mirrors the
+            // column-header collapse button's own Ctrl+Click convention
+            // (_applyCollapseState's expandH2s param) of "this modifier
+            // means apply to everything, not just the one thing clicked".
+            const toggleSection = (ev) => {
                 const nowCollapsed = !itemsBox.classList.contains('mb-uniq-section-collapsed');
-                itemsBox.classList.toggle('mb-uniq-section-collapsed', nowCollapsed);
-                toggleGlyph.textContent = nowCollapsed ? '▶' : '▼';
-                _setUniqSectionCollapsed(key, nowCollapsed);
+                if (ev && ev.ctrlKey) {
+                    _synSections.forEach(sec =>
+                        _applyUniqSectionState(sec.itemsBox, sec.toggleGlyph, sec.header, sec.key, nowCollapsed));
+                } else {
+                    _applyUniqSectionState(itemsBox, toggleGlyph, header, key, nowCollapsed);
+                }
             };
             header.addEventListener('mousedown', ev => ev.preventDefault());
             header.addEventListener('click', toggleSection);
             header.addEventListener('keydown', ev => {
-                if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggleSection(); }
+                if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggleSection(ev); }
             });
 
             wrapper.appendChild(header);
@@ -47899,6 +47941,7 @@ a { color: #1565c0; }`;
                     section.wrapper.style.display = matchCount === 0 ? 'none' : '';
                     section.itemsBox.classList.toggle('mb-uniq-section-collapsed', matchCount === 0);
                     section.toggleGlyph.textContent = matchCount === 0 ? '▶' : '▼';
+                    section.header.title = _uniqSectionTitle(SYN_SECTION_META[section.key].label, matchCount === 0);
                     section.matchCountSpan.textContent = `(${matchCount})`;
                     section.matchCountSpan.style.display = '';
                 } else {
@@ -47906,6 +47949,7 @@ a { color: #1565c0; }`;
                     section.wrapper.style.display = '';
                     section.itemsBox.classList.toggle('mb-uniq-section-collapsed', persistedCollapsed);
                     section.toggleGlyph.textContent = persistedCollapsed ? '▶' : '▼';
+                    section.header.title = _uniqSectionTitle(SYN_SECTION_META[section.key].label, persistedCollapsed);
                     section.matchCountSpan.style.display = 'none';
                 }
             });
