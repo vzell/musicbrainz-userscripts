@@ -845,15 +845,6 @@
             description: "Row count to trigger progressive chunked rendering (0 to always use simple render)"
         },
 
-        sa_sort_progress_threshold: {
-            label: "Show sort progress above (rows)",
-            type: "number",
-            default: 10000,
-            min: 1000,
-            max: 100000,
-            description: "Show progress indicator when sorting tables with more than this many rows"
-        },
-
         // ============================================================
         // UI FEATURES SECTION
         // ============================================================
@@ -1148,13 +1139,6 @@
             description: 'Background color applied to H2 section headers when the cursor hovers over them (.mb-toggle-h2:hover). Default is the original MusicBrainz light grey (#f9f9f9). Takes precedence over the non-hover H2 background (sa_ui_h2_bg).'
         },
 
-        sa_ui_h2_artist_rgs_global_bg: {
-            label: 'Artist RGs — global super-header background color',
-            type: 'color_picker',
-            default: '#1b5e20',
-            description: 'Background color for the synthetic global super-header h2 injected above the "Official Artist Discography" section when the "🧮 Artist RGs" or "🧮 VA RGs" two-pass button is used. This header carries the global filter, global CAA toggle, and global master-toggle that act across ALL sub-sections. Default is dark green (#1b5e20) to visually distinguish it from the section-level h2 headers.'
-        },
-
         sa_ui_h3_hover_bg: {
             label: 'H3 sub-table-header hover background color',
             type: 'color_picker',
@@ -1286,18 +1270,6 @@
 
         // Configurable lookup tables for the Relationships column.
         // Each entry populates one REL_* constant at startup.
-        sa_rel_discography_mappings: {
-            label: 'Discography entry domain → favicon URL',
-            type: 'table',
-            table_name: 'Discography Entry Favicons',
-            columns: ['Domain', 'Favicon URL'],
-            description: 'Domain → custom favicon URL overrides for "discography entry" '
-                         + 'relationships. When a release-group or release has a discography '
-                         + 'entry URL whose domain matches an entry here, the specified icon '
-                         + 'is used instead of fetching favicon.ico. '
-                         + 'Populates REL_DISCOGRAPHY_MAPPINGS.'
-        },
-
         sa_rel_url_icon_classes: {
             label: 'Relation type → icon CSS class',
             type: 'table',
@@ -1593,14 +1565,6 @@
             colorFields: ['bg', 'color', 'bgHover'],
             default: '#2196F3|white|1px solid #0b7dda|#0b7dda',
             description: 'Load-from-Disk button: bg|color|border|bgHover'
-        },
-
-        // --- Download / export notification popup ---
-        sa_ui_download_notification_font_size: {
-            label: 'Download notification message font size',
-            type: 'text',
-            default: '1.2em',
-            description: 'Font size of the message text inside the "Save to Disk" / export download notification popup (e.g. 0.9em, 14px, 1rem)'
         },
 
         sa_dialog_save_export_autoclose_ms: {
@@ -13475,7 +13439,7 @@
             // from two links separated by a "/" text node).
             columnHeaderErasers: [ '▴/▾' ],
             // entityFeatures maps each possible H2 entity-type heading to its own
-            // feature set.  When the page is activated, resolveSeriesEntityFeatures()
+            // feature set.  When the page is activated, resolveEntityFeaturesFromH2()
             // reads the live H2 text and picks the matching entry.  If no match is
             // found the fallback first-key feature set is used so the page still works
             // for unrecognised entity types.
@@ -14317,7 +14281,7 @@
             // Series pages can contain Releases, Events, Works, Recordings, etc.
             buttons: [ { label: 'Show all Releases for Series', labelFromH2: true } ],
             // entityFeatures maps each possible H2 entity-type heading to its own
-            // feature set.  When the page is activated, resolveSeriesEntityFeatures()
+            // feature set.  When the page is activated, resolveEntityFeaturesFromH2()
             // reads the live H2 text and picks the matching entry.  If no match is
             // found the fallback 'Releases' feature set is used so the page still
             // works for unrecognised entity types.
@@ -14911,24 +14875,6 @@
     let ctrlMTooltipElement = null;
     let _colFilterTableIndex = -1; // module-level cycling state for focus-column-filter shortcut
     let _lastFocusedColFilterInput = null; // last .mb-col-filter-input that received focus — used by prefix-mode o/q/a shortcuts
-
-    /**
-     * Returns true when one of the script's modal dialogs is currently in the DOM.
-     * Used to suppress direct Ctrl+letter shortcuts while a dialog is open so that
-     * dialog keyboard navigation (Escape, Tab, arrows) is never shadowed.
-     * @returns {boolean}
-     */
-    function isSpecialDialogOpen() {
-        return !!(
-            document.getElementById('mb-shortcuts-help')     ||
-            document.getElementById('mb-app-help-dialog')    ||
-            document.getElementById('mb-stats-panel')        ||
-            document.getElementById('sa-export-dialog-overlay') ||
-            document.getElementById('sa-save-dialog-overlay')   ||
-            document.getElementById('sa-load-dialog-overlay')   ||
-            document.getElementById(`${SCRIPT_ID}-settings-overlay`)
-        );
-    }
 
     /**
      * Parse a shortcut prefix string such as "Ctrl+M", "Ctrl+.", "Alt+Shift+X"
@@ -18839,7 +18785,6 @@
 
         // Create dropdown menu container
         const menu = document.createElement('div');
-        menu.className = 'mb-column-visibility-menu';
         menu.style.cssText = `
             display: none;
             position: fixed;
@@ -19020,22 +18965,9 @@
 
         // Base style shared by all three action buttons in the menu.
         // We use explicit border/background so that browser-default :focus outline
-        // and our manual focus highlight are both clearly visible.
+        // is clearly visible.
         const menuBtnBase = 'font-size:0.8em; padding:4px 8px; cursor:pointer; border-radius:3px; border:1px solid #bbb; background:#f5f5f5; transition:background 0.15s, border-color 0.15s;';
-        const menuBtnFocused  = 'background:#d0e8ff; border-color:#5b9bd5;';   // blue tint when focused
         const menuBtnActive   = 'background:#a8c8f0; border-color:#3a7abf;';   // darker on press
-
-        /**
-         * Applies or removes the keyboard-focus highlight on an action button.
-         * @param {HTMLButtonElement} btn - The button to style
-         * @param {boolean} focused - true = highlight on, false = restore default
-         */
-        const setMenuBtnFocus = (btn, focused) => {
-            btn.style.cssText = menuBtnBase + (focused ? menuBtnFocused : '') + (btn === chooseConfigBtnRef ? 'width:100%; margin-top:5px;' : 'flex:1;');
-        };
-
-        // Forward reference so setMenuBtnFocus can distinguish chooseConfigBtn
-        let chooseConfigBtnRef = null;
 
         const selectAllBtn = document.createElement('button');
         selectAllBtn.innerHTML = makeButtonHTML('Select All', 'S');
@@ -19089,7 +19021,6 @@
 
         // Add "Choose current configuration" button
         const chooseConfigBtn = document.createElement('button');
-        chooseConfigBtnRef = chooseConfigBtn;   // resolve forward reference
         chooseConfigBtn.innerHTML = makeButtonHTML('Choose current configuration', 'c');
         chooseConfigBtn.style.cssText = menuBtnBase + 'width:100%; margin-top:5px;';
         chooseConfigBtn.type = 'button';
@@ -19793,7 +19724,7 @@
      * `_exportCleanHeaderText()`, which optionally appends unique-value counts and
      * sort-state glyphs according to settings.
      *
-     * Triggers `showExportNotification()` on success.
+     * Opens `showExportDialog()` to confirm the filename before saving.
      */
     function exportTableToCSV() {
         const table = document.querySelector('table.tbl');
@@ -20302,113 +20233,6 @@ ${sections.join('\n')}
             rowsTotal:    totalRowsExported + totalRowsSkipped,
             triggerButton: document.getElementById('mb-export-btn'),
         });
-    }
-
-    /**
-     * Show a transient centered popup with a message and a Close button.
-     * The popup fades out on close (Escape key or button click).
-     * An optional status bar element is updated at the same time.
-     *
-     * @param {string}      message        - Text to display inside the popup body.
-     * @param {string|null} statusText     - When non-null, written to the #mb-info-display bar.
-     * @param {string|null} statusTip      - Optional tooltip for the status bar entry.
-     */
-    function showDownloadNotification(message, statusText = null, statusTip = null) {
-        if (statusText !== null) {
-            _setInfoSub('mb-info-display-generic', statusText, statusTip || '');
-        }
-
-        const infoPopup = document.createElement('div');
-        infoPopup.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            border: 1px solid #888;
-            border-radius: 6px;
-            padding: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            z-index: 10000;
-            max-width: 400px;
-            text-align: center;
-            font-family: sans-serif;
-            opacity: 1;
-            transition: opacity 0.3s ease;
-        `;
-
-        const msg = document.createElement('div');
-        msg.textContent = message;
-        msg.style.marginBottom = '15px';
-        // Font size is configurable via sa_ui_download_notification_font_size
-        msg.style.fontSize = (Lib.settings.sa_ui_download_notification_font_size || '1.2em');
-
-        const closeBtn = document.createElement('button');
-        closeBtn.textContent = 'Close';
-        closeBtn.type = 'button';
-        closeBtn.style.cssText = `
-            padding: 6px 12px;
-            cursor: pointer;
-            border-radius: 4px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            font-size: 0.9em;
-            transition: background-color 0.2s, transform 0.1s, box-shadow 0.1s;
-        `;
-        closeBtn.addEventListener('mousedown', () => {
-            closeBtn.style.transform  = 'translateY(1px)';
-            closeBtn.style.boxShadow  = 'inset 0 2px 4px rgba(0,0,0,0.2)';
-        });
-        closeBtn.addEventListener('mouseup',   () => {
-            closeBtn.style.transform  = '';
-            closeBtn.style.boxShadow  = '';
-        });
-        closeBtn.addEventListener('mouseleave', () => {
-            closeBtn.style.transform  = '';
-            closeBtn.style.boxShadow  = '';
-        });
-
-        const closePopup = () => {
-            infoPopup.style.opacity = '0';
-            setTimeout(() => {
-                if (infoPopup.parentNode) infoPopup.parentNode.removeChild(infoPopup);
-                document.removeEventListener('keydown', onEscape);
-            }, 300);
-        };
-
-        const onEscape = (e) => { if (e.key === 'Escape') closePopup(); };
-
-        closeBtn.addEventListener('click', closePopup);
-        document.addEventListener('keydown', onEscape);
-
-        infoPopup.appendChild(msg);
-        infoPopup.appendChild(closeBtn);
-        document.body.appendChild(infoPopup);
-
-        // Focus the Close button so keyboard users can dismiss immediately with Enter/Space
-        setTimeout(() => closeBtn.focus(), 50);
-    }
-
-    /**
-     * Show export-complete notification popup and update the status bar.
-     *
-     * @param {string} format    - Export format label, e.g. 'CSV', 'JSON', 'Org-Mode'.
-     * @param {string} filename  - The filename that was written.
-     * @param {number} rowCount  - Number of rows exported.
-     * @param {number} totalRows - Total rows before filtering (0 = same as rowCount).
-     */
-    function showExportNotification(format, filename, rowCount, totalRows = 0) {
-        const isFiltered = totalRows > rowCount;
-        const rowSummary = isFiltered
-            ? `${rowCount.toLocaleString()} of ${totalRows.toLocaleString()} rows (${totalRows - rowCount} filtered out)`
-            : `${rowCount.toLocaleString()} rows`;
-
-        showDownloadNotification(
-            `${format} export complete: ${rowSummary}. Please monitor your browser for the file download.`,
-            `✓ Exported ${rowSummary} to ${filename}`,
-            `${format} format — ${rowSummary}. File saved to your browser's download folder.`
-        );
     }
 
     /**
@@ -21692,9 +21516,6 @@ ${sections.join('\n')}
                 if (!_histIsOpen()) return;
                 const visible    = listId === 'pin' ? _histPinVisible : _histLruVisible;
                 const selIdx     = listId === 'pin' ? _histPinSelIdx  : _histLruSelIdx;
-                const otherListId  = listId === 'pin' ? 'lru' : 'pin';
-                const otherVisible = listId === 'pin' ? _histLruVisible : _histPinVisible;
-                const otherEl      = listId === 'pin' ? lruList : pinList;
 
                 if (ev.key === 'ArrowDown') {
                     ev.preventDefault();
@@ -25317,7 +25138,6 @@ a { color: #1565c0; }`;
 
         // Create menu
         const menu = document.createElement('div');
-        menu.className = 'mb-density-menu';
         menu.style.cssText = `
             display: none;
             position: fixed;
@@ -28207,7 +28027,6 @@ a { color: #1565c0; }`;
 
     const filterWrapper = document.createElement('span');
     filterWrapper.id = 'mb-global-filter-wrapper';
-    filterWrapper.className = 'mb-filter-wrapper';
     filterWrapper.style.cssText = 'display:inline-flex; align-items:stretch; position:relative;';
 
     // ── Input wrapper (position:relative so ✕ can be absolute inside) ──────────
@@ -28906,7 +28725,6 @@ a { color: #1565c0; }`;
     // style-src, which silently drops plain injected <style> tags).
     const style = GM_addStyle(`
         .mb-sorting-active, .mb-sorting-active * { cursor: wait !important; }
-        .mb-show-all-btn-active { transform: translateY(1px); box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
         button.mb-show-all-btn-loading:disabled {
             cursor: default !important;
             color: buttontext !important;
@@ -29131,7 +28949,6 @@ a { color: #1565c0; }`;
         .mb-show-all-subtable-btn:hover { background: ${uiSubtableBtnVals().bgHover}; }
         .mb-show-single-table-btn { font-size: ${uiSubtableBtnVals().fontSize}; padding: ${uiSubtableBtnVals().padding}; cursor: pointer; vertical-align: middle; border-radius: ${uiSubtableBtnVals().borderRadius}; background: ${uiSubtableBtnVals().bg}; border: ${uiSubtableBtnVals().border}; }
         .mb-show-single-table-btn:hover { background: ${uiSubtableBtnVals().bgHover}; }
-        .mb-subtable-status-display { font-size: 0.85em; color: #333; font-weight: bold; vertical-align: middle; }
         .mb-filter-status { font-family: 'Courier New', monospace; font-size: 1.0em; vertical-align: middle; margin-right: 4px; }
         .mb-sort-status { font-family: 'Arial', sans-serif; font-size: 1.0em; font-style: italic; vertical-align: middle; }
         /* .mb-credit-attr / .mb-credit-altname are the shared credit-detail
@@ -31681,7 +31498,6 @@ a { color: #1565c0; }`;
         if (!document.getElementById(styleId)) {
             // GM_addStyle so this is exempt from page CSP style-src restrictions.
             const s = GM_addStyle(`
-                .sa-history-item:hover { background:#f0f0f0 !important; }
                 #sa-load-confirm:hover:not([disabled])           { background:#45a049 !important; }
                 #sa-load-cancel:hover                            { background:#e0e0e0 !important; }
                 #sa-filter-confirm:hover:not([disabled])         { background:#1565C0 !important; }
@@ -32353,9 +32169,6 @@ a { color: #1565c0; }`;
                 if (!_histIsOpen()) return;
                 const visible  = listId === 'pin' ? _histPinVisible : _histLruVisible;
                 const selIdx   = listId === 'pin' ? _histPinSelIdx  : _histLruSelIdx;
-                const otherListId  = listId === 'pin' ? 'lru' : 'pin';
-                const otherVisible = listId === 'pin' ? _histLruVisible : _histPinVisible;
-                const otherEl      = listId === 'pin' ? histLruList     : histPinList;
 
                 if (ev.key === 'ArrowDown') {
                     ev.preventDefault();
@@ -33433,8 +33246,8 @@ a { color: #1565c0; }`;
         // 'caa-inline-yes' / 'caa-inline-no' (stamped by _artSetInlineSortKey).
         // It MUST be stripped here so that ordinary text filter strings (e.g. "nl"
         // matching "caa-i[nl]ine-yes") do not produce false positives.  The
-        // applyUniqVal('caa-inline-yes') / applyUniqVal('caa-inline-no') column-
-        // filter path bypasses getCleanColumnText entirely and uses a direct
+        // A column filter set to the exact sentinel value 'caa-inline-yes' /
+        // 'caa-inline-no' bypasses getCleanColumnText entirely and uses a direct
         // querySelector('.mb-inline-art-sort-key').textContent check in testRowMatch.
         '.mb-inline-art-sort-key,' +
         // .mb-caa-sort-key (and analogous .mb-eaa-sort-key) carry the invisible
@@ -34302,9 +34115,6 @@ a { color: #1565c0; }`;
                 break;
         }
     }
-
-    /** @deprecated Use guardFilterPrefixKeydown() directly for new code. */
-    const guardColFilterPrefixKeydown = guardFilterPrefixKeydown;
 
     /**
      * Attach a real-time mouse-selection guard to a filter input so that the
@@ -36138,8 +35948,8 @@ a { color: #1565c0; }`;
                     // .mb-inline-art-sort-key spans are stripped from getCleanColumnText
                     // (they are now in _CLEAN_STRIP_SEL) to prevent sentinel text like
                     // "caa-inline-yes" from leaking into general filter matching.
-                    // The applyUniqVal('caa-inline-yes') / applyUniqVal('caa-inline-no')
-                    // column-filter path must still work, so we check the span directly.
+                    // A column filter set to the exact sentinel value 'caa-inline-yes' /
+                    // 'caa-inline-no' must still work, so we check the span directly.
                     // This is intentionally skipped for regexp filters (which would be
                     // odd for these sentinel values) and for exclude mode (the negation
                     // is applied later via _fIsExclude).
@@ -36156,8 +35966,9 @@ a { color: #1565c0; }`;
                     // initRelGroupings.  These spans are now in _CLEAN_STRIP_SEL so
                     // getCleanColumnText never sees them, preventing filter strings like
                     // 'no' from matching 'not readable', 'known', etc.
-                    // applyUniqVal('yes') / applyUniqVal('no') must still filter
-                    // correctly, so we check the span with an exact-match test.
+                    // A column filter set to the exact sentinel value 'yes' / 'no'
+                    // must still filter correctly, so we check the span with an
+                    // exact-match test.
                     if (!match) {
                         const _csk = cell
                             ? (cell.querySelector('.mb-caa-sort-key') ||
@@ -37652,8 +37463,8 @@ a { color: #1565c0; }`;
             }
             return maxPage;
         } else {
-            return maxPage;
             Lib.debug('fetch', 'determineMaxPageFromDOM: No pagination element found; assuming single page (maxPage = 1).');
+            return maxPage;
         }
     }
 
@@ -37833,9 +37644,6 @@ a { color: #1565c0; }`;
         return '';
     }
 
-    // Backward-compatibility alias so any external call sites still resolve.
-    const _seriesH2EntityType = _getH2EntityType;
-
     /**
      * For page definitions that carry an `entityFeatures` map (e.g.
      * 'series-releases', 'collections-releases'), resolves the correct
@@ -37958,9 +37766,6 @@ a { color: #1565c0; }`;
         }
         return {};
     }
-
-    // Backward-compatibility alias for code that still calls the old series-specific name.
-    const resolveSeriesEntityFeatures = resolveEntityFeaturesFromH2;
 
     /**
      * Converts a MusicBrainz search URL `type` parameter value into the plural
@@ -38145,7 +37950,7 @@ a { color: #1565c0; }`;
                 ...activeDefinition,
                 tableMode: entitySpecificFeatures.tableMode
             };
-            Lib.debug('init', `resolveSeriesEntityFeatures: tableMode overridden to '${entitySpecificFeatures.tableMode}' from entityFeatures`);
+            Lib.debug('init', `resolveEntityFeaturesFromH2: tableMode overridden to '${entitySpecificFeatures.tableMode}' from entityFeatures`);
         }
 
         // Track the label of the last clicked button so saveTableDataToDisk can embed it
@@ -46844,7 +46649,6 @@ a { color: #1565c0; }`;
         // synBox is inserted between qfBar and listBox; always present but
         // empty (zero height) when no synthetic entries apply.
         const synBox = document.createElement('div');
-        synBox.className = 'mb-col-uniq-syn-box';
         // Insert synBox right before listBox so it renders above regular values
         drop.insertBefore(synBox, listBox);
 
@@ -47695,8 +47499,8 @@ a { color: #1565c0; }`;
         // appends an invisible .mb-inline-art-sort-key span whose textContent is
         // 'caa-inline-yes' (image loaded) or 'caa-inline-no' (404/error).
         // Counting above reads that span; makeInlineArtItem delegates to
-        // applyUniqVal so the column filter pipeline handles filtering and reset
-        // identically to the CAA/EAA icon columns.
+        // _wireStructureCheckbox (applyUniqValueSet) so the column filter pipeline
+        // handles filtering and reset identically to the CAA/EAA icon columns.
         if (inlineArtType && (inlineArtYes > 0 || inlineArtNo > 0)) {
             const isCaa = inlineArtType === 'caa';
             const yesLabel = isCaa ? '🖼️ front-image available'    : '🖼️ poster available';
@@ -48127,45 +47931,11 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Writes `value` directly into the per-column filter input for `colIndex`
-     * of `table` and triggers an immediate filter pass via a synthetic input
-     * event (picked up by the existing debounced handler).
-     *
-     * @param {string}           value    - The value to use as a column filter.
-     * @param {HTMLTableElement} table    - The owning table element.
-     * @param {number}           colIndex - Zero-based column index.
-     */
-    function applyUniqVal(value, table, colIndex) {
-        const filterRow = table.querySelector('thead tr.mb-col-filter-row');
-        if (!filterRow) return;
-        const input = filterRow.querySelector(
-            `.mb-col-filter-input[data-col-idx="${colIndex}"]`
-        );
-        if (!input) return;
-
-        // Clear any stale checkbox value-set so the single text value takes effect
-        // (mutually exclusive with it).
-        delete input.dataset.mbUniqValues;
-        input.value = value;
-
-        // Apply the "active" background tint so the field looks highlighted
-        const activeBg = Lib.settings.sa_col_filter_active_bg || '#fff9c4';
-        input.style.backgroundColor = activeBg;
-
-        // Synthetic input event triggers the existing debounced filter handler
-        _dispatchInternalInputEvent(input, { bubbles: true });
-
-        Lib.debug('filter', `Uniq-drop: applied "${value}" to col ${colIndex}`);
-        return input;
-    }
-
-    /**
      * Activates (or clears) a checkbox-driven multi-value filter on a single
      * column, applying every currently-checked unique value/item/entity/
      * "Cell structure" mode as an OR'd set.
      *
-     * Unlike `applyUniqVal()` (single value, replaces the filter, closes the
-     * dropdown) this supports selecting multiple values at once: a row passes
+     * Supports selecting multiple values at once: a row passes
      * the column filter if its cell text — or, for a checked "Cell structure"
      * entry, its cell/DOM state via `_cellMatchesStructureMode()` — matches
      * ANY checked entry. An empty `selectedValues` array means "no
@@ -50330,7 +50100,7 @@ a { color: #1565c0; }`;
 
             // Skip download anchors — these trigger a file save dialog, not page
             // navigation.  Both conditions are true for every programmatic download
-            // link created by triggerStandardDownload() / export helpers:
+            // link created by the export/save helpers:
             //   • anchor.hasAttribute('download') — the 'download' attribute is set
             //   • href.startsWith('blob:')        — the href is a blob: object URL
             // Checking either is sufficient; checking both is a belt-and-braces guard
@@ -50517,7 +50287,6 @@ a { color: #1565c0; }`;
             // "tbl" stops all those passes from treating its rows as data rows.
             _subTd.querySelectorAll('table.tbl').forEach(innerTable => {
                 innerTable.classList.remove('tbl');
-                innerTable.classList.add('mb-cdtoc-inner-tracklist');
             });
 
             _subRow.appendChild(_subTd);
@@ -52477,11 +52246,6 @@ a { color: #1565c0; }`;
     // Ported from DisplayShortcutForRelationshipWithCustomFavicons.user.js
     // ──────────────────────────────────────────────────────────────────────────
 
-    let REL_DISCOGRAPHY_MAPPINGS = {
-        'bruceboots.com':    'https://volkerzell.de/favicons/bruceboots.png',
-        'web.archive.org':   'https://volkerzell.de/favicons/wayback.png',
-        'www.jungleland.it': 'https://volkerzell.de/favicons/jungeland-it.png',
-    };
     /**
      * Non-URL relationship type → icon image URL.
      * Maps release-group and release relationship types to icon data-URIs or URLs.
@@ -52743,11 +52507,6 @@ a { color: #1565c0; }`;
             return obj;
         }
 
-        REL_DISCOGRAPHY_MAPPINGS = _loadMap('sa_rel_discography_mappings', {
-            'bruceboots.com':    'https://volkerzell.de/favicons/bruceboots.png',
-            'web.archive.org':   'https://volkerzell.de/favicons/wayback.png',
-            'www.jungleland.it': 'https://volkerzell.de/favicons/jungeland-it.png',
-        });
         REL_URL_ICON_CLASSES = _loadMap('sa_rel_url_icon_classes', {
             'allmusic':                           'allmusic',
             'amazon asin':                        'amazon',
@@ -54217,9 +53976,6 @@ a { color: #1565c0; }`;
      * configSchema can invoke named callbacks when their button is clicked.
      */
     function openSettingsWithConfigButtons() {
-        const _fnRegistry = {
-            '_openEditPinnedFilterListFromSettings': _openEditPinnedFilterListFromSettings
-        };
         _injectSettingsConfigButtons(); // arm observer before showModal adds the overlay
         Lib.showSettings({
             functionRegistry: {
@@ -54436,31 +54192,6 @@ a { color: #1565c0; }`;
             Lib.error('cache', 'Failed to serialize table data:', err);
             alert('Failed to save data: ' + err.message);
         }
-    }
-
-    /**
-     * Triggers a browser file download for a Blob object-URL via an anchor
-     * element and shows a notification popup with optional row-count info.
-     *
-     * @param {string} url          - Object URL created via URL.createObjectURL().
-     * @param {string} filename     - Suggested save filename.
-     * @param {number} [rowCount=0] - Number of rows saved (0 = unknown / not shown).
-     */
-    function triggerStandardDownload(url, filename, rowCount = 0) {
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-
-        Lib.debug('cache', `Data saved to ${filename}`);
-
-        const rowNote = rowCount > 0 ? ` ${rowCount.toLocaleString()} rows serialized to ${filename}.` : '';
-        showDownloadNotification(
-            `Saving of JSON table data to the filesystem initiated.${rowNote} Please monitor your browser for the file download.`
-        );
     }
 
     /**
@@ -62314,10 +62045,10 @@ a { color: #1565c0; }`;
      * Because `getCleanColumnText()` walks display:none spans (they are only
      * excluded from the FILTER_REJECT set inside the TreeWalker; the clone-and-
      * strip pass targets named decorative classes that do NOT include this span's
-     * class), regular text-value matching via `applyUniqVal('caa-inline-yes')` /
-     * `applyUniqVal('caa-inline-no')` drives the column filter pipeline exactly
-     * like the invisible `mb-caa-sort-key` span already does for the CAA / EAA
-     * icon columns.  No bypass mode (mbInlineArtMode) or special DOM-walk is
+     * class), a column filter set to the exact sentinel value 'caa-inline-yes' /
+     * 'caa-inline-no' drives the column filter pipeline exactly like the invisible
+     * `mb-caa-sort-key` span already does for the CAA / EAA icon columns.  No
+     * bypass mode (mbInlineArtMode) or special DOM-walk is
      * required — Escape, ✕, and all "clear" buttons reset everything automatically.
      *
      * The helper is idempotent: if a span with class `mb-inline-art-sort-key`
