@@ -36542,6 +36542,17 @@ a { color: #1565c0; }`;
                     caaUpdateBigBoxForTable(_filterTable, _bbTblIdx);
                     eaaUpdateBigBoxForTable(_filterTable, _bbTblIdx);
                 }
+                // Sync mb-collapse-toggle-has-match on every existing collapse
+                // toggle to the highlights this pass just applied/cleared above.
+                // Same reasoning as the bigbox sync just above: initCollapsableColumns()
+                // (the only other place that stamps this class) now runs once at
+                // initial render instead of after every filter pass, so a NEW
+                // match appearing inside an already-built, already-collapsed cell
+                // would otherwise never get its "hidden match" indicator lit until
+                // the user manually expands/re-collapses that cell — the same
+                // stale-toggle problem applySubFilter() already solves for
+                // sub-table filters via this exact helper (see its own JSDoc).
+                _syncCollapseHasMatchInTable(_filterTable);
             }
             singleTableFilteredCount = _matchingSrc.length;
             // Finalize colon-aligned columns on the filtered (visible) subset -

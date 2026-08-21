@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.9",
+    "date": "2026-08-21",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "runFilter()'s in-place single-table filter path (PERFORMANCE.org Step 1) never re-synced a collapsed multi-row cell's mb-collapse-toggle-has-match indicator after applying a NEW filter's highlight, because initCollapsableColumns() — the only place that used to stamp that class — now runs once at initial render instead of after every filter pass. A match landing inside an already-built, already-collapsed cell (e.g. selecting a 'Join phrases' value like 'Featuring' that only matches a hidden <li>) showed no red/yellow 'hidden match' cue until the user manually expanded and re-collapsed that specific cell, which recomputes has-match via a separate, correct code path (ensureCollapseDelegate's click handler). Fixed by calling the existing _syncCollapseHasMatchInTable() helper (already used by applySubFilter() for the identical sub-table-filter case) right after the in-place show/hide pass, alongside the CAA/EAA bigbox sync that already runs there for the same 'used to happen via the old per-pass rebuild, now needs an explicit call' reason. The multi-table path (renderGroupedTable(), which still calls initCollapsableColumns() per sub-table on every filter pass) was unaffected."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.8",
     "date": "2026-08-21",
     "sections": [
