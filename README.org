@@ -95054,8 +95054,7 @@ Typically there are multiple entries involved in such cases, see e.g. "DJ-mix of
 
 In such cases where ARs in general have multiple entries, render the associated columns as multi-row columns
 
-
-* TODO plan: add unique values for each distinct role in the data cells for the "Authors"/"Other artists"
+* DONE plan: add unique values for each distinct role in the data cells for the "Authors"/"Other artists"
 ** i
 
 Currently for the pageType 'artist-works' e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
@@ -95086,7 +95085,7 @@ Call this section "Entity info - Role"
 
 actually the whole "WIP.9" change should go into the main branch directly, is that possible
 
-* TODO filtering on a e.g. "join phrase" like "Featuring" filters the right rows, but doesn't highlight the filter string if it's inside a collapsed multi-row data cell
+* DONE filtering on a e.g. "join phrase" like "Featuring" filters the right rows, but doesn't highlight the filter string if it's inside a collapsed multi-row data cell
 
 This is on e.g. the pageType 'artist-works' e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
 
@@ -95099,7 +95098,7 @@ Currently when clicking the section header in the unique value drop down, it tog
 section entries.
 
 Add "Ctrl"-clicking functionality to the current unique value drop down section headers (with tooltip support) so that
-all section are collapse/uncollapsed at once
+all sections are collapsed/uncollapsed at once
 
 
 * TODO In "Recording enineer" column, "John Cooper (engineer)" should always stay together, a bare "John Cooper" should never be extracted
