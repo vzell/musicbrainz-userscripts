@@ -18588,25 +18588,74 @@
         return map;
     }
 
-    // Tracks, independently of the colvis state itself, whether the
-    // configured defaults have already been applied for a pageType.
-    // Deliberately NOT a sentinel key nested inside the vz-mb-colvis-{pt}
-    // object: saveColVisState() (inside addColumnVisibilityToggle()) fully
-    // OVERWRITES that whole object from the live checkboxes on every popup
-    // close — even one where nothing was changed — so a marker stored there
-    // would be silently dropped the next time the user merely opens and
-    // closes the menu, causing the defaults to wrongly re-apply (and
-    // re-hide a column the user had deliberately re-shown) on a later visit.
-    const COLVIS_DEFAULTS_APPLIED_PREFIX = 'vz-mb-colvis-defaults-applied-';
+    // Tracks, per pageType, which column names the user has EXPLICITLY
+    // toggled at least once — a genuine trusted click on that column's own
+    // checkbox, or a deliberate bulk action (Select All / Deselect All /
+    // Choose current configuration). Never a column merely left at whatever
+    // value it happened to display. This is what lets a configured default
+    // hidden column keep re-asserting itself on every load — even across an
+    // incidental popup open/close, which (by pre-existing, intentional
+    // design — see saveColVisState()'s own doc comment) snapshots every
+    // checkbox's CURRENT value on every close, touched or not — without
+    // ever clobbering a column the user genuinely chose to change. Once a
+    // column is marked touched, it stays that way forever: the default is
+    // never re-asserted over a deliberate user choice again.
+    const COLVIS_TOUCHED_KEY_PREFIX = 'vz-mb-colvis-touched-';
 
     /**
-     * Applies this pageType's configured default hidden columns to its
-     * column-visibility GM storage, exactly once ever (tracked via
-     * COLVIS_DEFAULTS_APPLIED_PREFIX) — merged into whatever is already
-     * stored there rather than gated on it being empty, since merely
-     * opening and closing the 👁️ Visible popup already writes a full
-     * "everything visible" snapshot with no deliberate customization
-     * involved. The existing `loadColVisState()` restore path (inside
+     * Loads the set of column names explicitly touched by the user for a
+     * given pageType.
+     * @param {string} pt - The pageType
+     * @returns {Set<string>} Touched column names (empty set if none/unavailable)
+     */
+    function _loadTouchedColumnsSet(pt) {
+        if (typeof GM_getValue === 'undefined') return new Set();
+        try {
+            const raw = GM_getValue(COLVIS_TOUCHED_KEY_PREFIX + pt, null);
+            if (!raw) return new Set();
+            const arr = JSON.parse(raw);
+            return new Set(Array.isArray(arr) ? arr : []);
+        } catch (err) {
+            Lib.warn('ui', `Failed to load touched columns for "${pt}":`, err);
+            return new Set();
+        }
+    }
+
+    /**
+     * Records one or more column names as explicitly, deliberately touched
+     * by the user for a given pageType — persisted immediately so it
+     * survives even if the popup is never cleanly closed. Idempotent/no-op
+     * for names already recorded.
+     * @param {string} pt - The pageType
+     * @param {string[]} colNames - Column names to mark touched
+     */
+    function _markColumnsTouched(pt, colNames) {
+        if (typeof GM_getValue === 'undefined' || typeof GM_setValue === 'undefined') return;
+        const toAdd = colNames.filter(Boolean);
+        if (toAdd.length === 0) return;
+        const touched = _loadTouchedColumnsSet(pt);
+        const before = touched.size;
+        toAdd.forEach(name => touched.add(name));
+        if (touched.size === before) return; // nothing new
+        try {
+            GM_setValue(COLVIS_TOUCHED_KEY_PREFIX + pt, JSON.stringify(Array.from(touched)));
+            Lib.debug('ui', `Column visibility: marked touched for pageType "${pt}": ${JSON.stringify(toAdd)}`);
+        } catch (err) {
+            Lib.warn('ui', `Failed to persist touched columns for "${pt}":`, err);
+        }
+    }
+
+    /**
+     * Re-asserts this pageType's configured default hidden columns into its
+     * column-visibility GM storage — merged into whatever is already
+     * stored there. Runs on every render (not gated on a one-time marker):
+     * a configured column is forced back to hidden every single time,
+     * UNLESS the user has explicitly touched that specific column (see
+     * COLVIS_TOUCHED_KEY_PREFIX/_markColumnsTouched()), in which case their
+     * choice is left alone for good. This is what makes the default
+     * survive an incidental popup open/close that never touched the column
+     * in question, while still never overriding a deliberate user change.
+     * The existing `loadColVisState()` restore path (inside
      * `addColumnVisibilityToggle()`) then applies the merged result exactly
      * as if the user had unchecked those columns and closed the popup.
      * Also lazily seeds the `sa_default_hidden_columns` config table itself
@@ -18628,11 +18677,11 @@
             return;
         }
 
-        const appliedKey = COLVIS_DEFAULTS_APPLIED_PREFIX + pt;
-        const alreadyApplied = GM_getValue(appliedKey, false);
-        if (alreadyApplied === true) {
-            Lib.debug('ui', `_seedDefaultHiddenColumnsForPageType("${pt}"): already applied previously (key "${appliedKey}"), skipping`);
-            return; // already applied once
+        const touched = _loadTouchedColumnsSet(pt);
+        const untouchedHiddenColumns = hiddenColumns.filter(colName => !touched.has(colName));
+        if (untouchedHiddenColumns.length === 0) {
+            Lib.debug('ui', `_seedDefaultHiddenColumnsForPageType("${pt}"): every configured column already explicitly touched by the user, nothing to re-assert`);
+            return;
         }
 
         const colvisStorageKey = COLVIS_KEY_PREFIX + pt;
@@ -18643,12 +18692,11 @@
         } catch (err) {
             Lib.warn('ui', `Failed to read existing column visibility for "${pt}" before applying defaults:`, err);
         }
-        hiddenColumns.forEach(colName => { state[colName] = false; });
+        untouchedHiddenColumns.forEach(colName => { state[colName] = false; });
 
         try {
             GM_setValue(colvisStorageKey, JSON.stringify(state));
-            GM_setValue(appliedKey, true);
-            Lib.debug('ui', `Applied default hidden columns for pageType "${pt}":`, state);
+            Lib.debug('ui', `Re-asserted default hidden columns for pageType "${pt}" (not yet explicitly touched by the user): ${JSON.stringify(untouchedHiddenColumns)}`);
         } catch (err) {
             Lib.warn('ui', `Failed to apply default hidden columns for "${pt}":`, err);
         }
@@ -18859,8 +18907,16 @@
             label.textContent = colName;
             label.style.cssText = 'cursor: pointer; user-select: none; flex: 1;';
 
-            checkbox.addEventListener('change', () => {
+            checkbox.addEventListener('change', (e) => {
                 toggleColumn(table, index, checkbox.checked);
+
+                // A trusted event means a real user click on THIS checkbox
+                // (as opposed to the synthetic `dispatchEvent(new Event(...))`
+                // used by loadColVisState()'s restore step) — see
+                // COLVIS_TOUCHED_KEY_PREFIX's doc comment.
+                if (e.isTrusted) {
+                    _markColumnsTouched(pageType, [colName]);
+                }
 
                 // Count visible columns
                 const visibleCount = checkboxes.filter(cb => cb.checked).length;
@@ -18947,6 +19003,10 @@
                     cb.dispatchEvent(new Event('change'));
                 }
             });
+            // Explicit bulk action — mark every column touched even though the
+            // per-checkbox restore dispatch above is untrusted (see
+            // COLVIS_TOUCHED_KEY_PREFIX's doc comment).
+            _markColumnsTouched(pageType, checkboxes.map(cb => cb.dataset.columnName));
             updateButtonColor();
         };
 
@@ -18966,6 +19026,9 @@
                     cb.dispatchEvent(new Event('change'));
                 }
             });
+            // Explicit bulk action — mark every column touched (see
+            // selectAllBtn.onclick's identical comment above).
+            _markColumnsTouched(pageType, checkboxes.map(cb => cb.dataset.columnName));
             updateButtonColor();
         };
 
@@ -18985,6 +19048,10 @@
         chooseConfigBtn.addEventListener('mouseleave',() => { chooseConfigBtn.style.cssText = menuBtnBase + 'width:100%; margin-top:5px;'; });
         chooseConfigBtn.onclick = (e) => {
             e.stopPropagation();
+            // Explicitly "lock in my current view" — mark every column touched
+            // so no configured default ever re-asserts over it again (see
+            // COLVIS_TOUCHED_KEY_PREFIX's doc comment).
+            _markColumnsTouched(pageType, checkboxes.map(cb => cb.dataset.columnName));
             saveColVisState();
             // Global "Choose" overrides every sub-table: push this config to all
             // registered sub-table visibility widgets.  Each widget will apply the
@@ -19044,8 +19111,9 @@
                     initialY = 0;
                 }
 
-                // Reset selection and move focus to first checkbox
-                selectedCheckboxIndex = 0;
+                // Reset selection and move focus to first checkbox — moveFocusTo()
+                // tracks the current focus via menuFocusables.indexOf(document.activeElement)
+                // internally, so no separate index variable needs resetting here.
                 setTimeout(() => moveFocusTo(0), 10);
             }
         };
