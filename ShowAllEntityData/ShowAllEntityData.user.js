@@ -4544,14 +4544,6 @@
     }
 
     /**
-     * Derives the runtime injected-column descriptor list from activeDefinition.
-     * Reads features.injectedColumns (array of column name strings) and resolves
-     * entityType + WS2 inc options from pageType.
-     * Returns [] when sa_enable_relationships_column is false.
-     * @param {Object} def
-     * @returns {Array<{colName:string,entityType:string,incOptions:string[]}>}
-     */
-    /**
      * Derives the runtime injected-column descriptor list from a merged
      * activeDefinition object.
      *
@@ -4720,7 +4712,7 @@
      * Removes configured marker elements from a data row's cells in-place.
      *
      * For each eraser descriptor whose column index has been resolved (`colIdx !== -1`),
-     * the target cell is cleaned according to two distinct strategies, each driven by the
+     * the target cell is cleaned according to five distinct strategies, each driven by the
      * contents of `entry.erasers`:
      *
      * 1. **Text-content erasure** (symbols ▶, ➕, …):
@@ -4749,8 +4741,18 @@
      *    MB content itself (e.g. Length) — do NOT apply to a column whose own primary
      *    link/cell carries a jesus2099 marker class (e.g. a recording title `<a
      *    class="jesus2099userjs...recording">`), since that would delete the content too.
+     *    Also strips jesus2099's own in-place mutation of the `<td>` itself (a
+     *    `class="treleases"` plus a plugin `title` and inline `text-align:right` style)
+     *    so that a scraped cell never carries the "treleases" class into this script's
+     *    own captured rows — see the inline "Strategy 3b" comment for why that matters.
      *
-     * 4. **"Expand events" toggle-button erasure** (sentinel string `'expandEvents'`):
+     * 4. **wiencek suggested-work/work div erasure** (sentinel string `'wiencek'`):
+     *    Removes injected `<div class="suggested-work">` and `<div class="work">`
+     *    containers added by Michael Wiencek's "MusicBrainz: Expand/collapse release
+     *    groups" userscript on Artist-Recordings pages — orange/green suggested-work
+     *    hints and "live recording of …" relationship lines that clutter the Name cell.
+     *
+     * 5. **"Expand events" toggle-button erasure** (sentinel string `'expandEvents'`):
      *    Removes `<button class="expand-events-toggle …" data-event-gid="…">▸</button>`
      *    — the inline expand/collapse control injected into an Event cell, before this
      *    script's own fetch/scrape ever runs, by Dvir Yitzchaki's "Expand events"
@@ -11707,7 +11709,9 @@
      * activeDefinition object.
      *
      * `features.integerColumns` is an array of descriptor objects:
-     *   { sourceColumn: string, align?: 'L' | 'R' | 'C' }
+     *   { sourceColumn: string, align?: 'L' | 'R' | 'C' | string }
+     *   ('L'/'R'/'C' select standard alignment; any other single character is
+     *   treated as a split-align separator — see applyIntegerColumnStyling().)
      *
      * During table rendering, each cell in a matching column is styled using the
      * "centered inline-block + content-align" technique: the <td> itself is given
@@ -11756,21 +11760,24 @@
      *   • `min-width` is set via `--mb-int-col-min-width` (default 2ch) so
      *     callers can override per-column widths via CSS.
      *
-     * For align ':' (colon-split / decimal-separator alignment):
-     *   Splits the cell's text content at the FIRST ':' and produces three child
-     *   spans inside a `display:inline-block` wrapper:
+     * For any align value other than 'L'/'R'/'C' (a single-character split-align
+     * separator, e.g. ':'):
+     *   Splits the cell's text content at the LAST occurrence of that character
+     *   (so a value like '[H:]M:S' always splits at the M/S boundary) and produces
+     *   three child spans inside a `display:inline-block` wrapper:
      *
      *     <td style="text-align:center">
      *       <span class="mb-ic-wrap">
      *         <span class="mb-ic-left" > left part </span>  ← text-align:right
-     *         <span class="mb-ic-sep"  > :         </span>  ← visual center
+     *         <span class="mb-ic-sep"  > separator  </span>  ← visual center
      *         <span class="mb-ic-right"> right part</span>  ← text-align:left
      *       </span>
      *     </td>
      *
-     *   `mb-ic-left` min-width is initially ''. A second pass —
-     *   `finalizeColonAlignedColumns` — sets `min-width:Nch` so colons line
-     *   up across all rows.  Values with no ':' are treated as pure right parts.
+     *   `mb-ic-left`/`mb-ic-right` min-width are initially ''. A second pass —
+     *   `finalizeSplitAlignedColumns` — sets `min-width:Nch` on BOTH spans so the
+     *   separator lines up at an identical horizontal position across all rows.
+     *   Values with no separator character are treated as pure right parts.
      *
      * Idempotency: `cell.dataset.mbIntColStyled = '1'` prevents double-wrapping.
      *
@@ -11864,16 +11871,18 @@
     }
 
     /**
-     * finalizeColonAlignedColumns — pass 2 (post-collection, called once per
+     * finalizeSplitAlignedColumns — pass 2 (post-collection, called once per
      * render cycle, just before renderFinalTable / renderGroupedTable).
      *
-     * For every integerColumns descriptor with `align: ':'`:
+     * For every integerColumns descriptor with a split-align separator (any
+     * `align` value other than 'L'/'R'/'C'):
      *   1. Iterates every collected row and reads the text length of its
-     *      `.mb-ic-left` span in the target column.
-     *   2. Determines the maximum left-part character count across all rows.
-     *   3. Sets `min-width:Nch` on every `.mb-ic-left` span in that column so
-     *      that the `:` separator aligns vertically for all values regardless of
-     *      the width of the left part.
+     *      `.mb-ic-left` AND `.mb-ic-right` spans in the target column.
+     *   2. Determines the maximum left-part and right-part character counts
+     *      across all rows.
+     *   3. Sets `min-width:Nch` on every `.mb-ic-left` and `.mb-ic-right` span in
+     *      that column so the separator aligns at an identical horizontal
+     *      position for all values regardless of the width of either part.
      *
      * Works for both single-table pages (pass `allRows`) and multi-table pages
      * (pass `groupedRows.flatMap(g => g.rows)`).
@@ -41426,13 +41435,30 @@ a { color: #1565c0; }`;
      * on the page (single-table mode).
      *
      * Steps:
-     *   1. Clears the existing `<tbody>` content.
-     *   2. Applies multi-sort tints to each row (if a multi-sort is active).
-     *   3. Appends all rows to the tbody using a `DocumentFragment` for performance.
-     *   4. Re-wires the table for sorting via `makeTableSortableUnified`.
-     *   5. Re-applies column filter row and column visibility state.
-     *   6. Applies sticky headers and sticky column.
-     *   7. Updates the sub-table row-count stat tooltip.
+     *   1. Claims a render-generation token (see `_renderGeneration`) so a stale,
+     *      still-yielding chunked render from a previous call aborts instead of
+     *      appending rows after a newer render has taken over.
+     *   2. Clears the existing `<tbody>` content. Aborts (with an error log) if
+     *      `table.tbl tbody` isn't found, or if `rows` is empty.
+     *   3. Appends the rows — a plain `rows.forEach(r => tbody.appendChild(r))`
+     *      when `rowCount` is under `sa_chunked_render_threshold`, otherwise
+     *      delegates to `renderRowsChunked()` (batched, DocumentFragment-based,
+     *      yields between chunks) and aborts the remaining steps below if that
+     *      render was superseded while yielding.
+     *   4. Shows the Save-to-Disk button if `sa_enable_save_load` is on.
+     *   5. Re-applies multi-sort column tints for `'main_table'` if a multi-sort
+     *      is active — needed because every render replaces tbody content with
+     *      fresh, untinted row clones.
+     *   6. Installs (or re-confirms) the jesus2099-treleases MutationObserver,
+     *      unless `sa_enable_numeric_alignment` is off.
+     *
+     * Does NOT re-wire sorting, filter/visibility state, sticky headers/column,
+     * or the row-count tooltip — those are the caller's responsibility. For the
+     * `tableMode: 'single'` initial-render path that caller is
+     * `startFetchingProcess`, which calls `makeTableSortableUnified()` and
+     * `applyStickyColumn()` itself immediately after `await renderFinalTable(...)`.
+     * Also deliberately does NOT call `initAreaFlagRegionObserver()` here — see
+     * the inline comment at the end of this function for why.
      *
      * Called from `startFetchingProcess` (initial render), `runFilter` (single-table
      * re-render after a filter change), and the Load-from-Disk pipeline.
@@ -42541,7 +42567,7 @@ a { color: #1565c0; }`;
      * Renders multiple tables grouped by category (e.g., Official, Various Artists) with H3 headers
      * @param {Array} dataArray - Array of grouped data objects, each containing a label and rows
      * @param {boolean} isArtistMain - Whether this is the main artist page (affects rendering logic)
-     * @param {string} query - Optional pre-filter query to apply during rendering
+     * @param {string} [query=''] - Optional pre-filter query to apply during rendering
      * @returns {Promise<void>}
      */
     async function renderGroupedTable(dataArray, isArtistMain, query = '') {
@@ -50746,22 +50772,41 @@ a { color: #1565c0; }`;
      * Runs a set of post-render DOM clean-up tasks after `renderGroupedTable` or
      * `renderFinalTable` has completed.
      *
-     * Tasks performed (order-dependent):
+     * Tasks performed, in execution order:
      *   • search pages — relocates the injected "Searchform" h2 and native
      *     `div.searchform` to sit immediately after `#mb-status-displays-wrapper`.
-     *   • Removes stale sanojjonas load-more containers (`#load`, `#load2`, …,
-     *     `#bottom1`–`#bottom6`) that may still be present after the fetch.
-     *   • Relocates trailing h2 sections (e.g. "Relationships", "Related works")
-     *     to before the main data h2 when `sa_relocate_trailing_h2_sections` is on.
-     *   • Applies the H1 comment-span alias relocation on the final rendered page
-     *     when `sa_enable_h1_comment_span_relocation_on_final_page` is on.
-     *   • Moves the "Legal name:" paragraph below the artist subheader on
-     *     artist-releasegroups pages when the setting is enabled.
+     *   • taglookup pages — relocates `div.searchform` to sit immediately after
+     *     the injected "Searchform" h2.
+     *   • Wires cdtoc tracklist sub-row toggles via `_cdtocInitTracklistToggles()`.
+     *   • user-subscriptions — removes the redundant subscription-type nav paragraph.
+     *   • release-collections / releasegroup-collections — rewrites the intro
+     *     paragraph and drops the trailing "plus M other private collections" row.
+     *   • editor-subscribers — removes a trailing "Plus N other anonymous users"
+     *     row (splicing it out of `allRows`/`originalAllRows` too) and patches the
+     *     preceding paragraph and row-count stat to match.
+     *   • Applies the page definition's `removeSelector` (single element) and
+     *     `removeSelectors` (all matches of each selector) removals.
      *   • Removes the native MusicBrainz `div.filter` bar (redundant after the
      *     script injects its own filter UI).
-     *   • Applies the page definition's `removeSelector` element removal.
-     *   • Removes any stale sanojjonas/jesus2099 container IDs still present.
+     *   • Removes stale sanojjonas load-more containers (`#load`, `#load2`, …,
+     *     `#bottom1`–`#bottom6`) via `removeSanojjonasContainers()`.
      *   • Removes consecutive `<br>` runs and logs the cleanup.
+     *   • Re-applies the H1 comment-span alias relocation on the final rendered
+     *     page when `sa_enable_h1_comment_span_relocation_on_final_page` is on.
+     *   • Moves the "Legal name:" paragraph below the artist subheader on
+     *     artist-releasegroups pages when the setting is enabled.
+     *   • Relocates trailing h2 sections (e.g. "Relationships", "Related works")
+     *     to before the main data h2 via `_relocateTrailingH2Sections()`.
+     *   • Makes native Credits-section `<h3>`s collapsible via
+     *     `_makeCreditsH3sCollapsible()`.
+     *   • Hides `div.list-merge-buttons-row-container` when `sa_remove_checkbox_cell`
+     *     is enabled (kept in the DOM, not removed, so `initNavigationGuard()` can
+     *     still query the form structure).
+     *   • artist-releases — removes the three bare sibling text/anchor nodes that
+     *     make up the "Show VA releases instead" footer.
+     *   • Syncs filter-bar button visibility via `window.updateFilterButtonsVisibility()`
+     *     — the one page-type-agnostic hook that fires unconditionally on a plain
+     *     first load with no user interaction.
      */
     function finalCleanup() {
         Lib.debug('cleanup', 'Running final cleanup...');
@@ -50830,14 +50875,6 @@ a { color: #1565c0; }`;
                 }
             });
         }
-        // The rendered table may contain a trailing row "Plus N other anonymous
-        // users".  When found:
-        //   1. Parse N from the row text.
-        //   2. Remove the row from the table.
-        //   3. Patch the h2 row-count stat to reflect the reduced row count.
-        //   4. Rewrite the preceding <p> as
-        //      "There are currently <b>R</b> real and <b>N</b> anonymous users
-        //       subscribed to edits that you make:" where R = total - N.
         // ── release-collections / releasegroup-collections: rewrite intro paragraph ─
         // Pattern: "<EntityName> has been added to N collections:"
         // Last row:  "plus M other private collections"

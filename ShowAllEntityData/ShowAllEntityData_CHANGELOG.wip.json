@@ -1,0 +1,21 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 1/7 — core render pipeline (ColumnDataExtractor/SyntheticColumnDataExtractor registries, the buildActive* family, startFetchingProcess, renderFinalTable, renderGroupedTable, finalCleanup).",
+          "applyColumnErasers(): doc claimed 'two distinct strategies' and listed only 4 of the function's 5 actual erasure strategies (missing the wiencek suggested-work/work div strategy entirely, and mislabeling the expand-events strategy's number). Rewrote to document all 5 in their actual order, including the jesus2099 own-cell 'treleases' class/style stripping that was undocumented.",
+          "buildActiveIntegerColumns()/applyIntegerColumnStyling()/finalizeSplitAlignedColumns(): docs described the split-align feature as ':'-only (colon-specific), when the code accepts any single character as the split separator. Also fixed 'splits at the FIRST occurrence' → actually splits at the LAST occurrence (deliberate, for values like '[H:]M:S'), and renamed the finalizeSplitAlignedColumns() doc header from its old name finalizeColonAlignedColumns (stale after a prior rename — same failure shape as the v9.99.366 misattributed-JSDoc bug, though this one was at least still attached to the correct function). Also documented that min-width is set on BOTH the .mb-ic-left and .mb-ic-right spans, not just the left one.",
+          "renderFinalTable(): doc's steps 4-7 (sort re-wiring, filter/visibility reapply, sticky headers/column, row-count tooltip) don't happen inside this function at all — they're the caller's responsibility (startFetchingProcess calls them immediately after). Rewrote to describe the function's actual 6 steps, including the render-generation guard and the deliberate skip of initAreaFlagRegionObserver().",
+          "finalCleanup(): doc claimed it 'removes stale sanojjonas/jesus2099 container IDs' (jesus2099 removal doesn't exist in this function) and was missing 5 real tasks it performs (editor-subscribers row/paragraph patching, artist-releases VA-footer node removal, Credits h3 collapsibility, list-merge-buttons-row-container hiding, filter-bar visibility sync) plus the plural removeSelectors variant. Rewrote the full task list in actual execution order.",
+          "renderGroupedTable(): fixed @param {string} query to the file's established [name=default] convention: @param {string} [query=''].",
+          "Removed an orphaned duplicate JSDoc block (lines 4547-4553) sitting directly above a second, more complete JSDoc block for buildActiveInjectedColumns() — a short superseded draft with no function of its own beneath it.",
+          "Removed an orphaned floating comment inside finalCleanup() (the 'Plus N other anonymous users' 4-step description) that was misplaced between the user-subscriptions and release-collections blocks; the real editor-subscribers code ~75 lines below already carries its own correct, numbered inline comments describing the same steps."
+        ]
+      }
+    ]
+  }
+]
