@@ -1,5 +1,23 @@
 [
   {
+    "version": "9.99.898",
+    "date": "2026-08-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "New table-style setting `sa_default_hidden_columns` (Page Type → comma-separated, quoted column list) lets you pre-hide columns the first time a given pageType's table renders, without touching the 👁️ Visible popup manually. Ships with one default: `release-tracks` → `\"ARs\"`, so the ARs column starts hidden on release-tracks pages instead of visible by default. A configured column is tracked as hidden-by-default per pageType (`vz-mb-colvis-{pageType}` GM storage) and re-asserted on every render, UNLESS you explicitly touch that specific column yourself — a genuine click on its checkbox, or Select All / Deselect All / Choose current configuration (tracked separately via `vz-mb-colvis-touched-{pageType}`) — in which case your choice is remembered forever and the default never overrides it again. This per-column tracking is what lets the default survive simply opening and closing the 👁️ Visible popup without touching anything, which (by pre-existing design) still snapshots every checkbox's current value on close."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'👁️ Visible' column-visibility popup: clicking the toggle button threw `Uncaught ReferenceError: selectedCheckboxIndex is not defined` in the browser console on every open, from a dead assignment left over from an earlier refactor of `buildColVisMenuKeyboard()` (which now tracks keyboard focus via `menuFocusables.indexOf(document.activeElement)` instead of a separate index variable). The variable was never declared and never read anywhere else in the file. Removed the stray assignment; `moveFocusTo(0)` on the next line already resets keyboard focus to the first checkbox correctly on its own."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.897",
     "date": "2026-08-20",
     "sections": [
