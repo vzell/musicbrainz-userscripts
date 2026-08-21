@@ -18566,10 +18566,13 @@
     function _loadDefaultHiddenColumnsMap() {
         const rows = (typeof Lib.getTableRows === 'function')
             ? Lib.getTableRows('sa_default_hidden_columns') : [];
+        Lib.debug('ui', 'sa_default_hidden_columns raw rows from GM storage:', rows,
+            `(Lib.getTableRows is ${typeof Lib.getTableRows === 'function' ? 'available' : 'MISSING'})`);
         if (!Array.isArray(rows) || rows.length === 0) {
             if (typeof GM_setValue !== 'undefined') {
                 const seedRows = SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT.map(e => [e.pageType, e.columns]);
                 GM_setValue('sa_default_hidden_columns', seedRows);
+                Lib.debug('ui', 'sa_default_hidden_columns was empty — seeded built-in defaults:', seedRows);
             }
             const map = {};
             SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT.forEach(e => {
@@ -18581,6 +18584,7 @@
         rows.filter(row => row[0]).forEach(row => {
             map[row[0]] = _parseHiddenColumnsList(row[1]);
         });
+        Lib.debug('ui', 'sa_default_hidden_columns parsed map:', map);
         return map;
     }
 
@@ -18612,14 +18616,24 @@
      * @param {string} pt - The current pageType
      */
     function _seedDefaultHiddenColumnsForPageType(pt) {
-        if (typeof GM_getValue === 'undefined' || typeof GM_setValue === 'undefined') return;
+        if (typeof GM_getValue === 'undefined' || typeof GM_setValue === 'undefined') {
+            Lib.debug('ui', `_seedDefaultHiddenColumnsForPageType("${pt}"): GM_getValue/GM_setValue unavailable, skipping`);
+            return;
+        }
 
         const defaultsMap = _loadDefaultHiddenColumnsMap();
         const hiddenColumns = defaultsMap[pt];
-        if (!Array.isArray(hiddenColumns) || hiddenColumns.length === 0) return;
+        if (!Array.isArray(hiddenColumns) || hiddenColumns.length === 0) {
+            Lib.debug('ui', `_seedDefaultHiddenColumnsForPageType("${pt}"): no configured default hidden columns for this pageType`, defaultsMap);
+            return;
+        }
 
         const appliedKey = COLVIS_DEFAULTS_APPLIED_PREFIX + pt;
-        if (GM_getValue(appliedKey, false) === true) return; // already applied once
+        const alreadyApplied = GM_getValue(appliedKey, false);
+        if (alreadyApplied === true) {
+            Lib.debug('ui', `_seedDefaultHiddenColumnsForPageType("${pt}"): already applied previously (key "${appliedKey}"), skipping`);
+            return; // already applied once
+        }
 
         const colvisStorageKey = COLVIS_KEY_PREFIX + pt;
         let state = {};
@@ -18704,7 +18718,11 @@
                 const raw = GM_getValue(colvisStorageKey, null);
                 if (!raw) return null;
                 const parsed = JSON.parse(raw);
-                Lib.debug('ui', `Column visibility loaded for pageType "${pageType}":`, parsed);
+                // Logged as a JSON string (not the object directly) because
+                // the browser console's inline object preview truncates to a
+                // handful of keys — that truncation gets baked into any
+                // copy-pasted/exported console text, hiding later keys.
+                Lib.debug('ui', `Column visibility loaded for pageType "${pageType}": ${raw}`);
                 return parsed;
             } catch (err) {
                 Lib.warn('ui', `Failed to load column visibility for "${pageType}":`, err);
@@ -18862,6 +18880,7 @@
         // ── Restore persisted state (applied after all checkboxes are built) ────────
         // This must happen before the separator / action buttons are appended so that
         // updateButtonColor() below reflects the restored state correctly.
+        Lib.debug('ui', `Column visibility checkboxes built for pageType "${pageType}": ${JSON.stringify(checkboxes.map(cb => cb.dataset.columnName))}`);
         const savedState = loadColVisState();
         if (savedState) {
             checkboxes.forEach(cb => {
@@ -18873,6 +18892,8 @@
                         // Fire the change event so toggleColumn() hides/shows the DOM cells
                         cb.dispatchEvent(new Event('change'));
                     }
+                } else if (colName) {
+                    Lib.debug('ui', `Column visibility: no saved state entry for "${colName}" on pageType "${pageType}" — left at default (visible)`);
                 }
             });
             Lib.debug('ui', `Restored column visibility for pageType "${pageType}" from GM storage.`);
