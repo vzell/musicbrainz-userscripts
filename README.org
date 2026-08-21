@@ -95323,6 +95323,65 @@ https://musicbrainz.org/<entity>/<MBID>/annotations
 Add support for userscript "Tracklist Display" by @Better DJ-mix at https://github.com/djkhjg/musicbrainz-userscripts/tree/main/dj-mix-tracklist when present
 
 
+* TODO plan: add configurable column visibility per pageType
+** i
+
+Our userscript has the option to specify which columns on the final rendered page should be visible by using the
+'<button id="mb-visible-btn"' and unchecking the columns which should not be rendered.
+
+For specific pageTypes I would like to specify in a two column configurable table (as an example configuration for table
+like parameters see "sa_unicode_char_picker_mappings") which pageType should have a specific comma separated column list
+already unchecked when the final page is rendered, e.g.
+
+| pageType       | comma separated column list (account for blanks in the column name) |
+|----------------+---------------------------------------------------------------------|
+| <pageType 1>   | "column name 1>","column name 2>",etc                               |
+| <pageType 2>   | "column name 1>","column name 2>",etc                               |
+
+The default should be for the 'release-tracks' pageType that the "ARs" column should not be rendered when initially
+displaying the final rendered page
+
+| PageType       | Columns |
+|----------------+---------|
+| release-tracks | "ARs"   |
+
+The implementation would probably be to first display all columns as usual and then emulate the button click on '<button
+id="mb-visible-btn"', unchecking all the columns fomr the configured column list and then finally emulating pressing the button
+
+#+begin_example
+<button type="button" tabindex="0" style="font-size: 0.8em; padding: 4px 8px; cursor: pointer; border-radius: 3px; border: 1px solid rgb(187, 187, 187); background: rgb(245, 245, 245); transition: background 0.15s, border-color 0.15s; width: 100%; margin-top: 5px;"><span>Choose <u>c</u>urrent configuration</span></button>
+#+end_example
+
+Choose your own implementation if you find some better algorithm
+
+** act on @debug/column-visibility.org
+
+act on @debug/column-visibility.org
+
+** do this in a new branch
+
+do this in a new branch
+
+** b
+
+The configuration table is there but empty
+
+** b
+
+[Image #1] I added a new pageType ('label-releases') with a column ('Format Types') in the "Default Hidden Columns" dialog and saved it, but it's not honouring it on the specified pageType
+
+** b
+
+I get the following console error whenever I click the column visibility button
+
+#+begin_example
+10:52:57.194 [VZ-ShowAllEntityData: release-tracks] 📝 _artIdbSweepExpired: sweep complete — deleted 11 expired record(s) 
+userscript.html?name=VZ%253A-MusicBrainz-Show-All-Entity-Data-In-A-Consolidated-View-With-Filtering-And-Multi-Sorting-Capabilities.user.js&id=478186db-514e-4abf-938c-464f22b2210f:22131 Uncaught ReferenceError: selectedCheckboxIndex is not defined
+    at toggleBtn.onclick (userscript.html?name=VZ%253A-MusicBrainz-Show-All-Entity-Data-In-A-Consolidated-View-With-Filtering-And-Multi-Sorting-Capabilities.user.js&id=478186db-514e-4abf-938c-464f22b2210f:22131:39)
+toggleBtn.onclick @ userscript.html?name=VZ%253A-MusicBrainz-Show-All-Entity-Data-In-A-Consolidated-View-With-Filtering-And-Multi-Sorting-Capabilities.user.js&id=478186db-514e-4abf-938c-464f22b2210f:22131
+#+end_example
+
+
 * Checking CAA columns on different pageTypes
 
 | pageType              | subtable                                                         | URL                 | single/multi     | CAA               | multi-row collapse symbol present | Relationships | Picard |
@@ -95701,7 +95760,8 @@ start with implementing, set up the first feature branch for step 1
 Implement Step 1 from ShowAllEntityData/PERFORMANCE.org
 
 
-* DONE fix annoying console error
+* DONE fix annoying console errors
+** DONE fix the following annoying console error
 
 fix the following annoying console error
 
