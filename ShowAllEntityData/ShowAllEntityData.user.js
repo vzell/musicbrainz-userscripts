@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.898+2026-08-21
+// @version      9.99.899+2026-08-21
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -17385,6 +17385,11 @@
      * `<td>` itself for shape 2 — it has no more specific wrapper) that
      * `_highlightEventRoleMatch()` scopes its highlight to.
      *
+     * Also the base extraction `_splitArtistRoleTokens()` further decomposes
+     * (on comma) for the "Entity info - Role" section's OR-matching — see
+     * that function's own JSDoc for why a second, comma-based split lives
+     * separately from this function's own `/`-split.
+     *
      * @param {?HTMLTableCellElement} cell
      * @returns {Array<{container: HTMLElement, roles: string[]}>}
      */
@@ -17394,7 +17399,25 @@
         cell.querySelectorAll('ul.artist-roles > li').forEach(li => {
             let roleRaw = '';
             for (const node of li.childNodes) {
-                if (node.nodeType === Node.TEXT_NODE) roleRaw += node.nodeValue;
+                if (node.nodeType === Node.TEXT_NODE) {
+                    roleRaw += node.nodeValue;
+                } else if (node.nodeType === Node.ELEMENT_NODE &&
+                           (node.classList.contains('mb-column-filter-highlight') ||
+                            node.classList.contains('mb-global-filter-highlight'))) {
+                    // A highlight wrapper a PREVIOUS filter pass injected around a
+                    // literal substring of this <li>'s own role text (see
+                    // _highlightEventRoleMatch()/_highlightRoleTokenMatch()) turns
+                    // that substring into an element-node child, invisible to the
+                    // text-node-only loop above. Treat it as transparent (recurse
+                    // into its own text) or every re-run after the first highlight
+                    // silently loses exactly the substring most likely to be the
+                    // active filter's own matched value — corrupting `roles` on
+                    // the very next filter pass. `.comment`/the name `<a>` (the
+                    // actual reason this loop stays text-node-only instead of using
+                    // `.textContent`) carry neither highlight class, so they stay
+                    // excluded exactly as before.
+                    roleRaw += node.textContent;
+                }
             }
             roleRaw = roleRaw.replace(/\s+/g, ' ').trim();
             const m = roleRaw.match(/^\(([^()]+)\)$/);
@@ -17412,6 +17435,25 @@
             if (roles.length > 0) out.push({ container: cell, roles });
         }
         return out;
+    }
+
+    /**
+     * Splits `_findCellArtistRoles()`'s own per-artist `roles` array further
+     * into atomic role words, decomposing a comma-joined multi-role credit
+     * (MusicBrainz's real markup, e.g. "composer, lyricist" — the `/`-split
+     * in `_findCellArtistRoles()` itself never fires on this, since live
+     * credits are comma-joined, not slash-joined) into ["composer",
+     * "lyricist"]. Single source of truth for the "Entity info - Role"
+     * section: its aggregation pass (`openUniqDrop()`),
+     * `_cellMatchesStructureMode()`'s `roletoken:` branch, and
+     * `_highlightRoleTokenMatch()` all go through this — never re-split ad
+     * hoc at a new call site.
+     *
+     * @param {string[]} roles
+     * @returns {string[]}
+     */
+    function _splitArtistRoleTokens(roles) {
+        return roles.flatMap(s => s.split(',').map(t => t.trim()).filter(Boolean));
     }
 
     /**
@@ -17931,6 +17973,15 @@
             // _findCellArtistRoles()'s own extraction — see its JSDoc.
             const want = mode.slice(5);
             return !!cell && _findCellArtistRoles(cell).some(r => r.roles.includes(want));
+        }
+        if (mode.startsWith('roletoken:')) {
+            // Compound mode — the decomposed, OR-matching counterpart of
+            // `role:` above: matches one ATOMIC role word from an artist's
+            // own combined role text (e.g. selecting "composer" also
+            // matches an artist credited as "composer, lyricist") via
+            // `_splitArtistRoleTokens()` — see its own JSDoc.
+            const want = mode.slice(10);
+            return !!cell && _findCellArtistRoles(cell).some(r => _splitArtistRoleTokens(r.roles).includes(want));
         }
         if (mode.startsWith('rel:')) {
             // Compound mode (openUniqDrop()'s "Relationship icons" section) —
@@ -34684,6 +34735,12 @@ a { color: #1565c0; }`;
         // family (tag-value/user-tag-value), since those pages already
         // have an "Event info" section for the event's own date.
         entityEventCancelled:     { label: 'Entity info - Event cancelled',    glyph: '🚫' },
+        // 'Entity info - Role' — the decomposed, OR-matching counterpart of
+        // the standalone 'Roles' section below (see MB_UNIQ_KIND_TO_SECTION's
+        // 'roletoken' key and `_splitArtistRoleTokens()`'s own JSDoc):
+        // atomic role words (e.g. "composer") rather than 'Roles'' whole
+        // combined-credit strings (e.g. "composer, lyricist").
+        entityRole:    { label: 'Entity info - Role',  glyph: '🎭' },
         joinPhrase:    { label: 'Join phrases',        glyph: '🔀' },
         nameVariation: { label: 'Name variations',    glyph: '🪪' },
         roles:         { label: 'Roles',              glyph: '🎭' },
@@ -34792,7 +34849,7 @@ a { color: #1565c0; }`;
         comment: 'entityComment', alias: 'entityAlias', tagcount: 'entityTagCount',
         joinphrase: 'joinPhrase',
         namevariation: 'nameVariation',
-        role: 'roles',
+        role: 'roles', roletoken: 'entityRole',
         formatsize: 'formatSize', formatcount: 'formatCount', formatcombo: 'formatCombo', formattype: 'formatType',
         revcountry: 'releaseEventsCountry', revdate: 'releaseEventsDate', revweekday: 'releaseEventsWeekday',
         countryname: 'countryNameInfo', countrycode: 'countryCodeInfo',
@@ -35617,6 +35674,30 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights the exact matched value for a `roletoken:` compound
+     * structure-mode filter — the decomposed, OR-matching counterpart of
+     * `_highlightEventRoleMatch()` above, matching via
+     * `_splitArtistRoleTokens()` (see its own JSDoc) instead of the raw
+     * `roles` array, so a checked atomic role word (e.g. "composer") still
+     * gets highlighted inside a combined credit like "composer, lyricist".
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"roletoken:composer"`.
+     */
+    function _highlightRoleTokenMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(10);
+        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const _regex = new RegExp(_escaped, 'g');
+        _findCellArtistRoles(cell).forEach(r => {
+            if (!_splitArtistRoleTokens(r.roles).includes(_want)) return;
+            r.container.normalize();
+            highlightCrossTag(r.container, _regex, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
      * Highlights every native MusicBrainz "name variation" marker
      * (`_findNameVariationElements()` — both the nested `<span
      * class="name-variation">` and cell-level `<td
@@ -36133,7 +36214,7 @@ a { color: #1565c0; }`;
                     // 'catalog-none'/'trackspermedium:'/'eventdate:'/'tagcount:'/
                     // 'entitycancelled:'/'eventcancelled:'/
                     // 'formatsize:'/'formatcount:'/'formatcombo:'/'formattype:'/
-                    // 'role:' and 'name-variation' structure modes DO
+                    // 'role:'/'roletoken:' and 'name-variation' structure modes DO
                     // correspond to exact visible content and get
                     // highlighted; the other structure modes (empty/single/
                     // collapsed/expanded/any/title-mismatch/inline-art-yes/no)
@@ -36181,6 +36262,8 @@ a { color: #1565c0; }`;
                                     _highlightFormatMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('role:')) {
                                     _highlightEventRoleMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('roletoken:')) {
+                                    _highlightRoleTokenMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'name-variation') {
                                     _highlightNameVariationMatch(row.cells[f.idx]);
                                 } else if (mode.startsWith('arttype:') || mode.startsWith('artcomment:')) {
@@ -45540,6 +45623,12 @@ a { color: #1565c0; }`;
         // JSDoc. No-op Map for any column/cell with no `.artist-roles`
         // list at all.
         const eventRoleValueCounts = new Map();
+        // "Entity info - Role" section's own values — one entry per ATOMIC
+        // role word, decomposed from eventRoleValueCounts' combined credit
+        // strings via `_splitArtistRoleTokens()` (comma-split), so
+        // e.g. "composer, lyricist" contributes to both "composer" and
+        // "lyricist" here instead of only its own combined-string entry.
+        const roleTokenValueCounts = new Map();
         // Distinct CAA/EAA per-image type-badge pill values (e.g. "Front",
         // "Obi", "Matrix/Runout") and free-text comment values (e.g. "Front
         // cover, booklet page i") — the "CAA info"/"EAA info" section's own
@@ -45819,6 +45908,9 @@ a { color: #1565c0; }`;
                 const _rowRoleValues = new Set();
                 _findCellArtistRoles(cell).forEach(r => r.roles.forEach(role => _rowRoleValues.add(role)));
                 _rowRoleValues.forEach(t => eventRoleValueCounts.set(t, (eventRoleValueCounts.get(t) || 0) + 1));
+                const _rowRoleTokenValues = new Set();
+                _findCellArtistRoles(cell).forEach(r => _splitArtistRoleTokens(r.roles).forEach(tok => _rowRoleTokenValues.add(tok)));
+                _rowRoleTokenValues.forEach(t => roleTokenValueCounts.set(t, (roleTokenValueCounts.get(t) || 0) + 1));
                 const _rowArtTypeValues = new Set();
                 cell.querySelectorAll('.mb-caa-type-badge > span').forEach(s => {
                     const t = s.textContent.trim();
@@ -46727,6 +46819,7 @@ a { color: #1565c0; }`;
             ...altNameValueCounts.values(),
             ...entityNameAnyValueCounts.values(), ...entityCommentValueCounts.values(),
             ...entityAliasValueCounts.values(), ...eventRoleValueCounts.values(),
+            ...roleTokenValueCounts.values(),
             ...artTypeValueCounts.values(), ...artCommentValueCounts.values(),
             // Every *ValueCounts Map added this session (Join phrases,
             // Name variations, Format/Country-Date/Country/Tracks/
@@ -47067,7 +47160,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'role'|'arttype'|'artcomment'|'eventdate'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -47177,6 +47270,7 @@ a { color: #1565c0; }`;
                  : kind === 'eventdate'  ? '» event date: '
                  : (kind === 'entitycancelled' || kind === 'eventcancelled') ? '» event cancelled: '
                  : kind === 'role'       ? '» role: '
+                 : kind === 'roletoken'  ? '» role: '
                  : kind === 'arttype'    ? '» image type: '
                  : kind === 'artcomment' ? '» image comment: '
                  : '» ');
@@ -47346,6 +47440,7 @@ a { color: #1565c0; }`;
         const _sortedTracksPerMediumValues = Array.from(tracksPerMediumValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         const _sortedCatalogPrefixValues = Array.from(catalogPrefixValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRoleValues    = Array.from(eventRoleValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedRoleTokenValues = Array.from(roleTokenValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedArtTypeValues    = Array.from(artTypeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedArtCommentValues = Array.from(artCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _hasValueEntries = _sortedAttrValues.length > 0 || _sortedTaskValues.length > 0 ||
@@ -47358,7 +47453,7 @@ a { color: #1565c0; }`;
             _sortedRevCountryValues.length > 0 || _sortedRevDateValues.length > 0 || _sortedRevWeekdayValues.length > 0 ||
             _sortedCountryNameValues.length > 0 || _sortedCountryCodeValues.length > 0 ||
             _sortedTracksPerMediumValues.length > 0 || _sortedCatalogPrefixValues.length > 0 ||
-            _sortedRoleValues.length > 0 ||
+            _sortedRoleValues.length > 0 || _sortedRoleTokenValues.length > 0 ||
             _sortedArtTypeValues.length > 0 || _sortedArtCommentValues.length > 0;
 
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 ||
@@ -47415,6 +47510,7 @@ a { color: #1565c0; }`;
             _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
             _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
+            _sortedRoleTokenValues.forEach(v => makeValueSynItem('roletoken', v, roleTokenValueCounts.get(v)));
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
             _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
         } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 ||
@@ -47453,6 +47549,7 @@ a { color: #1565c0; }`;
             _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
             _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
+            _sortedRoleTokenValues.forEach(v => makeValueSynItem('roletoken', v, roleTokenValueCounts.get(v)));
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
             _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
         }
@@ -47850,7 +47947,7 @@ a { color: #1565c0; }`;
             _sortedAttrValues.length + _sortedTaskValues.length + _sortedDateValues.length +
             _sortedInstrumentValues.length + _sortedAltNameValues.length +
             _sortedNameValues.length + _sortedCommentValues.length + _sortedAliasValues.length +
-            _sortedRoleValues.length;
+            _sortedRoleValues.length + _sortedRoleTokenValues.length;
         const dropH = Math.min(maxDropH, (combinedVals.length + synItemCount) * 29 + 50 + 38); // +50 syn header/divider, +38 qf bar
         const dropW = drop.offsetWidth || 200;
 
@@ -47922,6 +48019,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('trackspermedium:')) return `» tracks: ${mode.slice(16)}`;
         if (mode.startsWith('catalogprefix:'))   return `» prefix: ${mode.slice(14)}`;
         if (mode.startsWith('role:'))    return `» role: ${mode.slice(5)}`;
+        if (mode.startsWith('roletoken:')) return `» role: ${mode.slice(10)}`;
         if (mode.startsWith('arttype:'))    return `» image type: ${mode.slice(8)}`;
         if (mode.startsWith('artcomment:')) return `» image comment: ${mode.slice(11)}`;
         if (mode.startsWith('rel:'))        return `🔗 ${mode.slice(4)}`;
@@ -47977,6 +48075,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('trackspermedium:')) return 'One "Tracks" cell\'s own per-medium track count.';
         if (mode.startsWith('catalogprefix:')) return 'One "Catalog#" list item\'s own leading string prefix (e.g. "CBS", "S CBS").';
         if (mode.startsWith('role:')) return 'An artist\'s own credited event role (e.g. "main performer", "guest performer", "host").';
+        if (mode.startsWith('roletoken:')) return 'One atomic role word decomposed from this artist\'s own combined credited-role text — unlike "Roles", this matches even when the role appears alongside others (e.g. selecting "composer" also matches an artist credited as "composer, lyricist").';
         if (mode.startsWith('arttype:')) return 'One of this CAA/EAA image\'s own type-badge pill labels (Front/Back/Booklet/…).';
         if (mode.startsWith('artcomment:')) return 'One of this CAA/EAA image\'s own free-text comment.';
         if (mode.startsWith('rel:')) return 'A relationship target URL\'s base (host + path) — matches regardless of query string.';

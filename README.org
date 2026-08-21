@@ -95055,65 +95055,51 @@ Typically there are multiple entries involved in such cases, see e.g. "DJ-mix of
 In such cases where ARs in general have multiple entries, render the associated columns as multi-row columns
 
 
-* DONE plan: add configurable column visibility per pageType
+* TODO plan: add unique values for each distinct role in the data cells for the "Authors"/"Other artists"
 ** i
 
-Our userscript has the option to specify which columns on the final rendered page should be visible by using the
-'<button id="mb-visible-btn"' and unchecking the columns which should not be rendered.
-
-For specific pageTypes I would like to specify in a two column configurable table (as an example configuration for table
-like parameters see "sa_unicode_char_picker_mappings") which pageType should have a specific comma separated column list
-already unchecked when the final page is rendered, e.g.
-
-| pageType       | comma separated column list (account for blanks in the column name) |
-|----------------+---------------------------------------------------------------------|
-| <pageType 1>   | "column name 1>","column name 2>",etc                               |
-| <pageType 2>   | "column name 1>","column name 2>",etc                               |
-
-The default should be for the 'release-tracks' pageType that the "ARs" column should not be rendered when initially
-displaying the final rendered page
-
-| PageType       | Columns |
-|----------------+---------|
-| release-tracks | "ARs"   |
-
-The implementation would probably be to first display all columns as usual and then emulate the button click on '<button
-id="mb-visible-btn"', unchecking all the columns fomr the configured column list and then finally emulating pressing the button
+Currently for the pageType 'artist-works' e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
+the "Authors"/"Other artists" columns can have in brackets one, or multiple (comma separated) different roles like e.g.
 
 #+begin_example
-<button type="button" tabindex="0" style="font-size: 0.8em; padding: 4px 8px; cursor: pointer; border-radius: 3px; border: 1px solid rgb(187, 187, 187); background: rgb(245, 245, 245); transition: background 0.15s, border-color 0.15s; width: 100%; margin-top: 5px;"><span>Choose <u>c</u>urrent configuration</span></button>
+composer
+lyrist
+writer
+publisher
+etc
 #+end_example
 
-Choose your own implementation if you find some better algorithm
+see @debug/multiple-roles.html
 
-** act on @debug/column-visibility.org
+Also in the unique value drop down menu of these columns, the following section @debug/uvd-roles.html
+could have single entries for a specific role like e.g. "composer" (if an artist hast just this single role in a given column data cell),
+when selecting such a single value role from the "Roles" section, ONLY the rows where artists which have exactly this single role are filtered.
 
-act on @debug/column-visibility.org
+Add a new section which shows just the unique role values and when select such a value, artists which have either just
+this role or a this role and some others, will be filtered.
 
-** do this in a new branch
+Call this section "Entity info - Role"
 
-do this in a new branch
+** [Image #4] see screenshot, when both entries are selected, no rows are shown. I would expect them OR'd
 
-** b
+** actually the whole "WIP.9" change should go into the main branch directly, is that possible
 
-The configuration table is there but empty
+actually the whole "WIP.9" change should go into the main branch directly, is that possible
 
-** b
+* TODO filtering on a e.g. "join phrase" like "Featuring" filters the right rows, but doesn't highlight the filter string if it's inside a collapsed multi-row data cell
 
-[Image #1] I added a new pageType ('label-releases') with a column ('Format Types') in the "Default Hidden Columns" dialog and saved it, but it's not honouring it on the specified pageType
+This is on e.g. the pageType 'artist-works' e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
 
-** b
+Filtering on a e.g. "join phrase" like "Featuring" filters the right rows, but doesn't highlight the filter string if it's inside a collapsed multi-row data cell
 
-I get the following console error whenever I click the column visibility button
 
-#+begin_example
-10:52:57.194 [VZ-ShowAllEntityData: release-tracks] 📝 _artIdbSweepExpired: sweep complete — deleted 11 expired record(s) 
-userscript.html?name=VZ%253A-MusicBrainz-Show-All-Entity-Data-In-A-Consolidated-View-With-Filtering-And-Multi-Sorting-Capabilities.user.js&id=478186db-514e-4abf-938c-464f22b2210f:22131 Uncaught ReferenceError: selectedCheckboxIndex is not defined
-    at toggleBtn.onclick (userscript.html?name=VZ%253A-MusicBrainz-Show-All-Entity-Data-In-A-Consolidated-View-With-Filtering-And-Multi-Sorting-Capabilities.user.js&id=478186db-514e-4abf-938c-464f22b2210f:22131:39)
-toggleBtn.onclick @ userscript.html?name=VZ%253A-MusicBrainz-Show-All-Entity-Data-In-A-Consolidated-View-With-Filtering-And-Multi-Sorting-Capabilities.user.js&id=478186db-514e-4abf-938c-464f22b2210f:22131
-#+end_example
+* TODO add "Ctrl"-clicking to the current unique value drop down section headers with tooltip support
 
-** merge into main
+Currently when clicking the section header in the unique value drop down, it toggles the display of the underlying
+section entries.
+
+Add "Ctrl"-clicking functionality to the current unique value drop down section headers (with tooltip support) so that
+all section are collapse/uncollapsed at once
 
 
 * TODO In "Recording enineer" column, "John Cooper (engineer)" should always stay together, a bare "John Cooper" should never be extracted
@@ -95381,7 +95367,6 @@ https://musicbrainz.org/<entity>/<MBID>/annotations
 * TODO Add support for userscript "Tracklist Display" by @Better DJ-mix when present
 
 Add support for userscript "Tracklist Display" by @Better DJ-mix at https://github.com/djkhjg/musicbrainz-userscripts/tree/main/dj-mix-tracklist when present
-
 
 
 * Checking CAA columns on different pageTypes
@@ -95762,8 +95747,7 @@ start with implementing, set up the first feature branch for step 1
 Implement Step 1 from ShowAllEntityData/PERFORMANCE.org
 
 
-* DONE fix annoying console errors
-** DONE fix the following annoying console error
+* DONE fix annoying console error
 
 fix the following annoying console error
 

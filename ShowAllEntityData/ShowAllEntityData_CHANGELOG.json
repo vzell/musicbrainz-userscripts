@@ -1,5 +1,23 @@
 [
   {
+    "version": "9.99.899",
+    "date": "2026-08-21",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Unique-values dropdown: new 'Entity info - Role' (🎭) section for the 'Authors'/'Other artists'-style artist-roles columns (e.g. artist-works pages), alongside the existing 'Roles' section. 'Roles' still matches a credit's exact combined role string (e.g. selecting 'composer, lyricist' only matches that exact combination); the new section instead offers each ATOMIC role word (composer, lyricist, writer, arranger, …) as its own selectable value, and selecting one matches any row where an artist has that role, alone or together with others — e.g. selecting 'composer' now also matches an artist credited as 'composer, lyricist'. New _splitArtistRoleTokens() (comma-split, since MusicBrainz's real markup joins multiple roles with a comma, not the '/' _findCellArtistRoles() itself splits on) is the single source of truth for this decomposition, feeding a new 'roletoken:' compound structure-mode (_cellMatchesStructureMode(), testRowMatch()'s highlight dispatch via new _highlightRoleTokenMatch()) and the new 'entityRole' SYN_SECTION_META/MB_UNIQ_KIND_TO_SECTION entries."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "_findCellArtistRoles(): fixed a self-corrupting extraction bug that broke re-filtering on an artist-roles column (Authors/Other artists) after the FIRST match highlight was applied. Cause: this function only summed a <li>'s DIRECT TEXT-NODE children (deliberately skipping a `.comment` disambiguation span), but _highlightEventRoleMatch()/the new _highlightRoleTokenMatch() wrap the matched substring in a `<span class=\"mb-column-filter-highlight\">` — turning it into an element-node child that the text-node-only loop silently skipped on every SUBSEQUENT filter pass. Symptom: selecting a second 'Roles'/'Entity info - Role' value (or otherwise re-triggering a filter pass after the first one highlighted a cell) corrupted the re-extracted role text (e.g. 'composer, lyricist' → ', lyricist'), which could zero out matches entirely instead of the expected OR of both selections. Fix: the extraction loop now also recurses into (only) `.mb-column-filter-highlight`/`.mb-global-filter-highlight` element children, treating them as transparent text; `.comment` and the credited-artist `<a>` link still carry neither class and stay excluded exactly as before."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.898",
     "date": "2026-08-21",
     "sections": [
