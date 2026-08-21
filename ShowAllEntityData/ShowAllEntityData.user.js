@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.897+2026-08-20
+// @version      9.99.899+2026-08-21
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -867,6 +867,27 @@
             type: 'checkbox',
             default: true,
             description: 'Show/hide the "👁️ Visible Columns" button for toggling column visibility'
+        },
+
+        // Configurable lookup table for pre-hiding columns on first render.
+        // Each entry pairs a pageType (pageDefinitions `type` string) with a
+        // comma-separated, quoted list of column names to start unchecked in
+        // the "👁️ Visible" popup. Applied once per pageType — after that,
+        // whatever the user leaves the popup in is remembered instead.
+        sa_default_hidden_columns: {
+            label: 'Default Hidden Columns per Page Type',
+            type: 'table',
+            table_name: 'Default Hidden Columns',
+            columns: ['Page Type', 'Hidden Columns (comma-separated)'],
+            description: 'Columns pre-hidden (unchecked in the 👁️ Visible menu) the ' +
+                         'first time a given pageType\'s table is rendered. "Page Type" ' +
+                         'must match a pageDefinitions `type` string exactly (e.g. ' +
+                         '"release-tracks"). Quote each column name and separate with ' +
+                         'commas: "Column one","Column two" (quoting lets names contain ' +
+                         'blanks). Only applies once per pageType — if you manually change ' +
+                         'a column\'s visibility afterwards, your choice is remembered and ' +
+                         'this default is not re-applied. Populates a lookup consulted ' +
+                         'just before the 👁️ Visible button is built.'
         },
 
         sa_enable_density_control: {
@@ -17413,6 +17434,11 @@
      * `<td>` itself for shape 2 — it has no more specific wrapper) that
      * `_highlightEventRoleMatch()` scopes its highlight to.
      *
+     * Also the base extraction `_splitArtistRoleTokens()` further decomposes
+     * (on comma) for the "Entity info - Role" section's OR-matching — see
+     * that function's own JSDoc for why a second, comma-based split lives
+     * separately from this function's own `/`-split.
+     *
      * @param {?HTMLTableCellElement} cell
      * @returns {Array<{container: HTMLElement, roles: string[]}>}
      */
@@ -17422,7 +17448,25 @@
         cell.querySelectorAll('ul.artist-roles > li').forEach(li => {
             let roleRaw = '';
             for (const node of li.childNodes) {
-                if (node.nodeType === Node.TEXT_NODE) roleRaw += node.nodeValue;
+                if (node.nodeType === Node.TEXT_NODE) {
+                    roleRaw += node.nodeValue;
+                } else if (node.nodeType === Node.ELEMENT_NODE &&
+                           (node.classList.contains('mb-column-filter-highlight') ||
+                            node.classList.contains('mb-global-filter-highlight'))) {
+                    // A highlight wrapper a PREVIOUS filter pass injected around a
+                    // literal substring of this <li>'s own role text (see
+                    // _highlightEventRoleMatch()/_highlightRoleTokenMatch()) turns
+                    // that substring into an element-node child, invisible to the
+                    // text-node-only loop above. Treat it as transparent (recurse
+                    // into its own text) or every re-run after the first highlight
+                    // silently loses exactly the substring most likely to be the
+                    // active filter's own matched value — corrupting `roles` on
+                    // the very next filter pass. `.comment`/the name `<a>` (the
+                    // actual reason this loop stays text-node-only instead of using
+                    // `.textContent`) carry neither highlight class, so they stay
+                    // excluded exactly as before.
+                    roleRaw += node.textContent;
+                }
             }
             roleRaw = roleRaw.replace(/\s+/g, ' ').trim();
             const m = roleRaw.match(/^\(([^()]+)\)$/);
@@ -17440,6 +17484,25 @@
             if (roles.length > 0) out.push({ container: cell, roles });
         }
         return out;
+    }
+
+    /**
+     * Splits `_findCellArtistRoles()`'s own per-artist `roles` array further
+     * into atomic role words, decomposing a comma-joined multi-role credit
+     * (MusicBrainz's real markup, e.g. "composer, lyricist" — the `/`-split
+     * in `_findCellArtistRoles()` itself never fires on this, since live
+     * credits are comma-joined, not slash-joined) into ["composer",
+     * "lyricist"]. Single source of truth for the "Entity info - Role"
+     * section: its aggregation pass (`openUniqDrop()`),
+     * `_cellMatchesStructureMode()`'s `roletoken:` branch, and
+     * `_highlightRoleTokenMatch()` all go through this — never re-split ad
+     * hoc at a new call site.
+     *
+     * @param {string[]} roles
+     * @returns {string[]}
+     */
+    function _splitArtistRoleTokens(roles) {
+        return roles.flatMap(s => s.split(',').map(t => t.trim()).filter(Boolean));
     }
 
     /**
@@ -17959,6 +18022,15 @@
             // _findCellArtistRoles()'s own extraction — see its JSDoc.
             const want = mode.slice(5);
             return !!cell && _findCellArtistRoles(cell).some(r => r.roles.includes(want));
+        }
+        if (mode.startsWith('roletoken:')) {
+            // Compound mode — the decomposed, OR-matching counterpart of
+            // `role:` above: matches one ATOMIC role word from an artist's
+            // own combined role text (e.g. selecting "composer" also
+            // matches an artist credited as "composer, lyricist") via
+            // `_splitArtistRoleTokens()` — see its own JSDoc.
+            const want = mode.slice(10);
+            return !!cell && _findCellArtistRoles(cell).some(r => _splitArtistRoleTokens(r.roles).includes(want));
         }
         if (mode.startsWith('rel:')) {
             // Compound mode (openUniqDrop()'s "Relationship icons" section) —
@@ -18553,6 +18625,183 @@
         return { moveFocusTo, menuKeyHandler };
     }
 
+    // Column visibility is stored per pageType in GM storage as a plain object
+    // mapping  { "Column Name": true|false }.  Column names are used as keys
+    // (not indices) so that the state survives pages where injected columns shift
+    // the index layout between sessions.
+    const COLVIS_KEY_PREFIX = 'vz-mb-colvis-';
+
+    // Built-in seed for sa_default_hidden_columns (row-array shape: one
+    // [pageType, columnsCell] pair per pageDefinitions `type`). Written to
+    // GM storage the first time _loadDefaultHiddenColumnsMap() runs with no
+    // stored rows yet.
+    const SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT = [
+        { pageType: 'release-tracks', columns: '"ARs"' }
+    ];
+
+    /**
+     * Splits a `sa_default_hidden_columns` cell value into individual column
+     * names. Prefers quoted segments ("Column one","Column two") so names
+     * containing blanks parse correctly; falls back to a plain comma-split
+     * when the cell has no quotes at all.
+     * @param {string} str - Raw cell text from the "Hidden Columns" column
+     * @returns {string[]} Trimmed, non-empty column names
+     */
+    function _parseHiddenColumnsList(str) {
+        if (!str) return [];
+        const quoted = str.match(/"([^"]*)"/g);
+        if (quoted) {
+            return quoted.map(s => s.slice(1, -1).trim()).filter(Boolean);
+        }
+        return str.split(',').map(s => s.trim()).filter(Boolean);
+    }
+
+    /**
+     * Loads the `sa_default_hidden_columns` table setting into a
+     * `{ pageType: string[] }` lookup, seeding GM storage from
+     * SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT on first use (mirrors
+     * `_loadUnicodeCharsMappings()`'s lazy-seed pattern).
+     * @returns {Object<string, string[]>} Map of pageType to hidden column names
+     */
+    function _loadDefaultHiddenColumnsMap() {
+        const rows = (typeof Lib.getTableRows === 'function')
+            ? Lib.getTableRows('sa_default_hidden_columns') : [];
+        Lib.debug('ui', 'sa_default_hidden_columns raw rows from GM storage:', rows,
+            `(Lib.getTableRows is ${typeof Lib.getTableRows === 'function' ? 'available' : 'MISSING'})`);
+        if (!Array.isArray(rows) || rows.length === 0) {
+            if (typeof GM_setValue !== 'undefined') {
+                const seedRows = SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT.map(e => [e.pageType, e.columns]);
+                GM_setValue('sa_default_hidden_columns', seedRows);
+                Lib.debug('ui', 'sa_default_hidden_columns was empty — seeded built-in defaults:', seedRows);
+            }
+            const map = {};
+            SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT.forEach(e => {
+                map[e.pageType] = _parseHiddenColumnsList(e.columns);
+            });
+            return map;
+        }
+        const map = {};
+        rows.filter(row => row[0]).forEach(row => {
+            map[row[0]] = _parseHiddenColumnsList(row[1]);
+        });
+        Lib.debug('ui', 'sa_default_hidden_columns parsed map:', map);
+        return map;
+    }
+
+    // Tracks, per pageType, which column names the user has EXPLICITLY
+    // toggled at least once — a genuine trusted click on that column's own
+    // checkbox, or a deliberate bulk action (Select All / Deselect All /
+    // Choose current configuration). Never a column merely left at whatever
+    // value it happened to display. This is what lets a configured default
+    // hidden column keep re-asserting itself on every load — even across an
+    // incidental popup open/close, which (by pre-existing, intentional
+    // design — see saveColVisState()'s own doc comment) snapshots every
+    // checkbox's CURRENT value on every close, touched or not — without
+    // ever clobbering a column the user genuinely chose to change. Once a
+    // column is marked touched, it stays that way forever: the default is
+    // never re-asserted over a deliberate user choice again.
+    const COLVIS_TOUCHED_KEY_PREFIX = 'vz-mb-colvis-touched-';
+
+    /**
+     * Loads the set of column names explicitly touched by the user for a
+     * given pageType.
+     * @param {string} pt - The pageType
+     * @returns {Set<string>} Touched column names (empty set if none/unavailable)
+     */
+    function _loadTouchedColumnsSet(pt) {
+        if (typeof GM_getValue === 'undefined') return new Set();
+        try {
+            const raw = GM_getValue(COLVIS_TOUCHED_KEY_PREFIX + pt, null);
+            if (!raw) return new Set();
+            const arr = JSON.parse(raw);
+            return new Set(Array.isArray(arr) ? arr : []);
+        } catch (err) {
+            Lib.warn('ui', `Failed to load touched columns for "${pt}":`, err);
+            return new Set();
+        }
+    }
+
+    /**
+     * Records one or more column names as explicitly, deliberately touched
+     * by the user for a given pageType — persisted immediately so it
+     * survives even if the popup is never cleanly closed. Idempotent/no-op
+     * for names already recorded.
+     * @param {string} pt - The pageType
+     * @param {string[]} colNames - Column names to mark touched
+     */
+    function _markColumnsTouched(pt, colNames) {
+        if (typeof GM_getValue === 'undefined' || typeof GM_setValue === 'undefined') return;
+        const toAdd = colNames.filter(Boolean);
+        if (toAdd.length === 0) return;
+        const touched = _loadTouchedColumnsSet(pt);
+        const before = touched.size;
+        toAdd.forEach(name => touched.add(name));
+        if (touched.size === before) return; // nothing new
+        try {
+            GM_setValue(COLVIS_TOUCHED_KEY_PREFIX + pt, JSON.stringify(Array.from(touched)));
+            Lib.debug('ui', `Column visibility: marked touched for pageType "${pt}": ${JSON.stringify(toAdd)}`);
+        } catch (err) {
+            Lib.warn('ui', `Failed to persist touched columns for "${pt}":`, err);
+        }
+    }
+
+    /**
+     * Re-asserts this pageType's configured default hidden columns into its
+     * column-visibility GM storage — merged into whatever is already
+     * stored there. Runs on every render (not gated on a one-time marker):
+     * a configured column is forced back to hidden every single time,
+     * UNLESS the user has explicitly touched that specific column (see
+     * COLVIS_TOUCHED_KEY_PREFIX/_markColumnsTouched()), in which case their
+     * choice is left alone for good. This is what makes the default
+     * survive an incidental popup open/close that never touched the column
+     * in question, while still never overriding a deliberate user change.
+     * The existing `loadColVisState()` restore path (inside
+     * `addColumnVisibilityToggle()`) then applies the merged result exactly
+     * as if the user had unchecked those columns and closed the popup.
+     * Also lazily seeds the `sa_default_hidden_columns` config table itself
+     * (via `_loadDefaultHiddenColumnsMap()`) on every call, unconditionally,
+     * so the settings-dialog table editor is never left empty regardless of
+     * which pageType happens to render first.
+     * @param {string} pt - The current pageType
+     */
+    function _seedDefaultHiddenColumnsForPageType(pt) {
+        if (typeof GM_getValue === 'undefined' || typeof GM_setValue === 'undefined') {
+            Lib.debug('ui', `_seedDefaultHiddenColumnsForPageType("${pt}"): GM_getValue/GM_setValue unavailable, skipping`);
+            return;
+        }
+
+        const defaultsMap = _loadDefaultHiddenColumnsMap();
+        const hiddenColumns = defaultsMap[pt];
+        if (!Array.isArray(hiddenColumns) || hiddenColumns.length === 0) {
+            Lib.debug('ui', `_seedDefaultHiddenColumnsForPageType("${pt}"): no configured default hidden columns for this pageType`, defaultsMap);
+            return;
+        }
+
+        const touched = _loadTouchedColumnsSet(pt);
+        const untouchedHiddenColumns = hiddenColumns.filter(colName => !touched.has(colName));
+        if (untouchedHiddenColumns.length === 0) {
+            Lib.debug('ui', `_seedDefaultHiddenColumnsForPageType("${pt}"): every configured column already explicitly touched by the user, nothing to re-assert`);
+            return;
+        }
+
+        const colvisStorageKey = COLVIS_KEY_PREFIX + pt;
+        let state = {};
+        try {
+            const raw = GM_getValue(colvisStorageKey, null);
+            if (raw) state = JSON.parse(raw);
+        } catch (err) {
+            Lib.warn('ui', `Failed to read existing column visibility for "${pt}" before applying defaults:`, err);
+        }
+        untouchedHiddenColumns.forEach(colName => { state[colName] = false; });
+
+        try {
+            GM_setValue(colvisStorageKey, JSON.stringify(state));
+            Lib.debug('ui', `Re-asserted default hidden columns for pageType "${pt}" (not yet explicitly touched by the user): ${JSON.stringify(untouchedHiddenColumns)}`);
+        } catch (err) {
+            Lib.warn('ui', `Failed to apply default hidden columns for "${pt}":`, err);
+        }
+    }
+
     /**
      * Add a column visibility toggle button and menu to the controls
      * Allows users to show/hide columns in the table
@@ -18576,9 +18825,9 @@
         // Column visibility is stored per pageType in GM storage as a plain object
         // mapping  { "Column Name": true|false }.  Column names are used as keys
         // (not indices) so that the state survives pages where injected columns shift
-        // the index layout between sessions.
-        const COLVIS_KEY_PREFIX = 'vz-mb-colvis-';
-        const colvisStorageKey  = COLVIS_KEY_PREFIX + pageType;
+        // the index layout between sessions. (COLVIS_KEY_PREFIX is declared at
+        // module scope, above, so _seedDefaultHiddenColumnsForPageType() can share it.)
+        const colvisStorageKey = COLVIS_KEY_PREFIX + pageType;
 
         /**
          * Reads the current checkbox state as a plain `{ colName: bool }` object.
@@ -18617,7 +18866,11 @@
                 const raw = GM_getValue(colvisStorageKey, null);
                 if (!raw) return null;
                 const parsed = JSON.parse(raw);
-                Lib.debug('ui', `Column visibility loaded for pageType "${pageType}":`, parsed);
+                // Logged as a JSON string (not the object directly) because
+                // the browser console's inline object preview truncates to a
+                // handful of keys — that truncation gets baked into any
+                // copy-pasted/exported console text, hiding later keys.
+                Lib.debug('ui', `Column visibility loaded for pageType "${pageType}": ${raw}`);
                 return parsed;
             } catch (err) {
                 Lib.warn('ui', `Failed to load column visibility for "${pageType}":`, err);
@@ -18754,8 +19007,16 @@
             label.textContent = colName;
             label.style.cssText = 'cursor: pointer; user-select: none; flex: 1;';
 
-            checkbox.addEventListener('change', () => {
+            checkbox.addEventListener('change', (e) => {
                 toggleColumn(table, index, checkbox.checked);
+
+                // A trusted event means a real user click on THIS checkbox
+                // (as opposed to the synthetic `dispatchEvent(new Event(...))`
+                // used by loadColVisState()'s restore step) — see
+                // COLVIS_TOUCHED_KEY_PREFIX's doc comment.
+                if (e.isTrusted) {
+                    _markColumnsTouched(pageType, [colName]);
+                }
 
                 // Count visible columns
                 const visibleCount = checkboxes.filter(cb => cb.checked).length;
@@ -18775,6 +19036,7 @@
         // ── Restore persisted state (applied after all checkboxes are built) ────────
         // This must happen before the separator / action buttons are appended so that
         // updateButtonColor() below reflects the restored state correctly.
+        Lib.debug('ui', `Column visibility checkboxes built for pageType "${pageType}": ${JSON.stringify(checkboxes.map(cb => cb.dataset.columnName))}`);
         const savedState = loadColVisState();
         if (savedState) {
             checkboxes.forEach(cb => {
@@ -18786,6 +19048,8 @@
                         // Fire the change event so toggleColumn() hides/shows the DOM cells
                         cb.dispatchEvent(new Event('change'));
                     }
+                } else if (colName) {
+                    Lib.debug('ui', `Column visibility: no saved state entry for "${colName}" on pageType "${pageType}" — left at default (visible)`);
                 }
             });
             Lib.debug('ui', `Restored column visibility for pageType "${pageType}" from GM storage.`);
@@ -18839,6 +19103,10 @@
                     cb.dispatchEvent(new Event('change'));
                 }
             });
+            // Explicit bulk action — mark every column touched even though the
+            // per-checkbox restore dispatch above is untrusted (see
+            // COLVIS_TOUCHED_KEY_PREFIX's doc comment).
+            _markColumnsTouched(pageType, checkboxes.map(cb => cb.dataset.columnName));
             updateButtonColor();
         };
 
@@ -18858,6 +19126,9 @@
                     cb.dispatchEvent(new Event('change'));
                 }
             });
+            // Explicit bulk action — mark every column touched (see
+            // selectAllBtn.onclick's identical comment above).
+            _markColumnsTouched(pageType, checkboxes.map(cb => cb.dataset.columnName));
             updateButtonColor();
         };
 
@@ -18877,6 +19148,10 @@
         chooseConfigBtn.addEventListener('mouseleave',() => { chooseConfigBtn.style.cssText = menuBtnBase + 'width:100%; margin-top:5px;'; });
         chooseConfigBtn.onclick = (e) => {
             e.stopPropagation();
+            // Explicitly "lock in my current view" — mark every column touched
+            // so no configured default ever re-asserts over it again (see
+            // COLVIS_TOUCHED_KEY_PREFIX's doc comment).
+            _markColumnsTouched(pageType, checkboxes.map(cb => cb.dataset.columnName));
             saveColVisState();
             // Global "Choose" overrides every sub-table: push this config to all
             // registered sub-table visibility widgets.  Each widget will apply the
@@ -18936,8 +19211,9 @@
                     initialY = 0;
                 }
 
-                // Reset selection and move focus to first checkbox
-                selectedCheckboxIndex = 0;
+                // Reset selection and move focus to first checkbox — moveFocusTo()
+                // tracks the current focus via menuFocusables.indexOf(document.activeElement)
+                // internally, so no separate index variable needs resetting here.
                 setTimeout(() => moveFocusTo(0), 10);
             }
         };
@@ -34509,6 +34785,12 @@ a { color: #1565c0; }`;
         // family (tag-value/user-tag-value), since those pages already
         // have an "Event info" section for the event's own date.
         entityEventCancelled:     { label: 'Entity info - Event cancelled',    glyph: '🚫' },
+        // 'Entity info - Role' — the decomposed, OR-matching counterpart of
+        // the standalone 'Roles' section below (see MB_UNIQ_KIND_TO_SECTION's
+        // 'roletoken' key and `_splitArtistRoleTokens()`'s own JSDoc):
+        // atomic role words (e.g. "composer") rather than 'Roles'' whole
+        // combined-credit strings (e.g. "composer, lyricist").
+        entityRole:    { label: 'Entity info - Role',  glyph: '🎭' },
         joinPhrase:    { label: 'Join phrases',        glyph: '🔀' },
         nameVariation: { label: 'Name variations',    glyph: '🪪' },
         roles:         { label: 'Roles',              glyph: '🎭' },
@@ -34617,7 +34899,7 @@ a { color: #1565c0; }`;
         comment: 'entityComment', alias: 'entityAlias', tagcount: 'entityTagCount',
         joinphrase: 'joinPhrase',
         namevariation: 'nameVariation',
-        role: 'roles',
+        role: 'roles', roletoken: 'entityRole',
         formatsize: 'formatSize', formatcount: 'formatCount', formatcombo: 'formatCombo', formattype: 'formatType',
         revcountry: 'releaseEventsCountry', revdate: 'releaseEventsDate', revweekday: 'releaseEventsWeekday',
         countryname: 'countryNameInfo', countrycode: 'countryCodeInfo',
@@ -35442,6 +35724,30 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights the exact matched value for a `roletoken:` compound
+     * structure-mode filter — the decomposed, OR-matching counterpart of
+     * `_highlightEventRoleMatch()` above, matching via
+     * `_splitArtistRoleTokens()` (see its own JSDoc) instead of the raw
+     * `roles` array, so a checked atomic role word (e.g. "composer") still
+     * gets highlighted inside a combined credit like "composer, lyricist".
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"roletoken:composer"`.
+     */
+    function _highlightRoleTokenMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(10);
+        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const _regex = new RegExp(_escaped, 'g');
+        _findCellArtistRoles(cell).forEach(r => {
+            if (!_splitArtistRoleTokens(r.roles).includes(_want)) return;
+            r.container.normalize();
+            highlightCrossTag(r.container, _regex, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
      * Highlights every native MusicBrainz "name variation" marker
      * (`_findNameVariationElements()` — both the nested `<span
      * class="name-variation">` and cell-level `<td
@@ -35958,7 +36264,7 @@ a { color: #1565c0; }`;
                     // 'catalog-none'/'trackspermedium:'/'eventdate:'/'tagcount:'/
                     // 'entitycancelled:'/'eventcancelled:'/
                     // 'formatsize:'/'formatcount:'/'formatcombo:'/'formattype:'/
-                    // 'role:' and 'name-variation' structure modes DO
+                    // 'role:'/'roletoken:' and 'name-variation' structure modes DO
                     // correspond to exact visible content and get
                     // highlighted; the other structure modes (empty/single/
                     // collapsed/expanded/any/title-mismatch/inline-art-yes/no)
@@ -36006,6 +36312,8 @@ a { color: #1565c0; }`;
                                     _highlightFormatMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('role:')) {
                                     _highlightEventRoleMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('roletoken:')) {
+                                    _highlightRoleTokenMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'name-variation') {
                                     _highlightNameVariationMatch(row.cells[f.idx]);
                                 } else if (mode.startsWith('arttype:') || mode.startsWith('artcomment:')) {
@@ -40273,6 +40581,7 @@ a { color: #1565c0; }`;
 
             // Add column visibility toggle for all tables
             if (Lib.settings.sa_enable_column_visibility) {
+                _seedDefaultHiddenColumnsForPageType(pageType);
                 document.querySelectorAll('table.tbl').forEach((table, index) => {
                     // Only add toggle for the first table to avoid duplicate buttons
                     if (index === 0) {
@@ -45416,6 +45725,12 @@ a { color: #1565c0; }`;
         // JSDoc. No-op Map for any column/cell with no `.artist-roles`
         // list at all.
         const eventRoleValueCounts = _uniqCacheHit ? _uniqCacheHit.eventRoleValueCounts : new Map();
+        // "Entity info - Role" section's own values — one entry per ATOMIC
+        // role word, decomposed from eventRoleValueCounts' combined credit
+        // strings via `_splitArtistRoleTokens()` (comma-split), so
+        // e.g. "composer, lyricist" contributes to both "composer" and
+        // "lyricist" here instead of only its own combined-string entry.
+        const roleTokenValueCounts = _uniqCacheHit ? _uniqCacheHit.roleTokenValueCounts : new Map();
         // Distinct CAA/EAA per-image type-badge pill values (e.g. "Front",
         // "Obi", "Matrix/Runout") and free-text comment values (e.g. "Front
         // cover, booklet page i") — the "CAA info"/"EAA info" section's own
@@ -45695,6 +46010,9 @@ a { color: #1565c0; }`;
                 const _rowRoleValues = new Set();
                 _findCellArtistRoles(cell).forEach(r => r.roles.forEach(role => _rowRoleValues.add(role)));
                 _rowRoleValues.forEach(t => eventRoleValueCounts.set(t, (eventRoleValueCounts.get(t) || 0) + 1));
+                const _rowRoleTokenValues = new Set();
+                _findCellArtistRoles(cell).forEach(r => _splitArtistRoleTokens(r.roles).forEach(tok => _rowRoleTokenValues.add(tok)));
+                _rowRoleTokenValues.forEach(t => roleTokenValueCounts.set(t, (roleTokenValueCounts.get(t) || 0) + 1));
                 const _rowArtTypeValues = new Set();
                 cell.querySelectorAll('.mb-caa-type-badge > span').forEach(s => {
                     const t = s.textContent.trim();
@@ -46604,7 +46922,7 @@ a { color: #1565c0; }`;
                 revCountryValueCounts, revCountryFlagMap, revDateValueCounts, revWeekdayValueCounts,
                 countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap,
                 tracksPerMediumValueCounts, catalogPrefixValueCounts,
-                eventRoleValueCounts, artTypeValueCounts, artCommentValueCounts,
+                eventRoleValueCounts, roleTokenValueCounts, artTypeValueCounts, artCommentValueCounts,
                 flagIconMap, isRelCellCol, relIconCounts,
                 inlineArtType, inlineArtYes, inlineArtNo,
             });
@@ -46629,6 +46947,7 @@ a { color: #1565c0; }`;
             ...altNameValueCounts.values(),
             ...entityNameAnyValueCounts.values(), ...entityCommentValueCounts.values(),
             ...entityAliasValueCounts.values(), ...eventRoleValueCounts.values(),
+            ...roleTokenValueCounts.values(),
             ...artTypeValueCounts.values(), ...artCommentValueCounts.values(),
             // Every *ValueCounts Map added this session (Join phrases,
             // Name variations, Format/Country-Date/Country/Tracks/
@@ -46969,7 +47288,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'role'|'arttype'|'artcomment'|'eventdate'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -47079,6 +47398,7 @@ a { color: #1565c0; }`;
                  : kind === 'eventdate'  ? '» event date: '
                  : (kind === 'entitycancelled' || kind === 'eventcancelled') ? '» event cancelled: '
                  : kind === 'role'       ? '» role: '
+                 : kind === 'roletoken'  ? '» role: '
                  : kind === 'arttype'    ? '» image type: '
                  : kind === 'artcomment' ? '» image comment: '
                  : '» ');
@@ -47248,6 +47568,7 @@ a { color: #1565c0; }`;
         const _sortedTracksPerMediumValues = Array.from(tracksPerMediumValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         const _sortedCatalogPrefixValues = Array.from(catalogPrefixValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRoleValues    = Array.from(eventRoleValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedRoleTokenValues = Array.from(roleTokenValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedArtTypeValues    = Array.from(artTypeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedArtCommentValues = Array.from(artCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _hasValueEntries = _sortedAttrValues.length > 0 || _sortedTaskValues.length > 0 ||
@@ -47260,7 +47581,7 @@ a { color: #1565c0; }`;
             _sortedRevCountryValues.length > 0 || _sortedRevDateValues.length > 0 || _sortedRevWeekdayValues.length > 0 ||
             _sortedCountryNameValues.length > 0 || _sortedCountryCodeValues.length > 0 ||
             _sortedTracksPerMediumValues.length > 0 || _sortedCatalogPrefixValues.length > 0 ||
-            _sortedRoleValues.length > 0 ||
+            _sortedRoleValues.length > 0 || _sortedRoleTokenValues.length > 0 ||
             _sortedArtTypeValues.length > 0 || _sortedArtCommentValues.length > 0;
 
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 ||
@@ -47317,6 +47638,7 @@ a { color: #1565c0; }`;
             _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
             _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
+            _sortedRoleTokenValues.forEach(v => makeValueSynItem('roletoken', v, roleTokenValueCounts.get(v)));
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
             _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
         } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 ||
@@ -47355,6 +47677,7 @@ a { color: #1565c0; }`;
             _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
             _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
+            _sortedRoleTokenValues.forEach(v => makeValueSynItem('roletoken', v, roleTokenValueCounts.get(v)));
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
             _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
         }
@@ -47752,7 +48075,7 @@ a { color: #1565c0; }`;
             _sortedAttrValues.length + _sortedTaskValues.length + _sortedDateValues.length +
             _sortedInstrumentValues.length + _sortedAltNameValues.length +
             _sortedNameValues.length + _sortedCommentValues.length + _sortedAliasValues.length +
-            _sortedRoleValues.length;
+            _sortedRoleValues.length + _sortedRoleTokenValues.length;
         const dropH = Math.min(maxDropH, (combinedVals.length + synItemCount) * 29 + 50 + 38); // +50 syn header/divider, +38 qf bar
         const dropW = drop.offsetWidth || 200;
 
@@ -47824,6 +48147,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('trackspermedium:')) return `» tracks: ${mode.slice(16)}`;
         if (mode.startsWith('catalogprefix:'))   return `» prefix: ${mode.slice(14)}`;
         if (mode.startsWith('role:'))    return `» role: ${mode.slice(5)}`;
+        if (mode.startsWith('roletoken:')) return `» role: ${mode.slice(10)}`;
         if (mode.startsWith('arttype:'))    return `» image type: ${mode.slice(8)}`;
         if (mode.startsWith('artcomment:')) return `» image comment: ${mode.slice(11)}`;
         if (mode.startsWith('rel:'))        return `🔗 ${mode.slice(4)}`;
@@ -47879,6 +48203,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('trackspermedium:')) return 'One "Tracks" cell\'s own per-medium track count.';
         if (mode.startsWith('catalogprefix:')) return 'One "Catalog#" list item\'s own leading string prefix (e.g. "CBS", "S CBS").';
         if (mode.startsWith('role:')) return 'An artist\'s own credited event role (e.g. "main performer", "guest performer", "host").';
+        if (mode.startsWith('roletoken:')) return 'One atomic role word decomposed from this artist\'s own combined credited-role text — unlike "Roles", this matches even when the role appears alongside others (e.g. selecting "composer" also matches an artist credited as "composer, lyricist").';
         if (mode.startsWith('arttype:')) return 'One of this CAA/EAA image\'s own type-badge pill labels (Front/Back/Booklet/…).';
         if (mode.startsWith('artcomment:')) return 'One of this CAA/EAA image\'s own free-text comment.';
         if (mode.startsWith('rel:')) return 'A relationship target URL\'s base (host + path) — matches regardless of query string.';
@@ -55204,6 +55529,7 @@ a { color: #1565c0; }`;
 
             // Add column visibility toggle for loaded table
             if (Lib.settings.sa_enable_column_visibility) {
+                _seedDefaultHiddenColumnsForPageType(pageType);
                 const mainTable = document.querySelector('table.tbl');
                 if (mainTable) {
                     addColumnVisibilityToggle(mainTable);

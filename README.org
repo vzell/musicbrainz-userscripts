@@ -95115,6 +95115,52 @@ section entries.
 Add "Ctrl"-clicking functionality to the current unique value drop down section headers (with tooltip support) so that
 all section are collapse/uncollapsed at once
 
+* TODO plan: add unique values for each distinct role in the data cells for the "Authors"/"Other artists"
+** i
+
+Currently for the pageType 'artist-works' e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
+the "Authors"/"Other artists" columns can have in brackets one, or multiple (comma separated) different roles like e.g.
+
+#+begin_example
+composer
+lyrist
+writer
+publisher
+etc
+#+end_example
+
+see @debug/multiple-roles.html
+
+Also in the unique value drop down menu of these columns, the following section @debug/uvd-roles.html
+could have single entries for a specific role like e.g. "composer" (if an artist hast just this single role in a given column data cell),
+when selecting such a single value role from the "Roles" section, ONLY the rows where artists which have exactly this single role are filtered.
+
+Add a new section which shows just the unique role values and when select such a value, artists which have either just
+this role or a this role and some others, will be filtered.
+
+Call this section "Entity info - Role"
+
+** [Image #4] see screenshot, when both entries are selected, no rows are shown. I would expect them OR'd
+
+** actually the whole "WIP.9" change should go into the main branch directly, is that possible
+
+actually the whole "WIP.9" change should go into the main branch directly, is that possible
+
+* TODO filtering on a e.g. "join phrase" like "Featuring" filters the right rows, but doesn't highlight the filter string if it's inside a collapsed multi-row data cell
+
+This is on e.g. the pageType 'artist-works' e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
+
+Filtering on a e.g. "join phrase" like "Featuring" filters the right rows, but doesn't highlight the filter string if it's inside a collapsed multi-row data cell
+
+
+* TODO add "Ctrl"-clicking to the current unique value drop down section headers with tooltip support
+
+Currently when clicking the section header in the unique value drop down, it toggles the display of the underlying
+section entries.
+
+Add "Ctrl"-clicking functionality to the current unique value drop down section headers (with tooltip support) so that
+all section are collapse/uncollapsed at once
+
 
 * TODO In "Recording enineer" column, "John Cooper (engineer)" should always stay together, a bare "John Cooper" should never be extracted
 
