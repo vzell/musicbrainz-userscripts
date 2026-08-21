@@ -2150,16 +2150,35 @@
             type: 'checkbox',
             default: true,
             description: 'Cache CAA/EAA artwork image blobs and archive JSON metadata in IndexedDB so ' +
-                         'they survive page reloads without repeat network requests.  On the first ' +
-                         'access each image is fetched via GM_xmlhttpRequest (CORS-bypass) and stored ' +
-                         'as a raw Blob; subsequent loads — including the "Load from Disk" path — are ' +
-                         'served instantly from IDB with no network round-trip.  Archive JSON metadata ' +
+                         'they survive page reloads without repeat network requests.  On a cache hit ' +
+                         '(image already in IDB or the per-session memory Map) the icon is served ' +
+                         'instantly with no network round-trip.  On a cache MISS the icon is displayed ' +
+                         'immediately via a plain image request — it is never blocked waiting on IDB — ' +
+                         'while a separate background task fetches the same image via GM_xmlhttpRequest ' +
+                         '(CORS-bypass) and stores it as a raw Blob purely so a *future* page load ' +
+                         '(including "Load from Disk") gets a fast IDB hit.  Archive JSON metadata ' +
                          '(image counts + thumbnail lists from coverartarchive.org / eventartarchive.org) ' +
                          'is cached separately with its own TTL.  A per-session in-memory Map provides ' +
                          'an additional zero-cost shortcut for URLs seen multiple times within the same ' +
                          'page load (e.g. sort/filter re-renders).  The browser\'s IndexedDB can be ' +
                          'inspected or cleared via DevTools → Application → Storage → IndexedDB → ' +
                          '"vz-mb-saed-art-cache".'
+        },
+
+        sa_art_idb_bg_cache_concurrency: {
+            label: 'Background IDB-caching concurrency limit',
+            type: 'number',
+            default: 4,
+            min: 1,
+            max: 20,
+            description: 'Maximum number of simultaneous background GM_xmlhttpRequest fetches used ' +
+                         'purely to populate the IndexedDB image cache after a cache-miss icon has ' +
+                         'already been displayed via a separate, immediate image request (see ' +
+                         '"Enable IndexedDB art image/metadata cache" above). Nothing on the current ' +
+                         'page waits on this — it exists only to make a *future* page load faster — so ' +
+                         'this is kept deliberately low and independent of the image/metadata display ' +
+                         'queues above (sa_caa_img_concurrency / sa_caa_meta_concurrency), so a burst of ' +
+                         'background caching can never delay a visible icon.'
         },
 
         sa_art_idb_image_ttl_days: {
@@ -56937,24 +56956,43 @@ a { color: #1565c0; }`;
         };
     }
 
-    // Two independent CAA/EAA request queues, both recreated by _artInitQueue()
+    // Three independent CAA/EAA request queues, all recreated by _artInitQueue()
     // before each render pass so their concurrency settings are always picked up
     // fresh. Null before the first render; never accessed outside the CAA feature
     // block.
     //
-    // Split (PERFORMANCE.org Step 6) because the two request kinds have very
-    // different CORS exposure:
-    //   _caaImgQueue  — image loads (`_artLoadIcon`, big-picture strip, inline
-    //                   thumbnails). Never CORS-bound: the IDB-enabled path uses
-    //                   `GM_xmlhttpRequest` (explicitly bypasses CORS), and the
-    //                   native fallback is a plain `<img src>` (CORS never applies
-    //                   to displaying an image, only to reading its bytes). Can
-    //                   run at a much higher concurrency than the JSON path.
-    //   _caaMetaQueue — `_artEnrichIcon`'s JSON count-lookup `fetch()` calls. This
-    //                   is the one path that IS subject to CORS, so it keeps a
-    //                   conservative cap.
-    let _caaImgQueue  = null;
-    let _caaMetaQueue = null;
+    // Split (PERFORMANCE.org Step 6) because the two visible-display request
+    // kinds have very different CORS exposure:
+    //   _caaImgQueue     — image loads (`_artLoadIcon`, big-picture strip, inline
+    //                      thumbnails). Never CORS-bound: the IDB-enabled path
+    //                      uses `GM_xmlhttpRequest` (explicitly bypasses CORS),
+    //                      and the native fallback is a plain `<img src>` (CORS
+    //                      never applies to displaying an image, only to reading
+    //                      its bytes). Can run at a much higher concurrency than
+    //                      the JSON path.
+    //   _caaMetaQueue    — `_artEnrichIcon`'s JSON count-lookup `fetch()` calls.
+    //                      This is the one path that IS subject to CORS, so it
+    //                      keeps a conservative cap.
+    //
+    // A third queue was added (PERFORMANCE.org Step 7) for work that is
+    // deliberately NOT part of what the user is waiting to see:
+    //   _caaBgCacheQueue — `_artBackgroundCacheToIdb`'s background
+    //                      fetch-and-store tasks, fired after `_artLoadIcon`
+    //                      displays a cache-miss icon immediately via
+    //                      `_caaImgQueue`/`_artLoadNativeImg` rather than
+    //                      blocking that display on IDB population. Kept off
+    //                      `_caaImgQueue` (would double peak concurrency and
+    //                      risk delaying other icons' visible-display slots
+    //                      behind background-only work in the same FIFO queue)
+    //                      and off `_caaMetaQueue` (reserved for CORS-bound
+    //                      JSON, a different concern). Deliberately excluded
+    //                      from `_caaQueuesOnIdle()` below — the completion
+    //                      toast represents "everything the user can see is
+    //                      done"; this queue draining later, silently, is
+    //                      correct.
+    let _caaImgQueue     = null;
+    let _caaMetaQueue    = null;
+    let _caaBgCacheQueue = null;
 
     /**
      * Registers `cb` to fire once, after BOTH the image and metadata queues have
@@ -57019,13 +57057,21 @@ a { color: #1565c0; }`;
      *             No network round-trip; blob read from the browser DB.
      *   network — Tier 3: GM_xmlhttpRequest CORS-bypass fetch.
      *             Image was not cached; fetched fresh from the archive host.
-     *   browser — Native img.src path (IDB disabled or cacheBust retry).
-     *             The browser itself handles caching; the exact tier
-     *             (browser-memory / disk / network) is visible in the per-icon
-     *             Resource Timing badge but is not broken out here because
-     *             blob: URLs returned by _artFetchCachedImage have no RT entry.
+     *   browser — Native img.src path. Originally only IDB-disabled/cacheBust
+     *             retries; since PERFORMANCE.org Step 7 this also includes
+     *             every IDB-enabled cache-MISS icon, since a miss now displays
+     *             immediately via the native path instead of waiting on a
+     *             GM_xmlhttpRequest+Blob round-trip. The browser itself
+     *             handles caching; the exact tier (browser-memory / disk /
+     *             network) is visible in the per-icon Resource Timing badge
+     *             but is not broken out here because blob: URLs returned by
+     *             _artFetchCachedImage have no RT entry.
      *
      * Only successful displays are counted; 404s and other errors are not.
+     * Background-only caching (_artBackgroundCacheToIdb, Step 7) is NOT
+     * counted here — it never calls _onIconLoaded, since the icon it caches
+     * for next time has already been displayed via a separate, immediate
+     * native-img request by the time it runs.
      */
     let _caaFetchStats = {
         startTime: null,
@@ -57625,6 +57671,78 @@ a { color: #1565c0; }`;
             .catch(e  => Lib.warn('idb',  `_artFetchCachedImage: IDB write failed for ${normUrl}:`, e));
 
         return { objectUrl: objUrl, fromIdb: false, fromMemory: false };
+    }
+
+    /**
+     * Checks the local (memory + IndexedDB) image cache tiers only — mirrors
+     * `_artFetchCachedImage`'s Tier 1/Tier 2 logic exactly, but never falls
+     * through to a network fetch. Returns `null` on a miss so the caller
+     * (PERFORMANCE.org Step 7: `_artLoadIcon`) can display the icon
+     * immediately via a native `<img>` request while a separate background
+     * task (`_artBackgroundCacheToIdb`) populates IDB, rather than blocking
+     * display on a `GM_xmlhttpRequest` round-trip here.
+     *
+     * `_artFetchCachedImage` itself is intentionally left untouched — it is
+     * still used by its other callers (hover preview, big-picture strip,
+     * inline thumbnails), which are out of scope for Step 7 and still need
+     * its full three-tier (including network) blocking behaviour.
+     *
+     * @param   {string}  url   Protocol-relative or absolute image URL.
+     * @returns {Promise<{objectUrl: string, fromIdb: boolean, fromMemory: boolean}|null>}
+     */
+    async function _artCheckLocalCache(url) {
+        const normUrl = _artNormaliseUrl(url);
+        const ttlMs   = ((Lib.settings.sa_art_idb_image_ttl_days || 30) * 86400 * 1000);
+
+        // ── Tier 1: per-session in-memory Map ──────────────────────────────────
+        if (_artIdbMemCache.has(normUrl)) {
+            Lib.debug('idb', `_artCheckLocalCache: memory hit — ${normUrl}`);
+            return { objectUrl: _artIdbMemCache.get(normUrl), fromIdb: false, fromMemory: true };
+        }
+
+        // ── Tier 2: IndexedDB ──────────────────────────────────────────────────
+        try {
+            const rec = await _artIdbGet('images', normUrl);
+            if (rec && rec.blob && (Date.now() - rec.storedAt) < ttlMs) {
+                const objUrl = URL.createObjectURL(rec.blob);
+                _artIdbBlobUrls.add(objUrl);
+                _artIdbMemCache.set(normUrl, objUrl);
+                Lib.debug('idb', `_artCheckLocalCache: IDB hit — ${normUrl}`);
+                return { objectUrl: objUrl, fromIdb: true, fromMemory: false };
+            }
+            // Record absent or expired — treat as a miss.
+        } catch (idbErr) {
+            Lib.warn('idb', `_artCheckLocalCache: IDB read error for ${normUrl}:`, idbErr);
+        }
+
+        return null;
+    }
+
+    /**
+     * Fetches `url` and writes it into the IndexedDB image cache in the
+     * background, purely so a *future* page load gets a fast IDB hit
+     * (PERFORMANCE.org Step 7). Used by `_artLoadIcon`'s cache-miss path,
+     * where the icon itself is already being displayed via a separate,
+     * immediate native `<img>` request and must not wait on this.
+     *
+     * Thin wrapper around the existing `_artFetchCachedImage` (which already
+     * does the `GM_xmlhttpRequest` fetch plus fire-and-forget IDB write) —
+     * its resolved `objectUrl` is intentionally discarded here, since the
+     * icon's display already happened elsewhere. Any error is swallowed so
+     * it can never surface as a false ⚠⟳ retry indicator on an icon that
+     * already displayed fine natively. Runs on its own low-concurrency queue
+     * (`_caaBgCacheQueue`), never on `_caaImgQueue`, so a burst of background
+     * caching can't delay other icons' visible-display queue slots.
+     *
+     * @param   {string}  url   Protocol-relative or absolute image URL.
+     * @returns {void}
+     */
+    function _artBackgroundCacheToIdb(url) {
+        const _task = () => _artFetchCachedImage(url)
+            .then(() => Lib.debug('idb', `_artBackgroundCacheToIdb: cached — ${url}`))
+            .catch(err => Lib.warn('idb', `_artBackgroundCacheToIdb: failed for ${url}:`, err));
+        if (_caaBgCacheQueue) _caaBgCacheQueue.enqueue(_task);
+        else                  _task();
     }
 
     /**
@@ -59656,6 +59774,48 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Loads `imgurl` via a detached native `<img>` element, resolving once
+     * the request settles. Used both when IDB caching is disabled or this is
+     * a `cacheBust` retry, and (PERFORMANCE.org Step 7) as the *display* leg
+     * of an IDB cache miss — this lets an icon paint via the browser's own
+     * image pipeline without waiting on a `GM_xmlhttpRequest`+Blob round-trip
+     * first.
+     *
+     * A 30-second watchdog ensures the caller's queue task always settles
+     * even if the browser silently drops the request (e.g. many detached
+     * `<img>` elements competing for connection slots after a filter run
+     * replaced the DOM while old queue tasks were still in-flight) — on
+     * watchdog timeout neither callback fires, matching the original inline
+     * behaviour this was extracted from.
+     *
+     * @param   {ArtCtx}                  ctx        Archive context descriptor (for debug channel).
+     * @param   {string}                  imgurl     Image URL to request.
+     * @param   {function(string): void}  onSuccess  Called with the loaded `src` on success.
+     * @param   {function(): void}        onError    Called on load failure.
+     * @returns {Promise<void>}
+     */
+    function _artLoadNativeImg(ctx, imgurl, onSuccess, onError) {
+        return new Promise(resolve => {
+            const img    = document.createElement('img');
+            const _timer = setTimeout(() => {
+                Lib.debug(ctx.key, `${ctx.key}LoadIcon: img load watchdog fired (30 s) — ${imgurl}`);
+                resolve();
+            }, 30000);
+            img.addEventListener('load', function() {
+                clearTimeout(_timer);
+                onSuccess(this.src);
+                resolve();
+            });
+            img.addEventListener('error', function() {
+                clearTimeout(_timer);
+                onError();
+                resolve();
+            });
+            img.src = imgurl; // triggers the browser request
+        });
+    }
+
+    /**
      * @param {ArtCtx}      ctx        Archive context descriptor.
      * @param {HTMLElement} artIcon    Artwork-icon span inside an art anchor cell.
      * @param {boolean}     [cacheBust=false]  When true, appends a timestamp query
@@ -59866,55 +60026,43 @@ a { color: #1565c0; }`;
 
         // ── IDB-aware load path ───────────────────────────────────────────────
         // When the IDB cache is enabled and this is not a force-refresh retry
-        // (cacheBust=true), try to serve the blob from IDB / session memory
-        // before falling back to a network fetch.
+        // (cacheBust=true), check IDB / session memory first — these are local
+        // and fast, so it's still correct to await them before display.
         //
-        // On an IDB hit the resolved blob: URL is set directly on a detached
-        // <img> so the load event fires synchronously from memory — no network
-        // round-trip occurs.
+        // On a genuine miss (PERFORMANCE.org Step 7): rather than blocking the
+        // visible paint on a GM_xmlhttpRequest+Blob round-trip, display the
+        // icon immediately via the same native <img> path used below
+        // (matching jesus2099's actual behaviour — its own icon loader also
+        // gates display on img.onload, it just never has an IDB/blob step in
+        // front of it), while a separate background task
+        // (_artBackgroundCacheToIdb) fetches and stores the blob in IDB purely
+        // so a *future* page load gets a fast IDB hit. That background task
+        // never touches this icon's display and swallows its own errors.
         //
-        // On any IDB/network failure the ⚠⟳ retry indicator is shown via
+        // On any local-cache hit the resolved blob: URL is set directly (no
+        // network round-trip). On any load failure (local-cache miss's native
+        // request, or IDB disabled below) the ⚠⟳ retry indicator is shown via
         // _onIconError() so the user can force a fresh fetch.
         if (Lib.settings.sa_art_idb_enable && !cacheBust) {
-            return new Promise(resolve => {
-                _artFetchCachedImage(imgurl)
-                    .then(({ objectUrl, fromIdb, fromMemory }) => {
-                        // Apply background-image + hint directly; no DOM img needed.
-                        _onIconLoaded(objectUrl, fromIdb, fromMemory);
-                        resolve();
-                    })
-                    .catch(err => {
-                        // Network fetch failed (e.g. 404 = no front image, or CDN error).
-                        Lib.debug(ctx.key, `${ctx.key}LoadIcon: IDB/network fetch failed — ${err.message}`);
-                        _onIconError();
-                        resolve();
-                    });
+            return _artCheckLocalCache(imgurl).then(hit => {
+                if (hit) {
+                    // Apply background-image + hint directly; no DOM img needed.
+                    _onIconLoaded(hit.objectUrl, hit.fromIdb, hit.fromMemory);
+                    return;
+                }
+                // Miss: cache in the background (own queue, never blocks
+                // display), display immediately via the native <img> path.
+                _artBackgroundCacheToIdb(imgurl);
+                return _artLoadNativeImg(ctx, imgurl,
+                    src => _onIconLoaded(src, false),
+                    _onIconError);
             });
         }
 
         // ── Fallback: native img element path (IDB disabled or cacheBust=true) ─
-        // A 30-second watchdog timer ensures the queue task always settles even
-        // if the browser silently drops the request (e.g. when many detached
-        // <img> elements are competing for connection slots after a filter run
-        // replaced the DOM while old queue tasks were still in-flight).
-        return new Promise(resolve => {
-            const img    = document.createElement('img');
-            const _timer = setTimeout(() => {
-                Lib.debug(ctx.key, `${ctx.key}LoadIcon: img load watchdog fired (30 s) — ${imgurl}`);
-                resolve();
-            }, 30000);
-            img.addEventListener('load', function() {
-                clearTimeout(_timer);
-                _onIconLoaded(this.src, false);
-                resolve();
-            });
-            img.addEventListener('error', function() {
-                clearTimeout(_timer);
-                _onIconError();
-                resolve();
-            });
-            img.src = imgurl; // triggers the browser request
-        });
+        return _artLoadNativeImg(ctx, imgurl,
+            src => _onIconLoaded(src, false),
+            _onIconError);
     }
 
     /**
@@ -63450,13 +63598,16 @@ a { color: #1565c0; }`;
      * `initEaaInlinePics` to be enqueued first so inline thumbnails appear before
      * small icons and the big picture strip.
      *
-     * Two independent queues (PERFORMANCE.org Step 6): image loads
-     * (`_caaImgQueue`, `sa_caa_img_concurrency`) are not CORS-bound (native
-     * `<img src>` / `GM_xmlhttpRequest` both bypass CORS entirely — see the
-     * `_caaImgQueue` declaration comment) so they can run at a much higher
-     * concurrency than the JSON count-lookup `fetch()` calls
+     * Two independent visible-display queues (PERFORMANCE.org Step 6): image
+     * loads (`_caaImgQueue`, `sa_caa_img_concurrency`) are not CORS-bound
+     * (native `<img src>` / `GM_xmlhttpRequest` both bypass CORS entirely —
+     * see the `_caaImgQueue` declaration comment) so they can run at a much
+     * higher concurrency than the JSON count-lookup `fetch()` calls
      * (`_caaMetaQueue`, `sa_caa_meta_concurrency`), which are the one path
-     * genuinely subject to CORS.
+     * genuinely subject to CORS. A third queue (`_caaBgCacheQueue`,
+     * `sa_art_idb_bg_cache_concurrency`, PERFORMANCE.org Step 7) runs
+     * background-only IDB population for icons that already displayed via
+     * `_caaImgQueue` — see its declaration comment.
      *
      * Guards: `Lib.settings.sa_enable_caa_pics` must be true.
      */
@@ -63471,8 +63622,9 @@ a { color: #1565c0; }`;
         // Currently-running tasks (at most each queue's own concurrency budget)
         // are allowed to finish naturally — their in-flight requests cannot be
         // recalled once submitted to the browser.
-        if (_caaImgQueue)  _caaImgQueue.cancel();
-        if (_caaMetaQueue) _caaMetaQueue.cancel();
+        if (_caaImgQueue)     _caaImgQueue.cancel();
+        if (_caaMetaQueue)    _caaMetaQueue.cancel();
+        if (_caaBgCacheQueue) _caaBgCacheQueue.cancel();
 
         // Disconnect any lazy-load IntersectionObservers from a previous
         // initialisation (e.g. disk-load after initial fetch, or page re-use).
@@ -63483,12 +63635,15 @@ a { color: #1565c0; }`;
 
         // (Re-)create both request queues so their current concurrency settings
         // are picked up on every render pass.
-        const imgConcurrency  = Math.max(1, Math.min(30, Lib.settings.sa_caa_img_concurrency  || 12));
-        const metaConcurrency = Math.max(1, Math.min(20, Lib.settings.sa_caa_meta_concurrency || 6));
-        _caaImgQueue  = makeCaaQueue(imgConcurrency,  '_caaImgQueue');
-        _caaMetaQueue = makeCaaQueue(metaConcurrency, '_caaMetaQueue');
+        const imgConcurrency     = Math.max(1, Math.min(30, Lib.settings.sa_caa_img_concurrency  || 12));
+        const metaConcurrency    = Math.max(1, Math.min(20, Lib.settings.sa_caa_meta_concurrency || 6));
+        const bgCacheConcurrency = Math.max(1, Math.min(20, Lib.settings.sa_art_idb_bg_cache_concurrency || 4));
+        _caaImgQueue     = makeCaaQueue(imgConcurrency,     '_caaImgQueue');
+        _caaMetaQueue    = makeCaaQueue(metaConcurrency,    '_caaMetaQueue');
+        _caaBgCacheQueue = makeCaaQueue(bgCacheConcurrency, '_caaBgCacheQueue');
         Lib.debug('caa', `_artInitQueue: request queues created ` +
-            `(img concurrency=${imgConcurrency}, meta concurrency=${metaConcurrency})`);
+            `(img concurrency=${imgConcurrency}, meta concurrency=${metaConcurrency}, ` +
+            `bg-cache concurrency=${bgCacheConcurrency})`);
 
         // Reset per-session fetch telemetry so every render pass gets a fresh
         // count and elapsed-time measurement.  _caaFetchStats counters are

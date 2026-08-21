@@ -390,7 +390,7 @@ request completely unthrottled.
   ~IntersectionObserver~ lazy-loading is untouched; only how many of each
   request kind can run concurrently changed.
 
-*** TODO Step 7: Decouple IDB caching from the icon-render hot path
+*** DONE Step 7: Decouple IDB caching from the icon-render hot path
 
 Found alongside Step 6 but deliberately not implemented there — bigger risk
 profile (changes ~_artLoadIcon~'s IDB-path/native-fallback branching and the
@@ -417,6 +417,72 @@ its own before/after telemetry check on the cache-hint reporting (a
 cold-cache load would report as "browser" instead of "network" even with
 IDB enabled, since the blob fetch would no longer be what puts pixels on
 screen).
+
+*Landed*: branch ~filter-performance-fix-caa-throughput~, see
+~ShowAllEntityData_CHANGELOG.wip.json~ ~WIP.8~. Findings while implementing,
+beyond this step's own original text above:
+
+- **Corrected premise**: the "jesus2099 just assigns ~img.src~ immediately
+  with no blocking round-trip" framing above is not accurate, confirmed by
+  reading ~debug/jesus-coverart.js~'s ~loadCaaIcon~ (lines 217-235) directly.
+  That function ALSO gates its visible ~background-image~ assignment on the
+  ~<img>~'s ~load~ event — it just has no IDB/blob middleman in front of it.
+  So the real gap was never "blocking vs. non-blocking" (both approaches
+  block); it was that our own IDB-miss path added an *extra*
+  ~GM_xmlhttpRequest~+Blob+~createObjectURL~ hop, routed through a
+  userscript-manager-privileged XHR and queued behind ~_caaImgQueue~, before
+  the browser's own native image pipeline ever got a chance to run. The fix
+  actually landed is: match jesus2099's plain ~<img src>~ for the *display*
+  leg of a miss (reusing the pre-existing native-fallback branch, previously
+  only reached when IDB was disabled or on a ~cacheBust~ retry — now factored
+  into a shared ~_artLoadNativeImg(ctx, imgurl, onSuccess, onError)~ helper),
+  while adding a new background-only leg (~_artBackgroundCacheToIdb~) to
+  preserve the IDB-population benefit for future page loads.
+- **Deviation from the plan's literal design, found and fixed during
+  implementation**: the plan's first draft proposed "splitting"
+  ~_artFetchCachedImage~ into a local-cache-only checker and a
+  network-fetch-only helper in place. That would have broken its five OTHER
+  callers (~ergInjectCaaInlineThumbnails~'s inline loader, ~58282~'s hover
+  preview, ~_loadBigImgIdb~ inside ~_artInitBigPics~, and two inline-thumbnail
+  ~loadTask~ call sites) — all of them rely on ~_artFetchCachedImage~'s full
+  three-tier (including network) *blocking* behaviour for their own display,
+  and are explicitly out of scope for this step. Fixed by leaving
+  ~_artFetchCachedImage~ completely untouched and instead adding two new,
+  separate functions: ~_artCheckLocalCache(url)~ (a small, intentionally
+  duplicated Tier-1/Tier-2-only copy, used solely by ~_artLoadIcon~'s new miss
+  path) and ~_artBackgroundCacheToIdb(url)~ (a thin wrapper that just calls
+  ~_artFetchCachedImage~ and discards/swallows its result — reusing the
+  existing fetch+IDB-write logic rather than duplicating it). Zero risk to
+  the five unrelated callers.
+- New ~_caaBgCacheQueue~ (default concurrency 4, new
+  ~sa_art_idb_bg_cache_concurrency~ setting) keeps background-caching tasks
+  off ~_caaImgQueue~ entirely — bypassing ~_caaImgQueue~ for the new
+  *display* leg was considered and rejected: ~_artInitSmallPics~'s own
+  comment and ~sa_caa_img_concurrency~'s description both document a real,
+  previously-hit ~ERR_INSUFFICIENT_RESOURCES~ failure from unthrottled image
+  loads on large tables, so the display leg still goes through
+  ~_caaImgQueue~ exactly as before. ~_caaQueuesOnIdle()~ (the completion-toast
+  gate) deliberately still only waits on ~_caaImgQueue~+~_caaMetaQueue~ — the
+  new queue draining later, silently, after the toast fires, is intentional.
+- **Cache-hint telemetry**: per the user's explicit choice, no new badge
+  state was added. A miss-then-native-display icon now flows through the
+  same ~getResourceTimingHint~ path the native-fallback branch already used,
+  landing in the ~browser~ stats bucket instead of the old synthetic
+  ~network~ bucket — more accurate (reflects what the browser actually
+  observed), not a regression. ~_caaFetchStats~'s doc comment was updated to
+  describe this; background-cache fetches are deliberately not counted in
+  ~_caaFetchStats~ at all (they never call ~_onIconLoaded~).
+- **Double-fetch bandwidth tradeoff** (a cold miss now issues two requests
+  for the same URL — native ~<img>~ for display, separate ~GM_xhr~ for IDB
+  storage): shipped without blocking on pre-verification, as planned. Not
+  yet measured against a real archive response via DevTools Network tab
+  whether the second request is served from the browser's HTTP cache —
+  follow-up measurement, not a blocker.
+- Both existing retry mechanisms (per-icon ⚠⟳ click-retry,
+  per-table "Retry" button) were confirmed unaffected — both already forced
+  ~cacheBust=true~, already routing through what is now the shared
+  ~_artLoadNativeImg~ helper; behaviour is unchanged, only the code path is
+  now shared with the new miss-case display leg instead of duplicated.
 
 *** TODO Step 8: ~content-visibility: auto~ for off-screen rows
 
@@ -549,6 +615,56 @@ mirroring Step 5's ~typeof IntersectionObserver !== 'undefined'~ pattern) —
 unsupported browsers simply don't get the property applied, no fallback
 behaviour needed since it's purely a rendering hint with no functional
 dependency elsewhere in the script.
+
+**** Manual validation gate result (2026-08-20): FAILED — do not implement as designed
+
+Before writing any settings/production code, this step's own risk (noted
+during planning, not in the original doc: ~<tr>~ computes to
+~display: table-row~, an "internal table box" display type with a history
+of uneven ~content-visibility~/containment support across engines) was
+checked manually against a real, live MusicBrainz page — 6,440 rows, flags
+from the companion userscripts, same fixture class as ~debug/flags-rendering.html~
+above. DevTools console snippet used:
+
+#+begin_src js
+document.querySelectorAll('table.tbl tbody tr').forEach(tr => {
+    tr.style.contentVisibility = 'auto';
+    tr.style.containIntrinsicSize = `auto ${Math.max(tr.offsetHeight, 1)}px`;
+});
+#+end_src
+
+Result: after applying the snippet and scrollbar-dragging back toward a
+previously-marked heavy row, **nothing rendered at all** — the table went
+blank rather than cleanly skipping/unskipping individual off-screen rows.
+A DevTools Performance recording taken across the same gesture got stuck at
+"Stopping timeline..." for an extended period (unclear whether this was
+merely slow trace processing on a large capture, or a symptom of the same
+underlying breakage), which blocked completing the rest of the planned
+diagnostic checklist (confirming whether the DOM row count was still
+intact, whether clearing the two style properties restored rendering, and
+which browser/version was in use). The test was stopped at this point
+rather than pushed further — the empirical result (broken rendering on a
+real page, immediately, on the very first manual try) was judged clear
+enough on its own to treat as a NO-GO without needing the full root-cause
+trace.
+
+**Decision**: do not implement ~content-visibility: auto~ on ~<tr>~
+elements as proposed above. This closes out this step's approach; it
+remains TODO, not DONE — no settings, helper functions, or render-path
+hooks from the "Proposed approach"/"Implementation" sections above were
+ever written to the userscript. No code changes resulted from this step.
+
+**Next step, if this is revisited**: per the risk noted in "Proposed
+approach" above, table-row-level containment is not a safe primitive on
+this codebase's real pages. Any future attempt needs a structurally
+different approach — e.g. wrapping each row's heavy cell content in a
+nested, non-table-row ~<div>~ and applying ~content-visibility~ to that
+wrapper instead, sidestepping the internal-table-box constraint — which
+was flagged as the fallback direction during planning but deliberately not
+designed in detail, since the validation gate existed specifically to
+avoid investing in a full design before confirming the primitive works at
+all. That fallback is unstarted; this doc should be treated as blocked
+here until someone picks that back up.
 
 ** Resuming after /clear
 

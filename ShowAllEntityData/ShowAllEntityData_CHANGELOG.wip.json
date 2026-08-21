@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.8",
+    "date": "2026-08-21",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "PERFORMANCE.org Step 7 (decouple IDB caching from the icon-render hot path): a CAA/EAA icon cache MISS (sa_art_idb_enable=true) no longer blocks its visible background-image paint on a full GM_xmlhttpRequest→Blob→createObjectURL round-trip. _artLoadIcon now checks the local memory/IndexedDB cache tiers only (new _artCheckLocalCache, still fast/local, unchanged for actual hits); on a miss it displays the icon immediately via the same native <img> request path used when IDB is disabled (factored into a shared _artLoadNativeImg(ctx, imgurl, onSuccess, onError) helper), while a new, separately-queued background task (_artBackgroundCacheToIdb, on a new low-concurrency _caaBgCacheQueue — default 4, new sa_art_idb_bg_cache_concurrency setting) fetches the same image and writes it to IndexedDB purely so a future page load gets a fast IDB hit. Investigating the original 'jesus2099 assigns img.src immediately' premise (from PERFORMANCE.org's Step 6 WIP.6 entry) against debug/jesus-coverart.js directly found it inaccurate — that script's own icon loader also gates its visible paint on img.onload, it just never has an IDB/blob step in front of it; the real fix is removing that extra hop, not removing a blocking wait that both approaches always had. _artFetchCachedImage (still used by hover preview, the big-picture strip, and inline thumbnails) is untouched — _artBackgroundCacheToIdb reuses it as a thin wrapper rather than duplicating its fetch+IDB-write logic, avoiding any regression risk to those unrelated callers. The per-icon cache-hint badge and _caaFetchStats toast counters are unchanged by design (per explicit choice): a miss-then-native-display icon now lands in the existing 'browser' telemetry bucket instead of the old synthetic 'network' bucket, which is more accurate, not a regression. Both existing icon retry mechanisms (per-icon ⚠⟳, per-table 'Retry' button) already forced cacheBust=true and were already using this native-fallback code path — unaffected, just now routed through the shared helper instead of a duplicated inline block."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.7",
     "date": "2026-08-19",
     "sections": [
