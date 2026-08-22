@@ -1,5 +1,22 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 3/7 — unique-values dropdown (SYN_SECTION_META, section rendering, structure-mode matchers, highlight functions, quickfilter). Cleanest chunk audited so far: no orphaned/misattributed blocks and no missing JSDoc found.",
+          "_cellMatchesStructureMode(): @param mode's union type listed only 16 of the ~35 mode strings/prefixes the function's own dispatch chain actually recognizes. Replaced the exhaustive-but-incomplete union with a pointer to the dispatch chain as the source of truth (with a representative sample), to stop the doc drifting out of sync again as new modes are added.",
+          "openUniqDrop(): top-level doc claimed clicking/Enter on an entry 'copies only the raw column value... into the corresponding column filter input' — a single-value, close-on-select model. Wrong: the real handler toggles a checkbox and re-applies the whole checked set via applyUniqValueSet(), and the panel stays open for continued multi-select — exactly as the function's own nested renderItems() closure already correctly documented a few hundred lines down. The two docs on the same code directly contradicted each other; fixed the outer one to match.",
+          "makeSynItem(): @param mode's union was missing 4 real values actually passed at call sites: 'multi-medium', 'catalog-has-prefix', 'catalog-no-prefix', 'catalog-none'.",
+          "makeValueSynItem(): @param kind's union was missing 3 real values actually passed at call sites: 'tagcount', 'entitycancelled', 'eventcancelled'.",
+          "applyUniqValueSet(): cosmetic fix — rejoined a JSDoc sentence that had an odd mid-sentence line break."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-08-22",
     "sections": [

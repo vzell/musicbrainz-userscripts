@@ -17904,7 +17904,18 @@
      * (`addCAA`/`addEAA`'s `.mb-inline-art-sort-key`) under one evaluator so
      * a mode string is matched identically everywhere it's checked.
      *
-     * @param {string} mode - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | `attr:${string}` | `task:${string}` | `date:${string}` | `instrument:${string}` | `name:${string}` | `comment:${string}` | `alias:${string}` | `rel:${string}` | 'inline-art-yes' | 'inline-art-no'
+     * @param {string} mode - One of the ~35 recognized mode strings/prefixes
+     *   dispatched by this function's own `if (mode === …)`/`mode.startsWith(…)`
+     *   chain below — that chain is the single source of truth for the full,
+     *   current set (e.g. 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' |
+     *   'title-mismatch' | 'name-variation' | 'multi-medium' | 'inline-art-yes' |
+     *   'inline-art-no', plus compound prefixes like `attr:${string}`,
+     *   `task:${string}`, `date:${string}`, `instrument:${string}`,
+     *   `name:${string}`, `comment:${string}`, `alias:${string}`, `rel:${string}`,
+     *   `role:${string}`, `roletoken:${string}`, `altname:${string}`,
+     *   `joinphrase:${string}`, `namevariation:${string}`, `eventdate:${string}`,
+     *   `tagcount:${string}`, and the format/country/catalog/art-info families —
+     *   don't duplicate the list here, it drifts; read the dispatch chain).
      * @param {HTMLTableCellElement} cell
      * @param {HTMLTableRowElement}  row
      * @param {number}  colIdx
@@ -45356,9 +45367,11 @@ a { color: #1565c0; }`;
      *  (21345) value C
      *
      * The badge colors are controlled by the `sa_uniq_count_color` and
-     * `sa_uniq_count_bg` settings.  Clicking an entry (or pressing Enter while
-     * it is focused) copies only the raw column value — never the badge text —
-     * into the corresponding column filter input.
+     * `sa_uniq_count_bg` settings.  Clicking an entry (or pressing Enter/Space
+     * while it is focused) toggles its checkbox and re-applies the whole set of
+     * currently-checked values as an OR'd column filter via `applyUniqValueSet()`
+     * — never the badge text, only the raw column value(s) — and the panel stays
+     * open for continued multi-select (see `renderItems()` below).
      *
      * Keyboard navigation (focus stays on `btn` while the panel is open):
      *   ArrowDown / ArrowUp  – move focused item one step
@@ -47170,7 +47183,7 @@ a { color: #1565c0; }`;
          * can be surfaced for every column type (plain text, extractor synthetic,
          * etc.), not only for columns with multi-row / collapsable structure.
          *
-         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation'
+         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | 'multi-medium' | 'catalog-has-prefix' | 'catalog-no-prefix' | 'catalog-none'
          * @param {string} label   - Human-readable display text
          * @param {number} count   - Number of visible rows matching this mode
          */
@@ -47228,7 +47241,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -48197,10 +48210,9 @@ a { color: #1565c0; }`;
      * ANY checked entry. An empty `selectedValues` array means "no
      * constraint" — the column filter is fully cleared, not "match nothing."
      *
-     * State is stashed on `input.dataset.mbUniqValues` (JSON-encoded array),
-     * a human-readable
-     * summary label is written to `input.value` so existing "is this column
-     * filter active" checks elsewhere (which just test non-empty `input.value`)
+     * State is stashed on `input.dataset.mbUniqValues` (JSON-encoded array), a
+     * human-readable summary label is written to `input.value` so existing "is
+     * this column filter active" checks elsewhere (which just test non-empty `input.value`)
      * keep working unmodified, and `runFilter()` is called directly rather than
      * dispatching a synthetic 'input' event — that event is caught by the
      * column filter's own input handler, which unconditionally deletes
