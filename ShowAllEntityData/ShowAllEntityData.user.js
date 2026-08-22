@@ -4544,14 +4544,6 @@
     }
 
     /**
-     * Derives the runtime injected-column descriptor list from activeDefinition.
-     * Reads features.injectedColumns (array of column name strings) and resolves
-     * entityType + WS2 inc options from pageType.
-     * Returns [] when sa_enable_relationships_column is false.
-     * @param {Object} def
-     * @returns {Array<{colName:string,entityType:string,incOptions:string[]}>}
-     */
-    /**
      * Derives the runtime injected-column descriptor list from a merged
      * activeDefinition object.
      *
@@ -4720,7 +4712,7 @@
      * Removes configured marker elements from a data row's cells in-place.
      *
      * For each eraser descriptor whose column index has been resolved (`colIdx !== -1`),
-     * the target cell is cleaned according to two distinct strategies, each driven by the
+     * the target cell is cleaned according to five distinct strategies, each driven by the
      * contents of `entry.erasers`:
      *
      * 1. **Text-content erasure** (symbols ▶, ➕, …):
@@ -4749,8 +4741,18 @@
      *    MB content itself (e.g. Length) — do NOT apply to a column whose own primary
      *    link/cell carries a jesus2099 marker class (e.g. a recording title `<a
      *    class="jesus2099userjs...recording">`), since that would delete the content too.
+     *    Also strips jesus2099's own in-place mutation of the `<td>` itself (a
+     *    `class="treleases"` plus a plugin `title` and inline `text-align:right` style)
+     *    so that a scraped cell never carries the "treleases" class into this script's
+     *    own captured rows — see the inline "Strategy 3b" comment for why that matters.
      *
-     * 4. **"Expand events" toggle-button erasure** (sentinel string `'expandEvents'`):
+     * 4. **wiencek suggested-work/work div erasure** (sentinel string `'wiencek'`):
+     *    Removes injected `<div class="suggested-work">` and `<div class="work">`
+     *    containers added by Michael Wiencek's "MusicBrainz: Expand/collapse release
+     *    groups" userscript on Artist-Recordings pages — orange/green suggested-work
+     *    hints and "live recording of …" relationship lines that clutter the Name cell.
+     *
+     * 5. **"Expand events" toggle-button erasure** (sentinel string `'expandEvents'`):
      *    Removes `<button class="expand-events-toggle …" data-event-gid="…">▸</button>`
      *    — the inline expand/collapse control injected into an Event cell, before this
      *    script's own fetch/scrape ever runs, by Dvir Yitzchaki's "Expand events"
@@ -4925,158 +4927,6 @@
         return features.renderMultiRowCell.map(columnName => ({ columnName, colIdx: -1 }));
     }
 
-    /**
-     * Converts `<ul>`-based tag/genre lists into a proper `<table class="tbl">`
-     * so the standard fetch/filter/sort pipeline can process them.
-     *
-     * This function is called as a DOM pre-processing step for pageTypes that
-     * carry a `features.listToTable` array (e.g. 'tags', 'artist-tags').
-     *
-     * Three DOM structures are supported, detected automatically for each
-     * `sectionId` entry in the `listToTable` array:
-     *
-     * ── Structure A: div-wrapped (user tags pages /user/<n>/tags) ────────────
-     *
-     *   Before:
-     *     <h3>Genres</h3>
-     *     <div id="genres">
-     *       <ul class="genre-list">
-     *         <li class="odd">
-     *           <a href="/user/vzell/tag/rock">rock</a>
-     *           <span class="tag-vote-buttons"><span class="tag-count">15</span></span>
-     *         </li>  …
-     *       </ul>
-     *     </div>
-     *
-     *   After:
-     *     <h3>Genres</h3>
-     *     <table class="tbl">…</table>
-     *
-     *   Detection : `document.getElementById(sectionId)` succeeds.
-     *   Replacement: the entire `<div>` is replaced by the bare `<table>`.
-     *   Column name: derived from the `<ul>` class attribute (see below).
-     *
-     * ── Structure B: bare ul (entity tags pages /entity/<mbid>/tags) ─────────
-     *
-     *   Before:
-     *     <h3>Genres</h3>
-     *     <ul class="genre-list">
-     *       <li class="odd">
-     *         <a href="/tags/rock">rock</a>
-     *         <span class="tag-vote-buttons"><span class="tag-count">15</span></span>
-     *       </li>  …
-     *     </ul>
-     *
-     *   After:
-     *     <h3>Genres</h3>
-     *     <table class="tbl">…</table>
-     *
-     *   Detection : no `<div id="sectionId">` found; fall back to scanning for
-     *               `<ul>` elements whose class contains `<singular>-list`
-     *               (e.g. sectionId "genres" → look for class "genre-list").
-     *   Replacement: the `<ul>` itself is replaced by the bare `<table>`.
-     *   Column name: derived from the `<ul>` class attribute (see below).
-     *
-     * ── Structure C: h2+ul (/area/<mbid>/users, /tag/<v>/<entity>,
-     *                       /user/.../tag/<v>/<entity>, /subscribers) ──────────
-     *
-     *   Triggered when `sectionId === ''` AND the current page path matches one of:
-     *   - `/area/<mbid>/users`           (pageType 'area-users')
-     *   - `/tag/<value>/<entity>`        (pageType 'tag-value-entity')
-     *   - `/user/.../tag/<v>/<entity>`   (pageType 'user-tag-value-entity')
-     *   - `/subscribers`                 (pageType 'editor-subscribers')
-     *   For all other pageTypes with `sectionId === ''`, Structure D is used.
-     *
-     *   area-users variant:
-     *     Before:
-     *       <h2>Users</h2>
-     *       <p>…</p> <nav>…</nav>
-     *       <ul>
-     *         <li><a href="/user/__MarioMadrid"><img …><bdi>__MarioMadrid</bdi></a></li>
-     *         …
-     *       </ul>
-     *     After:
-     *       <h2>Users</h2>
-     *       <table class="tbl">…</table>
-     *     Column name: full h2 text (e.g. "Users").
-     *
-     *   user-subscribers variant:
-     *     Before:
-     *       <h2>Subscribers</h2>
-     *       <p>…</p>
-     *       <ul>
-     *         <li><a href="/user/Goulash"><img … class="avatar no-avatar" …><bdi>Goulash</bdi></a></li>
-     *         …
-     *       </ul>
-     *     After:
-     *       <h2>Subscribers</h2>
-     *       <table class="tbl">…</table>
-     *     Column name: full h2 text (e.g. "Subscribers").
-     *
-     *   tag-value-entity variant:
-     *     Before:
-     *       <h2>Labels tagged as "<a href="/tag/country">country</a>"</h2>
-     *       <p style>…</p>
-     *       <ul style>
-     *         <li>1 - <a href="/label/…"><bdi>1st Drop Music</bdi></a></li>
-     *         …
-     *       </ul>
-     *     After:
-     *       <h2>Labels tagged as "country"</h2>
-     *       <table class="tbl">…</table>
-     *     Column name: first word of the h2 text content before "tagged"
-     *                  (e.g. "Labels tagged as …" → "Labels").
-     *
-     *   Detection : sectionId is '' AND path matches /area/<mbid>/users OR
-     *               /tag/<value>/<entity>.
-     *               Scans `div#content` (or body) for every `<h2>` and walks
-     *               its next element siblings (up to 5 steps) until a `<ul>`.
-     *   Table layout: single column (full `<li>` inner content cloned).
-     *   Replacement: the `<ul>` itself is replaced by the bare `<table>`.
-     *
-     * ── Structure D: h2 + h3+ul sections (tag value pages) ──────────────────
-     *
-     *   Triggered when `sectionId === ''` AND the page path contains `/tag/`
-     *   (i.e. pageType is 'user-tag-value' or 'tag-value').
-     *
-     *   Before:
-     *     <h2>Entities tagged as "handwritten"</h2>
-     *     <p>…</p>
-     *     <h3>Areas</h3>
-     *     <ul>
-     *       <li><span class="flag flag-US">
-     *             <a href="/area/…"><bdi>United States</bdi></a>
-     *           </span></li>  …
-     *     </ul>
-     *     <h3>Artists</h3>
-     *     <ul>…</ul>
-     *
-     *   After:
-     *     <h2>Entities tagged as "handwritten"</h2>
-     *     <h3>Areas</h3>
-     *     <table class="tbl">…</table>
-     *     <h3>Artists</h3>
-     *     <table class="tbl">…</table>
-     *
-     *   Detection : sectionId is '' AND path contains /tag/.
-     *               Finds every `<h3>` inside `div#content` and walks its
-     *               next element siblings (up to 5 steps) until a `<ul>`.
-     *   Column name: text content of the preceding `<h3>` (e.g. "Areas").
-     *   Table layout: single column (the full `<li>` inner content).
-     *   Replacement: the `<ul>` itself is replaced by the bare `<table>`.
-     *
-     * ── Column-name derivation (Structures A and B) ──────────────────────────
-     *   The first column name is extracted from the `<ul>` class attribute:
-     *   the substring before the literal "-list" suffix is capitalised.
-     *   e.g.  `<ul class="genre-list">` → "Genre"
-     *         `<ul class="tag-list">`   → "Tag"
-     *   The second column is always "Tag count".
-     *
-     * @param {object}   def        - The active merged pageDefinition object.
-     * @param {Document} [docContext=document] - DOM document to operate on.
-     *                                 Pass a fetched DOMParser document to apply
-     *                                 the conversion to remote pages in the fetch loop.
-     */
     /**
      * Converts a plural MusicBrainz entity-type label to its singular form.
      * Used by applyListToTable (Structure D column names) and renderGroupedTable
@@ -6689,7 +6539,10 @@
      * nothing else to pick), cramming the whole action-button toolbar, row-count
      * badge, CAA toggle, and filter bar into one native heading — which then
      * also gets made collapsible by `makeH2sCollapsible()` (every `<h2>` is
-     * fair game, unlike an `<h1>` page title). See debug/user-edits-wrong.org.
+     * fair game, unlike an `<h1>` page title). See debug/NOTES.md's
+     * "## 2026-07-29 — user-edits/user-open-edits cram everything onto one
+     * heading" entry (the standalone debug/user-edits-wrong.org snapshot this
+     * used to point to is gone).
      * Promoting it to `<h1>` first frees up `<h2>` for the subsequent
      * `insertH2()` call's dedicated anchor, matching every other single-table
      * page type's h1-title / h2-anchor split.
@@ -11707,7 +11560,9 @@
      * activeDefinition object.
      *
      * `features.integerColumns` is an array of descriptor objects:
-     *   { sourceColumn: string, align?: 'L' | 'R' | 'C' }
+     *   { sourceColumn: string, align?: 'L' | 'R' | 'C' | string }
+     *   ('L'/'R'/'C' select standard alignment; any other single character is
+     *   treated as a split-align separator — see applyIntegerColumnStyling().)
      *
      * During table rendering, each cell in a matching column is styled using the
      * "centered inline-block + content-align" technique: the <td> itself is given
@@ -11756,21 +11611,24 @@
      *   • `min-width` is set via `--mb-int-col-min-width` (default 2ch) so
      *     callers can override per-column widths via CSS.
      *
-     * For align ':' (colon-split / decimal-separator alignment):
-     *   Splits the cell's text content at the FIRST ':' and produces three child
-     *   spans inside a `display:inline-block` wrapper:
+     * For any align value other than 'L'/'R'/'C' (a single-character split-align
+     * separator, e.g. ':'):
+     *   Splits the cell's text content at the LAST occurrence of that character
+     *   (so a value like '[H:]M:S' always splits at the M/S boundary) and produces
+     *   three child spans inside a `display:inline-block` wrapper:
      *
      *     <td style="text-align:center">
      *       <span class="mb-ic-wrap">
      *         <span class="mb-ic-left" > left part </span>  ← text-align:right
-     *         <span class="mb-ic-sep"  > :         </span>  ← visual center
+     *         <span class="mb-ic-sep"  > separator  </span>  ← visual center
      *         <span class="mb-ic-right"> right part</span>  ← text-align:left
      *       </span>
      *     </td>
      *
-     *   `mb-ic-left` min-width is initially ''. A second pass —
-     *   `finalizeColonAlignedColumns` — sets `min-width:Nch` so colons line
-     *   up across all rows.  Values with no ':' are treated as pure right parts.
+     *   `mb-ic-left`/`mb-ic-right` min-width are initially ''. A second pass —
+     *   `finalizeSplitAlignedColumns` — sets `min-width:Nch` on BOTH spans so the
+     *   separator lines up at an identical horizontal position across all rows.
+     *   Values with no separator character are treated as pure right parts.
      *
      * Idempotency: `cell.dataset.mbIntColStyled = '1'` prevents double-wrapping.
      *
@@ -11864,16 +11722,18 @@
     }
 
     /**
-     * finalizeColonAlignedColumns — pass 2 (post-collection, called once per
+     * finalizeSplitAlignedColumns — pass 2 (post-collection, called once per
      * render cycle, just before renderFinalTable / renderGroupedTable).
      *
-     * For every integerColumns descriptor with `align: ':'`:
+     * For every integerColumns descriptor with a split-align separator (any
+     * `align` value other than 'L'/'R'/'C'):
      *   1. Iterates every collected row and reads the text length of its
-     *      `.mb-ic-left` span in the target column.
-     *   2. Determines the maximum left-part character count across all rows.
-     *   3. Sets `min-width:Nch` on every `.mb-ic-left` span in that column so
-     *      that the `:` separator aligns vertically for all values regardless of
-     *      the width of the left part.
+     *      `.mb-ic-left` AND `.mb-ic-right` spans in the target column.
+     *   2. Determines the maximum left-part and right-part character counts
+     *      across all rows.
+     *   3. Sets `min-width:Nch` on every `.mb-ic-left` and `.mb-ic-right` span in
+     *      that column so the separator aligns at an identical horizontal
+     *      position for all values regardless of the width of either part.
      *
      * Works for both single-table pages (pass `allRows`) and multi-table pages
      * (pass `groupedRows.flatMap(g => g.rows)`).
@@ -13677,7 +13537,10 @@
         // pageType did exactly that) makes the page-load button toolbar AND
         // the post-render filter/count/CAA-toggle UI both resolve to the
         // SAME element, cramming everything onto one collapsible line — see
-        // debug/user-edits-wrong.org. renameH2ToH1 promotes that native
+        // debug/NOTES.md's "## 2026-07-29 — user-edits/user-open-edits cram
+        // everything onto one heading" entry (the standalone
+        // debug/user-edits-wrong.org snapshot this used to point to is gone).
+        // renameH2ToH1 promotes that native
         // heading to <h1> (carrying the already-injected button toolbar with
         // it, since the promotion moves child nodes rather than discarding
         // them), and insertH2 then injects a fresh, dedicated <h2> as the
@@ -15233,7 +15096,7 @@
                         Lib.debug('shortcuts', `  ${key}: ${btn.textContent.trim()}`);
                     });
                 }
-                Lib.debug('shortcuts', 'Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, k=Shortcuts Help, h=App Help, ,=Settings, o=' + (ctrlMFunctionMap['o'] && ctrlMFunctionMap['o'].description === 'Stop fetching' ? 'Stop' : 'Toggle Multi-Row Collapse') + ', q=Unique Values Dropdown, a=CAA Toggle');
+                Lib.debug('shortcuts', 'Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, b=Barcode, k=Shortcuts Help, h=App Help, ,=Settings, g=Focus Global Filter, c=Focus Next Column Filter, o=' + (ctrlMFunctionMap['o'] && ctrlMFunctionMap['o'].description === 'Stop fetching' ? 'Stop' : 'Toggle Multi-Row Collapse') + ', q=Unique Values Dropdown, a=CAA Toggle');
                 Lib.debug('shortcuts', 'Press any key or Escape to cancel');
             } else {
                 if (buttonKeys.length > 0) {
@@ -15243,7 +15106,7 @@
                         console.log(`[VZ-${SCRIPT_BASE_NAME}]   ${key}: ${btn.textContent.trim()}`);
                     });
                 }
-                console.log(`[VZ-${SCRIPT_BASE_NAME}] Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, k=Shortcuts Help, h=App Help, ,=Settings, o=` + (ctrlMFunctionMap['o'] && ctrlMFunctionMap['o'].description === 'Stop fetching' ? 'Stop' : 'Toggle Multi-Row Collapse') + `, q=Unique Values Dropdown, a=CAA Toggle`);
+                console.log(`[VZ-${SCRIPT_BASE_NAME}] Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, b=Barcode, k=Shortcuts Help, h=App Help, ,=Settings, g=Focus Global Filter, c=Focus Next Column Filter, o=` + (ctrlMFunctionMap['o'] && ctrlMFunctionMap['o'].description === 'Stop fetching' ? 'Stop' : 'Toggle Multi-Row Collapse') + `, q=Unique Values Dropdown, a=CAA Toggle`);
             }
 
             // Auto-exit after 5 seconds
@@ -15633,27 +15496,6 @@
         Lib.debug('ui', 'Sticky headers enabled - column headers will remain visible while scrolling');
     }
 
-    /**
-     * Applies sticky positioning to one column of `table`.
-     *
-     * The column to make sticky is determined as follows (in priority order):
-     *   1. `activeDefinition.features.stickyColumn` — a named column (e.g. 'Title').
-     *   2. The first <th> in the header row (index 0) — the universal default.
-     *
-     * When the target column is not the first, `left` must equal the total width of
-     * all preceding columns; this offset is re-calculated on every call and whenever
-     * a MutationObserver detects that a colgroup <col> element changes width, so the
-     * sticky column tracks manual and auto-resize operations correctly.
-     *
-     * The sticky style is applied to every <th> and <td> in that column index across
-     * all <thead> rows (header + filter row) and every <tbody> row.  The z-index is
-     * set to 101 for header cells (above the sticky thead at 100) and to 1 for body
-     * cells (above sibling cells but below the header).
-     *
-     * Safe to call multiple times on the same table (idempotent via data attribute).
-     *
-     * @param {HTMLTableElement} table
-     */
     /**
      * Normalise the interior of every `<span class="comment">` in `table`.
      *
@@ -16829,39 +16671,6 @@
     }
 
     /**
-     * Refreshes the per-sub-table ▶/◀ collapse button that lives in the h3
-     * immediately before `.mb-subtable-controls`.
-     *
-     * Show/hide logic (mirrors the global button):
-     *   • Hidden when the filtered-in rows of `table` contain no multi-row cells
-     *     (i.e. no `.mb-col-collapse-hdr-btn` exists inside `table`).
-     *   • Shown otherwise; text is reset to `▶ Expand` so it always reflects
-     *     the post-filter collapsed state.
-     *
-     * Highlight tint (mirrors the global button but using subtable filter colours):
-     *   • When any `td.mb-has-collapse-toggle` inside `table` carries a filter-
-     *     highlight span (visible OR collapsed), the button's background is set
-     *     to `stfBorderActive()` with white text and a matching box-shadow so it
-     *     stands out against the h3 bar — consistent with the active-filter colour
-     *     of the sub-table filter input.
-     *   • When no highlights are found the inline overrides are cleared so the
-     *     button reverts to its default (grey) appearance.
-     *
-     * The button is located via the h3 element found by `findH3ForTable(table)`,
-     * so no `categoryName` is needed at call sites.
-     *
-     * NOTE: `table.previousElementSibling` must NOT be used here — after
-     * `_artInitBigPics` runs it returns the bigbox div, not the h3.
-     *
-     * Called from:
-     *   • `renderGroupedTable` — after every `initCollapsableColumns(table)` call
-     *     (both initial render and filter re-run).
-     *   • `ensureCollapseDelegate` click handler — after each individual cell
-     *     expand/collapse so the tint stays in sync.
-     *
-     * @param {HTMLTableElement} table
-     */
-    /**
      * CSS selector that matches any filter-highlight span used by any of the three
      * filter layers (global, column, STF, pre-filter).
      *
@@ -17895,7 +17704,18 @@
      * (`addCAA`/`addEAA`'s `.mb-inline-art-sort-key`) under one evaluator so
      * a mode string is matched identically everywhere it's checked.
      *
-     * @param {string} mode - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | `attr:${string}` | `task:${string}` | `date:${string}` | `instrument:${string}` | `name:${string}` | `comment:${string}` | `alias:${string}` | `rel:${string}` | 'inline-art-yes' | 'inline-art-no'
+     * @param {string} mode - One of the ~35 recognized mode strings/prefixes
+     *   dispatched by this function's own `if (mode === …)`/`mode.startsWith(…)`
+     *   chain below — that chain is the single source of truth for the full,
+     *   current set (e.g. 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' |
+     *   'title-mismatch' | 'name-variation' | 'multi-medium' | 'inline-art-yes' |
+     *   'inline-art-no', plus compound prefixes like `attr:${string}`,
+     *   `task:${string}`, `date:${string}`, `instrument:${string}`,
+     *   `name:${string}`, `comment:${string}`, `alias:${string}`, `rel:${string}`,
+     *   `role:${string}`, `roletoken:${string}`, `altname:${string}`,
+     *   `joinphrase:${string}`, `namevariation:${string}`, `eventdate:${string}`,
+     *   `tagcount:${string}`, and the format/country/catalog/art-info families —
+     *   don't duplicate the list here, it drifts; read the dispatch chain).
      * @param {HTMLTableCellElement} cell
      * @param {HTMLTableRowElement}  row
      * @param {number}  colIdx
@@ -18754,8 +18574,20 @@
     }
 
     /**
-     * Add a column visibility toggle button and menu to the controls
-     * Allows users to show/hide columns in the table
+     * Injects the 👁️ "Visible" dropdown button into `#mb-show-all-controls-container`,
+     * with one checkbox per column plus Select All / Deselect All / "Choose current
+     * configuration" action buttons. Idempotent — returns immediately if
+     * `#mb-visible-btn` already exists.
+     *
+     * Persistence: visibility state is stored in GM storage per pageType, keyed by
+     * column NAME (not index) under `COLVIS_KEY_PREFIX + pageType`, via the inner
+     * `getCurrentColVisState()`/`saveColVisState()`/`loadColVisState()` closures —
+     * column names survive sessions where injected columns shift the index layout.
+     * `updateButtonColor()` tints the button whenever any column is hidden.
+     * `setMenuBtnFocus()` and the keyboard handler wired via `buildColVisMenuKeyboard()`
+     * provide full arrow-key navigation of the menu. `closeMenu()`/`closeMenuOnEscape()`
+     * handle outside-click and Escape dismissal, saving state on every close.
+     *
      * @param {HTMLTableElement} table - The table to add controls for
      */
     function addColumnVisibilityToggle(table) {
@@ -19793,7 +19625,7 @@
      * `_exportCleanHeaderText()`, which optionally appends unique-value counts and
      * sort-state glyphs according to settings.
      *
-     * Triggers `showExportNotification()` on success.
+     * Opens `showExportDialog()` to confirm the filename before saving.
      */
     function exportTableToCSV() {
         const table = document.querySelector('table.tbl');
@@ -19853,9 +19685,6 @@
         });
     }
 
-    /**
-     * Export table to JSON format
-     */
     /**
      * Export table(s) to JSON format.
      *
@@ -20412,15 +20241,6 @@ ${sections.join('\n')}
     }
 
     /**
-     * Build a plain-text metadata block for export formats that carry metadata as comments.
-     * Each key-value line is prefixed with `prefix` (e.g. "# " for CSV/Org-Mode).
-     * Returns the block as a multi-line string with a trailing newline ready to prepend.
-     *
-     * @param {string} prefix - Comment prefix, e.g. "# "
-     * @returns {string}
-     */
-
-    /**
      * Assemble a download filename for any export or save operation using exactly
      * the same naming convention as the "Save to Disk" path:
      *
@@ -20564,13 +20384,12 @@ ${sections.join('\n')}
      * @param {object} opts
      * @param {string}          opts.format        - Display name, e.g. "CSV"
      * @param {string}          opts.description   - HTML description of the format (shown after header)
-     * @param {string}          opts.mimeType      - MIME type for the blob
-     * @param {string}          opts.extension     - File extension without dot, e.g. "csv"
      * @param {string}          opts.blobUrl       - Pre-created object URL (already compressed/encoded)
      * @param {string}          opts.filename      - Default assembled filename
      * @param {number}          opts.rowsExported  - Number of rows in the export
      * @param {number}          opts.rowsTotal     - Total rows (exported + skipped)
-     * @param {HTMLElement|null} opts.triggerButton - Button that triggered the export (for positioning)
+     * @param {HTMLElement|null} [opts.triggerButton=null] - Button that triggered the export (for positioning)
+     * @param {string|null}     [opts.title=null]  - Overrides the dialog's default "Export Table Data" `<h3>` text.
      */
     function showExportDialog(opts) {
         const { format, description, blobUrl, filename: defaultFilename,
@@ -20801,10 +20620,11 @@ ${sections.join('\n')}
     /**
      * Injects the 💾 Export dropdown button into `#mb-show-all-controls-container`.
      *
-     * The button opens a keyboard-navigable menu with three export formats:
+     * The button opens a keyboard-navigable menu with four export formats:
      *   — CSV       → `exportTableToCSV()`
      *   — JSON      → `exportTableToJSON()`
      *   — Org-Mode  → `exportTableToOrgMode()`
+     *   — HTML      → `exportTableToHTML()`
      *
      * Idempotent: if a button with id `mb-export-btn` already exists the function
      * returns immediately without creating a duplicate.
@@ -21035,15 +20855,6 @@ ${sections.join('\n')}
     }
 
     /**
-     * Custom alert dialog - matches userscript styling
-     */
-    /**
-     * Custom alert dialog - positioned below triggering button
-     * @param {string} message - Alert message
-     * @param {string} title - Dialog title
-     * @param {HTMLElement} triggerButton - Button that triggered the alert (for positioning)
-     */
-    /**
      * Parse a condensed config string (pipe-separated) into an array of trimmed parts.
      * @param {string} raw - The raw config string value from settings
      * @param {string} defaultRaw - Fallback default string
@@ -21058,11 +20869,6 @@ ${sections.join('\n')}
     // Each helper reads from Lib.settings at call time so live setting changes
     // are reflected without a page reload.  The returned string is assigned to
     // element.style.cssText (or interpolated into an injected <style> block).
-
-    /**
-     * Base CSS shared by every button in the h1 action bar.
-     * Config: sa_ui_action_btn_style — fontSize|padding|height|borderRadius
-     */
 
     /**
      * Build the innerHTML for a button that has one underlined accelerator character.
@@ -21254,36 +21060,6 @@ ${sections.join('\n')}
     }
 
     /**
-     * Shared factory: builds a filter-history widget (Pin + History toggle + dropdown) that
-     * can be attached to any filter input — the global filter, sub-table filters, etc.
-     *
-     * The widget reads / writes the same two GM-storage keys used by the "Load Table Data"
-     * dialog (`lru-sa-hist-list` and `persistent-sa-hist-list`) so all history entries are
-     * shared across every context.
-     *
-     * @param {object}          cfg
-     * @param {HTMLInputElement} cfg.filterInput   – The text input that receives the filter value.
-     * @param {HTMLInputElement} cfg.caseCheckbox  – "Case sensitive" checkbox.
-     * @param {HTMLInputElement} cfg.rxCheckbox    – "RegExp" checkbox.
-     * @param {HTMLInputElement} cfg.exCheckbox    – "Exclude matches" checkbox.
-     * @param {Function}         cfg.onApply       – Called with no arguments after an entry is
-     *                                               applied so the caller can trigger a filter run.
-     * @param {Function}         [cfg.getQuery]    – Returns the effective query string to save
-     *                                               (e.g. after stripping a focus-prefix).
-     *                                               Defaults to () => cfg.filterInput.value.trim().
-     * @param {Function}         [cfg.setQuery]    – Sets filterInput.value from a history entry's
-     *                                               query string.  Defaults to assigning directly.
-     * @param {string}           [cfg.context]     – Label used in debug messages (e.g. 'gf', 'stf').
-     *
-     * @returns {{
-     *   pinBtn:         HTMLButtonElement,   – the green "+" pin button
-     *   toggleBtn:      HTMLButtonElement,   – the 🕑 History button
-     *   dropdownAnchor: HTMLSpanElement,     – position:relative span containing toggleBtn + dropdown
-     *   refreshDropdown: Function,           – call to re-render both history lists (optional quick-filter)
-     *   saveToLru:       Function,           – call to push current query+state to LRU
-     * }}
-     */
-    /**
      * Lazily injects the shared, id-guarded stylesheet for
      * {@link createFilterHistoryWidget}'s history-row markup (badges, mark
      * highlight, history rows). Uses GM_addStyle (not a plain
@@ -21348,6 +21124,36 @@ ${sections.join('\n')}
         style.id = 'mb-fhw-style';
     }
 
+    /**
+     * Shared factory: builds a filter-history widget (Pin + History toggle + dropdown) that
+     * can be attached to any filter input — the global filter, sub-table filters, etc.
+     *
+     * The widget reads / writes the same two GM-storage keys used by the "Load Table Data"
+     * dialog (`lru-sa-hist-list` and `persistent-sa-hist-list`) so all history entries are
+     * shared across every context.
+     *
+     * @param {object}          cfg
+     * @param {HTMLInputElement} cfg.filterInput   – The text input that receives the filter value.
+     * @param {HTMLInputElement} cfg.caseCheckbox  – "Case sensitive" checkbox.
+     * @param {HTMLInputElement} cfg.rxCheckbox    – "RegExp" checkbox.
+     * @param {HTMLInputElement} cfg.exCheckbox    – "Exclude matches" checkbox.
+     * @param {Function}         cfg.onApply       – Called with no arguments after an entry is
+     *                                               applied so the caller can trigger a filter run.
+     * @param {Function}         [cfg.getQuery]    – Returns the effective query string to save
+     *                                               (e.g. after stripping a focus-prefix).
+     *                                               Defaults to () => cfg.filterInput.value.trim().
+     * @param {Function}         [cfg.setQuery]    – Sets filterInput.value from a history entry's
+     *                                               query string.  Defaults to assigning directly.
+     * @param {string}           [cfg.context]     – Label used in debug messages (e.g. 'gf', 'stf').
+     *
+     * @returns {{
+     *   pinBtn:         HTMLButtonElement,   – the green "+" pin button
+     *   toggleBtn:      HTMLButtonElement,   – the 🕑 History button
+     *   dropdownAnchor: HTMLSpanElement,     – position:relative span containing toggleBtn + dropdown
+     *   refreshDropdown: Function,           – call to re-render both history lists (optional quick-filter)
+     *   saveToLru:       Function,           – call to push current query+state to LRU
+     * }}
+     */
     function createFilterHistoryWidget(cfg) {
         _ensureFilterHistoryWidgetStyle();
         const { filterInput, caseCheckbox, rxCheckbox, exCheckbox, onApply } = cfg;
@@ -22592,8 +22398,40 @@ ${sections.join('\n')}
     }
 
     /**
-     * Initialize keyboard shortcuts for common actions
-     * Provides power-user functionality for quick access to features
+     * Registers every direct (non-prefix-mode) keyboard shortcut. Idempotent —
+     * guarded by `document._mbKeyboardShortcutsInitialized` so a re-call
+     * (e.g. after Load-from-Disk) is a no-op.
+     *
+     * Installs three listeners:
+     *   1. A bubble-phase `keydown` listener that branches into two independent
+     *      shortcut groups:
+     *      - **Column-filter-focused shortcuts** (only when `e.target` matches
+     *        `.mb-col-filter-input`): sort ascending/descending, unsort,
+     *        multi-row collapse toggle, unique-values dropdown, CAA/EAA toggle,
+     *        sub-table resize, and the visible-columns menu — operating on the
+     *        focused input's owning column header/table. Returns early on a
+     *        match so the global shortcuts below don't also fire.
+     *      - **Global shortcuts** (~10, e.g. open settings, focus global filter,
+     *        focus next column filter, clear all filters, open export menu):
+     *        active anywhere except while typing (for `?`/`/`). Both groups are
+     *        gated off when `sa_enable_direct_ctrl_char_shortcuts` is false,
+     *        except the always-on Escape/navigation handling.
+     *   2. A capture-phase `keydown` listener (registered with `{capture:true}`)
+     *      dedicated to the Unicode character picker (Ctrl+U), which must run
+     *      before — and can pre-empt — every other listener; see the inline
+     *      comment above its registration for why capture phase is required to
+     *      win against a conflicting third-party userscript's own handler.
+     *   3. A capture-phase `focusin` listener that tracks the last-focused
+     *      `.mb-col-filter-input` into `_lastFocusedColFilterInput`, used as a
+     *      fallback by `_resolveColFilter()` below when prefix-mode column-
+     *      context shortcuts fire after focus has already left the input.
+     *
+     * Also permanently registers the `o`/`q`/`a` prefix-mode entries into
+     * `ctrlMFunctionMap` (mirroring the column-filter-focused Ctrl+O/Q/A
+     * shortcuts above, but reachable via prefix mode even when
+     * `sa_enable_direct_ctrl_char_shortcuts` is off) — multi-row collapse
+     * toggle, unique-values dropdown, and CAA/EAA toggle, each resolving their
+     * target column via `_resolveColFilter()`.
      */
     function initKeyboardShortcuts() {
         // Prevent duplicate initialization
@@ -23424,33 +23262,6 @@ ${sections.join('\n')}
     }
 
     /**
-     * Show table statistics panel (revamped).
-     *
-     * Layout (single-table mode):
-     *   ┌─ Header bar (drag handle): title + quick-filter input + ✕ clear + ✕ close ┐
-     *   │ § Global statistics table (14 rows)                                        │
-     *   │ § Per-table section — one card per sub-table:                              │
-     *   │     h1 / h2-h3 header · table filter · row count · artwork count          │
-     *   │     └ ▼ Collapsable per-column detail table (starts uncollapsed)          │
-     *   └────────────────────────────────────────────────────────────────────────────┘
-     *
-     * Interaction:
-     *   • Draggable via header bar (user-select:none prevents text selection;
-     *     e.preventDefault() is intentionally omitted so child button clicks
-     *     always work on first render)
-     *   • Resizable via native `resize:both` handle (bottom-right corner)
-     *   • Position/size persisted to GM storage key 'sa_stats_panel_geometry'
-     *   • Quick-filter highlights matching text (TreeWalker + normalize()) and
-     *     hides non-matching rows; td.normalize() called before each highlight
-     *     pass so adjacent text nodes from mark-removal are merged first
-     *   • ✕ (filter): clears the filter field, keeps panel open
-     *   • Escape / ✕ (panel close): first press clears filter; second closes
-     *   • Panel dimensions driven by sa_stats_panel_width / sa_stats_panel_max_height
-     *
-     * Memory Usage reports JS heap size via performance.memory (Chromium-only)
-     * rather than the old fictional "100 bytes × row count" estimate.
-     */
-    /**
      * Lazily injects the shared, id-guarded stylesheet for
      * {@link showStatsPanel}'s data-cell markup (colors/weights from the
      * panel's fixed palette `C`, defined further down in showStatsPanel).
@@ -23488,6 +23299,33 @@ ${sections.join('\n')}
         style.id = 'sa-stats-panel-style';
     }
 
+    /**
+     * Show table statistics panel (revamped).
+     *
+     * Layout (single-table mode):
+     *   ┌─ Header bar (drag handle): title + quick-filter input + ✕ clear + ✕ close ┐
+     *   │ § Global statistics table (14 rows)                                        │
+     *   │ § Per-table section — one card per sub-table:                              │
+     *   │     h1 / h2-h3 header · table filter · row count · artwork count          │
+     *   │     └ ▼ Collapsable per-column detail table (starts uncollapsed)          │
+     *   └────────────────────────────────────────────────────────────────────────────┘
+     *
+     * Interaction:
+     *   • Draggable via header bar (user-select:none prevents text selection;
+     *     e.preventDefault() is intentionally omitted so child button clicks
+     *     always work on first render)
+     *   • Resizable via native `resize:both` handle (bottom-right corner)
+     *   • Position/size persisted to GM storage key 'sa_stats_panel_geometry'
+     *   • Quick-filter highlights matching text (TreeWalker + normalize()) and
+     *     hides non-matching rows; td.normalize() called before each highlight
+     *     pass so adjacent text nodes from mark-removal are merged first
+     *   • ✕ (filter): clears the filter field, keeps panel open
+     *   • Escape / ✕ (panel close): first press clears filter; second closes
+     *   • Panel dimensions driven by sa_stats_panel_width / sa_stats_panel_max_height
+     *
+     * Memory Usage reports JS heap size via performance.memory (Chromium-only)
+     * rather than the old fictional "100 bytes × row count" estimate.
+     */
     function showStatsPanel() {
         _ensureStatsPanelStyle();
         // Toggle: remove if already open
@@ -25291,7 +25129,18 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Show table density menu and add density control button
+     * Injects the 📏 "Density" dropdown button into `#mb-show-all-controls-container`,
+     * with one menu item per `densityOptions` entry. Idempotent — returns
+     * immediately if `#mb-density-btn` already exists.
+     *
+     * Applies the selected density to all tables via `applyTableDensity()` on
+     * click, with full keyboard navigation: ArrowUp/ArrowDown move the
+     * highlighted item and immediately apply that density as a live preview
+     * (not reverted on dismissal), Enter re-applies the currently highlighted
+     * option and closes the menu, Escape and outside-click just close the
+     * menu leaving whichever density was last previewed/applied in place.
+     *
+     * @returns {void}
      */
     function addDensityControl() {
         const controlsContainer = document.getElementById('mb-show-all-controls-container');
@@ -25599,9 +25448,26 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Make table columns resizable with mouse drag
-     * Adds resize handles to column headers
-     * @param {HTMLTableElement} table - The table to make resizable
+     * Adds a draggable `.column-resizer` handle to the right edge of every
+     * header cell in `table` that doesn't already have one, wiring mouse-drag
+     * width adjustment for each column's `<col>` element.
+     *
+     * Drag writes are rAF-gated (`_dragRafPending`) so at most one
+     * `col.style.width` write happens per animation frame regardless of how
+     * fast `mousemove` fires, avoiding a per-pixel reflow storm. Each
+     * column's minimum drag width is computed once at setup time (while the
+     * column is still at its natural width) from the header widget's
+     * intrinsic `scrollWidth`, and cached on `th.dataset.mbResizeMin` — it is
+     * NOT recomputed on every drag, since after a column has been widened its
+     * `scrollWidth` would reflect the current (wider) width and permanently
+     * raise the floor, making the column impossible to narrow back down.
+     * That cache is what lets a re-call of this function (e.g. from
+     * `toggleAutoResizeColumns()` after auto-resize has already changed
+     * widths, or after the Restore button removes and re-adds handles) still
+     * use the column's true original minimum.
+     *
+     * @param {HTMLTableElement} table - The table to make resizable.
+     * @returns {void}
      */
     function makeColumnsResizable(table) {
         const headers = table.querySelectorAll('thead tr:first-child th');
@@ -25941,25 +25807,6 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Captures a multi-table sub-section's currently-rendered rows into a
-     * snapshot payload consumable by `_hydrateAndRenderFromSnapshotData()` —
-     * reuses the exact header/cell schema `saveTableDataToDisk()` writes to
-     * disk (see its `dataToSave.headers`/`.rows` construction), scoped down
-     * to just this one `table` instead of the whole page.
-     *
-     * No force-expand-before-capture step is needed: `getCleanCellHtml()`
-     * (via `_stripTransientCellState()`) already normalises every cell back
-     * to its canonical collapsed state before serialising, exactly as
-     * `saveTableDataToDisk()` relies on — the reconstructed table gets
-     * working collapse/expand toggles from `initCollapsableColumns()` again
-     * on the new tab, rather than a frozen expanded snapshot.
-     *
-     * @param  {HTMLTableElement} table        The sub-table (h3's table.tbl) to capture.
-     * @param  {string}           categoryName Human-readable relationship-type/category name.
-     * @param  {string}           pageType     Current module-level pageType (e.g. 'artist-relationships').
-     * @returns {Object} Snapshot payload — same shape `_hydrateAndRenderFromSnapshotData` accepts.
-     */
-    /**
      * PageTypes wired up for the "Show single-table" cross-tab snapshot
      * button (see openSubtableAsSingleTableTab / renderGroupedTable's
      * group.seeAllUrl else-branch). All are tableMode:'multi' categories
@@ -25997,6 +25844,25 @@ a { color: #1565c0; }`;
         'artist-relationships', 'label-relationships', 'place-performances',
     ]);
 
+    /**
+     * Captures a multi-table sub-section's currently-rendered rows into a
+     * snapshot payload consumable by `_hydrateAndRenderFromSnapshotData()` —
+     * reuses the exact header/cell schema `saveTableDataToDisk()` writes to
+     * disk (see its `dataToSave.headers`/`.rows` construction), scoped down
+     * to just this one `table` instead of the whole page.
+     *
+     * No force-expand-before-capture step is needed: `getCleanCellHtml()`
+     * (via `_stripTransientCellState()`) already normalises every cell back
+     * to its canonical collapsed state before serialising, exactly as
+     * `saveTableDataToDisk()` relies on — the reconstructed table gets
+     * working collapse/expand toggles from `initCollapsableColumns()` again
+     * on the new tab, rather than a frozen expanded snapshot.
+     *
+     * @param  {HTMLTableElement} table        The sub-table (h3's table.tbl) to capture.
+     * @param  {string}           categoryName Human-readable relationship-type/category name.
+     * @param  {string}           pageType     Current module-level pageType (e.g. 'artist-relationships').
+     * @returns {Object} Snapshot payload — same shape `_hydrateAndRenderFromSnapshotData` accepts.
+     */
     function captureSubtableSnapshot(table, categoryName, pageType) {
         const headers = table.tHead
             ? Array.from(table.tHead.querySelectorAll('tr'))
@@ -26745,7 +26611,6 @@ a { color: #1565c0; }`;
     }
 
     /**
-     *
      * Restore original content/sidebar state
      */
     function restoreOriginalScrollState() {
@@ -26775,10 +26640,24 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Toggles auto-resize mode for table columns.
-     * First click: auto-resizes all columns to fit their content optimally.
-     * Second click: restores original column widths.
-     * Manual column resizing also resets the auto-resize state.
+     * Toggles auto-resize mode for ALL tables on the page (the global,
+     * multi-table counterpart of `toggleSubTableAutoResize()`).
+     *
+     * First click: measures and auto-resizes every table's columns to fit
+     * their content optimally, disabling the resize button and showing a
+     * fixed-centre progress overlay while the (potentially chunked,
+     * `await`-yielding) measurement pass runs across all tables.
+     * Second click: restores every table's original column widths via
+     * `restoreOriginalTableState()`, removes and re-adds resize handles so
+     * manual dragging keeps working, and clears the per-table state stored
+     * in `originalTableStates`/`subTableResizedStates`/`subTableOriginalStates`.
+     * Manual column resizing (`makeColumnsResizable()`) also resets the
+     * auto-resize state so the next click starts a fresh measurement pass
+     * rather than treating the manually-adjusted widths as already optimal.
+     * No-ops with a warning (no blocking alert) when no `table.tbl` is found
+     * in the DOM yet.
+     *
+     * @returns {Promise<void>}
      */
     async function toggleAutoResizeColumns() {
         const tables = document.querySelectorAll('table.tbl');
@@ -28843,7 +28722,15 @@ a { color: #1565c0; }`;
     filterContainer.appendChild(statusDisplay);
 
     /**
-     * Clear all column filters for a specific table
+     * Clears every column filter input in `table`, and — when the sub-table
+     * (STF) filter for the owning h3 is also active — clears it too: restores
+     * any rows it was hiding (`data-mb-stf-hidden`), removes its highlight
+     * spans, resets its visual state, and syncs the STF ✕ button's visibility
+     * directly rather than dispatching a synthetic `input` event (which would
+     * schedule a debounced `applySubFilter()` that fires after the synchronous
+     * `runFilter()` call below and would otherwise blank the per-h3 status
+     * span). Finishes by calling `runFilter()` to refresh the display.
+     *
      * @param {HTMLElement} table - The table element whose filters should be cleared
      * @param {string} tableName - Name of the table (for logging and status)
      */
@@ -30403,45 +30290,6 @@ a { color: #1565c0; }`;
     let prefilterInfo = { count: 0, query: '' };
 
     /**
-     * Shows a modernized dialog to enter pre-filter criteria before loading data from disk.
-     * Includes history of previous filter expressions and triggers the file loading process.
-     */
-    /**
-     * Three-phase "Load from Disk" dialog:
-     *
-     *   Phase 1 — Load:    Prompt the user to pick a file. The entire file is
-     *                       read and parsed into memory (no filter applied).
-     *                       Shows a spinner while reading, then a row/filename
-     *                       status line when done.
-     *
-     *   Phase 2 — Filter:  Shown after a successful load. The user may enter an
-     *                       optional filter expression (with Case / Regex / Exclude
-     *                       toggles). Clicking "Filter Data" counts matching rows
-     *                       in memory (without touching the DOM) and shows the
-     *                       count below the button.
-     *
-     *   Phase 3 — Render:  Revealed after a filter count is computed. Clicking
-     *                       "Render Data" calls loadTableDataFromDisk() with the
-     *                       cached file and chosen filter params.
-     *
-     * @param {HTMLElement|null} triggerButton - Button to anchor the dialog to.
-     */
-    /**
-     * Build the "File Metadata" HTML table block shared by both the Save and Load dialogs.
-     *
-     * For the Save dialog `file` is null (no filename yet) and `totalRows` comes from
-     * dataToSave.rowCount.  For the Load dialog `file` is the File object and `totalRows`
-     * is computed from the parsed data.
-     *
-     * New files (saved with 9.99.187+) carry entityType / entityName / sectionSuffix /
-     * detailSegment directly.  Legacy files fall back to filename parsing.
-     *
-     * @param {object}      data       - The parsed JSON data object (dataToSave or loaded data).
-     * @param {number}      totalRows  - Row count to display.
-     * @param {File|null}   file       - The File object (for legacy filename parsing), or null.
-     * @returns {string} HTML string for the meta block (ready to set as innerHTML).
-     */
-    /**
      * Lazily injects the shared, id-guarded stylesheet for
      * {@link buildMetaBlockHTML}'s output. Uses GM_addStyle (not a plain
      * document.createElement('style') + head.appendChild) so it is exempt
@@ -30471,6 +30319,21 @@ a { color: #1565c0; }`;
         style.id = 'sa-meta-block-style';
     }
 
+    /**
+     * Build the "File Metadata" HTML table block shared by both the Save and Load dialogs.
+     *
+     * For the Save dialog `file` is null (no filename yet) and `totalRows` comes from
+     * dataToSave.rowCount.  For the Load dialog `file` is the File object and `totalRows`
+     * is computed from the parsed data.
+     *
+     * New files (saved with 9.99.187+) carry entityType / entityName / sectionSuffix /
+     * detailSegment directly.  Legacy files fall back to filename parsing.
+     *
+     * @param {object}      data       - The parsed JSON data object (dataToSave or loaded data).
+     * @param {number}      totalRows  - Row count to display.
+     * @param {File|null}   [file=null] - The File object (for legacy filename parsing), or null.
+     * @returns {string} HTML string for the meta block (ready to set as innerHTML).
+     */
     function buildMetaBlockHTML(data, totalRows, file = null) {
         _ensureMetaBlockStyle();
         const esc  = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -32617,7 +32480,20 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Removes various clutter elements from the MusicBrainz page to prepare for consolidated view.
+     * Removes various clutter elements from the MusicBrainz page to prepare for
+     * the consolidated view. Each task is independently guarded and logs only
+     * when it actually removed something:
+     *   - jesus2099 "bigbox" `<div>` elements.
+     *   - Relationship helper tables (matched by inline background-color style
+     *     plus a "Relate checked recordings to" text check).
+     *   - The "Showing official/all release groups by this artist" filter
+     *     description paragraph.
+     *   - Slick slider containers (matched by a `700px`-width wrapper style).
+     *   - `<details>` blocks containing more than 5 `<img>`s (the cover-art
+     *     gallery widget).
+     *   - `removeSanojjonasContainers()`, but only on `events` pages or when
+     *     `_isReleaseGroupsMultiMode()` is true.
+     *   - `cleanupBarcodeHighlights()`, unconditionally.
      */
     function performClutterCleanup() {
         Lib.debug('cleanup', 'Starting clutter element removal.');
@@ -32776,23 +32652,6 @@ a { color: #1565c0; }`;
         window.dispatchEvent(new CustomEvent('mb-stop-all-scripts'));
     }
 
-    /**
-     * Updates the H2 header row count display to show filtered vs total rows
-     * @param {number} filteredCount - Number of rows currently visible after filtering
-     * @param {number} totalCount - Total number of rows in the table
-     */
-    /**
-     * Build the tooltip string for the `.mb-row-count-stat` span in the h2
-     * header, reflecting the currently active global and column filters.
-     *
-     * Used by `updateH2Count` to set `span.title` every time the count is
-     * refreshed.  All values are read from the live DOM — no closure deps.
-     *
-     * @param {number}      filteredCount  Currently visible row count.
-     * @param {number}      totalCount     Total (or global-filtered) count.
-     * @param {number|null} absoluteTotal  Unfiltered absolute total (3-tier).
-     * @returns {string}   Tooltip text (safe for DOM `.title` property).
-     */
     // ── Custom rich tooltip for .mb-row-count-stat spans ──────────────────────
     // Native `title` attributes only support plain text — no colors.
     // We store HTML in `data-mbtt` and show a floating `#mb-stat-tooltip` div
@@ -32823,16 +32682,6 @@ a { color: #1565c0; }`;
 
 
     /**
-     * _mbttLabel — wraps a plain filter-type label word with the same pill
-     * colour as _mbttSpan uses for filter *expressions*, so that the type
-     * name ('global', 'sub-table', 'column level') appears in the tooltip
-     * with its characteristic colour.
-     *
-     * @param {string} word  - The label text to wrap (e.g. 'global').
-     * @param {'gf'|'stf'|'cf'} type - CSS variable prefix.
-     * @returns {string} HTML span.
-     */
-    /**
      * Lazily injects the shared, id-guarded stylesheet for
      * {@link _mbttLabel}/{@link _mbttColName}/{@link _mbttCount}'s rich
      * tooltip spans. GM_addStyle so it is exempt from page CSP style-src
@@ -32860,6 +32709,16 @@ a { color: #1565c0; }`;
         style.id = 'sa-mbtt-style';
     }
 
+    /**
+     * _mbttLabel — wraps a plain filter-type label word with the same pill
+     * colour as _mbttSpan uses for filter *expressions*, so that the type
+     * name ('global', 'sub-table', 'column level') appears in the tooltip
+     * with its characteristic colour.
+     *
+     * @param {string} word  - The label text to wrap (e.g. 'global').
+     * @param {'gf'|'stf'|'cf'} type - CSS variable prefix.
+     * @returns {string} HTML span.
+     */
     function _mbttLabel(word, type) {
         _ensureMbttStyle();
         const cls = type === 'gf' ? 'mb-mbtt-gf' : type === 'stf' ? 'mb-mbtt-stf' : 'mb-mbtt-cf';
@@ -32886,6 +32745,7 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Wraps a row-count number in a colored pill span, styled by the
      * sa_ui_row_count_color / sa_ui_row_count_bg settings, making row-count
      * numbers inside rich hover tooltips visually distinct from surrounding prose.
      *
@@ -33390,26 +33250,6 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Extracts visible text from `element` for column filtering, skipping
-     * decorative elements and script/style/head subtrees.
-     *
-     * Text nodes that are pure whitespace or decorative icons (▶, ▼, …) are
-     * dropped. All remaining parts are joined and passed through
-     * normalizeExtractedText() so that:
-     *   - filter strings spanning multiple inline tags match correctly
-     *     (e.g. "Bruce Springsteen & The E Street Band"), and
-     *   - bracket/paren pairs from <span class="comment"> do not acquire
-     *     spurious interior spaces (e.g. "(live, …)" not "( live, … )").
-     *
-     * This function filters out common decorative content like:
-     * - Expand/collapse icons (▶, ▼, ►, etc.)
-     * - Image placeholder elements (empty spans with background-images)
-     * - Pure whitespace text nodes
-     *
-     * @param {Element} element - DOM element to extract text from.
-     * @returns {string} Normalised visible text content.
-     */
-    /**
      * Selector covering every element whose text content must NEVER appear in
      * column filter / sort / unique-values text:
      *   - Inline thumbnail placeholders (.mb-caa-inline-ph / .mb-eaa-inline-ph)
@@ -33692,9 +33532,6 @@ a { color: #1565c0; }`;
         Lib.debug('highlight', `Saved filter highlight state: global=${!!globalQuery}, columns=${columnFilters.length}, stf=${stfFilters.length}`);
     }
 
-    /**
-     * Restore previously saved filter highlights by re-applying highlighting
-     */
     /**
      * Restore previously saved filter highlights by re-running the current filters
      * This automatically re-applies both filtering and highlighting
@@ -34571,27 +34408,6 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Reads column filter inputs from a table, validates any regexp patterns, updates
-     * visual state on each input, and returns an array of active {val, idx} filter descriptors.
-     *
-     * Three fixes relative to the previous version:
-     *  1. In regexp mode `val` is kept as-is (not lowercased) — the 'i' flag in
-     *     testRowMatch handles case-insensitivity; lowercasing the pattern breaks
-     *     character classes like [A-Z].
-     *  2. Regexp validation errors are collected in `result._rxErrors` so that
-     *     callers without an h3-backed status span (single-table pages) can still
-     *     display them.
-     *  3. When an h3-backed status span IS found (multi-table pages), the error is
-     *     also written there directly — and the span is tagged `colRxError` so the
-     *     post-filter status-update loop knows not to overwrite it.
-     *
-     * @param {HTMLElement|null} table
-     * @param {boolean}          isCaseSensitive
-     * @param {boolean}          isRegExp
-     * @returns {Array<{val:string, idx:number}>}  — with an `._rxErrors` property
-     *          (array of formatted error strings) attached for single-table callers.
-     */
-    /**
      * Reserved prefix marking a `dataset.mbUniqValues` / `checkedValues` entry
      * as a multi-row list-ITEM value (e.g. one credited person's own text
      * inside a merged "Engineer" cell) rather than a whole-cell value. Never
@@ -34951,6 +34767,41 @@ a { color: #1565c0; }`;
         area:            8
     };
 
+    /**
+     * Reads every `.mb-col-filter-input` in `table`'s header row and builds the
+     * per-column filter descriptor list consumed by `testRowMatch()`. Also
+     * applies the live active/error border styling to each input as a side
+     * effect (green glow when a filter is active/valid, red 4px border + status
+     * message on an invalid regexp).
+     *
+     * Two descriptor shapes are produced, distinguished by `isMultiValueFilter`:
+     *   - Plain text/regexp filter (typed directly into the input):
+     *     `{ val, idx, isRegExp, isCaseSensitive, isExclude }`.
+     *   - Checkbox-driven multi-value filter (set by `applyUniqValueSet()` via
+     *     `input.dataset.mbUniqValues`, a JSON-encoded array):
+     *     `{ val, idx, isMultiValueFilter: true, valueSet, hasItemValues,
+     *        hasEntityValues, structureModes, isCaseSensitive, isExclude }`.
+     *     `structureModes` holds any `MB_UNIQ_STRUCTURE_MODE_PREFIX`-tagged
+     *     entries (unfolded, exact-case) separately from `valueSet`'s plain
+     *     text values (case-folded per `isCaseSensitive`, same as the plain
+     *     shape). A corrupt/unparseable `dataset.mbUniqValues` fails safe to an
+     *     empty `valueSet` rather than throwing.
+     *
+     * An empty field clears any stale `dataset.mbUniqValues`/error styling and
+     * contributes no descriptor. Regexp validation failures are skipped from
+     * the result (so they never break row-matching) but are still reported via
+     * `result._rxErrors` (always present, even on the `table` falsy early
+     * return) and, for multi-table pages, written directly to the owning
+     * `<h3>`'s `.mb-filter-status` span.
+     *
+     * @param   {HTMLTableElement} table           - The table whose column filter row to read.
+     * @param   {boolean}          isCaseSensitive  - Whether text/value comparisons should fold case.
+     * @param   {boolean}          isRegExp         - Whether filter text should be treated as a regexp.
+     * @param   {boolean}          [isExclude=false] - Whether matches should be negated by the caller.
+     * @returns {Array<object> & { _rxErrors: string[] }} Descriptor list, plus a
+     *   non-enumerable-in-spirit (but plain) `_rxErrors` property collecting any
+     *   invalid-regexp error messages encountered.
+     */
     function getColFilters(table, isCaseSensitive, isRegExp, isExclude = false) {
         if (!table) {
             const empty = [];
@@ -35967,7 +35818,12 @@ a { color: #1565c0; }`;
      *   isCaseSensitive: boolean,
      *   isRegExp:       boolean,
      *   isExclude:      boolean,
-     *   colFilters:     { val: string, idx: number }[]
+     *   colFilters:     Array<
+     *     { val: string, idx: number, isRegExp: boolean, isCaseSensitive: boolean, isExclude: boolean } |
+     *     { val: string, idx: number, isMultiValueFilter: true, valueSet: Set<string>,
+     *       hasItemValues: boolean, hasEntityValues: boolean, structureModes: Set<string>,
+     *       isCaseSensitive: boolean, isExclude: boolean }
+     *   >  - Built by getColFilters(); see its own JSDoc for the two descriptor shapes.
      * }} ctx
      * @param {boolean} [matchOnly=false] - When true, skip all DOM mutations (highlight
      *   reset and highlight application). Use on source rows; call again on the clone with
@@ -36391,6 +36247,51 @@ a { color: #1565c0; }`;
         });
     }
 
+    /**
+     * Re-filters (and re-sorts, implicitly, by re-rendering already-sorted source
+     * rows) the currently displayed table(s) against the live global filter input
+     * and every per-column filter input, then rebuilds the DOM from the matching
+     * rows. The main entry point wired to every filter-affecting input's `input`/
+     * `change` listener, and called directly after render/collapse/CAA-EAA state
+     * changes that can affect which rows should be visible.
+     *
+     * Steps:
+     *   1. Reads the case/regexp/exclude checkboxes and the global filter input
+     *      (prefix-stripped via `stripFilterPrefix`), validates the pattern when
+     *      `isRegExp` is on, and sets the global input's border/status accordingly.
+     *      On an invalid regexp, sets the error status and returns immediately —
+     *      no filter pass runs, so the DOM and row arrays are left untouched.
+     *   2. Builds the shared `matchCtx` object passed to `testRowMatch()`, and
+     *      publishes `_activeFilterHighlightCtx` (or `null` when nothing is
+     *      active) so `_artHighlightImageLi()` can re-apply highlights to
+     *      freshly-built CAA/EAA `<li>` elements after a multi-row art cell
+     *      rebuild wipes `testRowMatch()`'s own marks.
+     *   3. Branches on `activeDefinition.tableMode`:
+     *      - `'multi'`: iterates `groupedRows`, calls `getColFilters()` +
+     *        `testRowMatch()` per sub-table, honours per-table Rx/case/exclude
+     *        overrides and the `discographyViewState` view filter, and caches
+     *        each group's match set via `_buildFilterKey()`/`_filterCacheSet()`.
+     *      - `'single'`: same per-row matching against the one table, with an
+     *        additional incremental-scan optimisation — when `_buildIncrPartialKey()`
+     *        matches the previous call's partial key and the new global query is a
+     *        plain-text extension of the previous one, only the previous match set
+     *        is re-scanned instead of all of `allRows`.
+     *   4. Clears and repopulates the tbody/tbodies from the matching rows
+     *      (`cloneNode`-based), then re-wires everything a fresh clone drops or a
+     *      filter pass can invalidate: multi-sort tints, per-table/global collapse
+     *      button state, `initExpandRGsFeature()`, `_cdtocInitTracklistToggles()`,
+     *      `_rewireNestedTableH2Toggles()`, the Picard tagger column (rewire-only),
+     *      the CAA/EAA inline/icon/bigbox pipelines, and any still-pending
+     *      Relationships-column cells.
+     *   5. Restores scroll position (`window.scrollTo`) and, when the previously
+     *      focused element was a column-filter input, refocuses the equivalent
+     *      input on the freshly cloned table/column so typing isn't interrupted.
+     *   6. Computes elapsed time and writes a human-readable summary (active
+     *      filters, mode flags, row count) to the global and per-table status
+     *      displays.
+     *
+     * @returns {void}
+     */
     function runFilter() {
         const filterStartTime = performance.now();
 
@@ -37652,8 +37553,8 @@ a { color: #1565c0; }`;
             }
             return maxPage;
         } else {
-            return maxPage;
             Lib.debug('fetch', 'determineMaxPageFromDOM: No pagination element found; assuming single page (maxPage = 1).');
+            return maxPage;
         }
     }
 
@@ -38456,7 +38357,9 @@ a { color: #1565c0; }`;
         //   1. Demote all existing <h2> elements to <h3> (section labels) — OR
         //      promote them to <h1> (page title) when the page has no native
         //      <h1> of its own at all (e.g. 'user-edits'/'user-open-edits' —
-        //      see debug/user-edits-wrong.org).
+        //      see debug/NOTES.md's "## 2026-07-29 — user-edits/user-open-edits
+        //      cram everything onto one heading" entry; the standalone
+        //      debug/user-edits-wrong.org snapshot this used to point to is gone).
         //   2. Inject a fresh <h2> after <div class="tabs"> (or, absent that,
         //      before the first qualifying <h3>, or after the first <h1>) as
         //      the anchor node.
@@ -41426,13 +41329,30 @@ a { color: #1565c0; }`;
      * on the page (single-table mode).
      *
      * Steps:
-     *   1. Clears the existing `<tbody>` content.
-     *   2. Applies multi-sort tints to each row (if a multi-sort is active).
-     *   3. Appends all rows to the tbody using a `DocumentFragment` for performance.
-     *   4. Re-wires the table for sorting via `makeTableSortableUnified`.
-     *   5. Re-applies column filter row and column visibility state.
-     *   6. Applies sticky headers and sticky column.
-     *   7. Updates the sub-table row-count stat tooltip.
+     *   1. Claims a render-generation token (see `_renderGeneration`) so a stale,
+     *      still-yielding chunked render from a previous call aborts instead of
+     *      appending rows after a newer render has taken over.
+     *   2. Clears the existing `<tbody>` content. Aborts (with an error log) if
+     *      `table.tbl tbody` isn't found, or if `rows` is empty.
+     *   3. Appends the rows — a plain `rows.forEach(r => tbody.appendChild(r))`
+     *      when `rowCount` is under `sa_chunked_render_threshold`, otherwise
+     *      delegates to `renderRowsChunked()` (batched, DocumentFragment-based,
+     *      yields between chunks) and aborts the remaining steps below if that
+     *      render was superseded while yielding.
+     *   4. Shows the Save-to-Disk button if `sa_enable_save_load` is on.
+     *   5. Re-applies multi-sort column tints for `'main_table'` if a multi-sort
+     *      is active — needed because every render replaces tbody content with
+     *      fresh, untinted row clones.
+     *   6. Installs (or re-confirms) the jesus2099-treleases MutationObserver,
+     *      unless `sa_enable_numeric_alignment` is off.
+     *
+     * Does NOT re-wire sorting, filter/visibility state, sticky headers/column,
+     * or the row-count tooltip — those are the caller's responsibility. For the
+     * `tableMode: 'single'` initial-render path that caller is
+     * `startFetchingProcess`, which calls `makeTableSortableUnified()` and
+     * `applyStickyColumn()` itself immediately after `await renderFinalTable(...)`.
+     * Also deliberately does NOT call `initAreaFlagRegionObserver()` here — see
+     * the inline comment at the end of this function for why.
      *
      * Called from `startFetchingProcess` (initial render), `runFilter` (single-table
      * re-render after a filter change), and the Load-from-Disk pipeline.
@@ -42541,7 +42461,7 @@ a { color: #1565c0; }`;
      * Renders multiple tables grouped by category (e.g., Official, Various Artists) with H3 headers
      * @param {Array} dataArray - Array of grouped data objects, each containing a label and rows
      * @param {boolean} isArtistMain - Whether this is the main artist page (affects rendering logic)
-     * @param {string} query - Optional pre-filter query to apply during rendering
+     * @param {string} [query=''] - Optional pre-filter query to apply during rendering
      * @returns {Promise<void>}
      */
     async function renderGroupedTable(dataArray, isArtistMain, query = '') {
@@ -44780,7 +44700,29 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Logic to make all H2 headers collapsible.
+     * Makes every `<h2>` in the document a click-to-collapse/expand section
+     * header, toggling visibility of every DOM node between it and the next
+     * `<h2>` (walking `nextSibling`, so bare text nodes are also captured and
+     * wrapped in a `<span>` so they can be shown/hidden the same way).
+     *
+     * Idempotent and safe to re-call after a re-render (e.g. Load-from-Disk):
+     * first strips any stale `mb-h2-processed`/`mb-toggle-h2` markers, injected
+     * toggle icon, and old click handler from every h2 (the h2 DOM nodes are
+     * reused across re-renders, so leftover state/closures must be cleared
+     * before fresh `contentNodes` closures are registered), then re-processes
+     * each not-yet-processed h2.
+     *
+     * CAA/EAA `.mb-caa-bigbox`/`.mb-eaa-bigbox` divs between an h3 and its
+     * table get special handling on expand: they're restored according to
+     * their own tracked visibility state (not shown unconditionally), and
+     * left hidden when their owning h3 is itself collapsed or hidden by the
+     * discography-view filter (`data-mb-disc-hidden`, see
+     * `_applyDiscographyViewFilter()`).
+     *
+     * Click toggles just the clicked h2; Ctrl+Click toggles every "peer" h2 —
+     * every other h2 in the same container (sidebar vs. main content,
+     * determined via `#sidebar.contains(h2)`) — to the same expand/collapse
+     * state as the clicked one.
      */
     function makeH2sCollapsible() {
         Lib.debug('render', 'Initializing collapsible H2 headers...');
@@ -45161,14 +45103,6 @@ a { color: #1565c0; }`;
         });
     }
 
-    /**
-     * Unified sorting logic for both single and multi-table pages.
-     * Handles UI highlighting, wait cursors, and state persistence.
-     *
-     * @param {HTMLElement} table - The table element to attach sorters to.
-     * @param {string} sortKey - Unique key for state persistence (e.g., "Album_0" or "main_table").
-     */
-
     // =========================================================================
     // Unique-values column dropdown — shared singleton panel
     //
@@ -45330,9 +45264,11 @@ a { color: #1565c0; }`;
      *  (21345) value C
      *
      * The badge colors are controlled by the `sa_uniq_count_color` and
-     * `sa_uniq_count_bg` settings.  Clicking an entry (or pressing Enter while
-     * it is focused) copies only the raw column value — never the badge text —
-     * into the corresponding column filter input.
+     * `sa_uniq_count_bg` settings.  Clicking an entry (or pressing Enter/Space
+     * while it is focused) toggles its checkbox and re-applies the whole set of
+     * currently-checked values as an OR'd column filter via `applyUniqValueSet()`
+     * — never the badge text, only the raw column value(s) — and the panel stays
+     * open for continued multi-select (see `renderItems()` below).
      *
      * Keyboard navigation (focus stays on `btn` while the panel is open):
      *   ArrowDown / ArrowUp  – move focused item one step
@@ -47144,7 +47080,7 @@ a { color: #1565c0; }`;
          * can be surfaced for every column type (plain text, extractor synthetic,
          * etc.), not only for columns with multi-row / collapsable structure.
          *
-         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation'
+         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | 'multi-medium' | 'catalog-has-prefix' | 'catalog-no-prefix' | 'catalog-none'
          * @param {string} label   - Human-readable display text
          * @param {number} count   - Number of visible rows matching this mode
          */
@@ -47202,7 +47138,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -48171,10 +48107,9 @@ a { color: #1565c0; }`;
      * ANY checked entry. An empty `selectedValues` array means "no
      * constraint" — the column filter is fully cleared, not "match nothing."
      *
-     * State is stashed on `input.dataset.mbUniqValues` (JSON-encoded array),
-     * a human-readable
-     * summary label is written to `input.value` so existing "is this column
-     * filter active" checks elsewhere (which just test non-empty `input.value`)
+     * State is stashed on `input.dataset.mbUniqValues` (JSON-encoded array), a
+     * human-readable summary label is written to `input.value` so existing "is
+     * this column filter active" checks elsewhere (which just test non-empty `input.value`)
      * keep working unmodified, and `runFilter()` is called directly rather than
      * dispatching a synthetic 'input' event — that event is caught by the
      * column filter's own input handler, which unconditionally deletes
@@ -50746,22 +50681,41 @@ a { color: #1565c0; }`;
      * Runs a set of post-render DOM clean-up tasks after `renderGroupedTable` or
      * `renderFinalTable` has completed.
      *
-     * Tasks performed (order-dependent):
+     * Tasks performed, in execution order:
      *   • search pages — relocates the injected "Searchform" h2 and native
      *     `div.searchform` to sit immediately after `#mb-status-displays-wrapper`.
-     *   • Removes stale sanojjonas load-more containers (`#load`, `#load2`, …,
-     *     `#bottom1`–`#bottom6`) that may still be present after the fetch.
-     *   • Relocates trailing h2 sections (e.g. "Relationships", "Related works")
-     *     to before the main data h2 when `sa_relocate_trailing_h2_sections` is on.
-     *   • Applies the H1 comment-span alias relocation on the final rendered page
-     *     when `sa_enable_h1_comment_span_relocation_on_final_page` is on.
-     *   • Moves the "Legal name:" paragraph below the artist subheader on
-     *     artist-releasegroups pages when the setting is enabled.
+     *   • taglookup pages — relocates `div.searchform` to sit immediately after
+     *     the injected "Searchform" h2.
+     *   • Wires cdtoc tracklist sub-row toggles via `_cdtocInitTracklistToggles()`.
+     *   • user-subscriptions — removes the redundant subscription-type nav paragraph.
+     *   • release-collections / releasegroup-collections — rewrites the intro
+     *     paragraph and drops the trailing "plus M other private collections" row.
+     *   • editor-subscribers — removes a trailing "Plus N other anonymous users"
+     *     row (splicing it out of `allRows`/`originalAllRows` too) and patches the
+     *     preceding paragraph and row-count stat to match.
+     *   • Applies the page definition's `removeSelector` (single element) and
+     *     `removeSelectors` (all matches of each selector) removals.
      *   • Removes the native MusicBrainz `div.filter` bar (redundant after the
      *     script injects its own filter UI).
-     *   • Applies the page definition's `removeSelector` element removal.
-     *   • Removes any stale sanojjonas/jesus2099 container IDs still present.
+     *   • Removes stale sanojjonas load-more containers (`#load`, `#load2`, …,
+     *     `#bottom1`–`#bottom6`) via `removeSanojjonasContainers()`.
      *   • Removes consecutive `<br>` runs and logs the cleanup.
+     *   • Re-applies the H1 comment-span alias relocation on the final rendered
+     *     page when `sa_enable_h1_comment_span_relocation_on_final_page` is on.
+     *   • Moves the "Legal name:" paragraph below the artist subheader on
+     *     artist-releasegroups pages when the setting is enabled.
+     *   • Relocates trailing h2 sections (e.g. "Relationships", "Related works")
+     *     to before the main data h2 via `_relocateTrailingH2Sections()`.
+     *   • Makes native Credits-section `<h3>`s collapsible via
+     *     `_makeCreditsH3sCollapsible()`.
+     *   • Hides `div.list-merge-buttons-row-container` when `sa_remove_checkbox_cell`
+     *     is enabled (kept in the DOM, not removed, so `initNavigationGuard()` can
+     *     still query the form structure).
+     *   • artist-releases — removes the three bare sibling text/anchor nodes that
+     *     make up the "Show VA releases instead" footer.
+     *   • Syncs filter-bar button visibility via `window.updateFilterButtonsVisibility()`
+     *     — the one page-type-agnostic hook that fires unconditionally on a plain
+     *     first load with no user interaction.
      */
     function finalCleanup() {
         Lib.debug('cleanup', 'Running final cleanup...');
@@ -50830,14 +50784,6 @@ a { color: #1565c0; }`;
                 }
             });
         }
-        // The rendered table may contain a trailing row "Plus N other anonymous
-        // users".  When found:
-        //   1. Parse N from the row text.
-        //   2. Remove the row from the table.
-        //   3. Patch the h2 row-count stat to reflect the reduced row count.
-        //   4. Rewrite the preceding <p> as
-        //      "There are currently <b>R</b> real and <b>N</b> anonymous users
-        //       subscribed to edits that you make:" where R = total - N.
         // ── release-collections / releasegroup-collections: rewrite intro paragraph ─
         // Pattern: "<EntityName> has been added to N collections:"
         // Last row:  "plus M other private collections"
@@ -51320,6 +51266,10 @@ a { color: #1565c0; }`;
      *   (artists with hundreds of digital-release territories) that a user
      *   may want to opt out for performance; see the gating check in
      *   `expandShowAllCells()`.
+     *
+     * "iswcs"      — Artist-Works "ISWC" column
+     *   Each entry: { iswc, id, work_id, entityType, editsPending }
+     *   Rendered:   <li class="iswc"><a href="/iswc/{iswc}"><bdi><code>{iswc}</code></bdi></a></li>
      *
      * To add support for a new JSON shape, append a new entry to this object.
      */
@@ -52493,6 +52443,12 @@ a { color: #1565c0; }`;
         'single from': 'data:image/gif;base64,R0lGODlhDwALAJEAAP2ZAZmZmf///wAAACH5BAAAAAAALAAAAAAPAAsAAAIflI+pq2ABY0DAiYmwqOyaCoaHxjHaZp0e9UhQB8dCAQA7',
     };
 
+    /**
+     * MB URL relation-type string → MusicBrainz stylesheet icon class suffix.
+     * Default values here are overwritten at startup by `_initRelMappings()`
+     * from the `sa_rel_url_icon_classes` setting. Read via
+     * `REL_URL_ICON_CLASSES[relType]` when resolving a URL relationship's icon.
+     */
     let REL_URL_ICON_CLASSES = {
         'allmusic':                           'allmusic',
         'amazon asin':                        'amazon',
@@ -52504,6 +52460,12 @@ a { color: #1565c0; }`;
         'vgmdb':                              'vgmdb',
         'wikidata':                           'wikidata',
     };
+    /**
+     * Partial domain string → MusicBrainz stylesheet icon class suffix, for
+     * "other database" relationship URLs. Default values here are overwritten
+     * at startup by `_initRelMappings()` from the `sa_rel_other_db_classes`
+     * setting. Read via `_relFindIconClass(url, REL_OTHER_DB_CLASSES)`.
+     */
     let REL_OTHER_DB_CLASSES = {
         'd-nb.info':               'dnb',
         'www.musik-sammler.de':    'musiksammler',
@@ -52512,6 +52474,13 @@ a { color: #1565c0; }`;
         'nocs.acum.org.il':        'acum',
         'stereo-ve-mono.com':      'stereo-ve-mono',
     };
+    /**
+     * Partial URL string → MusicBrainz stylesheet icon class suffix, for
+     * streaming/download service relationship URLs. Default values here are
+     * overwritten at startup by `_initRelMappings()` from the
+     * `sa_rel_streaming_classes` setting. Read via
+     * `_relFindIconClass(url, REL_STREAMING_CLASSES)`.
+     */
     let REL_STREAMING_CLASSES = {
         'music.amazon.':          'amazonmusic',
         'music.apple.com':        'applemusic',
@@ -52530,12 +52499,6 @@ a { color: #1565c0; }`;
         'store.steampowered.com': 'steam',
     };
 
-    /**
-     * Returns the MBID of the first release-group or release link found in `row`,
-     * skipping cover-art links.
-     * @param {HTMLTableRowElement} row
-     * @returns {string|null}
-     */
     /**
      * Extracts a MusicBrainz MBID from the first qualifying anchor in the given row.
      *
@@ -52940,8 +52903,32 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Populates all mb-re-cell <td> elements using one WS2 call for the page entity.
-     * /ws/2/{entityType}/{entityId}?inc=release-rels&fmt=json
+     * Populates the "Release events" column via a single WS2 call for the page
+     * entity, rather than one call per row.
+     *
+     * Steps:
+     *   1. Creates `td.mb-re-cell` placeholders (in the live DOM, and in
+     *      `groupedRows`/`allRows` when defined) for every row that doesn't
+     *      already have one, keyed by MBID extracted via `_extractMbidFromRow()`.
+     *   2. Collects every unpopulated cell (`data-mbid` set, no `data-reDone`);
+     *      returns early if none, or if `sa_enable_release_events_column` /
+     *      `activeReleaseEventColumns` say this column isn't active.
+     *   3. Parses the page entity type/GUID from the URL and makes ONE call to
+     *      `/ws/2/{entityType}/{entityId}?inc=release-rels&fmt=json`.
+     *   4. Builds the entity→events map via `extractReleaseEvents()` and
+     *      populates every matching cell via `_rePopulateCell()`, marking each
+     *      `data-reDone='1'`.
+     *   5. Syncs the populated `innerHTML` back to every other source-row cell
+     *      sharing the same MBID (across `groupedRows`/`allRows`) so a later
+     *      filter re-render doesn't lose the populated content.
+     *   6. Re-runs `initCollapsableColumns()` — it ran before population found
+     *      0 `ul>li` items, so toggles need installing now that cells have
+     *      real content.
+     *   7. Third pass: when `activeInjectedColumnExtractors` is non-empty, runs
+     *      `applyInjectedColumnExtractors()` (the pass that actually splits
+     *      "Release events" into synthetic "Release country"/"Release date"
+     *      cells) and re-runs `initCollapsableColumns()` a third time
+     *      (idempotent, safe) since nothing else re-scans after that pass.
      */
     async function initReleaseEventsColumn() {
         if (!Lib.settings.sa_enable_release_events_column) return;
@@ -53322,20 +53309,6 @@ a { color: #1565c0; }`;
             `<th> (index ${_relThIdx}) and all .mb-rel-cell <td>s from table.`);
     }
 
-    /**
-     * Populates all .mb-rel-cell elements in the DOM with relationship favicon
-     * icon links fetched sequentially from the MusicBrainz Web Service.
-     *
-     * Algorithm:
-     *   1. Collect unpopulated .mb-rel-cell[data-mbid] elements.
-     *   2. Deduplicate MBIDs; fetch WS2 url-rels at <=1 req/s (MB policy).
-     *   3. Resolve each URL relationship to an icon CSS class or a fetched favicon.
-     *   4. Append icon anchors to all cells sharing the matching MBID.
-     *
-     * Idempotent: cells with data-rel-done='1' are skipped.
-     * Only runs when sa_enable_relationships_column is true and
-     * activeInjectedColumns is non-empty.
-     */
     // ── Relationships column — rich HTML tooltip ──────────────────────────────
 
     /**
@@ -53440,6 +53413,24 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Lazily injects the shared, id-guarded stylesheet for
+     * {@link _relBuildTooltipHTML}'s output. GM_addStyle so it is exempt
+     * from page CSP style-src restrictions. Fully static, safe to inject
+     * once per page load.
+     */
+    function _ensureRelTooltipStyle() {
+        if (document.getElementById('sa-rel-tooltip-style')) return;
+        const style = GM_addStyle(`
+            .sa-rel-tt-none { opacity:0.6; font-style:italic; }
+            .sa-rel-tt-img { width:16px; height:16px; vertical-align:middle; margin-right:5px; flex-shrink:0; }
+            .sa-rel-tt-ended { margin-left:5px; opacity:0.6; font-style:italic; }
+            .sa-rel-tt-row { display:flex; align-items:center; padding:2px 0; }
+            .sa-rel-tt-url { flex:1; min-width:0; }
+        `);
+        style.id = 'sa-rel-tooltip-style';
+    }
+
+    /**
      * Builds the HTML content for the Relationships rich tooltip by serialising
      * the existing DOM highlight spans inside each anchor's `.mb-rel-filter-key`
      * element directly — rather than re-applying filter strings from scratch.
@@ -53459,24 +53450,6 @@ a { color: #1565c0; }`;
      * @param {HTMLTableCellElement} cell  The `td.mb-rel-cell` being displayed.
      * @returns {string} Safe HTML string for `innerHTML`.
      */
-    /**
-     * Lazily injects the shared, id-guarded stylesheet for
-     * {@link _relBuildTooltipHTML}'s output. GM_addStyle so it is exempt
-     * from page CSP style-src restrictions. Fully static, safe to inject
-     * once per page load.
-     */
-    function _ensureRelTooltipStyle() {
-        if (document.getElementById('sa-rel-tooltip-style')) return;
-        const style = GM_addStyle(`
-            .sa-rel-tt-none { opacity:0.6; font-style:italic; }
-            .sa-rel-tt-img { width:16px; height:16px; vertical-align:middle; margin-right:5px; flex-shrink:0; }
-            .sa-rel-tt-ended { margin-left:5px; opacity:0.6; font-style:italic; }
-            .sa-rel-tt-row { display:flex; align-items:center; padding:2px 0; }
-            .sa-rel-tt-url { flex:1; min-width:0; }
-        `);
-        style.id = 'sa-rel-tooltip-style';
-    }
-
     function _relBuildTooltipHTML(cell) {
         _ensureRelTooltipStyle();
         /**
@@ -53735,9 +53708,20 @@ a { color: #1565c0; }`;
      *      `_initRelTooltipListeners()`.
      *   3. Refreshes REL_* mapping tables from user-configured settings.
      *   4. Groups unpopulated `td.mb-rel-cell` elements by MBID.
-     *   5. For each unique MBID, fetches WS2 relationship data (memory cache →
-     *      IndexedDB cache → live network, with optional `_relRetryActive`
-     *      bypass), then calls `_populateCells()` to inject relationship icons.
+     *   5. Two-phase fetch, NOT a simple per-MBID sequential fetch:
+     *      - Phase 1: attempts an IndexedDB lookup for every MBID *in parallel*
+     *        (`_relIdbGet()` directly, not via `_relFetchWs2()`); IDB hits
+     *        populate immediately with no network round-trip or delay.
+     *      - Phase 2: only the IDB-miss MBIDs are run through a throttled
+     *        sequential queue (1100ms between requests, respecting the
+     *        MusicBrainz WS2 rate limit) that calls `_relFetchWs2()` for each.
+     *      Net effect: a page visited before (IDB warm) renders all icons at
+     *      once; a first visit still shows icons trickling in one per second.
+     *   6. Once the Phase 2 queue drains: resets `_relRetryActive`, runs a
+     *      safety-net sync of any still-unsynced source-row cells, creates the
+     *      per-sub-table retry buttons via `_relCreateRetryButtons()`, and shows
+     *      the completion toast/status update via `_showRelCompletionToast()`
+     *      with a tier breakdown (IDB / memory-cache / network counts).
      *
      * Also ensures `td.mb-rel-cell` elements exist in both the live DOM and in
      * the `groupedRows`/`allRows` source arrays so that filter re-renders do
@@ -54076,6 +54060,11 @@ a { color: #1565c0; }`;
      * Retries Relationships for a specific set of MBIDs.
      * Clears L1+L2 caches for those MBIDs, resets rel-done markers,
      * then re-runs initRelationshipsColumn() with the retry flag set.
+     *
+     * @param {string[]} mbids       - MBIDs to force-reload.
+     * @param {string}   entityType  - WS2 entity-type path segment (e.g. 'release').
+     * @param {string}   incOptions  - WS2 `inc` query value to request.
+     * @returns {Promise<void>}
      */
     async function _relRetryMbids(mbids, entityType, incOptions) {
         if (!mbids.length) return;
@@ -54229,7 +54218,34 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Serializes current table data (allRows or groupedRows) to JSON and triggers download
+     * Serializes current table data (allRows or groupedRows) to JSON and opens
+     * `showSaveDialog()` to confirm the filename before writing it to disk.
+     *
+     * Alerts and returns early if `isLoaded` is false (no data fetched yet).
+     *
+     * Steps:
+     *   1. Builds the `dataToSave` metadata envelope (url, pageType, tableMode,
+     *      entity/section/detail info, timestamp, and — for
+     *      artist-releasegroups pages — the discography view-mode categories
+     *      so Load-from-Disk can reconstruct the Official/Non-Official/
+     *      Complete/Merged buttons).
+     *   2. Serializes table headers, excluding the filter row and
+     *      Picard/ICE-injected `<th>`s. Detects the "pre-render" state (user
+     *      clicked Save at the render-threshold dialog without ever
+     *      rendering) via the absence of `th.mb-original-column`, and in that
+     *      case clones the native thead and runs `cleanupHeaders()` on the
+     *      clone (detached from the document, so `getComputedStyle()` can't
+     *      false-positive on external hiding) so the stored headers still
+     *      match what the final rendered column layout would have been.
+     *   3. Serializes rows via `getCleanCellHtml()` (strips ephemeral filter
+     *      highlight spans), branching on `activeDefinition.tableMode`
+     *      ('multi' → `dataToSave.groups`, otherwise → `dataToSave.headers`/
+     *      `.rows` from `allRows`).
+     *   4. Computes the filename via `_assembleExportFilename('json.gz', …)`,
+     *      gzip-compresses the JSON via `pako.gzip()`, and opens
+     *      `showSaveDialog()` with the resulting blob URL.
+     *
+     * @returns {void}
      */
     function saveTableDataToDisk() {
         Lib.debug('cache', 'Starting table data serialization...');
@@ -54463,14 +54479,6 @@ a { color: #1565c0; }`;
         );
     }
 
-    /**
-     * Loads table data from a JSON file and re-hydrates the page
-     * @param {File} file - The JSON file containing saved table data
-     * @param {string} filterQueryRaw - Pre-filter query string to apply during load
-     * @param {boolean} isCaseSensitive - Whether the pre-filter should be case-sensitive
-     * @param {boolean} isRegExp - Whether the pre-filter should be treated as a regular expression
-     * @param {boolean} isExclude - When true, rows MATCHING the filter are excluded instead of kept
-     */
     /**
      * Hydrates and renders a page from already-parsed table snapshot data —
      * shared by the "Load from Disk" flow (loadTableDataFromDisk) and the
@@ -55551,6 +55559,14 @@ a { color: #1565c0; }`;
         }
     }
 
+    /**
+     * Loads table data from a JSON file and re-hydrates the page
+     * @param {File} file - The JSON file containing saved table data
+     * @param {string} filterQueryRaw - Pre-filter query string to apply during load
+     * @param {boolean} isCaseSensitive - Whether the pre-filter should be case-sensitive
+     * @param {boolean} isRegExp - Whether the pre-filter should be treated as a regular expression
+     * @param {boolean} isExclude - When true, rows MATCHING the filter are excluded instead of kept
+     */
     async function loadTableDataFromDisk(file, filterQueryRaw = '', isCaseSensitive = false, isRegExp = false, isExclude = false) {
         if (!file) {
             Lib.warn('cache', 'No file selected.');
@@ -57411,7 +57427,7 @@ a { color: #1565c0; }`;
     // art fetches.  The store hierarchy is:
     //
     //   DB name  : 'vz-mb-saed-art-cache'
-    //   version  : 1
+    //   version  : 2
     //   Stores
     //     'images'   — keyed by canonical image URL string (protocol-relative URLs
     //                  are normalised to https:// before storage).
@@ -57421,6 +57437,14 @@ a { color: #1565c0; }`;
     //     'metadata' — keyed by entity path string (e.g. '/release/GUID').
     //                  Value: { entityPath, count, images, storedAt }
     //                  'images' is the raw Array from the archive JSON API.
+    //
+    //     'rel-ws2'  — added in version 2. Keyed by `ckey` ("entityType:mbid").
+    //                  Value: { ckey, data, ts }, where `data` is the cached WS2
+    //                  relationship JSON. Used by the Relationships column's own
+    //                  L2 cache (_relIdbGet / _relIdbPut), not by CAA/EAA art
+    //                  fetches — it shares this database purely for one shared
+    //                  sweep/count/clear code path (see _artIdbSweepExpired,
+    //                  _artIdbCountStore).
     //
     // Three-tier lookup for image blobs (_artFetchCachedImage):
     //   Tier 1 — per-session in-memory Map (_artIdbMemCache): zero overhead,
@@ -57448,7 +57472,9 @@ a { color: #1565c0; }`;
     /**
      * Cached IDB database connection promise.
      * Resolved once on first call to _artOpenIdb(); reused thereafter.
-     * Set to null by _artIdbClose() to allow reconnection after an abort.
+     * Set to null by _artOpenIdb()'s own onclose/onversionchange/onerror/
+     * onblocked handlers to allow reconnection after a close, version-change,
+     * or failed open.
      *
      * @type {Promise<IDBDatabase>|null}
      */
@@ -57559,7 +57585,7 @@ a { color: #1565c0; }`;
     /**
      * Reads a single record from an IDB object store.
      *
-     * @param   {string} storeName  'images' | 'metadata'
+     * @param   {string} storeName  'images' | 'metadata' | 'rel-ws2'
      * @param   {string} key        Record key to look up.
      * @returns {Promise<any|null>} Resolves with the record or null if not found.
      */
@@ -57579,7 +57605,7 @@ a { color: #1565c0; }`;
     /**
      * Writes (creates or replaces) a single record in an IDB object store.
      *
-     * @param   {string} storeName  'images' | 'metadata'
+     * @param   {string} storeName  'images' | 'metadata' | 'rel-ws2'
      * @param   {object} record     Record to store; must include the store's keyPath.
      * @returns {Promise<void>}
      */
@@ -58838,7 +58864,30 @@ a { color: #1565c0; }`;
         return appended;
     }
 
-        function _renderBigboxTooltipFromColumns(tip, row, pageDef, table) {
+    /**
+     * Renders the rich bigbox/inline-thumbnail hover tooltip from the active page
+     * definition's `features.tooltipColumns` spec, when one is configured.
+     *
+     * Each spec entry drives one tooltip row/group: resolves the named column(s)
+     * against `table`'s header row (cached per call via an internal name→index
+     * lookup), reads the cell value(s) from `row`, and applies suppression rules
+     * for divider tokens, inline-grouped columns, and literal-token values so
+     * empty/placeholder cells don't produce blank or redundant tooltip lines.
+     * Several column names get special-cased rendering (e.g. video thumbnails,
+     * artist-role credits, event dates) — see the per-column branches below.
+     *
+     * @param {HTMLDivElement}      tip     The tooltip container to populate.
+     * @param {HTMLTableRowElement} row     The data row being hovered.
+     * @param {object}              pageDef The active page definition (or its
+     *   entity-specific override) — only `pageDef.features` is consulted.
+     * @param {HTMLTableElement}    table   The owning table, used to resolve
+     *   column name → index.
+     * @returns {boolean} `true` when the tooltip was rendered from
+     *   `tooltipColumns` (caller should not also apply its static-layout
+     *   fallback); `false` when `pageDef.features.tooltipColumns` is absent,
+     *   in which case `tip` is left untouched and the caller must fall back.
+     */
+    function _renderBigboxTooltipFromColumns(tip, row, pageDef, table) {
         const features = pageDef && pageDef.features;
         if (!features || !Array.isArray(features.tooltipColumns)) {
             if (Lib.settings.sa_enable_tooltip_debug) Lib.debug('tooltips', '[_renderBigboxTooltipFromColumns] no tooltipColumns — returning false');
@@ -59771,6 +59820,10 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Loads the background-image thumbnail for one CAA/EAA icon-column anchor,
+     * serving it through the three-tier cache (session memory → IDB → network)
+     * and decorating the icon column's cache-hint indicator when enabled.
+     *
      * @param {ArtCtx}      ctx        Archive context descriptor.
      * @param {HTMLElement} artIcon    Artwork-icon span inside an art anchor cell.
      * @param {boolean}     [cacheBust=false]  When true, appends a timestamp query
@@ -62345,34 +62398,6 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Generic inline-thumbnail feature.
-     *
-     * For page definitions that carry `features[ctx.addFeature] = '<column name>'`,
-     * inserts a fixed-size thumbnail placeholder span into every tbody cell of that
-     * column.  The placeholder is positioned after the ERG ▶ button (if present)
-     * or at the very start of the cell.  The art image is fetched asynchronously
-     * from the archive using the GUID extracted from the entity link href.
-     *
-     * A fixed width/height placeholder is always injected so titles remain visually
-     * aligned across all rows regardless of whether artwork exists.  A 404 leaves
-     * the placeholder as an invisible spacer.
-     *
-     * Idempotency: processed cells receive `td.dataset[ctx.inlineDoneAttr] = '1'`.
-     * Stale markers on cloned rows are cleared so fresh injection occurs when
-     * renderFinalTable / renderGroupedTable rebuilds the DOM.
-     *
-     * Concurrency: the actual `img.src` assignment is deferred through `_caaQueue`
-     * so all inline-thumbnail requests share the same concurrency budget as the
-     * _artInitSmallPics icon loads.
-     *
-     * Guards:
-     *   - `Lib.settings.sa_enable_caa_pics` master toggle.
-     *   - `Lib.settings.sa_caa_pics_inline` per-feature toggle.
-     *   - `activeDefinition.features[ctx.addFeature]` must be set.
-     *
-     * @param {ArtCtx} ctx  Archive context descriptor.
-     */
-    /**
      * Wires the enriched bigbox tooltip (mouseenter / mouseleave) onto an inline
      * thumbnail placeholder span `ph` so that hovering a column thumbnail shows
      * the same rich tooltip as hovering a bigbox strip image.
@@ -62587,13 +62612,7 @@ a { color: #1565c0; }`;
      * Supports both CAA (Cover Art Archive) and EAA (Event Art Archive) via the
      * `ctx` descriptor object.
      *
-     * @param {{ key: string, addFeature: string, fetchUrl: function,
-     *            archiveBase: string }} ctx
-     *   Context descriptor — `key` is the log category ("caa" or "eaa"),
-     *   `addFeature` is the `features` property name whose value gives the
-     *   target column name (or an array of candidate names — see
-     *   `caaFindColumnByName`), `fetchUrl` builds the archive API URL for a
-     *   GUID, and `archiveBase` is the archive hostname used for thumbnail `src`.
+     * @param {ArtCtx} ctx  Archive context descriptor.
      * @param {boolean} [cacheBust=false]
      *   When `true`, bypasses the IndexedDB and memory caches and forces a
      *   fresh network fetch for every thumbnail (used by the ⟳ retry button).
@@ -63683,8 +63702,8 @@ a { color: #1565c0; }`;
      * (e.g. after cloneNode(true) strips them during filter/sort re-renders).
      *
      * Visual states:
-     *   idle  — green ♪ circle
-     *   ok    — darker green ✓ circle (shown after successful send)
+     *   idle  — amber/yellow ♪ circle
+     *   ok    — green ✓ circle (shown after successful send)
      *   err   — red ✕ circle (shown after Picard returns an error / is unreachable)
      *
      * @param   {string} entityType
@@ -63940,6 +63959,9 @@ a { color: #1565c0; }`;
      *
      * Guards:
      *   - `Lib.settings.sa_enable_barcode_highlight` must be true.
+     *   - `isBarcodeHighlightActive` (the user's manual toggle-button state)
+     *     must also be true — re-renders don't re-apply highlights while the
+     *     user has turned the feature off via the toggle button.
      *
      * Called from:
      *   - The main fetch pipeline after `initExpandRGsFeature()`.
