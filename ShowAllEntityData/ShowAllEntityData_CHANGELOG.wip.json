@@ -1,5 +1,22 @@
 [
   {
+    "version": "WIP.12",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 7g/7 (sub-chunk 7 of 8) — nested-H2 collapsibility, uniq-drop DOM anchors, JSON snapshot restore, save-to-disk/export menus, credits/cdtoc/nav-guard.",
+          "makeH2sCollapsible(): expanded a 1-line doc into a full description of its idempotent re-processing, CAA/EAA bigbox restoration rules tied to discography-view state, and the Ctrl+Click same-container peer-toggle behavior.",
+          "SHOW_ALL_JSON_HANDLERS: doc's 'Known structures' list was missing the 5th handler, iswcs (Artist-Works 'ISWC' column) — added.",
+          "saveTableDataToDisk(): expanded a 1-line doc into a full description of its 4 real steps (metadata envelope, pre-render header-state detection with a cleanupHeaders()-processed clone fallback, mode-branched row serialization, filename/gzip/save-dialog).",
+          "Removed an orphaned JSDoc block (a stale draft of makeTableSortableUnified's doc, no function beneath it — the real function is defined separately elsewhere with its own correct doc).",
+          "Relocated 1 genuinely misattributed JSDoc block (v9.99.366-style): a complete, accurate doc for loadTableDataFromDisk() was sitting on _hydrateAndRenderFromSnapshotData() instead (which has its own separate correct doc) — loadTableDataFromDisk() itself had no doc. Moved to its real target."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.11",
     "date": "2026-08-22",
     "sections": [

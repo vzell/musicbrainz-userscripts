@@ -44700,7 +44700,29 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Logic to make all H2 headers collapsible.
+     * Makes every `<h2>` in the document a click-to-collapse/expand section
+     * header, toggling visibility of every DOM node between it and the next
+     * `<h2>` (walking `nextSibling`, so bare text nodes are also captured and
+     * wrapped in a `<span>` so they can be shown/hidden the same way).
+     *
+     * Idempotent and safe to re-call after a re-render (e.g. Load-from-Disk):
+     * first strips any stale `mb-h2-processed`/`mb-toggle-h2` markers, injected
+     * toggle icon, and old click handler from every h2 (the h2 DOM nodes are
+     * reused across re-renders, so leftover state/closures must be cleared
+     * before fresh `contentNodes` closures are registered), then re-processes
+     * each not-yet-processed h2.
+     *
+     * CAA/EAA `.mb-caa-bigbox`/`.mb-eaa-bigbox` divs between an h3 and its
+     * table get special handling on expand: they're restored according to
+     * their own tracked visibility state (not shown unconditionally), and
+     * left hidden when their owning h3 is itself collapsed or hidden by the
+     * discography-view filter (`data-mb-disc-hidden`, see
+     * `_applyDiscographyViewFilter()`).
+     *
+     * Click toggles just the clicked h2; Ctrl+Click toggles every "peer" h2 —
+     * every other h2 in the same container (sidebar vs. main content,
+     * determined via `#sidebar.contains(h2)`) — to the same expand/collapse
+     * state as the clicked one.
      */
     function makeH2sCollapsible() {
         Lib.debug('render', 'Initializing collapsible H2 headers...');
@@ -45080,14 +45102,6 @@ a { color: #1565c0; }`;
             h2.addEventListener('click', toggleFn);
         });
     }
-
-    /**
-     * Unified sorting logic for both single and multi-table pages.
-     * Handles UI highlighting, wait cursors, and state persistence.
-     *
-     * @param {HTMLElement} table - The table element to attach sorters to.
-     * @param {string} sortKey - Unique key for state persistence (e.g., "Album_0" or "main_table").
-     */
 
     // =========================================================================
     // Unique-values column dropdown — shared singleton panel
@@ -51253,6 +51267,10 @@ a { color: #1565c0; }`;
      *   may want to opt out for performance; see the gating check in
      *   `expandShowAllCells()`.
      *
+     * "iswcs"      — Artist-Works "ISWC" column
+     *   Each entry: { iswc, id, work_id, entityType, editsPending }
+     *   Rendered:   <li class="iswc"><a href="/iswc/{iswc}"><bdi><code>{iswc}</code></bdi></a></li>
+     *
      * To add support for a new JSON shape, append a new entry to this object.
      */
     const SHOW_ALL_JSON_HANDLERS = {
@@ -54200,7 +54218,34 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Serializes current table data (allRows or groupedRows) to JSON and triggers download
+     * Serializes current table data (allRows or groupedRows) to JSON and opens
+     * `showSaveDialog()` to confirm the filename before writing it to disk.
+     *
+     * Alerts and returns early if `isLoaded` is false (no data fetched yet).
+     *
+     * Steps:
+     *   1. Builds the `dataToSave` metadata envelope (url, pageType, tableMode,
+     *      entity/section/detail info, timestamp, and — for
+     *      artist-releasegroups pages — the discography view-mode categories
+     *      so Load-from-Disk can reconstruct the Official/Non-Official/
+     *      Complete/Merged buttons).
+     *   2. Serializes table headers, excluding the filter row and
+     *      Picard/ICE-injected `<th>`s. Detects the "pre-render" state (user
+     *      clicked Save at the render-threshold dialog without ever
+     *      rendering) via the absence of `th.mb-original-column`, and in that
+     *      case clones the native thead and runs `cleanupHeaders()` on the
+     *      clone (detached from the document, so `getComputedStyle()` can't
+     *      false-positive on external hiding) so the stored headers still
+     *      match what the final rendered column layout would have been.
+     *   3. Serializes rows via `getCleanCellHtml()` (strips ephemeral filter
+     *      highlight spans), branching on `activeDefinition.tableMode`
+     *      ('multi' → `dataToSave.groups`, otherwise → `dataToSave.headers`/
+     *      `.rows` from `allRows`).
+     *   4. Computes the filename via `_assembleExportFilename('json.gz', …)`,
+     *      gzip-compresses the JSON via `pako.gzip()`, and opens
+     *      `showSaveDialog()` with the resulting blob URL.
+     *
+     * @returns {void}
      */
     function saveTableDataToDisk() {
         Lib.debug('cache', 'Starting table data serialization...');
@@ -54434,14 +54479,6 @@ a { color: #1565c0; }`;
         );
     }
 
-    /**
-     * Loads table data from a JSON file and re-hydrates the page
-     * @param {File} file - The JSON file containing saved table data
-     * @param {string} filterQueryRaw - Pre-filter query string to apply during load
-     * @param {boolean} isCaseSensitive - Whether the pre-filter should be case-sensitive
-     * @param {boolean} isRegExp - Whether the pre-filter should be treated as a regular expression
-     * @param {boolean} isExclude - When true, rows MATCHING the filter are excluded instead of kept
-     */
     /**
      * Hydrates and renders a page from already-parsed table snapshot data —
      * shared by the "Load from Disk" flow (loadTableDataFromDisk) and the
@@ -55522,6 +55559,14 @@ a { color: #1565c0; }`;
         }
     }
 
+    /**
+     * Loads table data from a JSON file and re-hydrates the page
+     * @param {File} file - The JSON file containing saved table data
+     * @param {string} filterQueryRaw - Pre-filter query string to apply during load
+     * @param {boolean} isCaseSensitive - Whether the pre-filter should be case-sensitive
+     * @param {boolean} isRegExp - Whether the pre-filter should be treated as a regular expression
+     * @param {boolean} isExclude - When true, rows MATCHING the filter are excluded instead of kept
+     */
     async function loadTableDataFromDisk(file, filterQueryRaw = '', isCaseSensitive = false, isRegExp = false, isExclude = false) {
         if (!file) {
             Lib.warn('cache', 'No file selected.');
