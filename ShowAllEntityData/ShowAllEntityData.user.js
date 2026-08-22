@@ -23262,33 +23262,6 @@ ${sections.join('\n')}
     }
 
     /**
-     * Show table statistics panel (revamped).
-     *
-     * Layout (single-table mode):
-     *   ┌─ Header bar (drag handle): title + quick-filter input + ✕ clear + ✕ close ┐
-     *   │ § Global statistics table (14 rows)                                        │
-     *   │ § Per-table section — one card per sub-table:                              │
-     *   │     h1 / h2-h3 header · table filter · row count · artwork count          │
-     *   │     └ ▼ Collapsable per-column detail table (starts uncollapsed)          │
-     *   └────────────────────────────────────────────────────────────────────────────┘
-     *
-     * Interaction:
-     *   • Draggable via header bar (user-select:none prevents text selection;
-     *     e.preventDefault() is intentionally omitted so child button clicks
-     *     always work on first render)
-     *   • Resizable via native `resize:both` handle (bottom-right corner)
-     *   • Position/size persisted to GM storage key 'sa_stats_panel_geometry'
-     *   • Quick-filter highlights matching text (TreeWalker + normalize()) and
-     *     hides non-matching rows; td.normalize() called before each highlight
-     *     pass so adjacent text nodes from mark-removal are merged first
-     *   • ✕ (filter): clears the filter field, keeps panel open
-     *   • Escape / ✕ (panel close): first press clears filter; second closes
-     *   • Panel dimensions driven by sa_stats_panel_width / sa_stats_panel_max_height
-     *
-     * Memory Usage reports JS heap size via performance.memory (Chromium-only)
-     * rather than the old fictional "100 bytes × row count" estimate.
-     */
-    /**
      * Lazily injects the shared, id-guarded stylesheet for
      * {@link showStatsPanel}'s data-cell markup (colors/weights from the
      * panel's fixed palette `C`, defined further down in showStatsPanel).
@@ -23326,6 +23299,33 @@ ${sections.join('\n')}
         style.id = 'sa-stats-panel-style';
     }
 
+    /**
+     * Show table statistics panel (revamped).
+     *
+     * Layout (single-table mode):
+     *   ┌─ Header bar (drag handle): title + quick-filter input + ✕ clear + ✕ close ┐
+     *   │ § Global statistics table (14 rows)                                        │
+     *   │ § Per-table section — one card per sub-table:                              │
+     *   │     h1 / h2-h3 header · table filter · row count · artwork count          │
+     *   │     └ ▼ Collapsable per-column detail table (starts uncollapsed)          │
+     *   └────────────────────────────────────────────────────────────────────────────┘
+     *
+     * Interaction:
+     *   • Draggable via header bar (user-select:none prevents text selection;
+     *     e.preventDefault() is intentionally omitted so child button clicks
+     *     always work on first render)
+     *   • Resizable via native `resize:both` handle (bottom-right corner)
+     *   • Position/size persisted to GM storage key 'sa_stats_panel_geometry'
+     *   • Quick-filter highlights matching text (TreeWalker + normalize()) and
+     *     hides non-matching rows; td.normalize() called before each highlight
+     *     pass so adjacent text nodes from mark-removal are merged first
+     *   • ✕ (filter): clears the filter field, keeps panel open
+     *   • Escape / ✕ (panel close): first press clears filter; second closes
+     *   • Panel dimensions driven by sa_stats_panel_width / sa_stats_panel_max_height
+     *
+     * Memory Usage reports JS heap size via performance.memory (Chromium-only)
+     * rather than the old fictional "100 bytes × row count" estimate.
+     */
     function showStatsPanel() {
         _ensureStatsPanelStyle();
         // Toggle: remove if already open
@@ -25129,7 +25129,18 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Show table density menu and add density control button
+     * Injects the 📏 "Density" dropdown button into `#mb-show-all-controls-container`,
+     * with one menu item per `densityOptions` entry. Idempotent — returns
+     * immediately if `#mb-density-btn` already exists.
+     *
+     * Applies the selected density to all tables via `applyTableDensity()` on
+     * click, with full keyboard navigation: ArrowUp/ArrowDown move the
+     * highlighted item and immediately apply that density as a live preview
+     * (not reverted on dismissal), Enter re-applies the currently highlighted
+     * option and closes the menu, Escape and outside-click just close the
+     * menu leaving whichever density was last previewed/applied in place.
+     *
+     * @returns {void}
      */
     function addDensityControl() {
         const controlsContainer = document.getElementById('mb-show-all-controls-container');
@@ -25437,9 +25448,26 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Make table columns resizable with mouse drag
-     * Adds resize handles to column headers
-     * @param {HTMLTableElement} table - The table to make resizable
+     * Adds a draggable `.column-resizer` handle to the right edge of every
+     * header cell in `table` that doesn't already have one, wiring mouse-drag
+     * width adjustment for each column's `<col>` element.
+     *
+     * Drag writes are rAF-gated (`_dragRafPending`) so at most one
+     * `col.style.width` write happens per animation frame regardless of how
+     * fast `mousemove` fires, avoiding a per-pixel reflow storm. Each
+     * column's minimum drag width is computed once at setup time (while the
+     * column is still at its natural width) from the header widget's
+     * intrinsic `scrollWidth`, and cached on `th.dataset.mbResizeMin` — it is
+     * NOT recomputed on every drag, since after a column has been widened its
+     * `scrollWidth` would reflect the current (wider) width and permanently
+     * raise the floor, making the column impossible to narrow back down.
+     * That cache is what lets a re-call of this function (e.g. from
+     * `toggleAutoResizeColumns()` after auto-resize has already changed
+     * widths, or after the Restore button removes and re-adds handles) still
+     * use the column's true original minimum.
+     *
+     * @param {HTMLTableElement} table - The table to make resizable.
+     * @returns {void}
      */
     function makeColumnsResizable(table) {
         const headers = table.querySelectorAll('thead tr:first-child th');
@@ -25779,25 +25807,6 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Captures a multi-table sub-section's currently-rendered rows into a
-     * snapshot payload consumable by `_hydrateAndRenderFromSnapshotData()` —
-     * reuses the exact header/cell schema `saveTableDataToDisk()` writes to
-     * disk (see its `dataToSave.headers`/`.rows` construction), scoped down
-     * to just this one `table` instead of the whole page.
-     *
-     * No force-expand-before-capture step is needed: `getCleanCellHtml()`
-     * (via `_stripTransientCellState()`) already normalises every cell back
-     * to its canonical collapsed state before serialising, exactly as
-     * `saveTableDataToDisk()` relies on — the reconstructed table gets
-     * working collapse/expand toggles from `initCollapsableColumns()` again
-     * on the new tab, rather than a frozen expanded snapshot.
-     *
-     * @param  {HTMLTableElement} table        The sub-table (h3's table.tbl) to capture.
-     * @param  {string}           categoryName Human-readable relationship-type/category name.
-     * @param  {string}           pageType     Current module-level pageType (e.g. 'artist-relationships').
-     * @returns {Object} Snapshot payload — same shape `_hydrateAndRenderFromSnapshotData` accepts.
-     */
-    /**
      * PageTypes wired up for the "Show single-table" cross-tab snapshot
      * button (see openSubtableAsSingleTableTab / renderGroupedTable's
      * group.seeAllUrl else-branch). All are tableMode:'multi' categories
@@ -25835,6 +25844,25 @@ a { color: #1565c0; }`;
         'artist-relationships', 'label-relationships', 'place-performances',
     ]);
 
+    /**
+     * Captures a multi-table sub-section's currently-rendered rows into a
+     * snapshot payload consumable by `_hydrateAndRenderFromSnapshotData()` —
+     * reuses the exact header/cell schema `saveTableDataToDisk()` writes to
+     * disk (see its `dataToSave.headers`/`.rows` construction), scoped down
+     * to just this one `table` instead of the whole page.
+     *
+     * No force-expand-before-capture step is needed: `getCleanCellHtml()`
+     * (via `_stripTransientCellState()`) already normalises every cell back
+     * to its canonical collapsed state before serialising, exactly as
+     * `saveTableDataToDisk()` relies on — the reconstructed table gets
+     * working collapse/expand toggles from `initCollapsableColumns()` again
+     * on the new tab, rather than a frozen expanded snapshot.
+     *
+     * @param  {HTMLTableElement} table        The sub-table (h3's table.tbl) to capture.
+     * @param  {string}           categoryName Human-readable relationship-type/category name.
+     * @param  {string}           pageType     Current module-level pageType (e.g. 'artist-relationships').
+     * @returns {Object} Snapshot payload — same shape `_hydrateAndRenderFromSnapshotData` accepts.
+     */
     function captureSubtableSnapshot(table, categoryName, pageType) {
         const headers = table.tHead
             ? Array.from(table.tHead.querySelectorAll('tr'))
@@ -26583,7 +26611,6 @@ a { color: #1565c0; }`;
     }
 
     /**
-     *
      * Restore original content/sidebar state
      */
     function restoreOriginalScrollState() {
@@ -26613,10 +26640,24 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Toggles auto-resize mode for table columns.
-     * First click: auto-resizes all columns to fit their content optimally.
-     * Second click: restores original column widths.
-     * Manual column resizing also resets the auto-resize state.
+     * Toggles auto-resize mode for ALL tables on the page (the global,
+     * multi-table counterpart of `toggleSubTableAutoResize()`).
+     *
+     * First click: measures and auto-resizes every table's columns to fit
+     * their content optimally, disabling the resize button and showing a
+     * fixed-centre progress overlay while the (potentially chunked,
+     * `await`-yielding) measurement pass runs across all tables.
+     * Second click: restores every table's original column widths via
+     * `restoreOriginalTableState()`, removes and re-adds resize handles so
+     * manual dragging keeps working, and clears the per-table state stored
+     * in `originalTableStates`/`subTableResizedStates`/`subTableOriginalStates`.
+     * Manual column resizing (`makeColumnsResizable()`) also resets the
+     * auto-resize state so the next click starts a fresh measurement pass
+     * rather than treating the manually-adjusted widths as already optimal.
+     * No-ops with a warning (no blocking alert) when no `table.tbl` is found
+     * in the DOM yet.
+     *
+     * @returns {Promise<void>}
      */
     async function toggleAutoResizeColumns() {
         const tables = document.querySelectorAll('table.tbl');

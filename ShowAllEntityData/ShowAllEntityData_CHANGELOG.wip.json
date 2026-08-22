@@ -1,5 +1,20 @@
 [
   {
+    "version": "WIP.9",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 7d/7 (sub-chunk 4 of 8) — stats panel, barcode-toggle UI, density/resize controls, snapshot capture, sidebar collapse.",
+          "Relocated 2 genuinely misattributed JSDoc blocks (v9.99.366-style): a complete doc for showStatsPanel() was sitting on _ensureStatsPanelStyle() instead (which has its own separate correct doc); a complete doc for captureSubtableSnapshot() was sitting on the SA_SNAPSHOT_SUPPORTED_PAGETYPES const instead (which also has its own separate correct doc). Both target functions had no doc of their own before this fix.",
+          "Wrote full structural docs for addDensityControl() (previously 2 generic lines, actually a ~230-line menu with live-preview arrow-key navigation), makeColumnsResizable() (previously 3 generic lines, actually rAF-throttled drag-resize with a cached per-column minimum-width mechanism), and expanded toggleAutoResizeColumns()'s doc to match the detail level of its sibling toggleSubTableAutoResize().",
+          "restoreOriginalScrollState(): cosmetic fix, removed a stray blank line at the top of its JSDoc block."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.8",
     "date": "2026-08-22",
     "sections": [
