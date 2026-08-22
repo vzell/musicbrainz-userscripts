@@ -1,5 +1,21 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 4/7 — filtering/sorting (runFilter, testRowMatch, multi-sort, tint registry, column-header collapse).",
+          "getColFilters(): added a missing JSDoc (found while fixing testRowMatch's doc below, since it needed getColFilters()' real descriptor shapes to be accurate) — this ~125-line function had none, despite being the sole builder of the colFilters array testRowMatch() consumes on every filter pass.",
+          "testRowMatch(): @param ctx.colFilters was typed only as the plain-text-filter shape ({ val, idx }), completely omitting the checkbox/multi-value-filter shape (isMultiValueFilter, valueSet, hasItemValues, hasEntityValues, structureModes) that getColFilters() also produces and that a large fraction of the function's own matching logic branches on. Documented both shapes explicitly.",
+          "Removed an orphaned duplicate JSDoc block (lines 16840-16872, ~33 lines) describing updateSubTableCollapseButton() in full, sitting directly above _COLLAPSE_MATCH_SEL's own doc with no function in between. The real updateSubTableCollapseButton() is defined ~1450 lines later and already has its own correct, accurate doc.",
+          "Added a full missing JSDoc to runFilter() — despite being one of the two functions named directly in this chunk's own title, and ~680 lines long (reads filter UI state, builds testRowMatch's matchCtx, branches single-/multi-table with an incremental-scan cache optimisation, rebuilds the DOM, re-wires every post-filter hook, restores scroll/focus, and updates the status displays), it had zero documentation."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-08-22",
     "sections": [

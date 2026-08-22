@@ -16838,39 +16838,6 @@
     }
 
     /**
-     * Refreshes the per-sub-table ▶/◀ collapse button that lives in the h3
-     * immediately before `.mb-subtable-controls`.
-     *
-     * Show/hide logic (mirrors the global button):
-     *   • Hidden when the filtered-in rows of `table` contain no multi-row cells
-     *     (i.e. no `.mb-col-collapse-hdr-btn` exists inside `table`).
-     *   • Shown otherwise; text is reset to `▶ Expand` so it always reflects
-     *     the post-filter collapsed state.
-     *
-     * Highlight tint (mirrors the global button but using subtable filter colours):
-     *   • When any `td.mb-has-collapse-toggle` inside `table` carries a filter-
-     *     highlight span (visible OR collapsed), the button's background is set
-     *     to `stfBorderActive()` with white text and a matching box-shadow so it
-     *     stands out against the h3 bar — consistent with the active-filter colour
-     *     of the sub-table filter input.
-     *   • When no highlights are found the inline overrides are cleared so the
-     *     button reverts to its default (grey) appearance.
-     *
-     * The button is located via the h3 element found by `findH3ForTable(table)`,
-     * so no `categoryName` is needed at call sites.
-     *
-     * NOTE: `table.previousElementSibling` must NOT be used here — after
-     * `_artInitBigPics` runs it returns the bigbox div, not the h3.
-     *
-     * Called from:
-     *   • `renderGroupedTable` — after every `initCollapsableColumns(table)` call
-     *     (both initial render and filter re-run).
-     *   • `ensureCollapseDelegate` click handler — after each individual cell
-     *     expand/collapse so the tint stays in sync.
-     *
-     * @param {HTMLTableElement} table
-     */
-    /**
      * CSS selector that matches any filter-highlight span used by any of the three
      * filter layers (global, column, STF, pre-filter).
      *
@@ -34971,6 +34938,41 @@ a { color: #1565c0; }`;
         area:            8
     };
 
+    /**
+     * Reads every `.mb-col-filter-input` in `table`'s header row and builds the
+     * per-column filter descriptor list consumed by `testRowMatch()`. Also
+     * applies the live active/error border styling to each input as a side
+     * effect (green glow when a filter is active/valid, red 4px border + status
+     * message on an invalid regexp).
+     *
+     * Two descriptor shapes are produced, distinguished by `isMultiValueFilter`:
+     *   - Plain text/regexp filter (typed directly into the input):
+     *     `{ val, idx, isRegExp, isCaseSensitive, isExclude }`.
+     *   - Checkbox-driven multi-value filter (set by `applyUniqValueSet()` via
+     *     `input.dataset.mbUniqValues`, a JSON-encoded array):
+     *     `{ val, idx, isMultiValueFilter: true, valueSet, hasItemValues,
+     *        hasEntityValues, structureModes, isCaseSensitive, isExclude }`.
+     *     `structureModes` holds any `MB_UNIQ_STRUCTURE_MODE_PREFIX`-tagged
+     *     entries (unfolded, exact-case) separately from `valueSet`'s plain
+     *     text values (case-folded per `isCaseSensitive`, same as the plain
+     *     shape). A corrupt/unparseable `dataset.mbUniqValues` fails safe to an
+     *     empty `valueSet` rather than throwing.
+     *
+     * An empty field clears any stale `dataset.mbUniqValues`/error styling and
+     * contributes no descriptor. Regexp validation failures are skipped from
+     * the result (so they never break row-matching) but are still reported via
+     * `result._rxErrors` (always present, even on the `table` falsy early
+     * return) and, for multi-table pages, written directly to the owning
+     * `<h3>`'s `.mb-filter-status` span.
+     *
+     * @param   {HTMLTableElement} table           - The table whose column filter row to read.
+     * @param   {boolean}          isCaseSensitive  - Whether text/value comparisons should fold case.
+     * @param   {boolean}          isRegExp         - Whether filter text should be treated as a regexp.
+     * @param   {boolean}          [isExclude=false] - Whether matches should be negated by the caller.
+     * @returns {Array<object> & { _rxErrors: string[] }} Descriptor list, plus a
+     *   non-enumerable-in-spirit (but plain) `_rxErrors` property collecting any
+     *   invalid-regexp error messages encountered.
+     */
     function getColFilters(table, isCaseSensitive, isRegExp, isExclude = false) {
         if (!table) {
             const empty = [];
@@ -35987,7 +35989,12 @@ a { color: #1565c0; }`;
      *   isCaseSensitive: boolean,
      *   isRegExp:       boolean,
      *   isExclude:      boolean,
-     *   colFilters:     { val: string, idx: number }[]
+     *   colFilters:     Array<
+     *     { val: string, idx: number, isRegExp: boolean, isCaseSensitive: boolean, isExclude: boolean } |
+     *     { val: string, idx: number, isMultiValueFilter: true, valueSet: Set<string>,
+     *       hasItemValues: boolean, hasEntityValues: boolean, structureModes: Set<string>,
+     *       isCaseSensitive: boolean, isExclude: boolean }
+     *   >  - Built by getColFilters(); see its own JSDoc for the two descriptor shapes.
      * }} ctx
      * @param {boolean} [matchOnly=false] - When true, skip all DOM mutations (highlight
      *   reset and highlight application). Use on source rows; call again on the clone with
@@ -36411,6 +36418,51 @@ a { color: #1565c0; }`;
         });
     }
 
+    /**
+     * Re-filters (and re-sorts, implicitly, by re-rendering already-sorted source
+     * rows) the currently displayed table(s) against the live global filter input
+     * and every per-column filter input, then rebuilds the DOM from the matching
+     * rows. The main entry point wired to every filter-affecting input's `input`/
+     * `change` listener, and called directly after render/collapse/CAA-EAA state
+     * changes that can affect which rows should be visible.
+     *
+     * Steps:
+     *   1. Reads the case/regexp/exclude checkboxes and the global filter input
+     *      (prefix-stripped via `stripFilterPrefix`), validates the pattern when
+     *      `isRegExp` is on, and sets the global input's border/status accordingly.
+     *      On an invalid regexp, sets the error status and returns immediately —
+     *      no filter pass runs, so the DOM and row arrays are left untouched.
+     *   2. Builds the shared `matchCtx` object passed to `testRowMatch()`, and
+     *      publishes `_activeFilterHighlightCtx` (or `null` when nothing is
+     *      active) so `_artHighlightImageLi()` can re-apply highlights to
+     *      freshly-built CAA/EAA `<li>` elements after a multi-row art cell
+     *      rebuild wipes `testRowMatch()`'s own marks.
+     *   3. Branches on `activeDefinition.tableMode`:
+     *      - `'multi'`: iterates `groupedRows`, calls `getColFilters()` +
+     *        `testRowMatch()` per sub-table, honours per-table Rx/case/exclude
+     *        overrides and the `discographyViewState` view filter, and caches
+     *        each group's match set via `_buildFilterKey()`/`_filterCacheSet()`.
+     *      - `'single'`: same per-row matching against the one table, with an
+     *        additional incremental-scan optimisation — when `_buildIncrPartialKey()`
+     *        matches the previous call's partial key and the new global query is a
+     *        plain-text extension of the previous one, only the previous match set
+     *        is re-scanned instead of all of `allRows`.
+     *   4. Clears and repopulates the tbody/tbodies from the matching rows
+     *      (`cloneNode`-based), then re-wires everything a fresh clone drops or a
+     *      filter pass can invalidate: multi-sort tints, per-table/global collapse
+     *      button state, `initExpandRGsFeature()`, `_cdtocInitTracklistToggles()`,
+     *      `_rewireNestedTableH2Toggles()`, the Picard tagger column (rewire-only),
+     *      the CAA/EAA inline/icon/bigbox pipelines, and any still-pending
+     *      Relationships-column cells.
+     *   5. Restores scroll position (`window.scrollTo`) and, when the previously
+     *      focused element was a column-filter input, refocuses the equivalent
+     *      input on the freshly cloned table/column so typing isn't interrupted.
+     *   6. Computes elapsed time and writes a human-readable summary (active
+     *      filters, mode flags, row count) to the global and per-table status
+     *      displays.
+     *
+     * @returns {void}
+     */
     function runFilter() {
         const filterStartTime = performance.now();
 
