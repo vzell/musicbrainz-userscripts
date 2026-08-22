@@ -95892,3 +95892,44 @@ Close out the chunk: add one ShowAllEntityData_CHANGELOG.json entry under "🔧 
 Start with chunk 1 and stop for my confirmation after its report.
 
 This keeps each round small enough to actually review (a diff you can read, not a 2000-line dump), gives you a natural rollback point per chunk if something in a fix looks wrong, and keeps the changelog granular the way the rest of the project's history already is.
+
+
+* TODO Headless Chromium like in https://github.com/majkinetor/musicbrainz-userscripts by @majkinetor (Miodrag Milić)
+
+Headless Chromium like in https://github.com/majkinetor/musicbrainz-userscripts by @majkinetor (Miodrag Milić)
+
+
+* TODO sanojjans visualize stuuf
+
+1.)
+
+The attached userscript "sanojjonas visualise stuff" by @sanojjonas gives the following error on e.g. https://musicbrainz.org/event/15e319f4-abcf-4eae-b379-73f0e74769f8
+
+#+begin_example
+Uncaught (in promise) TypeError: eventValue.playType.get is not a function
+    at getCalenderDescription (userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:2290:58)
+    at createCalenderButton (userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:2169:18)
+    at userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:2774:19
+    at Map.forEach (<anonymous>)
+    at generateEventSchedule (userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:2727:15)
+    at updateStuff (userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:1981:5)
+    at searchImages (userscript.html?name=sanojjonas-visualise-stuff.user.js&id=39cb5d25-a89a-401b-9c61-6d1089d68abe:1605:7)
+#+end_example
+
+2.)
+
+The following raw HTML shows the effect of the above userscript at the very end of the final rendered page
+
+The following 
+#+begin_example
+<div id="load<n>"></div>
+#+end_example
+
+where n=1,2,3,4
+
+Please give advice how to enhance the above userscript to render its effects into a special container, maybe use a
+special "sanojjonas" class attribute so that other userscripts, specifically ours can beeter account for it.
+
+For example hiding/removing it's rendered artefacts
+
+I want to post the findings in https://community.metabrainz.org/t/sanojjonas-visualise-stuff/712940/115
