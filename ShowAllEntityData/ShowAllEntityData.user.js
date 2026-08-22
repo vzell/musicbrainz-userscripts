@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.915+2026-08-22
+// @version      9.99.916+2026-08-22
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -14,7 +14,7 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
 // @require      https://raw.githubusercontent.com/vzell/mb-userscripts/master/lib/VZ_MBLibrary.user.js
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits)\/?(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|annotations)\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?\/?(?:\?.*)?)$/
 // @connect      raw.githubusercontent.com
@@ -13816,6 +13816,54 @@
                 ]
             },
             tableMode: 'single'
+        },
+        // Consolidated annotation-history page for every entity kind that
+        // supports annotations (artist included — unlike 'entity-aliases',
+        // there is no MB feature parallel to aliases' "Artist credits"
+        // section for annotations, so no separate artist-* entry is
+        // needed; this is a safe-but-unverified assumption — no artist
+        // snapshot was captured, only debug/annotations.html for a label).
+        // Genre/URL excluded — neither entity type is supported anywhere
+        // in this script (not in pageDefinitions, not in the @include
+        // filter above) and neither has an annotations feature on MB.
+        //
+        // debug/annotations.html: div#content present, native <h1>
+        // untouched, single native <h2>Annotation history</h2> (two other
+        // <h2 matches in the raw file are false positives — literal text
+        // inside the escaped JSON annotation-history blob, not real DOM)
+        // immediately followed by an ALREADY tbl-shaped
+        // <table class="tbl" id="annotation-history"> — no
+        // listToTable/insertH2 needed, same minimal shape as 'cd-stub'/
+        // 'auto-editor-election'. Old/New radio-button columns (native
+        // "Compare versions" diff form) and the Editor/Version-history
+        // link cells are left as plain default columns — no extractor,
+        // no columnEraser, no checkbox-cell class stamp (that mechanism
+        // is for single-checkbox merge columns, a different UI shape).
+        // Confirmed safe to leave native: renderFinalTable repopulates
+        // the existing table's own <tbody> in place (never relocates the
+        // <table> out of its wrapping <form>), and new rows are deep
+        // clones (importNode) of freshly-fetched static HTML, so the
+        // radios' checked/disabled/name/value state survives untouched —
+        // unlike report-detail's mergeable-table checkbox (which relies on
+        // MB's own client-side JS hydration and goes inert on clone), this
+        // "Compare versions" flow is a plain HTML form/radio-group with no
+        // JS dependency. No pagination observed (58-row fixture, no
+        // class="pagination") — non_paginated: true, same bet as
+        // cd-stub/isrc/auto-editor-election; unverified against a
+        // heavily-annotated entity, worth a spot check before relying on
+        // it for a >1-page history.
+        {
+            type: 'annotations',
+            match: (path) => path.match(/\/(?:artist|instrument|area|place|series|label|work|release-group|release|recording|event)\/[a-f0-9-]{36}\/annotations/),
+            buttons: [ { label: 'Show Annotation History', labelFromPathEntity: true } ],
+            features: {
+                columnExtractors: [
+                    { sourceColumn: 'Date', extractor: 'dateTimeParts', syntheticColumns: ['Revision date', 'Revision time'] }
+                ],
+                stickyColumn: 'Editor'
+            },
+            tableMode: 'single',
+            non_paginated: true
         },
         // Area pages
         {

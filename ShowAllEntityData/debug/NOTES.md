@@ -6303,3 +6303,63 @@ second follow-up round.
   release; single-target cases were already correct by coincidence (one
   clone into one `<li>` looks right when there's only one item).
 - `node --check ShowAllEntityData.user.js` passed after the edit.
+
+## 2026-08-22 — annotations page type (`annotations.html`)
+
+- `annotations.html` (`/label/011d1192-6f65-45bd-85c4-0400dd45693e/annotations`,
+  label "Columbia"): `div#content` present. Native `<h1>` (label header),
+  `div.tabs`, then a single native `<h2>Annotation history</h2>` — the raw
+  file has 3 total `<h2` matches, but the other 2 are false positives:
+  literal `<h2>Early History</h2>`/`<h2>Notes</h2>` text embedded inside the
+  escaped `"html"` field of a `<script type="application/json">` blob
+  (historic annotation revision bodies that themselves contained wiki
+  headings), not real DOM elements — grep for `<h2` on a raw MB snapshot
+  before trusting a match count when a JSON blob is present.
+- The real `<h2>` is immediately followed by
+  `<form action=".../annotations-differences">` wrapping an ALREADY
+  `table.tbl`-shaped table (`<div class="annotation-history-table"><table
+  class="tbl" id="annotation-history">`) — no `listToTable`/`insertH2`
+  needed, same minimal shape as `cd-stub`/`auto-editor-election`. 5 columns:
+  Old/New (`<input type="radio" name="old"/"new" value="<annotationId>"
+  [checked] [disabled]>`, no visible text — native "Compare versions" diff
+  form), Editor (`<a href="/user/NAME"><img class="avatar">…<bdi>NAME</bdi>`
+  — plus a previously-unseen-in-this-file shape for deleted/reactivated
+  editors: `class="tooltip j2revivededitor"` with a multi-line `title`
+  tooltip and a trailing `<span class="comment">(active N years until
+  YYYY)</span>`, e.g. the `brianfreud`/`Deleted Editor #95678` rows), Date
+  (plain text `"2024-03-19 23:11 GMT+1"`), Version history (`<a
+  href=".../annotation/<id>">View this version</a>` + `(changelog text)` or
+  `(<em>no changelog specified</em>)`). 59 total `<tr>` (1 thead + 58
+  tbody), 0 occurrences of `class="pagination"`.
+- Old/New radios left as plain default columns (no extractor, no
+  columnEraser, no `checkbox-cell` class stamp — that mechanism is for
+  single-checkbox merge columns tied to MB's own client-side JS hydration,
+  a different shape/dependency than this plain radio+form UI). Verified
+  against the actual render pipeline: `renderFinalTable` repopulates the
+  existing table's own `<tbody>` in place (never relocates `<table>` out of
+  its wrapping `<form>`), and new rows are `importNode`-deep-cloned from
+  freshly-fetched static HTML, so `checked`/`disabled`/`name`/`value`
+  survive untouched — the "Compare versions" form should keep working
+  post-render, unlike `report-detail`'s mergeable-table checkbox (which
+  goes inert on clone because it depends on MB's own JS hydration).
+- `Date` column reuses the existing `dateTimeParts` extractor (splits on
+  first whitespace: `"2024-03-19 23:11 GMT+1"` → date `"2024-03-19"`, time
+  `"23:11 GMT+1"`) into `Revision date`/`Revision time`, same extractor
+  already used on report-detail's "Last edited" column.
+- `pageType: 'annotations'`, `tableMode: 'single'`, `non_paginated: true`
+  (no `class="pagination"` in this 58-row fixture, same bet as
+  `cd-stub`/`isrc`/`auto-editor-election`) — **unverified against a
+  heavily-annotated entity**; worth a spot check before relying on it for
+  a real >1-page annotation history.
+- `match()` includes `artist` in the same alternation as every other
+  entity (unlike `entity-aliases`, which routes artist separately because
+  `/artist/<mbid>/aliases` has an extra "Artist credits" section) — there
+  is no MB feature parallel to that for annotations, so no split is
+  needed. **Unverified**: no `/artist/<mbid>/annotations` snapshot was
+  captured, only this label one; worth a follow-up snapshot to confirm the
+  DOM shape matches before treating this as fully confirmed.
+- Also required a fix to the `@include` Tampermonkey filter
+  (`ShowAllEntityData.user.js:17`) — `annotations` was missing from the
+  URL-suffix alternation, so without adding it the userscript would never
+  have injected on this URL at all regardless of the `pageDefinitions`
+  entry.

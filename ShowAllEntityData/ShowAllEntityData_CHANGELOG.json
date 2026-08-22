@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.916",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added the 'annotations' pageType, consolidating an entity's Annotation history page (/<entity>/<mbid>/annotations — Old/New compare, Editor, Date, Version history) across artist/label/release/release-group/recording/work/area/place/series/event/instrument into a single filterable, sortable view."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.915",
     "date": "2026-08-22",
     "sections": [
