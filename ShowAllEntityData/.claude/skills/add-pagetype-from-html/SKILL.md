@@ -67,7 +67,7 @@ directly into a `features` flag or a `pageDefinitions` field below. Use
 6. **What do the columns actually look like?** For each `<th>`, look at 2-3
    `<td>` samples: plain text, a link, a list (`<ul><li>`), a nested `<dl>`
    of relationships, an icon-prefixed value? This determines the column
-   pipeline (§3) — don't guess from the header text alone; MusicBrainz
+   pipeline (§4) — don't guess from the header text alone; MusicBrainz
    reuses ambiguous header labels ("Type", "Name") across very different
    cell shapes.
 7. **Does the page belong to an existing entity-driven family?** — i.e. is
@@ -100,7 +100,34 @@ the neighboring entry does — check whether the neighbor distinguishes a
 "-filtered" variant via a query param and mirror that if this page has the
 same filter toggle.
 
-## 3. Column pipeline
+## 3. Check the `@include` filter
+
+The `==UserScript==` header carries several `@include` regexes
+(`ShowAllEntityData.user.js:16-19`) — Tampermonkey's own injection gate,
+which decides which URLs the script's `<script>` tag runs on **at all**.
+This is a separate, upstream mechanism from `pageDefinitions`'s own
+`match()` functions: a page can have a perfectly correct `pageDefinitions`
+entry and still be completely unreachable if its URL isn't covered by one
+of these four patterns first. Nothing throws, no button appears, and the
+bug is easy to miss because the code "looks done" — this is exactly what
+happened building the `annotations` pageType (see `debug/NOTES.md`'s
+`## 2026-08-22 — annotations page type` entry).
+
+Check this before considering the entry finished:
+- Most entity-scoped pages (`/<entity>/<mbid>/<suffix>`) are covered by the
+  line-17 alternation (`aliases|releases|recordings|…`) — if the entity is
+  already listed there, you likely just need to add the new URL suffix to
+  that same alternation.
+- If the entity itself isn't listed anywhere, or the page's URL doesn't fit
+  the `/<entity>/<mbid>/<suffix>` shape at all (a standalone route like
+  `/report/…`, `/isrc/…`, `/user/<name>/…`), re-read all four `@include`
+  lines (16-19) and extend whichever one actually matches this URL's
+  shape — don't assume line 17 is always the right one.
+- Confirm the fix by matching the literal URL you're targeting against the
+  updated regex by eye (or a quick `node -e` check) rather than trusting
+  that "it's probably in there somewhere."
+
+## 4. Column pipeline
 
 For each column identified in step 1.6:
 
@@ -130,7 +157,7 @@ genuinely needs in-place DOM surgery the generic extractor pipeline can't
 express — that's a large, page-specific mechanism, not something to
 reach for by default.
 
-## 4. Verify against the render pipeline
+## 5. Verify against the render pipeline
 
 Before considering the entry done, trace it through
 `startFetchingProcess()`'s actual sequence once:
@@ -143,7 +170,7 @@ fetch loop → `renderFinalTable` or `renderGroupedTable`. If `tableMode` is
 `targetHeader` ends up inside whatever `container` resolves to after
 cleanup — don't just assume it works because the code compiles.
 
-## 5. Document the snapshot
+## 6. Document the snapshot
 
 If the HTML file under `debug/` isn't already named descriptively, rename
 it to `<pagetype>.html` (or `<pagetype>-original.html` if you expect to also
@@ -154,7 +181,7 @@ capture a `-final.html` post-render snapshot later). Add an entry to
 row-count estimate). This is what saves the next session from re-deriving
 the same DOM facts from scratch.
 
-## 6. Version bump + changelog
+## 7. Version bump + changelog
 
 Mandatory, same session, no exceptions per project convention:
 
@@ -186,6 +213,13 @@ Mandatory, same session, no exceptions per project convention:
   runtime for at least one sub-entity) — re-check step 1.7 specifically
   when the page has more than one heading, even if the first two look
   alike.
+- **Unreachable pageDefinitions entry**: the new `type:` entry is written,
+  compiles cleanly, and looks finished, but its URL was never added to the
+  `@include` header (step 3) — the userscript never injects on the page at
+  all, so no button ever appears anywhere. No error, no console warning; it
+  just silently does nothing, which makes it easy to mistake for "the page
+  just doesn't have matching rows." Always check step 3 before calling the
+  entry done — this bit the `annotations` pageType on the first attempt.
 
 ## How to drive this skill
 
@@ -195,5 +229,6 @@ Point at the file and say what the page is, e.g.:
 > should behave like `label-relationships-filtered` but for recordings."
 
 Claude Code will read the snapshot, walk through the seven facts in step 1,
-find the nearest neighbor in `pageDefinitions`, and write the entry plus the
-version bump and changelog line before showing the diff.
+find the nearest neighbor in `pageDefinitions`, confirm the `@include`
+header actually covers the new URL, and write the entry plus the version
+bump and changelog line before showing the diff.
