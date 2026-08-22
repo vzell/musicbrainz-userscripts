@@ -95899,7 +95899,8 @@ This keeps each round small enough to actually review (a diff you can read, not 
 Headless Chromium like in https://github.com/majkinetor/musicbrainz-userscripts by @majkinetor (Miodrag Milić)
 
 
-* TODO sanojjans visualize stuuf
+* DONE sanojjonas visualize stuuf
+** i
 
 1.)
 
@@ -95933,3 +95934,116 @@ special "sanojjonas" class attribute so that other userscripts, specifically our
 For example hiding/removing it's rendered artefacts
 
 I want to post the findings in https://community.metabrainz.org/t/sanojjonas-visualise-stuff/712940/115
+
+** a
+
+#+begin_example
+## `eventValue.playType.get is not a function` on event pages, plus a container/class suggestion
+
+I ran into the following console error on https://musicbrainz.org/event/15e319f4-abcf-4eae-b379-73f0e74769f8 (a simple, standalone event — main performer, guest performer, held at, one review URL; no series/parts/reschedule relations):
+
+```
+Uncaught (in promise) TypeError: eventValue.playType.get is not a function
+    at getCalenderDescription (…:2290:58)
+    at createCalenderButton (…:2169:18)
+    at …:2774:19
+    at Map.forEach (<anonymous>)
+    at generateEventSchedule (…:2727:15)
+    at updateStuff (…:1981:5)
+    at searchImages (…:1605:7)
+```
+
+### What's causing the crash
+
+`eventValue.playType` is expected to always be a `Map` (it's built with `new Map()` in `addEventToEventMap`/`addArtistToEventMap`). Something is turning it into a plain value that has no `.get()` on it for this event, and I think there's a concrete bug making that possible to slip through undetected:
+
+```js
+// getCalenderDescription, ~line 2289
+if (eventValue.playType != {} && eventValue.playType.get("time")) {
+```
+
+`eventValue.playType != {}` always evaluates to `true`, no matter what `playType` is — comparing to a freshly created object literal is a reference comparison, not a shape/type check, so `{}` is never `==`/`!=` equal to anything except itself. This guard looks like an attempt to defend against `playType` not being a `Map`, but it's a no-op, so execution falls straight through into `.get("time")` and throws. The same pattern shows up again a few lines later in `createCalenderButton`:
+
+```js
+// createCalenderButton, ~line 2204
+if ((childMap != {} && childMap.child && ...) || (!childMap.child || !childMap.childChecked) && childMap.playType.size === 0) {
+```
+
+Suggested fix for both spots — check the actual type instead:
+
+```js
+if (eventValue.playType instanceof Map && eventValue.playType.get("time")) {
+```
+
+I traced every place `playType` gets assigned (`addEventToEventMap` line ~2428/2430, `addArtistToEventMap` line ~2489-2499) and in each direct path it's built via `new Map(...)`, so I couldn't pin the exact mutation that turns it into something else just from reading the source — it may be data-shape-specific to this event/artist combo, or specific to the userscript runner (the console URL is `userscript.html?name=...&id=...`, which looks like a sandboxed userscript-runner page rather than a plain Tampermonkey/Violentmonkey injection — worth checking whether `Map` objects survive whatever bridging that runner does).
+
+Two spots stood out as the most likely weak points if you want to harden this regardless of root cause:
+
+- `addEventToEventMap`'s merge branch, `eventMap.set(event.id, { ...eventMap.get(event.id), ...event })` (~line 2430): if the freshly-fetched `event` object ever carries its own `playType`-shaped key (e.g. after a `JSON.stringify`/`JSON.parse` round trip through `localStorage`, which silently turns a `Map` into `{}`), spreading it after the existing entry clobbers the `Map`. Re-asserting `playType` after the spread would make it clobber-proof:
+  ```js
+  eventMap.set(event.id, { ...eventMap.get(event.id), ...event, playType: eventMap.get(event.id).playType });
+  ```
+- The stub objects pushed straight from the API response into `.child` / `.parent` / `.rescheduledFrom` / `.rescheduledAs` (`relation[i].event`) never get a `playType` at all. Today every read site resolves them via `eventMap.get(childEvent.id)` first, so it's safe — but it only takes one future call site reading `.playType` off the stub directly to reproduce this same crash somewhere else.
+#+end_example
+
+** forum post
+
+#+begin_example
+## Suggestion: wrap the generated UI in one identifiable container
+
+Looking at a saved copy of a rendered event page, the script currently injects `<div id="load">`, `<div id="load2">`, `<div id="load3">`, `<div id="bottom1">` … `<div id="bottom7">` (`divAmount`), and `<div id="load4">` as direct siblings inside MusicBrainz's own `#content`, separated only by bare `<br>` elements (`prepareDivs()`), with no shared wrapper. The generated `<table>` elements already carry `class="sanojjonas"`, which is great and already usable as a coarse selector — but the surrounding divs, the pagination buttons, and the `<br>` spacers carry no script-identifying attribute at all.
+
+For anyone else's userscript that wants to detect, hide, move, or strip your output (mine included), that means falling back to generic, collision-prone ids like `#bottom1`. A single wrapping container would make that trivial:
+
+```js
+function prepareDivs(place, amount, load) {
+  const root = document.getElementById("sanojjonas-root") || document.createElement("div");
+  root.id = "sanojjonas-root";
+  root.className = "sanojjonas";
+  document.getElementById(place).appendChild(root);
+  // append load/load2/load3/bottomN/load4 into root instead of place
+}
+```
+
+Then other scripts can do one `document.querySelector('.sanojjonas')` / `#sanojjonas-root` instead of enumerating every internal id, and it'd let you `remove()`/rebuild the whole block in one call on navigation instead of re-querying each div individually. It's backward compatible — the existing child ids (`#bottom1` etc.) don't need to change, they'd just gain a parent.
+#+end_example
+
+** why
+
+Why don't you offer me to download generated artefacts like the .md file just requested and instead you directly use my
+filesystem (even if not allowed).
+
+I also just saw that you installed the following directories
+
+#+begin_example
+C:\Users\vzell\AppData\Local\Claude
+C:\Users\vzell\AppData\Local\Claude-3p
+C:\Users\vzell\AppData\Local\Claude-Data
+C:\Users\vzell\AppData\Local\Claude Nest-3p
+C:\Users\vzell\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude
+C:\Users\vzell\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude-3p
+#+end_example
+
+The C:\Users\vzell\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude is even 10GB in size.
+Please explain, especially what all these folders mean and why the one mentioned is so big
+
+** a
+
+#+begin_example
+On writing "directly to your filesystem": I don't actually have a choice here to offer a download instead — the Write/Edit/Read tools I'm given are hard-scoped to one specific per-session folder (the outputs/ directory you saw in the paths), and I have no ability to reach anywhere else on your disk unless you explicitly connect a folder. What looks like me "just using your filesystem" is the documented Cowork design: each session gets a working directory with an uploads/ copy of what you attach and an outputs/ folder for what I create, and that folder is a real path under Claude's own app-data tree rather than some abstract cloud sandbox — so yes, it is literally your disk, but it's the one folder the app already carved out for exactly this, not something I chose to bypass into. present_files (the card you see in chat) is the "download" — the file is already saved there rather than requiring a click-to-save step. If you'd rather deliverables land somewhere you browse normally (Downloads, a project folder, etc.) instead of inside Claude's internal folder, I can request access to a folder of your choosing and write finished files there instead — just say the word.
+
+On the folders you found, per Anthropic's own docs and a matching GitHub issue:
+
+AppData\Local\Claude — the standard Claude Desktop app-data directory (the normal, Anthropic-account-signed-in build).
+AppData\Local\Claude-3p — the separate app-data directory for "3P" (third-party/managed) mode, which is what you're running in Cowork here. It's kept fully separate from the standard build on purpose — no Anthropic account, no cloud history, everything local. Older releases stored this under %APPDATA%\Claude-3p (Roaming) and the app auto-migrates it to %LOCALAPPDATA% on upgrade, which is likely why you're seeing traces in both places.
+AppData\Local\Claude-Data — a per-mode app-data root alongside the two above; Claude Desktop on Windows effectively keeps separate storage per "tab"/mode of the app.
+AppData\Local\Claude Nest-3p — my best read (not explicitly named in the docs I found) is that this belongs to the Cowork sandbox/VM subsystem for 3P mode — the docs reference a vm_bundles/ cache ("cached copy of the Cowork sandbox VM bundle") and claude-code-vm/ workspace data, and "Nest" plausibly names that sandboxing layer. Flagging this one as inference rather than confirmed.
+AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude — this is the big one, and it's exactly the folder my own system prompt's paths point at (the %APPDATA%\Claude\local-agent-mode-sessions\... paths I quoted you earlier are virtualized here). Because the desktop app is installed via MSIX/Microsoft Store, Windows redirects anything the app writes to "Roaming\Claude" into this Packages cache instead.
+
+Why it's ~10GB: this is a known, already-reported issue, not something specific to your machine. A GitHub feature request (anthropics/claude-code#61350) describes the identical symptom — "grows to 10-12GB with normal Cowork usage (creating apps, running tasks)" on MSIX installs — and per the storage docs, this folder holds every past Cowork/Chat session's working directory (uploads/ + outputs/ per conversation, going back as far as you haven't cleared history), plus vm_bundles/ and claude-code-vm/ (the cached sandbox VM images/workspaces, typically the biggest single contributor), IndexedDB/renderer caches, memory notes, and audit logs. That GitHub issue asked for a way to relocate or cap it and was closed as "not planned," and it notes symlinking/junctioning the folder to another drive breaks the app — so there's no supported way to move it right now. The only documented ways to reclaim space are deleting old session folders under local-agent-mode-sessions\ by hand, or doing a full reset by deleting the whole app-data directory (which wipes all conversation history and memory, unrecoverably). I don't have a tool that reaches that folder myself, so I can't inspect or clean it up for you — that'd need Explorer or a disk-usage tool on your end.
+#+end_example
+
+
+
+
+
