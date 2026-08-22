@@ -13537,7 +13537,10 @@
         // pageType did exactly that) makes the page-load button toolbar AND
         // the post-render filter/count/CAA-toggle UI both resolve to the
         // SAME element, cramming everything onto one collapsible line — see
-        // debug/user-edits-wrong.org. renameH2ToH1 promotes that native
+        // debug/NOTES.md's "## 2026-07-29 — user-edits/user-open-edits cram
+        // everything onto one heading" entry (the standalone
+        // debug/user-edits-wrong.org snapshot this used to point to is gone).
+        // renameH2ToH1 promotes that native
         // heading to <h1> (carrying the already-injected button toolbar with
         // it, since the promotion moves child nodes rather than discarding
         // them), and insertH2 then injects a fresh, dedicated <h2> as the
@@ -15493,27 +15496,6 @@
         Lib.debug('ui', 'Sticky headers enabled - column headers will remain visible while scrolling');
     }
 
-    /**
-     * Applies sticky positioning to one column of `table`.
-     *
-     * The column to make sticky is determined as follows (in priority order):
-     *   1. `activeDefinition.features.stickyColumn` — a named column (e.g. 'Title').
-     *   2. The first <th> in the header row (index 0) — the universal default.
-     *
-     * When the target column is not the first, `left` must equal the total width of
-     * all preceding columns; this offset is re-calculated on every call and whenever
-     * a MutationObserver detects that a colgroup <col> element changes width, so the
-     * sticky column tracks manual and auto-resize operations correctly.
-     *
-     * The sticky style is applied to every <th> and <td> in that column index across
-     * all <thead> rows (header + filter row) and every <tbody> row.  The z-index is
-     * set to 101 for header cells (above the sticky thead at 100) and to 1 for body
-     * cells (above sibling cells but below the header).
-     *
-     * Safe to call multiple times on the same table (idempotent via data attribute).
-     *
-     * @param {HTMLTableElement} table
-     */
     /**
      * Normalise the interior of every `<span class="comment">` in `table`.
      *
@@ -18592,8 +18574,20 @@
     }
 
     /**
-     * Add a column visibility toggle button and menu to the controls
-     * Allows users to show/hide columns in the table
+     * Injects the 👁️ "Visible" dropdown button into `#mb-show-all-controls-container`,
+     * with one checkbox per column plus Select All / Deselect All / "Choose current
+     * configuration" action buttons. Idempotent — returns immediately if
+     * `#mb-visible-btn` already exists.
+     *
+     * Persistence: visibility state is stored in GM storage per pageType, keyed by
+     * column NAME (not index) under `COLVIS_KEY_PREFIX + pageType`, via the inner
+     * `getCurrentColVisState()`/`saveColVisState()`/`loadColVisState()` closures —
+     * column names survive sessions where injected columns shift the index layout.
+     * `updateButtonColor()` tints the button whenever any column is hidden.
+     * `setMenuBtnFocus()` and the keyboard handler wired via `buildColVisMenuKeyboard()`
+     * provide full arrow-key navigation of the menu. `closeMenu()`/`closeMenuOnEscape()`
+     * handle outside-click and Escape dismissal, saving state on every close.
+     *
      * @param {HTMLTableElement} table - The table to add controls for
      */
     function addColumnVisibilityToggle(table) {
@@ -19631,7 +19625,7 @@
      * `_exportCleanHeaderText()`, which optionally appends unique-value counts and
      * sort-state glyphs according to settings.
      *
-     * Triggers `showExportNotification()` on success.
+     * Opens `showExportDialog()` to confirm the filename before saving.
      */
     function exportTableToCSV() {
         const table = document.querySelector('table.tbl');
@@ -19691,9 +19685,6 @@
         });
     }
 
-    /**
-     * Export table to JSON format
-     */
     /**
      * Export table(s) to JSON format.
      *
@@ -20250,15 +20241,6 @@ ${sections.join('\n')}
     }
 
     /**
-     * Build a plain-text metadata block for export formats that carry metadata as comments.
-     * Each key-value line is prefixed with `prefix` (e.g. "# " for CSV/Org-Mode).
-     * Returns the block as a multi-line string with a trailing newline ready to prepend.
-     *
-     * @param {string} prefix - Comment prefix, e.g. "# "
-     * @returns {string}
-     */
-
-    /**
      * Assemble a download filename for any export or save operation using exactly
      * the same naming convention as the "Save to Disk" path:
      *
@@ -20402,13 +20384,12 @@ ${sections.join('\n')}
      * @param {object} opts
      * @param {string}          opts.format        - Display name, e.g. "CSV"
      * @param {string}          opts.description   - HTML description of the format (shown after header)
-     * @param {string}          opts.mimeType      - MIME type for the blob
-     * @param {string}          opts.extension     - File extension without dot, e.g. "csv"
      * @param {string}          opts.blobUrl       - Pre-created object URL (already compressed/encoded)
      * @param {string}          opts.filename      - Default assembled filename
      * @param {number}          opts.rowsExported  - Number of rows in the export
      * @param {number}          opts.rowsTotal     - Total rows (exported + skipped)
-     * @param {HTMLElement|null} opts.triggerButton - Button that triggered the export (for positioning)
+     * @param {HTMLElement|null} [opts.triggerButton=null] - Button that triggered the export (for positioning)
+     * @param {string|null}     [opts.title=null]  - Overrides the dialog's default "Export Table Data" `<h3>` text.
      */
     function showExportDialog(opts) {
         const { format, description, blobUrl, filename: defaultFilename,
@@ -20639,10 +20620,11 @@ ${sections.join('\n')}
     /**
      * Injects the 💾 Export dropdown button into `#mb-show-all-controls-container`.
      *
-     * The button opens a keyboard-navigable menu with three export formats:
+     * The button opens a keyboard-navigable menu with four export formats:
      *   — CSV       → `exportTableToCSV()`
      *   — JSON      → `exportTableToJSON()`
      *   — Org-Mode  → `exportTableToOrgMode()`
+     *   — HTML      → `exportTableToHTML()`
      *
      * Idempotent: if a button with id `mb-export-btn` already exists the function
      * returns immediately without creating a duplicate.
@@ -20873,15 +20855,6 @@ ${sections.join('\n')}
     }
 
     /**
-     * Custom alert dialog - matches userscript styling
-     */
-    /**
-     * Custom alert dialog - positioned below triggering button
-     * @param {string} message - Alert message
-     * @param {string} title - Dialog title
-     * @param {HTMLElement} triggerButton - Button that triggered the alert (for positioning)
-     */
-    /**
      * Parse a condensed config string (pipe-separated) into an array of trimmed parts.
      * @param {string} raw - The raw config string value from settings
      * @param {string} defaultRaw - Fallback default string
@@ -20896,11 +20869,6 @@ ${sections.join('\n')}
     // Each helper reads from Lib.settings at call time so live setting changes
     // are reflected without a page reload.  The returned string is assigned to
     // element.style.cssText (or interpolated into an injected <style> block).
-
-    /**
-     * Base CSS shared by every button in the h1 action bar.
-     * Config: sa_ui_action_btn_style — fontSize|padding|height|borderRadius
-     */
 
     /**
      * Build the innerHTML for a button that has one underlined accelerator character.
@@ -21092,36 +21060,6 @@ ${sections.join('\n')}
     }
 
     /**
-     * Shared factory: builds a filter-history widget (Pin + History toggle + dropdown) that
-     * can be attached to any filter input — the global filter, sub-table filters, etc.
-     *
-     * The widget reads / writes the same two GM-storage keys used by the "Load Table Data"
-     * dialog (`lru-sa-hist-list` and `persistent-sa-hist-list`) so all history entries are
-     * shared across every context.
-     *
-     * @param {object}          cfg
-     * @param {HTMLInputElement} cfg.filterInput   – The text input that receives the filter value.
-     * @param {HTMLInputElement} cfg.caseCheckbox  – "Case sensitive" checkbox.
-     * @param {HTMLInputElement} cfg.rxCheckbox    – "RegExp" checkbox.
-     * @param {HTMLInputElement} cfg.exCheckbox    – "Exclude matches" checkbox.
-     * @param {Function}         cfg.onApply       – Called with no arguments after an entry is
-     *                                               applied so the caller can trigger a filter run.
-     * @param {Function}         [cfg.getQuery]    – Returns the effective query string to save
-     *                                               (e.g. after stripping a focus-prefix).
-     *                                               Defaults to () => cfg.filterInput.value.trim().
-     * @param {Function}         [cfg.setQuery]    – Sets filterInput.value from a history entry's
-     *                                               query string.  Defaults to assigning directly.
-     * @param {string}           [cfg.context]     – Label used in debug messages (e.g. 'gf', 'stf').
-     *
-     * @returns {{
-     *   pinBtn:         HTMLButtonElement,   – the green "+" pin button
-     *   toggleBtn:      HTMLButtonElement,   – the 🕑 History button
-     *   dropdownAnchor: HTMLSpanElement,     – position:relative span containing toggleBtn + dropdown
-     *   refreshDropdown: Function,           – call to re-render both history lists (optional quick-filter)
-     *   saveToLru:       Function,           – call to push current query+state to LRU
-     * }}
-     */
-    /**
      * Lazily injects the shared, id-guarded stylesheet for
      * {@link createFilterHistoryWidget}'s history-row markup (badges, mark
      * highlight, history rows). Uses GM_addStyle (not a plain
@@ -21186,6 +21124,36 @@ ${sections.join('\n')}
         style.id = 'mb-fhw-style';
     }
 
+    /**
+     * Shared factory: builds a filter-history widget (Pin + History toggle + dropdown) that
+     * can be attached to any filter input — the global filter, sub-table filters, etc.
+     *
+     * The widget reads / writes the same two GM-storage keys used by the "Load Table Data"
+     * dialog (`lru-sa-hist-list` and `persistent-sa-hist-list`) so all history entries are
+     * shared across every context.
+     *
+     * @param {object}          cfg
+     * @param {HTMLInputElement} cfg.filterInput   – The text input that receives the filter value.
+     * @param {HTMLInputElement} cfg.caseCheckbox  – "Case sensitive" checkbox.
+     * @param {HTMLInputElement} cfg.rxCheckbox    – "RegExp" checkbox.
+     * @param {HTMLInputElement} cfg.exCheckbox    – "Exclude matches" checkbox.
+     * @param {Function}         cfg.onApply       – Called with no arguments after an entry is
+     *                                               applied so the caller can trigger a filter run.
+     * @param {Function}         [cfg.getQuery]    – Returns the effective query string to save
+     *                                               (e.g. after stripping a focus-prefix).
+     *                                               Defaults to () => cfg.filterInput.value.trim().
+     * @param {Function}         [cfg.setQuery]    – Sets filterInput.value from a history entry's
+     *                                               query string.  Defaults to assigning directly.
+     * @param {string}           [cfg.context]     – Label used in debug messages (e.g. 'gf', 'stf').
+     *
+     * @returns {{
+     *   pinBtn:         HTMLButtonElement,   – the green "+" pin button
+     *   toggleBtn:      HTMLButtonElement,   – the 🕑 History button
+     *   dropdownAnchor: HTMLSpanElement,     – position:relative span containing toggleBtn + dropdown
+     *   refreshDropdown: Function,           – call to re-render both history lists (optional quick-filter)
+     *   saveToLru:       Function,           – call to push current query+state to LRU
+     * }}
+     */
     function createFilterHistoryWidget(cfg) {
         _ensureFilterHistoryWidgetStyle();
         const { filterInput, caseCheckbox, rxCheckbox, exCheckbox, onApply } = cfg;
