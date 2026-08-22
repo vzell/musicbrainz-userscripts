@@ -1,5 +1,25 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 6/7 — settings/config schema + keyboard shortcuts (ctrlMFunctionMap, settings object, help-text sync).",
+          "initKeyboardShortcuts(): doc was two generic boilerplate lines for a ~690-line function. Rewrote to describe its actual structure: the idempotency guard, the column-filter-focused vs. global direct-shortcut branches, the sa_enable_direct_ctrl_char_shortcuts gate, the capture-phase Unicode-picker listener, the focusin tracker feeding _resolveColFilter(), and the permanent o/q/a prefix-mode ctrlMFunctionMap registrations.",
+          "No orphaned/misattributed JSDoc found in this chunk. configSchema itself (a ~2500-line data literal, not a function) has only a one-line header comment — flagged as a low-priority gap, not acted on, since its per-entry shape is self-evident and auditing all 219 individual setting descriptions is a different kind of review than a JSDoc audit."
+        ]
+      },
+      {
+        "label": "🔧 Code Quality",
+        "items": [
+          "Fixed a stale hardcoded shortcut list in the prefix-mode entry debug/console log (fired every time Ctrl+M-style prefix mode is entered, two call sites: Lib.debug and the console.log fallback). The list was missing 3 of the 16 real ctrlMFunctionMap keys — b (Toggle Barcode Highlighting), g (Focus Global Filter), c (Focus Next Column Filter) — all of which work correctly; only this debug string had drifted out of sync as those shortcuts were added. showShortcutsHelp()'s own user-facing shortcuts list was already complete and correct."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.5",
     "date": "2026-08-22",
     "sections": [

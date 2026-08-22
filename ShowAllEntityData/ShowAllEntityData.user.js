@@ -15242,7 +15242,7 @@
                         Lib.debug('shortcuts', `  ${key}: ${btn.textContent.trim()}`);
                     });
                 }
-                Lib.debug('shortcuts', 'Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, k=Shortcuts Help, h=App Help, ,=Settings, o=' + (ctrlMFunctionMap['o'] && ctrlMFunctionMap['o'].description === 'Stop fetching' ? 'Stop' : 'Toggle Multi-Row Collapse') + ', q=Unique Values Dropdown, a=CAA Toggle');
+                Lib.debug('shortcuts', 'Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, b=Barcode, k=Shortcuts Help, h=App Help, ,=Settings, g=Focus Global Filter, c=Focus Next Column Filter, o=' + (ctrlMFunctionMap['o'] && ctrlMFunctionMap['o'].description === 'Stop fetching' ? 'Stop' : 'Toggle Multi-Row Collapse') + ', q=Unique Values Dropdown, a=CAA Toggle');
                 Lib.debug('shortcuts', 'Press any key or Escape to cancel');
             } else {
                 if (buttonKeys.length > 0) {
@@ -15252,7 +15252,7 @@
                         console.log(`[VZ-${SCRIPT_BASE_NAME}]   ${key}: ${btn.textContent.trim()}`);
                     });
                 }
-                console.log(`[VZ-${SCRIPT_BASE_NAME}] Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, k=Shortcuts Help, h=App Help, ,=Settings, o=` + (ctrlMFunctionMap['o'] && ctrlMFunctionMap['o'].description === 'Stop fetching' ? 'Stop' : 'Toggle Multi-Row Collapse') + `, q=Unique Values Dropdown, a=CAA Toggle`);
+                console.log(`[VZ-${SCRIPT_BASE_NAME}] Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, b=Barcode, k=Shortcuts Help, h=App Help, ,=Settings, g=Focus Global Filter, c=Focus Next Column Filter, o=` + (ctrlMFunctionMap['o'] && ctrlMFunctionMap['o'].description === 'Stop fetching' ? 'Stop' : 'Toggle Multi-Row Collapse') + `, q=Unique Values Dropdown, a=CAA Toggle`);
             }
 
             // Auto-exit after 5 seconds
@@ -22579,8 +22579,40 @@ ${sections.join('\n')}
     }
 
     /**
-     * Initialize keyboard shortcuts for common actions
-     * Provides power-user functionality for quick access to features
+     * Registers every direct (non-prefix-mode) keyboard shortcut. Idempotent —
+     * guarded by `document._mbKeyboardShortcutsInitialized` so a re-call
+     * (e.g. after Load-from-Disk) is a no-op.
+     *
+     * Installs three listeners:
+     *   1. A bubble-phase `keydown` listener that branches into two independent
+     *      shortcut groups:
+     *      - **Column-filter-focused shortcuts** (only when `e.target` matches
+     *        `.mb-col-filter-input`): sort ascending/descending, unsort,
+     *        multi-row collapse toggle, unique-values dropdown, CAA/EAA toggle,
+     *        sub-table resize, and the visible-columns menu — operating on the
+     *        focused input's owning column header/table. Returns early on a
+     *        match so the global shortcuts below don't also fire.
+     *      - **Global shortcuts** (~10, e.g. open settings, focus global filter,
+     *        focus next column filter, clear all filters, open export menu):
+     *        active anywhere except while typing (for `?`/`/`). Both groups are
+     *        gated off when `sa_enable_direct_ctrl_char_shortcuts` is false,
+     *        except the always-on Escape/navigation handling.
+     *   2. A capture-phase `keydown` listener (registered with `{capture:true}`)
+     *      dedicated to the Unicode character picker (Ctrl+U), which must run
+     *      before — and can pre-empt — every other listener; see the inline
+     *      comment above its registration for why capture phase is required to
+     *      win against a conflicting third-party userscript's own handler.
+     *   3. A capture-phase `focusin` listener that tracks the last-focused
+     *      `.mb-col-filter-input` into `_lastFocusedColFilterInput`, used as a
+     *      fallback by `_resolveColFilter()` below when prefix-mode column-
+     *      context shortcuts fire after focus has already left the input.
+     *
+     * Also permanently registers the `o`/`q`/`a` prefix-mode entries into
+     * `ctrlMFunctionMap` (mirroring the column-filter-focused Ctrl+O/Q/A
+     * shortcuts above, but reachable via prefix mode even when
+     * `sa_enable_direct_ctrl_char_shortcuts` is off) — multi-row collapse
+     * toggle, unique-values dropdown, and CAA/EAA toggle, each resolving their
+     * target column via `_resolveColFilter()`.
      */
     function initKeyboardShortcuts() {
         // Prevent duplicate initialization
