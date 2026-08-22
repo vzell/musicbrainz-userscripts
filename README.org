@@ -95119,6 +95119,31 @@ This is on e.g. the pageType 'artist-works' e.g. https://musicbrainz.org/artist/
 
 Filtering on a e.g. "join phrase" like "Featuring" filters the right rows, but doesn't highlight the filter string if it's inside a collapsed multi-row data cell
 
+* DONE console error
+
+I get the following console log
+
+#+begin_example
+helpers.js:119 Uncaught TypeError: Cannot read properties of undefined (reading 'toLowerCase')
+isPrefixKeyEvent	@	userscript.html?name…-464f22b2210f:17804
+document.addEventListener.capture	@	userscript.html?name…-464f22b2210f:18010
+#+end_example
+
+when executing on e.g. https://musicbrainz.org/release/31f6eb4a-d4a6-44e0-add8-da445566e4a1
+
+* DONE plan: Create a new pageType 'annotations' for the following URLs
+** i
+
+Create a new pageType 'annotations' for the following URLs https://musicbrainz.org/<entity>/<MBID>/annotations
+
+e.g. https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e/annotations
+
+See @debug/annotations.html for the full raw HTML, use the just created skill.
+
+** adjust
+
+adjust the skill file so that it knows about the userscript needed the right @include directive
+
 
 * TODO add "Ctrl"-clicking to the current unique value drop down section headers with tooltip support
 
@@ -95769,10 +95794,9 @@ c.)
 start with implementing, set up the first feature branch for step 1
 
 
-* TODO /clear: session can point straight at ShowAllEntityData/PERFORMANCE.org Step 1
+* DONE /clear: session can point straight at ShowAllEntityData/PERFORMANCE.org Step 1
 
 Implement Step 1 from ShowAllEntityData/PERFORMANCE.org
-
 
 * DONE fix annoying console error
 
@@ -95790,31 +95814,7 @@ in the userscript "sanojjonas visualise stuff" by @sanojjonas
 @debug/console-san.log - console log when rendering the following page, https://musicbrainz.org/release/a24eb845-0b82-44a7-8227-d13d4c1200dd
 #+end_example
 
-
-* discussion
-** i
-
-My userscript '"VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities"' when rendering the pageType 'artist-events'
-e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events with about 4300 rows and the third party userscript 'MusicBrainz: More Flags Everywhere' active:
-
-During a fast scrollbar-drag it shows the sticky column (entity name) painting immediately while the rest of the row
-stays blank for a noticeable moment. ~debug/flags-rendering.html~'s single sampled ~<td>~ is 305KB, carrying two inline
-~data:image/svg+xml;base64,…~ images (~84KB and ~221KB of base64 text — up to ~230KB of raw SVG vector art combined) for
-one row's venue location.
-
-Please discuss ideas what we can do about it, inclusive contacting the original author of the thirdparty userscript
-
-** f
-
-If
-
-#+begin_example
-Add decoding="async" (and loading="lazy") to the <img> created in createFlagIcon().
-#+end_example
-
-would be implemented by the author, will our unique value drop down implementation still work and still show all flags
-
-* Dead code
+* DONE Dead code
 
 Task: Dead code / unused variable audit for ShowAllEntityData.user.js
 
@@ -95838,7 +95838,7 @@ Output: first give me the full candidate list with context (don't remove anythin
 
 Do this in a branch
 
-* JSDoc audit
+* DONE JSDoc audit
 ** 1
 
 Task: JSDoc audit and cleanup for ShowAllEntityData.user.js
@@ -95892,12 +95892,6 @@ Close out the chunk: add one ShowAllEntityData_CHANGELOG.json entry under "🔧 
 Start with chunk 1 and stop for my confirmation after its report.
 
 This keeps each round small enough to actually review (a diff you can read, not a 2000-line dump), gives you a natural rollback point per chunk if something in a fix looks wrong, and keeps the changelog granular the way the rest of the project's history already is.
-
-
-* TODO Headless Chromium like in https://github.com/majkinetor/musicbrainz-userscripts by @majkinetor (Miodrag Milić)
-
-Headless Chromium like in https://github.com/majkinetor/musicbrainz-userscripts by @majkinetor (Miodrag Milić)
-
 
 * DONE sanojjonas visualize stuuf
 ** i
@@ -96046,4 +96040,46 @@ Why it's ~10GB: this is a known, already-reported issue, not something specific 
 
 
 
+
+* TODO Headless Chromium like in https://github.com/majkinetor/musicbrainz-userscripts by @majkinetor (Miodrag Milić)
+
+Headless Chromium like in https://github.com/majkinetor/musicbrainz-userscripts by @majkinetor (Miodrag Milić)
+
+
+* discussion
+** i
+
+My userscript '"VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities"' when rendering the pageType 'artist-events'
+e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events with about 4300 rows and the third party userscript 'MusicBrainz: More Flags Everywhere' active:
+
+During a fast scrollbar-drag it shows the sticky column (entity name) painting immediately while the rest of the row
+stays blank for a noticeable moment. ~debug/flags-rendering.html~'s single sampled ~<td>~ is 305KB, carrying two inline
+~data:image/svg+xml;base64,…~ images (~84KB and ~221KB of base64 text — up to ~230KB of raw SVG vector art combined) for
+one row's venue location.
+
+Please discuss ideas what we can do about it, inclusive contacting the original author of the thirdparty userscript
+
+** f
+
+If
+
+#+begin_example
+Add decoding="async" (and loading="lazy") to the <img> created in createFlagIcon().
+#+end_example
+
+would be implemented by the author, will our unique value drop down implementation still work and still show all flags
+
+
+* skill
+** i
+
+create a skill for creating a new pageType for a MusicBrainz page given a raw HTML file of the initial page under the
+@debug folder
+
+** q
+
+I actually removed the @skills/SKILL.md for the "uniq-dropdown-section" skill because I thought skill should stay under
+~/.claude/skills/synced/uniq-dropdown-section/SKILL.md
+
+Isn't that true ? And can I potentially use the same SKILL.md file for multiple skills
 
