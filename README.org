@@ -85182,6 +85182,35 @@ remove "Showing Various Artist releases." from end of artist-release pages when 
 ** TODO isSpecialDialogOpen() - dead code even in the source — defined but never called
 ** TODO left over function: "makeArtItem" never used
 
+* JSDoc audit
+** findings
+*** FYI — non-doc issues noticed (not part of this task, flagging only)
+
+  - synItemCount's panel-height heuristic is missing several *ValueCounts families in its sum (same staleness pattern its neighbor panelBadgeChWidth already got fixed for) — likely harmless since the result is
+    clamped, but a candidate for a future look.
+  - caaYesCount/caaNoCount (46328–46329) are self-documented dead locals ("unused after 9.99.569") — this was actually already caught and removed on the separate dead-code-audit branch, which hasn't been
+    merged here yet, so it's still present on jsdoc-audit.
+
+*** FYI - REL_DISCOGRAPHY_MAPPINGS is populated but never read — dead code, already caught and removed on the separate (unmerged) dead-code-audit branch. Not acting on it here.
+
+*** FYI — real bugs noticed (not strictly JSDoc, but user-visible)
+
+- Stale hardcoded shortcut list: the debug/console log fired every time prefix mode is entered (two call sites, lines ~15245/15255) lists 13 shortcut keys but is missing 3 real ones now in ctrlMFunctionMap:
+  b (Barcode Highlighting), g (Focus Global Filter), c (Focus Next Column Filter). showShortcutsHelp()'s own displayed list is complete and correct — only this debug string drifted.
+- openSettingsWithConfigButtons() has the same already-fixed-elsewhere dead-local-variable pattern (_fnRegistry) as chunk-1's _fnRegistry finding — already caught on the separate unmerged dead-code-audit
+  branch, not acting on it here.
+
+*** DONE FYI — 2 real bugs found (not JSDoc, but worth fixing alongside)
+
+ 1. determineMaxPageFromDOM (line ~37571) — the same unreachable-Lib.debug()-after-return bug I already fixed once in chunk 1 (on a different function). This is a separate, un-fixed instance in this function.
+ 2. Third debug/user-edits-wrong.org reference (line ~38404, inside startFetchingProcess) — same stale-file fix as the two already done in 7a/7c
+    
+
+
+* TODO add extra boolean for enabling just the CAA/EAA debug logging
+
+add extra boolean for enabling just the CAA/EAA debug logging
+
 
 * DONE add support for canadian flags - https://community.metabrainz.org/t/a-new-musicbrainz-user-script-was-released/77897/236
 
@@ -95786,3 +95815,81 @@ Add decoding="async" (and loading="lazy") to the <img> created in createFlagIcon
 
 would be implemented by the author, will our unique value drop down implementation still work and still show all flags
 
+* wow
+
+Task: Dead code / unused variable audit for ShowAllEntityData.user.js
+
+Please do a systematic dead-code sweep of ShowAllEntityData.user.js in this repo. Steps:
+
+Static tooling first. Run ESLint against the file with no-unused-vars, no-unreachable, and no-unused-expressions enabled (add a lightweight .eslintrc scoped to this file if none exists — userscript globals like GM_*, unsafeWindow will need to be declared or the relevant env/globals set so they don't produce false positives). Report every finding.
+Manual cross-reference pass, since ESLint alone won't catch everything in a script this size:
+List every top-level function, const, and let declaration (including ones inside IIFEs/modules).
+For each, grep -n the whole file for that identifier and count references outside its own declaration line.
+Flag anything with zero other references as a dead-code candidate.
+Also flag settings-schema entries (Lib.settings.sa_* keys defined in the settings object) that are never read anywhere via Lib.settings.<key>.
+Also flag CSS classes/selectors injected by the script that are never queried or matched anywhere (.mb-*, .sa-* etc.).
+Don't auto-delete on a hunch. For each candidate, show me the declaration + surrounding context so I can confirm it's genuinely dead (not, e.g., referenced dynamically via string concatenation, dataset lookups, or from a <style> block) before removal.
+On removal, follow the existing project conventions:
+Untabify tab stops, strip trailing whitespace on touched lines.
+Add standardized function documentation where missing on anything touched.
+Add a changelog entry to ShowAllEntityData_CHANGELOG.json under a "🔧 Code Quality" section (matching the style of prior entries like v9.97.10 and v9.99.113 — name each removed symbol and why it was dead).
+Bump the script version accordingly.
+
+Output: first give me the full candidate list with context (don't remove anything yet), then wait for my confirmation before editing the file.
+
+Do this in a branch
+
+* JSDoc
+** 1
+
+Task: JSDoc audit and cleanup for ShowAllEntityData.user.js
+
+Do a complete pass over every function in the file (including inner functions inside IIFEs/closures, not just top-level ones). For each:
+
+Locate its JSDoc block (if any) — the comment immediately preceding the declaration. Note: earlier cleanups (v9.99.366) fixed stacked/misplaced JSDoc blocks where a comment ended up above the wrong function, so also check for JSDoc blocks that are orphaned (no function directly below) or misattributed (sitting above a function they don't actually describe — e.g. leftover from a nearby function that got moved or renamed).
+Compare doc against implementation:
+@param names, types, and count match the actual signature (including default values, destructured params, optional params).
+@returns type/description matches what's actually returned (including early-return paths that return something different, e.g. null/undefined on a guard clause not mentioned in the doc).
+Prose description still matches current behavior — flag any doc that describes an older mechanism that's since been refactored (e.g. a doc referencing a removed cache tier, a renamed variable, or a data structure that no longer exists).
+@deprecated tags that no longer apply, or missing @deprecated on something that should have one.
+Missing JSDoc: any exported/public function (call sites outside its own closure) or any non-trivial internal function (roughly: more than a couple of lines, or with non-obvious parameters) that has no doc block at all.
+Trivial functions: one-liners or self-explanatory wrappers don't need a full JSDoc — use judgment rather than padding every single function; note which ones you skipped and why if it's not obvious.
+
+Output first, edit second. Before touching the file, give me a report grouped into: (a) wrong/stale docs to fix, (b) orphaned/misattributed docs to remove or relocate, (c) missing docs to add, (d) trivial functions intentionally skipped. Let me confirm before you start editing.
+
+On edit, per project conventions: untabify tab stops, strip trailing whitespace on touched lines, add a ShowAllEntityData_CHANGELOG.json entry under "🔧 Code Quality" (or "📖 Documentation", matching precedent like v9.99.366's JSDoc cleanup entry) summarizing what was fixed/added/removed, and bump the version.
+
+One thing worth deciding before you kick this off: given the file's size, do you want it done in one pass, or should Claude Code chunk it (e.g. by feature area — CAA/EAA, unique-values dropdown, relationships column, etc.) and report/commit incrementally? That'll matter more for review-ability than for correctness.
+
+** 2
+
+Task: JSDoc audit and cleanup for ShowAllEntityData.user.js (chunked)
+
+Do a complete JSDoc audit of the file, worked in the following chunks, one at a time — report and get confirmation on each chunk before moving to the next, don't run the whole file in one pass.
+
+Chunking (adjust boundaries if the actual file structure splits differently, but keep this granularity):
+
+Core render pipeline (fetch loop, renderFinalTable/renderGroupedTable, finalCleanup, column extraction/ColumnDataExtractor)
+CAA/EAA illustrated discography (queue, icon/inline/bigbox loading, IDB cache, cache-hint telemetry)
+Unique-values dropdown (SYN_SECTION_META, section rendering, structure-mode matchers, highlight functions, quickfilter)
+Filtering/sorting (runFilter, testRowMatch, multi-sort, tint registry, column-header collapse)
+Relationships column (_relAppendIcon, favicon resolution, _relFetchWs2, discography rels)
+Settings/config schema + keyboard shortcuts (ctrlMFunctionMap, settings object, help-text sync)
+Everything else (page-type definitions, third-party interop like the jesus2099 observers, snapshot/disk-load, misc utilities)
+
+For each chunk, do this:
+
+Locate every function's JSDoc block (top-level and inner/closure functions). Check for orphaned blocks (no function below) and misattributed ones (sitting above the wrong function — this file has had that bug before, v9.99.366).
+Compare doc against implementation:
+@param names/types/count match the real signature, including destructured/optional/default params.
+@returns matches actual return behavior, including early-return/guard-clause paths.
+Prose still matches current behavior — flag docs describing removed/refactored mechanisms (old cache tiers, renamed variables, dead data structures).
+Stale or missing @deprecated tags.
+Flag missing JSDoc on any function with outside-closure call sites or non-trivial internal logic. Skip trivial one-liners/self-explanatory wrappers — note which you skipped only if it's not obvious why.
+Report before editing this chunk: group findings into (a) wrong/stale docs to fix, (b) orphaned/misattributed to remove or relocate, (c) missing to add, (d) trivial functions intentionally skipped. Wait for my go-ahead.
+On confirmed edit: untabify tab stops, strip trailing whitespace on touched lines, apply standardized JSDoc formatting consistent with the rest of the file.
+Close out the chunk: add one ShowAllEntityData_CHANGELOG.json entry under "🔧 Code Quality" (or "📖 Documentation" if it's purely doc-text fixes with no removed dead code) summarizing what was fixed/added/removed in that chunk, and bump the version once per chunk — not once for the whole audit, so each chunk is a reviewable, revertable unit.
+
+Start with chunk 1 and stop for my confirmation after its report.
+
+This keeps each round small enough to actually review (a diff you can read, not a 2000-line dump), gives you a natural rollback point per chunk if something in a fix looks wrong, and keeps the changelog granular the way the rest of the project's history already is.
