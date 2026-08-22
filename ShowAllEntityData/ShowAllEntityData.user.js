@@ -4928,158 +4928,6 @@
     }
 
     /**
-     * Converts `<ul>`-based tag/genre lists into a proper `<table class="tbl">`
-     * so the standard fetch/filter/sort pipeline can process them.
-     *
-     * This function is called as a DOM pre-processing step for pageTypes that
-     * carry a `features.listToTable` array (e.g. 'tags', 'artist-tags').
-     *
-     * Three DOM structures are supported, detected automatically for each
-     * `sectionId` entry in the `listToTable` array:
-     *
-     * ── Structure A: div-wrapped (user tags pages /user/<n>/tags) ────────────
-     *
-     *   Before:
-     *     <h3>Genres</h3>
-     *     <div id="genres">
-     *       <ul class="genre-list">
-     *         <li class="odd">
-     *           <a href="/user/vzell/tag/rock">rock</a>
-     *           <span class="tag-vote-buttons"><span class="tag-count">15</span></span>
-     *         </li>  …
-     *       </ul>
-     *     </div>
-     *
-     *   After:
-     *     <h3>Genres</h3>
-     *     <table class="tbl">…</table>
-     *
-     *   Detection : `document.getElementById(sectionId)` succeeds.
-     *   Replacement: the entire `<div>` is replaced by the bare `<table>`.
-     *   Column name: derived from the `<ul>` class attribute (see below).
-     *
-     * ── Structure B: bare ul (entity tags pages /entity/<mbid>/tags) ─────────
-     *
-     *   Before:
-     *     <h3>Genres</h3>
-     *     <ul class="genre-list">
-     *       <li class="odd">
-     *         <a href="/tags/rock">rock</a>
-     *         <span class="tag-vote-buttons"><span class="tag-count">15</span></span>
-     *       </li>  …
-     *     </ul>
-     *
-     *   After:
-     *     <h3>Genres</h3>
-     *     <table class="tbl">…</table>
-     *
-     *   Detection : no `<div id="sectionId">` found; fall back to scanning for
-     *               `<ul>` elements whose class contains `<singular>-list`
-     *               (e.g. sectionId "genres" → look for class "genre-list").
-     *   Replacement: the `<ul>` itself is replaced by the bare `<table>`.
-     *   Column name: derived from the `<ul>` class attribute (see below).
-     *
-     * ── Structure C: h2+ul (/area/<mbid>/users, /tag/<v>/<entity>,
-     *                       /user/.../tag/<v>/<entity>, /subscribers) ──────────
-     *
-     *   Triggered when `sectionId === ''` AND the current page path matches one of:
-     *   - `/area/<mbid>/users`           (pageType 'area-users')
-     *   - `/tag/<value>/<entity>`        (pageType 'tag-value-entity')
-     *   - `/user/.../tag/<v>/<entity>`   (pageType 'user-tag-value-entity')
-     *   - `/subscribers`                 (pageType 'editor-subscribers')
-     *   For all other pageTypes with `sectionId === ''`, Structure D is used.
-     *
-     *   area-users variant:
-     *     Before:
-     *       <h2>Users</h2>
-     *       <p>…</p> <nav>…</nav>
-     *       <ul>
-     *         <li><a href="/user/__MarioMadrid"><img …><bdi>__MarioMadrid</bdi></a></li>
-     *         …
-     *       </ul>
-     *     After:
-     *       <h2>Users</h2>
-     *       <table class="tbl">…</table>
-     *     Column name: full h2 text (e.g. "Users").
-     *
-     *   user-subscribers variant:
-     *     Before:
-     *       <h2>Subscribers</h2>
-     *       <p>…</p>
-     *       <ul>
-     *         <li><a href="/user/Goulash"><img … class="avatar no-avatar" …><bdi>Goulash</bdi></a></li>
-     *         …
-     *       </ul>
-     *     After:
-     *       <h2>Subscribers</h2>
-     *       <table class="tbl">…</table>
-     *     Column name: full h2 text (e.g. "Subscribers").
-     *
-     *   tag-value-entity variant:
-     *     Before:
-     *       <h2>Labels tagged as "<a href="/tag/country">country</a>"</h2>
-     *       <p style>…</p>
-     *       <ul style>
-     *         <li>1 - <a href="/label/…"><bdi>1st Drop Music</bdi></a></li>
-     *         …
-     *       </ul>
-     *     After:
-     *       <h2>Labels tagged as "country"</h2>
-     *       <table class="tbl">…</table>
-     *     Column name: first word of the h2 text content before "tagged"
-     *                  (e.g. "Labels tagged as …" → "Labels").
-     *
-     *   Detection : sectionId is '' AND path matches /area/<mbid>/users OR
-     *               /tag/<value>/<entity>.
-     *               Scans `div#content` (or body) for every `<h2>` and walks
-     *               its next element siblings (up to 5 steps) until a `<ul>`.
-     *   Table layout: single column (full `<li>` inner content cloned).
-     *   Replacement: the `<ul>` itself is replaced by the bare `<table>`.
-     *
-     * ── Structure D: h2 + h3+ul sections (tag value pages) ──────────────────
-     *
-     *   Triggered when `sectionId === ''` AND the page path contains `/tag/`
-     *   (i.e. pageType is 'user-tag-value' or 'tag-value').
-     *
-     *   Before:
-     *     <h2>Entities tagged as "handwritten"</h2>
-     *     <p>…</p>
-     *     <h3>Areas</h3>
-     *     <ul>
-     *       <li><span class="flag flag-US">
-     *             <a href="/area/…"><bdi>United States</bdi></a>
-     *           </span></li>  …
-     *     </ul>
-     *     <h3>Artists</h3>
-     *     <ul>…</ul>
-     *
-     *   After:
-     *     <h2>Entities tagged as "handwritten"</h2>
-     *     <h3>Areas</h3>
-     *     <table class="tbl">…</table>
-     *     <h3>Artists</h3>
-     *     <table class="tbl">…</table>
-     *
-     *   Detection : sectionId is '' AND path contains /tag/.
-     *               Finds every `<h3>` inside `div#content` and walks its
-     *               next element siblings (up to 5 steps) until a `<ul>`.
-     *   Column name: text content of the preceding `<h3>` (e.g. "Areas").
-     *   Table layout: single column (the full `<li>` inner content).
-     *   Replacement: the `<ul>` itself is replaced by the bare `<table>`.
-     *
-     * ── Column-name derivation (Structures A and B) ──────────────────────────
-     *   The first column name is extracted from the `<ul>` class attribute:
-     *   the substring before the literal "-list" suffix is capitalised.
-     *   e.g.  `<ul class="genre-list">` → "Genre"
-     *         `<ul class="tag-list">`   → "Tag"
-     *   The second column is always "Tag count".
-     *
-     * @param {object}   def        - The active merged pageDefinition object.
-     * @param {Document} [docContext=document] - DOM document to operate on.
-     *                                 Pass a fetched DOMParser document to apply
-     *                                 the conversion to remote pages in the fetch loop.
-     */
-    /**
      * Converts a plural MusicBrainz entity-type label to its singular form.
      * Used by applyListToTable (Structure D column names) and renderGroupedTable
      * (first-column header patching for tag-value multi-table mode).
@@ -6691,7 +6539,10 @@
      * nothing else to pick), cramming the whole action-button toolbar, row-count
      * badge, CAA toggle, and filter bar into one native heading — which then
      * also gets made collapsible by `makeH2sCollapsible()` (every `<h2>` is
-     * fair game, unlike an `<h1>` page title). See debug/user-edits-wrong.org.
+     * fair game, unlike an `<h1>` page title). See debug/NOTES.md's
+     * "## 2026-07-29 — user-edits/user-open-edits cram everything onto one
+     * heading" entry (the standalone debug/user-edits-wrong.org snapshot this
+     * used to point to is gone).
      * Promoting it to `<h1>` first frees up `<h2>` for the subsequent
      * `insertH2()` call's dedicated anchor, matching every other single-table
      * page type's h1-title / h2-anchor split.

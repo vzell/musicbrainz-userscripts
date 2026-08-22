@@ -1,5 +1,19 @@
 [
   {
+    "version": "WIP.7",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 7a/7 (sub-chunk 1 of 8) — header constants, Lib/settings init, area-flag-region helpers, and the DOM pre-processing family (applyListToTable, edits/notes-received DOM surgery, renameH2/insertH2 helpers, applyShowAllTags).",
+          "applyRenameH2ToH1(): fixed a reference to the removed debug/user-edits-wrong.org snapshot file, pointing it to debug/NOTES.md's dated entry instead (per this project's own CLAUDE.md guidance for this exact stale reference).",
+          "Removed an orphaned 152-line JSDoc block describing an earlier, incomplete draft of applyListToTable() (covering only structures A-D of what is now seven supported DOM structures, A-K) sitting between two unrelated, already-correctly-documented functions. The real, complete applyListToTable() doc already exists at its own function and documents all seven structures."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.6",
     "date": "2026-08-22",
     "sections": [
