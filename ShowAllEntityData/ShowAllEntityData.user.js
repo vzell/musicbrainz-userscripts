@@ -52594,6 +52594,12 @@ a { color: #1565c0; }`;
         'single from': 'data:image/gif;base64,R0lGODlhDwALAJEAAP2ZAZmZmf///wAAACH5BAAAAAAALAAAAAAPAAsAAAIflI+pq2ABY0DAiYmwqOyaCoaHxjHaZp0e9UhQB8dCAQA7',
     };
 
+    /**
+     * MB URL relation-type string → MusicBrainz stylesheet icon class suffix.
+     * Default values here are overwritten at startup by `_initRelMappings()`
+     * from the `sa_rel_url_icon_classes` setting. Read via
+     * `REL_URL_ICON_CLASSES[relType]` when resolving a URL relationship's icon.
+     */
     let REL_URL_ICON_CLASSES = {
         'allmusic':                           'allmusic',
         'amazon asin':                        'amazon',
@@ -52605,6 +52611,12 @@ a { color: #1565c0; }`;
         'vgmdb':                              'vgmdb',
         'wikidata':                           'wikidata',
     };
+    /**
+     * Partial domain string → MusicBrainz stylesheet icon class suffix, for
+     * "other database" relationship URLs. Default values here are overwritten
+     * at startup by `_initRelMappings()` from the `sa_rel_other_db_classes`
+     * setting. Read via `_relFindIconClass(url, REL_OTHER_DB_CLASSES)`.
+     */
     let REL_OTHER_DB_CLASSES = {
         'd-nb.info':               'dnb',
         'www.musik-sammler.de':    'musiksammler',
@@ -52613,6 +52625,13 @@ a { color: #1565c0; }`;
         'nocs.acum.org.il':        'acum',
         'stereo-ve-mono.com':      'stereo-ve-mono',
     };
+    /**
+     * Partial URL string → MusicBrainz stylesheet icon class suffix, for
+     * streaming/download service relationship URLs. Default values here are
+     * overwritten at startup by `_initRelMappings()` from the
+     * `sa_rel_streaming_classes` setting. Read via
+     * `_relFindIconClass(url, REL_STREAMING_CLASSES)`.
+     */
     let REL_STREAMING_CLASSES = {
         'music.amazon.':          'amazonmusic',
         'music.apple.com':        'applemusic',
@@ -52631,12 +52650,6 @@ a { color: #1565c0; }`;
         'store.steampowered.com': 'steam',
     };
 
-    /**
-     * Returns the MBID of the first release-group or release link found in `row`,
-     * skipping cover-art links.
-     * @param {HTMLTableRowElement} row
-     * @returns {string|null}
-     */
     /**
      * Extracts a MusicBrainz MBID from the first qualifying anchor in the given row.
      *
@@ -53041,8 +53054,32 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Populates all mb-re-cell <td> elements using one WS2 call for the page entity.
-     * /ws/2/{entityType}/{entityId}?inc=release-rels&fmt=json
+     * Populates the "Release events" column via a single WS2 call for the page
+     * entity, rather than one call per row.
+     *
+     * Steps:
+     *   1. Creates `td.mb-re-cell` placeholders (in the live DOM, and in
+     *      `groupedRows`/`allRows` when defined) for every row that doesn't
+     *      already have one, keyed by MBID extracted via `_extractMbidFromRow()`.
+     *   2. Collects every unpopulated cell (`data-mbid` set, no `data-reDone`);
+     *      returns early if none, or if `sa_enable_release_events_column` /
+     *      `activeReleaseEventColumns` say this column isn't active.
+     *   3. Parses the page entity type/GUID from the URL and makes ONE call to
+     *      `/ws/2/{entityType}/{entityId}?inc=release-rels&fmt=json`.
+     *   4. Builds the entity→events map via `extractReleaseEvents()` and
+     *      populates every matching cell via `_rePopulateCell()`, marking each
+     *      `data-reDone='1'`.
+     *   5. Syncs the populated `innerHTML` back to every other source-row cell
+     *      sharing the same MBID (across `groupedRows`/`allRows`) so a later
+     *      filter re-render doesn't lose the populated content.
+     *   6. Re-runs `initCollapsableColumns()` — it ran before population found
+     *      0 `ul>li` items, so toggles need installing now that cells have
+     *      real content.
+     *   7. Third pass: when `activeInjectedColumnExtractors` is non-empty, runs
+     *      `applyInjectedColumnExtractors()` (the pass that actually splits
+     *      "Release events" into synthetic "Release country"/"Release date"
+     *      cells) and re-runs `initCollapsableColumns()` a third time
+     *      (idempotent, safe) since nothing else re-scans after that pass.
      */
     async function initReleaseEventsColumn() {
         if (!Lib.settings.sa_enable_release_events_column) return;
@@ -53423,20 +53460,6 @@ a { color: #1565c0; }`;
             `<th> (index ${_relThIdx}) and all .mb-rel-cell <td>s from table.`);
     }
 
-    /**
-     * Populates all .mb-rel-cell elements in the DOM with relationship favicon
-     * icon links fetched sequentially from the MusicBrainz Web Service.
-     *
-     * Algorithm:
-     *   1. Collect unpopulated .mb-rel-cell[data-mbid] elements.
-     *   2. Deduplicate MBIDs; fetch WS2 url-rels at <=1 req/s (MB policy).
-     *   3. Resolve each URL relationship to an icon CSS class or a fetched favicon.
-     *   4. Append icon anchors to all cells sharing the matching MBID.
-     *
-     * Idempotent: cells with data-rel-done='1' are skipped.
-     * Only runs when sa_enable_relationships_column is true and
-     * activeInjectedColumns is non-empty.
-     */
     // ── Relationships column — rich HTML tooltip ──────────────────────────────
 
     /**
@@ -53541,6 +53564,24 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Lazily injects the shared, id-guarded stylesheet for
+     * {@link _relBuildTooltipHTML}'s output. GM_addStyle so it is exempt
+     * from page CSP style-src restrictions. Fully static, safe to inject
+     * once per page load.
+     */
+    function _ensureRelTooltipStyle() {
+        if (document.getElementById('sa-rel-tooltip-style')) return;
+        const style = GM_addStyle(`
+            .sa-rel-tt-none { opacity:0.6; font-style:italic; }
+            .sa-rel-tt-img { width:16px; height:16px; vertical-align:middle; margin-right:5px; flex-shrink:0; }
+            .sa-rel-tt-ended { margin-left:5px; opacity:0.6; font-style:italic; }
+            .sa-rel-tt-row { display:flex; align-items:center; padding:2px 0; }
+            .sa-rel-tt-url { flex:1; min-width:0; }
+        `);
+        style.id = 'sa-rel-tooltip-style';
+    }
+
+    /**
      * Builds the HTML content for the Relationships rich tooltip by serialising
      * the existing DOM highlight spans inside each anchor's `.mb-rel-filter-key`
      * element directly — rather than re-applying filter strings from scratch.
@@ -53560,24 +53601,6 @@ a { color: #1565c0; }`;
      * @param {HTMLTableCellElement} cell  The `td.mb-rel-cell` being displayed.
      * @returns {string} Safe HTML string for `innerHTML`.
      */
-    /**
-     * Lazily injects the shared, id-guarded stylesheet for
-     * {@link _relBuildTooltipHTML}'s output. GM_addStyle so it is exempt
-     * from page CSP style-src restrictions. Fully static, safe to inject
-     * once per page load.
-     */
-    function _ensureRelTooltipStyle() {
-        if (document.getElementById('sa-rel-tooltip-style')) return;
-        const style = GM_addStyle(`
-            .sa-rel-tt-none { opacity:0.6; font-style:italic; }
-            .sa-rel-tt-img { width:16px; height:16px; vertical-align:middle; margin-right:5px; flex-shrink:0; }
-            .sa-rel-tt-ended { margin-left:5px; opacity:0.6; font-style:italic; }
-            .sa-rel-tt-row { display:flex; align-items:center; padding:2px 0; }
-            .sa-rel-tt-url { flex:1; min-width:0; }
-        `);
-        style.id = 'sa-rel-tooltip-style';
-    }
-
     function _relBuildTooltipHTML(cell) {
         _ensureRelTooltipStyle();
         /**
@@ -53836,9 +53859,20 @@ a { color: #1565c0; }`;
      *      `_initRelTooltipListeners()`.
      *   3. Refreshes REL_* mapping tables from user-configured settings.
      *   4. Groups unpopulated `td.mb-rel-cell` elements by MBID.
-     *   5. For each unique MBID, fetches WS2 relationship data (memory cache →
-     *      IndexedDB cache → live network, with optional `_relRetryActive`
-     *      bypass), then calls `_populateCells()` to inject relationship icons.
+     *   5. Two-phase fetch, NOT a simple per-MBID sequential fetch:
+     *      - Phase 1: attempts an IndexedDB lookup for every MBID *in parallel*
+     *        (`_relIdbGet()` directly, not via `_relFetchWs2()`); IDB hits
+     *        populate immediately with no network round-trip or delay.
+     *      - Phase 2: only the IDB-miss MBIDs are run through a throttled
+     *        sequential queue (1100ms between requests, respecting the
+     *        MusicBrainz WS2 rate limit) that calls `_relFetchWs2()` for each.
+     *      Net effect: a page visited before (IDB warm) renders all icons at
+     *      once; a first visit still shows icons trickling in one per second.
+     *   6. Once the Phase 2 queue drains: resets `_relRetryActive`, runs a
+     *      safety-net sync of any still-unsynced source-row cells, creates the
+     *      per-sub-table retry buttons via `_relCreateRetryButtons()`, and shows
+     *      the completion toast/status update via `_showRelCompletionToast()`
+     *      with a tier breakdown (IDB / memory-cache / network counts).
      *
      * Also ensures `td.mb-rel-cell` elements exist in both the live DOM and in
      * the `groupedRows`/`allRows` source arrays so that filter re-renders do
@@ -54177,6 +54211,11 @@ a { color: #1565c0; }`;
      * Retries Relationships for a specific set of MBIDs.
      * Clears L1+L2 caches for those MBIDs, resets rel-done markers,
      * then re-runs initRelationshipsColumn() with the retry flag set.
+     *
+     * @param {string[]} mbids       - MBIDs to force-reload.
+     * @param {string}   entityType  - WS2 entity-type path segment (e.g. 'release').
+     * @param {string}   incOptions  - WS2 `inc` query value to request.
+     * @returns {Promise<void>}
      */
     async function _relRetryMbids(mbids, entityType, incOptions) {
         if (!mbids.length) return;

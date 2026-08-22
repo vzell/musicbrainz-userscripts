@@ -1,5 +1,24 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 5/7 — Relationships column (_relAppendIcon, favicon resolution, _relFetchWs2, discography rels), including the interleaved Release events sub-feature.",
+          "initReleaseEventsColumn(): doc was two sentences; rewrote to cover the real ~90-line, 7-step function (placeholder creation in DOM and in-memory row arrays, single WS2 call, cell population, source-row sync, a double initCollapsableColumns() re-run, and the third-pass applyInjectedColumnExtractors() call).",
+          "initRelationshipsColumn(): doc's step 5 described a simple per-MBID sequential fetch through _relFetchWs2(). Actual behavior is a two-phase fetch (Phase 1: parallel IDB lookups via _relIdbGet() directly; Phase 2: only IDB-misses go through a 1100ms-throttled queue calling _relFetchWs2()) with a step 6 the doc omitted entirely (retry-button creation, completion toast with tier breakdown).",
+          "_relRetryMbids(): added the @param/@returns tags it was missing (had prose but no parameter documentation, unlike every comparable sibling function in this chunk).",
+          "Removed an orphaned duplicate JSDoc block for _extractMbidFromRow() (a short draft sitting directly above the real, longer doc for the same function).",
+          "Removed an orphaned stale JSDoc block describing initRelationshipsColumn(), sitting above an unrelated section-comment banner ~400 lines before the real function (which already has its own correct, accurate doc).",
+          "Relocated a misattributed JSDoc block: a complete, accurate doc for _relBuildTooltipHTML() was sitting above the wrong function, _ensureRelTooltipStyle() (which has its own separate correct doc) — _relBuildTooltipHTML() itself had no doc at all. Moved the block to its real target. Same failure shape as the v9.99.366 bug.",
+          "Added missing JSDoc to REL_URL_ICON_CLASSES, REL_OTHER_DB_CLASSES, and REL_STREAMING_CLASSES — all three were undocumented despite their sibling REL_NON_URL_ICONS having a doc in the same style."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-08-22",
     "sections": [
