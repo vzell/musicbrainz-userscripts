@@ -57472,7 +57472,9 @@ a { color: #1565c0; }`;
     /**
      * Cached IDB database connection promise.
      * Resolved once on first call to _artOpenIdb(); reused thereafter.
-     * Set to null by _artIdbClose() to allow reconnection after an abort.
+     * Set to null by _artOpenIdb()'s own onclose/onversionchange/onerror/
+     * onblocked handlers to allow reconnection after a close, version-change,
+     * or failed open.
      *
      * @type {Promise<IDBDatabase>|null}
      */
@@ -63700,8 +63702,8 @@ a { color: #1565c0; }`;
      * (e.g. after cloneNode(true) strips them during filter/sort re-renders).
      *
      * Visual states:
-     *   idle  — green ♪ circle
-     *   ok    — darker green ✓ circle (shown after successful send)
+     *   idle  — amber/yellow ♪ circle
+     *   ok    — green ✓ circle (shown after successful send)
      *   err   — red ✕ circle (shown after Picard returns an error / is unreachable)
      *
      * @param   {string} entityType
@@ -63957,6 +63959,9 @@ a { color: #1565c0; }`;
      *
      * Guards:
      *   - `Lib.settings.sa_enable_barcode_highlight` must be true.
+     *   - `isBarcodeHighlightActive` (the user's manual toggle-button state)
+     *     must also be true — re-renders don't re-apply highlights while the
+     *     user has turned the feature off via the toggle button.
      *
      * Called from:
      *   - The main fetch pipeline after `initExpandRGsFeature()`.

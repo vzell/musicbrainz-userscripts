@@ -1,5 +1,20 @@
 [
   {
+    "version": "WIP.13",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 7h/7 (sub-chunk 8 of 8, final) — Unicode char picker, ExpandRG feature, barcode-highlight core, CAA/EAA module state vars, Picard tagger. This closes out the full file-wide JSDoc audit series (chunks 1-6 plus 7a-7h).",
+          "_artIdbPromise: fixed a doc referencing a non-existent _artIdbClose() function; the actual reset happens via _artOpenIdb()'s own onclose/onversionchange/onerror/onblocked handlers.",
+          "_picardCreateButton(): fixed its 'Visual states' doc — the idle icon is amber/yellow, not green (only the 'ok' state is green); matches the sibling _PICARD_ICON_IDLE const's own correct doc.",
+          "initBarcodeHighlight(): doc's Guards section was missing the isBarcodeHighlightActive (manual toggle-button) guard the function also checks, alongside the settings guard already documented."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.12",
     "date": "2026-08-22",
     "sections": [
