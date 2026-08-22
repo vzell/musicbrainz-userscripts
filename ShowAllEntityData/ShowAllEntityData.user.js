@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.914+2026-08-22
+// @version      9.99.915+2026-08-22
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -14780,6 +14780,10 @@
      * @returns {boolean}
      */
     function isPrefixKeyEvent(e) {
+        // e.key is absent on synthetic keydown events (e.g. `new Event('keydown')`)
+        // that other page scripts/extensions may dispatch without a KeyboardEvent
+        // init — this listener runs on every document keydown, so it must tolerate them.
+        if (!e.key) return false;
         const p = parsePrefixShortcut(getPrefixDisplay());
         // Ctrl in the config: match either Ctrl or Meta/Cmd (Mac)
         const ctrlMatch  = p.ctrl  ? (e.ctrlKey || e.metaKey) : (!e.ctrlKey && !e.metaKey);
@@ -14799,6 +14803,8 @@
      * @returns {boolean}
      */
     function isShortcutEvent(e, settingKey, fallback) {
+        // e.key is absent on synthetic keydown events — see isPrefixKeyEvent().
+        if (!e.key) return false;
         const raw = (typeof Lib !== 'undefined' && Lib.settings && Lib.settings[settingKey])
             ? Lib.settings[settingKey]
             : fallback;

@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.915",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "isPrefixKeyEvent()/isShortcutEvent(): guarded against synthetic `keydown` events with no `key` property (e.g. `new Event('keydown')` dispatched by other page scripts/extensions) — isPrefixKeyEvent() runs as a document-level capture-phase listener on every keydown on the page, so `e.key.toLowerCase()` crashed with 'Cannot read properties of undefined' whenever such an event reached it, as seen on release pages."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.914",
     "date": "2026-08-22",
     "sections": [
