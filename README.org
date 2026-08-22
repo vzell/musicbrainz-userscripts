@@ -83834,37 +83834,7 @@ Sort ascending — Ctrl+Click to add to multi-column sort / Alt+Click to sort by
 Sort descending — Ctrl+Click to add to multi-column sort / Alt+Click to sort by column lenght — keyboard: Ctrl+ArrowDown when a column filter is focused
 #+end_example
 
-
-* TODO event pages need the primary alias below the h1 header "Bleachers"
-
-#+begin_example
-        // ============================================================
-        // PAGE HEADER AND BODY CONFIGURATION SECTION
-        // ============================================================
-        divider_page_header: {
-            type: 'divider',
-            label: '🏷️ PAGE HEADER AND BODY CONFIGURATION'
-        },
-
-        sa_enable_h1_comment_span_relocation_on_initial_page: {
-            label: "Relocate H1 comment-span alias block (initial page)",
-            type: "checkbox",
-            default: true,
-            description: "On the original MusicBrainz entity page (before any 'Show all' button is pressed), move the alias <i title='...'> block from the h1's <span class='comment'> into a dedicated italic line injected below the page title. Only affects release-group and event pages where MusicBrainz injects an alias marker directly inside the h1 element. Standard disambiguation comments (e.g. '(live)') that contain no <i title> are never touched."
-        },
-#+end_example
-
-#+begin_example
-function applyH1CommentSpanRelocation(callSite)
-#+end_example
-
-
-* TODO add a quickfilter with search string highlightning to the unicode popup
-
-* TODO Implement column movement
-
-
-* TODO JSDoc
+* DONE JSDoc
 
 Please check the following JSDoc definitions which have multiple entries after each other
 and either
@@ -84349,6 +84319,35 @@ and either
      *                     false when the feature is absent (caller must fall back).
      */
 #+end_example
+
+
+* TODO event pages need the primary alias below the h1 header "Bleachers"
+
+#+begin_example
+        // ============================================================
+        // PAGE HEADER AND BODY CONFIGURATION SECTION
+        // ============================================================
+        divider_page_header: {
+            type: 'divider',
+            label: '🏷️ PAGE HEADER AND BODY CONFIGURATION'
+        },
+
+        sa_enable_h1_comment_span_relocation_on_initial_page: {
+            label: "Relocate H1 comment-span alias block (initial page)",
+            type: "checkbox",
+            default: true,
+            description: "On the original MusicBrainz entity page (before any 'Show all' button is pressed), move the alias <i title='...'> block from the h1's <span class='comment'> into a dedicated italic line injected below the page title. Only affects release-group and event pages where MusicBrainz injects an alias marker directly inside the h1 element. Standard disambiguation comments (e.g. '(live)') that contain no <i title> are never touched."
+        },
+#+end_example
+
+#+begin_example
+function applyH1CommentSpanRelocation(callSite)
+#+end_example
+
+
+* TODO add a quickfilter with search string highlightning to the unicode popup
+
+* TODO Implement column movement
 
 
 * TODO make zebra striping configurable
@@ -95815,7 +95814,7 @@ Add decoding="async" (and loading="lazy") to the <img> created in createFlagIcon
 
 would be implemented by the author, will our unique value drop down implementation still work and still show all flags
 
-* wow
+* Dead code
 
 Task: Dead code / unused variable audit for ShowAllEntityData.user.js
 
@@ -95839,7 +95838,7 @@ Output: first give me the full candidate list with context (don't remove anythin
 
 Do this in a branch
 
-* JSDoc
+* JSDoc audit
 ** 1
 
 Task: JSDoc audit and cleanup for ShowAllEntityData.user.js
