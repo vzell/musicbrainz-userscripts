@@ -57448,7 +57448,7 @@ a { color: #1565c0; }`;
     // art fetches.  The store hierarchy is:
     //
     //   DB name  : 'vz-mb-saed-art-cache'
-    //   version  : 1
+    //   version  : 2
     //   Stores
     //     'images'   — keyed by canonical image URL string (protocol-relative URLs
     //                  are normalised to https:// before storage).
@@ -57458,6 +57458,14 @@ a { color: #1565c0; }`;
     //     'metadata' — keyed by entity path string (e.g. '/release/GUID').
     //                  Value: { entityPath, count, images, storedAt }
     //                  'images' is the raw Array from the archive JSON API.
+    //
+    //     'rel-ws2'  — added in version 2. Keyed by `ckey` ("entityType:mbid").
+    //                  Value: { ckey, data, ts }, where `data` is the cached WS2
+    //                  relationship JSON. Used by the Relationships column's own
+    //                  L2 cache (_relIdbGet / _relIdbPut), not by CAA/EAA art
+    //                  fetches — it shares this database purely for one shared
+    //                  sweep/count/clear code path (see _artIdbSweepExpired,
+    //                  _artIdbCountStore).
     //
     // Three-tier lookup for image blobs (_artFetchCachedImage):
     //   Tier 1 — per-session in-memory Map (_artIdbMemCache): zero overhead,
@@ -57596,7 +57604,7 @@ a { color: #1565c0; }`;
     /**
      * Reads a single record from an IDB object store.
      *
-     * @param   {string} storeName  'images' | 'metadata'
+     * @param   {string} storeName  'images' | 'metadata' | 'rel-ws2'
      * @param   {string} key        Record key to look up.
      * @returns {Promise<any|null>} Resolves with the record or null if not found.
      */
@@ -57616,7 +57624,7 @@ a { color: #1565c0; }`;
     /**
      * Writes (creates or replaces) a single record in an IDB object store.
      *
-     * @param   {string} storeName  'images' | 'metadata'
+     * @param   {string} storeName  'images' | 'metadata' | 'rel-ws2'
      * @param   {object} record     Record to store; must include the store's keyPath.
      * @returns {Promise<void>}
      */
@@ -58875,7 +58883,30 @@ a { color: #1565c0; }`;
         return appended;
     }
 
-        function _renderBigboxTooltipFromColumns(tip, row, pageDef, table) {
+    /**
+     * Renders the rich bigbox/inline-thumbnail hover tooltip from the active page
+     * definition's `features.tooltipColumns` spec, when one is configured.
+     *
+     * Each spec entry drives one tooltip row/group: resolves the named column(s)
+     * against `table`'s header row (cached per call via an internal name→index
+     * lookup), reads the cell value(s) from `row`, and applies suppression rules
+     * for divider tokens, inline-grouped columns, and literal-token values so
+     * empty/placeholder cells don't produce blank or redundant tooltip lines.
+     * Several column names get special-cased rendering (e.g. video thumbnails,
+     * artist-role credits, event dates) — see the per-column branches below.
+     *
+     * @param {HTMLDivElement}      tip     The tooltip container to populate.
+     * @param {HTMLTableRowElement} row     The data row being hovered.
+     * @param {object}              pageDef The active page definition (or its
+     *   entity-specific override) — only `pageDef.features` is consulted.
+     * @param {HTMLTableElement}    table   The owning table, used to resolve
+     *   column name → index.
+     * @returns {boolean} `true` when the tooltip was rendered from
+     *   `tooltipColumns` (caller should not also apply its static-layout
+     *   fallback); `false` when `pageDef.features.tooltipColumns` is absent,
+     *   in which case `tip` is left untouched and the caller must fall back.
+     */
+    function _renderBigboxTooltipFromColumns(tip, row, pageDef, table) {
         const features = pageDef && pageDef.features;
         if (!features || !Array.isArray(features.tooltipColumns)) {
             if (Lib.settings.sa_enable_tooltip_debug) Lib.debug('tooltips', '[_renderBigboxTooltipFromColumns] no tooltipColumns — returning false');
@@ -59808,6 +59839,10 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Loads the background-image thumbnail for one CAA/EAA icon-column anchor,
+     * serving it through the three-tier cache (session memory → IDB → network)
+     * and decorating the icon column's cache-hint indicator when enabled.
+     *
      * @param {ArtCtx}      ctx        Archive context descriptor.
      * @param {HTMLElement} artIcon    Artwork-icon span inside an art anchor cell.
      * @param {boolean}     [cacheBust=false]  When true, appends a timestamp query
@@ -62382,34 +62417,6 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Generic inline-thumbnail feature.
-     *
-     * For page definitions that carry `features[ctx.addFeature] = '<column name>'`,
-     * inserts a fixed-size thumbnail placeholder span into every tbody cell of that
-     * column.  The placeholder is positioned after the ERG ▶ button (if present)
-     * or at the very start of the cell.  The art image is fetched asynchronously
-     * from the archive using the GUID extracted from the entity link href.
-     *
-     * A fixed width/height placeholder is always injected so titles remain visually
-     * aligned across all rows regardless of whether artwork exists.  A 404 leaves
-     * the placeholder as an invisible spacer.
-     *
-     * Idempotency: processed cells receive `td.dataset[ctx.inlineDoneAttr] = '1'`.
-     * Stale markers on cloned rows are cleared so fresh injection occurs when
-     * renderFinalTable / renderGroupedTable rebuilds the DOM.
-     *
-     * Concurrency: the actual `img.src` assignment is deferred through `_caaQueue`
-     * so all inline-thumbnail requests share the same concurrency budget as the
-     * _artInitSmallPics icon loads.
-     *
-     * Guards:
-     *   - `Lib.settings.sa_enable_caa_pics` master toggle.
-     *   - `Lib.settings.sa_caa_pics_inline` per-feature toggle.
-     *   - `activeDefinition.features[ctx.addFeature]` must be set.
-     *
-     * @param {ArtCtx} ctx  Archive context descriptor.
-     */
-    /**
      * Wires the enriched bigbox tooltip (mouseenter / mouseleave) onto an inline
      * thumbnail placeholder span `ph` so that hovering a column thumbnail shows
      * the same rich tooltip as hovering a bigbox strip image.
@@ -62624,13 +62631,7 @@ a { color: #1565c0; }`;
      * Supports both CAA (Cover Art Archive) and EAA (Event Art Archive) via the
      * `ctx` descriptor object.
      *
-     * @param {{ key: string, addFeature: string, fetchUrl: function,
-     *            archiveBase: string }} ctx
-     *   Context descriptor — `key` is the log category ("caa" or "eaa"),
-     *   `addFeature` is the `features` property name whose value gives the
-     *   target column name (or an array of candidate names — see
-     *   `caaFindColumnByName`), `fetchUrl` builds the archive API URL for a
-     *   GUID, and `archiveBase` is the archive hostname used for thumbnail `src`.
+     * @param {ArtCtx} ctx  Archive context descriptor.
      * @param {boolean} [cacheBust=false]
      *   When `true`, bypasses the IndexedDB and memory caches and forces a
      *   fresh network fetch for every thumbnail (used by the ⟳ retry button).

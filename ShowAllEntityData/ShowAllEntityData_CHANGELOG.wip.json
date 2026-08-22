@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 2/7 — CAA/EAA illustrated discography (queue, icon/inline/bigbox loading, IDB cache, cache-hint telemetry).",
+          "Art Archive IndexedDB cache section banner: said 'version: 1' with only the 'images'/'metadata' stores; the DB is actually at version 2 with a third store, 'rel-ws2' (added for the Relationships column's own L2 cache). Documented the third store's shape and clarified it shares this database purely for one common sweep/count/clear code path.",
+          "_artIdbGet()/_artIdbPut(): @param storeName documented as 'images' | 'metadata' only, missing 'rel-ws2' which both are actually called with elsewhere (their siblings _artIdbDelete/_artIdbCountStore already documented all three correctly).",
+          "_artLoadIcon(): added a missing prose summary — the doc jumped straight into @param tags with no description of what the function does (three-tier cache-hit thumbnail load + cache-hint decoration).",
+          "_artInitInlinePics(): @param ctx was documented with an ad hoc inline shape ({ key, addFeature, fetchUrl, archiveBase }) that doesn't match the real ArtCtx typedef at all (no fetchUrl/archiveBase property exists) and omitted properties the function actually reads (inlinePh, inlineDoneAttr, inlineLinkSel, entityTypes, archiveHost). Replaced with the standard @param {ArtCtx} ctx used by every sibling _art* function.",
+          "Removed an orphaned JSDoc block (a full 'Generic inline-thumbnail feature' doc, ~28 lines) sitting directly above _wireInlineThumbnailBigboxTooltip() — a different function entirely. Its real target, _artInitInlinePics(), is ~230 lines further down and already has its own doc (fixed above).",
+          "Added missing JSDoc to _renderBigboxTooltipFromColumns() (~220 lines, 2 external call sites, previously fully undocumented) and fixed its declaration line's indentation (8 leading spaces instead of the file's standard 4 for a top-level function)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-08-22",
     "sections": [
