@@ -33250,26 +33250,6 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Extracts visible text from `element` for column filtering, skipping
-     * decorative elements and script/style/head subtrees.
-     *
-     * Text nodes that are pure whitespace or decorative icons (▶, ▼, …) are
-     * dropped. All remaining parts are joined and passed through
-     * normalizeExtractedText() so that:
-     *   - filter strings spanning multiple inline tags match correctly
-     *     (e.g. "Bruce Springsteen & The E Street Band"), and
-     *   - bracket/paren pairs from <span class="comment"> do not acquire
-     *     spurious interior spaces (e.g. "(live, …)" not "( live, … )").
-     *
-     * This function filters out common decorative content like:
-     * - Expand/collapse icons (▶, ▼, ►, etc.)
-     * - Image placeholder elements (empty spans with background-images)
-     * - Pure whitespace text nodes
-     *
-     * @param {Element} element - DOM element to extract text from.
-     * @returns {string} Normalised visible text content.
-     */
-    /**
      * Selector covering every element whose text content must NEVER appear in
      * column filter / sort / unique-values text:
      *   - Inline thumbnail placeholders (.mb-caa-inline-ph / .mb-eaa-inline-ph)
@@ -33552,9 +33532,6 @@ a { color: #1565c0; }`;
         Lib.debug('highlight', `Saved filter highlight state: global=${!!globalQuery}, columns=${columnFilters.length}, stf=${stfFilters.length}`);
     }
 
-    /**
-     * Restore previously saved filter highlights by re-applying highlighting
-     */
     /**
      * Restore previously saved filter highlights by re-running the current filters
      * This automatically re-applies both filtering and highlighting
@@ -34430,27 +34407,6 @@ a { color: #1565c0; }`;
         return h3 ? h3.querySelector('.mb-filter-status') : null;
     }
 
-    /**
-     * Reads column filter inputs from a table, validates any regexp patterns, updates
-     * visual state on each input, and returns an array of active {val, idx} filter descriptors.
-     *
-     * Three fixes relative to the previous version:
-     *  1. In regexp mode `val` is kept as-is (not lowercased) — the 'i' flag in
-     *     testRowMatch handles case-insensitivity; lowercasing the pattern breaks
-     *     character classes like [A-Z].
-     *  2. Regexp validation errors are collected in `result._rxErrors` so that
-     *     callers without an h3-backed status span (single-table pages) can still
-     *     display them.
-     *  3. When an h3-backed status span IS found (multi-table pages), the error is
-     *     also written there directly — and the span is tagged `colRxError` so the
-     *     post-filter status-update loop knows not to overwrite it.
-     *
-     * @param {HTMLElement|null} table
-     * @param {boolean}          isCaseSensitive
-     * @param {boolean}          isRegExp
-     * @returns {Array<{val:string, idx:number}>}  — with an `._rxErrors` property
-     *          (array of formatted error strings) attached for single-table callers.
-     */
     /**
      * Reserved prefix marking a `dataset.mbUniqValues` / `checkedValues` entry
      * as a multi-row list-ITEM value (e.g. one credited person's own text
@@ -37597,8 +37553,8 @@ a { color: #1565c0; }`;
             }
             return maxPage;
         } else {
-            return maxPage;
             Lib.debug('fetch', 'determineMaxPageFromDOM: No pagination element found; assuming single page (maxPage = 1).');
+            return maxPage;
         }
     }
 
@@ -38401,7 +38357,9 @@ a { color: #1565c0; }`;
         //   1. Demote all existing <h2> elements to <h3> (section labels) — OR
         //      promote them to <h1> (page title) when the page has no native
         //      <h1> of its own at all (e.g. 'user-edits'/'user-open-edits' —
-        //      see debug/user-edits-wrong.org).
+        //      see debug/NOTES.md's "## 2026-07-29 — user-edits/user-open-edits
+        //      cram everything onto one heading" entry; the standalone
+        //      debug/user-edits-wrong.org snapshot this used to point to is gone).
         //   2. Inject a fresh <h2> after <div class="tabs"> (or, absent that,
         //      before the first qualifying <h3>, or after the first <h1>) as
         //      the anchor node.

@@ -1,5 +1,25 @@
 [
   {
+    "version": "WIP.11",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 7f/7 (sub-chunk 6 of 8) — text/filter-input utilities, fetch/pagination/entity-resolution, DOM observers (treleases/jesus2099/area-flag), sub-table filter container, discography view. An unusually accurate stretch: no wrong/stale docs and no missing docs found.",
+          "Removed 3 orphaned JSDoc blocks, none misattributed to a wrong function this time, all pure leftovers with no function of their own nearby: an earlier incomplete draft of getCleanColumnText()'s doc; a short duplicate draft of restoreFilterHighlightState()'s doc; and a stale leftover draft of getColFilters()'s doc (that function's real, current doc was already fixed in an earlier chunk of this audit).",
+          "Fixed the third (and last known) occurrence of the stale debug/user-edits-wrong.org reference, inside startFetchingProcess()'s renameH2ToH3/renameH2ToH1/insertH2 pre-processing comment, pointing it to debug/NOTES.md's dated entry (same fix as the two already done in sub-chunks 7a and 7c — all three known occurrences are now fixed)."
+        ]
+      },
+      {
+        "label": "🔧 Code Quality",
+        "items": [
+          "determineMaxPageFromDOM(): fixed unreachable code — a Lib.debug() call was placed after its enclosing branch's return statement and never executed. Same bug shape already fixed once in chunk 1 (a different function); this was a separate, un-fixed instance."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.10",
     "date": "2026-08-22",
     "sections": [
