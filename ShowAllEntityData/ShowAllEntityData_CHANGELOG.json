@@ -1,5 +1,231 @@
 [
   {
+    "version": "9.99.913",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 7h/7 (sub-chunk 8 of 8, final) — Unicode char picker, ExpandRG feature, barcode-highlight core, CAA/EAA module state vars, Picard tagger. This closes out the full file-wide JSDoc audit series (chunks 1-6 plus 7a-7h).",
+          "_artIdbPromise: fixed a doc referencing a non-existent _artIdbClose() function; the actual reset happens via _artOpenIdb()'s own onclose/onversionchange/onerror/onblocked handlers.",
+          "_picardCreateButton(): fixed its 'Visual states' doc — the idle icon is amber/yellow, not green (only the 'ok' state is green); matches the sibling _PICARD_ICON_IDLE const's own correct doc.",
+          "initBarcodeHighlight(): doc's Guards section was missing the isBarcodeHighlightActive (manual toggle-button) guard the function also checks, alongside the settings guard already documented."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.912",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 7g/7 (sub-chunk 7 of 8) — nested-H2 collapsibility, uniq-drop DOM anchors, JSON snapshot restore, save-to-disk/export menus, credits/cdtoc/nav-guard.",
+          "makeH2sCollapsible(): expanded a 1-line doc into a full description of its idempotent re-processing, CAA/EAA bigbox restoration rules tied to discography-view state, and the Ctrl+Click same-container peer-toggle behavior.",
+          "SHOW_ALL_JSON_HANDLERS: doc's 'Known structures' list was missing the 5th handler, iswcs (Artist-Works 'ISWC' column) — added.",
+          "saveTableDataToDisk(): expanded a 1-line doc into a full description of its 4 real steps (metadata envelope, pre-render header-state detection with a cleanupHeaders()-processed clone fallback, mode-branched row serialization, filename/gzip/save-dialog).",
+          "Removed an orphaned JSDoc block (a stale draft of makeTableSortableUnified's doc, no function beneath it — the real function is defined separately elsewhere with its own correct doc).",
+          "Relocated 1 genuinely misattributed JSDoc block (v9.99.366-style): a complete, accurate doc for loadTableDataFromDisk() was sitting on _hydrateAndRenderFromSnapshotData() instead (which has its own separate correct doc) — loadTableDataFromDisk() itself had no doc. Moved to its real target."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.911",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 7f/7 (sub-chunk 6 of 8) — text/filter-input utilities, fetch/pagination/entity-resolution, DOM observers (treleases/jesus2099/area-flag), sub-table filter container, discography view. An unusually accurate stretch: no wrong/stale docs and no missing docs found.",
+          "Removed 3 orphaned JSDoc blocks, none misattributed to a wrong function this time, all pure leftovers with no function of their own nearby: an earlier incomplete draft of getCleanColumnText()'s doc; a short duplicate draft of restoreFilterHighlightState()'s doc; and a stale leftover draft of getColFilters()'s doc (that function's real, current doc was already fixed in an earlier chunk of this audit).",
+          "Fixed the third (and last known) occurrence of the stale debug/user-edits-wrong.org reference, inside startFetchingProcess()'s renameH2ToH3/renameH2ToH1/insertH2 pre-processing comment, pointing it to debug/NOTES.md's dated entry (same fix as the two already done in sub-chunks 7a and 7c — all three known occurrences are now fixed)."
+        ]
+      },
+      {
+        "label": "🔧 Code Quality",
+        "items": [
+          "determineMaxPageFromDOM(): fixed unreachable code — a Lib.debug() call was placed after its enclosing branch's return statement and never executed. Same bug shape already fixed once in chunk 1 (a different function); this was a separate, un-fixed instance."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.910",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 7e/7 (sub-chunk 5 of 8) — save/load dialogs, misc utilities, tooltips. The module-level init/state-variable block itself was excluded (linear setup code, not reusable functions).",
+          "Removed 4 orphaned JSDoc blocks and relocated 2 genuinely misattributed ones (v9.99.366-style) — the largest orphan cluster found in the whole audit: a duplicate showLoadFilterDialog draft, a stale three-phase Load-from-Disk draft, a stale updateH2Count stub, and a stale _buildH2CountTooltip draft were all deleted (their real functions already carry their own correct, current docs elsewhere); a complete buildMetaBlockHTML doc was relocated from sitting on _ensureMetaBlockStyle, and a complete _mbttLabel doc was relocated from sitting on _ensureMbttStyle — both real targets had no doc of their own beforehand.",
+          "clearSubTableColumnFilters(): expanded a thin 2-line doc to cover its full behavior, including the sub-table (STF) filter clearing/row-restoration/highlight-removal it also performs and why it syncs the STF clear button directly instead of dispatching a synthetic input event.",
+          "performClutterCleanup(): expanded a 1-line doc into a full list of the 7 independent cleanup tasks it performs.",
+          "_mbttCount(): fixed a JSDoc summary that started mid-sentence (missing its lead subject/verb)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.909",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 7d/7 (sub-chunk 4 of 8) — stats panel, barcode-toggle UI, density/resize controls, snapshot capture, sidebar collapse.",
+          "Relocated 2 genuinely misattributed JSDoc blocks (v9.99.366-style): a complete doc for showStatsPanel() was sitting on _ensureStatsPanelStyle() instead (which has its own separate correct doc); a complete doc for captureSubtableSnapshot() was sitting on the SA_SNAPSHOT_SUPPORTED_PAGETYPES const instead (which also has its own separate correct doc). Both target functions had no doc of their own before this fix.",
+          "Wrote full structural docs for addDensityControl() (previously 2 generic lines, actually a ~230-line menu with live-preview arrow-key navigation), makeColumnsResizable() (previously 3 generic lines, actually rAF-throttled drag-resize with a cached per-column minimum-width mechanism), and expanded toggleAutoResizeColumns()'s doc to match the detail level of its sibling toggleSubTableAutoResize().",
+          "restoreOriginalScrollState(): cosmetic fix, removed a stray blank line at the top of its JSDoc block."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.908",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 7b/7 (sub-chunk 2 of 8) — the release-tracks dynamic AR-column bespoke system (applyExtractTrackTitleData and its ~75 helper functions). Came back completely clean: no wrong/stale docs, no orphaned blocks, no missing docs, and no bugs. The most thoroughly documented section of the file audited across the whole series.",
+          "JSDoc audit, chunk 7c/7 (sub-chunk 3 of 8) — pageDefinitions + UI construction (column-visibility system, export pipeline, UI CSS builder functions, filter history widget, info dialog). This section had an unusually high concentration of orphaned/misattributed JSDoc blocks, likely from a spot that saw heavy refactoring without doc cleanup.",
+          "exportTableToCSV(): fixed a stale 'Triggers showExportNotification() on success' claim — the real exporters go through showExportDialog() now.",
+          "addExportButton(): doc listed only 3 export formats (CSV/JSON/Org-Mode); the menu actually has 4 (missing HTML).",
+          "showExportDialog(): @param list documented opts.mimeType/opts.extension, neither referenced anywhere in the function body, and was missing opts.title (aliased customTitle), which is actually used to override the dialog heading.",
+          "addColumnVisibilityToggle(): wrote a real structural doc for this ~467-line function (previously 2 generic lines) covering its 7 named inner closures, per-pageType GM-storage persistence keyed by column name, and its keyboard-navigation wiring.",
+          "Removed 5 orphaned JSDoc blocks: a stale applyStickyColumn draft sitting above normalizeCommentSpans; a 2-line exportTableToJSON stub sitting above its real doc; a _buildExportMetaLines doc sitting above _assembleExportFilename; two stacked orphaned 'custom alert dialog' blocks (describing a function that no longer exists in that shape) sitting above parseCondensedStyle; and a uiActionBtnBaseCSS stub sitting above makeButtonHTML.",
+          "Relocated 1 genuinely misattributed JSDoc block (v9.99.366-style): a complete, accurate doc for createFilterHistoryWidget() was sitting on the wrong function, _ensureFilterHistoryWidgetStyle() (which has its own separate correct doc) — createFilterHistoryWidget() itself had no doc at all. Moved the block to its real target.",
+          "Fixed the second (of three known) occurrences of the stale debug/user-edits-wrong.org reference, this one inside a pageDefinitions entry's inline comment, pointing it to debug/NOTES.md's dated entry instead (same fix as sub-chunk 7a's first occurrence; a third remains for a later sub-chunk)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.907",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 7a/7 (sub-chunk 1 of 8) — header constants, Lib/settings init, area-flag-region helpers, and the DOM pre-processing family (applyListToTable, edits/notes-received DOM surgery, renameH2/insertH2 helpers, applyShowAllTags).",
+          "applyRenameH2ToH1(): fixed a reference to the removed debug/user-edits-wrong.org snapshot file, pointing it to debug/NOTES.md's dated entry instead (per this project's own CLAUDE.md guidance for this exact stale reference).",
+          "Removed an orphaned 152-line JSDoc block describing an earlier, incomplete draft of applyListToTable() (covering only structures A-D of what is now seven supported DOM structures, A-K) sitting between two unrelated, already-correctly-documented functions. The real, complete applyListToTable() doc already exists at its own function and documents all seven structures."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.906",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 6/7 — settings/config schema + keyboard shortcuts (ctrlMFunctionMap, settings object, help-text sync).",
+          "initKeyboardShortcuts(): doc was two generic boilerplate lines for a ~690-line function. Rewrote to describe its actual structure: the idempotency guard, the column-filter-focused vs. global direct-shortcut branches, the sa_enable_direct_ctrl_char_shortcuts gate, the capture-phase Unicode-picker listener, the focusin tracker feeding _resolveColFilter(), and the permanent o/q/a prefix-mode ctrlMFunctionMap registrations.",
+          "No orphaned/misattributed JSDoc found in this chunk. configSchema itself (a ~2500-line data literal, not a function) has only a one-line header comment — flagged as a low-priority gap, not acted on, since its per-entry shape is self-evident and auditing all 219 individual setting descriptions is a different kind of review than a JSDoc audit."
+        ]
+      },
+      {
+        "label": "🔧 Code Quality",
+        "items": [
+          "Fixed a stale hardcoded shortcut list in the prefix-mode entry debug/console log (fired every time Ctrl+M-style prefix mode is entered, two call sites: Lib.debug and the console.log fallback). The list was missing 3 of the 16 real ctrlMFunctionMap keys — b (Toggle Barcode Highlighting), g (Focus Global Filter), c (Focus Next Column Filter) — all of which work correctly; only this debug string had drifted out of sync as those shortcuts were added. showShortcutsHelp()'s own user-facing shortcuts list was already complete and correct."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.905",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 5/7 — Relationships column (_relAppendIcon, favicon resolution, _relFetchWs2, discography rels), including the interleaved Release events sub-feature.",
+          "initReleaseEventsColumn(): doc was two sentences; rewrote to cover the real ~90-line, 7-step function (placeholder creation in DOM and in-memory row arrays, single WS2 call, cell population, source-row sync, a double initCollapsableColumns() re-run, and the third-pass applyInjectedColumnExtractors() call).",
+          "initRelationshipsColumn(): doc's step 5 described a simple per-MBID sequential fetch through _relFetchWs2(). Actual behavior is a two-phase fetch (Phase 1: parallel IDB lookups via _relIdbGet() directly; Phase 2: only IDB-misses go through a 1100ms-throttled queue calling _relFetchWs2()) with a step 6 the doc omitted entirely (retry-button creation, completion toast with tier breakdown).",
+          "_relRetryMbids(): added the @param/@returns tags it was missing (had prose but no parameter documentation, unlike every comparable sibling function in this chunk).",
+          "Removed an orphaned duplicate JSDoc block for _extractMbidFromRow() (a short draft sitting directly above the real, longer doc for the same function).",
+          "Removed an orphaned stale JSDoc block describing initRelationshipsColumn(), sitting above an unrelated section-comment banner ~400 lines before the real function (which already has its own correct, accurate doc).",
+          "Relocated a misattributed JSDoc block: a complete, accurate doc for _relBuildTooltipHTML() was sitting above the wrong function, _ensureRelTooltipStyle() (which has its own separate correct doc) — _relBuildTooltipHTML() itself had no doc at all. Moved the block to its real target. Same failure shape as the v9.99.366 bug.",
+          "Added missing JSDoc to REL_URL_ICON_CLASSES, REL_OTHER_DB_CLASSES, and REL_STREAMING_CLASSES — all three were undocumented despite their sibling REL_NON_URL_ICONS having a doc in the same style."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.904",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 4/7 — filtering/sorting (runFilter, testRowMatch, multi-sort, tint registry, column-header collapse).",
+          "getColFilters(): added a missing JSDoc (found while fixing testRowMatch's doc below, since it needed getColFilters()' real descriptor shapes to be accurate) — this ~125-line function had none, despite being the sole builder of the colFilters array testRowMatch() consumes on every filter pass.",
+          "testRowMatch(): @param ctx.colFilters was typed only as the plain-text-filter shape ({ val, idx }), completely omitting the checkbox/multi-value-filter shape (isMultiValueFilter, valueSet, hasItemValues, hasEntityValues, structureModes) that getColFilters() also produces and that a large fraction of the function's own matching logic branches on. Documented both shapes explicitly.",
+          "Removed an orphaned duplicate JSDoc block (lines 16840-16872, ~33 lines) describing updateSubTableCollapseButton() in full, sitting directly above _COLLAPSE_MATCH_SEL's own doc with no function in between. The real updateSubTableCollapseButton() is defined ~1450 lines later and already has its own correct, accurate doc.",
+          "Added a full missing JSDoc to runFilter() — despite being one of the two functions named directly in this chunk's own title, and ~680 lines long (reads filter UI state, builds testRowMatch's matchCtx, branches single-/multi-table with an incremental-scan cache optimisation, rebuilds the DOM, re-wires every post-filter hook, restores scroll/focus, and updates the status displays), it had zero documentation."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.903",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 3/7 — unique-values dropdown (SYN_SECTION_META, section rendering, structure-mode matchers, highlight functions, quickfilter). Cleanest chunk audited so far: no orphaned/misattributed blocks and no missing JSDoc found.",
+          "_cellMatchesStructureMode(): @param mode's union type listed only 16 of the ~35 mode strings/prefixes the function's own dispatch chain actually recognizes. Replaced the exhaustive-but-incomplete union with a pointer to the dispatch chain as the source of truth (with a representative sample), to stop the doc drifting out of sync again as new modes are added.",
+          "openUniqDrop(): top-level doc claimed clicking/Enter on an entry 'copies only the raw column value... into the corresponding column filter input' — a single-value, close-on-select model. Wrong: the real handler toggles a checkbox and re-applies the whole checked set via applyUniqValueSet(), and the panel stays open for continued multi-select — exactly as the function's own nested renderItems() closure already correctly documented a few hundred lines down. The two docs on the same code directly contradicted each other; fixed the outer one to match.",
+          "makeSynItem(): @param mode's union was missing 4 real values actually passed at call sites: 'multi-medium', 'catalog-has-prefix', 'catalog-no-prefix', 'catalog-none'.",
+          "makeValueSynItem(): @param kind's union was missing 3 real values actually passed at call sites: 'tagcount', 'entitycancelled', 'eventcancelled'.",
+          "applyUniqValueSet(): cosmetic fix — rejoined a JSDoc sentence that had an odd mid-sentence line break."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.902",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 2/7 — CAA/EAA illustrated discography (queue, icon/inline/bigbox loading, IDB cache, cache-hint telemetry).",
+          "Art Archive IndexedDB cache section banner: said 'version: 1' with only the 'images'/'metadata' stores; the DB is actually at version 2 with a third store, 'rel-ws2' (added for the Relationships column's own L2 cache). Documented the third store's shape and clarified it shares this database purely for one common sweep/count/clear code path.",
+          "_artIdbGet()/_artIdbPut(): @param storeName documented as 'images' | 'metadata' only, missing 'rel-ws2' which both are actually called with elsewhere (their siblings _artIdbDelete/_artIdbCountStore already documented all three correctly).",
+          "_artLoadIcon(): added a missing prose summary — the doc jumped straight into @param tags with no description of what the function does (three-tier cache-hit thumbnail load + cache-hint decoration).",
+          "_artInitInlinePics(): @param ctx was documented with an ad hoc inline shape ({ key, addFeature, fetchUrl, archiveBase }) that doesn't match the real ArtCtx typedef at all (no fetchUrl/archiveBase property exists) and omitted properties the function actually reads (inlinePh, inlineDoneAttr, inlineLinkSel, entityTypes, archiveHost). Replaced with the standard @param {ArtCtx} ctx used by every sibling _art* function.",
+          "Removed an orphaned JSDoc block (a full 'Generic inline-thumbnail feature' doc, ~28 lines) sitting directly above _wireInlineThumbnailBigboxTooltip() — a different function entirely. Its real target, _artInitInlinePics(), is ~230 lines further down and already has its own doc (fixed above).",
+          "Added missing JSDoc to _renderBigboxTooltipFromColumns() (~220 lines, 2 external call sites, previously fully undocumented) and fixed its declaration line's indentation (8 leading spaces instead of the file's standard 4 for a top-level function)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.901",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 1/7 — core render pipeline (ColumnDataExtractor/SyntheticColumnDataExtractor registries, the buildActive* family, startFetchingProcess, renderFinalTable, renderGroupedTable, finalCleanup).",
+          "applyColumnErasers(): doc claimed 'two distinct strategies' and listed only 4 of the function's 5 actual erasure strategies (missing the wiencek suggested-work/work div strategy entirely, and mislabeling the expand-events strategy's number). Rewrote to document all 5 in their actual order, including the jesus2099 own-cell 'treleases' class/style stripping that was undocumented.",
+          "buildActiveIntegerColumns()/applyIntegerColumnStyling()/finalizeSplitAlignedColumns(): docs described the split-align feature as ':'-only (colon-specific), when the code accepts any single character as the split separator. Also fixed 'splits at the FIRST occurrence' → actually splits at the LAST occurrence (deliberate, for values like '[H:]M:S'), and renamed the finalizeSplitAlignedColumns() doc header from its old name finalizeColonAlignedColumns (stale after a prior rename — same failure shape as the v9.99.366 misattributed-JSDoc bug, though this one was at least still attached to the correct function). Also documented that min-width is set on BOTH the .mb-ic-left and .mb-ic-right spans, not just the left one.",
+          "renderFinalTable(): doc's steps 4-7 (sort re-wiring, filter/visibility reapply, sticky headers/column, row-count tooltip) don't happen inside this function at all — they're the caller's responsibility (startFetchingProcess calls them immediately after). Rewrote to describe the function's actual 6 steps, including the render-generation guard and the deliberate skip of initAreaFlagRegionObserver().",
+          "finalCleanup(): doc claimed it 'removes stale sanojjonas/jesus2099 container IDs' (jesus2099 removal doesn't exist in this function) and was missing 5 real tasks it performs (editor-subscribers row/paragraph patching, artist-releases VA-footer node removal, Credits h3 collapsibility, list-merge-buttons-row-container hiding, filter-bar visibility sync) plus the plural removeSelectors variant. Rewrote the full task list in actual execution order.",
+          "renderGroupedTable(): fixed @param {string} query to the file's established [name=default] convention: @param {string} [query=''].",
+          "Removed an orphaned duplicate JSDoc block (lines 4547-4553) sitting directly above a second, more complete JSDoc block for buildActiveInjectedColumns() — a short superseded draft with no function of its own beneath it.",
+          "Removed an orphaned floating comment inside finalCleanup() (the 'Plus N other anonymous users' 4-step description) that was misplaced between the user-subscriptions and release-collections blocks; the real editor-subscribers code ~75 lines below already carries its own correct, numbered inline comments describing the same steps."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.900",
     "date": "2026-08-21",
     "sections": [
