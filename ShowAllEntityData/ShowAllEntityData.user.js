@@ -28722,7 +28722,15 @@ a { color: #1565c0; }`;
     filterContainer.appendChild(statusDisplay);
 
     /**
-     * Clear all column filters for a specific table
+     * Clears every column filter input in `table`, and — when the sub-table
+     * (STF) filter for the owning h3 is also active — clears it too: restores
+     * any rows it was hiding (`data-mb-stf-hidden`), removes its highlight
+     * spans, resets its visual state, and syncs the STF ✕ button's visibility
+     * directly rather than dispatching a synthetic `input` event (which would
+     * schedule a debounced `applySubFilter()` that fires after the synchronous
+     * `runFilter()` call below and would otherwise blank the per-h3 status
+     * span). Finishes by calling `runFilter()` to refresh the display.
+     *
      * @param {HTMLElement} table - The table element whose filters should be cleared
      * @param {string} tableName - Name of the table (for logging and status)
      */
@@ -30282,45 +30290,6 @@ a { color: #1565c0; }`;
     let prefilterInfo = { count: 0, query: '' };
 
     /**
-     * Shows a modernized dialog to enter pre-filter criteria before loading data from disk.
-     * Includes history of previous filter expressions and triggers the file loading process.
-     */
-    /**
-     * Three-phase "Load from Disk" dialog:
-     *
-     *   Phase 1 — Load:    Prompt the user to pick a file. The entire file is
-     *                       read and parsed into memory (no filter applied).
-     *                       Shows a spinner while reading, then a row/filename
-     *                       status line when done.
-     *
-     *   Phase 2 — Filter:  Shown after a successful load. The user may enter an
-     *                       optional filter expression (with Case / Regex / Exclude
-     *                       toggles). Clicking "Filter Data" counts matching rows
-     *                       in memory (without touching the DOM) and shows the
-     *                       count below the button.
-     *
-     *   Phase 3 — Render:  Revealed after a filter count is computed. Clicking
-     *                       "Render Data" calls loadTableDataFromDisk() with the
-     *                       cached file and chosen filter params.
-     *
-     * @param {HTMLElement|null} triggerButton - Button to anchor the dialog to.
-     */
-    /**
-     * Build the "File Metadata" HTML table block shared by both the Save and Load dialogs.
-     *
-     * For the Save dialog `file` is null (no filename yet) and `totalRows` comes from
-     * dataToSave.rowCount.  For the Load dialog `file` is the File object and `totalRows`
-     * is computed from the parsed data.
-     *
-     * New files (saved with 9.99.187+) carry entityType / entityName / sectionSuffix /
-     * detailSegment directly.  Legacy files fall back to filename parsing.
-     *
-     * @param {object}      data       - The parsed JSON data object (dataToSave or loaded data).
-     * @param {number}      totalRows  - Row count to display.
-     * @param {File|null}   file       - The File object (for legacy filename parsing), or null.
-     * @returns {string} HTML string for the meta block (ready to set as innerHTML).
-     */
-    /**
      * Lazily injects the shared, id-guarded stylesheet for
      * {@link buildMetaBlockHTML}'s output. Uses GM_addStyle (not a plain
      * document.createElement('style') + head.appendChild) so it is exempt
@@ -30350,6 +30319,21 @@ a { color: #1565c0; }`;
         style.id = 'sa-meta-block-style';
     }
 
+    /**
+     * Build the "File Metadata" HTML table block shared by both the Save and Load dialogs.
+     *
+     * For the Save dialog `file` is null (no filename yet) and `totalRows` comes from
+     * dataToSave.rowCount.  For the Load dialog `file` is the File object and `totalRows`
+     * is computed from the parsed data.
+     *
+     * New files (saved with 9.99.187+) carry entityType / entityName / sectionSuffix /
+     * detailSegment directly.  Legacy files fall back to filename parsing.
+     *
+     * @param {object}      data       - The parsed JSON data object (dataToSave or loaded data).
+     * @param {number}      totalRows  - Row count to display.
+     * @param {File|null}   [file=null] - The File object (for legacy filename parsing), or null.
+     * @returns {string} HTML string for the meta block (ready to set as innerHTML).
+     */
     function buildMetaBlockHTML(data, totalRows, file = null) {
         _ensureMetaBlockStyle();
         const esc  = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -32496,7 +32480,20 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Removes various clutter elements from the MusicBrainz page to prepare for consolidated view.
+     * Removes various clutter elements from the MusicBrainz page to prepare for
+     * the consolidated view. Each task is independently guarded and logs only
+     * when it actually removed something:
+     *   - jesus2099 "bigbox" `<div>` elements.
+     *   - Relationship helper tables (matched by inline background-color style
+     *     plus a "Relate checked recordings to" text check).
+     *   - The "Showing official/all release groups by this artist" filter
+     *     description paragraph.
+     *   - Slick slider containers (matched by a `700px`-width wrapper style).
+     *   - `<details>` blocks containing more than 5 `<img>`s (the cover-art
+     *     gallery widget).
+     *   - `removeSanojjonasContainers()`, but only on `events` pages or when
+     *     `_isReleaseGroupsMultiMode()` is true.
+     *   - `cleanupBarcodeHighlights()`, unconditionally.
      */
     function performClutterCleanup() {
         Lib.debug('cleanup', 'Starting clutter element removal.');
@@ -32655,23 +32652,6 @@ a { color: #1565c0; }`;
         window.dispatchEvent(new CustomEvent('mb-stop-all-scripts'));
     }
 
-    /**
-     * Updates the H2 header row count display to show filtered vs total rows
-     * @param {number} filteredCount - Number of rows currently visible after filtering
-     * @param {number} totalCount - Total number of rows in the table
-     */
-    /**
-     * Build the tooltip string for the `.mb-row-count-stat` span in the h2
-     * header, reflecting the currently active global and column filters.
-     *
-     * Used by `updateH2Count` to set `span.title` every time the count is
-     * refreshed.  All values are read from the live DOM — no closure deps.
-     *
-     * @param {number}      filteredCount  Currently visible row count.
-     * @param {number}      totalCount     Total (or global-filtered) count.
-     * @param {number|null} absoluteTotal  Unfiltered absolute total (3-tier).
-     * @returns {string}   Tooltip text (safe for DOM `.title` property).
-     */
     // ── Custom rich tooltip for .mb-row-count-stat spans ──────────────────────
     // Native `title` attributes only support plain text — no colors.
     // We store HTML in `data-mbtt` and show a floating `#mb-stat-tooltip` div
@@ -32702,16 +32682,6 @@ a { color: #1565c0; }`;
 
 
     /**
-     * _mbttLabel — wraps a plain filter-type label word with the same pill
-     * colour as _mbttSpan uses for filter *expressions*, so that the type
-     * name ('global', 'sub-table', 'column level') appears in the tooltip
-     * with its characteristic colour.
-     *
-     * @param {string} word  - The label text to wrap (e.g. 'global').
-     * @param {'gf'|'stf'|'cf'} type - CSS variable prefix.
-     * @returns {string} HTML span.
-     */
-    /**
      * Lazily injects the shared, id-guarded stylesheet for
      * {@link _mbttLabel}/{@link _mbttColName}/{@link _mbttCount}'s rich
      * tooltip spans. GM_addStyle so it is exempt from page CSP style-src
@@ -32739,6 +32709,16 @@ a { color: #1565c0; }`;
         style.id = 'sa-mbtt-style';
     }
 
+    /**
+     * _mbttLabel — wraps a plain filter-type label word with the same pill
+     * colour as _mbttSpan uses for filter *expressions*, so that the type
+     * name ('global', 'sub-table', 'column level') appears in the tooltip
+     * with its characteristic colour.
+     *
+     * @param {string} word  - The label text to wrap (e.g. 'global').
+     * @param {'gf'|'stf'|'cf'} type - CSS variable prefix.
+     * @returns {string} HTML span.
+     */
     function _mbttLabel(word, type) {
         _ensureMbttStyle();
         const cls = type === 'gf' ? 'mb-mbtt-gf' : type === 'stf' ? 'mb-mbtt-stf' : 'mb-mbtt-cf';
@@ -32765,6 +32745,7 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Wraps a row-count number in a colored pill span, styled by the
      * sa_ui_row_count_color / sa_ui_row_count_bg settings, making row-count
      * numbers inside rich hover tooltips visually distinct from surrounding prose.
      *

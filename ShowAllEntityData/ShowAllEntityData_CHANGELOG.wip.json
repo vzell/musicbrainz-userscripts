@@ -1,5 +1,21 @@
 [
   {
+    "version": "WIP.10",
+    "date": "2026-08-22",
+    "sections": [
+      {
+        "label": "📖 Documentation",
+        "items": [
+          "JSDoc audit, chunk 7e/7 (sub-chunk 5 of 8) — save/load dialogs, misc utilities, tooltips. The module-level init/state-variable block itself was excluded (linear setup code, not reusable functions).",
+          "Removed 4 orphaned JSDoc blocks and relocated 2 genuinely misattributed ones (v9.99.366-style) — the largest orphan cluster found in the whole audit: a duplicate showLoadFilterDialog draft, a stale three-phase Load-from-Disk draft, a stale updateH2Count stub, and a stale _buildH2CountTooltip draft were all deleted (their real functions already carry their own correct, current docs elsewhere); a complete buildMetaBlockHTML doc was relocated from sitting on _ensureMetaBlockStyle, and a complete _mbttLabel doc was relocated from sitting on _ensureMbttStyle — both real targets had no doc of their own beforehand.",
+          "clearSubTableColumnFilters(): expanded a thin 2-line doc to cover its full behavior, including the sub-table (STF) filter clearing/row-restoration/highlight-removal it also performs and why it syncs the STF clear button directly instead of dispatching a synthetic input event.",
+          "performClutterCleanup(): expanded a 1-line doc into a full list of the 7 independent cleanup tasks it performs.",
+          "_mbttCount(): fixed a JSDoc summary that started mid-sentence (missing its lead subject/verb)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.9",
     "date": "2026-08-22",
     "sections": [
