@@ -1,0 +1,14 @@
+{
+  "pageType": "artist-releasegroups",
+  "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0",
+  "capturedAt": "2026-08-23",
+  "scriptVersion": "9.99.936+2026-08-23",
+  "itemCount": 2142,
+  "medianWallMs": 21660,
+  "stages": {
+    "fetch": 15209.199999988079,
+    "sort": 0,
+    "render": 489.59999999403954
+  },
+  "samples": 5
+}

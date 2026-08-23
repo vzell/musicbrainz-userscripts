@@ -133,6 +133,70 @@ Export (place under `tests/support/snapshot.js`):
   belongs to `git diff` on the committed snapshot files, not to this
   function's return value.
 
+### Implementation notes — empirically corrected (read before touching `scrub()`)
+
+`tests/support/snapshot.js` is implemented. The doc's original guessed scrub
+candidates (CSRF/nonce, "N alerts", relative timestamps, session
+identifiers) were checked and **none found** on either pilot page — logged
+out, no personalized banners exist. What actually needed scrubbing was only
+discoverable by capturing the SAME unchanged page **twice in a row** and
+diffing the results — a single capture's inspection never would have
+surfaced either category below, since both look completely reasonable in
+isolation and only reveal themselves as noise on a second capture:
+
+1. **MusicBrainz's own embedded JSON blocks have non-deterministic key
+   order, per request.** `<script type="application/json">` (entity data,
+   the "Release events" blob, …), `<script type="application/ld+json">`
+   (SEO structured data), and the `window.__MB__` bootstrap script
+   (`Object.defineProperty(window,"__MB__",{value:Object.freeze({...})})`)
+   all come back with different *object key* order between two otherwise-
+   identical requests — confirmed by parsing both captures' JSON-LD blocks,
+   sorting keys, and finding the results byte-identical (values unchanged,
+   only order). Almost certainly Perl hash-iteration-order randomization on
+   MusicBrainz's own Catalyst backend (a deliberate anti-hash-flooding
+   security measure, not a bug). This was the single biggest false-diff
+   source found — without a fix, `raw.html` differed on nearly every
+   re-capture of the exact same page. Fixed via `_canonicalizeJsonBlocks()`
+   (parse each `application/(ld+)?json` script block, recursively sort
+   object keys only — never array element order, which can be genuine row/
+   track ordering — re-serialize) for the two JSON block types, and
+   `_scrubMbBootstrapScript()` (wholesale-blank, since it's a JS
+   expression, not parseable JSON, and irrelevant — this script never reads
+   `window.__MB__`) for the bootstrap script. Watch for MORE attributes on
+   these script tags once *rendered* than on the raw page (confirmed: the
+   "Release events" block gains a `style="display: none;"` attribute
+   post-render) — the matching regex must not assume the `type="..."`
+   attribute is immediately followed by `>`.
+2. **This script's OWN self-reported wall-clock timing text.** Once
+   rendered: `#mb-global-status-display`'s "Fetching: X.XXs, Rendering:
+   X.XXs, 📐Measuring: X.XXs" summary (PLUS further appended pieces —
+   "🎨CAA: X.Xs", "🔗Rels: X.Xs" — via `_sdAppend()`), `#mb-info-display-caa`/
+   `-rel`'s own "🎨CAA: X.Xs"/"🔗Rels: X.Xs" (plus their `data-mbtt` tooltips'
+   "Total load time: X.Xs" line), `#mb-info-display-generic`'s auto-resize
+   "...in X.XXs" message, and the hidden-but-still-serialized
+   `#mb-fetch-progress-label`'s stale "...  - X.Xs left" estimate.
+   **First attempt scrubbed by element id** (find `id="ID"`, blank up to
+   the first `<`) and was insufficient — `#mb-global-status-display`
+   contains a NESTED `<span title="...">🎨CAA: 51ms</span>` from
+   `_sdAppend()`, which a "blank up to the first `<`" match doesn't reach.
+   Fixed by switching to **content-pattern matching** instead
+   (`_scrubTimingAfterLabel()`: match a known label text — e.g. `'Fetching:
+   '`, `'🎨CAA: '`, `'Total load time: '` — immediately followed by a
+   number+unit, regardless of which element or how deeply nested it is).
+   Verified safe against false positives (this label-anchored approach
+   won't touch inline-style `transition: ... 0.1s` CSS values, which never
+   have one of these literal label strings immediately before the number).
+3. Checked and explicitly **ruled out** (real, stable data, not scrubbed):
+   ISO `creation_date` timestamps on annotation/entity records, and
+   "N edit(s)"-shaped substrings that turned out to be a false-positive
+   regex match against a stable list title ("...2021 edition") rather than
+   a real edit counter.
+
+Verified fully deterministic end-to-end (not just via targeted unit
+checks): captured both pilot pageTypes' raw+rendered snapshots via the real
+`capture-snapshots.js` runner three times in a row — `unchanged` on every
+re-run after the first.
+
 ## Part 2 — `tests/support/browser.js` additions (or reuse from `loadPage.js`)
 
 - A `seedGMValue`-equivalent: `tests/support/gmStubs.js`'s
@@ -190,6 +254,40 @@ Commit the resulting `tests/snapshots/**/*.html` files to git as the new
 baseline once you've confirmed a diff is intentional — the diff itself is
 just `git diff tests/snapshots/`, no custom tooling needed for that part.
 
+### Implementation notes — empirically corrected
+
+Implemented as `tests/support/capture-snapshots.js` (plain `.js`, CommonJS —
+matches `loadPage.js`/`gmStubs.js`) + `tests/pagetypes.json`. Three
+corrections found by actually running it, not by inspection alone:
+
+1. **The status-print logic had a real gap**: comparing "did BOTH raw and
+   rendered not exist before" as one combined flag silently misreports a
+   genuinely-first-ever `rendered.html` write as `"unchanged"` if `raw.html`
+   happened to already exist from an earlier, partially-failed run (raw is
+   written before the render step even starts, so a mid-run crash after
+   that point leaves the two files in different "have I been captured
+   before" states). Fixed by tracking first-capture status **per file**,
+   independently.
+2. **`artist-releasegroups`' real CAA queue didn't finish even after a
+   10-minute wait** for this artist's 2142 rows — not a bug: it scales
+   roughly linearly from the small `releasegroup-releases` pilot's own
+   ~0.56s/row CAA baseline (`task-playwright-test-infra-expansion.md`'s
+   Part 3), which projects to ~20 minutes for 2142 rows. Waiting that long
+   on every capture run isn't practical. **Pragmatic fix**: this pageType's
+   `tests/pagetypes.json` entry seeds `sa_enable_caa_pics: false` and
+   `sa_enable_relationships_column: false` (and sets `hasCaaOrEaa`/
+   `hasRelationships` to `false` so `waitForRenderComplete()` doesn't try to
+   wait for either) — a deliberate, documented coverage trade-off: this
+   pilot's CAA/Relationships rendering isn't exercised by the snapshot
+   baseline, in exchange for a capture that finishes in ~20-30s instead of
+   ~20+ minutes. `release-tracks` doesn't have this feature at all, so
+   isn't affected.
+3. Added a per-pageType `renderTimeout` config override (`tests/
+   pagetypes.json`, defaults to 90000ms) — needed while diagnosing #2
+   above, before landing on the seed-them-off fix; left in as a general
+   escape hatch for a future pageType that's just slow to fetch/render (not
+   CAA-specific) without needing a code change.
+
 ## Part 4 — `registry.org`
 
 An org-mode table at `tests/snapshots/registry.org`, one row per pageType:
@@ -223,10 +321,31 @@ extend to it later once this pattern is proven.
 - **In-page stage timings**, via `performance.mark()`/`performance.measure()`
   calls added at the boundaries of `startFetchingProcess()`'s pipeline (check
   its existing step structure first — do not assume stage names, read the
-  function). At minimum: fetch-phase-done, sort-phase-done (relevant to
-  `sortLargeArray()`), render-phase-done. Read these back via
+  function). Read these back via
   `page.evaluate(() => performance.getEntriesByType('measure'))` after
   `waitForRenderComplete()` resolves.
+
+  **No sort-phase-done stage exists** — checked by reading the function
+  rather than assuming, per the instruction above: grepping for
+  `sortLargeArray(` calls inside `startFetchingProcess()` finds none.
+  Sorting never happens during the initial fetch/render; it's a separate,
+  user-triggered action wired up later by `makeTableSortableUnified()`
+  (confirmed in `task-playwright-test-infra-expansion.md`'s own Part 5 —
+  clicking a column's sort-icon button — which is a wholly different code
+  path this function never calls). `startFetchingProcess()`'s own pipeline
+  is just fetch → render.
+
+  Marks added at the exact boundaries the script's OWN pre-existing
+  internal timing variables already use (`fetchingTimeStart`/
+  `totalFetchingTime`, `renderingTimeStart`/`totalRenderingTime` — the same
+  values that feed the "Fetching: X.XXs..." status text Part 1's `scrub()`
+  neutralizes), guaranteeing the new marks agree with what the page already
+  visibly reports: `sa-fetch-phase-start`/`-done` and
+  `sa-render-phase-start`/`-done`, each paired with a
+  `performance.measure()` call producing `'sa-fetch-phase'`/
+  `'sa-render-phase'` entries. Verified live: both measures appear with
+  sane durations via `page.evaluate(() => performance.getEntriesByType
+  ('measure'))`.
 - **Row/item count** for the run (however the script itself counts rendered
   rows — reuse that rather than re-deriving it via a DOM query), captured
   alongside every timing number. A duration with no denominator is
@@ -279,7 +398,22 @@ a new perf baseline is committed, same as any other re-baseline.
   until the thresholds above have proven themselves not to be flaky.
 - No CAA-queue-drain-time scaling measurement yet — `artist-releasegroups`
   does exercise CAA, but tie that specifically to a future CAA queue
-  concurrency test rather than duplicating it here.
+  concurrency test rather than duplicating it here. This turned out to be
+  the right call independent of scope-minimalism: CAA/Relationships are
+  seeded OFF entirely for this pilot's captures (see Part 3's
+  implementation notes) specifically because CAA didn't finish even after
+  a 10-minute wait for this artist's 2142 rows — so this non-goal was
+  correct in hindsight for a reason beyond "keep the pilot small."
+
+### Verified
+
+Real committed baseline (`tests/snapshots/artist-releasegroups/perf-baseline.json`):
+2142 items, median wall ~21.7-22.1s across two separate 5-sample runs
+(fetch ~15.2-15.7s, render ~0.49-0.50s) — consistent within noise between
+runs, script version `9.99.936+2026-08-23`. Both threshold branches
+exercised directly: a genuinely-unchanged re-run correctly printed `ok`;
+temporarily swapping in a synthetic baseline with an artificially low
+`medianWallMs` correctly printed `FAIL (>3x baseline)` and exited non-zero.
 
 ## Project conventions (apply to all touched code)
 

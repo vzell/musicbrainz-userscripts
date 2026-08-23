@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "⚙️ Internal",
+        "items": [
+          "Added the HTML-snapshot regression harness pilot (`tests/support/{snapshot,browser,capture-snapshots}.js`, `tests/pagetypes.json`), covering both `artist-releasegroups` and `release-tracks`: captures MB's raw page + the script's fully-rendered output, scrubbing known-volatile content (build-hashed asset URLs, this script's own self-reported timing text, and MusicBrainz's own per-request-randomized embedded JSON key order) before diffing against the committed baseline in `tests/snapshots/`. Also adds a `--perf` timing mode (5-sample median wall/stage timing vs. a committed baseline, 25%/3x warn/fail thresholds) and `tests/snapshots/registry.org`. Test tooling only; no userscript runtime changes."
+        ]
+      }
+    ]
+  }
+]
