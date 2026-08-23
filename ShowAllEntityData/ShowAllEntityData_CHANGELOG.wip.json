@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "⚙️ Internal",
+        "items": [
+          "Added `tests/support/asyncCompletion.js` (`waitForCaaEaaComplete()`, `waitForRelationshipsComplete()`), polling `#mb-info-display-caa`/`#mb-info-display-rel` as reliable completion signals for the CAA/EAA artwork queue and the async Relationships column, instead of the transient completion toasts. Test tooling only; no userscript runtime changes."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-08-23",
     "sections": [
