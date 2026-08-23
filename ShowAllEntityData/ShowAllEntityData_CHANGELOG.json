@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.947",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Added `extractMainColumn: 'Editor'` to the `annotations` pageType — splits the Editor cell into synthetic `MB-Name`/`Comment`/`Primary alias` columns via `_extractMainColumnParts()`, the same treatment already applied to every other page's main entity-link column."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.946",
     "date": "2026-08-24",
     "sections": [
