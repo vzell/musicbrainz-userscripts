@@ -12,6 +12,18 @@
     ]
   },
   {
+    "version": "WIP.3",
+    "date": "2026-08-18",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "PERFORMANCE.org Step 2 (extend Fix C to Sort, single-table mode): applyMultiSortColumnTints() now skips filter-hidden rows when computing shade-toggle boundaries, so tint bands reflect only the visible rows again — after WIP.1 the tbody permanently holds the full row set (hidden rows kept as display:none instead of removed), which previously let hidden rows shift the tint boundaries. The CAA/EAA big-picture strip's image order no longer freezes at its original fetch-time order after a sort: WIP.1 stopped calling initCaaPics()/initEaaPics() on every action, which used to rebuild the strip (and incidentally re-sort it) on every filter/sort pass; a new _artReorderBigBoxForTable() (plus caaReorderBigBoxForTable()/eaaReorderBigBoxForTable() wrappers) now cheaply moves the existing wrapper elements to match the table's new row order via box.appendChild — no rebuild, called once per sort from the sort handler right after it reorders the live tbody rows. The single-table sort path's own live-DOM-reorder (rows moved to match the new sort order before runFilter()'s show/hide pass runs, including the cdtoc tracklist sub-row fix) had already landed as part of WIP.1."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-08-18",
     "sections": [

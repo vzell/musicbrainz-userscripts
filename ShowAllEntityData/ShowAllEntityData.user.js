@@ -49449,7 +49449,13 @@ a { color: #1565c0; }`;
                 'mb-mscol-hdr-4','mb-mscol-hdr-5','mb-mscol-hdr-6','mb-mscol-hdr-7'
             ];
 
-            const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
+            // Skip filter-hidden rows (PERFORMANCE.org Step 1's single-table show/hide
+            // filter keeps every row in the tbody, toggling display:none instead of
+            // removing it) — otherwise a hidden row's value would still count as a step
+            // in the shade-toggle run, shifting tint band boundaries away from what the
+            // visible rows alone would produce.
+            const bodyRows = Array.from(table.querySelectorAll('tbody tr'))
+                .filter(tr => tr.style.display !== 'none');
             const mainHeaderRow = table.querySelector('thead tr:first-child');
 
             columnsToPaint.forEach((sortCol, priorityIdx) => {
@@ -49787,6 +49793,39 @@ a { color: #1565c0; }`;
                                 targetGroup.rows = sortedData;
                             } else {
                                 allRows = sortedData;
+                                // Reorder the live DOM rows to match the new sort order.
+                                // runFilter()'s single-table branch no longer rebuilds the
+                                // tbody (see PERFORMANCE.org Step 1) — it only toggles
+                                // display:none on the existing row nodes — so the rows must
+                                // already be in the correct sequence before it runs.
+                                const _sortTbody = table.querySelector('tbody');
+                                if (_sortTbody) {
+                                    allRows.forEach(tr => {
+                                        // cdtoc pages: a tracklist sub-row (synthetic sibling
+                                        // <tr> from _cdtocInitTracklistToggles(), not part of
+                                        // allRows) must move with its parent, or appendChild
+                                        // would leave it behind at its old position. Captured
+                                        // BEFORE moving tr, since moving it first would make
+                                        // nextElementSibling point past the end instead.
+                                        const _cdtocSub = tr.nextElementSibling;
+                                        const _hasCdtocSub = _cdtocSub &&
+                                            _cdtocSub.classList.contains('mb-cdtoc-tracklist-row');
+                                        _sortTbody.appendChild(tr);
+                                        if (_hasCdtocSub) _sortTbody.appendChild(_cdtocSub);
+                                    });
+                                }
+                                // Reorder the CAA/EAA bigbox strip to match — see
+                                // _artReorderBigBoxForTable's own doc comment for why a
+                                // sort must move these wrappers explicitly now that
+                                // initCaaPics()/initEaaPics() no longer rebuild the bigbox
+                                // on every action (PERFORMANCE.org Step 1). A no-op on
+                                // pages without a bigbox (function guards on settings and
+                                // on the box element existing).
+                                const _bbSortIdx = Array.from(document.querySelectorAll('table.tbl')).indexOf(table);
+                                if (_bbSortIdx !== -1) {
+                                    caaReorderBigBoxForTable(table, _bbSortIdx);
+                                    eaaReorderBigBoxForTable(table, _bbSortIdx);
+                                }
                             }
 
                             _invalidateFilterCache();
@@ -61038,6 +61077,67 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Reorders the existing big-picture strip wrappers above `table` to match
+     * `table`'s current row order, without rebuilding any of them.
+     *
+     * Before PERFORMANCE.org Step 1, sorting a single table went through
+     * runFilter()'s old clone-and-rebuild path, which re-called initCaaPics()/
+     * initEaaPics() on every sort — _artInitBigPics() fully rebuilt the bigbox
+     * from the (now sorted) tbody rows, so the strip's image order always
+     * tracked the table's sort order for free. Steps 1-2 removed that
+     * per-action rebuild (initCaaPics()/initEaaPics() now run exactly once, at
+     * initial render), so without this the strip would silently stay frozen in
+     * its original fetch-time order forever, no matter how the table is
+     * re-sorted. Fix: after the sort handler reorders the live tbody rows (see
+     * its own DOM-reorder comment), call this to walk the table in its new row
+     * order and move each corresponding bigbox wrapper to match via
+     * `box.appendChild` — a cheap DOM move, not a rebuild, so it carries none
+     * of `_artInitBigPics`'s badge/generation-counter double-count risk.
+     *
+     * Walks ALL rows, not just currently-visible ones, so a row's wrapper ends
+     * up in the right relative position even while filtered out — no separate
+     * reorder is needed once the filter later reveals it again. This is why
+     * the reorder lives here rather than inside `_artUpdateBigBoxForTable()`
+     * itself: that function already re-runs on every filter keystroke (order
+     * never changes on a pure filter pass, only visibility), so folding this
+     * extra per-row DOM-query pass into it would add needless per-keystroke
+     * cost for zero visible benefit.
+     *
+     * Guards / no-ops exactly like `_artUpdateBigBoxForTable()`: settings off,
+     * or no bigbox element for this table, and it's a safe no-op.
+     *
+     * @param {ArtCtx}           ctx        Archive context descriptor.
+     * @param {HTMLTableElement} table
+     * @param {number}           tableIndex Must match the index used by _artInitPics.
+     */
+    function _artReorderBigBoxForTable(ctx, table, tableIndex) {
+        if (!Lib.settings.sa_enable_caa_pics) return;
+        if (!Lib.settings.sa_caa_pics_big)   return;
+
+        const box = document.getElementById(ctx.boxPrefix + '-' + tableIndex);
+        if (!box) return;
+
+        const seen = new Set();
+        let moved = 0;
+        table.querySelectorAll('tbody tr').forEach(row => {
+            row.querySelectorAll('td a[href]').forEach(a => {
+                const href = a.getAttribute('href');
+                if (seen.has(href)) return;
+                for (const type of ctx.entityTypes) {
+                    if (new RegExp('^/' + type + '/' + _ART_GUID_RE_STR + '$').test(href)) {
+                        seen.add(href);
+                        const wrapper = box.querySelector('a[' + ctx.hrefAttrName + '="' + href + '"]');
+                        if (wrapper) { box.appendChild(wrapper); moved++; }
+                        break;
+                    }
+                }
+            });
+        });
+
+        Lib.debug(ctx.key, `${ctx.key}ReorderBigBoxForTable: table ${tableIndex} — reordered ${moved} wrapper(s)`);
+    }
+
+    /**
      * Hides all art bigbox div elements (CAA/EAA) that sit immediately before
      * `table` in the DOM, without modifying their tracked visibility state
      * (the `caaVisible` / `eaaVisible` dataset attributes).
@@ -63274,6 +63374,28 @@ a { color: #1565c0; }`;
      */
     function eaaUpdateBigBoxForTable(table, tableIndex) {
         _artUpdateBigBoxForTable(EAA_CTX, table, tableIndex);
+    }
+
+    /**
+     * Reorders the CAA bigbox wrappers for `table` to match its current row
+     * order. Called from the single-table sort handler, right after it
+     * reorders the live tbody rows — see PERFORMANCE.org Step 2.
+     * @param {HTMLTableElement} table
+     * @param {number}           tableIndex
+     */
+    function caaReorderBigBoxForTable(table, tableIndex) {
+        _artReorderBigBoxForTable(CAA_CTX, table, tableIndex);
+    }
+
+    /**
+     * Reorders the EAA bigbox wrappers for `table` to match its current row
+     * order. Called from the single-table sort handler, right after it
+     * reorders the live tbody rows — see PERFORMANCE.org Step 2.
+     * @param {HTMLTableElement} table
+     * @param {number}           tableIndex
+     */
+    function eaaReorderBigBoxForTable(table, tableIndex) {
+        _artReorderBigBoxForTable(EAA_CTX, table, tableIndex);
     }
 
     // ── end Art Archive (CAA / EAA) shared feature engine ─────────────────────

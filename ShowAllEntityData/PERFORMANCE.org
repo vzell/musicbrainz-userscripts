@@ -123,7 +123,7 @@ beyond the archived branch's own approach:
   again is Steps 3/4's job (caching with proper invalidation), not this
   step's.
 
-*** TODO Step 2: Extend the Fix-C approach to Sort
+*** DONE Step 2: Extend the Fix-C approach to Sort
 
 Sort currently still calls ~renderFinalTable(allRows)~ after
 ~sortLargeArray()~ completes, which triggers the same full tbody rebuild +
@@ -131,6 +131,43 @@ Sort currently still calls ~renderFinalTable(allRows)~ after
 old branch (its WIP.1 only touched ~runFilter()~). Apply the same
 "rows are live DOM nodes, reorder in place, don't re-run the hook chain
 unless something actually changed" treatment to the sort-apply path.
+
+*Landed*: branch ~filter-performance-fix~, see
+~ShowAllEntityData_CHANGELOG.wip.json~ WIP.3. Scoped to single-table mode
+only, matching Step 1 (confirmed with the user before implementing).
+
+- The "reorder live DOM rows in place, don't re-run the hook chain" part of
+  this step was already substantially done as a side effect of Step 1's own
+  implementation: single-table sort has always delegated to ~runFilter()~ for
+  its actual DOM update (never called ~renderFinalTable()~ directly, despite
+  this heading's original wording — that described the OLD indirect effect of
+  runFilter()'s single-table branch), and Step 1 already made that branch
+  reorder-and-show/hide instead of clone-and-rebuild. What Step 1 had not yet
+  added was the DOM row reorder itself (rows must be physically moved to the
+  new sort order BEFORE the show/hide pass runs, since nothing rebuilds the
+  tbody afterward) — that landed as part of Step 1 already.
+- What Step 2 actually found and fixed, auditing the sort path for remaining
+  full-rebuild/hook-rerun spots per the above:
+  1. ~applyMultiSortColumnTints()~ walked every ~tbody tr~ including
+     filter-hidden ones (tbody now always holds the full row set — see Step
+     1) when computing shade-toggle run boundaries, shifting tint bands away
+     from what the visible rows alone would show. Fixed by filtering to
+     ~tr.style.display !== 'none'~ before the walk.
+  2. The CAA/EAA big-picture strip's image order silently froze at its
+     original fetch-time order on every subsequent sort: before Step 1,
+     sorting triggered ~initCaaPics()~/~initEaaPics()~ on every action, and
+     ~_artInitBigPics()~ fully rebuilt the strip from the (by-then sorted)
+     tbody, so its order tracked sort order for free as a side effect. Step 1
+     removed that per-action rebuild. Fixed with a new, cheap
+     ~_artReorderBigBoxForTable()~ (+ ~caaReorderBigBoxForTable()~/
+     ~eaaReorderBigBoxForTable()~ wrappers, mirroring the existing
+     ~_artUpdateBigBoxForTable()~/~caaUpdateBigBoxForTable()~/
+     ~eaaUpdateBigBoxForTable()~ pattern) that only *moves* existing wrapper
+     elements to match the new row order via ~box.appendChild~ — no rebuild,
+     so none of ~_artInitBigPics~'s badge/generation-counter double-count
+     risk. Called once per sort (not per filter keystroke, since filtering
+     alone never changes row order) from the sort handler, right after it
+     reorders the live tbody rows.
 
 *** TODO Step 3: Cache ~_updateAllColHeaderCounts~
 
