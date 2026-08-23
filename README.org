@@ -96862,11 +96862,19 @@ add synthetic columns "Active for", "Active since", "Active start date", "Active
 and add uvd comment, and above info in structure sections
 
 
-* TODO fix the artefacts on the final rendered page when on a new tab (sanojjonas stuff, buttons left over from other userscripts)
+* TODO fix the artefacts on the final rendered page when on a new tab
+
+sanojjonas stuff, buttons left over from other userscripts, see e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1
+
+
+* TODO "Edit recording comments" button below the tables for 'release-tracks'
+
+"Edit recording comments" button below the tables for 'release-tracks', see e.g. https://musicbrainz.org/release/89f14138-3884-484e-93bc-ec2e16593859
+
 
 * TODO add more columns to 'annotations' pageType
 
-* TODO add back the select checkboxes for specifi pageType and rewire the action listeners for e.g. merging releases etc. (see 'annotations' button re-wiring)
+* TODO add back the select checkboxes for specific pageTypse and rewire the action listeners for e.g. merging releases etc. (see 'annotations' button re-wiring)
 
 * DONE edit mismatches
 
@@ -96902,4 +96910,9 @@ the same version "9.99.926" How should I proceed to get these in sync again. On 
 merge main branch into perf-steps-1-4
 
 ** after merging test framework into performance branch make sure to formulate the right test assertions for the artist-events pageType
+
+* TODO pageType 'release-tracks' starts out with each sub-table per medium uncollapsed, but the "Show all sub-sections"-button is displayed instead of the "Hide all sub-sections"
+
+pageType 'release-tracks' starts out with each sub-table per medium uncollapsed, but the "Show all sub-sections"-button
+is displayed instead of the "Hide all sub-sections" -> '<button class="mb-master-toggle"'
 
