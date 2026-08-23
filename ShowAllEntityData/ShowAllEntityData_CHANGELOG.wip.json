@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "⚙️ Internal",
+        "items": [
+          "Added `performance.mark()`/`performance.measure()` instrumentation ('sa-fetch-phase'/'sa-render-phase') at `startFetchingProcess()`'s existing internal `fetchingTimeStart`/`renderingTimeStart` boundaries, readable via `performance.getEntriesByType('measure')` — backs the HTML-snapshot harness's `--perf` timing mode (`tests/support/capture-snapshots.js`). No sort-phase mark added — confirmed by reading the function that sorting never happens during the initial fetch/render, only later via a separate user-triggered column-sort click. Adds no UI and changes no user-visible behavior."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-08-23",
     "sections": [

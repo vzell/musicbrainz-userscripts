@@ -38517,6 +38517,12 @@ a { color: #1565c0; }`;
 
         const startTime = performance.now();
         let fetchingTimeStart = performance.now();
+        // Mirrors fetchingTimeStart above (same boundary) as a standard
+        // performance.mark(), so external tooling (e.g. a Playwright perf
+        // capture reading performance.getEntriesByType('measure')) can read
+        // stage timings without needing to know this closure's internal
+        // variable names.
+        performance.mark('sa-fetch-phase-start');
         let totalFetchingTime = 0;
         let totalRenderingTime = 0;
 
@@ -40003,6 +40009,8 @@ a { color: #1565c0; }`;
             }
 
             totalFetchingTime = performance.now() - fetchingTimeStart;
+            performance.mark('sa-fetch-phase-done');
+            performance.measure('sa-fetch-phase', 'sa-fetch-phase-start', 'sa-fetch-phase-done');
 
             // Calculate total rows before rendering
             const totalRows = (activeDefinition.tableMode === 'multi') ?
@@ -40081,6 +40089,7 @@ a { color: #1565c0; }`;
             }
 
             let renderingTimeStart = performance.now();
+            performance.mark('sa-render-phase-start');
 
             // ── virtualPath h2 label patch ────────────────────────────────────
             // When the clicked button carries a virtualPath (e.g. user-subscriptions
@@ -40533,6 +40542,8 @@ a { color: #1565c0; }`;
             }
 
             totalRenderingTime = performance.now() - renderingTimeStart;
+            performance.mark('sa-render-phase-done');
+            performance.measure('sa-render-phase', 'sa-render-phase-start', 'sa-render-phase-done');
 
             // --- RENDERING END ---
             // Apply zebra striping + sticky columns every time the table is rendered.
