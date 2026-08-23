@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.929+2026-08-23
+// @version      9.99.930+2026-08-23
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -36654,11 +36654,12 @@ a { color: #1565c0; }`;
             // and _cdtocInitTracklistToggles() above.
             _rewireNestedTableH2Toggles();
 
-            // Annotations pageType: re-wire the Old/New compare-radio range
-            // constraint on the freshly cloned rows — same cloneNode(true)-
-            // drops-listeners reason as the calls above. The "Compare
-            // versions" button itself lives in the h2 (not tbody), so it is
-            // never cloned here and needs no re-wiring.
+            // Annotations pageType: re-enable the Old/New compare radios on
+            // the freshly cloned rows — cloneNode(true) re-applies MB's
+            // pristine static disabled attributes each time, same reason
+            // as the calls above. The "Compare versions" button itself
+            // lives in the h2 (not tbody), so it is never cloned here and
+            // needs no re-wiring.
             initAnnotationCompareRadios();
 
             // Refresh the Picard tagger column after every filter / sort re-render.
@@ -40455,8 +40456,8 @@ a { color: #1565c0; }`;
             }
 
             // Annotations pageType: relocate the "Compare versions" button
-            // into the h2 header and wire the Old/New compare-radio range
-            // constraint. Both self-guard on pageType — cheap no-ops on
+            // into the h2 header and make sure every Old/New compare radio
+            // is selectable. Both self-guard on pageType — cheap no-ops on
             // every other page.
             initAnnotationCompareButton();
             initAnnotationCompareRadios();
@@ -50454,85 +50455,43 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Enforces the "Old must be strictly older than New" constraint on the
-     * annotations-history compare radios (Old/New columns). MusicBrainz
-     * ships this natively as client-side JS wired directly to the original
-     * DOM nodes; that JS does not run against nodes this script inserts via
-     * cloneNode/importNode, so every sort/filter re-render — which replaces
-     * tbody rows with fresh clones, same reason initExpandRGsFeature()/
-     * _cdtocInitTracklistToggles() exist — silently drops this behavior
-     * (leaving only the pristine static `disabled` attributes MB baked
-     * into the initial HTML, which enable a single New/Old pair) unless
-     * it's re-wired here.
+     * Keeps every Old/New compare radio on the annotations-history page
+     * selectable — no combination ever locked out, regardless of which
+     * pair is currently checked or how the active filter has narrowed
+     * down which rows are actually present in the DOM.
      *
-     * Rows are newest-first (`data-index="0"` = most recent revision), so
-     * "New" may only be an index strictly LESS than the checked "Old"
-     * index, and "Old" may only be an index strictly GREATER than the
-     * checked "New" index. Re-deriving the disabled/checked state from
-     * whichever radios are CURRENTLY checked (rather than hardcoding
-     * index 0/1) means this also produces the correct result immediately
-     * after a fresh clone, whose checked radios reflect whatever was
-     * checked at fetch time.
+     * This function used to re-implement MusicBrainz's native "Old must
+     * be strictly older than New" restriction (client-side JS wired to
+     * the original DOM nodes, backed by pristine static `disabled`
+     * attributes baked into the initial HTML as a no-JS fallback — New
+     * disabled on every row but the newest, Old disabled only on the
+     * newest). That interacted badly with this script's own filtering:
+     * `runFilter()`/`renderFinalTable()` don't just hide non-matching
+     * rows, they don't render them at all, so whichever row held the
+     * checked Old or New radio can end up filtered out of view entirely
+     * while the range restriction — re-applied against only the visible
+     * rows — could end up disabling every remaining radio in the OTHER
+     * column, with no valid pair reachable until the filter was cleared.
+     * Rather than make the restriction filter-aware, it's dropped
+     * entirely: every radio is simply always enabled, so any combination
+     * — including ones MB's own page would never let you reach — is
+     * always clickable. See debug/NOTES.md's 2026-08-23 entry.
+     *
+     * Still needs to run after every (re)render: cloneNode(true)/
+     * importNode re-apply those pristine static `disabled` attributes
+     * from the original fetched HTML each time, same reason
+     * initExpandRGsFeature()/_cdtocInitTracklistToggles() need
+     * re-wiring after every clone.
      */
     function initAnnotationCompareRadios() {
         if (pageType !== 'annotations') return;
 
-        const oldRadios = Array.from(document.querySelectorAll('input.old[name="old"]'));
-        const newRadios = Array.from(document.querySelectorAll('input.new[name="new"]'));
-        if (!oldRadios.length || !newRadios.length) return;
+        const radios = document.querySelectorAll('input.old[name="old"], input.new[name="new"]');
+        if (!radios.length) return;
 
-        const idxOf = radio => parseInt(radio.dataset.index, 10);
+        radios.forEach(r => { r.disabled = false; });
 
-        function applyConstraints() {
-            const checkedOld = oldRadios.find(r => r.checked);
-            const checkedNew = newRadios.find(r => r.checked);
-            const oldIdx = checkedOld ? idxOf(checkedOld) : Infinity;
-            const newIdx = checkedNew ? idxOf(checkedNew) : -Infinity;
-
-            newRadios.forEach(r => { r.disabled = idxOf(r) >= oldIdx; });
-            oldRadios.forEach(r => { r.disabled = idxOf(r) <= newIdx; });
-        }
-
-        // Fresh listeners on every call — cloneNode(true) strips whatever
-        // this function attached on the previous pass along with the row
-        // nodes themselves.
-        oldRadios.forEach(r => {
-            r.addEventListener('change', () => {
-                if (!r.checked) return;
-                const oldIdx = idxOf(r);
-                const checkedNew = newRadios.find(nr => nr.checked);
-                if (checkedNew && idxOf(checkedNew) >= oldIdx) {
-                    // Currently-checked New is no longer valid against this
-                    // Old — move it to the nearest valid (largest index < oldIdx).
-                    const candidates = newRadios.filter(nr => idxOf(nr) < oldIdx);
-                    if (candidates.length) {
-                        candidates.reduce((best, c) => idxOf(c) > idxOf(best) ? c : best).checked = true;
-                    }
-                }
-                applyConstraints();
-            });
-        });
-
-        newRadios.forEach(r => {
-            r.addEventListener('change', () => {
-                if (!r.checked) return;
-                const newIdx = idxOf(r);
-                const checkedOld = oldRadios.find(or => or.checked);
-                if (checkedOld && idxOf(checkedOld) <= newIdx) {
-                    // Currently-checked Old is no longer valid against this
-                    // New — move it to the nearest valid (smallest index > newIdx).
-                    const candidates = oldRadios.filter(or => idxOf(or) > newIdx);
-                    if (candidates.length) {
-                        candidates.reduce((best, c) => idxOf(c) < idxOf(best) ? c : best).checked = true;
-                    }
-                }
-                applyConstraints();
-            });
-        });
-
-        applyConstraints();
-
-        Lib.debug('ui', `initAnnotationCompareRadios: wired ${oldRadios.length} Old/New radio pair(s).`);
+        Lib.debug('ui', `initAnnotationCompareRadios: enabled ${radios.length} Old/New radio(s) — every combination selectable.`);
     }
 
     /**
@@ -55421,8 +55380,8 @@ a { color: #1565c0; }`;
             }
 
             // Annotations pageType: relocate the "Compare versions" button
-            // into the h2 header and wire the Old/New compare-radio range
-            // constraint. Both self-guard on pageType — cheap no-ops on
+            // into the h2 header and make sure every Old/New compare radio
+            // is selectable. Both self-guard on pageType — cheap no-ops on
             // every other page.
             initAnnotationCompareButton();
             initAnnotationCompareRadios();

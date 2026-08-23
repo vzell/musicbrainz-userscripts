@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.930",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'annotations' pageType: fixed the Old/New \"Compare versions\" radios becoming completely unselectable under certain filter conditions — the previous \"Old must be strictly older than New\" range restriction (re-implementing MusicBrainz's own native client-side JS, since this script's row rebuilding drops it) was re-applied against only the currently-filtered/visible rows, and could end up disabling every remaining radio in one column with no valid pair reachable without first clearing the filter. Replaced with simply keeping every Old/New radio always enabled — every combination is now selectable regardless of the active filter or which pair is currently checked."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.929",
     "date": "2026-08-23",
     "sections": [

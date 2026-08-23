@@ -6418,3 +6418,27 @@ second follow-up round.
   (`targetH2.insertBefore(compareBtn, countSpan || filterContainer)`),
   keeping it consistently right after the h2 text and before the count on
   every render, not just the first one.
+
+- Follow-up (2026-08-23): the "Old must be strictly older than New" range
+  restriction added above turned out to interact badly with this script's
+  own filtering. `runFilter()`/`renderFinalTable()` don't just hide
+  non-matching rows — they don't render them in the DOM at all — so
+  whichever row held the currently-checked Old or New radio can end up
+  filtered out of view entirely. `initAnnotationCompareRadios()`'s
+  `applyConstraints()` was still re-applying the range restriction against
+  only the CURRENTLY VISIBLE rows, and depending on the filtered index
+  range relative to the (possibly now-invisible) checked pair, that could
+  disable every remaining radio in one entire column, with no valid
+  Old/New pair reachable without clearing the filter first — most starkly
+  when the filter narrowed the visible rows to just one, where "New must
+  be < Old" can never be satisfied by a single index at all.
+- Rather than make the range restriction filter-aware (tracking the
+  checked pair independently of visibility, recomputing valid ranges
+  against the full row set instead of just the DOM), the restriction was
+  dropped entirely per explicit request: `initAnnotationCompareRadios()`
+  now just clears `disabled` on every Old/New radio, unconditionally.
+  Every combination is always selectable, including ones MB's own native
+  page would never let you reach (e.g. Old numerically newer than New) —
+  a deliberate trade-off in favor of never getting stuck, especially since
+  this is exactly the situation active filtering creates routinely.
+- `node --check ShowAllEntityData.user.js` passed after the edit.
