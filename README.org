@@ -96463,7 +96463,7 @@ and why is the actual renderd image at the very end of that file , see [Image #5
 Is it possible to emulate clicking the h3 header line "Promotion release" on the final rendered page for the test case
 https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c to uncollpase that sub-table/section
 
-** emulate
+** TODO emulate
 
 actually emulate clicking the
 
@@ -96499,6 +96499,100 @@ pageTypes supported, so that we know when sometimes something breaks, it's basic
 
 Eventually we will test every possible pageType mentioned in pageTypes-testing-reference.org
 
-* redo
+
+* DONE redo
 
 Do just steps 1-4 but with the bug fix (b10c209) for a Step-1 regression, but do this in a new branch from main
+
+
+* TODO add a new boolean configuation variable (default: false) for explicitely enabling CAA/EAA debugging, when it comes to logging individual fetching of images (inline/big picture stripe and details) 
+** i
+
+add a new boolean configuation variable (default: false) for explicitely enabling CAA/EAA debugging, when it comes to
+logging individual fetching of images (inline/big picture stripe and details)
+
+** bug
+
+Currently with the two new setting off, I still get the following lines
+
+#+begin_example
+[VZ-ShowAllEntityData: artist-releasegroups] 📝 _artSetInlineSortKey: td → caa-inline-yes 
+[VZ-ShowAllEntityData: artist-releasegroups] 📝 _artSetInlineSortKey: td → caa-inline-yes 
+[VZ-ShowAllEntityData: artist-releasegroups] 📝 _artSetInlineSortKey: td → caa-inline-yes 
+[VZ-ShowAllEntityData: artist-releasegroups] 📝 _artSetInlineSortKey: td → caa-inline-yes 
+[VZ-ShowAllEntityData: artist-releasegroups] 📝 _artSetInlineSortKey: td → caa-inline-no
+...
+#+end_example
+
+What do they mean, and please include them in one of the two new settings where they best fit. They produce still too much noise
+
+** TODO add an on the fly option to toggle debug settings like with majkinetors userscripts
+
+Add an on the fly option to toggle debug settings like with majkinetors userscripts
+
+Show the output in a new popup frame
+
+Rework the current three buttons (keyboard, setting, help) into one, like majkinetors doing
+
+
+
+* TODO fix pageType 'annotations' not handling comparing different versions
+** i
+
+fix pageType 'annotations' not handling comparing different versions:
+
+1.)
+
+add the current button
+
+#+begin_example
+<span class="buttons"><button type="submit">Compare versions</button></span>
+#+end_example
+
+right before the '<span id="mb-filter-container"' inside the h2 header line (and at the same time remove it from the end of the page). Shape and size it like the other buttons
+currently in the h2 header line, e.g. '<button id="mb-toggle-filter-highlight-btn"'
+
+2.)
+
+a.)
+
+Initially, on an annotations page, the first row (New) and the second row (Old) are selected for comparison, see [Image #3], all other radio buttons are greyed out
+
+b.)
+
+When selecting another rows radio button in the "Old" column, the "New" radio buttons from the first row up to the new "Old" row are selectable, see [Image #4]
+
+c.)
+
+this does NOT happen on the final rendered page, see [Image #4], we can onyl ever compare the first row against some other one
+
+3.)
+
+When clicking the "Compare versions" button, the comparison should be shown in a new tab (configurable with a new boolean, default: true)
+
+** bug
+
+See [Image #7], add a spacer between the text "Annotation history" and the "Compare versions" button
+
+** bug
+
+a.)
+
+Initially on the final rendered page the button sits right after the '<span class="mb-row-count-stat"', see [Image #9]
+
+b.)
+
+After a sort/filter the button moves between the text "Annotation history" and the row count stat, see [Image #8]
+
+c.)
+
+I want b.) all the time
+
+** TODO bug
+
+Is it possible to make the selection of the radio boxes always possible, so basically allow each combination
+
+* edit mismatches
+
+Currently I used Claude Code to implement two different features at the same time on different machines, starting from
+the same version "9.99.926" How should I proceed to get these in sync again. On both machines nothing is commited/pushed yet
