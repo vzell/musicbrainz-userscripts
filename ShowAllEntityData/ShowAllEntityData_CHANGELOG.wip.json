@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-08-18",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "PERFORMANCE.org Step 1 (filter re-render, single-table mode): runFilter() no longer clones matching rows, replaces the tbody, or re-runs the post-render hook chain (initCollapsableColumns and the CAA/EAA/ERG/CDtoc it drives, plus Picard rewiring) on every keystroke. allRows are now kept as the live DOM rows throughout the session; each filter pass strips stale highlight spans and applies display:none / display:'' directly on those rows, then syncs the CAA/EAA bigbox via the existing caaUpdateBigBoxForTable()/eaaUpdateBigBoxForTable() helpers (previously only used by sub-table filters). The hook chain now runs exactly once — already true for the live fetch pipeline (startFetchingProcess), and newly hoisted into the disk-load/hydration path (initCollapsableColumns moved after updateH2Count() so its global toggle button can find filterContainer already attached; initCaaPics/initEaaPics/initCaaInlinePics/initEaaInlinePics called directly there since runFilter() no longer initialises them for single-table mode). Sort reorders the live tbody rows in place (appendChild loop) before the show/hide filter pass runs, so visible rows stay in sorted order. Fixed a regression the show/hide approach would otherwise introduce for cdtoc pages: a filtered-out or re-sorted row's tracklist sub-row (a synthetic sibling <tr> from _cdtocInitTracklistToggles(), not part of allRows) is now hidden/moved alongside its parent row instead of being orphaned."
+        ]
+      }
+    ]
+  }
+]

@@ -76,7 +76,7 @@ acceptance check for each step.
 
 ** Implementation steps
 
-*** TODO Step 1: Filter re-render (Fix C) — single-table mode only
+*** DONE Step 1: Filter re-render (Fix C) — single-table mode only
 
 In-place ~display:none~/~display:''~ toggling on live DOM rows instead of
 ~cloneNode(true)~ + tbody rebuild on every keystroke. Hoist
@@ -89,6 +89,39 @@ has changed to apply it directly). Branch: ~filter-performance-fix~.
 Scope: single-table mode only (~runFilter()~'s non-multi branch). Multi-table
 mode is out of scope for this step — see the "Show single-table" button
 note above for why single-table-first still covers the important case.
+
+*Landed*: branch ~filter-performance-fix~, see
+~ShowAllEntityData_CHANGELOG.wip.json~ WIP.1. Findings while implementing,
+beyond the archived branch's own approach:
+
+- The live fetch pipeline (~startFetchingProcess~) already called the whole
+  post-render hook chain (~initCollapsableColumns~, ERG, Picard, CAA/EAA)
+  exactly once, independent of this fix — it had evolved that way across
+  main's 347 commits since the archived branch diverged. Only the disk-load/
+  hydration path still relied on ~runFilter()~'s old per-keystroke behaviour
+  for the *first* post-hydration hook-chain run; that path now calls
+  ~initCollapsableColumns()~ and the CAA/EAA init functions directly, moved
+  to after ~updateH2Count()~ so ~initCollapsableColumns~'s global toggle
+  button can find ~filterContainer~ already attached to the h2.
+- ~applyZebraStriping~, the CSV/JSON/org/HTML export functions, and the
+  sub-table-filter (STF) CAA/EAA bigbox sync were already
+  ~display:none~-aware (skip hidden rows/cells) before this change — this
+  significantly de-risked the show/hide approach; no changes needed there.
+- New regression this approach would otherwise introduce, now fixed: cdtoc
+  pages' tracklist sub-rows are a synthetic sibling ~<tr>~ inserted by
+  ~_cdtocInitTracklistToggles()~, not part of ~allRows~. The filter show/hide
+  pass now hides a row's tracklist sub-row alongside it, and the sort
+  reorder pass now moves it along with its parent (both keyed on
+  ~.mb-cdtoc-tracklist-row~) — otherwise a hidden/reordered row would leave
+  its sub-row orphaned.
+- ~_updateAllColHeaderCounts~ (the dominant cost per the Findings above) and
+  ~openUniqDrop()~'s unique-values scan are NOT visibility-aware — after this
+  step they reflect counts as of the last full hook-chain run (initial
+  render or disk-load), not the currently-filtered row set, since they're no
+  longer re-triggered per keystroke. This is the accepted, intended effect
+  of hoisting described above; making them reflect the live filtered set
+  again is Steps 3/4's job (caching with proper invalidation), not this
+  step's.
 
 *** TODO Step 2: Extend the Fix-C approach to Sort
 
