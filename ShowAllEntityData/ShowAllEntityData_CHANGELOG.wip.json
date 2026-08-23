@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "⚙️ Internal",
+        "items": [
+          "Added `tests/fixtures/thirdPartyScripts/` (`jesus2099-title-mismatch.js`, `rogue-filter-writer.js`) and `tests/support/thirdPartyScripts.js` (`injectThirdPartyScript()`) — hand-built DOM-mutation snippets simulating specific known third-party userscript side effects (not vendored copies of any real script), injectable before or after our own script's render. Backs two new live specs: one confirming the Structure/Flags detection correctly picks up a jesus2099-style title/recording-name mismatch marker, one confirming `_isGenuineFilterInputEvent()`'s guard against an untrusted column-filter write still holds (the real debug/fail.debug incident this guard was added to fix) — found empirically that the guard's rejection actively resets the poisoned input rather than just ignoring it. Promoted `seedGmValues()` out of `capture-snapshots.js` into `tests/support/gmStubs.js` as a shared export, now used by both. Test tooling only; no userscript runtime changes."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-08-23",
     "sections": [

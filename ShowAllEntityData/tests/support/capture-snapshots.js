@@ -27,6 +27,7 @@ const { chromium } = require('playwright');
 const { loadUserscriptPage } = require('./loadPage');
 const { waitForRenderComplete } = require('./browser');
 const { captureRaw, captureRendered, scrub, diffSummary } = require('./snapshot');
+const { seedGmValues } = require('./gmStubs');
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const AUTH_FILE = path.join(REPO_ROOT, 'playwright', '.auth', 'vzell.json');
@@ -67,23 +68,6 @@ function median(values) {
     const sorted = [...values].sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
     return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-}
-
-/**
- * Pre-seeds `window.__gmValues` via an init script registered BEFORE any
- * navigation, so `tests/support/gmStubs.js`'s own `buildGmStubsScript()`
- * init script (registered later, inside `loadUserscriptPage()`) merges its
- * `{}` onto this instead of overwriting it — the same technique
- * `loadUserscriptPage`'s own `testMode` option uses for
- * `window.__SA_TEST_MODE__`. No-ops when `values` is empty.
- *
- * @param {import('playwright').Page} page
- * @param {Object<string, *>} values
- * @returns {Promise<void>}
- */
-async function seedGmValues(page, values) {
-    if (!values || Object.keys(values).length === 0) return;
-    await page.addInitScript({ content: `window.__gmValues = ${JSON.stringify(values)};` });
 }
 
 /** @param {string} filePath @returns {string|null} */
