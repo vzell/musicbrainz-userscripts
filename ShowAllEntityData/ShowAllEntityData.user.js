@@ -45764,6 +45764,74 @@ a { color: #1565c0; }`;
         _uniqDropOpenValuesSnapshot = '';
     }
 
+    // Per-(table, column) memo of openUniqDrop()'s expensive row-scan results
+    // (valueCounts, all the per-column-family Maps, flag/rel/inline-art
+    // structural scans — see openUniqDrop()'s own comments at each pass).
+    // Keyed first by the live <table> element (so a brand-new table is
+    // always a cache miss), then by column index. Each entry also stores the
+    // visible-row-set signature (see _visibleRowSetSignature(), added in
+    // PERFORMANCE.org Step 3) it was computed against, so a stale entry for
+    // an unchanged column index but a since-filtered/sorted table is
+    // detected and recomputed.
+    const _uniqDropDataCache = new WeakMap();
+
+    /**
+     * Returns the cached row-scan bundle for `table`/`colIndex` if one
+     * exists and was computed against the CURRENT visible-row-set signature
+     * — null on a miss (no entry yet, or the visible rows changed since it
+     * was cached).
+     * @param {HTMLTableElement} table
+     * @param {number} colIndex
+     * @param {string} sig - result of `_visibleRowSetSignature(table)`
+     * @returns {?Object}
+     */
+    function _getUniqDropDataCache(table, colIndex, sig) {
+        const perCol = _uniqDropDataCache.get(table);
+        if (!perCol) return null;
+        const entry = perCol.get(colIndex);
+        return (entry && entry.sig === sig) ? entry.data : null;
+    }
+
+    /**
+     * Stores `data` (openUniqDrop()'s freshly-computed row-scan bundle) in
+     * the cache for `table`/`colIndex`, tagged with the signature it was
+     * computed against.
+     * @param {HTMLTableElement} table
+     * @param {number} colIndex
+     * @param {string} sig
+     * @param {Object} data
+     */
+    function _setUniqDropDataCache(table, colIndex, sig, data) {
+        let perCol = _uniqDropDataCache.get(table);
+        if (!perCol) {
+            perCol = new Map();
+            _uniqDropDataCache.set(table, perCol);
+        }
+        perCol.set(colIndex, { sig, data });
+    }
+
+    /**
+     * Forces the next `openUniqDrop(btn, table, colIndex)` call for this
+     * column to recompute instead of reusing its cached row-scan bundle.
+     *
+     * The signature cache above only tracks WHICH rows are visible, not
+     * per-cell expand/collapse state (`expandedCells`) — the "Cell
+     * structure" section's collapsed/expanded split is read straight from
+     * that Map, not re-derived from the visible-row signature. Every site
+     * that mutates `expandedCells` (`_applyCollapseState()` and
+     * `ensureCollapseDelegate()`'s own inline toggle handling) must call
+     * this for the affected column, or that split silently goes stale the
+     * moment a user expands/collapses one cell without triggering any
+     * filter/sort.
+     * @param {?HTMLTableElement} table
+     * @param {number} colIndex
+     */
+    function _invalidateUniqDropDataCache(table, colIndex) {
+        if (!table) return;
+        const perCol = _uniqDropDataCache.get(table);
+        if (perCol) perCol.delete(colIndex);
+    }
+
     /**
      * Opens (or toggles closed) the unique-values dropdown for one column.
      *
@@ -45858,8 +45926,19 @@ a { color: #1565c0; }`;
             } catch (e) { /* corrupt dataset — start with an empty selection */ }
         }
 
+        // ---- Cache check: skip every row-scan pass below when the visible ----
+        // row set for this table/column hasn't changed since this column's
+        // dropdown was last opened — see _getUniqDropDataCache()'s own JSDoc.
+        // Each Map/counter declaration below defaults to the cached value
+        // instead of an empty Map/0 so the rest of this function (which reads
+        // them unconditionally) works identically on a hit or a miss; each
+        // scan loop itself is additionally skipped via `!_uniqCacheHit` so a
+        // hit doesn't waste time recomputing what it just reused.
+        const _uniqSig      = _visibleRowSetSignature(table);
+        const _uniqCacheHit = _getUniqDropDataCache(table, colIndex, _uniqSig);
+
         // ---- Collect distinct non-empty values with occurrence counts from visible tbody rows ----
-        const valueCounts = new Map();
+        const valueCounts = _uniqCacheHit ? _uniqCacheHit.valueCounts : new Map();
         // Counts for synthetic cell-structure entries (only shown for collapsable columns):
         //   emptyCellCount         -- rows where the cell has no ul>li AND no text content
         //   singleRowCount         -- rows where ul>li count === 1
@@ -45868,10 +45947,10 @@ a { color: #1565c0; }`;
         // Derived from expandedCells (the authoritative source of truth) + ul>li count,
         // NOT from the DOM toggle textContent which is reset to '▶' by initCollapsableColumns
         // after every renderFinalTable call.
-        let emptyCellCount         = 0;
-        let multiRowCollapsedCount = 0;
-        let multiRowExpandedCount  = 0;
-        let singleRowCount         = 0;
+        let emptyCellCount         = _uniqCacheHit ? _uniqCacheHit.emptyCellCount         : 0;
+        let multiRowCollapsedCount = _uniqCacheHit ? _uniqCacheHit.multiRowCollapsedCount : 0;
+        let multiRowExpandedCount  = _uniqCacheHit ? _uniqCacheHit.multiRowExpandedCount  : 0;
+        let singleRowCount         = _uniqCacheHit ? _uniqCacheHit.singleRowCount         : 0;
         // 'Title' column only: rows where a third-party userscript (e.g.
         // jesus2099's) has flagged the recording's Title-cell display name as
         // different from its underlying recording name, via a "≠" character
@@ -45879,7 +45958,7 @@ a { color: #1565c0; }`;
         // (see debug/title.html) — "=" is presumed used when they match, so
         // testing for the inequality glyph itself is the robust signal,
         // immune to exactly which third-party script/class name produced it.
-        let titleMismatchCount = 0;
+        let titleMismatchCount = _uniqCacheHit ? _uniqCacheHit.titleMismatchCount : 0;
         // Any column: rows where the cell carries (or contains) a
         // MusicBrainz "name variation" marker — see _findNameVariationElements()'s
         // own JSDoc for the two known shapes (<span class="name-variation">,
@@ -45888,24 +45967,24 @@ a { color: #1565c0; }`;
         // canonical one (see debug/nassua.html "Nassau Coliseum", debug/
         // variant-engineer-2.html "Andres Bermudezat"), rendered with a
         // dotted underline on the live page.
-        let nameVariationCount = 0;
+        let nameVariationCount = _uniqCacheHit ? _uniqCacheHit.nameVariationCount : 0;
         // "Tracks" column only (isTracksCol): rows whose cell shows more
         // than one medium's track count (joined by "+") — see
         // _findCellTracksPerMedium()'s own JSDoc.
-        let multiMediumCount = 0;
+        let multiMediumCount = _uniqCacheHit ? _uniqCacheHit.multiMediumCount : 0;
         // "Catalog#" column only (isCatalogCol): rows whose list has AT
         // LEAST ONE item with/without a leading string prefix,
         // respectively — independently incremented (not mutually
         // exclusive) since one row's list can contain both kinds of item
         // — see _findCellCatalogParts()'s own JSDoc.
-        let catalogHasPrefixCount = 0;
-        let catalogNoPrefixCount = 0;
+        let catalogHasPrefixCount = _uniqCacheHit ? _uniqCacheHit.catalogHasPrefixCount : 0;
+        let catalogNoPrefixCount = _uniqCacheHit ? _uniqCacheHit.catalogNoPrefixCount : 0;
         // "Catalog#" column only (isCatalogCol): rows whose list has AT
         // LEAST ONE item literally reading MusicBrainz's own "[none]"
         // placeholder (a medium with no catalog number set at all) —
         // independent of catalogHasPrefixCount/catalogNoPrefixCount above,
         // since a row's list can mix "[none]" items with real ones.
-        let catalogNoneCount = 0;
+        let catalogNoneCount = _uniqCacheHit ? _uniqCacheHit.catalogNoneCount : 0;
         // Any column: distinct credit attribute words (e.g. "additional",
         // "assistant", "co", "executive" — the credit-role columns' own
         // `<span class="mb-credit-attr">` sentinel, see
@@ -45919,15 +45998,15 @@ a { color: #1565c0; }`;
         // debug/unique-attribute-task.html for the real two-credit example
         // (Billy Bowers/"additional", Karl Egsieker/"task: Second
         // Engineer") this is built from.
-        const attrValueCounts = new Map();
-        const taskValueCounts = new Map();
+        const attrValueCounts = _uniqCacheHit ? _uniqCacheHit.attrValueCounts : new Map();
+        const taskValueCounts = _uniqCacheHit ? _uniqCacheHit.taskValueCounts : new Map();
         // Distinct date/date-range annotation values (e.g. "on 1988-04-27",
         // "in 1987", "from 1987-01-20 until 1987-03") — the
         // `<span class="mb-credit-date">` sentinel counterpart of
         // attrValueCounts/taskValueCounts above; see
         // _wrapDateAnnotationsInText()'s own JSDoc for the shapes recognized
         // and every builder that produces this sentinel.
-        const dateValueCounts = new Map();
+        const dateValueCounts = _uniqCacheHit ? _uniqCacheHit.dateValueCounts : new Map();
         // Distinct "Event" cell trailing-date values (e.g. "2024-05-28" from
         // native `<a>…</a> (2024-05-28)` tag-value Event listings — see
         // debug/data-missing.html) — the plain-native-markup counterpart of
@@ -45937,14 +46016,14 @@ a { color: #1565c0; }`;
         // cell's bare trailing date never carries). Column-gated (isEventCol
         // below): a no-op Map for any other column, since this is plain
         // free-text parsing with no CSS-class safety net.
-        const eventDateValueCounts = new Map();
+        const eventDateValueCounts = _uniqCacheHit ? _uniqCacheHit.eventDateValueCounts : new Map();
         // Distinct instrument-type values (e.g. "bass", "guitar", "drum
         // machine") — the "Instruments" column's own `<a
         // class="mb-credit-instrument">` sentinel counterpart of the above
         // (see `_buildInstrumentVocalsListItem`'s own JSDoc) — a no-op Map
         // for every other column, since only Instruments ever produces this
         // sentinel.
-        const instrumentValueCounts = new Map();
+        const instrumentValueCounts = _uniqCacheHit ? _uniqCacheHit.instrumentValueCounts : new Map();
         // Distinct credited-as alternate names (e.g. "12-string guitar",
         // "synth strings" — MusicBrainz's own trailing `[…]` bracket on an
         // Instruments/Vocals credit) — the `<span class="mb-credit-altname">`
@@ -45952,7 +46031,7 @@ a { color: #1565c0; }`;
         // `_buildInstrumentVocalsListItem`'s own JSDoc) — a no-op Map for
         // every other column, since only Instruments/Vocals ever produces
         // this sentinel.
-        const altNameValueCounts = new Map();
+        const altNameValueCounts = _uniqCacheHit ? _uniqCacheHit.altNameValueCounts : new Map();
         // Distinct entity-name / disambiguation-comment / primary-alias
         // values (e.g. Work/Authors columns' "An der schönen blauen Donau,
         // op. 314" / "On the Beautiful Blue Danube, op. 314" / "Johann
@@ -45965,15 +46044,15 @@ a { color: #1565c0; }`;
         // entityAliasValueCounts stay correctly gated to comment-bearing
         // entities regardless). No-op Maps for any column/cell with no
         // non-bare entity at all.
-        const entityNameValueCounts    = new Map();
-        const entityCommentValueCounts = new Map();
-        const entityAliasValueCounts   = new Map();
+        const entityNameValueCounts    = _uniqCacheHit ? _uniqCacheHit.entityNameValueCounts    : new Map();
+        const entityCommentValueCounts = _uniqCacheHit ? _uniqCacheHit.entityCommentValueCounts : new Map();
+        const entityAliasValueCounts   = _uniqCacheHit ? _uniqCacheHit.entityAliasValueCounts   : new Map();
         // Distinct leading tag-vote-count values (e.g. "26" from "26 -
         // Johnny Cash") from the original tag-value-entity column itself —
         // see _findCellTagCount()'s own JSDoc. Gated by isTagEntityCol
         // below (computed from activeColumnExtractors), a no-op Map for
         // any other column/page.
-        const entityTagCountValueCounts = new Map();
+        const entityTagCountValueCounts = _uniqCacheHit ? _uniqCacheHit.entityTagCountValueCounts : new Map();
         // Distinct "(cancelled)" marker values (normally just "cancelled")
         // from an Events "Event" cell — see _findCellEventCancelled()'s own
         // JSDoc. Gated below (computed from activeDefinition.type + the
@@ -45983,7 +46062,7 @@ a { color: #1565c0; }`;
         // page type is active decides which of the two kind strings is
         // actually used at collection time (see _eventCancelledKind below),
         // not which Map.
-        const eventCancelledValueCounts = new Map();
+        const eventCancelledValueCounts = _uniqCacheHit ? _uniqCacheHit.eventCancelledValueCounts : new Map();
         // entityNameGlyphMap: name -> first-seen glyphClass (e.g.
         // 'releaselink'), so the "» name:" entry can show the same
         // entity-type icon the old per-href entity-glyph row did — see
@@ -45995,14 +46074,14 @@ a { color: #1565c0; }`;
         // _cellMatchesStructureMode()'s own broadened `name:` match (every
         // row containing this entity name, bare or not — see that
         // branch's own comment for why).
-        const entityNameGlyphMap      = new Map();
+        const entityNameGlyphMap      = _uniqCacheHit ? _uniqCacheHit.entityNameGlyphMap      : new Map();
         // entityNameTypeMap: name -> first-seen entity type string (e.g.
         // 'place'/'area'/'artist' — see _ENTITY_TYPE_GLYPH), populated the
         // same first-seen-wins way as entityNameGlyphMap right below. Drives
         // _sortedNameValues' type-then-alphabetical sort and each "»
         // <type> name:" entry's label — see ENTITY_NAME_TYPE_SORT_ORDER and
         // makeValueSynItem()'s 'name'-kind branch.
-        const entityNameTypeMap       = new Map();
+        const entityNameTypeMap       = _uniqCacheHit ? _uniqCacheHit.entityNameTypeMap       : new Map();
         // entityNameFlagMap: name -> first-seen BAKED flag icon master node
         // (see _bakeFlagIconNode()), only ever populated for
         // entityType === 'area' entries whose row actually carries a real
@@ -46014,8 +46093,8 @@ a { color: #1565c0; }`;
         // generic 'arealink' glyph for that specific entry; absent (no
         // entry in this Map) for every non-country area, which keeps
         // today's generic-glyph behavior unchanged.
-        const entityNameFlagMap       = new Map();
-        const entityNameAnyValueCounts = new Map();
+        const entityNameFlagMap       = _uniqCacheHit ? _uniqCacheHit.entityNameFlagMap       : new Map();
+        const entityNameAnyValueCounts = _uniqCacheHit ? _uniqCacheHit.entityNameAnyValueCounts : new Map();
         // Distinct "join phrase" values (e.g. " & ", " and ", " with ", or
         // arbitrary free text an editor typed like " w/special guest ") —
         // the literal separator text MusicBrainz stores between two
@@ -46025,14 +46104,14 @@ a { color: #1565c0; }`;
         // grouped by exact observed phrase, never normalized toward a
         // "canonical" one (two different phrases never merge). No-op Map
         // for any column/cell with fewer than two entities in one <bdi>.
-        const joinPhraseValueCounts = new Map();
+        const joinPhraseValueCounts = _uniqCacheHit ? _uniqCacheHit.joinPhraseValueCounts : new Map();
         // Distinct "name variation" values (the full "Real – Sort" title
         // string, and each of its two dash-split halves) — from a
         // jesus2099 <span class="name-variation">'s own <a title>
         // attribute (see `_findCellNameVariations()`'s own JSDoc). No-op
         // Map for any column/cell with no such marker (jesus2099 not
         // installed/active, or no credited-name variation on this row).
-        const nameVariationValueCounts = new Map();
+        const nameVariationValueCounts = _uniqCacheHit ? _uniqCacheHit.nameVariationValueCounts : new Map();
         // Distinct "Format" cell size/mediums-count/combo/type values (e.g.
         // '12"', "2", "2xVinyl", "Vinyl") — see `_findCellFormatParts()`'s
         // own JSDoc. formatTypeValueCounts lets "Vinyl"/"Acetate" be
@@ -46040,36 +46119,36 @@ a { color: #1565c0; }`;
         // mixing 7"/10"/12" Vinyl). Column-gated (isFormatCol below):
         // no-op Maps for any other column, since this is plain free-text
         // parsing with no CSS-class safety net.
-        const formatSizeValueCounts  = new Map();
-        const formatCountValueCounts = new Map();
-        const formatComboValueCounts = new Map();
-        const formatTypeValueCounts  = new Map();
+        const formatSizeValueCounts  = _uniqCacheHit ? _uniqCacheHit.formatSizeValueCounts  : new Map();
+        const formatCountValueCounts = _uniqCacheHit ? _uniqCacheHit.formatCountValueCounts : new Map();
+        const formatComboValueCounts = _uniqCacheHit ? _uniqCacheHit.formatComboValueCounts : new Map();
+        const formatTypeValueCounts  = _uniqCacheHit ? _uniqCacheHit.formatTypeValueCounts  : new Map();
         // Distinct "Country/Date" per-release-event country-code/date/
         // weekday values — see `_findCellReleaseEventParts()`'s own JSDoc.
         // revCountryFlagMap: code -> first-seen flag CSS class (e.g.
         // "flag-NL"), for the entry's glyph marker — same first-seen-wins
         // convention as entityNameGlyphMap. No-op Maps for any column
         // without `.release-event` markup.
-        const revCountryValueCounts = new Map();
-        const revCountryFlagMap     = new Map();
-        const revDateValueCounts    = new Map();
-        const revWeekdayValueCounts = new Map();
+        const revCountryValueCounts = _uniqCacheHit ? _uniqCacheHit.revCountryValueCounts : new Map();
+        const revCountryFlagMap     = _uniqCacheHit ? _uniqCacheHit.revCountryFlagMap     : new Map();
+        const revDateValueCounts    = _uniqCacheHit ? _uniqCacheHit.revDateValueCounts    : new Map();
+        const revWeekdayValueCounts = _uniqCacheHit ? _uniqCacheHit.revWeekdayValueCounts : new Map();
         // Distinct "Country" (the synthetic column splitCountryDate()
         // itself produces from "Country/Date") name/code values — see
         // `_findCellCountryNameParts()`'s own JSDoc. countryCodeFlagMap
         // mirrors revCountryFlagMap above. No-op Maps for any column
         // without bare `.release-country` markup.
-        const countryNameValueCounts = new Map();
-        const countryCodeValueCounts = new Map();
-        const countryCodeFlagMap     = new Map();
+        const countryNameValueCounts = _uniqCacheHit ? _uniqCacheHit.countryNameValueCounts : new Map();
+        const countryCodeValueCounts = _uniqCacheHit ? _uniqCacheHit.countryCodeValueCounts : new Map();
+        const countryCodeFlagMap     = _uniqCacheHit ? _uniqCacheHit.countryCodeFlagMap     : new Map();
         // Distinct "Tracks" cell per-medium track-count values (e.g. "6")
         // — see `_findCellTracksPerMedium()`'s own JSDoc. Column-gated
         // (isTracksCol below).
-        const tracksPerMediumValueCounts = new Map();
+        const tracksPerMediumValueCounts = _uniqCacheHit ? _uniqCacheHit.tracksPerMediumValueCounts : new Map();
         // Distinct "Catalog#" list-item prefix values (e.g. "CBS", "S
         // CBS") — see `_findCellCatalogParts()`'s own JSDoc. Column-gated
         // (isCatalogCol below).
-        const catalogPrefixValueCounts = new Map();
+        const catalogPrefixValueCounts = _uniqCacheHit ? _uniqCacheHit.catalogPrefixValueCounts : new Map();
         // "Editor" column only (annotations pageType): distinct
         // deleted-editor identities, tooltip-recorded historical names,
         // tooltip membership spans, and `.comment` values — see
@@ -46102,13 +46181,13 @@ a { color: #1565c0; }`;
         // entityNameValueCounts/etc.; see `_findCellArtistRoles()`'s own
         // JSDoc. No-op Map for any column/cell with no `.artist-roles`
         // list at all.
-        const eventRoleValueCounts = new Map();
+        const eventRoleValueCounts = _uniqCacheHit ? _uniqCacheHit.eventRoleValueCounts : new Map();
         // "Entity info - Role" section's own values — one entry per ATOMIC
         // role word, decomposed from eventRoleValueCounts' combined credit
         // strings via `_splitArtistRoleTokens()` (comma-split), so
         // e.g. "composer, lyricist" contributes to both "composer" and
         // "lyricist" here instead of only its own combined-string entry.
-        const roleTokenValueCounts = new Map();
+        const roleTokenValueCounts = _uniqCacheHit ? _uniqCacheHit.roleTokenValueCounts : new Map();
         // Distinct CAA/EAA per-image type-badge pill values (e.g. "Front",
         // "Obi", "Matrix/Runout") and free-text comment values (e.g. "Front
         // cover, booklet page i") — the "CAA info"/"EAA info" section's own
@@ -46116,8 +46195,8 @@ a { color: #1565c0; }`;
         // (see `_artBuildImageLi()`'s own JSDoc — not context-parameterized,
         // so these classes are identical for both CAA and EAA columns).
         // No-op Maps for any column that isn't a CAA/EAA art column.
-        const artTypeValueCounts    = new Map();
-        const artCommentValueCounts = new Map();
+        const artTypeValueCounts    = _uniqCacheHit ? _uniqCacheHit.artTypeValueCounts    : new Map();
+        const artCommentValueCounts = _uniqCacheHit ? _uniqCacheHit.artCommentValueCounts : new Map();
         // One entry per unique <li> item's own clean text, for multi-row
         // (≥2-item) list cells — e.g. "Karl Egsieker (task: Second
         // Engineer)" as its own selectable value distinct from the merged
@@ -46133,7 +46212,7 @@ a { color: #1565c0; }`;
         // not a list) correctly contribute nothing since
         // `_findCellListItems` returns `[]` for those. See
         // `MB_UNIQ_ITEM_VALUE_PREFIX`'s own JSDoc and debug/multi-row-cell.html.
-        const itemValueCounts = new Map();
+        const itemValueCounts = _uniqCacheHit ? _uniqCacheHit.itemValueCounts : new Map();
         // First-occurrence ordered per-<li> item texts for each multi-item
         // (>=2-item) whole-cell value in `valueCounts`, keyed by that same
         // raw value string — lets the whole-cell dropdown ENTRY read as a
@@ -46141,7 +46220,7 @@ a { color: #1565c0; }`;
         // while the underlying value/key used for the checkbox state and
         // row-filter equality stays the untouched raw getCleanColumnText()
         // string, so clicking the entry keeps filtering exactly as before.
-        const valueItemSequence = new Map();
+        const valueItemSequence = _uniqCacheHit ? _uniqCacheHit.valueItemSequence : new Map();
         const isTitleCol = (() => {
             const headers = table.querySelectorAll('thead tr:first-child th');
             const th = headers[colIndex];
@@ -46212,7 +46291,7 @@ a { color: #1565c0; }`;
             : ['tag-value', 'user-tag-value'].includes(activeDefinition && activeDefinition.type) ? 'eventcancelled'
             : null;
         const tbody = table.tBodies[0];
-        if (tbody) {
+        if (!_uniqCacheHit && tbody) {
             Array.from(tbody.rows).forEach(row => {
                 if (row.style.display === 'none') return;
                 const cell = row.cells[colIndex];
@@ -47126,7 +47205,7 @@ a { color: #1565c0; }`;
          *
          * @type {Map<string, Array<{type: 'text', text: string}|{type: 'icon', node: HTMLElement}>>}
          */
-        const flagIconMap = hasFlagIcons ? (() => {
+        const flagIconMap = _uniqCacheHit ? _uniqCacheHit.flagIconMap : hasFlagIcons ? (() => {
             const segMap = new Map();
             if (!tbody) return segMap;
             const iconSel = 'span[class*="flag-"], span.area-icon';
@@ -47253,7 +47332,7 @@ a { color: #1565c0; }`;
             return segMap;
         })() : new Map();
 
-        const isRelCellCol = (() => {
+        const isRelCellCol = _uniqCacheHit ? _uniqCacheHit.isRelCellCol : (() => {
             if (!tbody) return false;
             for (const row of tbody.rows) {
                 if (row.style.display === 'none') continue;
@@ -47263,7 +47342,7 @@ a { color: #1565c0; }`;
             return false;
         })();
 
-        const relIconCounts = isRelCellCol ? (() => {
+        const relIconCounts = _uniqCacheHit ? _uniqCacheHit.relIconCounts : isRelCellCol ? (() => {
             const counts  = new Map(); // domainKey → row count
             const iconFor = new Map(); // domainKey → display URL (for label + favicon)
             if (!tbody) return counts;
@@ -47290,10 +47369,10 @@ a { color: #1565c0; }`;
         //     means the thumbnail loaded successfully → image IS available.
         //   • A cell with a ph span but WITHOUT .mb-art-cache-hint-inline means
         //     the fetch found no artwork → image is NOT available.
-        let inlineArtType    = null; // 'caa' | 'eaa' | null
-        let inlineArtYes     = 0;   // cells with a loaded inline thumbnail
-        let inlineArtNo      = 0;   // cells with ph span but no loaded thumbnail
-        if (tbody) {
+        let inlineArtType    = _uniqCacheHit ? _uniqCacheHit.inlineArtType : null; // 'caa' | 'eaa' | null
+        let inlineArtYes     = _uniqCacheHit ? _uniqCacheHit.inlineArtYes : 0;   // cells with a loaded inline thumbnail
+        let inlineArtNo      = _uniqCacheHit ? _uniqCacheHit.inlineArtNo  : 0;   // cells with ph span but no loaded thumbnail
+        if (!_uniqCacheHit && tbody) {
             Array.from(tbody.rows).forEach(row => {
                 if (row.style.display === 'none') return;
                 const cell = row.cells[colIndex];
@@ -47313,6 +47392,32 @@ a { color: #1565c0; }`;
                 if (!sk) return; // fetch not yet settled — skip this cell
                 if (sk.textContent === 'caa-inline-yes')     inlineArtYes++;
                 else if (sk.textContent === 'caa-inline-no') inlineArtNo++;
+            });
+        }
+
+        // Cache store: on a miss, every Map/counter above was just freshly
+        // (re)computed against _uniqSig — save the bundle so the next open of
+        // this column, with no visible-row-set change in between, can skip
+        // straight past all 5 tbody.rows passes above (see _uniqCacheHit).
+        if (!_uniqCacheHit) {
+            _setUniqDropDataCache(table, colIndex, _uniqSig, {
+                valueCounts, itemValueCounts, valueItemSequence,
+                emptyCellCount, multiRowCollapsedCount, multiRowExpandedCount, singleRowCount,
+                titleMismatchCount, nameVariationCount, multiMediumCount,
+                catalogHasPrefixCount, catalogNoPrefixCount, catalogNoneCount,
+                attrValueCounts, taskValueCounts, dateValueCounts, eventDateValueCounts,
+                instrumentValueCounts, altNameValueCounts,
+                entityNameValueCounts, entityCommentValueCounts, entityAliasValueCounts,
+                entityTagCountValueCounts, eventCancelledValueCounts,
+                entityNameGlyphMap, entityNameTypeMap, entityNameFlagMap, entityNameAnyValueCounts,
+                joinPhraseValueCounts, nameVariationValueCounts,
+                formatSizeValueCounts, formatCountValueCounts, formatComboValueCounts, formatTypeValueCounts,
+                revCountryValueCounts, revCountryFlagMap, revDateValueCounts, revWeekdayValueCounts,
+                countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap,
+                tracksPerMediumValueCounts, catalogPrefixValueCounts,
+                eventRoleValueCounts, roleTokenValueCounts, artTypeValueCounts, artCommentValueCounts,
+                flagIconMap, isRelCellCol, relIconCounts,
+                inlineArtType, inlineArtYes, inlineArtNo,
             });
         }
 
@@ -48923,6 +49028,7 @@ a { color: #1565c0; }`;
                         const key = `${rowIdx}:${colIdx}`;
                         if (expand) expandedCells.set(key, true);
                         else        expandedCells.delete(key);
+                        _invalidateUniqDropDataCache(td.closest('table.tbl'), colIdx);
                     }
                 }
 
@@ -48974,6 +49080,7 @@ a { color: #1565c0; }`;
                 const key = `${rowIdx}:${colIdx}`;
                 if (expand) expandedCells.set(key, true);
                 else        expandedCells.delete(key);
+                _invalidateUniqDropDataCache(td.closest('table.tbl'), colIdx);
             }
         }
 
@@ -49146,6 +49253,7 @@ a { color: #1565c0; }`;
                         const key = `${rowIdx}:${colIdx}`;
                         if (nowExpanding) expandedCells.set(key, true);
                         else              expandedCells.delete(key);
+                        _invalidateUniqDropDataCache(table, colIdx);
                     }
                 }
                 return;
@@ -49187,6 +49295,7 @@ a { color: #1565c0; }`;
                         const _pKey = `${_pRowIdx}:${_pColIdx}`;
                         if (proseExpanding) expandedCells.set(_pKey, true);
                         else                 expandedCells.delete(_pKey);
+                        _invalidateUniqDropDataCache(table, _pColIdx);
                     }
                 }
 
@@ -49250,6 +49359,7 @@ a { color: #1565c0; }`;
                         const key = `${rowIdx}:${colIdx}`;
                         if (nowExpanding) expandedCells.set(key, true);
                         else             expandedCells.delete(key);
+                        _invalidateUniqDropDataCache(table, colIdx);
                     }
                 }
             }
