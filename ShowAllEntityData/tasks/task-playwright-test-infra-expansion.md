@@ -44,6 +44,46 @@ genuinely new *script* addition this doc requires; everything else (Parts
 
 ---
 
+## Roadmap: why this work matters beyond test coverage, and where it's headed
+
+There is a separate, already-existing branch, **`perf-steps-1-4`**, tackling
+performance work on the script's slower paths. This is not a coincidental
+overlap: while building Part 2's live spec on *this* branch
+(`satest-hook-playwright-infra`), empirical measurement confirmed exactly the
+kind of cost `perf-steps-1-4` exists to address —
+`initCollapsableColumns()` took multiple real seconds of synchronous-ish work
+to finish building per-cell collapse toggles across artist-works' ~1600-row,
+6-collapsable-column table (`tests/live/uniqdrop-structure-section.spec.js`
+had to add an explicit `page.waitForFunction()` wait for the target column's
+toggles to appear, rather than trusting `#mb-filter-container` visibility
+alone — see that spec's own comments). That measurement was incidental, not
+a designed benchmark — but it's a preview of exactly why this whole test
+framework is being built now, ahead of merging `perf-steps-1-4`: **so we have
+a working, timing-capable test harness in place *before* the performance
+changes land, not after.**
+
+Planned merge sequence:
+
+1. Finish implementing and testing everything in this doc
+   (`task-playwright-test-infra-expansion.md`) and the sibling
+   `task-playwright-html-snapshot-harness.md` (including its Part 5
+   performance-timing/baseline design) on `satest-hook-playwright-infra`.
+2. Merge `satest-hook-playwright-infra` into `main`.
+3. Test further on `main` to confirm everything is stable there.
+4. Merge `main` into `perf-steps-1-4` and re-run the same tests/timings
+   against it, to measure whether — and by how much — the performance
+   changes on that branch actually moved the needle (e.g. on
+   `initCollapsableColumns()`'s multi-column large-table cost specifically,
+   and on the Part 5 `artist-releasegroups` perf baseline more generally).
+5. Expect to have to **adjust tests written against pre-perf-work timing
+   assumptions** once `perf-steps-1-4` is in the mix — any `waitForFunction`/
+   `waitFor`/timeout value in this doc's specs that was sized around the
+   *current*, unoptimized cost of a slow path (the collapse-toggle wait
+   above is the concrete example already on record) may need loosening,
+   tightening, or outright rethinking once that path's real-world cost
+   changes. Don't treat those numbers as sacred — they're a snapshot of
+   pre-perf-work behavior, not a spec requirement.
+
 ## Part 1 — `__saTest` test-mode debug hook (touches the shared userscript)
 
 Add a small, read-only introspection API to `ShowAllEntityData.user.js`,

@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "⚙️ Internal",
+        "items": [
+          "Added `tests/live/uniqdrop-structure-section.spec.js`, the first live Playwright spec built on WIP.1's `window.__saTest` hook — exercises the unique-values dropdown's \"Structure\" section (empty/single-row/collapsed/expanded cell states) against a real MusicBrainz page. Test tooling only; no userscript runtime changes."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-08-23",
     "sections": [
