@@ -31,14 +31,15 @@ gating complications, one `multi` tableMode with the heaviest single-page
 feature set in the script:
 
 1. **`artist-releasegroups`** (`ShowAllEntityData.user.js` pageDefinitions
-   entry #79) — `https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=1`
-   (Bruce Springsteen, Various Artists RGs). tableMode `multi`, renders into
-   MB's native h3/table structure. Exercises: column erasers on Title
-   (▶/jesus2099), CAA on Title, injected Relationships, numeric Year/Releases
-   columns, collapsible CAA, tooltips, sticky/main Title. Note the internal
-   pre-fetch pass (`?all=0&va=0/1`) the script runs before its main fetch to
-   resolve "Official" release-group counts — the snapshot must wait for the
-   *final* render, not this intermediate pass.
+   entry #79) — `https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0`
+   (Bruce Springsteen, standard "🧮 Artist RGs" branch — **not** the Various
+   Artists / `va=1` branch). tableMode `multi`, renders into MB's native
+   h3/table structure. Exercises: column erasers on Title (▶/jesus2099), CAA
+   on Title, injected Relationships, numeric Year/Releases columns,
+   collapsible CAA, tooltips, sticky/main Title. Note the internal pre-fetch
+   pass (`?all=0&va=0/1`) the script runs before its main fetch to resolve
+   "Official" release-group counts — the snapshot must wait for the *final*
+   render, not this intermediate pass.
 
 2. **`release-tracks`** (pageDefinitions entry #87) —
    `https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897`
@@ -152,7 +153,7 @@ An org-mode table at `test/snapshots/registry.org`, one row per pageType:
 ```org
 | pageType              | URL                                                                  | tableMode | script version | last captured | feature/change verified                  | notes                                  |
 |-----------------------+-----------------------------------------------------------------------+-----------+-----------------+----------------+-------------------------------------------+-----------------------------------------|
-| artist-releasegroups   | /artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=1               | multi     | 9.99.xxx         | 2026-08-23     | pilot harness setup                        |                                         |
+| artist-releasegroups   | /artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0               | multi     | 9.99.xxx         | 2026-08-23     | pilot harness setup                        |                                         |
 | release-tracks         | /release/1d404e1d-fcb6-3a52-b478-e706e893c897                        | multi     | 9.99.xxx         | 2026-08-23     | pilot harness setup                        | requires sa_enable_release_tracks=true |
 ```
 
@@ -161,6 +162,81 @@ notes entry for any newly-discovered volatile-region scrub addition) every
 time snapshots are re-captured and committed as a new baseline. This table
 is a human dashboard, not the diff mechanism — don't try to make it
 machine-parsed by the runner in this pilot.
+
+## Part 5 — Performance timing (artist-releasegroups only, for this pilot)
+
+Purpose: catch performance regressions on large paginated tables, separately
+from the HTML-correctness snapshots above. Scope this to the standard
+`artist-releasegroups` branch only for now — `release-tracks` is
+non-paginated and a poor first target for a *pagination-scaling* signal;
+extend to it later once this pattern is proven.
+
+### What to measure
+
+- **Wall time**, bracketed in `capture-snapshots.mjs` around the same
+  `trigger → waitForRenderComplete` span already used for the HTML snapshot,
+  via `Date.now()` before/after. This is the user-facing number.
+- **In-page stage timings**, via `performance.mark()`/`performance.measure()`
+  calls added at the boundaries of `startFetchingProcess()`'s pipeline (check
+  its existing step structure first — do not assume stage names, read the
+  function). At minimum: fetch-phase-done, sort-phase-done (relevant to
+  `sortLargeArray()`), render-phase-done. Read these back via
+  `page.evaluate(() => performance.getEntriesByType('measure'))` after
+  `waitForRenderComplete()` resolves.
+- **Row/item count** for the run (however the script itself counts rendered
+  rows — reuse that rather than re-deriving it via a DOM query), captured
+  alongside every timing number. A duration with no denominator is
+  meaningless for a paginated page whose size can itself drift over time as
+  Bruce Springsteen's catalogue gets edited.
+
+### Noise handling
+
+Live MB response times vary run to run. Do not hard-fail on a single sample:
+
+- Repeat the capture **5 times** in one `capture-snapshots.mjs --perf`
+  invocation (separate flag from the default HTML-snapshot run — this is
+  slower and shouldn't run on every invocation), take the **median** wall
+  time and median of each in-page stage measure.
+- Compare the new median against the committed baseline (see below):
+  - **> 25% slower** → printed as a warning, does not fail the run.
+  - **> 3x slower** → printed as a failure, non-zero exit code.
+  - These thresholds are a starting point, not tuned — say so in a comment,
+    and expect to revisit once you have a few real baseline runs to look at.
+
+### Baseline storage
+
+Commit `test/snapshots/artist-releasegroups/perf-baseline.json`:
+
+```json
+{
+  "pageType": "artist-releasegroups",
+  "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0",
+  "capturedAt": "2026-08-23",
+  "scriptVersion": "9.99.xxx",
+  "itemCount": 0,
+  "medianWallMs": 0,
+  "stages": {
+    "fetch": 0,
+    "sort": 0,
+    "render": 0
+  },
+  "samples": 5
+}
+```
+
+Diffing this is the same `git diff` pattern as the HTML snapshots — no
+separate history mechanism. Add a row to `registry.org`'s notes column when
+a new perf baseline is committed, same as any other re-baseline.
+
+### Explicit non-goals for this pilot
+
+- No CI integration, no automated pass/fail gate blocking anything — this is
+  a manual `--perf` run Volker triggers around specific changes, at least
+  until the thresholds above have proven themselves not to be flaky.
+- No CAA-queue-drain-time scaling measurement yet — `artist-releasegroups`
+  does exercise CAA, but tie that specifically to the CAA queue concurrency
+  test from the earlier unique-values-dropdown task rather than duplicating
+  it here.
 
 ## Project conventions (apply to all touched code)
 

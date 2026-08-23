@@ -96498,3 +96498,7 @@ This will also guard against eventually MusicBainz changing their initial page l
 pageTypes supported, so that we know when sometimes something breaks, it's basically because of MB chaning something.
 
 Eventually we will test every possible pageType mentioned in pageTypes-testing-reference.org
+
+* redo
+
+Do just steps 1-4 but with the bug fix (b10c209) for a Step-1 regression, but do this in a new branch from main
