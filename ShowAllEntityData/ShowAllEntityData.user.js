@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.925+2026-08-23
+// @version      9.99.926+2026-08-23
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -246,6 +246,29 @@
                          "single-table' bug (see debug/CAA-missing-doubled.org) and kept " +
                          "around for future use. Uses the 'caa'/'eaa'/'cache'/'navigation' " +
                          "channels — requires 'Enable debug logging' to also be active."
+        },
+
+        sa_enable_art_fetch_debug_logging: {
+            label: "Enable CAA/EAA image fetch debug logging",
+            type: "checkbox",
+            default: false,
+            description: "Enable console logging for individual CAA/EAA image fetches: " +
+                         "inline thumbnails (Release/Title column), the big-picture strip " +
+                         "and column icon, and details/expand (per-entity JSON) fetches. " +
+                         "Separate from 'Enable CAA/EAA artwork diagnostic logging', which " +
+                         "covers snapshot/watchdog/counter diagnostics instead. Requires " +
+                         "'Enable debug logging' to also be active."
+        },
+
+        sa_enable_art_cache_fetch_debug_logging: {
+            label: "Enable CAA/EAA low-level cache/network fetch debug logging",
+            type: "checkbox",
+            default: false,
+            description: "Enable console logging inside the shared low-level image fetch " +
+                         "helper (_artFetchCachedImage): memory-cache hits, IndexedDB hits, " +
+                         "network fetches, and IndexedDB stores. This is the plumbing shared " +
+                         "by both inline thumbnails and column-icon loading. Requires " +
+                         "'Enable debug logging' to also be active."
         },
 
         // ============================================================
@@ -56173,10 +56196,14 @@ a { color: #1565c0; }`;
                             if (fromMemory)   _caaFetchStats.inline.memory++;
                             else if (fromIdb) _caaFetchStats.inline.idb++;
                             else              _caaFetchStats.inline.network++;
-                            Lib.debug('caa', `ergInjectCaaInlineThumbnails: loaded OK (idb=${fromIdb} memory=${fromMemory}) — ${imgurl}`);
+                            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                Lib.debug('caa', `ergInjectCaaInlineThumbnails: loaded OK (idb=${fromIdb} memory=${fromMemory}) — ${imgurl}`);
+                            }
                         })
                         .catch(() => {
-                            Lib.debug('caa', `ergInjectCaaInlineThumbnails: failed to load ${imgurl} — placeholder stays as spacer`);
+                            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                Lib.debug('caa', `ergInjectCaaInlineThumbnails: failed to load ${imgurl} — placeholder stays as spacer`);
+                            }
                         });
                 }
 
@@ -56210,12 +56237,16 @@ a { color: #1565c0; }`;
                                 ph.appendChild(hintSpan);
                             }
                             _caaFetchStats.inline.browser++;
-                            Lib.debug('caa', `ergInjectCaaInlineThumbnails: loaded OK — ${imgurl}`);
+                            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                Lib.debug('caa', `ergInjectCaaInlineThumbnails: loaded OK — ${imgurl}`);
+                            }
                         }
                         resolve();
                     });
                     img.addEventListener('error', function() {
-                        Lib.debug('caa', `ergInjectCaaInlineThumbnails: failed to load ${imgurl} — placeholder stays as spacer`);
+                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                            Lib.debug('caa', `ergInjectCaaInlineThumbnails: failed to load ${imgurl} — placeholder stays as spacer`);
+                        }
                         resolve();
                     });
                     img.src = imgurl;
@@ -56223,7 +56254,9 @@ a { color: #1565c0; }`;
             };
 
             _caaQueue.enqueue(loadTask);
-            Lib.debug('caa', `ergInjectCaaInlineThumbnails: enqueued ${imgurl}`);
+            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                Lib.debug('caa', `ergInjectCaaInlineThumbnails: enqueued ${imgurl}`);
+            }
         });
     }
 
@@ -57519,7 +57552,9 @@ a { color: #1565c0; }`;
 
         // ── Tier 1: per-session in-memory Map ──────────────────────────────────
         if (_artIdbMemCache.has(normUrl)) {
-            Lib.debug('idb', `_artFetchCachedImage: memory hit — ${normUrl}`);
+            if (Lib.settings.sa_enable_art_cache_fetch_debug_logging) {
+                Lib.debug('idb', `_artFetchCachedImage: memory hit — ${normUrl}`);
+            }
             return { objectUrl: _artIdbMemCache.get(normUrl), fromIdb: false, fromMemory: true };
         }
 
@@ -57530,7 +57565,9 @@ a { color: #1565c0; }`;
                 const objUrl = URL.createObjectURL(rec.blob);
                 _artIdbBlobUrls.add(objUrl);
                 _artIdbMemCache.set(normUrl, objUrl);
-                Lib.debug('idb', `_artFetchCachedImage: IDB hit — ${normUrl}`);
+                if (Lib.settings.sa_enable_art_cache_fetch_debug_logging) {
+                    Lib.debug('idb', `_artFetchCachedImage: IDB hit — ${normUrl}`);
+                }
                 return { objectUrl: objUrl, fromIdb: true, fromMemory: false };
             }
             // Record absent or expired — fall through to network.
@@ -57539,7 +57576,9 @@ a { color: #1565c0; }`;
         }
 
         // ── Tier 3: network (GM_xmlhttpRequest, CORS-bypass) ───────────────────
-        Lib.debug('idb', `_artFetchCachedImage: network fetch — ${normUrl}`);
+        if (Lib.settings.sa_enable_art_cache_fetch_debug_logging) {
+            Lib.debug('idb', `_artFetchCachedImage: network fetch — ${normUrl}`);
+        }
         const blob   = await _artGmFetchBlob(normUrl);
         const objUrl = URL.createObjectURL(blob);
         _artIdbBlobUrls.add(objUrl);
@@ -57547,7 +57586,11 @@ a { color: #1565c0; }`;
 
         // Fire-and-forget IDB write — a write failure must not block the caller.
         _artIdbPut('images', { url: normUrl, blob, storedAt: Date.now() })
-            .then(() => Lib.debug('idb', `_artFetchCachedImage: IDB stored — ${normUrl}`))
+            .then(() => {
+                if (Lib.settings.sa_enable_art_cache_fetch_debug_logging) {
+                    Lib.debug('idb', `_artFetchCachedImage: IDB stored — ${normUrl}`);
+                }
+            })
             .catch(e  => Lib.warn('idb',  `_artFetchCachedImage: IDB write failed for ${normUrl}:`, e));
 
         return { objectUrl: objUrl, fromIdb: false, fromMemory: false };
@@ -59599,9 +59642,11 @@ a { color: #1565c0; }`;
         }
 
         artCell.dataset[ctx.multiBuiltAttr] = '1';
-        Lib.debug(ctx.key,
-            `_artBuildMultiRowArtCell: ${existingUl ? 'rebuilt' : 'built'} ` +
-            `${images.length} image row(s) in ${ctx.column} cell`);
+        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+            Lib.debug(ctx.key,
+                `_artBuildMultiRowArtCell: ${existingUl ? 'rebuilt' : 'built'} ` +
+                `${images.length} image row(s) in ${ctx.column} cell`);
+        }
     }
 
     /**
@@ -59619,7 +59664,9 @@ a { color: #1565c0; }`;
     function _artLoadIcon(ctx, artIcon, cacheBust = false) {
         const anchor = artIcon.closest('a[href]');
         if (!anchor) {
-            Lib.debug(ctx.key, `${ctx.key}LoadIcon: skipped — no wrapping anchor found for icon`, artIcon);
+            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                Lib.debug(ctx.key, `${ctx.key}LoadIcon: skipped — no wrapping anchor found for icon`, artIcon);
+            }
             return Promise.resolve();
         }
 
@@ -59630,7 +59677,9 @@ a { color: #1565c0; }`;
         const imgurl = ctx.archiveHost + entityPath + '/front-' + size +
                        (cacheBust ? '?_cb=' + Date.now() : '');
 
-        Lib.debug(ctx.key, `${ctx.key}LoadIcon: loading ${imgurl}`);
+        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+            Lib.debug(ctx.key, `${ctx.key}LoadIcon: loading ${imgurl}`);
+        }
 
         /**
          * Common success handler shared by both the IDB and the native img load
@@ -59681,13 +59730,15 @@ a { color: #1565c0; }`;
                     if (_h.status !== 'network') {
                         // Log RT details only for native-path lookups (non-blob src)
                         const hint = getResourceTimingHint(src);
-                        Lib.debug(ctx.key,
-                            `${ctx.key}LoadIcon: cache-hint=${hint.status} ` +
-                            `(ts=${hint.transferSize} ebs=${hint.encodedBodySize} ` +
-                            `dur=${hint.duration !== null ? Math.round(hint.duration) + 'ms' : 'n/a'} ` +
-                            `redirectStart=${hint.redirectStart !== null ? Math.round(hint.redirectStart) + 'ms' : 'n/a'} ` +
-                            `responseStart=${hint.responseStart !== null ? Math.round(hint.responseStart) + 'ms' : 'n/a'})` +
-                            ` — ${imgurl}`);
+                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                            Lib.debug(ctx.key,
+                                `${ctx.key}LoadIcon: cache-hint=${hint.status} ` +
+                                `(ts=${hint.transferSize} ebs=${hint.encodedBodySize} ` +
+                                `dur=${hint.duration !== null ? Math.round(hint.duration) + 'ms' : 'n/a'} ` +
+                                `redirectStart=${hint.redirectStart !== null ? Math.round(hint.redirectStart) + 'ms' : 'n/a'} ` +
+                                `responseStart=${hint.responseStart !== null ? Math.round(hint.responseStart) + 'ms' : 'n/a'})` +
+                                ` — ${imgurl}`);
+                        }
                     }
                 }
 
@@ -59756,14 +59807,18 @@ a { color: #1565c0; }`;
                         if (hdrImg && hdrImg.style.display === 'none') {
                             hdrImg.src = imgurl;
                             hdrImg.style.display = 'inline-block';
-                            Lib.debug(ctx.key,
-                                `${ctx.key}LoadIcon: backfilled column-header thumbnail — ${imgurl}`);
+                            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                Lib.debug(ctx.key,
+                                    `${ctx.key}LoadIcon: backfilled column-header thumbnail — ${imgurl}`);
+                            }
                         }
                     }
                 }
             }
 
-            Lib.debug(ctx.key, `${ctx.key}LoadIcon: loaded OK (idb=${wasIdbHit} memory=${wasMemoryHit}) — ${imgurl}`);
+            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                Lib.debug(ctx.key, `${ctx.key}LoadIcon: loaded OK (idb=${wasIdbHit} memory=${wasMemoryHit}) — ${imgurl}`);
+            }
         };
 
         /**
@@ -59772,7 +59827,9 @@ a { color: #1565c0; }`;
          * the native img.onerror path.
          */
         const _onIconError = () => {
-            Lib.debug(ctx.key, `${ctx.key}LoadIcon: failed to load ${imgurl} — injecting ⚠⟳ retry indicator`);
+            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                Lib.debug(ctx.key, `${ctx.key}LoadIcon: failed to load ${imgurl} — injecting ⚠⟳ retry indicator`);
+            }
 
             // Find or create the flex-column wrapper that sits after the anchor.
             // This mirrors the structure used by the Resource Timing cache-hint
@@ -59838,7 +59895,9 @@ a { color: #1565c0; }`;
                     })
                     .catch(err => {
                         // Network fetch failed (e.g. 404 = no front image, or CDN error).
-                        Lib.debug(ctx.key, `${ctx.key}LoadIcon: IDB/network fetch failed — ${err.message}`);
+                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                            Lib.debug(ctx.key, `${ctx.key}LoadIcon: IDB/network fetch failed — ${err.message}`);
+                        }
                         _onIconError();
                         resolve();
                     });
@@ -59853,7 +59912,9 @@ a { color: #1565c0; }`;
         return new Promise(resolve => {
             const img    = document.createElement('img');
             const _timer = setTimeout(() => {
-                Lib.debug(ctx.key, `${ctx.key}LoadIcon: img load watchdog fired (30 s) — ${imgurl}`);
+                if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                    Lib.debug(ctx.key, `${ctx.key}LoadIcon: img load watchdog fired (30 s) — ${imgurl}`);
+                }
                 resolve();
             }, 30000);
             img.addEventListener('load', function() {
@@ -59923,7 +59984,9 @@ a { color: #1565c0; }`;
             // Tier 1: in-session Map — no network round-trip.
             count  = ctx.countCache.get(entityPath);
             images = ctx.imagesCache.get(entityPath) || [];
-            Lib.debug(ctx.key, `${ctx.key}EnrichIcon: ${count} image(s) for ${entityPath} (session cache)`);
+            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                Lib.debug(ctx.key, `${ctx.key}EnrichIcon: ${count} image(s) for ${entityPath} (session cache)`);
+            }
         } else {
             // Tier 2: IndexedDB metadata — survives page reloads and Load-from-Disk.
             if (Lib.settings.sa_art_idb_enable) {
@@ -59934,7 +59997,9 @@ a { color: #1565c0; }`;
                         images = idbMeta.images;
                         ctx.countCache.set(entityPath, count);
                         ctx.imagesCache.set(entityPath, images);
-                        Lib.debug(ctx.key, `${ctx.key}EnrichIcon: ${count} image(s) for ${entityPath} (IDB metadata)`);
+                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                            Lib.debug(ctx.key, `${ctx.key}EnrichIcon: ${count} image(s) for ${entityPath} (IDB metadata)`);
+                        }
                         // Skip to the decoration block — no network call needed.
                         if (count <= 0) { anchor.dataset[ctx.enrichedAttr] = '1'; return; }
                         // fall through to decoration
@@ -59988,8 +60053,10 @@ a { color: #1565c0; }`;
                             const sortKeySpanI = artCellI && artCellI.querySelector('.' + ctx.sortKeyClass);
                             if (sortKeySpanI && sortKeySpanI.textContent === 'no') {
                                 sortKeySpanI.textContent = 'yes';
-                                Lib.debug(ctx.key,
-                                    `${ctx.key}EnrichIcon: flipped sort key "no"→"yes" for Path-C anchor ${entityPath} (IDB)`);
+                                if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                    Lib.debug(ctx.key,
+                                        `${ctx.key}EnrichIcon: flipped sort key "no"→"yes" for Path-C anchor ${entityPath} (IDB)`);
+                                }
                             }
                         }
                         anchor.dataset[ctx.enrichedAttr] = '1';
@@ -60008,7 +60075,9 @@ a { color: #1565c0; }`;
                     // 404 — no archive entry at all: expected, debug only.
                     // 429 / 5xx — server-side problems: warn so they surface.
                     if (resp.status === 404) {
-                        Lib.debug(ctx.key, `${ctx.key}EnrichIcon: HTTP 404 (no entry) for ${entityPath}`);
+                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                            Lib.debug(ctx.key, `${ctx.key}EnrichIcon: HTTP 404 (no entry) for ${entityPath}`);
+                        }
                     } else {
                         Lib.warn(ctx.key, `${ctx.key}EnrichIcon: HTTP ${resp.status} for ${entityPath} — enrichment skipped`);
                     }
@@ -60032,7 +60101,9 @@ a { color: #1565c0; }`;
                 if (Lib.settings.sa_art_idb_enable) {
                     _artIdbPutMetadata(entityPath, count, images);
                 }
-                Lib.debug(ctx.key, `${ctx.key}EnrichIcon: ${count} image(s) for ${entityPath}`);
+                if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                    Lib.debug(ctx.key, `${ctx.key}EnrichIcon: ${count} image(s) for ${entityPath}`);
+                }
             } catch (err) {
                 // Network-level failure — do NOT cache so connectivity-restored
                 // re-renders can retry.
@@ -60124,8 +60195,10 @@ a { color: #1565c0; }`;
             const sortKeySpan = artCell && artCell.querySelector('.' + ctx.sortKeyClass);
             if (sortKeySpan && sortKeySpan.textContent === 'no') {
                 sortKeySpan.textContent = 'yes';
-                Lib.debug(ctx.key,
-                    `${ctx.key}EnrichIcon: flipped sort key "no"→"yes" for Path-C anchor ${entityPath}`);
+                if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                    Lib.debug(ctx.key,
+                        `${ctx.key}EnrichIcon: flipped sort key "no"→"yes" for Path-C anchor ${entityPath}`);
+                }
             }
         }
 
@@ -60189,8 +60262,10 @@ a { color: #1565c0; }`;
             }
         });
 
-        Lib.debug(ctx.key, `${ctx.key}InitSmallPics: enqueued ${icons.length} load request(s) ` +
-            `(queue: ${_caaQueue ? _caaQueue.runningCount + ' running, ' + _caaQueue.pendingCount + ' pending' : 'unavailable'})`);
+        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+            Lib.debug(ctx.key, `${ctx.key}InitSmallPics: enqueued ${icons.length} load request(s) ` +
+                `(queue: ${_caaQueue ? _caaQueue.runningCount + ' running, ' + _caaQueue.pendingCount + ' pending' : 'unavailable'})`);
+        }
     }
 
     /**
@@ -60670,13 +60745,15 @@ a { color: #1565c0; }`;
                                 hintLabel  = _h.label;
                                 if (_h.status !== 'network') {
                                     const hint = getResourceTimingHint(src);
-                                    Lib.debug(ctx.key,
-                                        `${ctx.key}InitBigPics: cache-hint=${hint.status} ` +
-                                        `(ts=${hint.transferSize} ebs=${hint.encodedBodySize} ` +
-                                        `dur=${hint.duration !== null ? Math.round(hint.duration) + 'ms' : 'n/a'} ` +
-                                        `redirectStart=${hint.redirectStart !== null ? Math.round(hint.redirectStart) + 'ms' : 'n/a'} ` +
-                                        `responseStart=${hint.responseStart !== null ? Math.round(hint.responseStart) + 'ms' : 'n/a'})` +
-                                        ` — ${imgurl}`);
+                                    if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                        Lib.debug(ctx.key,
+                                            `${ctx.key}InitBigPics: cache-hint=${hint.status} ` +
+                                            `(ts=${hint.transferSize} ebs=${hint.encodedBodySize} ` +
+                                            `dur=${hint.duration !== null ? Math.round(hint.duration) + 'ms' : 'n/a'} ` +
+                                            `redirectStart=${hint.redirectStart !== null ? Math.round(hint.redirectStart) + 'ms' : 'n/a'} ` +
+                                            `responseStart=${hint.responseStart !== null ? Math.round(hint.responseStart) + 'ms' : 'n/a'})` +
+                                            ` — ${imgurl}`);
+                                    }
                                 }
                             }
                             const emoji = cacheStatusEmoji(hintStatus);
@@ -60999,8 +61076,10 @@ a { color: #1565c0; }`;
             tbody.addEventListener('mouseout',  tbody[ctx.tbodyOut]);
         }
 
-        Lib.debug(ctx.key, `${ctx.key}InitBigPics: built bigbox for table ${tableIndex} ` +
-            `with ${seen.size} image(s), initially ${currentlyVisible ? 'visible' : 'hidden'}`);
+        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+            Lib.debug(ctx.key, `${ctx.key}InitBigPics: built bigbox for table ${tableIndex} ` +
+                `with ${seen.size} image(s), initially ${currentlyVisible ? 'visible' : 'hidden'}`);
+        }
         return { count: seen.size, firstImgUrl };
     }
 
@@ -61060,8 +61139,10 @@ a { color: #1565c0; }`;
             if (badge) badge.textContent = loadedVisible;
         }
 
-        Lib.debug(ctx.key, `${ctx.key}UpdateBigBoxForTable: table ${tableIndex} — ` +
-            `${visibleHrefs.size} visible href(s), ${loadedVisible} loaded image(s) shown`);
+        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+            Lib.debug(ctx.key, `${ctx.key}UpdateBigBoxForTable: table ${tableIndex} — ` +
+                `${visibleHrefs.size} visible href(s), ${loadedVisible} loaded image(s) shown`);
+        }
     }
 
     /**
@@ -62178,8 +62259,10 @@ a { color: #1565c0; }`;
             td.appendChild(sk);
         }
         sk.textContent = loaded ? 'caa-inline-yes' : 'caa-inline-no';
-        Lib.debug(ctx.key,
-            `_artSetInlineSortKey: td → ${sk.textContent}`);
+        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+            Lib.debug(ctx.key,
+                `_artSetInlineSortKey: td → ${sk.textContent}`);
+        }
     }
 
     /**
@@ -62413,15 +62496,21 @@ a { color: #1565c0; }`;
                         activeDefinition.features &&
                         activeDefinition.features[ctx.addFeature];
         if (!colName) {
-            Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: no ${ctx.addFeature} column configured for this page type — skipping`);
+            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: no ${ctx.addFeature} column configured for this page type — skipping`);
+            }
             return;
         }
 
-        Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: ${ctx.addFeature} column = "${caaFormatColNameForLog(colName)}"`);
+        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+            Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: ${ctx.addFeature} column = "${caaFormatColNameForLog(colName)}"`);
+        }
 
         const tables = document.querySelectorAll('table.tbl');
         if (!tables.length) {
-            Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: no table.tbl found — skipping`);
+            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: no table.tbl found — skipping`);
+            }
             return;
         }
 
@@ -62438,11 +62527,15 @@ a { color: #1565c0; }`;
 
             const colIdx = caaFindColumnByName(table, colName);
             if (colIdx === -1) {
-                Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: column "${caaFormatColNameForLog(colName)}" not found in table ${tblIdx} — skipping table`);
+                if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                    Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: column "${caaFormatColNameForLog(colName)}" not found in table ${tblIdx} — skipping table`);
+                }
                 return;
             }
 
-            Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: processing table ${tblIdx}, column "${caaFormatColNameForLog(colName)}" at index ${colIdx}`);
+            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: processing table ${tblIdx}, column "${caaFormatColNameForLog(colName)}" at index ${colIdx}`);
+            }
 
             table.querySelectorAll('tbody tr').forEach(tr => {
                 const td = tr.cells[colIdx];
@@ -62486,7 +62579,9 @@ a { color: #1565c0; }`;
                         if (!td.querySelector(phSelector)) {
                             // Case B
                             delete td.dataset[ctx.inlineDoneAttr];
-                            Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: cleared stale clone marker — will re-inject`);
+                            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: cleared stale clone marker — will re-inject`);
+                            }
                         } else {
                             // Case A
                             skippedDone++;
@@ -62598,18 +62693,22 @@ a { color: #1565c0; }`;
                                         existingPh.appendChild(hs);
                                     }
                                 }
-                                Lib.debug(ctx.key,
-                                    `init${ctx.key.toUpperCase()}InlinePics: C1 same-session restore ` +
-                                    `— blob alive, hover re-wired — ${imgurl}`);
+                                if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                    Lib.debug(ctx.key,
+                                        `init${ctx.key.toUpperCase()}InlinePics: C1 same-session restore ` +
+                                        `— blob alive, hover re-wired — ${imgurl}`);
+                                }
                                 return;
                             }
 
                             // ── C2: stale blob — re-fetch into the existing DOM elements ──
                             // Clear the broken-image icon while the fetch is in flight.
                             // Do NOT stamp the 'done' marker here — see comment above.
-                            Lib.debug(ctx.key,
-                                `init${ctx.key.toUpperCase()}InlinePics: C2 stale-blob restore ` +
-                                `— re-fetching — ${imgurl}`);
+                            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                Lib.debug(ctx.key,
+                                    `init${ctx.key.toUpperCase()}InlinePics: C2 stale-blob restore ` +
+                                    `— re-fetching — ${imgurl}`);
+                            }
 
                             if (existingImg) {
                                 existingImg.style.display = 'none';
@@ -62693,9 +62792,11 @@ a { color: #1565c0; }`;
                             }
                         });
 
-                        Lib.debug(ctx.key,
-                            `init${ctx.key.toUpperCase()}InlinePics: placeholder present without marker ` +
-                            `(restore) — C1/C2 per-ph`);
+                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                            Lib.debug(ctx.key,
+                                `init${ctx.key.toUpperCase()}InlinePics: placeholder present without marker ` +
+                                `(restore) — C1/C2 per-ph`);
+                        }
                         return;
                     }
                 }
@@ -62713,9 +62814,11 @@ a { color: #1565c0; }`;
                     const link = container.querySelector(ctx.inlineLinkSel);
                     if (!link) {
                         skippedNoLink++;
-                        Lib.debug(ctx.key,
-                            `init${ctx.key.toUpperCase()}InlinePics: no entity link found in ` +
-                            `${isMultiItem ? '<li>' : '"' + colName + '"'} cell — skipping`);
+                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                            Lib.debug(ctx.key,
+                                `init${ctx.key.toUpperCase()}InlinePics: no entity link found in ` +
+                                `${isMultiItem ? '<li>' : '"' + colName + '"'} cell — skipping`);
+                        }
                         return;
                     }
 
@@ -62723,8 +62826,10 @@ a { color: #1565c0; }`;
                     const guidMatch = href.match(GUID_RE);
                     if (!guidMatch) {
                         skippedNoGuid++;
-                        Lib.debug(ctx.key,
-                            `init${ctx.key.toUpperCase()}InlinePics: no GUID found in href "${href}" — skipping`);
+                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                            Lib.debug(ctx.key,
+                                `init${ctx.key.toUpperCase()}InlinePics: no GUID found in href "${href}" — skipping`);
+                        }
                         return;
                     }
 
@@ -62733,8 +62838,10 @@ a { color: #1565c0; }`;
                     const imgurl = ctx.archiveHost + '/' + entityType + '/' + guidMatch[0] + '/front-' + size +
                                    (cacheBust ? '?_cb=' + Date.now() : '');
 
-                    Lib.debug(ctx.key,
-                        `init${ctx.key.toUpperCase()}InlinePics: will fetch inline thumbnail: ${imgurl}`);
+                    if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                        Lib.debug(ctx.key,
+                            `init${ctx.key.toUpperCase()}InlinePics: will fetch inline thumbnail: ${imgurl}`);
+                    }
 
                     // ── Build placeholder + img element (synchronous — layout stable) ─
                     const ph = document.createElement('span');
@@ -62839,14 +62946,18 @@ a { color: #1565c0; }`;
                                     if (fromMemory)    _caaFetchStats.inline.memory++;
                                     else if (fromIdb)  _caaFetchStats.inline.idb++;
                                     else               _caaFetchStats.inline.network++;
-                                    Lib.debug(ctx.key,
-                                        `init${ctx.key.toUpperCase()}InlinePics: loaded OK (idb=${fromIdb} memory=${fromMemory}) — ${imgurl}`);
+                                    if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                        Lib.debug(ctx.key,
+                                            `init${ctx.key.toUpperCase()}InlinePics: loaded OK (idb=${fromIdb} memory=${fromMemory}) — ${imgurl}`);
+                                    }
                                 })
                                 .catch(() => {
                                     _artSetInlineSortKey(ctx, td, false);
-                                    Lib.debug(ctx.key,
-                                        `init${ctx.key.toUpperCase()}InlinePics: failed to load ${imgurl}` +
-                                        ` — placeholder stays as spacer`);
+                                    if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                        Lib.debug(ctx.key,
+                                            `init${ctx.key.toUpperCase()}InlinePics: failed to load ${imgurl}` +
+                                            ` — placeholder stays as spacer`);
+                                    }
                                 });
                         }
 
@@ -62914,26 +63025,32 @@ a { color: #1565c0; }`;
                                             ph.style.position = 'relative';
                                             ph.appendChild(hintSpan);
                                         }
-                                        Lib.debug(ctx.key,
-                                            `init${ctx.key.toUpperCase()}InlinePics: cache-hint=${hint.status} ` +
-                                            `(ts=${hint.transferSize} ebs=${hint.encodedBodySize} ` +
-                                            `dur=${hint.duration !== null ? Math.round(hint.duration) + 'ms' : 'n/a'} ` +
-                                            `redirectStart=${hint.redirectStart !== null ? Math.round(hint.redirectStart) + 'ms' : 'n/a'} ` +
-                                            `responseStart=${hint.responseStart !== null ? Math.round(hint.responseStart) + 'ms' : 'n/a'})` +
-                                            ` — ${imgurl}`);
+                                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                            Lib.debug(ctx.key,
+                                                `init${ctx.key.toUpperCase()}InlinePics: cache-hint=${hint.status} ` +
+                                                `(ts=${hint.transferSize} ebs=${hint.encodedBodySize} ` +
+                                                `dur=${hint.duration !== null ? Math.round(hint.duration) + 'ms' : 'n/a'} ` +
+                                                `redirectStart=${hint.redirectStart !== null ? Math.round(hint.redirectStart) + 'ms' : 'n/a'} ` +
+                                                `responseStart=${hint.responseStart !== null ? Math.round(hint.responseStart) + 'ms' : 'n/a'})` +
+                                                ` — ${imgurl}`);
+                                        }
                                     }
                                     // ── Telemetry (browser-native img path) ────────────
                                     _caaFetchStats.inline.browser++;
-                                    Lib.debug(ctx.key,
-                                        `init${ctx.key.toUpperCase()}InlinePics: loaded OK — ${imgurl}`);
+                                    if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                        Lib.debug(ctx.key,
+                                            `init${ctx.key.toUpperCase()}InlinePics: loaded OK — ${imgurl}`);
+                                    }
                                 }
                                 resolve();
                             });
                             img.addEventListener('error', function() {
                                 _artSetInlineSortKey(ctx, td, false);
-                                Lib.debug(ctx.key,
-                                    `init${ctx.key.toUpperCase()}InlinePics: failed to load ${imgurl}` +
-                                    ` — placeholder stays as spacer`);
+                                if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                    Lib.debug(ctx.key,
+                                        `init${ctx.key.toUpperCase()}InlinePics: failed to load ${imgurl}` +
+                                        ` — placeholder stays as spacer`);
+                                }
                                 resolve();
                             });
                             img.src = imgurl;
@@ -62970,10 +63087,12 @@ a { color: #1565c0; }`;
             });
         });
 
-        Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: done — injected=${injected} enqueued=${enqueued} ` +
-            `skipped(done=${skippedDone} noLink=${skippedNoLink} noGuid=${skippedNoGuid}) ` +
-            `column="${colName}" ` +
-            `(queue: ${_caaQueue ? _caaQueue.runningCount + ' running, ' + _caaQueue.pendingCount + ' pending' : 'unavailable'})`);
+        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+            Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: done — injected=${injected} enqueued=${enqueued} ` +
+                `skipped(done=${skippedDone} noLink=${skippedNoLink} noGuid=${skippedNoGuid}) ` +
+                `column="${colName}" ` +
+                `(queue: ${_caaQueue ? _caaQueue.runningCount + ' running, ' + _caaQueue.pendingCount + ' pending' : 'unavailable'})`);
+        }
     }
 
     // ── Public entry points ───────────────────────────────────────────────────

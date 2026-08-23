@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.926",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Added two new debug-logging toggles for the CAA/EAA artwork pipeline, both default off: `sa_enable_art_fetch_debug_logging` gates per-image fetch logging (inline thumbnails, the big-picture strip/column icon, and details/expand JSON enrichment) across ergInjectCaaInlineThumbnails, _artInitInlinePics, _artSetInlineSortKey, _artLoadIcon, _artEnrichIcon, _artBuildMultiRowArtCell, _artInitSmallPics, _artEnrichTable, _artInitBigPics, and caaUpdateBigBoxForTable/eaaUpdateBigBoxForTable; `sa_enable_art_cache_fetch_debug_logging` gates the shared low-level cache/network fetch helper _artFetchCachedImage's memory/IDB/network-hit logs. Previously these Lib.debug() calls fired unconditionally whenever the global 'Enable debug logging' setting was on, making the console noisy for any other debug channel — most visibly _artSetInlineSortKey, which logs once per inline-thumbnail cell on every render. Existing sa_enable_art_diagnostic_logging-gated calls (snapshot/watchdog/counter diagnostics) are unaffected."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.925",
     "date": "2026-08-23",
     "sections": [
