@@ -96463,7 +96463,7 @@ and why is the actual renderd image at the very end of that file , see [Image #5
 Is it possible to emulate clicking the h3 header line "Promotion release" on the final rendered page for the test case
 https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c to uncollpase that sub-table/section
 
-** emualte
+** emulate
 
 actually emulate clicking the
 
@@ -96473,3 +96473,28 @@ actually emulate clicking the
 
 button for both release-group tests on the final rendered page instead of the h3 header line "Promotion release" click
 
+
+* majkinetor palywright
+
+Check the following files
+
+#+begin_example
+https://github.com/majkinetor/musicbrainz-userscripts/blob/main/userscripts/discogs_credits/test/fixtures.json
+https://github.com/majkinetor/musicbrainz-userscripts/blob/main/userscripts/discogs_credits/test/login.mjs
+https://github.com/majkinetor/musicbrainz-userscripts/blob/main/userscripts/discogs_credits/test/run.mjs
+https://github.com/majkinetor/musicbrainz-userscripts/blob/main/userscripts/discogs_credits/test/lib/browser.js
+https://github.com/majkinetor/musicbrainz-userscripts/blob/main/userscripts/discogs_credits/test/lib/verify.js
+#+end_example
+
+and suggest if we could inherit something from his approach in our userscript testing.
+
+Basically besides testing if a specific implementation in our script works at all, I also want to check for a specific
+pageType URL, if the rendered final page looks the same before and after a specific new implementation.
+
+So snapshotting the raw HTML before/after with a recognizable filename and/or registry file which maps pageTypes raw
+snapshotted HTML in a registry .org file (use an org table, with attributed, like date, specific feature tested etc.)
+
+This will also guard against eventually MusicBainz changing their initial page layout/functionality on the different
+pageTypes supported, so that we know when sometimes something breaks, it's basically because of MB chaning something.
+
+Eventually we will test every possible pageType mentioned in pageTypes-testing-reference.org
