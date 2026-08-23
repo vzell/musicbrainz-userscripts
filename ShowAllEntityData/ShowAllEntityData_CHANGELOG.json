@@ -1,5 +1,80 @@
 [
   {
+    "version": "9.99.922",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "tests/support/test.js: the SAVE_HTML feature now strips <script> elements from the saved snapshot and adds a <base href> tag instead of saving page.content() verbatim. loadPage.js inlines ShowAllEntityData.user.js/VZ_MBLibrary.user.js as raw <script> text via addScriptTag({ path }) — harmless live, but <script> content serializes completely unescaped, and that multi-megabyte source contains a literal `</script` substring somewhere; re-opening the saved file in a browser ended the script tag right there and rendered the rest of the source as garbled visible page text, with the real page markup only appearing far down the document after the parser recovered. Stripping scripts (they serve no purpose in a static snapshot anyway) fixes the corruption and also shrinks saved files from several MB down to well under 1MB; the added <base> tag keeps MusicBrainz's own root-relative CSS/image URLs resolving correctly when the file is opened directly."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.921",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Added tests/support/test.js — a Playwright `test` extended with an auto-saving `page` fixture: when the SAVE_HTML env var is set, every test's final page.content() is written to test-results/rendered-html/<test-name>.html and attached to the HTML report, with no per-test code needed. All spec files now import test/expect from this module instead of '@playwright/test' directly. Added an `npm run test:live:save-html` script. The saved file is a static DOM snapshot for visual review in a real browser — the userscript isn't re-injected against it, so it isn't interactive."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.920",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "tests/support/gmStubs.js: buildGmStubsScript() now accepts an optional initialValues map, pre-seeded into the GM_getValue store before the userscript runs. tests/support/loadPage.js uses it to force sa_enable_caa_pics/sa_enable_relationships_column off for every fixture test — the \"Relationships\" injected column fetches via plain fetch() (not stubbed, unlike GM_xmlhttpRequest-based CAA/EAA) straight to musicbrainz.org's WS/2 API, so without this override a fixture test that clicks a \"Show all\" button would silently leak a real network call. Live tests are unaffected (both settings keep their true configSchema defaults there)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.919",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Added tests/live/release-group-paginated-fetch.spec.js — a live test against a release-group whose release list spans 2 of MusicBrainz's own native pages, exercising startFetchingProcess()'s pagination loop. Extracted the shared render-completion/self-consistency assertions (previously only in release-group-fetch.spec.js) into tests/support/liveAssertions.js so both tests share the same checks.",
+          "tests/support/liveAssertions.js: narrowed collectPageErrors() to only listen for uncaught JS exceptions (pageerror), not every browser console 'error' — a live test hitting real infrastructure can see an unrelated transient asset-load error (e.g. a momentary 503 on a favicon request) that has nothing to do with script correctness; the broader console-error capture made the release-group-fetch.spec.js test flaky.",
+          "playwright.config.js: added an 'html' reporter (view via `npm run report`) alongside 'list', plus trace/screenshot capture on failure (trace: 'retain-on-failure', screenshot: 'only-on-failure'). Added package.json scripts test:ui (interactive UI mode) and test:headed (visible browser)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.918",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "tests/live/smoke.spec.js: added a comment clarifying it only checks that the action-button toolbar renders and deliberately never clicks a button (the artist's /recordings listing is ~476 native pages).",
+          "Added tests/live/release-group-fetch.spec.js — a live test that actually clicks \"Show all\" and fetches a real release-group's release list (bounded, so cheap to run). Since it hits real mutable MusicBrainz data, it asserts self-consistency invariants (fetch/render completes without page errors, at least one row rendered, the script's own per-group .mb-row-count-stat counts sum to the actual rendered row count) rather than a fixed expected row count/dataset, which would break on unrelated MusicBrainz edits."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.917",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Added a Playwright test harness (package.json, playwright.config.js, tests/) scoped to ShowAllEntityData/ — a fixture-based suite (`npm test`) that stubs the Tampermonkey GM_* APIs and intercepts navigation to inject a local HTML snapshot at a real musicbrainz.org-shaped URL (so pageDefinitions[].match() behaves exactly as it would live) with zero network dependency, plus an opt-in live smoke test against musicbrainz.org (`npm run test:live`). No changes to script runtime behavior."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.916",
     "date": "2026-08-22",
     "sections": [
