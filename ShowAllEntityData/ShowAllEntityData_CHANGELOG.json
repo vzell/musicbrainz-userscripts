@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.946",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the multi-table `.mb-master-toggle` (\"Show/Hide all sub-sections\") button on `release-tracks` (and any other page where one or more sub-tables start expanded by default — a single sub-table, or a small `album`/`official` group) always initially reading \"Show all sub-sections\" even though every medium's tracklist was already visible on screen. Root cause: the button is created, hardcoded to `dataset.state = 'collapsed'`, BEFORE the `dataArray.forEach` loop that actually decides each sub-table's `shouldStayOpen` state runs — so its label never reflected the real DOM. Now synced once, right after that loop, against each table's actual `display` value: if any sub-table is visible the button starts as \"Hide all sub-sections\" instead."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.945",
     "date": "2026-08-23",
     "sections": [

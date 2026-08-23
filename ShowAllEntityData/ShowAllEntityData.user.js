@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.945+2026-08-23
+// @version      9.99.946+2026-08-24
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -42453,6 +42453,11 @@ a { color: #1565c0; }`;
 
         let targetH2Name = targetHeader ? targetHeader.textContent.trim().substring(0, 30) : 'Unknown';
 
+        // Populated below (initial render only) so its dataset.state/label can be
+        // synced, after the dataArray.forEach loop, to the actual per-table
+        // collapsed/expanded state — see the sync block right after that loop.
+        let masterToggle = null;
+
         if (!query) {
             Lib.debug('render', 'No query provided; performing initial cleanup of existing elements.');
             // Updated cleanup: remove H3s and tables, but NEVER remove H3s containing 'span.worklink'
@@ -42515,7 +42520,7 @@ a { color: #1565c0; }`;
                 // Single toggle button that alternates between "Show all sub-sections"
                 // and "Hide all sub-sections".  Starts in "Show all" state (all sub-tables
                 // are initially collapsed so "Show" is the natural first action).
-                const masterToggle = document.createElement('button');
+                masterToggle = document.createElement('button');
                 masterToggle.className  = 'mb-master-toggle';
                 masterToggle.type       = 'button';
                 masterToggle.dataset.state = 'collapsed'; // 'collapsed' → click shows; 'expanded' → click hides
@@ -43562,6 +43567,26 @@ a { color: #1565c0; }`;
                 }
             }
         });
+
+        // ── Sync master-toggle button label to actual per-table collapse state ──
+        // masterToggle is only created on the initial (query-less) render, and it
+        // is created BEFORE this forEach loop runs — at creation time it always
+        // hardcodes dataset.state = 'collapsed' ("Show all sub-sections"), which
+        // assumes every sub-table starts hidden. That's wrong whenever the
+        // shouldStayOpen logic above (a single sub-table, release-tracks, or a
+        // small album/official group) left one or more tables visible by
+        // default — e.g. release-tracks always starts every medium expanded, so
+        // the button showed "Show all sub-sections" while there was nothing left
+        // to show. Sync it here, once, against the real DOM state.
+        if (masterToggle) {
+            const _anyTableVisible = Array.from(container.querySelectorAll('table.tbl'))
+                .some(t => t.style.display !== 'none');
+            masterToggle.dataset.state = _anyTableVisible ? 'expanded' : 'collapsed';
+            masterToggle.textContent   = _anyTableVisible ? 'Hide all sub-sections' : 'Show all sub-sections';
+            masterToggle.title         = _anyTableVisible
+                ? 'Click to collapse all sub-sections (Ctrl+Click to collapse ALL sub-sections)'
+                : 'Click to uncollapse all sub-sections (Ctrl+Click to uncollapse ALL sub-sections)';
+        }
 
         // ── Wire global collapse button for multi-table mode ──────────────────
         // Must run after the forEach loop so that every sub-table's
