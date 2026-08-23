@@ -89,4 +89,26 @@ function buildGmStubsScript(initialValues = {}) {
     `;
 }
 
-module.exports = { buildGmStubsScript };
+/**
+ * Pre-seeds `window.__gmValues` via an init script registered BEFORE any
+ * navigation, so `buildGmStubsScript()`'s own init script (registered
+ * later, e.g. inside `loadUserscriptPage()`) merges its `initialValues`
+ * onto this instead of overwriting it — the same technique
+ * `loadUserscriptPage`'s own `testMode` option uses for
+ * `window.__SA_TEST_MODE__`. No-ops when `values` is empty/absent.
+ *
+ * Originally written once inline inside `capture-snapshots.js`; promoted
+ * here once a second live spec needed the identical "seed a setting before
+ * `loadUserscriptPage()` runs, for a page type `loadUserscriptPage()` has
+ * no dedicated option for" pattern.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {Object<string, *>} [values]
+ * @returns {Promise<void>}
+ */
+async function seedGmValues(page, values) {
+    if (!values || Object.keys(values).length === 0) return;
+    await page.addInitScript({ content: `window.__gmValues = ${JSON.stringify(values)};` });
+}
+
+module.exports = { buildGmStubsScript, seedGmValues };

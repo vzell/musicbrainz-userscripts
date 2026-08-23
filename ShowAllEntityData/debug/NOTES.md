@@ -6363,3 +6363,82 @@ second follow-up round.
   URL-suffix alternation, so without adding it the userscript would never
   have injected on this URL at all regardless of the `pageDefinitions`
   entry.
+
+## 2026-08-23 — annotations pageType: Compare versions button + radio range
+
+- Live testing against the rendered `annotations` pageType (screenshots,
+  not a new HTML snapshot) surfaced two gaps versus the native MB page:
+  1. The "Compare versions" button was left at the bottom of the page
+     (native `.row.no-margin > .buttons > button`), unstyled, instead of
+     living in the h2 header bar next to the other controls.
+  2. Native MB restricts the Old/New radio pair so Old must always be
+     strictly older (higher `data-index`) than New — enforced by MB's own
+     client-side JS, wired directly to the original DOM nodes. This
+     script's cloneNode(true)/importNode-based row rebuilding on every
+     sort/filter re-render drops that JS along with the nodes it was
+     attached to (same class of bug documented elsewhere in this file for
+     `initExpandRGsFeature()`/`_cdtocInitTracklistToggles()`), leaving only
+     the pristine static `disabled` attributes MB bakes into the initial
+     HTML: New is statically disabled on every row except index 0, Old
+     only on index 0. Net effect: New is permanently stuck on the newest
+     revision — you can only ever compare "newest vs. some older row",
+     never two arbitrary intermediate revisions.
+- Fix: `initAnnotationCompareButton()` relocates the native button into
+  the h2 (via `filterContainer.parentNode.insertBefore(btn,
+  filterContainer)`, the same anchor every other header button uses),
+  restyled with `uiFilterBarBtnCSS()`. Since moving it out of the `<form>`
+  breaks native submit, its click handler instead reads the checked
+  old/new radio values and navigates to `${form.action}?old=...&new=...`
+  directly (the form has no explicit `method`, so it's a plain GET) — this
+  also made "open in a new tab" (point 3 of the request) trivial: just
+  `window.open()` vs. `window.location.href`, gated by the new
+  `sa_annotations_compare_new_tab` setting (default true).
+- `initAnnotationCompareRadios()` re-derives the constraint from whichever
+  radios are CURRENTLY checked (not hardcoded index 0/1), so it produces
+  the correct result both on first render and after a user has already
+  picked a different pair before the next sort/filter clones the rows
+  again. Called once after initial render (both the live-fetch and
+  load-from-disk paths) and again after every `runFilter()` single-table
+  re-render, alongside the other rewire-after-clone calls.
+- Both functions self-guard on `pageType === 'annotations'` and are called
+  unconditionally from shared code paths (cheap no-op elsewhere), matching
+  the existing `initExpandRGsFeature()`/`_cdtocInitTracklistToggles()`
+  convention.
+- `node --check ShowAllEntityData.user.js` passed after the edit.
+
+- Follow-up (same day): the button also had no visible gap from the h2's
+  native "Annotation history" text (fixed with an 8px left margin,
+  matching `.mb-row-count-stat`'s own margin), and swapped sides with the
+  count-stat span between the initial render and any later sort/filter —
+  root cause: `updateH2Count()` removes and recreates `.mb-row-count-stat`
+  on every re-render, always re-inserting it immediately before
+  `filterContainer`; a button anchored on `filterContainer` itself gets
+  displaced by that fresh insertion after the first re-render. Fixed by
+  anchoring the button on the count span when present
+  (`targetH2.insertBefore(compareBtn, countSpan || filterContainer)`),
+  keeping it consistently right after the h2 text and before the count on
+  every render, not just the first one.
+
+- Follow-up (2026-08-23): the "Old must be strictly older than New" range
+  restriction added above turned out to interact badly with this script's
+  own filtering. `runFilter()`/`renderFinalTable()` don't just hide
+  non-matching rows — they don't render them in the DOM at all — so
+  whichever row held the currently-checked Old or New radio can end up
+  filtered out of view entirely. `initAnnotationCompareRadios()`'s
+  `applyConstraints()` was still re-applying the range restriction against
+  only the CURRENTLY VISIBLE rows, and depending on the filtered index
+  range relative to the (possibly now-invisible) checked pair, that could
+  disable every remaining radio in one entire column, with no valid
+  Old/New pair reachable without clearing the filter first — most starkly
+  when the filter narrowed the visible rows to just one, where "New must
+  be < Old" can never be satisfied by a single index at all.
+- Rather than make the range restriction filter-aware (tracking the
+  checked pair independently of visibility, recomputing valid ranges
+  against the full row set instead of just the DOM), the restriction was
+  dropped entirely per explicit request: `initAnnotationCompareRadios()`
+  now just clears `disabled` on every Old/New radio, unconditionally.
+  Every combination is always selectable, including ones MB's own native
+  page would never let you reach (e.g. Old numerically newer than New) —
+  a deliberate trade-off in favor of never getting stuck, especially since
+  this is exactly the situation active filtering creates routinely.
+- `node --check ShowAllEntityData.user.js` passed after the edit.

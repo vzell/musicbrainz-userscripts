@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.925+2026-08-23
+// @version      9.99.945+2026-08-23
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -246,6 +246,29 @@
                          "single-table' bug (see debug/CAA-missing-doubled.org) and kept " +
                          "around for future use. Uses the 'caa'/'eaa'/'cache'/'navigation' " +
                          "channels — requires 'Enable debug logging' to also be active."
+        },
+
+        sa_enable_art_fetch_debug_logging: {
+            label: "Enable CAA/EAA image fetch debug logging",
+            type: "checkbox",
+            default: false,
+            description: "Enable console logging for individual CAA/EAA image fetches: " +
+                         "inline thumbnails (Release/Title column), the big-picture strip " +
+                         "and column icon, and details/expand (per-entity JSON) fetches. " +
+                         "Separate from 'Enable CAA/EAA artwork diagnostic logging', which " +
+                         "covers snapshot/watchdog/counter diagnostics instead. Requires " +
+                         "'Enable debug logging' to also be active."
+        },
+
+        sa_enable_art_cache_fetch_debug_logging: {
+            label: "Enable CAA/EAA low-level cache/network fetch debug logging",
+            type: "checkbox",
+            default: false,
+            description: "Enable console logging inside the shared low-level image fetch " +
+                         "helper (_artFetchCachedImage): memory-cache hits, IndexedDB hits, " +
+                         "network fetches, and IndexedDB stores. This is the plumbing shared " +
+                         "by both inline thumbnails and column-icon loading. Requires " +
+                         "'Enable debug logging' to also be active."
         },
 
         // ============================================================
@@ -2493,6 +2516,27 @@
                          'behind an extra manual click. Unrelated to the "📝 ANNOTATION ' +
                          'COLUMNS" section above, which only affects this script\'s own ' +
                          'rendered table columns.'
+        },
+
+        // ============================================================
+        // ANNOTATION HISTORY PAGE SECTION (the 'annotations' pageType —
+        // /<entity>/<mbid>/annotations, a revision-history listing.
+        // Unrelated to the "📖 ANNOTATION SECTION (Entity Pages)" divider
+        // above, which is about the native annotation text shown on an
+        // entity's own Overview page.)
+        // ============================================================
+        divider_annotations_page: {
+            type: 'divider',
+            label: '🔀 ANNOTATION HISTORY PAGE'
+        },
+
+        sa_annotations_compare_new_tab: {
+            label: 'Open "Compare versions" in a new tab',
+            type: 'checkbox',
+            default: true,
+            description: 'On the \'annotations\' pageType (an entity\'s Annotation history), ' +
+                         'open the "Compare versions" diff in a new browser tab instead of ' +
+                         'navigating the current tab away from the consolidated table.'
         },
 
         // ============================================================
@@ -36605,6 +36649,22 @@ a { color: #1565c0; }`;
 
             // Re-populate any rel cells that were not yet done when the filter ran
             // (race: Phase-2 fetch queue was mid-flight when the user typed).
+            //
+            // Merge note (main -> perf-steps-1-4): main's runFilter() also
+            // re-invokes initExpandRGsFeature()/_cdtocInitTracklistToggles()/
+            // _rewireNestedTableH2Toggles()/initAnnotationCompareRadios()/
+            // initPicardTaggerColumn(rewireOnly)/the CAA-EAA re-init chain
+            // here, because its single-table filter path still rebuilds the
+            // tbody via cloneNode(true) on every pass, stripping listeners.
+            // PERFORMANCE.org Step 1 (5d7f835) replaced that with in-place
+            // display:none/'' toggling on the SAME live DOM nodes, so none of
+            // those listeners are ever stripped in the first place — each is
+            // now hoisted to run exactly once, at initial render, and the
+            // CAA/EAA bigbox is kept in sync via the caaUpdateBigBoxForTable()/
+            // eaaUpdateBigBoxForTable() calls a few lines above instead of a
+            // full initCaaPics()/initEaaPics() re-run. Re-adding main's block
+            // here would silently reintroduce the per-keystroke rebuild cost
+            // Step 1 exists to eliminate.
             if (document.querySelector('td.mb-rel-cell:not([data-rel-done="1"])')) {
                 initRelationshipsColumn();
             }
@@ -38429,6 +38489,12 @@ a { color: #1565c0; }`;
 
         const startTime = performance.now();
         let fetchingTimeStart = performance.now();
+        // Mirrors fetchingTimeStart above (same boundary) as a standard
+        // performance.mark(), so external tooling (e.g. a Playwright perf
+        // capture reading performance.getEntriesByType('measure')) can read
+        // stage timings without needing to know this closure's internal
+        // variable names.
+        performance.mark('sa-fetch-phase-start');
         let totalFetchingTime = 0;
         let totalRenderingTime = 0;
 
@@ -39915,6 +39981,8 @@ a { color: #1565c0; }`;
             }
 
             totalFetchingTime = performance.now() - fetchingTimeStart;
+            performance.mark('sa-fetch-phase-done');
+            performance.measure('sa-fetch-phase', 'sa-fetch-phase-start', 'sa-fetch-phase-done');
 
             // Calculate total rows before rendering
             const totalRows = (activeDefinition.tableMode === 'multi') ?
@@ -39993,6 +40061,7 @@ a { color: #1565c0; }`;
             }
 
             let renderingTimeStart = performance.now();
+            performance.mark('sa-render-phase-start');
 
             // ── virtualPath h2 label patch ────────────────────────────────────
             // When the clicked button carries a virtualPath (e.g. user-subscriptions
@@ -40367,6 +40436,13 @@ a { color: #1565c0; }`;
                 initExpandRGsFeature();
             }
 
+            // Annotations pageType: relocate the "Compare versions" button
+            // into the h2 header and make sure every Old/New compare radio
+            // is selectable. Both self-guard on pageType — cheap no-ops on
+            // every other page.
+            initAnnotationCompareButton();
+            initAnnotationCompareRadios();
+
             // Highlight identical barcodes in Barcode columns (post-render)
             initBarcodeHighlight();
 
@@ -40438,6 +40514,8 @@ a { color: #1565c0; }`;
             }
 
             totalRenderingTime = performance.now() - renderingTimeStart;
+            performance.mark('sa-render-phase-done');
+            performance.measure('sa-render-phase', 'sa-render-phase-start', 'sa-render-phase-done');
 
             // --- RENDERING END ---
             // Apply zebra striping + sticky columns every time the table is rendered.
@@ -50479,6 +50557,137 @@ a { color: #1565c0; }`;
     // ── end CDtoc tracklist toggle feature ───────────────────────────────────
 
     /**
+     * Moves the native "Compare versions" submit button from the bottom of
+     * an annotations-history page (`.row.no-margin > .buttons > button`,
+     * inside the same `<form>` as `table.tbl#annotation-history`) into the
+     * h2 header, styled like the other filter-bar buttons (🎨 Toggle ALL
+     * highlighting, etc.) instead of MB's native submit-button chrome.
+     *
+     * The button is deliberately detached from its `<form>` by this move,
+     * so a plain click/native submit would no longer do anything — instead
+     * its click handler builds the diff URL directly from the form's own
+     * `action` (a plain GET form: `?old=<id>&new=<id>`) and navigates
+     * there, opening a new tab or reusing the current one depending on the
+     * `sa_annotations_compare_new_tab` setting (see the click handler
+     * below).
+     *
+     * Runs once, after the initial render. The button itself is never
+     * cloned by a sort/filter re-render (only tbody rows are — see
+     * initAnnotationCompareRadios()'s JSDoc for the cloneNode-drops-
+     * listeners pattern this project follows elsewhere), so no re-wiring
+     * is needed later; the dataset guard below just makes a defensive
+     * repeat call a no-op.
+     */
+    function initAnnotationCompareButton() {
+        if (pageType !== 'annotations') return;
+
+        const table = document.querySelector('table.tbl#annotation-history');
+        if (!table) return;
+        const form = table.closest('form');
+        if (!form) return;
+
+        const compareBtn = form.querySelector('button[type="submit"]');
+        if (!compareBtn || compareBtn.dataset.mbAnnotationCompareWired) return;
+        compareBtn.dataset.mbAnnotationCompareWired = 'true';
+
+        // Capture the native wrapper BEFORE relocating the button (closest()
+        // walks the CURRENT ancestor chain, so this must happen first) —
+        // it would otherwise sit behind, empty, at the bottom of the page.
+        const wrapperRow = compareBtn.closest('.row.no-margin') || compareBtn.parentElement;
+
+        compareBtn.type = 'button'; // decouple from native form submission — see click handler below
+        compareBtn.textContent = '🔀 Compare versions';
+        // margin-left:8px matches .mb-row-count-stat's own left margin (the
+        // h2's other injected-content spacing convention), so the gap looks
+        // consistent regardless of whether the count span ends up before or
+        // after this button on a given render.
+        compareBtn.style.cssText = uiFilterBarBtnCSS() + ' margin-left:8px;';
+
+        // Relocate into the h2. By the time this runs (called after the
+        // initial renderFinalTable(), which itself runs after
+        // updateH2Count() has already appended filterContainer — and the
+        // .mb-row-count-stat count span — to the h2 for single-table
+        // mode), filterContainer.parentNode IS the target h2. Inserting a
+        // node already in the document implicitly detaches it from
+        // wherever it was — no separate removal needed.
+        //
+        // Anchor on the count span (.mb-row-count-stat), not filterContainer
+        // directly: updateH2Count() REMOVES AND RECREATES that span on every
+        // sort/filter re-render, re-inserting it immediately before
+        // filterContainer each time — which, if this button were anchored
+        // on filterContainer instead, would push the button to swap sides
+        // with the span (button-before-span on this first call, since the
+        // span already exists; span-before-button after any later re-render,
+        // since the freshly recreated span always wins the "immediately
+        // before filterContainer" slot). Anchoring on the span itself keeps
+        // the button consistently BEFORE it on every render, matching every
+        // other header button's fixed position.
+        const targetH2 = filterContainer.parentNode;
+        if (targetH2) {
+            const countSpan = targetH2.querySelector('.mb-row-count-stat');
+            targetH2.insertBefore(compareBtn, countSpan || filterContainer);
+        }
+
+        // Now safe to remove the native wrapper — the button itself has
+        // already been moved out of it.
+        if (wrapperRow && wrapperRow !== compareBtn) wrapperRow.remove();
+
+        compareBtn.addEventListener('click', () => {
+            const oldRadio = form.querySelector('input[name="old"]:checked');
+            const newRadio = form.querySelector('input[name="new"]:checked');
+            if (!oldRadio || !newRadio) return;
+            const url = `${form.action}?old=${encodeURIComponent(oldRadio.value)}&new=${encodeURIComponent(newRadio.value)}`;
+            if (Lib.settings.sa_annotations_compare_new_tab !== false) {
+                window.open(url, '_blank');
+            } else {
+                window.location.href = url;
+            }
+        });
+
+        Lib.debug('ui', 'initAnnotationCompareButton: moved "Compare versions" button into h2 header.');
+    }
+
+    /**
+     * Keeps every Old/New compare radio on the annotations-history page
+     * selectable — no combination ever locked out, regardless of which
+     * pair is currently checked or how the active filter has narrowed
+     * down which rows are actually present in the DOM.
+     *
+     * This function used to re-implement MusicBrainz's native "Old must
+     * be strictly older than New" restriction (client-side JS wired to
+     * the original DOM nodes, backed by pristine static `disabled`
+     * attributes baked into the initial HTML as a no-JS fallback — New
+     * disabled on every row but the newest, Old disabled only on the
+     * newest). That interacted badly with this script's own filtering:
+     * `runFilter()`/`renderFinalTable()` don't just hide non-matching
+     * rows, they don't render them at all, so whichever row held the
+     * checked Old or New radio can end up filtered out of view entirely
+     * while the range restriction — re-applied against only the visible
+     * rows — could end up disabling every remaining radio in the OTHER
+     * column, with no valid pair reachable until the filter was cleared.
+     * Rather than make the restriction filter-aware, it's dropped
+     * entirely: every radio is simply always enabled, so any combination
+     * — including ones MB's own page would never let you reach — is
+     * always clickable. See debug/NOTES.md's 2026-08-23 entry.
+     *
+     * Still needs to run after every (re)render: cloneNode(true)/
+     * importNode re-apply those pristine static `disabled` attributes
+     * from the original fetched HTML each time, same reason
+     * initExpandRGsFeature()/_cdtocInitTracklistToggles() need
+     * re-wiring after every clone.
+     */
+    function initAnnotationCompareRadios() {
+        if (pageType !== 'annotations') return;
+
+        const radios = document.querySelectorAll('input.old[name="old"], input.new[name="new"]');
+        if (!radios.length) return;
+
+        radios.forEach(r => { r.disabled = false; });
+
+        Lib.debug('ui', `initAnnotationCompareRadios: enabled ${radios.length} Old/New radio(s) — every combination selectable.`);
+    }
+
+    /**
      * Moves any h2 sections that MusicBrainz rendered AFTER the consolidated
      * data-table to immediately before it, preserving their original order.
      *
@@ -55375,6 +55584,13 @@ a { color: #1565c0; }`;
                 initExpandRGsFeature();
             }
 
+            // Annotations pageType: relocate the "Compare versions" button
+            // into the h2 header and make sure every Old/New compare radio
+            // is selectable. Both self-guard on pageType — cheap no-ops on
+            // every other page.
+            initAnnotationCompareButton();
+            initAnnotationCompareRadios();
+
             // Highlight identical barcodes in Barcode columns (post-render)
             initBarcodeHighlight();
 
@@ -56379,10 +56595,14 @@ a { color: #1565c0; }`;
                             if (fromMemory)   _caaFetchStats.inline.memory++;
                             else if (fromIdb) _caaFetchStats.inline.idb++;
                             else              _caaFetchStats.inline.network++;
-                            Lib.debug('caa', `ergInjectCaaInlineThumbnails: loaded OK (idb=${fromIdb} memory=${fromMemory}) — ${imgurl}`);
+                            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                Lib.debug('caa', `ergInjectCaaInlineThumbnails: loaded OK (idb=${fromIdb} memory=${fromMemory}) — ${imgurl}`);
+                            }
                         })
                         .catch(() => {
-                            Lib.debug('caa', `ergInjectCaaInlineThumbnails: failed to load ${imgurl} — placeholder stays as spacer`);
+                            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                Lib.debug('caa', `ergInjectCaaInlineThumbnails: failed to load ${imgurl} — placeholder stays as spacer`);
+                            }
                         });
                 }
 
@@ -56416,12 +56636,16 @@ a { color: #1565c0; }`;
                                 ph.appendChild(hintSpan);
                             }
                             _caaFetchStats.inline.browser++;
-                            Lib.debug('caa', `ergInjectCaaInlineThumbnails: loaded OK — ${imgurl}`);
+                            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                Lib.debug('caa', `ergInjectCaaInlineThumbnails: loaded OK — ${imgurl}`);
+                            }
                         }
                         resolve();
                     });
                     img.addEventListener('error', function() {
-                        Lib.debug('caa', `ergInjectCaaInlineThumbnails: failed to load ${imgurl} — placeholder stays as spacer`);
+                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                            Lib.debug('caa', `ergInjectCaaInlineThumbnails: failed to load ${imgurl} — placeholder stays as spacer`);
+                        }
                         resolve();
                     });
                     img.src = imgurl;
@@ -56429,7 +56653,9 @@ a { color: #1565c0; }`;
             };
 
             _caaQueue.enqueue(loadTask);
-            Lib.debug('caa', `ergInjectCaaInlineThumbnails: enqueued ${imgurl}`);
+            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                Lib.debug('caa', `ergInjectCaaInlineThumbnails: enqueued ${imgurl}`);
+            }
         });
     }
 
@@ -57731,7 +57957,9 @@ a { color: #1565c0; }`;
 
         // ── Tier 1: per-session in-memory Map ──────────────────────────────────
         if (_artIdbMemCache.has(normUrl)) {
-            Lib.debug('idb', `_artFetchCachedImage: memory hit — ${normUrl}`);
+            if (Lib.settings.sa_enable_art_cache_fetch_debug_logging) {
+                Lib.debug('idb', `_artFetchCachedImage: memory hit — ${normUrl}`);
+            }
             return { objectUrl: _artIdbMemCache.get(normUrl), fromIdb: false, fromMemory: true };
         }
 
@@ -57742,7 +57970,9 @@ a { color: #1565c0; }`;
                 const objUrl = URL.createObjectURL(rec.blob);
                 _artIdbBlobUrls.add(objUrl);
                 _artIdbMemCache.set(normUrl, objUrl);
-                Lib.debug('idb', `_artFetchCachedImage: IDB hit — ${normUrl}`);
+                if (Lib.settings.sa_enable_art_cache_fetch_debug_logging) {
+                    Lib.debug('idb', `_artFetchCachedImage: IDB hit — ${normUrl}`);
+                }
                 return { objectUrl: objUrl, fromIdb: true, fromMemory: false };
             }
             // Record absent or expired — fall through to network.
@@ -57751,7 +57981,9 @@ a { color: #1565c0; }`;
         }
 
         // ── Tier 3: network (GM_xmlhttpRequest, CORS-bypass) ───────────────────
-        Lib.debug('idb', `_artFetchCachedImage: network fetch — ${normUrl}`);
+        if (Lib.settings.sa_enable_art_cache_fetch_debug_logging) {
+            Lib.debug('idb', `_artFetchCachedImage: network fetch — ${normUrl}`);
+        }
         const blob   = await _artGmFetchBlob(normUrl);
         const objUrl = URL.createObjectURL(blob);
         _artIdbBlobUrls.add(objUrl);
@@ -57759,7 +57991,11 @@ a { color: #1565c0; }`;
 
         // Fire-and-forget IDB write — a write failure must not block the caller.
         _artIdbPut('images', { url: normUrl, blob, storedAt: Date.now() })
-            .then(() => Lib.debug('idb', `_artFetchCachedImage: IDB stored — ${normUrl}`))
+            .then(() => {
+                if (Lib.settings.sa_enable_art_cache_fetch_debug_logging) {
+                    Lib.debug('idb', `_artFetchCachedImage: IDB stored — ${normUrl}`);
+                }
+            })
             .catch(e  => Lib.warn('idb',  `_artFetchCachedImage: IDB write failed for ${normUrl}:`, e));
 
         return { objectUrl: objUrl, fromIdb: false, fromMemory: false };
@@ -59811,9 +60047,11 @@ a { color: #1565c0; }`;
         }
 
         artCell.dataset[ctx.multiBuiltAttr] = '1';
-        Lib.debug(ctx.key,
-            `_artBuildMultiRowArtCell: ${existingUl ? 'rebuilt' : 'built'} ` +
-            `${images.length} image row(s) in ${ctx.column} cell`);
+        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+            Lib.debug(ctx.key,
+                `_artBuildMultiRowArtCell: ${existingUl ? 'rebuilt' : 'built'} ` +
+                `${images.length} image row(s) in ${ctx.column} cell`);
+        }
     }
 
     /**
@@ -59831,7 +60069,9 @@ a { color: #1565c0; }`;
     function _artLoadIcon(ctx, artIcon, cacheBust = false) {
         const anchor = artIcon.closest('a[href]');
         if (!anchor) {
-            Lib.debug(ctx.key, `${ctx.key}LoadIcon: skipped — no wrapping anchor found for icon`, artIcon);
+            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                Lib.debug(ctx.key, `${ctx.key}LoadIcon: skipped — no wrapping anchor found for icon`, artIcon);
+            }
             return Promise.resolve();
         }
 
@@ -59842,7 +60082,9 @@ a { color: #1565c0; }`;
         const imgurl = ctx.archiveHost + entityPath + '/front-' + size +
                        (cacheBust ? '?_cb=' + Date.now() : '');
 
-        Lib.debug(ctx.key, `${ctx.key}LoadIcon: loading ${imgurl}`);
+        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+            Lib.debug(ctx.key, `${ctx.key}LoadIcon: loading ${imgurl}`);
+        }
 
         /**
          * Common success handler shared by both the IDB and the native img load
@@ -59893,13 +60135,15 @@ a { color: #1565c0; }`;
                     if (_h.status !== 'network') {
                         // Log RT details only for native-path lookups (non-blob src)
                         const hint = getResourceTimingHint(src);
-                        Lib.debug(ctx.key,
-                            `${ctx.key}LoadIcon: cache-hint=${hint.status} ` +
-                            `(ts=${hint.transferSize} ebs=${hint.encodedBodySize} ` +
-                            `dur=${hint.duration !== null ? Math.round(hint.duration) + 'ms' : 'n/a'} ` +
-                            `redirectStart=${hint.redirectStart !== null ? Math.round(hint.redirectStart) + 'ms' : 'n/a'} ` +
-                            `responseStart=${hint.responseStart !== null ? Math.round(hint.responseStart) + 'ms' : 'n/a'})` +
-                            ` — ${imgurl}`);
+                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                            Lib.debug(ctx.key,
+                                `${ctx.key}LoadIcon: cache-hint=${hint.status} ` +
+                                `(ts=${hint.transferSize} ebs=${hint.encodedBodySize} ` +
+                                `dur=${hint.duration !== null ? Math.round(hint.duration) + 'ms' : 'n/a'} ` +
+                                `redirectStart=${hint.redirectStart !== null ? Math.round(hint.redirectStart) + 'ms' : 'n/a'} ` +
+                                `responseStart=${hint.responseStart !== null ? Math.round(hint.responseStart) + 'ms' : 'n/a'})` +
+                                ` — ${imgurl}`);
+                        }
                     }
                 }
 
@@ -59968,14 +60212,18 @@ a { color: #1565c0; }`;
                         if (hdrImg && hdrImg.style.display === 'none') {
                             hdrImg.src = imgurl;
                             hdrImg.style.display = 'inline-block';
-                            Lib.debug(ctx.key,
-                                `${ctx.key}LoadIcon: backfilled column-header thumbnail — ${imgurl}`);
+                            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                Lib.debug(ctx.key,
+                                    `${ctx.key}LoadIcon: backfilled column-header thumbnail — ${imgurl}`);
+                            }
                         }
                     }
                 }
             }
 
-            Lib.debug(ctx.key, `${ctx.key}LoadIcon: loaded OK (idb=${wasIdbHit} memory=${wasMemoryHit}) — ${imgurl}`);
+            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                Lib.debug(ctx.key, `${ctx.key}LoadIcon: loaded OK (idb=${wasIdbHit} memory=${wasMemoryHit}) — ${imgurl}`);
+            }
         };
 
         /**
@@ -59984,7 +60232,9 @@ a { color: #1565c0; }`;
          * the native img.onerror path.
          */
         const _onIconError = () => {
-            Lib.debug(ctx.key, `${ctx.key}LoadIcon: failed to load ${imgurl} — injecting ⚠⟳ retry indicator`);
+            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                Lib.debug(ctx.key, `${ctx.key}LoadIcon: failed to load ${imgurl} — injecting ⚠⟳ retry indicator`);
+            }
 
             // Find or create the flex-column wrapper that sits after the anchor.
             // This mirrors the structure used by the Resource Timing cache-hint
@@ -60050,7 +60300,9 @@ a { color: #1565c0; }`;
                     })
                     .catch(err => {
                         // Network fetch failed (e.g. 404 = no front image, or CDN error).
-                        Lib.debug(ctx.key, `${ctx.key}LoadIcon: IDB/network fetch failed — ${err.message}`);
+                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                            Lib.debug(ctx.key, `${ctx.key}LoadIcon: IDB/network fetch failed — ${err.message}`);
+                        }
                         _onIconError();
                         resolve();
                     });
@@ -60065,7 +60317,9 @@ a { color: #1565c0; }`;
         return new Promise(resolve => {
             const img    = document.createElement('img');
             const _timer = setTimeout(() => {
-                Lib.debug(ctx.key, `${ctx.key}LoadIcon: img load watchdog fired (30 s) — ${imgurl}`);
+                if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                    Lib.debug(ctx.key, `${ctx.key}LoadIcon: img load watchdog fired (30 s) — ${imgurl}`);
+                }
                 resolve();
             }, 30000);
             img.addEventListener('load', function() {
@@ -60135,7 +60389,9 @@ a { color: #1565c0; }`;
             // Tier 1: in-session Map — no network round-trip.
             count  = ctx.countCache.get(entityPath);
             images = ctx.imagesCache.get(entityPath) || [];
-            Lib.debug(ctx.key, `${ctx.key}EnrichIcon: ${count} image(s) for ${entityPath} (session cache)`);
+            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                Lib.debug(ctx.key, `${ctx.key}EnrichIcon: ${count} image(s) for ${entityPath} (session cache)`);
+            }
         } else {
             // Tier 2: IndexedDB metadata — survives page reloads and Load-from-Disk.
             if (Lib.settings.sa_art_idb_enable) {
@@ -60146,7 +60402,9 @@ a { color: #1565c0; }`;
                         images = idbMeta.images;
                         ctx.countCache.set(entityPath, count);
                         ctx.imagesCache.set(entityPath, images);
-                        Lib.debug(ctx.key, `${ctx.key}EnrichIcon: ${count} image(s) for ${entityPath} (IDB metadata)`);
+                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                            Lib.debug(ctx.key, `${ctx.key}EnrichIcon: ${count} image(s) for ${entityPath} (IDB metadata)`);
+                        }
                         // Skip to the decoration block — no network call needed.
                         if (count <= 0) { anchor.dataset[ctx.enrichedAttr] = '1'; return; }
                         // fall through to decoration
@@ -60200,8 +60458,10 @@ a { color: #1565c0; }`;
                             const sortKeySpanI = artCellI && artCellI.querySelector('.' + ctx.sortKeyClass);
                             if (sortKeySpanI && sortKeySpanI.textContent === 'no') {
                                 sortKeySpanI.textContent = 'yes';
-                                Lib.debug(ctx.key,
-                                    `${ctx.key}EnrichIcon: flipped sort key "no"→"yes" for Path-C anchor ${entityPath} (IDB)`);
+                                if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                    Lib.debug(ctx.key,
+                                        `${ctx.key}EnrichIcon: flipped sort key "no"→"yes" for Path-C anchor ${entityPath} (IDB)`);
+                                }
                             }
                         }
                         anchor.dataset[ctx.enrichedAttr] = '1';
@@ -60220,7 +60480,9 @@ a { color: #1565c0; }`;
                     // 404 — no archive entry at all: expected, debug only.
                     // 429 / 5xx — server-side problems: warn so they surface.
                     if (resp.status === 404) {
-                        Lib.debug(ctx.key, `${ctx.key}EnrichIcon: HTTP 404 (no entry) for ${entityPath}`);
+                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                            Lib.debug(ctx.key, `${ctx.key}EnrichIcon: HTTP 404 (no entry) for ${entityPath}`);
+                        }
                     } else {
                         Lib.warn(ctx.key, `${ctx.key}EnrichIcon: HTTP ${resp.status} for ${entityPath} — enrichment skipped`);
                     }
@@ -60244,7 +60506,9 @@ a { color: #1565c0; }`;
                 if (Lib.settings.sa_art_idb_enable) {
                     _artIdbPutMetadata(entityPath, count, images);
                 }
-                Lib.debug(ctx.key, `${ctx.key}EnrichIcon: ${count} image(s) for ${entityPath}`);
+                if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                    Lib.debug(ctx.key, `${ctx.key}EnrichIcon: ${count} image(s) for ${entityPath}`);
+                }
             } catch (err) {
                 // Network-level failure — do NOT cache so connectivity-restored
                 // re-renders can retry.
@@ -60336,8 +60600,10 @@ a { color: #1565c0; }`;
             const sortKeySpan = artCell && artCell.querySelector('.' + ctx.sortKeyClass);
             if (sortKeySpan && sortKeySpan.textContent === 'no') {
                 sortKeySpan.textContent = 'yes';
-                Lib.debug(ctx.key,
-                    `${ctx.key}EnrichIcon: flipped sort key "no"→"yes" for Path-C anchor ${entityPath}`);
+                if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                    Lib.debug(ctx.key,
+                        `${ctx.key}EnrichIcon: flipped sort key "no"→"yes" for Path-C anchor ${entityPath}`);
+                }
             }
         }
 
@@ -60483,8 +60749,10 @@ a { color: #1565c0; }`;
             }
         });
 
-        Lib.debug(ctx.key, `${ctx.key}InitSmallPics: enqueued ${icons.length} load request(s) ` +
-            `(queue: ${_caaQueue ? _caaQueue.runningCount + ' running, ' + _caaQueue.pendingCount + ' pending' : 'unavailable'})`);
+        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+            Lib.debug(ctx.key, `${ctx.key}InitSmallPics: enqueued ${icons.length} load request(s) ` +
+                `(queue: ${_caaQueue ? _caaQueue.runningCount + ' running, ' + _caaQueue.pendingCount + ' pending' : 'unavailable'})`);
+        }
     }
 
     /**
@@ -60964,13 +61232,15 @@ a { color: #1565c0; }`;
                                 hintLabel  = _h.label;
                                 if (_h.status !== 'network') {
                                     const hint = getResourceTimingHint(src);
-                                    Lib.debug(ctx.key,
-                                        `${ctx.key}InitBigPics: cache-hint=${hint.status} ` +
-                                        `(ts=${hint.transferSize} ebs=${hint.encodedBodySize} ` +
-                                        `dur=${hint.duration !== null ? Math.round(hint.duration) + 'ms' : 'n/a'} ` +
-                                        `redirectStart=${hint.redirectStart !== null ? Math.round(hint.redirectStart) + 'ms' : 'n/a'} ` +
-                                        `responseStart=${hint.responseStart !== null ? Math.round(hint.responseStart) + 'ms' : 'n/a'})` +
-                                        ` — ${imgurl}`);
+                                    if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                        Lib.debug(ctx.key,
+                                            `${ctx.key}InitBigPics: cache-hint=${hint.status} ` +
+                                            `(ts=${hint.transferSize} ebs=${hint.encodedBodySize} ` +
+                                            `dur=${hint.duration !== null ? Math.round(hint.duration) + 'ms' : 'n/a'} ` +
+                                            `redirectStart=${hint.redirectStart !== null ? Math.round(hint.redirectStart) + 'ms' : 'n/a'} ` +
+                                            `responseStart=${hint.responseStart !== null ? Math.round(hint.responseStart) + 'ms' : 'n/a'})` +
+                                            ` — ${imgurl}`);
+                                    }
                                 }
                             }
                             const emoji = cacheStatusEmoji(hintStatus);
@@ -61293,8 +61563,10 @@ a { color: #1565c0; }`;
             tbody.addEventListener('mouseout',  tbody[ctx.tbodyOut]);
         }
 
-        Lib.debug(ctx.key, `${ctx.key}InitBigPics: built bigbox for table ${tableIndex} ` +
-            `with ${seen.size} image(s), initially ${currentlyVisible ? 'visible' : 'hidden'}`);
+        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+            Lib.debug(ctx.key, `${ctx.key}InitBigPics: built bigbox for table ${tableIndex} ` +
+                `with ${seen.size} image(s), initially ${currentlyVisible ? 'visible' : 'hidden'}`);
+        }
         return { count: seen.size, firstImgUrl };
     }
 
@@ -61354,8 +61626,10 @@ a { color: #1565c0; }`;
             if (badge) badge.textContent = loadedVisible;
         }
 
-        Lib.debug(ctx.key, `${ctx.key}UpdateBigBoxForTable: table ${tableIndex} — ` +
-            `${visibleHrefs.size} visible href(s), ${loadedVisible} loaded image(s) shown`);
+        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+            Lib.debug(ctx.key, `${ctx.key}UpdateBigBoxForTable: table ${tableIndex} — ` +
+                `${visibleHrefs.size} visible href(s), ${loadedVisible} loaded image(s) shown`);
+        }
     }
 
     /**
@@ -62552,8 +62826,10 @@ a { color: #1565c0; }`;
             td.appendChild(sk);
         }
         sk.textContent = loaded ? 'caa-inline-yes' : 'caa-inline-no';
-        Lib.debug(ctx.key,
-            `_artSetInlineSortKey: td → ${sk.textContent}`);
+        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+            Lib.debug(ctx.key,
+                `_artSetInlineSortKey: td → ${sk.textContent}`);
+        }
     }
 
     /**
@@ -62787,15 +63063,21 @@ a { color: #1565c0; }`;
                         activeDefinition.features &&
                         activeDefinition.features[ctx.addFeature];
         if (!colName) {
-            Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: no ${ctx.addFeature} column configured for this page type — skipping`);
+            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: no ${ctx.addFeature} column configured for this page type — skipping`);
+            }
             return;
         }
 
-        Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: ${ctx.addFeature} column = "${caaFormatColNameForLog(colName)}"`);
+        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+            Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: ${ctx.addFeature} column = "${caaFormatColNameForLog(colName)}"`);
+        }
 
         const tables = document.querySelectorAll('table.tbl');
         if (!tables.length) {
-            Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: no table.tbl found — skipping`);
+            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: no table.tbl found — skipping`);
+            }
             return;
         }
 
@@ -62812,11 +63094,15 @@ a { color: #1565c0; }`;
 
             const colIdx = caaFindColumnByName(table, colName);
             if (colIdx === -1) {
-                Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: column "${caaFormatColNameForLog(colName)}" not found in table ${tblIdx} — skipping table`);
+                if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                    Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: column "${caaFormatColNameForLog(colName)}" not found in table ${tblIdx} — skipping table`);
+                }
                 return;
             }
 
-            Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: processing table ${tblIdx}, column "${caaFormatColNameForLog(colName)}" at index ${colIdx}`);
+            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: processing table ${tblIdx}, column "${caaFormatColNameForLog(colName)}" at index ${colIdx}`);
+            }
 
             table.querySelectorAll('tbody tr').forEach(tr => {
                 const td = tr.cells[colIdx];
@@ -62860,7 +63146,9 @@ a { color: #1565c0; }`;
                         if (!td.querySelector(phSelector)) {
                             // Case B
                             delete td.dataset[ctx.inlineDoneAttr];
-                            Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: cleared stale clone marker — will re-inject`);
+                            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: cleared stale clone marker — will re-inject`);
+                            }
                         } else {
                             // Case A
                             skippedDone++;
@@ -62972,18 +63260,22 @@ a { color: #1565c0; }`;
                                         existingPh.appendChild(hs);
                                     }
                                 }
-                                Lib.debug(ctx.key,
-                                    `init${ctx.key.toUpperCase()}InlinePics: C1 same-session restore ` +
-                                    `— blob alive, hover re-wired — ${imgurl}`);
+                                if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                    Lib.debug(ctx.key,
+                                        `init${ctx.key.toUpperCase()}InlinePics: C1 same-session restore ` +
+                                        `— blob alive, hover re-wired — ${imgurl}`);
+                                }
                                 return;
                             }
 
                             // ── C2: stale blob — re-fetch into the existing DOM elements ──
                             // Clear the broken-image icon while the fetch is in flight.
                             // Do NOT stamp the 'done' marker here — see comment above.
-                            Lib.debug(ctx.key,
-                                `init${ctx.key.toUpperCase()}InlinePics: C2 stale-blob restore ` +
-                                `— re-fetching — ${imgurl}`);
+                            if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                Lib.debug(ctx.key,
+                                    `init${ctx.key.toUpperCase()}InlinePics: C2 stale-blob restore ` +
+                                    `— re-fetching — ${imgurl}`);
+                            }
 
                             if (existingImg) {
                                 existingImg.style.display = 'none';
@@ -63067,9 +63359,11 @@ a { color: #1565c0; }`;
                             }
                         });
 
-                        Lib.debug(ctx.key,
-                            `init${ctx.key.toUpperCase()}InlinePics: placeholder present without marker ` +
-                            `(restore) — C1/C2 per-ph`);
+                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                            Lib.debug(ctx.key,
+                                `init${ctx.key.toUpperCase()}InlinePics: placeholder present without marker ` +
+                                `(restore) — C1/C2 per-ph`);
+                        }
                         return;
                     }
                 }
@@ -63087,9 +63381,11 @@ a { color: #1565c0; }`;
                     const link = container.querySelector(ctx.inlineLinkSel);
                     if (!link) {
                         skippedNoLink++;
-                        Lib.debug(ctx.key,
-                            `init${ctx.key.toUpperCase()}InlinePics: no entity link found in ` +
-                            `${isMultiItem ? '<li>' : '"' + colName + '"'} cell — skipping`);
+                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                            Lib.debug(ctx.key,
+                                `init${ctx.key.toUpperCase()}InlinePics: no entity link found in ` +
+                                `${isMultiItem ? '<li>' : '"' + colName + '"'} cell — skipping`);
+                        }
                         return;
                     }
 
@@ -63097,8 +63393,10 @@ a { color: #1565c0; }`;
                     const guidMatch = href.match(GUID_RE);
                     if (!guidMatch) {
                         skippedNoGuid++;
-                        Lib.debug(ctx.key,
-                            `init${ctx.key.toUpperCase()}InlinePics: no GUID found in href "${href}" — skipping`);
+                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                            Lib.debug(ctx.key,
+                                `init${ctx.key.toUpperCase()}InlinePics: no GUID found in href "${href}" — skipping`);
+                        }
                         return;
                     }
 
@@ -63107,8 +63405,10 @@ a { color: #1565c0; }`;
                     const imgurl = ctx.archiveHost + '/' + entityType + '/' + guidMatch[0] + '/front-' + size +
                                    (cacheBust ? '?_cb=' + Date.now() : '');
 
-                    Lib.debug(ctx.key,
-                        `init${ctx.key.toUpperCase()}InlinePics: will fetch inline thumbnail: ${imgurl}`);
+                    if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                        Lib.debug(ctx.key,
+                            `init${ctx.key.toUpperCase()}InlinePics: will fetch inline thumbnail: ${imgurl}`);
+                    }
 
                     // ── Build placeholder + img element (synchronous — layout stable) ─
                     const ph = document.createElement('span');
@@ -63213,14 +63513,18 @@ a { color: #1565c0; }`;
                                     if (fromMemory)    _caaFetchStats.inline.memory++;
                                     else if (fromIdb)  _caaFetchStats.inline.idb++;
                                     else               _caaFetchStats.inline.network++;
-                                    Lib.debug(ctx.key,
-                                        `init${ctx.key.toUpperCase()}InlinePics: loaded OK (idb=${fromIdb} memory=${fromMemory}) — ${imgurl}`);
+                                    if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                        Lib.debug(ctx.key,
+                                            `init${ctx.key.toUpperCase()}InlinePics: loaded OK (idb=${fromIdb} memory=${fromMemory}) — ${imgurl}`);
+                                    }
                                 })
                                 .catch(() => {
                                     _artSetInlineSortKey(ctx, td, false);
-                                    Lib.debug(ctx.key,
-                                        `init${ctx.key.toUpperCase()}InlinePics: failed to load ${imgurl}` +
-                                        ` — placeholder stays as spacer`);
+                                    if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                        Lib.debug(ctx.key,
+                                            `init${ctx.key.toUpperCase()}InlinePics: failed to load ${imgurl}` +
+                                            ` — placeholder stays as spacer`);
+                                    }
                                 });
                         }
 
@@ -63288,26 +63592,32 @@ a { color: #1565c0; }`;
                                             ph.style.position = 'relative';
                                             ph.appendChild(hintSpan);
                                         }
-                                        Lib.debug(ctx.key,
-                                            `init${ctx.key.toUpperCase()}InlinePics: cache-hint=${hint.status} ` +
-                                            `(ts=${hint.transferSize} ebs=${hint.encodedBodySize} ` +
-                                            `dur=${hint.duration !== null ? Math.round(hint.duration) + 'ms' : 'n/a'} ` +
-                                            `redirectStart=${hint.redirectStart !== null ? Math.round(hint.redirectStart) + 'ms' : 'n/a'} ` +
-                                            `responseStart=${hint.responseStart !== null ? Math.round(hint.responseStart) + 'ms' : 'n/a'})` +
-                                            ` — ${imgurl}`);
+                                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                            Lib.debug(ctx.key,
+                                                `init${ctx.key.toUpperCase()}InlinePics: cache-hint=${hint.status} ` +
+                                                `(ts=${hint.transferSize} ebs=${hint.encodedBodySize} ` +
+                                                `dur=${hint.duration !== null ? Math.round(hint.duration) + 'ms' : 'n/a'} ` +
+                                                `redirectStart=${hint.redirectStart !== null ? Math.round(hint.redirectStart) + 'ms' : 'n/a'} ` +
+                                                `responseStart=${hint.responseStart !== null ? Math.round(hint.responseStart) + 'ms' : 'n/a'})` +
+                                                ` — ${imgurl}`);
+                                        }
                                     }
                                     // ── Telemetry (browser-native img path) ────────────
                                     _caaFetchStats.inline.browser++;
-                                    Lib.debug(ctx.key,
-                                        `init${ctx.key.toUpperCase()}InlinePics: loaded OK — ${imgurl}`);
+                                    if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                        Lib.debug(ctx.key,
+                                            `init${ctx.key.toUpperCase()}InlinePics: loaded OK — ${imgurl}`);
+                                    }
                                 }
                                 resolve();
                             });
                             img.addEventListener('error', function() {
                                 _artSetInlineSortKey(ctx, td, false);
-                                Lib.debug(ctx.key,
-                                    `init${ctx.key.toUpperCase()}InlinePics: failed to load ${imgurl}` +
-                                    ` — placeholder stays as spacer`);
+                                if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                                    Lib.debug(ctx.key,
+                                        `init${ctx.key.toUpperCase()}InlinePics: failed to load ${imgurl}` +
+                                        ` — placeholder stays as spacer`);
+                                }
                                 resolve();
                             });
                             img.src = imgurl;
@@ -63344,10 +63654,12 @@ a { color: #1565c0; }`;
             });
         });
 
-        Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: done — injected=${injected} enqueued=${enqueued} ` +
-            `skipped(done=${skippedDone} noLink=${skippedNoLink} noGuid=${skippedNoGuid}) ` +
-            `column="${colName}" ` +
-            `(queue: ${_caaQueue ? _caaQueue.runningCount + ' running, ' + _caaQueue.pendingCount + ' pending' : 'unavailable'})`);
+        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+            Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: done — injected=${injected} enqueued=${enqueued} ` +
+                `skipped(done=${skippedDone} noLink=${skippedNoLink} noGuid=${skippedNoGuid}) ` +
+                `column="${colName}" ` +
+                `(queue: ${_caaQueue ? _caaQueue.runningCount + ' running, ' + _caaQueue.pendingCount + ' pending' : 'unavailable'})`);
+        }
     }
 
     // ── Public entry points ───────────────────────────────────────────────────
@@ -64222,4 +64534,76 @@ a { color: #1565c0; }`;
             description: 'Focus Next Column Filter'
         }
     };
+
+    // ── Test-mode debug hook (__saTest) ─────────────────────────────────────
+    // Read-only introspection surface for the Playwright test harness (see
+    // tests/support/loadPage.js's `testMode` option, which sets
+    // window.__SA_TEST_MODE__ before this script loads). Never defined
+    // outside test mode; adds no UI and changes no user-visible behavior.
+    if (typeof window !== 'undefined' && window.__SA_TEST_MODE__) {
+        window.__saTest = {
+            /**
+             * Opens (or reads the current state of, if already open) the 📊
+             * unique-values dropdown for the column named `colName`, and
+             * returns its rendered synthetic-value sections (per
+             * SYN_SECTION_META — "Structure", "Flags", entity info, etc.).
+             * The plain value list rendered below those sections is
+             * intentionally NOT included — it has no section grouping to
+             * report.
+             *
+             * Reads live DOM (not internal Maps/state), so a test verifies
+             * what a person actually sees in the panel, not something that
+             * might have diverged from it.
+             *
+             * @param {string} colName - Column header text with sort
+             *   arrows/counts/glyphs already stripped (e.g. "Format", not
+             *   "⇅ Format 📊").
+             * @returns {Array<{label: string, items: Array<{label: string, count: number|null, checked: boolean}>}>|null}
+             *   `null` when no column header matching `colName` is found.
+             */
+            getUniqDropSections(colName) {
+                const stripDecorations = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+                const th = Array.from(document.querySelectorAll('table.tbl thead th'))
+                    .find((t) => stripDecorations(t.textContent) === colName);
+                const wrap = th ? th.querySelector('.mb-col-uniq-wrap') : null;
+                if (!wrap) return null;
+
+                // _uniqDropOwner (module-scope) tracks which wrap currently
+                // owns the open panel — openUniqDrop() TOGGLES CLOSED when
+                // clicked again on its own owner, so only click when this
+                // column's panel isn't already the one open.
+                if (_uniqDropOwner !== wrap) {
+                    wrap.click();
+                }
+
+                const dropEl = document.getElementById('mb-col-uniq-dropdown');
+                if (!dropEl || dropEl.style.display === 'none') return [];
+
+                return Array.from(dropEl.querySelectorAll('.mb-uniq-section')).map((section) => {
+                    const label = section.querySelector('.mb-uniq-section-label')?.textContent ?? '';
+                    const items = Array.from(section.querySelectorAll('.mb-col-uniq-item')).map((item) => {
+                        const badgeText = item.querySelector('.mb-uniq-count-badge')?.textContent ?? '';
+                        const countMatch = badgeText.match(/\((\d+)\)/);
+                        return {
+                            label: item.dataset.mbUniqSynLabel
+                                ?? item.querySelector('.mb-uniq-syn-label-text')?.textContent
+                                ?? item.textContent.trim(),
+                            count: countMatch ? Number(countMatch[1]) : null,
+                            checked: item.classList.contains('mb-col-uniq-checked'),
+                        };
+                    });
+                    return { label, items };
+                });
+            },
+
+            /**
+             * Closes the unique-values dropdown, if open. Thin wrapper
+             * around the internal `closeUniqDrop()`, for tests to reset
+             * panel state between assertions.
+             */
+            closeUniqDrop() {
+                closeUniqDrop();
+            },
+        };
+    }
 })();
