@@ -96536,7 +96536,7 @@ Rework the current three buttons (keyboard, setting, help) into one, like majkin
 
 
 
-* TODO fix pageType 'annotations' not handling comparing different versions
+* DONE fix pageType 'annotations' not handling comparing different versions
 ** i
 
 fix pageType 'annotations' not handling comparing different versions:
@@ -96588,11 +96588,14 @@ c.)
 
 I want b.) all the time
 
-** TODO bug
+** DONE bug
 
-Is it possible to make the selection of the radio boxes always possible, so basically allow each combination
+Is it possible to make the selection of the radio boxes always possible, so basically allow each combination. Currently,
+depending on the currently select "Old", New" rows and the filter condition, there are situation where no "Old"/"New"
+combination can be selected without clearing the filter again
 
-* edit mismatches
+
+* DONE edit mismatches
 
 Currently I used Claude Code to implement two different features at the same time on different machines, starting from
 the same version "9.99.926" How should I proceed to get these in sync again. On both machines nothing is commited/pushed yet
