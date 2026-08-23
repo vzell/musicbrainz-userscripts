@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed `tests/support/snapshot.js`'s capture functions leaking this userscript's own injected `<script>` source into saved `rendered.html`/`raw.html` snapshots — opening a saved file directly in a browser showed the raw JS source dumped as literal page text (a `</script` substring inside the source prematurely closed the real script tag). Now strips every `<script>` element and inserts a `<base>` tag before serializing, matching `tests/support/test.js`'s existing precedent. Also switched `captureRaw()` from `domcontentloaded` to `load` — a native MusicBrainz page-JS widget was found racing that event, causing false diffs unrelated to any real change. Test tooling only; no userscript runtime changes."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-08-23",
     "sections": [

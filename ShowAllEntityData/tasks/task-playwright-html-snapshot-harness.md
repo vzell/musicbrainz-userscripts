@@ -135,39 +135,61 @@ Export (place under `tests/support/snapshot.js`):
 
 ### Implementation notes — empirically corrected (read before touching `scrub()`)
 
-`tests/support/snapshot.js` is implemented. The doc's original guessed scrub
-candidates (CSRF/nonce, "N alerts", relative timestamps, session
-identifiers) were checked and **none found** on either pilot page — logged
-out, no personalized banners exist. What actually needed scrubbing was only
-discoverable by capturing the SAME unchanged page **twice in a row** and
-diffing the results — a single capture's inspection never would have
-surfaced either category below, since both look completely reasonable in
-isolation and only reveal themselves as noise on a second capture:
+`tests/support/snapshot.js` is implemented. Four things were found — not by
+inspection of a single capture, but by (a) actually opening a saved file in
+a real browser, and (b) capturing the SAME unchanged page **twice in a row**
+and diffing. Neither method would have surfaced what the other found.
 
-1. **MusicBrainz's own embedded JSON blocks have non-deterministic key
-   order, per request.** `<script type="application/json">` (entity data,
-   the "Release events" blob, …), `<script type="application/ld+json">`
-   (SEO structured data), and the `window.__MB__` bootstrap script
-   (`Object.defineProperty(window,"__MB__",{value:Object.freeze({...})})`)
-   all come back with different *object key* order between two otherwise-
-   identical requests — confirmed by parsing both captures' JSON-LD blocks,
-   sorting keys, and finding the results byte-identical (values unchanged,
-   only order). Almost certainly Perl hash-iteration-order randomization on
-   MusicBrainz's own Catalyst backend (a deliberate anti-hash-flooding
-   security measure, not a bug). This was the single biggest false-diff
-   source found — without a fix, `raw.html` differed on nearly every
-   re-capture of the exact same page. Fixed via `_canonicalizeJsonBlocks()`
-   (parse each `application/(ld+)?json` script block, recursively sort
-   object keys only — never array element order, which can be genuine row/
-   track ordering — re-serialize) for the two JSON block types, and
-   `_scrubMbBootstrapScript()` (wholesale-blank, since it's a JS
-   expression, not parseable JSON, and irrelevant — this script never reads
-   `window.__MB__`) for the bootstrap script. Watch for MORE attributes on
-   these script tags once *rendered* than on the raw page (confirmed: the
-   "Release events" block gains a `style="display: none;"` attribute
-   post-render) — the matching regex must not assume the `type="..."`
-   attribute is immediately followed by `>`.
-2. **This script's OWN self-reported wall-clock timing text.** Once
+1. **A real, more severe bug, found by opening a saved `rendered.html`
+   directly in a browser (reported by Volker, not caught by anything in
+   this module's own automated checks):** `captureRendered()`/`captureRaw()`
+   used to serialize `outerHTML` verbatim, including the `<script>` tags
+   `page.addScriptTag()` injects containing this userscript's own ~800KB+
+   source. A `<script>` element's raw text content is serialized completely
+   unescaped, and that much source almost certainly contains a literal
+   `</script` substring somewhere in a comment or string. Re-opening the
+   *saved* file in a real browser ends the script tag right there and dumps
+   the rest of the userscript's own source as literal page text —
+   corrupting everything after it. `tests/support/test.js`'s own
+   `SAVE_HTML` fixture-saving mechanism had already solved this exact
+   problem (strip `<script>` before serializing, plus insert a `<base>` tag
+   so the saved file's own relative asset URLs resolve when opened via
+   `file://`); this module just hadn't been given the same treatment.
+   Fixed via `_serializeWithoutScripts()` — DOM manipulation (clone,
+   `querySelectorAll('script').forEach(el => el.remove())`, insert
+   `<base>`) run *inside* `page.evaluate()`, **not** a string-regex
+   post-process on the already-serialized HTML — a regex-based
+   `<script>...</script>` removal on the string has the exact same
+   literal-`</script`-inside-content footgun this fix exists to avoid.
+2. **A side effect of fix #1 that eliminated a whole prior scrub category.**
+   An earlier version of this module found that MusicBrainz's own embedded
+   `<script type="application/json">`/`"application/ld+json">`/
+   `window.__MB__` bootstrap blocks have non-deterministic *object key*
+   order per request (confirmed by parsing both captures' JSON-LD blocks,
+   sorting keys, and finding the results byte-identical — values unchanged,
+   only order; almost certainly Perl hash-iteration-order randomization on
+   MusicBrainz's own Catalyst backend, a deliberate anti-hash-flooding
+   measure, not a bug), and added `_canonicalizeJsonBlocks()`/
+   `_scrubMbBootstrapScript()` to normalize it. Once fix #1 strips every
+   `<script>` element unconditionally, those blocks — and their key-order
+   noise — are gone entirely before `scrub()` ever runs. Removed the
+   now-dead canonicalization code rather than leave it as unreachable
+   complexity.
+3. **`captureRaw()`'s `domcontentloaded` wait (this doc's own original
+   spec) is insufficient — some of MusicBrainz's own native page JS mutates
+   the DOM shortly after that event fires.** Found the same way as #2 — two
+   back-to-back captures of the unchanged `artist-releasegroups` page
+   differed at exactly one spot: a Wikipedia-extract widget's
+   `wikipedia-extract-collapsed`/`wikipedia-extract-collapse` class (and
+   the presence/absence of its own "Show more..." toggle link), which
+   native MB JS toggles once it's finished running — a genuine capture-
+   timing race, not real MB data drift, confirmed by a precise
+   character-position diff finding exactly those two related spots and
+   nothing else. Fixed by switching `page.goto()` to `waitUntil: 'load'`
+   (all resources fetched, not just initial HTML parsed) instead of
+   `'domcontentloaded'`, giving that native JS a real chance to have
+   already run and settled.
+4. **This script's OWN self-reported wall-clock timing text.** Once
    rendered: `#mb-global-status-display`'s "Fetching: X.XXs, Rendering:
    X.XXs, 📐Measuring: X.XXs" summary (PLUS further appended pieces —
    "🎨CAA: X.Xs", "🔗Rels: X.Xs" — via `_sdAppend()`), `#mb-info-display-caa`/
@@ -186,16 +208,22 @@ isolation and only reveal themselves as noise on a second capture:
    Verified safe against false positives (this label-anchored approach
    won't touch inline-style `transition: ... 0.1s` CSS values, which never
    have one of these literal label strings immediately before the number).
-3. Checked and explicitly **ruled out** (real, stable data, not scrubbed):
-   ISO `creation_date` timestamps on annotation/entity records, and
-   "N edit(s)"-shaped substrings that turned out to be a false-positive
-   regex match against a stable list title ("...2021 edition") rather than
-   a real edit counter.
+
+Checked and explicitly **ruled out** (real, stable data, not scrubbed): ISO
+`creation_date` timestamps on annotation/entity records, and "N edit(s)"-
+shaped substrings that turned out to be a false-positive regex match
+against a stable list title ("...2021 edition") rather than a real edit
+counter. Also checked and none found on either pilot page: CSRF/nonce,
+"N alerts", relative timestamps, session identifiers — logged out, no
+personalized banners exist to find.
 
 Verified fully deterministic end-to-end (not just via targeted unit
 checks): captured both pilot pageTypes' raw+rendered snapshots via the real
-`capture-snapshots.js` runner three times in a row — `unchanged` on every
-re-run after the first.
+`capture-snapshots.js` runner **five** times in a row across the full fix
+sequence above — `unchanged` on every re-run after the first — and
+confirmed directly (`grep -c '<script'` on the committed files, and a
+`<!DOCTYPE html>`/`<base href="...">`-prefixed file that opens correctly in
+a real browser) that fix #1's script-stripping actually took effect.
 
 ## Part 2 — `tests/support/browser.js` additions (or reuse from `loadPage.js`)
 

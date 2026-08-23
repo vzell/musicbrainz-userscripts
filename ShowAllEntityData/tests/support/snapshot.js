@@ -1,20 +1,88 @@
 'use strict';
 
 /**
+ * Serializes `document.documentElement` to a string with every `<script>`
+ * element removed and a `<base>` tag inserted, run entirely INSIDE
+ * `page.evaluate()` (DOM manipulation before serializing) rather than as a
+ * string-regex post-process on the already-serialized HTML.
+ *
+ * **Why this exists — a real bug, found by opening a saved `rendered.html`
+ * directly in a browser** (not by anything in this module's own automated
+ * checks): `captureRendered()` used to serialize `outerHTML` verbatim,
+ * including the `<script>` tags `page.addScriptTag()` injects containing
+ * this userscript's own ~800KB+ source. A `<script>` element's raw text
+ * content is serialized completely unescaped, and that much source almost
+ * certainly contains a literal `</script` substring somewhere in a comment
+ * or string. Re-opening the *saved* file in a real browser ends the script
+ * tag right there and dumps the rest of the userscript's source as literal
+ * page text, corrupting everything after it — exactly what happened.
+ * `tests/support/test.js`'s own `SAVE_HTML` fixture-saving mechanism had
+ * already solved this exact problem (strip `<script>` before serializing);
+ * this module just hadn't been given the same treatment.
+ *
+ * **Why this must run as DOM manipulation, not a string regex**: a
+ * regex-based `<script>...</script>` removal on the ALREADY-SERIALIZED
+ * HTML string has the identical footgun this function exists to fix — a
+ * literal `</script` substring inside the content would terminate the
+ * regex match early too, for the same reason it corrupts a browser's own
+ * parse.
+ *
+ * The `<base>` tag (root-relative URLs, e.g. MusicBrainz's own CSS/image
+ * paths) makes a saved file's OWN styling/images resolve correctly when
+ * opened directly via `file://` instead of served — mirrors
+ * `test.js`'s identical reasoning for its own saved copies.
+ *
+ * A side benefit of stripping every `<script>` unconditionally: it also
+ * removes MusicBrainz's own embedded `<script type="application/json">`/
+ * `"application/ld+json">`/`window.__MB__` bootstrap blocks — the exact
+ * elements an earlier version of `scrub()` had to canonicalize because
+ * their *object key order* was non-deterministic per request (Perl
+ * hash-iteration-order randomization). With those blocks gone entirely,
+ * that canonicalization is moot; removed rather than left as dead code.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<string>}
+ */
+async function _serializeWithoutScripts(page) {
+    return page.evaluate((baseHref) => {
+        const clone = document.documentElement.cloneNode(true);
+        clone.querySelectorAll('script').forEach((el) => el.remove());
+        const base = document.createElement('base');
+        base.href = baseHref;
+        const head = clone.querySelector('head') || clone;
+        head.insertBefore(base, head.firstChild);
+        return '<!DOCTYPE html>\n' + clone.outerHTML;
+    }, page.url());
+}
+
+/**
  * Navigates to `url` and returns MusicBrainz's own unmodified page HTML,
- * captured *before* any userscript code runs.
+ * captured *before* any userscript code runs — scripts stripped, see
+ * `_serializeWithoutScripts()`'s own JSDoc.
  *
  * @param {import('@playwright/test').Page} page
  * @param {string} url
  * @returns {Promise<string>}
  */
 async function captureRaw(page, url) {
-    await page.goto(url, { waitUntil: 'domcontentloaded' });
-    return page.evaluate(() => document.documentElement.outerHTML);
+    // 'load' (not 'domcontentloaded', despite this doc's original spec) —
+    // confirmed empirically that MusicBrainz's own native page JS mutates
+    // the DOM shortly after DOMContentLoaded (e.g. artist-releasegroups'
+    // Wikipedia-extract widget toggling a wikipedia-extract-collapsed/
+    // -collapse class and adding/removing its own "Show more..." toggle
+    // link, depending on whether that JS has run yet). Two back-to-back
+    // domcontentloaded-gated captures of the same unchanged page differed
+    // at exactly those two spots — a genuine capture-timing race, not real
+    // MB data drift. Waiting for the `load` event (all resources fetched,
+    // not just initial HTML parsed) gives that native JS a much better
+    // chance to have already run and settled before this captures anything.
+    await page.goto(url, { waitUntil: 'load' });
+    return _serializeWithoutScripts(page);
 }
 
 /**
- * Returns the fully-rendered page's HTML. Assumes the caller has already
+ * Returns the fully-rendered page's HTML — scripts stripped, see
+ * `_serializeWithoutScripts()`'s own JSDoc. Assumes the caller has already
  * injected the userscript, triggered its "Show all" button (or loaded a
  * disk fixture), and waited for `#mb-filter-container` to become visible —
  * `renderFinalTable()`/`renderGroupedTable()`'s own shared "initial render
@@ -38,7 +106,7 @@ async function captureRaw(page, url) {
  * @returns {Promise<string>}
  */
 async function captureRendered(page) {
-    return page.evaluate(() => document.documentElement.outerHTML);
+    return _serializeWithoutScripts(page);
 }
 
 /**
@@ -73,97 +141,6 @@ function _scrubTimingAfterLabel(html, label, replacement = '[SCRUBBED]') {
 }
 
 /**
- * Recursively sorts every plain object's keys (alphabetically), leaving
- * array element ORDER untouched (that can be genuine row/track ordering —
- * only object key order is the actual noise source here, see
- * `_canonicalizeJsonBlocks()`'s own JSDoc for why).
- *
- * @param {*} value
- * @returns {*}
- */
-function _sortKeysDeep(value) {
-    if (Array.isArray(value)) return value.map(_sortKeysDeep);
-    if (value && typeof value === 'object') {
-        const sorted = {};
-        for (const key of Object.keys(value).sort()) sorted[key] = _sortKeysDeep(value[key]);
-        return sorted;
-    }
-    return value;
-}
-
-/**
- * Canonicalizes (sorts object keys, recursively) the content of every
- * `<script type="application/json">`/`<script type="application/ld+json">`
- * block in `html`.
- *
- * **Why this exists**: MusicBrainz's own raw page HTML embeds several such
- * blocks (entity data, the "Release events" blob, JSON-LD SEO structured
- * data, …) whose *object key order* is genuinely non-deterministic between
- * two otherwise-identical requests to the same URL — confirmed empirically
- * by capturing the same page twice in a row and diffing: the JSON-LD
- * block's keys came back in a different order each time, with byte-
- * identical *values*, most likely Perl hash-iteration-order randomization
- * on MusicBrainz's own Catalyst backend (a deliberate anti-hash-flooding
- * security measure, not a bug). Confirmed the fix works by parsing both
- * captures' JSON-LD blocks, sorting keys, and finding the results byte-
- * identical. Without this, `raw.html` would show a false diff on
- * essentially every re-capture, unrelated to any script change or real MB
- * edit — the exact failure mode this whole harness exists to avoid.
- *
- * Array element order is deliberately left untouched (only object keys are
- * sorted) — an array can encode genuine ordering (track list order, event
- * list order) that must NOT be normalized away, unlike a hash's key order.
- *
- * Blocks that aren't valid JSON (parse failure) are left untouched rather
- * than dropped — safer than guessing.
- *
- * @param {string} html
- * @returns {string}
- */
-function _canonicalizeJsonBlocks(html) {
-    return html.replace(
-        // [^>]* after the type attribute: the rendered (post-script) page
-        // adds extra attributes to some of these tags (e.g. a
-        // style="display: none;" on the "Release events" block) that
-        // aren't present on the raw page — confirmed empirically, an
-        // earlier version of this regex matched the raw capture fine but
-        // silently skipped this one once rendered, since it required the
-        // type attribute to be immediately followed by '>'.
-        /(<script type="application\/(?:ld\+)?json"[^>]*>)([\s\S]*?)(<\/script>)/g,
-        (full, open, body, close) => {
-            try {
-                return open + JSON.stringify(_sortKeysDeep(JSON.parse(body))) + close;
-            } catch {
-                return full;
-            }
-        }
-    );
-}
-
-/**
- * Blanks the content of MusicBrainz's own `window.__MB__` bootstrap script
- * (`<script>Object.defineProperty(window,"__MB__",{value:Object.freeze(
- * {...})})</script>` — Catalyst-internal DBDefs/session/i18n plumbing).
- * Not valid pure JSON (it's a JS expression, `Object.freeze()`/
- * `Object.seal()` calls, not a bare object literal), so
- * `_canonicalizeJsonBlocks()` can't parse and re-sort it the same way —
- * and it's irrelevant to blank wholesale anyway, since this script never
- * reads `window.__MB__` (it reads rendered `<table>` DOM content, not this
- * bootstrap data). Found via the same two-captures-in-a-row diff that
- * surfaced the JSON blocks above; same underlying Perl-hash-order-
- * randomization root cause.
- *
- * @param {string} html
- * @returns {string}
- */
-function _scrubMbBootstrapScript(html) {
-    return html.replace(
-        /<script>Object\.defineProperty\(window,"__MB__",[\s\S]*?<\/script>/,
-        '<script>[SCRUBBED window.__MB__ bootstrap]</script>'
-    );
-}
-
-/**
  * Generic scrub rules, applied to every pageType — each one targets
  * content that's genuinely volatile *per capture run*, not per script
  * change, verified by actually inspecting both pilot pages' raw AND
@@ -181,13 +158,20 @@ function _scrubMbBootstrapScript(html) {
  *     `#mb-info-display-generic`'s auto-resize "...in X.XXs" message, and
  *     the (hidden-but-still-serialized) `#mb-fetch-progress-label`'s stale
  *     "...  - X.Xs left" estimate.
- *   - MusicBrainz's OWN embedded JSON blocks (`<script type="application/
- *     json">`/`"application/ld+json">`, and the `window.__MB__` bootstrap
- *     script) — their *object key order* is genuinely non-deterministic
- *     per request (see `_canonicalizeJsonBlocks()`'s own JSDoc for the
- *     empirical proof). This was the single biggest false-diff source
- *     found: without it, `raw.html` differed on nearly every re-capture
- *     of the SAME unchanged page.
+ *
+ * MusicBrainz's own embedded `<script type="application/json">`/
+ * `"application/ld+json">`/`window.__MB__` bootstrap blocks (whose *object
+ * key order* was found to be genuinely non-deterministic per request —
+ * Perl hash-iteration-order randomization on the Catalyst backend) no
+ * longer need a scrub rule here at all: `captureRaw()`/`captureRendered()`
+ * strip every `<script>` element entirely before this function ever runs
+ * (see `_serializeWithoutScripts()`'s own JSDoc — a separate, more severe
+ * bug fix: a captured `rendered.html`, opened directly in a browser,
+ * showed this userscript's own multi-hundred-KB source dumped as literal
+ * page text once a `</script` substring inside it prematurely closed the
+ * real script tag). That fix happens to also remove the JSON-key-order
+ * noise as a side effect, since those blocks live inside `<script>` tags
+ * too.
  *
  * None of the doc's originally-guessed candidates (CSRF/nonce, "N alerts",
  * relative timestamps, session identifiers) were actually found on either
@@ -217,8 +201,6 @@ const GENERIC_SCRUB_RULES = [
     // anchored on " left" rather than a label-prefix match, since "- " on
     // its own is too generic a prefix to be a safe match anchor.
     (html) => html.replace(/\d+(?:\.\d+)?s left/g, '[SCRUBBED] left'),
-    _canonicalizeJsonBlocks,
-    _scrubMbBootstrapScript,
 ];
 
 /**
