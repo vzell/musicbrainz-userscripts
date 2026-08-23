@@ -49291,6 +49291,53 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Cheap O(rows) signature of which rows of `table` are currently
+     * visible, built from each row's `data-mb-row-idx` (a stable per-row
+     * identity assigned once at extraction time and preserved through
+     * `cloneNode(true)` — see the `_mbRowIdxCounter` comment near :29997).
+     * Two calls return the same string iff exactly the same set of rows is
+     * visible, regardless of row order. Shared by
+     * `_updateAllColHeaderCounts()`'s per-table cache and
+     * `openUniqDrop()`'s per-column cache (PERFORMANCE.org Step 4) — both
+     * invalidate when this signature changes.
+     * @param {HTMLTableElement} table
+     * @returns {string}
+     */
+    function _visibleRowSetSignature(table) {
+        const tbody = table.tBodies[0];
+        if (!tbody) return '';
+        let sig = '';
+        for (const row of tbody.rows) {
+            if (row.style.display !== 'none') sig += row.dataset.mbRowIdx + ',';
+        }
+        return sig;
+    }
+
+    // Per-table memo of the last visible-row-set signature _updateAllColHeaderCounts
+    // computed its counts against (see below). Keyed by the live <table> element,
+    // so a brand-new table (new fetch / disk-load / multi-table sub-table) is
+    // always a cache miss with no manual reset needed.
+    const _colHeaderCountsSigCache = new WeakMap();
+
+    /**
+     * Forces the next `_updateAllColHeaderCounts(table)` call to recompute
+     * instead of reusing its cached visible-row-set signature.
+     *
+     * The signature cache below only tracks WHICH rows are visible, not what
+     * their cells contain — so any call site that mutates cell CONTENT in
+     * place (without a corresponding row show/hide) must invalidate here
+     * first, or the header counts silently go stale. `initReleaseEventsColumn()`
+     * is the one known case today (it fills previously-empty Release
+     * events/country/date cells, then re-runs `initCollapsableColumns()` to
+     * pick up the new content) — see its call sites for the pattern.
+     *
+     * @param {HTMLTableElement} table
+     */
+    function _invalidateColHeaderCountsCache(table) {
+        _colHeaderCountsSigCache.delete(table);
+    }
+
+    /**
      * Updates the two live count indicators in every column header of `table`:
      *
      *   1. `.mb-col-uniq-count` span (before 📊) — number of distinct non-empty
@@ -49306,7 +49353,13 @@ a { color: #1565c0; }`;
      *      columns; other columns have no collapse button.
      *
      * Called at the tail of initCollapsableColumns() so it runs automatically
-     * at every render-completion and filter-cycle site.
+     * at every render-completion and filter-cycle site. Several of those call
+     * sites (column show/hide, multi-table sub-table re-renders) invoke it
+     * without the set of visible rows having actually changed since the last
+     * computation, so the O(rows × columns) scan below is skipped whenever a
+     * cheap O(rows) signature of the visible `data-mb-row-idx` values matches
+     * the last one computed for this table — see `_colHeaderCountsSigCache`
+     * and `_invalidateColHeaderCountsCache()` above.
      *
      * @param {HTMLTableElement} table
      */
@@ -49314,6 +49367,14 @@ a { color: #1565c0; }`;
         const tbody = table.tBodies[0];
         const headers = Array.from(table.querySelectorAll('thead tr:first-child th'));
         if (!tbody || headers.length === 0) return;
+
+        // ── Skip recompute when the visible row set hasn't changed ──────────
+        const _rowSetSig = _visibleRowSetSignature(table);
+        if (_colHeaderCountsSigCache.get(table) === _rowSetSig) {
+            Lib.debug('collapse', '_updateAllColHeaderCounts: visible row set unchanged since last computation — skipping.');
+            return;
+        }
+        _colHeaderCountsSigCache.set(table, _rowSetSig);
 
         // One pass per column: collect unique-value count and multi-row count.
         headers.forEach((th, colIndex) => {
@@ -53729,8 +53790,14 @@ a { color: #1565c0; }`;
         _dbg('initReleaseEventsColumn: complete');
         // Re-run initCollapsableColumns: it ran before cells were populated so
         // found 0 ul>li items. Now that cells have real content, install toggles.
+        // Cell content just changed with no corresponding row show/hide, so the
+        // header-count cache (_colHeaderCountsSigCache) must be force-invalidated
+        // here — its visible-row-set signature alone wouldn't notice.
         if (activeReleaseEventColumns.length) {
-            document.querySelectorAll('table.tbl').forEach(t => initCollapsableColumns(t));
+            document.querySelectorAll('table.tbl').forEach(t => {
+                _invalidateColHeaderCountsCache(t);
+                initCollapsableColumns(t);
+            });
         }
         // Third-pass: derive synthetic columns from the now-populated injected columns
         // (e.g. split 'Release events' into 'Release country' + 'Release date').
@@ -53740,8 +53807,12 @@ a { color: #1565c0; }`;
             // actually fills 'Release country'/'Release date' ICE cells, and
             // nothing re-scans for collapsable columns after it. Safe to call
             // a third time — initCollapsableColumns() is idempotent (it does
-            // a cleanup pass before rebuilding).
-            document.querySelectorAll('table.tbl').forEach(t => initCollapsableColumns(t));
+            // a cleanup pass before rebuilding). Same cache-invalidation need
+            // as the pass above — new cell content, same visible row set.
+            document.querySelectorAll('table.tbl').forEach(t => {
+                _invalidateColHeaderCountsCache(t);
+                initCollapsableColumns(t);
+            });
         }
     }
 
