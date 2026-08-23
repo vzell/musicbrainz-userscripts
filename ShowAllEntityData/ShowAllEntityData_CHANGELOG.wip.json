@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "⚙️ Internal",
+        "items": [
+          "Added `tests/support/diskFixture.js` (`loadFromDiskFixture()`) and `tests/support/capture-fixture.js`, a reusable capture script producing `tests/fixtures/saved-data/<pageType>.json.gz` baselines via the script's own Save-to-disk dialog. Added `tests/live/disk-fixture-load.spec.js` and a committed `releasegroup-releases.json.gz` pilot fixture, verifying disk-loaded renders are immune to MusicBrainz data drift (exact row/group counts asserted). Corrected the original design's file-input selector (`accept*=\"json\"`, not `accept*=\"gz\"`, to disambiguate from the vestigial dead `#mb-file-input`) and traced the dialog's real 2-click sequence — see task-playwright-test-infra-expansion.md's Part 6 implementation notes. Test tooling only; no userscript runtime changes."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.5",
     "date": "2026-08-23",
     "sections": [

@@ -534,46 +534,99 @@ and capture the resulting download via Playwright's `page.on('download')`
 event, saving the file to `tests/fixtures/saved-data/<pageType>.json.gz`,
 committed to git.
 
-### `tests/support/diskFixture.js`
+### `tests/support/diskFixture.js` — implemented
+
+The exact 3-phase dialog sequence this Part's original sketch left as an
+open item turned out to collapse to just two real steps for an "all rows,
+no filter" load — traced directly from `showLoadFilterDialog()`'s own
+button wiring:
+
+1. Click `#mb-load-from-disk-btn` — its `onclick` is exactly
+   `() => showLoadFilterDialog(loadFromDiskBtn)`, which builds the dialog
+   (and its file input) fresh; neither exists before this click.
+2. `page.setInputFiles()` on the dialog's hidden file input, then click
+   "▶ Render All Rows" (`#sa-render-no-filter-confirm`) — its `onclick`
+   clears any filter state, calls `loadTableDataFromDisk()` directly, and
+   closes the dialog itself. "Phase 3" (the plain "Render Data" button,
+   `#sa-render-confirm`) only exists for the FILTERED-load path (reached via
+   "Filter Data", `#sa-filter-confirm`) and is never needed for this
+   all-rows flow — there's no separate "Load Data" button click needed
+   either, since that button's only job is `dialogFileInput.click()`,
+   opening a real OS file picker that `page.setInputFiles()` bypasses
+   entirely (it fires the input's own `'change'` handler directly, which
+   reads/validates the file and reveals "Phase 2" on its own).
+
+**File-input selector correction**: the dialog's own file input has no
+`id` and shares `accept*="gz"` with the vestigial, dead `#mb-file-input`
+toolbar input this doc already flagged — `page.setInputFiles('input[type=
+"file"][accept*="gz"]', ...)` as originally sketched throws a Playwright
+strict-mode "resolved to 2 elements" error. Only the dialog's own input
+also accepts `.json` (`.gz,application/gzip,.json` vs. the vestigial one's
+`.gz,application/gzip`), so `input[type="file"][accept*="json"]`
+disambiguates the two uniquely — no script change needed after all.
 
 ```js
-/**
- * Loads a previously-captured Save-to-disk fixture instead of fetching
- * live, by driving the real hidden file input inside the Load-from-disk
- * dialog (showLoadFilterDialog()'s dialogFileInput — see
- * ShowAllEntityData.user.js ~line 31399). Hydrates through the same
- * render pipeline a live fetch uses (_hydrateAndRenderFromSnapshotData()).
- */
 async function loadFromDiskFixture(page, { url, fixturePath, testMode } = {}) {
     await loadUserscriptPage(page, { url, testMode });
     await page.click('#mb-load-from-disk-btn');
-    // TODO at implementation time: trace showLoadFilterDialog()'s exact
-    // Load -> Filter -> Render button sequence (this investigation only
-    // confirmed the file-input mechanism, not the full click sequence).
-    await page.setInputFiles('input[type="file"][accept*="gz"]', fixturePath);
-    // ...drive remaining dialog phase(s)
+    await page.locator('input[type="file"][accept*="json"]').setInputFiles(fixturePath);
+    await page.click('#sa-render-no-filter-confirm');
 }
-
-module.exports = { loadFromDiskFixture };
 ```
 
-**Open item for the implementer**: trace `showLoadFilterDialog()`'s exact
-button sequence through its 3 phases before finalizing this helper — this
-investigation confirmed the file-input mechanism is real and automatable,
-but not the precise sequence of subsequent confirm-button clicks. If
-`dialogFileInput` turns out to have no stable selector once the dialog is
-open (only the `accept` attribute to key off), consider adding a minimal
-`id`/`data-testid` to it as a small, additive, non-behavior-changing script
-change — subject to the same diff-approval convention as Part 1's
-`__saTest` hook.
+**Relationships caveat (new finding)**: unlike CAA/EAA artwork, the
+"Relationships" injected column is NOT baked into the saved snapshot —
+confirmed empirically, a live WS/2 `url-rels` request still fired after
+disk-loading a page with `injectedColumns: ['Relationships']`, with no
+corresponding CAA/EAA network activity observed. A disk-loaded page is not
+fully network-free if that feature is active on the pageType; Part 3's
+`waitForRelationshipsComplete()` still applies for tests that depend on
+that column's final state.
 
-### Recommended usage
+### `tests/support/capture-fixture.js` — the capture step, implemented as a reusable script
 
-Route Parts 2, 3, and 5's own tests through `loadFromDiskFixture()` instead
-of a live "Show all" click once a fixture exists for that pageType — faster
-and immune to MB data drift. **Part 4 (Stop-button) stays live-only**, since
-it specifically tests the fetch/pagination pipeline that disk-loading
-bypasses entirely.
+A standalone Node script (`node tests/support/capture-fixture.js`), not a
+Playwright test — mirrors the pattern this doc suggested borrowing from the
+sibling html-snapshot doc's eventual capture runner. Loads each `FIXTURES`
+list entry's `url` live, clicks its `showAllButtonSelector`, waits for
+`#mb-filter-container`, then drives the real Save-to-disk dialog
+(`#mb-save-to-disk-btn` → `#sa-sd-save-confirm`) and captures the resulting
+browser download via `page.on('download')` (well, `page.waitForEvent
+('download')` paired with the click) to `tests/fixtures/saved-data/
+<pageType>.json.gz`. Adding a new pilot pageType's fixture is a data change
+to the `FIXTURES` array, not a code change — re-run the whole script
+whenever a captured page's real data needs refreshing.
+
+**Pilot fixture captured**: `tests/fixtures/saved-data/
+releasegroup-releases.json.gz`, from the same "Tougher Than the Rest"
+pilot page (`f83d2211-dd81-4b1e-9a02-e89733891e1c`) Part 5's specs use — 7
+releases, 2 groups (Official release: 6, Promotion release: 1), 4.2 KB
+gzipped. Committed to git (small, and the whole point is a stable,
+version-controlled baseline).
+
+### Verification spec
+
+`tests/live/disk-fixture-load.spec.js` loads this fixture via
+`loadFromDiskFixture()` and asserts the **exact** row/group counts
+(`{filtered: 7, total: 7, absolute: null}`, `Official release: 6`,
+`Promotion release: 1`) — exact numbers are correct here, not a drift risk
+the way they'd be against a live fetch, since the fixture is a fixed,
+committed file immune to real MusicBrainz edits. That's the entire point
+of this Part. Runs in ~3-4s (vs. the seconds-longer live fetch equivalent),
+with zero page errors.
+
+### Recommended usage / natural next step (not done in this pass)
+
+Parts 2 and 5's own specs could be migrated to `loadFromDiskFixture()` now
+that a fixture exists for their shared "Tougher Than the Rest" pilot page
+(Part 5's four specs) — faster and immune to MB data drift, the same way
+`disk-fixture-load.spec.js` already demonstrates. Left as a deliberate
+follow-up rather than done in this pass, to keep this Part's own scope
+focused on proving the mechanism works; Part 2's uniqdrop spec targets a
+*different* pilot page (Bruce Springsteen's `/works` listing) and would
+need its own separate fixture captured first. **Part 4 (Stop-button) stays
+live-only regardless**, since it specifically tests the fetch/pagination
+pipeline that disk-loading bypasses entirely.
 
 ---
 
