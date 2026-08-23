@@ -36,6 +36,18 @@
     ]
   },
   {
+    "version": "WIP.5",
+    "date": "2026-08-18",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "PERFORMANCE.org Step 4 (openUniqDrop() per-open caching): the unique-values dropdown's 5 full tbody.rows scan passes (whole-cell value counts, flag-icon segment map, relationship-cell detection, relationship icon counts, inline CAA/EAA-thumbnail counts) now share Step 3's exact caching primitive — a per-(table, column) WeakMap cache keyed by a signature of the currently visible rows' data-mb-row-idx values, via the shared _visibleRowSetSignature() added in Step 3. Reopening the same column's dropdown with no filter/sort change in between skips straight past all 5 passes. Found and fixed one correctness gap while implementing: the \"Cell structure\" section's collapsed/expanded split is read from expandedCells (individually-toggled cells), not derivable from the visible-row signature, so a lone cell expand/collapse click would otherwise leave a reopened dropdown showing a stale split. Added _invalidateUniqDropDataCache(table, colIndex) and wired it into all 5 places expandedCells is mutated by user interaction (_applyCollapseState()'s two branches, ensureCollapseDelegate()'s three inline toggle branches). Also gated the roleTokenValueCounts Map (an 'Entity info - Role' feature main grew independently since the original branch work) behind the same cache and added it to the stored bundle, so it doesn't come back empty on a cache hit."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-08-18",
     "sections": [

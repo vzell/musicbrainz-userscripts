@@ -222,11 +222,59 @@ still call it unconditionally.
   regression, but a pre-existing gap outside this step's scope if that ever
   changes.
 
-*** TODO Step 4: ~openUniqDrop()~ per-open caching
+*** DONE Step 4: ~openUniqDrop()~ per-open caching
 
 ~openUniqDrop()~ (~ShowAllEntityData.user.js:45002-47611~) does >=5 full
 ~tbody.rows~ passes from scratch on every dropdown open with zero caching.
 Same caching primitive as Step 3 — build alongside it.
+
+*Landed*: branch ~filter-performance-fix~, see
+~ShowAllEntityData_CHANGELOG.wip.json~ WIP.5.
+
+- Reused Step 3's exact primitive: a `WeakMap`-based per-(table, column)
+  cache keyed by a signature of the currently visible rows'
+  ~data-mb-row-idx~ values, via the shared ~_visibleRowSetSignature(table)~
+  added in Step 3.
+- All 5 of the function's ~tbody.rows~ passes (the big value-scan loop, the
+  flag-icon segment map, the relationship-cell detector, the relationship
+  icon counts, and the inline-CAA/EAA-thumbnail scan) are gated behind a
+  single cache-hit check computed once at the top of the function. Deliberately
+  did NOT restructure the ~40+ Maps/counters into a bundled accumulator
+  object or move any code — each declaration's default value became a
+  `_uniqCacheHit ? _uniqCacheHit.name : <original initial value>` ternary
+  in place, and each scan loop got an `if (!_uniqCacheHit)` guard around its
+  existing body, unchanged. This kept the diff to declaration lines and loop
+  guards only, with zero changes to the hundreds of `.set()`/`.get()`/`++`
+  call sites inside the loop bodies.
+- Correctness hazard found and fixed while implementing, same shape as
+  Step 3's release-events case but with a different root cause here: the
+  "Cell structure" section's collapsed/expanded split
+  (~multiRowCollapsedCount~/~multiRowExpandedCount~) is read from
+  ~expandedCells~ (a Map of individually toggled cells), NOT re-derived from
+  the visible-row signature — so a single cell's expand/collapse click
+  changes these counts WITHOUT changing which rows are visible, and would
+  otherwise leave a re-opened dropdown showing a stale split forever (until
+  some unrelated filter/sort happened to invalidate it). Fixed by adding
+  ~_invalidateUniqDropDataCache(table, colIndex)~ and calling it at all 5
+  places ~expandedCells~ is mutated by user interaction: both branches of
+  ~_applyCollapseState()~ (header/global-button-driven toggles) and all 3
+  branches of ~ensureCollapseDelegate()~'s own inline per-cell click
+  handling (CAA/EAA inline expand, prose clamp toggle, list-cell toggle). A
+  6th mutation site (~initCollapsableColumns~'s one-time "start expanded by
+  default" pre-population for Edit details/notes columns) was checked and
+  needs no invalidation call — it only ever runs on the first pass over a
+  column for a given fetch, before any dropdown cache for that render could
+  exist.
+- Port-specific fix found while reconciling this step against ~main~'s own
+  drift since the original branch work: ~main~ had independently grown a
+  ~roleTokenValueCounts~ Map (the "Entity info - Role" section's per-atomic-
+  role-word breakdown) at the exact declaration this step gates — the
+  original branch commit predates that feature, so it never accounted for
+  it. Gated ~roleTokenValueCounts~ behind the same `_uniqCacheHit` ternary
+  as its sibling ~eventRoleValueCounts~, and added it to the
+  ~_setUniqDropDataCache~ bundle — without this it would have silently come
+  back empty on every cache hit (reopening a column's dropdown with no
+  filter/sort change in between would show zero role-token entries).
 
 *** TODO Step 5: Lazy CAA/EAA loading (IntersectionObserver)
 
