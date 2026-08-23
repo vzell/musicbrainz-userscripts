@@ -360,13 +360,80 @@ No userscript changes needed. Confirmed directly in the script:
   they get refreshed indirectly since `runFilter()` runs at the end of the
   sort handler; row count must be unchanged after a sort.
 
-New `tests/support/filterSortAssertions.js`:
+### Implementation notes (empirically corrected — read before reusing this pattern elsewhere)
 
-- **`waitForFilterSettled(page, {timeout})`** — poll
-  `#mb-filter-status-display` until its text stops starting with `⏳`.
-- **`waitForSortSettled(page, {timeout, subTableHeading})`** — same on
-  `#mb-sort-status-display`, or (when `subTableHeading` is given, for a
-  multi-table page) that group's own `h3 .mb-sort-status`.
+Three non-obvious things broke the original design sketch above when this
+Part was actually built and tested live. All are now fixed in
+`tests/support/filterSortAssertions.js`; recorded here so nobody re-derives
+them the hard way a second time.
+
+1. **`.fill()` silently does nothing on these inputs.** Global, column, and
+   STF filter inputs are all hardened against autofill (see
+   `_hardenFilterInputAgainstAutofill()`): `readonly` until a genuinely
+   *trusted* `mousedown`/`focus`, and the actual filter-triggering `'input'`
+   listener additionally requires `event.isTrusted || event.mbInternal`
+   (`_isGenuineFilterInputEvent()`) before it will act at all. Playwright's
+   `.fill()` sets `.value` and dispatches a synthetic (untrusted) `'input'`
+   event — it clears `readonly` if a prior real click already did, but the
+   guard on the listener itself still silently discards it, so the row count
+   never changes and no error is thrown. Use `.click()` (real, trusted —
+   clears `readonly`) then `.pressSequentially(text)` (real, trusted,
+   per-key) instead, for every filter input this doc touches.
+2. **A one-shot "not currently ⏳" check is racy against real (variable)
+   debounce delays.** `#mb-filter-status-display`/`#mb-sort-status-display`
+   is genuinely empty before any action has run, so a naive
+   `expect(locator).not.toHaveText(/^⏳/)` called right after triggering an
+   action can trivially pass on that pre-action emptiness before the
+   (debounced, ~0-400ms+ observed) real update ever lands. The fix that
+   turned out correct: capture the status text's baseline *before* running
+   the trigger, then poll until it differs from that baseline (or passed
+   through a `⏳` state) AND has stopped changing. This only works if the
+   helper itself runs the trigger, so **`waitForFilterSettled`/
+   `waitForSortSettled`/`waitForSubTableFilterSettled` all take the trigger
+   as a callback param**, not a bare post-hoc call as originally sketched:
+   `waitForFilterSettled(page, () => input.pressSequentially('text'),
+   {timeout})`. See the exported functions' own JSDoc for the two
+   intermediate racy designs that were tried and rejected — don't
+   re-attempt either.
+3. **STF's real row-filter input is `type="search"`, not `type="text"`,
+   and has no settle-status element of its own.** The `.mb-subtable-filter-
+   container input[type="text"]` selector this doc originally specified
+   matches a *different*, nested input — a "quick filter both lists" search
+   box inside that group's own filter-**history** dropdown panel (hidden
+   until its own "History" button is clicked), confirmed by dumping the
+   container's live `outerHTML`. The actual per-row filter input has
+   `id="mb-stf-<Category, spaces replaced by underscores>-input"` and
+   `type="search"` — select it via `.mb-subtable-filter-container
+   input[type="search"]` rather than replicating that id's own
+   space-to-underscore sanitization rule. It also has no status-message
+   element (unlike global/column filters or sort) — its own group's
+   `h3 .mb-row-count-stat` text is the only completion signal, hence the
+   new **`waitForSubTableFilterSettled(page, trigger, {timeout,
+   subTableHeading})`** export (not in the original sketch) polling that
+   directly.
+4. **A 2000+-row, 40+-group pilot page makes this whole class of race far
+   worse and is unnecessarily slow to boot.** The huge Bruce Springsteen
+   `artist-releasegroups` page used in Parts 1/2/4 is a poor fit for this
+   Part specifically — its filter/sort debounce is long and CPU-load-
+   dependent, which is exactly what defeated the naive one-shot/short-
+   stability settle designs above. All four specs here instead target a
+   small, stable release-group page (7 rows across 2 groups — see below):
+   fast (~5s/spec), deterministic content, and still genuinely exercises
+   narrowing/reordering/multi-group STF isolation.
+
+### `tests/support/filterSortAssertions.js`
+
+- **`waitForFilterSettled(page, trigger, {timeout})`** — runs `trigger()`
+  then waits for `#mb-filter-status-display` to settle to a new value (see
+  note 2 above).
+- **`waitForSortSettled(page, trigger, {timeout, subTableHeading})`** —
+  same, on `#mb-sort-status-display`, or (when `subTableHeading` is given,
+  required for a multi-table page — the page-wide display is never touched
+  by a per-sub-table sort) that group's own `h3 .mb-sort-status`.
+- **`waitForSubTableFilterSettled(page, trigger, {timeout,
+  subTableHeading})`** — same, on the group's own `h3 .mb-row-count-stat`
+  (see note 3 above; `subTableHeading` is required, not optional, since STF
+  has no page-wide equivalent).
 - **`getPageRowCount(page)`** — parse `h2 .mb-row-count-stat` text into
   `{filtered, total, absolute}`, handling all three shapes: `(N)`,
   `(F of T)`, `(F of T)/A`.
@@ -374,22 +441,36 @@ New `tests/support/filterSortAssertions.js`:
   `h3.mb-toggle-h3 .mb-row-count-stat` into `[{groupLabel, filtered,
   total}]`; the caller asserts these sum to `getPageRowCount(page).filtered`.
 
-New specs:
+### Pilot page and specs
 
-- `tests/live/filter-global.spec.js` — type into `#mb-global-filter-input`,
-  `waitForFilterSettled`, assert `getPageRowCount` narrows (`filtered <
-  total`) and, on a multi-table pilot page, `getSubTableRowCounts` sums to
-  the page-level `filtered` count.
-- `tests/live/filter-column.spec.js` — same, via one
-  `.mb-col-filter-input[data-col-idx=N]`.
-- `tests/live/filter-subtable.spec.js` (multi-table only) — filter ONE
-  group's STF input, assert only that group's `filtered` count changes while
-  sibling groups stay at their unfiltered `total`, and the page-level count
-  reflects the resulting `(F of T)/A` 3-tier text.
-- `tests/live/sort-column.spec.js` — click a column's sort-icon button,
-  `waitForSortSettled`, assert `getPageRowCount`/`getSubTableRowCounts` are
-  **unchanged** by the sort while a representative cell's text at row 1
-  changes (confirms reordering happened without dropping/adding rows).
+Pilot: `https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c`
+("Tougher Than the Rest", Bruce Springsteen) via the `releasegroup-releases`
+pageType's `Show all Releases for ReleaseGroup` button — 7 releases across 2
+groups (`Official release`: 6, `Promotion release`: 1). The 6-release
+"Official release" group is all "Tougher Than the Rest" format variants
+(7"/12" Vinyl ×2, Cassette, CD ×2), giving deterministic, content-based
+(not row-count-based) filter targets immune to ordinary MusicBrainz data
+drift — e.g. "Tunnel" (the OTHER release's title) matches exactly 1 row,
+"Vinyl" matches exactly 3 page-wide / 2 within "Official release" alone.
+
+- `tests/live/filter-global.spec.js` — type "Tunnel" into
+  `#mb-global-filter-input`, assert `getPageRowCount` narrows and
+  `getSubTableRowCounts` sums to the page-level `filtered` count.
+- `tests/live/filter-column.spec.js` — same, typing "Vinyl" into the
+  "Format" column's `.mb-col-filter-input[data-col-idx=N]` (sub-tables must
+  be expanded first via `clickMasterToggleAndExpandAll()` — collapsed
+  sub-tables' `<thead>`, and so their column-filter inputs, aren't in the
+  layout at all).
+- `tests/live/filter-subtable.spec.js` — filter the "Official release"
+  group's STF input for "Vinyl", assert only that group's `filtered` count
+  narrows (6→2) while the sibling "Promotion release" group stays exactly
+  at its unfiltered `{filtered: 1, total: 1}`, and the page-level count
+  equals the sum of both groups' filtered counts.
+- `tests/live/sort-column.spec.js` — click the "Format" column's ascending
+  sort-icon (`.sort-icon-btn` with text `▲`) on the first group, assert
+  `getPageRowCount`/`getSubTableRowCounts` are **unchanged** (`toEqual`)
+  while row 1's text changes (confirms reordering happened without
+  dropping/adding rows).
 
 ---
 

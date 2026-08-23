@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "⚙️ Internal",
+        "items": [
+          "Added `tests/support/filterSortAssertions.js` (`waitForFilterSettled()`, `waitForSortSettled()`, `waitForSubTableFilterSettled()`, `getPageRowCount()`, `getSubTableRowCounts()`) and four live specs (`filter-global`, `filter-column`, `filter-subtable`, `sort-column`) asserting row-count invariants across the global/column/sub-table filtering and sorting framework. Corrected the original design's settle-wait against real, variable debounce timing (see task-playwright-test-infra-expansion.md's Part 5 implementation notes) and the STF input's real selector. Test tooling only; no userscript runtime changes."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-08-23",
     "sections": [
