@@ -169,12 +169,58 @@ only, matching Step 1 (confirmed with the user before implementing).
      alone never changes row order) from the sort handler, right after it
      reorders the live tbody rows.
 
-*** TODO Step 3: Cache ~_updateAllColHeaderCounts~
+*** DONE Step 3: Cache ~_updateAllColHeaderCounts~
 
 Memoize per-column unique-value/multi-row counts, invalidated only when the
 visible row set actually changes (not on every trigger). Needed even after
 Steps 1-2, since global expand/collapse-all clicks and multi-table renders
 still call it unconditionally.
+
+*Landed*: branch ~filter-performance-fix~, see
+~ShowAllEntityData_CHANGELOG.wip.json~ WIP.4.
+
+- Added ~_colHeaderCountsSigCache~, a ~WeakMap<table, signature>~. The
+  signature is a cheap O(rows) join of the visible rows' ~data-mb-row-idx~
+  values (an existing per-row identity, already stamped on every ~<tr>~ at
+  extraction time and preserved through ~cloneNode(true)~ — see the
+  ~_mbRowIdxCounter~ comment near ~:29997~). ~_updateAllColHeaderCounts~ now
+  computes this signature first and returns early when it matches the last
+  one computed for that table, skipping the O(rows x columns) scan.
+  Keying by the live ~<table>~ element means a brand-new table (new fetch,
+  disk-load, or multi-table sub-table) is always a cache miss — no manual
+  reset needed.
+- This correctly turns into a no-op skip for the call sites the "Findings"
+  section above flagged as redundant:
+  ~syncCollapseButtonsWithColumnVisibility~'s column show/hide re-init, and
+  multi-table's per-sub-table re-render/reuse branches (row content there is
+  always freshly cloned from the same source rows, so the signature is
+  stable across a rebuild that reproduces the same filtered set). The global
+  expand/collapse-all button was checked and does NOT call
+  ~initCollapsableColumns~/this function at all (it drives
+  ~_applyCollapseState~ directly), and ~getCleanColumnText~/
+  ~_classifyCollapseCell~ were confirmed to read full DOM content
+  independent of collapse/expand toggle state — so cached counts stay
+  correct across expand/collapse-all clicks even though nothing re-triggers
+  them.
+- One real correctness hazard found and fixed while implementing: the
+  signature only tracks WHICH rows are visible, not what their cells
+  contain. ~initReleaseEventsColumn()~ mutates cell content in place (fills
+  previously-empty Release events/country/date cells) with no row
+  show/hide, then deliberately re-runs ~initCollapsableColumns()~ twice to
+  pick up that new content (its own pre-existing comments: "it ran before
+  cells were populated so found 0 ul>li items"). Naively caching purely on
+  row visibility would have made those re-runs silently skip and leave the
+  header counts frozen at their pre-population (mostly empty) values. Fixed
+  by adding ~_invalidateColHeaderCountsCache(table)~ and calling it at both
+  of that function's re-scan sites, right before ~initCollapsableColumns~.
+  Any FUTURE call site that mutates cell content post-render without a row
+  visibility change needs the same explicit invalidation — checked
+  ~initRelationshipsColumn~ and ~initPicardTaggerColumn~ (both populate
+  cells asynchronously) and confirmed neither one re-triggers
+  ~initCollapsableColumns~/this function at all today, so their header
+  counts were already not kept fresh before this change either — no new
+  regression, but a pre-existing gap outside this step's scope if that ever
+  changes.
 
 *** TODO Step 4: ~openUniqDrop()~ per-open caching
 

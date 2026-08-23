@@ -24,6 +24,18 @@
     ]
   },
   {
+    "version": "WIP.4",
+    "date": "2026-08-18",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "PERFORMANCE.org Step 3 (cache _updateAllColHeaderCounts): the per-column unique-value/multi-row header-count scan (O(rows x columns), the file's own documented worst case) now memoizes its result per <table> against a cheap O(rows) signature of the currently visible rows' data-mb-row-idx values, and skips the full recompute whenever that signature is unchanged since the last call. This makes syncCollapseButtonsWithColumnVisibility's column show/hide re-init and multi-table sub-table re-renders free when the visible row set hasn't actually changed. The one known call site that mutates cell CONTENT in place without changing which rows are visible — initReleaseEventsColumn()'s two post-population re-scans of initCollapsableColumns(), which fill previously-empty Release events/country/date cells — now explicitly calls the new _invalidateColHeaderCountsCache() first so those counts still refresh correctly instead of reading stale (pre-population) cached values."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-08-18",
     "sections": [
