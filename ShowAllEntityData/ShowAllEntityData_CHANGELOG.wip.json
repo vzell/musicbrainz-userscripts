@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "⚙️ Internal",
+        "items": [
+          "Added a \"page title\" column to `tests/snapshots/registry.org` (third column, after URL) — the entity name/title from each pilot page's `<h1><a><bdi>...</bdi></a></h1>`. Manual dashboard data only, matching the doc's own convention that this table isn't machine-parsed; no code changes."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-08-23",
     "sections": [
