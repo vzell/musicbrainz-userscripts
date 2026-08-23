@@ -86,13 +86,13 @@ function writeSnapshot(filePath, content) {
  * `tests/pagetypes.json`.
  *
  * @param {import('playwright').Browser} browser
- * @param {{ pageType: string, url: string, showAllButtonSelector: string, seedGmValues?: Object, hasCaaOrEaa?: boolean, hasRelationships?: boolean }} config
+ * @param {{ pageType: string, url: string, showAllButtonSelector: string, seedGmValues?: Object, hasCaaOrEaa?: boolean, hasRelationships?: boolean, waitForAutoResize?: boolean }} config
  * @returns {Promise<{ pageType: string, status: string }>}
  */
 async function captureOne(browser, config) {
     const {
         pageType, url, showAllButtonSelector, seedGmValues: seedValues,
-        hasCaaOrEaa, hasRelationships, renderTimeout = 90000,
+        hasCaaOrEaa, hasRelationships, waitForAutoResize = true, renderTimeout = 90000,
     } = config;
     const context = await browser.newContext(fs.existsSync(AUTH_FILE) ? { storageState: AUTH_FILE } : {});
     const page = await context.newPage();
@@ -111,7 +111,7 @@ async function captureOne(browser, config) {
     const showAllBtn = page.locator(showAllButtonSelector);
     await showAllBtn.waitFor({ state: 'visible', timeout: 15000 });
     await showAllBtn.click();
-    await waitForRenderComplete(page, { hasCaaOrEaa, hasRelationships, timeout: renderTimeout });
+    await waitForRenderComplete(page, { hasCaaOrEaa, hasRelationships, waitForAutoResize, timeout: renderTimeout });
 
     const renderedHtml = scrub(await captureRendered(page), pageType);
     writeSnapshot(renderedPath, renderedHtml);
@@ -150,11 +150,14 @@ async function captureOne(browser, config) {
  * exists here was wrong).
  *
  * @param {import('playwright').Browser} browser
- * @param {{ url: string, showAllButtonSelector: string, seedGmValues?: Object, hasCaaOrEaa?: boolean, hasRelationships?: boolean, renderTimeout?: number }} config
+ * @param {{ url: string, showAllButtonSelector: string, seedGmValues?: Object, hasCaaOrEaa?: boolean, hasRelationships?: boolean, waitForAutoResize?: boolean, renderTimeout?: number }} config
  * @returns {Promise<{ wallMs: number, fetchMs: number|null, renderMs: number|null, itemCount: number|null }>}
  */
 async function measureOnce(browser, config) {
-    const { url, showAllButtonSelector, seedGmValues: seedValues, hasCaaOrEaa, hasRelationships, renderTimeout = 90000 } = config;
+    const {
+        url, showAllButtonSelector, seedGmValues: seedValues,
+        hasCaaOrEaa, hasRelationships, waitForAutoResize = true, renderTimeout = 90000,
+    } = config;
     const context = await browser.newContext(fs.existsSync(AUTH_FILE) ? { storageState: AUTH_FILE } : {});
     const page = await context.newPage();
 
@@ -165,7 +168,7 @@ async function measureOnce(browser, config) {
 
     const wallStart = Date.now();
     await showAllBtn.click();
-    await waitForRenderComplete(page, { hasCaaOrEaa, hasRelationships, timeout: renderTimeout });
+    await waitForRenderComplete(page, { hasCaaOrEaa, hasRelationships, waitForAutoResize, timeout: renderTimeout });
     const wallMs = Date.now() - wallStart;
 
     const { measures, itemCount } = await page.evaluate(() => {

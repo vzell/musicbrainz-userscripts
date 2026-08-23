@@ -6,7 +6,8 @@
     "showAllButtonSelector": "button[data-label=\"🧮 Artist RGs\"]",
     "seedGmValues": { "sa_enable_caa_pics": false, "sa_enable_relationships_column": false },
     "hasCaaOrEaa": false,
-    "hasRelationships": false
+    "hasRelationships": false,
+    "waitForAutoResize": true
   },
   {
     "pageType": "release-tracks",
@@ -15,6 +16,28 @@
     "showAllButtonSelector": "button[data-label=\"Show all Tracks for Release\"]",
     "seedGmValues": { "sa_enable_release_tracks": true },
     "hasCaaOrEaa": false,
-    "hasRelationships": false
+    "hasRelationships": false,
+    "waitForAutoResize": true
+  },
+  {
+    "pageType": "releasegroup-releases",
+    "url": "https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c",
+    "tableMode": "multi",
+    "showAllButtonSelector": "button[data-label=\"Show all Releases for ReleaseGroup\"]",
+    "seedGmValues": { "sa_enable_caa_pics": false, "sa_enable_relationships_column": false },
+    "hasCaaOrEaa": false,
+    "hasRelationships": false,
+    "waitForAutoResize": true
+  },
+  {
+    "pageType": "artist-events",
+    "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events",
+    "tableMode": "single",
+    "showAllButtonSelector": "button[data-label=\"Show all Events for Artist\"]",
+    "seedGmValues": { "sa_enable_caa_pics": false },
+    "hasCaaOrEaa": false,
+    "hasRelationships": false,
+    "waitForAutoResize": true,
+    "renderTimeout": 300000
   }
 ]

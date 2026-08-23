@@ -1,5 +1,54 @@
 [
   {
+    "version": "WIP.9",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed `tests/support/browser.js`'s `waitForRenderComplete()` (used by the HTML-snapshot regression harness's `capture-snapshots.js`) returning before a `tableMode: 'single'` page's render had actually finished, on any pageType whose row count exceeds `sa_chunked_render_threshold` (default 1000) — reported live on WIP.8's `artist-events` capture (4174 rows): the committed `rendered.html` still showed the \"🎨 Rendering rows... 2,000 / 4,174\" chunked-render progress overlay on screen, and the auto-resize button was missing from the action bar entirely. Root cause: `startFetchingProcess()` sets `#mb-filter-container` visible — the only signal this function previously waited on — SYNCHRONOUSLY, in the same tick it calls `renderFinalTable()`, which for a large table `await`s a `requestAnimationFrame`-yielding batched-insertion loop; `addAutoResizeButton()` and the `sa_auto_resize_columns` auto-resize pass both only run strictly after that loop resolves. Now additionally waits for the render-progress overlay (`#mb-render-heading`) to be absent (no race — confirmed both DOM mutations happen in one synchronous JS burst, so if the overlay was going to appear it already has by the time this check can run) and, gated by a new configurable `waitForAutoResize` option (`tests/pagetypes.json`, default `true`, added explicitly to all four registered pageTypes), for the Resize button's title to reach its \"Restore…\" completed state. Re-captured `artist-events` (both overlay/button symptoms confirmed gone, deterministic on first repeat) and re-verified `artist-releasegroups`/`release-tracks`/`releasegroup-releases` all still report `unchanged` — they happened to already be timing-safe by luck, not by any prior guarantee. Also refreshed `artist-releasegroups`' `perf-baseline.json` (`medianWallMs` 21660 → 33436) since `measureOnce()`'s wall-clock now legitimately includes the resize wait — the old baseline would otherwise falsely WARN as a regression on the next `--perf` run for a measurement-completeness reason, not a real slowdown. Test tooling only; no userscript runtime changes."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.8",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "⚙️ Internal",
+        "items": [
+          "Added `artist-events` (Bruce Springsteen) to the HTML-snapshot regression harness (`tests/pagetypes.json`, `tests/snapshots/artist-events/{raw,rendered}.html`, `tests/snapshots/registry.org`) — a deliberately large, paginated (42 native MB pages, 4174 rows), single-table pageType, earmarked as a future performance-comparison target for repeated sort/column-filter/unique-values-dropdown interactions against a later performance-focused branch (no new perf instrumentation for those specific interactions built yet — scoped as a separate task by explicit agreement). `sa_enable_caa_pics` forced off for this capture only (EAA queue too slow at this row count, same rationale as the existing `artist-releasegroups` row); deterministic (`unchanged`) on the very first repeat capture, no other drift sources found. Test tooling only; no userscript runtime changes."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.7",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "⚙️ Internal",
+        "items": [
+          "Added `releasegroup-releases` (\"Tougher Than the Rest\") to the HTML-snapshot regression harness (`tests/pagetypes.json`, `tests/snapshots/releasegroup-releases/{raw,rendered}.html`, `tests/snapshots/registry.org`). Found and fixed real capture non-determinism specific to this pageType before committing a baseline: the \"Relationships\" injected column's real, unstubbed WS/2 fetch produced different purchase-link order/content across runs, and the CAA completion toast's visibility raced the snapshot timing — both features are forced off for this capture only (seedGmValues), mirroring the existing `artist-releasegroups` row's own precedent; both are covered separately by `idb-cache-hit-bigbox.spec.js` (WIP.6) via direct IndexedDB seeding instead of live network. Confirmed via a byte-level diff before disabling, and re-verified deterministic (`unchanged`) across repeat capture runs after.",
+          "Added `tests/live/registry.org`, a dashboard indexing every spec under `tests/live/` (page/URL/title/what it verifies/why that page), distinct in scope from `tests/snapshots/registry.org` (which only covers pages with a committed HTML-snapshot baseline pair — no functional/behavioral live spec, including the new IDB one above, belongs there). Manual dashboard data only; no code changes."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.6",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "⚙️ Internal",
+        "items": [
+          "Added IndexedDB-tier live test coverage for CAA cover-art image caching (`tests/live/idb-cache-hit-bigbox.spec.js`, `tests/support/{capture-idb-fixture,idbFixture}.js`, `tests/fixtures/idb-state/releasegroup-releases-caa-bigbox-images.json`), on the `releasegroup-releases` pilot page (7 real releases across its two sub-tables, not 6 — confirmed live after an initial miscount). Covers both DOM locations fed by the same IDB-backed `images` store: the \"bigbox\" / big-picture image stripe (`_artInitBigPics()`) and the inline thumbnail rendered in front of each release name in the Release column (`_artInitInlinePics()`, `addCAA: 'Release'`/`sa_caa_pics_inline`) — both default to the identical `front-250` fetch size, so they resolve through the same cache entries, but each is asserted independently rather than one standing in for the other. Confirmed empirically (and in Playwright's own source) that `storageState({indexedDB: true})` cannot round-trip Blob-valued IndexedDB records — a captured `images`-store record decodes on restore to a non-Blob placeholder, which made the userscript's own `URL.createObjectURL()` throw and silently fall through to a stubbed, always-404 network fetch. Worked around this by capturing real coverartarchive.org image bytes once (`capture-idb-fixture.js`, via a custom network-passthrough `GM_xmlhttpRequest` since GM_xhr bypasses CORS and a plain `fetch()` can't read the response cross-origin) into a plain base64 JSON fixture, then seeding IndexedDB directly inside the page (`idbFixture.js`'s `seedArtIdbFixture()`, via `indexedDB.open()`/`put()` in a `page.addInitScript()`) before the userscript's own DB open — sidestepping `storageState`'s serializer entirely. The new spec includes a control test (no IDB seed) proving the network-stubbed fixture-restored test is genuinely exercising the IDB tier for both DOM locations rather than trivially passing regardless. Test tooling only; no userscript runtime changes."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.5",
     "date": "2026-08-23",
     "sections": [

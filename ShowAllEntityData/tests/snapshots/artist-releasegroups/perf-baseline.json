@@ -4,11 +4,11 @@
   "capturedAt": "2026-08-23",
   "scriptVersion": "9.99.936+2026-08-23",
   "itemCount": 2142,
-  "medianWallMs": 21660,
+  "medianWallMs": 33436,
   "stages": {
-    "fetch": 15209.199999988079,
+    "fetch": 23059.69999998808,
     "sort": 0,
-    "render": 489.59999999403954
+    "render": 502
   },
   "samples": 5
 }
