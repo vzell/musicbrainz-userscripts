@@ -2,7 +2,7 @@
 
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
-const { collectPageErrors, assertGroupedRenderCompleted } = require('../support/liveAssertions');
+const { collectPageErrors, assertGroupedRenderCompleted, clickMasterToggleAndExpandAll } = require('../support/liveAssertions');
 
 // A release-group whose release list spans 2 of MusicBrainz's own native
 // pages — exercises startFetchingProcess()'s pagination loop (multiple
@@ -23,4 +23,10 @@ test('clicks "Show all" and consolidates a 2-page paginated release list', async
     await showAllBtn.click();
 
     await assertGroupedRenderCompleted(page, pageErrors);
+
+    // Sub-tables render collapsed by default (renderGroupedTable starts every
+    // group in the "Show all sub-sections" state). Uncollapse all of them at
+    // once via the page's single .mb-master-toggle button, the same way a
+    // user would — see clickMasterToggleAndExpandAll()'s JSDoc.
+    await clickMasterToggleAndExpandAll(page);
 });

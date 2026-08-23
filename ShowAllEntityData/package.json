@@ -10,7 +10,8 @@
         "test:ui": "playwright test --ui",
         "test:headed": "playwright test --headed",
         "test:live:save-html": "SAVE_HTML=1 playwright test --project=chromium-live",
-        "report": "playwright show-report"
+        "report": "playwright show-report",
+        "auth:login": "node tests/support/auth-setup.js"
     },
     "devDependencies": {
         "@playwright/test": "^1.62.1"

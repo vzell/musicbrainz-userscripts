@@ -1,3 +1,6 @@
 node_modules/
 test-results/
 playwright-report/
+# Saved login session from `npm run auth:login` — cookies, as good as a
+# password for musicbrainz.org purposes. Never commit this.
+playwright/.auth/

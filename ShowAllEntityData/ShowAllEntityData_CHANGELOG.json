@@ -1,5 +1,41 @@
 [
   {
+    "version": "9.99.925",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Added clickMasterToggleAndExpandAll() to tests/support/liveAssertions.js — clicks the page's single .mb-master-toggle button (\"Show all sub-sections\") instead of an individual <h3> group header, and asserts data-state/label flip to 'expanded'/\"Hide all sub-sections\" and every table.tbl (not just one group) becomes visible with rows. Both release-group live tests (release-group-fetch.spec.js and release-group-paginated-fetch.spec.js) now use this in place of the previous single-group \"Promotion release\" <h3> click, exercising the all-sections-at-once toggle path instead."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.924",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Added tests/support/auth-setup.js (`npm run auth:login`) — an interactive, non-test helper that opens a real visible browser at musicbrainz.org/login for you to log in yourself (solving any CAPTCHA), then saves the session via Playwright's storageState to playwright/.auth/vzell.json. Never handles credentials directly. playwright.config.js's chromium-live project picks that file up automatically when present, so live tests run logged in as you (matching real usage, e.g. the \"Log in\"/\"Create account\" header links vs. a logged-in username) instead of anonymous; absent by default, so nothing changes until you opt in. playwright/.auth/ is gitignored — a saved session is equivalent to a password and must never be committed."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.923",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "tests/live/release-group-paginated-fetch.spec.js: after the render-completion check, now clicks the \"Promotion release\" sub-table's <h3 class=\"mb-toggle-h3\"> toggle icon and asserts it uncollapses (was collapsed by default) and its rows become visible — exercises renderGroupedTable()'s per-group collapse/expand click handler with a real Playwright click. Locates the group's <table> by walking forward from the h3 (mirroring findH3ForTable()'s own backward walk) since a div.mb-caa-bigbox can sit between them when sa_enable_caa_pics is on (the live default). As a side effect, a SAVE_HTML=1 run of this test now saves the section already expanded."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.922",
     "date": "2026-08-23",
     "sections": [

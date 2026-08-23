@@ -1,5 +1,15 @@
 // @ts-check
 const { defineConfig, devices } = require('@playwright/test');
+const fs = require('fs');
+const path = require('path');
+
+// Populated by `npm run auth:login` (tests/support/auth-setup.js) — a real,
+// interactive login you do yourself, never automated/scripted. When present,
+// chromium-live tests start already logged in as you instead of anonymous
+// (see the "Log in" link vs. your username in the header). Absent by
+// default (gitignored — a saved session is as good as your password), so
+// live tests run logged-out until you opt in.
+const AUTH_FILE = path.join(__dirname, 'playwright', '.auth', 'vzell.json');
 
 /**
  * Playwright config for ShowAllEntityData.
@@ -38,7 +48,10 @@ module.exports = defineConfig({
             // Generous: release-group-fetch.spec.js clicks a button and waits
             // out a real (small) paginated fetch against musicbrainz.org.
             timeout: 120000,
-            use: { ...devices['Desktop Chrome'] },
+            use: {
+                ...devices['Desktop Chrome'],
+                ...(fs.existsSync(AUTH_FILE) ? { storageState: AUTH_FILE } : {}),
+            },
         },
     ],
 });

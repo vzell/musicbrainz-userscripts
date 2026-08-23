@@ -2,7 +2,7 @@
 
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
-const { collectPageErrors, assertGroupedRenderCompleted } = require('../support/liveAssertions');
+const { collectPageErrors, assertGroupedRenderCompleted, clickMasterToggleAndExpandAll } = require('../support/liveAssertions');
 
 // A real release-group — chosen because a release-group's own release list is
 // bounded (its editions), unlike an artist's full recordings/releases catalog,
@@ -31,4 +31,8 @@ test('clicks "Show all" and consolidates the release-group\'s release list', asy
     await showAllBtn.click();
 
     await assertGroupedRenderCompleted(page, pageErrors);
+
+    // Sub-tables render collapsed by default — uncollapse all of them via
+    // the page's single .mb-master-toggle button, the same way a user would.
+    await clickMasterToggleAndExpandAll(page);
 });
