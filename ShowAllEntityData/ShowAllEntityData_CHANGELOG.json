@@ -1,5 +1,47 @@
 [
   {
+    "version": "9.99.929",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'annotations' pageType: fixed the \"Compare versions\" h2-header button swapping sides with the row-count stat span on every sort/filter re-render (button-after-count on initial load, button-before-count afterwards) — updateH2Count() removes and recreates that span on every re-render, always re-inserting it immediately before filterContainer, which displaced a button anchored on filterContainer itself. Anchoring the button on the count span (when present) instead keeps it consistently positioned right after the h2's native text and before the count, on every render."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.928",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'annotations' pageType: added an 8px left margin (matching .mb-row-count-stat's own left-margin convention) to the relocated \"Compare versions\" h2-header button — it previously sat flush against the h2's native \"Annotation history\" text with no visible gap."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.927",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "'annotations' pageType: fixed \"Compare versions\" only ever being able to compare the newest revision against another — MusicBrainz's native Old/New radio range restriction is client-side JS tied to the original DOM nodes, which this script's cloneNode/importNode-based row rebuilding silently drops on every sort/filter re-render (leaving only the static initial-page disabled attributes: New locked to the newest row, Old unrestricted). initAnnotationCompareRadios() re-derives and re-wires the \"Old must be strictly older than New\" constraint after every (re)render, matching native behavior: selecting an Old row now correctly widens the selectable New range up to (but not including) it, and vice versa."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "'annotations' pageType: moved the \"Compare versions\" button from the bottom of the page into the h2 header bar (styled like the other header buttons, e.g. \"🎨 Toggle ALL highlighting\"), via the new initAnnotationCompareButton(). Clicking it now navigates directly to the diff URL (built from the native form's own action + the checked old/new values) rather than relying on native form submission, opening in a new tab by default — configurable via the new 'Open \"Compare versions\" in a new tab' setting (sa_annotations_compare_new_tab, default on)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.926",
     "date": "2026-08-23",
     "sections": [

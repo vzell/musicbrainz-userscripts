@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.926+2026-08-23
+// @version      9.99.929+2026-08-23
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -2503,6 +2503,27 @@
                          'behind an extra manual click. Unrelated to the "📝 ANNOTATION ' +
                          'COLUMNS" section above, which only affects this script\'s own ' +
                          'rendered table columns.'
+        },
+
+        // ============================================================
+        // ANNOTATION HISTORY PAGE SECTION (the 'annotations' pageType —
+        // /<entity>/<mbid>/annotations, a revision-history listing.
+        // Unrelated to the "📖 ANNOTATION SECTION (Entity Pages)" divider
+        // above, which is about the native annotation text shown on an
+        // entity's own Overview page.)
+        // ============================================================
+        divider_annotations_page: {
+            type: 'divider',
+            label: '🔀 ANNOTATION HISTORY PAGE'
+        },
+
+        sa_annotations_compare_new_tab: {
+            label: 'Open "Compare versions" in a new tab',
+            type: 'checkbox',
+            default: true,
+            description: 'On the \'annotations\' pageType (an entity\'s Annotation history), ' +
+                         'open the "Compare versions" diff in a new browser tab instead of ' +
+                         'navigating the current tab away from the consolidated table.'
         },
 
         // ============================================================
@@ -36633,6 +36654,13 @@ a { color: #1565c0; }`;
             // and _cdtocInitTracklistToggles() above.
             _rewireNestedTableH2Toggles();
 
+            // Annotations pageType: re-wire the Old/New compare-radio range
+            // constraint on the freshly cloned rows — same cloneNode(true)-
+            // drops-listeners reason as the calls above. The "Compare
+            // versions" button itself lives in the h2 (not tbody), so it is
+            // never cloned here and needs no re-wiring.
+            initAnnotationCompareRadios();
+
             // Refresh the Picard tagger column after every filter / sort re-render.
             // rewireOnly=true: only re-attach listeners on existing picard cells;
             // never append new tds.  During load-from-disk runFilter fires before
@@ -40425,6 +40453,13 @@ a { color: #1565c0; }`;
             if (Lib.settings.sa_enable_expand_rgs) {
                 initExpandRGsFeature();
             }
+
+            // Annotations pageType: relocate the "Compare versions" button
+            // into the h2 header and wire the Old/New compare-radio range
+            // constraint. Both self-guard on pageType — cheap no-ops on
+            // every other page.
+            initAnnotationCompareButton();
+            initAnnotationCompareRadios();
 
             // Highlight identical barcodes in Barcode columns (post-render)
             initBarcodeHighlight();
@@ -50328,6 +50363,179 @@ a { color: #1565c0; }`;
     // ── end CDtoc tracklist toggle feature ───────────────────────────────────
 
     /**
+     * Moves the native "Compare versions" submit button from the bottom of
+     * an annotations-history page (`.row.no-margin > .buttons > button`,
+     * inside the same `<form>` as `table.tbl#annotation-history`) into the
+     * h2 header, styled like the other filter-bar buttons (🎨 Toggle ALL
+     * highlighting, etc.) instead of MB's native submit-button chrome.
+     *
+     * The button is deliberately detached from its `<form>` by this move,
+     * so a plain click/native submit would no longer do anything — instead
+     * its click handler builds the diff URL directly from the form's own
+     * `action` (a plain GET form: `?old=<id>&new=<id>`) and navigates
+     * there, opening a new tab or reusing the current one depending on the
+     * `sa_annotations_compare_new_tab` setting (see the click handler
+     * below).
+     *
+     * Runs once, after the initial render. The button itself is never
+     * cloned by a sort/filter re-render (only tbody rows are — see
+     * initAnnotationCompareRadios()'s JSDoc for the cloneNode-drops-
+     * listeners pattern this project follows elsewhere), so no re-wiring
+     * is needed later; the dataset guard below just makes a defensive
+     * repeat call a no-op.
+     */
+    function initAnnotationCompareButton() {
+        if (pageType !== 'annotations') return;
+
+        const table = document.querySelector('table.tbl#annotation-history');
+        if (!table) return;
+        const form = table.closest('form');
+        if (!form) return;
+
+        const compareBtn = form.querySelector('button[type="submit"]');
+        if (!compareBtn || compareBtn.dataset.mbAnnotationCompareWired) return;
+        compareBtn.dataset.mbAnnotationCompareWired = 'true';
+
+        // Capture the native wrapper BEFORE relocating the button (closest()
+        // walks the CURRENT ancestor chain, so this must happen first) —
+        // it would otherwise sit behind, empty, at the bottom of the page.
+        const wrapperRow = compareBtn.closest('.row.no-margin') || compareBtn.parentElement;
+
+        compareBtn.type = 'button'; // decouple from native form submission — see click handler below
+        compareBtn.textContent = '🔀 Compare versions';
+        // margin-left:8px matches .mb-row-count-stat's own left margin (the
+        // h2's other injected-content spacing convention), so the gap looks
+        // consistent regardless of whether the count span ends up before or
+        // after this button on a given render.
+        compareBtn.style.cssText = uiFilterBarBtnCSS() + ' margin-left:8px;';
+
+        // Relocate into the h2. By the time this runs (called after the
+        // initial renderFinalTable(), which itself runs after
+        // updateH2Count() has already appended filterContainer — and the
+        // .mb-row-count-stat count span — to the h2 for single-table
+        // mode), filterContainer.parentNode IS the target h2. Inserting a
+        // node already in the document implicitly detaches it from
+        // wherever it was — no separate removal needed.
+        //
+        // Anchor on the count span (.mb-row-count-stat), not filterContainer
+        // directly: updateH2Count() REMOVES AND RECREATES that span on every
+        // sort/filter re-render, re-inserting it immediately before
+        // filterContainer each time — which, if this button were anchored
+        // on filterContainer instead, would push the button to swap sides
+        // with the span (button-before-span on this first call, since the
+        // span already exists; span-before-button after any later re-render,
+        // since the freshly recreated span always wins the "immediately
+        // before filterContainer" slot). Anchoring on the span itself keeps
+        // the button consistently BEFORE it on every render, matching every
+        // other header button's fixed position.
+        const targetH2 = filterContainer.parentNode;
+        if (targetH2) {
+            const countSpan = targetH2.querySelector('.mb-row-count-stat');
+            targetH2.insertBefore(compareBtn, countSpan || filterContainer);
+        }
+
+        // Now safe to remove the native wrapper — the button itself has
+        // already been moved out of it.
+        if (wrapperRow && wrapperRow !== compareBtn) wrapperRow.remove();
+
+        compareBtn.addEventListener('click', () => {
+            const oldRadio = form.querySelector('input[name="old"]:checked');
+            const newRadio = form.querySelector('input[name="new"]:checked');
+            if (!oldRadio || !newRadio) return;
+            const url = `${form.action}?old=${encodeURIComponent(oldRadio.value)}&new=${encodeURIComponent(newRadio.value)}`;
+            if (Lib.settings.sa_annotations_compare_new_tab !== false) {
+                window.open(url, '_blank');
+            } else {
+                window.location.href = url;
+            }
+        });
+
+        Lib.debug('ui', 'initAnnotationCompareButton: moved "Compare versions" button into h2 header.');
+    }
+
+    /**
+     * Enforces the "Old must be strictly older than New" constraint on the
+     * annotations-history compare radios (Old/New columns). MusicBrainz
+     * ships this natively as client-side JS wired directly to the original
+     * DOM nodes; that JS does not run against nodes this script inserts via
+     * cloneNode/importNode, so every sort/filter re-render — which replaces
+     * tbody rows with fresh clones, same reason initExpandRGsFeature()/
+     * _cdtocInitTracklistToggles() exist — silently drops this behavior
+     * (leaving only the pristine static `disabled` attributes MB baked
+     * into the initial HTML, which enable a single New/Old pair) unless
+     * it's re-wired here.
+     *
+     * Rows are newest-first (`data-index="0"` = most recent revision), so
+     * "New" may only be an index strictly LESS than the checked "Old"
+     * index, and "Old" may only be an index strictly GREATER than the
+     * checked "New" index. Re-deriving the disabled/checked state from
+     * whichever radios are CURRENTLY checked (rather than hardcoding
+     * index 0/1) means this also produces the correct result immediately
+     * after a fresh clone, whose checked radios reflect whatever was
+     * checked at fetch time.
+     */
+    function initAnnotationCompareRadios() {
+        if (pageType !== 'annotations') return;
+
+        const oldRadios = Array.from(document.querySelectorAll('input.old[name="old"]'));
+        const newRadios = Array.from(document.querySelectorAll('input.new[name="new"]'));
+        if (!oldRadios.length || !newRadios.length) return;
+
+        const idxOf = radio => parseInt(radio.dataset.index, 10);
+
+        function applyConstraints() {
+            const checkedOld = oldRadios.find(r => r.checked);
+            const checkedNew = newRadios.find(r => r.checked);
+            const oldIdx = checkedOld ? idxOf(checkedOld) : Infinity;
+            const newIdx = checkedNew ? idxOf(checkedNew) : -Infinity;
+
+            newRadios.forEach(r => { r.disabled = idxOf(r) >= oldIdx; });
+            oldRadios.forEach(r => { r.disabled = idxOf(r) <= newIdx; });
+        }
+
+        // Fresh listeners on every call — cloneNode(true) strips whatever
+        // this function attached on the previous pass along with the row
+        // nodes themselves.
+        oldRadios.forEach(r => {
+            r.addEventListener('change', () => {
+                if (!r.checked) return;
+                const oldIdx = idxOf(r);
+                const checkedNew = newRadios.find(nr => nr.checked);
+                if (checkedNew && idxOf(checkedNew) >= oldIdx) {
+                    // Currently-checked New is no longer valid against this
+                    // Old — move it to the nearest valid (largest index < oldIdx).
+                    const candidates = newRadios.filter(nr => idxOf(nr) < oldIdx);
+                    if (candidates.length) {
+                        candidates.reduce((best, c) => idxOf(c) > idxOf(best) ? c : best).checked = true;
+                    }
+                }
+                applyConstraints();
+            });
+        });
+
+        newRadios.forEach(r => {
+            r.addEventListener('change', () => {
+                if (!r.checked) return;
+                const newIdx = idxOf(r);
+                const checkedOld = oldRadios.find(or => or.checked);
+                if (checkedOld && idxOf(checkedOld) <= newIdx) {
+                    // Currently-checked Old is no longer valid against this
+                    // New — move it to the nearest valid (smallest index > newIdx).
+                    const candidates = oldRadios.filter(or => idxOf(or) > newIdx);
+                    if (candidates.length) {
+                        candidates.reduce((best, c) => idxOf(c) < idxOf(best) ? c : best).checked = true;
+                    }
+                }
+                applyConstraints();
+            });
+        });
+
+        applyConstraints();
+
+        Lib.debug('ui', `initAnnotationCompareRadios: wired ${oldRadios.length} Old/New radio pair(s).`);
+    }
+
+    /**
      * Moves any h2 sections that MusicBrainz rendered AFTER the consolidated
      * data-table to immediately before it, preserving their original order.
      *
@@ -55211,6 +55419,13 @@ a { color: #1565c0; }`;
             if (Lib.settings.sa_enable_expand_rgs) {
                 initExpandRGsFeature();
             }
+
+            // Annotations pageType: relocate the "Compare versions" button
+            // into the h2 header and wire the Old/New compare-radio range
+            // constraint. Both self-guard on pageType — cheap no-ops on
+            // every other page.
+            initAnnotationCompareButton();
+            initAnnotationCompareRadios();
 
             // Highlight identical barcodes in Barcode columns (post-render)
             initBarcodeHighlight();
