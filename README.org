@@ -96744,6 +96744,7 @@ corrected the original design's file-input selector (`accept*=\"json\"`, not `ac
 One real finding: the Relationships column still re-fetches live from the WS/2 API after a disk-load (not baked into the
 saved snapshot, unlike CAA/EAA) — worth documenting.
 
+
 * TODO fix automatic redirect when Tagger third party script is installed and displaying sub-table in new tabindex
 
 
@@ -96861,7 +96862,44 @@ add synthetic columns "Active for", "Active since", "Active start date", "Active
 and add uvd comment, and above info in structure sections
 
 
+* TODO fix the artefacts on the final rendered page when on a new tab (sanojjonas stuff, buttons left over from other userscripts)
+
+* TODO add more columns to 'annotations' pageType
+
+* TODO add back the select checkboxes for specifi pageType and rewire the action listeners for e.g. merging releases etc. (see 'annotations' button re-wiring)
+
 * DONE edit mismatches
 
 Currently I used Claude Code to implement two different features at the same time on different machines, starting from
 the same version "9.99.926" How should I proceed to get these in sync again. On both machines nothing is commited/pushed yet
+
+
+* question how can we test the influence of other userscripts normally available in a real browser environment
+
+ and also our userscript uses these functionalities sometimes if available (other times we just want to see the side effects of other userscripts presetn when our userscript
+  runs and does not yet handle them/theit side effects properly)
+
+● Two distinct things to test here, and our existing harness already has the pieces for both:
+
+  Recommendation: Build a small tests/fixtures/thirdPartyScripts/ directory of minimal DOM-mutation snippets — not full third-party script sources, just the specific markers/side-effects ShowAllEntityData already cares about (jesus2099's "≠" title-mismatch marker it actively
+  reads, and the untrusted-filter-write bug from debug/fail.debug where some other script wrote a cached username into the ISRCs filter and silently activated it). Inject them via page.addScriptTag() at controllable points relative to our own script's lifecycle —
+  page.addInitScript() mimics @run-at document-start (runs before anything), while sequenced page.addScriptTag() calls let you place a "third-party script" before, interleaved with, or after our own script's load/render, matching how real userscript managers can order things
+  differently.
+
+  That gives you two test categories for free:
+  - Positive: does our script correctly read/use the marker when present (e.g., does title-mismatch in the uniqdrop Structure section actually fire when a jesus2099-shaped marker exists)?
+  - Defensive: does a known uncontrolled side effect (like the rogue filter-write) get correctly rejected — verifying _isGenuineFilterInputEvent()'s isTrusted/mbInternal guard still holds — and as a running regression net for gaps we haven't handled yet.
+
+  Main tradeoff: hand-written simulator snippets are easy to control and won't rot from a real script's own updates, but can drift from what the real third-party script actually does over time — worth documenting each snippet's provenance and when it was last checked against a
+  live install.
+
+  Want me to build this out, starting with the two known cases (jesus2099 marker + the filter-poisoning regression)?
+
+
+* TODO merge test framework into performance branch
+** DONE i
+
+merge main branch into perf-steps-1-4
+
+** after merging test framework into performance branch make sure to formulate the right test assertions for the artist-events pageType
+
