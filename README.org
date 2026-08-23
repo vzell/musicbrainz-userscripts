@@ -96083,3 +96083,393 @@ I actually removed the @skills/SKILL.md for the "uniq-dropdown-section" skill be
 
 Isn't that true ? And can I potentially use the same SKILL.md file for multiple skills
 
+
+* playwright
+
+#+begin_src bash
+cat > mb.js <<-"_EOF"
+const { chromium } = require('playwright');
+
+(async () => {
+  const browser = await chromium.launch({
+    headless: false
+  });
+
+  const page = await browser.newPage();
+
+  await page.goto(
+    'https://musicbrainz.org/series/013f3368-1414-4004-b5ec-9f0e1aa1d90b',
+  );
+
+  console.log('Solve any challenge if needed, then press Enter');
+
+  process.stdin.once('data', async () => {
+    console.log(await page.content());
+    await browser.close();
+  });
+})();
+_EOF
+#+end_src
+
+#+begin_src bash
+node mb.js
+#+end_src
+
+#+begin_example
+# Solve any challenge if needed, then press Enter
+# 
+# node:internal/process/promises:394
+#     triggerUncaughtException(err, true /* fromPromise */);
+#     ^
+# 
+# page.content: Target page, context or browser has been closed
+#     at ReadStream.<anonymous> (/home/vzell/projects/playwright/mb.js:17:28) {
+#   log: []
+# }
+# 
+# Node.js v24.11.1
+#+end_example
+
+#+begin_src bash
+/tmp/check_node_env.sh
+#+end_src
+
+#+begin_example
+# 
+# == nvm ==
+#   [OK]      nvm installed at /home/vzell/.nvm
+#   version:  0.40.3
+#   default:  default -> node (-> v24.11.1 *)
+#   installed Node versions:
+#     ->     v24.11.1 *
+#              system *
+#     default -> node (-> v24.11.1 *)
+#     iojs -> N/A (default)
+#     node -> stable (-> v24.11.1 *) (default)
+#     stable -> 24.11 (-> v24.11.1 *) (default)
+#     unstable -> N/A (default)
+#     lts/* -> lts/krypton (-> v24.11.1 *)
+#     lts/argon -> v4.9.1 (-> N/A)
+#     lts/boron -> v6.17.1 (-> N/A)
+#     lts/carbon -> v8.17.0 (-> N/A)
+#     lts/dubnium -> v10.24.1 (-> N/A)
+#     lts/erbium -> v12.22.12 (-> N/A)
+#     lts/fermium -> v14.21.3 (-> N/A)
+#     lts/gallium -> v16.20.2 (-> N/A)
+#     lts/hydrogen -> v18.20.8 (-> N/A)
+#     lts/iron -> v20.19.6 (-> N/A)
+#     lts/jod -> v22.21.1 (-> N/A)
+#     lts/krypton -> v24.11.1 *
+# 
+# == Node / npm / npx ==
+#   [OK]      node           /home/vzell/.nvm/versions/node/v24.11.1/bin/node
+#     version: v24.11.1
+#   [OK]      npm            /home/vzell/.nvm/versions/node/v24.11.1/bin/npm
+#     version: 11.6.2
+#   [OK]      npx            /home/vzell/.nvm/versions/node/v24.11.1/bin/npx
+#     version: 11.6.2
+# 
+# == Global npm packages ==
+#   /home/vzell/.nvm/versions/node/v24.11.1/lib
+#   ├── @google/gemini-cli@0.19.4
+#   ├── corepack@0.34.2
+#   └── npm@11.6.2
+#   
+# 
+# == Playwright ==
+#   [MISSING] no local Playwright install detected in current directory
+#   browser cache: /home/vzell/.cache/ms-playwright
+#     - chromium-1228
+#     - chromium_headless_shell-1228
+#     - ffmpeg-1011
+# 
+# == Puppeteer ==
+#   [MISSING] no local Puppeteer install detected in current directory
+#   browser cache: /home/vzell/.cache/puppeteer
+#     - chrome
+#     - chrome-headless-shell
+# 
+# == OS-level browser dependencies (sample check) ==
+#   [OK]      libnss3
+#   [MISSING] libatk1.0-0  (run: sudo npx playwright install-deps)
+#   [MISSING] libatk-bridge2.0-0  (run: sudo npx playwright install-deps)
+#   [OK]      libgbm1
+#   [OK]      libasound2t64
+#   [OK]      libxkbcommon0
+# 
+# == Environment ==
+#   Running inside WSL
+#   OS: Ubuntu 24.04.4 LTS
+# 
+# Done.
+#+end_example
+
+#+begin_src bash
+cd ~/projects/wayback-scraper
+#+end_src
+
+#+begin_src bash
+check_node_env.sh
+#+end_src
+
+#+begin_example
+# == nvm ==
+#   [OK]      nvm installed at /home/vzell/.nvm
+#   version:  0.40.3
+#   default:  default -> node (-> v24.11.1 *)
+#   installed Node versions:
+#     ->     v24.11.1 *
+#              system *
+#     default -> node (-> v24.11.1 *)
+#     iojs -> N/A (default)
+#     node -> stable (-> v24.11.1 *) (default)
+#     stable -> 24.11 (-> v24.11.1 *) (default)
+#     unstable -> N/A (default)
+#     lts/* -> lts/krypton (-> v24.11.1 *)
+#     lts/argon -> v4.9.1 (-> N/A)
+#     lts/boron -> v6.17.1 (-> N/A)
+#     lts/carbon -> v8.17.0 (-> N/A)
+#     lts/dubnium -> v10.24.1 (-> N/A)
+#     lts/erbium -> v12.22.12 (-> N/A)
+#     lts/fermium -> v14.21.3 (-> N/A)
+#     lts/gallium -> v16.20.2 (-> N/A)
+#     lts/hydrogen -> v18.20.8 (-> N/A)
+#     lts/iron -> v20.19.6 (-> N/A)
+#     lts/jod -> v22.21.1 (-> N/A)
+#     lts/krypton -> v24.11.1 *
+# 
+# == Node / npm / npx ==
+#   [OK]      node           /home/vzell/.nvm/versions/node/v24.11.1/bin/node
+#     version: v24.11.1
+#   [OK]      npm            /home/vzell/.nvm/versions/node/v24.11.1/bin/npm
+#     version: 11.6.2
+#   [OK]      npx            /home/vzell/.nvm/versions/node/v24.11.1/bin/npx
+#     version: 11.6.2
+# 
+# == Global npm packages ==
+#   /home/vzell/.nvm/versions/node/v24.11.1/lib
+#   ├── @google/gemini-cli@0.19.4
+#   ├── corepack@0.34.2
+#   └── npm@11.6.2
+#   
+# 
+# == Playwright ==
+#   [OK]      local playwright: Version 1.62.1
+#   browser cache: /home/vzell/.cache/ms-playwright
+#     - chromium-1228
+#     - chromium-1234
+#     - chromium_headless_shell-1228
+#     - chromium_headless_shell-1234
+#     - ffmpeg-1011
+# 
+# == Puppeteer ==
+#   [OK]      local puppeteer: 25.8.0 (in ./node_modules)
+#   browser cache: /home/vzell/.cache/puppeteer
+#     - chrome
+#     - chrome-headless-shell
+# 
+# == OS-level browser dependencies (sample check) ==
+#   [OK]      libnss3
+#   [MISSING] libatk1.0-0  (run: sudo npx playwright install-deps)
+#   [MISSING] libatk-bridge2.0-0  (run: sudo npx playwright install-deps)
+#   [OK]      libgbm1
+#   [OK]      libasound2t64
+#   [OK]      libxkbcommon0
+# 
+# == Environment ==
+#   Running inside WSL
+#   OS: Ubuntu 24.04.4 LTS
+# 
+# Done.
+#+end_example
+
+#+begin_example
+# == nvm ==
+#   [OK]      nvm installed at /home/vzell/.nvm
+#   version:  0.40.3
+#   default:  default -> node (-> v24.11.1 *)
+#   installed Node versions:
+#     ->     v24.11.1 *
+#              system *
+#     default -> node (-> v24.11.1 *)
+#     iojs -> N/A (default)
+#     node -> stable (-> v24.11.1 *) (default)
+#     stable -> 24.11 (-> v24.11.1 *) (default)
+#     unstable -> N/A (default)
+#     lts/* -> lts/krypton (-> v24.11.1 *)
+#     lts/argon -> v4.9.1 (-> N/A)
+#     lts/boron -> v6.17.1 (-> N/A)
+#     lts/carbon -> v8.17.0 (-> N/A)
+#     lts/dubnium -> v10.24.1 (-> N/A)
+#     lts/erbium -> v12.22.12 (-> N/A)
+#     lts/fermium -> v14.21.3 (-> N/A)
+#     lts/gallium -> v16.20.2 (-> N/A)
+#     lts/hydrogen -> v18.20.8 (-> N/A)
+#     lts/iron -> v20.19.6 (-> N/A)
+#     lts/jod -> v22.21.1 (-> N/A)
+#     lts/krypton -> v24.11.1 *
+# 
+# == Node / npm / npx ==
+#   [OK]      node           /home/vzell/.nvm/versions/node/v24.11.1/bin/node
+#     version: v24.11.1
+#   [OK]      npm            /home/vzell/.nvm/versions/node/v24.11.1/bin/npm
+#     version: 11.6.2
+#   [OK]      npx            /home/vzell/.nvm/versions/node/v24.11.1/bin/npx
+#     version: 11.6.2
+# 
+# == Global npm packages ==
+#   /home/vzell/.nvm/versions/node/v24.11.1/lib
+#   ├── @google/gemini-cli@0.19.4
+#   ├── corepack@0.34.2
+#   └── npm@11.6.2
+#   
+# 
+# == Playwright ==
+#   [OK]      local playwright: Version 1.62.1
+#   browser cache: /home/vzell/.cache/ms-playwright
+#     - chromium-1228
+#     - chromium-1234
+#     - chromium_headless_shell-1228
+#     - chromium_headless_shell-1234
+#     - ffmpeg-1011
+# 
+# == Puppeteer ==
+#   [MISSING] no local Puppeteer install detected in current directory
+#   browser cache: /home/vzell/.cache/puppeteer
+#     - chrome
+#     - chrome-headless-shell
+# 
+# == OS-level browser dependencies (sample check) ==
+#   [OK]      libnss3
+#   [MISSING] libatk1.0-0  (run: sudo npx playwright install-deps)
+#   [MISSING] libatk-bridge2.0-0  (run: sudo npx playwright install-deps)
+#   [OK]      libgbm1
+#   [OK]      libasound2t64
+#   [OK]      libxkbcommon0
+# 
+# == Environment ==
+#   Running inside WSL
+#   OS: Ubuntu 24.04.4 LTS
+# 
+# Done.
+#+end_example
+
+* claude code - nodejs
+** i
+
+What should be installed in the project directory to enable tests with playwright
+
+#+begin_src bash
+cd ~/git/musicbrainz-userscripts/ShowAllEntityData
+#+end_src
+
+** q
+
+You choose to use the URL https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings for live tests,
+which are actually 476 paginated pages to get all the recordings when the action button is pressed. Is that what would be tested ?
+
+Or what does a live test actually do ?
+
+** do both
+
+do both, and add a second live test for https://musicbrainz.org/release-group/6a118838-5cef-447f-aee4-84dda2eba8ad
+
+If you test the release-group URL by fetching data, against what are you actually comparing ?
+Don't we need some expected results ?
+
+** add more tests
+
+Add another release-goups live test which actually fetches 2 pages (paginated) - https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
+
+Will the tests be run now after each new implementation ? or only when I instruct you to run them ?
+Do the tests also emulate the CAA image and relationships fetching which normally happen when rendering these final pages in a real browser ?
+Are these tests runing in a headless browser? Is it possible to see the actual results in a playwright gui ?
+Is it possible to save the rendered live test HTML for later displaying in a real browser ?
+
+** answer
+
+#+begin_example
+● All 5 pass. Now, your questions:
+
+  1. Do tests run automatically after each change, or only on your instruction?
+  Only when relevant to what I'm doing. I run the offline npm test fixture suite myself to self-verify changes (fast, no cost to you), and I ran the live suite just now because we were specifically
+  adding/fixing live tests. Nothing runs automatically between our turns, on a git hook, or in CI — there's no such wiring in this repo. If you want tests gated automatically (e.g. a pre-commit hook running
+  npm test, or a GitHub Actions workflow), that's a separate, explicit thing I haven't set up — say the word if you want it.
+
+  2. Do tests emulate CAA image and Relationships fetching? — Found an inconsistency while checking this, worth your input:
+  - CAA/EAA artwork fetches via GM_xmlhttpRequest (_artGmFetchBlob). Our gmStubs.js stubs that unconditionally for both fixture and live tests, and no window.__gmXhrResponses is configured — so every CAA/EAA
+    request currently gets a fake 404, even in "live" mode. No real image fetching happens.
+  - "Relationships" column fetches via plain fetch() to MusicBrainz's own WS/2 API — not stubbed at all. In live tests this genuinely hits the real API right now (both sa_enable_caa_pics and
+    sa_enable_relationships_column default to true). In fixture tests it hasn't fired yet only because our fixture tests don't click a button — the moment one does, it would leak a real network call and
+    quietly break the "fully offline" guarantee.
+
+  I didn't change this yet since it's a design choice.
+#+end_example
+
+** yes, wire up an automatic "save HTML" step when an env var is set
+
+yes, wire up an automatic "save HTML" step when an env var is set
+
+** how can I manually call these tests on the command line
+
+how can I manually call these tests on the command line
+
+** answer
+
+#+begin_example
+● From the ShowAllEntityData/ directory (that's where package.json/playwright.config.js/node_modules live):
+
+  Via npm scripts (already set up)
+  cd ShowAllEntityData
+  npm test                    # offline fixture suite only
+  npm run test:live           # live musicbrainz.org tests only
+  npm run test:all            # both
+  npm run test:ui             # interactive UI mode
+  npm run test:headed         # visible browser window
+  npm run test:live:save-html # live tests + saves rendered HTML
+  npm run report              # opens the last HTML report
+
+  Via the Playwright CLI directly (more control — filter to specific files/tests):
+  npx playwright test                                   # everything, both projects
+  npx playwright test --project=chromium-fixtures       # same as `npm test`
+  npx playwright test --project=chromium-live           # same as `npm run test:live`
+
+  # one file:
+  npx playwright test tests/live/release-group-paginated-fetch.spec.js
+
+  # one test by title (grep, matches substring/regex against the test name):
+  npx playwright test -g "paginated"
+
+  # one test by file:line (from the ✓/✘ output in a run, e.g. smoke.spec.js:18:1):
+  npx playwright test tests/live/smoke.spec.js:18
+
+  # combine flags freely:
+  npx playwright test --project=chromium-live -g "paginated" --headed
+  SAVE_HTML=1 npx playwright test --project=chromium-live -g "paginated"
+
+  npx playwright test --debug     # Playwright Inspector, step-through
+  npx playwright test --ui        # same as npm run test:ui
+
+  -g/--grep matches against the full title path (describe blocks + test name), so a distinctive word from any test's name works.
+#+end_example
+
+** what
+
+what is the strange text at the very beginning of the rendered html files, see [Image #4]
+and why is the actual renderd image at the very end of that file , see [Image #5]
+
+** emulate
+
+Is it possible to emulate clicking the h3 header line "Promotion release" on the final rendered page for the test case
+https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c to uncollpase that sub-table/section
+
+** emualte
+
+actually emulate clicking the
+
+#+begin_example
+<button class="mb-master-toggle" type="button" data-state="collapsed" title="Click to uncollapse all sub-sections (Ctrl+Click to uncollapse ALL sub-sections)">Show all sub-sections</button>
+#+end_example
+
+button for both release-group tests on the final rendered page instead of the h3 header line "Promotion release" click
+
