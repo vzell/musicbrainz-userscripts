@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "⚙️ Internal",
+        "items": [
+          "Added `tests/support/stopButton.js` (`stopAfterPages()`) and `tests/live/stop-button-pagination.spec.js` — emulates clicking `#mb-stop-btn` partway through a paginated fetch (default: after 2 pages) and verifies the fetch loop truncates cleanly, still renders the partial data, and the button returns to hidden. Test tooling only; no userscript runtime changes."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-08-23",
     "sections": [
