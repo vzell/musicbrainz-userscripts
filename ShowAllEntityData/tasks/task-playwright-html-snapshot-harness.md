@@ -8,21 +8,37 @@ altered anything beyond what it was meant to — and separately, whether
 MusicBrainz itself changed the underlying page layout (which would explain a
 diff that has nothing to do with our script).
 
-This reuses shared infrastructure from `discogs_credits/test/`: a
-**repo-root** `.pw-profile/` persistent login (see
-`discogs_credits/test/login.mjs` — if `.pw-profile/` doesn't already exist at
-repo root, create it via the same one-time interactive flow; do not create a
-separate profile for this script) and the `lib/`-split convention (browser
-driving vs. verification/diff logic in separate files).
+**Infra correction**: an earlier version of this doc assumed a repo-root
+`falcon/test/` and `discogs_credits/test/` (persistent-context login,
+`--only=`/`--headed` CLI conventions) and a top-level `ShowAllEntityData/
+test/` (singular) tree with its own `harness.mjs`. **None of that exists in
+this checkout** — grepping git history and `~/git` siblings confirms
+`falcon/`/`discogs_credits/` were never part of this repo. What actually
+exists and works is `ShowAllEntityData/tests/` (**plural**):
 
-If `ShowAllEntityData/test/harness.mjs` already exists (from the earlier
-unique-values-dropdown test task), reuse its `setupPage()`/`newContext()`
-helpers and `window.__SA_TEST_MODE__` gating rather than re-implementing GM_*
-stubbing and dependency injection here. If it doesn't exist yet, build the
-minimal equivalent inline in this task's `lib/browser.js` (GM_getValue/
-GM_setValue/GM_deleteValue/GM_addStyle/GM_info stubs + injecting
-VZ_MBLibrary → iro → pako → ShowAllEntityData.user.js in that order) so this
-task is self-contained regardless of build order.
+- `tests/support/loadPage.js` — `loadUserscriptPage(page, {url,
+  fixtureFile})`. Plain CommonJS, so it's callable from a standalone Node
+  script (this task's `capture-snapshots` runner), not just from
+  `@playwright/test` specs. Injects the GM stub, then loads iro → pako →
+  `lib/VZ_MBLibrary.user.js` → `ShowAllEntityData.user.js` in the
+  userscript's own `@require` order.
+- `tests/support/gmStubs.js` — `buildGmStubsScript(initialValues)`, the
+  `seedGMValue`-equivalent mechanism this task needs (e.g. to seed
+  `sa_enable_release_tracks` for the `release-tracks` pilot pageType).
+- `tests/support/auth-setup.js` + `npm run auth:login` — real interactive
+  login saved as Playwright `storageState` to `playwright/.auth/vzell.json`
+  (gitignored). Reuse this for the capture runner's auth instead of a
+  separate persistent-context profile: launch a plain `chromium.launch()` +
+  `browser.newContext({storageState: AUTH_FILE})` if that file exists — the
+  same conditional pattern `playwright.config.js` already uses for the
+  `chromium-live` project.
+- No `diff`/`jsdiff` devDependency exists anywhere in the repo — `diffSummary`
+  (Part 1 below) needs a small hand-rolled line-diff.
+
+See the sibling `task-playwright-test-infra-expansion.md` for the `__saTest`
+debug hook, and — most relevantly to this doc's Part 1 `scrub()` limitation
+below — its **Part 6, disk-based fixture loading**, which is the actual fix
+for this doc's live-data-drift problem on the *rendered* side.
 
 ## Pilot scope
 
@@ -44,12 +60,12 @@ feature set in the script:
 2. **`release-tracks`** (pageDefinitions entry #87) —
    `https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897`
    ("Born to Run", US 1975). **Gated behind the `sa_enable_release_tracks`
-   setting** — the harness must seed this via the GM_setValue stub *before*
-   the script's init runs, or the "Show all Tracks for Release" button never
-   appears. tableMode `multi`, non-paginated. Uses the bespoke
-   `applyExtractTrackTitleData()` AR-column engine (not the generic
-   columnExtractor pipeline — see `CLAUDE.md`'s "release-tracks: dynamic
-   AR-column classification" section before touching anything here).
+   setting** — the harness must seed this via `buildGmStubsScript`'s
+   `initialValues` *before* the script's init runs, or the "Show all Tracks
+   for Release" button never appears. tableMode `multi`, non-paginated. Uses
+   the bespoke `applyExtractTrackTitleData()` AR-column engine (not the
+   generic columnExtractor pipeline — see `CLAUDE.md`'s "release-tracks:
+   dynamic AR-column classification" section before touching anything here).
    Exercises the largest single feature list in the reference doc: DOM
    decluttering (Yomo widget/work-button/settings-icon/medium-toolbox
    removal), inline credits, overflow-track loading, medium tracklist
@@ -60,7 +76,7 @@ feature set in the script:
 
 ## Part 1 — `lib/snapshot.js`
 
-Export:
+Export (place under `tests/support/snapshot.js`):
 
 - **`captureRaw(page, url)`** — navigates to `url`, waits for
   `domcontentloaded`, returns the page's `document.documentElement.outerHTML`
@@ -69,8 +85,10 @@ Export:
 - **`captureRendered(page)`** — assumes the script has already been injected,
   triggered, and its render pipeline has completed (wait on the same
   completion signal identified for the uniq-dropdown test — check
-  `startFetchingProcess`/`finalCleanup` for the right hook rather than a
-  fixed timeout); returns `document.documentElement.outerHTML` at that point.
+  `startFetchingProcess`/`finalCleanup`, or reuse
+  `assertGroupedRenderCompleted`'s `#mb-filter-container` visibility signal
+  from `tests/support/liveAssertions.js`, rather than a fixed timeout);
+  returns `document.documentElement.outerHTML` at that point.
 
 - **`scrub(html, pageType)`** — strips or placeholder-replaces known-volatile
   content *before* either snapshot is compared or written to disk. Start
@@ -87,68 +105,94 @@ Export:
   diff — this list is exactly the kind of thing that silently rots if
   someone can't tell why an entry is there.
 
-  **Known limitation to note in a comment, not solve in this pilot:** live
-  MB data (e.g. an editor adding a new release group between two capture
-  runs) will still show up as a real content diff unrelated to any script
-  change. This scrub pass only removes *per-request* volatility, not
-  *data* volatility. A stronger fix — replaying a previously captured
-  `raw.html` via `page.route()` interception instead of hitting live MB on
-  every re-capture — is a good Part 3/future task once this pilot proves
-  the approach, but is out of scope here: don't build it now.
+  **Live-data-drift limitation, and its actual fix**: MB data changing
+  between two capture runs (an editor adding a release group) still shows up
+  as a real content diff unrelated to any script change — for `raw.html`
+  (MB's own unmodified page) this is unavoidable by definition, since that
+  capture has to come from a live fetch. For `rendered.html`, though, this is
+  now *solved*, not just deferred: `task-playwright-test-infra-expansion.md`'s
+  Part 6 documents that the script's own Load-from-disk feature is fully
+  Playwright-automatable (a real hidden `<input type="file">`, not an OS
+  picker). Capture a `.json.gz` fixture once via Save-to-disk, commit it to
+  `tests/fixtures/saved-data/<pageType>.json.gz`, and have
+  `captureRendered()` (or a sibling `captureRenderedFromFixture()`) drive
+  `loadFromDiskFixture()` instead of a live "Show all" click when a fixture
+  exists for that pageType — this replays through the script's real render
+  pipeline (`_hydrateAndRenderFromSnapshotData()`) with byte-for-byte
+  identical input every run, eliminating drift for the rendered-HTML
+  comparison specifically. Wire this in as this pilot's primary mechanism,
+  not a deferred future task — the older idea of `page.route()`-intercepting
+  a captured `raw.html` on re-capture is no longer necessary now that the
+  disk-fixture path exists and exercises real render code instead of a raw
+  network mock.
 
-- **`diffSummary(before, after)`** — thin wrapper (a small line-diff is
-  fine; check if a diff package is already a devDependency anywhere in the
-  repo before adding a new one) returning whether the two are identical and,
-  if not, a short line-count/preview summary for the console — the actual
-  diff detail belongs to `git diff` on the committed snapshot files, not to
-  this function's return value.
+- **`diffSummary(before, after)`** — thin wrapper (a small hand-rolled
+  line-diff is fine, confirmed no `diff`/`jsdiff` package exists yet)
+  returning whether the two are identical and, if not, a short
+  line-count/preview summary for the console — the actual diff detail
+  belongs to `git diff` on the committed snapshot files, not to this
+  function's return value.
 
-## Part 2 — `lib/browser.js` additions (or reuse from `harness.mjs`)
+## Part 2 — `tests/support/browser.js` additions (or reuse from `loadPage.js`)
 
-- A `seedGMValue(page, key, value)` helper (or extend the existing
-  `addInitScript` GM stub) so `release-tracks`'s
-  `sa_enable_release_tracks` flag can be set before the script initializes.
+- A `seedGMValue`-equivalent: `tests/support/gmStubs.js`'s
+  `buildGmStubsScript(initialValues)` already covers this — pass
+  `{ sa_enable_release_tracks: true }` for the `release-tracks` pilot rather
+  than writing a new helper.
 - A `waitForRenderComplete(page)` helper wrapping whatever completion hook
   Part 1 needs — shared by both `captureRendered` calls and any future
-  pageType added to this harness.
+  pageType added to this harness. Check whether
+  `tests/support/liveAssertions.js`'s existing `#mb-filter-container`
+  visibility check is sufficient before writing a new one.
 
 ## Part 3 — `capture-snapshots.mjs` (runner)
 
-CLI, modeled on `discogs_credits/test/run.mjs`'s filtering conventions:
+Place at `tests/support/capture-snapshots.mjs` (or `.js` — match whatever
+module style the rest of `tests/support/` uses; `loadPage.js`/`gmStubs.js`
+are CommonJS, so plain `.js` with `require()` is the path of least friction
+for importing them directly). Runs as a standalone Node script *outside* the
+Playwright test runner (`chromium.launch()` + `newContext()` directly, with
+the `storageState` conditional described in Context above) — this is a data
+capture tool, not a pass/fail assertion suite, so it doesn't need to live
+inside the `chromium-fixtures`/`chromium-live` project split.
+
+CLI, using Playwright's/Node's own arg parsing (no need to invent
+`--only=`/`--headed` conventions from a nonexistent reference — a plain
+`process.argv` check is enough):
 
 ```
-node test/capture-snapshots.mjs                    # capture all registered pageTypes
-node test/capture-snapshots.mjs --only=release-tracks
-node test/capture-snapshots.mjs --headed            # debugging
+node tests/support/capture-snapshots.mjs                    # capture all registered pageTypes
+node tests/support/capture-snapshots.mjs --only=release-tracks
+node tests/support/capture-snapshots.mjs --headed            # debugging
 ```
 
 For each selected pageType (initially just the two above — read them from a
-small local `pagetypes.json` fixture list, `{ pageType, url, tableMode,
-seedGmValues }`, not hardcoded in the runner, so adding pageType #3 later is
-a data change, not a code change):
+small local `tests/pagetypes.json` fixture list, `{ pageType, url,
+tableMode, seedGmValues }`, not hardcoded in the runner, so adding pageType
+#3 later is a data change, not a code change):
 
-1. Launch via the shared harness/context.
-2. `captureRaw()` → scrub → write to
-   `test/snapshots/<pageType>/raw.html`.
+1. Launch via `chromium.launch()` + `newContext()` (with `storageState` when
+   `playwright/.auth/vzell.json` exists).
+2. `captureRaw()` → scrub → write to `tests/snapshots/<pageType>/raw.html`.
 3. Seed any required GM values (e.g. `sa_enable_release_tracks` for
-   release-tracks).
+   release-tracks) via `buildGmStubsScript`.
 4. Inject the script, trigger the relevant button, wait for render
    completion.
 5. `captureRendered()` → scrub → write to
-   `test/snapshots/<pageType>/rendered.html`.
+   `tests/snapshots/<pageType>/rendered.html`.
 6. Print a one-line status per pageType (`unchanged` / `raw.html changed —
    check if MB updated the page` / `rendered.html changed — check if this
    was an intended script change`) by running `diffSummary` against
    whatever was already on disk *before* this run overwrote it (diff
    before you overwrite, not after).
 
-Commit the resulting `test/snapshots/**/*.html` files to git as the new
+Commit the resulting `tests/snapshots/**/*.html` files to git as the new
 baseline once you've confirmed a diff is intentional — the diff itself is
-just `git diff test/snapshots/`, no custom tooling needed for that part.
+just `git diff tests/snapshots/`, no custom tooling needed for that part.
 
 ## Part 4 — `registry.org`
 
-An org-mode table at `test/snapshots/registry.org`, one row per pageType:
+An org-mode table at `tests/snapshots/registry.org`, one row per pageType:
 
 ```org
 | pageType              | URL                                                                  | tableMode | script version | last captured | feature/change verified                  | notes                                  |
@@ -205,7 +249,7 @@ Live MB response times vary run to run. Do not hard-fail on a single sample:
 
 ### Baseline storage
 
-Commit `test/snapshots/artist-releasegroups/perf-baseline.json`:
+Commit `tests/snapshots/artist-releasegroups/perf-baseline.json`:
 
 ```json
 {
@@ -234,9 +278,8 @@ a new perf baseline is committed, same as any other re-baseline.
   a manual `--perf` run Volker triggers around specific changes, at least
   until the thresholds above have proven themselves not to be flaky.
 - No CAA-queue-drain-time scaling measurement yet — `artist-releasegroups`
-  does exercise CAA, but tie that specifically to the CAA queue concurrency
-  test from the earlier unique-values-dropdown task rather than duplicating
-  it here.
+  does exercise CAA, but tie that specifically to a future CAA queue
+  concurrency test rather than duplicating it here.
 
 ## Project conventions (apply to all touched code)
 
@@ -244,4 +287,5 @@ a new perf baseline is committed, same as any other re-baseline.
 - Standardized JSDoc block on every new function.
 - This is test tooling, not the userscript itself — no
   `ShowAllEntityData_CHANGELOG.json` entry or version bump needed for
-  `test/` files, matching the same rule from the uniq-dropdown harness task.
+  `tests/` files, matching the same rule from the sibling
+  `task-playwright-test-infra-expansion.md`.

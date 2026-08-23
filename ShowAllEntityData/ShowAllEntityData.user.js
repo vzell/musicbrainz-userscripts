@@ -64112,4 +64112,76 @@ a { color: #1565c0; }`;
             description: 'Focus Next Column Filter'
         }
     };
+
+    // ── Test-mode debug hook (__saTest) ─────────────────────────────────────
+    // Read-only introspection surface for the Playwright test harness (see
+    // tests/support/loadPage.js's `testMode` option, which sets
+    // window.__SA_TEST_MODE__ before this script loads). Never defined
+    // outside test mode; adds no UI and changes no user-visible behavior.
+    if (typeof window !== 'undefined' && window.__SA_TEST_MODE__) {
+        window.__saTest = {
+            /**
+             * Opens (or reads the current state of, if already open) the 📊
+             * unique-values dropdown for the column named `colName`, and
+             * returns its rendered synthetic-value sections (per
+             * SYN_SECTION_META — "Structure", "Flags", entity info, etc.).
+             * The plain value list rendered below those sections is
+             * intentionally NOT included — it has no section grouping to
+             * report.
+             *
+             * Reads live DOM (not internal Maps/state), so a test verifies
+             * what a person actually sees in the panel, not something that
+             * might have diverged from it.
+             *
+             * @param {string} colName - Column header text with sort
+             *   arrows/counts/glyphs already stripped (e.g. "Format", not
+             *   "⇅ Format 📊").
+             * @returns {Array<{label: string, items: Array<{label: string, count: number|null, checked: boolean}>}>|null}
+             *   `null` when no column header matching `colName` is found.
+             */
+            getUniqDropSections(colName) {
+                const stripDecorations = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+                const th = Array.from(document.querySelectorAll('table.tbl thead th'))
+                    .find((t) => stripDecorations(t.textContent) === colName);
+                const wrap = th ? th.querySelector('.mb-col-uniq-wrap') : null;
+                if (!wrap) return null;
+
+                // _uniqDropOwner (module-scope) tracks which wrap currently
+                // owns the open panel — openUniqDrop() TOGGLES CLOSED when
+                // clicked again on its own owner, so only click when this
+                // column's panel isn't already the one open.
+                if (_uniqDropOwner !== wrap) {
+                    wrap.click();
+                }
+
+                const dropEl = document.getElementById('mb-col-uniq-dropdown');
+                if (!dropEl || dropEl.style.display === 'none') return [];
+
+                return Array.from(dropEl.querySelectorAll('.mb-uniq-section')).map((section) => {
+                    const label = section.querySelector('.mb-uniq-section-label')?.textContent ?? '';
+                    const items = Array.from(section.querySelectorAll('.mb-col-uniq-item')).map((item) => {
+                        const badgeText = item.querySelector('.mb-uniq-count-badge')?.textContent ?? '';
+                        const countMatch = badgeText.match(/\((\d+)\)/);
+                        return {
+                            label: item.dataset.mbUniqSynLabel
+                                ?? item.querySelector('.mb-uniq-syn-label-text')?.textContent
+                                ?? item.textContent.trim(),
+                            count: countMatch ? Number(countMatch[1]) : null,
+                            checked: item.classList.contains('mb-col-uniq-checked'),
+                        };
+                    });
+                    return { label, items };
+                });
+            },
+
+            /**
+             * Closes the unique-values dropdown, if open. Thin wrapper
+             * around the internal `closeUniqDrop()`, for tests to reset
+             * panel state between assertions.
+             */
+            closeUniqDrop() {
+                closeUniqDrop();
+            },
+        };
+    }
 })();

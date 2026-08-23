@@ -41,11 +41,20 @@ const FIXTURE_SETTINGS_OVERRIDE = {
  * practice) rather than vendored locally — revisit only if that CDN
  * dependency turns out to cause real friction.
  *
+ * `testMode: true` sets `window.__SA_TEST_MODE__ = true` before the
+ * userscript loads, which gates its `window.__saTest` debug hook (see
+ * ShowAllEntityData.user.js's "Test-mode debug hook" section, near the end
+ * of the file) — never set outside a test run.
+ *
  * @param {import('@playwright/test').Page} page
- * @param {{ url: string, fixtureFile?: string }} opts
+ * @param {{ url: string, fixtureFile?: string, testMode?: boolean }} opts
  * @returns {Promise<void>}
  */
-async function loadUserscriptPage(page, { url, fixtureFile }) {
+async function loadUserscriptPage(page, { url, fixtureFile, testMode }) {
+    if (testMode) {
+        await page.addInitScript({ content: 'window.__SA_TEST_MODE__ = true;' });
+    }
+
     await page.addInitScript({
         content: buildGmStubsScript(fixtureFile ? FIXTURE_SETTINGS_OVERRIDE : {}),
     });

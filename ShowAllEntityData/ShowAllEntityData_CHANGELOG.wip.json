@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-08-23",
+    "sections": [
+      {
+        "label": "⚙️ Internal",
+        "items": [
+          "Added a `window.__saTest` debug hook (`getUniqDropSections()`, `closeUniqDrop()`), gated behind `window.__SA_TEST_MODE__` — a read-only introspection surface for the Playwright test harness, inert outside test runs. Adds no UI and changes no user-visible behavior."
+        ]
+      }
+    ]
+  }
+]
