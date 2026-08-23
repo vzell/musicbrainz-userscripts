@@ -2081,6 +2081,19 @@
                          'decrease if CORS errors still appear in the console.'
         },
 
+        sa_caa_io_threshold: {
+            label: 'Lazy-load art threshold (rows)',
+            type: 'number',
+            default: 500,
+            min: 0,
+            max: 50000,
+            description: 'When the number of data rows meets or exceeds this value, CAA/EAA artwork ' +
+                         'icons and JSON-API enrichment are loaded lazily via IntersectionObserver: ' +
+                         'only cells that scroll into the viewport trigger a request. For tables ' +
+                         'smaller than the threshold all artwork is loaded eagerly (existing ' +
+                         'behaviour). Set to 0 to always use eager loading regardless of table size.'
+        },
+
         sa_caa_hover_preview: {
             label: 'Enable hover preview of artwork',
             type: 'checkbox',
@@ -57092,6 +57105,12 @@ a { color: #1565c0; }`;
     // Null before the first render; never accessed outside the CAA feature block.
     let _caaQueue = null;
 
+    // IntersectionObserver instances for lazy CAA/EAA artwork loading.
+    // Created by _artInitLazyPics when allRows.length >= sa_caa_io_threshold.
+    // Disconnected and reset to null by _artInitQueue() on every render pass.
+    let _caaArtIO = null;
+    let _eaaArtIO = null;
+
     /**
      * Active filter highlight context, set by runFilter() before the filter pass
      * and cleared when no filters are active.
@@ -60350,6 +60369,49 @@ a { color: #1565c0; }`;
         anchor.dataset[ctx.enrichedAttr] = '1';
     }
 
+    /**
+     * Lazy counterpart of `_artInitSmallPics` + `_artEnrichTable`.
+     *
+     * Creates (or reuses) a per-ctx IntersectionObserver stored in `_caaArtIO` /
+     * `_eaaArtIO` and observes every artwork-icon span in `table`. When a span
+     * scrolls into the viewport the observer fires once (then unobserves the
+     * element) and enqueues both the icon background-image load (if
+     * `sa_caa_pics_small` is enabled) and the JSON-API enrichment call.
+     *
+     * Called from `_artInitPics` when `allRows.length >= sa_caa_io_threshold`.
+     * The observer persists across filter passes because allRows are the live
+     * DOM rows — the observer is never recreated by runFilter().
+     *
+     * @param {ArtCtx}           ctx
+     * @param {HTMLTableElement} table
+     */
+    function _artInitLazyPics(ctx, table) {
+        let io = ctx.key === 'caa' ? _caaArtIO : _eaaArtIO;
+        if (!io) {
+            io = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    const icon = entry.target;
+                    io.unobserve(icon);
+                    const anchor = icon.closest('a[href]');
+                    if (Lib.settings.sa_caa_pics_small) {
+                        if (_caaQueue) _caaQueue.enqueue(() => _artLoadIcon(ctx, icon));
+                        else           _artLoadIcon(ctx, icon);
+                    }
+                    if (anchor) {
+                        if (_caaQueue) _caaQueue.enqueue(() => _artEnrichIcon(ctx, anchor));
+                        else           _artEnrichIcon(ctx, anchor);
+                    }
+                });
+            }, { rootMargin: '200px 0px' });
+            if (ctx.key === 'caa') _caaArtIO = io;
+            else                   _eaaArtIO = io;
+        }
+        const icons = table.querySelectorAll(ctx.iconSel);
+        icons.forEach(icon => io.observe(icon));
+        Lib.debug(ctx.key,
+            `${ctx.key}InitLazyPics: observing ${icons.length} icon(s) via IntersectionObserver`);
+    }
 
     /**
      * Loads thumbnails into all artwork-icon spans in `table` that are wrapped in
@@ -61969,6 +62031,17 @@ a { color: #1565c0; }`;
             return;
         }
 
+        // For large tables, defer both icon background-image loads and
+        // JSON-API enrichment to an IntersectionObserver that fires as each
+        // art-icon cell scrolls near the viewport, keeping the initial render
+        // fast and the request queue empty until artwork cells are actually
+        // visible. Below the threshold (or when IO is unavailable / threshold
+        // is 0) both run eagerly as before.
+        const _ioThreshold = Lib.settings.sa_caa_io_threshold ?? 500;
+        const _useIO = typeof IntersectionObserver !== 'undefined' &&
+                       _ioThreshold > 0 &&
+                       allRows.length >= _ioThreshold;
+
         let processed = 0;
         tables.forEach((table, i) => {
             const hasColumn     = caaFindColumnByName(table, ctx.column) !== -1;
@@ -62001,7 +62074,11 @@ a { color: #1565c0; }`;
             // Small-pic icon loading only applies when there is a dedicated column
             // containing artwork-icon spans inside art-anchor elements.
             if (hasColumn) {
-                _artInitSmallPics(ctx, table);
+                if (_useIO) {
+                    _artInitLazyPics(ctx, table);
+                } else {
+                    _artInitSmallPics(ctx, table);
+                }
             }
 
             // Single-pass strategy: scan links first (read-only), create the
@@ -62038,12 +62115,16 @@ a { color: #1565c0; }`;
         // small icons and big-strip loads have priority in _caaQueue.  Users who
         // start filtering immediately will see visual feedback before count badges
         // and multi-row art cells arrive.  _artEnrichIcon's own idempotency guard
-        // prevents double-work on re-renders.
-        tables.forEach(table => {
-            if (caaFindColumnByName(table, ctx.column) !== -1) {
-                _artEnrichTable(ctx, table);
-            }
-        });
+        // prevents double-work on re-renders.  Skipped when _useIO — the
+        // IntersectionObserver installed above already enqueues enrichment
+        // itself, per icon, once that icon actually scrolls into view.
+        if (!_useIO) {
+            tables.forEach(table => {
+                if (caaFindColumnByName(table, ctx.column) !== -1) {
+                    _artEnrichTable(ctx, table);
+                }
+            });
+        }
 
         // For multi-table pages, create/refresh the global art toggle button that
         // sits in the h2 header and controls all sub-table bigboxes at once.
@@ -63466,6 +63547,13 @@ a { color: #1565c0; }`;
         // allowed to finish naturally — their in-flight requests cannot be
         // recalled once submitted to the browser.
         if (_caaQueue) _caaQueue.cancel();
+
+        // Disconnect any lazy-load IntersectionObservers from a previous
+        // initialisation (e.g. disk-load after initial fetch, or page re-use).
+        // Observed elements from the old DOM set are discarded so the next
+        // call to _artInitLazyPics starts fresh with the current table rows.
+        if (_caaArtIO) { _caaArtIO.disconnect(); _caaArtIO = null; }
+        if (_eaaArtIO) { _eaaArtIO.disconnect(); _eaaArtIO = null; }
 
         // (Re-)create the shared request queue so the current sa_caa_fetch_concurrency
         // setting is picked up on every render pass.

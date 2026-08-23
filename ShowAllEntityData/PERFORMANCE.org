@@ -276,7 +276,7 @@ Same caching primitive as Step 3 — build alongside it.
   back empty on every cache hit (reopening a column's dropdown with no
   filter/sort change in between would show zero role-token entries).
 
-*** TODO Step 5: Lazy CAA/EAA loading (IntersectionObserver)
+*** DONE Step 5: Lazy CAA/EAA loading (IntersectionObserver)
 
 Defer CAA/EAA icon loads + JSON-API enrichment until a row's art cell
 scrolls near the viewport, instead of firing for every row at initial
@@ -284,6 +284,41 @@ render. Reference: ~archive/filter-performance-fix-v1-single-table~'s WIP.2
 ("Pattern 5") — ~sa_caa_io_threshold~ setting, per-ctx persistent observer.
 Independent of Steps 1-4 (different subsystem); can be done in any order
 relative to them.
+
+*Landed*: branch ~filter-performance-fix~, see
+~ShowAllEntityData_CHANGELOG.wip.json~ WIP.6. Reimplemented against current
+~main~ rather than merged — the archived branch's shape (~ArtCtx~-generic
+~_artInitPics~/~_artInitSmallPics~/~_artEnrichTable~/~_caaQueue~) turned out
+to still match current ~main~ closely, so the port was mostly a straight
+carry-over:
+
+- New ~sa_caa_io_threshold~ setting (default 500 rows, 0 disables), new
+  module-level ~_caaArtIO~/~_eaaArtIO~ next to the existing ~_caaQueue~, and
+  new ~_artInitLazyPics(ctx, table)~ (creates/reuses a per-ctx
+  ~IntersectionObserver~, 200px root margin, unobserve-on-intersect, enqueues
+  ~_artLoadIcon~/~_artEnrichIcon~ through the existing ~_caaQueue~).
+- ~_artInitPics(ctx)~ computes ~_useIO~ once (`allRows.length >=
+  sa_caa_io_threshold`, guarded on ~IntersectionObserver~ existing) and
+  branches both the small-icon pass (~_artInitSmallPics~ vs
+  ~_artInitLazyPics~) and the enrichment pass (~_artEnrichTable~, now
+  skipped entirely when ~_useIO~ since the observer enqueues enrichment
+  itself per icon) on it. The big-picture strip
+  (~_artCountLinks~/~_artInitBigPics~) is untouched — same scope boundary as
+  the archived branch, only the per-row icon column + its enrichment defer.
+- Disconnect/reset of both observers was placed in ~_artInitQueue()~ — the
+  function current ~main~ already runs exactly once per render pass, before
+  ~initCaaPics()~/~initEaaPics()~, to recreate ~_caaQueue~ — rather than
+  inside ~initCaaPics()~ itself as the archived branch did (queue creation
+  and IO reset live in two different functions on current ~main~ now,
+  ~_artInitQueue()~ vs ~initCaaPics()~/~initEaaPics()~, whereas the archived
+  branch still had them combined in one). This keeps both observers reset
+  exactly once per render pass, matching the queue's own lifecycle, and
+  means the observer persists correctly across Step 1/2's now-single-pass
+  filter/sort actions (they never call ~_artInitQueue()~).
+- ~_artRetryTable()~'s forced-reload path (cache-busted, per-table "Retry"
+  button) was left calling ~_artInitSmallPics~ eagerly, unchanged — the
+  archived branch did the same; a manual retry should not silently re-defer
+  behind the viewport.
 
 ** Resuming after /clear
 
