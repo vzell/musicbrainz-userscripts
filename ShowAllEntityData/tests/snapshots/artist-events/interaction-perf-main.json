@@ -6,23 +6,23 @@
   "scriptVersion": "9.99.953+2026-08-24",
   "interactions": {
     "globalFilter": {
-      "medianMs": 1348,
+      "medianMs": 1418,
       "samples": 5
     },
     "columnFilter": {
-      "medianMs": 1592,
+      "medianMs": 1595,
       "samples": 5
     },
     "sort": {
-      "medianMs": 2844,
+      "medianMs": 2994,
       "samples": 5
     },
     "uniqDropCold": {
-      "medianMs": 24749,
+      "medianMs": 29802,
       "samples": 5
     },
     "uniqDropWarm": {
-      "medianMs": 24860,
+      "medianMs": 29700,
       "samples": 5
     }
   }
