@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "tests: added artist-events performance-comparison instrumentation — `tests/live/artist-events-interactions.spec.js` (global/column filter, sort both directions, header-badge sanity, uniq-dropdown cache-invalidation correctness), `tests/support/capture-interaction-perf.js` (median-of-5 timing for global filter/column filter/sort/uniq-dropdown cold-vs-warm-open, written per-branch to `tests/snapshots/artist-events/interaction-perf-<branch>.json` so `main` and a performance-focused branch can be compared side by side), and `tests/support/capture-snapshots.js` extended with `post-filter.html`/`post-sort.html` full-DOM regression snapshots for `artist-events` (catching a rendering regression a canonical filter/sort action could introduce that no single correctness assertion would catch). All three load via the newly-captured `tests/fixtures/saved-data/artist-events.json.gz` disk fixture (`tests/support/capture-fixture.js`, extended with an `artist-events` entry and `seedGmValues`/`renderTimeout` support) rather than a live 42-page fetch. Canonical filter/sort/uniq-drop targets shared across all three via new `tests/support/artistEventsFixture.js`, so they can't drift apart. New `waitForActualRowCount()` helper in `tests/support/filterSortAssertions.js` — a stronger completion signal than the existing status-text-based waits for an action that narrows a large single-table page then widens it back out (confirmed empirically that `#mb-filter-status-display`/`.mb-row-count-stat` both update before the tbody rebuild and the `#mb-render-heading` chunked-render overlay have actually finished catching up, on `artist-events`' 4174 rows). No `ShowAllEntityData.user.js` changes — pure test-infra additions, per this project's existing precedent for test-only commits."
+        ]
+      }
+    ]
+  }
+]
