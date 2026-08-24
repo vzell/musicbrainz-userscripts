@@ -1,5 +1,23 @@
 [
   {
+    "version": "9.99.954",
+    "date": "2026-08-25",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "sanojjonas cleanup: sanojjonas' own userscript now wraps all of its infinite-scroll `load`/`load2`.../`bottom1`-`bottom7` placeholders inside a single `<div id=\"sanojjonasRoot\">` container (confirmed via debug/sanoj-initial.html, debug/sanoj-new.html). Replaced the whole-document `[id]` sweep and `/^(load\\d*|bottom\\d+)$/` ID-shape regex in `_isSanojjonasContainerId()`/`_findSanojjonasContainers()` with a fixed 3-ID lookup (`#sanojjonasRoot` plus the two Taggregator IDs), used by both the one-shot `removeSanojjonasContainers()` pass and `_watchForLateSanojjonasInjections()`'s late-injection watcher. Also fixes a latent bug where removing only the wrapper's individual descendants (never the wrapper itself) could leave an empty orphaned `#sanojjonasRoot` shell behind."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Corrected a mis-attribution in the sanojjonas cleanup code's comments: the \"Taggregator\" tag-aggregation panel (`#taggregator-settings`/`#taggregator-import-button`) is a separate, unrelated userscript by zabe (`@namespace https://github.com/zabe40`), not a second script by sanojjonas — the comments previously described both as \"two unrelated userscripts by that [sanojjonas] author\"."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.953",
     "date": "2026-08-24",
     "sections": [
