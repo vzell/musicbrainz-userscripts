@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.948",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The `annotations` pageType's 📊 unique-values dropdown now offers four new \"Editor info\" sub-sections for the \"Editor\" column — \"- Deleted\" (🗑️, one entry per distinct deleted-editor placeholder identity, e.g. \"Deleted Editor #135888\", plus a sibling \"any deleted editor\" aggregate flag that matches every deleted-editor row regardless of which specific ID), \"- Recorded name\" (🏷️, the tooltip's own historically-recorded editor name, only offered when it differs from the row's current name), \"- Membership\" (🕰️, the tooltip's own \"active N years (start 〜 end)\" span), and \"- Comment\" (💬, the visible `.comment` span's differently-worded restatement of the same membership fact) — plus a new \"Version history - Changelog\" (📜) section for the \"Version history\" column, a binary \"has changelog message\"/\"no changelog specified\" flag pair (never enumerating the actual free-text messages, matching this file's existing free-text-prose convention). New `_findCellEditorInfo()`/`_findCellChangelogPresence()` extractors, `_cellMatchesStructureMode()` branches (`editordeleted:`/`editor-any-deleted`/`editorrecordedname:`/`editormembership:`/`editorcomment:`/`changelog-has-message`/`changelog-no-message`), and `_highlightEditorDeletedMatch()`/`_highlightEditorCommentMatch()`/`_highlightChangelogNoneMatch()` (the recorded-name/membership/has-message facets are sourced from a hover-only `title` attribute or intentionally untracked free text, so they deliberately get no highlight, same as this dropdown's other pure-state flags). Deliberately bespoke, not built on `_findCellEntityRefs()`/`KNOWN_ENTITY_LINK_KINDS` — a `/user/{name}` editor link is a non-MBID reference those catalog-entity-only helpers never recognize anyway, so there's no overlap with the generic \"Entity info\" family."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.947",
     "date": "2026-08-24",
     "sections": [

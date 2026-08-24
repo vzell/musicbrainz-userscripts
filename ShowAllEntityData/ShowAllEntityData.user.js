@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.947+2026-08-24
+// @version      9.99.948+2026-08-24
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -17647,6 +17647,138 @@
     }
 
     /**
+     * Extracts every Editor-column facet from one `annotations` pageType
+     * `<td>` — the single bespoke source of truth for the "Editor info -
+     * Deleted" / "- Recorded name" / "- Membership" / "- Comment" dropdown
+     * sections and their structure-mode matchers/highlighters. Deliberately
+     * independent of `_findCellEntityRefs()`/`_ENTITY_TYPE_GLYPH`/
+     * `KNOWN_ENTITY_LINK_KINDS` — those assume an MBID-hex catalog-entity
+     * href (`/^\/([a-z][a-z-]*)\/[0-9a-f-]+/i`); a `/user/{name}` editor
+     * link is a different, non-MBID kind of reference entirely, and folding
+     * it into that generic, heavily-reused pipeline would widen its blast
+     * radius to every other column that happens to contain a `/user/…` link
+     * (e.g. Collections' synthetic 'Editor' column, "Voter" on
+     * auto-editor-election).
+     *
+     * Recognizes three anchor shapes (see debug/label-annotations.html):
+     *   - Plain editor: `<a href="/user/drsaunde"><img …><bdi>drsaunde</bdi></a>`
+     *   - Revived/renamed editor (`class="tooltip j2revivededitor"`): same
+     *     `<a>`, but the CURRENT name is a bare trailing TEXT NODE after
+     *     `<img>` — NOT wrapped in `<bdi>` — plus a `\n`-separated `title`
+     *     tooltip (one line records the name at the time of this historical
+     *     action, e.g. a "Deleted Editor #N" placeholder; another is a
+     *     membership/activity-span string), plus a visible sibling
+     *     `<span class="comment">` restating the membership fact in
+     *     DIFFERENT, shorter wording.
+     *   - Permanently-deleted, never-revived editor (no live sample seen):
+     *     presumed bare `<bdi>Deleted Editor #N</bdi>` or equivalent, no
+     *     tooltip/class/comment at all.
+     *
+     * `currentName` resolution prefers `<bdi>` text (plain-editor shape) and
+     * falls back to the anchor's own trimmed text (revived-editor shape) —
+     * "no `<bdi>`" is NOT treated as "nothing recognizable"; only "no
+     * `<a href="^/user/">` at all" returns `null`.
+     *
+     * Tooltip parsing is defensive against a real-world line count other
+     * than the usual 3: the MEMBERSHIP line is identified by shape
+     * (`/^active\b.*\(.*\)$/i`) wherever it falls, not by position; the
+     * first remaining non-membership line (if any) is the candidate
+     * RECORDED name. This tolerates a 1-2 line title (either half missing)
+     * without mis-assigning fields.
+     *
+     * `deletedId` resolves from whichever of `currentName`/the tooltip's
+     * raw recorded-name line (even when it equals `currentName`, unlike the
+     * public `recordedName` field below) matches
+     * `/^Deleted Editor #\d+$/`, `currentName` checked first.
+     *
+     * `recordedName` is only ever non-null when it DIFFERS from
+     * `currentName` — a tooltip whose recorded-name line merely restates
+     * the current name contributes nothing here, matching this file's
+     * "only offer what's genuinely a distinct fact" convention (see
+     * `_extractMainColumnParts()`'s own alias-vs-comment split for the same
+     * reasoning).
+     *
+     * `comment` mirrors `_findCellEntityCommentParts()`'s own stripping
+     * chain exactly (strip surrounding parens, then a leading ", "
+     * separator). Unlike that function's usual case (parens are
+     * CSS-generated there), THIS `.comment` span's parens are genuine
+     * literal text, so the stripping is load-bearing here, not
+     * defensive-only.
+     *
+     * Deliberately only called for the "Editor" column itself (gated by
+     * column name at the `openUniqDrop()` call site) — plain free-text/
+     * attribute parsing with no CSS-class safety net.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?{currentName: string, recordedName: ?string,
+     *   membership: ?string, deletedId: ?string, comment: ?string}}
+     *   `null` when the cell has no `<a href="^/user/">` at all.
+     */
+    function _findCellEditorInfo(cell) {
+        if (!cell) return null;
+        const a = cell.querySelector('a[href^="/user/"]');
+        if (!a) return null;
+
+        const bdi = a.querySelector('bdi');
+        const currentName = (bdi ? bdi.textContent : a.textContent).trim();
+        if (!currentName) return null;
+
+        let recordedNameRaw = null, membership = null;
+        const title = a.getAttribute('title');
+        if (title) {
+            const lines = title.split('\n').map(s => s.trim()).filter(s => s);
+            const membershipIdx = lines.findIndex(l => /^active\b.*\(.*\)$/i.test(l));
+            if (membershipIdx !== -1) membership = lines[membershipIdx];
+            const nameCandidates = lines.filter((_, i) => i !== membershipIdx);
+            if (nameCandidates.length) recordedNameRaw = nameCandidates[0];
+        }
+        const recordedName = (recordedNameRaw && recordedNameRaw !== currentName) ? recordedNameRaw : null;
+
+        const DELETED_EDITOR_RE = /^Deleted Editor #\d+$/;
+        const deletedId = DELETED_EDITOR_RE.test(currentName) ? currentName
+            : (recordedNameRaw && DELETED_EDITOR_RE.test(recordedNameRaw)) ? recordedNameRaw
+            : null;
+
+        let comment = null;
+        const commentSpan = cell.querySelector('.comment');
+        if (commentSpan) {
+            const clone = commentSpan.cloneNode(true);
+            comment = getCleanColumnText(clone)
+                .replace(/^\(\s*/, '').replace(/\s*\)$/, '')
+                .replace(/^\s*,\s*/, '').trim() || null;
+        }
+
+        return { currentName, recordedName, membership, deletedId, comment };
+    }
+
+    /**
+     * Tri-state check for a "Version history" cell's own changelog
+     * parenthetical — native MusicBrainz markup: `<a
+     * href="/{entity}/{mbid}/annotation/{id}">View this version</a>
+     * (<changelog text>)`, where the parenthetical is either a real
+     * free-text message or MusicBrainz's own literal placeholder
+     * `<em>no changelog specified</em>` (confirmed via
+     * debug/label-annotations.html). Deliberately does NOT expose the
+     * actual free-text message as an enumerable value — this file never
+     * offers free-text prose (e.g. "Annotation") as a one-entry-per-
+     * distinct-value list, only structural/flag facets.
+     *
+     * Deliberately only called for the "Version history" column itself
+     * (gated by column name at the `openUniqDrop()` call site).
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?boolean} `true` = has a real changelog message, `false` =
+     *   MB's own "no changelog specified" placeholder, `null` = not a
+     *   recognizable "Version history" cell at all (no annotation link
+     *   found).
+     */
+    function _findCellChangelogPresence(cell) {
+        if (!cell) return null;
+        if (!cell.querySelector('a[href*="/annotation/"]')) return null;
+        return !/no changelog specified/i.test(getCleanColumnText(cell));
+    }
+
+    /**
      * Extracts the bare trailing `"(YYYY[-MM[-DD]])"` date text immediately
      * following an entity link in a plain "Event" cell — e.g. the native
      * MusicBrainz tag-value Event listing shape: `<a
@@ -18034,6 +18166,58 @@
             // flags above: a cell's list can mix "[none]" items with real
             // prefixed/unprefixed catalog numbers.
             return !!cell && _findCellCatalogParts(cell).some(p => p.none);
+        }
+        if (mode.startsWith('editordeleted:')) {
+            // Compound mode — matches one distinct deleted-editor identity
+            // (e.g. "Deleted Editor #135888"), from _findCellEditorInfo()'s
+            // own deletedId resolution.
+            const want = mode.slice(14);
+            const info = _findCellEditorInfo(cell);
+            return !!info && info.deletedId === want;
+        }
+        if (mode === 'editor-any-deleted') {
+            // Binary flag — true for ANY deleted-editor placeholder,
+            // regardless of which specific ID (the aggregate sibling of
+            // 'editordeleted:' above, sharing the same "Editor info -
+            // Deleted" section — mirrors the catalogprefix:/
+            // catalog-has-prefix kind+flag pairing).
+            const info = _findCellEditorInfo(cell);
+            return !!info && !!info.deletedId;
+        }
+        if (mode.startsWith('editorrecordedname:')) {
+            // Compound mode — matches the tooltip's own recorded/historical
+            // editor name, ONLY offered when it differs from the row's
+            // current name — see _findCellEditorInfo()'s own JSDoc.
+            const want = mode.slice(19);
+            const info = _findCellEditorInfo(cell);
+            return !!info && info.recordedName === want;
+        }
+        if (mode.startsWith('editormembership:')) {
+            // Compound mode — matches the tooltip's own membership/
+            // activity-span string (e.g. "active 10 years (2005-07-28
+            // 〜 2015-09-21)").
+            const want = mode.slice(17);
+            const info = _findCellEditorInfo(cell);
+            return !!info && info.membership === want;
+        }
+        if (mode.startsWith('editorcomment:')) {
+            // Compound mode — matches the visible `.comment` span's own
+            // text (a differently-worded restatement of the membership
+            // fact above).
+            const want = mode.slice(14);
+            const info = _findCellEditorInfo(cell);
+            return !!info && info.comment === want;
+        }
+        if (mode === 'changelog-has-message') {
+            // Binary flag — true when this "Version history" cell's
+            // changelog parenthetical is real free text, not MusicBrainz's
+            // own placeholder.
+            return _findCellChangelogPresence(cell) === true;
+        }
+        if (mode === 'changelog-no-message') {
+            // Binary flag counterpart — true for MB's own literal "no
+            // changelog specified" placeholder.
+            return _findCellChangelogPresence(cell) === false;
         }
         if (mode.startsWith('arttype:')) {
             // Compound mode (openUniqDrop()'s makeValueSynItem, the "CAA
@@ -34517,6 +34701,33 @@ a { color: #1565c0; }`;
         catalogPresence: { label: 'Catalog info - Presence', glyph: '🔍' },
         eventInfo:     { label: 'Event info - Event date',       glyph: '📅' },
         eventCancelled: { label: 'Event info - Event cancelled', glyph: '🚫' },
+        // "Editor info" — the annotations pageType's own family, one
+        // sub-section per Editor-column facet (deleted-editor identity,
+        // tooltip-recorded historical name, tooltip membership span, and
+        // the separately-worded `.comment` span) — see
+        // _findCellEditorInfo()'s own JSDoc for the DOM shapes these come
+        // from. Distinct from the generic "Entity info" family above:
+        // _findCellEntityRefs() only recognizes MBID-hex catalog-entity
+        // hrefs, which a `/user/{name}` editor link never matches, so
+        // there is no overlap. The "any deleted editor" aggregate flag
+        // (MB_UNIQ_MODE_TO_SECTION's 'editor-any-deleted') shares this
+        // SAME section rather than getting its own sibling section like
+        // catalogPresence does — one boolean tightly bound to one list
+        // reads better as a single section here.
+        editorDeleted:      { label: 'Editor info - Deleted',       glyph: '🗑️' },
+        editorRecordedName: { label: 'Editor info - Recorded name', glyph: '🏷️' },
+        editorMembership:   { label: 'Editor info - Membership',    glyph: '🕰️' },
+        // 💬 intentionally reused from caaInfoComment/eaaInfoComment —
+        // same facet (free-text comment), same reuse rationale.
+        editorComment:      { label: 'Editor info - Comment',       glyph: '💬' },
+        // "Version history" column only (annotations pageType): whether
+        // the changelog parenthetical is real free text or MusicBrainz's
+        // own literal "no changelog specified" placeholder — see
+        // _findCellChangelogPresence()'s own JSDoc. Deliberately NOT a
+        // per-value kind-list: free-text prose columns (e.g. Annotation)
+        // are never enumerated value-by-value in this dropdown, only as
+        // structural flags.
+        changelogPresence:  { label: 'Version history - Changelog', glyph: '📜' },
     };
 
     /**
@@ -34540,6 +34751,10 @@ a { color: #1565c0; }`;
         'title-mismatch': 'flagsTitleMismatch', 'name-variation': 'flagsNameVariation',
         'multi-medium': 'tracksMultiMedium',
         'catalog-has-prefix': 'catalogPresence', 'catalog-no-prefix': 'catalogPresence', 'catalog-none': 'catalogPresence',
+        // Aggregate sibling of the 'editordeleted:' kind below — shares
+        // its section (see SYN_SECTION_META.editorDeleted's own JSDoc).
+        'editor-any-deleted': 'editorDeleted',
+        'changelog-has-message': 'changelogPresence', 'changelog-no-message': 'changelogPresence',
     };
 
     /**
@@ -34583,6 +34798,8 @@ a { color: #1565c0; }`;
         eventdate: 'eventInfo',
         entitycancelled: 'entityEventCancelled',
         eventcancelled: 'eventCancelled',
+        editordeleted: 'editorDeleted', editorrecordedname: 'editorRecordedName',
+        editormembership: 'editorMembership', editorcomment: 'editorComment',
     };
 
     /**
@@ -35240,6 +35457,74 @@ a { color: #1565c0; }`;
             p.el.normalize();
             highlightCrossTag(p.el, /\[none\]/g, 'mb-column-filter-highlight');
         });
+    }
+
+    /**
+     * Highlights the visible "Deleted Editor #N" text for an
+     * `editordeleted:` compound mode or the `editor-any-deleted` binary
+     * flag — re-derives from `_findCellEditorInfo()` directly. Only
+     * highlights when the deleted-editor identity is ALSO the visible
+     * current name (the ordinary, never-revived case) — when it was only
+     * found via the tooltip's own recorded-name line (never visible
+     * without hovering), there is nothing on-screen to wrap, so this
+     * silently no-ops for that row, same as several other pure-state modes
+     * (see `testRowMatch()`'s own "no highlight" enumeration).
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - `"editordeleted:<id>"` or `"editor-any-deleted"`.
+     */
+    function _highlightEditorDeletedMatch(cell, mode) {
+        if (!cell) return;
+        const info = _findCellEditorInfo(cell);
+        if (!info || !info.deletedId) return;
+        if (mode.startsWith('editordeleted:') && mode.slice(14) !== info.deletedId) return;
+        if (info.currentName !== info.deletedId) return; // nothing visible to highlight
+        const a = cell.querySelector('a[href^="/user/"]');
+        if (!a) return;
+        const scope = a.querySelector('bdi') || a;
+        scope.normalize();
+        const _escaped = info.deletedId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        highlightCrossTag(scope, new RegExp(_escaped, 'g'), 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights the exact matched value for an `editorcomment:` compound
+     * mode — re-derives from `_findCellEditorInfo()` directly, scoped to
+     * the cell's own `.comment` span (mirrors
+     * `_highlightCatalogPrefixMatch()`'s "scope to the one element this
+     * value came from" pattern).
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - e.g. `"editorcomment:active 10 years until 2015"`.
+     */
+    function _highlightEditorCommentMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(14);
+        if (!_want) return;
+        const info = _findCellEditorInfo(cell);
+        if (!info || info.comment !== _want) return;
+        const commentSpan = cell.querySelector('.comment');
+        if (!commentSpan) return;
+        commentSpan.normalize();
+        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        highlightCrossTag(commentSpan, new RegExp(_escaped, 'g'), 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights MusicBrainz's own literal "no changelog specified"
+     * placeholder for the `changelog-no-message` binary flag — mirrors
+     * `_highlightCatalogNoneMatch()`'s own established shape for a fixed
+     * literal placeholder string.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     */
+    function _highlightChangelogNoneMatch(cell) {
+        if (!cell) return;
+        if (_findCellChangelogPresence(cell) !== false) return;
+        const em = cell.querySelector('em');
+        if (!em) return;
+        em.normalize();
+        highlightCrossTag(em, /no changelog specified/gi, 'mb-column-filter-highlight');
     }
 
     /**
@@ -35980,11 +36265,17 @@ a { color: #1565c0; }`;
                     // 'catalog-none'/'trackspermedium:'/'eventdate:'/'tagcount:'/
                     // 'entitycancelled:'/'eventcancelled:'/
                     // 'formatsize:'/'formatcount:'/'formatcombo:'/'formattype:'/
-                    // 'role:'/'roletoken:' and 'name-variation' structure modes DO
-                    // correspond to exact visible content and get
-                    // highlighted; the other structure modes (empty/single/
-                    // collapsed/expanded/any/title-mismatch/inline-art-yes/no)
-                    // operate on pure DOM state with no single corresponding
+                    // 'role:'/'roletoken:'/'editordeleted:'/'editor-any-deleted'/
+                    // 'editorcomment:'/'changelog-no-message' and 'name-variation'
+                    // structure modes DO correspond to exact visible content and
+                    // get highlighted; the other structure modes (empty/single/
+                    // collapsed/expanded/any/title-mismatch/inline-art-yes/no/
+                    // 'editorrecordedname:'/'editormembership:' — both facts live
+                    // exclusively inside a never-rendered `title` attribute — and
+                    // 'changelog-has-message' — the underlying free-text message
+                    // is intentionally untracked verbatim, mirrors 'catalog-has-
+                    // prefix' having no highlighter either) operate on pure DOM/
+                    // attribute state with no single corresponding visible
                     // element, so they get no highlight. _highlightUniqArtTypeMatches
                     // is unconditional (not gated on hasItemValues/hasEntityValues/
                     // structureModes like the calls below) since it's a safe no-op
@@ -36043,6 +36334,12 @@ a { color: #1565c0; }`;
                                     // exactly equivalent to _cellMatchesStructureMode()'s own
                                     // exact domainKey === want comparison.
                                     _highlightRelCellIcons(row.cells[f.idx], mode.slice(4), true, false);
+                                } else if (mode.startsWith('editordeleted:') || mode === 'editor-any-deleted') {
+                                    _highlightEditorDeletedMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('editorcomment:')) {
+                                    _highlightEditorCommentMatch(row.cells[f.idx], mode);
+                                } else if (mode === 'changelog-no-message') {
+                                    _highlightChangelogNoneMatch(row.cells[f.idx]);
                                 }
                             });
                         }
@@ -45506,6 +45803,25 @@ a { color: #1565c0; }`;
         // CBS") — see `_findCellCatalogParts()`'s own JSDoc. Column-gated
         // (isCatalogCol below).
         const catalogPrefixValueCounts = new Map();
+        // "Editor" column only (annotations pageType): distinct
+        // deleted-editor identities, tooltip-recorded historical names,
+        // tooltip membership spans, and `.comment` values — see
+        // `_findCellEditorInfo()`'s own JSDoc. `editorAnyDeletedCount` is
+        // the aggregate sibling flag of `editorDeletedValueCounts` (shares
+        // its "Editor info - Deleted" section). Column-gated (isEditorCol
+        // below).
+        const editorDeletedValueCounts      = new Map();
+        let   editorAnyDeletedCount         = 0;
+        const editorRecordedNameValueCounts = new Map();
+        const editorMembershipValueCounts   = new Map();
+        const editorCommentValueCounts      = new Map();
+        // "Version history" column only (annotations pageType): whether
+        // the changelog parenthetical is real free text or MusicBrainz's
+        // own "no changelog specified" placeholder — see
+        // `_findCellChangelogPresence()`'s own JSDoc. Column-gated
+        // (isVersionHistoryCol below).
+        let changelogHasMessageCount = 0;
+        let changelogNoMessageCount  = 0;
         // Distinct event-role values (e.g. "main performer", "guest
         // performer", "support act", "participant", "host") from a native
         // MusicBrainz `.artist-roles` list — the query-time counterpart of
@@ -45579,6 +45895,14 @@ a { color: #1565c0; }`;
         const isTracksCol  = _colHeaderName === 'Tracks';
         const isCatalogCol = _colHeaderName === 'Catalog#';
         const isEventCol   = _colHeaderName === 'Event';
+        // Column-name gate for the annotations pageType's "Editor"/
+        // "Version history" columns — same convention as isFormatCol/
+        // isTracksCol/isCatalogCol/isEventCol above (name-only, no
+        // page-type check), so this also harmlessly applies (with
+        // all-null facet fields) to any other "Editor" column, e.g.
+        // Collections' synthetic 'Editor' column (Collection_Editor).
+        const isEditorCol         = _colHeaderName === 'Editor';
+        const isVersionHistoryCol = _colHeaderName === 'Version history';
         // 'tag-value-entity' is tableMode: 'single' — its resolved
         // entityFeatures block is merged into activeDefinition once, and
         // activeColumnExtractors is built once from it (not re-assigned
@@ -45725,6 +46049,23 @@ a { color: #1565c0; }`;
                     // flag; see catalogNoneCount below instead.
                     if (_catalogParts.some(p => !p.prefix && !p.none)) catalogNoPrefixCount++;
                     if (_catalogParts.some(p => p.none)) catalogNoneCount++;
+                }
+                if (isEditorCol) {
+                    const _editorInfo = _findCellEditorInfo(cell);
+                    if (_editorInfo) {
+                        if (_editorInfo.deletedId) {
+                            editorDeletedValueCounts.set(_editorInfo.deletedId, (editorDeletedValueCounts.get(_editorInfo.deletedId) || 0) + 1);
+                            editorAnyDeletedCount++;
+                        }
+                        if (_editorInfo.recordedName) editorRecordedNameValueCounts.set(_editorInfo.recordedName, (editorRecordedNameValueCounts.get(_editorInfo.recordedName) || 0) + 1);
+                        if (_editorInfo.membership)   editorMembershipValueCounts.set(_editorInfo.membership, (editorMembershipValueCounts.get(_editorInfo.membership) || 0) + 1);
+                        if (_editorInfo.comment)      editorCommentValueCounts.set(_editorInfo.comment, (editorCommentValueCounts.get(_editorInfo.comment) || 0) + 1);
+                    }
+                }
+                if (isVersionHistoryCol) {
+                    const _hasChangelog = _findCellChangelogPresence(cell);
+                    if (_hasChangelog === true)  changelogHasMessageCount++;
+                    if (_hasChangelog === false) changelogNoMessageCount++;
                 }
                 if (isEventCol) {
                     const _eventDates = _findCellEventDateParts(cell);
@@ -47034,7 +47375,7 @@ a { color: #1565c0; }`;
          * can be surfaced for every column type (plain text, extractor synthetic,
          * etc.), not only for columns with multi-row / collapsable structure.
          *
-         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | 'multi-medium' | 'catalog-has-prefix' | 'catalog-no-prefix' | 'catalog-none'
+         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | 'multi-medium' | 'catalog-has-prefix' | 'catalog-no-prefix' | 'catalog-none' | 'editor-any-deleted' | 'changelog-has-message' | 'changelog-no-message'
          * @param {string} label   - Human-readable display text
          * @param {number} count   - Number of visible rows matching this mode
          */
@@ -47092,7 +47433,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -47205,6 +47546,10 @@ a { color: #1565c0; }`;
                  : kind === 'roletoken'  ? '» role: '
                  : kind === 'arttype'    ? '» image type: '
                  : kind === 'artcomment' ? '» image comment: '
+                 : kind === 'editordeleted'      ? '» deleted editor: '
+                 : kind === 'editorrecordedname' ? '» recorded name: '
+                 : kind === 'editormembership'   ? '» membership: '
+                 : kind === 'editorcomment'      ? '» comment: '
                  : '» ');
             if (kind === 'arttype') {
                 // Render the value as an actual pill (see
@@ -47371,6 +47716,10 @@ a { color: #1565c0; }`;
         const _sortedCountryCodeValues = Array.from(countryCodeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedTracksPerMediumValues = Array.from(tracksPerMediumValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         const _sortedCatalogPrefixValues = Array.from(catalogPrefixValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedEditorDeletedValues      = Array.from(editorDeletedValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedEditorRecordedNameValues = Array.from(editorRecordedNameValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedEditorMembershipValues   = Array.from(editorMembershipValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedEditorCommentValues      = Array.from(editorCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRoleValues    = Array.from(eventRoleValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRoleTokenValues = Array.from(roleTokenValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedArtTypeValues    = Array.from(artTypeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
@@ -47385,11 +47734,14 @@ a { color: #1565c0; }`;
             _sortedRevCountryValues.length > 0 || _sortedRevDateValues.length > 0 || _sortedRevWeekdayValues.length > 0 ||
             _sortedCountryNameValues.length > 0 || _sortedCountryCodeValues.length > 0 ||
             _sortedTracksPerMediumValues.length > 0 || _sortedCatalogPrefixValues.length > 0 ||
+            _sortedEditorDeletedValues.length > 0 || _sortedEditorRecordedNameValues.length > 0 ||
+            _sortedEditorMembershipValues.length > 0 || _sortedEditorCommentValues.length > 0 ||
             _sortedRoleValues.length > 0 || _sortedRoleTokenValues.length > 0 ||
             _sortedArtTypeValues.length > 0 || _sortedArtCommentValues.length > 0;
 
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 ||
-            multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 || _hasValueEntries)) {
+            multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
+            editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 || _hasValueEntries)) {
              // "empty cells" pinned first; remaining entries in ascending complexity order.
             // For CAA/EAA columns the generic structural labels are replaced with more
             // descriptive artwork-presence labels that match user intent:
@@ -47411,6 +47763,9 @@ a { color: #1565c0; }`;
             if (catalogHasPrefixCount > 0)  makeSynItem('catalog-has-prefix', '🏷️ has catalog prefix',                                          catalogHasPrefixCount);
             if (catalogNoPrefixCount > 0)   makeSynItem('catalog-no-prefix', '🔢 no catalog prefix',                                            catalogNoPrefixCount);
             if (catalogNoneCount > 0)       makeSynItem('catalog-none', '🚫 no catalog number',                                                  catalogNoneCount);
+            if (editorAnyDeletedCount > 0)    makeSynItem('editor-any-deleted', '🗑️ any deleted editor',       editorAnyDeletedCount);
+            if (changelogHasMessageCount > 0) makeSynItem('changelog-has-message', '📜 has changelog message', changelogHasMessageCount);
+            if (changelogNoMessageCount > 0)  makeSynItem('changelog-no-message', '🚫 no changelog specified',  changelogNoMessageCount);
             // Credit-role columns' per-attribute / per-task / per-date /
             // per-instrument dynamic value entries (see attrValueCounts/
             // taskValueCounts/dateValueCounts/instrumentValueCounts' own
@@ -47441,12 +47796,17 @@ a { color: #1565c0; }`;
             _sortedCountryCodeValues.forEach(v => makeValueSynItem('countrycode', v, countryCodeValueCounts.get(v), countryCodeFlagMap.get(v)));
             _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
             _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
+            _sortedEditorDeletedValues.forEach(v => makeValueSynItem('editordeleted', v, editorDeletedValueCounts.get(v)));
+            _sortedEditorRecordedNameValues.forEach(v => makeValueSynItem('editorrecordedname', v, editorRecordedNameValueCounts.get(v)));
+            _sortedEditorMembershipValues.forEach(v => makeValueSynItem('editormembership', v, editorMembershipValueCounts.get(v)));
+            _sortedEditorCommentValues.forEach(v => makeValueSynItem('editorcomment', v, editorCommentValueCounts.get(v)));
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
             _sortedRoleTokenValues.forEach(v => makeValueSynItem('roletoken', v, roleTokenValueCounts.get(v)));
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
             _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
         } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 ||
-                   multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 || _hasValueEntries) {
+                   multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
+                   editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 || _hasValueEntries) {
             // Non-collapsable column (or a collapsable one with zero rows in
             // any multi-row-family state this render).
             if (emptyCellCount > 0)     makeSynItem('empty',          '○ empty cells',           emptyCellCount);
@@ -47456,6 +47816,9 @@ a { color: #1565c0; }`;
             if (catalogHasPrefixCount > 0) makeSynItem('catalog-has-prefix', '🏷️ has catalog prefix', catalogHasPrefixCount);
             if (catalogNoPrefixCount > 0)  makeSynItem('catalog-no-prefix', '🔢 no catalog prefix',   catalogNoPrefixCount);
             if (catalogNoneCount > 0)      makeSynItem('catalog-none', '🚫 no catalog number',        catalogNoneCount);
+            if (editorAnyDeletedCount > 0)    makeSynItem('editor-any-deleted', '🗑️ any deleted editor', editorAnyDeletedCount);
+            if (changelogHasMessageCount > 0) makeSynItem('changelog-has-message', '📜 has changelog message', changelogHasMessageCount);
+            if (changelogNoMessageCount > 0)  makeSynItem('changelog-no-message', '🚫 no changelog specified', changelogNoMessageCount);
             _sortedAttrValues.forEach(v => makeValueSynItem('attr', v, attrValueCounts.get(v)));
             _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
@@ -47480,6 +47843,10 @@ a { color: #1565c0; }`;
             _sortedCountryCodeValues.forEach(v => makeValueSynItem('countrycode', v, countryCodeValueCounts.get(v), countryCodeFlagMap.get(v)));
             _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
             _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
+            _sortedEditorDeletedValues.forEach(v => makeValueSynItem('editordeleted', v, editorDeletedValueCounts.get(v)));
+            _sortedEditorRecordedNameValues.forEach(v => makeValueSynItem('editorrecordedname', v, editorRecordedNameValueCounts.get(v)));
+            _sortedEditorMembershipValues.forEach(v => makeValueSynItem('editormembership', v, editorMembershipValueCounts.get(v)));
+            _sortedEditorCommentValues.forEach(v => makeValueSynItem('editorcomment', v, editorCommentValueCounts.get(v)));
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
             _sortedRoleTokenValues.forEach(v => makeValueSynItem('roletoken', v, roleTokenValueCounts.get(v)));
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
@@ -47957,6 +48324,13 @@ a { color: #1565c0; }`;
         if (mode.startsWith('arttype:'))    return `» image type: ${mode.slice(8)}`;
         if (mode.startsWith('artcomment:')) return `» image comment: ${mode.slice(11)}`;
         if (mode.startsWith('rel:'))        return `🔗 ${mode.slice(4)}`;
+        if (mode === 'editor-any-deleted')      return '🗑️ any deleted editor';
+        if (mode === 'changelog-has-message')   return '📜 has changelog message';
+        if (mode === 'changelog-no-message')    return '🚫 no changelog specified';
+        if (mode.startsWith('editordeleted:'))      return `» deleted editor: ${mode.slice(14)}`;
+        if (mode.startsWith('editorrecordedname:')) return `» recorded name: ${mode.slice(19)}`;
+        if (mode.startsWith('editormembership:'))   return `» membership: ${mode.slice(17)}`;
+        if (mode.startsWith('editorcomment:'))      return `» comment: ${mode.slice(14)}`;
         return '▶◀ multi-row: any';
     }
 
@@ -48013,6 +48387,13 @@ a { color: #1565c0; }`;
         if (mode.startsWith('arttype:')) return 'One of this CAA/EAA image\'s own type-badge pill labels (Front/Back/Booklet/…).';
         if (mode.startsWith('artcomment:')) return 'One of this CAA/EAA image\'s own free-text comment.';
         if (mode.startsWith('rel:')) return 'A relationship target URL\'s base (host + path) — matches regardless of query string.';
+        if (mode === 'editor-any-deleted') return '🗑️ = this row\'s "Editor" is a deleted-account placeholder (e.g. "Deleted Editor #12345"), whether or not that account was later revived under a new username.';
+        if (mode === 'changelog-has-message') return '📜 = this "Version history" row\'s changelog parenthetical is real free text, not MusicBrainz\'s own placeholder.';
+        if (mode === 'changelog-no-message') return '🚫 = MusicBrainz\'s own literal "no changelog specified" placeholder — no changelog message was given for this revision.';
+        if (mode.startsWith('editordeleted:')) return 'One distinct deleted-editor placeholder identity (e.g. "Deleted Editor #135888") found in this "Editor" column.';
+        if (mode.startsWith('editorrecordedname:')) return 'The editor name recorded at the time of this historical action, from the "Editor" link\'s own tooltip — only offered when it differs from the row\'s current editor name.';
+        if (mode.startsWith('editormembership:')) return 'The editor\'s own membership/activity-span text, from the "Editor" link\'s own tooltip (e.g. "active 10 years (2005-07-28 〜 2015-09-21)").';
+        if (mode.startsWith('editorcomment:')) return 'The visible `.comment` text next to this "Editor" cell\'s link — a differently-worded restatement of the tooltip\'s own membership fact.';
         return '';
     }
 
