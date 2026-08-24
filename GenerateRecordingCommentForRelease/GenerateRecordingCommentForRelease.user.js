@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Generate Recording Comments For A Release
 // @namespace    https://musicbrainz.org/user/vzell
-// @version      1.03.002+2026-08-24
+// @version      1.03.003+2026-08-24
 // @description  Batch set recording comments from a Release page, prefilling from "recorded at:" prefixed with "live, " if comment is empty. Prefills edit note with user supplied configurable text.
 // @author       Michael Wiencek, Gemini (directed by vzell)
 // @tag          AI generated
@@ -240,6 +240,10 @@ function setRecordingComments() {
     // Select the existing H2 header
     let $header = $('h2.tracklist');
 
+    // Wrapper container for this script's header controls (button + settings icon),
+    // named for easy targeting/manipulation by this script or others.
+    let $headerControls = $('<span id="grcfr-header-controls"></span>').appendTo($header);
+
     // Button to toggle the editing interface visibility
     $('<button>Edit recording comments</button>')
         .addClass('work-button-style')
@@ -253,13 +257,13 @@ function setRecordingComments() {
                 $('#recording-comments-edit-note').val(editNoteText);
             }
         })
-        .appendTo($header); // Append button *inside* the H2
+        .appendTo($headerControls); // Append button inside the wrapper
 
     // Settings icon
     $('<span id="settings-icon">⚙️</span>').on('click', function () {
         $('#settings-modal').show();
         $('#settings-text').val(editNoteText);
-    }).appendTo($header); // Append icon *inside* the H2
+    }).appendTo($headerControls); // Append icon inside the wrapper
 
     // Create a container for the script's UI elements (the table) and place it *after* the H2
     let $container = $('<div></div>').insertAfter($header);

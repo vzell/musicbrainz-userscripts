@@ -1,5 +1,17 @@
 [
     {
+        "version": "1.03.003+2026-08-24",
+        "date": "2026-08-24",
+        "sections": [
+            {
+                "label": "🔧 Refactor",
+                "items": [
+                    "Wrap the \"Edit recording comments\" button and the ⚙️ settings icon in a dedicated `<span id=\"grcfr-header-controls\">` container inside `h2.tracklist`, instead of appending them directly, for easier targeting/manipulation by this or other userscripts."
+                ]
+            }
+        ]
+    },
+    {
         "version": "1.03.002+2026-08-24",
         "date": "2026-08-24",
         "sections": [
