@@ -96907,9 +96907,12 @@ The sanojjonas userscript executes asynchrouns and is very slow
 
 
 * TODO "Edit recording comments" button below the tables for 'release-tracks'
+** i
 
 "Edit recording comments" button below the tables for 'release-tracks', see e.g. https://musicbrainz.org/release/89f14138-3884-484e-93bc-ec2e16593859
 button left over from my own userscript.
+
+** TODO orignal userscript needs to support "/" at the endo fthe uRL in the @include directove
 
 
 * TODO add "Data quality" support
@@ -96926,7 +96929,7 @@ https://musicbrainz.org/report/LowDataQualityReleases?filter=1 - report with low
 Usa a skill.
 This data quality attribute is probably present on all pageType where releases are involved
 
-** as new column
+** as new column on the 'artist-releases' pageType
 
 
 * TODO add back the select checkboxes for specific pageTypse and rewire the action listeners for e.g. merging releases etc. (see 'annotations' button re-wiring)
