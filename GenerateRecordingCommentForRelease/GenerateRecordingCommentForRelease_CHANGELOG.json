@@ -1,0 +1,50 @@
+[
+    {
+        "version": "1.03.003+2026-08-24",
+        "date": "2026-08-24",
+        "sections": [
+            {
+                "label": "🔧 Refactor",
+                "items": [
+                    "Wrap the \"Edit recording comments\" button and the ⚙️ settings icon in a dedicated `<span id=\"grcfr-header-controls\">` container inside `h2.tracklist`, instead of appending them directly, for easier targeting/manipulation by this or other userscripts."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "1.03.002+2026-08-24",
+        "date": "2026-08-24",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Support subdomains (e.g. `test.musicbrainz.org`, the MusicBrainz test server) in the `@include` match, not just the bare domain."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "1.03.001+2026-08-24",
+        "date": "2026-08-24",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Support the `musicbrainz.eu` domain in the `@include` match, in addition to `musicbrainz.org`."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "1.03.000+2026-08-24",
+        "date": "2026-08-24",
+        "sections": [
+            {
+                "label": "🔧 Refactor",
+                "items": [
+                    "Replace `@match`/`@exclude` with a single `@include` regex that matches only `/release/<MBID>` and `/release/<MBID>/`, tightening the URL match beyond the previous wildcard-based `@match`/`@exclude` pair."
+                ]
+            }
+        ]
+    }
+]

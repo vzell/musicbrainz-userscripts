@@ -1,5 +1,101 @@
 [
   {
+    "version": "9.99.953",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "release-tracks: stopped stripping the \"VZ: MusicBrainz - Generate Recording Comments For A Release\" userscript's `button.work-button-style` and `span#settings-icon` out of `h2.tracklist` via `removeSelectors` — those two entries were removed from the `release-tracks` pageDefinition. The header cleanup previously fired on every `finalCleanup()` pass (i.e. every time the \"Show all Tracks for Release\" action re-renders), silently deleting that other script's button/settings-icon each time. They now survive and continue to render inside `h2.tracklist`, right after the \"Tracklist\" text."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.952",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed sanojjonas userscript artefacts still surviving on the \"Show single-table\" cross-tab snapshot page (v9.99.951's `removeSanojjonasContainers()` fix alone wasn't enough there) — confirmed via debug/sanoj-debug.log/debug/sanoj-page.html that sanojjonas' own script(s) are asynchronous and noticeably slower than jesus2099's: on this fast snapshot-hydration bootstrap (settles within one `setTimeout(...,0)` tick of the tab opening), only 2 of 11+ real sanojjonas elements had appeared by the time the one-shot `finalCleanup()` cleanup ran, leaving everything injected afterward to survive as visible artefacts. Added `_watchForLateSanojjonasInjections()`, a 15-second `MutationObserver` mirroring the existing `_watchForLateJesus2099Injections()` pattern, wired into the same cross-tab snapshot bootstrap call site. Refactored `_findSanojjonasContainers()`/`removeSanojjonasContainers()` to share the new `_isSanojjonasContainerId()` predicate with the observer, so the one-shot and late-watch removal logic can't drift apart."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.951",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed leftover \"sanojjonas\" userscript artefacts (the \"Taggregator\" tag-aggregation tool's own sidebar panel, `#taggregator-settings`/`#taggregator-import-button`) appearing after the table on `artist-relationships-filtered` (`/artist/<mbid>/relationships?link_type_id=<n>`) — its consolidated `Relationships` column sits right before a run of sanojjonas' own infinite-scroll placeholder `<div>`s (`#load`, `#load2`, …, `#bottom1`, `#bottom2`, …) directly after the table, followed by the Taggregator panel further down. `removeSanojjonasContainers()` previously only targeted a fixed `load`/`load2`-`load4`/`bottom1`-`bottom6` ID list and never included the Taggregator IDs at all; `debug/sanoj.html`'s own snapshot goes up to `bottom7`, one past that list, confirming it was already silently missing artefacts even for its original targets. Replaced the fixed list with a new `_findSanojjonasContainers()` helper that matches `load`/`bottom` containers by ID SHAPE (`/^(load\\d*|bottom\\d+)$/`, no suffix cap) plus the two fixed Taggregator IDs, shared by both `removeSanojjonasContainers()` and the final-cleanup presence check (previously a separately hardcoded, now-eliminated duplicate list) so the two can never drift out of sync again."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.950",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The \"Release\" column now offers a \"Release info - Data quality\" (⭐) unique-values dropdown section — three fixed entries for MusicBrainz's own native data-quality marker: 🟢 high, 🟠 low, and ⚪ normal (normal = no `high-data-quality`/`low-data-quality` marker span present at all, matching MusicBrainz's own convention of never emitting an explicit \"normal\" marker). New `_findCellReleaseDataQuality()` extractor and `release-quality-high`/`release-quality-low`/`release-quality-normal` structure modes, gated by column name only (`isReleaseCol`, no page-type check) so it applies automatically on every page type with a \"Release\" column — release listings, release-group overview pages, the `LowDataQualityReleases` report, etc. No highlighter (the marker span is empty/decorative, nothing visible to wrap), mirroring `catalog-has-prefix`'s own no-highlight precedent."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.949",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The `annotations` pageType's native \"Editor\" column now also splits into five new synthetic columns via a new `ColumnDataExtractor.editorActivity()` extractor: \"Deleted editor\" (literal `true` when the editor is a deleted-account placeholder, empty otherwise), \"Active for\"/\"Active since\" (the visible `.comment` span's duration phrase and bare trailing year, e.g. \"active 10 years until 2015\" → `10 years`/`2015`), and \"Active start date\"/\"Active end date\" (the two ISO dates parsed from the editor link's own tooltip membership line, e.g. \"active 10 years (2005-07-28 〜 2015-09-21)\" → `2005-07-28`/`2015-09-21`). Reuses the existing `_findCellEditorInfo()` helper directly (the same one backing this column's \"Editor info\" unique-values dropdown sections from the previous version) rather than re-deriving its own DOM/tooltip parsing."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.948",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The `annotations` pageType's 📊 unique-values dropdown now offers four new \"Editor info\" sub-sections for the \"Editor\" column — \"- Deleted\" (🗑️, one entry per distinct deleted-editor placeholder identity, e.g. \"Deleted Editor #135888\", plus a sibling \"any deleted editor\" aggregate flag that matches every deleted-editor row regardless of which specific ID), \"- Recorded name\" (🏷️, the tooltip's own historically-recorded editor name, only offered when it differs from the row's current name), \"- Membership\" (🕰️, the tooltip's own \"active N years (start 〜 end)\" span), and \"- Comment\" (💬, the visible `.comment` span's differently-worded restatement of the same membership fact) — plus a new \"Version history - Changelog\" (📜) section for the \"Version history\" column, a binary \"has changelog message\"/\"no changelog specified\" flag pair (never enumerating the actual free-text messages, matching this file's existing free-text-prose convention). New `_findCellEditorInfo()`/`_findCellChangelogPresence()` extractors, `_cellMatchesStructureMode()` branches (`editordeleted:`/`editor-any-deleted`/`editorrecordedname:`/`editormembership:`/`editorcomment:`/`changelog-has-message`/`changelog-no-message`), and `_highlightEditorDeletedMatch()`/`_highlightEditorCommentMatch()`/`_highlightChangelogNoneMatch()` (the recorded-name/membership/has-message facets are sourced from a hover-only `title` attribute or intentionally untracked free text, so they deliberately get no highlight, same as this dropdown's other pure-state flags). Deliberately bespoke, not built on `_findCellEntityRefs()`/`KNOWN_ENTITY_LINK_KINDS` — a `/user/{name}` editor link is a non-MBID reference those catalog-entity-only helpers never recognize anyway, so there's no overlap with the generic \"Entity info\" family."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.947",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Added `extractMainColumn: 'Editor'` to the `annotations` pageType — splits the Editor cell into synthetic `MB-Name`/`Comment`/`Primary alias` columns via `_extractMainColumnParts()`, the same treatment already applied to every other page's main entity-link column."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.946",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the multi-table `.mb-master-toggle` (\"Show/Hide all sub-sections\") button on `release-tracks` (and any other page where one or more sub-tables start expanded by default — a single sub-table, or a small `album`/`official` group) always initially reading \"Show all sub-sections\" even though every medium's tracklist was already visible on screen. Root cause: the button is created, hardcoded to `dataset.state = 'collapsed'`, BEFORE the `dataArray.forEach` loop that actually decides each sub-table's `shouldStayOpen` state runs — so its label never reflected the real DOM. Now synced once, right after that loop, against each table's actual `display` value: if any sub-table is visible the button starts as \"Hide all sub-sections\" instead."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.945",
     "date": "2026-08-23",
     "sections": [

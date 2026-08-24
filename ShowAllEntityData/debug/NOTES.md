@@ -6442,3 +6442,118 @@ second follow-up round.
   a deliberate trade-off in favor of never getting stuck, especially since
   this is exactly the situation active filtering creates routinely.
 - `node --check ShowAllEntityData.user.js` passed after the edit.
+
+## 2026-08-24 — sanojjonas artefacts after the table on artist-relationships-filtered (round 2)
+
+- `sanoj.html` (`/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1`,
+  post-render snapshot): reported bug — leftover userscript artefacts
+  after the table. Same page as the earlier same-day report, but this
+  time the user pointed directly at the PRE-EXISTING
+  `removeSanojjonasContainers()` function (`ShowAllEntityData.user.js`)
+  instead of the generic `#sidebar` reflow theory from the first pass
+  (which was implemented then explicitly rolled back at the user's
+  request — see git history around that same timestamp).
+- Confirmed via byte-offset search directly on `sanoj.html`: right after
+  `</table>` (byte 158431) sits a literal run of sanojjonas' own
+  infinite-scroll placeholder markup — `<br><div id="load"><h1>Busy</h1>
+  </div><br><div id="load2"></div><br><div id="load3"></div><br><div
+  id="bottom1" style="overflow-x: auto; width: 792px;"></div>` … through
+  `id="bottom7"` … `<div id="load4"></div></div><div id="sidebar"
+  class="sidebar-collapsed">…` — i.e. these ARE literally, physically
+  "after the table" in DOM order, a separate and more direct problem than
+  the `#sidebar` CSS-reflow theory investigated in the earlier note
+  (`#sidebar` itself sits even further after these, and its own reflow
+  issue is real but out of scope for this fix — the user only asked for
+  the sanojjonas artefacts this time).
+- `removeSanojjonasContainers()` already existed (3 call sites:
+  `performClutterCleanup()`'s conditional call, a redundant duplicate call
+  right after it in the main fetch pass, and an unconditional
+  presence-checked call inside `finalCleanup()`) but only ever removed a
+  fixed `load`/`load2`-`load4`/`bottom1`-`bottom6` ID list — this
+  snapshot's own `bottom7` is one past that list, confirming the function
+  was ALREADY silently under-cleaning even for its original intended
+  targets, before even considering the Taggregator gap. It also never
+  targeted `#taggregator-settings`/`#taggregator-import-button` at all — a
+  second, unrelated sanojjonas userscript ("Taggregator", a tag-
+  aggregation tool) that injects its own settings panel into native
+  `#sidebar`.
+- Fix: replaced the fixed ID list with `_findSanojjonasContainers()`,
+  matching `load`/`bottom` containers by ID SHAPE
+  (`/^(load\d*|bottom\d+)$/`, no hardcoded suffix cap) plus the two fixed
+  Taggregator IDs — shared by both `removeSanojjonasContainers()` and the
+  `finalCleanup()` presence check (previously an independently hardcoded,
+  now-eliminated duplicate list, itself a latent bug risk: if only the
+  removal list had been extended without also updating the separate
+  presence-check list, `finalCleanup()`'s `if (foundSanoj)` gate could
+  have stayed false and skipped calling the removal function entirely on
+  a page whose ONLY sanojjonas artefact was a new one the presence check
+  didn't know about).
+- Verified end-to-end against `sanoj.html` via a headless Playwright page:
+  `_findSanojjonasContainers()` found all 13 real elements present
+  (`taggregator-settings`, `taggregator-import-button`, `load`-`load4`,
+  `bottom1`-`bottom7`), and after removing them all, a second query
+  confirmed zero remained.
+- `node --check ShowAllEntityData.user.js` passed after the edit.
+
+## 2026-08-24 — sanojjonas artefacts after the table (round 3): async timing, not a matching bug
+
+- `sanoj-debug.log` (console log) + `sanoj-page.html` (final-state
+  snapshot) — user reported round 2's fix (`removeSanojjonasContainers()`
+  extended to pattern-match `load\d*`/`bottom\d+` + the two Taggregator
+  IDs) still didn't remove the artefacts on the SAME page, opened via
+  MusicBrainz's own "Show single-table" button from the multi-table
+  overview page (`/artist/…/relationships`, no `link_type_id`) into a new
+  tab — the cross-tab snapshot hydration path
+  (`_hydrateAndRenderFromSnapshotData`), not a normal page load.
+- `sanoj-page.html` byte-offset inspection: right after `</table>` sits
+  `id="load"`/`id="load2"`/`id="load3"`, `id="bottom1"`…`id="bottom7"`
+  (one of them, `bottom2`, even contains a nested `<h2>Artist Table</h2>
+  <table class="sanojjonas">` — sanojjonas' own injected content), then
+  `id="load4"`, then `#sidebar`. `grep`/Python confirmed ZERO occurrences
+  of "taggregator" anywhere in this particular capture — a different
+  artist/session state than the original `sanoj.html`, not a regression
+  in the Taggregator-specific matching itself.
+- `sanoj-debug.log` line 27: `_clearNativeTableSectionsForSnapshot: h2
+  "Taggregator Settings" owns 3 h3(s), only 0 removed — left standing.`
+  (from an EARLIER capture where Taggregator WAS present) — red herring
+  at first glance, but harmless: that function only clears h2s owning
+  h3s tied to a `table.tbl` it already removed; Taggregator's own h2 was
+  correctly left alone by design, since `removeSanojjonasContainers()`
+  (called later, from `finalCleanup()`) is what's actually responsible
+  for it via its own `#taggregator-settings` ID match.
+- `sanoj-debug.log` line 52: `Removed 2 Sanojjonas container(s).` — this
+  is the real smoking gun. Only 2 of the 11+ elements that eventually
+  exist (per `sanoj-page.html`) had actually been injected by sanojjonas'
+  own script(s) at the moment `finalCleanup()`'s one-shot
+  `removeSanojjonasContainers()` call ran. Root cause: this cross-tab
+  snapshot bootstrap runs its ENTIRE render+cleanup pipeline within one
+  `setTimeout(...,0)` tick of the tab opening (see
+  `_clearNativeTableSectionsForSnapshot()`'s own JSDoc) — dramatically
+  faster than a normal page load's real network-fetch timeline — and the
+  user separately confirmed sanojjonas' own script(s) are asynchronous
+  AND noticeably slower than jesus2099's, so most of its containers
+  simply don't exist yet by the time our one-shot pass runs.
+- This exact race — a third-party script injecting content
+  asynchronously, faster than a one-shot cleanup pass but slower than
+  this fast snapshot bootstrap — already has a precedent fix in this
+  file: `_watchForLateJesus2099Injections()`, a 5-second `MutationObserver`
+  installed at the very same cross-tab-snapshot call site (right before
+  `_hydrateAndRenderFromSnapshotData()`), for exactly this reason with a
+  DIFFERENT third-party script. Added the sanojjonas counterpart,
+  `_watchForLateSanojjonasInjections()`, mirroring that pattern (15s
+  window instead of 5s, given the confirmed extra slowness), wired into
+  the same call site.
+- Refactored `_findSanojjonasContainers()` to share a new
+  `_isSanojjonasContainerId()` predicate with the new observer (checking
+  only newly-added nodes + their descendants, not a full-document
+  `querySelectorAll` per mutation batch, mirroring
+  `_watchForLateJesus2099Injections()`'s own per-node-check style) —
+  single source of truth for "is this ID a sanojjonas container",
+  removing the last bit of duplicated matching logic between the
+  one-shot and late-watch paths.
+- Verified via a standalone Playwright simulation (elements added on a
+  staggered timeline, mimicking a slow async injector): all four
+  simulated late arrivals (`load`, `bottom1`, `bottom7`, and
+  `taggregator-settings` nested inside a wrapper div, exercising the
+  descendant-scan fallback) were caught and removed by the observer.
+- `node --check ShowAllEntityData.user.js` passed after the edit.
