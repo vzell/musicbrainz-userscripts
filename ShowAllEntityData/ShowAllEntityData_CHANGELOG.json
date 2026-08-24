@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.949",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The `annotations` pageType's native \"Editor\" column now also splits into five new synthetic columns via a new `ColumnDataExtractor.editorActivity()` extractor: \"Deleted editor\" (literal `true` when the editor is a deleted-account placeholder, empty otherwise), \"Active for\"/\"Active since\" (the visible `.comment` span's duration phrase and bare trailing year, e.g. \"active 10 years until 2015\" → `10 years`/`2015`), and \"Active start date\"/\"Active end date\" (the two ISO dates parsed from the editor link's own tooltip membership line, e.g. \"active 10 years (2005-07-28 〜 2015-09-21)\" → `2005-07-28`/`2015-09-21`). Reuses the existing `_findCellEditorInfo()` helper directly (the same one backing this column's \"Editor info\" unique-values dropdown sections from the previous version) rather than re-deriving its own DOM/tooltip parsing."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.948",
     "date": "2026-08-24",
     "sections": [

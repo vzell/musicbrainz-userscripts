@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.948+2026-08-24
+// @version      9.99.949+2026-08-24
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -3825,6 +3825,86 @@
             tdTime.style.fontVariantNumeric = 'tabular-nums';
 
             return [tdDate, tdTime];
+        },
+
+        /**
+         * editorActivity — splits the `annotations` pageType's native
+         * "Editor" column into five synthetic columns describing the
+         * editor's deleted/renamed status and activity period. Reuses
+         * `_findCellEditorInfo()` directly (the same bespoke extractor
+         * that already backs this column's "Editor info" unique-values
+         * dropdown sections — see that function's own JSDoc for the three
+         * anchor shapes it recognizes) rather than re-deriving its own
+         * DOM/tooltip parsing.
+         *
+         * Input examples (see debug/label-annotations.html)  →  Output
+         *   Plain editor, no tooltip/comment
+         *     → ['', '', '', '', '']
+         *   Revived/renamed editor — `.comment` span "(active 10 years
+         *   until 2015)" + tooltip membership line "active 10 years
+         *   (2005-07-28&nbsp;〜&nbsp;2015-09-21)"
+         *     → ['true', '10 years', '2015', '2005-07-28', '2015-09-21']
+         *
+         * The `.comment` span is matched against
+         * `/^active\s+(.+?)\s+(?:since|until)\s+(\d{4})\s*$/i` — captures
+         * the duration phrase ("Active for") and the bare trailing
+         * 4-digit year ("Active since"), regardless of whether
+         * MusicBrainz phrases the boundary as "since" or "until"; the
+         * keyword itself is discarded so "Active since" stays a bare year
+         * like the two tooltip-derived date columns below. Both cells
+         * stay empty when there's no `.comment` span, or its text doesn't
+         * match this shape.
+         *
+         * The tooltip's own membership line is matched against
+         * `/\((\d{4}-\d{2}-\d{2})\s*〜\s*(\d{4}-\d{2}-\d{2})\)/` — captures
+         * the two ISO dates inside the parentheses verbatim. Both cells
+         * stay empty when there's no tooltip/membership string at all.
+         *
+         * Synthetic columns: five columns, in this fixed order —
+         * ['Deleted editor', 'Active for', 'Active since',
+         * 'Active start date', 'Active end date'] (names assigned by the
+         * page definition; this extractor is not tied to those literal
+         * header strings).
+         *
+         * @param   {HTMLTableCellElement} sourceCell  Original "Editor" <td>.
+         * @returns {HTMLTableCellElement[]}  Five synthetic <td> elements:
+         *   [deletedEditor, activeFor, activeSince, activeStartDate, activeEndDate].
+         */
+        editorActivity(sourceCell) {
+            const makeTd = (text) => {
+                const td = document.createElement('td');
+                if (text) td.textContent = text;
+                return td;
+            };
+            const tdDeleted     = makeTd('');
+            const tdActiveFor   = makeTd('');
+            const tdActiveSince = makeTd('');
+            const tdStartDate   = makeTd('');
+            const tdEndDate     = makeTd('');
+            if (!sourceCell) return [tdDeleted, tdActiveFor, tdActiveSince, tdStartDate, tdEndDate];
+
+            const info = _findCellEditorInfo(sourceCell);
+            if (!info) return [tdDeleted, tdActiveFor, tdActiveSince, tdStartDate, tdEndDate];
+
+            if (info.deletedId) tdDeleted.textContent = 'true';
+
+            if (info.comment) {
+                const m = info.comment.match(/^active\s+(.+?)\s+(?:since|until)\s+(\d{4})\s*$/i);
+                if (m) {
+                    tdActiveFor.textContent   = m[1];
+                    tdActiveSince.textContent = m[2];
+                }
+            }
+
+            if (info.membership) {
+                const m = info.membership.match(/\((\d{4}-\d{2}-\d{2})\s*〜\s*(\d{4}-\d{2}-\d{2})\)/);
+                if (m) {
+                    tdStartDate.textContent = m[1];
+                    tdEndDate.textContent   = m[2];
+                }
+            }
+
+            return [tdDeleted, tdActiveFor, tdActiveSince, tdStartDate, tdEndDate];
         },
 
         /**
@@ -13902,7 +13982,8 @@
             buttons: [ { label: 'Show Annotation History', labelFromPathEntity: true } ],
             features: {
                 columnExtractors: [
-                    { sourceColumn: 'Date', extractor: 'dateTimeParts', syntheticColumns: ['Revision date', 'Revision time'] }
+                    { sourceColumn: 'Date',   extractor: 'dateTimeParts',   syntheticColumns: ['Revision date', 'Revision time'] },
+                    { sourceColumn: 'Editor', extractor: 'editorActivity',  syntheticColumns: ['Deleted editor', 'Active for', 'Active since', 'Active start date', 'Active end date'] }
                 ],
                 extractMainColumn: 'Editor',
                 stickyColumn: 'Editor'
