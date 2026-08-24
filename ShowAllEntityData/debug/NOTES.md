@@ -6694,3 +6694,57 @@ NO filter active — meaning ALL 4174 rows "match", so it pays this same
 forced-reflow tax at the LARGEST possible scale (nothing hidden to skip),
 on top of its own row-reordering (`appendChild` loop) and CAA/EAA
 bigbox-reorder cost.
+
+## 2026-08-25 — sanojjonas now wraps its output in #sanojjonasRoot; simplified matching; fixed Taggregator attribution
+
+- `debug/sanoj-initial.html` (full page, ~1.9MB, captured today) and
+  `debug/sanoj-new.html` (just the wrapper's own outerHTML, ~66KB) show
+  sanojjonas' userscript has changed behavior since the round-2/round-3
+  fixes (2026-08-24, above): it now wraps every element it injects — `load`,
+  `load2`, `load3`, `load4`, `bottom1`-`bottom7` — inside a single `<div
+  id="sanojjonasRoot" class="sanojjonasRoot">` container, appended as the
+  last child of `#content` (verified by balanced-tag byte-offset parsing:
+  the wrapper's span is exactly those 12 descendants, nothing else). The
+  "Taggregator" panel (`#taggregator-settings`/`#taggregator-import-button`)
+  is NOT wrapped by this root — it still lands separately inside native
+  `#sidebar`, confirmed present in `sanoj-initial.html` (outside the
+  wrapper's byte span) and absent from `sanoj-new.html` (which only
+  captured the wrapper itself).
+- This made the existing `/^(load\d*|bottom\d+)$/` ID-shape regex sweep
+  (introduced in the 2026-08-24 round-2 fix) both unnecessary — every
+  `load`/`bottom*` id now lives inside one predictable container id — and
+  latently unsafe: neither the regex nor `_isSanojjonasContainerId()`
+  matched `sanojjonasRoot` itself, only its descendants, so removing them
+  one by one would leave an orphaned empty shell (`<div
+  id="sanojjonasRoot"><br></div>`) behind instead of cleanly removing the
+  whole thing.
+- Fix: added `'sanojjonasRoot'` to `SANOJJONAS_FIXED_IDS` (now
+  `['sanojjonasRoot', 'taggregator-settings', 'taggregator-import-button']`),
+  dropped the ID-shape regex entirely, and rewrote `_findSanojjonasContainers()`
+  from a whole-document `querySelectorAll('[id]')` sweep to three direct
+  `document.getElementById()` lookups. Removing `#sanojjonasRoot` removes
+  all its wrapped placeholders in one DOM operation.
+- Verified via a standalone Node script (no browser needed — string/
+  balanced-tag parsing over the raw HTML, since playwright isn't installed
+  in this environment) against both snapshots: `_findSanojjonasContainers()`'s
+  new logic finds all 3 ids in `sanoj-initial.html` (1 in `sanoj-new.html`,
+  which has no Taggregator content), and after removal no `sanojjonasRoot`/
+  `taggregator-*`/stray `load*`/`bottom*` id remains anywhere in either
+  file, while `#sidebar` and the rendered events table are left untouched.
+- Also fixed a mis-attribution bug in the JSDoc (not the runtime logic):
+  the comments previously described the load/bottom placeholders and the
+  Taggregator panel as "two unrelated MusicBrainz userscripts by that
+  author" (sanojjonas) — i.e. implying Taggregator was itself a second
+  script by sanojjonas. Taggregator is actually **MusicBrainz Taggregator**,
+  a separate, unrelated userscript by `zabe` (`@namespace
+  https://github.com/zabe40`). It's only grouped with sanojjonas cleanup
+  because both are removed via the same mechanism (same call sites, same
+  async-late-injection handling) — not because they share an author.
+  Corrected every JSDoc/comment mention across `SANOJJONAS_FIXED_IDS`,
+  `_isSanojjonasContainerId()`, `_findSanojjonasContainers()`,
+  `removeSanojjonasContainers()`, `_watchForLateSanojjonasInjections()`,
+  the cross-tab snapshot bootstrap call-site comment, and `finalCleanup()`'s
+  own doc bullet. No identifier/constant renaming — `SANOJJONAS_FIXED_IDS`
+  etc. correctly remain a single shared "remove third-party clutter"
+  mechanism, not a per-author grouping.
+- `node --check ShowAllEntityData.user.js` passed after the edit.
