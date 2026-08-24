@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.952+2026-08-24
+// @version      9.99.953+2026-08-24
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -14802,8 +14802,12 @@
                 // Artist backfill above.
                 extractTitleData: true,
                 removeSelectors: [
-                    'h2.tracklist button.work-button-style', // userscript "VZ: MusicBrainz - Generate Recording Comments For A Release" from @'Michael Wiencek, Gemini (directed by vzell)'
-                    'h2.tracklist span#settings-icon',
+                    // NOTE: the "VZ: MusicBrainz - Generate Recording Comments For A
+                    // Release" userscript's button.work-button-style and
+                    // span#settings-icon (wrapped together in span#grcfr-header-controls
+                    // as of that script's v1.03.002) are deliberately NOT stripped here
+                    // anymore — they're expected to keep rendering inside h2.tracklist,
+                    // right after the "Tracklist" text.
                     'span#medium-toolbox' // native toggle-credits/expand/collapse controls — inert post-render
                 ],
                 columnErasers: [

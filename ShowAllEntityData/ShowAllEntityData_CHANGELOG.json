@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.953",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "release-tracks: stopped stripping the \"VZ: MusicBrainz - Generate Recording Comments For A Release\" userscript's `button.work-button-style` and `span#settings-icon` out of `h2.tracklist` via `removeSelectors` — those two entries were removed from the `release-tracks` pageDefinition. The header cleanup previously fired on every `finalCleanup()` pass (i.e. every time the \"Show all Tracks for Release\" action re-renders), silently deleting that other script's button/settings-icon each time. They now survive and continue to render inside `h2.tracklist`, right after the \"Tracklist\" text."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.952",
     "date": "2026-08-24",
     "sections": [
