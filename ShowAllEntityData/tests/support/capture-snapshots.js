@@ -25,9 +25,16 @@ const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
 const { loadUserscriptPage } = require('./loadPage');
+const { loadFromDiskFixture } = require('./diskFixture');
 const { waitForRenderComplete } = require('./browser');
 const { captureRaw, captureRendered, scrub, diffSummary } = require('./snapshot');
 const { seedGmValues } = require('./gmStubs');
+const { waitForFilterSettled, waitForSortSettled, waitForActualRowCount } = require('./filterSortAssertions');
+const {
+    URL: ARTIST_EVENTS_URL, FIXTURE_PATH: ARTIST_EVENTS_FIXTURE_PATH, SEED_GM_VALUES: ARTIST_EVENTS_SEED_GM_VALUES,
+    FILTER_COLUMN: ARTIST_EVENTS_FILTER_COLUMN, FILTER_VALUE: ARTIST_EVENTS_FILTER_VALUE, SORT_COLUMN: ARTIST_EVENTS_SORT_COLUMN,
+    TOTAL_ROWS: ARTIST_EVENTS_TOTAL_ROWS,
+} = require('./artistEventsFixture');
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const AUTH_FILE = path.join(REPO_ROOT, 'playwright', '.auth', 'vzell.json');
@@ -134,7 +141,120 @@ async function captureOne(browser, config) {
     } else if (!diffSummary(prevRendered, renderedHtml).identical) {
         parts.push('rendered.html changed — check if this was an intended script change');
     }
+
+    // artist-events only for now (gated the same way --perf below is scoped
+    // to artist-releasegroups only): two additional post-interaction DOM
+    // snapshots, catching a regression PERFORMANCE.org's Steps 1/2
+    // (in-place DOM mutation replacing cloneNode+rebuild for filter/sort)
+    // could introduce that no single correctness assertion would catch — a
+    // stray leftover element, a class not removed, an attribute order
+    // change — by diffing the FULL rendered DOM the same way rendered.html
+    // already does for the initial render. See
+    // captureArtistEventsInteractionSnapshots()'s own JSDoc.
+    if (pageType === 'artist-events') {
+        parts.push(...await captureArtistEventsInteractionSnapshots(browser, dir));
+    }
+
     return { pageType, status: parts.length ? parts.join('; ') : 'unchanged' };
+}
+
+/**
+ * Waits for a large-table rebuild (clearing a filter back to the full row
+ * count, or sorting) to fully settle on `main`'s current cloneNode+rebuild
+ * implementation: both the real `tbody tr` count reaching
+ * `ARTIST_EVENTS_TOTAL_ROWS` AND the `#mb-render-heading` chunked-render
+ * overlay being removed. Neither alone is sufficient — confirmed empirically
+ * that clearing a filter leaves the overlay's removal lagging behind the row
+ * count reaching its final value, AND that a full-table SORT retriggers the
+ * same overlay again independently of the filter-clear step (an earlier
+ * capture that only waited after the filter-clear still had the overlay
+ * baked into `post-sort.html`, from the sort's own rebuild). See
+ * `waitForActualRowCount()`'s own JSDoc for the general race this covers.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+async function _waitForFullRebuildSettled(page) {
+    await waitForActualRowCount(page, ARTIST_EVENTS_TOTAL_ROWS);
+    await page.waitForFunction(() => !document.getElementById('mb-render-heading'), null, { timeout: 30000 });
+}
+
+/**
+ * Captures `post-filter.html`/`post-sort.html` for `artist-events`, applying
+ * the same canonical column-filter/sort `tests/live/artist-events-
+ * interactions.spec.js` exercises (shared via `tests/support/
+ * artistEventsFixture.js`, so the two never drift apart). Loads via the
+ * committed disk fixture rather than a live "Show all" click — deterministic,
+ * and critically avoids live MB data drifting between a capture taken today
+ * on one branch and one taken tomorrow on another, which would show up as a
+ * spurious diff unrelated to any code change.
+ *
+ * Diffs against whatever was already on disk before overwriting it, exactly
+ * like `captureOne()`'s own `raw.html`/`rendered.html` handling — commit
+ * one branch's capture as the baseline, then re-run on another branch
+ * without touching the files in between to see exactly what (if anything)
+ * differs.
+ *
+ * @param {import('playwright').Browser} browser
+ * @param {string} dir - tests/snapshots/artist-events
+ * @returns {Promise<string[]>} status parts, same shape as captureOne()'s own `parts`
+ */
+async function captureArtistEventsInteractionSnapshots(browser, dir) {
+    const postFilterPath = path.join(dir, 'post-filter.html');
+    const postSortPath = path.join(dir, 'post-sort.html');
+    const prevPostFilter = readPrevious(postFilterPath);
+    const prevPostSort = readPrevious(postSortPath);
+
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await seedGmValues(page, ARTIST_EVENTS_SEED_GM_VALUES);
+    await loadFromDiskFixture(page, { url: ARTIST_EVENTS_URL, fixturePath: ARTIST_EVENTS_FIXTURE_PATH, testMode: true });
+    // waitForRenderComplete (not a bare #mb-filter-container wait) — see
+    // browser.js's own JSDoc for the confirmed chunked-render race on this
+    // exact page.
+    //
+    // waitForAutoResize: false — the auto-resize-on-load pass lives inside
+    // startFetchingProcess() (the live "Show all" fetch pipeline only) and
+    // is never triggered by loadFromDiskFixture()'s hydration path; see
+    // artist-events-interactions.spec.js's identical note.
+    await waitForRenderComplete(page, { waitForAutoResize: false, timeout: 60000 });
+
+    const colIdx = await page.evaluate((colName) => {
+        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+        return Array.from(document.querySelectorAll('table.tbl thead th')).findIndex((t) => strip(t.textContent) === colName);
+    }, ARTIST_EVENTS_FILTER_COLUMN);
+    const colInput = page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
+    await colInput.click();
+    await waitForFilterSettled(page, () => colInput.pressSequentially(ARTIST_EVENTS_FILTER_VALUE));
+
+    const postFilterHtml = scrub(await captureRendered(page), 'artist-events');
+    writeSnapshot(postFilterPath, postFilterHtml);
+
+    await waitForFilterSettled(page, () => colInput.fill(''));
+    await _waitForFullRebuildSettled(page);
+
+    const columnTh = page.locator('table.tbl thead th', { hasText: ARTIST_EVENTS_SORT_COLUMN }).first();
+    const ascendingBtn = columnTh.locator('.sort-icon-btn', { hasText: '▲' }).first();
+    await waitForSortSettled(page, () => ascendingBtn.click());
+    await _waitForFullRebuildSettled(page);
+
+    const postSortHtml = scrub(await captureRendered(page), 'artist-events');
+    writeSnapshot(postSortPath, postSortHtml);
+
+    await context.close();
+
+    const parts = [];
+    if (prevPostFilter === null) {
+        parts.push('post-filter.html: first capture');
+    } else if (!diffSummary(prevPostFilter, postFilterHtml).identical) {
+        parts.push('post-filter.html changed — check if this was an intended script change');
+    }
+    if (prevPostSort === null) {
+        parts.push('post-sort.html: first capture');
+    } else if (!diffSummary(prevPostSort, postSortHtml).identical) {
+        parts.push('post-sort.html changed — check if this was an intended script change');
+    }
+    return parts;
 }
 
 /**

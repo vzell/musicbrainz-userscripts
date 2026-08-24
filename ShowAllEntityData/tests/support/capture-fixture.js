@@ -21,6 +21,8 @@ const path = require('path');
 const fs = require('fs');
 const { chromium } = require('playwright');
 const { loadUserscriptPage } = require('./loadPage');
+const { waitForRenderComplete } = require('./browser');
+const { seedGmValues } = require('./gmStubs');
 
 const OUTPUT_DIR = path.join(__dirname, '..', 'fixtures', 'saved-data');
 
@@ -33,6 +35,19 @@ const FIXTURES = [
         url: 'https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c',
         showAllButtonSelector: 'button[data-label="Show all Releases for ReleaseGroup"]',
     },
+    {
+        // Bruce Springsteen's own events tab — deliberately large/paginated
+        // (42 native MB pages, 4174 rows) single-table pageType, used as the
+        // interaction-perf and post-filter/post-sort regression-snapshot
+        // fixture (see tests/live/artist-events-interactions.spec.js and
+        // tests/support/capture-interaction-perf.js). Config matches
+        // tests/pagetypes.json's artist-events entry exactly.
+        pageType: 'artist-events',
+        url: 'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events',
+        showAllButtonSelector: 'button[data-label="Show all Events for Artist"]',
+        seedGmValues: { sa_enable_caa_pics: false },
+        renderTimeout: 300000,
+    },
 ];
 
 /**
@@ -41,17 +56,23 @@ const FIXTURES = [
  * `.json.gz` download to `tests/fixtures/saved-data/<pageType>.json.gz`.
  *
  * @param {import('playwright').Browser} browser
- * @param {{ pageType: string, url: string, showAllButtonSelector: string }} fixture
+ * @param {{ pageType: string, url: string, showAllButtonSelector: string, seedGmValues?: Object, renderTimeout?: number }} fixture
  * @returns {Promise<void>}
  */
-async function captureOne(browser, { pageType, url, showAllButtonSelector }) {
+async function captureOne(browser, { pageType, url, showAllButtonSelector, seedGmValues: seedValues, renderTimeout = 90000 }) {
     const page = await browser.newPage();
+    await seedGmValues(page, seedValues);
     await loadUserscriptPage(page, { url, testMode: true });
 
     const showAllBtn = page.locator(showAllButtonSelector);
     await showAllBtn.waitFor({ state: 'visible', timeout: 15000 });
     await showAllBtn.click();
-    await page.locator('#mb-filter-container').waitFor({ state: 'visible', timeout: 90000 });
+    // waitForRenderComplete (not a bare #mb-filter-container wait) — needed
+    // for large single-table pages like artist-events, where that element
+    // becomes visible before renderRowsChunked()'s batched insertion loop
+    // has actually finished (see browser.js's own JSDoc for the confirmed
+    // repro on this exact page).
+    await waitForRenderComplete(page, { waitForAutoResize: true, timeout: renderTimeout });
 
     await page.click('#mb-save-to-disk-btn');
     const downloadPromise = page.waitForEvent('download');

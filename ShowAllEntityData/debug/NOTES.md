@@ -6557,3 +6557,64 @@ second follow-up round.
   `taggregator-settings` nested inside a wrapper div, exercising the
   descendant-scan fallback) were caught and removed by the observer.
 - `node --check ShowAllEntityData.user.js` passed after the edit.
+
+## 2026-08-24 — artist-events perf-comparison test infra: two pre-existing quirks found (not fixed, out of scope)
+
+While building `tests/live/artist-events-interactions.spec.js` /
+`tests/support/capture-interaction-perf.js` /
+`tests/support/capture-snapshots.js`'s new post-filter/post-sort snapshots
+(see `ShowAllEntityData_CHANGELOG.wip.json` WIP.1) — a test suite comparing
+`main` vs the `perf-steps-1-4` branch's PERFORMANCE.org Steps 1-4 on the
+`artist-events` pageType (4174 rows) — two pre-existing behaviors surfaced
+that are NOT caused by perf-steps-1-4's changes (both confirmed present on
+`main`, and both computations are untouched by Steps 1-4 — Step 3 only adds
+a cache around `_updateAllColHeaderCounts`, it doesn't change what it
+computes). Neither was fixed here; both are out of scope for the
+performance-comparison work. Recorded so they aren't rediscovered from
+scratch later.
+
+1. **`.mb-col-collapse-count` header badge under-counts for "Location"**:
+   `_updateAllColHeaderCounts()`'s live-recomputed badge for the "Location"
+   column reports `1` on the committed `artist-events` fixture, while the
+   DOM genuinely has 5 cells with a `.mb-cell-collapse-toggle` present
+   (confirmed via direct `querySelectorAll` — row indexes 422, 966, 1848,
+   3156, 3792 in the fixture's tbody order) — independently corroborated by
+   `window.__saTest.getUniqDropSections('Location')`'s "Structure" section,
+   which correctly reports `5` collapsed / 0 expanded. Both read the SAME
+   live DOM at the SAME moment, just via different code paths
+   (`_updateAllColHeaderCounts()`'s own per-row `_classifyCollapseCell()`
+   scan vs. `openUniqDrop()`'s own separate scan for the "Structure"
+   section) — looks like a `_classifyCollapseCell()` mis-classification
+   specific to this column's multi-venue cell shape (a `<ul>` of alternate
+   recurring-event venues), not a data or timing issue. The correctness spec
+   deliberately does NOT assert the header badge against the known-correct
+   `5` — see its own inline comment at the relevant `expect()`.
+2. **Filter-clear / sort on a large single-table page: status text and row
+   count both lie about "done" for a while** — a filter-clear-triggered (or
+   sort-triggered) rebuild's real `tbody tr` count, and the
+   `#mb-render-heading` chunked-render overlay's removal, both lag well
+   behind `waitForFilterSettled()`/`waitForSortSettled()`'s own
+   `#mb-filter-status-display`/`.mb-row-count-stat`-based "settled" signal.
+   Confirmed empirically: clearing a column filter that had narrowed 4174
+   rows to 158 left `tbody tr` at 2500-3500 (not 4174) and the "🎨 Rendering
+   rows..." overlay still on-screen well after `getPageRowCount()` already
+   read back the correct final `(4174)` text. This is the filter-clear/sort
+   counterpart of the ALREADY-documented initial-chunked-render race (see
+   `tests/support/browser.js`'s `waitForRenderComplete()` JSDoc, and this
+   file's own `artist-events` fixture-capture entries) — same underlying
+   cause (a chunked `requestAnimationFrame`-batched insertion loop that
+   outlives the "done" signal other code already relies on), just a second
+   trigger for it nobody had exercised via Playwright before. On `main`
+   this affects ANY large-table filter-clear or sort (not specific to
+   `artist-events`, just first observed there since it's the only large
+   `tableMode: 'single'` page under test). perf-steps-1-4's Step 1/2
+   in-place-mutation rewrite may well eliminate this race entirely (no
+   rebuild ⇒ no chunked re-insertion) — worth checking once that branch's
+   `post-filter.html`/`post-sort.html` are captured, but not verified as
+   part of this note. Worked around in the new test files via
+   `waitForActualRowCount()` (new helper,
+   `tests/support/filterSortAssertions.js`) plus an explicit
+   `#mb-render-heading`-absence wait — both needed after EACH of the
+   filter-clear step and the sort step independently (an earlier capture
+   that only waited after the filter-clear still had the overlay baked into
+   `post-sort.html`, from the sort's own separate rebuild).
