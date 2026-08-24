@@ -210,6 +210,38 @@ async function getSubTableRowCounts(page) {
     });
 }
 
+/**
+ * Waits for `table.tbl tbody tr`'s ACTUAL element count to reach
+ * `expectedCount` — a stronger completion signal than
+ * `waitForFilterSettled`/`waitForSortSettled` for an action that narrows a
+ * table then widens it back out on a large `tableMode: 'single'` page.
+ *
+ * Confirmed empirically (artist-events, 4174 rows, on `main`): clearing a
+ * column filter that had narrowed 4174 rows down to 158 triggers a tbody
+ * rebuild back up to the full row count. `#mb-filter-status-display` (what
+ * `waitForFilterSettled` polls) updates to its final text — and
+ * `getPageRowCount()`'s `.mb-row-count-stat` reads "(4174)" — well before
+ * that rebuild has actually finished re-appending every row: real
+ * `tbody tr` counts of 2500-3500 were observed immediately after
+ * `waitForFilterSettled()` had already resolved. This is the filter-clear
+ * counterpart of the already-documented initial-chunked-render race (see
+ * `browser.js`'s `waitForRenderComplete()` JSDoc) — the status text and the
+ * row-count stat both update from data that's already final before the DOM
+ * insertion loop populating `tbody` has caught up.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} expectedCount
+ * @param {{ timeout?: number }} [opts]
+ * @returns {Promise<void>}
+ */
+async function waitForActualRowCount(page, expectedCount, { timeout = 30000 } = {}) {
+    await page.waitForFunction(
+        (n) => document.querySelectorAll('table.tbl tbody tr').length === n,
+        expectedCount,
+        { timeout }
+    );
+}
+
 module.exports = {
     waitForFilterSettled,
     waitForSortSettled,
@@ -217,4 +249,5 @@ module.exports = {
     parseRowCountText,
     getPageRowCount,
     getSubTableRowCounts,
+    waitForActualRowCount,
 };
