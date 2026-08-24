@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.950",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The \"Release\" column now offers a \"Release info - Data quality\" (⭐) unique-values dropdown section — three fixed entries for MusicBrainz's own native data-quality marker: 🟢 high, 🟠 low, and ⚪ normal (normal = no `high-data-quality`/`low-data-quality` marker span present at all, matching MusicBrainz's own convention of never emitting an explicit \"normal\" marker). New `_findCellReleaseDataQuality()` extractor and `release-quality-high`/`release-quality-low`/`release-quality-normal` structure modes, gated by column name only (`isReleaseCol`, no page-type check) so it applies automatically on every page type with a \"Release\" column — release listings, release-group overview pages, the `LowDataQualityReleases` report, etc. No highlighter (the marker span is empty/decorative, nothing visible to wrap), mirroring `catalog-has-prefix`'s own no-highlight precedent."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.949",
     "date": "2026-08-24",
     "sections": [

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.949+2026-08-24
+// @version      9.99.950+2026-08-24
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -17951,6 +17951,40 @@
     }
 
     /**
+     * Resolves a "Release" cell's own MusicBrainz data-quality state —
+     * native markup: an EMPTY, decorative `<span class="high-data-quality"
+     * title="…">` or `<span class="low-data-quality" title="…">` sibling
+     * immediately after the release `<a>` link (see debug/mgv-quality.html,
+     * debug/report-quality.html). MusicBrainz never emits an explicit
+     * "normal-data-quality" class for the default quality state — a
+     * release with normal quality simply has no marker span at all, so
+     * "normal" is this function's fallback, never `null`.
+     *
+     * Deliberately independent of `_findCellEntityRefs()`/`_ENTITY_TYPE_GLYPH`
+     * (even though `/release/{mbid}` IS a recognized entity type there) —
+     * data quality is a new, unrelated facet, not a comment/alias, so it
+     * doesn't belong in that generic "Entity info" pipeline.
+     *
+     * Deliberately only called for the "Release" column itself (gated by
+     * column name at the `openUniqDrop()` call site) — this DOM shape is
+     * expected to recur on every page type with a "Release" column
+     * (release listings, the LowDataQualityReleases report, …), so gating
+     * by column name alone (not page type) lets it apply everywhere
+     * automatically, matching `isCatalogCol`/`isFormatCol`/`isEventCol`'s
+     * own precedent.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {'high'|'low'|'normal'} 'normal' whenever `cell` is falsy or
+     *   carries neither quality span.
+     */
+    function _findCellReleaseDataQuality(cell) {
+        if (!cell) return 'normal';
+        if (cell.querySelector('span.high-data-quality')) return 'high';
+        if (cell.querySelector('span.low-data-quality'))  return 'low';
+        return 'normal';
+    }
+
+    /**
      * Tests whether a table cell matches a "Cell structure" checkbox mode
      * from `openUniqDrop()`'s synthetic entries (`makeSynItem`/
      * `makeValueSynItem`/`makeInlineArtItem`) — the single source of truth
@@ -18299,6 +18333,20 @@
             // Binary flag counterpart — true for MB's own literal "no
             // changelog specified" placeholder.
             return _findCellChangelogPresence(cell) === false;
+        }
+        if (mode === 'release-quality-high') {
+            // Fixed flag — true when this "Release" cell's own MusicBrainz
+            // data-quality marker is "high".
+            return _findCellReleaseDataQuality(cell) === 'high';
+        }
+        if (mode === 'release-quality-low') {
+            // Fixed flag counterpart — "low" data quality.
+            return _findCellReleaseDataQuality(cell) === 'low';
+        }
+        if (mode === 'release-quality-normal') {
+            // Fixed flag counterpart — "normal" (default) data quality,
+            // i.e. neither marker span is present at all.
+            return _findCellReleaseDataQuality(cell) === 'normal';
         }
         if (mode.startsWith('arttype:')) {
             // Compound mode (openUniqDrop()'s makeValueSynItem, the "CAA
@@ -34809,6 +34857,14 @@ a { color: #1565c0; }`;
         // are never enumerated value-by-value in this dropdown, only as
         // structural flags.
         changelogPresence:  { label: 'Version history - Changelog', glyph: '📜' },
+        // "Release info - Data quality" — the "Release" column's own
+        // native `<span class="high-data-quality">`/`<span class=
+        // "low-data-quality">` marker (see _findCellReleaseDataQuality()'s
+        // own JSDoc) — a fixed, fully-known 3-value set (high/low/normal),
+        // so it's rendered as three fixed structure-mode flags (mirroring
+        // catalogPresence's catalog-has-prefix/catalog-no-prefix/
+        // catalog-none), not an open kind-list.
+        releaseDataQuality: { label: 'Release info - Data quality', glyph: '⭐' },
     };
 
     /**
@@ -34836,6 +34892,8 @@ a { color: #1565c0; }`;
         // its section (see SYN_SECTION_META.editorDeleted's own JSDoc).
         'editor-any-deleted': 'editorDeleted',
         'changelog-has-message': 'changelogPresence', 'changelog-no-message': 'changelogPresence',
+        'release-quality-high': 'releaseDataQuality', 'release-quality-low': 'releaseDataQuality',
+        'release-quality-normal': 'releaseDataQuality',
     };
 
     /**
@@ -36355,7 +36413,10 @@ a { color: #1565c0; }`;
                     // exclusively inside a never-rendered `title` attribute — and
                     // 'changelog-has-message' — the underlying free-text message
                     // is intentionally untracked verbatim, mirrors 'catalog-has-
-                    // prefix' having no highlighter either) operate on pure DOM/
+                    // prefix' having no highlighter either — and 'release-quality-
+                    // high'/'release-quality-low'/'release-quality-normal' — the
+                    // marker span is empty/decorative, nothing visible to
+                    // highlight) operate on pure DOM/
                     // attribute state with no single corresponding visible
                     // element, so they get no highlight. _highlightUniqArtTypeMatches
                     // is unconditional (not gated on hasItemValues/hasEntityValues/
@@ -45903,6 +45964,12 @@ a { color: #1565c0; }`;
         // (isVersionHistoryCol below).
         let changelogHasMessageCount = 0;
         let changelogNoMessageCount  = 0;
+        // "Release" column only: MusicBrainz's own native data-quality
+        // marker state — see `_findCellReleaseDataQuality()`'s own JSDoc.
+        // Column-gated (isReleaseCol below).
+        let releaseQualityHighCount   = 0;
+        let releaseQualityLowCount    = 0;
+        let releaseQualityNormalCount = 0;
         // Distinct event-role values (e.g. "main performer", "guest
         // performer", "support act", "participant", "host") from a native
         // MusicBrainz `.artist-roles` list — the query-time counterpart of
@@ -45984,6 +46051,11 @@ a { color: #1565c0; }`;
         // Collections' synthetic 'Editor' column (Collection_Editor).
         const isEditorCol         = _colHeaderName === 'Editor';
         const isVersionHistoryCol = _colHeaderName === 'Version history';
+        // Column-name gate for the "Release" column's own native
+        // data-quality marker (see _findCellReleaseDataQuality()'s own
+        // JSDoc) — name-only, no page-type check, so this applies
+        // automatically to every page type with a "Release" column.
+        const isReleaseCol = _colHeaderName === 'Release';
         // 'tag-value-entity' is tableMode: 'single' — its resolved
         // entityFeatures block is merged into activeDefinition once, and
         // activeColumnExtractors is built once from it (not re-assigned
@@ -46147,6 +46219,12 @@ a { color: #1565c0; }`;
                     const _hasChangelog = _findCellChangelogPresence(cell);
                     if (_hasChangelog === true)  changelogHasMessageCount++;
                     if (_hasChangelog === false) changelogNoMessageCount++;
+                }
+                if (isReleaseCol) {
+                    const _quality = _findCellReleaseDataQuality(cell);
+                    if (_quality === 'high')   releaseQualityHighCount++;
+                    if (_quality === 'low')    releaseQualityLowCount++;
+                    if (_quality === 'normal') releaseQualityNormalCount++;
                 }
                 if (isEventCol) {
                     const _eventDates = _findCellEventDateParts(cell);
@@ -47822,7 +47900,8 @@ a { color: #1565c0; }`;
 
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 ||
             multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
-            editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 || _hasValueEntries)) {
+            editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
+            releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 || _hasValueEntries)) {
              // "empty cells" pinned first; remaining entries in ascending complexity order.
             // For CAA/EAA columns the generic structural labels are replaced with more
             // descriptive artwork-presence labels that match user intent:
@@ -47847,6 +47926,9 @@ a { color: #1565c0; }`;
             if (editorAnyDeletedCount > 0)    makeSynItem('editor-any-deleted', '🗑️ any deleted editor',       editorAnyDeletedCount);
             if (changelogHasMessageCount > 0) makeSynItem('changelog-has-message', '📜 has changelog message', changelogHasMessageCount);
             if (changelogNoMessageCount > 0)  makeSynItem('changelog-no-message', '🚫 no changelog specified',  changelogNoMessageCount);
+            if (releaseQualityHighCount > 0)   makeSynItem('release-quality-high', '🟢 high data quality',      releaseQualityHighCount);
+            if (releaseQualityLowCount > 0)    makeSynItem('release-quality-low', '🟠 low data quality',        releaseQualityLowCount);
+            if (releaseQualityNormalCount > 0) makeSynItem('release-quality-normal', '⚪ normal data quality',  releaseQualityNormalCount);
             // Credit-role columns' per-attribute / per-task / per-date /
             // per-instrument dynamic value entries (see attrValueCounts/
             // taskValueCounts/dateValueCounts/instrumentValueCounts' own
@@ -47887,7 +47969,8 @@ a { color: #1565c0; }`;
             _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
         } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 ||
                    multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
-                   editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 || _hasValueEntries) {
+                   editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
+                   releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 || _hasValueEntries) {
             // Non-collapsable column (or a collapsable one with zero rows in
             // any multi-row-family state this render).
             if (emptyCellCount > 0)     makeSynItem('empty',          '○ empty cells',           emptyCellCount);
@@ -47900,6 +47983,9 @@ a { color: #1565c0; }`;
             if (editorAnyDeletedCount > 0)    makeSynItem('editor-any-deleted', '🗑️ any deleted editor', editorAnyDeletedCount);
             if (changelogHasMessageCount > 0) makeSynItem('changelog-has-message', '📜 has changelog message', changelogHasMessageCount);
             if (changelogNoMessageCount > 0)  makeSynItem('changelog-no-message', '🚫 no changelog specified', changelogNoMessageCount);
+            if (releaseQualityHighCount > 0)   makeSynItem('release-quality-high', '🟢 high data quality',     releaseQualityHighCount);
+            if (releaseQualityLowCount > 0)    makeSynItem('release-quality-low', '🟠 low data quality',       releaseQualityLowCount);
+            if (releaseQualityNormalCount > 0) makeSynItem('release-quality-normal', '⚪ normal data quality', releaseQualityNormalCount);
             _sortedAttrValues.forEach(v => makeValueSynItem('attr', v, attrValueCounts.get(v)));
             _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
@@ -48412,6 +48498,9 @@ a { color: #1565c0; }`;
         if (mode.startsWith('editorrecordedname:')) return `» recorded name: ${mode.slice(19)}`;
         if (mode.startsWith('editormembership:'))   return `» membership: ${mode.slice(17)}`;
         if (mode.startsWith('editorcomment:'))      return `» comment: ${mode.slice(14)}`;
+        if (mode === 'release-quality-high')   return '🟢 high data quality';
+        if (mode === 'release-quality-low')    return '🟠 low data quality';
+        if (mode === 'release-quality-normal') return '⚪ normal data quality';
         return '▶◀ multi-row: any';
     }
 
@@ -48475,6 +48564,9 @@ a { color: #1565c0; }`;
         if (mode.startsWith('editorrecordedname:')) return 'The editor name recorded at the time of this historical action, from the "Editor" link\'s own tooltip — only offered when it differs from the row\'s current editor name.';
         if (mode.startsWith('editormembership:')) return 'The editor\'s own membership/activity-span text, from the "Editor" link\'s own tooltip (e.g. "active 10 years (2005-07-28 〜 2015-09-21)").';
         if (mode.startsWith('editorcomment:')) return 'The visible `.comment` text next to this "Editor" cell\'s link — a differently-worded restatement of the tooltip\'s own membership fact.';
+        if (mode === 'release-quality-high') return '🟢 = MusicBrainz\'s own "High quality" data-quality marker: all available data has been added, if possible including cover art with liner info that proves it.';
+        if (mode === 'release-quality-low') return '🟠 = MusicBrainz\'s own "Low quality" data-quality marker: the release needs serious fixes, or its existence is hard to prove (but it\'s not clearly fake).';
+        if (mode === 'release-quality-normal') return '⚪ = no data-quality marker is present at all — MusicBrainz\'s default/unrated quality state.';
         return '';
     }
 
