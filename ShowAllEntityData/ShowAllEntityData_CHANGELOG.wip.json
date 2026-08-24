@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.9",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "PERFORMANCE.org Steps 1-2 follow-up: single-table sort no longer calls `runFilter()` after reordering the live DOM when no global/column filter is currently active — with nothing to hide and no highlight spans to reapply, that call was pure no-op work (the full-table forced-layout cost Steps 1-2 already pay once per action, paid a second time for nothing). New shared `_hasAnyActiveSingleTableFilter()` helper (next to `stripFilterPrefix`/`stripColFilterPrefix`) gates the skip; multi-table mode is unaffected (always calls `runFilter()` as before). Measured on `artist-events` (4174 rows): self-reported internal JS duration dropped ~995ms from ~2842ms, but — important caveat found while measuring — external/user-perceived wall-clock time only dropped a more modest ~15-20% (not the ~65% the internal number alone suggested), because removing the forced synchronous reflow doesn't eliminate that layout cost, it defers it to whenever the browser or a later DOM read next needs it. Verified via `tests/live/artist-events-interactions.spec.js` (all 5 tests still pass) and a full `post-filter.html`/`post-sort.html` diff against the previous baseline: the only difference anywhere in either capture is two inline `style=\"color:...\"` attributes (`#mb-sort-status-display`'s color correctly flipping green now that its self-reported duration crossed the same color threshold lower; `#mb-filter-status-display`'s color differs by ordinary timing noise in an unrelated, untouched code path) — no row content, count, or order changed."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.8",
     "date": "2026-08-24",
     "sections": [

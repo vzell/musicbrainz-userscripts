@@ -34276,6 +34276,22 @@ a { color: #1565c0; }`;
     const stripColFilterPrefix = stripFilterPrefix;
 
     /**
+     * Whether the global filter or any column filter input currently holds a
+     * real (non-empty, prefix-stripped) query. Single-table-mode sort's
+     * post-reorder step uses this to skip an otherwise-pointless
+     * `runFilter()` call — see its own call site's comment for why that call
+     * is safe to skip only when this returns `false` (PERFORMANCE.org
+     * follow-up to Steps 1-2).
+     *
+     * @returns {boolean}
+     */
+    function _hasAnyActiveSingleTableFilter() {
+        if (stripFilterPrefix(filterInput.value) !== '') return true;
+        return Array.from(document.querySelectorAll('.mb-col-filter-input'))
+            .some(inp => stripColFilterPrefix(inp.value) !== '');
+    }
+
+    /**
      * Apply the focus-mode visual state to any filter input:
      * prepend the search-icon prefix (if absent) and tint the background.
      * Positions the text cursor right after the prefix so the user can type immediately.
@@ -50795,8 +50811,25 @@ a { color: #1565c0; }`;
                                 }
                             }
 
-                            _invalidateFilterCache();
-                            runFilter();
+                            // Single-table mode: runFilter() only needs to run here when a
+                            // filter is actually active — with none active, EVERY row already
+                            // "matches" (no display:none to toggle) and has no highlight spans
+                            // to strip/reapply, so the whole show/hide pass, the CAA/EAA bigbox
+                            // sync, and _syncCollapseHasMatchInTable() would all be pure no-op
+                            // work. Measured on artist-events (4174 rows): self-reported
+                            // internal JS duration drops ~65% (~2842ms -> ~995ms), but real
+                            // external/user-perceived wall-clock only improves ~15-20% — the
+                            // forced-reflow cost this skips is deferred to the next paint, not
+                            // eliminated, so most of it still shows up before the sort visually
+                            // completes. See PERFORMANCE.org Step 2's follow-up note for the
+                            // full measurement caveat. Multi-table mode is unaffected (still
+                            // always calls runFilter() — its own per-sub-table filter state
+                            // isn't cheap to check generically here, and multi-table sort
+                            // wasn't in Step 1-2's scope to begin with).
+                            if (isMultiTable || _hasAnyActiveSingleTableFilter()) {
+                                _invalidateFilterCache();
+                                runFilter();
+                            }
 
                             // Apply or clear column tints AFTER runFilter() so the fresh tbody
                             // rows are already in the DOM when we paint.

@@ -169,6 +169,21 @@ only, matching Step 1 (confirmed with the user before implementing).
      alone never changes row order) from the sort handler, right after it
      reorders the live tbody rows.
 
+*Follow-up (2026-08-24)*: sort was still calling ~runFilter()~ unconditionally
+after every reorder — pure no-op work when no filter is active (nothing to
+hide, no highlights to reapply), since the DOM is already correctly reordered
+by this point. Gated behind a new ~_hasAnyActiveSingleTableFilter()~ check
+(single-table mode only); see ~ShowAllEntityData_CHANGELOG.wip.json~ WIP.9
+for the full note. *Important measurement caveat found while validating
+this*: the self-reported internal JS duration dropped ~65% (~2842ms ->
+~995ms on ~artist-events~), but external/user-perceived wall-clock time only
+improved ~15-20% — removing the forced synchronous reflow defers that layout
+cost rather than eliminating it, and it still has to happen before the next
+paint. Internal ~performance.now()~ deltas alone are NOT a reliable proxy for
+perceived latency when a forced-reflow call is what's being removed — always
+cross-check against external wall-clock (Playwright ~waitForXSettled~ timing
+or real DevTools profiling) for this class of change.
+
 *** DONE Step 3: Cache ~_updateAllColHeaderCounts~
 
 Memoize per-column unique-value/multi-row counts, invalidated only when the
