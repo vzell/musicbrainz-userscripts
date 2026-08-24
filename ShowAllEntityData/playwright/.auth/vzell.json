@@ -1,0 +1,45 @@
+{
+  "cookies": [
+    {
+      "name": "remember_token",
+      "value": "799b0d5a-83b7-4787-a5ac-db92cd3dae2e|823f9a3ee25dba6dbd88cba0852916fb3c04fc083c85078013c1c62cf6d17695a9362e3b5286a8584ddf360730a83d3e963e004fe8a3678337b4a90a5c26bb43",
+      "domain": "metabrainz.org",
+      "path": "/",
+      "expires": 1818984618.475224,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "session",
+      "value": ".eJwtj11qAzEMhK8S_JwtXvlH1p4hNyghyJaUhIYE1tmHEnL3urRPwwx8w8zLnezG_aLdLZ8vt3sOcX1rTXt3e3d4nM8qu-t995_Zdrt9f7jj-7gf5Kr94pbnuulwV3GLi7kEazFKglKViyI0VPPsGTwKM4c5p1Jn1jJThWgUWlbwOfhGKBYpiFjjQL5FH5hpdGHGIORRIRYyixaQs84gBCAWmmFgKS1aHZtPW9f1bw0SVS-JpxIqThELTpy4TVIJmgRhBR1E66udno8vvf8-QOWYR5tBtqyiuQIbkffos6-WU6yQkrr3D-tvXfo.aopNKg.SW8ZHKSu-NZUFF0IRaIEI2REWKk",
+      "domain": "metabrainz.org",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "musicbrainz_server_session",
+      "value": "6dab5098ad3004f128ecdcc9f3c67d043b82c9d6",
+      "domain": "musicbrainz.org",
+      "path": "/",
+      "expires": 1787459419.156382,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "remember_login",
+      "value": "4%091126444%09wHnmnO607VbDz87jy_osSmRF3d1-O56YzU0kYhy_LcY",
+      "domain": "musicbrainz.org",
+      "path": "/",
+      "expires": 1818984619.035828,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": []
+}
