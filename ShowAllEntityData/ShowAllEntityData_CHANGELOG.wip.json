@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.10",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "PERFORMANCE.org: added a consolidated \"Session summary\" section with all measured comparison data from the 2026-08-24 artist-events investigation (main vs perf-steps-1-4 vs perf-steps-3-4) — narrow-filter headline table, the wide-filter finding that flips the winner (main scales linearly with match count, perf-steps-1-4 is roughly constant), the traced forced-reflow root cause with a per-sub-step breakdown table, the content-visibility/table-layout:fixed mitigation attempt (negative result, not implemented), the sort-skip fix's internal-vs-external measurement gap and its methodology lesson, the Step 5 CAA/EAA queue-completion comparison (main never completes within 180s, perf-steps-1-4 completes in 42.2s), the perf-steps-3-4 cross-check confirming Steps 3-4 have zero regression on their own, and an overall takeaways/recommendation subsection. No ShowAllEntityData.user.js changes."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.9",
     "date": "2026-08-24",
     "sections": [

@@ -366,6 +366,186 @@ unobserve+enqueue work.
 
 Landed: see ~ShowAllEntityData_CHANGELOG.wip.json~ ~WIP.7~.
 
+** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
+
+Consolidated results from a full measurement session on ~artist-events~
+(Bruce Springsteen's events tab, 4174 rows, 21 columns — the pageType
+~tests/snapshots/registry.org~ earmarks as the dedicated performance-
+comparison target). All numbers are external/user-perceived wall-clock via
+Playwright unless marked "internal" (self-reported ~performance.now()~
+duration from inside the userscript itself, which excludes debounce/
+Playwright-polling overhead but — see the sort row below — can also
+understate real perceived latency when a forced-reflow call is what's
+being removed). Full methodology, test files, and raw JSON:
+~tests/live/artist-events-interactions.spec.js~,
+~tests/support/capture-interaction-perf.js~,
+~tests/snapshots/artist-events/interaction-perf-<branch>.json~.
+
+*** Headline: narrow filter (real usage: a specific, mostly-complete search term)
+
+"Country" = "United Kingdom" — 158 of 4174 rows match (~4%).
+
+| Interaction           |     ~main~ | ~perf-steps-1-4~ | Δ                     |
+|------------------------+-----------+------------------+------------------------|
+| Global filter          |   1418 ms |          2383 ms | +68% slower            |
+| Column filter          |   1595 ms |          2437 ms | +53% slower            |
+| Sort (unfiltered)      |   2994 ms |          3669 ms | +23% slower (was +47%) |
+| Uniq-dropdown, cold    |  29802 ms |         27838 ms | ~parity                |
+| Uniq-dropdown, warm    |  29700 ms |           791 ms | *37x faster*           |
+
+Sort's "was +47%" parenthetical is the *before* number for the ~e6aa959~
+sort-skip fix (see its own subsection below) — landed mid-session, already
+reflected in the "now" column above.
+
+*** Filter selectivity flips the winner: wide filter
+
+Same mechanism, different query — "Country" = "United States", 3380 of 4174
+rows match (~81%). *Internal* (self-reported) duration, since this was a
+targeted root-cause probe, not a full external-wall-clock run:
+
+| Interaction (internal) | ~main~ | ~perf-steps-1-4~ | Δ                    |
+|-------------------------+-------+------------------+-----------------------|
+| Column filter, narrow (4%)  |  230 ms |   321-348 ms | perf-steps-1-4 slower |
+| Column filter, wide (81%)   |  977 ms |         397 ms | *perf-steps-1-4 2.5x faster* |
+
+~main~'s cost scales *linearly* with match count (cloneNode+insert+rescan
+is proportional to the rebuilt table's size). ~perf-steps-1-4~'s cost is
+roughly *constant* regardless of match rate (dominated by a fixed
+forced-reflow cost across the full 4174-row table, whether 158 or 3380 rows
+end up visible). Real interactive typing is progressive — early keystrokes
+are wide, later ones narrow — so Steps 1-2 likely net out closer to a wash
+in practice than the single-query headline table above suggests on its own.
+
+*** Root cause of the narrow-filter regression (traced via temporary instrumentation)
+
+~performance.now()~ marks added directly inside each branch's
+~runFilter()~ single-table branch (profiled, then reverted — not committed;
+see ~debug/NOTES.md~'s 2026-08-24 entry for the full trace and how to
+reproduce), for the narrow ("United Kingdom", 158/4174) case:
+
+| Sub-step                          |    ~main~ | ~perf-steps-1-4~ |
+|------------------------------------+----------+------------------|
+| Filter-test scan (all 4174 rows)   |   39.6 ms |          37.3 ms |
+| Row mutation (clone vs. style-toggle) | 18.0 ms |       23.5 ms |
+| DOM insert/replace                 |  121.4 ms |               — |
+| *Forced reflow*                    |   34.8 ms |         219.3 ms |
+| ~initCollapsableColumns()~ rescan  |    7.4 ms |             0 ms |
+| ~_syncCollapseHasMatchInTable()~   |         — |          38.8 ms |
+| *Total (self-reported)*            |  ~230 ms |          ~321-348 ms |
+
+~main~ pays ~139ms more for cloning/inserting rows; ~perf-steps-1-4~ pays
+~184ms more in forced-reflow cost alone, which dominates. Root cause:
+~main~'s rebuild only ever lays out a table containing the MATCHES (158
+rows); Step 1 keeps all 4174 rows permanently in the live DOM, so the next
+forced reflow (here, ~window.scrollTo()~, called unconditionally at the end
+of every ~runFilter()~ pass to restore scroll position) must lay out the
+FULL row set, including the ~4016 now-hidden ones. Interestingly,
+~initCollapsableColumns()~'s documented "30-120s for 8k+ rows" cost — the
+ORIGINAL dominant-cost target behind Steps 1-4 — turns out to be cheap here
+specifically BECAUSE ~main~'s rebuild already shrinks the table to just the
+matches before that rescan runs; it may still dominate for a filter that
+narrows only slightly (not verified).
+
+**** Attempted mitigation: CSS containment — did not work
+
+Tried both ~content-visibility: auto~ on every ~<tr>~ (see this file's own
+"Known limitations" section below for why that's a considered, deferred
+technique for a related cost) and ~table-layout: fixed~ with locked
+~<col>~ widths (the exact technique this codebase's own manual-resize
+handler already uses, with the comment "so subsequent width writes are
+cheap" — see ~ShowAllEntityData.user.js~ around ~:25860~). Measured against
+the same forced-reflow probe, isolated to the table (~table.offsetHeight~,
+not ~document.body.offsetHeight~, to rule out unrelated page content):
+
+| Technique                          | forced reflow (2 runs) |
+|--------------------------------------+------------------------|
+| Baseline (table-layout: auto)        | 200.0 ms / 199.8 ms   |
+| ~content-visibility: auto~ on all ~<tr>~ | 250.8 ms / 198.7 ms (no improvement; sometimes worse) |
+| ~table-layout: fixed~ + locked ~<col>~   | 211.5 ms / 177.7 ms (within noise, no real win) |
+
+Neither technique meaningfully reduces the cost — it isn't the
+auto-table-layout column-width algorithm that dominates, it's the sheer
+per-row layout bookkeeping for the table's 4174 ~<tr>~ elements, which neither
+technique eliminates. A real fix would need actual DOM virtualization
+(rendering only the rows near the viewport), a materially bigger change
+than either of these. Not implemented.
+
+*** Sort-skip fix (landed, commit ~e6aa959~): internal vs. external gap
+
+Sort always called ~runFilter()~ internally after reordering, even with no
+filter active — pure no-op work once the DOM is already correctly
+reordered. Gated behind a new ~_hasAnyActiveSingleTableFilter()~ check.
+
+| Measurement                          | before fix | after fix | Δ            |
+|----------------------------------------+-----------+-----------+---------------|
+| Internal (self-reported) sort duration | 2842 ms   |    995 ms | -65%          |
+| External (wall-clock) sort duration    | ~4388 ms  |   3669 ms | -16%          |
+
+*Methodology lesson*: internal ~performance.now()~ deltas alone are NOT a
+reliable proxy for perceived latency when a forced-reflow call is what's
+being removed — the layout cost doesn't disappear, it's deferred to
+whenever the browser (or a later DOM read, e.g. Playwright's own status-
+text polling) next needs it. Always cross-check against external wall-clock
+for this class of change. Even after this fix, sort remains ~23% slower
+than ~main~ (see headline table above) — the fix mitigates the Step 1-2
+regression, it does not close it.
+
+*** Step 5 (lazy CAA/EAA): dramatic, unambiguous win
+
+~artist-events~ normally seeds ~sa_enable_caa_pics: false~ for every other
+measurement in this session (the EAA queue doesn't complete in reasonable
+time at this row count) — but the pageType's own ~addEAA: 'Event'~ feature
+makes CAA/EAA a real, relevant cost to measure once, with CAA force-enabled
+and ~GM_xmlhttpRequest~ still stubbed (always a fast 404, so this isolates
+queue/DOM-update overhead, not real network latency):
+
+| Branch                         | Time to CAA/EAA queue completion |
+|----------------------------------+-----------------------------------|
+| ~main~ (no Step 5, eager loading) | *did not complete within 180s*   |
+| ~perf-steps-1-4~ (Step 5, lazy)   | 42.2 s                           |
+
+Matches PERFORMANCE.org's own ~99% estimate for this step. Unambiguous win,
+no caveats found.
+
+*** Cross-check: Steps 3-4 alone (branch ~perf-steps-3-4~, main + only these 2 commits)
+
+Cherry-picked Steps 3-4 directly onto ~main~ (skipping 1-2-5) to isolate
+their effect, confirming they have no dependency on Steps 1-2's DOM-mutation
+approach — both only wrap ~_updateAllColHeaderCounts()~/~openUniqDrop()~,
+neither of which Steps 1-2 touch:
+
+| Interaction         |     ~main~ | ~perf-steps-3-4~ | Δ                          |
+|-----------------------+-----------+------------------+-----------------------------|
+| Global filter         |   1418 ms |          1340 ms | no regression (noise)      |
+| Column filter         |   1595 ms |          1602 ms | no regression (noise)      |
+| Sort                  |   2994 ms |          2907 ms | no regression (noise)      |
+| Uniq-dropdown, warm   |  29700 ms |           739 ms | *40x faster*               |
+
+~post-filter.html~/~post-sort.html~ diffed against ~main~'s committed
+baseline as byte-for-byte *"unchanged"* — Steps 3-4 add caching only, never
+alter rendered output. This is the clean, no-downside subset: all of the
+uniq-dropdown win, none of the filter/sort regression. Pushed to
+~origin/perf-steps-3-4~, PR not yet opened.
+
+*** Takeaways
+
+- *Steps 3-4 (header-count + uniq-dropdown caching): ship these.* Clean,
+  large win (~37-40x on uniq-dropdown warm-open), zero measured downside,
+  verified independent of Steps 1-2. Live on ~perf-steps-3-4~.
+- *Step 5 (lazy CAA/EAA): ship this too*, independently — dramatic,
+  unambiguous win for any CAA/EAA-relevant page over the lazy-load
+  threshold, no regression surface found.
+- *Steps 1-2 (filter/sort in-place re-render): real tradeoff, not a clean
+  win.* Loses on narrow/completed-query filters and (even after the
+  sort-skip mitigation) on sort; wins substantially on wide filters. The
+  original premise — that ~initCollapsableColumns()~'s "30-120s for 8k+
+  rows" rescan is the dominant unaddressed cost — doesn't hold for a narrow
+  filter on this page: that rescan turns out to already be cheap on ~main~,
+  because its own rebuild shrinks the table to just the matches *before*
+  the rescan runs. Worth keeping and iterating on (real, if partial, wins
+  exist — sort-skip is proof), but should not be presented as a strict
+  improvement over ~main~ without the caveats in this section.
+
 ** Known limitations (out of scope)
 
 *** Flag-image rasterization cost on flag-heavy tables
