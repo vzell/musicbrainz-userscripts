@@ -6618,3 +6618,79 @@ scratch later.
    filter-clear step and the sort step independently (an earlier capture
    that only waited after the filter-clear still had the overlay baked into
    `post-sort.html`, from the sort's own separate rebuild).
+
+## 2026-08-24 — perf-steps-1-4: root cause of the filter/sort slowdown vs main (artist-events)
+
+Follow-up to the interaction-perf comparison above: `main` vs `perf-steps-1-4`
+on `artist-events` (4174 rows) showed filter/sort ~50-95% SLOWER on
+`perf-steps-1-4` despite PERFORMANCE.org Steps 1-2 targeting exactly these
+interactions, while the uniq-dropdown warm-open (Step 4) showed the expected
+~31x speedup. Investigated via temporary `performance.now()` instrumentation
+added directly inside each branch's `runFilter()` single-table branch (marks
+around every sub-step, plus a forced-reflow probe — `void
+document.body.offsetHeight` — right after the DOM-mutating step), profiled
+against the committed `artist-events.json.gz` disk fixture, then reverted
+(not committed — this was throwaway diagnostic instrumentation, see git
+stash/checkout history around 2026-08-24 for how to reproduce).
+
+**Root cause: `main`'s cloneNode+rebuild approach only ever lays out a table
+containing the MATCHING rows (158 of 4174 for the "United Kingdom" Country
+filter used as the test case); `perf-steps-1-4`'s Step 1 in-place
+`display:none`/`''` toggling keeps ALL 4174 rows permanently in the live
+tbody, so the browser's table layout algorithm must reconcile geometry
+across the FULL row set — including ~4016 now-hidden ones — on the next
+forced reflow.** For this heavily-narrowing filter (~4% match rate), that
+extra layout cost dominates and outweighs Step 1's own JS-side savings.
+Self-reported `filterDuration` (the number shown in
+`#mb-filter-status-display`, computed internally via `performance.now()`)
+matched the sum of these sub-step marks almost exactly on both branches,
+confirming this fully accounts for the difference — not measurement noise,
+not Playwright/debounce overhead (both were separately ruled out: the
+self-reported internal duration alone reproduced the exact same ~50-95%
+gap as the external Playwright wall-clock numbers).
+
+Breakdown for the SAME single-column-filter action ("Country" = "United
+Kingdom", 158 matches), read from the real (non-hydration) debounced
+`runFilter()` call on each branch:
+
+| Sub-step | `main` (cloneNode+rebuild) | `perf-steps-1-4` (Step 1 in-place) |
+|---|---|---|
+| Filter-test scan (`testRowMatch` over all 4174) | 39.6ms (`scanFilter`) | 37.3ms (`scanFilter`) |
+| Row mutation loop | 18ms (`cloneLoop` — clone 158 rows) | 23.5ms (`showHideLoop` — toggle style on 4174 rows) |
+| DOM insert/replace | 121.4ms (`renderFinalTable`) | — (no insert; rows already in DOM) |
+| **Forced reflow** (`document.body.offsetHeight` read immediately after) | **34.8ms** | **219.3ms** |
+| `initCollapsableColumns()` full rescan | 7.4ms (cheap — table now has only 158 rows) | 0ms (hoisted to run once at initial render only — Step 1's whole point) |
+| `_syncCollapseHasMatchInTable()` (perf-steps-1-4 only — replaces the rescan above) | n/a | ~38.8ms |
+| **Total** (self-reported `filterDuration`) | **~230ms** | **~321-348ms** |
+
+So `main` pays ~139ms MORE for cloning+inserting rows (`cloneLoop` +
+`renderFinalTable` = 139.4ms vs `showHideLoop`'s 23.5ms) but
+`perf-steps-1-4` pays ~184ms MORE in forced-reflow cost alone (219.3 vs
+34.8ms) — net, `perf-steps-1-4` comes out slower for THIS heavily-narrowing
+case. `initCollapsableColumns()`'s documented "30-120s for 8k+ rows" cost
+(the ORIGINAL dominant-cost target Steps 1/3/4 were built around) turns out
+to be cheap here specifically BECAUSE `main`'s rebuild already shrinks the
+table to just the matches before that rescan runs (7.4ms for 158 rows) —
+Step 1 eliminated a cost that, for a heavily-narrowing filter on THIS
+pageType, was already small by construction on `main`. The rescan is
+presumably still the dominant cost for a filter that narrows only slightly
+(most rows still match, so `main`'s rebuilt table stays large) — not
+verified here; this investigation used only the one 158-of-4174 filter case.
+
+**Implication, not yet acted on**: Step 1's "keep everything in the live DOM"
+design trades JS-side DOM-manipulation cost for browser-side layout cost
+scaling with TOTAL row count rather than MATCHING row count. For a
+low-match-rate filter on a very large single-table page, that trade can lose.
+A potential mitigation (not implemented, not requested) would be something
+like `content-visibility: auto` on hidden/off-screen rows to let the browser
+skip layout for them — PERFORMANCE.org's own "Known limitations" section
+already flags `content-visibility: auto` as a considered-but-deferred
+technique for a related (inline SVG flag rasterization) cost, so the same
+idea may generalize here. Sort (`makeTableSortableUnified`'s single-column
+handler) shows an even larger relative slowdown (+95% internal, vs +50-65%
+for a plain filter) because it calls `runFilter()` at its own tail
+(`_invalidateFilterCache(); runFilter();`, confirmed in both branches) with
+NO filter active — meaning ALL 4174 rows "match", so it pays this same
+forced-reflow tax at the LARGEST possible scale (nothing hidden to skip),
+on top of its own row-reordering (`appendChild` loop) and CAA/EAA
+bigbox-reorder cost.
