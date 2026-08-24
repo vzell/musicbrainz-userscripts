@@ -1,5 +1,29 @@
 [
   {
+    "version": "9.99.952",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed sanojjonas userscript artefacts still surviving on the \"Show single-table\" cross-tab snapshot page (v9.99.951's `removeSanojjonasContainers()` fix alone wasn't enough there) — confirmed via debug/sanoj-debug.log/debug/sanoj-page.html that sanojjonas' own script(s) are asynchronous and noticeably slower than jesus2099's: on this fast snapshot-hydration bootstrap (settles within one `setTimeout(...,0)` tick of the tab opening), only 2 of 11+ real sanojjonas elements had appeared by the time the one-shot `finalCleanup()` cleanup ran, leaving everything injected afterward to survive as visible artefacts. Added `_watchForLateSanojjonasInjections()`, a 15-second `MutationObserver` mirroring the existing `_watchForLateJesus2099Injections()` pattern, wired into the same cross-tab snapshot bootstrap call site. Refactored `_findSanojjonasContainers()`/`removeSanojjonasContainers()` to share the new `_isSanojjonasContainerId()` predicate with the observer, so the one-shot and late-watch removal logic can't drift apart."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.951",
+    "date": "2026-08-24",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed leftover \"sanojjonas\" userscript artefacts (the \"Taggregator\" tag-aggregation tool's own sidebar panel, `#taggregator-settings`/`#taggregator-import-button`) appearing after the table on `artist-relationships-filtered` (`/artist/<mbid>/relationships?link_type_id=<n>`) — its consolidated `Relationships` column sits right before a run of sanojjonas' own infinite-scroll placeholder `<div>`s (`#load`, `#load2`, …, `#bottom1`, `#bottom2`, …) directly after the table, followed by the Taggregator panel further down. `removeSanojjonasContainers()` previously only targeted a fixed `load`/`load2`-`load4`/`bottom1`-`bottom6` ID list and never included the Taggregator IDs at all; `debug/sanoj.html`'s own snapshot goes up to `bottom7`, one past that list, confirming it was already silently missing artefacts even for its original targets. Replaced the fixed list with a new `_findSanojjonasContainers()` helper that matches `load`/`bottom` containers by ID SHAPE (`/^(load\\d*|bottom\\d+)$/`, no suffix cap) plus the two fixed Taggregator IDs, shared by both `removeSanojjonasContainers()` and the final-cleanup presence check (previously a separately hardcoded, now-eliminated duplicate list) so the two can never drift out of sync again."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.950",
     "date": "2026-08-24",
     "sections": [

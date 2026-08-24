@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.950+2026-08-24
+// @version      9.99.952+2026-08-24
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -30279,6 +30279,18 @@ a { color: #1565c0; }`;
                 // one-shot performClutterCleanup()/initTreleasesObserver
                 // measures aren't sufficient on this fast-bootstrapping path.
                 _watchForLateJesus2099Injections();
+                // Same rationale, different third-party script: sanojjonas'
+                // own userscript(s) (infinite-scroll "load"/"bottom*"
+                // placeholders, the "Taggregator" panel) are ALSO
+                // asynchronous — and confirmed noticeably slower than
+                // jesus2099's — so removeSanojjonasContainers()'s one-shot
+                // pass inside finalCleanup() below only ever catches
+                // whatever already existed at that instant, not whatever
+                // sanojjonas injects afterward. See
+                // _watchForLateSanojjonasInjections()'s own JSDoc
+                // (debug/sanoj-debug.log / debug/sanoj-page.html: only 2 of
+                // 11+ real containers existed by the time finalCleanup() ran).
+                _watchForLateSanojjonasInjections();
                 await _hydrateAndRenderFromSnapshotData(_snapshotPayload, {
                     sourceLabel: _snapshotPayload.detailSegment
                         ? `live snapshot: ${_snapshotPayload.detailSegment}`
@@ -32854,17 +32866,65 @@ a { color: #1565c0; }`;
         }
     }
 
+    const SANOJJONAS_FIXED_IDS = ['taggregator-settings', 'taggregator-import-button'];
+
+    /**
+     * Single source of truth for "is this element ID one of sanojjonas'
+     * own containers" — two unrelated MusicBrainz userscripts by that
+     * author, neither wired into this script's own render/cleanup flow:
+     * an infinite-scroll "load more" helper (placeholder `<div
+     * id="load">`/`<div id="load2">`/…, `<div id="bottom1">`/`<div
+     * id="bottom2">`/…) and the "Taggregator" tag-aggregation tool's own
+     * sidebar panel (`#taggregator-settings`, `#taggregator-import-button`,
+     * the two `SANOJJONAS_FIXED_IDS` above). Both sit right after the
+     * table (the load/bottom divs) or inside native `#sidebar`
+     * (Taggregator) — on a page whose consolidated table is very wide
+     * (e.g. `artist-relationships-filtered`'s merged "Relationships"
+     * column overflowing `#content`'s own box), the whole trailing/
+     * `#sidebar` area gets pushed below the table instead of staying
+     * beside it, making these normally-invisible/off-to-the-side elements
+     * show up as visible leftover artefacts — see debug/sanoj.html.
+     *
+     * The `load`/`bottom` suffix count is NOT fixed — debug/sanoj.html's
+     * own snapshot goes up to `bottom7`, one past a former hardcoded
+     * `bottom1`-`bottom6` list that silently stopped catching new
+     * artefacts the moment MusicBrainz's own pagination grew past it — so
+     * these are matched by ID SHAPE (`/^(load\d*|bottom\d+)$/`) instead of
+     * an enumerated list.
+     *
+     * Shared by `_findSanojjonasContainers()` (a whole-document sweep) and
+     * `_watchForLateSanojjonasInjections()`'s MutationObserver (a
+     * per-added-node check), so the two can never silently drift apart on
+     * what counts as a match.
+     *
+     * @param {string} id
+     * @returns {boolean}
+     */
+    function _isSanojjonasContainerId(id) {
+        return !!id && (SANOJJONAS_FIXED_IDS.includes(id) || /^(load\d*|bottom\d+)$/.test(id));
+    }
+
+    /**
+     * Finds every live DOM element matching `_isSanojjonasContainerId()`.
+     *
+     * @returns {Element[]}
+     */
+    function _findSanojjonasContainers() {
+        const out = [];
+        document.querySelectorAll('[id]').forEach(el => {
+            if (_isSanojjonasContainerId(el.id)) out.push(el);
+        });
+        return out;
+    }
+
     /**
      * Removes specific DOM elements created by other MusicBrainz userscripts (Sanojjonas containers)
      * to prevent conflicts and clean up the page
      */
     function removeSanojjonasContainers() {
-        Lib.debug('cleanup', 'Removing Sanojjonas containers...');
-        const idsToRemove = ['load', 'load2', 'load3', 'load4', 'bottom1', 'bottom2', 'bottom3', 'bottom4', 'bottom5', 'bottom6'];
-        idsToRemove.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.remove();
-        });
+        const found = _findSanojjonasContainers();
+        found.forEach(el => el.remove());
+        if (found.length > 0) Lib.debug('cleanup', `Removed ${found.length} Sanojjonas container(s).`);
     }
 
     /**
@@ -41415,6 +41475,67 @@ a { color: #1565c0; }`;
             document.querySelectorAll('table.tbl a').forEach(_stripJesus2099CaaAnchor);
             Lib.debug('cleanup', '_watchForLateJesus2099Injections: watch window elapsed, observer disconnected.');
         }, SA_JESUS2099_WATCH_MS);
+    }
+
+    /**
+     * Watches for LATE-injected sanojjonas containers appearing after this
+     * script's own one-shot `removeSanojjonasContainers()` pass (inside
+     * `finalCleanup()`) has already run — same rationale as
+     * `_watchForLateJesus2099Injections()` above, for sanojjonas' own
+     * userscript(s) instead: infinite-scroll `load`/`load2`… and
+     * `bottom1`/`bottom2`… placeholder `<div>`s, plus the "Taggregator"
+     * tag-aggregation tool's own `#taggregator-settings`/
+     * `#taggregator-import-button` panel (see
+     * `_findSanojjonasContainers()`'s own JSDoc for the full DOM shapes).
+     *
+     * Confirmed via debug/sanoj-debug.log / debug/sanoj-page.html (the
+     * "Show single-table" cross-tab snapshot path, this function's only
+     * caller): by the time `finalCleanup()` ran, only 2 of the 11+
+     * sanojjonas elements sanojjonas eventually injects had actually
+     * appeared yet — `removeSanojjonasContainers()`'s one-shot pass can
+     * only ever remove what already exists at that instant, and this
+     * bootstrap path completes within a single `setTimeout(...,0)` tick of
+     * the tab opening (see `_clearNativeTableSectionsForSnapshot()`'s own
+     * JSDoc), well before sanojjonas' own script(s) — confirmed
+     * noticeably slower than jesus2099's — have finished their own
+     * asynchronous work. A normal (non-snapshot) page load takes the much
+     * slower real network-fetch path, giving sanojjonas' script more
+     * natural time to finish before this script's own cleanup runs, so
+     * this watcher is only needed on the fast snapshot-hydration path.
+     *
+     * Disconnects itself after `SA_SANOJJONAS_WATCH_MS` — longer than
+     * jesus2099's own 5000ms window specifically because sanojjonas' own
+     * script(s) were confirmed slower.
+     */
+    function _watchForLateSanojjonasInjections() {
+        const SA_SANOJJONAS_WATCH_MS = 15000;
+
+        const _stripIfMatch = (el) => {
+            if (el.nodeType !== Node.ELEMENT_NODE) return;
+            if (_isSanojjonasContainerId(el.id)) {
+                el.remove();
+                Lib.debug('cleanup', `_watchForLateSanojjonasInjections: removed a late Sanojjonas container ("${el.id}").`);
+                return;
+            }
+            el.querySelectorAll?.('[id]').forEach(_stripIfMatch);
+        };
+
+        const observer = new MutationObserver(mutations => {
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    _stripIfMatch(node);
+                }
+            }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+        Lib.debug('cleanup', `_watchForLateSanojjonasInjections: watching document.body for ${SA_SANOJJONAS_WATCH_MS}ms.`);
+
+        setTimeout(() => {
+            observer.disconnect();
+            removeSanojjonasContainers(); // final sweep in case something slipped in right at the boundary
+            Lib.debug('cleanup', '_watchForLateSanojjonasInjections: watch window elapsed, observer disconnected.');
+        }, SA_SANOJJONAS_WATCH_MS);
     }
 
     /**
@@ -51301,8 +51422,9 @@ a { color: #1565c0; }`;
      *     `removeSelectors` (all matches of each selector) removals.
      *   • Removes the native MusicBrainz `div.filter` bar (redundant after the
      *     script injects its own filter UI).
-     *   • Removes stale sanojjonas load-more containers (`#load`, `#load2`, …,
-     *     `#bottom1`–`#bottom6`) via `removeSanojjonasContainers()`.
+     *   • Removes stale sanojjonas containers (`_findSanojjonasContainers()` —
+     *     infinite-scroll "load more" widgets AND the "Taggregator"
+     *     userscript's own sidebar panel) via `removeSanojjonasContainers()`.
      *   • Removes consecutive `<br>` runs and logs the cleanup.
      *   • Re-applies the H1 comment-span alias relocation on the final rendered
      *     page when `sa_enable_h1_comment_span_relocation_on_final_page` is on.
@@ -51579,13 +51701,7 @@ a { color: #1565c0; }`;
         });
 
         // Call the specific container removal again
-        const sanojIds = ['load', 'load2', 'load3', 'load4', 'bottom1', 'bottom2', 'bottom3', 'bottom4', 'bottom5', 'bottom6'];
-        let foundSanoj = false;
-        sanojIds.forEach(id => {
-            if (document.getElementById(id)) foundSanoj = true;
-        });
-
-        if (foundSanoj) {
+        if (_findSanojjonasContainers().length > 0) {
             Lib.debug('cleanup', 'Sanojjonas elements found during final cleanup. Removing now...');
             removeSanojjonasContainers();
         } else {
