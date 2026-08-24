@@ -6,7 +6,7 @@
   "scriptVersion": "9.99.953+2026-08-24",
   "interactions": {
     "globalFilter": {
-      "medianMs": 2208,
+      "medianMs": 2250,
       "samples": 5
     },
     "columnFilter": {
@@ -14,15 +14,15 @@
       "samples": 5
     },
     "sort": {
-      "medianMs": 4203,
+      "medianMs": 4573,
       "samples": 5
     },
     "uniqDropCold": {
-      "medianMs": 25706,
+      "medianMs": 26767,
       "samples": 5
     },
     "uniqDropWarm": {
-      "medianMs": 789,
+      "medianMs": 899,
       "samples": 5
     }
   }
