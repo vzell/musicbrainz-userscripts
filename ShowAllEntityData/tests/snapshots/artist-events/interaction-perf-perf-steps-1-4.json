@@ -1,0 +1,29 @@
+{
+  "pageType": "artist-events",
+  "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events",
+  "branch": "perf-steps-1-4",
+  "capturedAt": "2026-08-24",
+  "scriptVersion": "9.99.953+2026-08-24",
+  "interactions": {
+    "globalFilter": {
+      "medianMs": 2208,
+      "samples": 5
+    },
+    "columnFilter": {
+      "medianMs": 2463,
+      "samples": 5
+    },
+    "sort": {
+      "medianMs": 4203,
+      "samples": 5
+    },
+    "uniqDropCold": {
+      "medianMs": 25706,
+      "samples": 5
+    },
+    "uniqDropWarm": {
+      "medianMs": 789,
+      "samples": 5
+    }
+  }
+}
