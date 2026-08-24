@@ -96906,13 +96906,60 @@ The sanojjonas userscript executes asynchrouns and is very slow
 ** TODO fix the comment attribution to the "Taggregator" userscript
 
 
-* TODO "Edit recording comments" button below the tables for 'release-tracks'
-** i
+* TODO "Edit recording comments" button rework
+** DONE add CLAUDE.md
 
-"Edit recording comments" button below the tables for 'release-tracks', see e.g. https://musicbrainz.org/release/89f14138-3884-484e-93bc-ec2e16593859
-button left over from my own userscript.
+1.)
 
-** TODO orignal userscript needs to support "/" at the endo fthe uRL in the @include directove
+add a CLAUDE.md to the current userscript
+
+2.)
+
+Change the current userscript directives
+
+#+begin_example
+// @match        https://musicbrainz.org/release/*
+// @exclude      https://musicbrainz.org/release/*/*
+#+end_example
+
+to support specifically
+
+#+begin_example
+.../release/<MBID>
+.../release/<MBID>/
+#+end_example
+
+See also the following directives from my other userscript as an example
+
+#+begin_example
+// @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
+...
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|annotations)\/?(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?\/?(?:\?.*)?)$/
+#+end_example
+
+** DONE why
+
+1.)
+
+when the userscript @/home/vzell/git/musicbrainz-userscripts/ShowAllEntityData/ShowAllEntityData.user.js runs on pages
+we just included, the "Edit recording comments"-button and the
+
+#+begin_example
+<span id="settings-icon">⚙️</span>
+#+end_example
+
+do NOT show up anymore on the final rendered page inside the H2 "Tracklist" header when the action button of the
+"ShowAllEntityData.user.js" userscript is pressed. I would expect it to render after the "Tracklist" string
+
+2.)
+
+add both the "Edit recording comments"-button and the 'span id="settings-icon"' inside it's own wrapper container with a
+name specific to the userscript for easy manipulation
+
+** TODO add functionality to our userscript
 
 
 * TODO add "Data quality" support
