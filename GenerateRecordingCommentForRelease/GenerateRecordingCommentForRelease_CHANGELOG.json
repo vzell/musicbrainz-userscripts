@@ -1,5 +1,17 @@
 [
     {
+        "version": "1.03.004+2026-08-24",
+        "date": "2026-08-24",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Allow an arbitrary query string after the release ID in the `@include` match (e.g. `?some-param=1`), instead of requiring the URL to end exactly at the release ID or a trailing slash."
+                ]
+            }
+        ]
+    },
+    {
         "version": "1.03.003+2026-08-24",
         "date": "2026-08-24",
         "sections": [
