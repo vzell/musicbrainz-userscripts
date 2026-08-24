@@ -95144,14 +95144,147 @@ See @debug/annotations.html for the full raw HTML, use the just created skill.
 
 adjust the skill file so that it knows about the userscript needed the right @include directive
 
+* DONE add new pageType for URLs of the following form e.g. https://musicbrainz.org/release/1a9ccefd-5599-45f3-83da-f2fb7b64ae87/annotations
 
-* TODO add "Ctrl"-clicking to the current unique value drop down section headers with tooltip support
+1.)
+
+add a new pageType for URLs of the following form https://musicbrainz.org/release/<MBID>/annotations
+
+e.g. https://musicbrainz.org/release/1a9ccefd-5599-45f3-83da-f2fb7b64ae87/annotations 
+
+2.)
+
+and maybe more for other <entities>
+
+https://musicbrainz.org/<entity>/<MBID>/annotations
+
+* DONE fix pageType 'annotations' not handling comparing different versions + add more columns
+** i
+
+fix pageType 'annotations' not handling comparing different versions:
+
+1.)
+
+add the current button
+
+#+begin_example
+<span class="buttons"><button type="submit">Compare versions</button></span>
+#+end_example
+
+right before the '<span id="mb-filter-container"' inside the h2 header line (and at the same time remove it from the end of the page). Shape and size it like the other buttons
+currently in the h2 header line, e.g. '<button id="mb-toggle-filter-highlight-btn"'
+
+2.)
+
+a.)
+
+Initially, on an annotations page, the first row (New) and the second row (Old) are selected for comparison, see [Image #3], all other radio buttons are greyed out
+
+b.)
+
+When selecting another rows radio button in the "Old" column, the "New" radio buttons from the first row up to the new "Old" row are selectable, see [Image #4]
+
+c.)
+
+this does NOT happen on the final rendered page, see [Image #4], we can onyl ever compare the first row against some other one
+
+3.)
+
+When clicking the "Compare versions" button, the comparison should be shown in a new tab (configurable with a new boolean, default: true)
+
+** bug
+
+See [Image #7], add a spacer between the text "Annotation history" and the "Compare versions" button
+
+** bug
+
+a.)
+
+Initially on the final rendered page the button sits right after the '<span class="mb-row-count-stat"', see [Image #9]
+
+b.)
+
+After a sort/filter the button moves between the text "Annotation history" and the row count stat, see [Image #8]
+
+c.)
+
+I want b.) all the time
+
+** DONE bug
+
+Is it possible to make the selection of the radio boxes always possible, so basically allow each combination. Currently,
+depending on the currently select "Old", New" rows and the filter condition, there are situation where no "Old"/"New"
+combination can be selected without clearing the filter again
+
+** DONE add mainColumn
+
+Add
+
+#+begin_example
+                extractMainColumn: 'Editor',
+#+end_example
+
+to the pageType 'annotations'
+
+** DONE add uvd comment, and above info in structure sections
+
+1.)
+
+"Add a unique-values dropdown section for the 'Editor' column — one entry per "Deleted editor", and every other unique
+extractable info from the tooltip of an editor. Also add an entry for each unique "comment" of an editor (btw, why is
+this not yet present in the unique vale drop down)
+
+See @debug/label-annotations.html - raw html for e.g. https://musicbrainz.org/label/c4f2cf49-b57c-4cc1-8061-f54400704ac4/annotations
+
+2.)
+
+also check the "Version history" column it there is extractable info for the unique value drop down
+
+** DONE add synthetic columns
+
+For the pageType 'annotations' add a new column extractor on the "Editor" column (by using a skill) which produces the synthetic columns
+"Deleted editor" (boolean type, true if deleted, empty otherwise), "Active for", "Active since" (from the comment),
+"Active start date", "Active end date" (the last two from the tooltip)
+
+Maybe use functionality which is used in the unique value drop down for that column
+
+* DONE Add a new skill file for creating new column extractors. Check the already existing for typical info which needs to be provided
+
+Add a new skill file for creating new column extractors. Check the already existing for typical info which needs to be provided
+
+* DONE pageType 'release-tracks' starts out with each sub-table per medium uncollapsed, but the "Show all sub-sections"-button is displayed instead of the "Hide all sub-sections"
+
+pageType 'release-tracks' starts out with each sub-table per medium uncollapsed, but the "Show all sub-sections"-button
+is displayed instead of the "Hide all sub-sections" -> '<button class="mb-master-toggle"'
+
+* DONE add "Ctrl"-clicking to the current unique value drop down section headers with tooltip support
 
 Currently when clicking the section header in the unique value drop down, it toggles the display of the underlying
 section entries.
 
 Add "Ctrl"-clicking functionality to the current unique value drop down section headers (with tooltip support) so that
 all sections are collapsed/uncollapsed at once
+
+* DONE plan - Bug: when filtering on a join condition like "&" (plus additioanlly a artist) and then closing and reopening the udv, the "&" is gone from the uvd menu
+
+Currently, initially when opening the unique value drop down list of a column, the entries visible in the unique
+value. When starting filtering on entries by clicking on entries in the menu, only rows which meet the logical ORed
+filter criteria are shown, but in the unique value drop down still ALL entries are available (since initially opening
+the menu) for choosing additional filter criteria.
+
+Bug: when filtering on a join phrase like "&" (plus lets say additionally on an "artist name") in the unique value drop
+down of the "Artist" column of the "Recording location for recording" subtable/secion of the multi-table page
+https://musicbrainz.org/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances (see [Image #50]), then closing and reopening the unique value drop down again,
+the join phrase "&" is gone from the menu of selectable entries but still filtered and highlighted.
+
+I would expect, after reopening, that all entries visible in the unique value drop down list, to be based on what's CURRENTLY filtered
+
+#+begin_example
+@debug/st-unfiltered.html - complete final rendered initial subtable
+@debug/st-filtered-reopened.html - complete final rendered subtable when it was filtered and reopened
+#+end_example
+
+Create a new branch for fixes.
 
 
 * TODO In "Recording enineer" column, "John Cooper (engineer)" should always stay together, a bare "John Cooper" should never be extracted
@@ -95375,45 +95508,6 @@ https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf - Events for
 https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordings - Recordings for Instruments
 #+end_example
 
-
-* TODO problem with "Eventdate" appearing before main column
-
-
-* TODO plan - Bug: when filtering on a join condition like "&" (plus additioanlly a artist) and then closing and reopening the udv, the "&" is gone from the uvd menu
-
-Currently, initially when opening the unique value drop down list of a column, the entries visible in the unique
-value. When starting filtering on entries by clicking on entries in the menu, only rows which meet the logical ORed
-filter criteria are shown, but in the unique value drop down still ALL entries are available (since initially opening
-the menu) for choosing additional filter criteria.
-
-Bug: when filtering on a join phrase like "&" (plus lets say additionally on an "artist name") in the unique value drop
-down of the "Artist" column of the "Recording location for recording" subtable/secion of the multi-table page
-https://musicbrainz.org/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances (see [Image #50]), then closing and reopening the unique value drop down again,
-the join phrase "&" is gone from the menu of selectable entries but still filtered and highlighted.
-
-I would expect, after reopening, that all entries visible in the unique value drop down list, to be based on what's CURRENTLY filtered
-
-#+begin_example
-@debug/st-unfiltered.html - complete final rendered initial subtable
-@debug/st-filtered-reopened.html - complete final rendered subtable when it was filtered and reopened
-#+end_example
-
-Create a new branch for fixes.
-
-
-* TODO add new pageType for URLs of the following form e.g. https://musicbrainz.org/release/1a9ccefd-5599-45f3-83da-f2fb7b64ae87/annotations
-
-1.)
-
-add a new pageType for URLs of the following form https://musicbrainz.org/release/<MBID>/annotations
-
-e.g. https://musicbrainz.org/release/1a9ccefd-5599-45f3-83da-f2fb7b64ae87/annotations 
-
-2.)
-
-and maybe more for other <entities>
-
-https://musicbrainz.org/<entity>/<MBID>/annotations
 
 
 * TODO Add support for userscript "Tracklist Display" by @Better DJ-mix when present
@@ -96685,7 +96779,7 @@ which itself is located after the h1 header
 It looks like this is the same pattern like we already did with "Legal name:" on artist pages
 
 
-* TODO redo
+* TODO redo performance steps 1-4
 ** i
 
 Do just steps 1-4 but with the bug fix (b10c209) for a Step-1 regression, but do this in a new branch from main
@@ -96775,106 +96869,68 @@ Add an on the fly option to toggle debug settings like with majkinetors userscri
 
 Show the output in a new popup frame
 
-Rework the current three buttons (keyboard, setting, help) into one, like majkinetors doing
+
+* TODO Rework the current three buttons (keyboard, setting, help) into one, like majkinetors doing
 
 
+* TODO problem with "Eventdate" appearing before main column - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
 
-* TODO fix pageType 'annotations' not handling comparing different versions
-** i
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships ==> "Instruments release"
 
-fix pageType 'annotations' not handling comparing different versions:
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?direction=1&link_type_id=44&page=1
 
-1.)
 
-add the current button
+* TODO fix the sanojjonas artefacts on the final rendered page when on a new tab
+** DONE i
 
-#+begin_example
-<span class="buttons"><button type="submit">Compare versions</button></span>
-#+end_example
+There are sanojjonas artefacts left (after the table) after rendering the final page in single-table mode in a new
+tab. see e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1
 
-right before the '<span id="mb-filter-container"' inside the h2 header line (and at the same time remove it from the end of the page). Shape and size it like the other buttons
-currently in the h2 header line, e.g. '<button id="mb-toggle-filter-highlight-btn"'
-
-2.)
-
-a.)
-
-Initially, on an annotations page, the first row (New) and the second row (Old) are selected for comparison, see [Image #3], all other radio buttons are greyed out
-
-b.)
-
-When selecting another rows radio button in the "Old" column, the "New" radio buttons from the first row up to the new "Old" row are selectable, see [Image #4]
-
-c.)
-
-this does NOT happen on the final rendered page, see [Image #4], we can onyl ever compare the first row against some other one
-
-3.)
-
-When clicking the "Compare versions" button, the comparison should be shown in a new tab (configurable with a new boolean, default: true)
-
-** bug
-
-See [Image #7], add a spacer between the text "Annotation history" and the "Compare versions" button
-
-** bug
-
-a.)
-
-Initially on the final rendered page the button sits right after the '<span class="mb-row-count-stat"', see [Image #9]
-
-b.)
-
-After a sort/filter the button moves between the text "Annotation history" and the row count stat, see [Image #8]
-
-c.)
-
-I want b.) all the time
+Please remove, see function "removeSanojjonasContainers"
+@debug/sanoj.html - raw html
 
 ** DONE bug
 
-Is it possible to make the selection of the radio boxes always possible, so basically allow each combination. Currently,
-depending on the currently select "Old", New" rows and the filter condition, there are situation where no "Old"/"New"
-combination can be selected without clearing the filter again
-
-** TODO add mainColumn
-
-Change
+The fix didn't remove it.
 
 #+begin_example
-        {
-            type: 'annotations',
-            match: (path) => path.match(/\/(?:artist|instrument|area|place|series|label|work|release-group|release|recording|event)\/[a-f0-9-]{36}\/annotations/),
-            buttons: [ { label: 'Show Annotation History', labelFromPathEntity: true } ],
-            features: {
-                columnExtractors: [
-                    { sourceColumn: 'Date', extractor: 'dateTimeParts', syntheticColumns: ['Revision date', 'Revision time'] }
-                ],
-                extractMainColumn: 'Editor',
-                stickyColumn: 'Editor'
-            },
-            tableMode: 'single',
-            non_paginated: true
-        },
+@debug/sanoj-page.log - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1 opened from https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships on a new tab
+@debug/sanoj-debug.log - console log from the final page
 #+end_example
 
-add synthetic columns "Active for", "Active since", "Active start date", "Active end date" (the last two from the tooltip)
-and add uvd comment, and above info in structure sections
+Could it be that this is specific for single-table pages rendered in a new tab when opening via the "Show
+single-table"-button from multi-table pages
 
+The sanojjonas userscript executes asynchrouns and is very slow
 
-* TODO fix the artefacts on the final rendered page when on a new tab
-
-sanojjonas stuff, buttons left over from other userscripts, see e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=1
+** TODO fix the comment attribution to the "Taggregator" userscript
 
 
 * TODO "Edit recording comments" button below the tables for 'release-tracks'
 
 "Edit recording comments" button below the tables for 'release-tracks', see e.g. https://musicbrainz.org/release/89f14138-3884-484e-93bc-ec2e16593859
+button left over from my own userscript.
 
 
-* TODO add more columns to 'annotations' pageType
+* TODO add "Data quality" support
+** DONE as uvd entry
+
+"Add a unique-values dropdown section for the 'Release' column — one
+entry per data quality type "high", "low", "normal" (if not present)
+
+#+begin_example
+https://musicbrainz.org/release-group/d7610581-79a0-4e4c-82fa-1a381c8edfc9 - high data quality info in "Release" column
+https://musicbrainz.org/report/LowDataQualityReleases?filter=1 - report with low quality, again "Release" column
+#+end_example
+
+Usa a skill.
+This data quality attribute is probably present on all pageType where releases are involved
+
+** as new column
+
 
 * TODO add back the select checkboxes for specific pageTypse and rewire the action listeners for e.g. merging releases etc. (see 'annotations' button re-wiring)
+
 
 * DONE edit mismatches
 
@@ -96882,7 +96938,7 @@ Currently I used Claude Code to implement two different features at the same tim
 the same version "9.99.926" How should I proceed to get these in sync again. On both machines nothing is commited/pushed yet
 
 
-* question how can we test the influence of other userscripts normally available in a real browser environment
+* TODO question how can we test the influence of other userscripts normally available in a real browser environment
 
  and also our userscript uses these functionalities sometimes if available (other times we just want to see the side effects of other userscripts presetn when our userscript
   runs and does not yet handle them/theit side effects properly)
@@ -96903,7 +96959,6 @@ the same version "9.99.926" How should I proceed to get these in sync again. On 
 
   Want me to build this out, starting with the two known cases (jesus2099 marker + the filter-poisoning regression)?
 
-
 * TODO merge test framework into performance branch
 ** DONE i
 
@@ -96911,8 +96966,5 @@ merge main branch into perf-steps-1-4
 
 ** after merging test framework into performance branch make sure to formulate the right test assertions for the artist-events pageType
 
-* TODO pageType 'release-tracks' starts out with each sub-table per medium uncollapsed, but the "Show all sub-sections"-button is displayed instead of the "Hide all sub-sections"
-
-pageType 'release-tracks' starts out with each sub-table per medium uncollapsed, but the "Show all sub-sections"-button
-is displayed instead of the "Hide all sub-sections" -> '<button class="mb-master-toggle"'
+* TODO fix the presence of the original "Tagger" script automatically redirecting for pages sub-table pages in a new tab
 
