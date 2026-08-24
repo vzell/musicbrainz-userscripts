@@ -97014,7 +97014,18 @@ the same version "9.99.926" How should I proceed to get these in sync again. On 
 
 merge main branch into perf-steps-1-4
 
-** after merging test framework into performance branch make sure to formulate the right test assertions for the artist-events pageType
+** plan: after merging test framework into performance branch make sure to formulate the right test assertions for the artist-events pageType
+
+after merging our test framework from main into the performance branch perf-steps-1-4 formulate the right test
+assertions/plan/perf-baselines for the artist-events pageType with the URL
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events to compare all the performance improvements
+(see PERFORMANCE.org) between main and the branch perf-steps-1-4.
+
+Eventually we have to adjust or extend our current tests to cover all aspects
+
+Make sure you start on the main branch
+
+We also need snapshoting, to compare if there are no regressions in rendering in general
 
 * TODO fix the presence of the original "Tagger" script automatically redirecting for pages sub-table pages in a new tab
 
