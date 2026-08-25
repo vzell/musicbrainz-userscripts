@@ -14,7 +14,7 @@ const { waitForFilterSettled, getPageRowCount, getSubTableRowCounts } = require(
 const RELEASE_GROUP_URL = 'https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c';
 const SHOW_ALL_BUTTON = 'button[data-label="Show all Releases for ReleaseGroup"]';
 
-test('global filter narrows the page-wide row count and every sub-table sums to it', async ({ page }) => {
+test('global filter narrows the page-wide row count and every sub-table sums to it', { tag: '@core' }, async ({ page }) => {
     const pageErrors = collectPageErrors(page);
 
     await loadUserscriptPage(page, { url: RELEASE_GROUP_URL, testMode: true });

@@ -5,7 +5,9 @@
     "description": "Playwright test harness for the ShowAllEntityData userscript",
     "scripts": {
         "test": "playwright test --project=chromium-fixtures",
-        "test:live": "playwright test --project=chromium-live",
+        "test:live": "playwright test --project=chromium-live --grep @core",
+        "test:live:extended": "playwright test --project=chromium-live --grep \"@core|@extended\"",
+        "test:live:perf": "playwright test --project=chromium-live --grep @perf",
         "test:all": "playwright test",
         "test:ui": "playwright test --ui",
         "test:headed": "playwright test --headed",

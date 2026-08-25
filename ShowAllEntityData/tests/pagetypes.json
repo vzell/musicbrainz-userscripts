@@ -39,5 +39,61 @@
     "hasRelationships": false,
     "waitForAutoResize": true,
     "renderTimeout": 300000
+  },
+  {
+    "pageType": "user-tags",
+    "url": "https://musicbrainz.org/user/vzell/tags?show_downvoted=0",
+    "tableMode": "multi",
+    "showAllButtonSelector": "button[data-label=\"Tags upvoted\"]",
+    "hasCaaOrEaa": false,
+    "hasRelationships": false,
+    "waitForAutoResize": true
+  },
+  {
+    "pageType": "notes-received",
+    "url": "https://musicbrainz.org/edit/notes-received",
+    "tableMode": "single",
+    "showAllButtonSelector": "button[data-label=\"Show all Notes Received\"]",
+    "hasCaaOrEaa": false,
+    "hasRelationships": false,
+    "waitForAutoResize": true,
+    "renderTimeout": 300000
+  },
+  {
+    "pageType": "user-open-edits",
+    "url": "https://musicbrainz.org/user/vzell/edits/open",
+    "tableMode": "single",
+    "showAllButtonSelector": "button[data-label=\"Show all Open Edits for User\"]",
+    "seedGmValues": { "sa_enable_caa_pics": false },
+    "hasCaaOrEaa": false,
+    "hasRelationships": false,
+    "waitForAutoResize": true
+  },
+  {
+    "pageType": "series-releases",
+    "url": "https://musicbrainz.org/series/aa3694d3-a3d0-48ed-8f07-5b576de87908",
+    "tableMode": "single",
+    "showAllButtonSelector": "button[data-label=\"Show all Releases for Series\"]",
+    "hasCaaOrEaa": false,
+    "hasRelationships": false,
+    "waitForAutoResize": true
+  },
+  {
+    "pageType": "recording-fingerprints",
+    "url": "https://musicbrainz.org/recording/875a6a0d-1fcc-416e-959f-433f96b0da17/fingerprints",
+    "tableMode": "single",
+    "showAllButtonSelector": "button[data-label=\"Show all Fingerprints for Recording\"]",
+    "hasCaaOrEaa": false,
+    "hasRelationships": false,
+    "waitForAutoResize": true
+  },
+  {
+    "pageType": "release-discids",
+    "url": "https://musicbrainz.org/release/9b94e384-60e3-44e3-b0ba-dd09a68485df/discids",
+    "tableMode": "multi",
+    "showAllButtonSelector": "button[data-label=\"Show all Disc IDs for Release\"]",
+    "hasCaaOrEaa": false,
+    "hasRelationships": false,
+    "waitForAutoResize": true
   }
 ]

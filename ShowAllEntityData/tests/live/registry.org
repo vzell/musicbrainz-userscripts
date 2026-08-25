@@ -7,6 +7,18 @@ row here has no "script version" / "last captured" columns of its own; run
 `npm run test:live` to see current pass/fail. Manual dashboard data only, not
 machine-parsed — keep it in sync by hand when adding/removing a live spec.
 
+Every spec carries a Playwright tag (`@core`/`@extended`/`@perf`) picked by
+"does this exercise a shared mechanism every change could regress" (`@core`)
+vs. "a bespoke/pageType-specific edge case" (`@extended`) vs. "the deliberate
+perf-comparison instrumentation" (`@perf` — see PERFORMANCE.org, run
+manually, no CI gate). `npm run test:live` now runs only `@core` (fast
+sanity net); `npm run test:live:extended` runs `@core`+`@extended` (today's
+full live suite); `npm run test:live:perf` runs just the perf-comparison
+spec; `npm run test:all` still runs literally everything (fixtures + live).
+See `pageTypes-testing-reference.org`'s "Identifier selection criteria" for
+how a new spec's URL/identifier should be picked, and the
+`add-live-behavior-test` skill for the full authoring workflow.
+
 | spec file                              | pageType              | URL                                                          | page title                    | verifies                                                                                          | notes                                                                                                                          |
 |-----------------------------------------+------------------------+----------------------------------------------------------------+--------------------------------+-----------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------|
 | smoke.spec.js                          | artist-recordings      | /artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings      | Bruce Springsteen             | Action-button toolbar injects on a real, current musicbrainz.org page                              | Init-only — never clicks "Show all" (this listing is ~476 native pages). Canary against MB markup drift, not a fetch/render test. |

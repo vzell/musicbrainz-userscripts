@@ -12,7 +12,7 @@ const RELEASE_GROUP_URL = 'https://musicbrainz.org/release-group/f83d2211-dd81-4
 const SHOW_ALL_BUTTON = 'button[data-label="Show all Releases for ReleaseGroup"]';
 const SORT_COLUMN = 'Format';
 
-test('sorting a column reorders rows without changing any row count', async ({ page }) => {
+test('sorting a column reorders rows without changing any row count', { tag: '@core' }, async ({ page }) => {
     const pageErrors = collectPageErrors(page);
 
     await loadUserscriptPage(page, { url: RELEASE_GROUP_URL, testMode: true });

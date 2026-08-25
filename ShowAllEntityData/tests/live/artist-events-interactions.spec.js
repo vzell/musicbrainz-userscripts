@@ -49,7 +49,7 @@ async function loadArtistEvents(page) {
     await waitForRenderComplete(page, { waitForAutoResize: false, timeout: 60000 });
 }
 
-test('global filter narrows the row count and clearing it restores the full set', async ({ page }) => {
+test('global filter narrows the row count and clearing it restores the full set', { tag: '@perf' }, async ({ page }) => {
     const pageErrors = collectPageErrors(page);
     await loadArtistEvents(page);
 
@@ -77,7 +77,7 @@ test('global filter narrows the row count and clearing it restores the full set'
     expect(pageErrors).toEqual([]);
 });
 
-test('column filter on Country narrows the row count to the same value as the global filter', async ({ page }) => {
+test('column filter on Country narrows the row count to the same value as the global filter', { tag: '@perf' }, async ({ page }) => {
     const pageErrors = collectPageErrors(page);
     await loadArtistEvents(page);
 
@@ -104,7 +104,7 @@ test('column filter on Country narrows the row count to the same value as the gl
     expect(pageErrors).toEqual([]);
 });
 
-test('sorting a column reorders rows without changing the row count, both directions', async ({ page }) => {
+test('sorting a column reorders rows without changing the row count, both directions', { tag: '@perf' }, async ({ page }) => {
     const pageErrors = collectPageErrors(page);
     await loadArtistEvents(page);
 
@@ -130,7 +130,7 @@ test('sorting a column reorders rows without changing the row count, both direct
     expect(pageErrors).toEqual([]);
 });
 
-test('column-header unique-value and multi-row-cell counts are self-consistent at initial render', async ({ page }) => {
+test('column-header unique-value and multi-row-cell counts are self-consistent at initial render', { tag: '@perf' }, async ({ page }) => {
     const pageErrors = collectPageErrors(page);
     await loadArtistEvents(page);
 
@@ -166,7 +166,7 @@ test('column-header unique-value and multi-row-cell counts are self-consistent a
     expect(pageErrors).toEqual([]);
 });
 
-test('uniq-value dropdown cache reflects a cell expand/collapse (does not go stale)', async ({ page }) => {
+test('uniq-value dropdown cache reflects a cell expand/collapse (does not go stale)', { tag: '@perf' }, async ({ page }) => {
     const pageErrors = collectPageErrors(page);
     await loadArtistEvents(page);
 
