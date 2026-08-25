@@ -398,6 +398,13 @@ existing ~_invalidateColHeaderCountsCache~ call in
 ~initRelationshipsColumn()~/~initPicardTaggerColumn()~'s post-population
 paths.
 
+*Extended by the 2026-08-25 cloud ultra review*: a third uninvalidated site
+— ~_artSetInlineSortKey()~ (~:63570~), called from ~8 CAA/EAA
+fetch-completion callbacks, stamps the ~.mb-inline-art-sort-key~ sentinel
+that ~openUniqDrop~'s inline-art scan reads, with no corresponding
+invalidation call either. Same fix shape: call
+~_invalidateUniqDropDataCache(table, colIndex)~ there too.
+
 *** TODO Step 9: Invalidate ~_rowTextCache~ for async-populated columns
 
 Pre-existing gap (regression #5), not introduced by this branch, but worth
@@ -424,6 +431,50 @@ Candidate opportunity #2 from the 2026-08-25 code-review. Replace the
 AR-column presence check) with one combined per-track characterization
 pass that answers all of them in a single walk. ~release-tracks~-specific;
 independent of Steps 1-9.
+
+*** TODO Step 12: Fix undeclared ~_caaImgQueue~/~_caaMetaQueue~ crash in Step 5 (urgent)
+
+Found by the 2026-08-25 cloud ultra review — not a missed optimization, a
+live bug in already-~DONE~ code. ~_artProcessIoEntriesBatched()~ (added by
+the animation-frame-batching fix under Step 5, ~:61449-61470~) references
+~_caaImgQueue~/~_caaMetaQueue~, neither of which is declared anywhere in
+the file — the real queue is ~_caaQueue~ (~:58083~), which every other call
+site (including this function's own eager-path sibling
+~_artInitSmallPics~) uses correctly. Under ~'use strict'~, reading either
+undeclared name throws ~ReferenceError~ the moment the IntersectionObserver
+callback first fires — the ~if (_caaImgQueue)~ guard does NOT save it,
+since reading an undeclared identifier throws before the condition can be
+evaluated. Net effect: on exactly the large single-table CAA/EAA page Step
+5 targets (~sa_caa_io_threshold~ default 500, e.g. ~artist-events~' 4174
+rows), the *only* code path that loads an icon after initial render is
+broken — no icon ever loads once the observer starts firing, and the
+onIdle queue-completion signal never fires either. Missed by this branch's
+own Step-5 measurement session because the dedicated CAA-queue-completion
+timing predates the animation-frame-batching commit, and the regular
+filter/sort perf snapshots seed ~sa_caa_pics_small: false~. Fix: rename
+both references to ~_caaQueue~ (two-line change, confined to
+~_artProcessIoEntriesBatched()~).
+
+*** TODO Step 13: Restore cdtoc sub-row expansion state across a filter hide→show cycle
+
+Found by the 2026-08-25 cloud ultra review. ~runFilter()~'s single-table
+branch (~:37125-37145~) explicitly hides a cdtoc tracklist sub-row when its
+parent row no longer matches (correct — prevents an orphaned visible
+sub-row), but the matched/show branch never restores it, even though the
+adjacent comment claims "a visible row's sub-row is left exactly as the
+user last toggled it." Since the sub-row's live inline ~style.display~ is
+the ONLY record of the user's toggle state (unlike per-cell collapse
+toggles, which persist to the ~expandedCells~ Map), the hide branch's own
+overwrite permanently destroys that state — a user-expanded tracklist that
+gets hidden by a filter and later re-shown comes back collapsed, with its
+own toggle link still (incorrectly) reading "hide tracklist" until clicked
+twice. Nit severity — narrow (cdtoc pageType only, specific action
+sequence), one-click recoverable, and strictly better than pre-Step-1
+behaviour (which lost the same state on every keystroke via a different
+mechanism). Fix: stamp a marker (e.g.
+~sub-row.dataset.mbCdtocUserOpen = '1'~) at the hide site when the sub-row
+isn't already ~display: none~, and restore to ~''~ in the show branch iff
+that marker is set.
 
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 
@@ -682,6 +733,35 @@ Step 6+ heading in "Implementation steps".
    recOfDate, ...) — ~10-15 sequential full re-walks of every row for what
    is logically one combined page-wide characterization pass, on every
    ~release-tracks~ fetch/re-render.
+
+*** Cross-check: cloud ultra review (2026-08-25)
+
+Ran the first of 3 free ~/code-review ultra~ passes against this branch's
+diff vs ~main~ (multi-agent, cloud, ~5-10 min). Independently re-derived
+three of the five regressions above with no visibility into this file's
+own analysis (confirms they're real, not local-review artifacts) and
+surfaced two things the local pass missed:
+
+- Confirmed, matching Steps 6/7/9 above one-for-one: ~_visibleRowSetSignature~
+  order-dependence (severity ~normal~ — the review's own words: "silently
+  negating this branch's own measured 37-40x faster warm uniq-dropdown open
+  headline win"), the multi-table Step-5 IO gate (severity ~nit~ — correctly
+  notes it's a no-regression-vs-~main~ miss, not a new break), and
+  ~_rowTextCache~ (severity ~pre_existing~, matching this file's own framing
+  exactly).
+- Extended Step 8: found a third uninvalidated ~_uniqDropDataCache~ site
+  (~_artSetInlineSortKey()~ — folded into Step 8 above).
+- **New, most severe finding overall — a live crash, not a missed
+  optimization**: Step 5's animation-frame-batching fix references two
+  undeclared variables (~_caaImgQueue~/~_caaMetaQueue~ instead of
+  ~_caaQueue~), throwing ~ReferenceError~ the first time the
+  IntersectionObserver callback fires — breaking lazy CAA/EAA loading
+  entirely on exactly the large-table case Step 5 was built for. Filed as
+  new Step 12 above, ahead of Steps 6-11 in urgency since it's already-
+  shipped, already-broken code rather than a future optimization.
+- New nit: cdtoc sub-row expansion state lost across a filter hide→show
+  cycle (Step 1's else-branch overwrites the only state record without a
+  restore path). Filed as new Step 13 above.
 
 ** Known limitations (out of scope)
 
