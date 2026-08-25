@@ -55,6 +55,7 @@ search and is left as a =<collection-mbid>= placeholder.
 | ELECTION  | Auto-editor election number                                                 | 473                                  |
 | CDSTUB    | CD stub discid (generic, not Springsteen)                                   | XsbJwm0LkJCi4WXBVx9iXOXGhWk-         |
 | ISRC      | ISRC code for "Thunder Road" (Born to Run track A1)                         | USSM17500803                         |
+| REL_DARK  | Release "Darkness on the Edge of Town" (CD, has a real disc ID/CD TOC)      | 9b94e384-60e3-44e3-b0ba-dd09a68485df |
 
 All URLs below use ~https://musicbrainz.org~ as the base.
 
@@ -114,15 +115,17 @@ skill for turning a =planned= row into a =captured= one.
 | Type                                        | Status    | Why it can't be folded into a cluster                                                          |
 |----------------------------------------------+-----------+---------------------------------------------------------------------------------------------------|
 | release-tracks                              | captured  | Bespoke =applyExtractTrackTitleData()= AR-column engine, not the generic columnExtractors pipeline. |
-| user-tags                                   | planned   | Container re-root — no =div#content=, re-roots to =targetHeader.parentNode=.                       |
-| edits / user-open-edits / user-edits        | planned   | =editsToTable= + =unboundedPagination=; =user-open-edits= additionally needs =renameH2ToH1=.       |
-| notes-received                              | planned   | Own =notesReceivedToTable= converter, distinct from =editsToTable=.                                |
-| collections-releases                        | planned   | =entityFeatures= per H2, AND its "Release groups" branch overrides =tableMode= to =multi= mid-page. |
-| series-releases                             | planned   | =entityFeatures= per H2 across up to 5 entity-kind sections.                                       |
+| user-tags                                   | captured  | Container re-root — no =div#content=, re-roots to =targetHeader.parentNode=. 112 rows (RG-BTR/USER=vzell's own upvoted tags). |
+| edits / user-edits                          | planned   | =editsToTable= + =unboundedPagination=. =edits= on =ARTIST= confirmed large (205+ rows on page 1 alone, 10+ native pages) — substitute a less-edited connected entity before capturing, don't use =ARTIST= as-is. Once there's enough data to make MusicBrainz's own pagination widget "ambiguous" (an ellipsis, no true last page), the fetch pops a custom confirm dialog (`Lib.showCustomConfirm`) that blocks until clicked — see =tests/support/customDialog.js='s `dismissCustomConfirmDialog()`, now wired into `capture-snapshots.js`. |
+| user-open-edits                             | captured  | =editsToTable= + =unboundedPagination= + =renameH2ToH1=. 2 rows. Login-gated — requires the real authenticated session (`playwright/.auth/vzell.json` via `npm run auth:login`); an anonymous fetch redirects to sign-in instead of the page. Only 2 edits, so no pagination widget at all — never hit the ambiguous-pagination confirm dialog described in the row above.  |
+| notes-received                              | captured  | Own =notesReceivedToTable= converter, distinct from =editsToTable=. 1688 rows across 29 native pages — needed both the =renderTimeout= raised to 300000 (matching =artist-events='s precedent) AND the =dismissCustomConfirmDialog()= fix from the row above (this is the pageType that surfaced the bug — see =tests/snapshots/registry.org='s row for the full story). Also login-gated, same as user-open-edits. |
+| collections-releases                        | planned   | =entityFeatures= per H2, AND its "Release groups" branch overrides =tableMode= to =multi= mid-page. No usable identifier yet — MusicBrainz's site search flatly rejects =type=collection= (collections aren't searchable at all), and vzell's own two collections ("Attending"/"Maybe attending") are both empty Event collections. Needs either a real collection MBID supplied by the user, or vzell adding a few items to a collection himself. |
+| series-releases                             | captured  | =entityFeatures= per H2 across up to 5 entity-kind sections. 12 rows; live H2 for SERIES_ST read back as "Releases", confirming the =entityFeatures.Releases= branch — a series grouping a different entity kind still needs its own separate capture. |
 | search                                      | planned   | =entityFeatures= spanning 15 different =?type=-driven column sets.                                 |
 | artist-releasegroups (+ =subType= companion) | captured  | Deliberately large/paginated perf-comparison target; pre-fetch pass has no URL of its own.          |
 | area-releases                               | planned   | 2 buttons, each with its own nested =tableMode=/=features= (not a simple filtered/unfiltered pair). |
-| recording-fingerprints / release-discids    | planned   | Trivial passthrough (no extra column pipeline) — cheap to capture, but not truly a duplicate of anything. |
+| recording-fingerprints                      | captured  | Trivial passthrough (no extra column pipeline). 3 rows (REC_BTR).                                   |
+| release-discids                             | captured  | Trivial passthrough. =REL_BTR= (Born to Run, 12" Vinyl) has NO disc IDs at all — native page reads "This release has no mediums that can have disc IDs," so the button never produces a table and the capture timed out. Fixed by switching to =REL_DARK= (Darkness on the Edge of Town, CD, real disc ID/CD TOC) — 1 row. |
 | artist-events                               | captured  | Deliberate large/paginated perf-comparison target (42 pages, 4174 rows) — see PERFORMANCE.org.      |
 
 * Quick reference table
@@ -210,7 +213,7 @@ skill for turning a =planned= row into a =captured= one.
 | 79 | artist-recordings              | single       | /artist/ARTIST/recordings?all=1               | video detection, event-parts, CAA on Release groups                  |
 | 80 | artist-works                   | single       | /artist/ARTIST/works                          | Authors/Recording artists/ISWC collapsible, Relationships            |
 | 81 | releasegroup-releases          | multi        | /release-group/RG_BTR                         | column erasers, CAA, format types, injected Relationships            |
-| 82 | release-discids                | multi        | /release/REL_BTR/discids                      | non-paginated, no extra column pipeline                              |
+| 82 | release-discids                | multi        | /release/REL_DARK/discids                     | non-paginated, no extra column pipeline                              |
 | 83 | release-tracks                 | multi        | /release/REL_BTR                              | bespoke AR-column engine, gated by sa_enable_release_tracks          |
 | 84 | recording-fingerprints         | single       | /recording/REC_BTR/fingerprints               | no extra column pipeline                                             |
 | 85 | recording-releases             | multi        | /recording/REC_BTR                            | non-paginated, country/date split, injected Relationships            |
@@ -721,11 +724,15 @@ lists converted into sortable tables), tableMode =multi=.
 - Features exercised: column erasers on Release; CAA + country/date split + tracks summed + format types; injected Relationships; multi-row + collapsible Label/Catalog#; tooltips; sticky/main Release
 
 ** 82. release-discids
-- URL: [[https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897/discids][/release/REL_BTR/discids]]
+- URL: [[https://musicbrainz.org/release/9b94e384-60e3-44e3-b0ba-dd09a68485df/discids][/release/REL_DARK/discids]]
 - Match: ~/\/release\/[a-f0-9-]{36}\/discids/~
 - Button: "Show all Disc IDs for Release"
 - tableMode: multi, non_paginated: false
 - Features exercised: none beyond the base render pipeline (no extra =features= keys set)
+- Note: =REL_BTR= (Born to Run, 12" Vinyl) does NOT work here — that release
+  has no mediums that can have disc IDs at all, so the button never
+  produces a table. =REL_DARK= is a CD release with a real submitted disc
+  ID/CD TOC.
 
 ** 83. release-tracks
 - URL: [[https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897][/release/REL_BTR]]

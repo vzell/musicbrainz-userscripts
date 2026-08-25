@@ -101,6 +101,16 @@ Key building blocks, all in `tests/support/`:
 - `liveAssertions.js`'s `collectPageErrors()` — assert `toEqual([])` at the
   end of nearly every spec; a silent console error is often the only signal
   a regression leaves.
+- `customDialog.js`'s `dismissCustomConfirmDialog()` — call this right after
+  clicking "Show all" on any `unboundedPagination` pageType (`edits`,
+  `user-edits`, `user-open-edits`, `notes-received`). Once MusicBrainz's own
+  pagination widget goes "ambiguous" (an ellipsis, no true last page) the
+  fetch pops a custom DOM confirm dialog that Playwright's automatic dialog
+  handling can't see (it's a plain `<button>OK</button>`, not a native
+  `confirm()`) — skipping this call makes the test hang at the timeout with
+  no error, exactly what happened capturing `notes-received` the first time.
+  A small result set (fits on one page) never shows it, so this is always
+  safe to call.
 
 Prefer asserting **invariants** (row-count tiers sum correctly, a sort only
 reorders, a specific title text narrows to a specific count) over exact

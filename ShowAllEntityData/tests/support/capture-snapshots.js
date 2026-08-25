@@ -29,6 +29,7 @@ const { loadFromDiskFixture } = require('./diskFixture');
 const { waitForRenderComplete } = require('./browser');
 const { captureRaw, captureRendered, scrub, diffSummary } = require('./snapshot');
 const { seedGmValues } = require('./gmStubs');
+const { dismissCustomConfirmDialog } = require('./customDialog');
 const { waitForFilterSettled, waitForSortSettled, waitForActualRowCount } = require('./filterSortAssertions');
 const {
     URL: ARTIST_EVENTS_URL, FIXTURE_PATH: ARTIST_EVENTS_FIXTURE_PATH, SEED_GM_VALUES: ARTIST_EVENTS_SEED_GM_VALUES,
@@ -118,6 +119,7 @@ async function captureOne(browser, config) {
     const showAllBtn = page.locator(showAllButtonSelector);
     await showAllBtn.waitFor({ state: 'visible', timeout: 15000 });
     await showAllBtn.click();
+    await dismissCustomConfirmDialog(page);
     await waitForRenderComplete(page, { hasCaaOrEaa, hasRelationships, waitForAutoResize, timeout: renderTimeout });
 
     const renderedHtml = scrub(await captureRendered(page), pageType);
@@ -286,6 +288,12 @@ async function measureOnce(browser, config) {
     const showAllBtn = page.locator(showAllButtonSelector);
     await showAllBtn.waitFor({ state: 'visible', timeout: 15000 });
 
+    // No dismissCustomConfirmDialog() call here (unlike captureOne() above):
+    // this timing window feeds directly into the perf baseline, and perf
+    // mode is scoped to artist-releasegroups only (never unboundedPagination-
+    // gated), so adding the dialog check's wait would only inject up-to-1s
+    // of noise into every sample for no benefit. Revisit if a future perf
+    // target ever needs it (see run-perf-comparison skill).
     const wallStart = Date.now();
     await showAllBtn.click();
     await waitForRenderComplete(page, { hasCaaOrEaa, hasRelationships, waitForAutoResize, timeout: renderTimeout });

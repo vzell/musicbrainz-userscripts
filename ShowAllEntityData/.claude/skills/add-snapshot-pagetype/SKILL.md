@@ -44,7 +44,25 @@ node tests/support/capture-snapshots.js --only=<pageType>
 This requires an entry for `<pageType>` in `tests/pagetypes.json` to
 already exist (step 3) — add that first if it's not there yet, then run
 this. Add `--headed` if something looks wrong and you need to watch it
-render. The script writes `tests/snapshots/<pageType>/raw.html` and
+render.
+
+**If the pageType's `features.unboundedPagination` is `true`** (`edits`,
+`user-edits`, `user-open-edits`, `notes-received`) and there's enough data
+to make MusicBrainz's own pagination widget "ambiguous" (an ellipsis, no
+true last page), the fetch pops a custom confirm dialog
+(`Lib.showCustomConfirm`) before it starts — a plain DOM `<button>OK</button>`
+overlay, not a native browser dialog, so Playwright's automatic dialog
+handling never sees it. `capture-snapshots.js` already calls
+`tests/support/customDialog.js`'s `dismissCustomConfirmDialog()` right after
+the "Show all" click to handle this — if a capture for one of these
+pageTypes hangs at exactly one page's row count with no console errors and
+no progress, this dialog blocking the fetch is the first thing to check
+(confirmed the hard way capturing `notes-received`: it sat at 50 rows/page 1
+for 5 minutes before this fix). A small result set (fits on one page, no
+ellipsis) never shows it — that's why e.g. `user-open-edits` worked without
+this fix.
+
+The script writes `tests/snapshots/<pageType>/raw.html` and
 `rendered.html`, scrubbing known-volatile content (`tests/support/
 snapshot.js`'s `scrub()`), and prints a one-line diff status against
 whatever was already on disk (`first capture` the first time).
