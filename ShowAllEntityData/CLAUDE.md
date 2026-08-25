@@ -286,6 +286,21 @@ No `// @version` bump or `ShowAllEntityData_CHANGELOG.json` entry for
 anything under `tests/` — test tooling isn't part of the userscript
 runtime.
 
+**Before implementing any change to the userscript, check its test-framework
+impact.** The Playwright harness under `tests/` isn't just coverage of the
+script — parts of it (`tests/support/diskFixture.js` and the committed
+`tests/fixtures/saved-data/*.json.gz` fixtures) are built directly on runtime
+mechanisms like the Save/Load-from-Disk pipeline, so a behavior change there
+can silently invalidate fixtures or turn documentation (JSDoc/comments) in
+`tests/support/*.js` false without any test actually failing. Before writing
+code, check for: stale JSDoc/comments in `tests/support/*.js` that describe
+the pre-change behavior, existing fixtures/snapshots captured under
+assumptions the change invalidates, and live-spec assertions or timing
+(`waitForRenderComplete`/`waitForRelationshipsComplete`/`waitForCaaEaaComplete`
+etc.) tied to the changed behavior. Call out every affected test file
+explicitly in the plan/PR description, even when no test code needs to
+change — a stale comment is still a defect.
+
 ---
 
 ## Adding a new page type — checklist

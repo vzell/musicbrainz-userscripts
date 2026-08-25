@@ -1,5 +1,41 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-08-26",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Introduced `SA_SNAPSHOT_FORMAT_VERSION` ('1.1'), replacing the two hardcoded `version: '1.0'` literals in `saveTableDataToDisk()`/`captureSubtableSnapshot()`. Load-time hydration (`_hydrateAndRenderFromSnapshotData()`) now checks the saved format version via a new `_snapshotVersionAtLeast()` helper before applying the WIP.2/WIP.3 fast-path restoration below, so pre-existing `.json.gz` files (format 1.0) keep loading exactly as before — full Relationships re-fetch, no cdtoc tracklist-toggle restore — with no behavior change and no new user-facing warning dialog. This is distinct from the script's own `// @version` — it's a save-file format version, now actually meaningful instead of an inert label."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-08-26",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`cdtoc` pages' tracklist show/hide toggle now survives a Save-to-disk/Load-from-disk round trip. Previously `data-cdtoc-tracklist-html`/`-visible` (row-level dataset attributes read by `_cdtocInitTracklistToggles()`) were never captured by `saveTableDataToDisk()` — only `<td>` cell HTML was serialized, never `<tr>` dataset — so the toggle silently no-opped after every disk-load. Fixed via a new top-level `cdtocTracklistData` field (index-aligned with `dataToSave.rows`, mirroring the existing `discOfficialCategories` pattern), restored onto each reconstructed `<tr>` in `_hydrateAndRenderFromSnapshotData()` before `_cdtocInitTracklistToggles()` runs (gated by format version — see WIP.4)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-08-26",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The \"Relationships\" injected column (`td.mb-rel-cell`) now round-trips through Save-to-disk/Load-from-disk with **zero** network/IndexedDB activity when every cell was already fully populated at save time. Previously `mb-rel-cell` was explicitly excluded from serialization, so every disk-load re-triggered a live WS/2 fetch to repopulate it — even though its icons are plain hotlinked `<img>` URLs (never `blob:`), so nothing actually prevented a verbatim restore. `saveTableDataToDisk()`/`captureSubtableSnapshot()` now serialize `mb-rel-cell` cells via a shared `_buildDiskCellData()` helper, adding `mbid`/`relDone` fields (mirrored from the live cell's own dataset) only for that column. `_hydrateAndRenderFromSnapshotData()` applies those fields to the reconstructed `<td>` (class + dataset) so `_ensureRelCell()`'s existence check and `initRelationshipsColumn()`'s `td.dataset.mbid && !td.dataset.relDone` candidate filter both correctly treat a restored cell as already done — a row saved mid-fetch (rare) still completes normally on load. Also fixes a latent completion-signal gap this change would otherwise have introduced: when every candidate cell is already done, `initRelationshipsColumn()` previously returned before ever showing the completion toast/status segment, meaning `#mb-info-display-rel` — what `waitForRelationshipsComplete()` (Playwright test helper) and real users both watch for — would never become visible for an all-done page; it now fires the same signal (with 0 elapsed time, 0 fetches) on that path too. New `sa_rel_idb_ttl_days` setting (default 30, mirrors the existing `sa_art_idb_image_ttl_days` for CAA/EAA) replaces the hardcoded 7-day `_REL_IDB_TTL_MS` constant for the Relationships WS2 IndexedDB cache."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-08-24",
     "sections": [
