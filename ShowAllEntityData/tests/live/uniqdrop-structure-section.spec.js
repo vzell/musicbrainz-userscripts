@@ -29,7 +29,7 @@ const SHOW_ALL_BUTTON = 'button[data-label="Show all Works for Artist"]';
 // real person would take.
 const COLLAPSIBLE_COLUMN = 'Lyrics languages';
 
-test('unique-values dropdown "Structure" section reflects all four cell-structure states', async ({ page }) => {
+test('unique-values dropdown "Structure" section reflects all four cell-structure states', { tag: '@extended' }, async ({ page }) => {
     const pageErrors = collectPageErrors(page);
 
     await loadUserscriptPage(page, { url: WORKS_URL, testMode: true });

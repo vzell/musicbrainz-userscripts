@@ -15,7 +15,7 @@ const IDB_FIXTURE = path.join(
     __dirname, '..', 'fixtures', 'idb-state', 'releasegroup-releases-caa-bigbox-images.json'
 );
 
-test.describe('CAA IndexedDB tier (bigbox + inline Release-column thumbnail)', () => {
+test.describe('CAA IndexedDB tier (bigbox + inline Release-column thumbnail)', { tag: '@extended' }, () => {
     test('serves the bigbox strip and inline thumbnails from IndexedDB after a direct IDB seed', async ({ page }) => {
         const pageErrors = collectPageErrors(page);
 

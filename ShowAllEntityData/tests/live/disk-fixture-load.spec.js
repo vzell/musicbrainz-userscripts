@@ -14,7 +14,7 @@ const { getPageRowCount, getSubTableRowCounts } = require('../support/filterSort
 const RELEASE_GROUP_URL = 'https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c';
 const FIXTURE_PATH = path.join(__dirname, '..', 'fixtures', 'saved-data', 'releasegroup-releases.json.gz');
 
-test('loading a Save-to-disk fixture renders the same data as a live fetch, without re-fetching core rows', async ({ page }) => {
+test('loading a Save-to-disk fixture renders the same data as a live fetch, without re-fetching core rows', { tag: '@core' }, async ({ page }) => {
     const pageErrors = collectPageErrors(page);
 
     await loadFromDiskFixture(page, { url: RELEASE_GROUP_URL, fixturePath: FIXTURE_PATH, testMode: true });

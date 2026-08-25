@@ -240,6 +240,54 @@ Enable via the `sa_enable_debug_logging` setting or the Tampermonkey menu.
 
 ---
 
+## Testing (Playwright)
+
+A full Playwright harness lives under `tests/` (`ShowAllEntityData/
+package.json`, `playwright.config.js`). Two projects, split by directory:
+
+- **`chromium-fixtures`** (`tests/fixtures/*.spec.js`) — local HTML
+  fixtures via `page.route()`, no network. Run via plain `npm test`; this
+  is the default, CI-safe suite.
+- **`chromium-live`** (`tests/live/*.spec.js`) — real musicbrainz.org
+  pages. Every spec carries exactly one tag:
+  - `@core` — shared-mechanism sanity net (filter/sort/fetch/pagination
+    basics). `npm run test:live` (default).
+  - `@extended` — bespoke/pageType-specific edge cases (Stop-button, IDB
+    cache tiers, third-party interop, sub-table filter). `npm run
+    test:live:extended` (`@core`+`@extended`, today's full live suite).
+  - `@perf` — the deliberate perf-comparison instrumentation only
+    (`tests/live/artist-events-interactions.spec.js`). `npm run
+    test:live:perf`.
+  - `npm run test:all` runs literally everything (fixtures + live).
+
+**Snapshot regression coverage** (`tests/snapshots/<pageType>/{raw,
+rendered}.html`, captured via `node tests/support/capture-snapshots.js`)
+currently covers 4 of the script's 86 pageTypes. `pageTypes-testing-
+reference.org`'s "Coverage clusters & representatives" section is the
+authoritative coverage plan — it groups the 86 pageTypes into structural
+clusters, names 1-2 representatives per cluster (avoiding redundant
+captures of near-identical shapes), gives identifier-selection criteria
+(Springsteen-connected first, smallest qualifying catalog unless
+pagination is specifically the point), and tracks `captured` vs `planned`
+status per representative. `tests/live/registry.org` and `tests/snapshots/
+registry.org` are the hand-maintained dashboards of what's actually wired
+up today (spec/pageType, URL, what it verifies).
+
+**Skills** for the recurring workflows (`.claude/skills/`):
+- `add-snapshot-pagetype` — capture a new baseline + wire it into
+  `tests/pagetypes.json`/`tests/snapshots/registry.org`.
+- `add-live-behavior-test` — write a new `tests/live/*.spec.js`, including
+  how to pick its tag.
+- `run-perf-comparison` — run/interpret the perf-comparison instrumentation
+  (`capture-interaction-perf.js`, `capture-snapshots.js --perf`,
+  `PERFORMANCE.org`); manual only, no CI gate.
+
+No `// @version` bump or `ShowAllEntityData_CHANGELOG.json` entry for
+anything under `tests/` — test tooling isn't part of the userscript
+runtime.
+
+---
+
 ## Adding a new page type — checklist
 
 1. Add entry to `pageDefinitions` array (grouped by entity class, in

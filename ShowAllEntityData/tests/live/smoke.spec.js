@@ -15,7 +15,7 @@ const ARTIST_RECORDINGS_URL = 'https://musicbrainz.org/artist/70248960-cb53-4ea4
 // against MusicBrainz's real, current markup. See release-group-fetch.spec.js
 // for a live test that actually clicks a button and fetches data, using a
 // release-group instead (bounded release count).
-test('injects the action-button toolbar on a live musicbrainz.org page', async ({ page }) => {
+test('injects the action-button toolbar on a live musicbrainz.org page', { tag: '@core' }, async ({ page }) => {
     await loadUserscriptPage(page, { url: ARTIST_RECORDINGS_URL });
 
     const buttons = page.locator('button[data-label]');

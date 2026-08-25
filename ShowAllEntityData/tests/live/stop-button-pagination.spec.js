@@ -22,7 +22,7 @@ const SHOW_ALL_BUTTON = 'button[data-label="🧮 Artist RGs"]';
 // stopButton.js's own JSDoc).
 const FULL_CATALOGUE_ROW_COUNT_APPROX = 2142;
 
-test('Stop button truncates a paginated fetch after ~2 pages and still renders the partial data', async ({ page }) => {
+test('Stop button truncates a paginated fetch after ~2 pages and still renders the partial data', { tag: '@extended' }, async ({ page }) => {
     const pageErrors = collectPageErrors(page);
 
     await loadUserscriptPage(page, { url: ARTIST_RELEASEGROUPS_URL, testMode: true });

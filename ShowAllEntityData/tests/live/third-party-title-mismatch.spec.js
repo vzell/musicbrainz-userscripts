@@ -13,7 +13,7 @@ const { collectPageErrors } = require('../support/liveAssertions');
 const RELEASE_URL = 'https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897';
 const SHOW_ALL_BUTTON = 'button[data-label="Show all Tracks for Release"]';
 
-test('detects a jesus2099-style title/recording-name mismatch marker on the Title column', async ({ page }) => {
+test('detects a jesus2099-style title/recording-name mismatch marker on the Title column', { tag: '@extended' }, async ({ page }) => {
     const pageErrors = collectPageErrors(page);
 
     await seedGmValues(page, { sa_enable_release_tracks: true });

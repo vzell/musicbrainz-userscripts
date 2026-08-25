@@ -19,7 +19,7 @@ const SHOW_ALL_BUTTON = 'button[data-label="Show all Tracks for Release"]';
 const TARGET_COLUMN = 'Length';
 const POISON_VALUE = 'vzell'; // matches the real debug/fail.debug case: a cached MusicBrainz username
 
-test('rejects a rogue script writing directly into a column filter input without a trusted event', async ({ page }) => {
+test('rejects a rogue script writing directly into a column filter input without a trusted event', { tag: '@extended' }, async ({ page }) => {
     const pageErrors = collectPageErrors(page);
 
     await seedGmValues(page, { sa_enable_release_tracks: true });

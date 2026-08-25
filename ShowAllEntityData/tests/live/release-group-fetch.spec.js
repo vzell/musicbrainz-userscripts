@@ -21,7 +21,7 @@ const RELEASE_GROUP_URL = 'https://musicbrainz.org/release-group/6a118838-5cef-4
 //
 // Instead, assertGroupedRenderCompleted() checks invariants that must hold
 // regardless of the exact current data — see its own JSDoc for the list.
-test('clicks "Show all" and consolidates the release-group\'s release list', async ({ page }) => {
+test('clicks "Show all" and consolidates the release-group\'s release list', { tag: '@core' }, async ({ page }) => {
     const pageErrors = collectPageErrors(page);
 
     await loadUserscriptPage(page, { url: RELEASE_GROUP_URL });
