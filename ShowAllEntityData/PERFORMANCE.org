@@ -366,6 +366,65 @@ unobserve+enqueue work.
 
 Landed: see ~ShowAllEntityData_CHANGELOG.wip.json~ ~WIP.7~.
 
+*** TODO Step 6: Fix ~_visibleRowSetSignature~ order-dependence
+
+Root-cause fix for the highest-impact regression found in the 2026-08-25
+code-review (see "Findings from performance code-review" below, regression
+#1) — it silently undoes Steps 3 and 4's caching wins after any sort. Make
+the signature genuinely order-independent (e.g. sort the visible
+~data-mb-row-idx~ values before joining, or hash as an unordered set)
+rather than concatenating in DOM/current-row-order. Highest priority of
+this batch: it's a one-function fix that restores two already-shipped,
+already-measured wins rather than adding a new one.
+
+*** TODO Step 7: Fix Step 5's multi-table lazy-load gate
+
+~_useIO~ (~:63104~) checks ~allRows.length~, which is always 0 in
+~tableMode: 'multi'~ mode, so lazy CAA/EAA loading never activates on any
+multi-table art page (e.g. ~user-ratings~) regardless of row count — see
+"Findings" regression #2. Fix: compute the row count from ~groupedRows~
+(summed across sub-tables) when in multi-table mode, so the threshold
+check means something there too.
+
+*** TODO Step 8: Invalidate Step 3/4 caches for async-populated columns
+
+~initReleaseEventsColumn()~ invalidates Step 3's header-count cache but not
+Step 4's uniq-drop cache (regression #3); ~initRelationshipsColumn()~/
+~initPicardTaggerColumn()~ invalidate neither (regression #4, pre-existing
+gap for Step 3, new gap for Step 4). Add
+~_invalidateUniqDropDataCache(table, colIndex)~ calls alongside the
+existing ~_invalidateColHeaderCountsCache~ call in
+~initReleaseEventsColumn()~, and add both invalidation calls to
+~initRelationshipsColumn()~/~initPicardTaggerColumn()~'s post-population
+paths.
+
+*** TODO Step 9: Invalidate ~_rowTextCache~ for async-populated columns
+
+Pre-existing gap (regression #5), not introduced by this branch, but worth
+fixing alongside Step 8 since it's the same shape of bug (cache built from
+pre-population placeholder content, no invalidation hook when the async
+column later fills in). Lower priority than Steps 6-8 — only bites when a
+user filters before an async column finishes loading, a narrower window
+than the always-on caches above.
+
+*** TODO Step 10: Precompute sort keys before ~sortLargeArray~
+
+Candidate opportunity #1 from the 2026-08-25 code-review. Decorate each row
+with its per-column clean sort-key text (and cache each column's
+~isNumeric~) once before sorting, instead of re-deriving both inside the
+comparator on every pairwise comparison — likely the largest uninvestigated
+contributor to sort's remaining ~23% regression vs ~main~ noted in the
+Session-summary Takeaways below. Needs before/after DevTools profiling on
+~artist-events~ to confirm, same as prior steps.
+
+*** TODO Step 11: Combine ~applyExtractTrackTitleData~'s presence-check scans
+
+Candidate opportunity #2 from the 2026-08-25 code-review. Replace the
+~10-15 independent full-table ~_anyTitleCellMatches()~ calls (one per
+AR-column presence check) with one combined per-track characterization
+pass that answers all of them in a single walk. ~release-tracks~-specific;
+independent of Steps 1-9.
+
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 
 Consolidated results from a full measurement session on ~artist-events~
@@ -545,6 +604,84 @@ uniq-dropdown win, none of the filter/sort regression. Pushed to
   the rescan runs. Worth keeping and iterating on (real, if partial, wins
   exist — sort-skip is proof), but should not be presented as a strict
   improvement over ~main~ without the caveats in this section.
+
+** Findings from performance code-review (2026-08-25)
+
+Local ~/code-review~ pass (forked agent, ~12 min / 55 tool calls — not the
+cloud ultra review, no ultra credit spent), scoped to two questions:
+correctness regressions in already-landed Steps 1-5, and further
+performance opportunities not yet covered by them. Ranked most severe/
+highest-impact first within each group; each item below becomes its own
+Step 6+ heading in "Implementation steps".
+
+*** Correctness regressions in Steps 1-5
+
+1. ~_visibleRowSetSignature()~ (~:49412~) is documented as order-independent
+   ("regardless of row order") but is actually an order-DEPENDENT string
+   concat over ~tbody.rows~ in DOM iteration order. Sort (Step 2) reorders
+   rows in place without hiding/showing any of them, so the row SET is
+   unchanged but the signature STRING changes — every cache keyed on this
+   signature (both Step 3's header-counts cache and Step 4's uniq-drop
+   cache) spuriously misses after any sort, forcing the full O(rows x
+   columns) recompute both steps were built to skip. This silently negates
+   the "37-40x faster warm uniq-dropdown open" win documented above the
+   moment a sort has happened first — far and away the highest-impact
+   regression found, since it undoes two already-shipped, already-measured
+   steps at once.
+2. Step 5's lazy-load gate (~_useIO~, ~:63104~) computes
+   ~allRows.length >= sa_caa_io_threshold~, but ~allRows~ is only populated
+   in single-table mode — it stays empty for every ~tableMode: 'multi'~
+   page (e.g. ~user-ratings~' "Release groups"/"Events" sub-tables, which
+   declare ~addCAA~/~addEAA~). ~_useIO~ is therefore always ~false~ on
+   multi-table CAA/EAA pages regardless of row count, so lazy loading never
+   activates there — reproducing the exact "did not complete within 180s"
+   eager-load queue-saturation failure Step 5 was built to fix, for every
+   multi-table art page.
+3. ~initReleaseEventsColumn()~'s post-population re-init (~:53971~) calls
+   Step 3's ~_invalidateColHeaderCountsCache(t)~ but never Step 4's
+   ~_invalidateUniqDropDataCache~ — a uniq-drop dropdown opened for
+   Release events/Country/Date while that column is still populating can
+   cache a near-empty bundle that then never refreshes (nothing invalidates
+   it afterward) until an unrelated filter/sort happens to change the
+   row-set signature.
+4. ~initRelationshipsColumn()~/~initPicardTaggerColumn()~ (~:54689~) never
+   re-trigger ~initCollapsableColumns()~/the recount pass at all — Step 3's
+   own implementation notes already flagged this as a pre-existing gap for
+   header counts; Step 4 adds a second, equally uninvalidated cache
+   (~relIconCounts~ and friends) on top of it with no new invalidation path
+   either.
+5. ~_rowTextCache~ (~:30460~, filter-match text memoization) is never
+   invalidated anywhere in the file. A filter run before an async column
+   (Release events/Relationships/Picard) finishes populating permanently
+   caches that row's pre-population (often empty) text; a later filter
+   query that should match the now-arrived data silently won't, for the
+   rest of that render's lifetime. Pre-existing, not introduced by this
+   branch — but Step 1 (rows now persist live across far more filter passes
+   than before) makes it bite more often.
+
+*** New performance opportunities (candidate Step 6+, not yet in the plan above)
+
+1. ~sortLargeArray~'s comparator (~createSortComparator~/
+   ~createMultiColumnComparator~, ~:15508~) calls ~getCleanVisibleText()~
+   (clone + ~TreeWalker~ text extraction) fresh on every pairwise
+   comparison instead of once per row before sorting — for a 5,000-row
+   merge sort (~n log n~ ~ 60,000+ comparisons), that's 100,000+ redundant
+   DOM-text extractions instead of the 5,000 actually needed.
+   ~createMultiColumnComparator~ additionally re-derives each column's
+   ~isNumeric~ from the header text on every single comparison, even though
+   it's invariant per column for the whole sort. Likely the single largest
+   un-investigated contributor to the "Sort (unfiltered): 2994ms main /
+   3669ms perf-steps-1-4" numbers above — the root-cause trace in this file
+   only examined reflow/rebuild cost, never the comparator itself. Fix:
+   precompute each row's sort-key text (and each column's ~isNumeric~) once
+   before calling ~sortLargeArray~ (decorate-sort-undecorate).
+2. ~applyExtractTrackTitleData()~'s ~_anyTitleCellMatches()~ helper
+   (~:7748~) runs one independent full-table DOM scan per "does any track
+   need column X" presence check (video/recArtist/disambig/streaming/
+   recOf/recordedAtEvent/recordedAtPlace/recordedInArea/mixedAtPlace/
+   recOfDate, ...) — ~10-15 sequential full re-walks of every row for what
+   is logically one combined page-wide characterization pass, on every
+   ~release-tracks~ fetch/re-render.
 
 ** Known limitations (out of scope)
 
