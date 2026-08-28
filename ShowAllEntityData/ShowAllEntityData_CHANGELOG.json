@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.962",
+    "date": "2026-08-28",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the third-party \"sanojjonas\" userscript's clutter container (`#sanojjonasRoot`, plus the unrelated \"Taggregator\" panel) sometimes still being present on the final rendered page after a normal fetch or a \"Load from Disk\" load — happened when the action button (or disk load) was triggered before sanojjonas' own asynchronous script had rendered its container yet, so it finished injecting after this script's one-shot cleanup passes had already run. The late-injection watcher that already existed for the fast cross-tab \"Show single-table\" snapshot path is now also armed on the normal fetch path (events/artist-releasegroups/collections-releases-multi pages) and on the \"Load from Disk\" path."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.961",
     "date": "2026-08-28",
     "sections": [
