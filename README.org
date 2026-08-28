@@ -97135,7 +97135,6 @@ the same version "9.99.926" How should I proceed to get these in sync again. On 
 merge main branch into perf-steps-1-4
 
 ** DONE after merging test framework into performance branch make sure to formulate the right test assertions for the artist-events pageType
-
 ** plan: after merging test framework into performance branch make sure to formulate the right test assertions for the artist-events pageType
 
 after merging our test framework from main into the performance branch perf-steps-1-4 formulate the right test
@@ -97432,7 +97431,7 @@ UX decision: stay lenient, no new warning dialog. A version mismatch is
 * TODO plan: check if "Relationships" column is saved to persistent storage with "Save to disk"
 
 
-* /ultrareview
+* DONE /ultrareview - 1
 ** i
 
 can you create for me the right /ultrareview prompt (given I have currently 3 free ones left to test) to review my
@@ -97538,6 +97537,72 @@ in the perf-steps-1-4 branch
 
   Want me to draft the "Step 6" and "Step 7" entries in PERFORMANCE.org for the sort-comparator fix and the _visibleRowSetSignature bug (that one arguably deserves top billing — it undoes two already-shipped steps), or would you rather fix _visibleRowSetSignature directly first
   since it's a one-function root cause?
+
+* /ultrareview - 2
+** i
+
+Create the right /ultrareview prompt (given I have currently 2 free ones left to test) to review my
+userscript for the following goal on the perf-steps-1-4 branch:
+
+Are there any advantages (performance/usability/extensibility) for refactoring this large userscript, and how should I
+proceed, given the fact that it currently just works. Add your findings to a REFACTORING.org file
+** a
+
+ Given /code-review ultra defaults to reviewing the diff on the current branch vs main, and perf-steps-1-4's diff is only the filter/sort/caching work already tracked in PERFORMANCE.org — that default scope
+  would miss ~95% of what you're actually asking about (the file's overall architecture). The prompt has to explicitly override that, or you'll burn a free run reviewing the wrong thing.
+
+  I also checked PERFORMANCE.org (821 lines, 13 steps) so the new review doesn't re-derive tactical perf items you've already tracked — it should stay focused on structural questions.
+
+  Here's the prompt I'd use:
+
+  Review the ENTIRE ShowAllEntityData.user.js file (~65,360
+  lines, current @version 9.99.954) as it stands on this branch — NOT this
+  branch's diff against main. This branch's diff (perf-steps-1-4) is
+  filter/sort/caching work already tracked in PERFORMANCE.org; it is out of
+  scope here, do not re-review or re-flag anything from it.
+
+  Read CLAUDE.md (ShowAllEntityData/CLAUDE.md) first for the file's existing
+  architecture: single IIFE, no ES modules, pageDefinitions[] registry
+  (~86 pageTypes), ColumnDataExtractor/SyntheticColumnDataExtractor
+  registries, configSchema (~216 settings keys, ~2450 lines), the
+  render/fetch pipeline (startFetchingProcess -> renderFinalTable/
+  renderGroupedTable), and the collapsableColumns/AR-column/uniq-dropdown
+  subsystems. Do not re-derive this from scratch.
+
+  Question: are there real advantages — performance, usability (for the
+  maintainer extending this file), extensibility (adding new pageTypes/
+  extractors/columns) — to refactoring this file's STRUCTURE, given it
+  currently works correctly in production? Evaluate, don't assume the answer
+  is yes. "No compelling case for X" is a valid and useful finding.
+
+  For each candidate refactor (e.g.: splitting the single IIFE into modules
+  built via a bundler but still shipping one compiled .user.js; extracting
+  configSchema into its own file; changing how pageDefinitions/extractor
+  registries are declared/discovered; any dead-code or duplicate-logic
+  found across the ~86 pageType definitions; anything else you find):
+   - state which axis it helps (perf / usability / extensibility) and why
+   - state the concrete cost and risk of doing it, given constraints:
+     this ships as a Tampermonkey userscript (single or @require-split
+     .user.js, no runtime import/export), and only 4 of 86 pageTypes
+     currently have snapshot regression coverage (tests/snapshots/), so
+     large structural changes are currently hard to verify safe
+   - give an explicit recommendation: worth doing / not worth doing /
+     worth doing only if [condition], not just a description
+
+  Do NOT produce generic "split into modules for maintainability"
+  boilerplate untethered to this file's actual registries and pipelines —
+  ground every finding in specific line ranges/function names.
+
+  Deliverable: create ShowAllEntityData/REFACTORING.org, in the same
+  org-mode style as ShowAllEntityData/PERFORMANCE.org (top-level headings,
+  a ranked findings table, TODO-style entries for anything worth pursuing
+  with a recommended incremental/low-risk path — not a rewrite). Include an
+  explicit "not recommended" section for anything considered and rejected,
+  with the reasoning, so it isn't re-litigated later.
+
+  A couple of practical notes given you only have 2 free runs left:
+  - Run this one now as-is — it's self-contained and shouldn't need a follow-up just to fix scope.
+  - Keep the second run in reserve for after you've decided which (if any) refactor candidates to act on, to validate the actual change rather than re-assessing the same question.
 
 
 * Are there any advantages (performance/usability/extensibility) for refactoring this large userscript, and how should I proceed, given the fact that it currently just works
@@ -98597,6 +98662,44 @@ while **still generating exactly one `ShowAllEntityData.user.js`** for Tampermon
 And most importantly: **I would preserve the existing script as the behavioral reference throughout the whole process.** The fact that it "just works" is an asset, not a reason not to refactor — it means you have a very valuable known-good baseline.
 
 If you want to proceed with this particular script, I can next **map its actual 65,000-line structure into a concrete proposed `src/` directory and identify which functions should move into which module, including the dependency direction and the first ~5 safest extraction steps**.
+
+
+* CAA and Release column
+** i
+
+Isn't it possible on a pageType like e.g. https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
+when fetching the inline CAA FRONT cover icon for a row in the "Release" column (if it exists in the Cover Art archive),
+to use that same icon already for the 'main' icon in the CAA column, instead of waiting and rendering the CAA column
+separately after the inline images of all rows in the "Release" column have been fetched, as it's the same icon
+anyway. The only things which happen additonally in the CAA column for each row, is the enrichment afterwards, by adding
+how many images the release in a specific row actually has and the actual images itself, like baclk cover, mendium, spine, booklet, etc
+
+** effect
+
+I would have expected, that when for a row the inline image is fetched for the "Release" column, and rendered as an
+inline image in front of the release name, that right after this action, the same inline image would be rendered in the
+CAA column as the main image already, as it's fetched and available, instead it looks like the processing/fetching still
+goes on for each row and rendering happens only in the "Release" column, and afterwards the image shows up in the CAA columns
+
+** a
+
+● Good catch — and you're right, that's real, but it's a different mechanism than the one I just fixed.
+
+  What's actually happening: the inline thumbnail and the CAA column's icon are two separate tasks in the same shared _caaQueue. The inline pipeline (initCaaInlinePics) enqueues one task per row for every row in one synchronous pass; only after that entire pass finishes does the
+  CAA-column pipeline (initCaaPics) start enqueuing its own one-task-per-row pass. Since _caaQueue is strict FIFO, every inline task gets admitted before any CAA-column task can even start — so visually, all the "Release" column icons finish populating first (in batches, gated by
+  sa_caa_fetch_concurrency), and only then does the CAA column's own pass begin. This is true regardless of caching: even when the CAA-column task gets an instant Tier-1 cache hit (which the dedup fix I just landed makes more reliable), it still can't paint until its own turn
+  comes up in the queue — and that turn is scheduled well behind the entire inline pass.
+
+  Why my fix doesn't touch this: Step 14 only avoids a redundant network request when two tasks happen to overlap. It doesn't change when the CAA-column's task runs — a cache hit and a cache miss both still wait their turn in the same FIFO queue.
+
+  What would actually fix the ordering you want: a direct hand-off — when the inline task for row X resolves, immediately paint the CAA column's icon for that same row right then (instead of relying on the CAA-column pipeline's own later queued task). This is the "option 2" the
+  original investigation considered and set aside in favor of the simpler cache-dedup fix, since the literal original question was about avoiding duplicate fetches, not about paint ordering.
+
+  It's a real but separate piece of work with its own wrinkles worth flagging before I touch it:
+  - The CAA-column task would still need to run for its own enrichment fetch (count/type badges) even if the icon paint is short-circuited — so it's not "skip the task," just "make it paint early if the data's already in hand."
+  - Needs to interact correctly with Step 5's IntersectionObserver lazy-loading path (large tables) and with EAA symmetrically.
+
+  Want me to plan and implement that hand-off as a follow-up on this same branch, or a new one?
 
 
 * a- Gemini
