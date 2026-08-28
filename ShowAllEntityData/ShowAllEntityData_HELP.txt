@@ -37,6 +37,9 @@ SUPPORTED PAGES
 • Privileged user accounts (/privileged)
 • Release pages (/release/<mbid>) — full tracklist consolidation across all
   mediums, see RELEASE-TRACKS PAGE below
+• Annotation history pages (/<entity>/<mbid>/annotations) — across artist,
+  label, release, release-group, recording, work, area, place, series,
+  event, and instrument — see ANNOTATION HISTORY PAGE below
 • Also works on the musicbrainz.eu mirror domain, in addition to
   musicbrainz.org
 
@@ -192,7 +195,7 @@ every distinct non-empty value currently visible in that column.
   🎨 TABLE FILTER CONFIGURATION ("Unique-Values Count Badge" settings).
 • Visible row count — the number of entries shown before the panel scrolls
   is configurable via "Unique-Values Dropdown Visible Rows" in ⚙️ Settings
-  (default 8, min 3, max 50); it also drives the panel's upward-flip
+  (default 30, min 3, max 50); it also drives the panel's upward-flip
   positioning decision.
 • Quick-filter bar — a "Quick filter…" input at the top of the panel is
   auto-focused when the panel opens.  Type to narrow the item list in real
@@ -214,7 +217,10 @@ every distinct non-empty value currently visible in that column.
   matching.  Appears only when at least one such entry actually applies to
   the open column, grouped into collapsible named sub-sections (independently
   collapsed/expanded by clicking their header; state remembered globally by
-  section name, across every column and page):
+  section name, across every column and page).  Ctrl+Click (or Ctrl+Enter/
+  Ctrl+Space) any section header collapses/expands EVERY section at once,
+  using that header's own current state; each header's tooltip explains what
+  a plain click vs. Ctrl+Click will do:
     — 🔠 Structure   — empty / single / collapsed / expanded / multi-row cell
                        state, each with its own glyph (▶/◀/✗/✓ — explained
                        in its own tooltip)
@@ -288,6 +294,17 @@ every distinct non-empty value currently visible in that column.
     — 🎭 Roles         — "» role:" entries, one per distinct artist event-role
                        found in a native artist-roles list or the plain-text
                        "Role" column on an artist's own Events tab
+    — 🎭 Entity info - Role — one entry per distinct ATOMIC role word
+                       (composer, lyricist, writer, arranger, …), unlike the
+                       "Roles" section above which matches a credit's exact
+                       combined role string.  Selecting one atomic role
+                       matches any row where an artist has that role, alone
+                       or together with others — e.g. selecting "composer"
+                       also matches an artist credited as "composer, lyricist"
+    — ⭐ Release info - Data quality — on any "Release" column: MusicBrainz's
+                       own native data-quality marker as three fixed entries,
+                       🟢 high / 🟠 low / ⚪ normal (normal = no explicit
+                       marker present, matching MusicBrainz's own convention)
     — 🔗 Relationship icons — one entry per distinct relationship base URL,
                        multi-select (checkbox, OR'd, panel stays open) like
                        every other section, with per-icon highlighting on
@@ -297,6 +314,19 @@ every distinct non-empty value currently visible in that column.
                        as an actual pill matching the table's own style) and
                        "- Comment", one entry per distinct value found
                        across every image in the column
+    — 🗑️/🏷️/🕰️/💬 Editor info — "Editor" column on the ANNOTATION HISTORY
+                       PAGE only (see below): "- Deleted" (one entry per
+                       distinct deleted-editor placeholder identity, plus an
+                       "any deleted editor" aggregate flag), "- Recorded name"
+                       (the tooltip's own historically-recorded editor name,
+                       only offered when it differs from the row's current
+                       name), "- Membership" (the tooltip's own "active N
+                       years (start 〜 end)" span), and "- Comment" (the
+                       visible restatement of the same membership fact)
+    — 📜 Version history - Changelog — "Version history" column on the
+                       ANNOTATION HISTORY PAGE only: a binary "has changelog
+                       message" / "no changelog specified" flag pair (the
+                       free-text messages themselves are never enumerated)
 • Entity-reference rows (standard section, not "Cell structure") — one
   checkbox per distinct MusicBrainz entity reference (work/place/area/
   country/artist/label/event/release/release-group/recording) found
@@ -321,8 +351,8 @@ every distinct non-empty value currently visible in that column.
 • Cache-status emoji (🟢/🟡/🔵/🗄️/⚠️) injected into CAA/EAA artwork columns
   are automatically excluded so that release/event title text is never mixed
   with artwork metadata in the dropdown values.
-• Flag icons (optional, off by default) — enable "Show Flag Icons In
-  Unique-Values Dropdown" in ⚙️ Settings to decorate each entry with the same
+• Flag icons (optional, on by default) — "Show Flag Icons In
+  Unique-Values Dropdown" in ⚙️ Settings decorates each entry with the same
   flag icon shown in the table cell, for Country/Area/Locality/Region/
   Location/Place/Country-Date columns (including release-tracks' "Recorded
   at place"/"Mixed at place" columns, and subdivision icons added by
@@ -521,6 +551,14 @@ COLUMN MANAGEMENT
 -----------------
 • 👁️ Visible menu — check/uncheck any column; Select All (Alt-S) /
   Deselect All (Alt-D); button turns red when any column is hidden
+• Default Hidden Columns per Page Type (⚙️ Settings → 🎨 UI FEATURES) — a
+  table setting letting you pre-hide specific columns the first time a given
+  pageType's table renders, without touching 👁️ Visible manually each time.
+  Ships with one built-in default: release-tracks → "ARs" (see RELEASE-TRACKS
+  PAGE above).  Only applies once per pageType — manually changing a column's
+  visibility afterwards (a genuine checkbox click, or Select All/Deselect
+  All/Choose current configuration) is remembered forever and this default
+  never re-applies to that column again.
 • Manual resize — drag column-header edges with the mouse at any time
 • Resize — calculates optimal widths for content including images/icons;
   acts as a toggle (restores original widths on second click)
@@ -591,10 +629,19 @@ COLUMN MANAGEMENT
     — "E-DD" + "E-MM" + "E-YYYY" + "E-Day" + "E-Month"  derived from "End"
                                 date on artist, area-artist, and label pages
     — "Event-Type" + "Event-Date" + "Event-Detail" + "Event-Venue" +
-      "Event-Venue-Detail" + "Event-City" + "Event-State" + "Event-Country"
-                                derived from the extracted "Comment" column on
-                                Work-Recordings pages (requires "Enable Event
-                                Parts synthetic column extractor" setting)
+      "Event-Venue-Detail" + "Event-City" + "Event-State" + "Event-Country" +
+      "Event-Additional-Info"  derived from the extracted "Comment" column on
+                                Work-Recordings/Artist-Recordings-style pages
+                                (requires "Enable Event Parts synthetic
+                                column extractor" setting).  Event-Date also
+                                recognizes MusicBrainz's "uncertain day"
+                                convention of one or more trailing "/DD"
+                                segments on a full date (e.g.
+                                "2001-12-22/23" — recorded on the 22nd or
+                                23rd, exact day unclear), stored verbatim.
+                                Event-Additional-Info captures any text after
+                                the first ";" in the location string, even
+                                when that text itself contains commas.
 
 NUMERIC COLUMN ALIGNMENT  (🔢 NUMERIC COLUMN ALIGNMENT in ⚙️ Settings)
 ------------------------------------------------------------------------
@@ -625,7 +672,7 @@ cells that actually overflow the clamp get a toggle.
 ANNOTATION SECTION AUTO-EXPAND  (📖 ANNOTATION SECTION (Entity Pages) in ⚙️ Settings)
 ----------------------------------------------------------------------------------------
 On entity pages (e.g. /work/<mbid>) with a native "Annotation" section, this
-optional setting (off by default) clicks the native "Show more…" link on
+optional setting (on by default) clicks the native "Show more…" link on
 load so a long annotation is fully visible immediately instead of truncated.
 Unrelated to the ANNOTATION COLUMNS feature above, which only affects this
 script's own rendered table columns.
@@ -681,9 +728,12 @@ Web Service.  Relationship icons (favicons) appear after the table renders.
 • Filter match highlighting — when a filter expression matches a URL in the
   Relationships cell, the corresponding relationship icon is highlighted with
   a coloured border/background so the match is immediately visible.
-• Relationship data is cached in IndexedDB (7-day TTL) to avoid re-fetching
-  on repeated visits.  Retry buttons (⟳) force a fresh network fetch with
-  IDB cache invalidation.
+• Relationship data is cached in IndexedDB (configurable TTL, default 30
+  days) to avoid re-fetching on repeated visits.  Retry buttons (⟳) force a
+  fresh network fetch with IDB cache invalidation.
+• Round-trips through Save-to-Disk/Load-from-Disk with zero network activity
+  when every Relationships cell was already fully populated at save time —
+  only a row saved mid-fetch triggers a fresh fetch for that row on load.
 • The 🔗 Relationship icons section in the unique-values dropdown supports
   multi-select filtering, like every other section there (see UNIQUE-VALUES
   COLUMN DROPDOWN above).
@@ -722,13 +772,22 @@ standard filterable/sortable multi-table view (one sub-table per medium).
   Associate, Co, Executive) and instrument/task notes render inline in one
   parenthetical per credited person, e.g. "Paul Hamingson (assistant)".
 • Instruments / Vocals columns — one shared column each regardless of which
-  instrument or vocal type; attribute-word prefixes (Additional, Guest,
-  Solo, Lead, Background, Spoken, Choir, Other) and a credited-as "[alt
-  name]" bracket render inline after the artist's name.
+  instrument or vocal type (vocal-RANGE credits too, e.g. "alto vocals",
+  "soprano vocals [Soprano I]", "guest baritone vocals", consolidate into
+  Vocals alongside "lead"/"choir"/etc.); attribute-word prefixes (Additional,
+  Guest, Solo, Lead, Background, Spoken, Choir, Other) and a credited-as
+  "[alt name]" bracket render inline after the artist's name.
+• Credit "attribute" words (e.g. "lead"/"solo" on Vocals, "additional"/
+  "assistant" on Engineer/Producer/Mixer, "live"/"cover" on "Recording of
+  work") render in italics and a configurable color ("Credit attribute
+  color" setting, default a medium-dark green); a credited-as "[alt name]"
+  (Vocals/Instruments only) renders in italics too.
 • Every other relationship type not covered above gets its own
   auto-discovered column, named after its own literal relationship phrase
   (e.g. "Conductor", "Publisher") — splitting into one column per entity
-  kind when the same phrase credits more than one kind of entity.
+  kind when the same phrase credits more than one kind of entity (including
+  a recording-to-recording credit crediting more than one source recording,
+  e.g. "DJ-mix of" — each credited recording gets its own row).
 • Live-recording date consistency check — for a live-attributed track with
   a known Recording date, credits in Recording engineer/Vocals/Instruments/
   Recorded at event/Recorded at place get a ⚠️ (no date attribute at all) or
@@ -740,8 +799,10 @@ standard filterable/sortable multi-table view (one sub-table per medium).
   native unlink/suggested-link actions preserved; late-arriving data from
   third-party lookups is picked up reactively.
 • "ARs" column — every relationship extracted into the columns above still
-  appears here too, unchanged; independently collapsible (▶/▼) with its own
-  configurable clamp height and auto-resize max width.
+  appears here too, unchanged; independently collapsible (▶/▼, off by
+  default) with its own configurable clamp height and auto-resize max width.
+  Hidden by default in the 👁️ Visible menu (see "Default Hidden Columns per
+  Page Type" under COLUMN MANAGEMENT below) — check it there to show it.
 • The native "Credits" section is relocated to appear before the Tracklist
   section; its "Release"/"Release group" sub-headings stay independently
   collapsible.
@@ -750,7 +811,7 @@ standard filterable/sortable multi-table view (one sub-table per medium).
 
 SHOW SINGLE-TABLE BUTTON  (📑 SHOW SINGLE-TABLE BUTTON in ⚙️ Settings)
 --------------------------------------------------------------------------
-Off by default. When enabled, a relationship/performance/release-listing
+On by default. When enabled, a relationship/performance/release-listing
 sub-table category that has no MusicBrainz overflow (every row already on
 screen — artist-relationships, label-relationships, place-performances,
 artist-releasegroups, releasegroup-releases) shows a "Show single-table"
@@ -794,6 +855,29 @@ Edit notes).
 • Pages with an ambiguous "Found at least N edits" pagination widget
   (uncounted, growing result sets) use a safety-capped fetch-until-empty
   strategy instead of trusting the widget's page-number links.
+
+ANNOTATION HISTORY PAGE  (🔀 ANNOTATION HISTORY PAGE in ⚙️ Settings)
+--------------------------------------------------------------------
+On an entity's Annotation history page (/<entity>/<mbid>/annotations) a
+"Show Annotation History" button consolidates every revision (Old, New,
+Editor, Date, Version history) into the standard filterable/sortable
+single-table view.
+• "Editor" is split into MB-Name/Comment/Primary alias like other
+  entity-name columns, plus five synthetic columns: "Deleted editor" (a
+  literal "true" for a deleted-account placeholder), "Active for"/"Active
+  since" (the visible duration phrase and trailing year), and "Active start
+  date"/"Active end date" (the two ISO dates parsed from the editor link's
+  own tooltip membership line).
+• "Date" is split into "Revision date"/"Revision time".
+• "Compare versions" button — relocated into the h2 header bar (next to the
+  row-count, matching the other header buttons); clicking it navigates
+  directly to the diff URL instead of relying on native form submission.
+  Opens in a new tab by default (configurable, see SETTINGS below).
+• Every Old/New radio combination is always selectable, regardless of any
+  active filter.
+• 📊 dropdown additions — see UNIQUE-VALUES COLUMN DROPDOWN above for the
+  "Editor info" (Editor column) and "Version history - Changelog" (Version
+  history column) sections specific to this page.
 
 ACCOUNT APPLICATIONS PAGE  (/account/applications)
 -----------------------------------------------------
@@ -950,8 +1034,8 @@ labels and descriptions.  Major setting groups:
     — Shared error border color (applies to all filter types)
     — Unique-Values quickfilter highlight foreground and background colors
     — Unique-Values count badge text and background colors
-    — Show Flag Icons In Unique-Values Dropdown (default: OFF)
-    — Unique-Values Dropdown Visible Rows (default: 8, min 3, max 50)
+    — Show Flag Icons In Unique-Values Dropdown (default: ON)
+    — Unique-Values Dropdown Visible Rows (default: 30, min 3, max 50)
 
 • 📝 ANNOTATION COLUMNS
     — Enable / disable collapsible free-text "Annotation"-style columns
@@ -960,7 +1044,10 @@ labels and descriptions.  Major setting groups:
 
 • 📖 ANNOTATION SECTION (Entity Pages)
     — Auto-expand the native "Annotation" section on entity pages
-      (default: OFF)
+      (default: ON)
+
+• 🔀 ANNOTATION HISTORY PAGE
+    — Open "Compare versions" in a new tab (default: ON)
 
 • 🎨 EDITS PAGE
     — Enable / disable "Edit#"/"Edit action" background colors by edit
@@ -984,6 +1071,8 @@ labels and descriptions.  Major setting groups:
 • 🎨 UI FEATURES
     — Enable / disable: Column Visibility Toggle, Table Density Control,
       Sticky Headers
+    — Default Hidden Columns per Page Type (table setting — see COLUMN
+      MANAGEMENT above)
 
 • 📌 TABLE STICKINESS
     — Sticky column and sticky header configuration
@@ -1009,6 +1098,7 @@ labels and descriptions.  Major setting groups:
 
 • ↔️ COLUMN RESIZE FEATURE
     — Enable / disable column resizing and auto-resize on load
+      (auto-resize default: ON)
 
 • 📤 EXPORT
     — Include/exclude unique-value counts in exported column headers
@@ -1030,7 +1120,7 @@ labels and descriptions.  Major setting groups:
     — Enable / disable inline ▶/▼ release-group expand buttons
 
 • 📑 SHOW SINGLE-TABLE BUTTON
-    — Enable "Show single-table" button (default: OFF) — offers a
+    — Enable "Show single-table" button (default: ON) — offers a
       client-side single-table snapshot, opened in a new tab, on
       non-overflowing relationship/performance/release-listing sub-tables
     — Button initial and clicked background colors
@@ -1046,10 +1136,13 @@ labels and descriptions.  Major setting groups:
     — Show engineer/producer/mixer/performer/copyright credit columns
       (default: ON)
     — Show "Instruments"/"Vocals" columns (default: ON)
+    — Credit attribute color (default: a medium-dark green #2e7d32) —
+      applies to every credit "attribute" word (lead/solo/additional/
+      assistant/live/cover/…) and Vocals/Instruments "credited as" names
     — Flag live-recording credit dates that don't match "Recording date"
       (default: ON)
     — Auto-discover columns for every other relationship type (default: ON)
-    — Enable collapsible "ARs" column (default: ON), collapsed height (em,
+    — Enable collapsible "ARs" column (default: OFF), collapsed height (em,
       default 5.6), and max width (px, default 480)
 
 • 🔖 BARCODE HIGHLIGHT
