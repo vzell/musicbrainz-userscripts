@@ -34,28 +34,17 @@
  * bigbox images are fetched via `GM_xmlhttpRequest` (see
  * `_artGmFetchBlob()`), which `gmStubs.js` always stubs to a fake 404 —
  * correct for routine network-free tests, but useless here, which needs
- * genuine image bytes to land in IndexedDB. Real coverartarchive.org image
- * bytes can't be read via a plain in-page `fetch()` either — the whole
- * reason this script uses `GM_xmlhttpRequest` for images in the first place
- * is to bypass coverartarchive.org's lack of permissive CORS headers.
- * `page.context().request` (Playwright's own APIRequestContext) has no
- * browser same-origin restriction, so it can fetch the real bytes; this
- * script exposes that fetch to the page via `page.exposeFunction()` and
- * installs a custom `GM_xmlhttpRequest` that calls it, INSTEAD of
- * `gmStubs.js`'s always-404 version — this is why `loadUserscriptPage()`
- * isn't called directly and its init-script sequence is replicated by hand.
+ * genuine image bytes to land in IndexedDB. See `realNetworkGmXhr.js`'s
+ * `loadUserscriptPageWithRealNetwork()` (used below) for how the real,
+ * network-passthrough `GM_xmlhttpRequest` is wired in instead.
  */
 
 const path = require('path');
 const fs = require('fs');
 const { chromium } = require('playwright');
-const { buildGmStubsScript } = require('./gmStubs');
-const { USERSCRIPT_PATH, MB_LIBRARY_PATH } = require('./loadPage');
+const { loadUserscriptPageWithRealNetwork } = require('./realNetworkGmXhr');
 const { waitForCaaEaaComplete } = require('./asyncCompletion');
 const { ART_IDB_NAME, ART_IDB_VERSION } = require('./idbFixture');
-
-const IRO_URL = 'https://cdn.jsdelivr.net/npm/@jaames/iro@5';
-const PAKO_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';
 
 const OUTPUT_PATH = path.join(
     __dirname, '..', 'fixtures', 'idb-state', 'releasegroup-releases-caa-bigbox-images.json'
@@ -66,45 +55,6 @@ const OUTPUT_PATH = path.join(
 const URL_ = 'https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c';
 const SHOW_ALL_BUTTON = 'button[data-label="Show all Releases for ReleaseGroup"]';
 
-/**
- * Real, network-passthrough replacement for `gmStubs.js`'s always-404
- * `GM_xmlhttpRequest` stub. Delegates the actual HTTP fetch to
- * `window.__realGmFetch` (a Node-side function wired in by
- * `page.exposeFunction()` below), then reconstructs
- * a `Blob` from the base64 bytes it returns for `responseType: 'blob'`
- * callers (that's what `_artGmFetchBlob()` always requests).
- *
- * @returns {string} JS source for `page.addInitScript()`.
- */
-function buildPassthroughGmXhrScript() {
-    return `
-        (function () {
-            window.GM_xmlhttpRequest = function (opts) {
-                window.__realGmFetch(opts.url).then(function (result) {
-                    if (typeof opts.onload !== 'function') return;
-                    if (result.status < 200 || result.status >= 300) {
-                        opts.onload({ status: result.status, response: null, responseText: '' });
-                        return;
-                    }
-                    if (opts.responseType === 'blob') {
-                        var binStr = atob(result.base64);
-                        var bytes = new Uint8Array(binStr.length);
-                        for (var i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
-                        var blob = new Blob([bytes], { type: result.contentType });
-                        opts.onload({ status: result.status, response: blob, responseText: '' });
-                    } else {
-                        var text = atob(result.base64);
-                        opts.onload({ status: result.status, response: text, responseText: text });
-                    }
-                }).catch(function (err) {
-                    if (typeof opts.onerror === 'function') opts.onerror(err);
-                });
-                return { abort: function () {} };
-            };
-        })();
-    `;
-}
-
 (async () => {
     const browser = await chromium.launch();
     let context;
@@ -112,28 +62,7 @@ function buildPassthroughGmXhrScript() {
         context = await browser.newContext();
         const page = await context.newPage();
 
-        await page.exposeFunction('__realGmFetch', async (url) => {
-            const resp = await context.request.get(url);
-            const buf = await resp.body();
-            return {
-                status: resp.status(),
-                base64: buf.toString('base64'),
-                contentType: resp.headers()['content-type'] || 'application/octet-stream',
-            };
-        });
-
-        // Mirrors loadPage.js's loadUserscriptPage() init-script order, with
-        // the passthrough GM_xmlhttpRequest registered LAST so it overrides
-        // the always-404 one buildGmStubsScript() installs.
-        await page.addInitScript({ content: 'window.__SA_TEST_MODE__ = true;' });
-        await page.addInitScript({ content: buildGmStubsScript({}) });
-        await page.addInitScript({ content: buildPassthroughGmXhrScript() });
-
-        await page.goto(URL_);
-        await page.addScriptTag({ url: IRO_URL });
-        await page.addScriptTag({ url: PAKO_URL });
-        await page.addScriptTag({ path: MB_LIBRARY_PATH });
-        await page.addScriptTag({ path: USERSCRIPT_PATH });
+        await loadUserscriptPageWithRealNetwork(page, { url: URL_, testMode: true });
 
         const showAllBtn = page.locator(SHOW_ALL_BUTTON);
         await showAllBtn.waitFor({ state: 'visible', timeout: 15000 });
