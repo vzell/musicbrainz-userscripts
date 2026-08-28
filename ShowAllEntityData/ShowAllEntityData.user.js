@@ -23684,9 +23684,7 @@ ${sections.join('\n')}
         };
         const _colFlt = Array.from(document.querySelectorAll('.mb-col-filter-input'))
             .filter(i => stripColFilterPrefix(i.value)).length;
-        const _stFlt  = Array.from(
-            document.querySelectorAll('.mb-subtable-filter-container input[type="text"]'))
-            .filter(i => i.value.trim()).length;
+        const _stFlt  = _getAllStfInputs().filter(i => i.value.trim()).length;
 
         const _resizeStatus = (typeof isManuallyResized !== 'undefined' && isManuallyResized)
             ? 'Manual ✏️'
@@ -23759,8 +23757,7 @@ ${sections.join('\n')}
             const _stfInp = (() => {
                 const h3El = findH3ForTable(tbl);
                 if (!h3El) return '';
-                const inp = h3El.querySelector(
-                    '.mb-subtable-filter-container input[type="text"]');
+                const inp = _getStfInput(h3El);
                 return inp ? inp.value.trim() : '';
             })();
 
@@ -28735,7 +28732,7 @@ a { color: #1565c0; }`;
         filterClear.click();
 
         // Clear all sub-table specific filter fields
-        document.querySelectorAll('.mb-subtable-filter-container input[type="text"]').forEach(input => {
+        _getAllStfInputs().forEach(input => {
             if (input.value) {
                 input.value = '';
                 _dispatchInternalInputEvent(input, { bubbles: false });
@@ -28838,7 +28835,7 @@ a { color: #1565c0; }`;
             input.style.backgroundColor = '';
             delete input.dataset.mbUniqValues;
         });
-        document.querySelectorAll('.mb-subtable-filter-container input[type="text"]').forEach(input => {
+        _getAllStfInputs().forEach(input => {
             if (input.value) { input.value = ''; _dispatchInternalInputEvent(input, { bubbles: false }); }
         });
         caseCheckbox.checked = false;
@@ -28881,8 +28878,7 @@ a { color: #1565c0; }`;
         );
 
         // Check if any sub-table (STF) filter inputs have values.
-        const stfFilters = document.querySelectorAll('.mb-subtable-filter-container input[type="text"]');
-        const stfFiltersActive = Array.from(stfFilters).some(inp => inp.value.trim() !== '');
+        const stfFiltersActive = _getAllStfInputs().some(inp => inp.value.trim() !== '');
 
         // Global "Toggle highlighting" button: visible whenever ANY filter string is
         // present (global, sub-table, or column) — regardless of whether highlight
@@ -28932,7 +28928,7 @@ a { color: #1565c0; }`;
             );
 
             // Also consider the sub-table filter input active state.
-            const stfInput = h3.querySelector('.mb-subtable-filter-container input[type="text"]');
+            const stfInput = _getStfInput(h3);
             const stfActive = stfInput ? stfInput.value.trim() !== '' : false;
 
             // Show the clear button whenever ANY filter (column or sub-table) is
@@ -29025,7 +29021,7 @@ a { color: #1565c0; }`;
         // is active produces a complete reset without leaving orphaned stf-hidden rows.
         const h3stf = findH3ForTable(table);
         if (h3stf && h3stf.classList.contains('mb-toggle-h3')) {
-            const stfInput = h3stf.querySelector('.mb-subtable-filter-container input[type="text"]');
+            const stfInput = _getStfInput(h3stf);
             if (stfInput && stfInput.value.trim() !== '') {
                 stfInput.value = '';
                 // Sync the STF ✕ button visibility directly instead of dispatching
@@ -33860,7 +33856,7 @@ a { color: #1565c0; }`;
         // restoreFilterHighlightState() knows there is something to restore
         // even when no global or column filters are set.
         const stfFilters = [];
-        document.querySelectorAll('.mb-subtable-filter-container input[type="text"]').forEach(inp => {
+        _getAllStfInputs().forEach(inp => {
             if (inp.value.trim()) stfFilters.push(inp.value.trim());
         });
 
@@ -37046,11 +37042,13 @@ a { color: #1565c0; }`;
             }
             updateH2Count(totalFiltered, totalAbsolute);
 
-            // Re-apply any active sub-table filters after global/column filter re-renders rows
-            reapplyAllSubTableFilters();
+            // Sub-table filters (STF) are already re-applied synchronously by
+            // renderGroupedTable() itself (see its own STF-reapply pass, right
+            // after its post-render generation guard) — no separate call needed
+            // here now that renderGroupedTable() above has already returned.
 
-            // After subtable filters ran, recalculate h2 count to reflect the
-            // 3-tier (locally / globally / absolute-total) format when needed.
+            // Recalculate h2 count to reflect the 3-tier (locally / globally /
+            // absolute-total) format when needed.
             updateH2CountFromSubtables();
 
             // Re-wire Picard tagger click handlers on the freshly rendered sub-table rows.
@@ -37354,9 +37352,7 @@ a { color: #1565c0; }`;
                             }
 
                             // 2. Sub-table filter (STF) for this h3
-                            const _stfInput = h3.querySelector(
-                                '.mb-subtable-filter-container input[type="text"]'
-                            );
+                            const _stfInput = _getStfInput(h3);
                             const _stfVal = _stfInput ? _stfInput.value.trim() : '';
                             if (_stfVal) {
                                 const _stfRxCb   = h3.querySelector('.mb-subtable-filter-container input[id$="-rx-checkbox"]');
@@ -42076,6 +42072,43 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Finds the real Sub-Table-Filter (STF) text input inside `scopeEl` (an
+     * `<h3>` or any ancestor of a `.mb-subtable-filter-container`).
+     *
+     * The STF input's `type` attribute is forced to `'search'` by
+     * `_hardenFilterInputAgainstAutofill()` (called on it inside
+     * `createSubTableFilterContainer()` below) — so a selector written as
+     * `input[type="text"]` can NEVER match it. That mistake shipped in 13
+     * separate places across this file (STF-active checks, bulk-clear
+     * handlers, tooltip text, highlight-restore state, …), all silently
+     * inert against the real input; the only place it ever matched was an
+     * unrelated, virtually-always-empty "quick filter" box nested inside the
+     * sub-table's own filter-history dropdown panel. Every STF-input lookup
+     * must go through this helper instead of hand-rolling the selector.
+     *
+     * @param {ParentNode|null} scopeEl
+     * @returns {HTMLInputElement|null}
+     */
+    function _getStfInput(scopeEl) {
+        return scopeEl
+            ? scopeEl.querySelector('.mb-subtable-filter-container input[type="search"]')
+            : null;
+    }
+
+    /**
+     * Same lookup as {@link _getStfInput}, but returns every matching STF
+     * input under `scopeEl` (defaults to the whole document) as a plain
+     * array — for call sites that need to sweep every sub-table's STF input
+     * at once (bulk-clear handlers, "any STF active anywhere" checks).
+     *
+     * @param {ParentNode} [scopeEl]
+     * @returns {HTMLInputElement[]}
+     */
+    function _getAllStfInputs(scopeEl = document) {
+        return Array.from(scopeEl.querySelectorAll('.mb-subtable-filter-container input[type="search"]'));
+    }
+
+    /**
      * Creates and returns a per-subtable filter container (toggle icon + filter UI).
      *
      * The returned object exposes:
@@ -42088,7 +42121,7 @@ a { color: #1565c0; }`;
      *
      * @param {string}          categoryName  - Human-readable subtable name (e.g. "Album")
      * @param {HTMLTableElement} table         - The <table> this filter applies to
-     * @returns {{ toggleIcon: HTMLElement, container: HTMLElement, highlightBtn: HTMLButtonElement, clearAllStfBtn: HTMLButtonElement }}
+     * @returns {{ toggleIcon: HTMLElement, container: HTMLElement, highlightBtn: HTMLButtonElement, clearAllStfBtn: HTMLButtonElement, applySubFilter: Function }}
      */
     function createSubTableFilterContainer(categoryName, table) {
         // Sanitize categoryName to a safe id fragment (strip non-alphanumeric)
@@ -42776,7 +42809,16 @@ a { color: #1565c0; }`;
             }
         });
 
-        return { toggleIcon, container, highlightBtn, clearAllStfBtn };
+        // Stash applySubFilter directly on `container` so a later, unrelated
+        // renderGroupedTable() call (the "reuse" branch, which does NOT call
+        // this function again) can still re-run this exact STF's filter
+        // synchronously — see renderGroupedTable()'s own STF-reapply pass,
+        // near its CAA/EAA block. `container` itself is never cloneNode'd
+        // (only tbody rows are), so this custom property survives every
+        // later re-render.
+        container._mbApplySubFilter = applySubFilter;
+
+        return { toggleIcon, container, highlightBtn, clearAllStfBtn, applySubFilter };
     }
 
     /**
@@ -42810,8 +42852,7 @@ a { color: #1565c0; }`;
         const _gfVal = _gfEl ? (typeof stripFilterPrefix === 'function'
             ? stripFilterPrefix(_gfEl.value || '') : (_gfEl.value || '')) : '';
 
-        const _stfInp = _h3.querySelector(
-            '.mb-subtable-filter-container input[type="text"]');
+        const _stfInp = _getStfInput(_h3);
         const _stfVal = _stfInp ? _stfInp.value.trim() : '';
 
         const _cfRow    = tbl.querySelector('thead tr.mb-col-filter-row');
@@ -42965,23 +43006,6 @@ a { color: #1565c0; }`;
 
         // Pass (locally-visible, denominator, absolute-total) to updateH2Count
         updateH2Count(sumVisible, sumDenominator, sumTotal);
-    }
-
-    /**
-     * Re-applies all active subtable filters after a global/column filter run, so that
-     * rows newly made visible by global filter changes are still correctly filtered by
-     * their subtable filter.  Calls applySubFilter() via the container's stored closure.
-     *
-     * Called at the end of runFilter() for multi-table pages.
-     */
-    function reapplyAllSubTableFilters() {
-        document.querySelectorAll('.mb-subtable-filter-container.visible').forEach(container => {
-            // Find the input inside this container and dispatch an input event to re-run its filter
-            const input = container.querySelector('input[type="text"]');
-            if (input && input.value) {
-                _dispatchInternalInputEvent(input, { bubbles: false });
-            }
-        });
     }
 
     /**
@@ -43483,14 +43507,32 @@ a { color: #1565c0; }`;
                 table.appendChild(tbody);
             }
 
-            // Optimize: Use DocumentFragment for large groups
+            // Clone rows on insertion rather than moving the canonical
+            // groupedRows[i].rows[j] elements by reference — see
+            // debug/multi-table-sort-filter-bug.org. The sub-table filter
+            // (STF, applySubFilter()/clearSubFilter()) mutates live tbody
+            // rows in place (style.display, data-mb-stf-hidden,
+            // .mb-subtable-filter-highlight spans). On this code path's
+            // very first call (the initial, unfiltered render straight from
+            // the fetch pipeline — `query` is falsy) those live rows ARE the
+            // canonical array elements, so without cloning here, an STF
+            // filter's mutations leak permanently into `groupedRows`; any
+            // later rebuild through this same array (e.g. a sort's
+            // runFilter() → renderGroupedTable() cycle) then re-clones the
+            // now-contaminated rows, and clearSubFilter()'s own restore
+            // logic — which only ever touches the CURRENT live tbody, never
+            // groupedRows itself — can no longer reach the contamination.
+            // runFilter()'s own multi-table rebuild already clones
+            // (`r.cloneNode(true)`) before calling this function, so on
+            // every later (query-truthy) pass this is a clone-of-a-clone —
+            // harmless, just belt-and-suspenders.
             const chunkThreshold = Lib.settings.sa_chunked_render_threshold || 1000;
             if (chunkThreshold > 0 && group.rows.length >= chunkThreshold) {
                 const fragment = document.createDocumentFragment();
-                group.rows.forEach(r => fragment.appendChild(r));
+                group.rows.forEach(r => fragment.appendChild(r.cloneNode(true)));
                 tbody.appendChild(fragment);
             } else {
-                group.rows.forEach(r => tbody.appendChild(r));
+                group.rows.forEach(r => tbody.appendChild(r.cloneNode(true)));
             }
 
             // Guard Release events column: now that tbody rows are in the DOM we can
@@ -44240,6 +44282,28 @@ a { color: #1565c0; }`;
             return;
         }
 
+        // Synchronously re-apply every currently-active sub-table filter (STF)
+        // to this fresh render, BEFORE the CAA/EAA rebuild below runs — see
+        // debug/multi-table-sort-filter-bug.org. Every renderGroupedTable()
+        // call (sort, global/column filter, disk-load, discography-view
+        // switch, ...) rebuilds each table's <tbody> from a clean/unfiltered
+        // row set, so without this, a sort (or any other re-render) would
+        // silently drop a sub-table's active STF narrowing until the user
+        // interacted with that STF input again. Calls each STF's own
+        // applySubFilter() closure directly (stashed on its own
+        // .mb-subtable-filter-container by createSubTableFilterContainer())
+        // rather than dispatching a synthetic 'input' event through a
+        // debounced apply path — firing synchronously here means the CAA/EAA
+        // rebuild immediately below sees the correct, already-filtered row
+        // visibility instead of a stale unfiltered one for the ~300ms-1000ms
+        // a debounce would otherwise take to settle.
+        document.querySelectorAll('.mb-subtable-filter-container.visible').forEach(container => {
+            const input = container.querySelector('input[type="search"]');
+            if (input && input.value && typeof container._mbApplySubFilter === 'function') {
+                container._mbApplySubFilter();
+            }
+        });
+
         // Re-inject erg expand buttons across all freshly rendered sub-table rows.
         // Both sort and filter re-renders replace tbody content with cloneNode(true)
         // copies whose event listeners are stripped; initExpandRGsFeature() removes
@@ -44734,9 +44798,7 @@ a { color: #1565c0; }`;
 
         // ── 3. Sub-table filters ──────────────────────────────────────────────
         _allH3s.forEach(_h3 => {
-            const _stfInput = _h3.querySelector(
-                '.mb-subtable-filter-container input[type="text"]'
-            );
+            const _stfInput = _getStfInput(_h3);
             if (!_stfInput) return;
 
             // Clear value
@@ -54177,9 +54239,7 @@ a { color: #1565c0; }`;
             if (_cfInput && stripColFilterPrefix(_cfInput.value).trim()) return true;
 
             const _h3       = findH3ForTable(_owningTable);
-            const _stfInput = _h3
-                ? _h3.querySelector('.mb-subtable-filter-container input[type="text"]')
-                : null;
+            const _stfInput = _getStfInput(_h3);
             if (_stfInput && _stfInput.value.trim()) return true;
         }
         const _gfInput = document.getElementById('mb-global-filter-input');
@@ -60371,8 +60431,10 @@ a { color: #1565c0; }`;
      *     which group was last processed by runFilter()'s groupedRows.forEach loop
      *   - STF filter: h3 sub-table filter input for the owning table — needed
      *     because _artBuildMultiRowArtCell() may fire asynchronously (network/IDB
-     *     path) AFTER reapplyAllSubTableFilters() has already run.  In that timing
-     *     window, applySubFilter() applied mb-subtable-filter-highlight to the old
+     *     path) AFTER renderGroupedTable()'s own synchronous STF-reapply pass
+     *     has already run (see its JSDoc comment, right after its post-render
+     *     generation guard).  In that timing window, applySubFilter() applied
+     *     mb-subtable-filter-highlight to the old
      *     li elements; the async rebuild then replaced them with fresh li items that
      *     carry no STF marks.  Step 5 below re-stamps the STF highlight onto the
      *     newly created li items so both column-filter and STF highlights coexist.
@@ -60426,9 +60488,7 @@ a { color: #1565c0; }`;
         // text input.  We read it here rather than in _artHighlightImageLi because
         // the STF regex uses the per-sub-table Rx/Case checkboxes (already resolved
         // above) rather than the per-column flags embedded in colFilters objects.
-        const _stfInput = _subH3
-            ? _subH3.querySelector('.mb-subtable-filter-container input[type="text"]')
-            : null;
+        const _stfInput = _getStfInput(_subH3);
         const _stfRaw     = _stfInput ? _stfInput.value.trim() : '';
         const _stfUseEx   = _subExCb   ? _subExCb.checked   : false;
         // `highlightEnabled` is a closure-local variable of createSubTableFilterContainer
@@ -61559,6 +61619,17 @@ a { color: #1565c0; }`;
 
         const anchorSelector = _artEntityAnchorSelector(ctx, table);
         (anchorSelector ? table.querySelectorAll(anchorSelector) : []).forEach(a => {
+            // Rows currently hidden by the sub-table filter (STF) still get a
+            // wrapper built (and their image still requested/loaded) — see
+            // debug/multi-table-sort-filter-bug.org — so the GLOBAL toggle
+            // button's count (a page-wide, filter-agnostic total, summed from
+            // every per-table badge by _artCreateOrUpdateGlobalToggleButton())
+            // stays correct regardless of any STF state. What differs is the
+            // wrapper's INITIAL display (set below) and whether its image
+            // load increments the PER-TABLE badge (see _onBigLoaded's
+            // wrapper-visibility guard) — that's what keeps the per-table
+            // stripe/badge correctly narrowed to the STF-filtered subset.
+            const _rowHiddenByStf = a.closest('tr')?.style.display === 'none';
             const href = a.getAttribute('href');
             for (const type of ctx.entityTypes) {
                 const m = href.match(
@@ -61671,7 +61742,12 @@ a { color: #1565c0; }`;
                     if (_tipBarcode) wrapper.dataset.artTooltipBarcode = _tipBarcode;
                     // No plain wrapper.title — the HTML tooltip replaces it entirely.
                     wrapper.setAttribute(ctx.hrefAttrName, href);
-                    wrapper.style.cssText = 'display:inline-block; height:100%; margin:8px 8px 4px 4px; position:relative;';
+                    // Start hidden when the owning row is currently STF-filtered
+                    // out — matches what _artUpdateBigBoxForTable() would set,
+                    // avoiding a flash of the unfiltered strip on first paint
+                    // (see debug/multi-table-sort-filter-bug.org).
+                    wrapper.style.cssText = 'display:' + (_rowHiddenByStf ? 'none' : 'inline-block') +
+                                             '; height:100%; margin:8px 8px 4px 4px; position:relative;';
 
                     wrapper.appendChild(document.createTextNode('⌛'));
 
@@ -61710,8 +61786,18 @@ a { color: #1565c0; }`;
                             const toggleBtn = document.getElementById(btnId);
                             if (toggleBtn) {
                                 if (parseInt(toggleBtn.dataset.artRenderGen || '0', 10) !== myRenderGen) return;
+                                // Skip the PER-TABLE badge increment when this wrapper's row is
+                                // currently hidden by the sub-table filter (STF) — see
+                                // debug/multi-table-sort-filter-bug.org. Without this guard, a
+                                // late-arriving image load for a row that became STF-hidden AFTER
+                                // this wrapper was built (e.g. the user retyped the STF query while
+                                // this image was still in flight) creeps the badge back up past the
+                                // count _artUpdateBigBoxForTable() already correctly set. The GLOBAL
+                                // badge below intentionally has no such guard — it's a page-wide,
+                                // filter-agnostic total (confirmed by the .org file's own repro).
+                                const _wrapperHidden = wrapper.style.display === 'none';
                                 const badge = toggleBtn.querySelector('.' + ctx.countClass);
-                                if (badge) {
+                                if (badge && !_wrapperHidden) {
                                     badge.textContent = (parseInt(badge.textContent, 10) || 0) + 1;
                                 }
                                 const thumb = toggleBtn.querySelector('.' + ctx.thumbClass);
