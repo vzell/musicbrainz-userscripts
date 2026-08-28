@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.954+2026-08-25
+// @version      9.99.959+2026-08-28
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -149,6 +149,13 @@
     const REMOTE_CACHE_TTL_MS  = 60 * 60 * 1000; // 1 hour
     const CACHE_KEY_HELP       = SCRIPT_BASE_NAME.toLowerCase() + '-remote-help-text';
     const CACHE_KEY_CHANGELOG  = SCRIPT_BASE_NAME.toLowerCase() + '-remote-changelog';
+
+    // Save-to-disk/Load-from-disk snapshot format version — distinct from the
+    // script's own // @version. Bump whenever dataToSave's shape changes in a
+    // way that affects hydration, so older saved files can still be detected
+    // and handled via their natural field-absence fallback (see
+    // _snapshotVersionAtLeast()).
+    const SA_SNAPSHOT_FORMAT_VERSION = '1.1';
 
     // Countries — exactly as MusicBrainz renders them, e.g. "United Kingdom" —
     // for which `splitLocation`/`splitArea` force a flagged subdivision link
@@ -1262,9 +1269,21 @@
             description: 'Cache MusicBrainz WS2 relationship data in IndexedDB so that '
                          + 'the same page does not re-fetch from the network on every visit. '
                          + 'Cached entries are keyed by entity type + MBID and expire after '
-                         + '7 days. Disable to always fetch fresh data from the network. '
+                         + 'sa_rel_idb_ttl_days. Disable to always fetch fresh data from the network. '
                          + 'Uses the same IndexedDB database as the artwork cache '
                          + '(vz-mb-saed-art-cache, store: rel-ws2).'
+        },
+
+        sa_rel_idb_ttl_days: {
+            label: 'Relationships IDB cache TTL (days)',
+            type: 'number',
+            default: 30,
+            min: 1,
+            max: 365,
+            description: 'Maximum age in days for a cached WS2 relationship record '
+                         + '(IndexedDB store "rel-ws2") before it is considered expired and '
+                         + 're-fetched from the network. Mirrors sa_art_idb_image_ttl_days '
+                         + 'for the artwork cache.'
         },
 
         sa_rel_completion_toast_duration: {
@@ -24353,7 +24372,7 @@ ${sections.join('\n')}
                     stat:    `🔗 Rel WS2 store (IDB)`,
                     value:   '<em class="sa-stats-faint">querying…</em>',
                     comment: _relIdbEnabled
-                        ? 'TTL: 7 days — relationship WS2 JSON responses (sa_rels_idb_enable)'
+                        ? `TTL: ${Lib.settings.sa_rel_idb_ttl_days || 30} days — relationship WS2 JSON responses (sa_rels_idb_enable)`
                         : '⚠️ IDB rel cache disabled (sa_rels_idb_enable = false)',
                     _id:     'mb-stats-idb-relws2',
                 },
@@ -26094,6 +26113,33 @@ a { color: #1565c0; }`;
     ]);
 
     /**
+     * Builds the serialized `{html, colSpan, rowSpan}` object for one table
+     * cell, used by both `saveTableDataToDisk()` and `captureSubtableSnapshot()`.
+     * For a `td.mb-rel-cell` (the injected "Relationships" column) two extra
+     * fields are added — `mbid`/`relDone`, mirrored from the live cell's own
+     * dataset — so `_hydrateAndRenderFromSnapshotData()` can mark the
+     * reconstructed `<td>` as already populated and skip re-fetching it
+     * entirely. Other injected columns (`mb-re-cell`/`mb-ice-cell`/
+     * `mb-picard-cell`) are excluded from serialization by the caller before
+     * this is ever invoked on them.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @returns {{html: string, colSpan: number, rowSpan: number, mbid?: (string|null), relDone?: boolean}}
+     */
+    function _buildDiskCellData(cell) {
+        const data = {
+            html: getCleanCellHtml(cell),
+            colSpan: cell.colSpan || 1,
+            rowSpan: cell.rowSpan || 1
+        };
+        if (cell.classList.contains('mb-rel-cell')) {
+            data.mbid = cell.dataset.mbid || null;
+            data.relDone = cell.dataset.relDone === '1';
+        }
+        return data;
+    }
+
+    /**
      * Captures a multi-table sub-section's currently-rendered rows into a
      * snapshot payload consumable by `_hydrateAndRenderFromSnapshotData()` —
      * reuses the exact header/cell schema `saveTableDataToDisk()` writes to
@@ -26152,15 +26198,10 @@ a { color: #1565c0; }`;
 
         const rows = Array.from(table.tBodies[0] ? table.tBodies[0].rows : [])
             .map(row => Array.from(row.cells)
-                .filter(cell => !cell.classList.contains('mb-rel-cell') &&
-                                !cell.classList.contains('mb-re-cell') &&
+                .filter(cell => !cell.classList.contains('mb-re-cell') &&
                                 !cell.classList.contains('mb-ice-cell') &&
                                 !cell.classList.contains('mb-picard-cell'))
-                .map(cell => ({
-                    html: getCleanCellHtml(cell),
-                    colSpan: cell.colSpan || 1,
-                    rowSpan: cell.rowSpan || 1
-                })));
+                .map(_buildDiskCellData));
 
         // ── TEMP DEBUG (bug 2 investigation — see debug/CAA-missing-doubled.org,
         // WIP.89 follow-up): dump the CAPTURED CAA/EAA column state per row —
@@ -26202,7 +26243,7 @@ a { color: #1565c0; }`;
         const sectionSuffix = firstDash !== -1 ? pageTypeSlug.slice(firstDash + 1) : '';
 
         return {
-            version: '1.0',
+            version: SA_SNAPSHOT_FORMAT_VERSION,
             url: window.location.href,
             pageType: SA_SNAPSHOT_LINK_TYPE_ID_PAGETYPES.has(pageType) ? `${pageType}-filtered` : pageType,
             buttonLabel: null,
@@ -51234,16 +51275,20 @@ a { color: #1565c0; }`;
      * Idempotent: any previously injected `.mb-cdtoc-tracklist-row` is removed
      * before re-injection so that filter/sort re-renders start clean.
      *
-     * The `data-cdtoc-tracklist-html` attribute is preserved by `cloneNode(true)`
-     * (used by `runFilter`) so toggling works correctly after every re-render.
-     * It is NOT serialised to disk (saveTableDataToDisk saves cell HTML from
-     * individual `<td>` elements, not TR-level dataset attributes).
+     * The `data-cdtoc-tracklist-html`/`data-cdtoc-tracklist-visible` attributes
+     * are preserved by `cloneNode(true)` (used by `runFilter`) so toggling
+     * works correctly after every re-render. As of snapshot format 1.1 they
+     * are also serialised to disk (see `dataToSave.cdtocTracklistData` in
+     * `saveTableDataToDisk()`, restored onto each reconstructed `<tr>` in
+     * `_hydrateAndRenderFromSnapshotData()`) — a disk file saved before 1.1
+     * has no `cdtocTracklistData`, so this still silently no-ops for those
+     * legacy files.
      *
      * Called from:
      *   - `finalCleanup()` for cdtoc pages (covers the initial render).
      *   - `runFilter()` single-table path after `initBarcodeHighlight()`.
-     *   - `loadTableDataFromDisk()` after render (silently no-ops when
-     *     `data-cdtoc-tracklist-html` is absent, since the attr is not saved).
+     *   - `_hydrateAndRenderFromSnapshotData()` after render (silently no-ops
+     *     when `data-cdtoc-tracklist-html` is absent — legacy pre-1.1 files).
      */
     function _cdtocInitTracklistToggles() {
         if (pageType !== 'cdtoc') return;
@@ -53542,9 +53587,6 @@ a { color: #1565c0; }`;
     /** Cache: '${entityType}:${mbid}' → Promise<Object|null> */
     const _relWs2Cache = new Map();
 
-    /** IDB TTL for relationship WS2 data: 7 days in ms. */
-    const _REL_IDB_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-
     /** Set to true while a force-retry is active so _relFetchWs2 skips caches. */
     let _relRetryActive = false;
 
@@ -53562,7 +53604,7 @@ a { color: #1565c0; }`;
         return _artIdbGet('rel-ws2', ckey)
             .then(rec => {
                 if (!rec) return null;
-                if (Date.now() - (rec.ts || 0) > _REL_IDB_TTL_MS) {
+                if (Date.now() - (rec.ts || 0) > ((Lib.settings.sa_rel_idb_ttl_days || 30) * 86400 * 1000)) {
                     _artIdbDelete('rel-ws2', ckey).catch(() => {});
                     _relIdbTtlEvictCount++;
                     return null;
@@ -54727,6 +54769,35 @@ a { color: #1565c0; }`;
             .filter(td => td.dataset.mbid && !td.dataset.relDone);  // mb-rel-cell is always present
         if (!allCells.length) {
             _relDbg('initRelationshipsColumn: no unpopulated cells');
+            // Cells can reach this "nothing to do" state not only because the
+            // page has none at all, but also because every one was already
+            // restored fully-populated from a disk-load (relDone already '1'
+            // — see _hydrateAndRenderFromSnapshotData's mb-rel-cell restore
+            // block). Without this, #mb-info-display-rel — the element
+            // waitForRelationshipsComplete() (tests/support/asyncCompletion.js)
+            // and real users both watch for — would never become visible for
+            // that scenario, since the normal success path below (queue.then)
+            // is never reached. Mirrors that path's own gating exactly:
+            // _showRelCompletionToast() (which also flips #mb-info-display-rel
+            // visible) fires on every invocation that has cells, so a later
+            // re-render still refreshes it; only the global status-bar segment
+            // (_sdAppend) is deduped via _relGlobalStatusDone to avoid a
+            // duplicate "🔗Rels: ..." segment across re-renders.
+            const _doneCells = Array.from(document.querySelectorAll('td.mb-rel-cell[data-mbid]'));
+            if (_doneCells.length) {
+                const _doneMbids = new Set(_doneCells.map(td => td.dataset.mbid)).size;
+                _showRelCompletionToast(_doneCells.length, _doneMbids, 0, { idb: 0, cache: 0, net: 0 });
+                if (!_relGlobalStatusDone) {
+                    _relGlobalStatusDone = true;
+                    _sdAppend(
+                        '🔗Rels: 0ms',
+                        ', ',
+                        `Relationship icons: already populated from disk-load ` +
+                        `(${_doneMbids} unique MBID${_doneMbids !== 1 ? 's' : ''} / ` +
+                        `${_doneCells.length} cell${_doneCells.length !== 1 ? 's' : ''}) — no fetch needed.`
+                    );
+                }
+            }
             return;
         }
         const cellsByMbid = new Map();
@@ -55211,7 +55282,7 @@ a { color: #1565c0; }`;
 
         try {
             let dataToSave = {
-                version: '1.0',
+                version: SA_SNAPSHOT_FORMAT_VERSION,
                 url: window.location.href,
                 pageType: pageType,
                 buttonLabel: lastClickedButtonLabel || null,  // used to colour the correct action button on disk-load
@@ -55233,6 +55304,13 @@ a { color: #1565c0; }`;
                     h3_official_category_header_array.length > 0)
                     ? h3_official_category_header_array.slice()
                     : null,
+                // Persisted for cdtoc pages only, index-aligned with
+                // dataToSave.rows, so _cdtocInitTracklistToggles() can
+                // reconstruct the show/hide toggle after a disk-load.  Null
+                // for all other page types.  Filled in below, after allRows
+                // is known to be non-empty (single-table mode only — cdtoc
+                // is never a 'multi' tableMode page).
+                cdtocTracklistData: null,
             };
 
             // Serialize table headers (exclude the filter row).
@@ -55317,15 +55395,10 @@ a { color: #1565c0; }`;
                     ratingsViewAllUrl: group.ratingsViewAllUrl || null,
                     rows: group.rows.map(row => {
                         return Array.from(row.cells)
-                            .filter(cell => !cell.classList.contains('mb-rel-cell') &&
-                                            !cell.classList.contains('mb-re-cell') &&
+                            .filter(cell => !cell.classList.contains('mb-re-cell') &&
                                             !cell.classList.contains('mb-ice-cell') &&
                                             !cell.classList.contains('mb-picard-cell'))
-                            .map(cell => ({
-                            html: getCleanCellHtml(cell),
-                            colSpan: cell.colSpan || 1,
-                            rowSpan: cell.rowSpan || 1
-                        }));
+                            .map(_buildDiskCellData);
                     })
                 }));
                 dataToSave.rowCount = groupedRows.reduce((sum, g) => sum + g.rows.length, 0);
@@ -55336,17 +55409,19 @@ a { color: #1565c0; }`;
                 // highlight spans that are active at the moment the user clicks "Save".
                 dataToSave.rows = allRows.map(row => {
                     return Array.from(row.cells)
-                        .filter(cell => !cell.classList.contains('mb-rel-cell') &&
-                                        !cell.classList.contains('mb-re-cell') &&
+                        .filter(cell => !cell.classList.contains('mb-re-cell') &&
                                         !cell.classList.contains('mb-ice-cell') &&
                                         !cell.classList.contains('mb-picard-cell'))
-                        .map(cell => ({
-                        html: getCleanCellHtml(cell),
-                        colSpan: cell.colSpan || 1,
-                        rowSpan: cell.rowSpan || 1
-                    }));
+                        .map(_buildDiskCellData);
                 });
                 dataToSave.rowCount = allRows.length;
+                // See dataToSave.cdtocTracklistData's own comment above — only
+                // cdtoc pages carry this row-level dataset attribute at all.
+                if (pageType === 'cdtoc') {
+                    dataToSave.cdtocTracklistData = allRows.map(r => r.dataset.cdtocTracklistHtml
+                        ? { html: r.dataset.cdtocTracklistHtml, visible: r.dataset.cdtocTracklistVisible === 'true' }
+                        : null);
+                }
                 Lib.debug('cache', `Serialized ${dataToSave.rowCount} rows.`);
             } else {
                 alert('No table data available to save.');
@@ -55409,6 +55484,21 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Numeric (not string) major.minor comparison for the snapshot
+     * `version` field — e.g. `'1.10' >= '1.9'` must be `true`, which a plain
+     * string comparison would get wrong.
+     *
+     * @param {string} v   Version to test, e.g. data.version from a loaded file.
+     * @param {string} min Minimum required version, e.g. '1.1'.
+     * @returns {boolean} True when `v` is >= `min`.
+     */
+    function _snapshotVersionAtLeast(v, min) {
+        const p = s => String(s || '0').split('.').map(n => parseInt(n, 10) || 0);
+        const [va, vb] = p(v), [ma, mb] = p(min);
+        return va > ma || (va === ma && vb >= mb);
+    }
+
+    /**
      * Hydrates and renders a page from already-parsed table snapshot data —
      * shared by the "Load from Disk" flow (loadTableDataFromDisk) and the
      * "Show single-table" cross-tab snapshot handoff (openSubtableAsSingleTableTab
@@ -55449,6 +55539,14 @@ a { color: #1565c0; }`;
             if (!data.version || !data.pageType || !data.timestamp) {
                 throw new Error('Invalid data file: missing required fields');
             }
+
+            // 1.0 files never carried mb-rel-cell mbid/relDone fields or
+            // cdtocTracklistData at all — this flag is purely documentation
+            // of that fact (the fields are already naturally absent on those
+            // files, so the restoration blocks below are safe no-ops without
+            // it), but it makes the compatibility boundary explicit and
+            // greppable for the next format change.
+            const _supportsRelAndCdtocFastPath = _snapshotVersionAtLeast(data.version, '1.1');
 
             Lib.debug('cache', `Loaded data version ${data.version} from ${data.timestampReadable} (File total: ${data.rowCount} rows)`);
 
@@ -55703,6 +55801,15 @@ a { color: #1565c0; }`;
                             td.innerHTML = cellData.html;
                             if (cellData.colSpan > 1) td.colSpan = cellData.colSpan;
                             if (cellData.rowSpan > 1) td.rowSpan = cellData.rowSpan;
+                            // Mark a restored Relationships cell so
+                            // _ensureRelCell()/initRelationshipsColumn() see it
+                            // as already populated and skip re-fetching it —
+                            // see saveTableDataToDisk's _buildDiskCellData().
+                            if (_supportsRelAndCdtocFastPath && cellData.mbid) {
+                                td.className = 'mb-rel-cell';
+                                td.dataset.mbid = cellData.mbid;
+                                if (cellData.relDone) td.dataset.relDone = '1';
+                            }
                             // Strip transient JS-only state from cells that were
                             // saved before 9.99.157 (before getCleanCellHtml began
                             // stripping these markers at save time).  Files saved
@@ -55842,6 +55949,15 @@ a { color: #1565c0; }`;
                         td.innerHTML = cellData.html;
                         if (cellData.colSpan > 1) td.colSpan = cellData.colSpan;
                         if (cellData.rowSpan > 1) td.rowSpan = cellData.rowSpan;
+                        // Mark a restored Relationships cell so
+                        // _ensureRelCell()/initRelationshipsColumn() see it as
+                        // already populated and skip re-fetching it — see
+                        // saveTableDataToDisk's _buildDiskCellData().
+                        if (_supportsRelAndCdtocFastPath && cellData.mbid) {
+                            td.className = 'mb-rel-cell';
+                            td.dataset.mbid = cellData.mbid;
+                            if (cellData.relDone) td.dataset.relDone = '1';
+                        }
                         const _beforeFp = Lib.settings.sa_enable_art_diagnostic_logging
                             ? _caaArtDebugFingerprint(cellData.html) : null;
                         _stripTransientCellState(td);
@@ -55853,6 +55969,14 @@ a { color: #1565c0; }`;
                         }
                         tr.appendChild(td);
                     });
+
+                    // Restore the cdtoc tracklist toggle's row-level dataset
+                    // (see dataToSave.cdtocTracklistData / _cdtocInitTracklistToggles()).
+                    // Absent on pre-1.1 files and non-cdtoc pages alike — no-op then.
+                    if (_supportsRelAndCdtocFastPath && data.cdtocTracklistData && data.cdtocTracklistData[rowIndex]) {
+                        tr.dataset.cdtocTracklistHtml = data.cdtocTracklistData[rowIndex].html;
+                        tr.dataset.cdtocTracklistVisible = String(data.cdtocTracklistData[rowIndex].visible);
+                    }
 
                     if (rowMatchesFilter(tr)) {
                         tr.dataset.mbRowIdx = String(_mbRowIdxCounter++);
@@ -56345,14 +56469,19 @@ a { color: #1565c0; }`;
             // Highlight identical barcodes in Barcode columns (post-render)
             initBarcodeHighlight();
 
-            // CDtoc: attempt to re-wire tracklist toggles (no-op when
-            // data-cdtoc-tracklist-html is absent — attr is not saved to disk).
+            // CDtoc: re-wire tracklist toggles. Rows restored from a 1.1+
+            // file already carry data-cdtoc-tracklist-html/-visible (see the
+            // restoration block above); this no-ops on pre-1.1 files, where
+            // the attribute was never saved.
             _cdtocInitTracklistToggles();
 
             // Populate Release events column.
             if (activeReleaseEventColumns.length) initReleaseEventsColumn();
 
             // Populate Relationships column cells via async WS2 fetches (if configured).
+            // Cells restored from a 1.1+ file with relDone already true are
+            // skipped entirely by initRelationshipsColumn()'s own candidate
+            // filter — see its "all cells already done" completion-signal fix.
             if (activeInjectedColumns.length) initRelationshipsColumn();
             setTimeout(_relCreateRetryButtons, 200);
 
@@ -58882,7 +59011,7 @@ a { color: #1565c0; }`;
                     }
                 });
 
-                const relTtlMs = _REL_IDB_TTL_MS;
+                const relTtlMs = (Lib.settings.sa_rel_idb_ttl_days || 30) * 86400 * 1000;
                 Promise.all([
                     sweepStore('images',   imgTtlMs),
                     sweepStore('metadata', metaTtlMs),

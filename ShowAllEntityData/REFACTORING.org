@@ -1,0 +1,359 @@
+* Structural refactor review
+
+Tracking doc for whether ~ShowAllEntityData.user.js~'s *structure*
+(single IIFE, ~pageDefinitions~ registry, inline ~configSchema~, extractor
+registries) is itself costing anything worth fixing — independent of
+~PERFORMANCE.org~'s filter/sort/cache perf work, which is out of scope
+here.
+
+Each candidate below is its own top-level heading with a TODO/NOT
+RECOMMENDED keyword. Do not delete rejected candidates — the reasoning for
+rejecting them is the point, so they aren't re-litigated later.
+
+** Context
+
+The file has grown to ~65,360 lines through steady feature work. Nobody
+had yet asked, in isolation from feature/perf work, whether the file's
+*structure* — one IIFE, one 2,834-line ~pageDefinitions~ array (86
+entries), inline ~configSchema~ (213 settings keys), and two small
+extractor registries — is itself worth restructuring, for performance,
+maintainer usability, or extensibility. This review answers that with
+evidence gathered directly from the live file on this branch
+(~perf-steps-1-4~), not assumptions.
+
+Constraints that shape every verdict below:
+
+- This ships as a single (or ~@require~-split) Tampermonkey ~.user.js~.
+  Tampermonkey does not support runtime ~import~/~export~ — ~@require~
+  only loads another plain script tag *before* this one executes, so
+  values must be assigned to shared global/UserScript-scope ~const~s, not
+  imported.
+- No build/bundle tooling exists in this repo at all. ~package.json~
+  defines only Playwright test scripts (~test~, ~test:live*~, ~report~,
+  ~auth:login~); there is no webpack/rollup/esbuild/vite config anywhere.
+  The ~.user.js~ is hand-edited today with zero build step.
+- Snapshot regression coverage is thin: 10 of 86 pageTypes
+  (~tests/pagetypes.json~, ~tests/snapshots/registry.org~) — artist-
+  releasegroups, release-tracks, releasegroup-releases, artist-events,
+  user-tags, notes-received, user-open-edits, series-releases, recording-
+  fingerprints, release-discids. (~ShowAllEntityData/CLAUDE.md~ currently
+  says "4 of 86" — that line is stale; real coverage is ~12%, thin either
+  way but worth noting so it gets corrected next time that file is
+  touched.) 14 live Playwright specs (~tests/live/registry.org~) add
+  behavioral coverage but cluster on only 5 distinct pageTypes. Shared
+  rendering code (~renderRowsChunked~, ~runFilter~, ~startFetchingProcess~)
+  is reasonably exercised by this; per-pageType feature wiring is verified
+  for only ~12% of the 86 shapes — this is why any candidate touching
+  many ~pageDefinitions~ entries at once is flagged higher-risk below.
+
+** Ranked findings
+
+| # | Candidate                                              | Axis                    | Verdict            |
+|---+---------------------------------------------------------+--------------------------+---------------------|
+| 1 | Consolidate the ~*-tags~ pageDefinitions cluster        | extensibility/usability | Worth doing         |
+| 2 | Consolidate filtered/unfiltered pageDefinitions pairs   | extensibility/usability | Worth doing         |
+| 3 | Add a startup-time pageDefinitions/extractor validator  | usability/safety        | Worth doing         |
+| 4 | De-duplicate ~dateParts~ extractor logic                | usability                | Worth doing, care   |
+| 5 | De-duplicate ~video~/~caa~ ~appendSortKey~ closure      | usability                | Worth doing, minor  |
+| 6 | Extract ~configSchema~ to its own ~@require~'d file     | usability                | Conditional         |
+| 7 | Full module split via bundler                           | usability/extensibility | Not recommended     |
+| 8 | Reorganize pageDefinitions beyond entity-class grouping | usability                | Not recommended     |
+| 9 | Merge renderFinalTable/renderGroupedTable                | usability                | Not recommended     |
+
+* TODO Consolidate the ~*-tags~ pageDefinitions cluster
+
+** Axis
+Extensibility (adding a new "tags" page type becomes a one-line table
+entry, not a copy-pasted ~features~ block) and usability (a bug fix to
+this shape currently has to be applied 11 times).
+
+** Evidence
+11 of 86 ~pageDefinitions~ entries (lines 12086–14920) have byte-identical
+~features~ blocks:
+
+#+begin_src javascript
+showAllTags: true,
+removeSelector: 'div.all-tags',
+renameH2ToH3: true,
+listToTable: ['genres', 'tags'],
+#+end_src
+
+Entries: ~artist-tags~ (12300), ~releasegroup-tags~ (12317), ~release-tags~
+(12330), ~recording-tags~ (12343), ~work-tags~ (12356), ~label-tags~
+(12369), ~series-tags~ (12382), ~place-tags~ (12395), ~area-tags~ (12408),
+~instrument-tags~ (12421), ~event-tags~ (12434). They differ only in
+~type~, the entity segment of ~match~, ~buttons[0].label~, and the
+~insertH2~ text (e.g. ~'Artist tags'~, ~'Releasegroup tags'~, …).
+
+~user-tags~ (12470) is deliberately excluded from this cluster — per
+CLAUDE.md's documented v9.99.521 fix, it needs its own container-re-root
+handling and must NOT get ~renameH2ToH3~/~insertH2~. Do not fold it in.
+
+** Precedent
+The ~entityFeatures~ mechanism (~resolveEntityFeaturesFromH2~) already
+does exactly this kind of consolidation in production for 12 of 86
+entries (e.g. ~artist-credit-entity~, ~user-ratings-type~,
+~series-releases~) — this is not a new pattern to introduce, just applying
+an existing one to a cluster it hasn't reached yet.
+
+** Cost / risk
+Low. A small ~{ entityType: { insertH2, buttonLabel } }~ table plus a
+generator loop that emits the 11 ~pageDefinitions~ entries, all within the
+same IIFE scope — no cross-file boundary to cross. ~user-tags~ has
+snapshot coverage, giving at least one member of the adjacent pattern a
+regression check; the other 10 entries in this specific cluster do not.
+
+** Recommended path
+1. Write the generator so it produces objects that deep-equal today's 11
+   literals (throwaway equality check during development, not a permanent
+   test).
+2. Verify by hand against 2-3 of the ~*-tags~ URLs (e.g. artist-tags,
+   area-tags) since only ~user-tags~ has any automated coverage nearby.
+3. Land as its own isolated change, not bundled with other candidates.
+
+* TODO Consolidate the filtered/unfiltered pageDefinitions pairs
+
+** Axis
+Same as above: extensibility + usability.
+
+** Evidence
+7 pairs (14 of 86 entries) differ only in a ~params.has('link_type_id')~
+match check, a ~'(complete)'~-style label suffix, and
+~tableMode~/~non_paginated~:
+
+- ~area-releases-filtered~ (14079) / ~area-releases~
+- ~area-recordings-filtered~ (14172) / ~area-recordings~
+- ~area-works-filtered~ (14215) / ~area-works~
+- ~place-performances-filtered~ (14272) / ~place-performances~
+- ~label-relationships-filtered~ (14435) / ~label-relationships~
+- ~work-recordings-filtered~ (14517) / ~work-recordings~
+- ~artist-relationships-filtered~ (14555) / ~artist-relationships~ (this
+  pair differs by one extra ~tooltipColumns~ entry beyond the usual
+  shape — check it explicitly when writing the factory, don't assume all
+  7 pairs are 100% uniform)
+
+** Cost / risk
+Low-moderate. A factory function taking a base entry plus the
+varying bits (link-type param name, label suffix, tableMode) covers 6 of
+the 7 pairs cleanly; the ~artist-relationships~ pair's extra
+~tooltipColumns~ entry means the factory needs an optional override, or
+that one pair stays hand-written. None of these 14 entries currently have
+snapshot coverage, so this needs more manual spot-checking than candidate
+#1.
+
+** Recommended path
+Same shape as the ~*-tags~ consolidation: build the factory, deep-equal
+check against today's literals, hand-verify 2-3 live URLs per distinct
+underlying page (not per pair — filtered/unfiltered share a page), land
+standalone.
+
+* TODO Add a startup-time pageDefinitions/extractor-name validator
+
+** Axis
+Usability/safety for the maintainer extending this file.
+
+** Evidence
+Both surveys independently found the same fragility shape:
+
+- ~pageDefinitions~ has no schema/validation. A typo'd ~features~ key
+  (e.g. ~renameH2T3H~) silently no-ops — the object literal is consumed
+  via optional chaining with no key allowlist.
+- ~extractor: '...'~ strings (~pageDefinitions~, ~columnExtractors~/
+  ~syntheticColumnExtractors~) are looked up in ~ColumnDataExtractor~ /
+  ~SyntheticColumnDataExtractor~ (3032, 4229) via
+  ~typeof ColumnDataExtractor[entry.extractor] !== 'function'~. An
+  unresolvable name doesn't throw — it logs via ~Lib.error('extract', …)~
+  and silently renders blank synthetic columns. No live typos exist today
+  (all 20 distinct extractor-name strings in ~pageDefinitions~ resolve),
+  but the failure mode has zero guardrail against a future one.
+
+** Cost / risk
+Very low. Purely additive: a one-time startup pass that walks
+~pageDefinitions~, checks each ~features~ key against a known-key
+allowlist and each ~extractor:~ string against the two registries, and
+~console.warn~s on mismatch. Zero behavior change to rendering — it only
+adds diagnostics. No snapshot-coverage concern since nothing renders
+differently.
+
+** Recommended path
+Land this first, before candidates #1/#2 — it gives an immediate safety
+net for the pageDefinitions edits those candidates (and any future
+pageType addition) will make.
+
+* TODO De-duplicate ~dateParts~ extractor logic
+
+** Axis
+Usability (a date-parsing bug currently needs fixing twice).
+
+** Evidence
+~ColumnDataExtractor.dateParts~ (3675) and
+~SyntheticColumnDataExtractor.dateParts~ (4260) are ~90% identical: same
+~MONTH_NAMES~/~DAY_NAMES~ arrays, same ~parts.split('-')~ parsing, same
+weekday round-trip-validation block. They differ only in how ~rawText~ is
+derived — one detects a date-range shape, the other extracts from the
+first ~<li>~.
+
+** Cost / risk — read this before touching it
+Unlike candidates #1-#3, this is a *behavior-preserving code change*, not
+pure reorganization — real risk of a subtle regression if the shared
+extraction misses an edge case either original handled. Snapshot coverage
+for date-bearing columns is not guaranteed across all 10 covered
+pageTypes; this needs a manual spot-check of rendered date columns on at
+least one page using each extractor path, not just "it's small so it's
+safe."
+
+** Recommended path
+1. Extract the shared parse/validate block (month/day names, split,
+   weekday-consistency check) into one helper function.
+2. Parameterize only the ~rawText~ derivation — leave everything else
+   untouched.
+3. Manually verify rendered date columns before/after on a page exercising
+   each of the two original call sites.
+
+* TODO De-duplicate ~video~/~caa~ ~appendSortKey~ closure
+
+** Axis
+Usability — smaller version of the ~dateParts~ finding.
+
+** Evidence
+~ColumnDataExtractor.video~ (appendSortKey at 3316) and
+~ColumnDataExtractor.caa~ (appendSortKey at 3399) each inline a
+byte-for-byte-identical closure except for the CSS class name
+(~mb-video-sort-key~ vs ~mb-caa-sort-key~) and the target ~td~ variable.
+
+** Cost / risk
+Low — smaller and more mechanical than ~dateParts~ (no branching parse
+logic, just a span-append helper). Still a behavior-preserving code
+change, so verify both extractors' sort-key spans render unchanged
+before/after.
+
+** Recommended path
+Extract to one ~appendSortKey(td, label, sortKeyClass)~ helper, called
+from both. Bundle with the ~dateParts~ candidate if convenient, since both
+are small and touch the same registry file region — otherwise land
+separately.
+
+* Conditional: extract ~configSchema~ to its own ~@require~'d file
+
+** Axis
+Usability (a 2,450-line settings-menu block currently sits inline in the
+same file as all runtime logic).
+
+** Evidence for feasibility
+~configSchema~ (212–2669, 213 ~sa_*~ keys) is provably pure static data —
+zero arrow/function expressions referencing ~Lib~/~document~/~window~/
+module state anywhere in the block. The one ~type: 'function'~ entry
+(~sa_fn_edit_pinned_filter_list~, 675) stores only a *string* naming a
+callback; the actual function lives in a separate ~functionRegistry~
+object elsewhere, untouched by this candidate. Several other constant
+tables are similarly closure-free (~AREA_FLAG_REGION_SUBDIVISIONS~ 186,
+~CREDIT_ROLES~ 9855, ~SYN_SECTION_META~/~MB_UNIQ_MODE_TO_SECTION~/ 
+~MB_UNIQ_KIND_TO_SECTION~ ~34817-35030, ~_ENTITY_TYPE_GLYPH~ ~35098, and
+others) — same property, smaller payoff, not worth their own separate
+candidate.
+
+By contrast ~CAA_CTX~/~EAA_CTX~ (~58944/58988) and ~SHOW_ALL_JSON_HANDLERS~
+(~52233) embed arrow-function guards closing over mutable module state
+(~_caaCountCache~, ~_eaaEventCountCache~) — *not* safely separable the same
+way. Don't attempt those.
+
+** Cost / risk — the real blocker
+Closures aren't the obstacle here; *deployment* is. The script's only
+existing ~@require~ precedent
+(~ShowAllEntityData.user.js:13-15~, pointing at
+~raw.githubusercontent.com~ for ~iro~, ~pako~, and
+~VZ_MBLibrary.user.js~) shows this project already accepts remote
+~@require~s — but Tampermonkey caches ~@require~'d resources by URL and
+does not reliably re-fetch on content-only changes to that URL. Splitting
+~configSchema~ out means a settings-menu edit now depends on users'
+Tampermonkey instances noticing a second file changed, on top of the
+existing risk already accepted for ~VZ_MBLibrary.user.js~. For a section
+that's edited far less often than the render/fetch pipeline, this doesn't
+clearly pay for itself today.
+
+** Verdict
+Worth doing only if ~configSchema~ edits become a frequent maintainer
+pain point (e.g. its 2,450-line span inside the single file is regularly
+getting in the way of navigation/search). Not a default next step.
+
+* NOT RECOMMENDED: full module split via bundler
+
+Splitting the single IIFE into separate source modules, built via a
+bundler (webpack/esbuild/rollup) into one compiled ~.user.js~ — the
+question CLAUDE.md explicitly asked to be evaluated, not assumed.
+
+** Why it's tempting
+65,360 lines in one file is large by any normal standard; a bundler-based
+split would let related sections (extractor registries, render pipeline,
+collapsable-columns subsystem, AR-column classification) live in separate
+source files while still shipping as one ~.user.js~.
+
+** Why it's rejected
+- *No existing tooling*: this repo has zero build/bundle config today
+  (~package.json~ only has Playwright scripts). This isn't "flip a
+  webpack flag" — it's standing up new build infrastructure from
+  scratch, plus a CI step to keep the compiled ~.user.js~ in sync with
+  source, plus developer workflow changes (edit source files, run build,
+  commit both).
+- *Shared mutable module state crosses every proposed boundary*:
+  ~activeDefinition~ (module-level, set by ~startFetchingProcess~, read by
+  helpers called during fetch/render), ~CAA_CTX~/~EAA_CTX~ and their
+  caches, ~ctrlMFunctionMap~, ~expandedCells~ state, and more all get
+  read/written from functions that would end up in different files under
+  any reasonable split. Each boundary needs its own careful
+  import/export-equivalent design — this is exactly the kind of
+  "mechanical split isn't safe without deep per-boundary analysis" risk,
+  multiplied by however many boundaries a bundler-based split would
+  introduce.
+- *Verification is currently infeasible at this file's size*: only 10/86
+  (~12%) pageTypes have snapshot regression coverage, and only 5 distinct
+  pageTypes have live-behavior specs. A structural change this large,
+  touching how the entire file is assembled, has no way to be verified
+  "nothing changed" for the other ~88% of pageTypes today.
+
+** Verdict
+Reject outright. Not conditional on anything short of first building out
+snapshot coverage across most of the 86 pageTypes (a large undertaking in
+its own right, tracked separately from this doc) *and* standing up build
+tooling — at which point revisit, but neither precondition is close to
+being met.
+
+* NOT RECOMMENDED: reorganize pageDefinitions beyond current entity-class grouping
+
+~pageDefinitions~ (12086–14920) is already grouped by entity-class comment
+headers (Area pages ~14008, Place pages ~14248, Series/Label/Work/Artist/
+ReleaseGroups/Release/Recording/Event pages sequentially through ~14920),
+preceded by an unstructured block of ~35 misc types (tags, ratings,
+reports, collections, search, aliases, …). Some entries carry explicit
+ordering comments (e.g. near 12143: a narrower ~match~ must come before
+~artist-credit~'s broader one).
+
+The duplication found (candidates #1/#2 above) is a *content* problem
+(copy-pasted objects), not an *organization* problem (can't find things,
+wrong grouping) — no evidence surfaced of confusion-driving disorder once
+the two duplication clusters are addressed. Reordering the array further
+would touch all 86 entries' surrounding diff context for no evidenced
+benefit.
+
+** Verdict
+Not recommended. Re-evaluate only if candidates #1/#2 landing reveals the
+remaining structure is still hard to navigate — no evidence of that today.
+
+* NOT RECOMMENDED: merge renderFinalTable/renderGroupedTable
+
+~renderFinalTable~ (41862, ~87 lines) and ~renderGroupedTable~ (42966,
+~1,480 lines) look like a large duplication candidate purely from their
+names and shared purpose (render rows into ~table.tbl~), but aren't:
+~renderFinalTable~ is a thin wrapper (clear tbody → append or delegate to
+~renderRowsChunked()~ → repaint zebra stripes/multi-sort tints);
+~renderGroupedTable~'s much larger size reflects real additional scope
+(per-group h3/table creation, sub-table filter containers, master-toggle,
+discography-view buttons/tints, H2 count sync) that ~renderFinalTable~
+genuinely doesn't need. Both already delegate their core chunked-render
+and zebra-striping logic to the same shared ~renderRowsChunked()~/
+~applyZebraStriping()~ functions — the duplication that would matter
+(the actual row-rendering loop) is already unified.
+
+** Verdict
+Not recommended. No duplication left to remove; the size gap is scope, not
+copy-paste.

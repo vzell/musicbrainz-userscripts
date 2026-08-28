@@ -34,16 +34,27 @@ const { loadUserscriptPage } = require('./loadPage');
  *   - `listToTable` pages (e.g. artist-credit) need `startFetchingProcess`'s
  *     DOM pre-processing manually re-run before hydration — the disk-load
  *     entry point skips it.
- *   - `cdtoc` pages lose their tracklist-toggle dataset attributes on
- *     disk-load (not serialized).
- *   - The "Relationships" injected column is NOT baked into the saved
- *     snapshot the way CAA/EAA artwork is — confirmed empirically (a live
- *     WS/2 `url-rels` request still fired after disk-loading a page with
- *     `injectedColumns: ['Relationships']`, with no corresponding CAA/EAA
- *     network activity). A disk-loaded page is not fully network-free if
- *     that feature is active; `waitForRelationshipsComplete()`
- *     (`asyncCompletion.js`) still applies and is still needed for tests
- *     that depend on that column's final state.
+ *   - As of save-format version 1.1 (`SA_SNAPSHOT_FORMAT_VERSION` in
+ *     `ShowAllEntityData.user.js`), two previously-broken/incomplete
+ *     round-trips are fixed:
+ *       - `cdtoc` pages' tracklist show/hide toggle (`data-cdtoc-tracklist-html`/
+ *         `-visible`) now survives a disk-load, via the new `cdtocTracklistData`
+ *         field.
+ *       - The "Relationships" injected column (`td.mb-rel-cell`) is now baked
+ *         into the saved snapshot the same way CAA/EAA artwork is — a page
+ *         saved with every relationship icon already loaded restores them
+ *         immediately on disk-load with **zero** network/IDB activity
+ *         (confirmed via code trace: `initRelationshipsColumn()`'s own
+ *         `td.dataset.mbid && !td.dataset.relDone` candidate filter skips a
+ *         restored cell entirely). `waitForRelationshipsComplete()`
+ *         (`asyncCompletion.js`) still resolves correctly in this case — the
+ *         "all cells already done" path still fires the same completion
+ *         signal the normal fetch-and-populate path does, just with no fetch.
+ *     Fixture files captured **before** this change are version `1.0` and
+ *     naturally lack both new fields — they still load correctly, just via
+ *     the pre-1.1 fallback behavior (cdtoc toggle stays broken, Relationships
+ *     still re-fetches). Re-capture a fixture (`capture-fixture.js`) to get
+ *     1.1-format coverage of either fix.
  *
  * @param {import('@playwright/test').Page} page
  * @param {{ url: string, fixturePath: string, testMode?: boolean }} opts
