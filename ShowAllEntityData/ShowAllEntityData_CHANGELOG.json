@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.963",
+    "date": "2026-08-28",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed the `eventParts` synthetic column extractor (Event-Type/Event-Date/Event-Detail/Event-Venue/Event-Venue-Detail/Event-City/Event-State/Event-Country/Event-Additional-Info, parsed from a recording's \"Comment\" field on Work-Recordings/Artist-Recordings-style pages) mis-parsing rows whose Event-Additional-Info text (after the ';') itself contains a comma — e.g. \"...OH, USA; YouTube – X, from Y\". The location string used to be comma-split before the ';' boundary was located, so an extra comma inside Additional-Info fragmented it into bogus extra location segments, silently dropping the venue name and shifting City/State/Country by one field. The ';' boundary is now located in the full location string first, before any comma-splitting."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.962",
     "date": "2026-08-28",
     "sections": [

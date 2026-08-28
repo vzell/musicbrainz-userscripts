@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.962+2026-08-28
+// @version      9.99.963+2026-08-28
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -290,7 +290,7 @@
             label: "Enable 'Event Parts' synthetic column extractor",
             type: "checkbox",
             default: true,
-            description: "Parse the recording 'Comment' field as structured live-performance metadata, splitting it into synthetic columns: Event-Type, Event-Date, Event-Detail, Event-Venue, Event-Venue-Detail, Event-City, Event-State, Event-Country, Event-Additional-Info. Event-Additional-Info captures any text after a ';' in the last location segment (e.g. 'USA; intro' → Country='USA', Additional-Info='intro'). Only active on pages that declare the 'eventParts' extractor (e.g. Work-Recordings pages). Disable to suppress these extra columns entirely."
+            description: "Parse the recording 'Comment' field as structured live-performance metadata, splitting it into synthetic columns: Event-Type, Event-Date, Event-Detail, Event-Venue, Event-Venue-Detail, Event-City, Event-State, Event-Country, Event-Additional-Info. Event-Additional-Info captures any text after the first ';' in the location string (e.g. 'USA; intro' → Country='USA', Additional-Info='intro'), even when that text itself contains commas. Only active on pages that declare the 'eventParts' extractor (e.g. Work-Recordings pages). Disable to suppress these extra columns entirely."
         },
 
         // ============================================================
@@ -4350,9 +4350,12 @@
          * - 5 parts: [Venue, Venue-Detail, City, State, Country]
          * - 4 parts: [Venue, City, State, Country] (Venue-Detail empty)
          * - Default: Right-to-Left fallback (Country, City, Venue, Venue-Detail)
-         * Additional-Info: if the last location segment contains '; extra text',
-         * the country is split at the first ';' — the trimmed left part goes into
-         * Event-Country, the trimmed right part into Event-Additional-Info.
+         * Additional-Info: the post-colon string is split at its FIRST ';' —
+         * before any comma-splitting of location fields — so text after the
+         * ';' becomes Event-Additional-Info verbatim (even if it itself
+         * contains commas, e.g. 'USA; intro, more info') while only the
+         * ';'-free remainder is comma-split into Venue/Venue-Detail/City/
+         * State/Country.
          *
          * Synthetic columns: ['Event-Type', 'Event-Date', 'Event-Detail',
          * 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State',
@@ -4401,12 +4404,18 @@
 
             // ── Post-colon (Location) extraction ──────────────────────────────
             if (postPart) {
-                const loc = postPart.split(', ').map(s => s.trim()).filter(s => s.length > 0);
+                // Split off Additional-Info at the FIRST ';' in the whole post-colon
+                // string before any comma-splitting — if Additional-Info itself
+                // contains a ', ' (e.g. "USA; YouTube – X, from Y"), comma-splitting
+                // the raw postPart first would fragment it into extra pseudo-location
+                // segments and misalign every field below (see debug/event-extraction-bug.org).
+                const semiIdx        = postPart.indexOf(';');
+                const locStr         = semiIdx !== -1 ? postPart.slice(0, semiIdx).trim() : postPart;
+                const additionalInfo = semiIdx !== -1 ? postPart.slice(semiIdx + 1).trim() : '';
+
+                const loc = locStr.split(', ').map(s => s.trim()).filter(s => s.length > 0);
                 const n = loc.length;
-                const countryRaw     = n >= 1 ? loc[n - 1] : '';
-                const _semiIdx       = countryRaw.indexOf(';');
-                const country        = _semiIdx !== -1 ? countryRaw.slice(0, _semiIdx).trim() : countryRaw;
-                const additionalInfo = _semiIdx !== -1 ? countryRaw.slice(_semiIdx + 1).trim() : '';
+                const country = n >= 1 ? loc[n - 1] : '';
 
                 if (country === 'USA' || country === 'Canada' || country === 'UK') {
                     tds[7].textContent = country; // Country
@@ -4422,7 +4431,7 @@
                     }
                 } else {
                     // Default Right-to-Left fallback
-                    if (n >= 1) tds[7].textContent = country; // Country (stripped of '; …' suffix)
+                    if (n >= 1) tds[7].textContent = country; // Country
                     if (n >= 2) tds[5].textContent = loc[n - 2]; // City
                     if (n >= 3) tds[3].textContent = loc[n - 3]; // Event-Venue
                     if (n >= 4) tds[4].textContent = loc[n - 4]; // Event-Venue-Detail
