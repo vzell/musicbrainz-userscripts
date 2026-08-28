@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.963+2026-08-28
+// @version      9.99.964+2026-08-28
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -4334,6 +4334,15 @@
          * Expected source format (all segments are optional):
          * [Event-Type][, Event-Date][, Event-Detail][: Venue[, Venue-Detail][, City][, State][, Country[; Additional-Info]]]
          *
+         * Event-Date accepts partial ISO 8601 ('YYYY', 'YYYY-MM', 'YYYY-MM-DD')
+         * as well as an uncertain-day suffix of one or more '/DD' segments on a
+         * full date (e.g. '2001-12-22/23', or '2001-12-22/23/24') — MusicBrainz's
+         * own convention for "recorded on one of these days, exact day unclear"
+         * (see debug/multiple-dates.html). The whole matched string, slashes
+         * included, is stored verbatim in Event-Date; anything failing this
+         * pattern falls through to Event-Detail instead (e.g. free text with no
+         * recognizable date shape at all).
+         *
          * The colon/comma-delimited Type/Date/Detail/Location schema above is only
          * attempted when the leading pre-colon segment is one of the recognized
          * keywords in EVENT_TYPE_KEYWORDS (e.g. "live" in "live, 1978-07-07: ...").
@@ -4392,7 +4401,7 @@
             }
             tds[0].textContent = preParts[0]; // Event-Type (recognized keyword)
 
-            const DATE_RE = /^\d{4}(?:-\d{2}(?:-\d{2})?)?$/;
+            const DATE_RE = /^\d{4}(?:-\d{2}(?:-\d{2}(?:\/\d{2})*)?)?$/;
             if (preParts.length > 1) {
                 if (DATE_RE.test(preParts[1])) {
                     tds[1].textContent = preParts[1]; // Event-Date

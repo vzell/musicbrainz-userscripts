@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.964",
+    "date": "2026-08-28",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The `eventParts` synthetic column extractor's Event-Date now recognizes MusicBrainz's own \"uncertain day\" date convention — a full date followed by one or more `/DD` segments, e.g. `2001-12-22/23` (recorded on the 22nd or 23rd, exact day unclear). Previously this shape wasn't recognized as a date at all and the whole string fell through to Event-Detail instead of Event-Date."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.963",
     "date": "2026-08-28",
     "sections": [
