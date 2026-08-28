@@ -6748,3 +6748,55 @@ bigbox-reorder cost.
   etc. correctly remain a single shared "remove third-party clutter"
   mechanism, not a per-author grouping.
 - `node --check ShowAllEntityData.user.js` passed after the edit.
+
+## 2026-08-28 — sanojjonas still present on final page: normal-flow + disk-load watcher gap (v9.99.962)
+
+- `debug/sanojjonas-still-present.org` (user report) plus two captured
+  snapshots confirm a fourth sanojjonas timing bug, distinct from the
+  2026-08-24/2026-08-25 rounds above: `debug/s-present-on-initial.html`
+  (raw page, no ShowAllEntityData markers — 0 matches for
+  `mb-filter-container`/`mb-master-toggle`/`class="tbl"`) shows
+  `#sanojjonasRoot` already present before the action button was pressed
+  (working case — the one-shot cleanup catches it). `debug/s-present-on-final.html`
+  (confirmed final rendered `artist-releasegroups` discography page — has
+  `mb-master-toggle`/"discography" markers) shows `#sanojjonasRoot` STILL
+  PRESENT after a full render, because the action button was pressed
+  before sanojjonas had rendered its container on the initial page.
+- Root cause: `_watchForLateSanojjonasInjections()` (line ~41571) — added
+  in the 2026-08-24 round-3 fix above — was only ever called from the
+  cross-tab "Show single-table" snapshot bootstrap (line ~30340). Neither
+  the normal (button-click) fetch path nor the plain "Load from Disk" path
+  ever armed it; both only ran one-shot cleanup: `performClutterCleanup()`
+  (line ~32782, gated `pageType === 'events' || _isReleaseGroupsMultiMode()`,
+  line ~32830) before the fetch, a duplicate guarded call right after it in
+  `startFetchingProcess()` (line ~39050), and `finalCleanup()`'s
+  unconditional presence check (line ~51924) after render. None of these
+  can catch a container sanojjonas injects AFTER they run. The watcher's
+  own JSDoc incorrectly assumed normal page loads didn't need it ("a normal
+  (non-snapshot) page load takes the much slower real network-fetch path,
+  giving sanojjonas' script more natural time to finish... this watcher is
+  only needed on the fast snapshot-hydration path") — disproved by
+  `s-present-on-final.html`. The "Load from Disk" path
+  (`loadTableDataFromDisk`'s `reader.onload`, line ~56590) has the same gap:
+  it calls `_hydrateAndRenderFromSnapshotData()` directly, just like the
+  cross-tab bootstrap, and can hydrate+render just as fast — user confirmed
+  this independently.
+- Fix: call `_watchForLateSanojjonasInjections()` from three sites now:
+  the cross-tab snapshot bootstrap (already existing, unconditional,
+  line ~30340), `reader.onload` in the "Load from Disk" path (newly added,
+  unconditional, right before its own `_hydrateAndRenderFromSnapshotData()`
+  call, mirroring the bootstrap's own pattern), and `startFetchingProcess()`
+  (newly added, right alongside its existing pre-fetch one-shot
+  `removeSanojjonasContainers()` call at line ~39050, under the same
+  `pageType === 'events' || _isReleaseGroupsMultiMode()` gate already
+  guarding every other sanojjonas call site in the normal-fetch path).
+  Installing it before the fetch loop begins means the 15s observer window
+  covers essentially the entire fetch+render duration, not just the
+  post-render tail. Corrected `_watchForLateSanojjonasInjections()`'s own
+  JSDoc (line ~41536) to drop the "normal page load doesn't need this"
+  claim and document all three call sites and their rationale.
+- `node --check ShowAllEntityData.user.js` passed after the edit.
+- Related, NOT fixed here (out of scope — user's report is sanojjonas-
+  specific): `_watchForLateJesus2099Injections()` (line ~41390) has the
+  identical single-call-site gap (only called at line ~30322, the cross-tab
+  bootstrap) on both the normal-fetch and disk-load paths.

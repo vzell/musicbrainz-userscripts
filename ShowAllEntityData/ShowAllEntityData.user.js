@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.961+2026-08-28
+// @version      9.99.962+2026-08-28
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -39035,7 +39035,10 @@ a { color: #1565c0; }`;
         // Run refactored clutter removal
         performClutterCleanup();
 
-        if (pageType === 'events' || _isReleaseGroupsMultiMode()) removeSanojjonasContainers();
+        if (pageType === 'events' || _isReleaseGroupsMultiMode()) {
+            removeSanojjonasContainers();
+            _watchForLateSanojjonasInjections();
+        }
 
         // Update UI state
         activeBtn.disabled = true;
@@ -41521,33 +41524,47 @@ a { color: #1565c0; }`;
     /**
      * Watches for LATE-injected sanojjonas containers appearing after this
      * script's own one-shot `removeSanojjonasContainers()` pass (inside
-     * `finalCleanup()`) has already run — same rationale as
-     * `_watchForLateJesus2099Injections()` above, for the third-party
-     * artefacts matched by `SANOJJONAS_FIXED_IDS` instead: sanojjonas' own
-     * `#sanojjonasRoot` wrapper (containing its `load`/`load2`… and
-     * `bottom1`/`bottom2`… placeholder `<div>`s — see debug/sanoj-initial.html
-     * / debug/sanoj-new.html), plus the unrelated "Taggregator" tag-
-     * aggregation tool's (a separate userscript by zabe, github.com/zabe40,
-     * not sanojjonas) own `#taggregator-settings`/`#taggregator-import-button`
-     * panel (see `_findSanojjonasContainers()`'s own JSDoc for the full DOM
-     * shapes).
+     * `performClutterCleanup()`/`finalCleanup()`) has already run — same
+     * rationale as `_watchForLateJesus2099Injections()` above, for the
+     * third-party artefacts matched by `SANOJJONAS_FIXED_IDS` instead:
+     * sanojjonas' own `#sanojjonasRoot` wrapper (containing its `load`/
+     * `load2`… and `bottom1`/`bottom2`… placeholder `<div>`s — see
+     * debug/sanoj-initial.html / debug/sanoj-new.html), plus the unrelated
+     * "Taggregator" tag-aggregation tool's (a separate userscript by zabe,
+     * github.com/zabe40, not sanojjonas) own `#taggregator-settings`/
+     * `#taggregator-import-button` panel (see `_findSanojjonasContainers()`'s
+     * own JSDoc for the full DOM shapes).
      *
      * Confirmed via debug/sanoj-debug.log / debug/sanoj-page.html (the
-     * "Show single-table" cross-tab snapshot path, this function's only
-     * caller): by the time `finalCleanup()` ran, only 2 of the 11+
-     * sanojjonas elements sanojjonas eventually injects had actually
-     * appeared yet — this predates sanojjonas' script wrapping its output
-     * in one `#sanojjonasRoot` container, but the underlying race is
-     * unchanged: `removeSanojjonasContainers()`'s one-shot pass can only
-     * ever remove what already exists at that instant, and this bootstrap
-     * path completes within a single `setTimeout(...,0)` tick of the tab
+     * "Show single-table" cross-tab snapshot path): by the time
+     * `finalCleanup()` ran, only 2 of the 11+ sanojjonas elements
+     * sanojjonas eventually injects had actually appeared yet — this
+     * predates sanojjonas' script wrapping its output in one
+     * `#sanojjonasRoot` container, but the underlying race is unchanged:
+     * `removeSanojjonasContainers()`'s one-shot pass can only ever remove
+     * what already exists at that instant, and this bootstrap path
+     * completes within a single `setTimeout(...,0)` tick of the tab
      * opening (see `_clearNativeTableSectionsForSnapshot()`'s own JSDoc),
      * well before sanojjonas' own script — confirmed noticeably slower
-     * than jesus2099's — has finished its own asynchronous work. A normal
-     * (non-snapshot) page load takes the much slower real network-fetch
-     * path, giving sanojjonas' script more natural time to finish before
-     * this script's own cleanup runs, so this watcher is only needed on
-     * the fast snapshot-hydration path.
+     * than jesus2099's — has finished its own asynchronous work.
+     *
+     * This race is NOT unique to the fast snapshot-hydration path — a
+     * normal (button-click) page load can lose it too, whenever the user
+     * presses the action button before sanojjonas has rendered its
+     * container on the initial page: this script's own fetch+render can
+     * still finish (and run its one-shot cleanup) before sanojjonas'
+     * asynchronous script does. Confirmed via debug/s-present-on-final.html
+     * (2026-08-28): a fully-rendered `artist-releasegroups` page with
+     * `#sanojjonasRoot` still present, because the button was pressed
+     * before sanojjonas had rendered anything on `debug/s-present-on-initial.html`.
+     * Accordingly this watcher is called from three sites: the cross-tab
+     * snapshot bootstrap (unconditionally, right before
+     * `_hydrateAndRenderFromSnapshotData()`), the plain "Load from Disk"
+     * path (unconditionally, right before that same function's other
+     * caller in `reader.onload`), and `startFetchingProcess()`'s normal
+     * fetch path (gated `pageType === 'events' || _isReleaseGroupsMultiMode()`,
+     * the same condition already guarding every other sanojjonas call site,
+     * since sanojjonas only ever appears on those page shapes).
      *
      * Disconnects itself after `SA_SANOJJONAS_WATCH_MS` — longer than
      * jesus2099's own 5000ms window specifically because sanojjonas' own
@@ -56854,6 +56871,12 @@ a { color: #1565c0; }`;
 
                 const data = JSON.parse(jsonString);
 
+                // Same rationale as the cross-tab snapshot bootstrap's own
+                // call to this watcher (see _watchForLateSanojjonasInjections'
+                // JSDoc): loading from disk can hydrate+render just as fast,
+                // racing sanojjonas' async injection the same way if its
+                // container hasn't rendered yet on this already-loaded page.
+                _watchForLateSanojjonasInjections();
                 await _hydrateAndRenderFromSnapshotData(data, {
                     file, filterQueryRaw, isCaseSensitive, isRegExp, isExclude, globalRegex,
                     sourceLabel: file.name
