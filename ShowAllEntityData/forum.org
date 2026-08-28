@@ -2,7 +2,7 @@
 
 # [VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities](https://github.com/vzell/mb-userscripts/tree/master?tab=readme-ov-file#mb_show_all_entity_data)
 
-## Changes since last version (9.99.746 -> 9.99.887)
+## Changes since last version (9.99.746 -> 9.99.964)
 
 ### New: consolidated Release tracklists
 
@@ -13,9 +13,9 @@
 
 * **Who recorded it, where, and when** --- the underlying work, recording date, and the event or place a track was recorded (or mixed) at now get their own columns, pulled out of the wall of relationship text MusicBrainz normally buries them in.
 
-* **Engineers, producers, mixers and performers, each in their own column** --- recording engineer, producer, mixer, performer, and copyright/label credits are split out individually, with qualifiers like "additional" or "assistant" shown right next to the name.
+* **Engineers, producers, mixers and performers, each in their own column** --- recording engineer, producer, mixer, performer, and copyright/label credits are split out individually, with qualifiers like "additional" or "assistant" shown right next to the name. Those qualifier words now render in italic, coloured text so they stand out from the plain name/role text around them.
 
-* **Instruments and vocals, sorted out** --- who played what and who sang what now show in their own columns instead of being buried in one long credits list.
+* **Instruments and vocals, sorted out** --- who played what and who sang what now show in their own columns instead of being buried in one long credits list. Vocal-range credits like "alto vocals" or "guest baritone vocals" land in the same "Vocals" column as every other vocal credit instead of spawning their own one-off columns.
 [SCREENSHOT: release tracklist showing the credit/instrument/vocals columns]
 
 * **Catches live-recording date mix-ups** --- for a track marked "live", a small warning or error icon flags any credit whose date doesn't match the track's own recording date --- handy for spotting data-entry mistakes at a glance.
@@ -23,6 +23,19 @@
 * **Optional AcoustID/ISRC columns and streaming links** --- turn on dedicated columns for AcoustID fingerprints and ISRC codes if you need them (requires jesus2099's ["mb. INLINE STUFF"](https://github.com/jesus2099/konami-command/raw/master/mb_INLINE-STUFF.user.js) userscript), and see streaming/download links per track when the "MB: Inline per-recording streaming & download links" companion script is installed.
 
 * Added support for **individual ISRC pages** --- an /isrc/<code> page (listing every recording sharing that code) now loads and filters like everything else.
+
+* **A tidier tracklist out of the box** --- the catch-all "ARs" column (which repeats every relationship already broken out into its own column above) is now hidden by default, since its info is duplicated elsewhere --- one click in the column-visibility menu brings it back if you want it. You can now also pre-hide any column, for any page type, the same way (see COLUMN MANAGEMENT below).
+
+* **Multi-recording credits, each on their own line** --- a relationship crediting several different source recordings at once (e.g. a DJ-mix referencing multiple originals) now lists each one on its own row instead of silently merging them together.
+
+### New: consolidated Annotation history pages
+
+* **A whole entity's Annotation history in one table** --- every entity type with an Annotation-history page (artist, label, release, release group, recording, work, area, place, series, event, instrument) now gets a "Show Annotation History" button that pulls every past revision into the same filterable/sortable view as everything else, instead of MusicBrainz's own plain listing.
+[SCREENSHOT: the new "Show Annotation History" button and consolidated table]
+
+* **More to see about who edited it** --- the Editor column now also shows (and lets you filter by) whether an editor's account has since been deleted, how long they've been an active editor, and their historically-recorded name when it differs from their current one.
+
+* **"Compare versions" made easier** --- the button moved up into the page header for quicker access, opens the comparison in a new tab by default (so you don't lose your place), and any two revisions can now be compared with each other, not just against the newest one.
 
 ### Enhancements: a smarter filter dropdown
 
@@ -32,9 +45,9 @@
 --> https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd -> DVD Video "Recording artist" column -> uvd menu open
 
 
-* **Smarter name/role/credit filters** --- ready-made filters for individual artist/place/work names, artist roles, and credit details (like "additional", a specific instrument, or a date range) show up wherever they're relevant, without you having to type them out. Later additions cover how several people are joined together in one credit ("&", "with", "feat.", ...) and names a companion script has flagged as differing from an entity's real/canonical name.
+* **Smarter name/role/credit filters** --- ready-made filters for individual artist/place/work names, artist roles, and credit details (like "additional", a specific instrument, or a date range) show up wherever they're relevant, without you having to type them out. Later additions cover how several people are joined together in one credit ("&", "with", "feat.", ...) and names a companion script has flagged as differing from an entity's real/canonical name. A newer addition lets you filter by a single credited role even inside a combined credit --- e.g. matching "composer" also matches someone credited as "composer, lyricist" together.
 
-* **New structural filters for release and media details** --- distinct disc formats and sizes, release country/date/weekday, catalog-number prefixes, per-medium track counts, tag-vote counts, and the "(cancelled)" event marker are now each their own filterable, checkable entries where relevant.
+* **New structural filters for release and media details** --- distinct disc formats and sizes, release country/date/weekday, catalog-number prefixes, per-medium track counts, tag-vote counts, and the "(cancelled)" event marker are now each their own filterable, checkable entries where relevant. A newer addition adds a quick High / Low / Not marked filter for MusicBrainz's own release data-quality rating, wherever a Release column appears.
 [SCREENSHOT: the reorganised 📊 dropdown showing the new Format/Release events/Catalog sections]
 
 * **Multi-select relationship-icon filtering** --- relationship icons in the filter dropdown can now be checked and unchecked like any other filter option, instead of only letting you pick one at a time.
@@ -47,6 +60,8 @@
 
 * **Smoother keyboard/mouse use** --- hovering an entry with the mouse and moving the keyboard cursor no longer show two different highlighted rows at once, and closing the dropdown returns your typing cursor to the filter box you were in.
 
+* **Collapse or expand every filter section at once** --- Ctrl+Click any section heading in the 📊 dropdown to fold or unfold all of them together, instead of one at a time --- handy now that there are quite a few sections.
+
 ### Enhancements: other
 
 * **"Show single-table" button** (on by default) --- on pages that split results across several category sub-tables (relationship listings, place performances, an artist's release groups, a release group's releases), any sub-table that MusicBrainz itself doesn't already paginate behind its own "see all" link gets this button: click it to open that sub-table's already-rendered rows as a plain, single, unified table in a new tab, instead of the usual split-by-category layout.
@@ -55,6 +70,10 @@
 * **Friendlier multi-value lists** --- a cell listing several people or tags now reads naturally, e.g. "Jon Landau, Chuck Plotkin and Bruce Springsteen", instead of a plain comma-separated run.
 
 * **Relationships column** now also available on an artist's Works listing.
+
+* **Sensible defaults for new installs** --- several settings now default to more useful values out of the box: flag icons in the filter dropdown, more visible dropdown rows, and auto-resizing columns on load are all now on by default. Anyone who already changed one of these keeps their own choice.
+
+* **Pick which columns start hidden, per page type** --- a new settings table lets you decide which columns should start hidden the very first time a given page type's table renders, instead of hiding them by hand every time via the column-visibility menu.
 
 ### Enhancements: report pages
 
@@ -78,3 +97,11 @@
 * Fixed the "Actions" (Edit/Remove) column lingering as an empty header on alias pages after its content was already being hidden.
 * Renamed the "MB-Primary alias" column to plain "Primary alias" everywhere, matching MusicBrainz's own wording.
 * The video icon column now also appears for the Recordings list on tag/user-tag pages, matching other pages that already had it.
+* Recording "Comment" parsing (the Event-Type/Date/Venue/City/Country columns on Work-Recordings/Artist-Recordings-style pages) no longer mixes up the venue, city, and country when the trailing note itself contains a comma, and now correctly understands MusicBrainz's "day A or day B, exact day unclear" date notation instead of losing it.
+* The "Join phrases" filter entries (like "&" or "and") no longer disappear from the dropdown after closing and reopening it on an already-filtered column.
+* Fixed a couple of places where picking a second filter value on a credit/role column could silently corrupt the data being matched.
+* Sub-table filters (the small filter box above one category's own mini-table): fixed the "clear filters" button sometimes not appearing while one of these was active, fixed clearing one after sorting a column leaving the table permanently stuck on the old filtered rows, and fixed cover-art counts/images getting out of sync after a sort with one of these active.
+* The "show/hide all sections" toggle on multi-section pages (and the four Discography-view buttons on artist pages) could get out of sync with what was actually visible on screen, and clicking it could then reveal sections that belonged to a different, currently-hidden view. Sorting a column and then switching between Discography views no longer loses the sort highlighting either.
+* Cleaned up leftover clutter that a different, unrelated userscript (a tag-aggregation tool) could sometimes leave behind on the page after this script finished rendering.
+* Fixed a rare crash triggered by certain other browser extensions/scripts sending unusual keyboard events.
+* A few small positioning fixes on the new Annotation history page's relocated "Compare versions" button.

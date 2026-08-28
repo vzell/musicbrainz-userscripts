@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.965",
+    "date": "2026-08-28",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Resynced `ShowAllEntityData_HELP.txt` against every user-facing change from 9.99.888 through 9.99.964: added the new `annotations` pageType's own ANNOTATION HISTORY PAGE section (Editor/Version-history columns, relocated \"Compare versions\" button, always-selectable Old/New radios), documented the two new 📊 unique-values dropdown sections (\"Entity info - Role\" atomic role tokens, \"Release info - Data quality\") plus the annotations-only \"Editor info\"/\"Version history - Changelog\" sections and the Ctrl+Click collapse/expand-all-sections behavior, corrected several stale default-value claims (Flag Icons In Unique-Values Dropdown OFF→ON, Unique-Values Dropdown Visible Rows 8→30, \"Show single-table\" button OFF→ON, Annotation-section auto-expand OFF→ON, \"ARs\" column collapse ON→OFF, auto-resize-on-load default noted as ON), added the missing \"Event-Additional-Info\" synthetic column and the new uncertain-day \"/DD\" date format to the Event-Parts extractor description, added the new \"Default Hidden Columns per Page Type\" setting to COLUMN MANAGEMENT/SETTINGS, and updated RELEASE-TRACKS PAGE for Vocals' vocal-range consolidation, the new colored/italicized credit-attribute-word styling, and the Relationships column's disk-round-trip-without-refetch behavior."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.964",
     "date": "2026-08-28",
     "sections": [
