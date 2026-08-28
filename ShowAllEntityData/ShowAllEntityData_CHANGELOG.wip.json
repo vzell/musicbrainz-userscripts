@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.11",
+    "date": "2026-08-26",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "PERFORMANCE.org Step 14: added in-flight request de-duplication to the shared CAA/EAA image cache (_artFetchCachedImage) — a concurrent request for the identical front-thumbnail URL now joins the already-running IDB read/network fetch instead of issuing a duplicate one, via a new _artInFlightFetches Map. Closes a race where a row's inline CAA/EAA thumbnail (Release column), the separate CAA/EAA column's own \"main\" icon, and the release-group bigbox strip — all three of which already fetch the byte-identical front-thumbnail URL through the same three-tier cache — could each miss the cache and independently hit the network. Tier 2/3 (IndexedDB lookup + network fallback) was split out into a new _artFetchUncachedImage() helper so the de-dup bookkeeping wraps a single call; no change to any call site (_artLoadIcon, the inline loadTask, _loadBigImgIdb, _caaFetchStats). Applies uniformly to CAA and EAA, inline/column/bigbox pipelines. The separate count/type (back cover, medium, spine, booklet, …) enrichment fetch is unaffected — it hits a structurally different JSON endpoint and cannot be served by this reuse. Also added window.__saTest.fetchCachedImageConcurrent(url, n) (test-mode debug hook, no production behavior change) so tests/live/caa-icon-fetch-dedup.spec.js can exercise the de-dup deterministically — reproducing the concurrent-overlap window through the live render pipeline turned out not to be reliable from outside; the shared queue's own FIFO scheduling serializes same-URL requests across pipelines closely enough that no genuine overlap occurred on the pilot test page."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.10",
     "date": "2026-08-24",
     "sections": [

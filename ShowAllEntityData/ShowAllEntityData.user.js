@@ -58485,6 +58485,19 @@ a { color: #1565c0; }`;
     const _artIdbMemCache = new Map();
 
     /**
+     * In-flight `_artFetchCachedImage()` calls, keyed by canonical URL.
+     * Lets a concurrent request for the same image join the already-running
+     * IDB read / network fetch instead of issuing a duplicate one — closes
+     * the race where the inline thumbnail and the CAA/EAA column's own
+     * "main" icon both request the identical front-thumbnail URL for the
+     * same row before either has had a chance to populate Tier 1/2 (see
+     * PERFORMANCE.org Step 14). Entries are removed once the fetch settles.
+     *
+     * @type {Map<string, Promise<{objectUrl: string, fromIdb: boolean, fromMemory: boolean}>>}
+     */
+    const _artInFlightFetches = new Map();
+
+    /**
      * Set of blob: object URLs created this session; unregistered on pagehide.
      * @type {Set<string>}
      */
@@ -58693,8 +58706,9 @@ a { color: #1565c0; }`;
      *
      * Lookup order:
      *   1. _artIdbMemCache (per-session Map keyed by canonical URL)
-     *   2. IndexedDB 'images' store — respects sa_art_idb_image_ttl_days
-     *   3. Network via _artGmFetchBlob — result stored in IDB + session Map
+     *   2. _artInFlightFetches — join an already-running fetch for this URL
+     *   3. IndexedDB 'images' store — respects sa_art_idb_image_ttl_days
+     *   4. Network via _artGmFetchBlob — result stored in IDB + session Map
      *
      * A 404 from the network is surfaced as a rejected Promise so the caller
      * can handle it the same way as a native img.onerror event.
@@ -58702,17 +58716,46 @@ a { color: #1565c0; }`;
      * @param   {string}  url   Protocol-relative or absolute image URL.
      * @returns {Promise<{objectUrl: string, fromIdb: boolean, fromMemory: boolean}>}
      */
-    async function _artFetchCachedImage(url) {
-        const normUrl  = _artNormaliseUrl(url);
-        const ttlMs    = ((Lib.settings.sa_art_idb_image_ttl_days || 30) * 86400 * 1000);
+    function _artFetchCachedImage(url) {
+        const normUrl = _artNormaliseUrl(url);
 
         // ── Tier 1: per-session in-memory Map ──────────────────────────────────
         if (_artIdbMemCache.has(normUrl)) {
             if (Lib.settings.sa_enable_art_cache_fetch_debug_logging) {
                 Lib.debug('idb', `_artFetchCachedImage: memory hit — ${normUrl}`);
             }
-            return { objectUrl: _artIdbMemCache.get(normUrl), fromIdb: false, fromMemory: true };
+            return Promise.resolve({ objectUrl: _artIdbMemCache.get(normUrl), fromIdb: false, fromMemory: true });
         }
+
+        // ── Join an in-flight fetch for the same URL, if one is running ────────
+        // The inline thumbnail and the CAA/EAA column's own icon fetch the
+        // identical front-thumbnail URL for the same row; without this, both
+        // can miss Tier 1 and independently hit IDB/network before the first
+        // one has resolved and populated the cache.
+        if (_artInFlightFetches.has(normUrl)) {
+            if (Lib.settings.sa_enable_art_cache_fetch_debug_logging) {
+                Lib.debug('idb', `_artFetchCachedImage: joined in-flight fetch — ${normUrl}`);
+            }
+            return _artInFlightFetches.get(normUrl);
+        }
+
+        const fetchPromise = _artFetchUncachedImage(normUrl)
+            .finally(() => _artInFlightFetches.delete(normUrl));
+        _artInFlightFetches.set(normUrl, fetchPromise);
+        return fetchPromise;
+    }
+
+    /**
+     * Tier 2/3 body of `_artFetchCachedImage()` — IndexedDB lookup, falling
+     * back to a network fetch. Split out so `_artFetchCachedImage()` can wrap
+     * a single call in `_artInFlightFetches` bookkeeping (see its own JSDoc).
+     * Not intended to be called directly by anything else.
+     *
+     * @param   {string}  normUrl  Already-normalised (https://) image URL.
+     * @returns {Promise<{objectUrl: string, fromIdb: boolean, fromMemory: boolean}>}
+     */
+    async function _artFetchUncachedImage(normUrl) {
+        const ttlMs = ((Lib.settings.sa_art_idb_image_ttl_days || 30) * 86400 * 1000);
 
         // ── Tier 2: IndexedDB ──────────────────────────────────────────────────
         try {
@@ -65354,6 +65397,39 @@ a { color: #1565c0; }`;
              */
             closeUniqDrop() {
                 closeUniqDrop();
+            },
+
+            /**
+             * Calls the internal CAA/EAA image cache (`_artFetchCachedImage`)
+             * `n` times back-to-back in the same synchronous tick, for the
+             * same `url` — a direct, deterministic exercise of
+             * PERFORMANCE.org Step 14's in-flight de-duplication.
+             *
+             * Added because reproducing the concurrent-overlap window
+             * end-to-end through the full CAA/EAA render pipeline (inline
+             * thumbnail + CAA/EAA column icon + bigbox strip, all sharing
+             * one `_caaQueue`) turned out not to be reliably reproducible
+             * from outside — the queue's own concurrency-driven scheduling
+             * tends to naturally serialize same-URL requests across those
+             * three pipelines well outside any realistic overlap window
+             * (see tests/live/caa-icon-fetch-dedup.spec.js's own notes).
+             * Calling `_artFetchCachedImage` directly, synchronously, N
+             * times sidesteps that entirely and tests the mechanism itself.
+             *
+             * @param {string} url - Protocol-relative or absolute image URL.
+             * @param {number} n   - Number of concurrent calls to make.
+             * @returns {Promise<Array<{ok: boolean, objectUrl?: string, fromIdb?: boolean, fromMemory?: boolean, error?: string}>>}
+             */
+            fetchCachedImageConcurrent(url, n) {
+                const calls = [];
+                for (let i = 0; i < n; i++) {
+                    calls.push(
+                        _artFetchCachedImage(url)
+                            .then((r) => ({ ok: true, objectUrl: r.objectUrl, fromIdb: r.fromIdb, fromMemory: r.fromMemory }))
+                            .catch((e) => ({ ok: false, error: String((e && e.message) || e) }))
+                    );
+                }
+                return Promise.all(calls);
             },
         };
     }

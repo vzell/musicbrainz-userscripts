@@ -46,11 +46,17 @@ const FIXTURE_SETTINGS_OVERRIDE = {
  * ShowAllEntityData.user.js's "Test-mode debug hook" section, near the end
  * of the file) — never set outside a test run.
  *
+ * `extraInitScript`, when given, is registered as a THIRD init script right
+ * after the GM_* stub script and before navigation — late enough that it can
+ * safely wrap an already-defined `window.GM_*` stub (e.g. to count
+ * `GM_xmlhttpRequest` calls per URL) without racing `buildGmStubsScript()`'s
+ * own definition of it.
+ *
  * @param {import('@playwright/test').Page} page
- * @param {{ url: string, fixtureFile?: string, testMode?: boolean }} opts
+ * @param {{ url: string, fixtureFile?: string, testMode?: boolean, extraInitScript?: string }} opts
  * @returns {Promise<void>}
  */
-async function loadUserscriptPage(page, { url, fixtureFile, testMode }) {
+async function loadUserscriptPage(page, { url, fixtureFile, testMode, extraInitScript }) {
     if (testMode) {
         await page.addInitScript({ content: 'window.__SA_TEST_MODE__ = true;' });
     }
@@ -58,6 +64,10 @@ async function loadUserscriptPage(page, { url, fixtureFile, testMode }) {
     await page.addInitScript({
         content: buildGmStubsScript(fixtureFile ? FIXTURE_SETTINGS_OVERRIDE : {}),
     });
+
+    if (extraInitScript) {
+        await page.addInitScript({ content: extraInitScript });
+    }
 
     if (fixtureFile) {
         await page.route(url, (route) => route.fulfill({ path: fixtureFile, contentType: 'text/html' }));

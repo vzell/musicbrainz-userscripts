@@ -476,6 +476,76 @@ mechanism). Fix: stamp a marker (e.g.
 isn't already ~display: none~, and restore to ~''~ in the show branch iff
 that marker is set.
 
+*** DONE Step 14: In-flight de-duplication for the shared CAA/EAA image cache
+
+Landed on branch ~caa-eaa-icon-fetch-dedup~ (branched off this branch's tip,
+not ~main~ — see that branch's own commit history for the full change).
+
+Prompted by a user question: on a page whose "Release"-family column shows
+an inline CAA front-cover thumbnail AND has a separate "CAA" column
+(~addCAA~), can the CAA column's "main" icon just reuse the inline icon's
+already-fetched image instead of fetching it again? Investigation found the
+two DO already fetch the byte-identical front-thumbnail URL
+(~ctx.archiveHost + entityPath + '/front-' + size~) through the same shared
+three-tier cache, ~_artFetchCachedImage()~ (~:58705~ before this change) —
+so on any table where the inline pass (always run first, never IO-gated)
+has time to resolve before the CAA-column's own icon task is dequeued from
+the shared ~_caaQueue~ (true for essentially all tables above trivial
+size), reuse was already happening for free via Tier 1 (in-memory) / Tier 2
+(IndexedDB). The only real gap was a narrow race: ~_artFetchCachedImage~ had
+no in-flight de-duplication, so on small tables (row count ≲
+~sa_caa_fetch_concurrency~, default 4) a row's inline task and its
+CAA-column icon task could both miss Tier 1/2 and independently issue a
+real network fetch for the same URL.
+
+Note the count/type enrichment (image count, back cover, medium, spine,
+booklet, …) can NEVER be served from this reuse — it comes from a
+structurally different endpoint (~ctx.apiHost + entityPath~, full JSON via
+~_artEnrichIcon~) than the front-thumbnail binary URL. Out of scope by
+construction, not a gap left open by this step.
+
+Fix: added an ~_artInFlightFetches~ Map (normalised URL → in-progress
+promise) inside ~_artFetchCachedImage~. A concurrent call for a URL already
+in flight joins that same promise instead of starting a second IDB read /
+network fetch; the Tier 2/3 body was split out into
+~_artFetchUncachedImage()~ so the wrapping/bookkeeping stays in one place.
+No call-site changes — ~_artLoadIcon~, the inline ~loadTask~, and
+~_caaFetchStats~ are all unaffected; a joined follower call transparently
+resolves with whatever ~{fromIdb, fromMemory}~ the leading call determined.
+Applies uniformly to CAA and EAA, and to both the inline and column
+pipelines, since all four go through this one shared function. Also applies
+to a THIRD consumer of the same cache found while verifying this step: the
+release-group bigbox strip (~_artInitBigPics~ → ~_loadBigImgIdb~, ~:62282~
+before this change) fetches the identical front-thumbnail URL too (its
+~sa_caa_big_img_size~ setting defaults to the same 250 as
+~sa_caa_small_img_size~), so all three now share the same de-dup.
+
+**Verification finding, worth recording**: reproducing the concurrent-
+overlap window end-to-end through the live CAA/EAA render pipeline (all
+three consumers above sharing one ~_caaQueue~) turned out NOT to be
+reliably reproducible from outside. Traced live against the "Tougher Than
+the Rest" pilot page (7 releases, concurrency 4): because bigbox/CAA-icon/
+inline each enqueue an entire pass of per-row tasks strictly after the
+previous pass's own enqueue loop finishes, and ~_caaQueue~ is a plain FIFO,
+a later pipeline's task for a given release is never admitted until every
+earlier-queued task ahead of it (including that SAME release's own earlier
+pipeline task) has already been admitted and settled — so in practice no
+genuine overlap for the same URL ever occurred on this page, and a 404
+response is never cached (only a successful fetch populates Tier 1/2), so
+each pipeline ended up making its own independent, fully-serialized attempt
+regardless of this step's fix. This does not mean the fix is pointless —
+the underlying race (two callers both past the Tier 1/2 check, before
+either has cached the result) is real and this closes it — it just means
+that race is narrower/timing-dependent enough that it isn't the dominant
+source of redundant fetches on typical pages, and a live E2E test cannot
+deterministically force it. Verified instead via a direct test-mode hook
+(~window.__saTest.fetchCachedImageConcurrent(url, n)~, calls
+~_artFetchCachedImage~ N times synchronously in one JS turn — guaranteed
+overlap, no queue/timing dependency) in
+~tests/live/caa-icon-fetch-dedup.spec.js~; confirmed to fail (5 network
+calls instead of 1) with the fix temporarily disabled and pass with it
+restored.
+
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 
 Consolidated results from a full measurement session on ~artist-events~
