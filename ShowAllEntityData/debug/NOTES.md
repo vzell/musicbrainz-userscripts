@@ -6800,3 +6800,25 @@ bigbox-reorder cost.
   specific): `_watchForLateJesus2099Injections()` (line ~41390) has the
   identical single-call-site gap (only called at line ~30322, the cross-tab
   bootstrap) on both the normal-fetch and disk-load paths.
+
+## 2026-08-28 — multiple-dates.html: eventParts Event-Date misses "/DD" uncertain-day dates
+
+- Snapshot: `multiple-dates.html` — one rendered row from `work-recordings`
+  on work "A Rainy Night in Soho" (`/work/8727a75a-8d33-3a2c-912a-
+  f57952773201`), recording `de9ff1d7-dd78-4ed6-a328-c1ab126304e6`, Comment
+  `"(live, 2001-12-22/23)"`. Shows `2001-12-22/23` landing in the
+  "Event-Detail" column instead of "Event-Date".
+- Root cause: `eventParts()`'s `DATE_RE` (`ShowAllEntityData.user.js`,
+  ~line 4395) only matched plain partial ISO 8601 (`YYYY`, `YYYY-MM`,
+  `YYYY-MM-DD`), not MusicBrainz's own "recorded on one of these days,
+  exact day unclear" convention of appending one or more `/DD` segments to
+  a full date. Since the regex didn't match, the date string fell through
+  to the `else` branch and was stored in Event-Detail instead.
+- Fix: extended `DATE_RE` to `/^\d{4}(?:-\d{2}(?:-\d{2}(?:\/\d{2})*)?)?$/`
+  — accepts zero or more trailing `/DD` segments on a full date. Verified
+  against a small standalone test covering `YYYY`/`YYYY-MM`/`YYYY-MM-DD`/
+  `YYYY-MM-DD/DD`/`YYYY-MM-DD/DD/DD` (all match) and rejecting
+  `YYYY-MM-DD/YYYY-MM-DD` (two full dates, a different shape) and free text.
+- Live-verified: `tests/live/event-parts-extraction.spec.js`'s second test
+  reuses this same work page and recording; confirmed it fails on the
+  pre-fix code (`Event-Date` empty) and passes after the fix.
