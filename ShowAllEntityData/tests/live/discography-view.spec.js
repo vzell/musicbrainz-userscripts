@@ -6,31 +6,33 @@ const { collectPageErrors, assertGroupedRenderCompleted } = require('../support/
 const { waitForSortSettled, getSubTableRowCounts } = require('../support/filterSortAssertions');
 
 /**
- * Reproduces three bugs found while manually verifying the discography-view
- * feature (artist-releasegroups' "Complete/Official/Non-Official/Complete
- * (merged) Discography" buttons) on a real page:
+ * Reproduces bugs found while manually verifying the discography-view
+ * feature (artist-releasegroups' "Discography:" label + Complete/Official/
+ * Non-Official/Complete (merged) buttons) on a real page:
  *
  *  - Test A: sorting a column, then switching views, should keep every
  *    visual sort indicator (header tint, glyph highlight, body zebra
  *    striping, sort-status text) exactly as persistent as the row order
  *    already correctly is.
  *  - Test B: switching to a view where nothing auto-expands (this pilot
- *    artist's "Non-Official Discography" has no "Album" category) must
- *    keep the master toggle button's label in sync with reality, and
- *    clicking it must never unhide sub-tables that belong to a
- *    currently-filtered-out view.
+ *    artist's Non-Official view has no "Album" category) must keep the
+ *    master toggle button's label in sync with reality, and clicking it
+ *    must never unhide sub-tables that belong to a currently-filtered-out
+ *    view.
  *  - Test C: a genuinely view-specific state (an active sub-table filter)
  *    must still correctly reset on a view switch — a regression guard
  *    proving Test A's fix doesn't overshoot into preserving things that
  *    should reset.
+ *  - Test D: body zebra striping specifically must survive switching
+ *    through the merged view and back.
  */
 
 // Simon & Garfunkel — user-provided pilot artist for this feature: only 123
 // rows (85 with inline CAA thumbnails) across all sub-tables/views combined,
 // small enough for a routine live spec (unlike stop-button-pagination.spec.js's
 // 2142-row Bruce Springsteen pilot, picked there specifically for its size).
-// Crucially, this artist's "Non-Official Discography" view has no "Album"
-// category — the condition that exposes Test B's bug.
+// Crucially, this artist's Non-Official view has no "Album" category — the
+// condition that exposes Test B's bug.
 const ARTIST_URL = 'https://musicbrainz.org/artist/5d02f264-e225-41ff-83f7-d9b1f0b1874a?all=1&va=0';
 const SHOW_ALL_BUTTON = 'button[data-label="🧮 Artist RGs"]';
 
@@ -116,6 +118,37 @@ async function getHiddenViewTableLeakCount(page) {
 }
 
 test.describe('discography view (artist-releasegroups): sort persistence, master-toggle sync/leak', { tag: '@extended' }, () => {
+    test('button labels are shortened, with a shared "Discography:" label after the divider', async ({ page }) => {
+        const pageErrors = collectPageErrors(page);
+        await loadAndExpandAll(page, pageErrors);
+
+        const labelText = (await page.locator('#mb-disc-btn-label').textContent() || '').trim();
+        expect(labelText).toBe('Discography:');
+
+        const getBtnText = async (id) => ((await page.locator(id).textContent()) || '').trim();
+        expect(await getBtnText('#mb-disc-complete-btn')).toBe('📋 Complete');
+        expect(await getBtnText('#mb-disc-official-btn')).toBe('📀 Official');
+        expect(await getBtnText('#mb-disc-nonofficial-btn')).toBe('📼 Non-Official');
+        expect(await getBtnText('#mb-disc-merged-btn')).toBe('🗂️ Complete (merged)');
+
+        // Label sits between the divider and the first button in DOM order,
+        // and its font-size matches the buttons' own.
+        const order = await page.evaluate(() => {
+            const ids = ['mb-disc-btn-divider', 'mb-disc-btn-label', 'mb-disc-complete-btn'];
+            return ids
+                .map((id) => document.getElementById(id))
+                .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+                .map((el) => el.id);
+        });
+        expect(order).toEqual(['mb-disc-btn-divider', 'mb-disc-btn-label', 'mb-disc-complete-btn']);
+
+        const labelFontSize = await page.locator('#mb-disc-btn-label').evaluate((el) => getComputedStyle(el).fontSize);
+        const btnFontSize = await page.locator('#mb-disc-complete-btn').evaluate((el) => getComputedStyle(el).fontSize);
+        expect(labelFontSize).toBe(btnFontSize);
+
+        expect(pageErrors).toEqual([]);
+    });
+
     test('sort visuals (header tint, glyph highlight, zebra striping, status text) persist across a view switch', async ({ page }) => {
         const pageErrors = collectPageErrors(page);
         await loadAndExpandAll(page, pageErrors);
@@ -170,10 +203,10 @@ test.describe('discography view (artist-releasegroups): sort persistence, master
         const pageErrors = collectPageErrors(page);
         const { masterToggle } = await loadAndExpandAll(page, pageErrors);
 
-        // Mirror the user's own repro: visit Official Discography first
-        // (which auto-expands its "Album" category) before Non-Official
-        // (which this pilot artist has none of) — this is what leaves the
-        // master toggle in a stale "expanded" state.
+        // Mirror the user's own repro: visit the Official view first (which
+        // auto-expands its "Album" category) before Non-Official (which this
+        // pilot artist has none of) — this is what leaves the master toggle
+        // in a stale "expanded" state.
         const officialBtn = page.locator('#mb-disc-official-btn');
         await expect(officialBtn).toBeVisible({ timeout: 30000 });
         await officialBtn.click();
@@ -265,29 +298,29 @@ test.describe('discography view (artist-releasegroups): sort persistence, master
         await expect(officialBtn).toBeVisible({ timeout: 30000 });
         await expect(mergedBtn).toBeVisible({ timeout: 30000 });
 
-        // b) Official Discography
+        // b) Official view
         await officialBtn.click();
         await expect(bodyCell()).toHaveClass(/mb-mscol-\d/);
 
-        // c) back to Complete Discography
+        // c) back to Complete view
         await completeBtn.click();
         await expect(bodyCell()).toHaveClass(/mb-mscol-\d/);
 
-        // d) Complete Discography (merged) — the merged-combining row insertion
-        // is a separate code path from renderGroupedTable()'s own reuse-branch
+        // d) Complete (merged) view — the merged-combining row insertion is a
+        // separate code path from renderGroupedTable()'s own reuse-branch
         // tint-reapply, so this is where zebra striping was lost before the fix.
         await mergedBtn.click();
         await expect(bodyCell()).toHaveClass(/mb-mscol-\d/);
 
-        // e) back to Complete Discography — the "restore from merged" pre-pass
-        // is a third, separate insertion code path; before the fix this stayed
+        // e) back to Complete view — the "restore from merged" pre-pass is a
+        // third, separate insertion code path; before the fix this stayed
         // un-tinted even though (c) (the same view, reached differently) worked.
         await completeBtn.click();
         await expect(bodyCell()).toHaveClass(/mb-mscol-\d/);
 
-        // f) Official Discography again — already worked before the fix (by
-        // this point the "restore from merged" flag is already cleared, so
-        // the standard, already-correct render path is what's visible) —
+        // f) Official view again — already worked before the fix (by this
+        // point the "restore from merged" flag is already cleared, so the
+        // standard, already-correct render path is what's visible) —
         // asserted here as a regression guard.
         await officialBtn.click();
         await expect(bodyCell()).toHaveClass(/mb-mscol-\d/);

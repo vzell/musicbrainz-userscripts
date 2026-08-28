@@ -44607,12 +44607,16 @@ a { color: #1565c0; }`;
      * artist-releasegroups pages after the combined (all:'1') render completes
      * and the h3 category arrays have been built.
      *
-     * Button order (left → right, before the Save/Load divider):
-     *   ① 📋 Complete Discography          — shows ALL h3/table pairs (default)
-     *   ② 📀 Official Discography          — shows only official h3/table pairs
-     *   ③ 📼 Non-Official Discography      — shows only non-official h3/table pairs
-     *   ④ 🗂️ Complete Discography (merged) — deduplicates same-name categories,
-     *                                          combining their rows into one sub-table
+     * Button order (left → right, before the Save/Load divider): a static
+     * " Discography: " label (font-size matched to the buttons, not a
+     * button itself) right after the divider, then:
+     *   ① 📋 Complete          — shows ALL h3/table pairs (default)
+     *   ② 📀 Official          — shows only official h3/table pairs
+     *   ③ 📼 Non-Official      — shows only non-official h3/table pairs
+     *   ④ 🗂️ Complete (merged) — deduplicates same-name categories,
+     *                             combining their rows into one sub-table
+     * ("Discography" moved out of each button's own text and into the
+     * shared label so all four stay short.)
      *
      * Button ① starts with the active (green) tint because the initial render
      * shows all categories.  The tint always follows the last-clicked button.
@@ -44628,13 +44632,25 @@ a { color: #1565c0; }`;
 
         // Remove stale elements from a prior render (idempotency)
         ['mb-disc-complete-btn', 'mb-disc-official-btn',
-         'mb-disc-nonofficial-btn', 'mb-disc-merged-btn', 'mb-disc-btn-divider']
+         'mb-disc-nonofficial-btn', 'mb-disc-merged-btn', 'mb-disc-btn-divider',
+         'mb-disc-btn-label']
             .forEach(id => { const el = document.getElementById(id); if (el) el.remove(); });
 
         const _discDivider = document.createElement('span');
         _discDivider.id = 'mb-disc-btn-divider';
         _discDivider.textContent = ' | ';
         _discDivider.style.cssText = uiButtonDividerCSS();
+
+        // Static "Discography:" label, placed after the divider so the four
+        // buttons themselves can drop the repeated word from their own text
+        // (Complete/Official/Non-Official/Complete (merged)). Font-size
+        // matched to the buttons' own (uiActionBtnBaseCSS()) rather than the
+        // button CSS wholesale — this is a plain label, not a button.
+        const _discLabel = document.createElement('span');
+        _discLabel.id = 'mb-disc-btn-label';
+        _discLabel.textContent = ' Discography: ';
+        const _btnFontSizeMatch = uiActionBtnBaseCSS().match(/font-size:([^;]+);/);
+        _discLabel.style.cssText = `font-size:${_btnFontSizeMatch ? _btnFontSizeMatch[1] : '0.8em'}; vertical-align:middle;`;
 
         /**
          * Creates one discography view button.
@@ -44660,30 +44676,30 @@ a { color: #1565c0; }`;
 
         const _completeBtn    = _makeDiscBtn(
             'mb-disc-complete-btn',
-            '📋 Complete Discography',
+            '📋 Complete',
             'all',
             'Show the complete combined discography (official + non-official)'
         );
         const _officialBtn    = _makeDiscBtn(
             'mb-disc-official-btn',
-            '📀 Official Discography',
+            '📀 Official',
             'official',
             'Show only the official discography sub-tables'
         );
         const _nonOfficialBtn = _makeDiscBtn(
             'mb-disc-nonofficial-btn',
-            '📼 Non-Official Discography',
+            '📼 Non-Official',
             'non-official',
             'Show only the non-official discography sub-tables'
         );
         const _mergedBtn      = _makeDiscBtn(
             'mb-disc-merged-btn',
-            '🗂️ Complete Discography (merged)',
+            '🗂️ Complete (merged)',
             'merged',
             'Show all discography categories, merging rows from same-named official and non-official sub-tables into one'
         );
 
-        // Insert order: divider | complete | official | non-official | merged
+        // Insert order: divider | "Discography:" label | complete | official | non-official | merged
         // Place the group BEFORE the initial Save/Load divider.
         const _refDivider = document.getElementById('mb-button-divider-initial');
         if (_refDivider) {
@@ -44691,12 +44707,13 @@ a { color: #1565c0; }`;
             controlsContainer.insertBefore(_nonOfficialBtn, _mergedBtn);
             controlsContainer.insertBefore(_officialBtn,    _nonOfficialBtn);
             controlsContainer.insertBefore(_completeBtn,    _officialBtn);
-            controlsContainer.insertBefore(_discDivider,    _completeBtn);
+            controlsContainer.insertBefore(_discLabel,      _completeBtn);
+            controlsContainer.insertBefore(_discDivider,    _discLabel);
         } else {
             // Fallback: append after last allActionButton
             const _lastBtn = allActionButtons[allActionButtons.length - 1];
             const _anchor  = (_lastBtn && _lastBtn.nextSibling) ? _lastBtn.nextSibling : null;
-            [_discDivider, _completeBtn, _officialBtn, _nonOfficialBtn, _mergedBtn]
+            [_discDivider, _discLabel, _completeBtn, _officialBtn, _nonOfficialBtn, _mergedBtn]
                 .forEach(el => {
                     if (_anchor) controlsContainer.insertBefore(el, _anchor);
                     else         controlsContainer.appendChild(el);
@@ -44704,8 +44721,8 @@ a { color: #1565c0; }`;
         }
 
         // Apply the initial active tint AFTER insertion so getElementById can find
-        // the buttons in the live DOM.  "Complete Discography" starts active because
-        // the initial render shows the full combined discography.
+        // the buttons in the live DOM.  "Complete" starts active because the
+        // initial render shows the full combined discography.
         _applyDiscButtonTints('all');
 
         Lib.debug('render', `_injectDiscographyViewButtons: 4 buttons injected ` +
