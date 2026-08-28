@@ -43184,25 +43184,40 @@ a { color: #1565c0; }`;
                     e.preventDefault();
                     e.stopPropagation(); // prevent bubbling to h2 collapse handler
                     const expanding = masterToggle.dataset.state !== 'expanded';
+                    // Skip sections not part of the current discography view
+                    // (h3.dataset.mbDiscHidden === 'true', set by
+                    // _applyDiscographyViewFilter()) — without this guard,
+                    // "show all" unhides another view's tables entirely while
+                    // their own h3 headers correctly stay hidden, dumping
+                    // unexpected headerless content into the page (see
+                    // debug/multi-table-sort-filter-bug.org's discography-view
+                    // follow-up). Pages without the discography-view feature
+                    // never set this attribute, so the check is a no-op there.
                     if (expanding) {
                         Lib.debug('render', 'Master toggle button: Showing all tables.');
                         container.querySelectorAll('table.tbl').forEach(t => {
+                            const _h3 = findH3ForTable(t);
+                            if (_h3 && _h3.dataset.mbDiscHidden === 'true') return;
                             t.style.display = '';
                             _syncGroupIntroVisibility(t);
                             _artRestoreBigboxesForTable(t);
                         });
                         container.querySelectorAll('.mb-toggle-h3').forEach(h => {
+                            if (h.dataset.mbDiscHidden === 'true') return;
                             const icon = h.querySelector('.mb-toggle-icon');
                             if (icon) icon.textContent = '▼';
                         });
                     } else {
                         Lib.debug('render', 'Master toggle button: Hiding all tables.');
                         container.querySelectorAll('table.tbl').forEach(t => {
+                            const _h3 = findH3ForTable(t);
+                            if (_h3 && _h3.dataset.mbDiscHidden === 'true') return;
                             t.style.display = 'none';
                             _syncGroupIntroVisibility(t);
                             _artHideBigboxesForTable(t);
                         });
                         container.querySelectorAll('.mb-toggle-h3').forEach(h => {
+                            if (h.dataset.mbDiscHidden === 'true') return;
                             const icon = h.querySelector('.mb-toggle-icon');
                             if (icon) icon.textContent = '▲';
                         });
@@ -44234,24 +44249,17 @@ a { color: #1565c0; }`;
         });
 
         // ── Sync master-toggle button label to actual per-table collapse state ──
-        // masterToggle is only created on the initial (query-less) render, and it
-        // is created BEFORE this forEach loop runs — at creation time it always
-        // hardcodes dataset.state = 'collapsed' ("Show all sub-sections"), which
-        // assumes every sub-table starts hidden. That's wrong whenever the
-        // shouldStayOpen logic above (a single sub-table, release-tracks, or a
-        // small album/official group) left one or more tables visible by
-        // default — e.g. release-tracks always starts every medium expanded, so
-        // the button showed "Show all sub-sections" while there was nothing left
-        // to show. Sync it here, once, against the real DOM state.
-        if (masterToggle) {
-            const _anyTableVisible = Array.from(container.querySelectorAll('table.tbl'))
-                .some(t => t.style.display !== 'none');
-            masterToggle.dataset.state = _anyTableVisible ? 'expanded' : 'collapsed';
-            masterToggle.textContent   = _anyTableVisible ? 'Hide all sub-sections' : 'Show all sub-sections';
-            masterToggle.title         = _anyTableVisible
-                ? 'Click to collapse all sub-sections (Ctrl+Click to collapse ALL sub-sections)'
-                : 'Click to uncollapse all sub-sections (Ctrl+Click to uncollapse ALL sub-sections)';
-        }
+        // masterToggle is only assigned in this local scope on the initial
+        // (query-less) render — the button itself is a persistent DOM node,
+        // never recreated, so _syncMasterToggleState() looks it up fresh via
+        // `container` and must run on EVERY render (e.g. after a discography-
+        // view switch), not just the first. See its own JSDoc for why a
+        // second call is also needed at the end of
+        // _applyDiscographyViewFilter(), after ITS OWN section-visibility
+        // pass — this render-time call alone isn't enough for a view switch,
+        // since discography section visibility is applied AFTER this
+        // renderGroupedTable() call returns.
+        _syncMasterToggleState(container);
 
         // ── Wire global collapse button for multi-table mode ──────────────────
         // Must run after the forEach loop so that every sub-table's
@@ -44729,6 +44737,36 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Syncs the `.mb-master-toggle` button's `dataset.state`/label/title to
+     * whatever is ACTUALLY visible under `container` right now — a table
+     * hidden by discography-view filtering (`t.style.display === 'none'`,
+     * set by `_applyDiscographyViewFilter()`) is already excluded by this
+     * check, same as a table the user collapsed manually.
+     *
+     * Callers: `renderGroupedTable()`'s own tail (every render — the button
+     * itself is a persistent DOM node, never recreated, so this must run
+     * every time, not just on the table's first render) and the end of
+     * `_applyDiscographyViewFilter()` (after ITS OWN section-visibility loop
+     * has finished — calling this any earlier, e.g. from inside the
+     * `runFilter()` re-render `_resetDiscographyViewState()` triggers, would
+     * still see the OLD view's table visibility, since the new view's own
+     * show/hide pass hasn't run yet).
+     *
+     * @param {HTMLElement} container - Root element to scan for `table.tbl`.
+     */
+    function _syncMasterToggleState(container) {
+        const _masterToggleEl = container.querySelector('.mb-master-toggle');
+        if (!_masterToggleEl) return;
+        const _anyTableVisible = Array.from(container.querySelectorAll('table.tbl'))
+            .some(t => t.style.display !== 'none');
+        _masterToggleEl.dataset.state = _anyTableVisible ? 'expanded' : 'collapsed';
+        _masterToggleEl.textContent   = _anyTableVisible ? 'Hide all sub-sections' : 'Show all sub-sections';
+        _masterToggleEl.title         = _anyTableVisible
+            ? 'Click to collapse all sub-sections (Ctrl+Click to collapse ALL sub-sections)'
+            : 'Click to uncollapse all sub-sections (Ctrl+Click to uncollapse ALL sub-sections)';
+    }
+
+    /**
      * Resets all filter, sort, highlight, h3-collapse, and bigbox state to the
      * initial rendered state before applying a discography view switch.
      *
@@ -44856,26 +44894,24 @@ a { color: #1565c0; }`;
             '.mb-subtable-filter-highlight'
         ).forEach(n => n.replaceWith(document.createTextNode(n.textContent)));
 
-        // ── 5. Sort state ─────────────────────────────────────────────────────
-        // (a) Clear multi-sort column tints
-        if (typeof multiSortTintRegistry !== 'undefined') {
-            multiSortTintRegistry.forEach(({ clearTints }) => {
-                try { clearTints(); } catch (_) { /* table may be mid-rebuild */ }
-            });
-        }
-        // (b) Strip active-sort CSS from all sort buttons
-        document.querySelectorAll('.sort-icon-btn').forEach(btn => {
-            btn.classList.remove('sort-icon-active');
-            // Remove superscript priority digits (¹²³…)
-            btn.textContent = btn.textContent.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '');
-        });
-        // (c) Clear sort-status span text
-        document.querySelectorAll('.mb-sort-status').forEach(el => { el.textContent = ''; });
-        // (d) Reset in-memory sort state (this prevents makeTableSortableUnified
-        //     from treating any column as still-sorted on the next render pass)
-        if (typeof multiTableSortStates !== 'undefined') multiTableSortStates.clear();
-        if (typeof multiSortTintRegistry !== 'undefined') multiSortTintRegistry.clear();
-        // (e) Re-insert rows in original groupedRows order for every visible table
+        // ── 5. Sort state — deliberately NOT reset ──────────────────────────────
+        // Sort order, header tint, sort-glyph highlight, body zebra striping, and
+        // per-table sort-status text are all meant to persist across a view
+        // switch, exactly like the underlying row order already does — a view
+        // switch changes which sections are grouped/visible, not what the user
+        // asked a still-visible table to be sorted by. Row order already
+        // survives because a sort mutates groupedRows[idx].rows in place and
+        // nothing here ever un-sorts it; the reuse-render branch's own tint-
+        // reapply mechanism (renderGroupedTable(), ~ tintEntry.applyTints())
+        // already correctly restores header tint + body zebra striping on every
+        // subsequent render on its own — AS LONG AS multiTableSortStates/
+        // multiSortTintRegistry aren't cleared out from under it, which this
+        // block used to do unconditionally. See debug/multi-table-sort-filter-bug.org's
+        // discography-view follow-up for the full trace.
+        //
+        // Re-insert rows in groupedRows order for every visible table — this
+        // does NOT touch sort state; groupedRows[idx].rows already holds
+        // whatever order the last sort (if any) left it in.
         _allH3s.forEach((_h3, _idx) => {
             if (!groupedRows || !groupedRows[_idx]) return;
             const _tbl = (() => {
@@ -44892,8 +44928,15 @@ a { color: #1565c0; }`;
             if (_tbl.dataset.mbMergedTbody === 'true') return;
             const _tbody = _tbl.querySelector('tbody');
             if (!_tbody) return;
+            // Clear first and clone on insert — group.rows[j] is the canonical
+            // template (never itself attached to the live DOM; renderGroupedTable
+            // always clones on insertion), so this mirrors the already-correct
+            // sibling pattern in _applyDiscographyViewFilter's own "restore from
+            // merged" pre-pass rather than relying on step 6 (runFilter(), right
+            // below) always immediately overwriting an un-cleared append.
+            _tbody.innerHTML = '';
             const _frag = document.createDocumentFragment();
-            groupedRows[_idx].rows.forEach(r => _frag.appendChild(r));
+            groupedRows[_idx].rows.forEach(r => _frag.appendChild(r.cloneNode(true)));
             _tbody.appendChild(_frag);
         });
 
@@ -45039,8 +45082,19 @@ a { color: #1565c0; }`;
                     if (_tbodyR) {
                         _tbodyR.innerHTML = '';
                         const _fragR = document.createDocumentFragment();
-                        groupedRows[_idx].rows.forEach(r => _fragR.appendChild(r));
+                        // Clone on insertion (groupedRows[idx].rows[j] is the canonical
+                        // template, never itself attached to the live DOM — see
+                        // renderGroupedTable()'s own row-insertion) and re-apply any
+                        // active multi-sort tint (header + body zebra striping)
+                        // afterward — this insertion bypasses renderGroupedTable()'s
+                        // own reuse-branch tint-reapply entirely, so it must do so
+                        // itself. See debug/multi-table-sort-filter-bug.org's
+                        // discography-view follow-up.
+                        groupedRows[_idx].rows.forEach(r => _fragR.appendChild(r.cloneNode(true)));
                         _tbodyR.appendChild(_fragR);
+                        const _tintKey = `${groupedRows[_idx].category || groupedRows[_idx].key || 'Unknown'}_${_idx}`;
+                        const _tintEntry = multiSortTintRegistry.get(_tintKey);
+                        if (_tintEntry) _tintEntry.applyTints();
                     }
                     _walkerR.dataset.mbTotalRows = String(groupedRows[_idx].rows.length);
                     delete _walkerR.dataset.mbMergedTbody;
@@ -45193,6 +45247,17 @@ a { color: #1565c0; }`;
                         const _frag = document.createDocumentFragment();
                         _srcRows.forEach(r => _frag.appendChild(r.cloneNode(true)));
                         _tbody.appendChild(_frag);
+                        // Re-apply any active multi-sort tint (header + body zebra
+                        // striping) for this first-occurrence table's own sortKey —
+                        // this insertion bypasses renderGroupedTable()'s own
+                        // reuse-branch tint-reapply entirely, so it must do so
+                        // itself. See debug/multi-table-sort-filter-bug.org's
+                        // discography-view follow-up.
+                        if (groupedRows[_idx]) {
+                            const _tintKey = `${groupedRows[_idx].category || groupedRows[_idx].key || 'Unknown'}_${_idx}`;
+                            const _tintEntry = multiSortTintRegistry.get(_tintKey);
+                            if (_tintEntry) _tintEntry.applyTints();
+                        }
                     }
 
                     _tbl.style.display = _isExpanded ? '' : 'none';
@@ -45332,6 +45397,15 @@ a { color: #1565c0; }`;
                 _statSpan.textContent = `(${_sectionRowTotal})`;
             }
         }
+
+        // Must run last, after the section-visibility loop above has already
+        // shown/hidden every h3/table for the NEW section — see
+        // _syncMasterToggleState()'s own JSDoc for why the earlier resync
+        // inside renderGroupedTable() (triggered by _resetDiscographyViewState()'s
+        // runFilter() call, near the top of this function) isn't sufficient on
+        // its own: it runs before this view's own visibility pass, so it can
+        // only see the PREVIOUS view's table visibility.
+        _syncMasterToggleState(_container);
 
         Lib.debug('render',
             `_applyDiscographyViewFilter: section="${section}" applied, ` +
