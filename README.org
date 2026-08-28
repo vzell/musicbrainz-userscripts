@@ -97135,9 +97135,20 @@ the same version "9.99.926" How should I proceed to get these in sync again. On 
 merge main branch into perf-steps-1-4
 
 ** DONE after merging test framework into performance branch make sure to formulate the right test assertions for the artist-events pageType
+** plan: after merging test framework into performance branch make sure to formulate the right test assertions for the artist-events pageType
 
+after merging our test framework from main into the performance branch perf-steps-1-4 formulate the right test
+assertions/plan/perf-baselines for the artist-events pageType with the URL
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events to compare all the performance improvements
+(see PERFORMANCE.org) between main and the branch perf-steps-1-4.
 
-*  which pageTypes should be tested to get a complete coverage of all different initial supported MusicBrainz pages
+Eventually we have to adjust or extend our current tests to cover all aspects
+
+Make sure you start on the main branch
+
+We also need snapshoting, to compare if there are no regressions in rendering in general
+
+* DONE which pageTypes should be tested to get a complete coverage of all different initial supported MusicBrainz pages
 ** DONE i
 
 1.)
@@ -97228,7 +97239,7 @@ For now just do the following, for me to see how this works/feels
   │ release-discids        │ https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897/discids        │
   └────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────┘
 
-** please recap what the @tests/fixtures/saved-data are used for
+** DONE please recap what the @tests/fixtures/saved-data are used for
 
 ● tests/fixtures/saved-data/*.json.gz are disk fixtures — pre-captured "Save to disk" exports of a page's fetched data,
 gzipped, and committed to the repo so tests can load them via loadFromDiskFixture() instead of hitting live
@@ -97247,7 +97258,7 @@ Both were produced by tests/support/capture-fixture.js (a one-time capture step)
 filter/sort/uniq-drop targets for the artist-events one are centralized in tests/support/artistEventsFixture.js so the
 three consumers can't drift apart from each other.
   
-** Do not only add snapshot baselines, but also fixtures
+** DONE Do not only add snapshot baselines, but also fixtures
 
 1.)
 
@@ -97258,7 +97269,7 @@ large tables stored once in the filesystem and then read rows back in with the a
 them (as the "Load from disk" UI offers these possibilities). Because VERY large tables are imposssible to render in a
 real browser without maybe crashing it
 
-** a
+** DONE a
 
 ● Good news: pointing the framework at a manually-produced .gz is trivial either way — nothing else needs to change. So the real question is just where the effort/risk lands, and the answer differs sharply between two cases:
 
@@ -97274,11 +97285,11 @@ real browser without maybe crashing it
   My take: manual for the large/crash-risk dogfooding captures (works today, and you're the only consumer anyway), automation for the small test-coverage fixtures (where repeatability actually pays off). Want me to make that capture-fixture.js fix now so the large ones can be
   automated too, or leave it manual for now?
 
-** do
+** DONE do
 
 yes, make that capture-fixture.js fix now so the large ones can be automated too, but with an option to store them in a directory NOT under git control
 
-** a  
+** DONE a  
 
   - Normal path (small releasegroup-releases, real settings): unchanged, confirmed working.
   - Large-dataset path (forced via a temporary sa_render_threshold: 1 override, cleaned up afterward): confirmed it detects showRenderDecisionDialog(), clicks "💾 Save to Disk" without rendering, and produces correct serialized data — written to the new git-ignored
@@ -97304,16 +97315,123 @@ https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works - 16 p
 #+end_example
 
 
-* TODO plan: check if "Relationships" column is saved to persistent storage with "Save to disk"
-
 * TODO plan: check if "Save to disk" really saves all relevant information for all pageTypes
+** DONE i
+
+1.)
+
+a.)
 
 Are the version information ('"version": "1.0"') and the other headers in the saved serialized JSON representation still
-valid for all currently supported pageTypes, given the fact that we now also use the saved representation for our
+valid for all currently supported pageTypes, given the fact that we now also use the saved representations for our
 testing framework.
 
+b.)
 
-* /ultrareview
+do we really serialize everything neccessary for all pageTypes for later "Load from disk"
+
+2.)
+
+a.)
+
+check specifically if the "Relationships" column is saved to persistent storage with "Save to disk", see e.g. @tests/support/diskFixture.js
+
+#+begin_example
+ *   - The "Relationships" injected column is NOT baked into the saved
+ *     snapshot the way CAA/EAA artwork is — confirmed empirically (a live
+ *     WS/2 `url-rels` request still fired after disk-loading a page with
+ *     `injectedColumns: ['Relationships']`, with no corresponding CAA/EAA
+ *     network activity). A disk-loaded page is not fully network-free if
+ *     that feature is active; `waitForRelationshipsComplete()`
+ *     (`asyncCompletion.js`) still applies and is still needed for tests
+ *     that depend on that column's final state.
+#+end_example
+
+If it's saved (either already currently, or after implementing it), and if on the final rendered page with a
+"Relationships" column (all rows loaded their relationships icons if present), will these relationship icons show up
+right away after loading again from disk, or will the reationship loading start again via network requests ?
+
+b.)
+
+And what about the CAA/EAA related columns, are the inline images shown right away when loading from disk (if the save to disk happend after ALL icons were actually loaded)
+
+c.)
+
+what about the big image picture strip
+
+3.)
+
+Implement in a feature branch starting from main, if the plan will be accepted
+
+** DONE findings
+
+● Both remaining exploration agents have returned. Here's a synthesis of what I found, before I ask a couple of scoping questions:
+
+  Findings
+
+  1a) Version header validity across pageTypes
+  saveTableDataToDisk() (and captureSubtableSnapshot()) hardcode version: '1.0' — it's never compared to anything on load. Both showLoadFilterDialog and _hydrateAndRenderFromSnapshotData only check the field is present, never that it equals a specific value. So there's
+  effectively no version-compatibility enforcement today — any file with any version string loads identically. This is fine for a human clicking "Load from Disk," but for a test-fixture use case it means a stale/incompatible fixture from a future format change would load silently
+  with no warning.
+
+  1b) Is everything necessary serialized, for all pageTypes?
+  No — known gaps, some by design, one a real bug:
+  - Injected columns (mb-rel-cell Relationships, mb-re-cell Release events, mb-ice-cell, mb-picard-cell) are explicitly filtered out at save time — by design, rebuilt live post-load.
+  - cdtoc pages: the data-cdtoc-tracklist-html TR-level dataset attribute is not serialized (only <td> HTML is), so the tracklist toggle silently no-ops after a disk-load. This looks like a genuine, currently-undocumented-as-fixed limitation.
+  - CAA/EAA "big picture strip": lives in a <div> outside <table> entirely, structurally invisible to the save code — always fully rebuilt from IDB/network.
+
+  2a) Relationships column — confirmed not saved today (diskFixture.js's comment is accurate). On load, initRelationshipsColumn() always re-runs: blank mb-rel-cells are recreated, then populated via a tiered IndexedDB (7-day TTL) → network (WS/2 url-rels, throttled 1100ms/call)
+  lookup. Icons never come back "for free" from the snapshot today.
+
+  Importantly, this is fixable relatively cheaply: unlike CAA/EAA, Relationships-column <img> tags use plain hotlinked URLs (Google favicons / static local icon paths) — never blob: object URLs. There's no session-scoping problem. If the mb-rel-cell exclusion is simply dropped
+  from the save-time cell filter, the cell HTML (icons + the hidden .mb-rel-filter-key filter span) can be serialized and restored verbatim, with zero network/IDB activity needed on load.
+
+  2b) CAA/EAA inline images — cell HTML with <img> tags is technically saved, but hydration unconditionally strips the "enriched" markers and rebuilds every image via _artFetchCachedImage. If IndexedDB still has the cached Blob (30-day TTL), no network call — but a JS/IDB
+  round-trip is still required to regenerate a fresh blob: URL; a literal saved <img src="blob:..."> string is dead on arrival. So: fast (no network) if IDB is warm, but never instantaneous the way plain HTML would be, and a real network fetch happens if IDB is cold.
+
+  2c) Big picture strip — not serialized at all (outside the table), always fully rebuilt post-load via the same IDB/network path as 2b.
+
+  Scoping questions
+
+  Your phrasing on 2a ("either already currently, or after implementing it") suggests you want the Relationships column actually made save/restorable. I want to confirm the implementation scope before designing it.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Planning: /home/vzell/.claude/plans/1-a-are-the-golden-cocke.md
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+←  ☐ Fix scope  ☐ Other columns  ✔ Submit  →
+
+Which of the gaps found should the implementation actually fix?
+
+❯ 1. [ ] Serialize/restore Relationships column (Recommended)
+  Stop excluding mb-rel-cell from save; restore icons verbatim on load with zero network/IDB calls. This is the core ask from question 2a.
+  2. [ ] Fix cdtoc tracklist-toggle gap
+  Serialize data-cdtoc-tracklist-html (or an equivalent) so the tracklist toggle survives a disk-load round trip instead of silently no-oping.
+  3. [ ] Add real version-compatibility checking
+  Compare saved `version` against a current constant on load (warn or reject on mismatch) instead of only checking presence — relevant now that test fixtures depend on this format staying stable.
+  4. [ ] Type something
+
+←  ☒ Fix scope  ☐ Other columns  ✔ Submit  →
+
+│ For Relationships-column restore: should other injected columns with the same 'plain hotlinked, non-blob' icon shape also be included, or keep scope to Relationships only?
+
+❯ 1. Relationships only (Recommended)
+     Keep the change targeted — mb-re-cell (Release events), mb-ice-cell, mb-picard-cell stay excluded/live-rebuilt as today.
+  1. Investigate Release events (mb-re-cell) too
+     Release events is another injected column; worth checking whether its icons/content are also plain-URL (non-blob) and could be included in the same fix.
+  2. Type something.
+
+** maybe - add a warning string not dialog
+
+UX decision: stay lenient, no new warning dialog. A version mismatch is
+ not a data-integrity risk the way a pageType mismatch is (showLoadFilterDialog
+ already has that hard confirm) — an old 1.0 file still loads correctly, just
+ without the new fast paths (full Relationships re-fetch, no tracklist-toggle
+ restore). Don't add a blocking dialog; optionally add a one-line
+ Lib.debug('cache', ...) log noting the loaded format version.
+  
+* TODO plan: check if "Relationships" column is saved to persistent storage with "Save to disk"
+
+
+* DONE /ultrareview - 1
 ** i
 
 can you create for me the right /ultrareview prompt (given I have currently 3 free ones left to test) to review my
@@ -97419,6 +97537,72 @@ in the perf-steps-1-4 branch
 
   Want me to draft the "Step 6" and "Step 7" entries in PERFORMANCE.org for the sort-comparator fix and the _visibleRowSetSignature bug (that one arguably deserves top billing — it undoes two already-shipped steps), or would you rather fix _visibleRowSetSignature directly first
   since it's a one-function root cause?
+
+* /ultrareview - 2
+** i
+
+Create the right /ultrareview prompt (given I have currently 2 free ones left to test) to review my
+userscript for the following goal on the perf-steps-1-4 branch:
+
+Are there any advantages (performance/usability/extensibility) for refactoring this large userscript, and how should I
+proceed, given the fact that it currently just works. Add your findings to a REFACTORING.org file
+** a
+
+ Given /code-review ultra defaults to reviewing the diff on the current branch vs main, and perf-steps-1-4's diff is only the filter/sort/caching work already tracked in PERFORMANCE.org — that default scope
+  would miss ~95% of what you're actually asking about (the file's overall architecture). The prompt has to explicitly override that, or you'll burn a free run reviewing the wrong thing.
+
+  I also checked PERFORMANCE.org (821 lines, 13 steps) so the new review doesn't re-derive tactical perf items you've already tracked — it should stay focused on structural questions.
+
+  Here's the prompt I'd use:
+
+  Review the ENTIRE ShowAllEntityData.user.js file (~65,360
+  lines, current @version 9.99.954) as it stands on this branch — NOT this
+  branch's diff against main. This branch's diff (perf-steps-1-4) is
+  filter/sort/caching work already tracked in PERFORMANCE.org; it is out of
+  scope here, do not re-review or re-flag anything from it.
+
+  Read CLAUDE.md (ShowAllEntityData/CLAUDE.md) first for the file's existing
+  architecture: single IIFE, no ES modules, pageDefinitions[] registry
+  (~86 pageTypes), ColumnDataExtractor/SyntheticColumnDataExtractor
+  registries, configSchema (~216 settings keys, ~2450 lines), the
+  render/fetch pipeline (startFetchingProcess -> renderFinalTable/
+  renderGroupedTable), and the collapsableColumns/AR-column/uniq-dropdown
+  subsystems. Do not re-derive this from scratch.
+
+  Question: are there real advantages — performance, usability (for the
+  maintainer extending this file), extensibility (adding new pageTypes/
+  extractors/columns) — to refactoring this file's STRUCTURE, given it
+  currently works correctly in production? Evaluate, don't assume the answer
+  is yes. "No compelling case for X" is a valid and useful finding.
+
+  For each candidate refactor (e.g.: splitting the single IIFE into modules
+  built via a bundler but still shipping one compiled .user.js; extracting
+  configSchema into its own file; changing how pageDefinitions/extractor
+  registries are declared/discovered; any dead-code or duplicate-logic
+  found across the ~86 pageType definitions; anything else you find):
+   - state which axis it helps (perf / usability / extensibility) and why
+   - state the concrete cost and risk of doing it, given constraints:
+     this ships as a Tampermonkey userscript (single or @require-split
+     .user.js, no runtime import/export), and only 4 of 86 pageTypes
+     currently have snapshot regression coverage (tests/snapshots/), so
+     large structural changes are currently hard to verify safe
+   - give an explicit recommendation: worth doing / not worth doing /
+     worth doing only if [condition], not just a description
+
+  Do NOT produce generic "split into modules for maintainability"
+  boilerplate untethered to this file's actual registries and pipelines —
+  ground every finding in specific line ranges/function names.
+
+  Deliverable: create ShowAllEntityData/REFACTORING.org, in the same
+  org-mode style as ShowAllEntityData/PERFORMANCE.org (top-level headings,
+  a ranked findings table, TODO-style entries for anything worth pursuing
+  with a recommended incremental/low-risk path — not a rewrite). Include an
+  explicit "not recommended" section for anything considered and rejected,
+  with the reasoning, so it isn't re-litigated later.
+
+  A couple of practical notes given you only have 2 free runs left:
+  - Run this one now as-is — it's self-contained and shouldn't need a follow-up just to fix scope.
+  - Keep the second run in reserve for after you've decided which (if any) refactor candidates to act on, to validate the actual change rather than re-assessing the same question.
 
 
 * Are there any advantages (performance/usability/extensibility) for refactoring this large userscript, and how should I proceed, given the fact that it currently just works
@@ -98478,6 +98662,44 @@ while **still generating exactly one `ShowAllEntityData.user.js`** for Tampermon
 And most importantly: **I would preserve the existing script as the behavioral reference throughout the whole process.** The fact that it "just works" is an asset, not a reason not to refactor — it means you have a very valuable known-good baseline.
 
 If you want to proceed with this particular script, I can next **map its actual 65,000-line structure into a concrete proposed `src/` directory and identify which functions should move into which module, including the dependency direction and the first ~5 safest extraction steps**.
+
+
+* CAA and Release column
+** i
+
+Isn't it possible on a pageType like e.g. https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
+when fetching the inline CAA FRONT cover icon for a row in the "Release" column (if it exists in the Cover Art archive),
+to use that same icon already for the 'main' icon in the CAA column, instead of waiting and rendering the CAA column
+separately after the inline images of all rows in the "Release" column have been fetched, as it's the same icon
+anyway. The only things which happen additonally in the CAA column for each row, is the enrichment afterwards, by adding
+how many images the release in a specific row actually has and the actual images itself, like baclk cover, mendium, spine, booklet, etc
+
+** effect
+
+I would have expected, that when for a row the inline image is fetched for the "Release" column, and rendered as an
+inline image in front of the release name, that right after this action, the same inline image would be rendered in the
+CAA column as the main image already, as it's fetched and available, instead it looks like the processing/fetching still
+goes on for each row and rendering happens only in the "Release" column, and afterwards the image shows up in the CAA columns
+
+** a
+
+● Good catch — and you're right, that's real, but it's a different mechanism than the one I just fixed.
+
+  What's actually happening: the inline thumbnail and the CAA column's icon are two separate tasks in the same shared _caaQueue. The inline pipeline (initCaaInlinePics) enqueues one task per row for every row in one synchronous pass; only after that entire pass finishes does the
+  CAA-column pipeline (initCaaPics) start enqueuing its own one-task-per-row pass. Since _caaQueue is strict FIFO, every inline task gets admitted before any CAA-column task can even start — so visually, all the "Release" column icons finish populating first (in batches, gated by
+  sa_caa_fetch_concurrency), and only then does the CAA column's own pass begin. This is true regardless of caching: even when the CAA-column task gets an instant Tier-1 cache hit (which the dedup fix I just landed makes more reliable), it still can't paint until its own turn
+  comes up in the queue — and that turn is scheduled well behind the entire inline pass.
+
+  Why my fix doesn't touch this: Step 14 only avoids a redundant network request when two tasks happen to overlap. It doesn't change when the CAA-column's task runs — a cache hit and a cache miss both still wait their turn in the same FIFO queue.
+
+  What would actually fix the ordering you want: a direct hand-off — when the inline task for row X resolves, immediately paint the CAA column's icon for that same row right then (instead of relying on the CAA-column pipeline's own later queued task). This is the "option 2" the
+  original investigation considered and set aside in favor of the simpler cache-dedup fix, since the literal original question was about avoiding duplicate fetches, not about paint ordering.
+
+  It's a real but separate piece of work with its own wrinkles worth flagging before I touch it:
+  - The CAA-column task would still need to run for its own enrichment fetch (count/type badges) even if the icon paint is short-circuited — so it's not "skip the task," just "make it paint early if the data's already in hand."
+  - Needs to interact correctly with Step 5's IntersectionObserver lazy-loading path (large tables) and with EAA symmetrically.
+
+  Want me to plan and implement that hand-off as a follow-up on this same branch, or a new one?
 
 
 * a- Gemini
