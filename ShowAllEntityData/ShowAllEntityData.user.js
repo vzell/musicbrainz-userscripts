@@ -5074,6 +5074,25 @@
     }
 
     /**
+     * Detects a native "See all N <entity>s" overflow-link `<li>` — the
+     * trailing list item tag-value/artist-credit pages append when a
+     * section has more entities than fit on the overview page (e.g.
+     * `<li><em><a href="/tag/rock/artist">See all 17,873 artists</a></em></li>`).
+     * Used to mark the `<tr>` built from it (see `_tr.dataset.mbSeeAllRow`
+     * below) so `renderGroupedTable`'s overflow-button code can find and
+     * strip it from `group.rows`/`group.originalRows` by marker instead of
+     * by DOM reference — see that function's "See all N" button block for
+     * why reference identity doesn't work.
+     *
+     * @param {Element} li
+     * @returns {boolean}
+     */
+    function _isSeeAllOverflowLi(li) {
+        const _a = li.querySelector(':scope > em > a[href]');
+        return !!(_a && /^See all [\d,]+/i.test(_a.textContent.trim()));
+    }
+
+    /**
      * Converts `<ul>` list elements on the live page (or a fetched document) into
      * `<table class="tbl">` elements so the standard fetch / filter / sort pipeline
      * can process them.  Called for every entry in `features.listToTable`.
@@ -5330,6 +5349,11 @@
                         Array.from(_ul.querySelectorAll(':scope > li')).forEach(li => {
                             const _tr = docContext.createElement('tr');
                             if (li.className) _tr.className = li.className;
+                            // Mark the trailing "See all N …" overflow-link row so
+                            // renderGroupedTable can strip it from group.rows/
+                            // originalRows by marker, not DOM reference — see
+                            // _isSeeAllOverflowLi's JSDoc.
+                            if (_isSeeAllOverflowLi(li)) _tr.dataset.mbSeeAllRow = '1';
                             const _td = docContext.createElement('td');
                             // Clone the full li content (may have span.flag + a)
                             Array.from(li.childNodes).forEach(n => _td.appendChild(n.cloneNode(true)));
@@ -5470,6 +5494,12 @@
                                 && /^\s*view all ratings/i.test(li.textContent.trim());
 
                             if (_isViewAll) {
+                                // Mark this row so renderGroupedTable can strip it from
+                                // group.rows/originalRows by marker, not DOM reference —
+                                // see _isSeeAllOverflowLi's JSDoc for why reference
+                                // identity doesn't work (renderGroupedTable always
+                                // clones rows before appending to tbody).
+                                _tr.dataset.mbViewAllRatingsRow = '1';
                                 // Put the link in the first cell; pad remaining cells empty
                                 const _td0 = docContext.createElement('td');
                                 Array.from(li.childNodes).forEach(n => _td0.appendChild(n.cloneNode(true)));
@@ -5668,6 +5698,9 @@
                         Array.from(_ul.querySelectorAll(':scope > li')).forEach(li => {
                             const _tr = docContext.createElement('tr');
                             if (li.className) _tr.className = li.className;
+                            // Mark the trailing "See all N …" overflow-link row —
+                            // see _isSeeAllOverflowLi's JSDoc.
+                            if (_isSeeAllOverflowLi(li)) _tr.dataset.mbSeeAllRow = '1';
                             const _td = docContext.createElement('td');
                             Array.from(li.childNodes).forEach(n => _td.appendChild(n.cloneNode(true)));
                             _tr.appendChild(_td);
@@ -43069,6 +43102,35 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Removes every row carrying `markerAttr` (a `dataset` key, e.g.
+     * 'mbSeeAllRow') from each given array, in place, matched BY THE MARKER
+     * rather than by DOM reference/`indexOf`. Row insertion into a rendered
+     * `<tbody>` always appends `cloneNode(true)` copies (see this function's
+     * row-insertion pass below) — including on the very first render — so
+     * the row you can find in the live DOM is never the same object as the
+     * one still sitting in `group.rows`/`group.originalRows`/
+     * `groupedRows[i].rows`. `dataset` attributes survive `cloneNode(true)`,
+     * so a marker set at row-creation time (see `applyListToTable`'s
+     * `_isSeeAllOverflowLi`/`_isViewAll` marking) is readable from either
+     * side and works regardless of which array or DOM node currently holds
+     * which reference — unlike `arr.indexOf(clonedNode)`, which can never
+     * match and silently no-ops.
+     *
+     * @param {string} markerAttr - a `dataset` key, e.g. 'mbSeeAllRow'
+     * @param {...(Array|null|undefined)} arrays
+     */
+    function _stripMarkedRows(markerAttr, ...arrays) {
+        for (const arr of arrays) {
+            if (!Array.isArray(arr)) continue;
+            for (let i = arr.length - 1; i >= 0; i--) {
+                if (arr[i] && arr[i].dataset && arr[i].dataset[markerAttr]) {
+                    arr.splice(i, 1);
+                }
+            }
+        }
+    }
+
+    /**
      * Renders multiple tables grouped by category (e.g., Official, Various Artists) with H3 headers
      * @param {Array} dataArray - Array of grouped data objects, each containing a label and rows
      * @param {boolean} isArtistMain - Whether this is the main artist page (affects rendering logic)
@@ -43786,33 +43848,26 @@ a { color: #1565c0; }`;
                             // Remove the trailing "See all" row — the button replaces it.
                             _lastRow.remove();
 
-                            // ── Splice from in-memory row arrays ──────────────────────
+                            // ── Strip from in-memory row arrays ───────────────────────
                             // _lastRow.remove() only removes the TR from the DOM (tbody).
-                            // group.rows (in-memory) still holds a reference to it.
-                            // On any subsequent runFilter call, filteredArray is built
-                            // from groupedRows; if "See all" is the last row of a group
-                            // it passes the empty-filter testRowMatch and gets appended
-                            // to the new tbody.  With a non-empty query renderGroupedTable
+                            // group.rows (in-memory) still holds the ORIGINAL "See all"
+                            // <tr> (row insertion above always clones — see
+                            // _stripMarkedRows' JSDoc), so an indexOf/=== reference match
+                            // against _lastRow (a clone) can never find it there. On any
+                            // subsequent runFilter call, filteredArray is built from
+                            // groupedRows; if "See all" is still in a group's rows it
+                            // passes the empty-filter testRowMatch and gets appended to
+                            // the new tbody. With a non-empty query renderGroupedTable
                             // takes the filter-reuse path (query truthy → no detection
                             // block) and the "See all" row becomes permanently visible.
-                            // Fix: splice it out of every in-memory array immediately.
-                            const _seeAllSplice = (arr) => {
-                                if (!Array.isArray(arr)) return;
-                                const _si = arr.indexOf(_lastRow);
-                                if (_si !== -1) arr.splice(_si, 1);
-                            };
-                            _seeAllSplice(group.rows);
-                            _seeAllSplice(group.originalRows);
-                            // Also patch the global groupedRows source when dataArray is
-                            // a filtered copy (runFilter passes a derived filteredArray
-                            // whose .rows is a new array, not the same reference).
-                            if (typeof groupedRows !== 'undefined' &&
-                                    groupedRows[index]) {
-                                if (groupedRows[index].rows !== group.rows)
-                                    _seeAllSplice(groupedRows[index].rows);
-                                if (groupedRows[index].originalRows)
-                                    _seeAllSplice(groupedRows[index].originalRows);
-                            }
+                            // Fix: strip it out of every in-memory array by the marker
+                            // applyListToTable set on it at creation time, not by
+                            // reference.
+                            _stripMarkedRows('mbSeeAllRow', group.rows, group.originalRows,
+                                (typeof groupedRows !== 'undefined' && groupedRows[index] && groupedRows[index] !== group)
+                                    ? groupedRows[index].rows : null,
+                                (typeof groupedRows !== 'undefined' && groupedRows[index] && groupedRows[index] !== group)
+                                    ? groupedRows[index].originalRows : null);
                         }
 
                         // Patch mbTotalRows to the real row count so that
@@ -43910,21 +43965,15 @@ a { color: #1565c0; }`;
                             // Remove the trailing "View all ratings" row
                             _lastRow.remove();
 
-                            // Splice out of in-memory row arrays so re-filter
-                            // does not re-insert the removed row.
-                            const _splice = (arr) => {
-                                if (!Array.isArray(arr)) return;
-                                const _si = arr.indexOf(_lastRow);
-                                if (_si !== -1) arr.splice(_si, 1);
-                            };
-                            _splice(group.rows);
-                            _splice(group.originalRows);
-                            if (typeof groupedRows !== 'undefined' && groupedRows[index]) {
-                                if (groupedRows[index].rows !== group.rows)
-                                    _splice(groupedRows[index].rows);
-                                if (groupedRows[index].originalRows)
-                                    _splice(groupedRows[index].originalRows);
-                            }
+                            // Strip out of in-memory row arrays, by the marker
+                            // applyListToTable set on it at creation time — not by
+                            // DOM reference/indexOf, which can never match a clone.
+                            // See _stripMarkedRows' JSDoc.
+                            _stripMarkedRows('mbViewAllRatingsRow', group.rows, group.originalRows,
+                                (typeof groupedRows !== 'undefined' && groupedRows[index] && groupedRows[index] !== group)
+                                    ? groupedRows[index].rows : null,
+                                (typeof groupedRows !== 'undefined' && groupedRows[index] && groupedRows[index] !== group)
+                                    ? groupedRows[index].originalRows : null);
                         }
 
                         // Patch mbTotalRows to the real count. Harmless to redo when
@@ -55787,7 +55836,7 @@ a { color: #1565c0; }`;
                         // disk-load we filter it out here so that:
                         //   (a) loadedRowCount (→ updateH2Count) shows the correct
                         //       number (e.g. 91) rather than inflated count (91+8).
-                        //   (b) The _seeAllSplice in renderGroupedTable only needs to
+                        //   (b) _stripMarkedRows in renderGroupedTable only needs to
                         //       handle live-fetch rows, not disk-loaded ones.
                         // Detection: sole cell contains <em><a href*="/tag/"> or
                         // <em><a href*="/artist-credit/"> whose text starts with
