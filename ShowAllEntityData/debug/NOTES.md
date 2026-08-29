@@ -6746,3 +6746,56 @@ scratch later.
 - Live-verified: `tests/live/event-parts-extraction.spec.js`'s second test
   reuses this same work page and recording; confirmed it fails on the
   pre-fix code (`Event-Date` empty) and passes after the fix.
+
+## 2026-08-29 — CAA/EAA completion signal never fires after runFilter() (fixed); deeper re-enrichment-on-every-filter issue found but NOT fixed
+
+- Found while building `tests/live/artist-releases-filter-sort.spec.js`
+  (branch `fix/caa-completion-signal-disk-restore`): a disk-restored table
+  (`loadFromDiskFixture()`) never showed `#mb-info-display-caa` or the
+  "🎨 All CAA/EAA artwork loaded" toast, even though the artwork itself
+  loaded correctly (`data-cache-hint` attributes present, cells rendered
+  fine). Same symptom on ordinary (non-disk-load) filter/sort actions too.
+- Root cause (FIXED): `runFilter()`'s own CAA/EAA re-init block
+  (`ShowAllEntityData.user.js`, near `initCaaPics(); initEaaPics();` inside
+  the single-table branch) called `initCaaPics()`/`initEaaPics()` but never
+  registered `_caaQueue.onIdle(_showCaaCompletionToast)` — unlike
+  `startFetchingProcess()`'s otherwise-identical block, which does. Since
+  `runFilter()` is the ONLY call site that runs after a disk-load hydration
+  (`_hydrateAndRenderFromSnapshotData()` → `runFilter()`), and also runs on
+  every ordinary filter/sort keystroke, the completion signal never fired
+  from either path. Fix: register the same `onIdle()` callback in
+  `runFilter()`'s block, mirroring `startFetchingProcess()`'s pattern.
+  `makeCaaQueue()`'s own `onIdle()` already handles "queue already idle at
+  registration time" safely (fires via `setTimeout(cb, 0)`), so this is
+  safe to register unconditionally on every `runFilter()` pass.
+- Deeper issue found while verifying the fix (NOT fixed — scoped out,
+  needs its own design pass): `runFilter()` intentionally strips every
+  cloned row's `data-caa-enriched`/`data-eaa-enriched` markers before
+  re-rendering (see the comment directly above `initCollapsableColumns()`
+  in the same function) so that `_artHighlightImageLi` re-applies the
+  active filter's highlight to CAA/EAA art cells after every re-render —
+  necessary, not a bug on its own. But the side effect is that
+  `_artEnrichIcon` then treats every cell as unenriched too, re-queuing a
+  FULL re-fetch of every image's enrichment data on every single
+  filter/sort action — including the very first `runFilter()` call right
+  after a disk-restore, even though that data was already fully populated
+  and saved in the fixture. Confirmed live on the BoDeans `artist-releases`
+  fixture (56 rows): `_caaQueue` had 220 pending + 4 running tasks
+  immediately after a disk-load's first `runFilter()` call, taking real
+  wall-clock time (real network calls to coverartarchive.org in a
+  non-`realNetwork` test context even) to drain — unlike Relationships,
+  which correctly skips already-`relDone` cells and never re-fetches them.
+  A proper fix would separate "re-apply highlight to already-known art"
+  from "re-fetch enrichment data from the network", which the current code
+  doesn't distinguish — a bigger, riskier change than the completion-signal
+  fix above, intentionally not attempted here.
+- Test-suite impact: `tests/live/artist-releases-filter-sort.spec.js`'s
+  `loadBodeans()` helper does NOT rely on `hasCaaOrEaa`/`hasRelationships`
+  waits (both hang for a disk-fixture load per `browser.js`'s own
+  documented gap — those signals are only ever driven by the live-fetch
+  pipeline); the one case needing Relationships data
+  (`Relationships ~ "amazon.com"`) uses a short fixed settle delay instead
+  (`needsRelSettle` in `bodeansArtistReleasesFixture.js`). CAA/EAA data
+  itself is read directly from already-populated DOM state
+  (`.mb-caa-sort-key`), never from the completion signal, so none of that
+  suite's assertions depend on either issue above.

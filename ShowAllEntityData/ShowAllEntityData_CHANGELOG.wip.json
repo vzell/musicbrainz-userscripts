@@ -1,0 +1,14 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-08-29",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "`runFilter()`'s CAA/EAA artwork initialization never registered the queue-idle completion callback (`_caaQueue.onIdle(_showCaaCompletionToast)`) that `startFetchingProcess()`'s equivalent block already had — so the \"🎨 All CAA/EAA artwork loaded\" toast and the `#mb-info-display-caa` status-bar segment never appeared after *any* call to `runFilter()` (every ordinary filter/sort action, and every Load-from-Disk hydration), even though the artwork itself always loaded correctly. Fixed by registering the same callback in `runFilter()`, mirroring `startFetchingProcess()`'s pattern; `makeCaaQueue()`'s own `onIdle()` already fires safely even when the queue is already idle at registration time, so this is safe on every `runFilter()` pass."
+                ]
+            }
+        ]
+    }
+]
