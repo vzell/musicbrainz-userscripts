@@ -48,17 +48,17 @@ Constraints that shape every verdict below:
 
 ** Ranked findings
 
-| # | Candidate                                              | Axis                    | Verdict            |
-|---+---------------------------------------------------------+--------------------------+---------------------|
-| 1 | Consolidate the ~*-tags~ pageDefinitions cluster        | extensibility/usability | Worth doing         |
-| 2 | Consolidate filtered/unfiltered pageDefinitions pairs   | extensibility/usability | Worth doing         |
-| 3 | Add a startup-time pageDefinitions/extractor validator  | usability/safety        | Worth doing         |
-| 4 | De-duplicate ~dateParts~ extractor logic                | usability                | Worth doing, care   |
-| 5 | De-duplicate ~video~/~caa~ ~appendSortKey~ closure      | usability                | Worth doing, minor  |
-| 6 | Extract ~configSchema~ to its own ~@require~'d file     | usability                | Conditional         |
-| 7 | Full module split via bundler                           | usability/extensibility | Not recommended     |
-| 8 | Reorganize pageDefinitions beyond entity-class grouping | usability                | Not recommended     |
-| 9 | Merge renderFinalTable/renderGroupedTable                | usability                | Not recommended     |
+| # | Candidate                                               | Axis                    | Verdict            |
+|---+---------------------------------------------------------+-------------------------+--------------------|
+| 1 | Consolidate the ~*-tags~ pageDefinitions cluster        | extensibility/usability | Worth doing        |
+| 2 | Consolidate filtered/unfiltered pageDefinitions pairs   | extensibility/usability | Worth doing        |
+| 3 | Add a startup-time pageDefinitions/extractor validator  | usability/safety        | Worth doing        |
+| 4 | De-duplicate ~dateParts~ extractor logic                | usability               | Worth doing, care  |
+| 5 | De-duplicate ~video~/~caa~ ~appendSortKey~ closure      | usability               | Worth doing, minor |
+| 6 | Extract ~configSchema~ to its own ~@require~'d file     | usability               | Conditional        |
+| 7 | Full module split via bundler                           | usability/extensibility | Not recommended    |
+| 8 | Reorganize pageDefinitions beyond entity-class grouping | usability               | Not recommended    |
+| 9 | Merge renderFinalTable/renderGroupedTable               | usability               | Not recommended    |
 
 * TODO Consolidate the ~*-tags~ pageDefinitions cluster
 
