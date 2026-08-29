@@ -58,33 +58,39 @@ const COLUMN_INDEX = {
 /**
  * §A — one representative typed column-filter case per filterable column
  * (Country/Date gets 6, per explicit request; three cases are tagged
- * `overlapDemo` — deliberately non-word-aligned substrings; two are tagged
- * `crossTag` — comment-boundary matches spanning a `<bdi>` + a separate
- * `<span class="comment"><bdi>`, joined by a normalized `&nbsp;`).
+ * `overlapDemo` — deliberately non-word-aligned substrings; four are tagged
+ * `crossTag` — a match spanning two separate text nodes joined only by a
+ * synthesized space (a normalized `&nbsp;`, or getCleanColumnText()'s own
+ * join-space between two sibling elements), expecting TWO highlight spans
+ * per match (`highlight: { spans: [...] }`) rather than one. This exercises
+ * `highlightCrossTag()`'s cross-tag algorithm directly — see that
+ * function's own JSDoc and debug/NOTES.md's 2026-08-29 entry for the real
+ * bug this shape of case caught and fixed (the function used to lose that
+ * synthetic space entirely, producing zero highlights despite a correct
+ * row match).
  *
  * `highlight: null` means "expect ZERO `.mb-column-filter-highlight`
- * spans" — either because nothing should visually highlight (Ex mode,
- * always-empty column) or because of a confirmed, documented gap (see the
- * `crossTag`/CAA notes below) rather than an assumption. `highlight: 'X'`
- * means every span's text should equal `X` (or match case-insensitively /
- * via `highlightRegex` when noted).
+ * spans" — because nothing should visually highlight (Ex mode, an
+ * always-empty column, or a match against DOM content with no visible
+ * representation, e.g. CAA's `display:none` sort-key sentinel — see the
+ * CAA note below). `highlight: 'X'` means every span's text should equal
+ * `X` (or match case-insensitively / via `highlightRegex` when noted).
  */
 const FILTER_CASES = [
     { column: 'Release', value: 'Black and White', expected: 4, highlight: 'Black and White' },
     {
-        // CONFIRMED LIVE BUG (not a test-expectation issue — see
-        // debug/artist-releases-filterSort-test-report.org): the row
-        // count correctly narrows to 1, but this comment-boundary match
-        // (spanning the title's own <bdi> into a separate
-        // <span class="comment"><bdi>) produces ZERO highlight spans.
-        // highlightCrossTag()'s own JSDoc describes fixing exactly this
-        // shape of gap for the Release/sticky column already (erg-btn +
-        // caa-inline-ph decorations) — this comment-boundary variant
-        // appears to be an uncovered case of the same class of bug.
-        // Documented here per explicit instruction rather than filed as
-        // a fix right now.
-        column: 'Release', value: 'In (Disc', expected: 1, crossTag: true, knownHighlightGap: true,
-        highlight: null,
+        // Comment-boundary cross-tag match: spans the title's own <bdi>
+        // into a separate <span class="comment"><bdi>, joined only by a
+        // normalized `&nbsp;`. FIXED (was a confirmed live bug —
+        // highlightCrossTag() used to concatenate accepted text nodes with
+        // no separator, losing the synthetic space getCleanColumnText()
+        // inserts between every collected text-node piece; see that
+        // function's own JSDoc and debug/NOTES.md's 2026-08-29 entry for
+        // the root cause and fix). Produces TWO highlight spans per match:
+        // the trailing fragment inside the title's own <bdi> ("In"), and
+        // the leading fragment inside the comment's <bdi> ("(Disc").
+        column: 'Release', value: 'In (Disc', expected: 1, crossTag: true,
+        highlight: { spans: ['In', '(Disc'] },
     },
     { column: 'Artist', value: 'bodeans', expected: 56, highlight: 'bodeans', highlightCaseInsensitive: true }, // both "BoDeans"/"Bodeans" match, span case varies per row
     { column: 'Artist', value: 'BoDeans', caseSensitive: true, expected: 55, highlight: 'BoDeans' },
@@ -113,21 +119,21 @@ const FILTER_CASES = [
     { column: 'Country/Date', value: '05', expected: 4, highlight: '05' }, // naive substring collision: 1986-05, 1996-11-05, 2005-08-17 (via "2005"), 2022-05-06
     { column: 'Country/Date', value: 'XW', expected: 3, highlight: 'XW' }, // "[Worldwide]" pseudo-country-code rows
     // Both compound (country+date) queries below are ANOTHER instance of
-    // the same confirmed-live comment-boundary highlight gap as Release's
-    // "In (Disc"/Label's "Slash (US" cases — the match correctly spans
-    // from the <abbr> into the sibling <span class="release-date"> (joined
-    // only by getCleanColumnText()'s synthesized space, no real DOM
-    // content there), and produces the correct row count but ZERO
+    // the same comment-boundary cross-tag shape as Release's "In (Disc"/
+    // Label's "Slash (US" cases (now fixed — see those cases' own notes):
+    // the match spans from the <abbr> into the sibling
+    // <span class="release-date"> (joined only by getCleanColumnText()'s
+    // synthesized space, no real DOM content there), producing two
     // highlight spans. Row-level (single-element) Country/Date queries
-    // above (US/1986/05/XW) don't cross this boundary and highlight fine.
-    { column: 'Country/Date', value: 'US 2009-03-10', expected: 1, highlight: null, knownHighlightGap: true }, // full exact-value match, single unambiguous row
-    { column: 'Country/Date', value: 'US 1986', expected: 2, highlight: null, knownHighlightGap: true }, // realistic compound value
+    // above (US/1986/05/XW) don't cross this boundary — single span each.
+    { column: 'Country/Date', value: 'US 2009-03-10', expected: 1, crossTag: true, highlight: { spans: ['US', '2009-03-10'] } }, // full exact-value match, single unambiguous row
+    { column: 'Country/Date', value: 'US 1986', expected: 2, crossTag: true, highlight: { spans: ['US', '1986'] } }, // realistic compound value
     { column: 'Label', value: 'Reprise', expected: 11, highlight: 'Reprise' },
     {
-        // Same confirmed gap as Release's "In (Disc" case above — row
-        // count correctly narrows to 26, but zero highlight spans.
-        column: 'Label', value: 'Slash (US', expected: 26, crossTag: true, knownHighlightGap: true,
-        highlight: null,
+        // Same comment-boundary shape as Release's "In (Disc" case above —
+        // now fixed, two highlight spans per match.
+        column: 'Label', value: 'Slash (US', expected: 26, crossTag: true,
+        highlight: { spans: ['Slash', '(US'] },
     },
     { column: 'Catalog#', value: '9 25876-2', expected: 2, highlight: '9 25876-2' },
     { column: 'Barcode', value: '[none]', expected: 8, highlight: '[none]' },

@@ -1,0 +1,14 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-08-29",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "highlightCrossTag() now correctly highlights a plain-text filter match that spans a comment boundary (e.g. an entity's name into a separate sibling \"(comment)\" span), joined only by a synthesized/`&nbsp;` space. Root cause: `String.trim()` strips `&nbsp;` identically to regular whitespace, so the connecting text node was dropped and the surviving fragments were joined with no separator, unlike `getCleanColumnText()`'s own unconditional space-joining behavior — the row count narrowed correctly, but the highlight regex never matched inside `highlightCrossTag()` itself."
+                ]
+            }
+        ]
+    }
+]

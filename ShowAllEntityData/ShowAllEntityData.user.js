@@ -34053,11 +34053,45 @@ a { color: #1565c0; }`;
      *   extracted Country column whose cells start with a flag <img> element
      *   followed by a whitespace text node before the actual country text.
      *
+     *   A second, longer-standing gap in this same alignment (fixed together
+     *   with the above): getCleanColumnText() collects every accepted text
+     *   node's content into an array and joins the whole array with a single
+     *   literal space (`textParts.join(' ')`) — unconditionally, between
+     *   EVERY pair of collected pieces, regardless of what (if anything)
+     *   separated them in the DOM. This function used to concatenate accepted
+     *   text nodes directly (`join('')`, no separator) and rely on the DOM's
+     *   own whitespace/`&nbsp;` text nodes surviving the walk to provide that
+     *   spacing — but such nodes are themselves whitespace-only and get
+     *   FILTER_REJECTed by this same walk (JS's `String.trim()` strips
+     *   U+00A0 `&nbsp;` exactly like regular whitespace), so they contribute
+     *   nothing. The result: two entries separated only by such a node became
+     *   directly adjacent in this function's own `fullText` (no gap), while
+     *   getCleanColumnText()'s `fullText` had a space there — so a query
+     *   built around a literal space between the two halves (since that's
+     *   what actually matched the row) would match testRowMatch()'s row-level
+     *   text but never match THIS function's own `fullText`, leaving zero
+     *   highlight spans despite a correct row match. Confirmed live on a
+     *   `<bdi>` entity name running
+     *   into a sibling `<span class="comment"><bdi>` (Release/Label columns)
+     *   and on a native `<abbr>`/`<span class="release-date">` pair
+     *   (Country/Date column) — see debug/NOTES.md's 2026-08-29 entry. Fixed
+     *   by inserting the same unconditional single-space gap between every
+     *   pair of accepted entries here too (both in the offset bookkeeping and
+     *   in `fullText` itself), mirroring `join(' ')` exactly.
+     *
      * @param {Element} root      - Container element to search within (typically a `<td>`).
      * @param {RegExp}  regex     - Pre-compiled global RegExp (must carry the 'g' flag).
      * @param {string}  className - CSS class name applied to every highlight `<span>`.
      */
     function highlightCrossTag(root, regex, className) {
+        // Defensive, matching getCleanColumnText()'s own pre-normalize step:
+        // merges genuinely-adjacent sibling text nodes (which must stay
+        // directly adjacent, no synthetic space) before the walk below decides
+        // where real element/text-node BOUNDARIES are. Every current caller of
+        // this function already normalizes its own root first, but idempotent
+        // — a second normalize() here is a no-op — so this makes the function
+        // correct on its own regardless of caller discipline.
+        root.normalize();
         // ── Step 1: collect text nodes with absolute character offsets ──────────
         //
         // Use SHOW_TEXT | SHOW_ELEMENT so that FILTER_REJECT on an element node
@@ -34145,13 +34179,31 @@ a { color: #1565c0; }`;
         let node;
         while ((node = walker.nextNode())) {
             if (node.nodeType !== Node.TEXT_NODE) continue; // SHOW_ELEMENT: skip element hits
+            // Mirror getCleanColumnText()'s textParts.join(' ') — it inserts one
+            // synthetic space between EVERY pair of accepted text-node pieces,
+            // unconditionally, regardless of what (if anything) actually separated
+            // them in the DOM. A comment-boundary match like a <bdi> title running
+            // into a sibling `<span class="comment"><bdi>` — joined only by a
+            // literal `&nbsp;` text node — relies on this: that nbsp node's own
+            // `.trim()` is '' (JS's trim() strips U+00A0 same as regular
+            // whitespace), so it gets FILTER_REJECTed above just like any other
+            // whitespace-only node and contributes nothing itself. Without this
+            // virtual gap, two entries that are only separated by such a node
+            // become directly adjacent in fullText (no space) — a query built with
+            // a real, literal space between the two halves (since that's what
+            // getCleanColumnText() actually matched against) then never matches
+            // fullText at all here, and this function returns with zero highlight
+            // spans despite testRowMatch() having correctly matched the row.
+            // Confirmed live on Release/Label/Country-Date comment-boundary and
+            // compound queries — see debug/NOTES.md's 2026-08-29 entry.
+            if (entries.length) offset += 1;
             const len = node.nodeValue.length;
             entries.push({ node, start: offset, end: offset + len });
             offset += len;
         }
         if (!entries.length) return;
 
-        const fullText = entries.map(e => e.node.nodeValue).join('');
+        const fullText = entries.map(e => e.node.nodeValue).join(' ');
         if (!fullText) return;
 
         // ── Step 2: find all non-overlapping matches in the concatenated text ───
