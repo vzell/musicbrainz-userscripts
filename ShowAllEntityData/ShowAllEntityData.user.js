@@ -37286,6 +37286,21 @@ a { color: #1565c0; }`;
             _debugDumpCaaColumnState('runFilter:pre-initCaaPics');
             initCaaPics();
             initEaaPics();
+            // One-shot completion toast + #mb-info-display-caa update once this
+            // pass's artwork queue drains — mirrors startFetchingProcess()'s own
+            // registration (its only other tableMode!=='multi' call site). Without
+            // this, a page hydrated via loadFromDiskFixture()/Load-from-Disk (whose
+            // only initCaaPics()/initEaaPics() call goes through runFilter(), never
+            // through startFetchingProcess()) never shows the completion toast or
+            // updates #mb-info-display-caa, even though the artwork itself loads
+            // correctly — makeCaaQueue()'s onIdle() safely fires immediately (via
+            // setTimeout 0) when the queue is already idle at registration time
+            // (e.g. every cell was already fully restored from disk, nothing to
+            // fetch), so this is safe to register unconditionally on every
+            // runFilter() pass, not just the first.
+            if (_caaQueue && Lib.settings.sa_enable_caa_pics) {
+                _caaQueue.onIdle(_showCaaCompletionToast);
+            }
             // TEMP DEBUG (bug 2 investigation) — synchronous state right after
             // initCaaPics()/initEaaPics() return. Note _artEnrichIcon's own async
             // tiers (IDB await / network fetch) may still be in flight at this
