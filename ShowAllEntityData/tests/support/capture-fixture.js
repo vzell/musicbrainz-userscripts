@@ -63,6 +63,7 @@ const path = require('path');
 const fs = require('fs');
 const { chromium } = require('playwright');
 const { loadUserscriptPage } = require('./loadPage');
+const { loadUserscriptPageWithRealNetwork } = require('./realNetworkGmXhr');
 const { waitForRenderComplete } = require('./browser');
 const { seedGmValues } = require('./gmStubs');
 const { dismissCustomConfirmDialog } = require('./customDialog');
@@ -144,6 +145,22 @@ const FIXTURES = [
         local: true,
     },
     {
+        // BoDeans' own artist-releases page (56 rows, single native MB
+        // page) — committed (not local:true) fixture for
+        // tests/live/artist-releases-filter-sort.spec.js. Unlike every
+        // other artist-releases capture above, this one needs REAL CAA art
+        // + Relationships baked in (realNetwork: true, CAA/relationships
+        // left at their configSchema defaults) since the spec's expected
+        // counts (see tests/support/bodeansArtistReleasesFixture.js) were
+        // derived directly from debug/BoDeans-artist-releases-final.html,
+        // itself captured with real network access.
+        pageType: 'artist-releases-bodeans',
+        url: 'https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases',
+        showAllButtonSelector: 'button[data-label="🧮 Artist releases"]',
+        realNetwork: true,
+        renderTimeout: 300000,
+    },
+    {
         // 746 native MB pages — the largest capture in this project by far.
         pageType: 'artist-recordings',
         url: 'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings?all=1',
@@ -171,15 +188,24 @@ const FIXTURES = [
  * `OUTPUT_DIR` (or `LOCAL_OUTPUT_DIR` when `local: true`).
  *
  * @param {import('playwright').Browser} browser
- * @param {{ pageType: string, url: string, showAllButtonSelector: string, seedGmValues?: Object, renderTimeout?: number, local?: boolean }} fixture
+ * @param {{ pageType: string, url: string, showAllButtonSelector: string, seedGmValues?: Object, renderTimeout?: number, local?: boolean, realNetwork?: boolean }} fixture
  * @returns {Promise<void>}
  */
 async function captureOne(browser, {
     pageType, url, showAllButtonSelector, seedGmValues: seedValues, renderTimeout = 90000, local = false,
+    realNetwork = false,
 }) {
     const page = await browser.newPage();
     await seedGmValues(page, seedValues);
-    await loadUserscriptPage(page, { url, testMode: true });
+    // realNetwork: true routes GM_xmlhttpRequest through a real network
+    // passthrough (see realNetworkGmXhr.js) instead of gmStubs.js's
+    // always-404 stub — needed when CAA art/Relationships must be genuinely
+    // populated in the saved snapshot, not left empty/disabled.
+    if (realNetwork) {
+        await loadUserscriptPageWithRealNetwork(page, { url, testMode: true });
+    } else {
+        await loadUserscriptPage(page, { url, testMode: true });
+    }
 
     const showAllBtn = page.locator(showAllButtonSelector);
     await showAllBtn.waitFor({ state: 'visible', timeout: 15000 });
@@ -204,7 +230,15 @@ async function captureOne(browser, {
     // becomes visible before renderRowsChunked()'s batched insertion loop
     // has actually finished (see browser.js's own JSDoc for the confirmed
     // repro on this exact page).
-    const renderCompleted = waitForRenderComplete(page, { waitForAutoResize: true, timeout: renderTimeout })
+    const renderCompleted = waitForRenderComplete(page, {
+        waitForAutoResize: true,
+        // realNetwork fixtures fetch real CAA art + Relationships — wait
+        // for both to genuinely finish so they're baked into the saved
+        // snapshot, not left mid-flight.
+        hasCaaOrEaa: realNetwork,
+        hasRelationships: realNetwork,
+        timeout: renderTimeout,
+    })
         .then(() => 'rendered')
         .catch(() => null);
     const outcome = await Promise.race([largeDatasetDialogAppeared, renderCompleted]);

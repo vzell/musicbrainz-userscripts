@@ -242,6 +242,45 @@ async function waitForActualRowCount(page, expectedCount, { timeout = 30000 } = 
     );
 }
 
+/**
+ * Reads the text content of every `.mb-column-filter-highlight` span
+ * currently present in one column's cells (across all visible rows) —
+ * written by `highlightText()`/`highlightCrossTag()`
+ * (`ShowAllEntityData.user.js:33961`/`34060`) for a plain-text column
+ * filter, or by one of the uniq-dropdown compound-mode highlighters
+ * (`_highlightCountryMatch()`, `_highlightArtValueMatch()`, etc.) for a
+ * dropdown-driven value-set filter. `colIndex` is the same `row.cells`
+ * zero-based index `getColFilters()`/`highlightText()` use — see
+ * `bodeansArtistReleasesFixture.js`'s `COLUMN_INDEX` map.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} colIndex
+ * @returns {Promise<string[]>} One entry per highlight span found, in DOM order.
+ */
+async function getColumnHighlightTexts(page, colIndex) {
+    return page.$$eval(
+        `table.tbl tbody tr td:nth-child(${colIndex + 1}) .mb-column-filter-highlight`,
+        (spans) => spans.map((s) => s.textContent)
+    );
+}
+
+/**
+ * Reads the text content of every `.mb-global-filter-highlight` span
+ * currently present anywhere in the table — the global filter's own
+ * highlight class, written by the same `highlightText()`/`highlightCrossTag()`
+ * pair as `getColumnHighlightTexts()` above, just scanning every `<td>`
+ * instead of one column.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<string[]>}
+ */
+async function getGlobalHighlightTexts(page) {
+    return page.$$eval(
+        'table.tbl tbody tr td .mb-global-filter-highlight',
+        (spans) => spans.map((s) => s.textContent)
+    );
+}
+
 module.exports = {
     waitForFilterSettled,
     waitForSortSettled,
@@ -250,4 +289,6 @@ module.exports = {
     getPageRowCount,
     getSubTableRowCounts,
     waitForActualRowCount,
+    getColumnHighlightTexts,
+    getGlobalHighlightTexts,
 };
