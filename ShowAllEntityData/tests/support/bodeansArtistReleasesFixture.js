@@ -136,6 +136,24 @@ const FILTER_CASES = [
         highlight: { spans: ['Slash', '(US'] },
     },
     { column: 'Catalog#', value: '9 25876-2', expected: 2, highlight: '9 25876-2' },
+    // Substring "25876" (no space/prefix) — matches 4 rows: two separate
+    // "9 25876-2" single-item cells, one "W2 25876" single-item cell, and
+    // ONE 2-item collapsed cell ("4-25876" visible in li[0], "9 25876-4"
+    // hidden in li[1]) where BOTH list items independently contain
+    // "25876". That last row is the one exercising
+    // `.mb-collapse-toggle-has-match` (see `checkCollapseHasMatch` below
+    // and `initCollapsableColumns()`'s per-column pass,
+    // ShowAllEntityData.user.js) — the yellow "hidden match" indicator on
+    // a collapsed multi-row cell's toggle. Because the highlight lands in
+    // BOTH the visible li[0] and the hidden li[1] of that one collapsed
+    // cell, expect 5 `.mb-column-filter-highlight` spans total (3 single-
+    // item rows + 2 spans in the one collapsed row), not 4 — `highlight`
+    // is checked via `expectHighlightCount` instead of the simple
+    // 1-per-row shape other cases use.
+    {
+        column: 'Catalog#', value: '25876', expected: 4, highlight: '25876',
+        expectHighlightCount: 5, checkCollapseHasMatch: { expectedCount: 1 },
+    },
     { column: 'Barcode', value: '[none]', expected: 8, highlight: '[none]' },
     // CAA: filtering the hidden .mb-caa-sort-key sentinel text.
     // "no" plain-substring ALSO matches "Matrix/Runout" (a CAA image type
@@ -153,6 +171,55 @@ const FILTER_CASES = [
     // regex avoids a substring collision" pattern for this suite, and this
     // is representative coverage, not exhaustive.
     { column: 'CAA', value: 'yes', expected: 37, highlight: null }, // sort-key span is display:none — matches, but nothing visible to highlight (confirmed live)
+    // CAA type/comment combos — real "Booklet"-type images and "Booklet
+    // Page N" comments exist in BoDeans' own artwork. Row counts confirmed
+    // LIVE (re-derived from a fresh disk-fixture load — the row-count side
+    // is stable across runs, only highlighting is not, see below):
+    //   "Booklet"                 -> 20 rows (any image typed "Booklet")
+    //   "Booklet Page 5"          ->  3 rows (comment text match)
+    //   "Booklet Booklet Page 5"  ->  3 rows (matches the combined
+    //                                 `ul.dataset.mbArtSearch` string
+    //                                 `_artBuildSearchText()` builds,
+    //                                 `types.join(' ') + ' ' + comment` —
+    //                                 same 3 rows as the comment-only case
+    //                                 above; the point is confirming that
+    //                                 exact combined string, not a new row
+    //                                 set)
+    //   "let Boo"                 -> 18 rows — "let" (tail of type
+    //                                 "Booklet") + "Boo" (head of ANY
+    //                                 comment starting "Book…", e.g.
+    //                                 "Booklet Page 1".."Page N", not just
+    //                                 "Page 5") inside that same combined
+    //                                 per-image string — a substring-overlap
+    //                                 demo. An earlier draft assumed 13
+    //                                 (scoped too narrowly to "Page 5"
+    //                                 specifically); re-verified live.
+    //
+    // Highlighting: `skipHighlightCheck: true` on all four — confirmed live
+    // this column's highlighting is genuinely UNSTABLE for type/comment
+    // text, not a fixed 0 vs N. A fresh single-filter load produces ZERO
+    // `.mb-column-filter-highlight` spans for "Booklet" et al (consistent
+    // with `.mb-caa-art-li-image`, the per-image type-badge/comment `<li>`,
+    // being in `getCleanColumnText()`'s `_CLEAN_STRIP_SEL`) — but once a
+    // FEW OTHER CAA-column filter cycles have already run on the same
+    // shared page (exactly this suite's own §A loop shape: "no"/"yes" run
+    // immediately before these cases), highlight spans DO appear, and their
+    // count keeps growing the deeper into the suite this case runs (12
+    // spans observed in an isolated 3-filter debug repro, 388 observed at
+    // this case's real position in the full §A sequence) — i.e., spans
+    // appear to ACCUMULATE across repeated CAA-column filter/re-render
+    // cycles rather than being cleared and rebuilt each time, most likely
+    // tied to the async CAA-thumbnail-retry pipeline re-applying
+    // highlighting to individual `<li>`s without clearing prior spans.
+    // This is a real, confirmed CAA-highlighting defect independent of
+    // these test cases — flagged here rather than fixed (fixing it is a
+    // separate, materially larger change to the CAA render pipeline, out
+    // of scope for adding test coverage) — do NOT assert an exact
+    // highlight count/state for these four until it's root-caused.
+    { column: 'CAA', value: 'Booklet', expected: 20, skipHighlightCheck: true },
+    { column: 'CAA', value: 'Booklet Page 5', expected: 3, skipHighlightCheck: true },
+    { column: 'CAA', value: 'Booklet Booklet Page 5', expected: 3, skipHighlightCheck: true },
+    { column: 'CAA', value: 'let Boo', expected: 18, skipHighlightCheck: true, overlapDemo: true },
     { column: 'Country', value: 'United States (US)', expected: 32, highlight: 'United States (US)' },
     { column: 'Country', value: 'United States', expected: 34, highlight: 'United States' },
     {
@@ -170,6 +237,18 @@ const FILTER_CASES = [
     { column: 'Comment', value: 'BMG', expected: 2, highlight: 'BMG' },
     { column: 'Primary alias', value: 'x', expected: 0, highlight: null }, // always-empty column — 0 rows, nothing to highlight
     { column: 'Relationships', value: 'amazon.com', expected: 19, highlight: 'amazon.com', needsRelSettle: true },
+    // Broad substring across the hidden `.mb-rel-filter-key` URL/path text
+    // (`_relAppendIcon()`/`_populateCells()`) — matches both external URLs
+    // containing "release" (e.g. some Discogs release pages) AND internal
+    // `/release/<mbid>` AND `/release-group/<mbid>` paths (the latter
+    // because "release-group" contains "release" as a prefix — a naive-
+    // substring collision, same shape as the CAA "no"/"Runout" case
+    // above). UNLIKE the fixture's other columns, Relationships data is
+    // fetched live over the network on every run (never baked into the
+    // committed disk fixture) — this expected count was confirmed by an
+    // actual live run, not derived from any static file; re-verify if
+    // BoDeans' relationships ever change.
+    { column: 'Relationships', value: 'release', expected: 27, highlight: 'release', needsRelSettle: true },
     {
         column: 'Format', value: 'gital Me', expected: 8, overlapDemo: true,
         highlight: 'gital Me',
