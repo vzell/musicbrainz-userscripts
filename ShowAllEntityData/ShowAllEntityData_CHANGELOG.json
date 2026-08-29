@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.968",
+    "date": "2026-08-29",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`highlightCrossTag()` now correctly highlights a plain-text filter match that spans a comment boundary (e.g. an entity's `<bdi>` name into a separate sibling `<span class=\"comment\">`, joined only by a synthesized/`&nbsp;` space) — confirmed on Release, Label, and Country/Date columns. Root cause: `String.trim()` strips `&nbsp;` identically to regular whitespace, so `highlightCrossTag()` dropped the connecting text node and joined the surviving fragments with no separator, unlike `getCleanColumnText()`'s own unconditional space-joining behavior used for the actual row match — the row count narrowed correctly, but the highlight regex never matched inside `highlightCrossTag()` itself."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.967",
     "date": "2026-08-29",
     "sections": [
