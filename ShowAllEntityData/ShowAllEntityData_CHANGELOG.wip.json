@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-08-29",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed a bug on `tag-value`/`user-tag-value`/`artist-credit`/`user-ratings` pages where a sub-table's trailing overflow row (\"See all N entities\"/\"View all ratings\", already replaced by a \"Show all N rows\" button on first render) secretly survived in the in-memory row arrays and reappeared as a real, permanently visible row — in EVERY sub-table with an overflow button, not just the one being acted on — the instant any column in any uncollapsed sub-table was sorted, flipping that sub-table's row-count badge from `(N)` to `(N+1 of N)`. Root cause: the removal code matched the row by DOM reference (`indexOf`) against a `cloneNode(true)` copy that is never reference-equal to the original stored in `group.rows`/`group.originalRows`, so the removal silently no-op'd every time. Fixed by marking the row with a `dataset` attribute at creation time (`applyListToTable`) and stripping it from the row arrays by that marker instead."
+        ]
+      }
+    ]
+  }
+]
