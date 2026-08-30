@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.969+2026-08-30
+// @version      9.99.970+2026-08-30
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -37338,6 +37338,10 @@ a { color: #1565c0; }`;
             _debugDumpCaaColumnState('runFilter:pre-initCaaPics');
             initCaaPics();
             initEaaPics();
+            // Covers CAA content that never goes through _artEnrichIcon() at
+            // all (e.g. a disk-loaded page's baked-in cell HTML) — see this
+            // function's own JSDoc for the confirmed root cause.
+            _artHighlightAllBuiltCaaCells();
             // One-shot completion toast + #mb-info-display-caa update once this
             // pass's artwork queue drains — mirrors startFetchingProcess()'s own
             // registration (its only other tableMode!=='multi' call site). Without
@@ -60507,7 +60511,7 @@ a { color: #1565c0; }`;
 
         // ── Disambiguation comment ────────────────────────────────────────────
         if (commentText) {
-            li.appendChild(document.createTextNode(' \u2013 '));
+            li.appendChild(document.createTextNode(' '));
             const comment       = document.createElement('span');
             comment.className   = 'mb-caa-art-comment';
             comment.textContent = commentText;
@@ -60556,6 +60560,25 @@ a { color: #1565c0; }`;
     function _artHighlightImageLi(li, colIdx, ctxOverride) {
         const ctx = (ctxOverride !== undefined) ? ctxOverride : _activeFilterHighlightCtx;
         if (!ctx) return;
+
+        // Idempotency guard: _artBuildMultiRowArtCell() (during build) and
+        // _artHighlightArtCell() (post-build) BOTH call this function for the
+        // same li by design (see this function's own JSDoc — the redundancy
+        // exists to cover a real _activeFilterHighlightCtx timing race).
+        // Without clearing any highlight spans a PRIOR call already applied,
+        // the second call wraps the first call's own
+        // <span class="mb-column-filter-highlight"> in another identical
+        // span — invisible to the eye (nested spans with the same
+        // background render indistinguishably from one), but a real,
+        // confirmed-live DOM-duplication defect (exactly 2x the correct
+        // span count — e.g. 388 instead of 194 for a 20-row "Booklet"
+        // filter on BoDeans' artist-releases). Strip any highlight spans
+        // this function may have already applied before reapplying,
+        // mirroring the unwrap pattern unhighlightAllBtn.onclick already
+        // uses elsewhere in this file.
+        li.querySelectorAll('.mb-global-filter-highlight, .mb-column-filter-highlight, .mb-subtable-filter-highlight')
+            .forEach(n => n.replaceWith(document.createTextNode(n.textContent)));
+        li.normalize();
 
         const flags = ctx.isCaseSensitive ? 'g' : 'gi';
 
@@ -60795,6 +60818,44 @@ a { color: #1565c0; }`;
         if (_owningTable) _syncCollapseHasMatchInTable(_owningTable);
     }
 
+    /**
+     * Re-applies filter highlights to EVERY currently-rendered CAA art cell
+     * that already has a populated `ul.mb-caa-art-ul` — regardless of
+     * whether its content was built by `_artBuildMultiRowArtCell()` (the
+     * normal `_artEnrichIcon()` path) or restored as already-fully-built
+     * static HTML, which never reaches `_artEnrichIcon()` at all.
+     *
+     * Confirmed live: a disk-loaded page (`Load from Disk` / this repo's
+     * own `loadFromDiskFixture()` test helper) bakes each row's CAA
+     * `<ul>`/`<li>` structure directly into the saved cell HTML —
+     * `_artEnrichTable()` still enqueues every art anchor on each
+     * `runFilter()` pass (confirmed via its own diagnostic logging), but
+     * almost none of them ever reach `_artEnrichIcon()`'s own tail (only
+     * the small subset of Path-C synthetic anchors needing their sort-key
+     * confirmed do) — since `_artHighlightArtCell()` is the ONLY place
+     * that applies column/global filter highlighting to per-image type/
+     * comment text, and it's only ever called from inside
+     * `_artEnrichIcon()`, disk-loaded CAA content never got highlighted at
+     * all, on any filter cycle. This sweep decouples "reapply highlights"
+     * from "was this cell freshly enriched" by covering every populated
+     * cell directly, regardless of how its content got there.
+     *
+     * Safe to call unconditionally on every `runFilter()` pass: idempotent
+     * (`_artHighlightImageLi()`'s own guard strips any highlight spans it
+     * may have already applied before reapplying) and cheap when no filter
+     * is active (`_artHighlightArtCell()`'s own early bail-out).
+     *
+     * CAA only, matching `_artHighlightArtCell()`'s own current scope —
+     * it hardcodes `.mb-caa-art-ul`/`.mb-caa-art-li-image`, not
+     * ctx-parameterized for EAA. EAA may have the same disk-load gap;
+     * not verified or fixed here (a separate, unconfirmed investigation).
+     */
+    function _artHighlightAllBuiltCaaCells() {
+        document.querySelectorAll('table.tbl tbody ul.mb-caa-art-ul').forEach(ul => {
+            const td = ul.closest('td');
+            if (td) _artHighlightArtCell(td, td.cellIndex);
+        });
+    }
 
     /**
      * Builds or rebuilds the multi-row `<ul>` art-image list inside a CAA/EAA

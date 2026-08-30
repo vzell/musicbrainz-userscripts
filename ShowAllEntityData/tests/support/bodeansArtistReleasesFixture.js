@@ -195,31 +195,64 @@ const FILTER_CASES = [
     //                                 (scoped too narrowly to "Page 5"
     //                                 specifically); re-verified live.
     //
-    // Highlighting: `skipHighlightCheck: true` on all four — confirmed live
-    // this column's highlighting is genuinely UNSTABLE for type/comment
-    // text, not a fixed 0 vs N. A fresh single-filter load produces ZERO
-    // `.mb-column-filter-highlight` spans for "Booklet" et al (consistent
-    // with `.mb-caa-art-li-image`, the per-image type-badge/comment `<li>`,
-    // being in `getCleanColumnText()`'s `_CLEAN_STRIP_SEL`) — but once a
-    // FEW OTHER CAA-column filter cycles have already run on the same
-    // shared page (exactly this suite's own §A loop shape: "no"/"yes" run
-    // immediately before these cases), highlight spans DO appear, and their
-    // count keeps growing the deeper into the suite this case runs (12
-    // spans observed in an isolated 3-filter debug repro, 388 observed at
-    // this case's real position in the full §A sequence) — i.e., spans
-    // appear to ACCUMULATE across repeated CAA-column filter/re-render
-    // cycles rather than being cleared and rebuilt each time, most likely
-    // tied to the async CAA-thumbnail-retry pipeline re-applying
-    // highlighting to individual `<li>`s without clearing prior spans.
-    // This is a real, confirmed CAA-highlighting defect independent of
-    // these test cases — flagged here rather than fixed (fixing it is a
-    // separate, materially larger change to the CAA render pipeline, out
-    // of scope for adding test coverage) — do NOT assert an exact
-    // highlight count/state for these four until it's root-caused.
-    { column: 'CAA', value: 'Booklet', expected: 20, skipHighlightCheck: true },
-    { column: 'CAA', value: 'Booklet Page 5', expected: 3, skipHighlightCheck: true },
-    { column: 'CAA', value: 'Booklet Booklet Page 5', expected: 3, skipHighlightCheck: true },
-    { column: 'CAA', value: 'let Boo', expected: 18, skipHighlightCheck: true, overlapDemo: true },
+    // Highlighting: this whole investigation went through THREE corrections
+    // before landing here, kept for context since the mistakes themselves
+    // are instructive:
+    //   1. An early pass called this "unstable/growing without bound"
+    //      (0/12/388 spans depending on how many prior CAA cases ran first)
+    //      based on transient mid-render reads that were never re-verified
+    //      for convergence.
+    //   2. Re-investigated properly (stabilization polling): the real,
+    //      reproducible defect was a LIVE-FETCH-ONLY 2x duplication —
+    //      `_artHighlightImageLi()` is called twice by design (once at
+    //      build time, once from an async post-build catch-up) and neither
+    //      cleared the other's spans first. Fixed via an idempotency guard.
+    //      At that point, the DISK-FIXTURE path (what these §A cases use)
+    //      still showed a stable 0 spans — a seemingly separate gap.
+    //   3. Root-caused that gap too: a disk-loaded page's CAA `<li>`
+    //      structure is baked directly into each row's saved cell HTML —
+    //      it never goes through `_artEnrichIcon()` at all (confirmed via
+    //      diagnostic logging: `_artEnrichTable()` enqueues every art
+    //      anchor every filter cycle, but almost none of them ever reach
+    //      `_artEnrichIcon()`'s own tail), and `_artHighlightArtCell()` —
+    //      the only function that applies filter highlighting to this
+    //      content — was only ever called from inside `_artEnrichIcon()`.
+    //      Fixed with `_artHighlightAllBuiltCaaCells()`, a sweep called
+    //      from `runFilter()`'s single-table branch that re-applies
+    //      highlighting to every populated CAA cell regardless of how its
+    //      content got there (idempotent, so redundant-but-harmless for
+    //      live-fetch cells that already went through `_artEnrichIcon()`).
+    //
+    // Post-fix, the disk-fixture path was re-verified to produce IDENTICAL
+    // counts to a live fetch (confirmed exactly: 194/3/6/166 both ways) —
+    // also re-confirmed by `§A3` in
+    // `tests/live/artist-releases-filter-sort.spec.js` (live fetch,
+    // CAA column explicitly expanded, matching a real interactive session).
+    // "Booklet Booklet Page 5"/"let Boo" are genuine cross-tag matches
+    // spanning the type-badge into the SEPARATE comment span — only
+    // possible because the type/comment separator was ALSO fixed in the
+    // same session (was a literal en-dash `" – "`, now a plain `" "`,
+    // aligning the live DOM text with `_artBuildSearchText()`'s own
+    // always-plain-space join). The fixture itself had to be RE-CAPTURED
+    // after that separator fix — its baked-in cell HTML still had the old
+    // en-dash otherwise, which silently broke exactly these two cases'
+    // cross-tag highlighting (single-span cases were unaffected by it).
+    {
+        column: 'CAA', value: 'Booklet', expected: 20,
+        expectHighlightCount: 194, highlightTextSet: ['Booklet'],
+    },
+    {
+        column: 'CAA', value: 'Booklet Page 5', expected: 3,
+        expectHighlightCount: 3, highlightTextSet: ['Booklet Page 5'],
+    },
+    {
+        column: 'CAA', value: 'Booklet Booklet Page 5', expected: 3,
+        expectHighlightCount: 6, highlightTextSet: ['Booklet', 'Booklet Page 5'],
+    },
+    {
+        column: 'CAA', value: 'let Boo', expected: 18, overlapDemo: true,
+        expectHighlightCount: 166, highlightTextSet: ['let', 'Boo'],
+    },
     { column: 'Country', value: 'United States (US)', expected: 32, highlight: 'United States (US)' },
     { column: 'Country', value: 'United States', expected: 34, highlight: 'United States' },
     {
@@ -236,19 +269,20 @@ const FILTER_CASES = [
     { column: 'MB-Name', value: 'Outside Looking In', expected: 4, highlight: 'Outside Looking In' },
     { column: 'Comment', value: 'BMG', expected: 2, highlight: 'BMG' },
     { column: 'Primary alias', value: 'x', expected: 0, highlight: null }, // always-empty column — 0 rows, nothing to highlight
-    { column: 'Relationships', value: 'amazon.com', expected: 19, highlight: 'amazon.com', needsRelSettle: true },
+    // UNLIKE the fixture's other columns, Relationships data is fetched
+    // live over the network on every run (never baked into the committed
+    // disk fixture) — genuinely re-verified/re-derived from BoDeans' real
+    // current relationships (was 19, drifted to 14 by the time this fixture
+    // was re-captured for the CAA type/comment separator fix below).
+    { column: 'Relationships', value: 'amazon.com', expected: 14, highlight: 'amazon.com', needsRelSettle: true },
     // Broad substring across the hidden `.mb-rel-filter-key` URL/path text
     // (`_relAppendIcon()`/`_populateCells()`) — matches both external URLs
     // containing "release" (e.g. some Discogs release pages) AND internal
     // `/release/<mbid>` AND `/release-group/<mbid>` paths (the latter
     // because "release-group" contains "release" as a prefix — a naive-
     // substring collision, same shape as the CAA "no"/"Runout" case
-    // above). UNLIKE the fixture's other columns, Relationships data is
-    // fetched live over the network on every run (never baked into the
-    // committed disk fixture) — this expected count was confirmed by an
-    // actual live run, not derived from any static file; re-verify if
-    // BoDeans' relationships ever change.
-    { column: 'Relationships', value: 'release', expected: 27, highlight: 'release', needsRelSettle: true },
+    // above). Re-verified/re-derived (was 27, drifted to 21).
+    { column: 'Relationships', value: 'release', expected: 21, highlight: 'release', needsRelSettle: true },
     {
         column: 'Format', value: 'gital Me', expected: 8, overlapDemo: true,
         highlight: 'gital Me',
@@ -414,6 +448,46 @@ const UNIQ_DROP_CROSS_COLUMN_COMBO = {
     expected: 28,
 };
 
+/**
+ * §A3 — CAA per-image type/comment highlighting, LIVE FETCH only (not the
+ * committed disk fixture — see the spec's own §A3 JSDoc for why the two
+ * paths behave differently for this specific content). Column-EXPANDED
+ * scenario, matching a real interactive session.
+ *
+ * Every count here was live-verified AFTER fixing a real, confirmed
+ * duplication bug: `_artHighlightImageLi()` is called twice by design (once
+ * during `_artBuildMultiRowArtCell()`'s own build pass, once more from
+ * `_artHighlightArtCell()`'s post-build async catch-up — see that
+ * function's own JSDoc for the legitimate timing-race reason both exist),
+ * and neither call cleared the OTHER's highlight spans first — so every
+ * matching image occurrence got wrapped in `.mb-column-filter-highlight`
+ * TWICE (nested, visually indistinguishable from a single highlight since
+ * nested spans with identical styling render the same — confirmed exactly
+ * 2x via `total`/`outermost` span counts: 388 total, 194 outermost, for
+ * "Booklet"). Fixed by making `_artHighlightImageLi()` strip any
+ * highlight spans it may have already applied before reapplying
+ * (idempotency guard) — these counts are the POST-FIX, correct values.
+ *
+ * "Booklet Booklet Page 5" and "let Boo" are genuine cross-tag matches
+ * spanning the type-badge into the SEPARATE comment span, producing TWO
+ * highlight texts per case — this only works because the type/comment
+ * separator was ALSO fixed in the same session (was `" – "` — a
+ * literal en-dash — now a plain `" "`, so the live DOM text now aligns
+ * with `_artBuildSearchText()`'s own always-plain-space join). Before
+ * that fix, these two combined-query cases would have produced ZERO
+ * highlight spans despite a correct row match (the en-dash broke
+ * `highlightCrossTag()`'s text alignment) — the same class of gap as the
+ * Release/Label/Country-Date comment-boundary cases elsewhere in this
+ * file, just not yet formally tracked as `crossTag: true` here since row
+ * counts, not highlight shape, were this table's original focus.
+ */
+const CAA_EXPANDED_LIVE_CASES = [
+    { value: 'Booklet', expected: 20, expectHighlightCount: 194, highlightTexts: ['Booklet'] },
+    { value: 'Booklet Page 5', expected: 3, expectHighlightCount: 3, highlightTexts: ['Booklet Page 5'] },
+    { value: 'Booklet Booklet Page 5', expected: 3, expectHighlightCount: 6, highlightTexts: ['Booklet', 'Booklet Page 5'] },
+    { value: 'let Boo', expected: 18, expectHighlightCount: 166, highlightTexts: ['let', 'Boo'] },
+];
+
 module.exports = {
     URL,
     FIXTURE_PATH,
@@ -427,6 +501,7 @@ module.exports = {
     UNIQ_DROP_ACTIVE_FILTER,
     UNIQ_DROP_COLUMNS_ACTIVE,
     UNIQ_DROP_SINGLE_CASES,
+    CAA_EXPANDED_LIVE_CASES,
     UNIQ_DROP_COMBO_CASES,
     UNIQ_DROP_CROSS_COLUMN_COMBO,
 };
