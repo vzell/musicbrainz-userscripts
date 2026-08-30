@@ -12,8 +12,8 @@
         "test:ui": "playwright test --ui",
         "test:headed": "playwright test --headed",
         "test:live:save-html": "SAVE_HTML=1 playwright test --project=chromium-live",
-        "test:live:report:artist-releases": "playwright test tests/live/artist-releases-filter-sort.spec.js --project=chromium-live --reporter=json | node tests/support/generate-filtersort-report.js",
-        "test:live:artist-releases:full": "TEST_PREFILTER_LOAD=1 TEST_COLVIS=1 playwright test tests/live/artist-releases-filter-sort.spec.js --project=chromium-live",
+        "test:live:report:artist-releases": "PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/artist-releases-report.json playwright test tests/live/artist-releases-filter-sort.spec.js --project=chromium-live --reporter=list,json; e=$?; node tests/support/generate-filtersort-report.js < test-results/artist-releases-report.json; exit $e",
+        "test:live:artist-releases:full": "TEST_PREFILTER_LOAD=1 TEST_COLVIS=1 PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/artist-releases-full.json playwright test tests/live/artist-releases-filter-sort.spec.js --project=chromium-live --reporter=list,json; e=$?; node tests/support/generate-filtersort-report.js < test-results/artist-releases-full.json; exit $e",
         "report": "playwright show-report",
         "auth:login": "node tests/support/auth-setup.js"
     },
