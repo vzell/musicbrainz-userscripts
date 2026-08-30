@@ -37297,6 +37297,20 @@ a { color: #1565c0; }`;
                     caaUpdateBigBoxForTable(_filterTable, _bbTblIdx);
                     eaaUpdateBigBoxForTable(_filterTable, _bbTblIdx);
                 }
+                // Re-apply per-image CAA type/comment highlighting to every
+                // populated CAA cell for the current filter query. NOT
+                // redundant under Step 1's in-place filtering (unlike the
+                // cloneNode-era re-wiring this merge otherwise dropped, see
+                // the merge note below) — this is query-dependent, not
+                // listener-rewiring, and testRowMatch()'s own per-row
+                // highlighting above deliberately skips this content
+                // (`.mb-caa-art-li-image` is in `_CLEAN_STRIP_SEL`). Without
+                // this call, CAA per-image highlighting never fires at all
+                // for content whose `ul.mb-caa-art-ul` was built as
+                // already-baked static HTML (disk-load) rather than through
+                // `_artEnrichIcon()` — see this function's own JSDoc for the
+                // confirmed root cause (fbb5355).
+                _artHighlightAllBuiltCaaCells();
                 // Sync mb-collapse-toggle-has-match on every existing collapse
                 // toggle to the highlights this pass just applied/cleared above.
                 // Same reasoning as the bigbox sync just above: initCollapsableColumns()
@@ -37327,18 +37341,22 @@ a { color: #1565c0; }`;
             // Merge note (main -> perf-steps-1-4): main's runFilter() also
             // re-invokes initExpandRGsFeature()/_cdtocInitTracklistToggles()/
             // _rewireNestedTableH2Toggles()/initAnnotationCompareRadios()/
-            // initPicardTaggerColumn(rewireOnly)/the CAA-EAA re-init chain
-            // here, because its single-table filter path still rebuilds the
-            // tbody via cloneNode(true) on every pass, stripping listeners.
-            // PERFORMANCE.org Step 1 (5d7f835) replaced that with in-place
-            // display:none/'' toggling on the SAME live DOM nodes, so none of
-            // those listeners are ever stripped in the first place — each is
-            // now hoisted to run exactly once, at initial render, and the
-            // CAA/EAA bigbox is kept in sync via the caaUpdateBigBoxForTable()/
-            // eaaUpdateBigBoxForTable() calls a few lines above instead of a
-            // full initCaaPics()/initEaaPics() re-run. Re-adding main's block
-            // here would silently reintroduce the per-keystroke rebuild cost
-            // Step 1 exists to eliminate.
+            // initPicardTaggerColumn(rewireOnly)/a full initCaaPics()/
+            // initEaaPics() re-run here, because its single-table filter path
+            // still rebuilds the tbody via cloneNode(true) on every pass,
+            // stripping listeners. PERFORMANCE.org Step 1 (5d7f835) replaced
+            // that with in-place display:none/'' toggling on the SAME live
+            // DOM nodes, so none of those listeners are ever stripped in the
+            // first place — each is now hoisted to run exactly once, at
+            // initial render, and the CAA/EAA bigbox is kept in sync via the
+            // caaUpdateBigBoxForTable()/eaaUpdateBigBoxForTable() calls a few
+            // lines above instead. Re-adding that block here would silently
+            // reintroduce the per-keystroke rebuild cost Step 1 exists to
+            // eliminate. `_artHighlightAllBuiltCaaCells()` is the one call
+            // from that same main block that is NOT redundant here — it is
+            // query-dependent (re-applies highlighting for the CURRENT
+            // filter, not a one-time init), so it is kept, a few lines above
+            // alongside the bigbox sync (see its own call site comment).
             if (document.querySelector('td.mb-rel-cell:not([data-rel-done="1"])')) {
                 initRelationshipsColumn();
             }

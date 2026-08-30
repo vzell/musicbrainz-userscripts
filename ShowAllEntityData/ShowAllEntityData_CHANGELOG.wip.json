@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.12",
+    "date": "2026-08-30",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Merged main (9.99.970) into perf-steps-1-4, then fixed a bug the merge's own conflict resolution introduced: runFilter()'s single-table branch had one real conflict, where main's block re-invoked several cloneNode-era re-wiring calls (initExpandRGsFeature/_cdtocInitTracklistToggles/_rewireNestedTableH2Toggles/initAnnotationCompareRadios/initPicardTaggerColumn(rewireOnly)/a full initCaaPics()/initEaaPics() re-run) that PERFORMANCE.org Step 1's in-place filtering (5d7f835) already made redundant on this branch — correctly dropped. But that same main block also contained _artHighlightAllBuiltCaaCells() (added by main's fbb5355, the query-dependent CAA per-image type/comment highlight sweep for content whose ul.mb-caa-art-ul was baked in as static HTML rather than built through _artEnrichIcon() — e.g. disk-loaded pages), which is NOT covered by Step 1's reasoning since it re-applies highlighting for the CURRENT filter query, not a one-time init. Dropping it wholesale left the function defined but never called, reproducing exactly the '0 highlight spans' symptom fbb5355 had fixed on main. Restored the call (in runFilter()'s in-place-filter block, alongside the existing CAA/EAA bigbox sync) with a comment distinguishing it from the genuinely-redundant calls. Verified the disk-load pipeline's own single-table CAA/EAA init block (~line 56831) already independently covers initCaaPics()/initEaaPics()/the completion-toast registration, so nothing else from main's dropped block was missing. tests/live/registry.org's artist-releases-filter-sort.spec.js note also updated — it still described the CAA highlighting as an unfixed 'confirmed-live UNSTABLE quirk' using skipHighlightCheck, which was accurate before main's fbb5355 but stale after it (that commit replaced skipHighlightCheck with exact expectHighlightCount/highlightTextSet assertions on all 4 CAA FILTER_CASES); fbb5355 never touched registry.org so the note never caught up."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.11",
     "date": "2026-08-26",
     "sections": [
