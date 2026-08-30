@@ -281,6 +281,197 @@ async function getGlobalHighlightTexts(page) {
     );
 }
 
+/**
+ * Reads `#mb-filter-status-display`'s current text — the single-table
+ * success line ShowAllEntityData writes as
+ * `` `✓ Filtered ${N} ${row(s)} in ${ms}ms${filterInfo}` `` (`runFilter()`,
+ * ShowAllEntityData.user.js). Callers assert against this with
+ * {@link buildFilterStatusRegex} rather than an exact string, since the
+ * elapsed-ms portion is inherently non-deterministic.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<string>}
+ */
+async function getFilterStatusText(page) {
+    return (await page.locator('#mb-filter-status-display').textContent()) || '';
+}
+
+/**
+ * Escapes a string for safe embedding inside a `RegExp` literal.
+ * @param {string} s
+ * @returns {string}
+ */
+function escapeRegExp(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Builds the exact `RegExp` a single-table page's `#mb-filter-status-display`
+ * success text must match for a given global/column-filter combination — see
+ * `runFilter()`'s `filterParts`/`filterInfo` construction
+ * (ShowAllEntityData.user.js). The elapsed-ms figure is matched as `\d+`
+ * (never deterministic); everything else — row count, singular/plural
+ * "row"/"rows", the `GLOBAL:"..."` part, and one `'ColName':"value"` pair
+ * per active column filter — is asserted exactly.
+ *
+ * `columns` must already be in the SAME order the real DOM produces them in
+ * (ascending `COLUMN_INDEX`, i.e. left-to-right column order) — the actual
+ * code iterates `document.querySelectorAll('.mb-col-filter-input')` in DOM
+ * order, which does not necessarily match the order a test applied filters
+ * in for a multi-column combo case.
+ *
+ * Asymmetric quirk this function deliberately encodes (confirmed live, not
+ * a bug): `runFilter()`'s own `globalQuery` variable (used in the
+ * `GLOBAL:"..."` part) is lowercased whenever the global filter is NOT
+ * case-sensitive (`globalQuery = (isCaseSensitive || isRegExp) ?
+ * globalQueryRaw : globalQueryRaw.toLowerCase()`, ShowAllEntityData.user.js)
+ * — unlike a COLUMN filter's own status text, which always shows the raw
+ * typed value regardless of case-sensitivity. Pass `globalCaseSensitive:
+ * true` when the Cc checkbox was on for the global filter.
+ *
+ * @param {{ rowCount: number, global?: string, globalCaseSensitive?: boolean, columns?: Array<{column: string, value: string}> }} spec
+ * @returns {RegExp}
+ */
+function buildFilterStatusRegex({ rowCount, global, globalCaseSensitive = false, columns = [] }) {
+    const rowWord = rowCount === 1 ? 'row' : 'rows';
+    const parts = [];
+    if (global) {
+        const displayedGlobal = globalCaseSensitive ? global : global.toLowerCase();
+        parts.push(`GLOBAL:"${escapeRegExp(displayedGlobal)}"`);
+    }
+    if (columns.length > 0) {
+        const n = columns.length;
+        const colDetail = columns
+            .map((c) => `'${escapeRegExp(c.column)}':"${escapeRegExp(c.value)}"`)
+            .join(', ');
+        parts.push(`${n} COLUMN FILTER${n > 1 ? 'S' : ''} \\[${colDetail}\\]`);
+    }
+    const filterInfo = parts.length > 0 ? ` \\[${parts.join(', ')}\\]` : '';
+    return new RegExp(`^✓ Filtered ${rowCount} ${rowWord} in \\d+ms${filterInfo}$`);
+}
+
+/**
+ * Reads the h2 `.mb-row-count-stat` span's rich `data-mbtt` tooltip HTML —
+ * see `_buildH2CountTooltip()` (ShowAllEntityData.user.js). Never used as
+ * `title` — this is the custom-hover-tooltip payload.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<string>}
+ */
+async function getRowCountTooltip(page) {
+    return (await page.locator('h2 .mb-row-count-stat').first().getAttribute('data-mbtt')) || '';
+}
+
+/**
+ * Escapes a string the same way `_mbttSpan()`/`_mbttColName()`
+ * (ShowAllEntityData.user.js) do before embedding it in the `data-mbtt`
+ * tooltip HTML.
+ * @param {string} s
+ * @returns {string}
+ */
+function escapeMbttHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/**
+ * Asserts a `data-mbtt` tooltip's content against the active filter
+ * combination, per `_buildH2CountTooltip()`'s own branching
+ * (ShowAllEntityData.user.js:33218). Deliberately checks for the presence of
+ * the count/colname/value pill spans it's KNOWN to always emit, rather than
+ * the full surrounding English sentence (which varies by branch) — a looser,
+ * lower-maintenance spot-check of "the right figures/filters are mentioned",
+ * not a byte-exact tooltip snapshot.
+ *
+ * IMPORTANT quirks this function deliberately encodes (not bugs — real
+ * `_buildH2CountTooltip()` behavior):
+ *   - When `filteredCount === totalCount` (e.g. a column filter that happens
+ *     to match every row), the function takes its early "total unfiltered"
+ *     return and mentions NO column/global filter detail at all, even
+ *     though a filter is technically active. Callers must not pass
+ *     `columns`/`global` expecting them to be asserted in that case — this
+ *     function silently skips that part of the check instead of failing.
+ *   - Unlike `#mb-filter-status-display`'s own text (built from the RAW,
+ *     untrimmed `stripColFilterPrefix(inp.value)`), the tooltip's per-COLUMN
+ *     expression is built from `_raw.trim()` (`_buildH2CountTooltip()`'s
+ *     `_activeCol` map) — a column value with leading/trailing whitespace
+ *     (e.g. the Tracks column's `" + "` case) appears TRIMMED in the
+ *     tooltip but untrimmed in the status text. The GLOBAL filter value is
+ *     NOT trimmed in either place (`_gfVal` has no `.trim()` call). This
+ *     function trims only `c.value`, never `global`;
+ *     `buildFilterStatusRegex()` trims neither.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{ filteredCount: number, totalCount: number, global?: string, columns?: Array<{column: string, value: string}> }} spec
+ * @returns {Promise<void>}
+ */
+async function assertRowCountTooltip(page, { filteredCount, totalCount, global, columns = [] }) {
+    const { expect } = require('@playwright/test');
+    const html = await getRowCountTooltip(page);
+    expect(html).toContain(`<span class="mb-mbtt-count">${filteredCount}</span>`);
+    if (filteredCount === totalCount) return; // "total unfiltered" branch — no filter detail mentioned
+    expect(html).toContain(`<span class="mb-mbtt-count">${totalCount}</span>`);
+    if (global) {
+        // The "global" LABEL word uses class `mb-mbtt-gf` (_mbttLabel());
+        // the VALUE itself uses `mbtt-gf` (_mbttSpan()) — parallel to
+        // column filters' `mb-mbtt-colname`/`mbtt-cf` split. Only the value
+        // is asserted here.
+        expect(html).toContain(`<span class="mbtt-gf">${escapeMbttHtml(global)}</span>`);
+    }
+    for (const c of columns) {
+        expect(html).toContain(`<span class="mb-mbtt-colname">'${escapeMbttHtml(c.column)}'</span>`);
+        expect(html).toContain(`<span class="mbtt-cf">${escapeMbttHtml(c.value.trim())}</span>`);
+    }
+}
+
+/**
+ * Reads the visibility + label text of the filter-bar's `#mb-toggle-filter-
+ * highlight-btn` / `#mb-clear-column-filters-btn` buttons — see
+ * `updateFilterButtonsVisibility()` (ShowAllEntityData.user.js). Both are
+ * `display:inline-block` whenever ANY filter has text (highlight-toggle) or
+ * at least one COLUMN filter specifically has text (clear-column-filters),
+ * `display:none` otherwise; their label text is static, not dynamic.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<{ toggleHighlightVisible: boolean, toggleHighlightText: string, clearColumnFiltersVisible: boolean, clearColumnFiltersText: string }>}
+ */
+async function getFilterButtonsState(page) {
+    const toggle = page.locator('#mb-toggle-filter-highlight-btn');
+    const clearCols = page.locator('#mb-clear-column-filters-btn');
+    const [toggleDisplay, toggleText, clearDisplay, clearText] = await Promise.all([
+        toggle.evaluate((el) => getComputedStyle(el).display),
+        toggle.textContent(),
+        clearCols.evaluate((el) => getComputedStyle(el).display),
+        clearCols.textContent(),
+    ]);
+    return {
+        toggleHighlightVisible: toggleDisplay !== 'none',
+        toggleHighlightText: (toggleText || '').trim(),
+        clearColumnFiltersVisible: clearDisplay !== 'none',
+        clearColumnFiltersText: (clearText || '').trim(),
+    };
+}
+
+/**
+ * Reads `#mb-toggle-prefilter-btn`'s visibility + text — see
+ * `updatePrefilterToggleButton()` (ShowAllEntityData.user.js), only ever
+ * shown (with `show=true` AND a non-empty `query`) from the Load-from-Disk
+ * hydration path when a genuine pre-filter was applied. Text template:
+ * `` `🎨 ${count}${totalRows > 0 ? ` of ${totalRows}` : ''} ${row(s)} ${isExclude ? 'excluded' : 'prefiltered'}: "${query}"` ``.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<{ visible: boolean, text: string }>}
+ */
+async function getPrefilterButtonState(page) {
+    const btn = page.locator('#mb-toggle-prefilter-btn');
+    const count = await btn.count();
+    if (count === 0) return { visible: false, text: '' };
+    const [display, text] = await Promise.all([
+        btn.evaluate((el) => getComputedStyle(el).display),
+        btn.textContent(),
+    ]);
+    return { visible: display !== 'none', text: (text || '').trim() };
+}
+
 module.exports = {
     waitForFilterSettled,
     waitForSortSettled,
@@ -291,4 +482,11 @@ module.exports = {
     waitForActualRowCount,
     getColumnHighlightTexts,
     getGlobalHighlightTexts,
+    getFilterStatusText,
+    buildFilterStatusRegex,
+    getRowCountTooltip,
+    assertRowCountTooltip,
+    getFilterButtonsState,
+    getPrefilterButtonState,
+    escapeRegExp,
 };
