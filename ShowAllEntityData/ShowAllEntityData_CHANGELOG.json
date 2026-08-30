@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.969",
+    "date": "2026-08-30",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Extended the `artist-releases` (BoDeans) Playwright regression suite: CAA type/comment substring cases, a real chaban day-of-week third-party-interop case, a Catalog# multi-row collapse-indicator assertion, a Relationships substring case, filter-status/tooltip/button UI-state assertions folded into every existing case, and a genuine exercise of the opt-in pre-filtered-disk-load (§J) and column-visibility (§K) sections — the latter previously used a checkbox selector that never matched real DOM and had never actually run against live markup before."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.968",
     "date": "2026-08-29",
     "sections": [
