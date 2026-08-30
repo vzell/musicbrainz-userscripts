@@ -126,25 +126,6 @@ function orgEscape(s) {
     return String(s).replace(/\|/g, '\\vert{}');
 }
 
-/**
- * Formats a millisecond duration as "Xm Y.Ys" (or just "Y.Ys" under a
- * minute) — the summary-level wall-clock/sum-of-durations metrics run into
- * several hundred seconds on this suite's full opt-in run, and a raw
- * seconds count at that size is harder to read at a glance than minutes +
- * seconds. Per-case/step durations in the case-by-case table stay in raw
- * ms — precision matters more than readability there, and they're all well
- * under a minute individually.
- *
- * @param {number} ms
- * @returns {string}
- */
-function formatDuration(ms) {
-    const totalSeconds = ms / 1000;
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds - minutes * 60;
-    return minutes > 0 ? `${minutes}m ${seconds.toFixed(1)}s` : `${seconds.toFixed(1)}s`;
-}
-
 function buildOrgReport(specs, stats) {
     const categorySummary = summarizeByCategory(specs);
     const categoryRows = categorySummary
@@ -206,8 +187,8 @@ only exists on tableMode: 'multi' pages' Sub-Table Filter panel).
 | Passed | ${stats.passed} |
 | Failed | ${stats.failed} |
 | Other (skipped/timedOut/interrupted) | ${stats.other} |
-| **Complete test run duration (wall-clock)** | **${formatDuration(stats.wallClockDuration)}** |
-| Sum of individual case/step durations | ${formatDuration(stats.totalDuration)} (steps nest inside their parent test, so this over-counts vs. wall-clock — informational only) |
+| **Complete test run duration (wall-clock)** | **${(stats.wallClockDuration / 1000).toFixed(1)}s** |
+| Sum of individual case/step durations | ${(stats.totalDuration / 1000).toFixed(1)}s (steps nest inside their parent test, so this over-counts vs. wall-clock — informational only) |
 
 * Coverage by category
 
@@ -310,8 +291,8 @@ function buildHtmlReport(specs, stats) {
     <div class="stat"><span class="n">${stats.total}</span>Total cases</div>
     <div class="stat"><span class="n">${stats.passed}</span>Passed</div>
     <div class="stat"><span class="n">${stats.failed}</span>Failed</div>
-    <div class="stat highlight"><span class="n">${formatDuration(stats.wallClockDuration)}</span>Complete run duration (wall-clock)</div>
-    <div class="stat"><span class="n">${formatDuration(stats.totalDuration)}</span>Sum of case/step durations (over-counts vs. wall-clock)</div>
+    <div class="stat highlight"><span class="n">${(stats.wallClockDuration / 1000).toFixed(1)}s</span>Complete run duration (wall-clock)</div>
+    <div class="stat"><span class="n">${(stats.totalDuration / 1000).toFixed(1)}s</span>Sum of case/step durations (over-counts vs. wall-clock)</div>
 </div>
 <h2>Coverage by category</h2>
 <p>Purely pattern-classified from each case/step's own title — not a separate
@@ -361,5 +342,5 @@ uniq-dropdown contents) is visible at a glance.</p>
 
     console.log(`Wrote ${ORG_OUT}`);
     console.log(`Wrote ${HTML_OUT}`);
-    console.log(`${stats.passed}/${stats.total} passed in ${formatDuration(stats.wallClockDuration)}`);
+    console.log(`${stats.passed}/${stats.total} passed in ${(stats.wallClockDuration / 1000).toFixed(1)}s`);
 })();
