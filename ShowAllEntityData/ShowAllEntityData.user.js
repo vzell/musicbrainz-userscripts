@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.966+2026-08-29
+// @version      9.99.970+2026-08-30
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -34066,11 +34066,45 @@ a { color: #1565c0; }`;
      *   extracted Country column whose cells start with a flag <img> element
      *   followed by a whitespace text node before the actual country text.
      *
+     *   A second, longer-standing gap in this same alignment (fixed together
+     *   with the above): getCleanColumnText() collects every accepted text
+     *   node's content into an array and joins the whole array with a single
+     *   literal space (`textParts.join(' ')`) — unconditionally, between
+     *   EVERY pair of collected pieces, regardless of what (if anything)
+     *   separated them in the DOM. This function used to concatenate accepted
+     *   text nodes directly (`join('')`, no separator) and rely on the DOM's
+     *   own whitespace/`&nbsp;` text nodes surviving the walk to provide that
+     *   spacing — but such nodes are themselves whitespace-only and get
+     *   FILTER_REJECTed by this same walk (JS's `String.trim()` strips
+     *   U+00A0 `&nbsp;` exactly like regular whitespace), so they contribute
+     *   nothing. The result: two entries separated only by such a node became
+     *   directly adjacent in this function's own `fullText` (no gap), while
+     *   getCleanColumnText()'s `fullText` had a space there — so a query
+     *   built around a literal space between the two halves (since that's
+     *   what actually matched the row) would match testRowMatch()'s row-level
+     *   text but never match THIS function's own `fullText`, leaving zero
+     *   highlight spans despite a correct row match. Confirmed live on a
+     *   `<bdi>` entity name running
+     *   into a sibling `<span class="comment"><bdi>` (Release/Label columns)
+     *   and on a native `<abbr>`/`<span class="release-date">` pair
+     *   (Country/Date column) — see debug/NOTES.md's 2026-08-29 entry. Fixed
+     *   by inserting the same unconditional single-space gap between every
+     *   pair of accepted entries here too (both in the offset bookkeeping and
+     *   in `fullText` itself), mirroring `join(' ')` exactly.
+     *
      * @param {Element} root      - Container element to search within (typically a `<td>`).
      * @param {RegExp}  regex     - Pre-compiled global RegExp (must carry the 'g' flag).
      * @param {string}  className - CSS class name applied to every highlight `<span>`.
      */
     function highlightCrossTag(root, regex, className) {
+        // Defensive, matching getCleanColumnText()'s own pre-normalize step:
+        // merges genuinely-adjacent sibling text nodes (which must stay
+        // directly adjacent, no synthetic space) before the walk below decides
+        // where real element/text-node BOUNDARIES are. Every current caller of
+        // this function already normalizes its own root first, but idempotent
+        // — a second normalize() here is a no-op — so this makes the function
+        // correct on its own regardless of caller discipline.
+        root.normalize();
         // ── Step 1: collect text nodes with absolute character offsets ──────────
         //
         // Use SHOW_TEXT | SHOW_ELEMENT so that FILTER_REJECT on an element node
@@ -34158,13 +34192,31 @@ a { color: #1565c0; }`;
         let node;
         while ((node = walker.nextNode())) {
             if (node.nodeType !== Node.TEXT_NODE) continue; // SHOW_ELEMENT: skip element hits
+            // Mirror getCleanColumnText()'s textParts.join(' ') — it inserts one
+            // synthetic space between EVERY pair of accepted text-node pieces,
+            // unconditionally, regardless of what (if anything) actually separated
+            // them in the DOM. A comment-boundary match like a <bdi> title running
+            // into a sibling `<span class="comment"><bdi>` — joined only by a
+            // literal `&nbsp;` text node — relies on this: that nbsp node's own
+            // `.trim()` is '' (JS's trim() strips U+00A0 same as regular
+            // whitespace), so it gets FILTER_REJECTed above just like any other
+            // whitespace-only node and contributes nothing itself. Without this
+            // virtual gap, two entries that are only separated by such a node
+            // become directly adjacent in fullText (no space) — a query built with
+            // a real, literal space between the two halves (since that's what
+            // getCleanColumnText() actually matched against) then never matches
+            // fullText at all here, and this function returns with zero highlight
+            // spans despite testRowMatch() having correctly matched the row.
+            // Confirmed live on Release/Label/Country-Date comment-boundary and
+            // compound queries — see debug/NOTES.md's 2026-08-29 entry.
+            if (entries.length) offset += 1;
             const len = node.nodeValue.length;
             entries.push({ node, start: offset, end: offset + len });
             offset += len;
         }
         if (!entries.length) return;
 
-        const fullText = entries.map(e => e.node.nodeValue).join('');
+        const fullText = entries.map(e => e.node.nodeValue).join(' ');
         if (!fullText) return;
 
         // ── Step 2: find all non-overlapping matches in the concatenated text ───
@@ -60736,7 +60788,7 @@ a { color: #1565c0; }`;
 
         // ── Disambiguation comment ────────────────────────────────────────────
         if (commentText) {
-            li.appendChild(document.createTextNode(' \u2013 '));
+            li.appendChild(document.createTextNode(' '));
             const comment       = document.createElement('span');
             comment.className   = 'mb-caa-art-comment';
             comment.textContent = commentText;
@@ -60785,6 +60837,25 @@ a { color: #1565c0; }`;
     function _artHighlightImageLi(li, colIdx, ctxOverride) {
         const ctx = (ctxOverride !== undefined) ? ctxOverride : _activeFilterHighlightCtx;
         if (!ctx) return;
+
+        // Idempotency guard: _artBuildMultiRowArtCell() (during build) and
+        // _artHighlightArtCell() (post-build) BOTH call this function for the
+        // same li by design (see this function's own JSDoc — the redundancy
+        // exists to cover a real _activeFilterHighlightCtx timing race).
+        // Without clearing any highlight spans a PRIOR call already applied,
+        // the second call wraps the first call's own
+        // <span class="mb-column-filter-highlight"> in another identical
+        // span — invisible to the eye (nested spans with the same
+        // background render indistinguishably from one), but a real,
+        // confirmed-live DOM-duplication defect (exactly 2x the correct
+        // span count — e.g. 388 instead of 194 for a 20-row "Booklet"
+        // filter on BoDeans' artist-releases). Strip any highlight spans
+        // this function may have already applied before reapplying,
+        // mirroring the unwrap pattern unhighlightAllBtn.onclick already
+        // uses elsewhere in this file.
+        li.querySelectorAll('.mb-global-filter-highlight, .mb-column-filter-highlight, .mb-subtable-filter-highlight')
+            .forEach(n => n.replaceWith(document.createTextNode(n.textContent)));
+        li.normalize();
 
         const flags = ctx.isCaseSensitive ? 'g' : 'gi';
 
@@ -61024,6 +61095,44 @@ a { color: #1565c0; }`;
         if (_owningTable) _syncCollapseHasMatchInTable(_owningTable);
     }
 
+    /**
+     * Re-applies filter highlights to EVERY currently-rendered CAA art cell
+     * that already has a populated `ul.mb-caa-art-ul` — regardless of
+     * whether its content was built by `_artBuildMultiRowArtCell()` (the
+     * normal `_artEnrichIcon()` path) or restored as already-fully-built
+     * static HTML, which never reaches `_artEnrichIcon()` at all.
+     *
+     * Confirmed live: a disk-loaded page (`Load from Disk` / this repo's
+     * own `loadFromDiskFixture()` test helper) bakes each row's CAA
+     * `<ul>`/`<li>` structure directly into the saved cell HTML —
+     * `_artEnrichTable()` still enqueues every art anchor on each
+     * `runFilter()` pass (confirmed via its own diagnostic logging), but
+     * almost none of them ever reach `_artEnrichIcon()`'s own tail (only
+     * the small subset of Path-C synthetic anchors needing their sort-key
+     * confirmed do) — since `_artHighlightArtCell()` is the ONLY place
+     * that applies column/global filter highlighting to per-image type/
+     * comment text, and it's only ever called from inside
+     * `_artEnrichIcon()`, disk-loaded CAA content never got highlighted at
+     * all, on any filter cycle. This sweep decouples "reapply highlights"
+     * from "was this cell freshly enriched" by covering every populated
+     * cell directly, regardless of how its content got there.
+     *
+     * Safe to call unconditionally on every `runFilter()` pass: idempotent
+     * (`_artHighlightImageLi()`'s own guard strips any highlight spans it
+     * may have already applied before reapplying) and cheap when no filter
+     * is active (`_artHighlightArtCell()`'s own early bail-out).
+     *
+     * CAA only, matching `_artHighlightArtCell()`'s own current scope —
+     * it hardcodes `.mb-caa-art-ul`/`.mb-caa-art-li-image`, not
+     * ctx-parameterized for EAA. EAA may have the same disk-load gap;
+     * not verified or fixed here (a separate, unconfirmed investigation).
+     */
+    function _artHighlightAllBuiltCaaCells() {
+        document.querySelectorAll('table.tbl tbody ul.mb-caa-art-ul').forEach(ul => {
+            const td = ul.closest('td');
+            if (td) _artHighlightArtCell(td, td.cellIndex);
+        });
+    }
 
     /**
      * Builds or rebuilds the multi-row `<ul>` art-image list inside a CAA/EAA

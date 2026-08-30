@@ -1,5 +1,55 @@
 [
   {
+    "version": "9.99.970",
+    "date": "2026-08-30",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "CAA per-image type/comment filter highlighting: fixed a confirmed duplication bug where matching text got wrapped in `.mb-column-filter-highlight` TWICE (nested, visually indistinguishable from a single highlight, but a real DOM defect) — `_artHighlightImageLi()` is legitimately called twice by design (once during cell build, once from an async post-build catch-up) and neither cleared the other's spans first; now idempotent.",
+          "CAA per-image highlighting also never fired at all on a page loaded via Load-from-Disk — its saved CAA cell markup is baked in directly and never goes through the enrichment pipeline that used to be the only place highlighting was applied; a new post-filter sweep (`_artHighlightAllBuiltCaaCells()`) now re-applies highlighting to every populated CAA cell regardless of how its content got there.",
+          "Removed the literal en-dash (\" \\u2013 \") separator between a CAA image's type badge and its comment, replacing it with a plain space — as a side effect this also fixes cross-tag highlighting for filters spanning both (e.g. typing a type followed immediately by the start of its comment), which the en-dash previously broke."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.969",
+    "date": "2026-08-30",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Extended the `artist-releases` (BoDeans) Playwright regression suite: CAA type/comment substring cases, a real chaban day-of-week third-party-interop case, a Catalog# multi-row collapse-indicator assertion, a Relationships substring case, filter-status/tooltip/button UI-state assertions folded into every existing case, and a genuine exercise of the opt-in pre-filtered-disk-load (§J) and column-visibility (§K) sections — the latter previously used a checkbox selector that never matched real DOM and had never actually run against live markup before."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.968",
+    "date": "2026-08-29",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`highlightCrossTag()` now correctly highlights a plain-text filter match that spans a comment boundary (e.g. an entity's `<bdi>` name into a separate sibling `<span class=\"comment\">`, joined only by a synthesized/`&nbsp;` space) — confirmed on Release, Label, and Country/Date columns. Root cause: `String.trim()` strips `&nbsp;` identically to regular whitespace, so `highlightCrossTag()` dropped the connecting text node and joined the surviving fragments with no separator, unlike `getCleanColumnText()`'s own unconditional space-joining behavior used for the actual row match — the row count narrowed correctly, but the highlight regex never matched inside `highlightCrossTag()` itself."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.967",
+    "date": "2026-08-29",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`runFilter()`'s CAA/EAA artwork initialization never registered the queue-idle completion callback (`_caaQueue.onIdle(_showCaaCompletionToast)`) that `startFetchingProcess()`'s equivalent block already had — so the \"🎨 All CAA/EAA artwork loaded\" toast and the `#mb-info-display-caa` status-bar segment never appeared after *any* call to `runFilter()` (every ordinary filter/sort action, and every Load-from-Disk hydration), even though the artwork itself always loaded correctly. Fixed by registering the same callback in `runFilter()`, mirroring `startFetchingProcess()`'s pattern; `makeCaaQueue()`'s own `onIdle()` already fires safely even when the queue is already idle at registration time, so this is safe on every `runFilter()` pass."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.966",
     "date": "2026-08-29",
     "sections": [

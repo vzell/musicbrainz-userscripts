@@ -6822,3 +6822,111 @@ bigbox-reorder cost.
 - Live-verified: `tests/live/event-parts-extraction.spec.js`'s second test
   reuses this same work page and recording; confirmed it fails on the
   pre-fix code (`Event-Date` empty) and passes after the fix.
+
+## 2026-08-29 — CAA/EAA completion signal never fires after runFilter() (fixed); deeper re-enrichment-on-every-filter issue found but NOT fixed
+
+- Found while building `tests/live/artist-releases-filter-sort.spec.js`
+  (branch `fix/caa-completion-signal-disk-restore`): a disk-restored table
+  (`loadFromDiskFixture()`) never showed `#mb-info-display-caa` or the
+  "🎨 All CAA/EAA artwork loaded" toast, even though the artwork itself
+  loaded correctly (`data-cache-hint` attributes present, cells rendered
+  fine). Same symptom on ordinary (non-disk-load) filter/sort actions too.
+- Root cause (FIXED): `runFilter()`'s own CAA/EAA re-init block
+  (`ShowAllEntityData.user.js`, near `initCaaPics(); initEaaPics();` inside
+  the single-table branch) called `initCaaPics()`/`initEaaPics()` but never
+  registered `_caaQueue.onIdle(_showCaaCompletionToast)` — unlike
+  `startFetchingProcess()`'s otherwise-identical block, which does. Since
+  `runFilter()` is the ONLY call site that runs after a disk-load hydration
+  (`_hydrateAndRenderFromSnapshotData()` → `runFilter()`), and also runs on
+  every ordinary filter/sort keystroke, the completion signal never fired
+  from either path. Fix: register the same `onIdle()` callback in
+  `runFilter()`'s block, mirroring `startFetchingProcess()`'s pattern.
+  `makeCaaQueue()`'s own `onIdle()` already handles "queue already idle at
+  registration time" safely (fires via `setTimeout(cb, 0)`), so this is
+  safe to register unconditionally on every `runFilter()` pass.
+- Deeper issue found while verifying the fix (NOT fixed — scoped out,
+  needs its own design pass): `runFilter()` intentionally strips every
+  cloned row's `data-caa-enriched`/`data-eaa-enriched` markers before
+  re-rendering (see the comment directly above `initCollapsableColumns()`
+  in the same function) so that `_artHighlightImageLi` re-applies the
+  active filter's highlight to CAA/EAA art cells after every re-render —
+  necessary, not a bug on its own. But the side effect is that
+  `_artEnrichIcon` then treats every cell as unenriched too, re-queuing a
+  FULL re-fetch of every image's enrichment data on every single
+  filter/sort action — including the very first `runFilter()` call right
+  after a disk-restore, even though that data was already fully populated
+  and saved in the fixture. Confirmed live on the BoDeans `artist-releases`
+  fixture (56 rows): `_caaQueue` had 220 pending + 4 running tasks
+  immediately after a disk-load's first `runFilter()` call, taking real
+  wall-clock time (real network calls to coverartarchive.org in a
+  non-`realNetwork` test context even) to drain — unlike Relationships,
+  which correctly skips already-`relDone` cells and never re-fetches them.
+  A proper fix would separate "re-apply highlight to already-known art"
+  from "re-fetch enrichment data from the network", which the current code
+  doesn't distinguish — a bigger, riskier change than the completion-signal
+  fix above, intentionally not attempted here.
+- Test-suite impact: `tests/live/artist-releases-filter-sort.spec.js`'s
+  `loadBodeans()` helper does NOT rely on `hasCaaOrEaa`/`hasRelationships`
+  waits (both hang for a disk-fixture load per `browser.js`'s own
+  documented gap — those signals are only ever driven by the live-fetch
+  pipeline); the one case needing Relationships data
+  (`Relationships ~ "amazon.com"`) uses a short fixed settle delay instead
+  (`needsRelSettle` in `bodeansArtistReleasesFixture.js`). CAA/EAA data
+  itself is read directly from already-populated DOM state
+  (`.mb-caa-sort-key`), never from the completion signal, so none of that
+  suite's assertions depend on either issue above.
+
+## 2026-08-29 — highlightCrossTag() never highlights a comment-boundary match (fixed)
+
+- Found while building `tests/live/artist-releases-filter-sort.spec.js`
+  (BoDeans `artist-releases`): a plain-text filter match spanning from an
+  entity's own `<bdi>` name into a *separate* sibling
+  `<span class="comment"><bdi>` (joined only by a normalized `&nbsp;`) —
+  Release `In (Disc` (1 row), Label `Slash (US` (26 rows), Country/Date
+  `US 2009-03-10` / `US 1986` (1/2 rows) — correctly narrowed the page's
+  row count but produced **zero** `.mb-column-filter-highlight` spans.
+  `highlightCrossTag()`'s own JSDoc already described fixing this exact
+  shape of bug (for the Release sticky column's erg-btn/caa-inline-ph
+  decorations); this comment-boundary variant was an uncovered gap in that
+  same fix.
+- Root cause: `getCleanColumnText()` (`ShowAllEntityData.user.js:33716`)
+  builds its matched text via `textParts.join(' ')` — a real space is
+  spliced between every collected text-node fragment unconditionally. But
+  `highlightCrossTag()` (`:34086`) collected only text nodes whose
+  `.trim()`ed value was truthy, then joined the SURVIVORS with `join('')`
+  (no separator). An `&nbsp;`-only text node between the `<bdi>` and the
+  `<span class="comment">` has `.trim()` return `''` — JS's `String.trim()`
+  strips U+00A0 identically to regular ASCII whitespace — so that node was
+  dropped entirely, and the two neighboring fragments were concatenated
+  with nothing between them. `getCleanColumnText()`'s `fullText` therefore
+  read `"...In (Disctronics..."` (space present, matches `In (Disc`) while
+  `highlightCrossTag()`'s own internal `fullText` read `"...In(Disctronics..."`
+  (no space) — the regex simply never matched inside `highlightCrossTag()`,
+  so `if (!matches.length) return;` fired early with no highlight spans,
+  even though the row-level match (via `getCleanColumnText()`) was correct.
+- Fix (`ShowAllEntityData.user.js:34086`, `highlightCrossTag()`): mirror
+  `getCleanColumnText()`'s `join(' ')` behavior — insert a virtual
+  1-character offset gap between consecutive accepted text-node entries
+  (`if (entries.length) offset += 1;`), and build `fullText` via
+  `entries.map(e => e.node.nodeValue).join(' ')` instead of `join('')`.
+  Also added a defensive `root.normalize()` at the top of the function
+  (safe/idempotent — every current caller already normalizes before
+  calling it, but this makes the function self-sufficient against a future
+  caller that doesn't). Expanded the function's JSDoc with a new paragraph
+  documenting this second gap and its root cause, alongside the
+  pre-existing gap description it already had.
+- Verified live (standalone Playwright diagnostic against the real
+  userscript + BoDeans fixture): all 4 previously-broken cases now produce
+  the correct 2 highlight spans per match (one in the entity's own
+  `<bdi>`, one in the comment's `<bdi>`); 3 spot-checked previously-working
+  cases (Release "Black and White", Format "CD", DD "1") remain unaffected.
+  Full `tests/live/artist-releases-filter-sort.spec.js` run (§A-§F) and
+  the broader `npm run test:live:extended` suite both pass cleanly with no
+  regressions.
+- One case intentionally left alone, confirmed unrelated: the §F uniq-
+  dropdown-driven flat "Country" entry (`United States (US)`,
+  `highlightExpected: false` in `bodeansArtistReleasesFixture.js`) still
+  produces zero highlight spans after this fix, as expected — that path
+  never dispatches through `_highlightCountryMatch()`/`highlightCrossTag()`
+  at all (see the fixture's own comment above that case), a genuinely
+  different mechanism from the bug fixed here.
