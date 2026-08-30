@@ -17,6 +17,7 @@ const {
     FILTER_CASES, COMBO_CASES, ORDER_PAIR_CASE, SORT_CHECKPOINTS,
     UNIQ_DROP_COLUMNS_CLEARED, UNIQ_DROP_ACTIVE_FILTER, UNIQ_DROP_COLUMNS_ACTIVE,
     UNIQ_DROP_SINGLE_CASES, UNIQ_DROP_COMBO_CASES, UNIQ_DROP_CROSS_COLUMN_COMBO,
+    CAA_EXPANDED_LIVE_CASES,
 } = require('../support/bodeansArtistReleasesFixture');
 
 /**
@@ -214,6 +215,18 @@ function assertHighlight(actualSpans, caseDef) {
         return;
     }
     if (caseDef.skipHighlightCheck) return;
+    if (caseDef.highlightTextSet) {
+        // Multiple images per matching row, each independently contributing
+        // its own highlight span(s) — the simple "N rows -> N spans, all
+        // reading the same text" shape doesn't fit (span count isn't a
+        // clean multiple of the row count), so this asserts an exact total
+        // count plus the exact SET of distinct texts observed, rather than
+        // per-row correspondence.
+        expect(actualSpans.length).toBe(caseDef.expectHighlightCount);
+        const uniqueTexts = [...new Set(actualSpans)].sort();
+        expect(uniqueTexts).toEqual([...caseDef.highlightTextSet].sort());
+        return;
+    }
     if (caseDef.highlight === null && !caseDef.highlightRegex) {
         expect(actualSpans.length).toBe(0);
         return;
@@ -370,6 +383,95 @@ test('§A2 chaban day-of-week third-party interop: Country/Date ~ "Tue"', { tag:
 
         await clearAllFilters(page, ['Country/Date']);
     });
+
+    expect(pageErrors).toEqual([]);
+});
+
+// ─────────────────────────── §A3 — CAA column expanded, type/comment highlighting ───────────────────────────
+
+/**
+ * Regression test for a real, confirmed-live CAA highlight-duplication bug
+ * (root-caused and fixed the same session this test was added):
+ * `_artHighlightImageLi()` (ShowAllEntityData.user.js) is called twice by
+ * design for the same image `<li>` — once during
+ * `_artBuildMultiRowArtCell()`'s own build pass, once more from
+ * `_artHighlightArtCell()`'s post-build async catch-up (see that
+ * function's own JSDoc for the legitimate `_activeFilterHighlightCtx`
+ * timing-race reason both call sites exist) — and neither cleared the
+ * OTHER's highlight spans first, so every matching image occurrence got
+ * wrapped in `.mb-column-filter-highlight` TWICE (nested, visually
+ * indistinguishable from a single highlight — confirmed exactly 2x via
+ * total/outermost span counts, e.g. 388 total vs 194 outermost for
+ * "Booklet"). Fixed by making `_artHighlightImageLi()` idempotent (strips
+ * any highlight spans it may have already applied before reapplying).
+ *
+ * LIVE FETCH ONLY, deliberately not the committed disk fixture §A/§A2 use —
+ * confirmed live that CAA per-image type/comment highlighting simply never
+ * fires on the disk-fixture-loaded path at all (0 `.mb-column-filter-
+ * highlight` spans, reproducibly, regardless of settle time): the
+ * `_artEnrichIcon()` re-enrichment cycle a live fetch's `runFilter()`
+ * forces on every keystroke (via `_stripTransientCellState()` clearing the
+ * `data-caa-enriched` marker on each clone) doesn't appear to fire the same
+ * way for a disk-loaded page's clones. This is a separate, NOT-yet-fixed
+ * gap (out of scope here) — `FILTER_CASES`' own 4 CAA type/comment cases
+ * (§A above) still correctly use `skipHighlightCheck: true` for that
+ * reason, on the disk-fixture path specifically.
+ *
+ * The CAA column is explicitly EXPANDED first (`.mb-caa-col-hdr-btn`),
+ * matching a real interactive session (and the screenshot that prompted
+ * this investigation) — though expand/collapse is purely a CSS `display`
+ * toggle on already-built `<li>`s and doesn't itself affect whether
+ * highlighting is applied, only whether it's visible.
+ */
+test('§A3 CAA column expanded — type/comment highlighting is correct (live fetch)', { tag: '@extended' }, async ({ page }) => {
+    const pageErrors = collectPageErrors(page);
+
+    await loadUserscriptPage(page, { url: BODEANS_URL, testMode: true });
+    const showAllBtn = page.locator('button[data-label="🧮 Artist releases"]');
+    await showAllBtn.click();
+    await waitForRenderComplete(page, { hasCaaOrEaa: true, timeout: 90000 });
+
+    const idx = COLUMN_INDEX.CAA;
+
+    await test.step('expand the CAA column', async () => {
+        const hdrBtn = page.locator('table.tbl thead .mb-caa-col-hdr-btn').first();
+        await hdrBtn.click();
+        await expect(hdrBtn).toHaveAttribute('data-caa-col-hdr-state', 'expanded');
+    });
+
+    for (const caseDef of CAA_EXPANDED_LIVE_CASES) {
+        await test.step(`CAA ~ "${caseDef.value}" -> ${caseDef.expected} rows, ${caseDef.expectHighlightCount} highlight spans`, async () => {
+            await applyColumnFilter(page, { column: 'CAA', value: caseDef.value });
+
+            const after = await getPageRowCount(page);
+            expect(after.filtered).toBe(caseDef.expected);
+            expect(after.total).toBe(TOTAL_ROWS);
+
+            // Wait for the post-filter async CAA re-enrichment/highlight
+            // cycle to settle before reading spans (see this test's own
+            // JSDoc — highlighting for this content is applied
+            // asynchronously, after runFilter()'s own synchronous pass).
+            await page.waitForTimeout(8000);
+
+            const spans = await page.$$eval(
+                `table.tbl tbody tr td:nth-child(${idx + 1}) .mb-column-filter-highlight`,
+                (els) => els.map((e) => e.textContent)
+            );
+            expect(spans.length, `total highlight span count for "${caseDef.value}"`).toBe(caseDef.expectHighlightCount);
+            const uniqueTexts = [...new Set(spans)].sort();
+            expect(uniqueTexts).toEqual([...caseDef.highlightTexts].sort());
+
+            // No span should ever be nested inside another — the regression
+            // this test specifically guards against.
+            const nestedCount = await page.$$eval(
+                `table.tbl tbody tr td:nth-child(${idx + 1}) .mb-column-filter-highlight`,
+                (els) => els.filter((e) => e.parentElement.closest('.mb-column-filter-highlight')).length
+            );
+            expect(nestedCount, 'no nested (duplicate) highlight spans').toBe(0);
+
+            await clearAllFilters(page, ['CAA']);
+        });
+    }
 
     expect(pageErrors).toEqual([]);
 });

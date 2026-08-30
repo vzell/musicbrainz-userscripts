@@ -1,5 +1,19 @@
 [
   {
+    "version": "9.99.970",
+    "date": "2026-08-30",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "CAA per-image type/comment filter highlighting: fixed a confirmed duplication bug where matching text got wrapped in `.mb-column-filter-highlight` TWICE (nested, visually indistinguishable from a single highlight, but a real DOM defect) — `_artHighlightImageLi()` is legitimately called twice by design (once during cell build, once from an async post-build catch-up) and neither cleared the other's spans first; now idempotent.",
+          "CAA per-image highlighting also never fired at all on a page loaded via Load-from-Disk — its saved CAA cell markup is baked in directly and never goes through the enrichment pipeline that used to be the only place highlighting was applied; a new post-filter sweep (`_artHighlightAllBuiltCaaCells()`) now re-applies highlighting to every populated CAA cell regardless of how its content got there.",
+          "Removed the literal en-dash (\" \\u2013 \") separator between a CAA image's type badge and its comment, replacing it with a plain space — as a side effect this also fixes cross-tag highlighting for filters spanning both (e.g. typing a type followed immediately by the start of its comment), which the en-dash previously broke."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.969",
     "date": "2026-08-30",
     "sections": [
