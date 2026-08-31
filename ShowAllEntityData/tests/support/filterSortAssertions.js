@@ -243,6 +243,91 @@ async function waitForActualRowCount(page, expectedCount, { timeout = 30000 } = 
 }
 
 /**
+ * Waits for one column header's `.mb-col-uniq-count` badge (the number left of
+ * the 📊 button) to read `expected`.
+ *
+ * A THIRD completion signal, needed after both `waitForFilterSettled()` (status
+ * text) and `waitForActualRowCount()` (real `tbody tr` count) have resolved.
+ * That badge is written by `_updateAllColHeaderCounts()`, which
+ * `_scheduleColHeaderCounts()` runs strictly after the in-flight render settles
+ * AND slices across event-loop turns — one turn per column — because a full pass
+ * over this page is ~88 000 `getCleanColumnText()` calls (4174 rows × 21
+ * columns). So the badge legitimately lands well after every other "done"
+ * signal on the page, and a test that reads it eagerly reads the previous
+ * pass's number.
+ *
+ * Historically this was invisible: `runFilter()` did not await its own chunked
+ * `renderFinalTable()`, so the scan ran against whatever prefix of the tbody
+ * existed (a multiple of the 500-row chunk size) and "settled" quickly on a
+ * wrong value. `tests/snapshots/artist-events/post-sort.html` still carries
+ * that era's numbers.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} colName - Column header text with sort arrows/counts/glyphs
+ *   stripped (e.g. "Event"), matched the same way `__saTest.getUniqDropSections()`
+ *   matches it.
+ * @param {number} expected
+ * @param {{ timeout?: number }} [opts]
+ * @returns {Promise<void>}
+ */
+async function waitForColHeaderUniqCount(page, colName, expected, { timeout = 90000 } = {}) {
+    await page.waitForFunction(
+        ({ name, want }) => {
+            const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+            const th = Array.from(document.querySelectorAll('table.tbl thead th'))
+                .find((t) => strip(t.textContent) === name);
+            const badge = th && th.querySelector('.mb-col-uniq-count');
+            return !!badge && badge.textContent.trim() === String(want);
+        },
+        { name: colName, want: expected },
+        { timeout }
+    );
+}
+
+/**
+ * Waits until EVERY column-header count badge (`.mb-col-uniq-count` and
+ * `.mb-col-collapse-count`, across all tables) has held the same value for
+ * `stableFor` consecutive polls.
+ *
+ * The value-free counterpart to {@link waitForColHeaderUniqCount}, for callers
+ * that need "the header-count scan has finished" without knowing what the
+ * numbers should be — `capture-snapshots.js` captures arbitrary filter states
+ * and has no expected value to assert against, but must not bake a half-scanned
+ * thead into a committed baseline.
+ *
+ * Prefer `waitForColHeaderUniqCount()` in a spec: an exact expected value is a
+ * real assertion, whereas "stopped changing" is only a heuristic — it can in
+ * principle resolve inside a long enough pause between two of the scan's
+ * per-column slices. The default window is sized well above the scan's own
+ * `requestIdleCallback({ timeout: 250 })` yield so that cannot happen in
+ * practice on an otherwise idle page.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{ stableFor?: number, pollIntervalMs?: number, timeout?: number }} [opts]
+ * @returns {Promise<void>}
+ */
+async function waitForColHeaderCountsStable(page, { stableFor = 4, pollIntervalMs = 250, timeout = 90000 } = {}) {
+    const readAll = () => page.evaluate(() => Array.from(
+        document.querySelectorAll('.mb-col-uniq-count, .mb-col-collapse-count')
+    ).map((el) => el.textContent.trim()).join('|'));
+
+    const deadline = Date.now() + timeout;
+    let last = null;
+    let streak = 0;
+
+    while (Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+        const now = await readAll();
+        streak = now === last ? streak + 1 : 0;
+        last = now;
+        if (streak >= stableFor) return;
+    }
+    throw new Error(
+        `waitForColHeaderCountsStable: header counts still changing after ${timeout}ms (last: ${JSON.stringify(last)})`
+    );
+}
+
+/**
  * Reads the text content of every `.mb-column-filter-highlight` span
  * currently present in one column's cells (across all visible rows) —
  * written by `highlightText()`/`highlightCrossTag()`
@@ -480,6 +565,8 @@ module.exports = {
     getPageRowCount,
     getSubTableRowCounts,
     waitForActualRowCount,
+    waitForColHeaderUniqCount,
+    waitForColHeaderCountsStable,
     getColumnHighlightTexts,
     getGlobalHighlightTexts,
     getFilterStatusText,

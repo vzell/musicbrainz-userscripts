@@ -106,6 +106,63 @@ visible row set actually changes (not on every trigger). Needed even after
 Steps 1-2, since global expand/collapse-all clicks and multi-table renders
 still call it unconditionally.
 
+**** Re-costed after the chunked-render fix (branch ~fix-chunked-render-header-counts~)
+
+The estimates above were made while this function was accidentally cheap on
+the interactive path. ~runFilter()~ did not ~await~ its own
+~renderFinalTable()~, so on a large single table the deferred scan ran against
+whatever prefix of the tbody had been appended — a multiple of
+~renderRowsChunked()~'s 500-row ~chunkSize~ — and produced visibly wrong
+badges (~artist-events~: "Event" showing 984-2500 instead of 4158, "Location"
+~.mb-col-collapse-count~ showing 1 instead of 5). That is now fixed: the scan
+runs after the render completes, so it genuinely covers all 4174 rows × 21
+columns (~88 000 ~getCleanColumnText()~ calls) on every filter apply and every
+filter clear, not ~25% of that.
+
+Two mitigations landed with the fix, both of which Step 3 can build on:
+- ~_scheduleColHeaderCounts(table)~ — the single entry point. Waits out any
+  in-flight render (so a scan can never see a partial tbody again) and
+  coalesces repeat schedules via ~_colHeaderCountsToken~;
+  ~initReleaseEventsColumn()~ alone fires ~initCollapsableColumns()~ three
+  times in a row and now costs one scan instead of three.
+- ~_updateAllColHeaderCounts()~ is ~async~ and yields one turn per column,
+  aborting at the next column boundary once its token is stale — so the full
+  scan is never one unbroken multi-second task.
+
+*Measured, 2026-09-01, same machine / same session, back-to-back* via
+~tests/support/capture-interaction-perf.js --pageType=artist-events~ (4174
+rows, 21 columns, median of 5, fresh page per sample) — ~main~'s script (the
+working tree with only ~ShowAllEntityData.user.js~ stashed) vs this branch's:
+
+| Interaction           | ~main~   | this branch | Δ                |
+|-----------------------+----------+-------------+------------------|
+| Global filter         |  1307 ms |     1752 ms | +34%             |
+| Column filter         |  1335 ms |     1891 ms | +42%             |
+| Sort                  |  3103 ms |     4241 ms | +37%             |
+| Uniq-dropdown, cold   | 29450 ms |    30920 ms | +5% (noise)      |
+| Uniq-dropdown, warm   |   553 ms |      914 ms | +65%             |
+
+Committed as ~interaction-perf-fix-chunked-render-header-counts.json~. Read
+these as a *correctness cost, not a regression in the work being done*: the
+scan they are paying for used to cover a 500-row prefix and produce wrong
+numbers, and now covers all 4174 rows. Note also what the harness actually
+measures — it polls ~#mb-filter-status-display~ over CDP every 100 ms and
+needs two stable reads, so it is sensitive to main-thread pressure. The
+status text and the visible row set still update at exactly the same point in
+~runFilter()~ as before (that path stayed synchronous and untouched); what
+grew is the background work running after it, which delays the poll. So the
+deltas above overstate the change in perceived filter latency, but they do
+represent real extra main-thread work.
+
+Bringing that cost back down is precisely this step. The two follow-ups that
+would help most, deliberately left out of the fix branch as separate concerns:
+- invert the loop to row-outer/column-inner with per-column accumulators — the
+  current column-outer shape materialises ~Array.from(tbody.rows)~ up to 42
+  times per pass;
+- memoize on ~_visibleRowSetSignature(table)~, the primitive Step 4 already
+  uses, invalidated wherever ~_invalidateUniqDropDataCacheForTable()~ already
+  is (cell content can change with no row show/hide).
+
 *** DONE Step 4: ~openUniqDrop()~ per-open caching
 
 ~openUniqDrop()~ does exactly 5 full ~tbody.rows~ passes from scratch on

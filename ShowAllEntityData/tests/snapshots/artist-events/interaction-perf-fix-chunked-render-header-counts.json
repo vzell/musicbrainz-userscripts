@@ -1,0 +1,29 @@
+{
+  "pageType": "artist-events",
+  "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events",
+  "branch": "fix-chunked-render-header-counts",
+  "capturedAt": "2026-08-31",
+  "scriptVersion": "9.99.976+2026-08-31",
+  "interactions": {
+    "globalFilter": {
+      "medianMs": 1752,
+      "samples": 5
+    },
+    "columnFilter": {
+      "medianMs": 1891,
+      "samples": 5
+    },
+    "sort": {
+      "medianMs": 4241,
+      "samples": 5
+    },
+    "uniqDropCold": {
+      "medianMs": 30920,
+      "samples": 5
+    },
+    "uniqDropWarm": {
+      "medianMs": 914,
+      "samples": 5
+    }
+  }
+}

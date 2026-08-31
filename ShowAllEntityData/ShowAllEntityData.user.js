@@ -30499,6 +30499,20 @@ a { color: #1565c0; }`;
     // matches — preventing stale chunks from a superseded render from being
     // appended to a tbody that has already been claimed by a newer render.
     let _renderGeneration = 0;
+    // Resolves when the most recently STARTED renderFinalTable() has finished
+    // appending every row to the tbody.  renderFinalTable() replaces this with a
+    // fresh pending promise on entry and resolves it at every exit — including
+    // the superseded-generation one, so an awaiter can never hang.
+    //
+    // Why it exists: runFilter() is synchronous, so it cannot await its own
+    // renderFinalTable() call; for a row count at or above
+    // sa_chunked_render_threshold that render yields to requestAnimationFrame
+    // between 500-row chunks and only the FIRST chunk is in the DOM when
+    // runFilter() returns.  Any async caller that must observe a fully
+    // populated tbody after calling runFilter() awaits this
+    // (see _hydrateAndRenderFromSnapshotData), and _scheduleColHeaderCounts()
+    // uses it to keep the deferred header-count scan off a partial table.
+    let _renderSettled = Promise.resolve();
     // Incremental-filter narrowing state — single-table mode only.
     // On each full testRowMatch scan the query string, partial key (flags +
     // column filters), and the resulting match set are saved here.  The next
@@ -36822,6 +36836,41 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * The four whole-table, row-level re-decoration passes that must run after
+     * every render, once the final rows are actually in the DOM.
+     *
+     * Extracted from `runFilter()`'s tail so the single-table branch can defer them
+     * into `renderFinalTable()`'s completion hook: that render is chunked above
+     * `sa_chunked_render_threshold`, so at the point `runFilter()` returns only the
+     * first 500-row chunk exists and these passes would silently decorate a
+     * fraction of the table. Multi-table mode still calls this inline —
+     * `renderGroupedTable()` has no `await` and is complete when it returns.
+     *
+     * `initBarcodeHighlight()` MUST stay last: `applyStickyColumn()` sets
+     * `td.style.background = ''` on every non-sticky cell, wiping any inline
+     * background-color `barcodeProcessTable()` painted, so barcode highlighting has
+     * to be the final writer.
+     *
+     * @returns {void}
+     */
+    function _applyPostRenderRowPasses() {
+        // Reapply zebra striping after every filter/sort: row order may have changed
+        // and hidden rows shift the visible index sequence.
+        document.querySelectorAll('table.tbl').forEach(applyZebraStriping);
+        // Normalise span.comment DOM: move orphan ")" text nodes after </bdi> into
+        // the <bdi> to prevent bidi-boundary soft-wrap at the </bdi>→")" boundary.
+        document.querySelectorAll('table.tbl').forEach(normalizeCommentSpans);
+        if (Lib.settings.sa_enable_sticky_columns !== false) {
+            document.querySelectorAll('table.tbl').forEach(applyStickyColumn);
+        }
+        // Re-apply barcode highlights AFTER applyStickyColumn — applyStickyColumn
+        // calls td.style.background = '' on every non-sticky cell, which clears any
+        // inline background-color set by barcodeProcessTable.  Running barcode
+        // highlighting last ensures its backgroundColor survives.
+        initBarcodeHighlight();
+    }
+
+    /**
      * Re-filters (and re-sorts, implicitly, by re-rendering already-sorted source
      * rows) the currently displayed table(s) against the live global filter input
      * and every per-column filter input, then rebuilds the DOM from the matching
@@ -37281,107 +37330,120 @@ a { color: #1565c0; }`;
                     });
                 }
             }
-            renderFinalTable(filteredRows);
+            // updateH2Count() is argument-driven (it never reads the tbody), so it
+            // stays out here: the (F of T) row-count badge keeps updating immediately
+            // on every keystroke instead of waiting out a multi-second chunked render.
             updateH2Count(filteredRows.length, totalAbsolute);
-            _debugDumpCaaColumnState('runFilter:post-renderFinalTable');
+            // Everything below runs against the FINAL DOM rows, not the first 500-row
+            // chunk. renderFinalTable() invokes this hook synchronously on the fast
+            // path (so sub-threshold tables behave exactly as before) and only after
+            // the last chunk on the chunked path — see its `onComplete` JSDoc.
+            renderFinalTable(filteredRows, () => {
+                _debugDumpCaaColumnState('runFilter:post-renderFinalTable');
 
-            // Re-apply collapsable-column toggles on the freshly rendered DOM rows.
-            //
-            // Background: renderFinalTable() inserts *clones* of allRows into the DOM
-            // and leaves the originals in allRows (detached).  initCollapsableColumns()
-            // adds toggle spans and hides extra <li> items only on the rows that are in
-            // the DOM at the time it runs.  Because runFilter() is called from many
-            // places — user typing, column-filter changes, disk-load reset — the
-            // toggle state must be re-established here so that every re-render produces
-            // a fully functional collapsable-column table.
-            //
-            // initCollapsableColumns() is idempotent (cleans up stale state first) and
-            // returns immediately when the active page has no collapsableColumns, so
-            // this call is a cheap no-op on non-collapsable pages.
-            const _collapseTable = document.querySelector('table.tbl');
-            if (_collapseTable) initCollapsableColumns(_collapseTable);
-            // TEMP DEBUG (bug 2 investigation) — kept permanently, no-op unless
-            // sa_enable_art_diagnostic_logging is on.
-            _debugDumpCaaColumnState('runFilter:post-initCollapsableColumns');
+                // Re-apply collapsable-column toggles on the freshly rendered DOM rows.
+                //
+                // Background: renderFinalTable() inserts *clones* of allRows into the DOM
+                // and leaves the originals in allRows (detached).  initCollapsableColumns()
+                // adds toggle spans and hides extra <li> items only on the rows that are in
+                // the DOM at the time it runs.  Because runFilter() is called from many
+                // places — user typing, column-filter changes, disk-load reset — the
+                // toggle state must be re-established here so that every re-render produces
+                // a fully functional collapsable-column table.
+                //
+                // initCollapsableColumns() is idempotent (cleans up stale state first) and
+                // returns immediately when the active page has no collapsableColumns, so
+                // this call is a cheap no-op on non-collapsable pages.
+                const _collapseTable = document.querySelector('table.tbl');
+                if (_collapseTable) initCollapsableColumns(_collapseTable);
+                // TEMP DEBUG (bug 2 investigation) — kept permanently, no-op unless
+                // sa_enable_art_diagnostic_logging is on.
+                _debugDumpCaaColumnState('runFilter:post-initCollapsableColumns');
 
-            // Re-inject erg expand buttons into the freshly rendered DOM rows.
-            // renderFinalTable() inserts cloneNode(true) copies — event listeners are
-            // not cloned, so ▶ buttons become inert after every sort or filter re-render.
-            // initExpandRGsFeature() removes stale [data-erg-btn] clones and re-injects
-            // a fresh live button into each qualifying <td>.
-            initExpandRGsFeature();
+                // Re-inject erg expand buttons into the freshly rendered DOM rows.
+                // renderFinalTable() inserts cloneNode(true) copies — event listeners are
+                // not cloned, so ▶ buttons become inert after every sort or filter re-render.
+                // initExpandRGsFeature() removes stale [data-erg-btn] clones and re-injects
+                // a fresh live button into each qualifying <td>.
+                initExpandRGsFeature();
 
-            // CDtoc: re-inject tracklist sub-rows and re-wire toggle links after
-            // every re-render (cloneNode(true) strips event listeners).
-            _cdtocInitTracklistToggles();
+                // CDtoc: re-inject tracklist sub-rows and re-wire toggle links after
+                // every re-render (cloneNode(true) strips event listeners).
+                _cdtocInitTracklistToggles();
 
-            // Re-wire wiki-rendered <h2> headings nested inside table cells
-            // (e.g. "Annotation" column sub-sections) — same
-            // cloneNode(true)-drops-listeners reason as initExpandRGsFeature()
-            // and _cdtocInitTracklistToggles() above.
-            _rewireNestedTableH2Toggles();
+                // Re-wire wiki-rendered <h2> headings nested inside table cells
+                // (e.g. "Annotation" column sub-sections) — same
+                // cloneNode(true)-drops-listeners reason as initExpandRGsFeature()
+                // and _cdtocInitTracklistToggles() above.
+                _rewireNestedTableH2Toggles();
 
-            // Annotations pageType: re-enable the Old/New compare radios on
-            // the freshly cloned rows — cloneNode(true) re-applies MB's
-            // pristine static disabled attributes each time, same reason
-            // as the calls above. The "Compare versions" button itself
-            // lives in the h2 (not tbody), so it is never cloned here and
-            // needs no re-wiring.
-            initAnnotationCompareRadios();
+                // Annotations pageType: re-enable the Old/New compare radios on
+                // the freshly cloned rows — cloneNode(true) re-applies MB's
+                // pristine static disabled attributes each time, same reason
+                // as the calls above. The "Compare versions" button itself
+                // lives in the h2 (not tbody), so it is never cloned here and
+                // needs no re-wiring.
+                initAnnotationCompareRadios();
 
-            // Refresh the Picard tagger column after every filter / sort re-render.
-            // rewireOnly=true: only re-attach listeners on existing picard cells;
-            // never append new tds.  During load-from-disk runFilter fires before
-            // initRelationshipsColumn — full injection there would append picard_td
-            // before rel_td, corrupting column order.  After the initial render,
-            // allRows source rows already carry picard_td so rewire-only is sufficient.
-            initPicardTaggerColumn(/* rewireOnly */ true);
-            // Inline thumbnails first — _artInitQueue creates _caaQueue so they
-            // land ahead of small icons and the big strip in the fetch queue.
-            _artInitQueue();
-            initCaaInlinePics();
-            initEaaInlinePics();
-            initCaaInlineJesus2099Observer();
-            // TEMP DEBUG (bug 2 investigation) — kept permanently, no-op unless
-            // sa_enable_art_diagnostic_logging is on.
-            _debugDumpCaaColumnState('runFilter:pre-initCaaPics');
-            initCaaPics();
-            initEaaPics();
-            // Covers CAA content that never goes through _artEnrichIcon() at
-            // all (e.g. a disk-loaded page's baked-in cell HTML) — see this
-            // function's own JSDoc for the confirmed root cause.
-            _artHighlightAllBuiltCaaCells();
-            // One-shot completion toast + #mb-info-display-caa update once this
-            // pass's artwork queue drains — mirrors startFetchingProcess()'s own
-            // registration (its only other tableMode!=='multi' call site). Without
-            // this, a page hydrated via loadFromDiskFixture()/Load-from-Disk (whose
-            // only initCaaPics()/initEaaPics() call goes through runFilter(), never
-            // through startFetchingProcess()) never shows the completion toast or
-            // updates #mb-info-display-caa, even though the artwork itself loads
-            // correctly — makeCaaQueue()'s onIdle() safely fires immediately (via
-            // setTimeout 0) when the queue is already idle at registration time
-            // (e.g. every cell was already fully restored from disk, nothing to
-            // fetch), so this is safe to register unconditionally on every
-            // runFilter() pass, not just the first.
-            if (_caaQueue && Lib.settings.sa_enable_caa_pics) {
-                _caaQueue.onIdle(_showCaaCompletionToast);
-            }
-            // TEMP DEBUG (bug 2 investigation) — synchronous state right after
-            // initCaaPics()/initEaaPics() return. Note _artEnrichIcon's own async
-            // tiers (IDB await / network fetch) may still be in flight at this
-            // point — a follow-up delayed dump below catches what settles later.
-            // Kept permanently, no-op unless sa_enable_art_diagnostic_logging is on.
-            _debugDumpCaaColumnState('runFilter:post-initCaaPics-sync');
-            if (Lib.settings.sa_enable_art_diagnostic_logging) {
-                setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+500ms'), 500);
-                setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+2000ms'), 2000);
-                setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+5000ms'), 5000);
-            }
-            // Re-populate any rel cells that were not yet done when runFilter rebuilt
-            // the DOM (race: Phase-2 fetch queue was mid-flight when the user typed).
-            if (document.querySelector('td.mb-rel-cell:not([data-rel-done="1"])')) {
-                initRelationshipsColumn();
-            }
+                // Refresh the Picard tagger column after every filter / sort re-render.
+                // rewireOnly=true: only re-attach listeners on existing picard cells;
+                // never append new tds.  During load-from-disk runFilter fires before
+                // initRelationshipsColumn — full injection there would append picard_td
+                // before rel_td, corrupting column order.  After the initial render,
+                // allRows source rows already carry picard_td so rewire-only is sufficient.
+                initPicardTaggerColumn(/* rewireOnly */ true);
+                // Inline thumbnails first — _artInitQueue creates _caaQueue so they
+                // land ahead of small icons and the big strip in the fetch queue.
+                _artInitQueue();
+                initCaaInlinePics();
+                initEaaInlinePics();
+                initCaaInlineJesus2099Observer();
+                // TEMP DEBUG (bug 2 investigation) — kept permanently, no-op unless
+                // sa_enable_art_diagnostic_logging is on.
+                _debugDumpCaaColumnState('runFilter:pre-initCaaPics');
+                initCaaPics();
+                initEaaPics();
+                // Covers CAA content that never goes through _artEnrichIcon() at
+                // all (e.g. a disk-loaded page's baked-in cell HTML) — see this
+                // function's own JSDoc for the confirmed root cause.
+                _artHighlightAllBuiltCaaCells();
+                // One-shot completion toast + #mb-info-display-caa update once this
+                // pass's artwork queue drains — mirrors startFetchingProcess()'s own
+                // registration (its only other tableMode!=='multi' call site). Without
+                // this, a page hydrated via loadFromDiskFixture()/Load-from-Disk (whose
+                // only initCaaPics()/initEaaPics() call goes through runFilter(), never
+                // through startFetchingProcess()) never shows the completion toast or
+                // updates #mb-info-display-caa, even though the artwork itself loads
+                // correctly — makeCaaQueue()'s onIdle() safely fires immediately (via
+                // setTimeout 0) when the queue is already idle at registration time
+                // (e.g. every cell was already fully restored from disk, nothing to
+                // fetch), so this is safe to register unconditionally on every
+                // runFilter() pass, not just the first.
+                if (_caaQueue && Lib.settings.sa_enable_caa_pics) {
+                    _caaQueue.onIdle(_showCaaCompletionToast);
+                }
+                // TEMP DEBUG (bug 2 investigation) — synchronous state right after
+                // initCaaPics()/initEaaPics() return. Note _artEnrichIcon's own async
+                // tiers (IDB await / network fetch) may still be in flight at this
+                // point — a follow-up delayed dump below catches what settles later.
+                // Kept permanently, no-op unless sa_enable_art_diagnostic_logging is on.
+                _debugDumpCaaColumnState('runFilter:post-initCaaPics-sync');
+                if (Lib.settings.sa_enable_art_diagnostic_logging) {
+                    setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+500ms'), 500);
+                    setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+2000ms'), 2000);
+                    setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+5000ms'), 5000);
+                }
+                // Re-populate any rel cells that were not yet done when runFilter rebuilt
+                // the DOM (race: Phase-2 fetch queue was mid-flight when the user typed).
+                if (document.querySelector('td.mb-rel-cell:not([data-rel-done="1"])')) {
+                    initRelationshipsColumn();
+                }
+                // Zebra striping / comment normalisation / sticky column / barcode
+                // highlighting — the whole-table passes that used to run in
+                // runFilter()'s shared tail, where they too only ever saw the first
+                // chunk on a large single table.
+                _applyPostRenderRowPasses();
+            });
         }
         // Maintain scroll position after filtering or sorting.
         // __scrollX preserves any horizontal offset the user reached via the
@@ -37552,20 +37614,13 @@ a { color: #1565c0; }`;
             }
         }
 
-        // Reapply zebra striping after every filter/sort: row order may have changed
-        // and hidden rows shift the visible index sequence.
-        document.querySelectorAll('table.tbl').forEach(applyZebraStriping);
-        // Normalise span.comment DOM: move orphan ")" text nodes after </bdi> into
-        // the <bdi> to prevent bidi-boundary soft-wrap at the </bdi>→")" boundary.
-        document.querySelectorAll('table.tbl').forEach(normalizeCommentSpans);
-        if (Lib.settings.sa_enable_sticky_columns !== false) {
-            document.querySelectorAll('table.tbl').forEach(applyStickyColumn);
+        // Row-level re-decoration passes. In single-table mode these are driven from
+        // renderFinalTable()'s completion hook instead (the rows they need don't all
+        // exist yet at this point when the render was chunked); multi-table mode's
+        // renderGroupedTable() is fully synchronous, so it is safe to run them here.
+        if (activeDefinition.tableMode === 'multi') {
+            _applyPostRenderRowPasses();
         }
-        // Re-apply barcode highlights AFTER applyStickyColumn — applyStickyColumn
-        // calls td.style.background = '' on every non-sticky cell, which clears any
-        // inline background-color set by barcodeProcessTable.  Running barcode
-        // highlighting last ensures its backgroundColor survives.
-        initBarcodeHighlight();
 
         Lib.debug('filter', `Filter completed in ${filterDuration}ms`);
 
@@ -42054,9 +42109,24 @@ a { color: #1565c0; }`;
      * re-render after a filter change), and the Load-from-Disk pipeline.
      *
      * @param   {HTMLTableRowElement[]} rows - The fully assembled data rows to render.
+     * @param   {function():void} [onComplete] - Post-render hook, invoked exactly once
+     *   when the tbody holds every row this render is going to insert. Contract:
+     *     - Fast path (`rowCount < chunkThreshold`) and BOTH early-return paths
+     *       (`!tbody`, `rowCount === 0`): invoked SYNCHRONOUSLY, in the caller's own
+     *       call stack — not a microtask. Those paths execute no `await` at all (the
+     *       function's only `await` is inside the chunked branch), so a synchronous
+     *       caller such as `runFilter()` sees byte-identical ordering to a plain
+     *       inline call. This is what makes moving `runFilter()`'s post-render hook
+     *       chain in here safe for every below-threshold table.
+     *     - Chunked path: invoked after the LAST chunk has been appended.
+     *     - NEVER invoked when this render was superseded by a newer generation —
+     *       the winning render fires its own. So it must not carry any
+     *       must-run-exactly-once side effect (releasing a lock, resolving a
+     *       user-visible promise, …); it is strictly for "re-decorate the rows that
+     *       are now in the DOM" work.
      * @returns {Promise<void>}
      */
-    async function renderFinalTable(rows) {
+    async function renderFinalTable(rows, onComplete) {
         // Claim this render's generation slot.  Any renderRowsChunked continuation
         // from a previous call that is still yielding in setTimeout(0) will see
         // _renderGeneration !== its captured generation and abort without appending
@@ -42065,9 +42135,33 @@ a { color: #1565c0; }`;
         const rowCount = Array.isArray(rows) ? rows.length : 0;
         Lib.debug('render', `Starting renderFinalTable with ${rowCount} rows (generation=${generation}).`);
 
+        // Publish this render's completion promise BEFORE the first possible
+        // suspension point, so a caller that awaits _renderSettled immediately
+        // after a synchronous runFilter() awaits THIS render rather than a stale
+        // already-resolved one.
+        let _settleRender = () => {};
+        _renderSettled = new Promise(resolve => { _settleRender = resolve; });
+
+        /**
+         * Single exit point for this render: resolves `_renderSettled` (which MUST
+         * happen on every path, superseded included, or an awaiter hangs forever)
+         * and, unless superseded, fires the caller's post-render hook.
+         *
+         * @param {boolean} [superseded=false] - True only on the generation-mismatch exit.
+         * @returns {void}
+         */
+        const _finishRender = (superseded = false) => {
+            _settleRender();
+            if (!superseded && typeof onComplete === 'function') onComplete();
+        };
+
         const tbody = document.querySelector('table.tbl tbody');
         if (!tbody) {
             Lib.error('render', 'Abort: #tbody container not found.');
+            // Hook still fires: before this parameter existed, runFilter()'s chain
+            // ran unconditionally after the call, and it is defensive throughout
+            // (every step re-queries the DOM). Preserve that exactly.
+            _finishRender();
             return;
         }
 
@@ -42084,6 +42178,11 @@ a { color: #1565c0; }`;
 
         if (rowCount === 0) {
             Lib.error('render', 'No rows provided to renderFinalTable.');
+            // Load-bearing: this is the zero-match filter case. The tbody was just
+            // emptied above, so the hook MUST still run — it is what clears the
+            // per-column header badges and hides the collapse buttons. Skipping it
+            // would strand them on the previous filter's numbers.
+            _finishRender();
             return;
         }
 
@@ -42102,6 +42201,7 @@ a { color: #1565c0; }`;
             // the winning render.
             if (_renderGeneration !== generation) {
                 Lib.debug('render', `renderFinalTable: generation ${generation} superseded — skipping post-render hooks.`);
+                _finishRender(/* superseded */ true);
                 return;
             }
         }
@@ -42131,6 +42231,17 @@ a { color: #1565c0; }`;
         // thead that still only has the raw native headers (e.g. 'Area',
         // 'Begin area') and never find a trio. See the call in
         // startFetchingProcess right after that cleanupHeaders() pass.
+
+        // Every row this render is going to insert is now in the tbody — fire the
+        // caller's post-render hook. The generation re-check is provably redundant
+        // (the chunked branch already returned above on a mismatch, and the fast
+        // branch cannot yield) but is kept so a future `await` added anywhere above
+        // cannot silently open a hole here.
+        if (_renderGeneration !== generation) {
+            _finishRender(/* superseded */ true);
+            return;
+        }
+        _finishRender();
     }
 
     /**
@@ -49887,6 +49998,77 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Monotonically-increasing token identifying the newest header-count scan
+     * scheduled by `_scheduleColHeaderCounts()`. A scan carrying an older token
+     * abandons itself at its next column boundary, so back-to-back schedules
+     * (`initReleaseEventsColumn()` alone fires `initCollapsableColumns()` up to
+     * three times in a row) cost one full scan, not three.
+     */
+    let _colHeaderCountsToken = 0;
+
+    /**
+     * Hands control back to the browser for one turn, preferring idle time but
+     * never waiting longer than 250 ms for it. Same `requestIdleCallback`-with-
+     * `setTimeout`-fallback idiom as `_artIdbSweepExpired()`.
+     *
+     * @returns {Promise<void>}
+     */
+    function _yieldToEventLoop() {
+        return new Promise(resolve => {
+            if (typeof requestIdleCallback === 'function') {
+                requestIdleCallback(() => resolve(), { timeout: 250 });
+            } else {
+                setTimeout(resolve, 0);
+            }
+        });
+    }
+
+    /**
+     * Schedules a `_updateAllColHeaderCounts()` pass over `table`.
+     *
+     * The ONLY way that function should ever be invoked. Two guarantees callers
+     * depend on:
+     *
+     *   1. **Never scans a partial tbody.** Waits on `_renderSettled` first, so a
+     *      scan queued while a chunked `renderFinalTable()` is still appending
+     *      rows runs after the last chunk, not between two of them. This is the
+     *      fix for the long-standing bug where `.mb-col-uniq-count` /
+     *      `.mb-col-collapse-count` reported a count over the first 500·k rows
+     *      only — a near-all-unique column on a 4174-row table showed a bare
+     *      multiple of the 500-row chunk size. Not all `initCollapsableColumns()`
+     *      call sites go through `runFilter()` (`initReleaseEventsColumn()` and
+     *      `syncCollapseButtonsWithColumnVisibility()` do not), so the guard has
+     *      to live here rather than at the render call site.
+     *   2. **Coalesces.** Only the newest schedule survives; older in-flight scans
+     *      stop at their next column boundary.
+     *
+     * Fire-and-forget: no call site awaits the returned promise, so it swallows
+     * and logs any error rather than surfacing an unhandled rejection.
+     *
+     * @param {HTMLTableElement} table
+     * @returns {Promise<void>}
+     */
+    async function _scheduleColHeaderCounts(table) {
+        const token = ++_colHeaderCountsToken;
+        try {
+            // A render STARTED while we were waiting replaces _renderSettled with
+            // its own pending promise, so keep waiting until the one we awaited is
+            // still the current one — otherwise a scan can slip in against a table
+            // that a newer chunked render has only half-filled.
+            let awaited;
+            do {
+                awaited = _renderSettled;
+                await awaited;
+            } while (awaited !== _renderSettled);
+            await _yieldToEventLoop();
+            if (token !== _colHeaderCountsToken) return;
+            await _updateAllColHeaderCounts(table, token);
+        } catch (err) {
+            Lib.warn('collapse', '_scheduleColHeaderCounts: header-count scan failed:', err);
+        }
+    }
+
+    /**
      * Updates the two live count indicators in every column header of `table`:
      *
      *   1. `.mb-col-uniq-count` span (before 📊) — number of distinct non-empty
@@ -49902,17 +50084,37 @@ a { color: #1565c0; }`;
      *      columns; other columns have no collapse button.
      *
      * Called at the tail of initCollapsableColumns() so it runs automatically
-     * at every render-completion and filter-cycle site.
+     * at every render-completion and filter-cycle site — always through
+     * `_scheduleColHeaderCounts()`, never directly; see that function for the
+     * render-completion and coalescing guarantees this one depends on.
+     *
+     * Yields to the event loop between COLUMNS, and abandons the scan as soon as
+     * `token` is no longer the newest one issued. Both matter now that the scan
+     * genuinely covers the whole table: it used to be accidentally cheap, because
+     * the un-awaited chunked re-render meant it only ever saw the first 500-row
+     * chunk. On `artist-events` (4174 rows × 21 columns) a full pass is ~88 000
+     * `getCleanColumnText()` calls, and a bare `setTimeout(0)` only relocates that
+     * work — it does not break it up. One slice per column keeps each unbroken
+     * stretch to a single column's worth of rows.
+     *
+     * Consequence worth knowing: a scan cancelled mid-way leaves the columns it
+     * already reached updated and the rest showing the previous pass's numbers,
+     * until the newer scan catches up. Transient, and strictly better than the
+     * permanently-wrong counts this replaced.
      *
      * @param {HTMLTableElement} table
+     * @param {number} [token] - The `_colHeaderCountsToken` value this scan was
+     *   issued under. When it no longer matches, a newer scan has superseded this
+     *   one and it stops at the next column boundary.
+     * @returns {Promise<void>}
      */
-    function _updateAllColHeaderCounts(table) {
+    async function _updateAllColHeaderCounts(table, token) {
         const tbody = table.tBodies[0];
         const headers = Array.from(table.querySelectorAll('thead tr:first-child th'));
         if (!tbody || headers.length === 0) return;
 
         // One pass per column: collect unique-value count and multi-row count.
-        headers.forEach((th, colIndex) => {
+        for (const [colIndex, th] of headers.entries()) {
             // ── Cheap "does this column have a Cell structure section" gate ────
             // Reuses openUniqDrop()'s own lightweight isCollapsableCol/
             // isCaaOrEaaCol name-based gates (no extra per-row scan) — good
@@ -49989,7 +50191,16 @@ a { color: #1565c0; }`;
                     uniqWrap.setAttribute('aria-label', tip);
                 }
             }
-        });
+
+            // Slice boundary: hand the thread back so a full-table scan can never
+            // run as one multi-second unbroken task, and drop out entirely if a
+            // newer scan has been scheduled in the meantime.
+            await _yieldToEventLoop();
+            if (token !== undefined && token !== _colHeaderCountsToken) {
+                Lib.debug('collapse', `_updateAllColHeaderCounts: token ${token} superseded — aborting scan.`);
+                return;
+            }
+        }
     }
 
     /**
@@ -50075,8 +50286,10 @@ a { color: #1565c0; }`;
             // Deferred out of the synchronous render path — for large tables
             // (8 k+ rows) the getCleanColumnText loop inside _updateAllColHeaderCounts
             // can take 30–120 s synchronously, blocking the UI and triggering the
-            // Chrome "Page Unresponsive" dialog.
-            setTimeout(() => _updateAllColHeaderCounts(table), 0);
+            // Chrome "Page Unresponsive" dialog. _scheduleColHeaderCounts() also
+            // holds the scan back until any in-flight chunked render has finished
+            // and coalesces repeat schedules — see its own JSDoc.
+            _scheduleColHeaderCounts(table);
             return;
         }
 
@@ -50746,10 +50959,12 @@ a { color: #1565c0; }`;
         // ── Update live count indicators in all column headers ────────────────
         // Refreshes both the unique-value count (before 📊) and the multi-row
         // cell count (inside ▶N▤/▼N▤) for every column in this table.
-        // Deferred via setTimeout(0) so the browser can paint the rendered rows
+        // Deferred (and sliced per column, and held back until any in-flight
+        // chunked render has finished) so the browser can paint the rendered rows
         // before the O(rows × columns) getCleanColumnText scan begins — prevents
-        // the Chrome "Page Unresponsive" dialog on 8 k+ row tables.
-        setTimeout(() => _updateAllColHeaderCounts(table), 0);
+        // the Chrome "Page Unresponsive" dialog on 8 k+ row tables. See
+        // _scheduleColHeaderCounts()'s own JSDoc for the full contract.
+        _scheduleColHeaderCounts(table);
 
         Lib.debug(
             'collapse',
@@ -51212,8 +51427,19 @@ a { color: #1565c0; }`;
                             _invalidateFilterCache();
                             runFilter();
 
-                            // Apply or clear column tints AFTER runFilter() so the fresh tbody
-                            // rows are already in the DOM when we paint.
+                            // Apply or clear column tints AFTER runFilter(), which is when
+                            // the sort state this paints from is final.
+                            //
+                            // NOTE: "the fresh tbody rows are already in the DOM" (what this
+                            // comment used to claim) is NOT true on a large single table:
+                            // runFilter() is synchronous and its re-render is chunked above
+                            // sa_chunked_render_threshold, so only the first chunk exists
+                            // here. The apply branch survives that anyway —
+                            // makeTableSortableUnified() registers this table in
+                            // multiSortTintRegistry, and renderFinalTable()'s own tail
+                            // re-runs that entry's applyTints() once the last chunk lands.
+                            // The clear branch needs no such catch-up: renderFinalTable()
+                            // inserts untinted clones, so later chunks arrive clean.
                             if (state.multiSortColumns.length > 0 || state.sortState !== 0) {
                                 applyMultiSortColumnTints();
                             } else {
@@ -56604,10 +56830,13 @@ a { color: #1565c0; }`;
                     // Note: initCollapsableColumns() is intentionally NOT called here.
                     // The runFilter() call below re-renders the table (possibly with a
                     // pre-filter applied) and its single-table branch calls
-                    // initCollapsableColumns() on the final DOM rows.  Calling it here
-                    // would operate on allRows before runFilter() clones and replaces
-                    // them, so all modifications would be discarded — and the global
-                    // collapse button would not yet have filterContainer in the DOM.
+                    // initCollapsableColumns() on the final DOM rows — genuinely final,
+                    // since that call now lives in renderFinalTable()'s onComplete hook
+                    // rather than running against the first chunk of a chunked render.
+                    // Calling it here would operate on allRows before runFilter() clones
+                    // and replaces them, so all modifications would be discarded — and
+                    // the global collapse button would not yet have filterContainer in
+                    // the DOM.
                 }
             }
 
@@ -56691,6 +56920,16 @@ a { color: #1565c0; }`;
                 }
                 runFilter();
             }
+            // runFilter() is synchronous, but its single-table branch re-renders the
+            // whole table and that render is CHUNKED above sa_chunked_render_threshold
+            // — only the first 500 rows are in the tbody when it returns. Everything
+            // below this point that walks tbody rows (initExpandRGsFeature,
+            // initAnnotationCompareRadios, initBarcodeHighlight,
+            // _cdtocInitTracklistToggles, initReleaseEventsColumn,
+            // initRelationshipsColumn, initPicardTaggerColumn, applyStickyColumn)
+            // would otherwise decorate that fraction only. This function is async, so
+            // just wait the render out — see _renderSettled's own declaration comment.
+            await _renderSettled;
             if (typeof window.updateFilterButtonsVisibility === 'function') {
                 window.updateFilterButtonsVisibility();
             }

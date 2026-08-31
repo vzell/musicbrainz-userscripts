@@ -30,7 +30,9 @@ const { waitForRenderComplete } = require('./browser');
 const { captureRaw, captureRendered, scrub, diffSummary } = require('./snapshot');
 const { seedGmValues } = require('./gmStubs');
 const { dismissCustomConfirmDialog } = require('./customDialog');
-const { waitForFilterSettled, waitForSortSettled, waitForActualRowCount } = require('./filterSortAssertions');
+const {
+    waitForFilterSettled, waitForSortSettled, waitForActualRowCount, waitForColHeaderCountsStable,
+} = require('./filterSortAssertions');
 const {
     URL: ARTIST_EVENTS_URL, FIXTURE_PATH: ARTIST_EVENTS_FIXTURE_PATH, SEED_GM_VALUES: ARTIST_EVENTS_SEED_GM_VALUES,
     FILTER_COLUMN: ARTIST_EVENTS_FILTER_COLUMN, FILTER_VALUE: ARTIST_EVENTS_FILTER_VALUE, SORT_COLUMN: ARTIST_EVENTS_SORT_COLUMN,
@@ -179,6 +181,13 @@ async function captureOne(browser, config) {
 async function _waitForFullRebuildSettled(page) {
     await waitForActualRowCount(page, ARTIST_EVENTS_TOTAL_ROWS);
     await page.waitForFunction(() => !document.getElementById('mb-render-heading'), null, { timeout: 30000 });
+    // Third wait, and the slowest: the column-header count badges. They are
+    // written by _updateAllColHeaderCounts(), which runs only after the render
+    // settles and is sliced one event-loop turn per column, so it finishes well
+    // after both signals above. Without this, a capture bakes in whatever the
+    // badges happened to read mid-scan — which is how post-sort.html came to
+    // carry 984/6/1 instead of 4158/37/5 for as long as it did.
+    await waitForColHeaderCountsStable(page);
 }
 
 /**
@@ -228,6 +237,8 @@ async function captureArtistEventsInteractionSnapshots(browser, dir) {
     const colInput = page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
     await colInput.click();
     await waitForFilterSettled(page, () => colInput.pressSequentially(ARTIST_EVENTS_FILTER_VALUE));
+
+    await waitForColHeaderCountsStable(page);
 
     const postFilterHtml = scrub(await captureRendered(page), 'artist-events');
     writeSnapshot(postFilterPath, postFilterHtml);

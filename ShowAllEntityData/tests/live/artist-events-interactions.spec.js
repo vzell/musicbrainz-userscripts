@@ -5,11 +5,16 @@ const { loadFromDiskFixture } = require('../support/diskFixture');
 const { seedGmValues } = require('../support/gmStubs');
 const { waitForRenderComplete } = require('../support/browser');
 const { collectPageErrors } = require('../support/liveAssertions');
-const { waitForFilterSettled, waitForSortSettled, getPageRowCount } = require('../support/filterSortAssertions');
+const {
+    waitForFilterSettled, waitForSortSettled, getPageRowCount,
+    waitForActualRowCount, waitForColHeaderUniqCount,
+} = require('../support/filterSortAssertions');
 const {
     URL: ARTIST_EVENTS_URL, FIXTURE_PATH, SEED_GM_VALUES, TOTAL_ROWS,
     FILTER_COLUMN, FILTER_VALUE, FILTER_VALUE_COUNT, SORT_COLUMN,
     UNIQ_DROP_COLUMN, UNIQ_DROP_COLLAPSABLE_CELL_COUNT,
+    UNIQ_COUNT_COLUMN, UNIQ_COUNT_TOTAL,
+    UNIQ_COUNT_FILTER_VALUE, UNIQ_COUNT_FILTER_ROWS, UNIQ_COUNT_FILTER_UNIQ,
 } = require('../support/artistEventsFixture');
 
 /**
@@ -49,6 +54,53 @@ async function loadArtistEvents(page) {
     await waitForRenderComplete(page, { waitForAutoResize: false, timeout: 60000 });
 }
 
+/**
+ * Resolves a column's zero-based index from its decoration-stripped header text
+ * — the value the column-filter inputs carry in `data-col-idx`.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} colName
+ * @returns {Promise<number>}
+ */
+function columnIndex(page, colName) {
+    return page.evaluate((name) => {
+        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+        return Array.from(document.querySelectorAll('table.tbl thead th'))
+            .findIndex((t) => strip(t.textContent) === name);
+    }, colName);
+}
+
+/**
+ * One column's ✕ clear button.
+ *
+ * Scoped through the enclosing `.mb-col-filter-wrapper` rather than indexed with
+ * `.nth(colIdx)`: `addColumnFilterRow()` gives a checkbox column a bare `<th>`
+ * with no input and no ✕ at all, so the ✕ list is not index-aligned with the
+ * column list.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} colIdx
+ * @returns {import('@playwright/test').Locator}
+ */
+function columnFilterClear(page, colIdx) {
+    return page.locator(
+        `table.tbl thead .mb-col-filter-wrapper:has(.mb-col-filter-input[data-col-idx="${colIdx}"]) .mb-col-filter-clear`
+    ).first();
+}
+
+/**
+ * The `.mb-col-collapse-count` badge (visible multi-row cells, shown inside the
+ * ▶N▤/▼N▤ button) in one column's header.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} colName
+ * @returns {import('@playwright/test').Locator}
+ */
+function collapseBadge(page, colName) {
+    return page.locator('table.tbl thead th', { hasText: colName }).first()
+        .locator('.mb-col-collapse-count');
+}
+
 test('global filter narrows the row count and clearing it restores the full set', { tag: '@perf' }, async ({ page }) => {
     const pageErrors = collectPageErrors(page);
     await loadArtistEvents(page);
@@ -83,10 +135,7 @@ test('column filter on Country narrows the row count to the same value as the gl
 
     const before = await getPageRowCount(page);
 
-    const colIdx = await page.evaluate((colName) => {
-        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
-        return Array.from(document.querySelectorAll('table.tbl thead th')).findIndex((t) => strip(t.textContent) === colName);
-    }, FILTER_COLUMN);
+    const colIdx = await columnIndex(page, FILTER_COLUMN);
     expect(colIdx).toBeGreaterThanOrEqual(0);
 
     // Column filter inputs are readonly-until-a-genuine-trusted-interaction
@@ -130,38 +179,121 @@ test('sorting a column reorders rows without changing the row count, both direct
     expect(pageErrors).toEqual([]);
 });
 
-test('column-header unique-value and multi-row-cell counts are self-consistent at initial render', { tag: '@perf' }, async ({ page }) => {
+test('column-header unique-value and multi-row-cell counts cover the whole table at initial render', { tag: '@perf' }, async ({ page }) => {
     const pageErrors = collectPageErrors(page);
     await loadArtistEvents(page);
 
-    // Scoped to initial-render correctness only — on `perf-steps-1-4` these
-    // badges are computed once at initial render and NOT recomputed on
-    // filter/sort for a single-table page (PERFORMANCE.org Step 1 removed
-    // the initCollapsableColumns() call runFilter() used to make on every
-    // keystroke), whereas `main` still recomputes them every time. Asserting
-    // they update after filtering would be branch-specific, not a shared
-    // invariant — see this repo's artist-events performance-comparison plan.
-    const uniqCountText = await page.locator('table.tbl thead th', { hasText: 'Event' }).first()
-        .locator('.mb-col-uniq-count').textContent();
-    expect(Number(uniqCountText)).toBeGreaterThan(0);
-    expect(Number(uniqCountText)).toBeLessThanOrEqual(TOTAL_ROWS);
+    // Exact values, not a `> 0 && <= TOTAL_ROWS` range. The range assertions
+    // this replaced were written around a real bug, since fixed: `runFilter()`
+    // did not await its own chunked `renderFinalTable()`, so the deferred
+    // `_updateAllColHeaderCounts()` scan ran against whatever prefix of the
+    // tbody had been appended (a multiple of the 500-row chunk size) and both
+    // badges reported a fraction of the table. A disk-fixture load reaches this
+    // code through that same `runFilter()` (see `_hydrateAndRenderFromSnapshot
+    // Data`'s deliberate "initCollapsableColumns() is NOT called here" note), so
+    // "initial render" here is exactly the affected path.
+    //
+    // waitForColHeaderUniqCount, not a bare read: the scan is scheduled behind
+    // the render AND sliced one event-loop turn per column, so it legitimately
+    // completes after every other "render done" signal on the page.
+    await waitForColHeaderUniqCount(page, UNIQ_COUNT_COLUMN, UNIQ_COUNT_TOTAL);
 
-    // NOT cross-checked against UNIQ_DROP_COLLAPSABLE_CELL_COUNT (5) —
-    // confirmed empirically (both on `main`) that `_updateAllColHeaderCounts`'s
-    // live-recomputed `.mb-col-collapse-count` badge for "Location" reports 1,
-    // while the DOM actually has 5 `.mb-cell-collapse-toggle` cells (also
-    // independently confirmed via window.__saTest.getUniqDropSections(),
-    // which correctly reports 5 — see the cache-correctness test below). This
-    // looks like a pre-existing `_classifyCollapseCell()` mis-classification
-    // for this column's specific multi-venue cell shape, present unchanged on
-    // both `main` and `perf-steps-1-4` (Step 3 only adds a cache around this
-    // same computation, it doesn't change it) — out of scope for this
-    // performance-comparison suite; flagged for separate investigation rather
-    // than silently asserted around.
-    const locationBadgeText = await page.locator('table.tbl thead th', { hasText: UNIQ_DROP_COLUMN }).first()
-        .locator('.mb-col-collapse-count').textContent();
-    expect(Number(locationBadgeText.trim())).toBeGreaterThanOrEqual(0);
-    expect(Number(locationBadgeText.trim())).toBeLessThanOrEqual(TOTAL_ROWS);
+    // Now cross-checked against UNIQ_DROP_COLLAPSABLE_CELL_COUNT (5), which an
+    // earlier revision of this test explicitly refused to do: this badge read 1
+    // here, and that was blamed on a `_classifyCollapseCell()` mis-classification
+    // of Location's multi-venue cell shape. It was not. `openUniqDrop()` and
+    // `_updateAllColHeaderCounts()` call the SAME `_classifyCollapseCell()` over
+    // the SAME `tbody.rows` and cannot disagree on identical input — they
+    // disagreed on WHEN they ran, the dropdown scanning the finished table and
+    // the badge a 500-row prefix of it. The live-fetch baseline
+    // (tests/snapshots/artist-events/rendered.html, the one render path that
+    // always awaited its render) recorded the correct 5 all along.
+    await expect(collapseBadge(page, UNIQ_DROP_COLUMN))
+        .toHaveText(String(UNIQ_DROP_COLLAPSABLE_CELL_COUNT));
+
+    expect(pageErrors).toEqual([]);
+});
+
+test('column-header counts survive a chunked re-render (column filter applied, then cleared)', { tag: '@perf' }, async ({ page }) => {
+    // The originally-reported bug, end to end. Applying a narrow filter drops
+    // the table below sa_chunked_render_threshold (1000), so that render takes
+    // renderFinalTable()'s fully synchronous fast path and always looked
+    // correct; CLEARING it goes back over the threshold and re-enters the
+    // chunked path, which is where the counts used to freeze at a multiple of
+    // the 500-row chunk size.
+    const pageErrors = collectPageErrors(page);
+    await loadArtistEvents(page);
+
+    await waitForColHeaderUniqCount(page, UNIQ_COUNT_COLUMN, UNIQ_COUNT_TOTAL);
+
+    const colIdx = await columnIndex(page, UNIQ_COUNT_COLUMN);
+    expect(colIdx).toBeGreaterThanOrEqual(0);
+
+    // .click() then .pressSequentially() — column filter inputs are
+    // readonly-until-a-genuine-trusted-interaction (anti-autofill hardening),
+    // and .fill() is rejected by _isGenuineFilterInputEvent().
+    const colInput = page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
+    await colInput.click();
+    await waitForFilterSettled(page, () => colInput.pressSequentially(UNIQ_COUNT_FILTER_VALUE));
+
+    const filtered = await getPageRowCount(page);
+    expect(filtered.filtered).toBe(UNIQ_COUNT_FILTER_ROWS);
+    expect(filtered.total).toBe(TOTAL_ROWS);
+    await waitForColHeaderUniqCount(page, UNIQ_COUNT_COLUMN, UNIQ_COUNT_FILTER_UNIQ);
+
+    // The per-column ✕ clears the value, re-focuses the input and calls
+    // runFilter() immediately — undebounced, unlike typing.
+    await columnFilterClear(page, colIdx).click();
+
+    // Three separate completion signals, in strictly increasing strength:
+    // status text settles first, the real row count catches up after it, and
+    // the header badges after that.
+    await waitForActualRowCount(page, TOTAL_ROWS);
+    await waitForColHeaderUniqCount(page, UNIQ_COUNT_COLUMN, UNIQ_COUNT_TOTAL);
+    await expect(collapseBadge(page, UNIQ_DROP_COLUMN))
+        .toHaveText(String(UNIQ_DROP_COLLAPSABLE_CELL_COUNT));
+
+    const restored = await getPageRowCount(page);
+    expect(restored).toEqual({ filtered: TOTAL_ROWS, total: TOTAL_ROWS, absolute: null });
+
+    expect(pageErrors).toEqual([]);
+});
+
+test('every row keeps its row-level decoration through a chunked re-render', { tag: '@perf' }, async ({ page }) => {
+    // The collateral the header badges alone would not catch. The badges were
+    // the visible symptom, but the same un-awaited chunked render starved
+    // runFilter()'s ENTIRE post-render hook chain, so after a filter-clear the
+    // rows past the first 500-row chunk got none of it.
+    //
+    // The sticky first column is the sharpest witness, because it is applied to
+    // EVERY row (unlike collapse toggles, of which this page has only 33, all of
+    // which happen to fall inside the first chunk). Re-capturing
+    // tests/snapshots/artist-events/post-sort.html on the fix measured
+    // `.mb-sticky-col` going from 502 occurrences to 4176 — i.e. before the fix,
+    // scrolling past row ~500 after a sort or filter-clear showed no sticky
+    // column at all.
+    const pageErrors = collectPageErrors(page);
+    await loadArtistEvents(page);
+    await waitForColHeaderUniqCount(page, UNIQ_COUNT_COLUMN, UNIQ_COUNT_TOTAL);
+
+    const stickyBefore = await page.locator('table.tbl tbody td.mb-sticky-col').count();
+    expect(stickyBefore).toBe(TOTAL_ROWS);
+    const togglesBefore = await page.locator('table.tbl tbody .mb-cell-collapse-toggle').count();
+    expect(togglesBefore).toBeGreaterThan(0);
+
+    const colIdx = await columnIndex(page, UNIQ_COUNT_COLUMN);
+    const colInput = page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
+    await colInput.click();
+    await waitForFilterSettled(page, () => colInput.pressSequentially(UNIQ_COUNT_FILTER_VALUE));
+    await waitForActualRowCount(page, UNIQ_COUNT_FILTER_ROWS);
+
+    await columnFilterClear(page, colIdx).click();
+    await waitForActualRowCount(page, TOTAL_ROWS);
+    await waitForColHeaderUniqCount(page, UNIQ_COUNT_COLUMN, UNIQ_COUNT_TOTAL);
+
+    expect(await page.locator('table.tbl tbody td.mb-sticky-col').count()).toBe(TOTAL_ROWS);
+    expect(await page.locator('table.tbl tbody .mb-cell-collapse-toggle').count())
+        .toBe(togglesBefore);
 
     expect(pageErrors).toEqual([]);
 });

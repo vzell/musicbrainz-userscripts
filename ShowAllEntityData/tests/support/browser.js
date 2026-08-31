@@ -36,6 +36,15 @@ const { waitForCaaEaaComplete, waitForRelationshipsComplete } = require('./async
  *     burst yields) — if the overlay was going to appear at all, it already
  *     has by the time this function's own poll can run.
  *
+ * Still NOT sufficient for the column-header count badges
+ * (`.mb-col-uniq-count`/`.mb-col-collapse-count`). Those are written by
+ * `_updateAllColHeaderCounts()`, which is scheduled after the render settles
+ * and then sliced one event-loop turn per column, so it finishes strictly
+ * later than everything this function waits on. Use
+ * `filterSortAssertions.js`'s `waitForColHeaderUniqCount()` (exact expected
+ * value) or `waitForColHeaderCountsStable()` (value-free) when a test or a
+ * snapshot capture depends on those badges.
+ *
  * `seedGMValue`-equivalent note: no separate helper needed here —
  * `tests/support/gmStubs.js`'s `buildGmStubsScript(initialValues)` already
  * covers seeding settings (e.g. `sa_enable_release_tracks`) before the
