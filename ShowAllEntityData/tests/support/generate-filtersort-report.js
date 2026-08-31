@@ -7,10 +7,16 @@
  * be this file's own ~360-line standalone implementation, so a future new
  * suite's report doesn't require copy-pasting it).
  *
- * Usage (unchanged from before the extraction):
- *   playwright test tests/live/artist-releases-filter-sort.spec.js \
- *     --project=chromium-live --reporter=json \
- *     | node tests/support/generate-filtersort-report.js
+ * Usage (see the `test:live:report:artist-releases` npm script — this is
+ * NOT a `--reporter=json | node ...` pipe, since mixing `list` and `json`
+ * reporters sends both to stdout; the JSON output is instead written to a
+ * file via `PLAYWRIGHT_JSON_OUTPUT_NAME` and read back with shell
+ * redirection so the exit code from the `playwright test` step is preserved):
+ *   PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/artist-releases-report.json \
+ *     playwright test tests/live/artist-releases-filter-sort.spec.js \
+ *     --project=chromium-live --reporter=list,json
+ *   node tests/support/generate-filtersort-report.js \
+ *     < test-results/artist-releases-report.json
  *
  * Output filenames are now TIMESTAMPED (e.g.
  * debug/artist-releases-filterSort-test-report-2026-08-31T10-15-03-123Z.org)

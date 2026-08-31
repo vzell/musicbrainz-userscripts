@@ -6,10 +6,16 @@
  * `tests/support/filtersortReportGenerator.js` (the same engine
  * `generate-filtersort-report.js` uses for `artist-releases-filter-sort.spec.js`).
  *
- * Usage:
- *   playwright test tests/live/releasegroup-releases-filter-sort.spec.js \
- *     --project=chromium-live --reporter=json \
- *     | node tests/support/generate-releasegroup-releases-filtersort-report.js
+ * Usage (see the `test:live:report:releasegroup-releases` npm script — this
+ * is NOT a `--reporter=json | node ...` pipe, since mixing `list` and `json`
+ * reporters sends both to stdout; the JSON output is instead written to a
+ * file via `PLAYWRIGHT_JSON_OUTPUT_NAME` and read back with shell
+ * redirection so the exit code from the `playwright test` step is preserved):
+ *   PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/releasegroup-releases-report.json \
+ *     playwright test tests/live/releasegroup-releases-filter-sort.spec.js \
+ *     --project=chromium-live --reporter=list,json
+ *   node tests/support/generate-releasegroup-releases-filtersort-report.js \
+ *     < test-results/releasegroup-releases-report.json
  *
  * Output: a TIMESTAMPED `.org`/`.html` pair in `debug/` (e.g.
  * debug/releasegroup-releases-filterSort-test-report-2026-08-31T10-15-03-123Z.org)
