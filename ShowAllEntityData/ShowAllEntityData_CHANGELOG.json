@@ -1,5 +1,29 @@
 [
   {
+    "version": "9.99.977",
+    "date": "2026-09-01",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Column headers on large single-table pages no longer report counts taken from a fraction of the table. On a page like an artist's Events tab (4177 rows), clearing a column filter left the 📊 unique-value badge stuck at a bare multiple of 500 — 1000, 1500, 2000, 2500 depending on the machine — instead of the real 4161, and the ▶N▤ multi-row badge equally wrong (1 instead of 5 for 'Location'). A Load-from-disk hydration showed the wrong number immediately, without any filtering at all. The row-count stat next to the heading was always right, which is what made the mismatch so visible.",
+          "Root cause: `runFilter()` is synchronous and so could not await its own `renderFinalTable()` call. Above the chunked-render threshold (`sa_chunked_render_threshold`, default 1000 rows) that render appends rows 500 at a time, yielding to the browser between chunks — so when `runFilter()` continued, only the FIRST 500 rows were in the table. Its entire post-render pass then ran against that fragment, and the deferred header-count scan it schedules measured whatever multiple of 500 had arrived by the time it fired. Nothing recomputed the counts once the remaining chunks landed.",
+          "The badges were only the visible tip. The same 500-row window starved every other post-render pass on those pages, so after a filter-clear or a sort the rows past the first chunk kept no per-cell ▶ collapse toggles, no release-group ▶ expand buttons, no CD-TOC tracklist toggles, no re-enabled annotation compare radios, no re-wired Picard tagger cells, no nested-heading toggles, no CAA/EAA artwork enrichment, and no zebra striping, sticky-column or barcode-highlight repaint. All of that now runs against the finished table.",
+          "The sticky first column is the clearest example, and was the most visible of these in daily use: re-capturing the committed artist-events sort baseline shows the sticky-column marker going from 502 cells to 4176 — so on a 4174-row table, scrolling past roughly row 500 after a sort or a filter-clear left no sticky column at all.",
+          "`renderFinalTable()` gained an optional completion hook, invoked once every row is actually in the table, and `runFilter()`'s single-table post-render work moved into it. Tables below the chunked-render threshold are unaffected down to the last detail: that path executes no `await` at all, so the hook still fires synchronously, in the same call stack, exactly where the code used to run. A render superseded by a newer one (fast typing) never fires its hook — the winning render fires its own.",
+          "Load-from-disk had a second instance of the same race: its own ~200-line tail ran immediately after the synchronous `runFilter()` call, i.e. also against 500 rows. It now waits for the render to finish first, so the Release-events, Relationships, Picard, expand-RG, annotation-radio, CD-TOC, barcode and sticky-column passes it drives all see the whole table.",
+          "The header-count scan is now scheduled through one entry point that holds it back until any in-flight render has settled and collapses repeat requests into a single pass — `initReleaseEventsColumn()` alone triggers it three times in a row. Two callers that never went through `runFilter()` (the Release-events column population and the column-visibility toggle) were exposed to the same partial-table race and are covered by this too."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The per-column header-count scan no longer runs as one unbroken task. Now that it covers the whole table rather than a 500-row prefix, a full pass over a page like artist-events is roughly 88,000 cell-text extractions (4174 rows × 21 columns); it is now sliced one column per event-loop turn and abandons itself as soon as a newer scan is queued, so the tab stays responsive while the counts fill in. A scan interrupted this way leaves the columns it already reached updated and the rest showing the previous numbers until the newer scan catches up."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.976",
     "date": "2026-08-31",
     "sections": [
