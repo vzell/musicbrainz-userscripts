@@ -61223,6 +61223,13 @@ a { color: #1565c0; }`;
             // Refresh the search-index attribute with the new image set.
             existingUl.dataset.mbArtSearch = _artBuildSearchText(images);
             _artSyncSearchTextToSourceRow(artCell, existingUl.dataset.mbArtSearch);
+            // This cell's content just changed asynchronously (new image <li>s,
+            // new type/comment badges, new mbArtSearch text) with no row
+            // show/hide — invisible to the uniq-dropdown cache's visible-row-set
+            // signature. Its `valueCounts` reads this very text through
+            // getCleanColumnText(), and its artType/artCommentValueCounts read
+            // the badges built above. See _invalidateUniqDropDataCache()'s JSDoc.
+            _invalidateUniqDropDataCache(artCell.closest('table.tbl'), _artColIdx);
 
             const n = images.length;
 
@@ -61306,6 +61313,9 @@ a { color: #1565c0; }`;
             // image types and comments via column filters without polluting sort keys.
             ul.dataset.mbArtSearch = _artBuildSearchText(images);
             _artSyncSearchTextToSourceRow(artCell, ul.dataset.mbArtSearch);
+            // Same async cell-content change as the REBUILD branch above — drop
+            // this column's cached uniq-dropdown bundle.
+            _invalidateUniqDropDataCache(artCell.closest('table.tbl'), _artColIdx);
 
             // ── Inline expand / collapse button in li-0 ───────────────────────
             // Placed at the front of the summary row (li-0), in the same visual

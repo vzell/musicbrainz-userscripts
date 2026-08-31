@@ -202,6 +202,20 @@ NOT actually need Step 3, though — see below.
   ~_invalidateUniqDropDataCache()~ in ~_artSetInlineSortKey()~, which stamps
   the ~.mb-inline-art-sort-key~ sentinel the inline-art pass reads from ~8
   CAA/EAA fetch-completion callbacks.
+
+  Added after rebasing onto ~main~'s v9.99.971/v9.99.972 (the CAA/EAA
+  multi-table type/comment filter fix): a sixth site,
+  ~_artBuildMultiRowArtCell()~ — both its REBUILD and FIRST-BUILD branches.
+  It rebuilds a cell's image ~<li>~s, per-image type/comment badges and
+  ~ul.dataset.mbArtSearch~ asynchronously with no row show/hide, and the
+  dropdown reads all three (~valueCounts~ via ~getCleanColumnText()~,
+  ~artTypeValueCounts~/~artCommentValueCounts~ via the badges). That commit
+  independently added a ~_rowTextCache~ invalidation at the same spot —
+  confirmation that this call site needs one; it just didn't know about
+  ~_uniqDropDataCache~. This is the CAA/EAA-column counterpart of the
+  inline-art column's ~_artSetInlineSortKey()~ case, and unlike the adjacent
+  ~_artSyncSearchTextToSourceRow()~ (multi-table only by design) it covers
+  single-table pages too.
 - *Port-specific fix — 10 symbols the earlier branches missed.* The Step 4
   code as it stands on ~perf-steps-1-4~ gates and stores 53 names but leaves
   10 more that are ALSO populated inside the (now skipped) pass-1 loop
