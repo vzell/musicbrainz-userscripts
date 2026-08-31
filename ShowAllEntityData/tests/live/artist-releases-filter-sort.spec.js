@@ -720,11 +720,29 @@ test('§E uniq-dropdown contents with the Format~CD filter left active', { tag: 
 
 // ─────────────────────────── §F — uniq-dropdown-DRIVEN filtering ───────────────────────────
 
-/** Opens `columnName`'s uniq-dropdown panel via its header 📊 button. */
+/**
+ * Opens `columnName`'s uniq-dropdown panel via its header 📊 button.
+ *
+ * The panel-visible assertion is the explicit regression guard for the
+ * stale-scroll close (see ShowAllEntityData.user.js's
+ * `_uniqDropOwnerOpenRect` JSDoc): a scroll event queued BEFORE the panel
+ * opened is delivered AFTER it, and used to close the just-opened panel.
+ * `.mb-col-uniq-wrap` is focusable, so any column this helper has to scroll
+ * into view first can reproduce it — whether it does depends on which side
+ * of the click the queued scroll event lands on, so it is a genuine race,
+ * not a deterministic property of one case. In practice §F's combo step
+ * (re-opening "Format" from the far-right "Primary alias" scroll position)
+ * hit it on every run while the four single-value cases never did.
+ * Without this assertion the symptom is a silent 180s actionability timeout
+ * on the NEXT line's item click ("element is not visible") that says nothing
+ * about the panel having closed itself; with it, the failure is immediate
+ * and names the real problem.
+ */
 async function openUniqDrop(page, columnName) {
     const th = page.locator(`table.tbl thead th[data-col-name="${columnName}"]`).first();
     const uniqBtn = th.locator('.mb-col-uniq-wrap').first();
     await uniqBtn.click();
+    await expect(page.locator('#mb-col-uniq-dropdown'), `"${columnName}" uniq-dropdown panel stayed open after opening it`).toBeVisible();
 }
 
 /** Clicks one item (by its exact `title` attribute) inside the currently-open uniq-dropdown panel. */

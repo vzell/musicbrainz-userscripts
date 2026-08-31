@@ -1,0 +1,15 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-08-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Unique-values dropdown: the panel no longer closes itself the instant it opens when the 📊 button had to be scrolled into view first. Scroll events are dispatched asynchronously (at the next rendering opportunity), so a scroll that happened BEFORE the panel opened was still delivered AFTER it opened, and the close-on-scroll listener acted on it. Because `.mb-col-uniq-wrap` is focusable, this was reachable in normal use: clicking — or tabbing to — a 📊 button that is only partially in view makes the browser scroll it into view on focus, and that scroll event lands one tick later, right after the click handler already built and positioned the panel. The panel flashed open and vanished, with focus bounced back to the previously-focused column filter input.",
+          "The close-on-scroll listener now compares the owning 📊 button's CURRENT viewport rect against the rect the panel was positioned against at open time, instead of closing on any scroll event unconditionally. An unchanged rect means nothing actually moved (a stale, pre-open scroll event) and the panel stays open; a changed rect means the page really has scrolled since, the fixed-position panel is no longer anchored to its button, and it closes as before. As a side benefit this also stops an unrelated inner scroll container — one that doesn't move the column header at all — from dismissing an open panel."
+        ]
+      }
+    ]
+  }
+]

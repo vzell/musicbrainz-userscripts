@@ -46035,6 +46035,28 @@ a { color: #1565c0; }`;
     let _uniqDropOpenValuesSnapshot = '';
 
     /**
+     * @type {?{top: number, left: number}} The owning 📊 button's viewport
+     * rect at open time, recorded by `openUniqDrop()` and read by the
+     * close-on-scroll listener in `getUniqDropEl()`.
+     *
+     * Scroll events are dispatched ASYNCHRONOUSLY (at the next rendering
+     * opportunity), never synchronously when the scroll position changes —
+     * so a scroll that happened BEFORE the panel opened is still delivered
+     * AFTER it opened, and would otherwise close a panel that is perfectly
+     * positioned. This is not a theoretical race: `.mb-col-uniq-wrap` is
+     * focusable, so clicking (or tabbing to) a 📊 button that is only
+     * partially in view makes the browser scroll it into view on focus, and
+     * that scroll event lands one tick later — right after the click handler
+     * already opened the panel. Comparing the owner's CURRENT rect against
+     * this snapshot distinguishes "a stale scroll from before the open"
+     * (rect unchanged — keep the panel) from "the page really has scrolled
+     * since" (rect moved — the fixed-position panel is now detached from its
+     * button, so close it), and works for a scrollable container just as
+     * well as for the window itself.
+     */
+    let _uniqDropOwnerOpenRect = null;
+
+    /**
      * Returns (creating exactly once) the shared #mb-col-uniq-dropdown element
      * and wires up global close-on-outside-click / close-on-page-scroll listeners.
      *
@@ -46067,10 +46089,20 @@ a { color: #1565c0; }`;
         }, true);
 
         // Close on page scroll — but NOT when the scroll happens inside the
-        // dropdown itself (mouse-wheel while hovering over the open panel).
+        // dropdown itself (mouse-wheel while hovering over the open panel),
+        // and NOT for a scroll event that was already queued before this
+        // panel opened (see _uniqDropOwnerOpenRect's own JSDoc for why that
+        // happens and why the owner's rect is the right thing to compare).
         document.addEventListener('scroll', (ev) => {
             if (!_uniqDropOwner) return;
             if (el.contains(ev.target)) return; // scrolling inside the panel — ignore
+            if (_uniqDropOwnerOpenRect) {
+                const _r = _uniqDropOwner.getBoundingClientRect();
+                if (Math.abs(_r.top - _uniqDropOwnerOpenRect.top) < 1 &&
+                    Math.abs(_r.left - _uniqDropOwnerOpenRect.left) < 1) {
+                    return; // nothing actually moved — a stale, pre-open scroll event
+                }
+            }
             closeUniqDrop();
         }, { passive: true, capture: true });
 
@@ -46137,6 +46169,7 @@ a { color: #1565c0; }`;
         _uniqDropReturnFocusEl = null;
         _uniqDropColFilterEl = null;
         _uniqDropOpenValuesSnapshot = '';
+        _uniqDropOwnerOpenRect = null;
     }
 
     // Per-(table, column) memo of openUniqDrop()'s expensive row-scan results
@@ -49071,6 +49104,12 @@ a { color: #1565c0; }`;
 
         drop.style.top  = `${top}px`;
         drop.style.left = `${left}px`;
+
+        // Snapshot the button's viewport rect the panel was just positioned
+        // against, so the close-on-scroll listener can tell a genuine scroll
+        // from one that was queued before this open — see
+        // _uniqDropOwnerOpenRect's own JSDoc.
+        _uniqDropOwnerOpenRect = { top: bRect.top, left: bRect.left };
 
         // Auto-focus the quickfilter input so the user can type immediately
         requestAnimationFrame(() => qfInput.focus());
