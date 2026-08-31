@@ -54288,8 +54288,15 @@ a { color: #1565c0; }`;
         _dbg('initReleaseEventsColumn: complete');
         // Re-run initCollapsableColumns: it ran before cells were populated so
         // found 0 ul>li items. Now that cells have real content, install toggles.
+        // Cell content just changed with no corresponding row show/hide, so the
+        // uniq-dropdown cache must be force-invalidated here too — its
+        // visible-row-set signature alone wouldn't notice (see
+        // _invalidateUniqDropDataCacheForTable()'s own JSDoc).
         if (activeReleaseEventColumns.length) {
-            document.querySelectorAll('table.tbl').forEach(t => initCollapsableColumns(t));
+            document.querySelectorAll('table.tbl').forEach(t => {
+                _invalidateUniqDropDataCacheForTable(t);
+                initCollapsableColumns(t);
+            });
         }
         // Third-pass: derive synthetic columns from the now-populated injected columns
         // (e.g. split 'Release events' into 'Release country' + 'Release date').
@@ -54299,8 +54306,12 @@ a { color: #1565c0; }`;
             // actually fills 'Release country'/'Release date' ICE cells, and
             // nothing re-scans for collapsable columns after it. Safe to call
             // a third time — initCollapsableColumns() is idempotent (it does
-            // a cleanup pass before rebuilding).
-            document.querySelectorAll('table.tbl').forEach(t => initCollapsableColumns(t));
+            // a cleanup pass before rebuilding). Same cache-invalidation need
+            // as the pass above — new cell content, same visible row set.
+            document.querySelectorAll('table.tbl').forEach(t => {
+                _invalidateUniqDropDataCacheForTable(t);
+                initCollapsableColumns(t);
+            });
         }
     }
 
@@ -55260,6 +55271,12 @@ a { color: #1565c0; }`;
                 _relDbg('initRelationshipsColumn: source rows synced');
             }
             _relDbg('initRelationshipsColumn: complete');
+            // The Relationships cells were just populated in place, with no row
+            // show/hide — the uniq-dropdown cache's visible-row-set signature is
+            // blind to that, so a dropdown opened for this column while it was
+            // still loading would keep serving its near-empty bundle forever.
+            // See _invalidateUniqDropDataCacheForTable()'s own JSDoc.
+            document.querySelectorAll('table.tbl').forEach(t => _invalidateUniqDropDataCacheForTable(t));
             _relCreateRetryButtons();
             const _relElapsed = performance.now() - _relStartMs;
             const _tierInfo = {
@@ -63961,6 +63978,13 @@ a { color: #1565c0; }`;
             td.appendChild(sk);
         }
         sk.textContent = loaded ? 'caa-inline-yes' : 'caa-inline-no';
+        // This sentinel is exactly what openUniqDrop()'s inline-art scan pass
+        // counts, and it lands asynchronously (from a CAA/EAA fetch-completion
+        // callback) with no row show/hide — so the uniq-dropdown cache's
+        // visible-row-set signature cannot notice it. Drop this cell's column
+        // bundle, or a dropdown opened for the column before its thumbnails
+        // resolved keeps reporting the pre-fetch inline-art counts.
+        _invalidateUniqDropDataCache(td.closest('table.tbl'), td.cellIndex);
         if (Lib.settings.sa_enable_art_fetch_debug_logging) {
             Lib.debug(ctx.key,
                 `_artSetInlineSortKey: td → ${sk.textContent}`);
@@ -65547,6 +65571,12 @@ a { color: #1565c0; }`;
                 typeof allRows !== 'undefined' && allRows.length) {
                 allRows.forEach(_picardApplyToRow);
             }
+
+            // Picard cells were just (re)built in place, with no row show/hide —
+            // invisible to the uniq-dropdown cache's visible-row-set signature,
+            // so drop this table's cached bundles. See
+            // _invalidateUniqDropDataCacheForTable()'s own JSDoc.
+            _invalidateUniqDropDataCacheForTable(table);
 
             Lib.debug('picard',
                 `initPicardTaggerColumn: ${rewireOnly ? 'rewired' : 'injected'} Picard column ` +

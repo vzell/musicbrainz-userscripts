@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-08-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Unique-values dropdown (📊) cache: invalidate it for columns whose cells are populated asynchronously, after the initial render. The WIP.1 cache keys off which rows are currently visible, which cannot see a column that fills previously-empty cells in place with no row show/hide — so a dropdown opened while such a column was still loading would cache a near-empty bundle that nothing ever refreshed (until an unrelated filter or sort happened to change the visible-row signature). New table-wide `_invalidateUniqDropDataCacheForTable(table)` is now called from `initReleaseEventsColumn()` (both post-population re-scan sites), `initRelationshipsColumn()`'s completion handler, and `initPicardTaggerColumn()`; `_artSetInlineSortKey()` additionally invalidates just its own column, since it stamps the `.mb-inline-art-sort-key` sentinel that the dropdown's inline-artwork scan reads, from ~8 CAA/EAA fetch-completion callbacks. Affects the Release events / Release country / Release date, Relationships, Picard tagger and inline CAA/EAA columns."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-08-31",
     "sections": [
