@@ -487,17 +487,18 @@ const UNIQ_DROP_COMBO_CASES = { OFFICIAL: [], PROMOTION: [] };
  * checkpoint's own filter, exercising the CAA presence column through a
  * sort/filter interaction on this multi-table page.
  *
- * "yes" (not "Front" — a first draft assumed the CAA column's per-image
- * TYPE text, e.g. "Front"/"Booklet", was typed-substring searchable the
- * same way Format/Country are; confirmed live it is NOT: a typed search
- * for "Front" produces ZERO row matches and ZERO
- * `.mb-column-filter-highlight` spans, even though that text is genuinely
- * present in the cell's DOM — the CAA column's plain filter input only
- * matches its "yes"/"no" presence sentinel; per-image type/comment
- * filtering is a separate, DROPDOWN-DRIVEN exact-value mechanism instead
- * (not implemented by this constant/test — see the spec's own comment for
- * why a full v9.99.970-style CAA highlight-duplication guard would need
- * that mechanism, not a typed filter). "yes" confirmed live: 116 of 119
+ * "yes" (not e.g. "Front") — chosen for a simple, deterministic narrowing
+ * target here, not because a typed substring search against the CAA
+ * column's per-image TYPE/comment text doesn't work: it used to produce
+ * ZERO row matches page-wide on every `tableMode: 'multi'` page (root-
+ * caused and fixed — see `_artSyncSearchTextToSourceRow()` in
+ * ShowAllEntityData.user.js, and
+ * `releasegroup-releases-caa-type-comment-filter.spec.js` for the dedicated
+ * regression test). Per-image type/comment values are ALSO exposed via a
+ * separate DROPDOWN-DRIVEN exact-value mechanism (not exercised by this
+ * constant/test — see the spec's own comment for why a full
+ * v9.99.970-style CAA highlight-duplication guard would need that
+ * mechanism, not a typed filter). "yes" confirmed live: 116 of 119
  * Official release rows, matches at least 1 Promotion release row too.
  */
 const CAA_HIGHLIGHT_FILTER = { column: 'CAA', value: 'yes' };
