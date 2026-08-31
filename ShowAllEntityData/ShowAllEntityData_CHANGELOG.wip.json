@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.13",
+    "date": "2026-08-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "PERFORMANCE.org Step 12 (urgent, flagged by the 2026-08-25 cloud ultra review): _artProcessIoEntriesBatched() — Step 5's animation-frame-batching helper (37cf17a) — referenced undeclared `_caaImgQueue`/`_caaMetaQueue` instead of the real `_caaQueue`. Under 'use strict' this threw a ReferenceError the moment the IntersectionObserver callback first fired, silently breaking icon lazy-loading entirely (and the onIdle completion-toast signal) on any large single-table CAA/EAA page past sa_caa_io_threshold (default 500 rows, e.g. artist-events' 4174 rows). Renamed both references to `_caaQueue`, matching every other call site's guard shape."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.12",
     "date": "2026-08-30",
     "sections": [

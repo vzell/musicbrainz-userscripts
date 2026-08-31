@@ -61996,12 +61996,12 @@ a { color: #1565c0; }`;
                 io.unobserve(icon);
                 const anchor = icon.closest('a[href]');
                 if (Lib.settings.sa_caa_pics_small) {
-                    if (_caaImgQueue) _caaImgQueue.enqueue(() => _artLoadIcon(ctx, icon));
-                    else              _artLoadIcon(ctx, icon);
+                    if (_caaQueue) _caaQueue.enqueue(() => _artLoadIcon(ctx, icon));
+                    else           _artLoadIcon(ctx, icon);
                 }
                 if (anchor) {
-                    if (_caaMetaQueue) _caaMetaQueue.enqueue(() => _artEnrichIcon(ctx, anchor));
-                    else               _artEnrichIcon(ctx, anchor);
+                    if (_caaQueue) _caaQueue.enqueue(() => _artEnrichIcon(ctx, anchor));
+                    else           _artEnrichIcon(ctx, anchor);
                 }
             }
             if (i < intersecting.length) requestAnimationFrame(processChunk);

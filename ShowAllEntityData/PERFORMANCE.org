@@ -432,7 +432,7 @@ AR-column presence check) with one combined per-track characterization
 pass that answers all of them in a single walk. ~release-tracks~-specific;
 independent of Steps 1-9.
 
-*** TODO Step 12: Fix undeclared ~_caaImgQueue~/~_caaMetaQueue~ crash in Step 5 (urgent)
+*** DONE Step 12: Fix undeclared ~_caaImgQueue~/~_caaMetaQueue~ crash in Step 5 (urgent)
 
 Found by the 2026-08-25 cloud ultra review — not a missed optimization, a
 live bug in already-~DONE~ code. ~_artProcessIoEntriesBatched()~ (added by
@@ -454,6 +454,9 @@ timing predates the animation-frame-batching commit, and the regular
 filter/sort perf snapshots seed ~sa_caa_pics_small: false~. Fix: rename
 both references to ~_caaQueue~ (two-line change, confined to
 ~_artProcessIoEntriesBatched()~).
+
+*Fixed*: both references in ~_artProcessIoEntriesBatched()~ renamed to the
+real ~_caaQueue~, matching every other call site's guard shape.
 
 *** TODO Step 13: Restore cdtoc sub-row expansion state across a filter hide→show cycle
 
