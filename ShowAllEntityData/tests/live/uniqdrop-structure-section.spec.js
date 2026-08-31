@@ -106,7 +106,12 @@ test('unique-values dropdown "Structure" section reflects all four cell-structur
 
     // Reopening the panel must reproduce an identical section/entry list —
     // guards the "self-corrupting on second filter pass" failure mode the
-    // uniq-dropdown-section skill documents.
+    // uniq-dropdown-section skill documents. Since PERFORMANCE.org Step 4
+    // this reopen is also the dropdown cache's HIT path (nothing changed the
+    // visible row set in between), so it doubles as the assertion that a
+    // cached row-scan bundle rebuilds exactly the same panel the cold open
+    // did — the failure mode being a Map/counter that the cache forgot to
+    // carry over and that therefore comes back empty on the warm open.
     await page.evaluate(() => window.__saTest.closeUniqDrop());
     const reopenedSections = await page.evaluate(
         (colName) => window.__saTest.getUniqDropSections(colName),

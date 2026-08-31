@@ -106,11 +106,140 @@ visible row set actually changes (not on every trigger). Needed even after
 Steps 1-2, since global expand/collapse-all clicks and multi-table renders
 still call it unconditionally.
 
-*** TODO Step 4: ~openUniqDrop()~ per-open caching
+*** DONE Step 4: ~openUniqDrop()~ per-open caching
 
-~openUniqDrop()~ (~ShowAllEntityData.user.js:45002-47611~) does >=5 full
-~tbody.rows~ passes from scratch on every dropdown open with zero caching.
-Same caching primitive as Step 3 — build alongside it.
+~openUniqDrop()~ does exactly 5 full ~tbody.rows~ passes from scratch on
+every dropdown open with zero caching (the whole-cell value scan, the
+flag-icon segment map, the relationship-cell detector, the relationship
+icon counts, and the inline-CAA/EAA-thumbnail scan).
+
+Originally written as "same caching primitive as Step 3 — build alongside
+it", and that is how it first landed (branch ~filter-performance-fix~, later
+~perf-steps-1-4~; also cherry-picked as the pair ~perf-steps-3-4~). It does
+NOT actually need Step 3, though — see below.
+
+*Landed*: branch ~worktree-perf-step-4~, standalone, WITHOUT Step 3. See
+~ShowAllEntityData_CHANGELOG.wip.json~ WIP.1/WIP.2.
+
+- *Measured, 2026-08-31, same machine / same session / same script version
+  (9.99.970)* — ~main~'s script vs this branch's, both captured back-to-back
+  via ~tests/support/capture-interaction-perf.js --pageType=artist-events~
+  (4174 rows, 21 columns, median of 5, fresh page per sample):
+
+  | Interaction          |    ~main~ | this branch | Δ                |
+  |----------------------+----------+-------------+-------------------|
+  | Global filter        |  1242 ms |     1292 ms | noise             |
+  | Column filter        |  1201 ms |     1239 ms | noise             |
+  | Sort                 |  2995 ms |     2906 ms | noise             |
+  | Uniq-dropdown, cold  | 30649 ms |    32985 ms | +7.6% (see below) |
+  | *Uniq-dropdown, warm* | 31347 ms |    *581 ms* | *54x faster*      |
+
+  The branch result is committed as
+  ~tests/snapshots/artist-events/interaction-perf-worktree-perf-step-4.json~.
+  The ~main~ column was measured for this comparison and NOT committed — the
+  repo's ~interaction-perf-main.json~ is the 2026-08-24 / 9.99.953 capture
+  from a different machine (1418/1595/2994/29802/29700), deliberately left
+  untouched; it is not directly comparable, since ~main~ has since grown 17
+  versions of extra dropdown work (~roleTokenValueCounts~, the editor/
+  changelog/data-quality scans, several ~SYN_SECTION_META~ splits) that a
+  cold open has to pay.
+
+  On the cold ~+7.6%~: treated as noise, not a regression. Cold open is
+  ~30s of 5 full ~tbody.rows~ passes over 4174 rows; observed run-to-run
+  spread for that same path is ~27.3-33.0s across sessions (~20%). What
+  this step adds to a MISS is one O(rows) signature build plus one
+  ~Map.set~ — sub-millisecond against a 30-second scan, with no mechanism
+  that could cost seconds. Worth re-checking if it ever reproduces
+  consistently.
+
+- *Why Step 4 alone.* The earlier 2026-08-24 session had already shown this
+  on ~perf-steps-3-4~ (= ~main~ + Steps 3 and 4 only): warm uniq-dropdown
+  open 29 700 ms -> 739 ms, filter/sort unchanged within noise, and
+  ~post-filter.html~/~post-sort.html~ byte-for-byte identical to ~main~'s
+  baselines. That entire win is Step 4's:
+  ~_updateAllColHeaderCounts()~ — the function Step 3 caches — has only two
+  call sites, both ~setTimeout(…, 0)~ at the tail of the collapse-column
+  init path, and neither is reachable from ~openUniqDrop()~. Steps 1-2, by
+  contrast, measured as a real tradeoff (+53-68% on narrow filters, +23% on
+  sort), so this branch deliberately carries neither.
+- *The one thing Step 4 needed from Step 3* is the helper
+  ~_visibleRowSetSignature(table)~ — a cheap O(rows) join of the visible
+  rows' ~data-mb-row-idx~ values, which is the cache key. It is carried here
+  standalone (9-line function); Step 3, if it lands later, keys off the same
+  primitive with no change.
+- *Implementation shape*, deliberately minimal: a per-(table, column)
+  ~WeakMap~ (~_uniqDropDataCache~) whose entries are tagged with the
+  signature they were computed against. All 5 passes are gated behind a
+  single ~_uniqCacheHit~ check computed once at the top of the function.
+  Each Map/counter *declaration* became a
+  ~_uniqCacheHit ? _uniqCacheHit.name : <original initial value>~ ternary in
+  place and each scan loop got an ~if (!_uniqCacheHit)~ guard — zero changes
+  to the hundreds of ~.set()~/~.get()~/~++~ call sites inside the loop
+  bodies. Keying by the live ~<table>~ element means a brand-new table (new
+  fetch, disk-load, multi-table sub-table) is always a cache miss with no
+  manual reset needed.
+- *Correctness hazard 1 — ~expandedCells~.* The "Cell structure" section's
+  collapsed/expanded split is read from ~expandedCells~ (a Map of
+  individually toggled cells), NOT re-derived from the visible-row
+  signature — so one cell's expand/collapse click changes those counts
+  WITHOUT changing which rows are visible. Fixed with
+  ~_invalidateUniqDropDataCache(table, colIndex)~ at all 5 places
+  ~expandedCells~ is mutated by user interaction (both branches of
+  ~_applyCollapseState()~, all 3 branches of ~ensureCollapseDelegate()~'s
+  inline per-cell click handling). A 6th mutation site
+  (~initCollapsableColumns()~'s one-time "start expanded by default"
+  pre-population) needs none — it runs before any dropdown cache for that
+  table could exist.
+- *Correctness hazard 2 — async-populated columns* (this is
+  PERFORMANCE.org's own Step 8 for the uniq-drop cache, folded in here
+  rather than left as a known-shipped bug). Several columns fill
+  previously-empty cells long after the initial render with no row
+  show/hide at all, which the signature cannot see. Added a table-wide
+  ~_invalidateUniqDropDataCacheForTable(table)~ and called it from
+  ~initReleaseEventsColumn()~ (both post-population re-scan sites),
+  ~initRelationshipsColumn()~ (completion handler) and
+  ~initPicardTaggerColumn()~; plus a per-cell
+  ~_invalidateUniqDropDataCache()~ in ~_artSetInlineSortKey()~, which stamps
+  the ~.mb-inline-art-sort-key~ sentinel the inline-art pass reads from ~8
+  CAA/EAA fetch-completion callbacks.
+- *Port-specific fix — 10 symbols the earlier branches missed.* The Step 4
+  code as it stands on ~perf-steps-1-4~ gates and stores 53 names but leaves
+  10 more that are ALSO populated inside the (now skipped) pass-1 loop
+  ungated and unstored: ~editorDeletedValueCounts~, ~editorAnyDeletedCount~,
+  ~editorRecordedNameValueCounts~, ~editorMembershipValueCounts~,
+  ~editorCommentValueCounts~, ~changelogHasMessageCount~,
+  ~changelogNoMessageCount~, ~releaseQualityHighCount~,
+  ~releaseQualityLowCount~, ~releaseQualityNormalCount~. On a warm reopen
+  they all read 0/empty, so the dropdown silently loses "🗑️ any deleted
+  editor", "📜 has changelog message", "🚫 no changelog specified",
+  "🟢/🟠/⚪ data quality" and every ~editordeleted~/~editorrecordedname~/
+  ~editormembership~/~editorcomment~ value entry — and because those same
+  counters gate the section-visibility conditions, a whole section can
+  collapse to empty. Identical failure mode to the ~roleTokenValueCounts~
+  miss recorded on the earlier branches. Fixed here; *still open on
+  ~perf-steps-1-4~* — see "Follow-ups" below.
+- *Not included*: making ~_visibleRowSetSignature~ order-independent. It
+  concatenates in DOM order, so a sort produces a different string and
+  forces a recompute. On ~main~ (no Step 1) a sort rebuilds the tbody
+  anyway, so this is a missed extra win, not a regression versus ~main~.
+  Doing it properly has to account for several cached values that are
+  themselves first-seen-in-row-order (~entityNameGlyphMap~,
+  ~entityNameTypeMap~, ~entityNameFlagMap~, ~valueItemSequence~), so it
+  belongs in its own step.
+
+**** Follow-ups
+
+- The 10-symbol gap above is a LIVE bug on ~perf-steps-1-4~ (and on
+  ~perf-steps-3-4~), not merely a porting hazard — it should be fixed there
+  too, or those branches rebased onto this one.
+- Step 3 (~_updateAllColHeaderCounts~ caching) remains unlanded on ~main~
+  and can now be added on top of this branch's ~_visibleRowSetSignature~
+  with no further groundwork.
+- The full multi-step analysis — Steps 1/2/5's measurements, the traced
+  forced-reflow root cause, the CSS-containment negative result, and the
+  2026-08-25 code-review findings — lives on the ~perf-steps-1-4~ copy of
+  this file. It was deliberately NOT merged here: it asserts things about
+  Steps 1/2/3/5 that are not true of ~main~.
 
 *** TODO Step 5: Lazy CAA/EAA loading (IntersectionObserver)
 

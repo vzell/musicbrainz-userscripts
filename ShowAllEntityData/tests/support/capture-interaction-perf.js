@@ -22,12 +22,13 @@
  * interaction's timing bracket never includes another sample's leftover
  * state.
  *
- * There is deliberately no separate "header-count cold vs warm" metric:
- * `_updateAllColHeaderCounts()` runs exactly once at initial render for a
- * single-table page and is never re-triggered by filter/sort on
- * `perf-steps-1-4` (Step 1 removed that call) — its cost differential
- * between branches is already folded into the filter/sort numbers below,
- * not a separable signal.
+ * There is deliberately no separate "header-count cold vs warm" metric.
+ * `_updateAllColHeaderCounts()` is not reachable from `openUniqDrop()` at
+ * all, so it cannot show up in the uniq-drop numbers; and on the branches
+ * that do change how often it runs (`perf-steps-1-4`, where Step 1 removed
+ * the per-keystroke call; a future Step 3, which would cache it) its cost
+ * differential is already folded into the filter/sort numbers below, not a
+ * separable signal.
  *
  * Currently only supports `--pageType=artist-events`; the interactions
  * (filter column/values, sort column, uniq-drop column) are specific to
@@ -64,10 +65,11 @@ const ARTIST_EVENTS = {
     seedGmValues: SEED_GM_VALUES,
     filterColumn: FILTER_COLUMN,
     // A different, never-before-typed value each sample avoids
-    // `_filterResultCache` hits (a separate cache, unrelated to Steps 1-4,
-    // present unmodified on both branches) skewing the comparison — five
-    // real country values from the fixture's own data, the first matching
-    // the correctness spec's own canonical FILTER_VALUE.
+    // `_filterResultCache` hits skewing the comparison. That is the filter
+    // pipeline's own row-match cache — unrelated to, and untouched by, any
+    // PERFORMANCE.org step, so it must be defeated identically on every
+    // branch being compared. Five real country values from the fixture's own
+    // data, the first matching the correctness spec's canonical FILTER_VALUE.
     filterValues: [FILTER_VALUE, 'Germany', 'Canada', 'Spain', 'Italy'],
     sortColumn: SORT_COLUMN,
     uniqDropColumn: UNIQ_DROP_COLUMN,
