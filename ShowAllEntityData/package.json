@@ -14,6 +14,7 @@
         "test:live:save-html": "SAVE_HTML=1 playwright test --project=chromium-live",
         "test:live:report:artist-releases": "playwright test tests/live/artist-releases-filter-sort.spec.js --project=chromium-live --reporter=json | node tests/support/generate-filtersort-report.js",
         "test:live:artist-releases:full": "TEST_PREFILTER_LOAD=1 TEST_COLVIS=1 playwright test tests/live/artist-releases-filter-sort.spec.js --project=chromium-live",
+        "test:live:report:releasegroup-releases": "playwright test tests/live/releasegroup-releases-filter-sort.spec.js --project=chromium-live --reporter=json | node tests/support/generate-releasegroup-releases-filtersort-report.js",
         "report": "playwright show-report",
         "auth:login": "node tests/support/auth-setup.js"
     },
