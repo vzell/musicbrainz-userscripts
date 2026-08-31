@@ -119,7 +119,9 @@ it", and that is how it first landed (branch ~filter-performance-fix~, later
 NOT actually need Step 3, though — see below.
 
 *Landed*: branch ~worktree-perf-step-4~, standalone, WITHOUT Step 3. See
-~ShowAllEntityData_CHANGELOG.wip.json~ WIP.1/WIP.2.
+~ShowAllEntityData_CHANGELOG.json~ v9.99.973 (the port), v9.99.974 (the
+async-column cache invalidations) and v9.99.975 (the CAA/EAA-cell one added
+while rebasing onto ~main~).
 
 - *Measured, 2026-08-31, same machine / same session / same script version
   (9.99.970)* — ~main~'s script vs this branch's, both captured back-to-back
