@@ -1,5 +1,29 @@
 [
   {
+    "version": "9.99.972",
+    "date": "2026-08-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "releasegroup-releases (and every other tableMode:'multi' page): an explicitly-uncollapsed CAA/EAA column cell silently re-collapsed on every filter keystroke (single-table pages were never affected). Root cause: v9.99.971's fix forces `_artBuildMultiRowArtCell()`'s FIRST-BUILD branch on every filter/sort re-render, and that branch hardcoded the new cell to collapsed, ignoring the `expandedCells` map the rest of the collapse/expand system already consults. Fixed by making that branch look up `expandedCells` too."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.971",
+    "date": "2026-08-31",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "releasegroup-releases (and every other tableMode:'multi' page): a column filter typed against the CAA/EAA column's per-image type/comment text (e.g. \"cassette case\") always matched zero rows, even when a row genuinely had matching artwork. Root cause: `renderGroupedTable()` always inserts `row.cloneNode(true)` copies into the DOM, so the \"source\" rows `runFilter()` matches against never received the async CAA/EAA enrichment applied to the live, rendered clone. Fixed by syncing each enriched image's search text back onto the source row via a new `_artSyncSearchTextToSourceRow()` helper."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.970",
     "date": "2026-08-30",
     "sections": [

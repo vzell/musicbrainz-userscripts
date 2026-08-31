@@ -1,0 +1,9 @@
+* adjust include
+
+adjust
+
+#+begin_example
+// @include      /^https:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/release\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?$/
+#+end_example
+
+to allow arbitrary query stings

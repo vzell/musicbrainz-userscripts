@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.970+2026-08-30
+// @version      9.99.972+2026-08-31
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -33834,6 +33834,15 @@ a { color: #1565c0; }`;
         const artSearchUl = element.querySelector('ul.mb-caa-art-ul');
         if (artSearchUl && artSearchUl.dataset.mbArtSearch) {
             textParts.push(artSearchUl.dataset.mbArtSearch);
+        } else if (element.dataset && element.dataset.mbArtSearchSync) {
+            // `tableMode: 'multi'` source rows (see `_artSyncSearchTextToSourceRow()`)
+            // never get the real `ul.mb-caa-art-ul` built on them — only the
+            // rendered clone does — so this plain dataset attribute is their
+            // only channel for the same search text. Deliberately NOT another
+            // `ul.mb-caa-art-ul` (which would falsely look "already built" to
+            // `_artBuildMultiRowArtCell()`'s own first-build/rebuild detection
+            // the next time this row is cloned for a fresh render).
+            textParts.push(element.dataset.mbArtSearchSync);
         }
 
         return normalizeExtractedText(textParts.join(' '));
@@ -61197,6 +61206,64 @@ a { color: #1565c0; }`;
      * @param {HTMLTableCellElement} artCell  The `<td>` containing the art anchor.
      * @param {Object[]}             images   Array of image objects from the API.
      */
+    /**
+     * Mirrors a CAA/EAA cell's freshly-built `ul.dataset.mbArtSearch` search
+     * text (see `_artBuildSearchText()`) onto the matching SOURCE row in
+     * `groupedRows`, so a later column-filter scan can actually find it.
+     *
+     * On `tableMode: 'multi'` pages, `renderGroupedTable()` ALWAYS inserts
+     * `row.cloneNode(true)` copies into the DOM — even on the very first
+     * render (unlike `renderFinalTable()`'s single-table path, which appends
+     * the original row objects directly) — so `groupedRows[i].rows[j]` (the
+     * "source" row `runFilter()`'s `matchOnly` pre-scan reads via
+     * `getCleanColumnText()`/`_cachedColText()`) is a PERMANENTLY separate
+     * DOM element from whatever this function builds on the connected,
+     * rendered clone. Without this sync, a CAA/EAA column's own per-image
+     * type/comment search text would only ever exist on the live clone —
+     * typing a plain-text filter against it (anything other than the
+     * `.mb-caa-sort-key` yes/no sentinel, which is stamped on the row
+     * BEFORE it is cloned and so needs no sync) would find ZERO rows,
+     * forever, no matter how long enrichment has finished. Confirmed live:
+     * this was a genuine, page-wide bug on every `releasegroup-releases`
+     * page, not a caching/timing race.
+     *
+     * Only copies the search-index attribute, not the full image-list
+     * markup — the source row is never itself rendered, so it only needs to
+     * stay matchable, not visually correct. Also drops any cached filter
+     * text for this (row, column) pair so a stale pre-sync read can't
+     * shadow the freshly-synced value on the very next filter keystroke.
+     *
+     * No-op on single-table pages (`allRows`' rows ARE the live DOM rows
+     * already, so no sync is needed) and when the corresponding source row
+     * can't be found (e.g. a page type with no `data-mb-row-idx`).
+     *
+     * @param {HTMLTableCellElement} liveArtCell   The connected, rendered CAA/EAA `<td>`.
+     * @param {string}               artSearchText The just-computed `_artBuildSearchText()` result.
+     */
+    function _artSyncSearchTextToSourceRow(liveArtCell, artSearchText) {
+        if (!activeDefinition || activeDefinition.tableMode !== 'multi') return;
+        const liveRow = liveArtCell.closest('tr');
+        const rowIdx = liveRow ? liveRow.dataset.mbRowIdx : undefined;
+        if (rowIdx === undefined) return;
+        const liveTable = liveArtCell.closest('table');
+        if (!liveTable) return;
+        const tableIndex = Array.from(document.querySelectorAll('table.tbl')).indexOf(liveTable);
+        const group = groupedRows[tableIndex];
+        if (!group) return;
+        const sourceRow = group.rows.find(r => r.dataset.mbRowIdx === rowIdx);
+        if (!sourceRow) return;
+        const colIdx = liveArtCell.cellIndex;
+        const sourceCell = sourceRow.cells[colIdx];
+        if (!sourceCell) return;
+        // A plain dataset attribute on the <td> itself — deliberately NOT a
+        // `ul.mb-caa-art-ul` element (see this function's own JSDoc for why
+        // that would corrupt the next rebuild once this source row is
+        // cloned again for a fresh render).
+        sourceCell.dataset.mbArtSearchSync = artSearchText;
+        const cached = _rowTextCache.get(sourceRow);
+        if (cached) { cached.cols[colIdx] = undefined; cached.full = null; }
+    }
+
     function _artBuildMultiRowArtCell(ctx, artCell, images) {
         // TEMP DEBUG (bug 2 investigation) — call counter and row lookup kept
         // unconditional (cheap, reused by the second TEMP DEBUG block below);
@@ -61251,6 +61318,7 @@ a { color: #1565c0; }`;
 
             // Refresh the search-index attribute with the new image set.
             existingUl.dataset.mbArtSearch = _artBuildSearchText(images);
+            _artSyncSearchTextToSourceRow(artCell, existingUl.dataset.mbArtSearch);
 
             const n = images.length;
 
@@ -61294,6 +61362,22 @@ a { color: #1565c0; }`;
             if (table) ensureCollapseDelegate(table);
         } else {
             // ── First build: wrap existing content in li-0, add image lis ─────
+            //
+            // Determine whether this cell should start expanded, mirroring the
+            // `expandedCells` lookup the regular multi-row-cell wiring already
+            // uses (see initCollapsableColumns()). On `tableMode: 'multi'`
+            // pages EVERY filter/sort re-render forces this FIRST-BUILD branch
+            // — the cloned source row never carries a real `ul.mb-caa-art-ul`
+            // (see `_artSyncSearchTextToSourceRow()`'s own JSDoc) — so without
+            // this lookup, an explicitly-expanded CAA cell would silently
+            // re-collapse on every keystroke. Confirmed live: single-table
+            // pages never hit this, since their clone already carries the
+            // fully-built `<ul>` and so takes the REBUILD branch above, which
+            // restores `wasExpanded` from the clone's own live DOM state.
+            const _rowIdx = _trDbg ? _trDbg.dataset.mbRowIdx : undefined;
+            const _ecKey  = _rowIdx !== undefined ? `${_rowIdx}:${_artColIdx}` : undefined;
+            const startExpanded = _ecKey !== undefined && expandedCells.get(_ecKey) === true;
+
             const ul = document.createElement('ul');
             ul.className = 'mb-caa-art-ul';
 
@@ -61303,10 +61387,12 @@ a { color: #1565c0; }`;
             while (artCell.firstChild) li0.appendChild(artCell.firstChild);
             ul.appendChild(li0);
 
-            // li-1..N: one per image, initially hidden.
+            // li-1..N: one per image, initially hidden — made visible
+            // immediately below when this cell was already expanded.
             images.forEach(img => {
                 const _imageLi = _artBuildImageLi(img);
                 _artHighlightImageLi(_imageLi, _artColIdx);
+                if (startExpanded) _imageLi.style.display = '';
                 ul.appendChild(_imageLi);
             });
 
@@ -61315,6 +61401,7 @@ a { color: #1565c0; }`;
             // Store a search-index string so getCleanColumnText() can match
             // image types and comments via column filters without polluting sort keys.
             ul.dataset.mbArtSearch = _artBuildSearchText(images);
+            _artSyncSearchTextToSourceRow(artCell, ul.dataset.mbArtSearch);
 
             // ── Inline expand / collapse button in li-0 ───────────────────────
             // Placed at the front of the summary row (li-0), in the same visual
@@ -61325,11 +61412,17 @@ a { color: #1565c0; }`;
             // injected; the artCell no longer needs mb-has-collapse-toggle.
             const n             = images.length;
             const expandBtn     = document.createElement('span');
-            expandBtn.dataset.caaExpandBtn = 'collapsed';
-            expandBtn.innerHTML = '&#9654;'; // ▶
+            if (startExpanded) {
+                expandBtn.dataset.caaExpandBtn = 'expanded';
+                expandBtn.innerHTML = '&#9660;'; // ▼
+                expandBtn.title = `Collapse all ${ctx.toggleLabel} (${n}) in this cell`;
+            } else {
+                expandBtn.dataset.caaExpandBtn = 'collapsed';
+                expandBtn.innerHTML = '&#9654;'; // ▶
+                expandBtn.title = `Show all ${ctx.toggleLabel} (${n}) in this cell`;
+            }
             expandBtn.style.cssText =
                 'cursor:pointer; margin-right:4px; color:#777; user-select:none;';
-            expandBtn.title = `Show all ${ctx.toggleLabel} (${n}) in this cell`;
             li0.insertBefore(expandBtn, li0.firstChild);
 
             // Ensure the tbody delegation listener is installed on this table.

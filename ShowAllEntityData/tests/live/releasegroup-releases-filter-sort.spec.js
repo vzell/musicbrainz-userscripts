@@ -615,14 +615,23 @@ test('sort-then-restore checkpoints (Official release + Promotion release)', { t
                 let after = (await getSubTableRowCounts(page)).find((g) => g.groupLabel === group.label);
                 expect(after.filtered).toBe(checkpoint.expectedCount);
 
-                // ALSO apply the CAA presence filter ("yes"/"no", the only
-                // plain-text-matchable state this column exposes — its rich
-                // per-image type/comment text, e.g. "Front"/"Booklet", is a
-                // DROPDOWN-DRIVEN exact-value feature instead, confirmed
-                // live: a typed substring search against it produces ZERO
-                // matches and ZERO .mb-column-filter-highlight spans,
-                // regardless of column). This narrows further and confirms
-                // the CAA presence column survives a sort/filter
+                // ALSO apply the CAA presence filter ("yes"/"no") — chosen
+                // here for a simple, deterministic narrowing target; the
+                // rich per-image type/comment text (e.g. "Front"/"Booklet")
+                // is exercised separately by
+                // releasegroup-releases-caa-type-comment-filter.spec.js.
+                // That text-search path used to be broken page-wide on
+                // EVERY tableMode:'multi' page — a typed substring search
+                // against it produced ZERO matches and ZERO
+                // .mb-column-filter-highlight spans regardless of column,
+                // root-caused to `renderGroupedTable()` always inserting
+                // `row.cloneNode(true)` copies (unlike the single-table
+                // path, which appends the original row objects), so the
+                // "source" rows `runFilter()` matches against never
+                // received the async CAA/EAA enrichment applied to the
+                // live, rendered clone. Fixed via `_artSyncSearchTextToSourceRow()`
+                // (ShowAllEntityData.user.js). This narrows further and
+                // confirms the CAA presence column survives a sort/filter
                 // interaction on this multi-table page too — a full
                 // v9.99.970-style CAA highlight-duplication guard would
                 // need the dropdown-driven mechanism instead (not
