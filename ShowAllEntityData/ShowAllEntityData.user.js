@@ -18298,6 +18298,38 @@
     }
 
     /**
+     * Resolves an alias-table "Locale" cell's own language text and primary-
+     * locale flag — the SAME parse `ColumnDataExtractor.localeParts` already
+     * performs to build the "Locale language"/"Primary locale" synthetic
+     * columns (see that function's own JSDoc for the native markup shape:
+     * plain locale text, optionally followed by a MusicBrainz `<span
+     * class="comment">primary</span>` wrapped in literal `" ("`/`")"` text
+     * nodes). Duplicated here (rather than reused) because `localeParts`
+     * returns synthetic `<td>` elements for the render pipeline, not a plain
+     * data object — this is the query-time counterpart, called directly
+     * against the ORIGINAL "Locale" `<td>`, mirroring
+     * `_findCellReleaseDataQuality()`'s own "native markup, column-name-
+     * gated" shape.
+     *
+     * Deliberately only called for the "Locale" column itself (gated by
+     * column name at the `openUniqDrop()` call site).
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?{language: string, primary: boolean}} `null` when `cell` is
+     *   falsy or has no locale text at all (some alias `Type`s, e.g. "Legal
+     *   name"/"Search hint", carry no Locale — an entirely empty cell).
+     */
+    function _findCellLocaleInfo(cell) {
+        if (!cell) return null;
+        const primary = !!cell.querySelector('span.comment');
+        const clone = cell.cloneNode(true);
+        clone.querySelectorAll('span.comment').forEach(c => c.remove());
+        const language = clone.textContent.replace(/\s*\(\s*\)\s*$/, '').trim();
+        if (!language) return null;
+        return { language, primary };
+    }
+
+    /**
      * Tests whether a table cell matches a "Cell structure" checkbox mode
      * from `openUniqDrop()`'s synthetic entries (`makeSynItem`/
      * `makeValueSynItem`/`makeInlineArtItem`) — the single source of truth
@@ -18692,6 +18724,28 @@
             // Fixed flag counterpart — the anchor carries `disabled-acoustid`
             // (unlinked from this recording, but not fully removed).
             return _findCellAcoustIdLinkStatus(cell) === 'unlinked';
+        }
+        if (mode.startsWith('localelanguage:')) {
+            // Compound mode — matches one "Locale" cell's own language text
+            // (e.g. "English", "Chinese (China)"), from
+            // _findCellLocaleInfo()'s own extraction.
+            const want = mode.slice(15);
+            const info = _findCellLocaleInfo(cell);
+            return !!info && info.language === want;
+        }
+        if (mode === 'locale-primary') {
+            // Fixed flag — true when this "Locale" cell's own MusicBrainz
+            // `<span class="comment">primary</span>` marker is present.
+            const info = _findCellLocaleInfo(cell);
+            return !!info && info.primary === true;
+        }
+        if (mode === 'locale-not-primary') {
+            // Fixed flag counterpart — a non-empty locale with no primary
+            // marker. Excludes cells with no locale at all (some alias
+            // `Type`s, e.g. "Legal name"/"Search hint", carry none) — see
+            // _findCellLocaleInfo()'s own JSDoc.
+            const info = _findCellLocaleInfo(cell);
+            return !!info && info.primary === false;
         }
         if (mode.startsWith('arttype:')) {
             // Compound mode (openUniqDrop()'s makeValueSynItem, the "CAA
@@ -35459,6 +35513,15 @@ a { color: #1565c0; }`;
         // two fixed structure-mode flags, same shape as releaseDataQuality
         // above.
         acoustidLinkStatus: { label: 'AcoustID info - Link status', glyph: '🆔' },
+        // "Locale info" — the alias-table "Locale" column's own facets:
+        // the language text itself (an open value set, "- Language") and
+        // whether MusicBrainz's own `<span class="comment">primary</span>`
+        // marker is present (a fixed 2-value flag, "- Primary") — see
+        // `_findCellLocaleInfo()`'s own JSDoc. Same "one flat cell, two
+        // independently-checkable facets" shape as Tracks info's own
+        // values-kind/multi-medium-flag split.
+        localeLanguage: { label: 'Locale info - Language', glyph: '🗣️' },
+        localePrimary:  { label: 'Locale info - Primary',  glyph: '🥇' },
     };
 
     /**
@@ -35489,6 +35552,7 @@ a { color: #1565c0; }`;
         'release-quality-high': 'releaseDataQuality', 'release-quality-low': 'releaseDataQuality',
         'release-quality-normal': 'releaseDataQuality',
         'acoustid-linked': 'acoustidLinkStatus', 'acoustid-unlinked': 'acoustidLinkStatus',
+        'locale-primary': 'localePrimary', 'locale-not-primary': 'localePrimary',
     };
 
     /**
@@ -35535,6 +35599,7 @@ a { color: #1565c0; }`;
         eventcancelled: 'eventCancelled',
         editordeleted: 'editorDeleted', editorrecordedname: 'editorRecordedName',
         editormembership: 'editorMembership', editorcomment: 'editorComment',
+        localelanguage: 'localeLanguage',
     };
 
     /**
@@ -36398,6 +36463,62 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights the exact matched value for a `localelanguage:` compound
+     * structure-mode filter — re-derives from `_findCellLocaleInfo()`
+     * directly (same "verify via the same extraction function before
+     * highlighting" pattern as `_highlightTagCountMatch()` above), then
+     * highlights the language text as a `^`-anchored prefix match: the
+     * language always leads the cell's own clean text (see
+     * `_findCellLocaleInfo()`'s own JSDoc — an optional "(primary)" suffix,
+     * if present, always trails it), so this is safe even when the language
+     * text itself legitimately contains its own parenthetical (e.g. "Chinese
+     * (China)").
+     *
+     * `'locale-not-primary'` (the sibling "Locale info - Primary" flag's
+     * negative half) gets no highlighter — an absence has nothing to point
+     * at, same reasoning as `'catalog-has-prefix'`/`'multi-medium'`/etc.
+     * (see the big dispatch comment in `testRowMatch`). `'locale-primary'`
+     * itself DOES get one — see `_highlightLocalePrimaryMatch()` below —
+     * since it corresponds to an exact visible `<span class="comment">`.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"localelanguage:English"`.
+     */
+    function _highlightLocaleLanguageMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(15);
+        if (!_want) return;
+        const _info = _findCellLocaleInfo(cell);
+        if (!_info || _info.language !== _want) return;
+        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        cell.normalize();
+        highlightCrossTag(cell, new RegExp(`^${_escaped}`, 'g'), 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights the "primary" marker's own text for a `locale-primary`
+     * fixed structure-mode filter — re-derives from `_findCellLocaleInfo()`
+     * directly (same "verify before highlighting" pattern as
+     * `_highlightEventCancelledMatch()` above), then scopes the highlight to
+     * the cell's own `span.comment` wrapper (mirroring that same function's
+     * "scope to the one element this value came from" approach) so only the
+     * bare word "primary" itself gets wrapped — not the surrounding "(" ")"
+     * — with zero risk of colliding with anything else in the cell.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     */
+    function _highlightLocalePrimaryMatch(cell) {
+        if (!cell) return;
+        const _info = _findCellLocaleInfo(cell);
+        if (!_info || !_info.primary) return;
+        const commentSpan = cell.querySelector('span.comment');
+        if (!commentSpan) return;
+        commentSpan.normalize();
+        highlightCrossTag(commentSpan, /primary/gi, 'mb-column-filter-highlight');
+    }
+
+    /**
      * Highlights the "(cancelled)" marker's own text for an
      * `entitycancelled:`/`eventcancelled:` compound structure-mode filter
      * — re-derives from `_findCellEventCancelled()` directly (same
@@ -37063,7 +37184,11 @@ a { color: #1565c0; }`;
                     // 'role:'/'roletoken:'/'editordeleted:'/'editor-any-deleted'/
                     // 'editorcomment:'/'changelog-no-message' and 'name-variation'
                     // structure modes DO correspond to exact visible content and
-                    // get highlighted; the other structure modes (empty/single/
+                    // get highlighted; 'localelanguage:' likewise gets one (see
+                    // _highlightLocaleLanguageMatch), and so does 'locale-primary'
+                    // (see _highlightLocalePrimaryMatch — its own visible
+                    // `span.comment` "primary" text); the other structure modes
+                    // (empty/single/
                     // collapsed/expanded/any/title-mismatch/inline-art-yes/no/
                     // 'editorrecordedname:'/'editormembership:' — both facts live
                     // exclusively inside a never-rendered `title` attribute — and
@@ -37071,7 +37196,8 @@ a { color: #1565c0; }`;
                     // is intentionally untracked verbatim, mirrors 'catalog-has-
                     // prefix' having no highlighter either — and 'release-quality-
                     // high'/'release-quality-low'/'release-quality-normal'/
-                    // 'acoustid-linked'/'acoustid-unlinked' — the marker span/
+                    // 'acoustid-linked'/'acoustid-unlinked'/
+                    // 'locale-not-primary' — the marker span/
                     // class is empty/decorative, nothing visible to
                     // highlight) operate on pure DOM/
                     // attribute state with no single corresponding visible
@@ -37111,6 +37237,10 @@ a { color: #1565c0; }`;
                                     _highlightPartOfSeriesNumberMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('trackspermedium:')) {
                                     _highlightTracksPerMediumMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('localelanguage:')) {
+                                    _highlightLocaleLanguageMatch(row.cells[f.idx], mode);
+                                } else if (mode === 'locale-primary') {
+                                    _highlightLocalePrimaryMatch(row.cells[f.idx]);
                                 } else if (mode.startsWith('eventdate:')) {
                                     _highlightEventDateMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('tagcount:')) {
@@ -47173,6 +47303,13 @@ a { color: #1565c0; }`;
         // JSDoc. Column-gated (isAcoustIdCol below).
         let acoustidLinkedCount   = _uniqCacheHit ? _uniqCacheHit.acoustidLinkedCount   : 0;
         let acoustidUnlinkedCount = _uniqCacheHit ? _uniqCacheHit.acoustidUnlinkedCount : 0;
+        // "Locale" column only (alias tables): distinct language values, and
+        // a fixed primary/not-primary flag pair — see
+        // `_findCellLocaleInfo()`'s own JSDoc. Column-gated (isLocaleCol
+        // below).
+        const localeLanguageValueCounts = _uniqCacheHit ? _uniqCacheHit.localeLanguageValueCounts : new Map();
+        let localePrimaryCount    = _uniqCacheHit ? _uniqCacheHit.localePrimaryCount    : 0;
+        let localeNotPrimaryCount = _uniqCacheHit ? _uniqCacheHit.localeNotPrimaryCount : 0;
         // Distinct event-role values (e.g. "main performer", "guest
         // performer", "support act", "participant", "host") from a native
         // MusicBrainz `.artist-roles` list — the query-time counterpart of
@@ -47268,6 +47405,11 @@ a { color: #1565c0; }`;
         // _findCellAcoustIdLinkStatus()'s own JSDoc) — name-only, no
         // page-type check, same convention as isReleaseCol above.
         const isAcoustIdCol = _colHeaderName === 'AcoustID';
+        // Column-name gate for the alias-table "Locale" column's own
+        // language/primary-flag facets (see `_findCellLocaleInfo()`'s own
+        // JSDoc) — name-only, no page-type check, same convention as
+        // isReleaseCol/isAcoustIdCol above.
+        const isLocaleCol = _colHeaderName === 'Locale';
         // 'tag-value-entity' is tableMode: 'single' — its resolved
         // entityFeatures block is merged into activeDefinition once, and
         // activeColumnExtractors is built once from it (not re-assigned
@@ -47453,6 +47595,14 @@ a { color: #1565c0; }`;
                     const _linkStatus = _findCellAcoustIdLinkStatus(cell);
                     if (_linkStatus === 'linked')   acoustidLinkedCount++;
                     if (_linkStatus === 'unlinked') acoustidUnlinkedCount++;
+                }
+                if (isLocaleCol) {
+                    const _localeInfo = _findCellLocaleInfo(cell);
+                    if (_localeInfo) {
+                        localeLanguageValueCounts.set(_localeInfo.language, (localeLanguageValueCounts.get(_localeInfo.language) || 0) + 1);
+                        if (_localeInfo.primary) localePrimaryCount++;
+                        else                     localeNotPrimaryCount++;
+                    }
                 }
                 if (isEventCol) {
                     const _eventDates = _findCellEventDateParts(cell);
@@ -48445,6 +48595,7 @@ a { color: #1565c0; }`;
                 changelogHasMessageCount, changelogNoMessageCount,
                 releaseQualityHighCount, releaseQualityLowCount, releaseQualityNormalCount,
                 acoustidLinkedCount, acoustidUnlinkedCount,
+                localeLanguageValueCounts, localePrimaryCount, localeNotPrimaryCount,
                 eventRoleValueCounts, roleTokenValueCounts, artTypeValueCounts, artCommentValueCounts,
                 flagIconMap, isRelCellCol, relIconCounts,
                 inlineArtType, inlineArtYes, inlineArtNo,
@@ -48465,6 +48616,7 @@ a { color: #1565c0; }`;
             titleMismatchCount, nameVariationCount,
             multiMediumCount, catalogHasPrefixCount, catalogNoPrefixCount, catalogNoneCount,
             acoustidLinkedCount, acoustidUnlinkedCount,
+            localePrimaryCount, localeNotPrimaryCount,
             inlineArtYes, inlineArtNo,
             ...attrValueCounts.values(), ...taskValueCounts.values(),
             ...dateValueCounts.values(), ...instrumentValueCounts.values(),
@@ -48492,7 +48644,8 @@ a { color: #1565c0; }`;
             ...countryNameValueCounts.values(), ...countryCodeValueCounts.values(),
             ...tracksPerMediumValueCounts.values(), ...catalogPrefixValueCounts.values(),
             ...partOfSeriesNameValueCounts.values(), ...partOfSeriesDateValueCounts.values(),
-            ...partOfSeriesNumberValueCounts.values()
+            ...partOfSeriesNumberValueCounts.values(),
+            ...localeLanguageValueCounts.values()
         )).length + 2);
 
         // synBox is inserted between qfBar and listBox; always present but
@@ -48797,7 +48950,7 @@ a { color: #1565c0; }`;
          * can be surfaced for every column type (plain text, extractor synthetic,
          * etc.), not only for columns with multi-row / collapsable structure.
          *
-         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | 'multi-medium' | 'catalog-has-prefix' | 'catalog-no-prefix' | 'catalog-none' | 'editor-any-deleted' | 'changelog-has-message' | 'changelog-no-message' | 'acoustid-linked' | 'acoustid-unlinked'
+         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | 'multi-medium' | 'catalog-has-prefix' | 'catalog-no-prefix' | 'catalog-none' | 'editor-any-deleted' | 'changelog-has-message' | 'changelog-no-message' | 'acoustid-linked' | 'acoustid-unlinked' | 'locale-primary' | 'locale-not-primary'
          * @param {string} label   - Human-readable display text
          * @param {number} count   - Number of visible rows matching this mode
          * @param {string} [extraLabelClass] - An extra CSS class to add to
@@ -48866,7 +49019,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -48986,6 +49139,7 @@ a { color: #1565c0; }`;
                  : kind === 'editorrecordedname' ? '» recorded name: '
                  : kind === 'editormembership'   ? '» membership: '
                  : kind === 'editorcomment'      ? '» comment: '
+                 : kind === 'localelanguage'     ? '» language: '
                  : '» ');
             if (kind === 'arttype') {
                 // Render the value as an actual pill (see
@@ -49164,6 +49318,7 @@ a { color: #1565c0; }`;
         const _sortedRoleTokenValues = Array.from(roleTokenValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedArtTypeValues    = Array.from(artTypeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedArtCommentValues = Array.from(artCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedLocaleLanguageValues = Array.from(localeLanguageValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _hasValueEntries = _sortedAttrValues.length > 0 || _sortedTaskValues.length > 0 ||
             _sortedDateValues.length > 0 || _sortedEventDateValues.length > 0 || _sortedInstrumentValues.length > 0 ||
             _sortedAltNameValues.length > 0 ||
@@ -49178,13 +49333,15 @@ a { color: #1565c0; }`;
             _sortedEditorDeletedValues.length > 0 || _sortedEditorRecordedNameValues.length > 0 ||
             _sortedEditorMembershipValues.length > 0 || _sortedEditorCommentValues.length > 0 ||
             _sortedRoleValues.length > 0 || _sortedRoleTokenValues.length > 0 ||
-            _sortedArtTypeValues.length > 0 || _sortedArtCommentValues.length > 0;
+            _sortedArtTypeValues.length > 0 || _sortedArtCommentValues.length > 0 ||
+            _sortedLocaleLanguageValues.length > 0;
 
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 ||
             multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
             editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
             releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
-            acoustidLinkedCount > 0 || acoustidUnlinkedCount > 0 || _hasValueEntries)) {
+            acoustidLinkedCount > 0 || acoustidUnlinkedCount > 0 ||
+            localePrimaryCount > 0 || localeNotPrimaryCount > 0 || _hasValueEntries)) {
              // "empty cells" pinned first; remaining entries in ascending complexity order.
             // For CAA/EAA columns the generic structural labels are replaced with more
             // descriptive artwork-presence labels that match user intent:
@@ -49218,6 +49375,10 @@ a { color: #1565c0; }`;
             // extraLabelClass param (see that param's own JSDoc).
             if (acoustidLinkedCount > 0)   makeSynItem('acoustid-linked', '🔗 linked', acoustidLinkedCount);
             if (acoustidUnlinkedCount > 0) makeSynItem('acoustid-unlinked', '🚫 unlinked', acoustidUnlinkedCount, 'disabled-acoustid');
+            // "Locale info - Primary" — fixed 2-value flag pair, mirrors
+            // release-quality-*/acoustid-* above.
+            if (localePrimaryCount > 0)    makeSynItem('locale-primary', '🥇 primary', localePrimaryCount);
+            if (localeNotPrimaryCount > 0) makeSynItem('locale-not-primary', '◦ not primary', localeNotPrimaryCount);
             // Credit-role columns' per-attribute / per-task / per-date /
             // per-instrument dynamic value entries (see attrValueCounts/
             // taskValueCounts/dateValueCounts/instrumentValueCounts' own
@@ -49259,11 +49420,13 @@ a { color: #1565c0; }`;
             _sortedRoleTokenValues.forEach(v => makeValueSynItem('roletoken', v, roleTokenValueCounts.get(v)));
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
             _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
+            _sortedLocaleLanguageValues.forEach(v => makeValueSynItem('localelanguage', v, localeLanguageValueCounts.get(v)));
         } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 ||
                    multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
                    editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
                    releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
-                   acoustidLinkedCount > 0 || acoustidUnlinkedCount > 0 || _hasValueEntries) {
+                   acoustidLinkedCount > 0 || acoustidUnlinkedCount > 0 ||
+                   localePrimaryCount > 0 || localeNotPrimaryCount > 0 || _hasValueEntries) {
             // Non-collapsable column (or a collapsable one with zero rows in
             // any multi-row-family state this render).
             if (emptyCellCount > 0)     makeSynItem('empty',          '○ empty cells',           emptyCellCount);
@@ -49281,6 +49444,8 @@ a { color: #1565c0; }`;
             if (releaseQualityNormalCount > 0) makeSynItem('release-quality-normal', '⚪ normal data quality', releaseQualityNormalCount);
             if (acoustidLinkedCount > 0)   makeSynItem('acoustid-linked', '🔗 linked', acoustidLinkedCount);
             if (acoustidUnlinkedCount > 0) makeSynItem('acoustid-unlinked', '🚫 unlinked', acoustidUnlinkedCount, 'disabled-acoustid');
+            if (localePrimaryCount > 0)    makeSynItem('locale-primary', '🥇 primary', localePrimaryCount);
+            if (localeNotPrimaryCount > 0) makeSynItem('locale-not-primary', '◦ not primary', localeNotPrimaryCount);
             _sortedAttrValues.forEach(v => makeValueSynItem('attr', v, attrValueCounts.get(v)));
             _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
@@ -49316,6 +49481,7 @@ a { color: #1565c0; }`;
             _sortedRoleTokenValues.forEach(v => makeValueSynItem('roletoken', v, roleTokenValueCounts.get(v)));
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
             _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
+            _sortedLocaleLanguageValues.forEach(v => makeValueSynItem('localelanguage', v, localeLanguageValueCounts.get(v)));
         }
 
         // ── Relationships column: unique icon entries ─────────────────────────────────────────────
@@ -49810,6 +49976,9 @@ a { color: #1565c0; }`;
         if (mode === 'release-quality-normal') return '⚪ normal data quality';
         if (mode === 'acoustid-linked')   return '🔗 linked';
         if (mode === 'acoustid-unlinked') return '🚫 unlinked';
+        if (mode.startsWith('localelanguage:')) return `» language: ${mode.slice(15)}`;
+        if (mode === 'locale-primary')     return '🥇 primary';
+        if (mode === 'locale-not-primary') return '◦ not primary';
         return '▶◀ multi-row: any';
     }
 
@@ -49881,6 +50050,9 @@ a { color: #1565c0; }`;
         if (mode === 'release-quality-normal') return '⚪ = no data-quality marker is present at all — MusicBrainz\'s default/unrated quality state.';
         if (mode === 'acoustid-linked') return '🔗 = this AcoustID\'s own link is still active for this recording (no `disabled-acoustid` class).';
         if (mode === 'acoustid-unlinked') return '🚫 = MusicBrainz\'s own `disabled-acoustid` class — this AcoustID has been unlinked from this recording, but the submission itself isn\'t removed.';
+        if (mode.startsWith('localelanguage:')) return 'One "Locale" cell\'s own language text (e.g. "English", "Chinese (China)").';
+        if (mode === 'locale-primary') return '🥇 = this alias\'s "Locale" cell carries MusicBrainz\'s own `(primary)` marker for its locale.';
+        if (mode === 'locale-not-primary') return '◦ = a non-empty locale with no `(primary)` marker. Excludes alias `Type`s with no locale at all (e.g. "Legal name", "Search hint").';
         return '';
     }
 
