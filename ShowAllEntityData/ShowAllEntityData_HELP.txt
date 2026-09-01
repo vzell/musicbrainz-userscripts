@@ -268,8 +268,14 @@ every distinct non-empty value currently visible in that column.
                        here when relevant: "Entity info - Tag count"
                        (tag-value-entity's own per-entity-kind column) and
                        "Entity info - Event cancelled" (the Event column on
-                       area/place/artist-events pages and the Events
-                       sub-table of tag/user-tag pages)
+                       area/place/artist-events pages only — a single-
+                       entity-kind listing where "Event" IS the entity)
+    — 📅/🚫 Event info — the Event column's own facets on a MULTI-entity-kind
+                       page (tag/user-tag pages' "Events" sub-table, and a
+                       user's own /ratings/event/ page): "- Event date" (one
+                       entry per distinct event date) and "- Event cancelled"
+                       (MusicBrainz's own native `(cancelled)` marker,
+                       matching/highlighting just that word)
     — 📏/🔢/🧩/💿 Format info — one independently-collapsible sub-section per
                        format facet: "- Size" (distinct disc sizes, e.g.
                        7"/10"/12"), "- Medium count", "- Combo" (an exact

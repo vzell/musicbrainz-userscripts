@@ -18219,7 +18219,8 @@
      * specific page types that request it (gated at the `openUniqDrop()`
      * call site, since this DOM marker is present on several OTHER page
      * types too whose dropdown behavior isn't being changed here) — see
-     * debug/entity-event.html, debug/cancelled.html, debug/tag-2024.html.
+     * debug/entity-event.html, debug/cancelled.html, debug/tag-2024.html,
+     * debug/user-ratings-event.html.
      *
      * @param {?HTMLTableCellElement} cell
      * @returns {?string} the marker text (normally "cancelled"), or null if absent
@@ -35397,8 +35398,9 @@ a { color: #1565c0; }`;
         // artist-events only (see MB_UNIQ_KIND_TO_SECTION's 'entitycancelled'
         // key); a plain "Event info - Event cancelled" (below) is used
         // instead when the surrounding page IS one of the "Event info"
-        // family (tag-value/user-tag-value), since those pages already
-        // have an "Event info" section for the event's own date.
+        // family (tag-value/user-tag-value/user-ratings-type), since those
+        // pages already have an "Event info" section for the event's own
+        // date.
         entityEventCancelled:     { label: 'Entity info - Event cancelled',    glyph: '🚫' },
         // 'Entity info - Role' — the decomposed, OR-matching counterpart of
         // the standalone 'Roles' section below (see MB_UNIQ_KIND_TO_SECTION's
@@ -47432,13 +47434,17 @@ a { color: #1565c0; }`;
         // have no "Event" column at all, this is null regardless of page
         // type. Deliberately scoped to only the page types that requested
         // this (see debug/entity-event.html, debug/cancelled.html,
-        // debug/tag-2024.html) — NOT every page type with a 'cancelledEvent'
-        // extractor (e.g. user-ratings/search/collections-releases/
-        // series-releases/user-tag-value-entity also have one but were not
-        // asked for).
+        // debug/tag-2024.html, debug/user-ratings-event.html) — NOT every
+        // page type with a 'cancelledEvent' extractor (e.g. search/
+        // collections-releases/series-releases/user-tag-value-entity also
+        // have one but were not asked for). 'user-ratings-type' shares
+        // 'tag-value'/'user-tag-value''s own "Event info - Event cancelled"
+        // kind (not 'entitycancelled') — same shape: a multi-entity-kind
+        // page with its own "Events" sub-table, not a single-entity-kind
+        // *-events listing.
         const _eventCancelledKind = !isEventCol ? null
             : ['area-events', 'place-events', 'artist-events'].includes(activeDefinition && activeDefinition.type) ? 'entitycancelled'
-            : ['tag-value', 'user-tag-value'].includes(activeDefinition && activeDefinition.type) ? 'eventcancelled'
+            : ['tag-value', 'user-tag-value', 'user-ratings-type'].includes(activeDefinition && activeDefinition.type) ? 'eventcancelled'
             : null;
         const tbody = table.tBodies[0];
         if (!_uniqCacheHit && tbody) {
