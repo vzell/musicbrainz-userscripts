@@ -53,6 +53,23 @@
               with no wrapper. Kept side-by-side as the control case that
               already worked before the fix, so a regression in the
               no-wrapper path would also be caught.
+            - #bowie-solo-cell: a SOLO "David Bowie (English singer‐
+              songwriter)" Artist-column cell (debug/row-not-filtered.html —
+              no joined credit at all), still "mp"-wrapped since Bowie has
+              open edits. `name` must resolve to just "David Bowie", not the
+              whole bdi text including the comment — a second, distinct bug
+              _findCellEntityRefs()'s bdi-resolution fix alone did not cover
+              (the comment leaked into `name` because the single-entity bdi
+              still has a `.comment` sibling INSIDE it), which broke both
+              the "» name: David Bowie" row filter (comparing against a
+              comment-polluted name) and merging this row's contribution
+              into the SAME "Entity info - Artist name: David Bowie" entry
+              the joined #qb-cell row offers.
+            - #gilmour-solo-cell: a SOLO "David Gilmour (Pink Floyd)" cell
+              with NO "mp" wrapper at all (Gilmour has no open edits) — the
+              control proving the comment-leak bug above is independent of
+              "mp"/open-edits entirely: any solo entity whose comment is
+              nested inside the SAME <bdi> as its own <a> hits it.
         -->
         <table id="entity-refs-test-cells">
             <tbody>
@@ -61,6 +78,12 @@
                 </tr>
                 <tr>
                     <td id="jl-yo-cell"><bdi><a href="/artist/4d5447d7-c61c-4120-ba1b-d7f471d385b9" title="Lennon, John (The Beatles)">John Lennon</a>&nbsp;<span class="comment"><bdi>(The Beatles)</bdi></span> &amp; <a href="/artist/b0b33754-a664-43b7-ba00-be0dc4ec2396" title="Ono, Yoko (Japanese&#8208;American musician and artist)">Yoko Ono</a>&nbsp;<span class="comment"><bdi>(Japanese&#8208;American musician and artist)</bdi></span></bdi></td>
+                </tr>
+                <tr>
+                    <td id="bowie-solo-cell"><bdi><span class="mp"><a href="/artist/5441c29d-3602-4898-b1a1-b77fa23b8e50" title="Bowie, David (English singer&#8208;songwriter)">David Bowie</a></span> <span class="comment"><bdi>(English singer&#8208;songwriter)</bdi></span></bdi></td>
+                </tr>
+                <tr>
+                    <td id="gilmour-solo-cell"><bdi><a href="/artist/1dce970e-34bc-48b2-ab51-48d87544a4c2" title="Gilmour, David (Pink Floyd)">David Gilmour</a>&nbsp;<span class="comment"><bdi>(Pink Floyd)</bdi></span></bdi></td>
                 </tr>
             </tbody>
         </table>

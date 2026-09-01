@@ -47,4 +47,55 @@ test.describe('_findCellEntityRefs()/_findCellEntityCommentParts(): "mp" open-ed
             { name: 'Yoko Ono', comment: 'Japanese‐American musician and artist', alias: null, type: 'artist', glyphClass: 'artistlink' },
         ]);
     });
+
+    test('a SOLO commented entity resolves to its bare name, not the whole bdi (name+comment)', async ({ page }) => {
+        await loadUserscriptPage(page, { url: ARTIST_RECORDINGS_URL, fixtureFile: FIXTURE_FILE, testMode: true });
+
+        // #bowie-solo-cell ("mp"-wrapped) and #gilmour-solo-cell (no
+        // wrapper) must both resolve `name` to the bare artist name alone —
+        // this is exactly what _cellMatchesStructureMode()'s `name:` row
+        // filter compares against (`ref.name === want`), so a leaked
+        // comment here is what let the "» name: David Bowie" checkbox
+        // match the joined #qb-cell row but silently skip every solo
+        // "David Bowie (English singer‐songwriter)" row.
+        const bowieSoloRefs = await page.evaluate(() => window.__saTest.findCellEntityRefs('#bowie-solo-cell'));
+        expect(bowieSoloRefs).toEqual([
+            { type: 'artist', glyphClass: 'artistlink', href: '/artist/5441c29d-3602-4898-b1a1-b77fa23b8e50', name: 'David Bowie', isBare: false, hasFlag: false },
+        ]);
+
+        const gilmourSoloRefs = await page.evaluate(() => window.__saTest.findCellEntityRefs('#gilmour-solo-cell'));
+        expect(gilmourSoloRefs).toEqual([
+            { type: 'artist', glyphClass: 'artistlink', href: '/artist/1dce970e-34bc-48b2-ab51-48d87544a4c2', name: 'David Gilmour', isBare: false, hasFlag: false },
+        ]);
+
+        // `isBare: false` above means these now also feed
+        // entityCommentValueCounts (via _findCellEntityCommentParts(), which
+        // skips isBare refs) — so the solo row's own comment is no longer
+        // dropped either.
+        const bowieSoloParts = await page.evaluate(() => window.__saTest.findCellEntityCommentParts('#bowie-solo-cell'));
+        expect(bowieSoloParts).toEqual([
+            { name: 'David Bowie', comment: 'English singer‐songwriter', alias: null, type: 'artist', glyphClass: 'artistlink' },
+        ]);
+
+        const gilmourSoloParts = await page.evaluate(() => window.__saTest.findCellEntityCommentParts('#gilmour-solo-cell'));
+        expect(gilmourSoloParts).toEqual([
+            { name: 'David Gilmour', comment: 'Pink Floyd', alias: null, type: 'artist', glyphClass: 'artistlink' },
+        ]);
+    });
+
+    test('the same "» name:" value matches both a joined AND a solo occurrence of the same entity', async ({ page }) => {
+        await loadUserscriptPage(page, { url: ARTIST_RECORDINGS_URL, fixtureFile: FIXTURE_FILE, testMode: true });
+
+        // Mirrors _cellMatchesStructureMode()'s `name:` mode:
+        // `_findCellEntityRefs(cell).some(ref => ref.name === want)`.
+        const matchesDavidBowie = async (selector) => page.evaluate(
+            (sel) => window.__saTest.findCellEntityRefs(sel).some((ref) => ref.name === 'David Bowie'),
+            selector,
+        );
+
+        expect(await matchesDavidBowie('#qb-cell')).toBe(true);
+        expect(await matchesDavidBowie('#bowie-solo-cell')).toBe(true);
+        expect(await matchesDavidBowie('#gilmour-solo-cell')).toBe(false);
+        expect(await matchesDavidBowie('#jl-yo-cell')).toBe(false);
+    });
 });

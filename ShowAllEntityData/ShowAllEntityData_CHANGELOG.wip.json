@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.2",
+        "date": "2026-09-02",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fixed by WIP.1: a SOLO entity (not joined with anyone else) whose own MusicBrainz-rendered `<bdi>` also carries a sibling `.comment` span — e.g. \"David Bowie (English singer‐songwriter)\" appearing alone in the Artist column, not just in the \"Queen & David Bowie\" joined credit — had its name computed as the WHOLE bdi text (name + comment combined) instead of just its own name. This broke the \"» name: David Bowie\" row filter for every solo occurrence (comparing the clean selected value against a comment-polluted name never matched), and kept those rows' name/comment from merging into the same \"Entity info - Artist name\"/\"Entity info - Comment\" entries the joined row already offered. `_findCellEntityRefs()` now always scopes an entity's `name`/`nameNode` to its own anchor alone whenever the governing `<bdi>` is an ancestor of it — never the whole bdi — regardless of whether that bdi is shared with another joined entity."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.1",
         "date": "2026-09-01",
         "sections": [

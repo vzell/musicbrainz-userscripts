@@ -17077,15 +17077,28 @@
      * (e.g. every entity in a "Recorded at place" chain, or a credit with a
      * trailing date range/attribute).
      *
-     * A `<bdi><a>` cell's `<bdi>` can wrap MULTIPLE joined entities in one
-     * credit (e.g. "Bruce Springsteen & The E Street Band" — see
-     * `_findCellJoinPhrases()`), not just one. When it does, `name`/
-     * `nameNode` are scoped to that ONE `<a>` alone (`bdiShared`), not the
-     * whole shared `<bdi>` — otherwise every joined entity would report the
-     * full combined credit string as its own "name", making `isBare`
-     * trivially true for all of them and silently hiding every one from
-     * `openUniqDrop()`'s "Entity info" section (see debug/join.html,
-     * debug/and.html, debug/slash.html).
+     * A `<bdi><a>` cell's `<bdi>` (the ANCESTOR-of-`a` shape — `parentBdi`
+     * below) is NEVER treated as `name`'s own source, even for a single,
+     * unshared entity: it can carry a sibling `.comment` span for that same
+     * entity (e.g. debug/row-not-filtered.html's solo "David Bowie (English
+     * singer‐songwriter)" cell — MusicBrainz nests the comment INSIDE the
+     * bdi there, not as a cell-level sibling outside it) or, when the bdi
+     * wraps MULTIPLE joined entities in one credit (e.g. "Bruce Springsteen
+     * & The E Street Band" — see `_findCellJoinPhrases()`), the OTHER
+     * entities' own text. Either way, `name`/`nameNode` are always scoped to
+     * `a` (or its wrapping `<span class="name-variation">`) ALONE whenever
+     * `parentBdi` is set — never the whole bdi — so a comment can never leak
+     * into `name` (this bit `_cellMatchesStructureMode()`'s `name:` row
+     * filter, which is documented to match "irrespective of the comment
+     * column" but was comparing against a comment-polluted `ref.name` for
+     * exactly this shape) and every joined entity still reports only its
+     * own name (not the full combined credit string, which would make
+     * `isBare` trivially true for all of them and hide every one from
+     * `openUniqDrop()`'s "Entity info" section — see debug/join.html,
+     * debug/and.html, debug/slash.html). Only the REVERSE
+     * `<a><bdi>Name</bdi></a>` nesting (`parentBdi` unset, `bdi` resolved as
+     * a DESCENDANT of `a` instead) uses the whole `bdi` text — that shape
+     * never nests a sibling comment inside it.
      *
      * A jesus2099 `<span class="name-variation">` can also sit directly
      * between `<bdi>` and `<a>` (see `_findCellNameVariations()`), and
@@ -17122,38 +17135,20 @@
     function _findCellEntityRefs(cell) {
         if (!cell) return [];
         const out = [];
-        // Used only to test a BDI SIBLING <a> for entity-ref eligibility
-        // (see bdiShared below) — the main per-anchor check right below
-        // stays inline/unchanged to keep this a minimal, low-risk fix.
-        const isEntityHref = (href) => {
-            const sm = (href || '').match(/^\/([a-z][a-z-]*)\/[0-9a-f-]+/i);
-            return !!(sm && _ENTITY_TYPE_GLYPH[sm[1]]);
-        };
         cell.querySelectorAll('a[href]').forEach(a => {
             const href = a.getAttribute('href') || '';
             const m = href.match(/^\/([a-z][a-z-]*)\/[0-9a-f-]+/i);
             const glyphClass = m && _ENTITY_TYPE_GLYPH[m[1]];
             if (!glyphClass) return;
             // <a><bdi> (common) vs. <bdi><a> (native "Artist" column). A
-            // <bdi> can also wrap MULTIPLE joined entities in one credit
-            // (e.g. "Bruce Springsteen & The E Street Band" — see
-            // _findCellJoinPhrases()) — in that case each <a>'s own name/
-            // highlight scope must be the <a> ITSELF, not the whole shared
-            // <bdi>, or every joined entity would wrongly report the full
-            // combined credit text as its own name — and `isBare` would
-            // then always come out true (the "name" trivially equals the
-            // whole cell's own text), silently hiding every joined entity
-            // from the "Entity info" section entirely (see debug/join.html,
-            // debug/and.html, debug/slash.html).
-            //
-            // A jesus2099 <span class="name-variation"> can also sit
-            // directly between <bdi> and <a> (see _findCellNameVariations()),
-            // and MusicBrainz's own native markup can wrap a credited name in
+            // jesus2099 <span class="name-variation"> can also sit directly
+            // between <bdi> and <a> (see _findCellNameVariations()), and
+            // MusicBrainz's own native markup can wrap a credited name in
             // <span class="mp"> when that entity currently has open/pending
-            // edits (an orange-highlight marker, unrelated to credit
-            // position — see debug/rock-on-recordings.html's "Queen & David
-            // Bowie" cell, where only Bowie's <a> gets this wrapper). Rather
-            // than special-case each wrapper shape, walk up from `a` itself
+            // edits (an orange-highlight marker — see
+            // debug/rock-on-recordings.html's "Queen & David Bowie" cell,
+            // where only Bowie's <a> gets this wrapper). Rather than
+            // special-case each wrapper shape, walk up from `a` itself
             // (through any number of them) to the nearest ANCESTOR <bdi>,
             // bounded to `cell` so an unrelated <bdi> belonging to some
             // outer, unconnected ancestor is never picked up. A
@@ -17166,9 +17161,16 @@
             const parentBdi = (closestBdi && cell.contains(closestBdi)) ? closestBdi : null;
             const bdi = parentBdi || a.querySelector('bdi');
             if (!bdi) return;
-            const bdiShared = !!parentBdi && Array.from(parentBdi.querySelectorAll('a[href]'))
-                .filter(sib => isEntityHref(sib.getAttribute('href'))).length > 1;
-            const name = getCleanColumnText(bdiShared ? a : bdi);
+            // `parentBdi` set (the ANCESTOR-of-`a` shape) → scope to `a`
+            // ALONE, never the whole `bdi` — it can carry a sibling
+            // `.comment` for this SAME entity (e.g. debug/row-not-
+            // filtered.html's solo "David Bowie (English singer‐
+            // songwriter)" cell nests the comment INSIDE the bdi, not as a
+            // cell-level sibling), or another joined entity's own text (see
+            // this function's own top JSDoc). Only the REVERSE
+            // `<a><bdi>Name</bdi></a>` nesting (`parentBdi` unset) is safe
+            // to read as the whole `bdi` — that shape never nests a comment.
+            const name = getCleanColumnText(parentBdi ? (nameVariationSpan || a) : bdi);
             if (!name) return;
             // Prefer the wrapping <span class="name-variation"> (an alias
             // credit) so highlighting covers MusicBrainz's own underline
@@ -17176,7 +17178,7 @@
             // `_recordedAtDdAnchor` already use elsewhere in this file.
             const nameNode = nameVariationSpan
                 ? nameVariationSpan
-                : (bdiShared ? a : (bdi.contains(a) ? bdi : a));
+                : (parentBdi ? a : bdi);
             const container = a.closest('li') || cell;
             const flagEl = m[1] !== 'area' ? null :
                 (a.closest('.flag') ||
@@ -17324,20 +17326,19 @@
      * debug/rock-on-recordings.html's "David Bowie", who ended up wrongly
      * carrying Queen's "UK rock group"). Instead, `ref.nameNode` is walked
      * up to the topmost ancestor still inside its own governing `<bdi>`
-     * (`ref.nameNode.closest('bdi')`, the same shared-`<bdi>` scope
-     * `_findCellEntityRefs()`'s `bdiShared` computes over) — that ancestor
-     * is this entity's own "credit segment" root (`a` itself when nothing
-     * wraps it, or its wrapping `<span class="mp">`/similar when
-     * something does) — and only that segment's own immediate
-     * `nextElementSibling`, if it IS a `.comment` span, is used (`null`
-     * otherwise, rather than guessing). No `<bdi>` scope at all (a shape
-     * `_findCellEntityRefs()` reaches via the reverse
-     * `<a><bdi>Name</bdi></a>` nesting, never bdi-wrapped, so this
-     * multi-comment ambiguity can't arise from a joined credit there), or
-     * `nameNode` already IS that scope (the common single-entity
-     * `<bdi><a>` shape resolving `nameNode` to the `<bdi>` itself), falls
-     * back to the plain first-match lookup, matching this function's
-     * original scope.
+     * (`ref.nameNode.closest('bdi')`) — that ancestor is this entity's own
+     * "credit segment" root (`a` itself when nothing wraps it, or its
+     * wrapping `<span class="mp">`/similar when something does) — and only
+     * that segment's own immediate `nextElementSibling`, if it IS a
+     * `.comment` span, is used (`null` otherwise, rather than guessing).
+     * The REVERSE `<a><bdi>Name</bdi></a>` nesting (where
+     * `_findCellEntityRefs()` resolves `nameNode` to that descendant `bdi`
+     * itself, since it's never ancestor-wrapped — that shape never nests a
+     * sibling comment, so this multi-comment ambiguity can't arise from a
+     * joined credit there in the first place) falls back to the plain
+     * first-match lookup instead, matching this function's original scope
+     * — detected via `ref.nameNode === bdiScope` (`.closest('bdi')`
+     * matching the node itself only when it IS one).
      *
      * @param {?HTMLTableCellElement} cell
      * @returns {Array<{name: string, comment: ?string, alias: ?string,
@@ -17358,12 +17359,15 @@
             } else {
                 const bdiScope = ref.nameNode.closest('bdi');
                 if (!bdiScope || ref.nameNode === bdiScope) {
-                    // No shared-<bdi> scope to segment by (the reverse
-                    // `<a><bdi>` nesting), or `nameNode` already IS that
-                    // scope (the common single-entity `<bdi><a>` shape,
-                    // which normally has at most one comment — this only
-                    // guards a hypothetical container mixing that shape
-                    // with other independently-commented entities).
+                    // `nameNode` already IS its own closest `<bdi>` — the
+                    // REVERSE `<a><bdi>Name</bdi></a>` nesting, where
+                    // `_findCellEntityRefs()` never ancestor-wraps `name`/
+                    // `nameNode` at all (that shape never nests a sibling
+                    // comment, so this multi-comment container can only
+                    // arise from something else entirely — no segment to
+                    // resolve against). `!bdiScope` is defensive only —
+                    // `_findCellEntityRefs()`'s current invariants always
+                    // give `nameNode` a `<bdi>` ancestor or make it one.
                     commentSpan = commentSpans[0];
                 } else {
                     let segmentRoot = ref.nameNode;
