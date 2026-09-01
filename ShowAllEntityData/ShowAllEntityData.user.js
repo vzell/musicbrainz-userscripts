@@ -36474,10 +36474,12 @@ a { color: #1565c0; }`;
      * text itself legitimately contains its own parenthetical (e.g. "Chinese
      * (China)").
      *
-     * `'locale-primary'`/`'locale-not-primary'` (the sibling "Locale info -
-     * Primary" flags) get no highlighter — same "binary flag, nothing
-     * specific to point at" reasoning as `'catalog-has-prefix'`/
-     * `'multi-medium'`/etc. (see the big dispatch comment in `testRowMatch`).
+     * `'locale-not-primary'` (the sibling "Locale info - Primary" flag's
+     * negative half) gets no highlighter — an absence has nothing to point
+     * at, same reasoning as `'catalog-has-prefix'`/`'multi-medium'`/etc.
+     * (see the big dispatch comment in `testRowMatch`). `'locale-primary'`
+     * itself DOES get one — see `_highlightLocalePrimaryMatch()` below —
+     * since it corresponds to an exact visible `<span class="comment">`.
      *
      * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
      * @param {string} mode - The compound mode string, e.g.
@@ -36492,6 +36494,28 @@ a { color: #1565c0; }`;
         const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         cell.normalize();
         highlightCrossTag(cell, new RegExp(`^${_escaped}`, 'g'), 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights the "primary" marker's own text for a `locale-primary`
+     * fixed structure-mode filter — re-derives from `_findCellLocaleInfo()`
+     * directly (same "verify before highlighting" pattern as
+     * `_highlightEventCancelledMatch()` above), then scopes the highlight to
+     * the cell's own `span.comment` wrapper (mirroring that same function's
+     * "scope to the one element this value came from" approach) so only the
+     * bare word "primary" itself gets wrapped — not the surrounding "(" ")"
+     * — with zero risk of colliding with anything else in the cell.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     */
+    function _highlightLocalePrimaryMatch(cell) {
+        if (!cell) return;
+        const _info = _findCellLocaleInfo(cell);
+        if (!_info || !_info.primary) return;
+        const commentSpan = cell.querySelector('span.comment');
+        if (!commentSpan) return;
+        commentSpan.normalize();
+        highlightCrossTag(commentSpan, /primary/gi, 'mb-column-filter-highlight');
     }
 
     /**
@@ -37161,7 +37185,9 @@ a { color: #1565c0; }`;
                     // 'editorcomment:'/'changelog-no-message' and 'name-variation'
                     // structure modes DO correspond to exact visible content and
                     // get highlighted; 'localelanguage:' likewise gets one (see
-                    // _highlightLocaleLanguageMatch); the other structure modes
+                    // _highlightLocaleLanguageMatch), and so does 'locale-primary'
+                    // (see _highlightLocalePrimaryMatch — its own visible
+                    // `span.comment` "primary" text); the other structure modes
                     // (empty/single/
                     // collapsed/expanded/any/title-mismatch/inline-art-yes/no/
                     // 'editorrecordedname:'/'editormembership:' — both facts live
@@ -37170,7 +37196,7 @@ a { color: #1565c0; }`;
                     // is intentionally untracked verbatim, mirrors 'catalog-has-
                     // prefix' having no highlighter either — and 'release-quality-
                     // high'/'release-quality-low'/'release-quality-normal'/
-                    // 'acoustid-linked'/'acoustid-unlinked'/'locale-primary'/
+                    // 'acoustid-linked'/'acoustid-unlinked'/
                     // 'locale-not-primary' — the marker span/
                     // class is empty/decorative, nothing visible to
                     // highlight) operate on pure DOM/
@@ -37213,6 +37239,8 @@ a { color: #1565c0; }`;
                                     _highlightTracksPerMediumMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('localelanguage:')) {
                                     _highlightLocaleLanguageMatch(row.cells[f.idx], mode);
+                                } else if (mode === 'locale-primary') {
+                                    _highlightLocalePrimaryMatch(row.cells[f.idx]);
                                 } else if (mode.startsWith('eventdate:')) {
                                     _highlightEventDateMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('tagcount:')) {

@@ -86,5 +86,20 @@ test('unique-values dropdown gets a "Locale info" section (Language / Primary)',
     }, COLUMN);
     expect(afterCheckAllPrimary).toBe(true);
 
+    // The "primary" marker's own text must be wrapped in a
+    // .mb-column-filter-highlight span (_highlightLocalePrimaryMatch) on
+    // every surviving row's "Locale" cell — not just a row-count narrow with
+    // no visual highlight.
+    const allHighlighted = await page.evaluate((colName) => {
+        const th = Array.from(document.querySelectorAll('table.tbl thead th')).find((t) => t.dataset.colName === colName);
+        const idx = Array.from(th.parentElement.children).indexOf(th);
+        const rows = Array.from(document.querySelectorAll('table.tbl tbody tr')).filter((r) => r.style.display !== 'none');
+        return rows.every((r) => {
+            const span = r.cells[idx]?.querySelector('span.comment .mb-column-filter-highlight, span.comment.mb-column-filter-highlight');
+            return !!span && /primary/i.test(span.textContent);
+        });
+    }, COLUMN);
+    expect(allHighlighted).toBe(true);
+
     expect(pageErrors).toEqual([]);
 });

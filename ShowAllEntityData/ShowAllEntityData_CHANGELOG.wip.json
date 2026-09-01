@@ -6,7 +6,7 @@
       {
         "label": "🚀 Feature",
         "items": [
-          "Unique-values dropdown: the alias-table \"Locale\" column gets a new \"Locale info\" section — \"- Language\" (one entry per distinct locale language, e.g. \"English\", \"Chinese (China)\", via new `_findCellLocaleInfo()`) and \"- Primary\" (fixed \"🥇 primary\"/\"◦ not primary\" flags, from MusicBrainz's own `(primary)` marker). New `_highlightLocaleLanguageMatch()` highlights the matched language text. Alias Types with no Locale at all (e.g. \"Legal name\", \"Search hint\") contribute to neither facet."
+          "Unique-values dropdown: the alias-table \"Locale\" column gets a new \"Locale info\" section — \"- Language\" (one entry per distinct locale language, e.g. \"English\", \"Chinese (China)\", via new `_findCellLocaleInfo()`) and \"- Primary\" (fixed \"🥇 primary\"/\"◦ not primary\" flags, from MusicBrainz's own `(primary)` marker). New `_highlightLocaleLanguageMatch()` highlights the matched language text, and new `_highlightLocalePrimaryMatch()` highlights the \"primary\" marker's own text when that flag is checked. Alias Types with no Locale at all (e.g. \"Legal name\", \"Search hint\") contribute to neither facet."
         ]
       }
     ]
