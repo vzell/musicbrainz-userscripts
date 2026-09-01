@@ -18207,6 +18207,36 @@
     }
 
     /**
+     * Resolves a `recording-fingerprints` "AcoustID" cell's own MusicBrainz
+     * link/unlink state — native markup: the AcoustID code's own `<a
+     * class="external">` link (inside `<code>`) additionally carries a
+     * `disabled-acoustid` class when that AcoustID has been unlinked from
+     * this recording (see debug/rec-fingerprint.html — the "actions"
+     * column's own sibling `<a>` text flips between "Unlink"/"Link" in
+     * exact agreement with this class, but this reads the AcoustID cell's
+     * OWN anchor directly rather than reaching into that sibling cell).
+     * MusicBrainz emits no extra class at all for the default linked
+     * state — "linked" is this function's fallback whenever the anchor is
+     * present without `disabled-acoustid`, never a `null`/third state.
+     *
+     * Deliberately only called for the "AcoustID" column itself (gated by
+     * column name at the `openUniqDrop()` call site) — mirrors
+     * `_findCellReleaseDataQuality()`'s own "native CSS-class marker,
+     * column-name-gated" shape.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?'linked'|'unlinked'} `null` only when `cell` has no
+     *   recognizable AcoustID anchor at all (defensive — not seen in real
+     *   data).
+     */
+    function _findCellAcoustIdLinkStatus(cell) {
+        if (!cell) return null;
+        const a = cell.querySelector('a.external');
+        if (!a) return null;
+        return a.classList.contains('disabled-acoustid') ? 'unlinked' : 'linked';
+    }
+
+    /**
      * Tests whether a table cell matches a "Cell structure" checkbox mode
      * from `openUniqDrop()`'s synthetic entries (`makeSynItem`/
      * `makeValueSynItem`/`makeInlineArtItem`) — the single source of truth
@@ -18591,6 +18621,16 @@
             // Fixed flag counterpart — "normal" (default) data quality,
             // i.e. neither marker span is present at all.
             return _findCellReleaseDataQuality(cell) === 'normal';
+        }
+        if (mode === 'acoustid-linked') {
+            // Fixed flag — true when this "AcoustID" cell's own anchor has
+            // no `disabled-acoustid` class (still linked to this recording).
+            return _findCellAcoustIdLinkStatus(cell) === 'linked';
+        }
+        if (mode === 'acoustid-unlinked') {
+            // Fixed flag counterpart — the anchor carries `disabled-acoustid`
+            // (unlinked from this recording, but not fully removed).
+            return _findCellAcoustIdLinkStatus(cell) === 'unlinked';
         }
         if (mode.startsWith('arttype:')) {
             // Compound mode (openUniqDrop()'s makeValueSynItem, the "CAA
@@ -35350,6 +35390,14 @@ a { color: #1565c0; }`;
         // catalogPresence's catalog-has-prefix/catalog-no-prefix/
         // catalog-none), not an open kind-list.
         releaseDataQuality: { label: 'Release info - Data quality', glyph: '⭐' },
+        // "AcoustID info - Link status" — recording-fingerprints' own
+        // "AcoustID" column: whether that AcoustID's own native `<a
+        // class="external">` link additionally carries MusicBrainz's own
+        // `disabled-acoustid` class (see `_findCellAcoustIdLinkStatus()`'s
+        // own JSDoc) — a fixed 2-value set (linked/unlinked), rendered as
+        // two fixed structure-mode flags, same shape as releaseDataQuality
+        // above.
+        acoustidLinkStatus: { label: 'AcoustID info - Link status', glyph: '🆔' },
     };
 
     /**
@@ -35379,6 +35427,7 @@ a { color: #1565c0; }`;
         'changelog-has-message': 'changelogPresence', 'changelog-no-message': 'changelogPresence',
         'release-quality-high': 'releaseDataQuality', 'release-quality-low': 'releaseDataQuality',
         'release-quality-normal': 'releaseDataQuality',
+        'acoustid-linked': 'acoustidLinkStatus', 'acoustid-unlinked': 'acoustidLinkStatus',
     };
 
     /**
@@ -36960,8 +37009,9 @@ a { color: #1565c0; }`;
                     // 'changelog-has-message' — the underlying free-text message
                     // is intentionally untracked verbatim, mirrors 'catalog-has-
                     // prefix' having no highlighter either — and 'release-quality-
-                    // high'/'release-quality-low'/'release-quality-normal' — the
-                    // marker span is empty/decorative, nothing visible to
+                    // high'/'release-quality-low'/'release-quality-normal'/
+                    // 'acoustid-linked'/'acoustid-unlinked' — the marker span/
+                    // class is empty/decorative, nothing visible to
                     // highlight) operate on pure DOM/
                     // attribute state with no single corresponding visible
                     // element, so they get no highlight. _highlightUniqArtTypeMatches
@@ -47056,6 +47106,12 @@ a { color: #1565c0; }`;
         let releaseQualityHighCount   = _uniqCacheHit ? _uniqCacheHit.releaseQualityHighCount   : 0;
         let releaseQualityLowCount    = _uniqCacheHit ? _uniqCacheHit.releaseQualityLowCount    : 0;
         let releaseQualityNormalCount = _uniqCacheHit ? _uniqCacheHit.releaseQualityNormalCount : 0;
+        // "AcoustID" column only (recording-fingerprints): whether this
+        // AcoustID's own anchor carries MusicBrainz's own `disabled-
+        // acoustid` class — see `_findCellAcoustIdLinkStatus()`'s own
+        // JSDoc. Column-gated (isAcoustIdCol below).
+        let acoustidLinkedCount   = _uniqCacheHit ? _uniqCacheHit.acoustidLinkedCount   : 0;
+        let acoustidUnlinkedCount = _uniqCacheHit ? _uniqCacheHit.acoustidUnlinkedCount : 0;
         // Distinct event-role values (e.g. "main performer", "guest
         // performer", "support act", "participant", "host") from a native
         // MusicBrainz `.artist-roles` list — the query-time counterpart of
@@ -47146,6 +47202,11 @@ a { color: #1565c0; }`;
         // JSDoc) — name-only, no page-type check, so this applies
         // automatically to every page type with a "Release" column.
         const isReleaseCol = _colHeaderName === 'Release';
+        // Column-name gate for recording-fingerprints' native "AcoustID"
+        // column's own link/unlink state (see
+        // _findCellAcoustIdLinkStatus()'s own JSDoc) — name-only, no
+        // page-type check, same convention as isReleaseCol above.
+        const isAcoustIdCol = _colHeaderName === 'AcoustID';
         // 'tag-value-entity' is tableMode: 'single' — its resolved
         // entityFeatures block is merged into activeDefinition once, and
         // activeColumnExtractors is built once from it (not re-assigned
@@ -47326,6 +47387,11 @@ a { color: #1565c0; }`;
                     if (_quality === 'high')   releaseQualityHighCount++;
                     if (_quality === 'low')    releaseQualityLowCount++;
                     if (_quality === 'normal') releaseQualityNormalCount++;
+                }
+                if (isAcoustIdCol) {
+                    const _linkStatus = _findCellAcoustIdLinkStatus(cell);
+                    if (_linkStatus === 'linked')   acoustidLinkedCount++;
+                    if (_linkStatus === 'unlinked') acoustidUnlinkedCount++;
                 }
                 if (isEventCol) {
                     const _eventDates = _findCellEventDateParts(cell);
@@ -48317,6 +48383,7 @@ a { color: #1565c0; }`;
                 editorMembershipValueCounts, editorCommentValueCounts,
                 changelogHasMessageCount, changelogNoMessageCount,
                 releaseQualityHighCount, releaseQualityLowCount, releaseQualityNormalCount,
+                acoustidLinkedCount, acoustidUnlinkedCount,
                 eventRoleValueCounts, roleTokenValueCounts, artTypeValueCounts, artCommentValueCounts,
                 flagIconMap, isRelCellCol, relIconCounts,
                 inlineArtType, inlineArtYes, inlineArtNo,
@@ -48336,6 +48403,7 @@ a { color: #1565c0; }`;
             multiRowCollapsedCount + multiRowExpandedCount,
             titleMismatchCount, nameVariationCount,
             multiMediumCount, catalogHasPrefixCount, catalogNoPrefixCount, catalogNoneCount,
+            acoustidLinkedCount, acoustidUnlinkedCount,
             inlineArtYes, inlineArtNo,
             ...attrValueCounts.values(), ...taskValueCounts.values(),
             ...dateValueCounts.values(), ...instrumentValueCounts.values(),
@@ -48668,11 +48736,21 @@ a { color: #1565c0; }`;
          * can be surfaced for every column type (plain text, extractor synthetic,
          * etc.), not only for columns with multi-row / collapsable structure.
          *
-         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | 'multi-medium' | 'catalog-has-prefix' | 'catalog-no-prefix' | 'catalog-none' | 'editor-any-deleted' | 'changelog-has-message' | 'changelog-no-message'
+         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | 'multi-medium' | 'catalog-has-prefix' | 'catalog-no-prefix' | 'catalog-none' | 'editor-any-deleted' | 'changelog-has-message' | 'changelog-no-message' | 'acoustid-linked' | 'acoustid-unlinked'
          * @param {string} label   - Human-readable display text
          * @param {number} count   - Number of visible rows matching this mode
+         * @param {string} [extraLabelClass] - An extra CSS class to add to
+         *   the entry's own label span, ON TOP OF the always-present
+         *   `.mb-uniq-syn-label-text` — for reusing MusicBrainz's OWN native
+         *   CSS class as this entry's visual "icon" instead of an emoji,
+         *   when one genuinely exists on the source page (e.g.
+         *   `disabled-acoustid` for the "AcoustID info - Link status"
+         *   section's "unlinked" entry) — the entry then renders with
+         *   whatever real styling (strikethrough, colour, …) that class
+         *   gets on musicbrainz.org itself, since this script runs on the
+         *   same page and never defines its own rule for that class name.
          */
-        const makeSynItem = (mode, label, count) => {
+        const makeSynItem = (mode, label, count, extraLabelClass) => {
             const item = document.createElement('div');
             item.setAttribute('role', 'option');
             item.title = label;
@@ -48700,7 +48778,8 @@ a { color: #1565c0; }`;
             badge.style.minWidth        = `${panelBadgeChWidth}ch`;
             badge.style.textAlign       = 'right';
             item.appendChild(badge);
-            _appendSynLabelText(item, label);
+            const _labelSpan = _appendSynLabelText(item, label);
+            if (extraLabelClass) _labelSpan.classList.add(extraLabelClass);
 
             _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + mode);
             getOrCreateSynSection(MB_UNIQ_MODE_TO_SECTION[mode] || 'structure').itemsBox.appendChild(item);
@@ -49043,7 +49122,8 @@ a { color: #1565c0; }`;
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 ||
             multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
             editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
-            releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 || _hasValueEntries)) {
+            releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
+            acoustidLinkedCount > 0 || acoustidUnlinkedCount > 0 || _hasValueEntries)) {
              // "empty cells" pinned first; remaining entries in ascending complexity order.
             // For CAA/EAA columns the generic structural labels are replaced with more
             // descriptive artwork-presence labels that match user intent:
@@ -49071,6 +49151,12 @@ a { color: #1565c0; }`;
             if (releaseQualityHighCount > 0)   makeSynItem('release-quality-high', '🟢 high data quality',      releaseQualityHighCount);
             if (releaseQualityLowCount > 0)    makeSynItem('release-quality-low', '🟠 low data quality',        releaseQualityLowCount);
             if (releaseQualityNormalCount > 0) makeSynItem('release-quality-normal', '⚪ normal data quality',  releaseQualityNormalCount);
+            // "AcoustID info - Link status" — reuses MusicBrainz's own
+            // `disabled-acoustid` class (not an emoji) as the "unlinked"
+            // entry's own visual icon, via makeSynItem()'s optional
+            // extraLabelClass param (see that param's own JSDoc).
+            if (acoustidLinkedCount > 0)   makeSynItem('acoustid-linked', '🔗 linked', acoustidLinkedCount);
+            if (acoustidUnlinkedCount > 0) makeSynItem('acoustid-unlinked', '🚫 unlinked', acoustidUnlinkedCount, 'disabled-acoustid');
             // Credit-role columns' per-attribute / per-task / per-date /
             // per-instrument dynamic value entries (see attrValueCounts/
             // taskValueCounts/dateValueCounts/instrumentValueCounts' own
@@ -49115,7 +49201,8 @@ a { color: #1565c0; }`;
         } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 ||
                    multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
                    editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
-                   releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 || _hasValueEntries) {
+                   releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
+                   acoustidLinkedCount > 0 || acoustidUnlinkedCount > 0 || _hasValueEntries) {
             // Non-collapsable column (or a collapsable one with zero rows in
             // any multi-row-family state this render).
             if (emptyCellCount > 0)     makeSynItem('empty',          '○ empty cells',           emptyCellCount);
@@ -49131,6 +49218,8 @@ a { color: #1565c0; }`;
             if (releaseQualityHighCount > 0)   makeSynItem('release-quality-high', '🟢 high data quality',     releaseQualityHighCount);
             if (releaseQualityLowCount > 0)    makeSynItem('release-quality-low', '🟠 low data quality',       releaseQualityLowCount);
             if (releaseQualityNormalCount > 0) makeSynItem('release-quality-normal', '⚪ normal data quality', releaseQualityNormalCount);
+            if (acoustidLinkedCount > 0)   makeSynItem('acoustid-linked', '🔗 linked', acoustidLinkedCount);
+            if (acoustidUnlinkedCount > 0) makeSynItem('acoustid-unlinked', '🚫 unlinked', acoustidUnlinkedCount, 'disabled-acoustid');
             _sortedAttrValues.forEach(v => makeValueSynItem('attr', v, attrValueCounts.get(v)));
             _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
@@ -49658,6 +49747,8 @@ a { color: #1565c0; }`;
         if (mode === 'release-quality-high')   return '🟢 high data quality';
         if (mode === 'release-quality-low')    return '🟠 low data quality';
         if (mode === 'release-quality-normal') return '⚪ normal data quality';
+        if (mode === 'acoustid-linked')   return '🔗 linked';
+        if (mode === 'acoustid-unlinked') return '🚫 unlinked';
         return '▶◀ multi-row: any';
     }
 
@@ -49727,6 +49818,8 @@ a { color: #1565c0; }`;
         if (mode === 'release-quality-high') return '🟢 = MusicBrainz\'s own "High quality" data-quality marker: all available data has been added, if possible including cover art with liner info that proves it.';
         if (mode === 'release-quality-low') return '🟠 = MusicBrainz\'s own "Low quality" data-quality marker: the release needs serious fixes, or its existence is hard to prove (but it\'s not clearly fake).';
         if (mode === 'release-quality-normal') return '⚪ = no data-quality marker is present at all — MusicBrainz\'s default/unrated quality state.';
+        if (mode === 'acoustid-linked') return '🔗 = this AcoustID\'s own link is still active for this recording (no `disabled-acoustid` class).';
+        if (mode === 'acoustid-unlinked') return '🚫 = MusicBrainz\'s own `disabled-acoustid` class — this AcoustID has been unlinked from this recording, but the submission itself isn\'t removed.';
         return '';
     }
 
