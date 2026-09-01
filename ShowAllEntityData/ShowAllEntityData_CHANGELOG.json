@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.982",
+    "date": "2026-09-01",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "release-tracks: a track's \"Part of series\" column glued multiple credited series (comma/\"and\"-joined in one native relationship) into a single unsplit row instead of listing each series on its own row, unlike the equivalent multi-artist/multi-label AR columns."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.981",
     "date": "2026-09-01",
     "sections": [
