@@ -17088,11 +17088,19 @@
      * debug/and.html, debug/slash.html).
      *
      * A jesus2099 `<span class="name-variation">` can also sit directly
-     * between `<bdi>` and `<a>` (see `_findCellNameVariations()`) — walked
-     * through transparently before checking for the enclosing `<bdi>`, so
-     * a `<bdi>`-shared, name-variation-wrapped credit (e.g. debug/nv.org's
-     * two "+"-joined artists, both wrapped) is still found instead of
-     * silently returning nothing for it.
+     * between `<bdi>` and `<a>` (see `_findCellNameVariations()`), and
+     * MusicBrainz's own native markup can wrap a credited `<a>` in
+     * `<span class="mp">` when that entity currently has open/pending edits
+     * (an orange-highlight marker on the live site, confirmed at
+     * `/artist/<mbid>/open_edits`; unrelated to which entity in a joined
+     * credit it lands on — see debug/rock-on-recordings.html's "Queen &
+     * David Bowie" cell, where only Bowie has open edits and only his `<a>`
+     * gets this wrapper). Both are walked through transparently — the
+     * governing `<bdi>` is resolved via `a.closest('bdi')` (bounded to
+     * `cell`) rather than requiring it to be `a`'s immediate parent — so a
+     * `<bdi>`-shared, name-variation-wrapped credit (e.g. debug/nv.org's
+     * two "+"-joined artists, both wrapped) or an "mp"-wrapped credit is
+     * still found instead of silently dropping that entity entirely.
      *
      * `flagEl` (only ever set for `type === 'area'`) is the live
      * flag/subdivision-icon element decorating THIS anchor, if any — the
@@ -17139,16 +17147,23 @@
             // debug/and.html, debug/slash.html).
             //
             // A jesus2099 <span class="name-variation"> can also sit
-            // directly between <bdi> and <a> (see
-            // _findCellNameVariations()) — walk through at most one such
-            // wrapper before checking whether the host is a <bdi>, or a
+            // directly between <bdi> and <a> (see _findCellNameVariations()),
+            // and MusicBrainz's own native markup can wrap a credited name in
+            // <span class="mp"> when that entity currently has open/pending
+            // edits (an orange-highlight marker, unrelated to credit
+            // position — see debug/rock-on-recordings.html's "Queen & David
+            // Bowie" cell, where only Bowie's <a> gets this wrapper). Rather
+            // than special-case each wrapper shape, walk up from `a` itself
+            // (through any number of them) to the nearest ANCESTOR <bdi>,
+            // bounded to `cell` so an unrelated <bdi> belonging to some
+            // outer, unconnected ancestor is never picked up. A
             // name-variation-wrapped credit inside a shared <bdi> (e.g.
-            // debug/nv.org's two "+"-joined artists) is missed entirely
-            // (bdiHost would be the <span>, never a <bdi>).
+            // debug/nv.org's two "+"-joined artists) and an "mp"-wrapped
+            // credit both resolve correctly this way.
             const nameVariationSpan = (a.parentElement && a.parentElement.tagName === 'SPAN' &&
                 a.parentElement.classList.contains('name-variation')) ? a.parentElement : null;
-            const bdiHost = nameVariationSpan ? nameVariationSpan.parentElement : a.parentElement;
-            const parentBdi = (bdiHost && bdiHost.tagName === 'BDI') ? bdiHost : null;
+            const closestBdi = a.closest('bdi');
+            const parentBdi = (closestBdi && cell.contains(closestBdi)) ? closestBdi : null;
             const bdi = parentBdi || a.querySelector('bdi');
             if (!bdi) return;
             const bdiShared = !!parentBdi && Array.from(parentBdi.querySelectorAll('a[href]'))
@@ -17294,13 +17309,35 @@
      * function must surface those entities too, not just comment-bearing
      * ones.
      *
-     * Scoping: the associated `.comment` is looked up via
-     * `container.querySelector('span.comment')`, reusing the SAME container
-     * `_findCellEntityRefs()` already resolves (`a.closest('li') || cell`) —
-     * this assumes at most one comment per container, correct for the
-     * "Work"/"Authors" shapes this was built from (`debug/c-a.org`), but not
-     * specifically handling a hypothetical container with multiple
-     * independently-commented entities.
+     * Scoping: when `container` (`a.closest('li') || cell`, the SAME
+     * container `_findCellEntityRefs()` already resolves) has at most one
+     * `.comment` span, it's looked up via a plain
+     * `container.querySelector('span.comment')` — correct for the
+     * "Work"/"Authors" shapes this was built from (`debug/c-a.org`), one
+     * entity/one comment per container. When `container` has MULTIPLE
+     * `.comment` spans — a joined, non-list credit where more than one
+     * entity carries its own independent comment (e.g. "Queen & David
+     * Bowie", where MusicBrainz's own "mp" open-edits wrapper on Bowie's
+     * `<a>` — see `_findCellEntityRefs()`'s own JSDoc — otherwise has no
+     * bearing on this) — a bare first-match would silently attribute every
+     * entity's comment to whichever renders first (this bit
+     * debug/rock-on-recordings.html's "David Bowie", who ended up wrongly
+     * carrying Queen's "UK rock group"). Instead, `ref.nameNode` is walked
+     * up to the topmost ancestor still inside its own governing `<bdi>`
+     * (`ref.nameNode.closest('bdi')`, the same shared-`<bdi>` scope
+     * `_findCellEntityRefs()`'s `bdiShared` computes over) — that ancestor
+     * is this entity's own "credit segment" root (`a` itself when nothing
+     * wraps it, or its wrapping `<span class="mp">`/similar when
+     * something does) — and only that segment's own immediate
+     * `nextElementSibling`, if it IS a `.comment` span, is used (`null`
+     * otherwise, rather than guessing). No `<bdi>` scope at all (a shape
+     * `_findCellEntityRefs()` reaches via the reverse
+     * `<a><bdi>Name</bdi></a>` nesting, never bdi-wrapped, so this
+     * multi-comment ambiguity can't arise from a joined credit there), or
+     * `nameNode` already IS that scope (the common single-entity
+     * `<bdi><a>` shape resolving `nameNode` to the `<bdi>` itself), falls
+     * back to the plain first-match lookup, matching this function's
+     * original scope.
      *
      * @param {?HTMLTableCellElement} cell
      * @returns {Array<{name: string, comment: ?string, alias: ?string,
@@ -17314,7 +17351,27 @@
             if (ref.isBare) return; // scope: only non-bare entities
 
             const container = ref.nameNode.closest('li') || cell;
-            const commentSpan = container.querySelector('span.comment');
+            const commentSpans = container.querySelectorAll('span.comment');
+            let commentSpan;
+            if (commentSpans.length <= 1) {
+                commentSpan = commentSpans[0] || null;
+            } else {
+                const bdiScope = ref.nameNode.closest('bdi');
+                if (!bdiScope || ref.nameNode === bdiScope) {
+                    // No shared-<bdi> scope to segment by (the reverse
+                    // `<a><bdi>` nesting), or `nameNode` already IS that
+                    // scope (the common single-entity `<bdi><a>` shape,
+                    // which normally has at most one comment — this only
+                    // guards a hypothetical container mixing that shape
+                    // with other independently-commented entities).
+                    commentSpan = commentSpans[0];
+                } else {
+                    let segmentRoot = ref.nameNode;
+                    while (segmentRoot.parentNode !== bdiScope) segmentRoot = segmentRoot.parentNode;
+                    const next = segmentRoot.nextElementSibling;
+                    commentSpan = (next && next.matches('span.comment')) ? next : null;
+                }
+            }
 
             let name, alias, comment;
             if (commentSpan) {
@@ -66499,6 +66556,50 @@ a { color: #1565c0; }`;
              */
             closeUniqDrop() {
                 closeUniqDrop();
+            },
+
+            /**
+             * Thin, JSON-serializable wrapper around the internal
+             * `_findCellEntityRefs()` — the single source of truth for
+             * "what MusicBrainz entities does this cell reference", feeding
+             * `openUniqDrop()`'s "Entity info" section among other things.
+             * DOM node fields (`nameNode`, `flagEl`) are dropped since a
+             * live `Element` cannot cross the Playwright `page.evaluate()`
+             * boundary; `hasFlag` reports `!!flagEl` instead.
+             *
+             * @param {string} selector - CSS selector for the target cell.
+             * @returns {?Array<{type: string, glyphClass: string, href: string,
+             *   name: string, isBare: boolean, hasFlag: boolean}>} `null` when
+             *   `selector` matches nothing.
+             */
+            findCellEntityRefs(selector) {
+                const cell = document.querySelector(selector);
+                if (!cell) return null;
+                return _findCellEntityRefs(cell).map(ref => ({
+                    type: ref.type, glyphClass: ref.glyphClass, href: ref.href,
+                    name: ref.name, isBare: ref.isBare, hasFlag: !!ref.flagEl,
+                }));
+            },
+
+            /**
+             * Thin, JSON-serializable wrapper around the internal
+             * `_findCellEntityCommentParts()` — the single source of truth
+             * for the "Entity info" section's `comment:`/`alias:` entries.
+             * DOM node fields (`nameNode`, `commentSpan`) are dropped for
+             * the same reason as `findCellEntityRefs()` above.
+             *
+             * @param {string} selector - CSS selector for the target cell.
+             * @returns {?Array<{name: string, comment: ?string, alias: ?string,
+             *   type: string, glyphClass: string}>} `null` when `selector`
+             *   matches nothing.
+             */
+            findCellEntityCommentParts(selector) {
+                const cell = document.querySelector(selector);
+                if (!cell) return null;
+                return _findCellEntityCommentParts(cell).map(p => ({
+                    name: p.name, comment: p.comment, alias: p.alias,
+                    type: p.type, glyphClass: p.glyphClass,
+                }));
             },
         };
     }

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Test Artist - Recordings - MusicBrainz</title>
+</head>
+<body>
+    <div id="content">
+        <div class="artistheader">
+            <h1><bdi>Test Artist</bdi></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350/recordings">Recordings</a></li></ul>
+        </div>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Length</th>
+                    <th>Artist</th>
+                    <th>Release groups</th>
+                    <th>Rating</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/ac413c4f-f270-4c32-8adc-a17e3bd7b60f"><bdi>Test Recording</bdi></a></td>
+                    <td>3:45</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+        <ul class="pagination"></ul>
+
+        <!--
+            Standalone regression cells for _findCellEntityRefs()'s bdi-
+            resolution — not part of any real ShowAllEntityData-rendered
+            table (the script never fetches/renders in this test, so these
+            are untouched by its own pipeline). Markup copied verbatim from
+            debug/rock-on-recordings.html (musicbrainz.org's own
+            /tag/rock/recording page):
+
+            - #qb-cell: "Queen & David Bowie" — David Bowie has open edits
+              on musicbrainz.org (see /artist/5441c29d-.../open_edits), so
+              MusicBrainz's native markup wraps ONLY his <a> in
+              <span class="mp"> before it reaches the shared <bdi> — the
+              exact shape that broke bdi-resolution (see git history /
+              CLAUDE.md's `_findCellEntityRefs()` JSDoc).
+            - #jl-yo-cell: "John Lennon & Yoko Ono" — neither has open
+              edits, so both <a>s are direct children of the shared <bdi>
+              with no wrapper. Kept side-by-side as the control case that
+              already worked before the fix, so a regression in the
+              no-wrapper path would also be caught.
+        -->
+        <table id="entity-refs-test-cells">
+            <tbody>
+                <tr>
+                    <td id="qb-cell"><bdi><a href="/artist/0383dadf-2a4e-4d10-a46a-e9e041da8eb3" title="Queen (UK rock group)">Queen</a>&nbsp;<span class="comment"><bdi>(UK rock group)</bdi></span> &amp; <span class="mp"><a href="/artist/5441c29d-3602-4898-b1a1-b77fa23b8e50" title="Bowie, David (English singer&#8208;songwriter)">David Bowie</a></span> <span class="comment"><bdi>(English singer&#8208;songwriter)</bdi></span></bdi></td>
+                </tr>
+                <tr>
+                    <td id="jl-yo-cell"><bdi><a href="/artist/4d5447d7-c61c-4120-ba1b-d7f471d385b9" title="Lennon, John (The Beatles)">John Lennon</a>&nbsp;<span class="comment"><bdi>(The Beatles)</bdi></span> &amp; <a href="/artist/b0b33754-a664-43b7-ba00-be0dc4ec2396" title="Ono, Yoko (Japanese&#8208;American musician and artist)">Yoko Ono</a>&nbsp;<span class="comment"><bdi>(Japanese&#8208;American musician and artist)</bdi></span></bdi></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
