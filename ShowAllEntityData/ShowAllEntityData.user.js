@@ -8271,10 +8271,11 @@
             // specific columns → auto-discovered generic columns → full raw
             // ARs". Each discovered role can itself split into more than
             // one column (see `_splitColumnByEntityKind`) — restricted to
-            // `PEER_SPLIT_KINDS` (artist/label) via `_filterPeerKinds`, so
-            // a place/event/work/area/series-shaped role never fragments
-            // (see `PEER_SPLIT_KINDS`'s JSDoc) — e.g. a hypothetical role
-            // crediting both an artist and a label on the same page.
+            // `PEER_SPLIT_KINDS` (artist/label/recording/series) via
+            // `_filterPeerKinds`, so a place/event/work/area-shaped role
+            // never fragments (see `PEER_SPLIT_KINDS`'s JSDoc) — e.g. a
+            // hypothetical role crediting both an artist and a label on the
+            // same page.
             const _dynamicColumnThs = []; // [{ key, kindKey, th }]
             if (_dynamicRoleColumns.size > 0) {
                 _dynamicRoleColumns.forEach(({ displayName, kinds }, key) => {
@@ -9279,19 +9280,19 @@
      * artist+label case; comma/"and"-joined source recordings, confirmed for
      * a dynamic-fallback "DJ-mix of" credit listing 26 separate source
      * recordings — see `debug/DJ-mix-of-original.html`). Deliberately
-     * excludes `place`/`event`/`work`/`area`/`series`: those kinds'
-     * relationships are "chain"-shaped instead — a SINGLE primary target (if
-     * any) accompanied by its own nested geographic/hierarchical decoration
-     * that legitimately reuses `arealink` markers repeatedly (e.g. a place's
-     * own "in `<area>`, `<area>`, `<country>`" chain, or an area crediting
-     * ITS OWN parent area — see `debug/therising.html`'s "recorded in:"/
-     * "mixed at:" examples). Treating those as peer-splittable fragmented a
-     * single "A&M Studios in Hollywood" place credit into two separate
+     * excludes `place`/`event`/`work`/`area`: those kinds' relationships are
+     * "chain"-shaped instead — a SINGLE primary target (if any) accompanied
+     * by its own nested geographic/hierarchical decoration that legitimately
+     * reuses `arealink` markers repeatedly (e.g. a place's own "in
+     * `<area>`, `<area>`, `<country>`" chain, or an area crediting ITS OWN
+     * parent area — see `debug/therising.html`'s "recorded in:"/"mixed at:"
+     * examples). Treating those as peer-splittable fragmented a single
+     * "A&M Studios in Hollywood" place credit into two separate
      * "…place"/"…area" columns, and fragmented a single "Asbury Park, New
      * Jersey, United States" area chain into multiple rows — both real
-     * regressions this constant fixes. `recording` carries no such risk: a
-     * dynamic-fallback recording-to-recording relationship (DJ-mix of,
-     * Samples, remix of, edit of, Music videos, …) never nests a
+     * regressions this constant fixes. `recording`/`series` carry no such
+     * risk: a dynamic-fallback recording-to-recording relationship (DJ-mix
+     * of, Samples, remix of, edit of, Music videos, …) never nests a
      * `recordinglink` inside another as its own "decoration" the way an area
      * nests its own ancestry — every `recordinglink` marker is always a
      * distinct credited recording, so it's safe to always treat as a peer
@@ -9299,7 +9300,17 @@
      * each recording sits nested inside a `<bdi>`, never as a direct child
      * of `<dd>`, so it never itself contributes a second, competing kind
      * here — `_collectEntityKinds` only reports `{recording}`, keeping the
-     * column unsplit/unsuffixed even with `recording` now included.) Any
+     * column unsplit/unsuffixed even with `recording` now included.)
+     * `series` is the same shape: every "part of:" `<dd>` across
+     * debug/r-final.html, debug/tracklist-overflow.html, debug/full.html
+     * carries one `<span class="serieslink">` marker PER credited series —
+     * multiple markers always mean multiple distinct series (e.g.
+     * "Helsingin Sanomat: 100 maailman parasta laulua…(number: 27),
+     * Rolling Stone: 500 Greatest Songs of All Time…(number: 86) and
+     * Rolling Stone: 500 Greatest Songs of All Time: 2021 edition…
+     * (number: 111)" — see debug/r-final.html), never a series nesting
+     * another series as its own decoration; no other dynamic-fallback role
+     * has ever been observed to carry a `serieslink` marker at all. Any
      * relationship shaped like the chain kinds above needs its own dedicated
      * handler (see `_buildRecordedAtPlaceTd`/`_buildRecordedInAreaTd`) rather
      * than relying on generic peer-splitting; the dynamic AR-column fallback
@@ -9310,13 +9321,13 @@
      * verbatim, one row" behavior instead of fragmenting.
      * @type {string[]}
      */
-    const PEER_SPLIT_KINDS = ['artist', 'label', 'recording'];
+    const PEER_SPLIT_KINDS = ['artist', 'label', 'recording', 'series'];
 
     /**
      * `kinds` filtered down to `PEER_SPLIT_KINDS` — the set the
      * dynamic-fallback AR-column discovery actually passes to
      * `_splitColumnByEntityKind`/`_buildKindSplitListTd` for a given role
-     * (see `PEER_SPLIT_KINDS`'s JSDoc for why place/event/work/area/series
+     * (see `PEER_SPLIT_KINDS`'s JSDoc for why place/event/work/area
      * markers must never be treated as peer-splittable there).
      *
      * @param {Set<string>} kinds
