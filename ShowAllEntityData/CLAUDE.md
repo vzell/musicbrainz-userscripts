@@ -11,8 +11,6 @@ view with real-time multi-column filtering and sorting.
 **Library dependency:** `VZ_MBLibrary.user.js` (external `@require`; provides `Lib.*`)
 **External dependencies:** `iro` (colour picker), `pako` (compression)
 
----
-
 ## File structure
 
 Everything lives inside a single IIFE `(function() { 'use strict'; … })()`.
@@ -53,8 +51,6 @@ line 14836     ctrlMFunctionMap declared empty (`let ctrlMFunctionMap = {}`);
 
 Line numbers above drift as the file grows — re-grep the symbol name if a
 number looks stale rather than trusting it blindly.
-
----
 
 ## Page definition anatomy
 
@@ -113,8 +109,6 @@ Entity-driven page types (e.g. `series-releases`, `user-ratings-type`,
 *before* `baseDef.features`/`buttonConfig.features` — see the Render
 pipeline section below.
 
----
-
 ## Render pipeline (`startFetchingProcess` → render)
 
 ```
@@ -138,8 +132,6 @@ startFetchingProcess(e, buttonConfig, baseDef)
         is outside initial container — see re-root block in renderGroupedTable)
         creates h3 + table.tbl pairs, inserts master-toggle button
 ```
-
----
 
 ## Critical bug fix: user-tags container re-root (v9.99.521)
 
@@ -166,7 +158,20 @@ master-toggle's `container.querySelectorAll('table.tbl')` finds nothing.
 **Do not add `renameH2ToH3` or `insertH2` to the `user-tags` definition.**
 The native `<h2>Tags vzell upvoted</h2>` is already the correct targetHeader.
 
----
+## Git Workflow
+- Never commit feature work directly to `main`. Always create a feature branch first (`git checkout -b <topic>`), commit there, then merge via PR or fast-forward and push.
+- Every user-visible change requires: version bump in the userscript header, a CHANGELOG entry, and a HELP/docs resync in the same commit.
+- After finishing a task, always commit AND push; then offer to merge `main` into the active perf/feature branch to keep it current.
+
+## File Safety' section, immediately after the Git Workflow section.\n\n## File Safety
+- NEVER use the Write tool on existing long-lived files such as `debug/NOTES.md`, `CHANGELOG`, or `PERFORMANCE.org`. Read the file first, then use Edit to append or modify. Write is only for genuinely new files.
+
+## Tooling Conventions
+- Never run inline `python3 -c "..."` or inline `node -e "..."`. Write a script file under `scripts/` (or `test/`) and execute it, so the logic is reviewable and re-runnable.
+- Every DOM/rendering fix must be accompanied by a jsdom or Playwright regression test that fails before the fix and passes after.
+
+## Debugging DOM/Rendering Bugs
+Before proposing a fix for a rendering or 'element not appearing' bug, first confirm the root cause with evidence: check for late/async DOM injection (MutationObserver), stale node references, and third-party userscript CSS. Do not ship a CSS-overflow or rAF-batching guess as the fix.
 
 ## DOM conventions
 
@@ -193,7 +198,15 @@ The native `<h2>Tags vzell upvoted</h2>` is already the correct targetHeader.
 | `.mb-uniq-section` / `.mb-uniq-section-hdr` | Unique-values dropdown's collapsible section wrapper/header (see `SYN_SECTION_META` below) |
 | `.mb-col-uniq-item` | Unique-values dropdown row item |
 
----
+## Things to check before any DOM-related fix
+
+- Does the page have `div#content`? (Most do. `user/*/tags` does not.)
+- Where does `table.tbl` live relative to `targetHeader`?
+- Is `targetHeader` a sibling or ancestor of `container`?
+- Does `applyListToTable` run before `renderGroupedTable`? (Changes parentNode of tables.)
+
+## Plan Mode
+When in plan mode, do not edit files. Present the plan first and explicitly state which branch the work will happen on and whether a version bump/changelog entry is needed, so the user can correct scope before any code changes.
 
 ## Settings keys (GM storage via `Lib.settings`)
 
@@ -217,8 +230,6 @@ exhaustive — `configSchema` (~212-2670) currently defines 216 distinct
   `sa_ars_column_max_height_em` — the "ARs" column's own independent
   collapse/clamp settings (release-tracks only, not shared with Annotation)
 
----
-
 ## Debug channels (`Lib.debug('channel', …)`)
 
 `init`, `render`, `fetch`, `filter`, `sort`, `parse`, `extract`, `caa`, `eaa`,
@@ -229,16 +240,12 @@ exhaustive — `configSchema` (~212-2670) currently defines 216 distinct
 
 Enable via the `sa_enable_debug_logging` setting or the Tampermonkey menu.
 
----
-
 ## Debug material
 - HTML snapshots and console logs live in `debug/` subdirectories
 - `debug/` folders are gitignored
 - Always read `debug/NOTES.md` if it exists before starting work
 - Always read the relevant `debug/*.html` before proposing any DOM fix
 - Document snapshots in `debug/NOTES.md` with date and what they show
-
----
 
 ## Testing (Playwright)
 
@@ -301,8 +308,6 @@ etc.) tied to the changed behavior. Call out every affected test file
 explicitly in the plan/PR description, even when no test code needs to
 change — a stale comment is still a defect.
 
----
-
 ## Adding a new page type — checklist
 
 1. Add entry to `pageDefinitions` array (grouped by entity class, in
@@ -323,8 +328,6 @@ change — a stale comment is still a defect.
    everything onto one heading` entry instead)
 8. Bump version, add changelog entry
 
----
-
 ## Adding a new column extractor — checklist
 
 1. Add extractor function to `ColumnDataExtractor` with JSDoc
@@ -332,8 +335,6 @@ change — a stale comment is still a defect.
 3. Add corresponding header name strings to `syntheticColumns`
 4. If the extractor produces a sort-key span, add its class to `_CLEAN_STRIP_SEL`
    (so `getCleanColumnText` does not leak sentinel values into filter matching)
-
----
 
 ## `collapsableColumns`: list vs. prose cells
 
@@ -445,8 +446,6 @@ structure" counts, `_updateAllColHeaderCounts`'s `.mb-col-collapse-count`,
 and `showStatsPanel`'s per-column multi-row count. A new call site with its
 own hand-rolled `ul > li` count is exactly how this bug came back twice
 already — don't reintroduce it.
-
----
 
 ## `release-tracks`: dynamic AR-column classification
 
@@ -565,8 +564,6 @@ added to that tail, mirroring the existing ones for "Recording of
 work"/CREDIT_ROLES/etc. — don't forget it, or the header silently renders
 with no icon (exactly the second half of the bug above).
 
----
-
 ## Unique-values dropdown: `SYN_SECTION_META` section-splitting
 
 The per-column unique-values filter dropdown (`openUniqDrop()`) renders
@@ -640,17 +637,6 @@ below, which mixed unrelated topics under one header.
 | v9.99.886 | "Event info" renamed to "Event info - Event date"; new sibling "Event info - Event cancelled" |
 | v9.99.893 | "Credit details" → `creditAttr`/`creditTask`/`creditDate`/`creditInstrument`/`creditAltName` |
 | next | Structure/Flags/Format info/Tracks info/Catalog info/CAA info/EAA info each split further; "Release events"/"Country details" labels normalized to the current naming convention (see `// @version` header for the exact version) |
-
----
-
-## Things to check before any DOM-related fix
-
-- Does the page have `div#content`? (Most do. `user/*/tags` does not.)
-- Where does `table.tbl` live relative to `targetHeader`?
-- Is `targetHeader` a sibling or ancestor of `container`?
-- Does `applyListToTable` run before `renderGroupedTable`? (Changes parentNode of tables.)
-
----
 
 ## Common pitfalls
 
