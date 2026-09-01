@@ -303,6 +303,15 @@ every distinct non-empty value currently visible in that column.
                        primary" — MusicBrainz's own "(primary)" marker).
                        Alias Types with no Locale at all (e.g. "Legal name",
                        "Search hint") contribute to neither facet
+    — 💬/📝 Instrument info — on the /instruments page, each family
+                       sub-table's own first column (e.g. "Wind instrument",
+                       "Family"): "- Comment" ("💬 has comment" — a
+                       parenthetical `<span class="comment">`) and
+                       "- Description" ("📝 has description" — free text
+                       after the "—" separator, which may itself contain
+                       links, e.g. a family naming its member instruments).
+                       Two independent flags — a row can have neither, one,
+                       or both
     — 🎭 Roles         — "» role:" entries, one per distinct artist event-role
                        found in a native artist-roles list or the plain-text
                        "Role" column on an artist's own Events tab
