@@ -16577,6 +16577,49 @@
     }
 
     /**
+     * Re-applies every currently-hidden column's `display: none` to a
+     * table's `<tbody>` rows.
+     *
+     * Why this exists: `toggleColumn()`/`toggleColumnInTable()` (the Column
+     * Visibility feature) mutate only the `<tr>` elements live in the DOM at
+     * toggle time. But `runFilter()`'s multi-table path clones fresh rows
+     * from the captured `groupedRows`/`allRows` source rows on every
+     * keystroke (see the "Common pitfalls" note on `cloneNode(true)`), and
+     * `renderFinalTable()`/`renderGroupedTable()` both replace `<tbody>`
+     * content wholesale on every filter, sort, or disk-load re-render — none
+     * of which ever saw the toggle's mutation. Without this, a column
+     * hidden via the 👁️ Visible button (or a per-sub-table visibility
+     * button) silently reappears, fully populated with its cell data, the
+     * moment the user filters or sorts.
+     *
+     * The header row is never rebuilt by any of those re-renders, so its
+     * own `display: none` state is the reliable source of truth to copy
+     * onto the fresh body cells — no separate persisted "hidden columns"
+     * list needs to be threaded through here.
+     *
+     * @param {HTMLTableElement} table - The `<table class="tbl">` whose
+     *   `<tbody>` was just (re)populated.
+     * @returns {void}
+     */
+    function _reapplyColumnVisibility(table) {
+        if (!table) return;
+        const headerRow = table.querySelector('thead tr:first-child');
+        if (!headerRow) return;
+
+        const hiddenIndices = [];
+        Array.from(headerRow.cells).forEach((th, i) => {
+            if (th.style.display === 'none') hiddenIndices.push(i);
+        });
+        if (hiddenIndices.length === 0) return;
+
+        table.querySelectorAll('tbody tr').forEach(row => {
+            hiddenIndices.forEach(i => {
+                if (row.cells[i]) row.cells[i].style.display = 'none';
+            });
+        });
+    }
+
+    /**
      * Synchronises the visibility of the global and per-sub-table collapse
      * toggle buttons with the current column-visibility state after a call to
      * `toggleColumn()`.
@@ -42290,6 +42333,11 @@ a { color: #1565c0; }`;
         const tintEntry = multiSortTintRegistry.get('main_table');
         if (tintEntry) tintEntry.applyTints();
 
+        // Re-apply Column Visibility's hidden columns — see _reapplyColumnVisibility()'s
+        // own JSDoc. renderFinalTable() replaces tbody content wholesale on every
+        // render, which never saw toggleColumn()'s display:none mutation.
+        _reapplyColumnVisibility(table);
+
         // Install (or re-confirm) the MutationObserver that strips jesus2099 treleases
         // nodes from Length cells the instant they are injected into the live tbody.
         if (Lib.settings.sa_enable_numeric_alignment !== false) {
@@ -44626,6 +44674,15 @@ a { color: #1565c0; }`;
         // startFetchingProcess()/disk-load, resets and rebuilds whatever
         // this wires up with its full page-level apparatus — no conflict.
         _rewireNestedTableH2Toggles();
+
+        // Re-apply Column Visibility's hidden columns across every sub-table —
+        // see _reapplyColumnVisibility()'s own JSDoc. renderGroupedTable() replaces
+        // every table's <tbody> content wholesale on every render (initial, sort,
+        // filter, disk-load, discography-view switch), which never saw
+        // toggleColumn()/toggleColumnInTable()'s display:none mutation. Each table's
+        // own header row (never rebuilt) is the source of truth, so this is safe to
+        // call unconditionally per table, independent of any other table's state.
+        document.querySelectorAll('table.tbl').forEach(_reapplyColumnVisibility);
 
         // Generation guard: if a newer renderFinalTable or renderGroupedTable
         // call started while we were in the forEach loop above, skip the

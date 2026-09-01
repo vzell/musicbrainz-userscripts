@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.2",
+        "date": "2026-09-01",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "A column hidden via the 👁️ \"Visible\" Column Visibility button reappeared, fully populated with its cell data, the moment any filter or sort re-rendered the table — the toggle only set `display: none` on the `<tr>` elements live in the DOM at toggle time, but every filter/sort/disk-load re-render replaces `<tbody>` content wholesale with fresh clones of the captured source rows, which never saw that mutation. Each table's own header row (never rebuilt) is now used as the source of truth to re-apply hidden columns after every such re-render."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.1",
         "date": "2026-09-01",
         "sections": [
