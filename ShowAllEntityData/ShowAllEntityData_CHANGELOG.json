@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.979",
+    "date": "2026-09-01",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Column filter highlighting no longer misses a match that spans a real comma-separator text node between two linked entities — e.g. filtering an artist's Events tab Location column for a query like \"k, n\" against a native \"place in area, area, area\" chain (`<a>Midtown Manhattan</a>, <a>New York</a>, <a>New York</a>, …`) correctly narrowed the row count but left the matching area-link boundary with zero visible highlight spans, even though a same-node match elsewhere in the same cell (inside a plain-text comment) highlighted correctly."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.978",
     "date": "2026-09-01",
     "sections": [
