@@ -1,0 +1,14 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-09-01",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "release-tracks: the third-party \"MB: Inline per-recording streaming & download links\" userscript's own `<dl class=\"ar\">` container isn't always a sibling of MusicBrainz's native `<div class=\"ars\">` relationship block — when nested inside it instead, the emptied shell (its own \"▼ Streaming/Downloads:\" toggle button and label) was left stranded inside the \"ARs\" column's cell after its actual link data was correctly extracted into the dedicated \"Streaming/Downloads\" column. Now detached from the DOM the moment it's found, regardless of its original nesting depth, so it's discarded cleanly either way."
+                ]
+            }
+        ]
+    }
+]

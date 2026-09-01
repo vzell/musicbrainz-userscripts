@@ -8389,6 +8389,16 @@
                 // its exact nesting depth inside the Title cell isn't fixed
                 // by this script (third-party-injected).
                 const _streamingDl = _streamingTh ? _titleTd.querySelector('dl.ar') : null;
+                // Detach immediately, regardless of where it was nested —
+                // this userscript's dl.ar can sit INSIDE div.ars rather than
+                // as its sibling (see JSDoc above). Left in place, it would
+                // get swept into the "ARs" column by the wholesale
+                // `_bareArsDiv` child-move further below, stranding its
+                // emptied shell (own toggle button + "Streaming/Downloads:"
+                // label) there once _buildStreamingDownloadsTd() pulls its
+                // <strong>/<a> grandchildren out — instead of being
+                // discarded entirely, as intended.
+                if (_streamingDl) _streamingDl.remove();
 
                 // Also matches the third-party "mb. INLINE STUFF" userscript's
                 // own recording comment/disambiguation span — see
