@@ -9019,17 +9019,23 @@
      * separator-only.
      *
      * A trailing `" (on YYYY-MM-DD)"`/`" (from YYYY-MM-DD until YYYY-MM)"`
-     * date parenthetical at the very end of a `<dt>`'s own `<dd>` (see
-     * `debug/double-ars.html`) is extracted, then re-appended AFTER the
-     * "(additional)" attribute marker on every place `<li>` THAT `<dt>`
-     * produces — e.g. `"The Hit Factory in Manhattan, … United States
+     * date parenthetical at the end of one PLACE's own segment (see
+     * `debug/double-ars.html`, `debug/r-initial.html`) is extracted, then
+     * re-appended AFTER the "(additional)" attribute marker on that SAME
+     * place's `<li>` — e.g. `"The Hit Factory in Manhattan, … United States
      * (additional) (from 1987-01-20 until 1987-03)"` — rather than left in
      * whatever DOM position it started at, since the "(additional)" marker
-     * is synthesized and injected after the fact. Each SEPARATE `<dt>` in
-     * `dts` gets its OWN date and its OWN "additional" check (see
-     * `_recordedAtPlaceHasAdditional`) — a merged multi-`<dt>` cell can
-     * legitimately show a different date (or no date, or "(additional)" on
-     * one dt's places but not another's) per source `<dt>`.
+     * is synthesized and injected after the fact. Extraction is PER PLACE
+     * (`_segDates`, below), not per `<dt>`: a single "recorded at:" credit
+     * can list more than one place, each individually bounded by its own
+     * date range (see `debug/r-initial.html`'s two-studio, two-date
+     * example) — sharing one `<dt>`-wide date across every place it
+     * produces double-appended the LAST place's date onto every EARLIER
+     * place's `<li>` too, a real regression this per-segment extraction
+     * fixes. `_hasAdditional` stays genuinely per-`<dt>` (see its own
+     * comment at its call site below) — a merged multi-`<dt>` cell can
+     * still legitimately show "(additional)" on one dt's places but not
+     * another's.
      *
      * @param {HTMLElement[]} dts - Result of `_findRecordedAtDt`/
      *   `_findMixedAtDt` — every matching `<dt>` to merge into one cell.
@@ -9037,10 +9043,9 @@
      *   verification context (see `_liveDateCheckResult`), or `null`/
      *   omitted. Only ever passed at the "Recorded at place" call site —
      *   deliberately NOT passed for "Mixed at place" (same builder, but
-     *   out of scope for this feature) — so each source `<dt>`'s own
-     *   `_dateText` (computed below) is compared once and the resulting
-     *   flag applied to every place `<li>` that `<dt>` produces, the same
-     *   way `_hasAdditional` already is.
+     *   out of scope for this feature) — compared once PER PLACE against
+     *   that place's own `_segDates` entry (see the per-segment loop
+     *   below), not once per `<dt>`.
      * @returns {HTMLTableCellElement}
      */
     function _buildRecordedAtPlaceTd(dts, liveDateCtx = null) {
@@ -9050,15 +9055,6 @@
             const _dd = dt?.nextElementSibling;
             if (!_dd || _dd.tagName !== 'DD') return;
             const _nodes = Array.from(_dd.childNodes).map(n => n.cloneNode(true));
-            let _dateText = null;
-            const _last = _nodes[_nodes.length - 1];
-            if (_last && _last.nodeType === Node.TEXT_NODE) {
-                const _dateMatch = _last.textContent.match(/^\s*\(((?:on|from)\s+.*)\)\s*$/i);
-                if (_dateMatch) {
-                    _dateText = _dateMatch[1].trim();
-                    _nodes.pop();
-                }
-            }
             const _segments = [];
             _nodes.forEach(n => {
                 const _isPlaceMarker = n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && n.classList.contains('placelink');
@@ -9073,6 +9069,31 @@
                     seg.pop();
                 }
             });
+            // Each place's own segment can carry its own trailing
+            // "(on YYYY-MM-DD)"/"(from YYYY-MM-DD until YYYY-MM)" date
+            // parenthetical — one "recorded at:" credit can list several
+            // places, each individually bounded by its own date range (see
+            // debug/r-initial.html: "…United States (from 1974-10 until
+            // 1975-03) and …United States (from 1975-04-18 until
+            // 1975-07-16)" — two SEPARATE dates on two places under one
+            // shared `<dt>`, not one date for the whole relationship).
+            // Extracted PER SEGMENT, AFTER the separator trim above (so a
+            // non-last segment's own tail is its date paren, not the
+            // "and "/", " text) — MusicBrainz wraps each date's own text
+            // node in decorative, always-empty `<!-- -->` comment nodes on
+            // both sides (see debug/r-initial.html), skipped/dropped here
+            // rather than left stranded as harmless-but-stray trailing
+            // nodes on the `<li>`.
+            const _segDates = _segments.map(seg => {
+                while (seg.length && seg[seg.length - 1].nodeType === Node.COMMENT_NODE) seg.pop();
+                const _tail = seg[seg.length - 1];
+                if (!_tail || _tail.nodeType !== Node.TEXT_NODE) return null;
+                const _dateMatch = _tail.textContent.match(/^\s*\(((?:on|from)\s+.*)\)\s*$/i);
+                if (!_dateMatch) return null;
+                seg.pop();
+                while (seg.length && seg[seg.length - 1].nodeType === Node.COMMENT_NODE) seg.pop();
+                return _dateMatch[1].trim();
+            });
             // The relationship's own "additional" attribute (see
             // _recordedAtPlaceHasAdditional's JSDoc) used to get its own
             // separate "Additional" column; reverted to render inline
@@ -9081,13 +9102,11 @@
             // per-attribute synthetic filter entries work here too, for
             // free). It describes the WHOLE relationship, not any one
             // specific place, so it's appended to EVERY place `<li>` this
-            // `<dt>`'s `<dd>` produces, not just the first.
+            // `<dt>`'s `<dd>` produces, not just the first — unlike
+            // `_segDates` above, this one genuinely IS shared across every
+            // place this `<dt>` produces.
             const _hasAdditional = _recordedAtPlaceHasAdditional(dt);
-            // Computed once per source `<dt>` (like `_hasAdditional` above),
-            // not per place — every place `<li>` this `<dt>`'s `<dd>`
-            // produces shares the same date, so it shares the same flag.
-            const _liveResult = liveDateCtx ? _liveDateCheckResult(liveDateCtx.recordingDate, _parseCreditDateAnnotation(_dateText)) : null;
-            _segments.forEach(seg => {
+            _segments.forEach((seg, i) => {
                 if (seg.length === 0) return;
                 const li = document.createElement('li');
                 seg.forEach(n => li.appendChild(n));
@@ -9099,6 +9118,7 @@
                     li.appendChild(_attrSpan);
                     li.appendChild(document.createTextNode(')'));
                 }
+                const _dateText = _segDates[i];
                 if (_dateText) {
                     li.appendChild(document.createTextNode(` (${_dateText})`));
                     // Wraps the just-appended date text in .mb-credit-date
@@ -9108,6 +9128,11 @@
                     // or its emoji span becomes li.lastChild instead.
                     _wrapTrailingParenDateAnnotations(li);
                 }
+                // Computed per place (this segment's own _dateText), not
+                // once per `<dt>` — two places sharing one `<dt>` can
+                // legitimately have different dates (see _segDates above),
+                // so each needs its own live-recording-date comparison.
+                const _liveResult = liveDateCtx ? _liveDateCheckResult(liveDateCtx.recordingDate, _parseCreditDateAnnotation(_dateText)) : null;
                 _appendLiveDateFlag(li, _liveResult);
                 ul.appendChild(li);
             });
