@@ -18331,6 +18331,56 @@
     }
 
     /**
+     * Resolves an `instrument-list` sub-table's own first-column cell's two
+     * independent facets — re-derives the SAME shape
+     * `ColumnDataExtractor.Name_Comment_Description` already parses to build
+     * its synthetic "Comment"/"Description" columns (see that function's own
+     * JSDoc for the native markup: `<a>` name link, an optional direct-child
+     * `<span class="comment">` (never nested deeper), then an optional
+     * free-text description after the first "—" (em dash) text node — which
+     * may itself contain nested `<a>` links, e.g. a family entry naming its
+     * member instruments, see debug/instruments.html's "Family" column).
+     * `hasDescription` walks past the dash exactly like
+     * `Name_Comment_Description` does (skipping the `<!-- -->` marker-comment
+     * artifact MusicBrainz emits right after the dash, and any
+     * whitespace-only text node) so a dash with genuinely nothing after it
+     * — not seen in real data, but not assumed away either — correctly
+     * resolves to `false`, not `true`.
+     *
+     * Deliberately only called for the columns in
+     * `INSTRUMENT_LIST_COLUMN_NAMES` (gated at the `openUniqDrop()` call
+     * site) — every other column's "—" character (if any) is unrelated
+     * free-text prose, not this specific name/comment/description grammar.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {{hasComment: boolean, hasDescription: boolean}}
+     */
+    function _findCellInstrumentFacets(cell) {
+        if (!cell) return { hasComment: false, hasDescription: false };
+        const _commentSpan = cell.querySelector(':scope > span.comment');
+        const _commentBdi  = _commentSpan ? _commentSpan.querySelector('bdi') : null;
+        const hasComment = !!(_commentBdi && _commentBdi.textContent.trim());
+
+        let hasDescription = false;
+        let _dashSeen = false;
+        for (const node of cell.childNodes) {
+            if (!_dashSeen) {
+                if (node.nodeType === Node.TEXT_NODE && node.nodeValue.includes('—')) {
+                    _dashSeen = true;
+                    const _after = node.nodeValue.split('—').slice(1).join('—').trim();
+                    if (_after) hasDescription = true;
+                }
+                continue;
+            }
+            if (node.nodeType === Node.COMMENT_NODE) continue; // skip <!-- --> artifact
+            if (node.nodeType === Node.TEXT_NODE && !node.nodeValue.trim()) continue;
+            hasDescription = true;
+            break;
+        }
+        return { hasComment, hasDescription };
+    }
+
+    /**
      * Tests whether a table cell matches a "Cell structure" checkbox mode
      * from `openUniqDrop()`'s synthetic entries (`makeSynItem`/
      * `makeValueSynItem`/`makeInlineArtItem`) — the single source of truth
@@ -18747,6 +18797,16 @@
             // _findCellLocaleInfo()'s own JSDoc.
             const info = _findCellLocaleInfo(cell);
             return !!info && info.primary === false;
+        }
+        if (mode === 'instrument-has-comment') {
+            // Fixed flag — true when this instrument-list first-column cell
+            // carries a direct-child `<span class="comment">`.
+            return _findCellInstrumentFacets(cell).hasComment;
+        }
+        if (mode === 'instrument-has-description') {
+            // Fixed flag — true when this instrument-list first-column cell
+            // has free-text description content after its "—" separator.
+            return _findCellInstrumentFacets(cell).hasDescription;
         }
         if (mode.startsWith('arttype:')) {
             // Compound mode (openUniqDrop()'s makeValueSynItem, the "CAA
@@ -35524,6 +35584,14 @@ a { color: #1565c0; }`;
         // values-kind/multi-medium-flag split.
         localeLanguage: { label: 'Locale info - Language', glyph: '🗣️' },
         localePrimary:  { label: 'Locale info - Primary',  glyph: '🥇' },
+        // "Instrument info" — the `instrument-list` pageType's own per-family
+        // first column (see `INSTRUMENT_LIST_COLUMN_NAMES`): whether the cell
+        // carries a `<span class="comment">` and/or a free-text description
+        // after the "—" separator — two independent binary flags, each its
+        // own sub-section (mirrors Tracks info's values-kind/multi-medium-flag
+        // split above). See `_findCellInstrumentFacets()`'s own JSDoc.
+        instrumentHasComment:     { label: 'Instrument info - Comment',     glyph: '💬' },
+        instrumentHasDescription: { label: 'Instrument info - Description', glyph: '📝' },
     };
 
     /**
@@ -35555,6 +35623,8 @@ a { color: #1565c0; }`;
         'release-quality-normal': 'releaseDataQuality',
         'acoustid-linked': 'acoustidLinkStatus', 'acoustid-unlinked': 'acoustidLinkStatus',
         'locale-primary': 'localePrimary', 'locale-not-primary': 'localePrimary',
+        'instrument-has-comment': 'instrumentHasComment',
+        'instrument-has-description': 'instrumentHasDescription',
     };
 
     /**
@@ -35603,6 +35673,24 @@ a { color: #1565c0; }`;
         editormembership: 'editorMembership', editorcomment: 'editorComment',
         localelanguage: 'localeLanguage',
     };
+
+    /**
+     * The `instrument-list` pageType's own per-family first-column header
+     * names (see that pageType's `entityFeatures` keys, `/instruments`) —
+     * each sub-table's ONLY native column, later split into synthetic
+     * "Name"/"Comment"/"Description" columns by the `Name_Comment_Description`
+     * extractor. Column-name gate for `openUniqDrop()`'s "Instrument info -
+     * Comment"/"- Description" flags (see `_findCellInstrumentFacets()`'s own
+     * JSDoc) — a `Set`, not a single fixed name, since each sub-table's
+     * column is named after its own family (e.g. "Wind instrument", "String
+     * instrument") rather than sharing one name the way `isAcoustIdCol`/
+     * `isReleaseCol`/etc. do.
+     */
+    const INSTRUMENT_LIST_COLUMN_NAMES = new Set([
+        'Wind instrument', 'String instrument', 'Percussion instrument',
+        'Electronic instrument', 'Other instrument', 'Ensemble', 'Family',
+        'Unclassified instrument'
+    ]);
 
     /**
      * Maps a MusicBrainz entity type (the first path segment of its href,
@@ -36521,6 +36609,64 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights the comment text for an `instrument-has-comment` fixed
+     * structure-mode filter — re-derives from `_findCellInstrumentFacets()`
+     * directly, then scopes the highlight to the cell's own direct-child
+     * `span.comment` wrapper (mirroring `_highlightLocalePrimaryMatch()`'s
+     * "scope to the one element this value came from" approach), highlighting
+     * the WHOLE comment text — unlike locale's fixed "primary" word, an
+     * instrument's comment is free text, so there is no fixed literal to
+     * match against.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     */
+    function _highlightInstrumentCommentMatch(cell) {
+        if (!cell) return;
+        if (!_findCellInstrumentFacets(cell).hasComment) return;
+        const commentSpan = cell.querySelector(':scope > span.comment');
+        if (!commentSpan) return;
+        commentSpan.normalize();
+        highlightCrossTag(commentSpan, /[\s\S]+/g, 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights the description text for an `instrument-has-description`
+     * fixed structure-mode filter — re-derives from
+     * `_findCellInstrumentFacets()` directly, then highlights everything
+     * from immediately after the "—" (em dash) separator to the end of the
+     * cell — a lookbehind-anchored, `$`-anchored, cross-tag match (root
+     * scoped to the whole `cell`, not a single wrapper element, since the
+     * description has none — it may span plain text plus nested `<a>` links,
+     * e.g. a family entry naming its member instruments), matching
+     * `_findCellInstrumentFacets()`'s own "everything after the dash" shape.
+     * Cell-wide scoping means an em dash appearing INSIDE the comment span's
+     * own free text (not observed in real data as of this writing) would be
+     * matched instead of the real separator — accepted as an unlikely
+     * theoretical edge case, same risk-tolerance precedent as
+     * `_highlightTagCountMatch()`'s own `^`-anchored, un-scoped assumption
+     * about its cell's shape.
+     *
+     * The lookbehind requires EXACTLY one whitespace character after the
+     * dash (`—\s`, not `—\s*`) — confirmed live (debug/instruments.html /
+     * `/instruments`) as the actual, consistent native shape (the dash text
+     * node is literally `" — "`, one space each side). A variable-length
+     * `\s*` here would let the regex engine satisfy the lookbehind with ZERO
+     * whitespace consumed (the leftmost position where it's satisfiable at
+     * all, since `[\s\S]*$` matches from anywhere to end) — which was
+     * confirmed live to leave the leading space itself wrapped in its own
+     * highlight span, a small but real cosmetic defect this fixed version
+     * avoids for the one shape MusicBrainz actually renders.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     */
+    function _highlightInstrumentDescriptionMatch(cell) {
+        if (!cell) return;
+        if (!_findCellInstrumentFacets(cell).hasDescription) return;
+        cell.normalize();
+        highlightCrossTag(cell, /(?<=—\s)[\s\S]*$/g, 'mb-column-filter-highlight');
+    }
+
+    /**
      * Highlights the "(cancelled)" marker's own text for an
      * `entitycancelled:`/`eventcancelled:` compound structure-mode filter
      * — re-derives from `_findCellEventCancelled()` directly (same
@@ -37189,8 +37335,11 @@ a { color: #1565c0; }`;
                     // get highlighted; 'localelanguage:' likewise gets one (see
                     // _highlightLocaleLanguageMatch), and so does 'locale-primary'
                     // (see _highlightLocalePrimaryMatch — its own visible
-                    // `span.comment` "primary" text); the other structure modes
-                    // (empty/single/
+                    // `span.comment` "primary" text); 'instrument-has-comment'/
+                    // 'instrument-has-description' likewise each get their own
+                    // (see _highlightInstrumentCommentMatch/
+                    // _highlightInstrumentDescriptionMatch); the other structure
+                    // modes (empty/single/
                     // collapsed/expanded/any/title-mismatch/inline-art-yes/no/
                     // 'editorrecordedname:'/'editormembership:' — both facts live
                     // exclusively inside a never-rendered `title` attribute — and
@@ -37243,6 +37392,10 @@ a { color: #1565c0; }`;
                                     _highlightLocaleLanguageMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'locale-primary') {
                                     _highlightLocalePrimaryMatch(row.cells[f.idx]);
+                                } else if (mode === 'instrument-has-comment') {
+                                    _highlightInstrumentCommentMatch(row.cells[f.idx]);
+                                } else if (mode === 'instrument-has-description') {
+                                    _highlightInstrumentDescriptionMatch(row.cells[f.idx]);
                                 } else if (mode.startsWith('eventdate:')) {
                                     _highlightEventDateMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('tagcount:')) {
@@ -47312,6 +47465,11 @@ a { color: #1565c0; }`;
         const localeLanguageValueCounts = _uniqCacheHit ? _uniqCacheHit.localeLanguageValueCounts : new Map();
         let localePrimaryCount    = _uniqCacheHit ? _uniqCacheHit.localePrimaryCount    : 0;
         let localeNotPrimaryCount = _uniqCacheHit ? _uniqCacheHit.localeNotPrimaryCount : 0;
+        // `instrument-list` first column only: two independent binary flags
+        // — see `_findCellInstrumentFacets()`'s own JSDoc. Column-gated
+        // (isInstrumentListCol below).
+        let instrumentHasCommentCount     = _uniqCacheHit ? _uniqCacheHit.instrumentHasCommentCount     : 0;
+        let instrumentHasDescriptionCount = _uniqCacheHit ? _uniqCacheHit.instrumentHasDescriptionCount : 0;
         // Distinct event-role values (e.g. "main performer", "guest
         // performer", "support act", "participant", "host") from a native
         // MusicBrainz `.artist-roles` list — the query-time counterpart of
@@ -47412,6 +47570,12 @@ a { color: #1565c0; }`;
         // JSDoc) — name-only, no page-type check, same convention as
         // isReleaseCol/isAcoustIdCol above.
         const isLocaleCol = _colHeaderName === 'Locale';
+        // Column-name gate for `instrument-list`'s own per-family first
+        // column (see `INSTRUMENT_LIST_COLUMN_NAMES`'s own JSDoc and
+        // `_findCellInstrumentFacets()`'s) — a Set-membership check, not a
+        // single fixed name, since each sub-table's column is named after
+        // its own family.
+        const isInstrumentListCol = INSTRUMENT_LIST_COLUMN_NAMES.has(_colHeaderName);
         // 'tag-value-entity' is tableMode: 'single' — its resolved
         // entityFeatures block is merged into activeDefinition once, and
         // activeColumnExtractors is built once from it (not re-assigned
@@ -47609,6 +47773,11 @@ a { color: #1565c0; }`;
                         if (_localeInfo.primary) localePrimaryCount++;
                         else                     localeNotPrimaryCount++;
                     }
+                }
+                if (isInstrumentListCol) {
+                    const _instrumentFacets = _findCellInstrumentFacets(cell);
+                    if (_instrumentFacets.hasComment)     instrumentHasCommentCount++;
+                    if (_instrumentFacets.hasDescription) instrumentHasDescriptionCount++;
                 }
                 if (isEventCol) {
                     const _eventDates = _findCellEventDateParts(cell);
@@ -48602,6 +48771,7 @@ a { color: #1565c0; }`;
                 releaseQualityHighCount, releaseQualityLowCount, releaseQualityNormalCount,
                 acoustidLinkedCount, acoustidUnlinkedCount,
                 localeLanguageValueCounts, localePrimaryCount, localeNotPrimaryCount,
+                instrumentHasCommentCount, instrumentHasDescriptionCount,
                 eventRoleValueCounts, roleTokenValueCounts, artTypeValueCounts, artCommentValueCounts,
                 flagIconMap, isRelCellCol, relIconCounts,
                 inlineArtType, inlineArtYes, inlineArtNo,
@@ -48623,6 +48793,7 @@ a { color: #1565c0; }`;
             multiMediumCount, catalogHasPrefixCount, catalogNoPrefixCount, catalogNoneCount,
             acoustidLinkedCount, acoustidUnlinkedCount,
             localePrimaryCount, localeNotPrimaryCount,
+            instrumentHasCommentCount, instrumentHasDescriptionCount,
             inlineArtYes, inlineArtNo,
             ...attrValueCounts.values(), ...taskValueCounts.values(),
             ...dateValueCounts.values(), ...instrumentValueCounts.values(),
@@ -48956,7 +49127,7 @@ a { color: #1565c0; }`;
          * can be surfaced for every column type (plain text, extractor synthetic,
          * etc.), not only for columns with multi-row / collapsable structure.
          *
-         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | 'multi-medium' | 'catalog-has-prefix' | 'catalog-no-prefix' | 'catalog-none' | 'editor-any-deleted' | 'changelog-has-message' | 'changelog-no-message' | 'acoustid-linked' | 'acoustid-unlinked' | 'locale-primary' | 'locale-not-primary'
+         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | 'multi-medium' | 'catalog-has-prefix' | 'catalog-no-prefix' | 'catalog-none' | 'editor-any-deleted' | 'changelog-has-message' | 'changelog-no-message' | 'acoustid-linked' | 'acoustid-unlinked' | 'locale-primary' | 'locale-not-primary' | 'instrument-has-comment' | 'instrument-has-description'
          * @param {string} label   - Human-readable display text
          * @param {number} count   - Number of visible rows matching this mode
          * @param {string} [extraLabelClass] - An extra CSS class to add to
@@ -49347,7 +49518,8 @@ a { color: #1565c0; }`;
             editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
             releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
             acoustidLinkedCount > 0 || acoustidUnlinkedCount > 0 ||
-            localePrimaryCount > 0 || localeNotPrimaryCount > 0 || _hasValueEntries)) {
+            localePrimaryCount > 0 || localeNotPrimaryCount > 0 ||
+            instrumentHasCommentCount > 0 || instrumentHasDescriptionCount > 0 || _hasValueEntries)) {
              // "empty cells" pinned first; remaining entries in ascending complexity order.
             // For CAA/EAA columns the generic structural labels are replaced with more
             // descriptive artwork-presence labels that match user intent:
@@ -49385,6 +49557,11 @@ a { color: #1565c0; }`;
             // release-quality-*/acoustid-* above.
             if (localePrimaryCount > 0)    makeSynItem('locale-primary', '🥇 primary', localePrimaryCount);
             if (localeNotPrimaryCount > 0) makeSynItem('locale-not-primary', '◦ not primary', localeNotPrimaryCount);
+            // "Instrument info - Comment"/"- Description" — two independent
+            // binary flags, each its own section (see SYN_SECTION_META's own
+            // comment).
+            if (instrumentHasCommentCount > 0)     makeSynItem('instrument-has-comment', '💬 has comment', instrumentHasCommentCount);
+            if (instrumentHasDescriptionCount > 0) makeSynItem('instrument-has-description', '📝 has description', instrumentHasDescriptionCount);
             // Credit-role columns' per-attribute / per-task / per-date /
             // per-instrument dynamic value entries (see attrValueCounts/
             // taskValueCounts/dateValueCounts/instrumentValueCounts' own
@@ -49432,7 +49609,8 @@ a { color: #1565c0; }`;
                    editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
                    releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
                    acoustidLinkedCount > 0 || acoustidUnlinkedCount > 0 ||
-                   localePrimaryCount > 0 || localeNotPrimaryCount > 0 || _hasValueEntries) {
+                   localePrimaryCount > 0 || localeNotPrimaryCount > 0 ||
+                   instrumentHasCommentCount > 0 || instrumentHasDescriptionCount > 0 || _hasValueEntries) {
             // Non-collapsable column (or a collapsable one with zero rows in
             // any multi-row-family state this render).
             if (emptyCellCount > 0)     makeSynItem('empty',          '○ empty cells',           emptyCellCount);
@@ -49452,6 +49630,8 @@ a { color: #1565c0; }`;
             if (acoustidUnlinkedCount > 0) makeSynItem('acoustid-unlinked', '🚫 unlinked', acoustidUnlinkedCount, 'disabled-acoustid');
             if (localePrimaryCount > 0)    makeSynItem('locale-primary', '🥇 primary', localePrimaryCount);
             if (localeNotPrimaryCount > 0) makeSynItem('locale-not-primary', '◦ not primary', localeNotPrimaryCount);
+            if (instrumentHasCommentCount > 0)     makeSynItem('instrument-has-comment', '💬 has comment', instrumentHasCommentCount);
+            if (instrumentHasDescriptionCount > 0) makeSynItem('instrument-has-description', '📝 has description', instrumentHasDescriptionCount);
             _sortedAttrValues.forEach(v => makeValueSynItem('attr', v, attrValueCounts.get(v)));
             _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));
@@ -49985,6 +50165,8 @@ a { color: #1565c0; }`;
         if (mode.startsWith('localelanguage:')) return `» language: ${mode.slice(15)}`;
         if (mode === 'locale-primary')     return '🥇 primary';
         if (mode === 'locale-not-primary') return '◦ not primary';
+        if (mode === 'instrument-has-comment')     return '💬 has comment';
+        if (mode === 'instrument-has-description') return '📝 has description';
         return '▶◀ multi-row: any';
     }
 
@@ -50059,6 +50241,8 @@ a { color: #1565c0; }`;
         if (mode.startsWith('localelanguage:')) return 'One "Locale" cell\'s own language text (e.g. "English", "Chinese (China)").';
         if (mode === 'locale-primary') return '🥇 = this alias\'s "Locale" cell carries MusicBrainz\'s own `(primary)` marker for its locale.';
         if (mode === 'locale-not-primary') return '◦ = a non-empty locale with no `(primary)` marker. Excludes alias `Type`s with no locale at all (e.g. "Legal name", "Search hint").';
+        if (mode === 'instrument-has-comment') return '💬 = this instrument\'s own cell carries a `<span class="comment">` (a short parenthetical, e.g. "(harmonica/accordion hybrid)").';
+        if (mode === 'instrument-has-description') return '📝 = this instrument\'s own cell has free-text description content after its "—" separator.';
         return '';
     }
 
