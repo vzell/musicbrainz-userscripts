@@ -34119,6 +34119,27 @@ a { color: #1565c0; }`;
      *   the join point here: skip the virtual gap when the next entry starts
      *   with `,`/`)`/`]` or the previous entry ends with `(`/`[`.
      *
+     *   A fourth gap (fixed together with the above; same underlying
+     *   principle as the third, one level removed): a REAL comma-separator
+     *   text node — e.g. MB's own "place in area, area, area" chain, where
+     *   the `, ` between two `<a>` area links is itself a genuine, accepted
+     *   (non-whitespace-only) text node, unlike the `&nbsp;`-only boundary
+     *   gap 2 fixed — already supplies its own trailing space. Inserting
+     *   this function's unconditional virtual gap AFTER such a node doubles
+     *   it up: `"…New York"` + `", "` (real) + `" "` (virtual) +
+     *   `"New York…"` reads `"…New York,  New York…"` (two spaces), which a
+     *   literal single-space query like `"k, n"` never matches as a
+     *   contiguous substring — even though getCleanColumnText()'s
+     *   normalizeExtractedText() step 1 collapses ANY whitespace run to one
+     *   space, so the row itself still matches correctly, and a same-node
+     *   match elsewhere in the very same cell (e.g. inside a plain-text
+     *   comment) highlights fine — only the cross-tag one silently doesn't.
+     *   Fixed by extending the join-point rule above: also skip the virtual
+     *   gap when the previous entry already ends in whitespace, or the next
+     *   entry already begins with whitespace — i.e. never double up
+     *   whitespace that's already there, the same principle steps 2 & 3
+     *   apply to punctuation.
+     *
      * @param {Element} root      - Container element to search within (typically a `<td>`).
      * @param {RegExp}  regex     - Pre-compiled global RegExp (must carry the 'g' flag).
      * @param {string}  className - CSS class name applied to every highlight `<span>`.
@@ -34246,13 +34267,20 @@ a { color: #1565c0; }`;
             // at the join point, rather than by inserting the space and stripping
             // it back out of fullText afterwards, so the offset bookkeeping below
             // can never drift out of sync with the string it describes.
+            //
+            // ALSO except when a real separator text node already supplies its
+            // own adjoining whitespace (e.g. the ", " between two area `<a>`
+            // links in a "place in area, area" chain) — adding the virtual gap
+            // on top would double it up. See this function's own JSDoc for the
+            // "fourth gap" this fixes.
             let gap = '';
             if (entries.length) {
                 const prevText = entries[entries.length - 1].node.nodeValue;
                 const prevLastChar = prevText[prevText.length - 1];
                 const nextFirstChar = text[0];
                 const skipGap = nextFirstChar === ',' || nextFirstChar === ')' || nextFirstChar === ']' ||
-                    prevLastChar === '(' || prevLastChar === '[';
+                    prevLastChar === '(' || prevLastChar === '[' ||
+                    /\s/.test(prevLastChar) || /\s/.test(nextFirstChar);
                 if (!skipGap) gap = ' ';
             }
             offset += gap.length;

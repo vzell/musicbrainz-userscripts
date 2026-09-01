@@ -6896,3 +6896,48 @@ scratch later.
   (the 2026-08-29 fix's own regression coverage, including its `In (Disc`/
   `Slash (US`/`US 2009-03-10`/`US 1986` cross-tag cases) with no
   regressions.
+
+## 2026-09-01 — highlightCrossTag() still misses a match across a REAL comma-separator node (fixed; second follow-up, "Location" column)
+
+- Reported live on `artist-events` (same URL/fixture as the two entries
+  above): filtering the **Location** column for `k, n` correctly narrowed
+  the row count, and highlighted fine inside a plain-text comment entirely
+  within one `<bdi>` (e.g. "(Colts Neck, NJ 1987–present)" — Bruce
+  Springsteen's own residence, one span `"k, N"`), but produced **zero**
+  highlight spans for rows whose match instead spanned a native MB
+  "place in area, area, area" chain — e.g. Madison Square Garden's
+  `…<a><bdi>Midtown Manhattan</bdi></a>, <a><bdi>New York</bdi></a>,
+  <a><bdi>New York</bdi></a>, <span class="flag …">…` — at the "New York" /
+  "New York" area-link boundary.
+- Root cause: the SAME underlying principle as the 2026-09-01 entry above
+  (a boundary where `normalizeExtractedText()` and `highlightCrossTag()`'s
+  own join disagree), one level removed. The `, ` between two area links is
+  a genuine, non-whitespace-only text node — NOT the `&nbsp;`-only case the
+  2026-08-29 fix handles — so it's its own accepted entry, already carrying
+  its own trailing space. `highlightCrossTag()`'s unconditional virtual
+  join-space, inserted immediately AFTER that node too (nothing in the
+  existing comma/paren rule stops it, since the char right after the gap is
+  `N`, not `,`/`)`/`]`), doubled it up: `"…New York"` + `", "` (real) +
+  `" "` (virtual) + `"New York…"` read `"…New York,  New York…"` (TWO
+  spaces). The literal single-space query `"k, n"` never matches that as a
+  contiguous substring, while `getCleanColumnText()`'s
+  `normalizeExtractedText()` step 1 (`\s+` → one space) collapses the same
+  double space on the row-match side, so the row still matched correctly —
+  exactly the same "highlights inside comments, not across areas" split
+  symptom the user reported, confirmed live: 1189 rows matched, only 30 of
+  them (all same-node comment matches) got a highlight span.
+- Fix (`ShowAllEntityData.user.js`, `highlightCrossTag()`): extended the
+  join-point `skipGap` rule with two more conditions — skip the virtual gap
+  when the previous entry's text already ends in whitespace, or the next
+  entry's text already begins with whitespace. Same principle as the
+  comma/paren rule (steps 2 & 3): never add whitespace where whitespace
+  already exists on either side of the join point.
+- Regression test: `tests/live/artist-events-interactions.spec.js` ("Location
+  column filter highlights a match spanning a real comma-separator text node
+  between two area links"), reusing the same disk fixture, targeting two
+  specific rows by place UUID — confirmed to fail (0 spans on the Madison
+  Square Garden row; the Colts Neck comment-row assertion already passed
+  before this fix) and pass (`['k', ', ', 'N']` on the area-chain row, one
+  span per originating text node) after. Re-ran the full
+  `artist-events-interactions.spec.js` suite and
+  `artist-releases-filter-sort.spec.js`'s §A suite with no regressions.

@@ -366,3 +366,71 @@ test('Event column filter highlights a match spanning a comment-comma boundary',
 
     expect(pageErrors).toEqual([]);
 });
+
+test('Location column filter highlights a match spanning a real comma-separator text node between two area links', { tag: '@core' }, async ({ page }) => {
+    // Regression test for a real, confirmed-live bug, same root cause class as
+    // a25ed83 ("USA, bleach" / highlightCrossTag() missing a comma-boundary
+    // match) but a different shape: here the comma sits in its OWN real DOM
+    // text node between two `<a>` area links (native MB "place in area, area,
+    // area" chain), e.g.
+    //   <a href="/place/…"><bdi>Madison Square Garden</bdi></a> in
+    //   <a href="/area/…"><bdi>Midtown Manhattan</bdi></a>,
+    //   <a href="/area/…"><bdi>New York</bdi></a>,
+    //   <a href="/area/…"><bdi>New York</bdi></a>, …
+    // Filtering the Location column for "k, n" correctly narrows to every row
+    // whose Location cell contains a "k, n"-shaped boundary ANYWHERE — both a
+    // same-node match inside a plain-text comment (e.g. "(Colts Neck, NJ
+    // 1987–present)", entirely inside one <bdi>) and a cross-tag match at the
+    // "New York" / "New York" area-link boundary above.
+    //
+    // The same-node comment case highlights correctly (confirmed: one
+    // `.mb-column-filter-highlight` span reading "k, N"). The cross-tag
+    // area-link case does not (confirmed: the row is counted in the filtered
+    // total but produces ZERO highlight spans) — highlightCrossTag()'s entry
+    // between the two "New York" `<bdi>` texts is the literal comma+space
+    // text node itself (", ", non-whitespace-only, so it's its OWN accepted
+    // entry, not rejected like the `&nbsp;` case a25ed83 fixed). That real
+    // trailing space combines with highlightCrossTag()'s own unconditional
+    // virtual join-space (added between every pair of entries) to produce a
+    // DOUBLE space — "New York,  New York" — which the literal single-space
+    // query "k, n" never matches, even though getCleanColumnText()'s
+    // normalizeExtractedText() collapses any whitespace run to one space on
+    // the row-match side, so the row itself still matches correctly. See
+    // ShowAllEntityData.user.js's highlightCrossTag() JSDoc.
+    const pageErrors = collectPageErrors(page);
+    await loadArtistEvents(page);
+
+    const colIdx = await columnIndex(page, 'Location');
+    expect(colIdx).toBeGreaterThanOrEqual(0);
+
+    // force: true — the Location column's filter input sits close enough to
+    // the sticky Event column that its `<th>` intercepts the click at the
+    // headless viewport's default width; this is a pre-existing test-harness
+    // quirk unrelated to the bug under test.
+    const colInput = page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
+    await colInput.click({ force: true });
+    await waitForFilterSettled(page, () => colInput.pressSequentially('k, n'));
+
+    const after = await getPageRowCount(page);
+    expect(after.filtered).toBe(1189);
+
+    // Same-node comment match: Bruce Springsteen's own residence, "(Colts
+    // Neck, NJ 1987–present)" — one span, the whole match inside one <bdi>.
+    const commentCell = page.locator(
+        `table.tbl tbody tr:has(a[href="/place/69464a66-19d2-4255-861b-75abe542be44"]) td:nth-child(${colIdx + 1})`
+    ).first();
+    await expect(commentCell.locator('.mb-column-filter-highlight')).toHaveText(['k, N']);
+
+    // Cross-tag area-link match: Madison Square Garden's "…Midtown
+    // Manhattan, New York, New York, United States" chain — the match spans
+    // the real ", " text node between the two "New York" area links, so
+    // highlightCrossTag() must split it into three spans, one per
+    // originating text node: "k" (tail of the first "New York"), ", " (the
+    // separator node itself), "N" (head of the second "New York").
+    const areaChainCell = page.locator(
+        `table.tbl tbody tr:has(a[href="/place/a727b970-8ea0-4f75-abc8-db131f72aecb"]) td:nth-child(${colIdx + 1})`
+    ).first();
+    await expect(areaChainCell.locator('.mb-column-filter-highlight')).toHaveText(['k', ', ', 'N']);
+
+    expect(pageErrors).toEqual([]);
+});
