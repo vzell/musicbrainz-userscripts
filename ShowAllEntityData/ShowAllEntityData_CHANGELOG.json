@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.985",
+    "date": "2026-09-01",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "recording-fingerprints: the \"AcoustID\" column's 📊 unique-values dropdown now offers an \"AcoustID info - Link status\" section (🔗 linked / 🚫 unlinked), letting you filter to just the AcoustIDs that are still linked to this recording or just the ones that have been unlinked. The unlinked entry reuses MusicBrainz's own \"disabled-acoustid\" styling directly."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.984",
     "date": "2026-09-01",
     "sections": [
