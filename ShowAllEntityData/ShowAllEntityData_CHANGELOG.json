@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.989",
+    "date": "2026-09-02",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Unique-values dropdown: the \"Event\" column's already-existing \"Event info - Event cancelled\" section (native `span.cancelled` marker, e.g. `/user/<username>/ratings/event/`'s Event ratings sub-table) now also applies to the `user-ratings-type` page type — `_eventCancelledKind`'s page-type gate extended alongside its existing `tag-value`/`user-tag-value` entries. No new extractor/highlighter — reuses `_findCellEventCancelled()`/`_highlightEventCancelledMatch()` unchanged."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.988",
     "date": "2026-09-02",
     "sections": [
