@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.990",
+    "date": "2026-09-02",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Unique-values dropdown: the `instrument-list` pageType's per-family first column (e.g. \"Wind instrument\", \"Family\" — see `INSTRUMENT_LIST_COLUMN_NAMES`) gets two new independent binary-flag sections — \"Instrument info - Comment\" (\"💬 has comment\", a direct-child `<span class=\"comment\">`) and \"Instrument info - Description\" (\"📝 has description\", free text after the \"—\" separator, which may itself contain nested `<a>` links). New `_findCellInstrumentFacets()` extractor and `_highlightInstrumentCommentMatch()`/`_highlightInstrumentDescriptionMatch()` highlighters."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.989",
     "date": "2026-09-02",
     "sections": [
