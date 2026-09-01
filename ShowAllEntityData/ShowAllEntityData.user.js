@@ -17866,6 +17866,65 @@
     }
 
     /**
+     * Splits each item of a "Part of series" cell (`release-tracks`'
+     * dynamic-fallback "part of:" AR column — see `PEER_SPLIT_KINDS`'s own
+     * JSDoc for how this column's `<li>` items get built, one per credited
+     * series) into its own series name, disambiguation-comment text (e.g.
+     * `"2022-1-15"`/`"as at 2016-06-10"` — MusicBrainz's own free-text
+     * series-membership comment; NOT guaranteed to be date-shaped, just
+     * observed that way in every real example so far), and numeric series
+     * position (e.g. `"27"` from `"(number: 27)"`). Comment and number are
+     * each independently OPTIONAL — many series memberships carry neither
+     * (see debug/tracklist-overflow.html, debug/full.html: `<a>Series
+     * Name</a> (number: N)` with no `.comment` span at all).
+     *
+     * Reuses `_findCellListItems()` (never a fresh ad hoc `ul > li` query —
+     * see that function's own JSDoc for why a hand-rolled version of "does
+     * this cell have a qualifying list" has regressed this codebase
+     * before) for the per-`<li>` walk, falling back to the whole cell's
+     * own content when no list is found (a single-series cell — see
+     * `_findCellListItems()`'s own "single-item list cells... excluded
+     * from prose-candidacy" note; `_buildKindSplitListTd()` still always
+     * builds a `<ul><li>` even for one item, so this fallback is
+     * defensive, not the common path).
+     *
+     * `number` parsing (`/\(number:\s*(\d+)\)/i` against the item's own
+     * `getCleanColumnText()`) is the only facet with no CSS-class safety
+     * net — MusicBrainz renders it as bare trailing text, not inside its
+     * own wrapper span (unlike the series `<a>`/`.comment` markup, which
+     * IS class-scoped) — but it's safely column-gated the same way
+     * `_findCellCatalogParts()`'s own prefix/number split is (deliberately
+     * only called for the "Part of series" column itself, at the
+     * `openUniqDrop()` call site).
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Array<{name: ?string, nameEl: ?Element, comment: ?string,
+     *   commentEl: ?Element, number: ?string, el: Element}>}
+     */
+    function _findCellPartOfSeriesParts(cell) {
+        if (!cell) return [];
+        const items = _findCellListItems(cell);
+        const sources = items.length ? items : [cell];
+        const out = [];
+        sources.forEach(source => {
+            if (!source.querySelector) return;
+            const a = source.querySelector('a[href^="/series/"]');
+            const nameEl = a ? (a.querySelector('bdi') || a) : null;
+            const name = nameEl ? (getCleanColumnText(nameEl) || null) : null;
+            const commentSpan = source.querySelector('.comment');
+            const commentEl = commentSpan ? (commentSpan.querySelector('bdi') || commentSpan) : null;
+            let comment = commentEl ? getCleanColumnText(commentEl) : null;
+            if (comment) comment = comment.replace(/^\(([\s\S]*)\)$/, '$1').trim() || null;
+            const t = getCleanColumnText(source);
+            const m = t.match(/\(number:\s*(\d+)\)/i);
+            const number = m ? m[1] : null;
+            if (!name && !comment && !number) return;
+            out.push({ name, nameEl, comment, commentEl, number, el: source });
+        });
+        return out;
+    }
+
+    /**
      * Extracts every Editor-column facet from one `annotations` pageType
      * `<td>` — the single bespoke source of truth for the "Editor info -
      * Deleted" / "- Recorded name" / "- Membership" / "- Comment" dropdown
@@ -18419,6 +18478,28 @@
             // flags above: a cell's list can mix "[none]" items with real
             // prefixed/unprefixed catalog numbers.
             return !!cell && _findCellCatalogParts(cell).some(p => p.none);
+        }
+        if (mode.startsWith('partofseriesname:')) {
+            // Compound mode — matches one "Part of series" item's own
+            // series name, from _findCellPartOfSeriesParts()'s own
+            // extraction.
+            const want = mode.slice(18);
+            return !!cell && _findCellPartOfSeriesParts(cell).some(p => p.name === want);
+        }
+        if (mode.startsWith('partofseriesdate:')) {
+            // Compound mode counterpart of 'partofseriesname:' above —
+            // matches one "Part of series" item's own disambiguation-
+            // comment text (e.g. "2022-1-15", "as at 2016-06-10").
+            const want = mode.slice(17);
+            return !!cell && _findCellPartOfSeriesParts(cell).some(p => p.comment === want);
+        }
+        if (mode.startsWith('partofseriesnumber:')) {
+            // Compound mode counterpart of 'partofseriesname:'/
+            // 'partofseriesdate:' above — matches one "Part of series"
+            // item's own numeric series position (e.g. "27" from
+            // "(number: 27)").
+            const want = mode.slice(19);
+            return !!cell && _findCellPartOfSeriesParts(cell).some(p => p.number === want);
         }
         if (mode.startsWith('editordeleted:')) {
             // Compound mode — matches one distinct deleted-editor identity
@@ -35194,6 +35275,19 @@ a { color: #1565c0; }`;
         // shape states).
         catalogPrefix:   { label: 'Catalog info - Prefix',   glyph: '🧾' },
         catalogPresence: { label: 'Catalog info - Presence', glyph: '🔍' },
+        // "Part of series" (release-tracks' dynamic-fallback "part of:" AR
+        // column — see PEER_SPLIT_KINDS' own JSDoc) split into one
+        // sub-section per facet of a single credited series, mirroring
+        // Format info/Catalog info's own "one flat cell, several
+        // independently-checkable value families" shape — see
+        // `_findCellPartOfSeriesParts()`'s own JSDoc for the three facets.
+        // 📅 intentionally reused from creditDate/releaseEventsDate/
+        // eventInfo — same facet (a date-like value), same reuse
+        // rationale. 🔢 intentionally reused from formatCount/
+        // catalog-no-prefix — same facet (a bare number).
+        partOfSeriesName:   { label: 'Part of series - Name',   glyph: '📚' },
+        partOfSeriesDate:   { label: 'Part of series - Date',   glyph: '📅' },
+        partOfSeriesNumber: { label: 'Part of series - Number', glyph: '🔢' },
         eventInfo:     { label: 'Event info - Event date',       glyph: '📅' },
         eventCancelled: { label: 'Event info - Event cancelled', glyph: '🚫' },
         // "Editor info" — the annotations pageType's own family, one
@@ -35300,6 +35394,7 @@ a { color: #1565c0; }`;
         countryname: 'countryNameInfo', countrycode: 'countryCodeInfo',
         trackspermedium: 'tracksCount',
         catalogprefix: 'catalogPrefix',
+        partofseriesname: 'partOfSeriesName', partofseriesdate: 'partOfSeriesDate', partofseriesnumber: 'partOfSeriesNumber',
         eventdate: 'eventInfo',
         entitycancelled: 'entityEventCancelled',
         eventcancelled: 'eventCancelled',
@@ -35961,6 +36056,65 @@ a { color: #1565c0; }`;
             if (!p.none || !p.el) return;
             p.el.normalize();
             highlightCrossTag(p.el, /\[none\]/g, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
+     * Highlights the exact matched value for a `partofseriesname:`/
+     * `partofseriesdate:` compound structure-mode filter — re-derives from
+     * `_findCellPartOfSeriesParts()` directly, scoped to that item's own
+     * `nameEl`/`commentEl` (mirrors `_highlightCatalogPrefixMatch()`'s
+     * "scope to the one element this value came from" pattern). Uses
+     * `_buildFuzzyTextMatchRegex()` (not a plain escaped literal) since
+     * both facets are `getCleanColumnText()`-derived free text, same as
+     * `_highlightCountryMatch()`'s own name/code branch.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"partofseriesname:Rolling Stone: 500 Greatest Songs of All Time"`
+     *   or `"partofseriesdate:as at 2016-06-10"`.
+     */
+    function _highlightPartOfSeriesTextMatch(cell, mode) {
+        if (!cell) return;
+        const isName = mode.startsWith('partofseriesname:');
+        const _want = mode.slice(isName ? 18 : 17);
+        if (!_want) return;
+        const regex = _buildFuzzyTextMatchRegex(_want);
+        _findCellPartOfSeriesParts(cell).forEach(p => {
+            const val = isName ? p.name : p.comment;
+            const el = isName ? p.nameEl : p.commentEl;
+            if (val !== _want || !el) return;
+            el.normalize();
+            highlightCrossTag(el, regex, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
+     * Highlights the exact matched value for a `partofseriesnumber:`
+     * compound structure-mode filter — re-derives from
+     * `_findCellPartOfSeriesParts()`'s own grammar. The "(number: N)"
+     * annotation is bare trailing text with no wrapper element to scope to
+     * (unlike the series name's `<a>`/comment's `.comment` span), so this
+     * scopes to the ONE originating `<li>`/cell (`p.el`, never the whole
+     * multi-series cell) with a word-boundary-anchored literal match —
+     * same reasoning as `_highlightTracksPerMediumMatch()`, but scoped
+     * per-item rather than cell-wide since a multi-series cell can hold
+     * several different numbers.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"partofseriesnumber:27"`.
+     */
+    function _highlightPartOfSeriesNumberMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(19);
+        if (!_want) return;
+        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const _regex = new RegExp(`\\b${_escaped}\\b`, 'g');
+        _findCellPartOfSeriesParts(cell).forEach(p => {
+            if (p.number !== _want || !p.el) return;
+            p.el.normalize();
+            highlightCrossTag(p.el, _regex, 'mb-column-filter-highlight');
         });
     }
 
@@ -36767,7 +36921,8 @@ a { color: #1565c0; }`;
                     // 'instrument:'/'altname:'/'name:'/'comment:'/'alias:'/
                     // 'joinphrase:'/'namevariation:'/'revcountry:'/'countryname:'/
                     // 'countrycode:'/'revdate:'/'revweekday:'/'catalogprefix:'/
-                    // 'catalog-none'/'trackspermedium:'/'eventdate:'/'tagcount:'/
+                    // 'catalog-none'/'partofseriesname:'/'partofseriesdate:'/
+                    // 'partofseriesnumber:'/'trackspermedium:'/'eventdate:'/'tagcount:'/
                     // 'entitycancelled:'/'eventcancelled:'/
                     // 'formatsize:'/'formatcount:'/'formatcombo:'/'formattype:'/
                     // 'role:'/'roletoken:'/'editordeleted:'/'editor-any-deleted'/
@@ -36814,6 +36969,10 @@ a { color: #1565c0; }`;
                                     _highlightCatalogPrefixMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'catalog-none') {
                                     _highlightCatalogNoneMatch(row.cells[f.idx]);
+                                } else if (mode.startsWith('partofseriesname:') || mode.startsWith('partofseriesdate:')) {
+                                    _highlightPartOfSeriesTextMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('partofseriesnumber:')) {
+                                    _highlightPartOfSeriesNumberMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('trackspermedium:')) {
                                     _highlightTracksPerMediumMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('eventdate:')) {
@@ -46840,6 +46999,13 @@ a { color: #1565c0; }`;
         // CBS") — see `_findCellCatalogParts()`'s own JSDoc. Column-gated
         // (isCatalogCol below).
         const catalogPrefixValueCounts = _uniqCacheHit ? _uniqCacheHit.catalogPrefixValueCounts : new Map();
+        // Distinct "Part of series" list-item series name/disambiguation-
+        // comment/numeric-position values — see
+        // `_findCellPartOfSeriesParts()`'s own JSDoc. Column-gated
+        // (isPartOfSeriesCol below).
+        const partOfSeriesNameValueCounts   = _uniqCacheHit ? _uniqCacheHit.partOfSeriesNameValueCounts   : new Map();
+        const partOfSeriesDateValueCounts   = _uniqCacheHit ? _uniqCacheHit.partOfSeriesDateValueCounts   : new Map();
+        const partOfSeriesNumberValueCounts = _uniqCacheHit ? _uniqCacheHit.partOfSeriesNumberValueCounts : new Map();
         // "Editor" column only (annotations pageType): distinct
         // deleted-editor identities, tooltip-recorded historical names,
         // tooltip membership spans, and `.comment` values — see
@@ -46938,6 +47104,10 @@ a { color: #1565c0; }`;
         const isTracksCol  = _colHeaderName === 'Tracks';
         const isCatalogCol = _colHeaderName === 'Catalog#';
         const isEventCol   = _colHeaderName === 'Event';
+        // Column-name gate for release-tracks' dynamic-fallback "Part of
+        // series" AR column — same convention as isFormatCol/isTracksCol/
+        // isCatalogCol/isEventCol above (name-only, no page-type check).
+        const isPartOfSeriesCol = _colHeaderName === 'Part of series';
         // Column-name gate for the annotations pageType's "Editor"/
         // "Version history" columns — same convention as isFormatCol/
         // isTracksCol/isCatalogCol/isEventCol above (name-only, no
@@ -47097,6 +47267,17 @@ a { color: #1565c0; }`;
                     // flag; see catalogNoneCount below instead.
                     if (_catalogParts.some(p => !p.prefix && !p.none)) catalogNoPrefixCount++;
                     if (_catalogParts.some(p => p.none)) catalogNoneCount++;
+                }
+                if (isPartOfSeriesCol) {
+                    const _rowSeriesNameValues = new Set(), _rowSeriesDateValues = new Set(), _rowSeriesNumberValues = new Set();
+                    _findCellPartOfSeriesParts(cell).forEach(p => {
+                        if (p.name) _rowSeriesNameValues.add(p.name);
+                        if (p.comment) _rowSeriesDateValues.add(p.comment);
+                        if (p.number) _rowSeriesNumberValues.add(p.number);
+                    });
+                    _rowSeriesNameValues.forEach(t => partOfSeriesNameValueCounts.set(t, (partOfSeriesNameValueCounts.get(t) || 0) + 1));
+                    _rowSeriesDateValues.forEach(t => partOfSeriesDateValueCounts.set(t, (partOfSeriesDateValueCounts.get(t) || 0) + 1));
+                    _rowSeriesNumberValues.forEach(t => partOfSeriesNumberValueCounts.set(t, (partOfSeriesNumberValueCounts.get(t) || 0) + 1));
                 }
                 if (isEditorCol) {
                     const _editorInfo = _findCellEditorInfo(cell);
@@ -48106,6 +48287,7 @@ a { color: #1565c0; }`;
                 revCountryValueCounts, revCountryFlagMap, revDateValueCounts, revWeekdayValueCounts,
                 countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap,
                 tracksPerMediumValueCounts, catalogPrefixValueCounts,
+                partOfSeriesNameValueCounts, partOfSeriesDateValueCounts, partOfSeriesNumberValueCounts,
                 editorDeletedValueCounts, editorAnyDeletedCount, editorRecordedNameValueCounts,
                 editorMembershipValueCounts, editorCommentValueCounts,
                 changelogHasMessageCount, changelogNoMessageCount,
@@ -48154,7 +48336,9 @@ a { color: #1565c0; }`;
             ...formatComboValueCounts.values(), ...formatTypeValueCounts.values(),
             ...revCountryValueCounts.values(), ...revDateValueCounts.values(), ...revWeekdayValueCounts.values(),
             ...countryNameValueCounts.values(), ...countryCodeValueCounts.values(),
-            ...tracksPerMediumValueCounts.values(), ...catalogPrefixValueCounts.values()
+            ...tracksPerMediumValueCounts.values(), ...catalogPrefixValueCounts.values(),
+            ...partOfSeriesNameValueCounts.values(), ...partOfSeriesDateValueCounts.values(),
+            ...partOfSeriesNumberValueCounts.values()
         )).length + 2);
 
         // synBox is inserted between qfBar and listBox; always present but
@@ -48517,7 +48701,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -48624,6 +48808,9 @@ a { color: #1565c0; }`;
                  : kind === 'countrycode' ? '» country code: '
                  : kind === 'trackspermedium' ? '» tracks: '
                  : kind === 'catalogprefix' ? '» prefix: '
+                 : kind === 'partofseriesname'   ? '» series name: '
+                 : kind === 'partofseriesdate'   ? '» date: '
+                 : kind === 'partofseriesnumber' ? '» number: '
                  : kind === 'eventdate'  ? '» event date: '
                  : (kind === 'entitycancelled' || kind === 'eventcancelled') ? '» event cancelled: '
                  : kind === 'role'       ? '» role: '
@@ -48800,6 +48987,10 @@ a { color: #1565c0; }`;
         const _sortedCountryCodeValues = Array.from(countryCodeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedTracksPerMediumValues = Array.from(tracksPerMediumValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         const _sortedCatalogPrefixValues = Array.from(catalogPrefixValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedPartOfSeriesNameValues = Array.from(partOfSeriesNameValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedPartOfSeriesDateValues = Array.from(partOfSeriesDateValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        // Numeric sort (not lexicographic) so "2" sorts before "10".
+        const _sortedPartOfSeriesNumberValues = Array.from(partOfSeriesNumberValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         const _sortedEditorDeletedValues      = Array.from(editorDeletedValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedEditorRecordedNameValues = Array.from(editorRecordedNameValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedEditorMembershipValues   = Array.from(editorMembershipValueCounts.keys()).sort((a, b) => a.localeCompare(b));
@@ -48818,6 +49009,7 @@ a { color: #1565c0; }`;
             _sortedRevCountryValues.length > 0 || _sortedRevDateValues.length > 0 || _sortedRevWeekdayValues.length > 0 ||
             _sortedCountryNameValues.length > 0 || _sortedCountryCodeValues.length > 0 ||
             _sortedTracksPerMediumValues.length > 0 || _sortedCatalogPrefixValues.length > 0 ||
+            _sortedPartOfSeriesNameValues.length > 0 || _sortedPartOfSeriesDateValues.length > 0 || _sortedPartOfSeriesNumberValues.length > 0 ||
             _sortedEditorDeletedValues.length > 0 || _sortedEditorRecordedNameValues.length > 0 ||
             _sortedEditorMembershipValues.length > 0 || _sortedEditorCommentValues.length > 0 ||
             _sortedRoleValues.length > 0 || _sortedRoleTokenValues.length > 0 ||
@@ -48884,6 +49076,9 @@ a { color: #1565c0; }`;
             _sortedCountryCodeValues.forEach(v => makeValueSynItem('countrycode', v, countryCodeValueCounts.get(v), countryCodeFlagMap.get(v)));
             _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
             _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
+            _sortedPartOfSeriesNameValues.forEach(v => makeValueSynItem('partofseriesname', v, partOfSeriesNameValueCounts.get(v)));
+            _sortedPartOfSeriesDateValues.forEach(v => makeValueSynItem('partofseriesdate', v, partOfSeriesDateValueCounts.get(v)));
+            _sortedPartOfSeriesNumberValues.forEach(v => makeValueSynItem('partofseriesnumber', v, partOfSeriesNumberValueCounts.get(v)));
             _sortedEditorDeletedValues.forEach(v => makeValueSynItem('editordeleted', v, editorDeletedValueCounts.get(v)));
             _sortedEditorRecordedNameValues.forEach(v => makeValueSynItem('editorrecordedname', v, editorRecordedNameValueCounts.get(v)));
             _sortedEditorMembershipValues.forEach(v => makeValueSynItem('editormembership', v, editorMembershipValueCounts.get(v)));
@@ -48935,6 +49130,9 @@ a { color: #1565c0; }`;
             _sortedCountryCodeValues.forEach(v => makeValueSynItem('countrycode', v, countryCodeValueCounts.get(v), countryCodeFlagMap.get(v)));
             _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
             _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
+            _sortedPartOfSeriesNameValues.forEach(v => makeValueSynItem('partofseriesname', v, partOfSeriesNameValueCounts.get(v)));
+            _sortedPartOfSeriesDateValues.forEach(v => makeValueSynItem('partofseriesdate', v, partOfSeriesDateValueCounts.get(v)));
+            _sortedPartOfSeriesNumberValues.forEach(v => makeValueSynItem('partofseriesnumber', v, partOfSeriesNumberValueCounts.get(v)));
             _sortedEditorDeletedValues.forEach(v => makeValueSynItem('editordeleted', v, editorDeletedValueCounts.get(v)));
             _sortedEditorRecordedNameValues.forEach(v => makeValueSynItem('editorrecordedname', v, editorRecordedNameValueCounts.get(v)));
             _sortedEditorMembershipValues.forEach(v => makeValueSynItem('editormembership', v, editorMembershipValueCounts.get(v)));
@@ -49417,6 +49615,9 @@ a { color: #1565c0; }`;
         if (mode.startsWith('countrycode:')) return `» country code: ${mode.slice(12)}`;
         if (mode.startsWith('trackspermedium:')) return `» tracks: ${mode.slice(16)}`;
         if (mode.startsWith('catalogprefix:'))   return `» prefix: ${mode.slice(14)}`;
+        if (mode.startsWith('partofseriesname:'))   return `» series name: ${mode.slice(18)}`;
+        if (mode.startsWith('partofseriesdate:'))   return `» date: ${mode.slice(17)}`;
+        if (mode.startsWith('partofseriesnumber:')) return `» number: ${mode.slice(19)}`;
         if (mode.startsWith('role:'))    return `» role: ${mode.slice(5)}`;
         if (mode.startsWith('roletoken:')) return `» role: ${mode.slice(10)}`;
         if (mode.startsWith('arttype:'))    return `» image type: ${mode.slice(8)}`;
@@ -49483,6 +49684,9 @@ a { color: #1565c0; }`;
         if (mode.startsWith('countrycode:')) return 'One entry\'s own 2-letter country code, from the synthetic "Country" column.';
         if (mode.startsWith('trackspermedium:')) return 'One "Tracks" cell\'s own per-medium track count.';
         if (mode.startsWith('catalogprefix:')) return 'One "Catalog#" list item\'s own leading string prefix (e.g. "CBS", "S CBS").';
+        if (mode.startsWith('partofseriesname:')) return 'One "Part of series" item\'s own credited series name.';
+        if (mode.startsWith('partofseriesdate:')) return 'One "Part of series" item\'s own disambiguation-comment text (usually a date, but not guaranteed).';
+        if (mode.startsWith('partofseriesnumber:')) return 'One "Part of series" item\'s own numeric series position (e.g. "27" from "(number: 27)").';
         if (mode.startsWith('role:')) return 'An artist\'s own credited event role (e.g. "main performer", "guest performer", "host").';
         if (mode.startsWith('roletoken:')) return 'One atomic role word decomposed from this artist\'s own combined credited-role text — unlike "Roles", this matches even when the role appears alongside others (e.g. selecting "composer" also matches an artist credited as "composer, lyricist").';
         if (mode.startsWith('arttype:')) return 'One of this CAA/EAA image\'s own type-badge pill labels (Front/Back/Booklet/…).';
@@ -66128,8 +66332,17 @@ a { color: #1565c0; }`;
              */
             getUniqDropSections(colName) {
                 const stripDecorations = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+                // Prefer th.dataset.colName (set by makeTableSortableUnified()
+                // for every header) over a re-derived textContent strip —
+                // mirrors openUniqDrop()'s own `_colHeaderName` resolution.
+                // A header carrying a dynamically-injected glyph icon (e.g.
+                // release-tracks' "Part of series" via
+                // `_dynamicArColumnGlyphs`/`_initColHeaderGlyph()`) embeds an
+                // invisible zero-width-space character this regex doesn't
+                // strip, so a pure-textContent match silently returns nothing
+                // for those columns without this fallback.
                 const th = Array.from(document.querySelectorAll('table.tbl thead th'))
-                    .find((t) => stripDecorations(t.textContent) === colName);
+                    .find((t) => (t.dataset.colName || stripDecorations(t.textContent)) === colName);
                 const wrap = th ? th.querySelector('.mb-col-uniq-wrap') : null;
                 if (!wrap) return null;
 

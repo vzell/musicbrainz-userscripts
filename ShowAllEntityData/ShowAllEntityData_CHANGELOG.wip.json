@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-01",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "release-tracks: the \"Part of series\" column's 📊 unique-values dropdown now offers \"Part of series - Name\"/\"- Date\"/\"- Number\" sections, letting you filter by one credited series' own name, disambiguation-comment (usually a date), or numeric series position individually."
+        ]
+      }
+    ]
+  }
+]
