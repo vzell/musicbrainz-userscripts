@@ -291,6 +291,12 @@ every distinct non-empty value currently visible in that column.
                        "CBS") and "- Presence" (independent "has prefix" /
                        "no prefix" / "no catalog number" — MusicBrainz's own
                        "[none]" placeholder — flags)
+    — 🗣️/🥇 Locale info — on an alias table's "Locale" column: "- Language"
+                       (distinct locale languages, e.g. "English", "Chinese
+                       (China)") and "- Primary" ("🥇 primary" / "◦ not
+                       primary" — MusicBrainz's own "(primary)" marker).
+                       Alias Types with no Locale at all (e.g. "Legal name",
+                       "Search hint") contribute to neither facet
     — 🎭 Roles         — "» role:" entries, one per distinct artist event-role
                        found in a native artist-roles list or the plain-text
                        "Role" column on an artist's own Events tab
