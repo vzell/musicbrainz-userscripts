@@ -7,7 +7,7 @@ const { waitForRenderComplete } = require('../support/browser');
 const { collectPageErrors } = require('../support/liveAssertions');
 const {
     waitForFilterSettled, waitForSortSettled, getPageRowCount,
-    waitForActualRowCount, waitForColHeaderUniqCount,
+    waitForActualRowCount, waitForColHeaderUniqCount, getColumnHighlightTexts,
 } = require('../support/filterSortAssertions');
 const {
     URL: ARTIST_EVENTS_URL, FIXTURE_PATH, SEED_GM_VALUES, TOTAL_ROWS,
@@ -323,6 +323,46 @@ test('uniq-value dropdown cache reflects a cell expand/collapse (does not go sta
     const expandedAfter = structureAfter.items.find((i) => i.label.includes('expanded'));
     expect(collapsedAfter.count).toBe(UNIQ_DROP_COLLAPSABLE_CELL_COUNT - 1);
     expect(expandedAfter.count).toBe(1);
+
+    expect(pageErrors).toEqual([]);
+});
+
+test('Event column filter highlights a match spanning a comment-comma boundary', { tag: '@core' }, async ({ page }) => {
+    // Regression test for a real, confirmed-live bug: the Event cell for
+    // "From the Studio to the Stage: New York" (2024-10-04, Bruce
+    // Springsteen w/ Bleachers) renders native MB markup shaped
+    //   <a>…</a>&nbsp;<span class="comment"><bdi>(<i title="Primary alias">
+    //   …New York City, NY, USA</i>, Bleachers)</bdi></span>
+    // — the disambiguation comment's own "target, alsoCreditedName)" phrase
+    // puts a bare `,` directly after the closing `</i>`, no separating
+    // whitespace in the DOM. Filtering the Event column for "USA, bleach"
+    // correctly narrows to this one row (getCleanColumnText() ->
+    // normalizeExtractedText() strips the space its own join(' ') would
+    // otherwise insert before that comma), but highlightCrossTag() built its
+    // own `fullText` with an unconditional join-space at every boundary,
+    // never mirroring that comma/paren stripping — so its fullText read
+    // "…USA , Bleachers)" (space retained) and the literal query never
+    // matched it, leaving the correctly-matched row with zero highlight
+    // spans. See ShowAllEntityData.user.js's highlightCrossTag() JSDoc.
+    const pageErrors = collectPageErrors(page);
+    await loadArtistEvents(page);
+
+    const colIdx = await columnIndex(page, 'Event');
+    expect(colIdx).toBeGreaterThanOrEqual(0);
+
+    const colInput = page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
+    await colInput.click();
+    await waitForFilterSettled(page, () => colInput.pressSequentially('USA, bleach'));
+
+    const after = await getPageRowCount(page);
+    expect(after.filtered).toBe(1);
+
+    // Two highlight spans for the one matching row: the query's match spans
+    // the `</i>` element boundary, so highlightCrossTag() splits it into one
+    // span per originating text node — "USA" (tail of the <i title="Primary
+    // alias"> text) and ", Bleach" (head of the sibling ", Bleachers)" text).
+    const spans = await getColumnHighlightTexts(page, colIdx);
+    expect(spans).toEqual(['USA', ', Bleach']);
 
     expect(pageErrors).toEqual([]);
 });

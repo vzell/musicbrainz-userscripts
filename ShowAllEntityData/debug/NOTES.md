@@ -6854,3 +6854,45 @@ scratch later.
   never dispatches through `_highlightCountryMatch()`/`highlightCrossTag()`
   at all (see the fixture's own comment above that case), a genuinely
   different mechanism from the bug fixed here.
+
+## 2026-09-01 — highlightCrossTag() still misses a comma/paren-boundary match (fixed; follow-up to the 2026-08-29 entry above)
+
+- Reported live on `artist-events` (Bruce Springsteen, the URL
+  `tests/support/artistEventsFixture.js` already fixtures): filtering the
+  Event column for `USA, bleach` correctly narrowed to the one matching row
+  — "From the Studio to the Stage: New York" (2024-10-04, w/ Bleachers),
+  whose native MB markup is `<a>…</a>&nbsp;<span class="comment"><bdi>(<i
+  title="Primary alias">…New York City, NY, USA</i>, Bleachers)</bdi></span>`
+  — but produced **zero** `.mb-column-filter-highlight` spans, the same
+  symptom as the 2026-08-29 entry above.
+- Root cause: the opposite half of the same alignment gap. The 2026-08-29
+  fix made `highlightCrossTag()` insert an unconditional virtual space
+  between every pair of accepted text-node entries, mirroring
+  `getCleanColumnText()`'s `textParts.join(' ')`. But `join(' ')` is only
+  half of `getCleanColumnText()`'s own alignment:
+  `normalizeExtractedText()` (`:33561`) then STRIPS the space immediately
+  before a `,`/`)`/`]` and immediately after a `(`/`[` (its steps 2 & 3),
+  because MusicBrainz never intentionally renders "word ," or "( word". The
+  `</i>` boundary here sits directly before a bare `,` in the sibling text
+  node (no separating whitespace in the DOM at all) — so
+  `getCleanColumnText()`'s normalized text reads `"…USA, Bleachers)"` (space
+  stripped, matches `USA, bleach`), while `highlightCrossTag()`'s own
+  `fullText` — which never mirrored the strip step — read
+  `"…USA , Bleachers)"` (space retained), and the literal query never
+  matched it.
+- Fix (`ShowAllEntityData.user.js`, `highlightCrossTag()`): decide whether
+  to insert the virtual join-space per boundary, using the exact same rule
+  `normalizeExtractedText()` encodes — skip it when the next entry's text
+  starts with `,`/`)`/`]`, or the previous entry's text ends with `(`/`[`.
+  Folded entries/offset/`fullText` construction into a single pass (rather
+  than building entries first and reconstructing `fullText` separately
+  afterwards via `.map().join(' ')`) so the two bookkeeping structures
+  cannot drift apart from each other again.
+- Regression test: `tests/live/artist-events-interactions.spec.js` ("Event
+  column filter highlights a match spanning a comment-comma boundary"),
+  reusing the already-committed `artist-events` disk fixture — confirmed to
+  fail (0 spans) before the fix and pass (`['USA', ', Bleach']`) after.
+  Re-ran `tests/live/artist-releases-filter-sort.spec.js`'s full §A-§F suite
+  (the 2026-08-29 fix's own regression coverage, including its `In (Disc`/
+  `Slash (US`/`US 2009-03-10`/`US 1986` cross-tag cases) with no
+  regressions.

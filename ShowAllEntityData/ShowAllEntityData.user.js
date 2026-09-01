@@ -34102,6 +34102,23 @@ a { color: #1565c0; }`;
      *   pair of accepted entries here too (both in the offset bookkeeping and
      *   in `fullText` itself), mirroring `join(' ')` exactly.
      *
+     *   A third gap, in the OPPOSITE direction (fixed together with the
+     *   above two): `join(' ')` alone is only half of getCleanColumnText()'s
+     *   alignment — normalizeExtractedText() then STRIPS the space
+     *   immediately before a `,`/`)`/`]` and immediately after a `(`/`[`
+     *   (its own steps 2 & 3), because MusicBrainz never intentionally
+     *   renders "word ," or "( word". A native comment/disambiguation phrase
+     *   like `<i title="Primary alias">…USA</i>, Bleachers)` (Event column,
+     *   `artist-events`) puts a bare `,` directly in the sibling text node
+     *   with no separating whitespace — so getCleanColumnText()'s
+     *   normalized text reads "…USA, Bleachers)" (matching a query like
+     *   "USA, bleach"), while this function's unconditional-gap fullText
+     *   read "…USA , Bleachers)" (space retained) and never matched the same
+     *   literal query, again leaving zero highlight spans on a correctly
+     *   matched row. Fixed by applying the SAME comma/paren/bracket rule at
+     *   the join point here: skip the virtual gap when the next entry starts
+     *   with `,`/`)`/`]` or the previous entry ends with `(`/`[`.
+     *
      * @param {Element} root      - Container element to search within (typically a `<td>`).
      * @param {RegExp}  regex     - Pre-compiled global RegExp (must carry the 'g' flag).
      * @param {string}  className - CSS class name applied to every highlight `<span>`.
@@ -34200,8 +34217,10 @@ a { color: #1565c0; }`;
             }
         }, false);
         let node;
+        let fullText = '';
         while ((node = walker.nextNode())) {
             if (node.nodeType !== Node.TEXT_NODE) continue; // SHOW_ELEMENT: skip element hits
+            const text = node.nodeValue;
             // Mirror getCleanColumnText()'s textParts.join(' ') — it inserts one
             // synthetic space between EVERY pair of accepted text-node pieces,
             // unconditionally, regardless of what (if anything) actually separated
@@ -34219,14 +34238,30 @@ a { color: #1565c0; }`;
             // spans despite testRowMatch() having correctly matched the row.
             // Confirmed live on Release/Label/Country-Date comment-boundary and
             // compound queries — see debug/NOTES.md's 2026-08-29 entry.
-            if (entries.length) offset += 1;
-            const len = node.nodeValue.length;
+            //
+            // EXCEPT at a comma/paren/bracket boundary, where
+            // normalizeExtractedText() (getCleanColumnText()'s own second pass)
+            // strips that same synthetic space right back out again — see this
+            // function's own JSDoc for the "third gap" this mirrors. Decided here,
+            // at the join point, rather than by inserting the space and stripping
+            // it back out of fullText afterwards, so the offset bookkeeping below
+            // can never drift out of sync with the string it describes.
+            let gap = '';
+            if (entries.length) {
+                const prevText = entries[entries.length - 1].node.nodeValue;
+                const prevLastChar = prevText[prevText.length - 1];
+                const nextFirstChar = text[0];
+                const skipGap = nextFirstChar === ',' || nextFirstChar === ')' || nextFirstChar === ']' ||
+                    prevLastChar === '(' || prevLastChar === '[';
+                if (!skipGap) gap = ' ';
+            }
+            offset += gap.length;
+            const len = text.length;
             entries.push({ node, start: offset, end: offset + len });
             offset += len;
+            fullText += gap + text;
         }
         if (!entries.length) return;
-
-        const fullText = entries.map(e => e.node.nodeValue).join(' ');
         if (!fullText) return;
 
         // ── Step 2: find all non-overlapping matches in the concatenated text ───
