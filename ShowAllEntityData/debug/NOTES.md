@@ -7010,3 +7010,35 @@ scratch later.
   `toEqual` assertions accordingly (extra field, exact deep-equality).
   `node --check ShowAllEntityData.user.js` and the full `npm test`
   (chromium-fixtures) suite passed after every edit.
+
+## 2026-09-02 — CollaborationRelationships report routed to report-detail instead of report-multiple-linked (fixed)
+
+- **Snapshot**: `debug/collaboration.html` — raw HTML of page 1 of
+  `/report/CollaborationRelationships` ("Artists with collaboration
+  relationships"), captured with the script's own controls already
+  injected into the native `<h1>`. Has: native `<h1>`, no `<h2>`, no
+  `div#content` (table sits directly under `div#page`), one
+  `table.tbl`, 15-page native pagination.
+- **DOM shape**: identical to the existing `report-multiple-linked`
+  family (`ASINsWithMultipleReleases`, `ISRCsWithManyRecordings`, etc.) —
+  a `<tr class="even"><td colspan="2">…</td></tr>` group-header row
+  (the "Collaboration" artist) followed by plain `<tr>`s with an EMPTY
+  first `<td>` and the linked "Collaborator" artist in the second.
+- **Bug**: `/report/CollaborationRelationships` doesn't match the
+  `...With(Multiple|Many)...` naming pattern `report-multiple-linked`'s
+  `match()` keys off, so it fell through to the generic `report-detail`
+  catch-all, which has no group-header/empty-first-`<td>` merge logic.
+  Every collaborator row rendered with an empty "Collaboration" cell —
+  see the user's screenshot, second column of the raw page vs. the
+  rendered table.
+- **Fix**: added a `REPORT_MULTIPLE_LINKED_INCLUSIONS` allowlist
+  (mirroring the existing `REPORT_MULTIPLE_LINKED_EXCEPTIONS` in the
+  opposite direction) to `report-multiple-linked`'s `match()`, naming
+  `/report/CollaborationRelationships` explicitly. No changes needed to
+  `_reportMultipleLinkedMainColumnName()` or the shared `features` block:
+  the URL has no `With(Multiple|Many)<Entity>` suffix to derive a column
+  name from, so `extractMainColumn` falls back to the definition's own
+  numeric `1`, which already happens to be the correct column
+  ("Collaborator", index 1) for this report. `@include` header (line 18,
+  `report\/.*`) already covered this URL — no injection-gate change
+  needed.

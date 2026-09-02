@@ -12857,14 +12857,35 @@
         // them with no bespoke code: it's a superset of this page type's
         // features (same insertH2/addCAA/addEAA/removeSelector, plus its own
         // extractMainColumn candidate list already includes 'Artist').
+        //
+        // REPORT_MULTIPLE_LINKED_INCLUSIONS below is the mirror-image case:
+        // a report whose URL does NOT follow the "...With(Multiple|Many)..."
+        // naming pattern at all, but whose table IS this family's group-
+        // header/empty-first-<td> shape — /report/CollaborationRelationships
+        // (see debug/collaboration.html): a colspan="2" row carrying the
+        // subject artist ("Collaboration"), followed by plain <tr>s with an
+        // empty first <td> and a linked artist in the second ("Collaborator").
+        // Routed through 'report-detail' this row shape breaks silently: the
+        // "Collaboration" column renders empty for every collaborator row
+        // because report-detail has no group-header/empty-first-<td> merge
+        // logic. _reportMultipleLinkedMainColumnName can't derive a main
+        // column name from this URL (no "With(Multiple|Many)<Entity>" suffix)
+        // and returns [], so extractMainColumn falls back to this
+        // definition's own numeric `1` — which already happens to be correct
+        // here: index 1 is "Collaborator", the per-row linked artist.
         {
             type: 'report-multiple-linked',
             match: (path) => {
+                const normalizedPath = path.replace(/\/$/, '');
+                const REPORT_MULTIPLE_LINKED_INCLUSIONS = [
+                    '/report/CollaborationRelationships'
+                ];
+                if (REPORT_MULTIPLE_LINKED_INCLUSIONS.includes(normalizedPath)) return true;
                 if (!path.match(/^\/report\/\w+With(?:Multiple|Many)\w+\/?$/)) return false;
                 const REPORT_MULTIPLE_LINKED_EXCEPTIONS = [
                     '/report/ArtistsWithMultipleOccurrencesInArtistCredits'
                 ];
-                return !REPORT_MULTIPLE_LINKED_EXCEPTIONS.includes(path.replace(/\/$/, ''));
+                return !REPORT_MULTIPLE_LINKED_EXCEPTIONS.includes(normalizedPath);
             },
             buttons: [
                 { label: 'Show all (unfiltered)', params: { filter: '0' } },
