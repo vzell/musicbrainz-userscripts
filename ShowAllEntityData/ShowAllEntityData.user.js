@@ -35823,6 +35823,35 @@ a { color: #1565c0; }`;
     };
 
     /**
+     * Whether `openUniqDrop()`'s `_emitNameSynItem()` should split a
+     * same-display-name collision (2+ DISTINCT hrefs sharing one display
+     * name, per `entityNameHrefsMap`) into one auto-numbered, independently
+     * selectable entry per href, instead of one flat entry matching all of
+     * them.
+     *
+     * Scoped to `'area'` only. MusicBrainz can give two genuinely different
+     * AREA entities the exact same display name where the two entities have
+     * unrelated real-world meanings — e.g. a county/city and a state both
+     * named "New York" (see `debug/2-ny.html`) — where a single flat "»
+     * area name: New York" entry would let checking it silently match both.
+     * Every OTHER entity type collides on display name as a matter of
+     * ordinary MusicBrainz data instead: many different recordings sharing
+     * one track title, many different releases sharing one title, etc. (see
+     * `debug/work.recordings.html` — 93 distinct recordings all titled "4th
+     * of July, Asbury Park (Sandy)"). Splitting those explodes the dropdown
+     * into per-instance noise; the checkbox is supposed to stay one flat,
+     * merged entry matching every one of them, exactly as it did before the
+     * href-splitting mechanism existed.
+     *
+     * @param {?string} entityType - `_ENTITY_TYPE_GLYPH` key (`'area'`,
+     *   `'recording'`, `'artist'`, …), or `undefined`/`null`.
+     * @returns {boolean}
+     */
+    function _entityNameSplitsByHref(entityType) {
+        return entityType === 'area';
+    }
+
+    /**
      * Fixed display-priority order for `openUniqDrop()`'s "» <type> name:"
      * entities (Entity info section) — lower number sorts first. Entries of
      * the SAME type still sort alphabetically among themselves (see
@@ -49545,31 +49574,34 @@ a { color: #1565c0; }`;
          * entry, matched by the ordinary name-scoped `name:<name>` mode —
          * unchanged from before this function existed. When
          * `entityNameHrefsMap` recorded 2+ DISTINCT hrefs for this same
-         * display name — MusicBrainz can give two genuinely different
-         * entities the identical name, e.g. area "New York" the city and
-         * area "New York" the state (see debug/2-ny.html) — a single flat
-         * "» area name: New York" entry would let checking it silently match
-         * BOTH real-world entities with no way to isolate either. Instead,
-         * this splits into one entry per href, each carrying its own
-         * href-scoped `namehref:<href>` mode (`makeValueSynItem()`'s
-         * `hrefOverride` param — see its own JSDoc) and an auto-numbered
-         * "(n)" suffix (stable document order — the first href encountered
-         * during the row scan is "(1)") so the otherwise-identical-looking
-         * rows are distinguishable and independently selectable. Glyph/type/
-         * flag/count for each split entry come from the href-keyed
-         * `entityHref*` Maps (populated the same way, at the same two call
-         * sites, as their name-keyed counterparts) rather than the
-         * name-keyed ones, so a mixed-type name collision (unlikely, but not
-         * impossible across different entity types) still shows each
-         * entry's own correct glyph.
+         * display name AND `_entityNameSplitsByHref()` says this entity
+         * type is one where that collision means genuinely different
+         * real-world entities (currently `area` only — e.g. area "New York"
+         * the city and area "New York" the state, see debug/2-ny.html and
+         * that function's own JSDoc for why every other type stays merged),
+         * a single flat "» area name: New York" entry would let checking it
+         * silently match BOTH real-world entities with no way to isolate
+         * either. Instead, this splits into one entry per href, each
+         * carrying its own href-scoped `namehref:<href>` mode
+         * (`makeValueSynItem()`'s `hrefOverride` param — see its own JSDoc)
+         * and an auto-numbered "(n)" suffix (stable document order — the
+         * first href encountered during the row scan is "(1)") so the
+         * otherwise-identical-looking rows are distinguishable and
+         * independently selectable. Glyph/type/flag/count for each split
+         * entry come from the href-keyed `entityHref*` Maps (populated the
+         * same way, at the same two call sites, as their name-keyed
+         * counterparts) rather than the name-keyed ones, so a mixed-type
+         * name collision (unlikely, but not impossible across different
+         * entity types) still shows each entry's own correct glyph.
          *
          * @param {string} v
          */
         const _emitNameSynItem = (v) => {
             const hrefs = entityNameHrefsMap.get(v);
-            if (!hrefs || hrefs.size <= 1) {
+            const entityType = entityNameTypeMap.get(v);
+            if (!hrefs || hrefs.size <= 1 || !_entityNameSplitsByHref(entityType)) {
                 makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v),
-                    entityNameGlyphMap.get(v), entityNameTypeMap.get(v), entityNameFlagMap.get(v));
+                    entityNameGlyphMap.get(v), entityType, entityNameFlagMap.get(v));
                 return;
             }
             Array.from(hrefs).forEach((href, i) => {
@@ -67333,6 +67365,21 @@ a { color: #1565c0; }`;
                 const iconSpan = a.previousElementSibling && a.previousElementSibling.matches('span.area-icon')
                     ? a.previousElementSibling : null;
                 return _flagIconSubdivisionLabel(iconSpan, a);
+            },
+
+            /**
+             * Thin wrapper around the internal `_entityNameSplitsByHref()` —
+             * the single source of truth for whether `openUniqDrop()`'s
+             * `_emitNameSynItem()` splits a same-display-name collision into
+             * one entry per href (`area` only) or keeps it one flat, merged
+             * entry (every other entity type — see that function's own
+             * JSDoc and debug/work.recordings.html).
+             *
+             * @param {?string} entityType - `_ENTITY_TYPE_GLYPH` key.
+             * @returns {boolean}
+             */
+            entityNameSplitsByHref(entityType) {
+                return _entityNameSplitsByHref(entityType);
             },
 
             /**

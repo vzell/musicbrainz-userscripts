@@ -264,14 +264,20 @@ every distinct non-empty value currently visible in that column.
                        entity name / disambiguation comment / primary alias
                        found in a cell — works on native unmodified
                        MusicBrainz markup too, not just this script's own
-                       columns. When two DIFFERENT MusicBrainz entities
-                       happen to share the exact same display name (e.g. an
-                       area named "New York" that's a city, and a different
-                       area also named "New York" that's a state), the flat
-                       "» name:" entry splits into one auto-numbered entry
-                       per entity ("New York (1)", "New York (2)", …) so
+                       columns. When two DIFFERENT MusicBrainz AREAS happen
+                       to share the exact same display name (e.g. an area
+                       named "New York" that's a city, and a different area
+                       also named "New York" that's a state), the flat
+                       "» area name:" entry splits into one auto-numbered
+                       entry per area ("New York (1)", "New York (2)", …) so
                        each is independently selectable instead of one
-                       checkbox silently matching both. Two page-specific
+                       checkbox silently matching both. This split is scoped
+                       to areas only — every other entity type (recordings,
+                       releases, works, …) keeps one flat, merged entry per
+                       shared name, since sharing a display name there is
+                       ordinary MusicBrainz data (e.g. many different
+                       recordings of the same track sharing its title), not
+                       a case of two unrelated entities. Two page-specific
                        sub-sections also appear
                        here when relevant: "Entity info - Tag count"
                        (tag-value-entity's own per-entity-kind column) and
