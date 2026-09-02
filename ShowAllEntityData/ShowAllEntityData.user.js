@@ -38200,20 +38200,27 @@ a { color: #1565c0; }`;
                 // all (e.g. a disk-loaded page's baked-in cell HTML) — see this
                 // function's own JSDoc for the confirmed root cause.
                 _artHighlightAllBuiltCaaCells();
-                // One-shot completion toast + #mb-info-display-caa update once this
-                // pass's artwork queue drains — mirrors startFetchingProcess()'s own
-                // registration (its only other tableMode!=='multi' call site). Without
-                // this, a page hydrated via loadFromDiskFixture()/Load-from-Disk (whose
-                // only initCaaPics()/initEaaPics() call goes through runFilter(), never
-                // through startFetchingProcess()) never shows the completion toast or
-                // updates #mb-info-display-caa, even though the artwork itself loads
-                // correctly — makeCaaQueue()'s onIdle() safely fires immediately (via
-                // setTimeout 0) when the queue is already idle at registration time
-                // (e.g. every cell was already fully restored from disk, nothing to
-                // fetch), so this is safe to register unconditionally on every
-                // runFilter() pass, not just the first.
+                // One-shot completion toast + #mb-info-display-caa update, AND reveal
+                // of any still-hidden per-column CAA/EAA collapse glyphs (see
+                // _artRevealCaaColHeaderButtons()'s own JSDoc for why they start
+                // hidden), once this pass's artwork queue drains — mirrors
+                // startFetchingProcess()'s own registration (its only other
+                // tableMode!=='multi' call site). Without this, a page hydrated via
+                // loadFromDiskFixture()/Load-from-Disk (whose only initCaaPics()/
+                // initEaaPics() call goes through runFilter(), never through
+                // startFetchingProcess()) never shows the completion toast, updates
+                // #mb-info-display-caa, or reveals the collapse glyphs, even though
+                // the artwork itself loads correctly — makeCaaQueue()'s onIdle()
+                // safely fires immediately (via setTimeout 0) when the queue is
+                // already idle at registration time (e.g. every cell was already
+                // fully restored from disk, nothing to fetch), so this is safe to
+                // register unconditionally on every runFilter() pass, not just the
+                // first.
                 if (_caaQueue && Lib.settings.sa_enable_caa_pics) {
-                    _caaQueue.onIdle(_showCaaCompletionToast);
+                    _caaQueue.onIdle(() => {
+                        _artRevealCaaColHeaderButtons();
+                        _showCaaCompletionToast();
+                    });
                 }
                 // TEMP DEBUG (bug 2 investigation) — synchronous state right after
                 // initCaaPics()/initEaaPics() return. Note _artEnrichIcon's own async
@@ -42057,9 +42064,14 @@ a { color: #1565c0; }`;
                 initCaaInlineJesus2099Observer();
                 initCaaPics();
                 initEaaPics();
-                // One-shot toast when all artwork finishes loading on single-table pages.
+                // One-shot toast, and reveal of any still-hidden per-column CAA/EAA
+                // collapse glyphs (see _artRevealCaaColHeaderButtons()'s own JSDoc),
+                // when all artwork finishes loading on single-table pages.
                 if (_caaQueue && Lib.settings.sa_enable_caa_pics) {
-                    _caaQueue.onIdle(_showCaaCompletionToast);
+                    _caaQueue.onIdle(() => {
+                        _artRevealCaaColHeaderButtons();
+                        _showCaaCompletionToast();
+                    });
                 }
             }
 
@@ -45533,12 +45545,17 @@ a { color: #1565c0; }`;
             activeDefinition = { ...activeDefinition, features: _origFeaturesPreCaa };
         }
 
-        // Register a one-shot toast for when the full queue drains (all artwork loaded).
-        // Only fires on the final render pass — runFilter re-runs are excluded because
-        // they do not represent a "first load" event.  The toast is non-intrusive and
-        // auto-dismisses per the sa_caa_completion_toast_duration setting.
+        // Register a one-shot toast for when the full queue drains (all artwork loaded),
+        // and reveal any still-hidden per-column CAA/EAA collapse glyphs at the same
+        // time (see _artRevealCaaColHeaderButtons()'s own JSDoc for why they start
+        // hidden). Only fires on the final render pass — runFilter re-runs are excluded
+        // because they do not represent a "first load" event. The toast is non-intrusive
+        // and auto-dismisses per the sa_caa_completion_toast_duration setting.
         if (_caaQueue && Lib.settings.sa_enable_caa_pics) {
-            _caaQueue.onIdle(_showCaaCompletionToast);
+            _caaQueue.onIdle(() => {
+                _artRevealCaaColHeaderButtons();
+                _showCaaCompletionToast();
+            });
         }
 
         // Apply zebra striping + sticky columns after every grouped-table render.
@@ -64994,6 +65011,16 @@ a { color: #1565c0; }`;
      * Idempotent: the button is keyed by `data-caa-col-hdr-btn` on the th element;
      * a second call updates the thumbnail src and state rather than adding a duplicate.
      *
+     * Deferred visibility: a NEWLY created button is only shown immediately when
+     * `[data-caa-expand-btn]` markup already exists in the table (i.e. a re-render
+     * after the column's artwork is already known) — on the very first render
+     * pass, called synchronously right after `_artEnrichTable()` merely ENQUEUES
+     * enrichment, nothing is known yet, so the button starts hidden
+     * (`data-mb-caa-col-hdr-ready="0"`) and is revealed — or removed outright if
+     * the column turns out to have no artwork at all — by
+     * `_artRevealCaaColHeaderButtons()` once `_caaQueue` drains. See that
+     * function's own JSDoc.
+     *
      * @param {ArtCtx} ctx  Archive context descriptor.
      */
     function _artInitCaaColHeaderToggle(ctx) {
@@ -65100,6 +65127,37 @@ a { color: #1565c0; }`;
                 // can filter exclusively on its own column (CAA vs EAA).
                 btn.dataset.caaCtx = ctx.key;
 
+                // Deferred visibility: allExpandBtns.length (computed just above)
+                // reflects whatever [data-caa-expand-btn] markup already exists in
+                // the DOM RIGHT NOW — nonzero on every render pass AFTER the first
+                // (that markup is baked into <td> innerHTML by
+                // _artBuildMultiRowArtCell() — which wraps even a single-image
+                // cell in the same expand-button structure, not just 2+ images —
+                // and survives filter/sort re-renders even though
+                // initCollapsableColumns()'s own idempotent cleanup pass removes
+                // and recreates THIS button on every render — see its
+                // "re-injected by _artInitCaaColHeaderToggle later" comment), but
+                // ALWAYS zero on the very first render pass: this function runs
+                // synchronously right after _artEnrichTable() only ENQUEUES
+                // enrichment (see _artInitPics()'s own two-pass comment), so no
+                // [data-caa-expand-btn] can exist yet. Starting hidden in that
+                // case — and revealing later via _artRevealCaaColHeaderButtons(),
+                // registered on _caaQueue's onIdle alongside
+                // _showCaaCompletionToast() — avoids showing a permanently-
+                // uninformative ▶-with-no-thumbnail glyph for however long the
+                // first pass's queue takes to drain, and avoids ever showing one
+                // at all on a table where the column turns out to have NO
+                // artwork found anywhere (every anchor resolves to 0 images).
+                // Already-known-useful buttons (the common case on every
+                // re-render after the first) skip the defer/reveal dance
+                // entirely, so retyping a filter query doesn't flicker the glyph.
+                if (allExpandBtns.length > 0) {
+                    btn.dataset.mbCaaColHdrReady = '1';
+                } else {
+                    btn.style.display = 'none';
+                    btn.dataset.mbCaaColHdrReady = '0';
+                }
+
                 // Glyph span comes first (▶ collapsed / ▼ expanded).
                 const glyph = document.createElement('span');
                 btn.appendChild(glyph);
@@ -65145,6 +65203,57 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Reveals every still-hidden `.mb-caa-col-hdr-btn` (per-column CAA/EAA
+     * collapse toggle, see `_artInitCaaColHeaderToggle()`'s own JSDoc for why
+     * a NEWLY created one starts hidden on the first render pass — an
+     * already-known-useful button from a later re-render is created ready/
+     * visible up front and never reaches this function at all) once
+     * `_caaQueue` has fully drained — i.e. every enqueued icon load AND
+     * JSON-API enrichment request for the current render pass has resolved,
+     * so `[data-caa-expand-btn]` now reliably reflects every cell
+     * `_artBuildMultiRowArtCell()` actually built one for (any cell where at
+     * least one image was found — that function wraps even a single-image
+     * cell in the same `<ul>`/expand-button structure, it is not limited to
+     * 2+ images).
+     *
+     * A column whose table found NO artwork at all (every release/event
+     * anchor resolved to 0 images) has its button removed outright rather
+     * than merely unhidden — such a button would never do anything (its
+     * click handler's `expandBtns` array would always be empty), so there is
+     * nothing useful to reveal.
+     *
+     * Registered as a `_caaQueue.onIdle()` callback alongside
+     * `_showCaaCompletionToast()` at every render-pass call site (initial
+     * fetch, `runFilter()`'s single-table branch, `renderGroupedTable()`) —
+     * see those call sites' own comments. Re-running this on every render
+     * pass is safe/idempotent: an already-revealed button
+     * (`data-mb-caa-col-hdr-ready="1"`) is skipped by the selector below, and
+     * a freshly (re)created hidden button from a filter/sort re-render goes
+     * through the same reveal-or-remove decision again.
+     */
+    function _artRevealCaaColHeaderButtons() {
+        if (!Lib.settings.sa_enable_caa_pics) return;
+
+        document.querySelectorAll('.mb-caa-col-hdr-btn[data-mb-caa-col-hdr-ready="0"]').forEach(btn => {
+            const table = btn.closest('table.tbl');
+            const hasAnyArtCell = !!(table && table.querySelector('tbody [data-caa-expand-btn]'));
+            if (hasAnyArtCell) {
+                btn.style.display = '';
+                btn.dataset.mbCaaColHdrReady = '1';
+            } else {
+                btn.remove();
+            }
+        });
+
+        // Refresh both global toggle-all buttons now that per-column
+        // visibility may have just changed — CAA_CTX/EAA_CTX unconditionally,
+        // since _artInitGlobalCaaColHdrToggle() itself no-ops (and hides any
+        // stale button) when its own context has no ready buttons yet.
+        _artInitGlobalCaaColHdrToggle(CAA_CTX);
+        _artInitGlobalCaaColHdrToggle(EAA_CTX);
+    }
+
+    /**
      * Creates or updates the global CAA/EAA column-header all-toggle button that
      * sits in the h2 filter bar, immediately after `#mb-col-collapse-all-btn`.
      *
@@ -65171,12 +65280,17 @@ a { color: #1565c0; }`;
         if (!activeDefinition || activeDefinition.tableMode !== 'multi') return;
 
         // Only consider column-header buttons that belong to THIS context (CAA vs EAA),
-        // identified by the data-caa-ctx attribute stamped on creation above.
+        // identified by the data-caa-ctx attribute stamped on creation above, AND
+        // that have already been revealed by _artRevealCaaColHeaderButtons() —
+        // a still-hidden (data-mb-caa-col-hdr-ready="0") per-column button means
+        // enrichment hasn't confirmed yet whether that column even has anything
+        // to collapse, so counting it here would show the global toggle-all
+        // button before any of the per-column buttons it controls are visible.
         // This prevents the EAA global button from appearing on pages that only have
         // a CAA column (and vice-versa).
         const ctxColHdrBtns = () =>
             Array.from(document.querySelectorAll(
-                `.mb-caa-col-hdr-btn[data-caa-ctx="${ctx.key}"]`
+                `.mb-caa-col-hdr-btn[data-caa-ctx="${ctx.key}"][data-mb-caa-col-hdr-ready="1"]`
             ));
 
         if (ctxColHdrBtns().length === 0) {

@@ -7085,3 +7085,48 @@ scratch later.
   artist name, not a table-section heading). Confirmed the test fails
   (asserts `cancelled === false`) with the `.classList.add('cancelled')`
   call temporarily removed, and passes with it restored.
+
+## 2026-09-02 — CAA/EAA per-column collapse glyph (`.mb-caa-col-hdr-btn`) shown before artwork metadata loads (fixed)
+
+- **Request**: the small ▶/▼+thumbnail collapse toggle
+  `_artInitCaaColHeaderToggle()` injects into a CAA/EAA column's `<th>`
+  rendered unconditionally, immediately, on every render pass — before
+  `_artEnrichTable()`'s enqueued JSON-API enrichment (`_artEnrichIcon`) had
+  resolved for even one row. On the FIRST render pass this meant a
+  permanently-uninformative ▶-with-no-thumbnail glyph sat in the header for
+  however long the CAA/EAA queue took to drain, and — since
+  `_artBuildMultiRowArtCell()` wraps EVERY cell with ≥1 image (not just 2+,
+  despite that function's own stale-sounding doc comment) in the same
+  `[data-caa-expand-btn]` structure — the button was equally uninformative
+  (but never removed) on a column where every enriched entity turned out to
+  have zero artwork at all.
+- **Fix**: `_artInitCaaColHeaderToggle()` now only shows a NEWLY created
+  button immediately when `[data-caa-expand-btn]` markup already exists in
+  the table right now (the common case on every re-render AFTER the first —
+  that markup persists across filter/sort re-renders even though this
+  button itself is destroyed and recreated every render pass by
+  `initCollapsableColumns()`'s own idempotent cleanup). On the genuine first
+  render pass nothing is known yet, so the button starts hidden
+  (`data-mb-caa-col-hdr-ready="0"`). New `_artRevealCaaColHeaderButtons()`,
+  registered as a `_caaQueue.onIdle()` callback alongside the existing
+  `_showCaaCompletionToast()` at all 3 render-pass call sites (initial
+  fetch, `runFilter()`'s single-table branch, `renderGroupedTable()`),
+  reveals the button once metadata is confirmed (any `[data-caa-expand-btn]`
+  now present) or removes it outright if the whole column ended up with no
+  artwork anywhere. `_artInitGlobalCaaColHdrToggle()`'s (the h2-level
+  toggle-all button, multi-table pages only) own visibility now also only
+  counts `data-mb-caa-col-hdr-ready="1"` per-column buttons, so it doesn't
+  show before any of the per-column buttons it controls are visible.
+- Regression test: `tests/fixtures/caa-col-hdr-deferred-visibility.spec.js`
+  (new, + `artist-events-eaa.html` fixture) — routes
+  `https://eventartarchive.org/**` via `page.route()` (delaying the JSON
+  metadata response 600ms so there's a window to observe the pre-reveal
+  hidden state), with `sa_art_idb_enable: false` so `_artLoadIcon` takes the
+  plain native-`<img>` fallback path instead of IndexedDB (no extra mocking
+  needed). Needed a new `settingsOverride` option on
+  `tests/support/loadPage.js`'s `loadUserscriptPage()` (merged on top of the
+  existing `FIXTURE_SETTINGS_OVERRIDE`, which forces `sa_enable_caa_pics:
+  false` for every other fixture test) — the first fixture-suite test to
+  exercise the CAA/EAA pipeline at all. Confirmed the test fails (button
+  visible immediately, `sa_enable_caa_pics` unreachable without
+  `settingsOverride`) against the pre-fix code, and passes against the fix.

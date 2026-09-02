@@ -46,17 +46,27 @@ const FIXTURE_SETTINGS_OVERRIDE = {
  * ShowAllEntityData.user.js's "Test-mode debug hook" section, near the end
  * of the file) — never set outside a test run.
  *
+ * `settingsOverride` is merged on TOP of `FIXTURE_SETTINGS_OVERRIDE` (so it
+ * wins on any key both specify) — for a test that specifically needs one of
+ * those two forced-off settings back on (e.g. `sa_enable_caa_pics: true` to
+ * exercise the CAA/EAA artwork pipeline against mocked `page.route()`
+ * responses rather than real network), instead of duplicating this whole
+ * function's setup.
+ *
  * @param {import('@playwright/test').Page} page
- * @param {{ url: string, fixtureFile?: string, testMode?: boolean }} opts
+ * @param {{ url: string, fixtureFile?: string, testMode?: boolean, settingsOverride?: Object<string, *> }} opts
  * @returns {Promise<void>}
  */
-async function loadUserscriptPage(page, { url, fixtureFile, testMode }) {
+async function loadUserscriptPage(page, { url, fixtureFile, testMode, settingsOverride }) {
     if (testMode) {
         await page.addInitScript({ content: 'window.__SA_TEST_MODE__ = true;' });
     }
 
     await page.addInitScript({
-        content: buildGmStubsScript(fixtureFile ? FIXTURE_SETTINGS_OVERRIDE : {}),
+        content: buildGmStubsScript({
+            ...(fixtureFile ? FIXTURE_SETTINGS_OVERRIDE : {}),
+            ...(settingsOverride || {}),
+        }),
     });
 
     if (fixtureFile) {
