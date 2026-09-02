@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Test Artist - Recordings - MusicBrainz</title>
+</head>
+<body>
+    <div id="content">
+        <div class="artistheader">
+            <h1><bdi>Test Artist</bdi></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350/recordings">Recordings</a></li></ul>
+        </div>
+        <h2>Recordings</h2>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Length</th>
+                    <th>Artist</th>
+                    <th>Release groups</th>
+                    <th>Rating</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!--
+                    Two DIFFERENT recordings (distinct /recording/<mbid>
+                    hrefs) sharing the exact same display name — mirrors
+                    debug/work.recordings.html's real-world shape (93
+                    distinct recordings all titled "4th of July, Asbury
+                    Park (Sandy)", each non-bare via its own trailing
+                    <span class="comment"> show detail). Regression fixture
+                    for the bug reported against ea666ff: that commit's
+                    href-scoped name-collision split (built for two
+                    DIFFERENT MusicBrainz AREAS sharing a name — see
+                    area-name-collision.html) was applied to EVERY entity
+                    type, so an ordinary "many recordings share one title"
+                    collision like this one wrongly exploded into one
+                    "» recording name: ... (1)" / "... (2)" entry per
+                    recording instead of staying one flat, merged entry.
+                -->
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555501"><bdi>Same Recording Title</bdi></a>&nbsp;<span class="comment"><bdi>(live, 1973‐07‐18: Venue One)</bdi></span></td>
+                    <td>3:45</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555502"><bdi>Same Recording Title</bdi></a>&nbsp;<span class="comment"><bdi>(live, 1973‐07‐23: Venue Two)</bdi></span></td>
+                    <td>3:47</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+        <ul class="pagination"></ul>
+    </div>
+</body>
+</html>

@@ -91,4 +91,22 @@ test.describe('Two different MusicBrainz areas sharing the exact same display na
         expect(await matches(`namehref:${STATE_HREF}`)).toBe(true);
         expect(await matches('namehref:/area/00000000-0000-0000-0000-000000000000')).toBe(false);
     });
+
+    test('_entityNameSplitsByHref(): only "area" name collisions split into one entry per href', async ({ page }) => {
+        await loadUserscriptPage(page, { url: ARTIST_RECORDINGS_URL, fixtureFile: FIXTURE_FILE, testMode: true });
+
+        // area is the ONLY type this collision-split mechanism was built
+        // for (two genuinely different areas can share a display name,
+        // e.g. this fixture's own "New York" city/state collision). Every
+        // other entity type collides on display name as ordinary
+        // MusicBrainz data (many different recordings/releases/etc. sharing
+        // one title — see debug/work.recordings.html's 93-recording "4th of
+        // July, Asbury Park (Sandy)" collision) and must stay merged.
+        expect(await page.evaluate(() => window.__saTest.entityNameSplitsByHref('area'))).toBe(true);
+        expect(await page.evaluate(() => window.__saTest.entityNameSplitsByHref('recording'))).toBe(false);
+        expect(await page.evaluate(() => window.__saTest.entityNameSplitsByHref('artist'))).toBe(false);
+        expect(await page.evaluate(() => window.__saTest.entityNameSplitsByHref('work'))).toBe(false);
+        expect(await page.evaluate(() => window.__saTest.entityNameSplitsByHref('label'))).toBe(false);
+        expect(await page.evaluate(() => window.__saTest.entityNameSplitsByHref(undefined))).toBe(false);
+    });
 });

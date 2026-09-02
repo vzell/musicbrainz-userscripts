@@ -7130,3 +7130,66 @@ scratch later.
   exercise the CAA/EAA pipeline at all. Confirmed the test fails (button
   visible immediately, `sa_enable_caa_pics` unreachable without
   `settingsOverride`) against the pre-fix code, and passes against the fix.
+
+## 2026-09-02 — unique-values dropdown "Entity info" name-collision split applied to every entity type, not just areas (fixed)
+
+- **Snapshot**: `debug/work.recordings.html` — the final rendered
+  `work-recordings` page for
+  `/work/1f573511-eb4b-3106-8fb2-f15de52e4868` ("4th of July, Asbury Park
+  (Sandy)"). Reported live, with a screenshot of the "Title" column's 📊
+  unique-values dropdown: the "Entity info - Recording name" section showed
+  ~93 near-identical entries, "4th of July, Asbury Park (Sandy) (1)" through
+  "… (93)" — one per distinct recording — instead of one flat, merged
+  entry.
+- **Root cause**: this is a direct regression from the SAME-DAY fix
+  immediately above (2026-09-02 — "unique-values dropdown collapses two
+  DIFFERENT areas sharing the same name"). That fix's `_emitNameSynItem()`
+  splits any display-name collision (2+ distinct hrefs sharing one name)
+  into one auto-numbered entry per href — built specifically for two
+  genuinely different MusicBrainz AREAS sharing a name (`debug/2-ny.html`'s
+  "New York" city/state collision) — but it applied unconditionally to
+  EVERY entity type. On `work-recordings`, 93 distinct `/recording/<mbid>`
+  entities happen to share one track title; that's ordinary MusicBrainz
+  data (many recordings of the same song), not two unrelated real-world
+  entities colliding on name, so it should have stayed one flat entry
+  exactly as it did before the area fix — the same class of "ordinary
+  same-name collision" also applies to releases/works/artists/labels/etc.
+  sharing a title/name.
+- **Fix** (`ShowAllEntityData.user.js`): new pure helper
+  `_entityNameSplitsByHref(entityType)` (next to `_ENTITY_TYPE_GLYPH`),
+  returning `entityType === 'area'`. `_emitNameSynItem()` now consults it
+  (`hrefs.size <= 1 || !_entityNameSplitsByHref(entityType)`) before
+  splitting — every other entity type falls through to the original flat,
+  merged `makeValueSynItem('name', …)` call, unchanged from before the area
+  fix. `entityNameHrefsMap`/`entityHref*` population, `namehref:` matching/
+  highlighting, and the area-routing fix
+  (`_flagIconSubdivisionLabel`/`_routeAreaLink`/`_maybeCorrectAreaFlagRegion`)
+  are untouched — only the rendering decision changed.
+- Regression test: `tests/fixtures/uniq-drop-name-collision-non-area.spec.js`
+  (new, + `uniq-drop-name-collision-non-area.html` fixture) — an
+  `artist-recordings`-shaped table with two DIFFERENT recordings
+  (distinct hrefs, each with its own trailing `<span class="comment">` so
+  they're non-bare and feed `entityNameTypeMap`) sharing one title, real
+  render via a clicked button + `page.route()` for the paginated fetch,
+  then `window.__saTest.getUniqDropSections('Name')`. Confirmed the test
+  fails (2 entries, "Same Recording Title (1)"/"(2)") against the pre-fix
+  code and passes (1 merged entry, count 2, no "(n)" suffix) against the
+  fix. Also extended `tests/fixtures/area-name-collision.spec.js` with a
+  unit-level check of the new `_entityNameSplitsByHref()` helper itself
+  (`area` → `true`; `recording`/`artist`/`work`/`label`/`undefined` →
+  `false`), exposed via a new `window.__saTest.entityNameSplitsByHref()`
+  hook. `node --check ShowAllEntityData.user.js` and the full `npm test`
+  (chromium-fixtures) suite passed after every edit.
+
+  Building the new fixture also surfaced an unrelated fixture-authoring
+  gotcha (not a script bug): `updateH2Count()`'s `filterContainer`
+  (`#mb-filter-container`, what `tests/support/browser.js`'s
+  `waitForRenderComplete()` waits on) only gets appended to the DOM when a
+  real `document.querySelectorAll('h2')` match precedes `table.tbl` in
+  document position — a fixture missing the page's native section `<h2>`
+  (e.g. `<h2>Recordings</h2>` right before the table, present on every real
+  MusicBrainz artist/work sub-page) silently renders the table correctly
+  but never shows the filter bar, so `waitForRenderComplete()` times out
+  waiting for it. `area-name-collision.html` also lacks this `<h2>`, but
+  none of its own tests exercise the render pipeline, so it never surfaced
+  there.
