@@ -1,5 +1,23 @@
 [
   {
+    "version": "9.99.991",
+    "date": "2026-09-02",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Location/Area splitting (`_routeAreaLink()`/`_maybeCorrectAreaFlagRegion()`): when a \"More Flags Everywhere\"-decorated area link's bare anchor text collides with a DIFFERENT entity's name (e.g. MusicBrainz's own area \"New York\" the city vs. area \"New York\" the state both render bare \"New York\"), the city was wrongly force-routed into the \"Region\" column alongside the state instead of staying in \"Locality\". Fixed via new `_flagIconSubdivisionLabel()`, which reads the decorating icon's own disambiguated `alt`/`title` (e.g. \"New York City\") instead of the anchor's own ambiguous text."
+        ]
+      },
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Unique-values dropdown \"Entity info\" `» name:` family: when two DISTINCT MusicBrainz entities share the exact same display name on one column (e.g. the area-name collision above), a single flat `» name: New York` entry used to silently match BOTH real-world entities with no way to isolate either. Split into one entry per underlying href instead (`New York (1)`/`New York (2)`, …), each independently selectable via a new href-scoped `namehref:` compound filter mode — new `_emitNameSynItem()`, `_findCellEntityCommentParts()`'s added `href` field, and matching `_cellMatchesStructureMode()`/`_highlightEntityCommentPartMatch()`/`_structureModeLabel()`/`_structureModeTooltip()` branches."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.990",
     "date": "2026-09-02",
     "sections": [
