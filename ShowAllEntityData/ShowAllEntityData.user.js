@@ -55625,7 +55625,16 @@ a { color: #1565c0; }`;
             td.className = 'mb-re-cell';
             td.dataset.mbid = mbid;
             td.style.backgroundColor = _injBg;
-            row.appendChild(td);
+            // A disk-loaded/cross-tab-snapshot row already has its Relationships
+            // cell (mb-rel-cell survives serialization; mb-re-cell does not — see
+            // captureSubtableSnapshot()/saveTableDataToDisk()'s row filters), so a
+            // blind appendChild() would land this placeholder AFTER it, one column
+            // out of step with the fixed "Release events" -> "Relationships" header
+            // order and swapping both columns' data. Insert before it instead —
+            // mirrors _ensureIceCells()'s insertBefore(td, _picardTd) anchor below.
+            // On a live-fetch row no mb-rel-cell exists yet, so this still appends.
+            const _relTd = row.querySelector('td.mb-rel-cell');
+            row.insertBefore(td, _relTd);
         }
         document.querySelectorAll('table.tbl tbody tr').forEach(_ensureReCell);
         if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => g.rows.forEach(_ensureReCell));

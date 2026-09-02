@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-03",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed a column swap on 'label-relationships'/'place-performances' pages: after clicking a sub-section's \"Show single-table\" button (or a Load-from-Disk round trip), the \"Release events\" column showed the \"Relationships\" column's data and vice versa. Caused by initReleaseEventsColumn()'s _ensureReCell() blindly appending the recreated Release events placeholder cell after the already-restored Relationships cell instead of inserting it before, one column out of step with the fixed header order."
+        ]
+      }
+    ]
+  }
+]
