@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.992",
+    "date": "2026-09-02",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"Artists with collaboration relationships\" report (`/report/CollaborationRelationships`): the \"Collaboration\" column rendered empty for every collaborator row. The report shares the exact colspan group-header/empty-first-cell table shape as the `report-multiple-linked` family (e.g. `ASINsWithMultipleReleases`), but its URL doesn't follow that family's `...With(Multiple|Many)...` naming pattern, so it fell through to the generic `report-detail` catch-all, which has no group-header merge logic. Now explicitly routed to `report-multiple-linked`."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.991",
     "date": "2026-09-02",
     "sections": [
