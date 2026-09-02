@@ -6941,3 +6941,72 @@ scratch later.
   span per originating text node) after. Re-ran the full
   `artist-events-interactions.spec.js` suite and
   `artist-releases-filter-sort.spec.js`'s §A suite with no regressions.
+
+## 2026-09-02 — unique-values dropdown collapses two DIFFERENT areas sharing the same name (fixed)
+
+- **Snapshot**: `debug/2-ny.html` — a single `series-events` row (SiriusXM
+  Studio, 2020-04-08) from
+  `/series/f4818e95-a515-4821-ad6d-270703f72dcf`, saved as the final
+  rendered `<tr>` (no `<table>`/`<thead>` wrapper — just the row). Same
+  underlying "two areas both named New York" collision the 2026-09-01
+  entry above already brushed past for a highlighting bug, but here it's
+  the actual root cause of a different report: MusicBrainz has TWO
+  distinct area entities that are both literally named "New York" — a
+  county/city-level area (`/area/74e50e58-5deb-4b99-93a2-decbb365c07f`)
+  and the state (`/area/75e398a3-5f3f-4224-9cd8-0fe44715bc95`). Reported
+  live: the "Region"/"Location" columns' 📊 unique-values dropdown only
+  ever showed ONE "New York" entry, even though the underlying data has
+  two unrelated real-world entities.
+- **Root cause, layer 1 (data)**: `_routeAreaLink()`/
+  `_maybeCorrectAreaFlagRegion()`'s `forceRegion`/`qualifies` check
+  compared `a.textContent` (or `flaggedAnchor.textContent`) — the anchor's
+  own bare link text, "New York" for BOTH areas — against
+  `AREA_FLAG_REGION_SUBDIVISIONS`. Since both anchors' own text is
+  identical, the county/city (which should stay in Locality) got
+  misclassified as a flagged STATE-level link and force-routed into Region
+  alongside the real state, producing a "New York, New York" cell instead
+  of splitting Locality="New York" (city) / Region="New York" (state). The
+  "More Flags Everywhere" userscript's own decorating icon actually
+  disambiguates this already: its `alt`/`title` reads "New York City" for
+  the city (sourced from that script's own "(Cities)" list) vs. plain "New
+  York" for the state (its "(States)" list) — the anchor text alone just
+  never carries that distinction.
+- **Root cause, layer 2 (dropdown)**: even independent of layer 1,
+  `openUniqDrop()`'s "Entity info" `entityNameValueCounts`/
+  `entityNameGlyphMap`/`entityNameTypeMap`/`entityNameFlagMap` family is
+  keyed by display NAME string only, by design (documented repeatedly in
+  the surrounding code as intentional, e.g. "a name-only entry here would
+  be a pure duplicate") — so two different hrefs sharing a name always
+  collapse into one dropdown row.
+- **Fix** (`ShowAllEntityData.user.js`):
+  - New `_flagIconSubdivisionLabel(iconSpan, a)` — reads the decorating
+    icon's own `alt`/`title` (falling back to `a.textContent` when absent)
+    instead of the anchor's own text; used by both `_routeAreaLink()` and
+    `_maybeCorrectAreaFlagRegion()`.
+  - `_findCellEntityCommentParts()` now also returns each entry's `href`.
+  - New href-keyed counterparts of the `entityName*` Maps
+    (`entityNameHrefsMap`, `entityHrefAnyValueCounts`,
+    `entityHrefValueCounts`, `entityHrefGlyphMap`, `entityHrefTypeMap`,
+    `entityHrefFlagMap`) and a new `_emitNameSynItem()` helper: when a
+    display name maps to 2+ distinct hrefs, the flat "» name:" entry
+    splits into one auto-numbered entry per href ("New York (1)"/"New York
+    (2)"), each wired to a new href-scoped `namehref:<href>` compound
+    filter mode (`makeValueSynItem()`'s new `hrefOverride` param) —
+    matched/highlighted via new branches in `_cellMatchesStructureMode()`
+    and `_highlightEntityCommentPartMatch()`.
+- Confirmed the fix is load-bearing by temporarily reverting
+  `_flagIconSubdivisionLabel()` to plain `a.textContent` — this reproduced
+  the exact bug (the city dragged into Region alongside the state) and
+  failed the new fixture test.
+- Regression test: `tests/fixtures/area-name-collision.spec.js` (new),
+  built from a fixture distilled directly from `debug/2-ny.html`'s row
+  markup — covers `_flagIconSubdivisionLabel()`'s icon-vs-anchor-text
+  discrimination, `ColumnDataExtractor.splitLocation()`'s Locality/Region
+  split, and `_cellMatchesStructureMode()`'s new `namehref:` isolation vs.
+  the broader `name:` match. Also added three new `window.__saTest` hooks
+  (`cellMatchesStructureMode`, `flagIconSubdivisionLabel`,
+  `splitLocationAreas`) and extended the existing `findCellEntityCommentParts`
+  hook with `href` — updated `entity-refs-mp-wrapper.spec.js`'s existing
+  `toEqual` assertions accordingly (extra field, exact deep-equality).
+  `node --check ShowAllEntityData.user.js` and the full `npm test`
+  (chromium-fixtures) suite passed after every edit.

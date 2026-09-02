@@ -2947,6 +2947,40 @@
     }
 
     /**
+     * Resolves the display label a flag-decorating userscript ("MusicBrainz:
+     * More Flags Everywhere" / "Canadian Province Flags Everywhere",
+     * @Lotheric) actually assigned to one area link, for matching against
+     * `AREA_FLAG_REGION_SUBDIVISIONS` — preferring the decorating icon's own
+     * `alt`/`title` over the anchor's own bare text.
+     *
+     * This matters because MusicBrainz itself can name a CITY area entity
+     * identically to a STATE/subdivision entity — e.g. New York City's own
+     * MusicBrainz area is named bare "New York", the same as the state "New
+     * York" (see debug/2-ny.html, a series-events row where both areas are
+     * literally named "New York" with different MBIDs). A check against
+     * `a.textContent` alone cannot tell them apart and wrongly force-routes
+     * the city into Region. The decorating userscript's OWN icon disambiguates
+     * this: it sources "New York City" for the city (from its "(Cities)"
+     * list) and "New York" for the state (from its "(States)" list) as the
+     * icon's `alt`/`title`, even though both anchors' own link text reads
+     * bare "New York" — so reading the icon's label instead of the anchor's
+     * text lets `subdivisionSet.has(...)` correctly reject the city.
+     *
+     * Falls back to the anchor's own text when there's no icon, or its `img`
+     * carries neither `alt` nor `title` (e.g. no flag-decorating userscript
+     * installed, or a shape it doesn't decorate this way).
+     *
+     * @param {?Element} iconSpan - `span.area-icon` immediately preceding `a`, or null.
+     * @param {HTMLAnchorElement} a
+     * @returns {string} Trimmed, lowercased label.
+     */
+    function _flagIconSubdivisionLabel(iconSpan, a) {
+        const img   = iconSpan ? iconSpan.querySelector('img') : null;
+        const label = (img && (img.getAttribute('alt') || img.getAttribute('title'))) || a.textContent;
+        return label.trim().toLowerCase();
+    }
+
+    /**
      * _routeAreaLink — routes ONE already-found '/area/' anchor to the correct
      * output container, shared by `splitLocation` (Location cells, which also
      * carry a leading '/place/' link) and `splitArea` (Area/Begin area/End area
@@ -3021,7 +3055,7 @@
             const subdivisionSet = _flagRegionSubdivisionSet(areaState.countryName);
             const forceRegion = areaState.count === 0 && iconSpan && areaState.countryName && (
                 subdivisionSet
-                    ? subdivisionSet.has(a.textContent.trim().toLowerCase())
+                    ? subdivisionSet.has(_flagIconSubdivisionLabel(iconSpan, a))
                     : _flagRegionCountrySet().has(areaState.countryName.toLowerCase())
             );
             const container = (areaState.count === 0 && !forceRegion) ? containerL : containerR;
@@ -17343,7 +17377,7 @@
      * @param {?HTMLTableCellElement} cell
      * @returns {Array<{name: string, comment: ?string, alias: ?string,
      *   commentSpan: ?Element, nameNode: Element, glyphClass: string,
-     *   type: string, flagEl: ?Element}>}
+     *   type: string, flagEl: ?Element, href: string}>}
      */
     function _findCellEntityCommentParts(cell) {
         if (!cell) return [];
@@ -17399,7 +17433,7 @@
                 comment = null;
             }
 
-            out.push({ name, comment, alias, commentSpan, nameNode: ref.nameNode, glyphClass: ref.glyphClass, type: ref.type, flagEl: ref.flagEl });
+            out.push({ name, comment, alias, commentSpan, nameNode: ref.nameNode, glyphClass: ref.glyphClass, type: ref.type, flagEl: ref.flagEl, href: ref.href });
         });
         return out;
     }
@@ -18520,6 +18554,20 @@
             // entityNameAnyValueCounts, built the same ungated way.
             const want = mode.slice(5);
             return !!cell && _findCellEntityRefs(cell).some(ref => ref.name === want);
+        }
+        if (mode.startsWith('namehref:')) {
+            // Compound mode — the href-scoped counterpart of 'name:' above,
+            // used instead of it (openUniqDrop()'s _emitNameSynItem()) when
+            // two DISTINCT entities share the exact same display name (e.g.
+            // area "New York" the city vs. area "New York" the state — see
+            // debug/2-ny.html). Matched by href alone, not name text, so it
+            // isolates exactly ONE of the colliding entities. The mode value
+            // is `<href>::<disambiguated label>` — only the href half (up to
+            // the first '::') is needed for matching.
+            const rest = mode.slice(9);
+            const sep  = rest.indexOf('::');
+            const want = sep === -1 ? rest : rest.slice(0, sep);
+            return !!cell && _findCellEntityRefs(cell).some(ref => ref.href === want);
         }
         if (mode.startsWith('comment:')) {
             // Compound mode counterpart of 'name:' above — matches one
@@ -36132,7 +36180,8 @@ a { color: #1565c0; }`;
      *
      * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
      * @param {string} mode - The compound mode string, e.g.
-     *   `"name:Johann Strauss"`, `"comment:Austro-German composer, …"`, or
+     *   `"name:Johann Strauss"`, `"namehref:/area/74e50e58-…::New York (1)"`,
+     *   `"comment:Austro-German composer, …"`, or
      *   `"alias:Johann Strauss II"`.
      */
     function _highlightEntityCommentPartMatch(cell, mode) {
@@ -36143,6 +36192,22 @@ a { color: #1565c0; }`;
                 if (ref.name !== _want) return;
                 ref.nameNode.normalize();
                 highlightCrossTag(ref.nameNode, _buildFuzzyTextMatchRegex(_want), 'mb-column-filter-highlight');
+            });
+            return;
+        }
+        if (mode.startsWith('namehref:')) {
+            // href-scoped counterpart of 'name:' above (see
+            // _cellMatchesStructureMode()'s own 'namehref:' branch) —
+            // highlights only the ONE entity occurrence matching this
+            // specific href, not every occurrence of its (possibly
+            // name-colliding) display text.
+            const _rest = mode.slice(9);
+            const _sep  = _rest.indexOf('::');
+            const _want = _sep === -1 ? _rest : _rest.slice(0, _sep);
+            _findCellEntityRefs(cell).forEach(ref => {
+                if (ref.href !== _want) return;
+                ref.nameNode.normalize();
+                highlightCrossTag(ref.nameNode, _buildFuzzyTextMatchRegex(ref.name), 'mb-column-filter-highlight');
             });
             return;
         }
@@ -37322,7 +37387,7 @@ a { color: #1565c0; }`;
                     // checked an overlapping item entry AND entity entry —
                     // harmless: nested mb-column-filter-highlight spans render
                     // identically to one. Checked 'attr:'/'task:'/'date:'/
-                    // 'instrument:'/'altname:'/'name:'/'comment:'/'alias:'/
+                    // 'instrument:'/'altname:'/'name:'/'namehref:'/'comment:'/'alias:'/
                     // 'joinphrase:'/'namevariation:'/'revcountry:'/'countryname:'/
                     // 'countrycode:'/'revdate:'/'revweekday:'/'catalogprefix:'/
                     // 'catalog-none'/'partofseriesname:'/'partofseriesdate:'/
@@ -37367,8 +37432,8 @@ a { color: #1565c0; }`;
                                     mode.startsWith('date:') || mode.startsWith('instrument:') ||
                                     mode.startsWith('altname:')) {
                                     _highlightCreditValueMatch(row.cells[f.idx], mode);
-                                } else if (mode.startsWith('name:') || mode.startsWith('comment:') ||
-                                           mode.startsWith('alias:')) {
+                                } else if (mode.startsWith('name:') || mode.startsWith('namehref:') ||
+                                           mode.startsWith('comment:') || mode.startsWith('alias:')) {
                                     _highlightEntityCommentPartMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('joinphrase:')) {
                                     _highlightJoinPhraseMatch(row.cells[f.idx], mode);
@@ -42635,9 +42700,11 @@ a { color: #1565c0; }`;
      * qualifies mirrors `_routeAreaLink`'s `forceRegion` check exactly: for
      * countries in `AREA_FLAG_REGION_COUNTRIES` (UK/Australia) any flagged
      * Locality qualifies; for countries in `AREA_FLAG_REGION_SUBDIVISIONS`
-     * (US/Canada) the flagged anchor's own NAME must also match a known
-     * state/province/territory name, since that script flags city-level
-     * links there too (see `AREA_FLAG_REGION_SUBDIVISIONS`'s comment).
+     * (US/Canada) the flagged icon's own label (`_flagIconSubdivisionLabel()`
+     * — preferred over the anchor's own text, since MusicBrainz can name a
+     * city identically to a state; see that function's own JSDoc) must also
+     * match a known state/province/territory name, since that script flags
+     * city-level links there too (see `AREA_FLAG_REGION_SUBDIVISIONS`'s comment).
      *
      * This is the deferred counterpart to the same check `_routeAreaLink`
      * already performs at extraction time: extraction only sees whatever the
@@ -42671,12 +42738,14 @@ a { color: #1565c0; }`;
                 Lib.debug('render', `_maybeCorrectAreaFlagRegion: rowIdx=${rowIdx} localityIdx=${trio.localityIdx} is flagged but countryIdx=${trio.countryIdx} resolved to empty text (raw="${countryTd?.textContent}")`);
                 return;
             }
+            const flaggedIconSpan = flaggedAnchor.previousElementSibling && flaggedAnchor.previousElementSibling.matches('span.area-icon')
+                ? flaggedAnchor.previousElementSibling : null;
             const subdivisionSet = _flagRegionSubdivisionSet(countryName);
             const qualifies = subdivisionSet
-                ? subdivisionSet.has(flaggedAnchor.textContent.trim().toLowerCase())
+                ? subdivisionSet.has(_flagIconSubdivisionLabel(flaggedIconSpan, flaggedAnchor))
                 : _flagRegionCountrySet().has(countryName);
             if (!qualifies) {
-                Lib.debug('render', `_maybeCorrectAreaFlagRegion: rowIdx=${rowIdx} is flagged ("${flaggedAnchor.textContent.trim()}") but country "${countryName}" is not in AREA_FLAG_REGION_COUNTRIES and the name is not a recognised AREA_FLAG_REGION_SUBDIVISIONS entry`);
+                Lib.debug('render', `_maybeCorrectAreaFlagRegion: rowIdx=${rowIdx} is flagged ("${flaggedAnchor.textContent.trim()}", icon label "${_flagIconSubdivisionLabel(flaggedIconSpan, flaggedAnchor)}") but country "${countryName}" is not in AREA_FLAG_REGION_COUNTRIES and the name is not a recognised AREA_FLAG_REGION_SUBDIVISIONS entry`);
                 return;
             }
 
@@ -47366,6 +47435,26 @@ a { color: #1565c0; }`;
         // today's generic-glyph behavior unchanged.
         const entityNameFlagMap       = _uniqCacheHit ? _uniqCacheHit.entityNameFlagMap       : new Map();
         const entityNameAnyValueCounts = _uniqCacheHit ? _uniqCacheHit.entityNameAnyValueCounts : new Map();
+        // entityNameHrefsMap: name -> Set<href>, every DISTINCT entity href
+        // seen under that display name (bare + non-bare, mirrors
+        // entityNameAnyValueCounts' broad scope). MusicBrainz can give two
+        // genuinely different entities the exact same display name (e.g.
+        // area "New York" the city and area "New York" the state — see
+        // debug/2-ny.html); when this Set grows past size 1, the "» name:"
+        // family below splits that one flat entry into one per-href entry
+        // instead (see `_emitNameSynItem`), so each real entity stays
+        // independently selectable rather than silently collapsing into one
+        // checkbox that matches both. The href-keyed Maps immediately below
+        // are the href-scoped counterparts of entityNameValueCounts/
+        // entityNameGlyphMap/entityNameTypeMap/entityNameFlagMap, populated
+        // the same way, at the same two call sites, just keyed by `href`
+        // instead of `name`.
+        const entityNameHrefsMap        = _uniqCacheHit ? _uniqCacheHit.entityNameHrefsMap        : new Map();
+        const entityHrefAnyValueCounts  = _uniqCacheHit ? _uniqCacheHit.entityHrefAnyValueCounts  : new Map();
+        const entityHrefValueCounts     = _uniqCacheHit ? _uniqCacheHit.entityHrefValueCounts     : new Map();
+        const entityHrefGlyphMap        = _uniqCacheHit ? _uniqCacheHit.entityHrefGlyphMap        : new Map();
+        const entityHrefTypeMap         = _uniqCacheHit ? _uniqCacheHit.entityHrefTypeMap         : new Map();
+        const entityHrefFlagMap         = _uniqCacheHit ? _uniqCacheHit.entityHrefFlagMap         : new Map();
         // Distinct "join phrase" values (e.g. " & ", " and ", " with ", or
         // arbitrary free text an editor typed like " w/special guest ") —
         // the literal separator text MusicBrainz stores between two
@@ -47662,8 +47751,15 @@ a { color: #1565c0; }`;
                 // _cellMatchesStructureMode()'s own broadened `name:` match
                 // (every row containing this entity name, bare or not).
                 const _rowAnyNameValues = new Set();
-                _findCellEntityRefs(cell).forEach(ref => _rowAnyNameValues.add(ref.name));
+                const _rowAnyHrefValues = new Set();
+                _findCellEntityRefs(cell).forEach(ref => {
+                    _rowAnyNameValues.add(ref.name);
+                    _rowAnyHrefValues.add(ref.href);
+                    if (!entityNameHrefsMap.has(ref.name)) entityNameHrefsMap.set(ref.name, new Set());
+                    entityNameHrefsMap.get(ref.name).add(ref.href);
+                });
                 _rowAnyNameValues.forEach(t => entityNameAnyValueCounts.set(t, (entityNameAnyValueCounts.get(t) || 0) + 1));
+                _rowAnyHrefValues.forEach(h => entityHrefAnyValueCounts.set(h, (entityHrefAnyValueCounts.get(h) || 0) + 1));
                 if (isTitleCol && _titleHasRecNameMismatch(cell)) titleMismatchCount++;
                 if (_findNameVariationElements(cell).length > 0) nameVariationCount++;
                 if (isFormatCol) {
@@ -47821,6 +47917,7 @@ a { color: #1565c0; }`;
                 });
                 _rowAltNameValues.forEach(t => altNameValueCounts.set(t, (altNameValueCounts.get(t) || 0) + 1));
                 const _rowNameValues    = new Set();
+                const _rowHrefValues    = new Set();
                 const _rowCommentValues = new Set();
                 const _rowAliasValues   = new Set();
                 _findCellEntityCommentParts(cell).forEach(p => {
@@ -47833,10 +47930,20 @@ a { color: #1565c0; }`;
                             entityNameFlagMap.set(p.name, _bakeFlagIconNode(p.flagEl));
                         }
                     }
+                    if (p.href) {
+                        _rowHrefValues.add(p.href);
+                        if (!entityHrefGlyphMap.has(p.href)) entityHrefGlyphMap.set(p.href, p.glyphClass);
+                        if (!entityHrefTypeMap.has(p.href))  entityHrefTypeMap.set(p.href, p.type);
+                        if (Lib.settings.sa_enable_dropdown_flag_icons && p.type === 'area' &&
+                            p.flagEl && !entityHrefFlagMap.has(p.href)) {
+                            entityHrefFlagMap.set(p.href, _bakeFlagIconNode(p.flagEl));
+                        }
+                    }
                     if (p.comment) _rowCommentValues.add(p.comment);
                     if (p.alias)   _rowAliasValues.add(p.alias);
                 });
                 _rowNameValues.forEach(t => entityNameValueCounts.set(t, (entityNameValueCounts.get(t) || 0) + 1));
+                _rowHrefValues.forEach(h => entityHrefValueCounts.set(h, (entityHrefValueCounts.get(h) || 0) + 1));
                 _rowCommentValues.forEach(t => entityCommentValueCounts.set(t, (entityCommentValueCounts.get(t) || 0) + 1));
                 _rowAliasValues.forEach(t => entityAliasValueCounts.set(t, (entityAliasValueCounts.get(t) || 0) + 1));
                 const _rowJoinPhraseValues = new Set();
@@ -48759,6 +48866,8 @@ a { color: #1565c0; }`;
                 entityNameValueCounts, entityCommentValueCounts, entityAliasValueCounts,
                 entityTagCountValueCounts, eventCancelledValueCounts,
                 entityNameGlyphMap, entityNameTypeMap, entityNameFlagMap, entityNameAnyValueCounts,
+                entityNameHrefsMap, entityHrefAnyValueCounts, entityHrefValueCounts,
+                entityHrefGlyphMap, entityHrefTypeMap, entityHrefFlagMap,
                 joinPhraseValueCounts, nameVariationValueCounts,
                 formatSizeValueCounts, formatCountValueCounts, formatComboValueCounts, formatTypeValueCounts,
                 revCountryValueCounts, revCountryFlagMap, revDateValueCounts, revWeekdayValueCounts,
@@ -48798,7 +48907,7 @@ a { color: #1565c0; }`;
             ...attrValueCounts.values(), ...taskValueCounts.values(),
             ...dateValueCounts.values(), ...instrumentValueCounts.values(),
             ...altNameValueCounts.values(),
-            ...entityNameAnyValueCounts.values(), ...entityCommentValueCounts.values(),
+            ...entityNameAnyValueCounts.values(), ...entityHrefAnyValueCounts.values(), ...entityCommentValueCounts.values(),
             ...entityAliasValueCounts.values(), ...eventRoleValueCounts.values(),
             ...roleTokenValueCounts.values(),
             ...artTypeValueCounts.values(), ...artCommentValueCounts.values(),
@@ -49225,8 +49334,21 @@ a { color: #1565c0; }`;
          *   instead of the generic globe-ish `arealink` glyph; a non-country
          *   area (no entry in `entityNameFlagMap`) keeps that generic glyph
          *   unchanged.
+         * @param {string} [hrefOverride] - Only ever passed for `kind ===
+         *   'name'`, by `_emitNameSynItem()` (see its own JSDoc), when
+         *   `entityNameHrefsMap` recorded 2+ DISTINCT entity hrefs sharing
+         *   this same display `value` (e.g. two different MusicBrainz areas
+         *   both literally named "New York"). When present, the checkbox's
+         *   filter mode becomes the href-scoped compound mode
+         *   `namehref:<hrefOverride>` (matched by `_cellMatchesStructureMode()`'s
+         *   own `namehref:` branch against `ref.href`) instead of the
+         *   ordinary name-scoped `name:<value>` — so this ONE specific
+         *   entity is independently selectable — while `value` itself (by
+         *   then already carrying its own "(n)" disambiguating suffix) still
+         *   drives the visible label/tooltip exactly like any other 'name'
+         *   entry.
          */
-        const makeValueSynItem = (kind, value, count, glyphClass, entityType, flagNode) => {
+        const makeValueSynItem = (kind, value, count, glyphClass, entityType, flagNode, hrefOverride) => {
             const item = document.createElement('div');
             item.setAttribute('role', 'option');
             item.title = value;
@@ -49343,7 +49465,8 @@ a { color: #1565c0; }`;
                 _appendSynLabelText(item, _synLabelPrefix + value);
             }
 
-            _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + `${kind}:${value}`);
+            _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX +
+                (hrefOverride ? `namehref:${hrefOverride}::${value}` : `${kind}:${value}`));
             // 'arttype'/'artcomment' route dynamically to "CAA info -
             // Type"/"- Comment" or "EAA info - Type"/"- Comment" depending
             // on BOTH which column is actually open AND the kind itself;
@@ -49362,6 +49485,51 @@ a { color: #1565c0; }`;
                 ? (entityType && _ENTITY_TYPE_GLYPH[entityType] ? `entity_${entityType}` : 'entity_other')
                 : (MB_UNIQ_KIND_TO_SECTION[kind] || 'credit');
             getOrCreateSynSection(sectionKey).itemsBox.appendChild(item);
+        };
+
+        /**
+         * Emits one or more "» <type> name:" entries (`makeValueSynItem('name', …)`)
+         * for a single distinct entity display name `v` — the
+         * `_sortedNameValues.forEach(...)` body shared by both the
+         * collapsable- and non-collapsable-column branches below.
+         *
+         * Most names map to exactly one underlying href and get a single
+         * entry, matched by the ordinary name-scoped `name:<name>` mode —
+         * unchanged from before this function existed. When
+         * `entityNameHrefsMap` recorded 2+ DISTINCT hrefs for this same
+         * display name — MusicBrainz can give two genuinely different
+         * entities the identical name, e.g. area "New York" the city and
+         * area "New York" the state (see debug/2-ny.html) — a single flat
+         * "» area name: New York" entry would let checking it silently match
+         * BOTH real-world entities with no way to isolate either. Instead,
+         * this splits into one entry per href, each carrying its own
+         * href-scoped `namehref:<href>` mode (`makeValueSynItem()`'s
+         * `hrefOverride` param — see its own JSDoc) and an auto-numbered
+         * "(n)" suffix (stable document order — the first href encountered
+         * during the row scan is "(1)") so the otherwise-identical-looking
+         * rows are distinguishable and independently selectable. Glyph/type/
+         * flag/count for each split entry come from the href-keyed
+         * `entityHref*` Maps (populated the same way, at the same two call
+         * sites, as their name-keyed counterparts) rather than the
+         * name-keyed ones, so a mixed-type name collision (unlikely, but not
+         * impossible across different entity types) still shows each
+         * entry's own correct glyph.
+         *
+         * @param {string} v
+         */
+        const _emitNameSynItem = (v) => {
+            const hrefs = entityNameHrefsMap.get(v);
+            if (!hrefs || hrefs.size <= 1) {
+                makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v),
+                    entityNameGlyphMap.get(v), entityNameTypeMap.get(v), entityNameFlagMap.get(v));
+                return;
+            }
+            Array.from(hrefs).forEach((href, i) => {
+                const label = `${v} (${i + 1})`;
+                makeValueSynItem('name', label, entityHrefAnyValueCounts.get(href) || entityHrefValueCounts.get(href),
+                    entityHrefGlyphMap.get(href), entityHrefTypeMap.get(href), entityHrefFlagMap.get(href),
+                    href);
+            });
         };
 
         /**
@@ -49574,7 +49742,7 @@ a { color: #1565c0; }`;
             _sortedEventDateValues.forEach(v => makeValueSynItem('eventdate', v, eventDateValueCounts.get(v)));
             _sortedInstrumentValues.forEach(v => makeValueSynItem('instrument', v, instrumentValueCounts.get(v)));
             _sortedAltNameValues.forEach(v => makeValueSynItem('altname', v, altNameValueCounts.get(v)));
-            _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v), entityNameGlyphMap.get(v), entityNameTypeMap.get(v), entityNameFlagMap.get(v)));
+            _sortedNameValues.forEach(v => _emitNameSynItem(v));
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedTagCountValues.forEach(v => makeValueSynItem('tagcount', v, entityTagCountValueCounts.get(v)));
@@ -49638,7 +49806,7 @@ a { color: #1565c0; }`;
             _sortedEventDateValues.forEach(v => makeValueSynItem('eventdate', v, eventDateValueCounts.get(v)));
             _sortedInstrumentValues.forEach(v => makeValueSynItem('instrument', v, instrumentValueCounts.get(v)));
             _sortedAltNameValues.forEach(v => makeValueSynItem('altname', v, altNameValueCounts.get(v)));
-            _sortedNameValues.forEach(v => makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v), entityNameGlyphMap.get(v), entityNameTypeMap.get(v), entityNameFlagMap.get(v)));
+            _sortedNameValues.forEach(v => _emitNameSynItem(v));
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedTagCountValues.forEach(v => makeValueSynItem('tagcount', v, entityTagCountValueCounts.get(v)));
@@ -50127,6 +50295,11 @@ a { color: #1565c0; }`;
         if (mode.startsWith('instrument:')) return `» instrument: ${mode.slice(11)}`;
         if (mode.startsWith('altname:'))    return `» credited as: ${mode.slice(8)}`;
         if (mode.startsWith('name:'))    return `» name: ${mode.slice(5)}`;
+        if (mode.startsWith('namehref:')) {
+            const _rest = mode.slice(9);
+            const _sep  = _rest.indexOf('::');
+            return `» name: ${_sep === -1 ? _rest : _rest.slice(_sep + 2)}`;
+        }
         if (mode.startsWith('comment:')) return `» comment: ${mode.slice(8)}`;
         if (mode.startsWith('alias:'))   return `» alias: ${mode.slice(6)}`;
         if (mode.startsWith('joinphrase:')) return `» join phrase: ${mode.slice(11)}`;
@@ -50203,6 +50376,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('instrument:')) return 'The instrument type credited in one of this cell\'s items.';
         if (mode.startsWith('altname:')) return 'MusicBrainz\'s own credited-as alternate instrument/vocal-type name (the trailing "[…]" bracket).';
         if (mode.startsWith('name:')) return 'An entity\'s own anchored/linked name — matches every row containing this entity, regardless of its disambiguation comment.';
+        if (mode.startsWith('namehref:')) return 'This exact entity (by its own MusicBrainz identity), disambiguated because another, different entity shares the same display name — see the plain "» name:" entry for the broader, name-only match.';
         if (mode.startsWith('comment:')) return 'An entity\'s disambiguation comment text, excluding any primary alias.';
         if (mode.startsWith('alias:')) return 'An entity\'s primary alias — an alternate name shown in its disambiguation comment.';
         if (mode.startsWith('joinphrase:')) return 'The literal separator text between two credited entities in this cell (e.g. "&", "and", "with", or free text an editor typed).';
@@ -66956,16 +67130,84 @@ a { color: #1565c0; }`;
              *
              * @param {string} selector - CSS selector for the target cell.
              * @returns {?Array<{name: string, comment: ?string, alias: ?string,
-             *   type: string, glyphClass: string}>} `null` when `selector`
-             *   matches nothing.
+             *   type: string, glyphClass: string, href: string}>} `null` when
+             *   `selector` matches nothing.
              */
             findCellEntityCommentParts(selector) {
                 const cell = document.querySelector(selector);
                 if (!cell) return null;
                 return _findCellEntityCommentParts(cell).map(p => ({
                     name: p.name, comment: p.comment, alias: p.alias,
-                    type: p.type, glyphClass: p.glyphClass,
+                    type: p.type, glyphClass: p.glyphClass, href: p.href,
                 }));
+            },
+
+            /**
+             * Thin, JSON-serializable wrapper around the internal
+             * `_cellMatchesStructureMode()` — the single source of truth for
+             * whether a checked "Cell structure"/compound-mode dropdown entry
+             * (e.g. `"name:New York"`, `"namehref:/area/…"`) matches a given
+             * cell, shared by `testRowMatch()`'s row filtering.
+             *
+             * @param {string} selector - CSS selector for the target cell.
+             * @param {string} mode - The bare mode string, WITHOUT the
+             *   `MB_UNIQ_STRUCTURE_MODE_PREFIX` control character (e.g.
+             *   `"name:New York"`, not the raw checkbox value).
+             * @returns {?boolean} `null` when `selector` matches nothing.
+             */
+            cellMatchesStructureMode(selector, mode) {
+                const cell = document.querySelector(selector);
+                if (!cell) return null;
+                return _cellMatchesStructureMode(mode, cell, cell.closest('tr'), 0, new Map(), false);
+            },
+
+            /**
+             * Thin, JSON-serializable wrapper around `_flagIconSubdivisionLabel()`
+             * — the atomic fix both `_routeAreaLink()` and
+             * `_maybeCorrectAreaFlagRegion()` share for the "MusicBrainz names
+             * a city identically to a state" collision (e.g. area "New York"
+             * the city vs. area "New York" the state — see that function's
+             * own JSDoc and debug/2-ny.html). Resolves the `<span
+             * class="area-icon">` immediately preceding `a` the same way
+             * both call sites do.
+             *
+             * @param {string} selector - CSS selector for the target `<a>`.
+             * @returns {?string} Trimmed, lowercased label. `null` when
+             *   `selector` matches nothing.
+             */
+            flagIconSubdivisionLabel(selector) {
+                const a = document.querySelector(selector);
+                if (!a) return null;
+                const iconSpan = a.previousElementSibling && a.previousElementSibling.matches('span.area-icon')
+                    ? a.previousElementSibling : null;
+                return _flagIconSubdivisionLabel(iconSpan, a);
+            },
+
+            /**
+             * Thin, JSON-serializable wrapper around `ColumnDataExtractor
+             * .splitLocation()` — runs the real Place/Locality/Region/Country
+             * split against a live cell and reports each output `<td>`'s own
+             * entity refs (via `_findCellEntityRefs()`), so a test can assert
+             * on WHICH area link landed in WHICH synthetic column without
+             * needing the full fetch/render pipeline.
+             *
+             * @param {string} selector - CSS selector for the source
+             *   "Location"-shaped cell.
+             * @returns {?{place: Array, locality: Array, region: Array,
+             *   country: Array}} Each array is `_findCellEntityRefs()`'s own
+             *   `{type, glyphClass, href, name, isBare, hasFlag}` shape,
+             *   read back from the corresponding output `<td>`. `null` when
+             *   `selector` matches nothing.
+             */
+            splitLocationAreas(selector) {
+                const cell = document.querySelector(selector);
+                if (!cell) return null;
+                const [tdP, tdL, tdR, tdC] = ColumnDataExtractor.splitLocation(cell);
+                const refsOf = (td) => _findCellEntityRefs(td).map(ref => ({
+                    type: ref.type, glyphClass: ref.glyphClass, href: ref.href,
+                    name: ref.name, isBare: ref.isBare, hasFlag: !!ref.flagEl,
+                }));
+                return { place: refsOf(tdP), locality: refsOf(tdL), region: refsOf(tdR), country: refsOf(tdC) };
             },
         };
     }

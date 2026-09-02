@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Test Artist - Recordings - MusicBrainz</title>
+</head>
+<body>
+    <div id="content">
+        <div class="artistheader">
+            <h1><bdi>Test Artist</bdi></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350/recordings">Recordings</a></li></ul>
+        </div>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Length</th>
+                    <th>Artist</th>
+                    <th>Release groups</th>
+                    <th>Rating</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/ac413c4f-f270-4c32-8adc-a17e3bd7b60f"><bdi>Test Recording</bdi></a></td>
+                    <td>3:45</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+        <ul class="pagination"></ul>
+
+        <!--
+            Standalone regression cells for the "two different MusicBrainz
+            areas sharing the exact same display name" bug (reported live on
+            https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf,
+            snapshot debug/2-ny.html). Not part of any real
+            ShowAllEntityData-rendered table (the script never fetches/
+            renders in this test) — markup distilled verbatim from that
+            snapshot's event row:
+
+            - #loc-cell: the NATIVE, pre-split "Location" cell — a place
+              link followed by TWO different area entities that MusicBrainz
+              both render with the bare anchor text "New York": area
+              74e50e58 (New York City itself, whose "More Flags Everywhere"
+              userscript decoration icon carries the DISAMBIGUATED alt/title
+              "New York City") and area 75e398a3 (New York the state, icon
+              alt/title "New York"). Feeds
+              `ColumnDataExtractor.splitLocation()` via `splitLocationAreas()`
+              to verify the routing fix: the city must land in Locality
+              (its icon label "new york city" is not a recognised
+              AREA_FLAG_REGION_SUBDIVISIONS entry), the state alone in
+              Region (its icon label "new york" IS one) — not both crammed
+              into Region the way `a.textContent` alone (bare "New York" for
+              BOTH links) used to force. `#loc-cell`'s country `<span
+              class="flag flag-US">` deliberately carries NO `<abbr>` —
+              matching real musicbrainz.org "Location"-column markup for
+              this shape exactly (confirmed against debug/2-ny.html itself).
+              `_findRowCountryName()` still resolves "United States" here
+              via its own anchor-text fallback (no abbr needed), so
+              `_routeAreaLink()`'s `forceRegion` branch genuinely activates
+              on this fixture exactly as it does on a live "Location" cell —
+              confirmed by temporarily reverting `_flagIconSubdivisionLabel()`
+              to plain `a.textContent`, which made the state (75e398a3) drag
+              the city (74e50e58) into Region alongside it, exactly
+              reproducing the reported bug.
+
+            - #region-collision-cell: a plain cell already holding BOTH
+              same-named-but-different-href area entities side by side
+              (independent of whichever column they end up routed into) —
+              exercises the unique-values-dropdown side of the fix:
+              `_findCellEntityRefs()` must report two distinct hrefs for the
+              same name, and `_cellMatchesStructureMode()`'s `namehref:`
+              mode must isolate exactly one of them while the broader
+              `name:` mode still matches both.
+        -->
+        <table id="area-collision-test-cells">
+            <tbody>
+                <tr>
+                    <td id="loc-cell"><a href="/place/481c1e71-8707-407d-aaae-452a5cc96f84"><bdi>SiriusXM Studio</bdi></a> in <span class="area-icon" data-mb-flag="1"><img class="flag flag-custom-region" alt="New York City" title="New York City"></span> <a href="/area/74e50e58-5deb-4b99-93a2-decbb365c07f" data-flag-processed="1"><bdi>New York</bdi></a>, <span class="area-icon" data-mb-flag="1"><img class="flag flag-custom-region" alt="New York" title="New York"></span> <a href="/area/75e398a3-5f3f-4224-9cd8-0fe44715bc95" data-flag-processed="1"><bdi>New York</bdi></a>, <span class="flag flag-US"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><bdi>United States</bdi></a></span></td>
+                </tr>
+                <tr>
+                    <td id="region-collision-cell"><span class="area-icon" data-mb-flag="1"><img class="flag flag-custom-region" alt="New York City" title="New York City"></span> <a href="/area/74e50e58-5deb-4b99-93a2-decbb365c07f" data-flag-processed="1"><bdi>New York</bdi></a>, <span class="area-icon" data-mb-flag="1"><img class="flag flag-custom-region" alt="New York" title="New York"></span> <a href="/area/75e398a3-5f3f-4224-9cd8-0fe44715bc95" data-flag-processed="1"><bdi>New York</bdi></a></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

@@ -31,8 +31,8 @@ test.describe('_findCellEntityRefs()/_findCellEntityCommentParts(): "mp" open-ed
 
         const qbParts = await page.evaluate(() => window.__saTest.findCellEntityCommentParts('#qb-cell'));
         expect(qbParts).toEqual([
-            { name: 'Queen', comment: 'UK rock group', alias: null, type: 'artist', glyphClass: 'artistlink' },
-            { name: 'David Bowie', comment: 'English singer‐songwriter', alias: null, type: 'artist', glyphClass: 'artistlink' },
+            { name: 'Queen', comment: 'UK rock group', alias: null, type: 'artist', glyphClass: 'artistlink', href: '/artist/0383dadf-2a4e-4d10-a46a-e9e041da8eb3' },
+            { name: 'David Bowie', comment: 'English singer‐songwriter', alias: null, type: 'artist', glyphClass: 'artistlink', href: '/artist/5441c29d-3602-4898-b1a1-b77fa23b8e50' },
         ]);
 
         // Control case: no "mp" wrapper on either anchor here (neither
@@ -43,8 +43,8 @@ test.describe('_findCellEntityRefs()/_findCellEntityCommentParts(): "mp" open-ed
         // guards that fix too.
         const jlYoParts = await page.evaluate(() => window.__saTest.findCellEntityCommentParts('#jl-yo-cell'));
         expect(jlYoParts).toEqual([
-            { name: 'John Lennon', comment: 'The Beatles', alias: null, type: 'artist', glyphClass: 'artistlink' },
-            { name: 'Yoko Ono', comment: 'Japanese‐American musician and artist', alias: null, type: 'artist', glyphClass: 'artistlink' },
+            { name: 'John Lennon', comment: 'The Beatles', alias: null, type: 'artist', glyphClass: 'artistlink', href: '/artist/4d5447d7-c61c-4120-ba1b-d7f471d385b9' },
+            { name: 'Yoko Ono', comment: 'Japanese‐American musician and artist', alias: null, type: 'artist', glyphClass: 'artistlink', href: '/artist/b0b33754-a664-43b7-ba00-be0dc4ec2396' },
         ]);
     });
 
@@ -74,12 +74,12 @@ test.describe('_findCellEntityRefs()/_findCellEntityCommentParts(): "mp" open-ed
         // dropped either.
         const bowieSoloParts = await page.evaluate(() => window.__saTest.findCellEntityCommentParts('#bowie-solo-cell'));
         expect(bowieSoloParts).toEqual([
-            { name: 'David Bowie', comment: 'English singer‐songwriter', alias: null, type: 'artist', glyphClass: 'artistlink' },
+            { name: 'David Bowie', comment: 'English singer‐songwriter', alias: null, type: 'artist', glyphClass: 'artistlink', href: '/artist/5441c29d-3602-4898-b1a1-b77fa23b8e50' },
         ]);
 
         const gilmourSoloParts = await page.evaluate(() => window.__saTest.findCellEntityCommentParts('#gilmour-solo-cell'));
         expect(gilmourSoloParts).toEqual([
-            { name: 'David Gilmour', comment: 'Pink Floyd', alias: null, type: 'artist', glyphClass: 'artistlink' },
+            { name: 'David Gilmour', comment: 'Pink Floyd', alias: null, type: 'artist', glyphClass: 'artistlink', href: '/artist/1dce970e-34bc-48b2-ab51-48d87544a4c2' },
         ]);
     });
 
