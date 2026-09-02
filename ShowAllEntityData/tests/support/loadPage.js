@@ -46,6 +46,15 @@ const FIXTURE_SETTINGS_OVERRIDE = {
  * ShowAllEntityData.user.js's "Test-mode debug hook" section, near the end
  * of the file) — never set outside a test run.
  *
+ * Both init scripts are registered on `page.context()`, not `page` itself,
+ * so a same-origin tab the userscript opens with `window.open()` (e.g. the
+ * "Show single-table" cross-tab snapshot handoff) also gets GM stubs/test
+ * mode applied to its own first navigation — a page-level
+ * `page.addInitScript()` only ever applies to `page`'s own navigations, not
+ * to a separate `Page` object Playwright creates for that popup. Harmless
+ * for every existing single-page test: for one page, context-level and
+ * page-level init scripts behave identically.
+ *
  * `settingsOverride` is merged on TOP of `FIXTURE_SETTINGS_OVERRIDE` (so it
  * wins on any key both specify) — for a test that specifically needs one of
  * those two forced-off settings back on (e.g. `sa_enable_caa_pics: true` to
@@ -59,10 +68,10 @@ const FIXTURE_SETTINGS_OVERRIDE = {
  */
 async function loadUserscriptPage(page, { url, fixtureFile, testMode, settingsOverride }) {
     if (testMode) {
-        await page.addInitScript({ content: 'window.__SA_TEST_MODE__ = true;' });
+        await page.context().addInitScript({ content: 'window.__SA_TEST_MODE__ = true;' });
     }
 
-    await page.addInitScript({
+    await page.context().addInitScript({
         content: buildGmStubsScript({
             ...(fixtureFile ? FIXTURE_SETTINGS_OVERRIDE : {}),
             ...(settingsOverride || {}),

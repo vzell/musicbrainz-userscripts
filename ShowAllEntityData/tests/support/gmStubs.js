@@ -5,11 +5,23 @@
  * the userscript declares (GM_xmlhttpRequest, GM_addStyle, GM_info,
  * GM_setValue/GM_getValue/GM_deleteValue, GM_registerMenuCommand/
  * GM_unregisterMenuCommand). Meant to be injected via `page.addInitScript()`
- * so it exists before any page or userscript code runs.
+ * (or, from `loadPage.js`, `page.context().addInitScript()` — see its own
+ * doc for why) so it exists before any page or userscript code runs.
  *
- * GM_getValue/GM_setValue/GM_deleteValue are backed by an in-memory object
- * (not localStorage) so each test's page context starts with clean settings
- * unless a test seeds `window.__gmValues` itself before navigation.
+ * GM_getValue/GM_setValue/GM_deleteValue are backed by `localStorage`
+ * (mirrored into an in-memory `window.__gmValues` cache for synchronous
+ * reads within the current document) rather than a page-scoped in-memory
+ * object alone — this is what makes real Tampermonkey GM storage
+ * cross-tab in the first place (e.g. the "Show single-table" cross-tab
+ * snapshot handoff's `GM_setValue`/`GM_getValue` round trip between the
+ * original tab and the `window.open()`ed one), so the stub has to be too,
+ * or any test exercising that handoff can't see the value the other tab
+ * wrote. Still starts clean per test: Playwright's default `page` fixture
+ * gives every test its own fresh `BrowserContext`, and `localStorage` is
+ * scoped per origin *per context* — a same-origin popup within the SAME
+ * test's context correctly shares it, while the NEXT test's fresh context
+ * starts empty, unless a test seeds `window.__gmValues` itself before
+ * navigation (see `seedGmValues()` below).
  *
  * GM_xmlhttpRequest looks up `window.__gmXhrResponses[url]` (an optional
  * per-test map of `{ status, blob }` or `{ status, responseText }`) and
@@ -24,8 +36,21 @@
 function buildGmStubsScript(initialValues = {}) {
     return `
         (function () {
-            const gmValues = window.__gmValues || (window.__gmValues = {});
+            const STORAGE_KEY = '__sa_test_gm_values__';
+            let stored = {};
+            try {
+                stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+            } catch (e) { /* corrupt/inaccessible storage — start clean */ }
+
+            const gmValues = window.__gmValues || (window.__gmValues = Object.assign({}, stored));
             Object.assign(gmValues, ${JSON.stringify(initialValues)});
+
+            function persist() {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(gmValues));
+                } catch (e) { /* quota/serialization error — in-memory cache still works for this tab */ }
+            }
+            persist();
 
             window.GM_info = {
                 script: { name: 'ShowAllEntityData (test)', version: 'test' },
@@ -40,14 +65,25 @@ function buildGmStubsScript(initialValues = {}) {
 
             window.GM_setValue = function (key, value) {
                 gmValues[key] = value;
+                persist();
             };
 
             window.GM_getValue = function (key, defaultValue) {
+                // Re-check localStorage for a key this tab's own cache
+                // doesn't have yet — e.g. one a same-origin popup wrote via
+                // its own GM_setValue after this tab's gmValues was seeded.
+                if (!Object.prototype.hasOwnProperty.call(gmValues, key)) {
+                    try {
+                        const fresh = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+                        if (Object.prototype.hasOwnProperty.call(fresh, key)) gmValues[key] = fresh[key];
+                    } catch (e) { /* ignore — falls through to defaultValue below */ }
+                }
                 return Object.prototype.hasOwnProperty.call(gmValues, key) ? gmValues[key] : defaultValue;
             };
 
             window.GM_deleteValue = function (key) {
                 delete gmValues[key];
+                persist();
             };
 
             window.__gmMenuCommands = window.__gmMenuCommands || {};
@@ -102,13 +138,23 @@ function buildGmStubsScript(initialValues = {}) {
  * `loadUserscriptPage()` runs, for a page type `loadUserscriptPage()` has
  * no dedicated option for" pattern.
  *
+ * Registered on `page.context()` — same reasoning as `loadPage.js`'s own
+ * `page.context().addInitScript()` switch — so this seed still lands ahead
+ * of `buildGmStubsScript()`'s init script (registration order is preserved
+ * whether both are page-level, both context-level, or split, as long as a
+ * caller always awaits this before `loadUserscriptPage()`, which every
+ * existing caller does). Splitting the two across page- and context-level
+ * would risk the opposite order silently replacing (not merging into)
+ * `window.__gmValues` — `buildGmStubsScript()`'s closures would keep
+ * writing to the object they captured, orphaned by this reassignment.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {Object<string, *>} [values]
  * @returns {Promise<void>}
  */
 async function seedGmValues(page, values) {
     if (!values || Object.keys(values).length === 0) return;
-    await page.addInitScript({ content: `window.__gmValues = ${JSON.stringify(values)};` });
+    await page.context().addInitScript({ content: `window.__gmValues = ${JSON.stringify(values)};` });
 }
 
 module.exports = { buildGmStubsScript, seedGmValues };
