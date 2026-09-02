@@ -49483,7 +49483,17 @@ a { color: #1565c0; }`;
                 item.appendChild(_labelSpan);
                 _buildArtTypePillLabel(_labelSpan, _synLabelPrefix, value);
             } else {
-                _appendSynLabelText(item, _synLabelPrefix + value);
+                const _labelSpan = _appendSynLabelText(item, _synLabelPrefix + value);
+                // Reuse MusicBrainz's OWN native `.cancelled` CSS class
+                // (the exact class `_findCellEventCancelled()` reads —
+                // see its JSDoc) as this entry's visual styling, mirroring
+                // `makeSynItem()`'s `extraLabelClass` precedent — matches
+                // the "(cancelled)" marker's own red styling in the "Event"
+                // cell exactly, and stays in sync automatically if
+                // musicbrainz.org's own styling for it ever changes.
+                if (kind === 'entitycancelled' || kind === 'eventcancelled') {
+                    _labelSpan.classList.add('cancelled');
+                }
             }
 
             _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX +
@@ -67063,8 +67073,14 @@ a { color: #1565c0; }`;
              * @param {string} colName - Column header text with sort
              *   arrows/counts/glyphs already stripped (e.g. "Format", not
              *   "⇅ Format 📊").
-             * @returns {Array<{label: string, items: Array<{label: string, count: number|null, checked: boolean}>}>|null}
+             * @returns {Array<{label: string, items: Array<{label: string, count: number|null, checked: boolean, cancelled: boolean}>}>|null}
              *   `null` when no column header matching `colName` is found.
+             *   `cancelled` reports whether the entry's own label span
+             *   carries MusicBrainz's native `.cancelled` class (see
+             *   `makeValueSynItem()`'s `entitycancelled`/`eventcancelled`
+             *   handling) — true only for the "Event info - Event
+             *   cancelled" entry, matching the red styling MusicBrainz
+             *   itself applies to the "(cancelled)" marker in the cell.
              */
             getUniqDropSections(colName) {
                 const stripDecorations = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
@@ -67104,6 +67120,7 @@ a { color: #1565c0; }`;
                                 ?? item.textContent.trim(),
                             count: countMatch ? Number(countMatch[1]) : null,
                             checked: item.classList.contains('mb-col-uniq-checked'),
+                            cancelled: !!item.querySelector('.mb-uniq-syn-label-text.cancelled'),
                         };
                     });
                     return { label, items };

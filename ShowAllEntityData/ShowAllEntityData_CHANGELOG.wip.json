@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-02",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Unique-values dropdown \"Event info - Event cancelled\"/\"Entity info - Event cancelled\" entry (e.g. `/user/<username>/ratings/event`, `artist-events`, `place-events`, `area-events`, `tag-value`/`user-tag-value`): now renders in red, reusing MusicBrainz's own native `.cancelled` CSS class — matching the \"(cancelled)\" marker's own red styling in the \"Event\" column cell instead of plain text."
+        ]
+      }
+    ]
+  }
+]

@@ -7042,3 +7042,46 @@ scratch later.
   ("Collaborator", index 1) for this report. `@include` header (line 18,
   `report\/.*`) already covered this URL — no injection-gate change
   needed.
+
+## 2026-09-02 — unique-values dropdown "Event cancelled" entry didn't match the cell's red styling (fixed)
+
+- **Snapshot**: `debug/user-ratings-event.html` — final rendered
+  `/user/vzell/ratings/event/` page. Native "Event" column cell markup:
+  `<a href="/event/…">…</a> (date) <span class="cancelled">(<bdi>cancelled</bdi>)</span> <span class="comment">…</span>` —
+  MusicBrainz's own `.cancelled` CSS class renders the "(cancelled)"
+  marker in red directly in the cell.
+- **Request**: the dropdown's "Event info - Event cancelled" entry
+  ("» event cancelled: cancelled" — `eventCancelled`/`entityEventCancelled`
+  in `SYN_SECTION_META`, populated by `makeValueSynItem('eventcancelled'/
+  'entitycancelled', …)`) rendered in plain text, not matching the cell's
+  red styling.
+- **Fix**: `makeValueSynItem()`'s generic label-building branch now adds
+  MusicBrainz's own `.cancelled` class to the entry's `.mb-uniq-syn-label-
+  text` span whenever `kind === 'entitycancelled' || kind === 'eventcancelled'`
+  — reusing the native CSS class (same technique `makeSynItem()`'s existing
+  `extraLabelClass` param already uses for `disabled-acoustid`, see its own
+  JSDoc) rather than hardcoding a color, so it stays in sync automatically
+  if musicbrainz.org's own styling changes. Verified inheritance-safe: the
+  class is applied directly to the label span, so it isn't affected by
+  `_applySynBoxQuickFilter()`'s `labelSpan.textContent =`/`innerHTML =`
+  rebuilds (neither touches the span's own class list).
+- Extended the `window.__saTest.getUniqDropSections()` test hook with a new
+  `cancelled: boolean` field per item (`.mb-uniq-syn-label-text.cancelled`
+  presence).
+- Regression test: `tests/fixtures/uniq-drop-event-cancelled.spec.js` (new,
+  + `artist-events-cancelled.html` fixture) — uses `artist-events`
+  (`entitycancelled` kind) rather than `user-ratings-type` directly, since
+  it needs no `listToTable`/`entityFeatures` H2-resolution machinery and no
+  `GM_xmlhttpRequest`/fetch mocking (its lone button carries no `params`,
+  so `startFetchingProcess` reuses the live `document` — see its "use
+  existing document" fast path); both kinds hit the exact same
+  `makeValueSynItem()` code branch this test covers. Confirmed the fixture
+  needed a native `<h2>Events</h2>` before the table — without it,
+  `updateH2Count()` never finds a `targetH2` to append `#mb-filter-container`
+  to, so it never becomes visible and `waitForRenderComplete()` times out;
+  confirmed via `tests/snapshots/artist-events/raw.html`, whose real
+  MusicBrainz markup has exactly this native `<h2>Events</h2>` immediately
+  before the table (a fact easy to miss since the page's own `<h1>` is the
+  artist name, not a table-section heading). Confirmed the test fails
+  (asserts `cancelled === false`) with the `.classList.add('cancelled')`
+  call temporarily removed, and passes with it restored.
