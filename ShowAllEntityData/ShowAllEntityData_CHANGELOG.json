@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.994",
+    "date": "2026-09-02",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "CAA/EAA column-header collapse glyph (`.mb-caa-col-hdr-btn`, the ▶/▼+thumbnail toggle in a CAA/EAA column's header): no longer shown until artwork metadata has finished loading. Previously it rendered immediately and permanently, even before any image data was known — now it starts hidden on a page's first render pass and is revealed once the CAA/EAA fetch queue drains, or removed outright if the column turns out to have no artwork at all."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.993",
     "date": "2026-09-02",
     "sections": [
