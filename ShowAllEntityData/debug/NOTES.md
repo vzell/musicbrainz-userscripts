@@ -7193,3 +7193,62 @@ scratch later.
   waiting for it. `area-name-collision.html` also lacks this `<h2>`, but
   none of its own tests exercise the render pipeline, so it never surfaced
   there.
+
+## 2026-09-03 — "Show single-table" cross-tab snapshot: Relationships column icons doubled (fixed)
+
+User report: after clicking a `label-relationships`/`place-performances`
+sub-section's "Show single-table" button, the "Relationships" column's
+icons appeared doubled — the exact same relationship icon(s) rendered
+twice in a row, only for rows whose Relationships fetch had already
+produced *some* content by the time the snapshot tab was saved (rows still
+pending stayed correctly empty). Reported alongside (but distinct from)
+the `_ensureReCell()` column-swap bug fixed earlier the same session —
+same feature, different mechanism.
+
+**Snapshot**: `debug/work-rec-double-relationships.html` — a rendered
+"Show single-table" tab for the "Distributed release" category on
+`/label/0b805b9c-ea03-4fc1-b50d-6dcef76433e0/relationships`, saved
+mid-fetch. Confirmed via a small extraction script: of the 20 `mb-rel-cell`
+tds that had any content at save time, 19 had every href duplicated
+exactly once (the 20th genuinely has zero relationships); the remaining 48
+were still empty (not yet reached).
+
+**Root cause**: `_hydrateAndRenderFromSnapshotData()`'s tail calls
+`runFilter()` — whose single-table branch has its own "re-populate any
+`td.mb-rel-cell` not yet marked `data-rel-done`" check
+(`if (document.querySelector('td.mb-rel-cell:not([data-rel-done="1"])')) initRelationshipsColumn();`)
+that fires internally, synchronously, the moment `runFilter()` runs, since
+every restored cell is unpopulated right after hydration. Moments later —
+well before that first invocation's Phase 1 (parallel IDB lookup) / Phase 2
+(1100ms-throttled WS2 queue) has resolved anything — the hydrate tail's own
+later code calls `initRelationshipsColumn()` again directly (this second
+call exists for a real, separate reason: a disk-load whose cells are
+*already* fully populated needs this call to run the "nothing to fetch —
+show the completion toast" branch, since nothing else would). Both
+invocations independently compute the *same* not-yet-done MBID set (`67
+unique MBIDs` logged twice, ~86ms apart, confirmed live via
+`sa_enable_relationship_debug`), both fetch/resolve the same data, and both
+call `_populateCells()` — which *appends* icons via `_relAppendIcon()`
+rather than replacing cell content — so every icon lands twice.
+`initReleaseEventsColumn()` has no equivalent second call site and was not
+affected.
+
+**Fix**: `initRelationshipsColumn()` is now a thin re-entrancy-guarded
+wrapper (`ShowAllEntityData.user.js`, module-level
+`_relColumnActivePromise`) around the unchanged original implementation
+(renamed `_initRelationshipsColumnImpl()`) — a call arriving while one is
+already in flight awaits the in-flight run and returns, instead of
+starting a second overlapping pass over the same not-done cells. Confirmed
+live (same debug-logging technique): only one `initRelationshipsColumn: N
+unique MBIDs` log line now, and zero cells with duplicate hrefs.
+
+**Regression test**: `tests/live/label-relationships-single-table-column-swap.spec.js`
+— added a second test to the same file (same page already exercises this
+race, since `#mb-filter-container` becomes visible long before the
+throttled Relationships fetch finishes): confirms the source page's own
+fetch is still incomplete at click time (guards against the test
+trivially passing once the fetch eventually completes on its own), then
+waits for at least 3 popup cells to reach `data-rel-done="1"` and asserts
+none carry duplicate `<a>` hrefs. Confirmed failing pre-fix (reproduced
+the exact `debug/work-rec-double-relationships.html` duplicate) and
+passing post-fix.

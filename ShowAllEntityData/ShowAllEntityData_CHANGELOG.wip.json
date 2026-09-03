@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-03",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed a \"Relationships\" column bug on 'label-relationships'/'place-performances' pages: after clicking a sub-section's \"Show single-table\" button while that page's own Relationships fetch was still in progress, every relationship icon fetched by the new tab appeared doubled. Caused by initRelationshipsColumn() being invoked twice in close succession during snapshot hydration (once internally by runFilter(), once directly by the hydrate tail) — both runs raced over the identical not-yet-populated cells and each appended its own copy of the icons. Fixed by making initRelationshipsColumn() a re-entrancy-guarded wrapper that lets a concurrent call await the in-flight run instead of starting a second overlapping pass."
+        ]
+      }
+    ]
+  }
+]
