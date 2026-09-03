@@ -326,11 +326,20 @@ every distinct non-empty value currently visible in that column.
                        excluded from the average — so extended live
                        versions don't skew what counts as "normal" for the
                        studio tracks on the same page — but are still
-                       bucketed against that studio average. Toggleable via
-                       the "Enable 'Length info - Deviation' dropdown
-                       section" setting (default on) — this is the only
-                       dropdown section that scans every row on the table
-                       to compute an average, so disable it if that
+                       bucketed against that studio average
+    — 🎙️/⚪ Length info - Live status — the same live/studio classification
+                       "Deviation" uses internally, exposed as its own two
+                       directly checkable entries ("🎙️ Live recording" /
+                       "⚪ Not live"), only shown when the page actually has
+                       a recognized live-flag column. Checking "🎙️ Live
+                       recording" narrows the table and highlights the word
+                       "live" in each matching row's Attributes cell.
+                       Both "Length info - Deviation" and "Length info -
+                       Live status" are toggled together by the "Enable
+                       'Length info - Deviation'/'Live status' dropdown
+                       sections" setting (default on) — this is the only
+                       pair of dropdown sections that scan every row on the
+                       table to compute an average, so disable it if that
                        measurably slows down very large tables
     — 🗣️/🥇 Locale info — on an alias table's "Locale" column: "- Language"
                        (distinct locale languages, e.g. "English", "Chinese

@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1002",
+    "date": "2026-09-03",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Added a \"Length info - Live status\" section to the \"Length\" column's unique-values (📊) dropdown, sibling to \"Length info - Deviation\": surfaces the same live/studio classification that section already computes internally as its own two directly checkable entries (\"🎙️ Live recording\" / \"⚪ Not live\"), only shown when the page has a recognized live-flag column. Checking \"🎙️ Live recording\" narrows the table and highlights the word \"live\" in each matching row's Attributes cell."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1001",
     "date": "2026-09-03",
     "sections": [
