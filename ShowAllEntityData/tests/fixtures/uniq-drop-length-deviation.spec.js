@@ -31,6 +31,7 @@ test.describe('unique-values dropdown: "Length info - Deviation" bucket section'
             studioAvgSeconds: 200,
             liveAvgSeconds: 700,
             hasLiveCol: true,
+            liveIdx: 5,
             knownCount: 9,
             studioKnownCount: 8,
             liveKnownCount: 1,
@@ -62,6 +63,16 @@ test.describe('unique-values dropdown: "Length info - Deviation" bucket section'
         });
         expect(datasetLabels).toHaveLength(7);
         expect(datasetLabels.every((l) => typeof l === 'string' && l.length > 0)).toBe(true);
+
+        // "Length info - Live status" — the live/studio classification
+        // above is also its own, directly filterable section, with counts
+        // matching studioKnownCount/liveKnownCount exactly.
+        const liveSection = sections.find((s) => s.label === 'Length info - Live status');
+        expect(liveSection).toBeTruthy();
+        const liveByLabel = Object.fromEntries(liveSection.items.map((i) => [i.label, i]));
+        expect(liveByLabel['🎙️ Live recording'].count).toBe(1);
+        expect(liveByLabel['⚪ Not live'].count).toBe(8);
+        expect(liveSection.items).toHaveLength(2);
     });
 
     test('checking "10–25% longer than average" narrows to Track C only, with its Length cell highlighted', async ({ page }) => {
@@ -101,6 +112,50 @@ test.describe('unique-values dropdown: "Length info - Deviation" bucket section'
                 .length
         );
         expect(highlightedRowCount).toBe(1);
+    });
+
+    test('checking "Live recording" (Live status section) narrows to Track J only, highlighting "live" in its Attributes cell', async ({ page }) => {
+        await loadUserscriptPage(page, { url: ARTIST_RECORDINGS_URL, fixtureFile: FIXTURE_FILE, testMode: true });
+        await page.route(`${ARTIST_RECORDINGS_URL}?**`, (route) => route.fulfill({ path: FIXTURE_FILE, contentType: 'text/html' }));
+
+        await page.click('button[data-label="⊚ All recordings"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+
+        const totalBefore = await page.evaluate(() => document.querySelectorAll('table.tbl tbody tr').length);
+
+        await page.evaluate(() => window.__saTest.getUniqDropSections('Length'));
+        await page.evaluate(() => {
+            const sectionEl = Array.from(document.querySelectorAll('#mb-col-uniq-dropdown .mb-uniq-section'))
+                .find((s) => s.querySelector('.mb-uniq-section-label')?.textContent === 'Length info - Live status');
+            const item = Array.from(sectionEl.querySelectorAll('.mb-col-uniq-item'))
+                .find((el) => el.dataset.mbUniqSynLabel === '🎙️ Live recording');
+            item.click();
+        });
+
+        await page.waitForFunction((expected) => {
+            const rows = Array.from(document.querySelectorAll('table.tbl tbody tr')).filter((r) => r.style.display !== 'none');
+            return rows.length > 0 && rows.length < expected;
+        }, totalBefore, { timeout: 15000 });
+
+        const visibleRows = await page.evaluate(() =>
+            Array.from(document.querySelectorAll('table.tbl tbody tr'))
+                .filter((r) => r.style.display !== 'none')
+                .map((r) => r.cells[0].textContent.trim())
+        );
+        expect(visibleRows).toEqual(['Track J']);
+
+        // The highlight lands on the SIBLING "Attributes" cell (the visible
+        // fact behind the match), not the "Length" cell the dropdown was
+        // opened on.
+        const highlightInfo = await page.evaluate(() => {
+            const row = Array.from(document.querySelectorAll('table.tbl tbody tr'))
+                .find((r) => r.style.display !== 'none');
+            const lengthHighlighted = !!row.cells[1].querySelector('.mb-column-filter-highlight');
+            const attrHighlight = row.cells[5].querySelector('.mb-column-filter-highlight');
+            return { lengthHighlighted, attrText: attrHighlight ? attrHighlight.textContent : null };
+        });
+        expect(highlightInfo.lengthHighlighted).toBe(false);
+        expect(highlightInfo.attrText).toBe('live');
     });
 
     test('checking "50%+ longer than average" narrows to both Track G and the live Track J', async ({ page }) => {
