@@ -17973,13 +17973,10 @@
      * highlight span inside either half (see
      * `_highlightLengthBucketMatch()`) is read through transparently
      * instead of being missed on a second filter/reopen pass.
-     * `getCleanColumnText()` joins the three spans' own separately-
-     * collected text nodes with a literal space each (its own unconditional
-     * `textParts.join(' ')` — see that function's own JSDoc), so the raw
-     * text reads `"0 : 45"`/`"? : ??"`, not `"0:45"`/`"?:??"` — whitespace is
-     * stripped before matching below to normalize that back out; this
-     * bucketing itself only needs the numeric value, not cross-tag match
-     * positions.
+     * `getCleanColumnText()` collapses the whole `.mb-ic-wrap` into one
+     * opaque text node before collecting text (see that function's own
+     * JSDoc) specifically so this reads a plain `"0:45"`/`"?:??"`, not
+     * `"0 : 45"`/`"? : ??"`.
      *
      * Deliberately only called for the "Length" column itself (gated by
      * column name at the `openUniqDrop()` call site) — `align: ':'` is used
@@ -17995,7 +17992,7 @@
      */
     function _findCellLengthBucket(cell) {
         if (!cell) return null;
-        const text = getCleanColumnText(cell).replace(/\s+/g, '');
+        const text = getCleanColumnText(cell);
         if (!text) return null;
         if (text.startsWith('?')) return 'Unknown length';
         const m = text.match(/^(\d+):\d{2}/);
@@ -34119,16 +34116,27 @@ a { color: #1565c0; }`;
      * the way it corrupted the unique-value dropdown's raw values before
      * getCleanColumnText() got this same fix (see its own comment below).
      *
+     * Also collapses `.mb-ic-wrap` (applyIntegerColumnStyling()'s split-align
+     * ':' technique — the "Length" column's three sibling `.mb-ic-left`/
+     * `.mb-ic-sep`/`.mb-ic-right` spans, e.g. "5"/":"/"05") into one text
+     * node the same way, mirroring getCleanColumnText()'s own identical fix
+     * — otherwise a manually-typed global filter query like "5:0" never
+     * matches a "5:05" cell either, for the exact same join(' ')-inserts-a-
+     * synthetic-space reason.
+     *
      * @param {Element} element - DOM element to extract text from.
      * @returns {string} Normalised visible text content.
      */
     function getCleanVisibleText(element) {
         const _STRIP_SEL = _CLEAN_STRIP_SEL + ',.mb-rel-filter-key';
         let root = element;
-        if (element.querySelector(_STRIP_SEL) || element.querySelector(_COLLAPSE_MATCH_SEL)) {
+        if (element.querySelector(_STRIP_SEL) || element.querySelector(_COLLAPSE_MATCH_SEL) ||
+            element.querySelector('.mb-ic-wrap')) {
             root = element.cloneNode(true);
             root.querySelectorAll(_STRIP_SEL).forEach(el => el.remove());
             root.querySelectorAll(_COLLAPSE_MATCH_SEL).forEach(el =>
+                el.replaceWith(document.createTextNode(el.textContent)));
+            root.querySelectorAll('.mb-ic-wrap').forEach(el =>
                 el.replaceWith(document.createTextNode(el.textContent)));
             root.normalize();
         }
@@ -34258,11 +34266,30 @@ a { color: #1565c0; }`;
         // "Illinois" would leave the match's own text node isolated inside an
         // element the walker treats as a separate boundary — see the
         // normalize() comment below for the resulting corruption.
+        //
+        // `.mb-ic-wrap` (applyIntegerColumnStyling()'s split-align ':'
+        // technique — see the "Length" column's own three sibling
+        // `.mb-ic-left`/`.mb-ic-sep`/`.mb-ic-right` spans, e.g. "5"/":"/"05")
+        // is unwrapped the same way, but into ONE text node holding its own
+        // concatenated `textContent` ("5:05", no internal space) rather than
+        // each span's text staying a separate walker-collected piece —
+        // otherwise `textParts.join(' ')` below inserts its usual synthetic
+        // space between every one of those three pieces ("5 : 05"), and a
+        // manually-typed column filter like "5:0" (the way a person actually
+        // types a duration) never matches. This mirrors the highlight-span
+        // unwrap immediately above; `highlightCrossTag()` cannot do the same
+        // clone-and-collapse (it must edit the LIVE styled spans to actually
+        // render a highlight) and instead suppresses its own equivalent
+        // virtual join-gap for text nodes sharing one `.mb-ic-wrap` ancestor
+        // — see that function's own JSDoc.
         let root = element;
-        if (element.querySelector(_CLEAN_STRIP_SEL) || element.querySelector(_COLLAPSE_MATCH_SEL)) {
+        if (element.querySelector(_CLEAN_STRIP_SEL) || element.querySelector(_COLLAPSE_MATCH_SEL) ||
+            element.querySelector('.mb-ic-wrap')) {
             root = element.cloneNode(true);
             root.querySelectorAll(_CLEAN_STRIP_SEL).forEach(el => el.remove());
             root.querySelectorAll(_COLLAPSE_MATCH_SEL).forEach(el =>
+                el.replaceWith(document.createTextNode(el.textContent)));
+            root.querySelectorAll('.mb-ic-wrap').forEach(el =>
                 el.replaceWith(document.createTextNode(el.textContent)));
         }
 
@@ -34786,14 +34813,30 @@ a { color: #1565c0; }`;
             // links in a "place in area, area" chain) — adding the virtual gap
             // on top would double it up. See this function's own JSDoc for the
             // "fourth gap" this fixes.
+            //
+            // ALSO except when both this text node and the previous one share
+            // the same `.mb-ic-wrap` ancestor (applyIntegerColumnStyling()'s
+            // split-align ':' technique — the "Length" column's three sibling
+            // `.mb-ic-left`/`.mb-ic-sep`/`.mb-ic-right` spans, e.g. "5"/":"/
+            // "05") — those three pieces must join with zero space ("5:05")
+            // to stay positionally equivalent to getCleanColumnText()'s own
+            // fullText, which collapses the whole `.mb-ic-wrap` into one
+            // opaque text node before ever building textParts (see that
+            // function's own JSDoc) — this function can't do the same
+            // clone-and-collapse since it edits the LIVE spans to actually
+            // render the highlight, so it suppresses the gap here instead.
             let gap = '';
             if (entries.length) {
-                const prevText = entries[entries.length - 1].node.nodeValue;
+                const prevNode = entries[entries.length - 1].node;
+                const prevText = prevNode.nodeValue;
                 const prevLastChar = prevText[prevText.length - 1];
                 const nextFirstChar = text[0];
+                const prevIcWrap = prevNode.parentElement && prevNode.parentElement.closest('.mb-ic-wrap');
+                const curIcWrap  = node.parentElement && node.parentElement.closest('.mb-ic-wrap');
                 const skipGap = nextFirstChar === ',' || nextFirstChar === ')' || nextFirstChar === ']' ||
                     prevLastChar === '(' || prevLastChar === '[' ||
-                    /\s/.test(prevLastChar) || /\s/.test(nextFirstChar);
+                    /\s/.test(prevLastChar) || /\s/.test(nextFirstChar) ||
+                    (prevIcWrap && prevIcWrap === curIcWrap);
                 if (!skipGap) gap = ' ';
             }
             offset += gap.length;
@@ -36689,17 +36732,14 @@ a { color: #1565c0; }`;
      * `_highlightXxxMatch()` here), then highlights the cell's own "M:SS
      * [.mmm]"/"?:??" duration text as a whole — "Length" has no per-value
      * wrapper element to scope to (unlike Catalog#'s `.catalog-number`),
-     * same reasoning as `_highlightTracksPerMediumMatch()` above. The regex
-     * allows optional whitespace on either side of the `:` — `highlightCrossTag()`
-     * builds its own `fullText` with the SAME unconditional single-space gap
-     * between separately-collected text nodes that `getCleanColumnText()`
-     * uses (see both functions' own JSDoc), so the three `.mb-ic-left`/
-     * `.mb-ic-sep`/`.mb-ic-right` spans read as `"0 : 45"`, not `"0:45"`, in
-     * THIS function's positional matching — unlike `_findCellLengthBucket()`,
-     * which strips whitespace since it only needs the bucket value, not a
-     * match position. Still specific enough (digits/`?` either side of a
-     * literal `:`) that it can't accidentally match anything else in this
-     * column.
+     * same reasoning as `_highlightTracksPerMediumMatch()` above.
+     * `highlightCrossTag()` suppresses its own virtual join-gap between text
+     * nodes sharing one `.mb-ic-wrap` ancestor (see that function's own
+     * JSDoc), so its positional `fullText` reads a plain `"0:45"`, matching
+     * `getCleanColumnText()`'s own collapsed text exactly — the regex below
+     * needs no whitespace tolerance. Still specific enough (digits/`?`
+     * either side of a literal `:`) that it can't accidentally match
+     * anything else in this column.
      *
      * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
      * @param {string} mode - The compound mode string, e.g.
@@ -36711,7 +36751,7 @@ a { color: #1565c0; }`;
         if (!_want) return;
         if (_findCellLengthBucket(cell) !== _want) return;
         cell.normalize();
-        highlightCrossTag(cell, /\d+\s*:\s*\d{2}(?:\.\d+)?|\?\s*:\s*\?\?/g, 'mb-column-filter-highlight');
+        highlightCrossTag(cell, /\d+:\d{2}(?:\.\d+)?|\?:\?\?/g, 'mb-column-filter-highlight');
     }
 
     /**
