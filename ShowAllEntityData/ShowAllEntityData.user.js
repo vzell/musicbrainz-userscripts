@@ -796,20 +796,22 @@
         },
 
         sa_enable_length_deviation_section: {
-            label: 'Enable "Length info - Deviation" dropdown section',
+            label: 'Enable "Length info - Deviation"/"Live status" dropdown sections',
             type: 'checkbox',
             default: true,
-            description: 'Adds a "Length info - Deviation" section to the "Length" ' +
-                         'column\'s unique-values (📊) dropdown: buckets each row by how ' +
-                         'far its Length deviates from the page\'s average Length ' +
-                         '(within 10% / 10-25% / 25-50% / 50%+ shorter or longer), ' +
-                         'excluding rows flagged "live" (in the page\'s Attributes ' +
-                         'column, or an equivalent per-pageType column) from the ' +
-                         'average so extended live versions don\'t skew what counts as ' +
-                         '"normal" for studio tracks. Unlike every other dropdown ' +
-                         'section, this one scans every row on the table to compute ' +
-                         'the average — disable if this measurably slows down very ' +
-                         'large tables.'
+            description: 'Adds two sections to the "Length" column\'s unique-values ' +
+                         '(📊) dropdown: "Length info - Deviation" buckets each row by ' +
+                         'how far its Length deviates from the page\'s average Length ' +
+                         '(within 10% / 10-25% / 25-50% / 50%+ shorter or longer); ' +
+                         '"Length info - Live status" directly exposes, as its own two ' +
+                         'checkable entries, whether each row was flagged "live" (in ' +
+                         'the page\'s Attributes column, or an equivalent per-pageType ' +
+                         'column) and so excluded from that average — extended live ' +
+                         'versions shouldn\'t skew what counts as "normal" for studio ' +
+                         'tracks, but are still bucketed against it. Unlike every other ' +
+                         'dropdown section, this one scans every row on the table to ' +
+                         'compute the average — disable if this measurably slows down ' +
+                         'very large tables.'
         },
 
         sa_uniq_dropdown_visible_rows: {
@@ -19037,6 +19039,32 @@
             const bucket = _findCellLengthDeviationBucket(cell, referenceAvgSeconds);
             return bucket !== null && mode === `lengthdeviation-${bucket}`;
         }
+        if (mode === 'lengthlive-yes' || mode === 'lengthlive-no') {
+            // Fixed 2-value flag pair — surfaces the SAME live/studio
+            // classification `lengthdeviation-*` already computes
+            // internally (see `_getLengthColumnAverages()`'s own JSDoc) as
+            // its own directly filterable entries. `cell` here is the
+            // "Length" cell (row.cells[f.idx], the currently-open column);
+            // the live-flag signal lives in a SIBLING cell on the same
+            // `row`, found via the already-resolved `liveIdx` this table's
+            // averages call returns — never re-derive the header lookup
+            // here.
+            if (!Lib.settings.sa_enable_length_deviation_section) return false;
+            if (!cell || !row) return false;
+            // Scoped to rows with a KNOWN Length — matches
+            // studioKnownCount/liveKnownCount exactly (the counts these
+            // entries render with), so an unknown-length ("?:??") row,
+            // which contributes to neither count, can't match either
+            // entry either.
+            if (_findCellLengthSeconds(cell) == null) return false;
+            const _table = table || cell.closest('table');
+            if (!_table) return false;
+            const { liveIdx } = _getLengthColumnAverages(_table);
+            if (liveIdx === -1) return false;
+            const liveCell = row.cells[liveIdx];
+            const isLive = !!liveCell && _findCellIsLiveAttribute(liveCell);
+            return mode === 'lengthlive-yes' ? isLive : !isLive;
+        }
         if (mode.startsWith('localelanguage:')) {
             // Compound mode — matches one "Locale" cell's own language text
             // (e.g. "English", "Chinese (China)"), from
@@ -35839,6 +35867,14 @@ a { color: #1565c0; }`;
         // Length. See `_getLengthColumnAverages()`'s own JSDoc for the
         // live-recording-aware average this is computed against.
         lengthDeviation: { label: 'Length info - Deviation', glyph: '🎯' },
+        // "Length info - Live status" — a FIXED 2-value flag pair (like
+        // `releaseDataQuality`/`acoustidLinkStatus`) surfacing, as its own
+        // directly filterable entries, the same live/studio classification
+        // `lengthDeviation` above already computes internally to decide
+        // what counts toward the reference average — see
+        // `_getLengthColumnAverages()`'s own JSDoc. Only rendered when the
+        // table actually has a recognized live-flag column (`hasLiveCol`).
+        lengthLiveStatus: { label: 'Length info - Live status', glyph: '🎙️' },
         // "Part of series" (release-tracks' dynamic-fallback "part of:" AR
         // column — see PEER_SPLIT_KINDS' own JSDoc) split into one
         // sub-section per facet of a single credited series, mirroring
@@ -35948,6 +35984,7 @@ a { color: #1565c0; }`;
         'lengthdeviation-shorter10to25': 'lengthDeviation', 'lengthdeviation-longer10to25': 'lengthDeviation',
         'lengthdeviation-shorter25to50': 'lengthDeviation', 'lengthdeviation-longer25to50': 'lengthDeviation',
         'lengthdeviation-shorter50plus': 'lengthDeviation', 'lengthdeviation-longer50plus': 'lengthDeviation',
+        'lengthlive-yes': 'lengthLiveStatus', 'lengthlive-no': 'lengthLiveStatus',
         'locale-primary': 'localePrimary', 'locale-not-primary': 'localePrimary',
         'instrument-has-comment': 'instrumentHasComment',
         'instrument-has-description': 'instrumentHasDescription',
@@ -36935,6 +36972,44 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights the exact matched value for a `lengthlive-yes`/
+     * `lengthlive-no` fixed-flag structure-mode filter — unlike every
+     * other `_highlightXxxMatch()` here, the visible text to highlight
+     * lives in a SIBLING cell (the live-flag column, e.g. "Attributes"),
+     * not `cell` itself (`cell` is the "Length" cell — `row.cells[f.idx]`,
+     * the currently-open column). Finds that sibling via `row.cells[liveIdx]`
+     * (`cell.closest('tr')` — safe even on `testRowMatch()`'s not-yet-
+     * inserted clone, since `cloneNode(true)` preserves the cell→row
+     * relationship, only the row→table one breaks — see
+     * `_cellMatchesStructureMode()`'s own JSDoc for why `table` must still
+     * be passed explicitly rather than derived via `closest('table')`).
+     *
+     * `lengthlive-no` (the "⚪ Not live" entry) highlights nothing — like
+     * `acoustid-unlinked`'s own "marker is empty/decorative" reasoning,
+     * the ABSENCE of the word "live" has no single visible span to wrap.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` (the
+     *   "Length" cell) for this filter.
+     * @param {string} mode - `"lengthlive-yes"` or `"lengthlive-no"`.
+     * @param {?HTMLTableElement} [table] - See `_cellMatchesStructureMode()`'s
+     *   own JSDoc for why this MUST be passed explicitly by `testRowMatch()`'s
+     *   highlight pass rather than derived via `cell.closest('table')`.
+     */
+    function _highlightLengthLiveMatch(cell, mode, table) {
+        if (mode !== 'lengthlive-yes') return;
+        if (!cell) return;
+        const _table = table || cell.closest('table');
+        if (!_table) return;
+        const { liveIdx } = _getLengthColumnAverages(_table);
+        if (liveIdx === -1) return;
+        const row = cell.closest('tr');
+        const liveCell = row ? row.cells[liveIdx] : null;
+        if (!liveCell || !_findCellIsLiveAttribute(liveCell)) return;
+        liveCell.normalize();
+        highlightCrossTag(liveCell, /\blive\b/gi, 'mb-column-filter-highlight');
+    }
+
+    /**
      * Highlights the exact matched value for an `eventdate:` compound
      * structure-mode filter — re-derives from `_findCellEventDateParts()`'s
      * own grammar. The trailing "(YYYY-MM-DD)" text is a bare text node
@@ -37767,7 +37842,7 @@ a { color: #1565c0; }`;
                     // 'joinphrase:'/'namevariation:'/'revcountry:'/'countryname:'/
                     // 'countrycode:'/'revdate:'/'revweekday:'/'catalogprefix:'/
                     // 'catalog-none'/'partofseriesname:'/'partofseriesdate:'/
-                    // 'partofseriesnumber:'/'trackspermedium:'/'lengthbucket:'/'lengthdeviation-*'/'eventdate:'/'tagcount:'/
+                    // 'partofseriesnumber:'/'trackspermedium:'/'lengthbucket:'/'lengthdeviation-*'/'lengthlive-yes'/'eventdate:'/'tagcount:'/
                     // 'entitycancelled:'/'eventcancelled:'/
                     // 'formatsize:'/'formatcount:'/'formatcombo:'/'formattype:'/
                     // 'role:'/'roletoken:'/'editordeleted:'/'editor-any-deleted'/
@@ -37788,7 +37863,7 @@ a { color: #1565c0; }`;
                     // is intentionally untracked verbatim, mirrors 'catalog-has-
                     // prefix' having no highlighter either — and 'release-quality-
                     // high'/'release-quality-low'/'release-quality-normal'/
-                    // 'acoustid-linked'/'acoustid-unlinked'/
+                    // 'acoustid-linked'/'acoustid-unlinked'/'lengthlive-no'/
                     // 'locale-not-primary' — the marker span/
                     // class is empty/decorative, nothing visible to
                     // highlight) operate on pure DOM/
@@ -37833,6 +37908,8 @@ a { color: #1565c0; }`;
                                     _highlightLengthBucketMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('lengthdeviation-')) {
                                     _highlightLengthDeviationMatch(row.cells[f.idx], mode, ctx.table);
+                                } else if (mode === 'lengthlive-yes' || mode === 'lengthlive-no') {
+                                    _highlightLengthLiveMatch(row.cells[f.idx], mode, ctx.table);
                                 } else if (mode.startsWith('localelanguage:')) {
                                     _highlightLocaleLanguageMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'locale-primary') {
@@ -47651,12 +47728,17 @@ a { color: #1565c0; }`;
      *
      * @param {?HTMLTableElement} table
      * @returns {{ready:boolean, referenceAvgSeconds:?number, studioAvgSeconds:?number,
-     *   liveAvgSeconds:?number, hasLiveCol:boolean,
+     *   liveAvgSeconds:?number, hasLiveCol:boolean, liveIdx:number,
      *   knownCount:number, studioKnownCount:number, liveKnownCount:number}}
+     *   `liveIdx` is the resolved live-flag column's index on `table` (`-1`
+     *   when `hasLiveCol` is false) — exposed so callers that need the
+     *   SIBLING live-flag cell for a given row (e.g. "Length info - Live
+     *   status"'s own match/highlight functions) don't have to re-resolve
+     *   header names themselves.
      */
     function _getLengthColumnAverages(table) {
         const empty = { ready:false, referenceAvgSeconds:null, studioAvgSeconds:null,
-                         liveAvgSeconds:null, hasLiveCol:false,
+                         liveAvgSeconds:null, hasLiveCol:false, liveIdx:-1,
                          knownCount:0, studioKnownCount:0, liveKnownCount:0 };
         if (!table || !Lib.settings.sa_enable_length_deviation_section) return empty;
 
@@ -47679,7 +47761,7 @@ a { color: #1565c0; }`;
             activeDefinition.features.lengthDeviationLiveColumn) || 'Attributes';
         const liveIdx = headers.findIndex(th => clean(th) === liveColName);
 
-        const data = { ...empty, hasLiveCol: liveIdx !== -1 };
+        const data = { ...empty, hasLiveCol: liveIdx !== -1, liveIdx };
         if (lengthIdx !== -1) {
             let studioSum = 0, studioN = 0, liveSum = 0, liveN = 0;
             Array.from(tbody.rows).forEach(row => {
@@ -48252,17 +48334,21 @@ a { color: #1565c0; }`;
             : ['tag-value', 'user-tag-value', 'user-ratings-type'].includes(activeDefinition && activeDefinition.type) ? 'eventcancelled'
             : null;
         const tbody = table.tBodies[0];
-        // "Length info - Deviation" reference average — must be computed
+        // "Length info - Deviation" reference average, PLUS the raw
+        // studio/live known-row counts "Length info - Live status" renders
+        // directly (no separate scan-loop counter needed for that section
+        // — these two counts ARE its whole content) — must be computed
         // BEFORE the per-row classification loop below can bucket anything
-        // against it. _getLengthColumnAverages() is independently self-
-        // memoized (own WeakMap, own _visibleRowSetSignature(table) check,
-        // own settings-off short-circuit), so this call is cheap even when
-        // `!_uniqCacheHit` is false for THIS column — it only actually
-        // rescans tbody.rows when the visible row set has changed since
-        // its own last call for this table. Gated on `isLengthCol` purely
-        // to avoid resolving "Length"/live-flag-column header indices on
-        // every OTHER column's dropdown open too.
-        const _lengthColRefAvg = isLengthCol ? _getLengthColumnAverages(table).referenceAvgSeconds : null;
+        // against the average. _getLengthColumnAverages() is independently
+        // self-memoized (own WeakMap, own _visibleRowSetSignature(table)
+        // check, own settings-off short-circuit), so this call is cheap
+        // even when `!_uniqCacheHit` is false for THIS column — it only
+        // actually rescans tbody.rows when the visible row set has changed
+        // since its own last call for this table. Gated on `isLengthCol`
+        // purely to avoid resolving "Length"/live-flag-column header
+        // indices on every OTHER column's dropdown open too.
+        const _lengthColAvgs = isLengthCol ? _getLengthColumnAverages(table) : null;
+        const _lengthColRefAvg = _lengthColAvgs ? _lengthColAvgs.referenceAvgSeconds : null;
         if (!_uniqCacheHit && tbody) {
             Array.from(tbody.rows).forEach(row => {
                 if (row.style.display === 'none') return;
@@ -50295,6 +50381,7 @@ a { color: #1565c0; }`;
             lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
             lengthDeviationShorter25to50Count > 0 || lengthDeviationLonger25to50Count > 0 ||
             lengthDeviationShorter50plusCount > 0 || lengthDeviationLonger50plusCount > 0 ||
+            (_lengthColAvgs && _lengthColAvgs.hasLiveCol && (_lengthColAvgs.studioKnownCount > 0 || _lengthColAvgs.liveKnownCount > 0)) ||
             acoustidLinkedCount > 0 || acoustidUnlinkedCount > 0 ||
             localePrimaryCount > 0 || localeNotPrimaryCount > 0 ||
             instrumentHasCommentCount > 0 || instrumentHasDescriptionCount > 0 || _hasValueEntries)) {
@@ -50336,6 +50423,15 @@ a { color: #1565c0; }`;
             if (lengthDeviationLonger25to50Count > 0)  makeSynItem('lengthdeviation-longer25to50', '⏫ 25–50% longer than average', lengthDeviationLonger25to50Count);
             if (lengthDeviationShorter50plusCount > 0) makeSynItem('lengthdeviation-shorter50plus', '⬇️ 50%+ shorter than average', lengthDeviationShorter50plusCount);
             if (lengthDeviationLonger50plusCount > 0)  makeSynItem('lengthdeviation-longer50plus', '⬆️ 50%+ longer than average', lengthDeviationLonger50plusCount);
+            // "Length info - Live status" — surfaces the SAME live/studio
+            // classification the buckets above already compute internally
+            // (see _getLengthColumnAverages()'s own JSDoc) as its own
+            // directly filterable entries. Rendered straight from the
+            // averages call's own counts — no scan-loop counter needed.
+            if (_lengthColAvgs && _lengthColAvgs.hasLiveCol) {
+                if (_lengthColAvgs.liveKnownCount > 0)   makeSynItem('lengthlive-yes', '🎙️ Live recording', _lengthColAvgs.liveKnownCount);
+                if (_lengthColAvgs.studioKnownCount > 0) makeSynItem('lengthlive-no', '⚪ Not live', _lengthColAvgs.studioKnownCount);
+            }
             // "AcoustID info - Link status" — reuses MusicBrainz's own
             // `disabled-acoustid` class (not an emoji) as the "unlinked"
             // entry's own visual icon, via makeSynItem()'s optional
@@ -50401,6 +50497,7 @@ a { color: #1565c0; }`;
                    lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
                    lengthDeviationShorter25to50Count > 0 || lengthDeviationLonger25to50Count > 0 ||
                    lengthDeviationShorter50plusCount > 0 || lengthDeviationLonger50plusCount > 0 ||
+                   (_lengthColAvgs && _lengthColAvgs.hasLiveCol && (_lengthColAvgs.studioKnownCount > 0 || _lengthColAvgs.liveKnownCount > 0)) ||
                    acoustidLinkedCount > 0 || acoustidUnlinkedCount > 0 ||
                    localePrimaryCount > 0 || localeNotPrimaryCount > 0 ||
                    instrumentHasCommentCount > 0 || instrumentHasDescriptionCount > 0 || _hasValueEntries) {
@@ -50426,6 +50523,10 @@ a { color: #1565c0; }`;
             if (lengthDeviationLonger25to50Count > 0)  makeSynItem('lengthdeviation-longer25to50', '⏫ 25–50% longer than average', lengthDeviationLonger25to50Count);
             if (lengthDeviationShorter50plusCount > 0) makeSynItem('lengthdeviation-shorter50plus', '⬇️ 50%+ shorter than average', lengthDeviationShorter50plusCount);
             if (lengthDeviationLonger50plusCount > 0)  makeSynItem('lengthdeviation-longer50plus', '⬆️ 50%+ longer than average', lengthDeviationLonger50plusCount);
+            if (_lengthColAvgs && _lengthColAvgs.hasLiveCol) {
+                if (_lengthColAvgs.liveKnownCount > 0)   makeSynItem('lengthlive-yes', '🎙️ Live recording', _lengthColAvgs.liveKnownCount);
+                if (_lengthColAvgs.studioKnownCount > 0) makeSynItem('lengthlive-no', '⚪ Not live', _lengthColAvgs.studioKnownCount);
+            }
             if (acoustidLinkedCount > 0)   makeSynItem('acoustid-linked', '🔗 linked', acoustidLinkedCount);
             if (acoustidUnlinkedCount > 0) makeSynItem('acoustid-unlinked', '🚫 unlinked', acoustidUnlinkedCount, 'disabled-acoustid');
             if (localePrimaryCount > 0)    makeSynItem('locale-primary', '🥇 primary', localePrimaryCount);
@@ -50976,6 +51077,8 @@ a { color: #1565c0; }`;
         if (mode === 'lengthdeviation-longer25to50')  return '⏫ 25–50% longer than average';
         if (mode === 'lengthdeviation-shorter50plus') return '⬇️ 50%+ shorter than average';
         if (mode === 'lengthdeviation-longer50plus')  return '⬆️ 50%+ longer than average';
+        if (mode === 'lengthlive-yes') return '🎙️ Live recording';
+        if (mode === 'lengthlive-no')  return '⚪ Not live';
         if (mode.startsWith('localelanguage:')) return `» language: ${mode.slice(15)}`;
         if (mode === 'locale-primary')     return '🥇 primary';
         if (mode === 'locale-not-primary') return '◦ not primary';
@@ -51061,6 +51164,8 @@ a { color: #1565c0; }`;
         if (mode === 'lengthdeviation-longer25to50') return '⏫ = 25–50% LONGER than the page\'s average Length.';
         if (mode === 'lengthdeviation-shorter50plus') return '⬇️ = more than 50% SHORTER than the page\'s average Length.';
         if (mode === 'lengthdeviation-longer50plus') return '⬆️ = more than 50% LONGER than the page\'s average Length — the expected bucket for a "live" recording (extended intro/outro, crowd noise, spoken interludes), which is bucketed against the studio average but never counted INTO it.';
+        if (mode === 'lengthlive-yes') return '🎙️ = this row\'s live-flag cell (e.g. "Attributes") contains the word "live" — excluded from the page\'s reference average, still bucketed against it in "Length info - Deviation".';
+        if (mode === 'lengthlive-no')  return '⚪ = no "live" word found — either a studio recording, or this page has no live-flag column at all.';
         if (mode.startsWith('localelanguage:')) return 'One "Locale" cell\'s own language text (e.g. "English", "Chinese (China)").';
         if (mode === 'locale-primary') return '🥇 = this alias\'s "Locale" cell carries MusicBrainz\'s own `(primary)` marker for its locale.';
         if (mode === 'locale-not-primary') return '◦ = a non-empty locale with no `(primary)` marker. Excludes alias `Type`s with no locale at all (e.g. "Legal name", "Search hint").';
