@@ -17960,6 +17960,51 @@
     }
 
     /**
+     * Buckets a "Length" cell's own displayed duration into a fixed-width
+     * "N to N+1 minutes" range — e.g. `"5:05.146"` → `"5 to 6 minutes"`,
+     * `"0:45"` → `"0 to 1 minutes"` — or `"Unknown length"` for
+     * MusicBrainz's own `"?:??"` unknown-duration placeholder (see
+     * `ColumnDataExtractor`'s `applyIntegerColumnStyling()`/`integerColumns`
+     * split-align technique, which is what renders this text as three
+     * `.mb-ic-left`/`.mb-ic-sep`/`.mb-ic-right` spans for every
+     * `sourceColumn: 'Length', align: ':'` entry — see debug/work-rec.html).
+     * Reads the concatenated visible text via `getCleanColumnText()` (never
+     * a fresh `.mb-ic-left`/`.mb-ic-right` query), so a live filter-
+     * highlight span inside either half (see
+     * `_highlightLengthBucketMatch()`) is read through transparently
+     * instead of being missed on a second filter/reopen pass.
+     * `getCleanColumnText()` joins the three spans' own separately-
+     * collected text nodes with a literal space each (its own unconditional
+     * `textParts.join(' ')` — see that function's own JSDoc), so the raw
+     * text reads `"0 : 45"`/`"? : ??"`, not `"0:45"`/`"?:??"` — whitespace is
+     * stripped before matching below to normalize that back out; this
+     * bucketing itself only needs the numeric value, not cross-tag match
+     * positions.
+     *
+     * Deliberately only called for the "Length" column itself (gated by
+     * column name at the `openUniqDrop()` call site) — `align: ':'` is used
+     * exclusively for "Length" columns across every pageType, but this is
+     * still plain text-shape parsing with no CSS-class safety net, matching
+     * `_findCellFormatParts()`/`_findCellTracksPerMedium()`'s own column-
+     * name-gating precedent.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?string} `null` when `cell` has no recognizable "M:SS" (or
+     *   "?:??") text at all (defensive — not expected on a real "Length"
+     *   column).
+     */
+    function _findCellLengthBucket(cell) {
+        if (!cell) return null;
+        const text = getCleanColumnText(cell).replace(/\s+/g, '');
+        if (!text) return null;
+        if (text.startsWith('?')) return 'Unknown length';
+        const m = text.match(/^(\d+):\d{2}/);
+        if (!m) return null;
+        const minutes = parseInt(m[1], 10);
+        return `${minutes} to ${minutes + 1} minutes`;
+    }
+
+    /**
      * Splits each item of a "Catalog#" cell into its optional leading
      * string prefix and trailing numeric catalog number — e.g. `"S CBS
      * 86061"` → `{prefix: 'S CBS', number: '86061', none: false}`,
@@ -18730,6 +18775,13 @@
             // _findCellCatalogParts()'s own extraction.
             const want = mode.slice(14);
             return !!cell && _findCellCatalogParts(cell).some(p => p.prefix === want);
+        }
+        if (mode.startsWith('lengthbucket:')) {
+            // Compound mode — matches a "Length" cell's own "N to N+1
+            // minutes" duration bucket (or "Unknown length"), from
+            // _findCellLengthBucket()'s own extraction.
+            const want = mode.slice(13);
+            return !!cell && _findCellLengthBucket(cell) === want;
         }
         if (mode === 'catalog-has-prefix') {
             // Binary flag — true when at least one "Catalog#" list item has
@@ -35592,6 +35644,14 @@ a { color: #1565c0; }`;
         // shape states).
         catalogPrefix:   { label: 'Catalog info - Prefix',   glyph: '🧾' },
         catalogPresence: { label: 'Catalog info - Presence', glyph: '🔍' },
+        // "Length info - Duration" — the "Length" column's own displayed
+        // "M:SS[.mmm]" text (or MusicBrainz's own "?:??" unknown-duration
+        // placeholder), bucketed into fixed-width "N to N+1 minutes" ranges
+        // by `_findCellLengthBucket()`. An open value family (like
+        // `catalogPrefix`/`formatSize` above), not a fixed flag set — the
+        // number of buckets actually offered depends on the longest track
+        // present on the page.
+        lengthBucket: { label: 'Length info - Duration', glyph: '⏱️' },
         // "Part of series" (release-tracks' dynamic-fallback "part of:" AR
         // column — see PEER_SPLIT_KINDS' own JSDoc) split into one
         // sub-section per facet of a single credited series, mirroring
@@ -35740,6 +35800,7 @@ a { color: #1565c0; }`;
         countryname: 'countryNameInfo', countrycode: 'countryCodeInfo',
         trackspermedium: 'tracksCount',
         catalogprefix: 'catalogPrefix',
+        lengthbucket: 'lengthBucket',
         partofseriesname: 'partOfSeriesName', partofseriesdate: 'partOfSeriesDate', partofseriesnumber: 'partOfSeriesNumber',
         eventdate: 'eventInfo',
         entitycancelled: 'entityEventCancelled',
@@ -36622,6 +36683,38 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights the exact matched value for a `lengthbucket:` compound
+     * structure-mode filter — re-derives from `_findCellLengthBucket()`
+     * directly (same "verify before highlighting" pattern as every other
+     * `_highlightXxxMatch()` here), then highlights the cell's own "M:SS
+     * [.mmm]"/"?:??" duration text as a whole — "Length" has no per-value
+     * wrapper element to scope to (unlike Catalog#'s `.catalog-number`),
+     * same reasoning as `_highlightTracksPerMediumMatch()` above. The regex
+     * allows optional whitespace on either side of the `:` — `highlightCrossTag()`
+     * builds its own `fullText` with the SAME unconditional single-space gap
+     * between separately-collected text nodes that `getCleanColumnText()`
+     * uses (see both functions' own JSDoc), so the three `.mb-ic-left`/
+     * `.mb-ic-sep`/`.mb-ic-right` spans read as `"0 : 45"`, not `"0:45"`, in
+     * THIS function's positional matching — unlike `_findCellLengthBucket()`,
+     * which strips whitespace since it only needs the bucket value, not a
+     * match position. Still specific enough (digits/`?` either side of a
+     * literal `:`) that it can't accidentally match anything else in this
+     * column.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"lengthbucket:5 to 6 minutes"` or `"lengthbucket:Unknown length"`.
+     */
+    function _highlightLengthBucketMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(13);
+        if (!_want) return;
+        if (_findCellLengthBucket(cell) !== _want) return;
+        cell.normalize();
+        highlightCrossTag(cell, /\d+\s*:\s*\d{2}(?:\.\d+)?|\?\s*:\s*\?\?/g, 'mb-column-filter-highlight');
+    }
+
+    /**
      * Highlights the exact matched value for an `eventdate:` compound
      * structure-mode filter — re-derives from `_findCellEventDateParts()`'s
      * own grammar. The trailing "(YYYY-MM-DD)" text is a bare text node
@@ -37447,7 +37540,7 @@ a { color: #1565c0; }`;
                     // 'joinphrase:'/'namevariation:'/'revcountry:'/'countryname:'/
                     // 'countrycode:'/'revdate:'/'revweekday:'/'catalogprefix:'/
                     // 'catalog-none'/'partofseriesname:'/'partofseriesdate:'/
-                    // 'partofseriesnumber:'/'trackspermedium:'/'eventdate:'/'tagcount:'/
+                    // 'partofseriesnumber:'/'trackspermedium:'/'lengthbucket:'/'eventdate:'/'tagcount:'/
                     // 'entitycancelled:'/'eventcancelled:'/
                     // 'formatsize:'/'formatcount:'/'formatcombo:'/'formattype:'/
                     // 'role:'/'roletoken:'/'editordeleted:'/'editor-any-deleted'/
@@ -37509,6 +37602,8 @@ a { color: #1565c0; }`;
                                     _highlightPartOfSeriesNumberMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('trackspermedium:')) {
                                     _highlightTracksPerMediumMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('lengthbucket:')) {
+                                    _highlightLengthBucketMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('localelanguage:')) {
                                     _highlightLocaleLanguageMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'locale-primary') {
@@ -47582,6 +47677,10 @@ a { color: #1565c0; }`;
         // CBS") — see `_findCellCatalogParts()`'s own JSDoc. Column-gated
         // (isCatalogCol below).
         const catalogPrefixValueCounts = _uniqCacheHit ? _uniqCacheHit.catalogPrefixValueCounts : new Map();
+        // Distinct "Length info - Duration" bucket values (e.g. "5 to 6
+        // minutes", "Unknown length") — see `_findCellLengthBucket()`'s
+        // own JSDoc. Column-gated (isLengthCol below).
+        const lengthBucketValueCounts = _uniqCacheHit ? _uniqCacheHit.lengthBucketValueCounts : new Map();
         // Distinct "Part of series" list-item series name/disambiguation-
         // comment/numeric-position values — see
         // `_findCellPartOfSeriesParts()`'s own JSDoc. Column-gated
@@ -47705,6 +47804,11 @@ a { color: #1565c0; }`;
         const isTracksCol  = _colHeaderName === 'Tracks';
         const isCatalogCol = _colHeaderName === 'Catalog#';
         const isEventCol   = _colHeaderName === 'Event';
+        // Column-name gate for "Length info - Duration" — same convention
+        // as isFormatCol/isTracksCol/isCatalogCol above (name-only, no
+        // page-type check), so this applies automatically to every
+        // pageType with a "Length" column.
+        const isLengthCol  = _colHeaderName === 'Length';
         // Column-name gate for release-tracks' dynamic-fallback "Part of
         // series" AR column — same convention as isFormatCol/isTracksCol/
         // isCatalogCol/isEventCol above (name-only, no page-type check).
@@ -47895,6 +47999,10 @@ a { color: #1565c0; }`;
                     // flag; see catalogNoneCount below instead.
                     if (_catalogParts.some(p => !p.prefix && !p.none)) catalogNoPrefixCount++;
                     if (_catalogParts.some(p => p.none)) catalogNoneCount++;
+                }
+                if (isLengthCol) {
+                    const _bucket = _findCellLengthBucket(cell);
+                    if (_bucket) lengthBucketValueCounts.set(_bucket, (lengthBucketValueCounts.get(_bucket) || 0) + 1);
                 }
                 if (isPartOfSeriesCol) {
                     const _rowSeriesNameValues = new Set(), _rowSeriesDateValues = new Set(), _rowSeriesNumberValues = new Set();
@@ -48945,7 +49053,7 @@ a { color: #1565c0; }`;
                 formatSizeValueCounts, formatCountValueCounts, formatComboValueCounts, formatTypeValueCounts,
                 revCountryValueCounts, revCountryFlagMap, revDateValueCounts, revWeekdayValueCounts,
                 countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap,
-                tracksPerMediumValueCounts, catalogPrefixValueCounts,
+                tracksPerMediumValueCounts, catalogPrefixValueCounts, lengthBucketValueCounts,
                 partOfSeriesNameValueCounts, partOfSeriesDateValueCounts, partOfSeriesNumberValueCounts,
                 editorDeletedValueCounts, editorAnyDeletedCount, editorRecordedNameValueCounts,
                 editorMembershipValueCounts, editorCommentValueCounts,
@@ -49002,6 +49110,7 @@ a { color: #1565c0; }`;
             ...revCountryValueCounts.values(), ...revDateValueCounts.values(), ...revWeekdayValueCounts.values(),
             ...countryNameValueCounts.values(), ...countryCodeValueCounts.values(),
             ...tracksPerMediumValueCounts.values(), ...catalogPrefixValueCounts.values(),
+            ...lengthBucketValueCounts.values(),
             ...partOfSeriesNameValueCounts.values(), ...partOfSeriesDateValueCounts.values(),
             ...partOfSeriesNumberValueCounts.values(),
             ...localeLanguageValueCounts.values()
@@ -49378,7 +49487,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'lengthbucket'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -49498,6 +49607,7 @@ a { color: #1565c0; }`;
                  : kind === 'countrycode' ? '» country code: '
                  : kind === 'trackspermedium' ? '» tracks: '
                  : kind === 'catalogprefix' ? '» prefix: '
+                 : kind === 'lengthbucket'  ? '» duration: '
                  : kind === 'partofseriesname'   ? '» series name: '
                  : kind === 'partofseriesdate'   ? '» date: '
                  : kind === 'partofseriesnumber' ? '» number: '
@@ -49737,6 +49847,16 @@ a { color: #1565c0; }`;
         const _sortedCountryCodeValues = Array.from(countryCodeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedTracksPerMediumValues = Array.from(tracksPerMediumValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         const _sortedCatalogPrefixValues = Array.from(catalogPrefixValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        // Numeric sort by leading bucket number (not lexicographic, so "2 to
+        // 3 minutes" sorts before "10 to 11 minutes"); "Unknown length" has
+        // no leading number (NaN) and is always sorted last.
+        const _sortedLengthBucketValues = Array.from(lengthBucketValueCounts.keys()).sort((a, b) => {
+            const na = parseInt(a, 10), nb = parseInt(b, 10);
+            if (Number.isNaN(na) && Number.isNaN(nb)) return a.localeCompare(b);
+            if (Number.isNaN(na)) return 1;
+            if (Number.isNaN(nb)) return -1;
+            return na - nb;
+        });
         const _sortedPartOfSeriesNameValues = Array.from(partOfSeriesNameValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedPartOfSeriesDateValues = Array.from(partOfSeriesDateValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         // Numeric sort (not lexicographic) so "2" sorts before "10".
@@ -49760,6 +49880,7 @@ a { color: #1565c0; }`;
             _sortedRevCountryValues.length > 0 || _sortedRevDateValues.length > 0 || _sortedRevWeekdayValues.length > 0 ||
             _sortedCountryNameValues.length > 0 || _sortedCountryCodeValues.length > 0 ||
             _sortedTracksPerMediumValues.length > 0 || _sortedCatalogPrefixValues.length > 0 ||
+            _sortedLengthBucketValues.length > 0 ||
             _sortedPartOfSeriesNameValues.length > 0 || _sortedPartOfSeriesDateValues.length > 0 || _sortedPartOfSeriesNumberValues.length > 0 ||
             _sortedEditorDeletedValues.length > 0 || _sortedEditorRecordedNameValues.length > 0 ||
             _sortedEditorMembershipValues.length > 0 || _sortedEditorCommentValues.length > 0 ||
@@ -49846,6 +49967,7 @@ a { color: #1565c0; }`;
             _sortedCountryCodeValues.forEach(v => makeValueSynItem('countrycode', v, countryCodeValueCounts.get(v), countryCodeFlagMap.get(v)));
             _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
             _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
+            _sortedLengthBucketValues.forEach(v => makeValueSynItem('lengthbucket', v, lengthBucketValueCounts.get(v)));
             _sortedPartOfSeriesNameValues.forEach(v => makeValueSynItem('partofseriesname', v, partOfSeriesNameValueCounts.get(v)));
             _sortedPartOfSeriesDateValues.forEach(v => makeValueSynItem('partofseriesdate', v, partOfSeriesDateValueCounts.get(v)));
             _sortedPartOfSeriesNumberValues.forEach(v => makeValueSynItem('partofseriesnumber', v, partOfSeriesNumberValueCounts.get(v)));
@@ -49910,6 +50032,7 @@ a { color: #1565c0; }`;
             _sortedCountryCodeValues.forEach(v => makeValueSynItem('countrycode', v, countryCodeValueCounts.get(v), countryCodeFlagMap.get(v)));
             _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
             _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
+            _sortedLengthBucketValues.forEach(v => makeValueSynItem('lengthbucket', v, lengthBucketValueCounts.get(v)));
             _sortedPartOfSeriesNameValues.forEach(v => makeValueSynItem('partofseriesname', v, partOfSeriesNameValueCounts.get(v)));
             _sortedPartOfSeriesDateValues.forEach(v => makeValueSynItem('partofseriesdate', v, partOfSeriesDateValueCounts.get(v)));
             _sortedPartOfSeriesNumberValues.forEach(v => makeValueSynItem('partofseriesnumber', v, partOfSeriesNumberValueCounts.get(v)));
@@ -50401,6 +50524,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('countrycode:')) return `» country code: ${mode.slice(12)}`;
         if (mode.startsWith('trackspermedium:')) return `» tracks: ${mode.slice(16)}`;
         if (mode.startsWith('catalogprefix:'))   return `» prefix: ${mode.slice(14)}`;
+        if (mode.startsWith('lengthbucket:'))    return `» duration: ${mode.slice(13)}`;
         if (mode.startsWith('partofseriesname:'))   return `» series name: ${mode.slice(18)}`;
         if (mode.startsWith('partofseriesdate:'))   return `» date: ${mode.slice(17)}`;
         if (mode.startsWith('partofseriesnumber:')) return `» number: ${mode.slice(19)}`;
@@ -50478,6 +50602,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('countrycode:')) return 'One entry\'s own 2-letter country code, from the synthetic "Country" column.';
         if (mode.startsWith('trackspermedium:')) return 'One "Tracks" cell\'s own per-medium track count.';
         if (mode.startsWith('catalogprefix:')) return 'One "Catalog#" list item\'s own leading string prefix (e.g. "CBS", "S CBS").';
+        if (mode.startsWith('lengthbucket:')) return 'This "Length" cell\'s own displayed duration, bucketed into a fixed "N to N+1 minutes" range (or "Unknown length" for MusicBrainz\'s own "?:??" placeholder).';
         if (mode.startsWith('partofseriesname:')) return 'One "Part of series" item\'s own credited series name.';
         if (mode.startsWith('partofseriesdate:')) return 'One "Part of series" item\'s own disambiguation-comment text (usually a date, but not guaranteed).';
         if (mode.startsWith('partofseriesnumber:')) return 'One "Part of series" item\'s own numeric series position (e.g. "27" from "(number: 27)").';
