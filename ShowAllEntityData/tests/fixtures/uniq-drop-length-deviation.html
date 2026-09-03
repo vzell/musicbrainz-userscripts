@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Test Artist - Recordings - MusicBrainz</title>
+</head>
+<body>
+    <div id="content">
+        <div class="artistheader">
+            <h1><bdi>Test Artist</bdi></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350/recordings">Recordings</a></li></ul>
+        </div>
+        <h2>Recordings</h2>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Length</th>
+                    <th>Artist</th>
+                    <th>Release groups</th>
+                    <th>Rating</th>
+                    <!--
+                        Native "Attributes" column, added here purely by
+                        column NAME (not page type) — _getLengthColumnAverages()
+                        gates live-recording detection on this header text
+                        (default "Attributes", per-pageType-overridable via
+                        features.lengthDeviationLiveColumn). Cell text/shape
+                        (bare plain text, "cover and live" joined by the
+                        literal word " and ") mirrors the REAL confirmed
+                        content of debug/work-rec.html's own "Attributes"
+                        column (work-recordings pageType) — not invented.
+                    -->
+                    <th>Attributes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!--
+                    10 rows for "Length info - Deviation" (uniq-drop-length-
+                    deviation.spec.js). Rows A-H's seconds are chosen so the
+                    studio-only average is an exact, hand-verifiable 200s:
+                    (210+190+230+170+270+130+320+80)/8 = 200.
+                    Row I ("?:??") is excluded from both the average and any
+                    bucket. Row J is a deliberate huge outlier ("cover and
+                    live", 700s) that would drag the average way up if
+                    included in it — the core regression this feature exists
+                    to prevent.
+                -->
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555501"><bdi>Track A</bdi></a></td>
+                    <td>3:30</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555502"><bdi>Track B</bdi></a></td>
+                    <td>3:10</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555503"><bdi>Track C</bdi></a></td>
+                    <td>3:50</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555504"><bdi>Track D</bdi></a></td>
+                    <td>2:50</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555505"><bdi>Track E</bdi></a></td>
+                    <td>4:30</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555506"><bdi>Track F</bdi></a></td>
+                    <td>2:10</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555507"><bdi>Track G</bdi></a></td>
+                    <td>5:20</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555508"><bdi>Track H</bdi></a></td>
+                    <td>1:20</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555509"><bdi>Track I</bdi></a></td>
+                    <td>?:??</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555510"><bdi>Track J</bdi></a></td>
+                    <td>11:40</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                    <td>cover and live</td>
+                </tr>
+            </tbody>
+        </table>
+        <ul class="pagination"></ul>
+    </div>
+</body>
+</html>

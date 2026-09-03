@@ -1,0 +1,14 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-09-03",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Added a \"Length info - Deviation\" section to the \"Length\" column's unique-values (📊) dropdown: buckets each row by how far its Length deviates from the page's average Length (within 10% / 10-25% / 25-50% / 50%+ shorter or longer). Rows flagged \"live\" in the page's \"Attributes\" column (or a per-pageType-configurable equivalent, via a new `features.lengthDeviationLiveColumn` key) are excluded from the average — so extended live versions don't skew what counts as \"normal\" for studio tracks — while still being bucketed against that studio average. Toggleable via the new `sa_enable_length_deviation_section` setting (default on), since this is the first dropdown section that needs a table-wide average rather than a pure per-cell computation."
+                ]
+            }
+        ]
+    }
+]

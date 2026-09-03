@@ -795,6 +795,23 @@
                          "Place/Country-Date columns, and release-tracks' own \"Recorded at place\" column."
         },
 
+        sa_enable_length_deviation_section: {
+            label: 'Enable "Length info - Deviation" dropdown section',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds a "Length info - Deviation" section to the "Length" ' +
+                         'column\'s unique-values (📊) dropdown: buckets each row by how ' +
+                         'far its Length deviates from the page\'s average Length ' +
+                         '(within 10% / 10-25% / 25-50% / 50%+ shorter or longer), ' +
+                         'excluding rows flagged "live" (in the page\'s Attributes ' +
+                         'column, or an equivalent per-pageType column) from the ' +
+                         'average so extended live versions don\'t skew what counts as ' +
+                         '"normal" for studio tracks. Unlike every other dropdown ' +
+                         'section, this one scans every row on the table to compute ' +
+                         'the average — disable if this measurably slows down very ' +
+                         'large tables.'
+        },
+
         sa_uniq_dropdown_visible_rows: {
             label: "Unique-Values Dropdown Visible Rows",
             type: "number",
@@ -18002,6 +18019,67 @@
     }
 
     /**
+     * Parses a "Length" cell's own displayed "M:SS[.mmm]" duration into
+     * total seconds (float) — e.g. "5:05.146" → 305.146. Returns `null`
+     * for MusicBrainz's own "?:??" unknown-duration placeholder or any
+     * unparseable text (no signal). Reads `getCleanColumnText()` exactly
+     * like `_findCellLengthBucket()` (never a fresh `.mb-ic-left`/
+     * `.mb-ic-right` query — see that function's own JSDoc for why). Feeds
+     * `_getLengthColumnAverages()`/`_findCellLengthDeviationBucket()` (the
+     * "Length info - Deviation" section).
+     *
+     * Same caveat as `_findCellLengthBucket()`: only captures a leading
+     * "M:SS" pair — a theoretical "H:MM:SS" length would misparse the hour
+     * digit as minutes. Not handled: MusicBrainz recording lengths are
+     * essentially never >= 60 minutes in real data.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?number}
+     */
+    function _findCellLengthSeconds(cell) {
+        if (!cell) return null;
+        const text = getCleanColumnText(cell);
+        if (!text || text.startsWith('?')) return null;
+        const m = text.match(/^(\d+):(\d{2}(?:\.\d+)?)/);
+        if (!m) return null;
+        return parseInt(m[1], 10) * 60 + parseFloat(m[2]);
+    }
+
+    /**
+     * Classifies a "Length" cell's percentage deviation from
+     * `referenceAvgSeconds` into one of 7 fixed buckets — the internal
+     * suffix used for this table's `lengthdeviation-*` mode strings (see
+     * `_cellMatchesStructureMode()`). `referenceAvgSeconds` comes from
+     * `_getLengthColumnAverages()`; see that function's own JSDoc for how
+     * it's computed (live-recording-aware when this table has a live-flag
+     * column).
+     *
+     * Signed (not just magnitude) — "much shorter" and "much longer" are
+     * different, differently-actionable facts. A value exactly on a tier
+     * boundary (e.g. 25.0%) falls into the LOWER tier (`abs <= 25` is
+     * checked before `abs <= 50`).
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @param {?number} referenceAvgSeconds
+     * @returns {?('within10'|'shorter10to25'|'longer10to25'|'shorter25to50'|
+     *   'longer25to50'|'shorter50plus'|'longer50plus')} `null` when this
+     *   cell has no known Length ("?:??"/unparseable) or
+     *   `referenceAvgSeconds` is null/non-positive (not enough data on
+     *   this table to bucket at all).
+     */
+    function _findCellLengthDeviationBucket(cell, referenceAvgSeconds) {
+        if (!(referenceAvgSeconds > 0)) return null;
+        const secs = _findCellLengthSeconds(cell);
+        if (secs == null) return null;
+        const pct = ((secs - referenceAvgSeconds) / referenceAvgSeconds) * 100;
+        const abs = Math.abs(pct);
+        if (abs <= 10) return 'within10';
+        if (abs <= 25) return pct < 0 ? 'shorter10to25' : 'longer10to25';
+        if (abs <= 50) return pct < 0 ? 'shorter25to50' : 'longer25to50';
+        return pct < 0 ? 'shorter50plus' : 'longer50plus';
+    }
+
+    /**
      * Splits each item of a "Catalog#" cell into its optional leading
      * string prefix and trailing numeric catalog number — e.g. `"S CBS
      * 86061"` → `{prefix: 'S CBS', number: '86061', none: false}`,
@@ -18372,6 +18450,33 @@
     }
 
     /**
+     * Whether a live-flag cell (e.g. a native "Attributes" column, or a
+     * per-pageType-configured equivalent — see `_getLengthColumnAverages()`'s
+     * own JSDoc) flags this row as a "live" performance. Free-text word-
+     * boundary matching on `getCleanColumnText()` — no CSS-class safety
+     * net, same convention as `_findCellFormatParts()`/`isCatalogCol` etc.
+     *
+     * Confirmed against real MusicBrainz data (`debug/work-rec.html`, the
+     * `work-recordings` pageType's "Attributes" column): populated cells
+     * are bare plain text with no wrapper markup at all — `"live"`,
+     * `"cover"`, `"partial"`, and multi-value combinations joined by the
+     * literal word `" and "` (e.g. `"cover and live"`, `"live and
+     * partial"`). A word-boundary regex correctly matches all of these
+     * (`"cover and live"` matches on `"live"`; `"cover"` alone does not)
+     * and correctly treats an empty cell (the majority case — 19/39 rows
+     * in that same snapshot) as simply "not live", not an error.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {boolean}
+     */
+    function _findCellIsLiveAttribute(cell) {
+        if (!cell) return false;
+        const text = getCleanColumnText(cell);
+        if (!text) return false;
+        return /\blive\b/i.test(text);
+    }
+
+    /**
      * Resolves a `recording-fingerprints` "AcoustID" cell's own MusicBrainz
      * link/unlink state — native markup: the AcoustID code's own `<a
      * class="external">` link (inside `<code>`) additionally carries a
@@ -18512,9 +18617,21 @@
      * @param {number}  colIdx
      * @param {Map<string,boolean>} expandedCells - keyed `"rowIdx:colIdx"`
      * @param {boolean} matchOnly - true during the cheap match-only pre-pass (see testRowMatch)
+     * @param {?HTMLTableElement} [table] - Only meaningful for `lengthdeviation-*`
+     *   (see `_getLengthColumnAverages()`'s own JSDoc) — the live table this
+     *   cell's row belongs to. MUST be passed explicitly by `testRowMatch()`
+     *   (its own `ctx.table`, set by `runFilter()`) rather than derived via
+     *   `cell.closest('table')`: `testRowMatch()`'s highlight pass runs on a
+     *   freshly `cloneNode(true)`d row that is NOT YET inserted into the
+     *   document at that point (see `runFilter()`'s single-/multi-table
+     *   clone loops), so `closest('table')` on it returns `null` — silently
+     *   breaking every `lengthdeviation-*` check on that pass. Falls back to
+     *   `cell.closest('table')` when omitted, for callers (e.g. the
+     *   `__saTest.cellMatchesStructureMode` wrapper) that only ever run
+     *   against already-attached cells.
      * @returns {boolean}
      */
-    function _cellMatchesStructureMode(mode, cell, row, colIdx, expandedCells, matchOnly) {
+    function _cellMatchesStructureMode(mode, cell, row, colIdx, expandedCells, matchOnly, table) {
         const { isMultiRow: hasMultiRow, isSingleRow: hasSingleRow } = _classifyCollapseCell(cell);
         // hasEmpty: neither multi- nor single-row structure AND no visible text
         // content — essential for non-collapsable columns where hasMultiRow/
@@ -18899,6 +19016,26 @@
             // Fixed flag counterpart — the anchor carries `disabled-acoustid`
             // (unlinked from this recording, but not fully removed).
             return _findCellAcoustIdLinkStatus(cell) === 'unlinked';
+        }
+        if (mode.startsWith('lengthdeviation-')) {
+            // Fixed-flag family (7 buckets) — matches a "Length" cell's own
+            // percentage deviation from this table's Length-column average,
+            // live-recording-aware when a live-flag column exists — see
+            // _getLengthColumnAverages()'s own JSDoc for the caching/
+            // invalidation contract this relies on to avoid an O(rows)
+            // average recompute on every cell tested here. The settings
+            // check is also done inside _getLengthColumnAverages() itself
+            // (returning a not-ready shape when off); this one is purely
+            // defensive, guarding against a `lengthdeviation-*` value
+            // surviving in a persisted/URL-restored filter from a session
+            // where the setting was on, after the user later turns it off.
+            if (!Lib.settings.sa_enable_length_deviation_section) return false;
+            if (!cell) return false;
+            const _table = table || cell.closest('table');
+            if (!_table) return false;
+            const { referenceAvgSeconds } = _getLengthColumnAverages(_table);
+            const bucket = _findCellLengthDeviationBucket(cell, referenceAvgSeconds);
+            return bucket !== null && mode === `lengthdeviation-${bucket}`;
         }
         if (mode.startsWith('localelanguage:')) {
             // Compound mode — matches one "Locale" cell's own language text
@@ -35695,6 +35832,13 @@ a { color: #1565c0; }`;
         // number of buckets actually offered depends on the longest track
         // present on the page.
         lengthBucket: { label: 'Length info - Duration', glyph: '⏱️' },
+        // "Length info - Deviation" — a FIXED 7-bucket flag family (like
+        // `releaseDataQuality`/`acoustidLinkStatus` below, not an open
+        // value list like `lengthBucket` above): how far this row's Length
+        // deviates, as a signed percentage, from the page's average
+        // Length. See `_getLengthColumnAverages()`'s own JSDoc for the
+        // live-recording-aware average this is computed against.
+        lengthDeviation: { label: 'Length info - Deviation', glyph: '🎯' },
         // "Part of series" (release-tracks' dynamic-fallback "part of:" AR
         // column — see PEER_SPLIT_KINDS' own JSDoc) split into one
         // sub-section per facet of a single credited series, mirroring
@@ -35800,6 +35944,10 @@ a { color: #1565c0; }`;
         'release-quality-high': 'releaseDataQuality', 'release-quality-low': 'releaseDataQuality',
         'release-quality-normal': 'releaseDataQuality',
         'acoustid-linked': 'acoustidLinkStatus', 'acoustid-unlinked': 'acoustidLinkStatus',
+        'lengthdeviation-within10': 'lengthDeviation',
+        'lengthdeviation-shorter10to25': 'lengthDeviation', 'lengthdeviation-longer10to25': 'lengthDeviation',
+        'lengthdeviation-shorter25to50': 'lengthDeviation', 'lengthdeviation-longer25to50': 'lengthDeviation',
+        'lengthdeviation-shorter50plus': 'lengthDeviation', 'lengthdeviation-longer50plus': 'lengthDeviation',
         'locale-primary': 'localePrimary', 'locale-not-primary': 'localePrimary',
         'instrument-has-comment': 'instrumentHasComment',
         'instrument-has-description': 'instrumentHasDescription',
@@ -36755,6 +36903,38 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights the exact matched value for a `lengthdeviation-*` fixed-
+     * flag structure-mode filter — re-derives the bucket from
+     * `_getLengthColumnAverages()`/`_findCellLengthDeviationBucket()`
+     * directly (same "verify before highlighting" pattern as every other
+     * `_highlightXxxMatch()` here), then highlights the cell's own "M:SS
+     * [.mmm]" duration text as a whole — same "no per-value wrapper
+     * element" reasoning as `_highlightLengthBucketMatch()` above.
+     * Deliberately no `?:??` alternation in the regex — an unknown-length
+     * cell never matches a deviation bucket in the first place (guarded by
+     * `_findCellLengthDeviationBucket()`'s own `null` return), so there is
+     * nothing to highlight for one.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"lengthdeviation-longer10to25"`.
+     * @param {?HTMLTableElement} [table] - See `_cellMatchesStructureMode()`'s
+     *   own JSDoc for why this MUST be passed explicitly (`ctx.table`) by
+     *   `testRowMatch()`'s highlight pass rather than derived via
+     *   `cell.closest('table')` — that pass runs on a detached clone.
+     */
+    function _highlightLengthDeviationMatch(cell, mode, table) {
+        if (!cell) return;
+        const _table = table || cell.closest('table');
+        if (!_table) return;
+        const { referenceAvgSeconds } = _getLengthColumnAverages(_table);
+        const bucket = _findCellLengthDeviationBucket(cell, referenceAvgSeconds);
+        if (bucket === null || mode !== `lengthdeviation-${bucket}`) return;
+        cell.normalize();
+        highlightCrossTag(cell, /\d+:\d{2}(?:\.\d+)?/g, 'mb-column-filter-highlight');
+    }
+
+    /**
      * Highlights the exact matched value for an `eventdate:` compound
      * structure-mode filter — re-derives from `_findCellEventDateParts()`'s
      * own grammar. The trailing "(YYYY-MM-DD)" text is a bare text node
@@ -37335,6 +37515,13 @@ a { color: #1565c0; }`;
      *       hasItemValues: boolean, hasEntityValues: boolean, structureModes: Set<string>,
      *       isCaseSensitive: boolean, isExclude: boolean }
      *   >  - Built by getColFilters(); see its own JSDoc for the two descriptor shapes.
+     *   table?: HTMLTableElement - The live table this row belongs to (set by
+     *     runFilter() — `_subTable` per group on multi-table pages, the single
+     *     `table.tbl` otherwise). Passed through to `_cellMatchesStructureMode()`/
+     *     `_highlightLengthDeviationMatch()` for the `'lengthdeviation-*'` family,
+     *     which cannot derive it via `cell.closest('table')` on the highlight
+     *     pass's not-yet-inserted clone — see `_cellMatchesStructureMode()`'s
+     *     own JSDoc.
      * }} ctx
      * @param {boolean} [matchOnly=false] - When true, skip all DOM mutations (highlight
      *   reset and highlight application). Use on source rows; call again on the clone with
@@ -37462,7 +37649,7 @@ a { color: #1565c0; }`;
                 // entity fallbacks above.
                 if (!isMember && f.structureModes && f.structureModes.size > 0 && cell) {
                     isMember = Array.from(f.structureModes).some(mode =>
-                        _cellMatchesStructureMode(mode, cell, row, f.idx, expandedCells, matchOnly));
+                        _cellMatchesStructureMode(mode, cell, row, f.idx, expandedCells, matchOnly, ctx.table));
                 }
                 const match = f.isExclude ? !isMember : isMember;
                 if (!match) { colHit = false; break; }
@@ -37580,7 +37767,7 @@ a { color: #1565c0; }`;
                     // 'joinphrase:'/'namevariation:'/'revcountry:'/'countryname:'/
                     // 'countrycode:'/'revdate:'/'revweekday:'/'catalogprefix:'/
                     // 'catalog-none'/'partofseriesname:'/'partofseriesdate:'/
-                    // 'partofseriesnumber:'/'trackspermedium:'/'lengthbucket:'/'eventdate:'/'tagcount:'/
+                    // 'partofseriesnumber:'/'trackspermedium:'/'lengthbucket:'/'lengthdeviation-*'/'eventdate:'/'tagcount:'/
                     // 'entitycancelled:'/'eventcancelled:'/
                     // 'formatsize:'/'formatcount:'/'formatcombo:'/'formattype:'/
                     // 'role:'/'roletoken:'/'editordeleted:'/'editor-any-deleted'/
@@ -37644,6 +37831,8 @@ a { color: #1565c0; }`;
                                     _highlightTracksPerMediumMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('lengthbucket:')) {
                                     _highlightLengthBucketMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('lengthdeviation-')) {
+                                    _highlightLengthDeviationMatch(row.cells[f.idx], mode, ctx.table);
                                 } else if (mode.startsWith('localelanguage:')) {
                                     _highlightLocaleLanguageMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'locale-primary') {
@@ -37993,6 +38182,12 @@ a { color: #1565c0; }`;
                 const _colIsCase    = _subCaseCb ? _subCaseCb.checked : isCaseSensitive;
                 const _colIsExclude = _subExCb   ? _subExCb.checked   : false;
                 matchCtx.colFilters = getColFilters(_subTable, _colIsCase, _colIsRegExp, _colIsExclude);
+                // See _cellMatchesStructureMode()'s own JSDoc for why this
+                // must be the live table (not derived via cell.closest('table')
+                // inside testRowMatch()'s highlight pass, which runs on a
+                // not-yet-inserted clone) — needed by the 'lengthdeviation-*'
+                // fixed-flag family.
+                matchCtx.table = _subTable;
                 // Keep _activeFilterHighlightCtx in sync so _artHighlightImageLi()
                 // uses the correct per-sub-table column filters when the CAA/EAA
                 // art-cell rebuild fires asynchronously for this group.
@@ -38195,7 +38390,14 @@ a { color: #1565c0; }`;
             // global Exclude checkbox — without it f.isExclude defaults to false and
             // testRowMatch's _fIsExclude reads false (not the ctx fallback) because
             // false !== undefined.
-            matchCtx.colFilters = getColFilters(document.querySelector('table.tbl'), isCaseSensitive, isRegExp, isExclude);
+            const _singleTable = document.querySelector('table.tbl');
+            matchCtx.colFilters = getColFilters(_singleTable, isCaseSensitive, isRegExp, isExclude);
+            // See _cellMatchesStructureMode()'s own JSDoc for why this must
+            // be the live table (not derived via cell.closest('table')
+            // inside testRowMatch()'s highlight pass, which runs on a
+            // not-yet-inserted clone) — needed by the 'lengthdeviation-*'
+            // fixed-flag family.
+            matchCtx.table = _singleTable;
             // Keep _activeFilterHighlightCtx in sync so _artHighlightImageLi()
             // uses the correct column filters for this single-table render.
             if (_activeFilterHighlightCtx) {
@@ -47380,6 +47582,128 @@ a { color: #1565c0; }`;
         _uniqDropDataCache.delete(table);
     }
 
+    // Per-table memo of _getLengthColumnAverages()'s own computed averages
+    // — table-level (not per-column, unlike _uniqDropDataCache above),
+    // since it's read from BOTH openUniqDrop()'s own "Length" column scan
+    // AND _cellMatchesStructureMode()'s per-row filter-match check (which
+    // has no colIndex context for the live-flag column). Self-invalidated
+    // via the same _visibleRowSetSignature(table) the cache above uses —
+    // see _getLengthColumnAverages()'s own JSDoc.
+    const _lengthColumnAveragesCache = new WeakMap();
+
+    /**
+     * Computes (and caches, per table) the reference average Length — in
+     * seconds — used by "Length info - Deviation"'s 7 fixed buckets
+     * (`_findCellLengthDeviationBucket()`).
+     *
+     * Deliberately scans EVERY row in `tbody` regardless of current
+     * `display` state — NOT `_visibleRowSetSignature()`'s "only currently-
+     * visible rows" — and caches on a signature built the same way but
+     * over ALL rows. This is load-bearing, not a stylistic choice: this
+     * function is called from `_cellMatchesStructureMode()` DURING a
+     * `testRowMatch()` filter pass, which is itself what hides/shows rows.
+     * A visibility-scoped signature would recompute a SMALLER average
+     * partway through the very pass that's deciding which rows end up
+     * visible — confirmed to actually happen: a row matched on its first
+     * `matchOnly:true` test (all rows still visible, avg=200) then
+     * mismatched on the very same filter's `matchOnly:false` highlight
+     * pass moments later (by then only that one row still visible, so the
+     * "average" became that single row's own length, avg=null since
+     * knownCount<2) — the reported bug was the checked bucket's row
+     * getting highlighted inconsistently / not at all. Scanning ALL rows
+     * unconditionally makes the average a stable, page-wide constant for
+     * the whole render — which also happens to be the more intuitive
+     * semantics anyway ("deviates from the page's typical Length" should
+     * not itself shift depending on what an unrelated column filter
+     * currently hides).
+     *
+     * Live-recording-aware: when this table has a column matching
+     * `activeDefinition.features?.lengthDeviationLiveColumn` (a new,
+     * optional, per-pageType `features` key — precedented by
+     * `extractMainColumn`/`stickyColumn`/`addCAA`/`addEAA`/`insertH2`, all
+     * existing single-bespoke-string `features` values — falling back to
+     * the literal `"Attributes"` when unset), rows `_findCellIsLiveAttribute()`
+     * flags as live are excluded from the reference average — so a handful
+     * of extended live versions can't drag up what counts as "normal" for
+     * the studio tracks on the same page — but are still bucketed AGAINST
+     * that studio-only average, not given their own separate bucket
+     * family. When every known-length row is live (no studio rows to
+     * average), falls back to one combined average over everyone,
+     * identical to "no live-flag column at all". `studioAvgSeconds`/
+     * `liveAvgSeconds` are informational-only (never drive bucketing
+     * directly) and are populated from as few as 1 row each — only the
+     * overall `ready` flag (used to decide whether the section renders at
+     * all) requires >= 2 known-length rows total.
+     *
+     * Gated on `Lib.settings.sa_enable_length_deviation_section` — when
+     * off, returns the same not-ready shape as "not enough data", WITHOUT
+     * scanning `tbody.rows` at all, so the whole feature (this average
+     * pre-pass AND every per-cell classification during filtering) is a
+     * true no-op when disabled.
+     *
+     * Independent of `_uniqDropDataCache`/`openUniqDrop()`'s own
+     * `_uniqCacheHit` — self-invalidates on its own signature check, so
+     * it's cheap (O(1)) on every call except the first one after the
+     * table's own row set genuinely changes (a fresh fetch/sort — NOT a
+     * filter), and safe to call both from `openUniqDrop()`'s pre-pass and
+     * from `_cellMatchesStructureMode()` on every `testRowMatch()` pass
+     * without ever causing an O(rows²) rescan.
+     *
+     * @param {?HTMLTableElement} table
+     * @returns {{ready:boolean, referenceAvgSeconds:?number, studioAvgSeconds:?number,
+     *   liveAvgSeconds:?number, hasLiveCol:boolean,
+     *   knownCount:number, studioKnownCount:number, liveKnownCount:number}}
+     */
+    function _getLengthColumnAverages(table) {
+        const empty = { ready:false, referenceAvgSeconds:null, studioAvgSeconds:null,
+                         liveAvgSeconds:null, hasLiveCol:false,
+                         knownCount:0, studioKnownCount:0, liveKnownCount:0 };
+        if (!table || !Lib.settings.sa_enable_length_deviation_section) return empty;
+
+        const tbody = table.tBodies[0];
+        if (!tbody) return empty;
+        // Own signature over EVERY row (not _visibleRowSetSignature's
+        // visible-only one) — see this function's own JSDoc for why.
+        let sig = '';
+        for (const row of tbody.rows) sig += row.dataset.mbRowIdx + ',';
+        const cached = _lengthColumnAveragesCache.get(table);
+        if (cached && cached.sig === sig) return cached.data;
+
+        // Same header-name-cleaning as the existing `_colHeaderName`
+        // resolution (isFormatCol/isLengthCol/etc. inside openUniqDrop()).
+        const headers = Array.from(table.querySelectorAll('thead tr:first-child th'));
+        const clean = (th) => th.dataset.colName ||
+            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+        const lengthIdx = headers.findIndex(th => clean(th) === 'Length');
+        const liveColName = (activeDefinition && activeDefinition.features &&
+            activeDefinition.features.lengthDeviationLiveColumn) || 'Attributes';
+        const liveIdx = headers.findIndex(th => clean(th) === liveColName);
+
+        const data = { ...empty, hasLiveCol: liveIdx !== -1 };
+        if (lengthIdx !== -1) {
+            let studioSum = 0, studioN = 0, liveSum = 0, liveN = 0;
+            Array.from(tbody.rows).forEach(row => {
+                const secs = _findCellLengthSeconds(row.cells[lengthIdx]);
+                if (secs == null) return;
+                const isLive = liveIdx !== -1 && _findCellIsLiveAttribute(row.cells[liveIdx]);
+                if (isLive) { liveSum += secs; liveN++; } else { studioSum += secs; studioN++; }
+            });
+            data.studioKnownCount = studioN;
+            data.liveKnownCount = liveN;
+            data.knownCount = studioN + liveN;
+            data.ready = data.knownCount >= 2;
+            data.studioAvgSeconds = studioN >= 1 ? studioSum / studioN : null;
+            data.liveAvgSeconds = liveN >= 1 ? liveSum / liveN : null;
+            if (data.ready) {
+                data.referenceAvgSeconds = data.studioAvgSeconds != null
+                    ? data.studioAvgSeconds
+                    : (studioSum + liveSum) / data.knownCount;
+            }
+        }
+        _lengthColumnAveragesCache.set(table, { sig, data });
+        return data;
+    }
+
     /**
      * Opens (or toggles closed) the unique-values dropdown for one column.
      *
@@ -47753,6 +48077,17 @@ a { color: #1565c0; }`;
         let releaseQualityHighCount   = _uniqCacheHit ? _uniqCacheHit.releaseQualityHighCount   : 0;
         let releaseQualityLowCount    = _uniqCacheHit ? _uniqCacheHit.releaseQualityLowCount    : 0;
         let releaseQualityNormalCount = _uniqCacheHit ? _uniqCacheHit.releaseQualityNormalCount : 0;
+        // "Length" column only: 7 fixed buckets of how far this row's
+        // Length deviates (signed percentage) from the page's average
+        // Length — see `_findCellLengthDeviationBucket()`'s own JSDoc.
+        // Column-gated (isLengthCol below).
+        let lengthDeviationWithin10Count      = _uniqCacheHit ? _uniqCacheHit.lengthDeviationWithin10Count      : 0;
+        let lengthDeviationShorter10to25Count = _uniqCacheHit ? _uniqCacheHit.lengthDeviationShorter10to25Count : 0;
+        let lengthDeviationLonger10to25Count  = _uniqCacheHit ? _uniqCacheHit.lengthDeviationLonger10to25Count  : 0;
+        let lengthDeviationShorter25to50Count = _uniqCacheHit ? _uniqCacheHit.lengthDeviationShorter25to50Count : 0;
+        let lengthDeviationLonger25to50Count  = _uniqCacheHit ? _uniqCacheHit.lengthDeviationLonger25to50Count  : 0;
+        let lengthDeviationShorter50plusCount = _uniqCacheHit ? _uniqCacheHit.lengthDeviationShorter50plusCount : 0;
+        let lengthDeviationLonger50plusCount  = _uniqCacheHit ? _uniqCacheHit.lengthDeviationLonger50plusCount  : 0;
         // "AcoustID" column only (recording-fingerprints): whether this
         // AcoustID's own anchor carries MusicBrainz's own `disabled-
         // acoustid` class — see `_findCellAcoustIdLinkStatus()`'s own
@@ -47917,6 +48252,17 @@ a { color: #1565c0; }`;
             : ['tag-value', 'user-tag-value', 'user-ratings-type'].includes(activeDefinition && activeDefinition.type) ? 'eventcancelled'
             : null;
         const tbody = table.tBodies[0];
+        // "Length info - Deviation" reference average — must be computed
+        // BEFORE the per-row classification loop below can bucket anything
+        // against it. _getLengthColumnAverages() is independently self-
+        // memoized (own WeakMap, own _visibleRowSetSignature(table) check,
+        // own settings-off short-circuit), so this call is cheap even when
+        // `!_uniqCacheHit` is false for THIS column — it only actually
+        // rescans tbody.rows when the visible row set has changed since
+        // its own last call for this table. Gated on `isLengthCol` purely
+        // to avoid resolving "Length"/live-flag-column header indices on
+        // every OTHER column's dropdown open too.
+        const _lengthColRefAvg = isLengthCol ? _getLengthColumnAverages(table).referenceAvgSeconds : null;
         if (!_uniqCacheHit && tbody) {
             Array.from(tbody.rows).forEach(row => {
                 if (row.style.display === 'none') return;
@@ -48043,6 +48389,14 @@ a { color: #1565c0; }`;
                 if (isLengthCol) {
                     const _bucket = _findCellLengthBucket(cell);
                     if (_bucket) lengthBucketValueCounts.set(_bucket, (lengthBucketValueCounts.get(_bucket) || 0) + 1);
+                    const _devBucket = _findCellLengthDeviationBucket(cell, _lengthColRefAvg);
+                    if (_devBucket === 'within10')            lengthDeviationWithin10Count++;
+                    else if (_devBucket === 'shorter10to25')  lengthDeviationShorter10to25Count++;
+                    else if (_devBucket === 'longer10to25')   lengthDeviationLonger10to25Count++;
+                    else if (_devBucket === 'shorter25to50')  lengthDeviationShorter25to50Count++;
+                    else if (_devBucket === 'longer25to50')   lengthDeviationLonger25to50Count++;
+                    else if (_devBucket === 'shorter50plus')  lengthDeviationShorter50plusCount++;
+                    else if (_devBucket === 'longer50plus')   lengthDeviationLonger50plusCount++;
                 }
                 if (isPartOfSeriesCol) {
                     const _rowSeriesNameValues = new Set(), _rowSeriesDateValues = new Set(), _rowSeriesNumberValues = new Set();
@@ -49099,6 +49453,9 @@ a { color: #1565c0; }`;
                 editorMembershipValueCounts, editorCommentValueCounts,
                 changelogHasMessageCount, changelogNoMessageCount,
                 releaseQualityHighCount, releaseQualityLowCount, releaseQualityNormalCount,
+                lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
+                lengthDeviationShorter25to50Count, lengthDeviationLonger25to50Count,
+                lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
                 acoustidLinkedCount, acoustidUnlinkedCount,
                 localeLanguageValueCounts, localePrimaryCount, localeNotPrimaryCount,
                 instrumentHasCommentCount, instrumentHasDescriptionCount,
@@ -49122,6 +49479,9 @@ a { color: #1565c0; }`;
             titleMismatchCount, nameVariationCount,
             multiMediumCount, catalogHasPrefixCount, catalogNoPrefixCount, catalogNoneCount,
             acoustidLinkedCount, acoustidUnlinkedCount,
+            lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
+            lengthDeviationShorter25to50Count, lengthDeviationLonger25to50Count,
+            lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
             localePrimaryCount, localeNotPrimaryCount,
             instrumentHasCommentCount, instrumentHasDescriptionCount,
             inlineArtYes, inlineArtNo,
@@ -49932,6 +50292,9 @@ a { color: #1565c0; }`;
             multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
             editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
             releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
+            lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
+            lengthDeviationShorter25to50Count > 0 || lengthDeviationLonger25to50Count > 0 ||
+            lengthDeviationShorter50plusCount > 0 || lengthDeviationLonger50plusCount > 0 ||
             acoustidLinkedCount > 0 || acoustidUnlinkedCount > 0 ||
             localePrimaryCount > 0 || localeNotPrimaryCount > 0 ||
             instrumentHasCommentCount > 0 || instrumentHasDescriptionCount > 0 || _hasValueEntries)) {
@@ -49962,6 +50325,17 @@ a { color: #1565c0; }`;
             if (releaseQualityHighCount > 0)   makeSynItem('release-quality-high', '🟢 high data quality',      releaseQualityHighCount);
             if (releaseQualityLowCount > 0)    makeSynItem('release-quality-low', '🟠 low data quality',        releaseQualityLowCount);
             if (releaseQualityNormalCount > 0) makeSynItem('release-quality-normal', '⚪ normal data quality',  releaseQualityNormalCount);
+            // "Length info - Deviation" — 7 fixed buckets of signed
+            // percentage deviation from the page's (live-recording-aware)
+            // average Length — see _findCellLengthDeviationBucket()'s own
+            // JSDoc for the thresholds.
+            if (lengthDeviationWithin10Count > 0)      makeSynItem('lengthdeviation-within10', '🎯 within 10% of average', lengthDeviationWithin10Count);
+            if (lengthDeviationShorter10to25Count > 0) makeSynItem('lengthdeviation-shorter10to25', '🔽 10–25% shorter than average', lengthDeviationShorter10to25Count);
+            if (lengthDeviationLonger10to25Count > 0)  makeSynItem('lengthdeviation-longer10to25', '🔼 10–25% longer than average', lengthDeviationLonger10to25Count);
+            if (lengthDeviationShorter25to50Count > 0) makeSynItem('lengthdeviation-shorter25to50', '⏬ 25–50% shorter than average', lengthDeviationShorter25to50Count);
+            if (lengthDeviationLonger25to50Count > 0)  makeSynItem('lengthdeviation-longer25to50', '⏫ 25–50% longer than average', lengthDeviationLonger25to50Count);
+            if (lengthDeviationShorter50plusCount > 0) makeSynItem('lengthdeviation-shorter50plus', '⬇️ 50%+ shorter than average', lengthDeviationShorter50plusCount);
+            if (lengthDeviationLonger50plusCount > 0)  makeSynItem('lengthdeviation-longer50plus', '⬆️ 50%+ longer than average', lengthDeviationLonger50plusCount);
             // "AcoustID info - Link status" — reuses MusicBrainz's own
             // `disabled-acoustid` class (not an emoji) as the "unlinked"
             // entry's own visual icon, via makeSynItem()'s optional
@@ -50024,6 +50398,9 @@ a { color: #1565c0; }`;
                    multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
                    editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
                    releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
+                   lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
+                   lengthDeviationShorter25to50Count > 0 || lengthDeviationLonger25to50Count > 0 ||
+                   lengthDeviationShorter50plusCount > 0 || lengthDeviationLonger50plusCount > 0 ||
                    acoustidLinkedCount > 0 || acoustidUnlinkedCount > 0 ||
                    localePrimaryCount > 0 || localeNotPrimaryCount > 0 ||
                    instrumentHasCommentCount > 0 || instrumentHasDescriptionCount > 0 || _hasValueEntries) {
@@ -50042,6 +50419,13 @@ a { color: #1565c0; }`;
             if (releaseQualityHighCount > 0)   makeSynItem('release-quality-high', '🟢 high data quality',     releaseQualityHighCount);
             if (releaseQualityLowCount > 0)    makeSynItem('release-quality-low', '🟠 low data quality',       releaseQualityLowCount);
             if (releaseQualityNormalCount > 0) makeSynItem('release-quality-normal', '⚪ normal data quality', releaseQualityNormalCount);
+            if (lengthDeviationWithin10Count > 0)      makeSynItem('lengthdeviation-within10', '🎯 within 10% of average', lengthDeviationWithin10Count);
+            if (lengthDeviationShorter10to25Count > 0) makeSynItem('lengthdeviation-shorter10to25', '🔽 10–25% shorter than average', lengthDeviationShorter10to25Count);
+            if (lengthDeviationLonger10to25Count > 0)  makeSynItem('lengthdeviation-longer10to25', '🔼 10–25% longer than average', lengthDeviationLonger10to25Count);
+            if (lengthDeviationShorter25to50Count > 0) makeSynItem('lengthdeviation-shorter25to50', '⏬ 25–50% shorter than average', lengthDeviationShorter25to50Count);
+            if (lengthDeviationLonger25to50Count > 0)  makeSynItem('lengthdeviation-longer25to50', '⏫ 25–50% longer than average', lengthDeviationLonger25to50Count);
+            if (lengthDeviationShorter50plusCount > 0) makeSynItem('lengthdeviation-shorter50plus', '⬇️ 50%+ shorter than average', lengthDeviationShorter50plusCount);
+            if (lengthDeviationLonger50plusCount > 0)  makeSynItem('lengthdeviation-longer50plus', '⬆️ 50%+ longer than average', lengthDeviationLonger50plusCount);
             if (acoustidLinkedCount > 0)   makeSynItem('acoustid-linked', '🔗 linked', acoustidLinkedCount);
             if (acoustidUnlinkedCount > 0) makeSynItem('acoustid-unlinked', '🚫 unlinked', acoustidUnlinkedCount, 'disabled-acoustid');
             if (localePrimaryCount > 0)    makeSynItem('locale-primary', '🥇 primary', localePrimaryCount);
@@ -50585,6 +50969,13 @@ a { color: #1565c0; }`;
         if (mode === 'release-quality-normal') return '⚪ normal data quality';
         if (mode === 'acoustid-linked')   return '🔗 linked';
         if (mode === 'acoustid-unlinked') return '🚫 unlinked';
+        if (mode === 'lengthdeviation-within10')      return '🎯 within 10% of average';
+        if (mode === 'lengthdeviation-shorter10to25') return '🔽 10–25% shorter than average';
+        if (mode === 'lengthdeviation-longer10to25')  return '🔼 10–25% longer than average';
+        if (mode === 'lengthdeviation-shorter25to50') return '⏬ 25–50% shorter than average';
+        if (mode === 'lengthdeviation-longer25to50')  return '⏫ 25–50% longer than average';
+        if (mode === 'lengthdeviation-shorter50plus') return '⬇️ 50%+ shorter than average';
+        if (mode === 'lengthdeviation-longer50plus')  return '⬆️ 50%+ longer than average';
         if (mode.startsWith('localelanguage:')) return `» language: ${mode.slice(15)}`;
         if (mode === 'locale-primary')     return '🥇 primary';
         if (mode === 'locale-not-primary') return '◦ not primary';
@@ -50663,6 +51054,13 @@ a { color: #1565c0; }`;
         if (mode === 'release-quality-normal') return '⚪ = no data-quality marker is present at all — MusicBrainz\'s default/unrated quality state.';
         if (mode === 'acoustid-linked') return '🔗 = this AcoustID\'s own link is still active for this recording (no `disabled-acoustid` class).';
         if (mode === 'acoustid-unlinked') return '🚫 = MusicBrainz\'s own `disabled-acoustid` class — this AcoustID has been unlinked from this recording, but the submission itself isn\'t removed.';
+        if (mode === 'lengthdeviation-within10') return '🎯 = this row\'s Length is within 10% of the page\'s average Length (the studio-only average when a "live"-flagged row exists and was excluded from it, otherwise every known Length on the page).';
+        if (mode === 'lengthdeviation-shorter10to25') return '🔽 = 10–25% SHORTER than the page\'s average Length.';
+        if (mode === 'lengthdeviation-longer10to25') return '🔼 = 10–25% LONGER than the page\'s average Length.';
+        if (mode === 'lengthdeviation-shorter25to50') return '⏬ = 25–50% SHORTER than the page\'s average Length.';
+        if (mode === 'lengthdeviation-longer25to50') return '⏫ = 25–50% LONGER than the page\'s average Length.';
+        if (mode === 'lengthdeviation-shorter50plus') return '⬇️ = more than 50% SHORTER than the page\'s average Length.';
+        if (mode === 'lengthdeviation-longer50plus') return '⬆️ = more than 50% LONGER than the page\'s average Length — the expected bucket for a "live" recording (extended intro/outro, crowd noise, spoken interludes), which is bucketed against the studio average but never counted INTO it.';
         if (mode.startsWith('localelanguage:')) return 'One "Locale" cell\'s own language text (e.g. "English", "Chinese (China)").';
         if (mode === 'locale-primary') return '🥇 = this alias\'s "Locale" cell carries MusicBrainz\'s own `(primary)` marker for its locale.';
         if (mode === 'locale-not-primary') return '◦ = a non-empty locale with no `(primary)` marker. Excludes alias `Type`s with no locale at all (e.g. "Legal name", "Search hint").';
@@ -67657,6 +68055,41 @@ a { color: #1565c0; }`;
                     hasVideoIcon: !!tdVideo.querySelector('span.video'),
                     sortKey: tdVideo.querySelector('.mb-video-sort-key')?.textContent ?? null,
                 };
+            },
+
+            /**
+             * Thin wrapper around `_getLengthColumnAverages()` — lets a test
+             * assert on the computed reference/studio/live averages directly,
+             * not just the rendered "Length info - Deviation" dropdown counts.
+             *
+             * @param {string} [tableSelector] - Defaults to `'table.tbl'`.
+             * @returns {?ReturnType<typeof _getLengthColumnAverages>} `null`
+             *   when `tableSelector` matches nothing.
+             */
+            getLengthColumnAverages(tableSelector) {
+                const table = document.querySelector(tableSelector || 'table.tbl');
+                if (!table) return null;
+                return _getLengthColumnAverages(table);
+            },
+
+            /**
+             * Test-only setter for the "Length info - Deviation" section's
+             * per-pageType live-flag-column override
+             * (`features.lengthDeviationLiveColumn` — see
+             * `_getLengthColumnAverages()`'s own JSDoc). Mutates the live
+             * `activeDefinition.features` object directly so a test can
+             * exercise the override mechanism against a fixture whose
+             * live-flag column isn't named the literal default
+             * `"Attributes"`, without needing a real `pageDefinitions`
+             * entry that declares one.
+             *
+             * @param {?string} name - Column header name to use, or `null`/
+             *   `undefined` to clear the override back to the default.
+             */
+            setLengthDeviationLiveColumnOverride(name) {
+                if (!activeDefinition) return;
+                if (!activeDefinition.features) activeDefinition.features = {};
+                activeDefinition.features.lengthDeviationLiveColumn = name || undefined;
             },
         };
     }
