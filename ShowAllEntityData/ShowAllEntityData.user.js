@@ -3336,6 +3336,11 @@
          *     - Clicking "video" in the dropdown filters to rows that have the icon;
          *       clicking "audio" filters to rows that do not.
          *
+         * tdVideo itself gets `text-align:center` so the icon (a small,
+         * narrower-than-the-column glyph, not the sort-key span, which is
+         * `display:none` and unaffected) sits centred in the column rather
+         * than pinned to the left edge.
+         *
          * Synthetic columns: ['Video']
          *
          * @param   {HTMLTableCellElement} sourceCell  The source <td> element.
@@ -3343,6 +3348,7 @@
          */
         video(sourceCell) {
             const tdVideo = document.createElement('td');
+            tdVideo.style.textAlign = 'center';
 
             /**
              * Appends an invisible text label used exclusively as a sort/filter key.
@@ -67462,6 +67468,30 @@ a { color: #1565c0; }`;
                     name: ref.name, isBare: ref.isBare, hasFlag: !!ref.flagEl,
                 }));
                 return { place: refsOf(tdP), locality: refsOf(tdL), region: refsOf(tdR), country: refsOf(tdC) };
+            },
+
+            /**
+             * Thin, JSON-serializable wrapper around `ColumnDataExtractor
+             * .video()` — runs the real video-indicator extraction against a
+             * live source cell and reports the synthetic "Video" `<td>`'s
+             * own inline centering style and sort-key text, so a test can
+             * assert on the fix (icon centered via `text-align:center`)
+             * without needing the full fetch/render pipeline.
+             *
+             * @param {string} selector - CSS selector for the source Title/
+             *   Name cell (may or may not contain `span.video`).
+             * @returns {?{textAlign: string, hasVideoIcon: boolean, sortKey: ?string}}
+             *   `null` when `selector` matches nothing.
+             */
+            extractVideo(selector) {
+                const cell = document.querySelector(selector);
+                if (!cell) return null;
+                const [tdVideo] = ColumnDataExtractor.video(cell);
+                return {
+                    textAlign: tdVideo.style.textAlign,
+                    hasVideoIcon: !!tdVideo.querySelector('span.video'),
+                    sortKey: tdVideo.querySelector('.mb-video-sort-key')?.textContent ?? null,
+                };
             },
         };
     }
