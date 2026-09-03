@@ -1,0 +1,14 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-09-03",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Fixed the \"Length\" column's split-align \"M:SS\" cell text (rendered as three sibling `.mb-ic-left`/`.mb-ic-sep`/`.mb-ic-right` spans) reading as \"5 : 05\" instead of \"5:05\" to both the plain-text filter matcher and the highlighter, so a manually-typed column or global filter like \"5:0\" never matched any row even though the cell visibly shows \"5:05\". getCleanColumnText()/getCleanVisibleText() now collapse `.mb-ic-wrap` into one opaque text node, and highlightCrossTag() suppresses its own virtual join-gap for text nodes sharing one `.mb-ic-wrap` ancestor, so both stay positionally consistent with what a user actually types."
+                ]
+            }
+        ]
+    }
+]
