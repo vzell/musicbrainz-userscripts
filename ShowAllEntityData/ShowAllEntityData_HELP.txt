@@ -318,6 +318,20 @@ every distinct non-empty value currently visible in that column.
                        mapped to its own "Unknown length" entry. Checking a
                        bucket narrows the table and highlights the matched
                        duration text
+    — 🎯 Length info - Deviation — also on the "Length" column: 7 fixed,
+                       signed buckets for how far each row's Length
+                       deviates from the page's average Length (within 10%
+                       / 10-25% / 25-50% / 50%+ shorter or longer). Rows
+                       flagged "live" in the page's "Attributes" column are
+                       excluded from the average — so extended live
+                       versions don't skew what counts as "normal" for the
+                       studio tracks on the same page — but are still
+                       bucketed against that studio average. Toggleable via
+                       the "Enable 'Length info - Deviation' dropdown
+                       section" setting (default on) — this is the only
+                       dropdown section that scans every row on the table
+                       to compute an average, so disable it if that
+                       measurably slows down very large tables
     — 🗣️/🥇 Locale info — on an alias table's "Locale" column: "- Language"
                        (distinct locale languages, e.g. "English", "Chinese
                        (China)") and "- Primary" ("🥇 primary" / "◦ not
