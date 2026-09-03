@@ -55283,6 +55283,13 @@ a { color: #1565c0; }`;
     let _relGlobalStatusDone = false;
 
     /**
+     * Promise for an in-flight `initRelationshipsColumn()` run, or `null`
+     * when idle — see `initRelationshipsColumn()`'s own JSDoc for the race
+     * this guards against.
+     */
+    let _relColumnActivePromise = null;
+
+    /**
      * Reads one WS2 rel-data record from IndexedDB.
      * Returns null when IDB is disabled, unavailable, or the entry is missing/expired.
      * @param {string} ckey  '${entityType}:${mbid}'
@@ -56423,9 +56430,48 @@ a { color: #1565c0; }`;
      * the `groupedRows`/`allRows` source arrays so that filter re-renders do
      * not lose the populated icons.
      *
+     * Re-entrancy guard: this function is called from several independent
+     * places over a page's lifecycle (the live fetch tail, `runFilter()`'s
+     * own "re-populate any cells not yet done" check, disk-load/cross-tab-
+     * snapshot hydration's tail) and is meant to be safely re-callable —
+     * each call recomputes its own not-yet-done `allCells` snapshot and
+     * skips anything already marked `relDone`. That assumption breaks when
+     * two calls land close enough together that NEITHER has finished
+     * marking its cells done yet: both compute the identical not-done MBID
+     * set, both fetch/find the same data, and both call `_populateCells()`
+     * — which appends icons rather than replacing content — so every
+     * relationship icon ends up doubled. This is exactly what happens
+     * during `_hydrateAndRenderFromSnapshotData()`'s tail: its own
+     * `runFilter()` call (single-table branch) immediately triggers this
+     * function internally for the freshly-restored, still-all-unpopulated
+     * cells, and moments later — before that run's Phase 1/2 fetches have
+     * resolved anything — the hydrate tail calls this function again
+     * directly. `initRelationshipsColumn()` (the exported entry point) is
+     * therefore a thin wrapper: a call that arrives while one is already
+     * in flight awaits the in-flight run instead of starting a second,
+     * overlapping one — the actual work lives in `_initRelationshipsColumnImpl()`.
+     *
      * @returns {Promise<void>}
      */
     async function initRelationshipsColumn() {
+        if (_relColumnActivePromise) {
+            await _relColumnActivePromise;
+            return;
+        }
+        _relColumnActivePromise = _initRelationshipsColumnImpl().finally(() => {
+            _relColumnActivePromise = null;
+        });
+        return _relColumnActivePromise;
+    }
+
+    /**
+     * Actual `initRelationshipsColumn()` implementation — see its own JSDoc
+     * for behavior; only ever called through that function's re-entrancy
+     * guard, never directly.
+     *
+     * @returns {Promise<void>}
+     */
+    async function _initRelationshipsColumnImpl() {
         if (!Lib.settings.sa_enable_relationships_column) return;
         if (!activeInjectedColumns.length) return;
 

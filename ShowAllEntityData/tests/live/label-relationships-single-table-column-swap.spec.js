@@ -118,3 +118,66 @@ test('"Show single-table" snapshot keeps Release events/Relationships columns al
     expect(pageErrors).toEqual([]);
     expect(popupErrors).toEqual([]);
 });
+
+test('"Show single-table" snapshot never double-populates a Relationships cell', { tag: '@extended' }, async ({ page, context }) => {
+    const pageErrors = collectPageErrors(page);
+
+    await loadUserscriptPage(page, { url: LABEL_URL, testMode: true });
+
+    const showAllBtn = page.locator(SHOW_ALL_BUTTON);
+    await expect(showAllBtn).toBeVisible();
+    await showAllBtn.click();
+    await expect(page.locator('#mb-filter-container')).toBeVisible({ timeout: 90000 });
+
+    const singleTableBtn = page.locator(SINGLE_TABLE_BTN);
+    await expect(singleTableBtn).toBeVisible({ timeout: 15000 });
+
+    // Regression only reproduces while the SOURCE page's own Relationships
+    // fetch (throttled ~1 req/s across every row) is still mid-flight —
+    // confirm that's genuinely the case here (not yet all done), matching
+    // the bug report's "not all rows have been fetched yet when I saved the
+    // raw HTML" — otherwise this test would pass trivially regardless of
+    // the fix.
+    const stillFetchingOnSource = await page.locator('table.tbl tbody td.mb-rel-cell:not([data-rel-done="1"])').count();
+    expect(stillFetchingOnSource).toBeGreaterThan(0);
+
+    const [popup] = await Promise.all([
+        context.waitForEvent('page'),
+        singleTableBtn.click(),
+    ]);
+    const popupErrors = collectPageErrors(popup);
+
+    await popup.waitForLoadState('networkidle', { timeout: 30000 });
+    await popup.addScriptTag({ url: IRO_URL });
+    await popup.addScriptTag({ url: PAKO_URL });
+    await popup.addScriptTag({ path: MB_LIBRARY_PATH });
+    await popup.addScriptTag({ path: USERSCRIPT_PATH });
+
+    // Regression test for a real, confirmed-live bug: _hydrateAndRenderFromSnapshotData()'s
+    // tail calls runFilter() (whose single-table branch internally re-invokes
+    // initRelationshipsColumn() for any not-yet-done cell) and THEN calls
+    // initRelationshipsColumn() again directly — two near-simultaneous,
+    // overlapping invocations that both compute the identical not-done MBID
+    // set and both append icons to the same cells, doubling every icon.
+    // Wait for at least a few cells to be populated (no need for the full
+    // ~1-req/s throttled queue to finish — the race, if present, shows up
+    // in the FIRST cells populated) then assert none carry duplicate hrefs.
+    await popup.waitForFunction(() => {
+        return document.querySelectorAll('table.tbl tbody td.mb-rel-cell[data-rel-done="1"]').length >= 3;
+    }, { timeout: 30000 });
+
+    const relCells = await popup.locator('table.tbl tbody td.mb-rel-cell[data-rel-done="1"]').evaluateAll(
+        (tds) => tds.map((td) => ({
+            mbid: td.dataset.mbid,
+            hrefs: Array.from(td.querySelectorAll('a')).map((a) => a.href),
+        }))
+    );
+    expect(relCells.length).toBeGreaterThanOrEqual(3);
+    for (const { mbid, hrefs } of relCells) {
+        const uniqueHrefs = new Set(hrefs);
+        expect(uniqueHrefs.size, `mbid ${mbid} has duplicate relationship icons: ${JSON.stringify(hrefs)}`).toBe(hrefs.length);
+    }
+
+    expect(pageErrors).toEqual([]);
+    expect(popupErrors).toEqual([]);
+});
