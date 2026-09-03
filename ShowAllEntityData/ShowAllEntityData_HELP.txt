@@ -311,6 +311,13 @@ every distinct non-empty value currently visible in that column.
                        "CBS") and "- Presence" (independent "has prefix" /
                        "no prefix" / "no catalog number" — MusicBrainz's own
                        "[none]" placeholder — flags)
+    — ⏱️ Length info - Duration — on the "Length" column: recordings/tracks
+                       bucketed into fixed "N to N+1 minutes" ranges (e.g.
+                       "0 to 1 minutes", "5 to 6 minutes"), with
+                       MusicBrainz's own "?:??" unknown-duration placeholder
+                       mapped to its own "Unknown length" entry. Checking a
+                       bucket narrows the table and highlights the matched
+                       duration text
     — 🗣️/🥇 Locale info — on an alias table's "Locale" column: "- Language"
                        (distinct locale languages, e.g. "English", "Chinese
                        (China)") and "- Primary" ("🥇 primary" / "◦ not
