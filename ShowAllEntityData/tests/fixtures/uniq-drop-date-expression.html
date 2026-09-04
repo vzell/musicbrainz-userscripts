@@ -22,11 +22,20 @@
             </thead>
             <tbody>
                 <!--
-                    Five rows spanning the three date-expression shapes
-                    _findCellDateExpressionParts() classifies — regression
-                    fixture for "Date info - Complete"/"- Partial"/"- Range"
-                    (modeled on debug/date-uvd.html, a work page's
-                    "Recordings" table "Date" column).
+                    Six rows spanning the three date-expression precision
+                    shapes _findCellDateExpressionParts() classifies, plus
+                    enough decade/month spread to exercise "Date info -
+                    Decade"/"- Month" bucketing (modeled on
+                    debug/date-uvd.html, a work page's "Recordings" table
+                    "Date" column):
+                      A 2020-04-08             complete, 2020s, April
+                      B 1974-08                partial,  1970s, August
+                      C 1974                   partial,  1970s, (no month)
+                      D 1973-08-09 - 1973-09-23 range,    1970s, August+September
+                      E (empty)                no contribution
+                      F 1983-08-15             complete, 1980s, August
+                    "August" (B, D, F) and "1970-1980" (B, C, D) each
+                    accumulate across MULTIPLE rows/atoms.
                 -->
                 <tr>
                     <td><a href="/event/11111111-1111-1111-1111-111111111111"><bdi>Event A</bdi></a></td>
@@ -47,6 +56,10 @@
                 <tr>
                     <td><a href="/event/55555555-5555-5555-5555-555555555555"><bdi>Event E</bdi></a></td>
                     <td></td>
+                </tr>
+                <tr>
+                    <td><a href="/event/66666666-6666-6666-6666-666666666666"><bdi>Event F</bdi></a></td>
+                    <td>1983-08-15</td>
                 </tr>
             </tbody>
         </table>
