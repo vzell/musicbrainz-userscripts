@@ -18367,6 +18367,63 @@
     }
 
     /**
+     * Classifies a native MusicBrainz "Date" cell's own displayed date
+     * expression — reused across every `dateParts`-fed column (any column
+     * declared with `extractor: 'dateParts'` in a pageType's
+     * `columnExtractors`/`syntheticColumnExtractors`, e.g. "Date", "Begin",
+     * "End", "Release date" — see debug/date-uvd.html, a work page's
+     * "Recordings" table) — into one of three shapes:
+     *
+     *   'complete' — a full "YYYY-MM-DD" date (e.g. "2020-04-08")
+     *   'partial'  — a year-only "YYYY" or year-month "YYYY-MM" date
+     *                (e.g. "1974", "1974-08") — never split further, since
+     *                both are equally "not a complete date"
+     *   'range'    — two dates joined by an en dash or hyphen, e.g.
+     *                "1973-08-09 – 1973-09-23" — each side is classified
+     *                independently (`startKind`/`endKind`) and NEVER
+     *                assumed to both be complete dates; a range can mix a
+     *                complete start with a partial end or vice versa
+     *
+     * `dateParts` (`ColumnDataExtractor`) already detects the 'range' shape
+     * for its own, unrelated purpose (skipping synthetic DD/MM/YYYY/Day/
+     * Month extraction — a range has no single scalar date to split into
+     * those columns), but gives up immediately once it sees a range
+     * separator. This function additionally classifies BOTH sides of that
+     * range so "Date info - Range" can offer/filter/highlight it as its
+     * own value family, independent of and never modifying `dateParts`'
+     * own synthetic-column output.
+     *
+     * Deliberately only called for a column whose declared extractor is
+     * `dateParts` (gated by an `activeColumnExtractors`/
+     * `activeSyntheticColumnExtractors` lookup at the `openUniqDrop()` call
+     * site, mirroring `_findCellTagCount()`'s own `tagCount`-extractor-
+     * lookup gating) — plain free-text parsing with no CSS-class safety
+     * net; a column not shaped like a date would simply fail the leading
+     * regex below and return `null`.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?{kind: 'complete'|'partial'|'range', value: string,
+     *   startKind?: 'complete'|'partial', endKind?: 'complete'|'partial'}}
+     *   `null` when the cell's text isn't a recognizable date expression at
+     *   all (empty cell, or free text that doesn't match any shape above).
+     */
+    function _findCellDateExpressionParts(cell) {
+        if (!cell) return null;
+        const text = getCleanColumnText(cell);
+        if (!text) return null;
+        const DATE_TOKEN = '\\d{4}(?:-\\d{2}(?:-\\d{2})?)?';
+        const leadMatch = text.match(new RegExp(`^(${DATE_TOKEN})`));
+        if (!leadMatch) return null;
+        const firstToken = leadMatch[1];
+        const rest = text.slice(firstToken.length).trim();
+        const classify = (token) => (token.split('-').length === 3 ? 'complete' : 'partial');
+        if (!rest) return { kind: classify(firstToken), value: text };
+        const rangeMatch = rest.match(new RegExp(`^[–-]\\s*(${DATE_TOKEN})$`));
+        if (!rangeMatch) return null;
+        return { kind: 'range', value: text, startKind: classify(firstToken), endKind: classify(rangeMatch[1]) };
+    }
+
+    /**
      * Extracts the leading integer tag-vote count (e.g. "26" from "26 -
      * Johnny Cash") from a tag-value-entity cell — the same text-node walk
      * and regex as `ColumnDataExtractor.tagCount`, so both agree on the
@@ -18866,6 +18923,18 @@
             // own extraction.
             const want = mode.slice(10);
             return !!cell && _findCellEventDateParts(cell).includes(want);
+        }
+        if (mode.startsWith('datecomplete:') || mode.startsWith('datepartial:') || mode.startsWith('daterange:')) {
+            // Compound modes — match a `dateParts`-fed column's own
+            // displayed date expression, classified by
+            // _findCellDateExpressionParts() into one of three shapes (see
+            // its own JSDoc). All three share one branch since they're the
+            // same underlying extraction, just gated to a different `kind`.
+            const _wantKind = mode.startsWith('datecomplete:') ? 'complete'
+                : mode.startsWith('datepartial:') ? 'partial' : 'range';
+            const want = mode.slice(mode.indexOf(':') + 1);
+            const parts = cell && _findCellDateExpressionParts(cell);
+            return !!parts && parts.kind === _wantKind && parts.value === want;
         }
         if (mode.startsWith('tagcount:')) {
             // Compound mode — matches the leading integer tag-vote count of
@@ -35950,6 +36019,17 @@ a { color: #1565c0; }`;
         // split above). See `_findCellInstrumentFacets()`'s own JSDoc.
         instrumentHasComment:     { label: 'Instrument info - Comment',     glyph: '💬' },
         instrumentHasDescription: { label: 'Instrument info - Description', glyph: '📝' },
+        // "Date info" — split into one sub-section per date-expression
+        // SHAPE (mirrors Format info's/Tracks info's own "one flat cell,
+        // several independently-checkable value families" split), applying
+        // automatically to every `dateParts`-fed column on every pageType
+        // (gated by extractor lookup, not a page-specific feature flag —
+        // see `_findCellDateExpressionParts()`'s own JSDoc). A range's own
+        // two sides are never assumed to both be complete, so "- Range"
+        // stays its own family rather than folding into "- Complete".
+        dateExprComplete: { label: 'Date info - Complete', glyph: '📅' },
+        dateExprPartial:  { label: 'Date info - Partial',  glyph: '🌓' },
+        dateExprRange:    { label: 'Date info - Range',    glyph: '↔️' },
     };
 
     /**
@@ -36036,6 +36116,7 @@ a { color: #1565c0; }`;
         editordeleted: 'editorDeleted', editorrecordedname: 'editorRecordedName',
         editormembership: 'editorMembership', editorcomment: 'editorComment',
         localelanguage: 'localeLanguage',
+        datecomplete: 'dateExprComplete', datepartial: 'dateExprPartial', daterange: 'dateExprRange',
     };
 
     /**
@@ -36937,6 +37018,34 @@ a { color: #1565c0; }`;
         if (_findCellLengthBucket(cell) !== _want) return;
         cell.normalize();
         highlightCrossTag(cell, /\d+:\d{2}(?:\.\d+)?|\?:\?\?/g, 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights the exact matched value for a `datecomplete:`/
+     * `datepartial:`/`daterange:` compound structure-mode filter —
+     * re-derives from `_findCellDateExpressionParts()` directly (same
+     * "verify before highlighting" pattern as every other
+     * `_highlightXxxMatch()` here), then highlights the cell's own date
+     * expression text as a whole — a `dateParts`-fed column has no
+     * per-value wrapper element to scope to, same reasoning as
+     * `_highlightLengthBucketMatch()` above. One shared function handles
+     * all three kinds since they're the same underlying extraction, just
+     * gated to a different `kind`/regex.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"datecomplete:2020-04-08"` or `"daterange:1973-08-09 – 1973-09-23"`.
+     */
+    function _highlightDateExpressionMatch(cell, mode) {
+        if (!cell) return;
+        const _wantKind = mode.startsWith('datecomplete:') ? 'complete'
+            : mode.startsWith('datepartial:') ? 'partial' : 'range';
+        const _want = mode.slice(mode.indexOf(':') + 1);
+        if (!_want) return;
+        const parts = _findCellDateExpressionParts(cell);
+        if (!parts || parts.kind !== _wantKind || parts.value !== _want) return;
+        cell.normalize();
+        highlightCrossTag(cell, /\d{4}(?:-\d{2}(?:-\d{2})?)?(?:\s*[–-]\s*\d{4}(?:-\d{2}(?:-\d{2})?)?)?/g, 'mb-column-filter-highlight');
     }
 
     /**
@@ -37843,7 +37952,7 @@ a { color: #1565c0; }`;
                     // 'countrycode:'/'revdate:'/'revweekday:'/'catalogprefix:'/
                     // 'catalog-none'/'partofseriesname:'/'partofseriesdate:'/
                     // 'partofseriesnumber:'/'trackspermedium:'/'lengthbucket:'/'lengthdeviation-*'/'lengthlive-yes'/'eventdate:'/'tagcount:'/
-                    // 'entitycancelled:'/'eventcancelled:'/
+                    // 'entitycancelled:'/'eventcancelled:'/'datecomplete:'/'datepartial:'/'daterange:'/
                     // 'formatsize:'/'formatcount:'/'formatcombo:'/'formattype:'/
                     // 'role:'/'roletoken:'/'editordeleted:'/'editor-any-deleted'/
                     // 'editorcomment:'/'changelog-no-message' and 'name-variation'
@@ -37920,6 +38029,8 @@ a { color: #1565c0; }`;
                                     _highlightInstrumentDescriptionMatch(row.cells[f.idx]);
                                 } else if (mode.startsWith('eventdate:')) {
                                     _highlightEventDateMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('datecomplete:') || mode.startsWith('datepartial:') || mode.startsWith('daterange:')) {
+                                    _highlightDateExpressionMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('tagcount:')) {
                                     _highlightTagCountMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('entitycancelled:') || mode.startsWith('eventcancelled:')) {
@@ -48123,6 +48234,13 @@ a { color: #1565c0; }`;
         // CBS") — see `_findCellCatalogParts()`'s own JSDoc. Column-gated
         // (isCatalogCol below).
         const catalogPrefixValueCounts = _uniqCacheHit ? _uniqCacheHit.catalogPrefixValueCounts : new Map();
+        // Distinct "Date info - Complete"/"- Partial"/"- Range" values — one
+        // Map per shape, keyed by the exact raw date-expression text — see
+        // `_findCellDateExpressionParts()`'s own JSDoc. Column-gated
+        // (isDateExprCol below).
+        const dateCompleteValueCounts = _uniqCacheHit ? _uniqCacheHit.dateCompleteValueCounts : new Map();
+        const datePartialValueCounts  = _uniqCacheHit ? _uniqCacheHit.datePartialValueCounts  : new Map();
+        const dateRangeValueCounts    = _uniqCacheHit ? _uniqCacheHit.dateRangeValueCounts    : new Map();
         // Distinct "Length info - Duration" bucket values (e.g. "5 to 6
         // minutes", "Unknown length") — see `_findCellLengthBucket()`'s
         // own JSDoc. Column-gated (isLengthCol below).
@@ -48266,6 +48384,19 @@ a { color: #1565c0; }`;
         // page-type check), so this applies automatically to every
         // pageType with a "Length" column.
         const isLengthCol  = _colHeaderName === 'Length';
+        // Column-name gate for "Date info - Complete"/"- Partial"/"- Range"
+        // — unlike isFormatCol/isTracksCol/isCatalogCol/isLengthCol above
+        // (a single fixed column name), this checks whether the CURRENTLY
+        // OPEN column is actually fed into a `dateParts` extractor
+        // (checking both the primary and synthetic extractor registries —
+        // "Date" is a primary column on some pageTypes, e.g. artist-events,
+        // and a synthetic one produced by `splitCountryDate` on others,
+        // e.g. artist-releases), so this applies automatically to every
+        // `dateParts`-fed column name ("Date", "Begin", "End", "Release
+        // date", …) on every pageType — see
+        // `_findCellDateExpressionParts()`'s own JSDoc.
+        const isDateExprCol = activeColumnExtractors.some(e => e.extractor === 'dateParts' && e.sourceColumn === _colHeaderName) ||
+            activeSyntheticColumnExtractors.some(e => e.extractor === 'dateParts' && e.sourceColumn === _colHeaderName);
         // Column-name gate for release-tracks' dynamic-fallback "Part of
         // series" AR column — same convention as isFormatCol/isTracksCol/
         // isCatalogCol/isEventCol above (name-only, no page-type check).
@@ -48539,6 +48670,15 @@ a { color: #1565c0; }`;
                 if (isEventCol) {
                     const _eventDates = _findCellEventDateParts(cell);
                     new Set(_eventDates).forEach(t => eventDateValueCounts.set(t, (eventDateValueCounts.get(t) || 0) + 1));
+                }
+                if (isDateExprCol) {
+                    const _dateExpr = _findCellDateExpressionParts(cell);
+                    if (_dateExpr) {
+                        const _map = _dateExpr.kind === 'complete' ? dateCompleteValueCounts
+                            : _dateExpr.kind === 'partial' ? datePartialValueCounts
+                            : dateRangeValueCounts;
+                        _map.set(_dateExpr.value, (_map.get(_dateExpr.value) || 0) + 1);
+                    }
                 }
                 if (isTagEntityCol) {
                     const _tagCount = _findCellTagCount(cell);
@@ -49534,6 +49674,7 @@ a { color: #1565c0; }`;
                 revCountryValueCounts, revCountryFlagMap, revDateValueCounts, revWeekdayValueCounts,
                 countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap,
                 tracksPerMediumValueCounts, catalogPrefixValueCounts, lengthBucketValueCounts,
+                dateCompleteValueCounts, datePartialValueCounts, dateRangeValueCounts,
                 partOfSeriesNameValueCounts, partOfSeriesDateValueCounts, partOfSeriesNumberValueCounts,
                 editorDeletedValueCounts, editorAnyDeletedCount, editorRecordedNameValueCounts,
                 editorMembershipValueCounts, editorCommentValueCounts,
@@ -49597,6 +49738,7 @@ a { color: #1565c0; }`;
             ...countryNameValueCounts.values(), ...countryCodeValueCounts.values(),
             ...tracksPerMediumValueCounts.values(), ...catalogPrefixValueCounts.values(),
             ...lengthBucketValueCounts.values(),
+            ...dateCompleteValueCounts.values(), ...datePartialValueCounts.values(), ...dateRangeValueCounts.values(),
             ...partOfSeriesNameValueCounts.values(), ...partOfSeriesDateValueCounts.values(),
             ...partOfSeriesNumberValueCounts.values(),
             ...localeLanguageValueCounts.values()
@@ -49973,7 +50115,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'lengthbucket'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'lengthbucket'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'|'datecomplete'|'datepartial'|'daterange'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -50108,6 +50250,9 @@ a { color: #1565c0; }`;
                  : kind === 'editormembership'   ? '» membership: '
                  : kind === 'editorcomment'      ? '» comment: '
                  : kind === 'localelanguage'     ? '» language: '
+                 : kind === 'datecomplete'       ? '» complete date: '
+                 : kind === 'datepartial'        ? '» partial date: '
+                 : kind === 'daterange'          ? '» date range: '
                  : '» ');
             if (kind === 'arttype') {
                 // Render the value as an actual pill (see
@@ -50356,6 +50501,19 @@ a { color: #1565c0; }`;
         const _sortedArtTypeValues    = Array.from(artTypeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedArtCommentValues = Array.from(artCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedLocaleLanguageValues = Array.from(localeLanguageValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        // Chronological sort (not lexicographic — "1974" would otherwise
+        // sort before "1974-08" correctly by luck, but "9999" would
+        // wrongly sort after "10000-01", an edge case chronological
+        // parsing avoids entirely): parse each value's own leading
+        // YYYY[-MM[-DD]] into a comparable number.
+        const _dateSortKey = (v) => {
+            const m = v.match(/^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?/);
+            if (!m) return 0;
+            return parseInt(m[1], 10) * 10000 + parseInt(m[2] || '0', 10) * 100 + parseInt(m[3] || '0', 10);
+        };
+        const _sortedDateCompleteValues = Array.from(dateCompleteValueCounts.keys()).sort((a, b) => _dateSortKey(a) - _dateSortKey(b));
+        const _sortedDatePartialValues  = Array.from(datePartialValueCounts.keys()).sort((a, b) => _dateSortKey(a) - _dateSortKey(b));
+        const _sortedDateRangeValues    = Array.from(dateRangeValueCounts.keys()).sort((a, b) => _dateSortKey(a) - _dateSortKey(b));
         const _hasValueEntries = _sortedAttrValues.length > 0 || _sortedTaskValues.length > 0 ||
             _sortedDateValues.length > 0 || _sortedEventDateValues.length > 0 || _sortedInstrumentValues.length > 0 ||
             _sortedAltNameValues.length > 0 ||
@@ -50372,7 +50530,8 @@ a { color: #1565c0; }`;
             _sortedEditorMembershipValues.length > 0 || _sortedEditorCommentValues.length > 0 ||
             _sortedRoleValues.length > 0 || _sortedRoleTokenValues.length > 0 ||
             _sortedArtTypeValues.length > 0 || _sortedArtCommentValues.length > 0 ||
-            _sortedLocaleLanguageValues.length > 0;
+            _sortedLocaleLanguageValues.length > 0 ||
+            _sortedDateCompleteValues.length > 0 || _sortedDatePartialValues.length > 0 || _sortedDateRangeValues.length > 0;
 
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 ||
             multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
@@ -50490,6 +50649,9 @@ a { color: #1565c0; }`;
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
             _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
             _sortedLocaleLanguageValues.forEach(v => makeValueSynItem('localelanguage', v, localeLanguageValueCounts.get(v)));
+            _sortedDateCompleteValues.forEach(v => makeValueSynItem('datecomplete', v, dateCompleteValueCounts.get(v)));
+            _sortedDatePartialValues.forEach(v => makeValueSynItem('datepartial', v, datePartialValueCounts.get(v)));
+            _sortedDateRangeValues.forEach(v => makeValueSynItem('daterange', v, dateRangeValueCounts.get(v)));
         } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 ||
                    multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
                    editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
@@ -50570,6 +50732,9 @@ a { color: #1565c0; }`;
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
             _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
             _sortedLocaleLanguageValues.forEach(v => makeValueSynItem('localelanguage', v, localeLanguageValueCounts.get(v)));
+            _sortedDateCompleteValues.forEach(v => makeValueSynItem('datecomplete', v, dateCompleteValueCounts.get(v)));
+            _sortedDatePartialValues.forEach(v => makeValueSynItem('datepartial', v, datePartialValueCounts.get(v)));
+            _sortedDateRangeValues.forEach(v => makeValueSynItem('daterange', v, dateRangeValueCounts.get(v)));
         }
 
         // ── Relationships column: unique icon entries ─────────────────────────────────────────────
@@ -51080,6 +51245,9 @@ a { color: #1565c0; }`;
         if (mode === 'lengthlive-yes') return '🎙️ Live recording';
         if (mode === 'lengthlive-no')  return '⚪ Not live';
         if (mode.startsWith('localelanguage:')) return `» language: ${mode.slice(15)}`;
+        if (mode.startsWith('datecomplete:')) return `» complete date: ${mode.slice(13)}`;
+        if (mode.startsWith('datepartial:'))  return `» partial date: ${mode.slice(12)}`;
+        if (mode.startsWith('daterange:'))    return `» date range: ${mode.slice(10)}`;
         if (mode === 'locale-primary')     return '🥇 primary';
         if (mode === 'locale-not-primary') return '◦ not primary';
         if (mode === 'instrument-has-comment')     return '💬 has comment';
@@ -51167,6 +51335,9 @@ a { color: #1565c0; }`;
         if (mode === 'lengthlive-yes') return '🎙️ = this row\'s live-flag cell (e.g. "Attributes") contains the word "live" — excluded from the page\'s reference average, still bucketed against it in "Length info - Deviation".';
         if (mode === 'lengthlive-no')  return '⚪ = no "live" word found — either a studio recording, or this page has no live-flag column at all.';
         if (mode.startsWith('localelanguage:')) return 'One "Locale" cell\'s own language text (e.g. "English", "Chinese (China)").';
+        if (mode.startsWith('datecomplete:')) return 'A full "YYYY-MM-DD" date found in this column.';
+        if (mode.startsWith('datepartial:'))  return 'A year-only "YYYY" or year-month "YYYY-MM" date found in this column.';
+        if (mode.startsWith('daterange:'))    return 'Two dates joined by a dash — each side may independently be a complete or partial date.';
         if (mode === 'locale-primary') return '🥇 = this alias\'s "Locale" cell carries MusicBrainz\'s own `(primary)` marker for its locale.';
         if (mode === 'locale-not-primary') return '◦ = a non-empty locale with no `(primary)` marker. Excludes alias `Type`s with no locale at all (e.g. "Legal name", "Search hint").';
         if (mode === 'instrument-has-comment') return '💬 = this instrument\'s own cell carries a `<span class="comment">` (a short parenthetical, e.g. "(harmonica/accordion hybrid)").';
