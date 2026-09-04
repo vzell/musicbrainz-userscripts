@@ -15681,24 +15681,157 @@
     }
 
     /**
+     * Parses a displayed duration into total milliseconds.
+     *
+     * Accepts `M:SS`, `M:SS.mmm` and `H:MM:SS[.mmm]`, i.e. exactly what a
+     * "Length" cell renders — including the millisecond precision jesus2099's
+     * `RECORDING_LENGTH_COLUMN` writes (`"5:05.146"`, see
+     * `_repairTreleasesTd()`). A fractional part shorter than three digits is
+     * right-padded, so `"5:05.5"` is 500 ms, not 5 ms.
+     *
+     * Returns `null` — never `0` — for MusicBrainz's own `"?:??"`
+     * unknown-duration placeholder and for anything else unparseable. That
+     * distinction is the whole point: `null` means "no duration on record",
+     * which both comparators sort LAST in either direction rather than
+     * treating as zero length (the old `parseFloat(…) || 0` collapsed the two,
+     * floating every unknown to the top of an ascending sort).
+     *
+     * @param   {?string} text  Cell text, already collapsed by
+     *   `getCleanVisibleText()`/`getCleanColumnText()` (which fold
+     *   `applyIntegerColumnStyling()`'s three `.mb-ic-left`/`.mb-ic-sep`/
+     *   `.mb-ic-right` spans back into one `"5:05.146"` string).
+     * @returns {?number} Total milliseconds, or `null` when unknown.
+     */
+    function _parseDurationToMs(text) {
+        if (!text) return null;
+        const m = String(text).trim().match(/^(?:(\d+):)?(\d+):(\d{2})(?:\.(\d{1,3}))?$/);
+        if (!m) return null;
+        const hours   = m[1] ? parseInt(m[1], 10) : 0;
+        const minutes = parseInt(m[2], 10);
+        const seconds = parseInt(m[3], 10);
+        const millis  = m[4] ? parseInt(m[4].padEnd(3, '0'), 10) : 0;
+        return ((hours * 60 + minutes) * 60 + seconds) * 1000 + millis;
+    }
+
+    /**
+     * Resolves a `<th>`'s column name the way sorting needs it: the
+     * `data-col-name` stamped by `makeTableSortableUnified()` when present,
+     * else a decoration-stripped `textContent`.
+     *
+     * Preferring the dataset matters because by sort time the header's text
+     * also contains the live uniq-count badge digits (e.g. `"94"`) and any
+     * injected glyph, so a pure-`textContent` strip is ambiguous for a column
+     * whose real name contains a digit (e.g. `"1st seconder"`).
+     *
+     * @param   {?HTMLTableCellElement} th
+     * @returns {string} Column name, `''` when `th` is missing.
+     */
+    function _sortColumnHeaderName(th) {
+        if (!th) return '';
+        return th.dataset.colName || th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim();
+    }
+
+    /**
+     * Classifies how a column must be compared when sorting: as a duration,
+     * as a number, or as text.
+     *
+     * Single source of truth for BOTH `createSortComparator()` (single-column
+     * sorts) and `createMultiColumnComparator()` (Ctrl+Click chains), which
+     * previously disagreed: the single-column path consulted
+     * `activeIntegerColumns` first and only then fell back to a name
+     * heuristic, while the multi-column path used the raw header-text
+     * heuristic alone and never looked at the page definition at all.
+     *
+     * Duration detection is data-driven: `integerColumns`' `align: ':'`
+     * descriptor already means "colon-split duration" and is used exclusively
+     * for "Length" columns across every pageType (see
+     * `_findCellLengthBucket()`'s own JSDoc, which relies on the same
+     * invariant). A column literally named `"Length"` also qualifies, so a
+     * pageType that renders durations without declaring an `integerColumns`
+     * entry for them (e.g. `release-discids`' per-disc totals) still sorts as
+     * a duration rather than falling through to `parseFloat`.
+     *
+     * @param   {string} name  Column name from `_sortColumnHeaderName()`.
+     * @returns {('duration'|'numeric'|'text')}
+     */
+    function _sortColumnKind(name) {
+        if (!name) return 'text';
+        if (name === 'Length') return 'duration';
+        if (activeIntegerColumns.some(e => e.sourceColumn === name && e.align === ':')) return 'duration';
+        // Primary source: integerColumns declared in the page definition.
+        if (activeIntegerColumns.some(e => e.sourceColumn === name)) return 'numeric';
+        // Legacy heuristic, for pages with no integerColumns declaration at all.
+        // `includes('Length')` is kept here even though the exact-name check
+        // above already claims the only "Length"-ish column that exists today
+        // (verified via scripts/check-length-named-columns.py against every
+        // rendered snapshot AND every sourceColumn/syntheticColumns declaration
+        // in this file): without it, a future column named e.g. "Track length"
+        // would silently drop from 'numeric' to 'text' rather than staying on
+        // its current behaviour.
+        if (name.includes('Year') || name.includes('Releases') ||
+            name.includes('Track') || name.includes('Length') ||
+            name.includes('#')) return 'numeric';
+        return 'text';
+    }
+
+    /**
+     * Compares two duration cell texts, keeping unknown durations (`"?:??"`)
+     * LAST regardless of sort direction.
+     *
+     * The returned number is ALWAYS direction-final — callers must return it
+     * as-is and never negate it for a descending sort. That is what pins
+     * `"?:??"` to the bottom both ways: the unknown cases resolve direction
+     * here (deliberately ignoring `isAscending`) instead of going through a
+     * caller's shared sign flip, which would otherwise float them to the top
+     * when descending.
+     *
+     * `0` means "indistinguishable" — two equal durations, or two unknowns —
+     * and carries no direction, so a caller with a tie-breaking chain
+     * (`createMultiColumnComparator()`) may fall through to its next column.
+     *
+     * @param   {string} valA
+     * @param   {string} valB
+     * @param   {boolean} isAscending
+     * @returns {number} Direction-final comparison; `0` when indistinguishable.
+     */
+    function _compareDurations(valA, valB, isAscending) {
+        const aMs = _parseDurationToMs(valA);
+        const bMs = _parseDurationToMs(valB);
+        // Unknown length is absent data, not zero length.
+        if (aMs === null && bMs === null) return 0;
+        if (aMs === null) return 1;
+        if (bMs === null) return -1;
+        return isAscending ? aMs - bMs : bMs - aMs;
+    }
+
+    /**
      * Create a comparison function for table sorting
      * @param {number} index - Column index
      * @param {boolean} isAscending - Sort direction
-     * @param {boolean} isNumeric - Whether to use numeric comparison
+     * @param {('duration'|'numeric'|'text')} kind - Comparison kind, from
+     *   `_sortColumnKind()`. Was previously an `isNumeric` boolean; `'duration'`
+     *   is the added case, which parses `M:SS[.mmm]` properly and pins `"?:??"`
+     *   last instead of comparing a digits-only `parseFloat` of the text.
      * @param {boolean} [byLength=false] - When true, sort by visible text length instead of value
      * @returns {Function} Comparison function
      */
-    function createSortComparator(index, isAscending, isNumeric, byLength = false) {
+    function createSortComparator(index, isAscending, kind, byLength = false) {
         return (a, b) => {
             const valA = getCleanVisibleText(a.cells[index]).trim().toLowerCase() || '';
             const valB = getCleanVisibleText(b.cells[index]).trim().toLowerCase() || '';
 
+            // Alt+Click "sort by column length" is a deliberate text-length
+            // sort and outranks the column's own kind, durations included.
             if (byLength) {
                 const result = valA.length - valB.length;
                 return isAscending ? result : -result;
             }
 
-            if (isNumeric) {
+            if (kind === 'duration') {
+                return _compareDurations(valA, valB, isAscending);
+            }
+
+            if (kind === 'numeric') {
                 const numA = parseFloat(valA.replace(/[^0-9.-]/g, '')) || 0;
                 const numB = parseFloat(valB.replace(/[^0-9.-]/g, '')) || 0;
                 return isAscending ? numA - numB : numB - numA;
@@ -15726,16 +15859,23 @@
                 const valA = getCleanVisibleText(a.cells[idx]).trim().toLowerCase() || '';
                 const valB = getCleanVisibleText(b.cells[idx]).trim().toLowerCase() || '';
 
-                // Derive column name for numeric detection (strip sort/collapse icons and superscripts)
-                const hdrName = headers[idx]
-                    ? headers[idx].textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim()
-                    : '';
-                const isNumeric = hdrName.includes('Year') || hdrName.includes('Releases') ||
-                                  hdrName.includes('Track') || hdrName.includes('Length') ||
-                                  hdrName.includes('#');
+                // Same resolver the single-column path uses — see
+                // `_sortColumnKind()`'s JSDoc for the divergence this replaced
+                // (this branch used to consult only the raw header text and
+                // never the page definition's own integerColumns descriptors).
+                const kind = _sortColumnKind(_sortColumnHeaderName(headers[idx]));
 
                 let result;
-                if (isNumeric) {
+                if (kind === 'duration') {
+                    // Already direction-final — return it directly, bypassing
+                    // the shared sign flip below (which would float a pinned
+                    // "?:??" to the TOP of a descending sort). Only a 0 falls
+                    // through, so equal durations still reach the next
+                    // tie-breaking column in the chain.
+                    const durCmp = _compareDurations(valA, valB, isAscending);
+                    if (durCmp !== 0) return durCmp;
+                    result = 0;
+                } else if (kind === 'numeric') {
                     const numA = parseFloat(valA.replace(/[^0-9.-]/g, '')) || 0;
                     const numB = parseFloat(valB.replace(/[^0-9.-]/g, '')) || 0;
                     result = numA - numB;
@@ -53192,32 +53332,22 @@ a { color: #1565c0; }`;
         multiSortTintRegistry.set(sortKey, { applyTints: applyMultiSortColumnTints, clearTints: clearMultiSortColumnTints });
 
         // --- Helper: derive clean column name from a th element ---------------
-        // Prefer th.dataset.colName — set once, exactly, when the header is
-        // first built (see the `headers.forEach` loop below) — over re-deriving
-        // from th.textContent, which by the time this runs also contains the
-        // live uniq-count badge digits (e.g. "94") injected into the header's
-        // flex layout. Stripping plain ASCII 0-9 from that combined text would
-        // be ambiguous whenever the real column name itself contains a digit
-        // (e.g. "1st seconder"), so the fallback path is only exercised for a
-        // th that predates dataset.colName being set.
-        const getCleanColName = (th) =>
-            th ? (th.dataset.colName || th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim()) : '';
+        // Local alias for the module-level `_sortColumnHeaderName()`, which
+        // `createMultiColumnComparator()` uses too — keeping one implementation
+        // so the two sort paths can never disagree about a column's name. See
+        // its JSDoc for why th.dataset.colName is preferred over re-deriving
+        // from th.textContent (by sort time that text also carries the live
+        // uniq-count badge digits, making a digit-stripping regex ambiguous for
+        // a column whose real name contains a digit, e.g. "1st seconder").
+        const getCleanColName = (th) => _sortColumnHeaderName(th);
 
-        // --- Helper: is a column name numeric? ---------------------------------
-        // Primary source: activeIntegerColumns declared in the page definition's
-        // `features.integerColumns`.  Any column listed there is considered numeric
-        // and will use locale-numeric comparison during sorting.
-        // Fallback heuristic (legacy): applied only for columns not covered by the
-        // page definition, so that pages without an integerColumns declaration keep
-        // their existing sort behaviour.
-        const _intColNameSet = new Set(activeIntegerColumns.map(e => e.sourceColumn));
-        const isNumericCol = (name) => {
-            if (_intColNameSet.has(name)) return true;
-            // Legacy heuristic for pages that have no integerColumns declaration
-            return name.includes('Year') || name.includes('Releases') ||
-                   name.includes('Track') || name.includes('Length') ||
-                   name.includes('#');
-        };
+        // --- How is a column compared when sorting? ----------------------------
+        // Delegated to the module-level `_sortColumnKind()` so this path and
+        // `createMultiColumnComparator()` can no longer drift apart (they had:
+        // this one consulted the page definition's own integerColumns
+        // descriptors, that one only the raw header text). It also classifies
+        // colon-split "Length" columns as 'duration', which sort via
+        // `_compareDurations()` with "?:??" pinned last in both directions.
 
         // Register this table's current-sort comparator getter so runFilter()/
         // _applyDiscographyViewFilter('merged') can re-sort a merged category's
@@ -53232,11 +53362,11 @@ a { color: #1565c0; }`;
             if (state.multiSortColumns.length === 1) {
                 const col = state.multiSortColumns[0];
                 const cn = getCleanColName(headers[col.colIndex]);
-                return createSortComparator(col.colIndex, col.direction === 1, isNumericCol(cn));
+                return createSortComparator(col.colIndex, col.direction === 1, _sortColumnKind(cn));
             }
             if (state.lastSortIndex < 0 || state.sortState === 0) return null;
             const cn = getCleanColName(headers[state.lastSortIndex]);
-            return createSortComparator(state.lastSortIndex, state.sortState === 1, isNumericCol(cn), state.sortByLength);
+            return createSortComparator(state.lastSortIndex, state.sortState === 1, _sortColumnKind(cn), state.sortByLength);
         });
 
         // -----------------------------------------------------------------------
@@ -53414,11 +53544,11 @@ a { color: #1565c0; }`;
                                     // Single entry in chain (Ctrl+clicked one column)
                                     const col = state.multiSortColumns[0];
                                     const cn = getCleanColName(headers[col.colIndex]);
-                                    compareFn = createSortComparator(col.colIndex, col.direction === 1, isNumericCol(cn));
+                                    compareFn = createSortComparator(col.colIndex, col.direction === 1, _sortColumnKind(cn));
                                 } else {
                                     // Plain or Alt+Click single-column sort
                                     const cn = getCleanColName(headers[index]);
-                                    compareFn = createSortComparator(index, state.sortState === 1, isNumericCol(cn), state.sortByLength);
+                                    compareFn = createSortComparator(index, state.sortState === 1, _sortColumnKind(cn), state.sortByLength);
                                 }
 
                                 await sortLargeArray(sortedData, compareFn, null);
@@ -68302,6 +68432,42 @@ a { color: #1565c0; }`;
              */
             entityNameSplitsByHref(entityType) {
                 return _entityNameSplitsByHref(entityType);
+            },
+
+            /**
+             * Thin wrappers around the duration-sort primitives, so a test can
+             * pin the parse, the column classification and the `"?:??"`-last
+             * ordering rule directly rather than inferring them from a rendered
+             * row order.
+             *
+             * `compareDurations` returns the DIRECTION-FINAL comparison (see
+             * `_compareDurations()`'s own JSDoc) — a positive value from a
+             * descending call still means "a sorts after b", which is exactly
+             * what pins an unknown duration to the bottom both ways.
+             *
+             * @param {?string} text - Duration text, e.g. `"5:05.146"`/`"?:??"`.
+             * @returns {?number} Milliseconds, `null` when unknown.
+             */
+            parseDurationToMs(text) {
+                return _parseDurationToMs(text);
+            },
+
+            /**
+             * @param {string} name - Column name as `_sortColumnHeaderName()` yields it.
+             * @returns {('duration'|'numeric'|'text')} Resolved sort kind.
+             */
+            sortColumnKind(name) {
+                return _sortColumnKind(name);
+            },
+
+            /**
+             * @param {string} valA
+             * @param {string} valB
+             * @param {boolean} isAscending
+             * @returns {number} Direction-final comparison; `0` when indistinguishable.
+             */
+            compareDurations(valA, valB, isAscending) {
+                return _compareDurations(valA, valB, isAscending);
             },
 
             /**

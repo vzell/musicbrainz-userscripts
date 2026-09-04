@@ -1,5 +1,24 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-09-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Sorting a \"Length\" column no longer treats MusicBrainz's own \"?:??\" unknown-duration placeholder as a zero-length recording. It was compared with `parseFloat(text.replace(/[^0-9.-]/g, '')) || 0`, which collapsed \"?:??\" to 0 and so floated every unknown-length row to the TOP of an ascending sort (descending already put them last, by the same accident). Unknown length is absent data, not zero length, so those rows are now pinned LAST in both directions — in single-column sorts and as a tie-breaker inside a Ctrl+Click multi-column chain alike."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "New explicit duration comparator for \"Length\" columns: `_parseDurationToMs()` parses `M:SS`, `M:SS.mmm` and `H:MM:SS[.mmm]` (right-padding a short fractional part, so \".5\" is 500 ms), and `_compareDurations()` orders on real milliseconds. The previous digits-only `parseFloat` path happened to order genuine durations correctly — seconds are always zero-padded, so \"5:05.146\" became 505.146 and stayed monotonic — but only by relying on that undocumented invariant.",
+          "`createSortComparator()` and `createMultiColumnComparator()` now resolve a column's comparison kind through one shared `_sortColumnKind()` (`'duration'`/`'numeric'`/`'text'`) instead of disagreeing: the single-column path consulted the page definition's own `integerColumns` descriptors and only then a name heuristic, while the multi-column path used the raw header text alone and never looked at the page definition at all. `createSortComparator()`'s third argument changes from an `isNumeric` boolean to that kind string. Duration detection is data-driven — `integerColumns`' `align: ':'` descriptor already means \"colon-split duration\" — plus an exact `\"Length\"` name match, so a pageType that renders durations without declaring an `integerColumns` entry for them (`release-discids`' per-disc totals) sorts as a duration too. Alt+Click \"sort by column length\" still outranks the column's kind, durations included."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-09-04",
     "sections": [
