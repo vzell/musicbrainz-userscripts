@@ -692,10 +692,23 @@ through to a tie-breaking column.
   order and highlighting come along automatically because every consumer reads
   the rendered text. The uniq-dropdown cache must be force-invalidated (its
   key is the visible row set, which does not change).
-- On release pages the data is already in the page's own
-  `<script type="application/json">` (`$.release.mediums[].tracks[]`) — no
-  network. Work/artist-relationships/place-performances have NO length data in
-  the page at all and need `/ws/2/{type}/{mbid}?inc=recording-rels`.
+- `_msLengthSource()` is the single answer to "where can this page's
+  milliseconds come from": `'embedded'` (release pages — already in the page's
+  own `<script type="application/json">` at `$.release.mediums[].tracks[]`, so
+  stamped during pre-processing, no network), `'ws2'` (declared per pageType
+  via `features.msTrackLengthWs2` — work/artist-relationships/place-performances
+  have NO length data in the page at all, confirmed by
+  `scripts/probe-work-page-json.py`), or `null` (no toggle offered).
+- The `'ws2'` request is LAZY: `_msToggleLengthPrecision()` fires it on the
+  first press only, never during render, and `_msWs2Cache` holds the result —
+  including a `null` for failure — for the page's lifetime, so sorting,
+  filtering and re-toggling never re-request. `_msToggleInFlight` guards a
+  double click. The button carries `loading`/`unavailable` states.
+- MusicBrainz DOES populate the Length column natively on those pages
+  (`scripts/probe-native-work-length.js` reads back `5:05`/`5:35`/`?:??`), and
+  it rounds there too — so `data-mb-sec-text` round-tripping and the
+  round-trip discard check are both meaningful, and the check doubles as a
+  guard against a mis-resolved column index.
 
 ## Common pitfalls
 

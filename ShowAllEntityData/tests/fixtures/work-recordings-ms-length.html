@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Song “A Rainy Night in Soho” - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        Mirrors the real native /work/<mbid> skeleton, captured with a bare
+        browser via scripts/probe-work-page-skeleton.js:
+
+            div#content
+              div.workheader
+              div.tabs
+              h2.relationships "Relationships"
+              h2 "Recordings"
+              table.tbl  (thead: Date | Title | Attributes | Artist | Length,
+                          tbody led by a <tr class="subh"> group row)
+
+        Unlike a release page, a work page carries NO length data of its own —
+        `"length"` does not appear in any of its embedded JSON blobs (see
+        scripts/probe-work-page-json.py) — so millisecond precision here has to
+        come from one WS2 request, made only when the ⏱ toggle is first pressed.
+
+        MusicBrainz DOES populate the seconds column natively, and it ROUNDS:
+        scripts/probe-native-work-length.js read back 5:05 / 5:05 / 5:35 /
+        ?:?? / 4:24 for these very recordings, and 5:35 is the rounded form of
+        5:34.866. The values below are those real ones.
+    -->
+    <div id="content">
+        <div class="wrap-anywhere workheader">
+            <h1><a href="/work/8727a75a-8d33-3a2c-912a-f57952773201"><bdi>A Rainy Night in Soho</bdi></a></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/work/8727a75a-8d33-3a2c-912a-f57952773201">Overview</a></li></ul>
+        </div>
+        <h2 class="relationships">Relationships</h2>
+        <h2>Recordings</h2>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Title</th>
+                    <th>Attributes</th>
+                    <th>Artist</th>
+                    <th>Length</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="subh"><th></th><th colspan="4">recordings</th></tr>
+                <tr>
+                    <td>2001-12</td>
+                    <td><a href="/recording/528327c7-0f7a-46d1-b03f-700ebc39f747"><bdi>Rainy Night in Soho</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/aaaaaaaa-1111-4111-8111-111111111111"><bdi>The Pogues</bdi></a></td>
+                    <td>5:05</td>
+                </tr>
+                <tr>
+                    <td>2002-01</td>
+                    <td><a href="/recording/de9ff1d7-dd78-4ed6-a328-c1ab126304e6"><bdi>Rainy Night in Soho</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/aaaaaaaa-1111-4111-8111-111111111111"><bdi>The Pogues</bdi></a></td>
+                    <td>5:05</td>
+                </tr>
+                <!-- 5:35 is MusicBrainz's ROUNDED form of 5:34.866 — the row
+                     that proves the round-trip check accepts a rounded-UP
+                     value, and that toggling back restores "5:35", never
+                     a recomputed "5:34". -->
+                <tr>
+                    <td>2003-01</td>
+                    <td><a href="/recording/089026d3-1c1d-45bb-bf16-072d0bff8412"><bdi>Rainy Night in Soho</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/aaaaaaaa-1111-4111-8111-111111111111"><bdi>The Pogues</bdi></a></td>
+                    <td>5:35</td>
+                </tr>
+                <!-- No length on record at all: stays "?:??" in both modes. -->
+                <tr>
+                    <td>2004-01</td>
+                    <td><a href="/recording/299b2860-570e-4dca-9166-9e3842d8c381"><bdi>Rainy Night in Soho</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/aaaaaaaa-1111-4111-8111-111111111111"><bdi>The Pogues</bdi></a></td>
+                    <td>?:??</td>
+                </tr>
+                <tr>
+                    <td>2005-01</td>
+                    <td><a href="/recording/0b62eb61-f75f-498c-845f-5e7fbd3ac924"><bdi>Opening – A Rainy Night in Soho</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/aaaaaaaa-1111-4111-8111-111111111111"><bdi>The Pogues</bdi></a></td>
+                    <td>4:24</td>
+                </tr>
+                <!-- Deliberate disagreement: the mocked Web Service reports
+                     305146 ms (5:05.146) for this recording while the page
+                     displays 2:00. That can only mean the row was keyed to the
+                     wrong track, so the value must be DISCARDED rather than
+                     rendered — this row stays "2:00" in both modes. -->
+                <tr>
+                    <td>2006-01</td>
+                    <td><a href="/recording/bbbbbbbb-2222-4222-8222-222222222222"><bdi>Mismatched Recording</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/aaaaaaaa-1111-4111-8111-111111111111"><bdi>The Pogues</bdi></a></td>
+                    <td>2:00</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

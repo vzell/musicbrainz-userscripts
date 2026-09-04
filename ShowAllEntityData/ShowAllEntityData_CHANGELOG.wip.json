@@ -1,5 +1,25 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-09-04",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Millisecond track lengths now also work on the six pageTypes that have no sub-second data in the page itself — `work-recordings`, `artist-relationships`, `place-performances` and their `-filtered` twins (verified: `\"length\"` does not appear in a single one of a work page's embedded JSON blobs). They are fed by one MusicBrainz Web Service call, `/ws/2/{work|artist|place}/{mbid}?inc=recording-rels`, which returns every recording relationship of the page entity with its length — one request for the whole table, not one per row.",
+          "That request is made ONLY when the ⏱ toggle is first pressed, never while the page renders, so a page you don't ask for precision on costs nothing. The glyph shows ⏳ while it is in flight, and the response is cached for as long as you stay on the page: sorting, filtering and switching the toggle off and on again all work from that single response. A failure is cached too and dims the toggle with an explanation, rather than retrying on every click or quietly doing nothing. The tooltip says in advance whether a press will fetch, since on a release page it never does.",
+          "Declared per pageType via the new `features.msTrackLengthWs2`, so the toggle is only offered where a source actually exists — a page with neither an embedded payload nor that declaration gets no button rather than a dead one."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Same discard rule as the embedded source, and it earns its keep here: a Web Service value whose rounded seconds disagree with what MusicBrainz already displays is thrown away rather than rendered, since that can only mean the row was matched to the wrong recording. MusicBrainz does populate this column natively on these pages and it rounds there too (5:34.866 is displayed as \"5:35\"), so the check is meaningful — and it doubles as a guard against a mis-resolved column index, which would then stamp nothing instead of writing durations into some other column. Rows MusicBrainz shows as \"?:??\" have no length on record and stay unknown in both modes."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-09-04",
     "sections": [

@@ -14519,6 +14519,7 @@
                     { sourceColumn: 'Release events', extractor: 'splitCountryDate', syntheticColumns: ['Release country', 'Release date'] },
                     { sourceColumn: 'Release date',   extractor: 'dateParts',        syntheticColumns: ['R-DD', 'R-MM', 'R-YYYY', 'R-Day', 'R-Month'] }
                  ],
+                msTrackLengthWs2: true,   // no length data in the page — see _msLengthSource()
                 integerColumns: [
 		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
 		    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'},
@@ -14545,6 +14546,7 @@
                     { sourceColumn: 'Release events', extractor: 'splitCountryDate', syntheticColumns: ['Release country', 'Release date'] },
                     { sourceColumn: 'Release date',   extractor: 'dateParts',        syntheticColumns: ['R-DD', 'R-MM', 'R-YYYY', 'R-Day', 'R-Month'] }
                  ],
+                msTrackLengthWs2: true,   // no length data in the page — see _msLengthSource()
                 integerColumns: [
 		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
 		    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'},
@@ -14762,6 +14764,7 @@
                 syntheticColumnExtractors: [
                     { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
+                msTrackLengthWs2: true,   // no length data in the page — see _msLengthSource()
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'Length', align: ':'} ],
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
@@ -14780,6 +14783,7 @@
                 syntheticColumnExtractors: [
                     { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
+                msTrackLengthWs2: true,   // no length data in the page — see _msLengthSource()
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'Length', align: ':'} ],
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
@@ -14803,6 +14807,7 @@
                     { sourceColumn: 'Title', extractor: 'caa', syntheticColumns: ['CAA'] }
                 ],
                 injectedColumns: [ 'Relationships' ],
+                msTrackLengthWs2: true,   // no length data in the page — see _msLengthSource()
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'Length', align: ':'} ],
                 collapsableColumns: [ 'CAA' ],
                 tooltipColumns: [ 'Title', 'Artist', '---', 'Date', 'Attributes' ],
@@ -14827,6 +14832,7 @@
                     { sourceColumn: 'Title', extractor: 'caa', syntheticColumns: ['CAA'] }
                 ],
                 injectedColumns: [ 'Relationships' ],
+                msTrackLengthWs2: true,   // no length data in the page — see _msLengthSource()
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'Length', align: ':'} ],
                 collapsableColumns: [ 'CAA' ],
                 tooltipColumns: [ 'Title', 'Artist', '---', 'Length', 'Date', 'Credited as', 'Attributes' ],
@@ -16081,6 +16087,217 @@
     }
 
     /**
+     * Extracts the recording MBID a data row is *about*.
+     *
+     * Deliberately NOT folded into `_extractMbidFromRow()`, which matches
+     * `release-group|release|work` only: both the Release-events and
+     * Relationships injected columns depend on that exact behaviour, and
+     * teaching it about recordings would silently change which entity they
+     * key their own WS2 lookups on.
+     *
+     * Scans the row's cells in order and takes the first `/recording/<mbid>`
+     * anchor. On every pageType this is used for (work-recordings,
+     * artist-relationships, place-performances and their `-filtered` twins) the
+     * row's subject is a recording and its title link sits in the leading
+     * sticky/title column, well before any relationship icon cell.
+     *
+     * @param   {HTMLTableRowElement} row
+     * @returns {?string} Recording MBID, or `null` when the row has none.
+     */
+    function _extractRecordingMbidFromRow(row) {
+        for (const a of row.querySelectorAll('a[href]')) {
+            const href = a.getAttribute('href');
+            if (!href) continue;
+            const m = href.match(/\/recording\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/);
+            if (m) return m[1];
+        }
+        return null;
+    }
+
+    /**
+     * Every captured source row of the current render, across both table modes.
+     *
+     * These — not the live cells — are what the millisecond feature mutates:
+     * `runFilter()` rebuilds the table from `cloneNode(true)` copies of them,
+     * so a change made only to the live DOM is undone by the next keystroke.
+     *
+     * @returns {HTMLTableRowElement[]}
+     */
+    function _msSourceRows() {
+        const rows = [];
+        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => rows.push(...g.rows));
+        if (typeof allRows !== 'undefined') rows.push(...allRows);
+        return rows;
+    }
+
+    /** @returns {boolean} Whether any source row already carries a stamped millisecond value. */
+    function _msAnyStamped() {
+        return _msSourceRows().some(row => row.querySelector('td[data-mb-ms]'));
+    }
+
+    /**
+     * Resolves the rendered index of the "Length" column.
+     *
+     * One index serves every table: on a multi-table page `renderGroupedTable()`
+     * clones a single `<thead>` template for every group, and the two
+     * column-suppression helpers (`_suppressReleaseEventsIfNoReleaseLinks()`,
+     * `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()`) only ever remove
+     * injected columns, which `cleanupHeaders()` appends AFTER every original
+     * and synthetic one — so nothing they drop can shift "Length".
+     *
+     * @returns {number} Column index, or `-1` when this page has no Length column.
+     */
+    function _msLengthColumnIndex() {
+        for (const table of document.querySelectorAll('table.tbl')) {
+            const ths = Array.from(table.querySelectorAll('thead th'));
+            const idx = ths.findIndex(th => (th.dataset.colName || '') === 'Length');
+            if (idx >= 0) return idx;
+        }
+        return -1;
+    }
+
+    /** @type {Map<string, ?Map<string, number>>} WS2 results, keyed `"entityType:mbid"`. */
+    const _msWs2Cache = new Map();
+
+    /**
+     * Page-entity key for the WS2 millisecond lookup, e.g. `"work:8727a75a-…"`.
+     * @returns {?string} `null` when the URL is not one of the supported shapes.
+     */
+    function _msWs2PageKey() {
+        const m = window.location.pathname.match(
+            /^\/(work|artist|place)\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/
+        );
+        return m ? `${m[1]}:${m[2]}` : null;
+    }
+
+    /**
+     * Where this page's millisecond track lengths can come from, if anywhere.
+     *
+     *   `'embedded'` — already in the document. Release pages inline their
+     *                  tracklist props, so the values are free and are stamped
+     *                  during pre-processing.
+     *   `'ws2'`      — one MusicBrainz Web Service request, made ONLY when the
+     *                  toggle is first pressed. Declared per pageType via
+     *                  `features.msTrackLengthWs2`; these pages carry no length
+     *                  data of their own at all (confirmed against every
+     *                  embedded JSON blob on a work page — see
+     *                  scripts/probe-work-page-json.py — where `"length"` does
+     *                  not appear once).
+     *   `null`       — no source; no toggle is offered.
+     *
+     * @returns {?('embedded'|'ws2')}
+     */
+    function _msLengthSource() {
+        if (Lib.settings.sa_enable_ms_track_length === false) return null;
+        if (_buildReleaseTrackLengthMap()) return 'embedded';
+        if (activeDefinition?.features?.msTrackLengthWs2 && _msWs2PageKey()) return 'ws2';
+        return null;
+    }
+
+    /**
+     * Fetches (once per page) the recording→milliseconds map for the page
+     * entity, from a single WS2 request.
+     *
+     * `/ws/2/{work|artist|place}/{mbid}?inc=recording-rels&fmt=json` returns
+     * every recording relationship of the page entity with its `length` in
+     * milliseconds — one request for the whole table, not one per row.
+     *
+     * Cached in `_msWs2Cache` for the lifetime of the page, so pressing the
+     * toggle off and on again, sorting, filtering or re-rendering never
+     * re-request it. A failure is cached as `null` too: a page whose entity has
+     * no recording relationships (or whose request failed) should report
+     * "unavailable" once rather than retry on every click.
+     *
+     * @returns {Promise<?Map<string, number>>} `null` when unavailable.
+     */
+    async function _msFetchWs2RecordingLengths() {
+        const key = _msWs2PageKey();
+        if (!key) return null;
+        if (_msWs2Cache.has(key)) {
+            _msDbg(`_msFetchWs2RecordingLengths: cache hit for ${key}`);
+            return _msWs2Cache.get(key);
+        }
+
+        const [entityType, entityId] = key.split(':');
+        const url = `/ws/2/${entityType}/${entityId}?inc=recording-rels&fmt=json`;
+        _msDbg(`_msFetchWs2RecordingLengths: fetching ${url}`);
+        let relations;
+        try {
+            const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+            if (!resp.ok) {
+                _msDbg(`_msFetchWs2RecordingLengths: HTTP ${resp.status}`);
+                _msWs2Cache.set(key, null);
+                return null;
+            }
+            relations = (await resp.json()).relations || [];
+        } catch (err) {
+            _msDbg('_msFetchWs2RecordingLengths: fetch error:', err.message || String(err));
+            _msWs2Cache.set(key, null);
+            return null;
+        }
+
+        const map = new Map();
+        relations.forEach(rel => {
+            const rec = rel.recording;
+            if (rec && rec.id && typeof rec.length === 'number') map.set(rec.id, rec.length);
+        });
+        _msDbg(`_msFetchWs2RecordingLengths: ${relations.length} relation(s), ${map.size} with a length`);
+        const result = map.size ? map : null;
+        _msWs2Cache.set(key, result);
+        return result;
+    }
+
+    /**
+     * Stamps `data-mb-ms`/`data-mb-sec-text` onto every source row whose
+     * recording appears in `map`, without changing what any cell displays.
+     *
+     * Same discard rule as the embedded-source path
+     * (`_msStampReleaseTrackLengths()`): a value is only accepted when
+     * `Math.round(ms / 1000)` agrees with the seconds MusicBrainz already
+     * rendered. MusicBrainz DOES populate this column natively (verified with a
+     * bare browser via scripts/probe-native-work-length.js: `5:05`, `5:35`,
+     * `?:??`, …) and it ROUNDS, so that check is meaningful here and also
+     * doubles as a guard against a wrong column index — a mis-resolved column
+     * simply stamps nothing instead of writing durations into another column.
+     * `"?:??"` rows are skipped, staying unknown in both modes.
+     *
+     * @param   {Map<string, number>} map  Recording MBID → milliseconds.
+     * @returns {number} How many cells were stamped.
+     */
+    function _msStampSourceRowsFromMap(map) {
+        const colIdx = _msLengthColumnIndex();
+        if (colIdx < 0) {
+            _msDbg('_msStampSourceRowsFromMap: no "Length" column on this page');
+            return 0;
+        }
+        let stamped = 0, noData = 0, mismatched = 0;
+        _msSourceRows().forEach(row => {
+            const td = row.cells[colIdx];
+            if (!td || td.dataset.mbMs) return;             // idempotent
+            const gid = _extractRecordingMbidFromRow(row);
+            if (!gid) { noData++; return; }
+            const ms = map.get(gid);
+            if (typeof ms !== 'number') { noData++; return; }
+
+            const secText = (getCleanColumnText(td) || td.textContent || '').trim();
+            const shownMs = _parseDurationToMs(secText);
+            if (shownMs === null) { noData++; return; }     // "?:??" and anything unparseable
+            if (Math.round(ms / 1000) !== Math.round(shownMs / 1000)) {
+                mismatched++;
+                _msDbg(`_msStampSourceRowsFromMap: REJECTED — MusicBrainz shows "${secText}" but the Web ` +
+                       `Service says ${ms}ms ("${_msFormatDuration(ms, false)}") for recording ${gid}`);
+                return;
+            }
+            td.dataset.mbMs      = String(ms);
+            td.dataset.mbSecText = secText;
+            stamped++;
+        });
+        _msDbg(`_msStampSourceRowsFromMap: stamped ${stamped} cell(s), ${noData} without usable data, ` +
+               `${mismatched} rejected as mismatched`);
+        return stamped;
+    }
+
+    /**
      * Whether the Length column is currently rendering milliseconds.
      *
      * Read from the DOM (the `data-mb-ms-shown` flag on a stamped cell) rather
@@ -16172,16 +16389,51 @@
      * @param   {boolean} showing
      * @returns {void}
      */
-    function _msUpdateColHdrBtn(btn, showing) {
+    function _msUpdateColHdrBtn(btn, showing, state) {
+        if (state === 'loading') {
+            btn.textContent = '⏳';
+            btn.setAttribute('aria-busy', 'true');
+            btn.title = 'Loading millisecond lengths from the MusicBrainz Web Service…';
+            btn.setAttribute('aria-label', 'Loading millisecond lengths');
+            return;
+        }
+        btn.removeAttribute('aria-busy');
         btn.textContent = showing ? '▼⏱' : '▶⏱';
         btn.setAttribute('aria-pressed', showing ? 'true' : 'false');
+
+        if (state === 'unavailable') {
+            btn.dataset.mbMsUnavailable = '1';
+            btn.title = 'Millisecond precision unavailable here — MusicBrainz has no sub-second '
+                      + 'length on record for these recordings';
+            btn.setAttribute('aria-label', 'Millisecond precision unavailable for the Length column');
+            btn.setAttribute('aria-disabled', 'true');
+            return;
+        }
+
+        delete btn.dataset.mbMsUnavailable;
+        btn.removeAttribute('aria-disabled');
+        // Mention the one-off request only where there actually is one: on a
+        // release page the values are already in the document.
+        const needsFetch = !showing && !_msAnyStamped() && _msLengthSource() === 'ws2';
         btn.title = showing
             ? 'Hide millisecond precision — show "Length" as M:SS (MusicBrainz\'s own rounding)'
-            : 'Show millisecond precision for "Length"';
+            : (needsFetch
+                ? 'Show millisecond precision for "Length" — one MusicBrainz Web Service request, '
+                  + 'cached for this page'
+                : 'Show millisecond precision for "Length"');
         btn.setAttribute('aria-label', showing
             ? 'Hide millisecond precision in the Length column'
             : 'Show millisecond precision in the Length column');
     }
+
+    /** Repaints every Length header toggle to the same state. */
+    function _msRepaintColHdrBtns(showing, state) {
+        document.querySelectorAll('.mb-ms-col-hdr-btn')
+            .forEach(btn => _msUpdateColHdrBtn(btn, showing, state));
+    }
+
+    /** Guards against a second click while a WS2 request is still in flight. */
+    let _msToggleInFlight = false;
 
     /**
      * Toggles the Length column's precision and repaints every header button.
@@ -16194,10 +16446,35 @@
      *
      * @returns {void}
      */
-    function _msToggleLengthPrecision() {
+    async function _msToggleLengthPrecision() {
+        if (_msToggleInFlight) return;
         const next = !_msLengthPrecisionShown();
+
+        // Turning precision ON with nothing stamped yet means this page's
+        // millisecond data has to be fetched first — deliberately deferred to
+        // this moment rather than done during render, so a page nobody asks for
+        // precision on never makes the request at all. The result is cached for
+        // the page's lifetime, so every later toggle, sort or filter is local.
+        if (next && !_msAnyStamped()) {
+            if (_msLengthSource() !== 'ws2') {
+                _msRepaintColHdrBtns(false, 'unavailable');
+                return;
+            }
+            _msToggleInFlight = true;
+            _msRepaintColHdrBtns(false, 'loading');
+            try {
+                const map = await _msFetchWs2RecordingLengths();
+                if (!map || !_msStampSourceRowsFromMap(map)) {
+                    _msRepaintColHdrBtns(false, 'unavailable');
+                    return;
+                }
+            } finally {
+                _msToggleInFlight = false;
+            }
+        }
+
         _msApplyLengthPrecision(next);
-        document.querySelectorAll('.mb-ms-col-hdr-btn').forEach(btn => _msUpdateColHdrBtn(btn, next));
+        _msRepaintColHdrBtns(next);
     }
 
     /**
@@ -16221,7 +16498,11 @@
      */
     function _initMsLengthColHeaderToggle() {
         if (Lib.settings.sa_enable_ms_track_length === false) return;
-        if (!document.querySelector('table.tbl tbody td[data-mb-ms]')) return;
+        // Offered either because values are already stamped (the embedded
+        // source ran during pre-processing) or because a one-off Web Service
+        // request could supply them on demand. A pageType with neither gets no
+        // button rather than a dead one.
+        if (!_msAnyStamped() && _msLengthSource() !== 'ws2') return;
 
         const showing = _msLengthPrecisionShown();
         document.querySelectorAll('table.tbl').forEach(table => {

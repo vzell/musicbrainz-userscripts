@@ -741,8 +741,33 @@ Sorting, filtering, highlighting and the 📊 unique-values dropdown always
 follow whatever the column is currently showing, so with precision on you
 can filter for ".666" or spot two tracks that differ only below the second.
 
-On release pages this costs nothing: the millisecond values are already
-embedded in the page MusicBrainz served, so no extra request is made.
+Where the data comes from depends on the page, and so does whether anything
+is fetched at all:
+
+  • Release pages (a release's own tracklist) cost nothing — the millisecond
+    values are already embedded in the page MusicBrainz served, so the
+    toggle switches instantly and no request is ever made.
+
+  • Work, artist-relationships and place-performances pages carry no
+    sub-second data of their own, so those need one MusicBrainz Web Service
+    request.  It is made only when you first press the toggle — never while
+    the page renders — so a page you don't ask for precision on costs
+    nothing either.  The ⏱ glyph turns into ⏳ while the request is in
+    flight, and the answer is then cached for as long as you stay on the
+    page: sorting, filtering and switching the toggle off and on again all
+    work from that one response.  The tooltip tells you in advance which of
+    the two cases you are in.
+
+If the data can't be had (the request fails, or MusicBrainz simply has no
+sub-second length on record for these recordings), the toggle dims and says
+so instead of quietly doing nothing.
+
+A row MusicBrainz shows as "?:??" has no length on record at all and stays
+"?:??" in both modes — the toggle never invents a number for it.  Likewise,
+a value that disagrees with the seconds already on screen is discarded
+rather than displayed: that can only mean the row was matched to the wrong
+recording, and showing a wrong duration would be worse than showing no
+extra precision.
 
 Two details worth knowing:
 
