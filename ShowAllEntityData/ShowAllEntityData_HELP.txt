@@ -341,6 +341,23 @@ every distinct non-empty value currently visible in that column.
                        pair of dropdown sections that scan every row on the
                        table to compute an average, so disable it if that
                        measurably slows down very large tables
+    — 📅/🌓/↔️ Date info — on any "Date"/"Begin"/"End"/"Release date"-style
+                       column (any column MusicBrainz shows as a
+                       YYYY[-MM[-DD]] date or a dash-joined range of two such
+                       dates), split into three facets: "- Precision" is a
+                       fixed 3-flag count of how many visible rows are a
+                       complete date ("📅"), a partial year/year-month date
+                       ("🌓"), or a date range ("↔️") — NOT one entry per
+                       distinct date text, since the plain value list below
+                       already offers that. "- Decade" and "- Month" bucket
+                       each date's own year (e.g. "1970-1980") and calendar
+                       month name (e.g. "August", sorted calendar order, not
+                       alphabetically) into their own open entry lists. A
+                       range contributes BOTH its start and end dates
+                       independently to Decade/Month, so e.g. "1973-08-09 –
+                       1973-09-23" counts toward both "August" and
+                       "September"; checking one only highlights the
+                       matching side of the range
     — 🗣️/🥇 Locale info — on an alias table's "Locale" column: "- Language"
                        (distinct locale languages, e.g. "English", "Chinese
                        (China)") and "- Primary" ("🥇 primary" / "◦ not
