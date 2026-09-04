@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Test Artist - Recordings - MusicBrainz</title>
+</head>
+<body>
+    <div id="content">
+        <div class="artistheader">
+            <h1><bdi>Test Artist</bdi></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350/recordings">Recordings</a></li></ul>
+        </div>
+        <h2>Recordings</h2>
+        <!--
+            OUTSIDE table.tbl — jesus2099 features that belong to the
+            surrounding page and MUST survive the purge untouched (they are
+            live features of the initial page, which keeps working as before).
+            Modeled on the real markers scripts/scope-jesus2099-leaks.py found
+            outside our tables in debug/work-rec.html (108 all-links markers)
+            and debug/therising.html (123).
+        -->
+        <ul class="jesus2099_all-links_searchLinks">
+            <li><a class="jesus2099_all-links_wd-Q42" href="https://example.org/wd">wd</a></li>
+        </ul>
+        <span class="jesus2099PendingEditsCount">7</span>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <!--
+                        The exact artifact reported against the final rendered
+                        page: jesus2099's RECORDING_LENGTH_COLUMN mutates the
+                        native Length <th> in place, adding class="treleases",
+                        its own script name as `title` (NOTE: separated by
+                        NON-BREAKING spaces — a naive "SUPER MIND CONTROL"
+                        substring test never matches) and a yellow text-shadow.
+                        makeTableSortableUnified() rebuilds th.innerHTML but
+                        never resets className/title/style, which is how all
+                        three survived into our rendered header.
+                    -->
+                    <th class="treleases" title="SUPER&nbsp;MIND&nbsp;CONTROL&nbsp;Ⅱ&nbsp;X&nbsp;TURBO" style="text-shadow: yellow 0px 0px 2px;">Length</th>
+                    <th>Artist</th>
+                    <th>Release groups</th>
+                    <th>Rating</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <!--
+                        Row 1 carries all three INSIDE-the-table dispositions
+                        at once:
+                          • <td class="title wrap-anywhere jesus2099userjs81127acoustids-handled">
+                            and <a class="jesus2099userjs81127recording"> — real
+                            MusicBrainz content, so the marker is stripped but
+                            the element (and its text) must survive.
+                          • <div class="jesus2099userjs81127toolzone"> — pure
+                            decoration, removed outright. Carries a baked
+                            style="display: block" exactly as a cell scraped
+                            mid-hover does (see applyColumnErasers()'s
+                            Strategy 3 comment).
+                    -->
+                    <td class="title wrap-anywhere jesus2099userjs81127acoustids-handled"><a href="/recording/11111111-2222-4333-8444-555555555501" class="jesus2099userjs81127recording"><bdi>Track A</bdi></a><div class="jesus2099userjs81127toolzone" style="display: block;"><a href="/recording/11111111-2222-4333-8444-555555555501/edit">Edit</a><div class="jesus2099userjs81127openEdits" style="display: block;">Open&nbsp;edits</div></div></td>
+                    <td class="treleases" title="SUPER&nbsp;MIND&nbsp;CONTROL&nbsp;Ⅱ&nbsp;X&nbsp;TURBO" style="text-align: right;">4:50.160</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555502"><bdi>Track B</bdi></a></td>
+                    <td class="treleases" title="SUPER&nbsp;MIND&nbsp;CONTROL&nbsp;Ⅱ&nbsp;X&nbsp;TURBO" style="text-align: right;">3:11.666</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555503"><bdi>Track C</bdi></a></td>
+                    <td class="treleases" title="SUPER&nbsp;MIND&nbsp;CONTROL&nbsp;Ⅱ&nbsp;X&nbsp;TURBO" style="text-align: right;">?:??</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+        <ul class="pagination"></ul>
+    </div>
+</body>
+</html>

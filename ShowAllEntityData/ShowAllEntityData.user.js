@@ -42596,6 +42596,189 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Class-name suffixes identifying jesus2099 elements that are PURE
+     * DECORATION — they carry no MusicBrainz content of their own, so the
+     * whole element is removed rather than just its marker class.
+     *
+     * Matched as a case-insensitive SUFFIX because jesus2099's scripts embed
+     * an install/version-specific numeric id in every class name (e.g.
+     * `jesus2099userjs81127toolzone`, where `81127` differs per install) —
+     * the same reason `applyColumnErasers()`'s `'jesus2099-any'` sentinel
+     * matches by prefix rather than by exact class. Verified shapes (see
+     * debug/therising.html):
+     *
+     *   <div class="jesus2099userjs81127toolzone" style="display:none">   +merge / Edit / Open edits
+     *   <div class="jesus2099userjs81127editbutt" style="display:none">   Edit
+     *   <div class="jesus2099userjs81127openEdits" style="display:none">  Open edits
+     *
+     * `toolzone` nests the other two, so removing it takes them along; they
+     * are listed individually anyway because either can also appear on its
+     * own, and a redundant removal is harmless.
+     *
+     * Everything NOT listed here defaults to marker-stripping (keep the
+     * element, drop the class) — the fail-safe direction. A future jesus2099
+     * feature we have never seen then leaves a harmless invisible artifact
+     * instead of us deleting genuine MusicBrainz content. This matters
+     * concretely: `jesus2099userjs81127recording` sits on the recording
+     * TITLE anchor and `…acoustids-handled` on the Title `<td>` itself, both
+     * of which must survive (see `applyColumnErasers()`'s Strategy 3 JSDoc,
+     * which documents the same hazard for the `'jesus2099-any'` sentinel).
+     * @type {string[]}
+     */
+    const _J2_DECORATION_SUFFIXES = ['toolzone', 'editbutt', 'openedits', 'idcountzone'];
+
+    /**
+     * Returns every class token on `el` that marks it as touched by one of
+     * jesus2099's userscripts: any token starting with `jesus2099`, plus the
+     * bare `treleases` token that "mb. SUPER MIND CONTROL Ⅱ X TURBO" stamps
+     * onto the Length `<th>`/`<td>` it rewrites (see `_repairTreleasesTd()`).
+     *
+     * @param   {Element} el
+     * @returns {string[]} Marker tokens, empty when the element is untouched.
+     */
+    function _j2MarkerTokens(el) {
+        return Array.from(el.classList).filter(t => t === 'treleases' || /^jesus2099/i.test(t));
+    }
+
+    /**
+     * True when `el` belongs to the jesus2099 cover-art icon family, which
+     * `_stripJesus2099InTable()` must leave completely alone.
+     *
+     * That family already has its own two-layer, deliberately GATED handling:
+     * `applyColumnErasers()`'s Strategy 2 (the `'jesus2099'` columnEraser
+     * sentinel) at extraction time, and `_stripTransientCellState()`'s
+     * `_hadInlineArtPh`-gated strip at capture/serialisation time. That gate
+     * exists because an unconditional strip destroyed the ONLY art content in
+     * the cell on pageTypes where `ColumnDataExtractor.caa`'s Path A moves
+     * jesus2099's own anchor into the synthetic "CAA" column (e.g.
+     * artist-relationships) — confirmed via debug/CAA-missing-doubled.org's
+     * RAW-vs-STRIPPED fingerprint log. Re-stripping it here, ungated, would
+     * reintroduce exactly that regression.
+     *
+     * @param   {Element} el
+     * @returns {boolean}
+     */
+    function _j2IsArtworkFamily(el) {
+        if (el.classList.contains('caa-icon') ||
+            el.classList.contains('eaa-icon') ||
+            el.classList.contains('artwork-icon')) return true;
+        if (Array.from(el.classList).some(t => /bigbox$/i.test(t))) return true;
+        return !!el.closest('a[href*="/cover-art"]');
+    }
+
+    /**
+     * Removes every jesus2099 artifact from one of THIS script's rendered
+     * tables (or from one captured source `<tr>`), so the consolidated table
+     * we render carries no third-party leftovers.
+     *
+     * Scope is deliberately limited to what is handed in — always a
+     * `table.tbl` we built, or a captured row destined for one. Everything
+     * jesus2099 puts OUTSIDE our tables (its sidebar/sub-header search links,
+     * the pending-edit toggles, its own toolbar) is left untouched: those are
+     * live features of the surrounding page, which must keep working exactly
+     * as before. The audit behind that boundary (scripts/scope-jesus2099-
+     * leaks.py against debug/work-rec.html and debug/therising.html) found
+     * 108–123 `jesus2099_all-links_*` and `jesus2099PendingEdits*` markers
+     * outside our tables versus only `treleases` and the
+     * `jesus2099userjs81127*` tracklist family inside them.
+     *
+     * Three dispositions, in priority order:
+     *   1. Cover-art icon family (`_j2IsArtworkFamily`) → skipped entirely;
+     *      already owned, with a load-bearing gate, elsewhere.
+     *   2. Pure decoration (`_J2_DECORATION_SUFFIXES`) → element removed.
+     *   3. Anything else → marker class token(s) removed, element kept.
+     *      Additionally, on a `<th>`/`<td>` only: the plugin `title` (which
+     *      jesus2099 sets to its own script name — e.g.
+     *      `"SUPER MIND CONTROL Ⅱ X TURBO"`, note the
+     *      NON-BREAKING spaces) and its `text-shadow` are dropped too. Both
+     *      are restricted to marker-carrying cells on purpose: native
+     *      MusicBrainz puts meaningful `title`s on `<a>`/`<abbr>` elements
+     *      (artist sort names, country abbreviations), and a `text-shadow`
+     *      with no jesus2099 marker belongs to some other third-party script
+     *      (30 unrelated `<span style="color:red; …text-shadow:yellow…">`
+     *      elements in debug/therising.html alone — verified via
+     *      scripts/check-text-shadow-owner.py), so neither may be stripped
+     *      blind.
+     *
+     * Idempotent: a second call finds nothing and is a no-op. Safe on a
+     * detached node, which is what the captured-source-row pass relies on.
+     *
+     * @param   {?(Element)} root  A `table.tbl`, or one captured `<tr>`.
+     * @returns {{removed: number, stripped: number}} Per-call counts, for logging.
+     */
+    function _stripJesus2099InTable(root) {
+        const result = { removed: 0, stripped: 0 };
+        if (!root || root.nodeType !== Node.ELEMENT_NODE) return result;
+
+        // Include `root` itself: jesus2099 mutates existing elements in place,
+        // so a captured <tr>/<td> handed in directly can be the marked node
+        // (querySelectorAll never matches its own root).
+        const candidates = Array.from(root.querySelectorAll('[class*="jesus2099"], .treleases'));
+        if (_j2MarkerTokens(root).length) candidates.unshift(root);
+
+        candidates.forEach(el => {
+            const tokens = _j2MarkerTokens(el);
+            if (!tokens.length) return;                 // already cleaned by an ancestor removal
+            if (_j2IsArtworkFamily(el)) return;         // disposition 1
+
+            const isDecoration = tokens.some(t =>
+                _J2_DECORATION_SUFFIXES.some(sfx => t.toLowerCase().endsWith(sfx)));
+            if (isDecoration) {                         // disposition 2
+                el.remove();
+                result.removed++;
+                return;
+            }
+
+            tokens.forEach(t => el.classList.remove(t)); // disposition 3
+            if (!el.classList.length) el.removeAttribute('class');
+            if (el.tagName === 'TH' || el.tagName === 'TD') {
+                el.removeAttribute('title');
+                el.style.removeProperty('text-shadow');
+            }
+            result.stripped++;
+        });
+
+        return result;
+    }
+
+    /**
+     * Applies `_stripJesus2099InTable()` across everything a render produces:
+     * every live `table.tbl` (header row included) AND every captured source
+     * row in `groupedRows`/`allRows`.
+     *
+     * The source-row half is not optional. `runFilter()` re-renders by
+     * inserting `cloneNode(true)` copies of those captured rows on every
+     * keystroke, and classes/attributes/inline styles survive cloning — so
+     * cleaning only the live DOM would let the very next filter keystroke
+     * paste every marker straight back in. Same live-plus-source shape as
+     * `initReleaseEventsColumn()`'s own cell-population pass.
+     *
+     * Deliberately NOT gated behind any setting: keeping our rendered tables
+     * free of third-party artifacts is unconditional, independent of the
+     * millisecond-precision feature that shares this code's subject matter.
+     *
+     * @returns {void}
+     */
+    function purgeJesus2099Artifacts() {
+        const total = { removed: 0, stripped: 0 };
+        const _apply = (el) => {
+            const r = _stripJesus2099InTable(el);
+            total.removed  += r.removed;
+            total.stripped += r.stripped;
+        };
+
+        document.querySelectorAll('table.tbl').forEach(_apply);
+        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => g.rows.forEach(_apply));
+        if (typeof allRows !== 'undefined' && allRows.length) allRows.forEach(_apply);
+
+        if (total.removed || total.stripped) {
+            Lib.debug('cleanup',
+                `purgeJesus2099Artifacts: removed ${total.removed} decoration element(s), ` +
+                `stripped markers from ${total.stripped} element(s).`);
+        }
+    }
+
+    /**
      * _repairTreleasesTd — re-styles a <td class="treleases"> in place.
      *
      * Jesus2099's "mb. SUPER MIND CONTROL Ⅱ X TURBO" mutates Length cells of
@@ -43479,6 +43662,11 @@ a { color: #1565c0; }`;
         // own JSDoc. renderFinalTable() replaces tbody content wholesale on every
         // render, which never saw toggleColumn()'s display:none mutation.
         _reapplyColumnVisibility(table);
+
+        // Purge every jesus2099 artifact that rode along in the scraped rows
+        // and header — unconditional, and BEFORE initTreleasesObserver() below
+        // so the observer only ever sees genuinely NEW late mutations.
+        purgeJesus2099Artifacts();
 
         // Install (or re-confirm) the MutationObserver that strips jesus2099 treleases
         // nodes from Length cells the instant they are injected into the live tbody.
@@ -46035,6 +46223,11 @@ a { color: #1565c0; }`;
         if (Lib.settings.sa_enable_save_load) {
             saveToDiskBtn.style.display = 'inline-block';
         }
+
+        // Purge every jesus2099 artifact that rode along in the scraped rows
+        // and header — unconditional, and BEFORE initTreleasesObserver() below
+        // so the observer only ever sees genuinely NEW late mutations.
+        purgeJesus2099Artifacts();
 
         // Install (or re-confirm) the MutationObserver that strips jesus2099 treleases
         // nodes from Length cells the instant they are injected into any live tbody.
@@ -68109,6 +68302,33 @@ a { color: #1565c0; }`;
              */
             entityNameSplitsByHref(entityType) {
                 return _entityNameSplitsByHref(entityType);
+            },
+
+            /**
+             * Thin wrapper around `_stripJesus2099InTable()` — runs the real
+             * artifact purge against the element `selector` matches and
+             * reports what survived, so a test can assert each of the three
+             * dispositions (skip the cover-art family / remove pure
+             * decoration / strip the marker but keep the element) directly,
+             * without needing a full fetch+render cycle to set them up.
+             *
+             * @param {string} selector - CSS selector for the root to purge.
+             * @returns {?{removed: number, stripped: number, markersLeft: string[],
+             *   html: string}} `markersLeft` lists every jesus2099/treleases
+             *   class token still present under the root afterwards (empty
+             *   when the purge was complete); `html` is the resulting
+             *   `innerHTML`, so a test can assert content survived. `null`
+             *   when `selector` matches nothing.
+             */
+            stripJesus2099InTable(selector) {
+                const root = document.querySelector(selector);
+                if (!root) return null;
+                const counts = _stripJesus2099InTable(root);
+                const markersLeft = [];
+                const collect = (el) => _j2MarkerTokens(el).forEach(t => markersLeft.push(t));
+                collect(root);
+                root.querySelectorAll('*').forEach(collect);
+                return { ...counts, markersLeft, html: root.innerHTML };
             },
 
             /**

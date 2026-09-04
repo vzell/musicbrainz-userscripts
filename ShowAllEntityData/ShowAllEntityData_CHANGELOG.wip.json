@@ -1,0 +1,22 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The final rendered table no longer carries any leftovers from jesus2099's userscripts. The reported case was the \"Length\" column header arriving as `<th class=\"treleases mb-original-column\" title=\"SUPER MIND CONTROL Ⅱ X TURBO\" style=\"text-shadow: yellow 0px 0px 2px; …\">` — jesus2099's \"mb. SUPER MIND CONTROL Ⅱ X TURBO\" mutates the native header and cells in place before this script scrapes them, and `makeTableSortableUnified()` rebuilds `th.innerHTML` without ever resetting `className`/`title`/`style`, so all three rode straight through into our own header. Same for every Length `<td>` and, on release pages, for the whole `jesus2099userjs81127*` tracklist family (`toolzone`/`editbutt`/`openEdits` hover buttons, plus markers stamped onto the recording title link and Title cell). New `purgeJesus2099Artifacts()`/`_stripJesus2099InTable()` now clean every rendered `table.tbl` — header row included — on both render paths.",
+          "The purge also runs over the captured source rows in `groupedRows`/`allRows`, not just the live DOM. `runFilter()` re-renders by inserting `cloneNode(true)` copies of those rows and classes/attributes survive cloning, so cleaning only the live table would have pasted every marker back in on the next filter keystroke.",
+          "Three dispositions, so nothing real is ever destroyed: jesus2099's cover-art icon family is skipped entirely (it already has its own deliberately gated handling in `applyColumnErasers()`'s Strategy 2 and `_stripTransientCellState()` — re-stripping it here would have reintroduced the artwork-loss regression documented in `debug/CAA-missing-doubled.org`); pure-decoration elements are removed outright; everything else keeps the element and loses only the marker class, because those markers sit on genuine MusicBrainz content (`jesus2099userjs81127recording` is stamped on the recording title anchor itself). An unrecognised future marker defaults to the safe \"strip, don't remove\" path. The plugin `title` and its yellow `text-shadow` are dropped from marker-carrying `<th>`/`<td>` only — native MusicBrainz puts meaningful `title`s on `<a>`/`<abbr>`, and a `text-shadow` with no jesus2099 marker belongs to an unrelated third-party script (30 such elements in `debug/therising.html` alone), so neither may be stripped blind."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Scope note: the purge is confined to the `table.tbl` elements this script renders. Everything jesus2099 puts outside them — its sidebar/sub-header search links, pending-edit counters and its own toolbar (108-123 such markers per page in the sampled snapshots) — is left completely untouched, so the initial page keeps working exactly as before."
+        ]
+      }
+    ]
+  }
+]
