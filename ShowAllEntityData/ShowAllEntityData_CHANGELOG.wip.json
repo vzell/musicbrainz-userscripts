@@ -1,5 +1,26 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-09-04",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Millisecond track lengths on release pages. MusicBrainz stores every track length in milliseconds but only ever displays it rounded to the nearest second — a new ⏱ toggle at the left edge of the \"Length\" column header re-renders the whole column at full precision (\"4:50\" → \"4:50.160\") and back. It costs no network request at all: the values are already embedded in the page MusicBrainz served, in the tracklist component's own `<script type=\"application/json\">` payload. The toggle is page-wide, so on a multi-medium release every medium switches together instead of leaving one disc reading seconds and another milliseconds. Gated by \"Enable millisecond track lengths\" (default: ON, new ⏱️ TRACK LENGTH PRECISION section); with it off no toggle is injected, nothing is stamped, and the column renders exactly as before.",
+          "Sorting, filtering, highlighting and the 📊 unique-values dropdown all follow whatever precision the column is currently showing, with no per-consumer work — they already read the column's rendered text. So you can filter for \".666\", and \"Length info - Deviation\" simply becomes finer-grained. Toggling rewrites the captured source rows and re-renders through `runFilter()`, which is what keeps the active filters, their highlighting and the current sort order intact.",
+          "New \"Hide a '.000' millisecond part\" setting (default: OFF). MusicBrainz stores a length entered as plain \"m:ss\" with zero milliseconds, so \".000\" means \"no sub-second data on record\" rather than \"exactly zero\"; switching this on renders those as plain \"3:19\". Off by default because uniform width keeps the column easier to scan."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "The value revealed is the TRACK length (`tracks[].length`), never the underlying RECORDING's length — two different MusicBrainz fields that differ constantly: on `Born to Run` four of eight tracks disagree, one by three whole seconds. MusicBrainz renders the track length, ROUNDED, which is provable from that same release (`Tenth Avenue Freeze‐Out` displays \"3:12\", a value only 3:11.666 rounds to and never 3:11.000). The feature's contract is therefore \"reveal more precision in the number already on screen\", never \"show a different measurement\", and it is enforced at runtime: a stamped value whose rounded seconds disagree with what MusicBrainz rendered is discarded rather than displayed. Toggling back restores the original string verbatim rather than recomputing it, since recomputing could not reproduce MusicBrainz's rounding.",
+          "Resynced `ShowAllEntityData_HELP.txt` (new \"TRACK LENGTH PRECISION\" section, the ⏱️ settings block, and a note on the new duration-aware Length sorting under \"NUMERIC COLUMN ALIGNMENT\") and `CLAUDE.md` (new \"Track length precision and the `treleases` trap\" section, plus the new `length` debug channel)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-09-04",
     "sections": [

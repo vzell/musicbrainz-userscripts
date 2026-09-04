@@ -2217,6 +2217,49 @@
         },
 
         // ============================================================
+        // TRACK LENGTH PRECISION SECTION
+        // ============================================================
+        divider_ms_track_length: {
+            type: 'divider',
+            label: '⏱️ TRACK LENGTH PRECISION'
+        },
+
+        sa_enable_ms_track_length: {
+            label: 'Enable millisecond track lengths',
+            type: 'checkbox',
+            default: true,
+            description: 'MusicBrainz stores every track length in milliseconds but displays it '
+                         + 'rounded to the nearest second ("4:50"). When enabled, a ⏱ toggle appears '
+                         + 'in the "Length" column header; clicking it re-renders the whole column at '
+                         + 'full millisecond precision ("4:50.160"), and clicking again returns to '
+                         + 'seconds. Sorting, filtering and the 📊 unique-values dropdown always follow '
+                         + 'whatever the column is currently showing. Turn this off to remove the toggle '
+                         + 'entirely and leave the column exactly as MusicBrainz renders it.'
+        },
+
+        sa_ms_length_trim_zero_ms: {
+            label: 'Hide a ".000" millisecond part',
+            type: 'checkbox',
+            default: false,
+            description: 'With millisecond precision shown, render a length whose milliseconds are '
+                         + 'exactly zero as "3:19" instead of "3:19.000". MusicBrainz stores a length '
+                         + 'that was entered as plain "m:ss" with zero milliseconds, so ".000" really '
+                         + 'means "no sub-second data on record" rather than "exactly zero". Off by '
+                         + 'default, which keeps every value the same width and so keeps the column '
+                         + 'easy to scan.'
+        },
+
+        sa_enable_ms_length_debug: {
+            label: 'Enable millisecond track length debug logging',
+            type: 'checkbox',
+            default: false,
+            description: 'Enable detailed console logging for the millisecond track length pipeline '
+                         + '(which data source was used, how many cells were stamped, and any track '
+                         + 'whose millisecond value disagrees with the second-precision value '
+                         + 'MusicBrainz already rendered). Uses Lib.debug(\'length\', ...).'
+        },
+
+        // ============================================================
         // RELEASE EVENTS COLUMN SECTION
         // ============================================================
         divider_release_events_col: {
@@ -7851,6 +7894,12 @@
 
         const _tables = Array.from(document.querySelectorAll('table.tbl'));
         if (_tables.length === 0) return;
+
+        // Stamp the millisecond track lengths MusicBrainz already embeds in this
+        // page onto the native Length cells, before row extraction captures
+        // them. Display is untouched here — the ⏱ column-header toggle
+        // (_initMsLengthColHeaderToggle) is what switches precision later.
+        _msStampReleaseTrackLengths(_tables);
 
         const _acoustIdEnabled = Lib.settings.sa_enable_release_tracks_acoustid_column === true;
         const _isrcEnabled = Lib.settings.sa_enable_release_tracks_isrc_column === true;
@@ -15807,6 +15856,401 @@
         if (aMs === null) return 1;
         if (bMs === null) return -1;
         return isAscending ? aMs - bMs : bMs - aMs;
+    }
+
+    /**
+     * Conditional debug logger for the millisecond track-length pipeline,
+     * gated on `sa_enable_ms_length_debug`.
+     * @param {...*} args
+     * @returns {void}
+     */
+    function _msDbg(...args) {
+        if (Lib.settings.sa_enable_ms_length_debug) Lib.debug('length', ...args);
+    }
+
+    /** @type {?Object|undefined} `undefined` = not looked for yet, `null` = not present. */
+    let _msEmbeddedReleaseCache;
+
+    /**
+     * Returns MusicBrainz's own embedded release payload for the current page,
+     * or `null` when this page has none.
+     *
+     * A release page inlines its tracklist component's props as a
+     * `<script type="application/json">` — the object whose `.release.mediums`
+     * carries, per track, the exact millisecond length MusicBrainz itself only
+     * ever DISPLAYS rounded to the nearest second. No network request is needed
+     * for release pages at all; the data is already in the document.
+     *
+     * Memoized because that blob is large (~800 KB on a full release) and
+     * several of this feature's steps ask for it. The textual `"mediums"` guard
+     * avoids `JSON.parse`-ing the four unrelated sibling blobs (sidebar
+     * annotation, tags, ISWCs, …) just to reject them.
+     *
+     * @returns {?Object} The parsed payload, or `null` when absent/unparseable.
+     */
+    function _readEmbeddedReleaseJson() {
+        if (_msEmbeddedReleaseCache !== undefined) return _msEmbeddedReleaseCache;
+        _msEmbeddedReleaseCache = null;
+        for (const script of document.querySelectorAll('script[type="application/json"]')) {
+            const raw = script.textContent;
+            if (!raw || raw.indexOf('"mediums"') === -1) continue;
+            try {
+                const parsed = JSON.parse(raw);
+                if (parsed && parsed.release && Array.isArray(parsed.release.mediums)) {
+                    _msEmbeddedReleaseCache = parsed;
+                    _msDbg(`_readEmbeddedReleaseJson: found release payload (${raw.length} bytes, ` +
+                           `${parsed.release.mediums.length} medium(s))`);
+                    break;
+                }
+            } catch (err) {
+                _msDbg('_readEmbeddedReleaseJson: unparseable blob skipped:', err.message || String(err));
+            }
+        }
+        if (!_msEmbeddedReleaseCache) _msDbg('_readEmbeddedReleaseJson: no embedded release payload on this page');
+        return _msEmbeddedReleaseCache;
+    }
+
+    /** @type {?{byRecording: Map<string, number>, byPosition: Map<string, number>}|undefined} */
+    let _msTrackLengthMapCache;
+
+    /**
+     * Builds the millisecond lookup for the current release page's tracks.
+     *
+     * Reads **`tracks[].length`** — the TRACK's length — never
+     * `tracks[].recording.length`. Those are different values in MusicBrainz's
+     * data model and they disagree constantly: on `Born to Run`
+     * (`1d404e1d-…`), four of eight tracks differ, one by three whole seconds
+     * (`Meeting Across the River`: track `3:19.000` vs recording `3:16.000`).
+     * MusicBrainz renders the TRACK length, rounded to the nearest second —
+     * provable from that same release, whose `Tenth Avenue Freeze‐Out` shows
+     * `3:12`, a value only `3:11.666` (track) rounds to and never `3:11.000`
+     * (recording). Substituting the recording length would therefore silently
+     * change the number already on screen instead of refining it, so this
+     * feature's whole contract is "reveal more precision in the value shown",
+     * never "show a different measurement".
+     *
+     * Two keys per track, because neither alone is fully safe:
+     *   - `byRecording` — the recording MBID, read from the Title cell's own
+     *     direct-child anchor. Primary key.
+     *   - `byPosition` — `` `m${mediumIndex}n${trackNumber}` ``, using the
+     *     DISPLAYED track number (`"A1"` on vinyl, `"1"` on CD), which is what
+     *     the native `#` cell contains. Fallback for a row whose Title cell
+     *     has no resolvable recording link.
+     *
+     * @returns {?{byRecording: Map<string, number>, byPosition: Map<string, number>}}
+     *   `null` when this page carries no embedded release payload.
+     */
+    function _buildReleaseTrackLengthMap() {
+        if (_msTrackLengthMapCache !== undefined) return _msTrackLengthMapCache;
+        _msTrackLengthMapCache = null;
+        const payload = _readEmbeddedReleaseJson();
+        if (!payload) return _msTrackLengthMapCache;
+
+        const byRecording = new Map();
+        const byPosition  = new Map();
+        (payload.release.mediums || []).forEach((medium, medIdx) => {
+            (medium.tracks || []).forEach(track => {
+                // A data track or a video with no track length of its own has
+                // `length: null`; skip it so the cell keeps whatever
+                // MusicBrainz rendered (typically "?:??").
+                if (typeof track.length !== 'number') return;
+                const gid = track.recording && track.recording.gid;
+                if (gid) byRecording.set(gid, track.length);
+                if (track.number != null) byPosition.set(`m${medIdx}n${String(track.number).trim()}`, track.length);
+            });
+        });
+        if (!byRecording.size && !byPosition.size) {
+            _msDbg('_buildReleaseTrackLengthMap: payload had no track lengths');
+            return _msTrackLengthMapCache;
+        }
+        _msTrackLengthMapCache = { byRecording, byPosition };
+        _msDbg(`_buildReleaseTrackLengthMap: ${byRecording.size} by recording, ${byPosition.size} by position`);
+        return _msTrackLengthMapCache;
+    }
+
+    /**
+     * Formats a millisecond duration the way the Length column renders it:
+     * `M:SS.mmm`, or `H:MM:SS.mmm` once past an hour — the same shape
+     * jesus2099's own `time()` produces, so a page where both are present
+     * reads consistently.
+     *
+     * @param   {number} ms
+     * @param   {boolean} [trimZeroMs] When true, a `.000` fractional part is
+     *   omitted entirely. Reads `sa_ms_length_trim_zero_ms` when not passed.
+     *   MusicBrainz stores a length entered as plain `m:ss` with zero
+     *   milliseconds, so `.000` means "no sub-second data on record" rather
+     *   than "exactly zero".
+     * @returns {string}
+     */
+    function _msFormatDuration(ms, trimZeroMs) {
+        const trim = trimZeroMs === undefined
+            ? Lib.settings.sa_ms_length_trim_zero_ms === true
+            : !!trimZeroMs;
+        const totalSeconds = Math.floor(ms / 1000);
+        const frac    = ms % 1000;
+        const hours   = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        const head = hours
+            ? `${hours}:${String(minutes).padStart(2, '0')}`
+            : String(minutes);
+        const base = `${head}:${String(seconds).padStart(2, '0')}`;
+        return (trim && frac === 0) ? base : `${base}.${String(frac).padStart(3, '0')}`;
+    }
+
+    /**
+     * Stamps each native Length `<td>` of a release tracklist with the data the
+     * millisecond toggle needs, WITHOUT changing what the cell displays:
+     *
+     *   `data-mb-ms`       — the track's length in milliseconds.
+     *   `data-mb-sec-text` — the seconds-precision text MusicBrainz rendered,
+     *                        kept verbatim so toggling back restores exactly
+     *                        that string. MusicBrainz ROUNDS (`3:11.666` shows
+     *                        as `3:12`), so recomputing the seconds form from
+     *                        the milliseconds would not reliably reproduce it.
+     *
+     * Runs during `applyExtractTrackTitleData()`'s pre-processing, against the
+     * NATIVE page tables — before row extraction, so the attributes ride along
+     * into the captured rows and every `cloneNode(true)` copy made from them
+     * (attributes survive cloning; only listeners and JS properties do not).
+     *
+     * A stamped value is discarded when `Math.round(ms / 1000)` disagrees with
+     * the seconds MusicBrainz already rendered: that means the row was keyed to
+     * the wrong track, and showing a wrong duration is far worse than showing
+     * no extra precision. Cells MusicBrainz renders as `"?:??"` are skipped
+     * outright for the same reason — they stay unknown in both modes rather
+     * than gaining a number the page itself does not claim.
+     *
+     * @param   {HTMLTableElement[]} tables  Native `table.tbl` elements, in document order.
+     * @returns {void}
+     */
+    function _msStampReleaseTrackLengths(tables) {
+        if (Lib.settings.sa_enable_ms_track_length === false) return;
+        const maps = _buildReleaseTrackLengthMap();
+        if (!maps) return;
+
+        let stamped = 0, noData = 0, mismatched = 0;
+        tables.forEach((table, medIdx) => {
+            const thRow = table.querySelector(':scope > thead > tr');
+            const tbody = table.querySelector(':scope > tbody');
+            if (!thRow || !tbody) return;
+            const ths      = Array.from(thRow.querySelectorAll('th'));
+            const lenIdx   = ths.findIndex(th => th.textContent.trim() === 'Length');
+            const titleIdx = ths.findIndex(th => th.textContent.trim() === 'Title');
+            const posIdx   = ths.findIndex(th => th.textContent.trim() === '#');
+            if (lenIdx === -1) return;
+
+            Array.from(tbody.querySelectorAll(':scope > tr')).forEach(tr => {
+                const lenTd = tr.children[lenIdx];
+                if (!lenTd || lenTd.dataset.mbMs) return;   // idempotent
+
+                let ms;
+                // Primary key: the Title cell's own DIRECT-CHILD recording
+                // anchor. Scoped deliberately — a track's `<div class="ars">`
+                // can carry further /recording/ links (e.g. a "DJ-mix of"
+                // relationship), and an unscoped query would grab one of those.
+                const titleTd = titleIdx === -1 ? null : tr.children[titleIdx];
+                const recA    = titleTd && titleTd.querySelector(':scope > a[href*="/recording/"]');
+                const gidM    = recA && recA.getAttribute('href').match(/\/recording\/([0-9a-f-]{36})/);
+                if (gidM && maps.byRecording.has(gidM[1])) ms = maps.byRecording.get(gidM[1]);
+
+                if (ms === undefined && posIdx !== -1) {
+                    const num = (tr.children[posIdx].textContent || '').trim();
+                    const key = `m${medIdx}n${num}`;
+                    if (maps.byPosition.has(key)) ms = maps.byPosition.get(key);
+                }
+                if (ms === undefined) { noData++; return; }
+
+                const secText = lenTd.textContent.trim();
+                const shownMs = _parseDurationToMs(secText);
+                if (shownMs === null) { noData++; return; }   // "?:??" and anything unparseable
+                if (Math.round(ms / 1000) !== Math.round(shownMs / 1000)) {
+                    mismatched++;
+                    _msDbg(`_msStampReleaseTrackLengths: REJECTED — MusicBrainz shows "${secText}" but the ` +
+                           `embedded payload says ${ms}ms ("${_msFormatDuration(ms, false)}"); wrong track keyed?`);
+                    return;
+                }
+
+                lenTd.dataset.mbMs      = String(ms);
+                lenTd.dataset.mbSecText = secText;
+                stamped++;
+            });
+        });
+        _msDbg(`_msStampReleaseTrackLengths: stamped ${stamped} cell(s), ${noData} without usable data, ` +
+               `${mismatched} rejected as mismatched`);
+    }
+
+    /**
+     * Whether the Length column is currently rendering milliseconds.
+     *
+     * Read from the DOM (the `data-mb-ms-shown` flag on a stamped cell) rather
+     * than from a module variable, so the state survives every re-render for
+     * free: `runFilter()` rebuilds the table from `cloneNode(true)` copies of
+     * the captured source rows, and attributes come along on the clone.
+     *
+     * @returns {boolean}
+     */
+    function _msLengthPrecisionShown() {
+        return !!document.querySelector('table.tbl tbody td[data-mb-ms][data-mb-ms-shown]');
+    }
+
+    /**
+     * Rewrites one stamped Length cell to the requested precision.
+     *
+     * Clears `data-mb-int-col-styled` so `applyIntegerColumnStyling()` (which
+     * is idempotent precisely on that flag) rebuilds the cell's three
+     * `.mb-ic-left`/`.mb-ic-sep`/`.mb-ic-right` split-alignment spans around
+     * the new text.
+     *
+     * @param   {HTMLTableCellElement} td  A cell carrying `data-mb-ms`.
+     * @param   {boolean} showMs
+     * @returns {void}
+     */
+    function _msSetCellText(td, showMs) {
+        const ms = parseInt(td.dataset.mbMs, 10);
+        if (!Number.isFinite(ms)) return;
+        td.textContent = showMs
+            ? _msFormatDuration(ms)
+            : (td.dataset.mbSecText || _msFormatDuration(ms, true));
+        delete td.dataset.mbIntColStyled;
+        if (showMs) td.dataset.mbMsShown = '1';
+        else delete td.dataset.mbMsShown;
+    }
+
+    /**
+     * Switches the whole Length column between seconds and milliseconds.
+     *
+     * Rewrites the CAPTURED SOURCE rows (`groupedRows`/`allRows`) rather than
+     * the live cells, then lets `runFilter()` re-render from them. That is the
+     * script's own re-render path, so it comes with everything already wired:
+     * the live table is rebuilt from clones of the rows just updated, the
+     * active column/global filters are re-applied and re-highlighted against
+     * the new text, and the current sort order is preserved. Editing live cells
+     * instead would be undone by the very next keystroke.
+     *
+     * Sorting, filtering and the 📊 unique-values dropdown all read the
+     * column's rendered text (via `getCleanVisibleText()`/
+     * `getCleanColumnText()`), so they follow the new precision with no
+     * further work — including `_findCellLengthSeconds()`, which already
+     * parses a `.mmm` part, so the "Length info - Deviation" buckets simply
+     * become finer-grained. The dropdown's cached per-table bundle is keyed on
+     * which rows are visible and cannot notice cell text changing underneath
+     * it, so it is force-invalidated here (same reason
+     * `initReleaseEventsColumn()` does it after populating its own column).
+     *
+     * @param   {boolean} showMs
+     * @returns {void}
+     */
+    function _msApplyLengthPrecision(showMs) {
+        const rows = [];
+        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => rows.push(...g.rows));
+        if (typeof allRows !== 'undefined') rows.push(...allRows);
+        if (!rows.length) return;
+
+        let changed = 0;
+        rows.forEach(row => {
+            row.querySelectorAll('td[data-mb-ms]').forEach(td => { _msSetCellText(td, showMs); changed++; });
+            applyIntegerColumnStyling(row, activeIntegerColumns);
+        });
+        // Re-derive the column's min-widths: the ".mmm" part changes the widest
+        // right-hand segment, so the ':' would otherwise no longer line up.
+        finalizeSplitAlignedColumns(rows, activeIntegerColumns);
+
+        document.querySelectorAll('table.tbl').forEach(t => _invalidateUniqDropDataCacheForTable(t));
+        _msDbg(`_msApplyLengthPrecision: ${showMs ? 'milliseconds' : 'seconds'} — ${changed} cell(s) rewritten`);
+        runFilter();
+    }
+
+    /**
+     * Paints one `.mb-ms-col-hdr-btn` for the given state: `▶⏱` when the column
+     * shows seconds (there is more precision behind this), `▼⏱` when it is
+     * already showing it. `aria-pressed` carries the same state for assistive
+     * technology, and the CSS tints the engaged button so it is scannable
+     * across a wide table without relying on the glyph alone.
+     *
+     * @param   {HTMLElement} btn
+     * @param   {boolean} showing
+     * @returns {void}
+     */
+    function _msUpdateColHdrBtn(btn, showing) {
+        btn.textContent = showing ? '▼⏱' : '▶⏱';
+        btn.setAttribute('aria-pressed', showing ? 'true' : 'false');
+        btn.title = showing
+            ? 'Hide millisecond precision — show "Length" as M:SS (MusicBrainz\'s own rounding)'
+            : 'Show millisecond precision for "Length"';
+        btn.setAttribute('aria-label', showing
+            ? 'Hide millisecond precision in the Length column'
+            : 'Show millisecond precision in the Length column');
+    }
+
+    /**
+     * Toggles the Length column's precision and repaints every header button.
+     *
+     * All buttons are updated, not just the clicked one: the toggle is
+     * page-wide by design. On a multi-medium release each medium renders its
+     * own table with its own Length header, and a release whose CD showed
+     * milliseconds while its vinyl showed seconds would be actively
+     * misleading.
+     *
+     * @returns {void}
+     */
+    function _msToggleLengthPrecision() {
+        const next = !_msLengthPrecisionShown();
+        _msApplyLengthPrecision(next);
+        document.querySelectorAll('.mb-ms-col-hdr-btn').forEach(btn => _msUpdateColHdrBtn(btn, next));
+    }
+
+    /**
+     * Injects the `▶⏱`/`▼⏱` millisecond toggle into every rendered Length
+     * column header, as the first child of `.mb-col-hdr-flex` — so the header
+     * reads `[⏱] Length ⇅ ▲ ▼ [ N 📊 ]`, the same slot and idiom
+     * `.mb-caa-col-hdr-btn` already occupies on CAA/EAA columns.
+     *
+     * Must run POST-render, from the render tail: `makeTableSortableUnified()`
+     * rebuilds every `<th>` from a plain column-name string and wipes
+     * `th.innerHTML` first, so anything injected earlier is destroyed when the
+     * real flex layout is built (the same constraint documented on
+     * `_initColHeaderGlyph()`). Idempotent via a presence check, so re-running
+     * on a later render pass is safe.
+     *
+     * No-ops when the feature is off, or when no cell was ever stamped — a
+     * pageType with no millisecond source has nothing to toggle, so it gets no
+     * button rather than a dead one.
+     *
+     * @returns {void}
+     */
+    function _initMsLengthColHeaderToggle() {
+        if (Lib.settings.sa_enable_ms_track_length === false) return;
+        if (!document.querySelector('table.tbl tbody td[data-mb-ms]')) return;
+
+        const showing = _msLengthPrecisionShown();
+        document.querySelectorAll('table.tbl').forEach(table => {
+            const th = Array.from(table.querySelectorAll('thead th'))
+                .find(h => (h.dataset.colName || '') === 'Length');
+            if (!th) return;
+            const hdrFlex = th.querySelector('.mb-col-hdr-flex');
+            if (!hdrFlex) return;
+
+            let btn = hdrFlex.querySelector('.mb-ms-col-hdr-btn');
+            if (!btn) {
+                btn = document.createElement('span');
+                btn.className = 'mb-ms-col-hdr-btn';
+                btn.setAttribute('role', 'button');
+                btn.tabIndex = 0;
+                const activate = (ev) => {
+                    // stopPropagation: the <th> itself carries sort handlers.
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    _msToggleLengthPrecision();
+                };
+                btn.addEventListener('click', activate);
+                btn.addEventListener('keydown', (ev) => {
+                    if (ev.key === 'Enter' || ev.key === ' ') activate(ev);
+                });
+                hdrFlex.insertBefore(btn, hdrFlex.firstChild);
+            }
+            _msUpdateColHdrBtn(btn, showing);
+        });
     }
 
     /**
@@ -30557,6 +31001,46 @@ a { color: #1565c0; }`;
             border-color: #bbb;
         }
 
+        /* Per-column millisecond precision toggle in the "Length" column header.
+           Prepended as the first child of .mb-col-hdr-flex, in the same slot and
+           with the same box metrics as .mb-caa-col-hdr-btn above: ▶⏱ shows
+           seconds (more precision available), ▼⏱ shows milliseconds.
+           The engaged state is ALSO tinted, borrowing
+           .mb-col-uniq-wrap.mb-col-uniq-active's "this control is on" idiom, so
+           it stays scannable across a wide table without relying on telling ▶
+           from ▼ at a glance. */
+        .mb-ms-col-hdr-btn {
+            cursor: pointer;
+            font-size: 0.80em;
+            line-height: 1;
+            opacity: 0.60;
+            user-select: none;
+            padding: 1px 3px;
+            margin-right: 3px;
+            border-radius: 3px;
+            border: 1px solid transparent;
+            transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+            vertical-align: middle;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+        .mb-ms-col-hdr-btn:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.07);
+            border-color: #bbb;
+        }
+        .mb-ms-col-hdr-btn:focus-visible {
+            outline: 2px solid rgba(0, 100, 255, 0.55);
+            outline-offset: 1px;
+        }
+        .mb-ms-col-hdr-btn[aria-pressed="true"] {
+            opacity: 1;
+            background: rgba(0, 100, 255, 0.13);
+            border-color: #9bb8e8;
+        }
+
         #mb-col-uniq-dropdown {
             position: fixed;
             z-index: 999999;
@@ -43863,6 +44347,12 @@ a { color: #1565c0; }`;
         // so the observer only ever sees genuinely NEW late mutations.
         purgeJesus2099Artifacts();
 
+        // Inject the ⏱ millisecond-precision toggle into the "Length" column
+        // header. Must be here, post-render: makeTableSortableUnified() wipes
+        // th.innerHTML when it builds the real .mb-col-hdr-flex layout, so
+        // anything injected earlier would be destroyed.
+        _initMsLengthColHeaderToggle();
+
         // Install (or re-confirm) the MutationObserver that strips jesus2099 treleases
         // nodes from Length cells the instant they are injected into the live tbody.
         if (Lib.settings.sa_enable_numeric_alignment !== false) {
@@ -46423,6 +46913,12 @@ a { color: #1565c0; }`;
         // and header — unconditional, and BEFORE initTreleasesObserver() below
         // so the observer only ever sees genuinely NEW late mutations.
         purgeJesus2099Artifacts();
+
+        // Inject the ⏱ millisecond-precision toggle into the "Length" column
+        // header. Must be here, post-render: makeTableSortableUnified() wipes
+        // th.innerHTML when it builds the real .mb-col-hdr-flex layout, so
+        // anything injected earlier would be destroyed.
+        _initMsLengthColHeaderToggle();
 
         // Install (or re-confirm) the MutationObserver that strips jesus2099 treleases
         // nodes from Length cells the instant they are injected into any live tbody.

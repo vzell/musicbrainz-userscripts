@@ -236,7 +236,7 @@ exhaustive — `configSchema` (~212-2670) currently defines 216 distinct
 `idb`, `cache`, `collapse`, `expand`, `cleanup`, `highlight`, `ui`, `settings`,
 `picard`, `barcode`, `erg`, `cdtoc`, `navigation`, `meta`, `density`, `export`,
 `shortcuts`, `resize`, `tooltips`, `relationships`, `unicode`, `stats`,
-`success`, `indices`
+`success`, `indices`, `length`
 
 Enable via the `sa_enable_debug_logging` setting or the Tampermonkey menu.
 
@@ -637,6 +637,65 @@ below, which mixed unrelated topics under one header.
 | v9.99.886 | "Event info" renamed to "Event info - Event date"; new sibling "Event info - Event cancelled" |
 | v9.99.893 | "Credit details" → `creditAttr`/`creditTask`/`creditDate`/`creditInstrument`/`creditAltName` |
 | next | Structure/Flags/Format info/Tracks info/Catalog info/CAA info/EAA info each split further; "Release events"/"Country details" labels normalized to the current naming convention (see `// @version` header for the exact version) |
+
+## Track length precision (`Length` column) and the `treleases` trap
+
+**`treleases` is a NATIVE MusicBrainz class**, not a jesus2099 marker. A
+release page renders its Length column as `<th class="treleases">` plus one
+`<td class="treleases">` per track — verified in
+`tests/snapshots/release-tracks/raw.html`, which the Playwright harness
+captures with only this script loaded (9 occurrences, zero `jesus2099`
+strings). jesus2099's `RECORDING_LENGTH_COLUMN` merely REUSES that class name
+on the page types MusicBrainz does not mark (work, artist-relationships,
+place-performances), and never adds it alone — the same statements also set
+its own script name as the `title` and, on the header, a yellow
+`text-shadow`. `_isJesus2099Treleases()` tests for exactly that
+co-occurrence and is the ONLY correct way to ask "did jesus2099 put this
+here"; three separate call sites once keyed on the bare class and were each
+deleting native markup (see git log). Anything new that touches `treleases`
+must go through that predicate.
+
+`purgeJesus2099Artifacts()`/`_stripJesus2099InTable()` strip every remaining
+jesus2099 artifact from the tables this script renders — header row included,
+plus the captured source rows in `groupedRows`/`allRows` (cleaning only the
+live DOM would let the next `runFilter()` keystroke paste them back from the
+clones). Scope stops at `table.tbl`: jesus2099's features on the surrounding
+page keep working. The cover-art icon family is deliberately EXCLUDED — it
+already has its own `_hadInlineArtPh`-gated handling in
+`applyColumnErasers()` Strategy 2 / `_stripTransientCellState()`.
+
+**Sorting** goes through `_sortColumnKind()` (`'duration'`/`'numeric'`/
+`'text'`) for BOTH `createSortComparator()` and
+`createMultiColumnComparator()` — they used to disagree. `_compareDurations()`
+returns a DIRECTION-FINAL number, which is how `"?:??"` is pinned last in
+both directions; a caller must never negate it, and only its `0` may fall
+through to a tie-breaking column.
+
+**Millisecond precision** is opt-in per page via the `▶⏱`/`▼⏱`
+`.mb-ms-col-hdr-btn` prepended to the Length header's `.mb-col-hdr-flex`
+(same slot/idiom as `.mb-caa-col-hdr-btn`), gated by
+`sa_enable_ms_track_length`. Key invariants:
+
+- Source is **`tracks[].length`**, never `tracks[].recording.length`. Those
+  are different MusicBrainz fields and differ constantly (4 of `Born to Run`'s
+  8 tracks, one by 3 s). MusicBrainz renders the TRACK length ROUNDED, so the
+  contract is "reveal more precision in the number already shown", never
+  "show a different measurement". `_msStampReleaseTrackLengths()` enforces it
+  with a round-trip check and discards any value that disagrees with the
+  seconds MusicBrainz rendered.
+- `data-mb-sec-text` stores the original seconds string verbatim; toggling
+  back restores it rather than recomputing (MusicBrainz rounds, so `3:11.666`
+  must return to `3:12`, not `3:11`).
+- State lives in the DOM (`data-mb-ms-shown`), not a module variable, so it
+  survives `cloneNode(true)` re-renders for free.
+- Toggling rewrites the SOURCE rows then calls `runFilter()`; filters, sort
+  order and highlighting come along automatically because every consumer reads
+  the rendered text. The uniq-dropdown cache must be force-invalidated (its
+  key is the visible row set, which does not change).
+- On release pages the data is already in the page's own
+  `<script type="application/json">` (`$.release.mediums[].tracks[]`) — no
+  network. Work/artist-relationships/place-performances have NO length data in
+  the page at all and need `/ws/2/{type}/{mbid}?inc=recording-rels`.
 
 ## Common pitfalls
 
