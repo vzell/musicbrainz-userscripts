@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-09-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Stop deleting MusicBrainz's own `treleases` class from release tracklists. `treleases` is genuine MusicBrainz markup there — a release page natively renders its Length column as `<th class=\"treleases\">` plus one `<td class=\"treleases\">` per track (verified in `tests/snapshots/release-tracks/raw.html`, which the Playwright harness captures with only this script loaded: 9 occurrences, and not one `jesus2099` string, plugin `title` or yellow `text-shadow` in the whole file). jesus2099's `RECORDING_LENGTH_COLUMN` merely reuses the same class name on the page types MusicBrainz does NOT mark (work, artist-relationships, place-performances), and never adds it alone — the same statements also set its own script name as the `title` and, on the header, a yellow `text-shadow`. New `_isJesus2099Treleases()` tests for exactly that co-occurrence, so a bare `treleases` is now recognised as MusicBrainz's and left alone.",
+          "Three places keyed on the bare class and are now gated on that predicate: the WIP.1 artifact purge (which had started stripping it from the Length `<th>`), `applyColumnErasers()`'s `'jesus2099-any'` Strategy 3b (which had been emptying `class`/`style`/`title` on all eight Length `<td>`s of every release tracklist — a pre-existing defect, visible in the committed `release-tracks` snapshot baseline as `<td class=\"\">`), and `initTreleasesObserver()`'s dispatch (which fired `_repairTreleasesTd()` on our own freshly-rendered native cells, rebuilding them from plain `textContent` and so discarding any filter-highlight spans inside them). The predicate is conservative by construction: with no corroborating evidence the class is left in place, so the failure direction is \"a stale third-party class survives\", never \"native markup is deleted\"."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-09-04",
     "sections": [

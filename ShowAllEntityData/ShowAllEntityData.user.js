@@ -5041,7 +5041,12 @@
                 // script's own rows permanently free of it — genuine future
                 // jesus2099 mutations on the LIVE table are untouched by this
                 // and still repaired reactively by the observer as intended.
-                if (cell.classList.contains('treleases')) {
+                // Gated on _isJesus2099Treleases(): `treleases` is MusicBrainz's
+                // OWN class on a release tracklist's Length column (see that
+                // predicate's JSDoc), and this eraser is declared for exactly
+                // that column on release-tracks — so an ungated strip deleted
+                // native markup on every release page.
+                if (_isJesus2099Treleases(cell)) {
                     cell.classList.remove('treleases');
                     cell.removeAttribute('title');
                     cell.style.cssText = '';
@@ -42768,16 +42773,60 @@ a { color: #1565c0; }`;
     const _J2_DECORATION_SUFFIXES = ['toolzone', 'editbutt', 'openedits', 'idcountzone'];
 
     /**
+     * Decides whether an element's `treleases` class was put there by
+     * jesus2099 — or by MusicBrainz itself.
+     *
+     * **`treleases` is genuine MusicBrainz markup on release tracklists.** A
+     * release page natively renders its Length column as
+     * `<th class="treleases">` plus one `<td class="treleases">` per track;
+     * verified in `tests/snapshots/release-tracks/raw.html`, which the
+     * Playwright harness captures with only this script loaded — 9 occurrences
+     * there, and not one `jesus2099` string, plugin `title` or yellow
+     * `text-shadow` anywhere in the file (see
+     * scripts/check-treleases-provenance.py).
+     *
+     * jesus2099's `RECORDING_LENGTH_COLUMN` reuses that same class name on the
+     * page types MusicBrainz does NOT mark — work, artist-relationships,
+     * place-performances — where it adds it to the header and cells it
+     * rewrites. Crucially it never adds the class alone: the same statements
+     * also set its own script name as the `title` (`"SUPER MIND CONTROL Ⅱ X
+     * TURBO"`, with NON-BREAKING spaces) and, on the header, a yellow
+     * `text-shadow`. That co-occurrence is the only reliable discriminator,
+     * and it is what this predicate tests.
+     *
+     * Treating a bare `treleases` as jesus2099's is therefore wrong, and
+     * destructive: it deletes MusicBrainz's own class off every release
+     * tracklist's Length column, taking whatever MusicBrainz styles through it
+     * along too.
+     *
+     * Conservative by construction — with no corroborating evidence the class
+     * is left alone, so the failure direction is "a stale third-party class
+     * survives", never "native markup is deleted".
+     *
+     * @param   {Element} el
+     * @returns {boolean} True only when jesus2099 demonstrably added the class.
+     */
+    function _isJesus2099Treleases(el) {
+        if (!el.classList.contains('treleases')) return false;
+        // MusicBrainz puts no title on its own Length <th>/<td>; jesus2099
+        // always does, in the same breath as the class.
+        if (el.hasAttribute('title')) return true;
+        return /yellow/i.test(el.style.textShadow || '');
+    }
+
+    /**
      * Returns every class token on `el` that marks it as touched by one of
-     * jesus2099's userscripts: any token starting with `jesus2099`, plus the
-     * bare `treleases` token that "mb. SUPER MIND CONTROL Ⅱ X TURBO" stamps
-     * onto the Length `<th>`/`<td>` it rewrites (see `_repairTreleasesTd()`).
+     * jesus2099's userscripts: any token starting with `jesus2099`, plus a
+     * `treleases` token that `_isJesus2099Treleases()` attributes to
+     * jesus2099 rather than to MusicBrainz itself.
      *
      * @param   {Element} el
      * @returns {string[]} Marker tokens, empty when the element is untouched.
      */
     function _j2MarkerTokens(el) {
-        return Array.from(el.classList).filter(t => t === 'treleases' || /^jesus2099/i.test(t));
+        return Array.from(el.classList).filter(t => (
+            t === 'treleases' ? _isJesus2099Treleases(el) : /^jesus2099/i.test(t)
+        ));
     }
 
     /**
@@ -43047,23 +43096,29 @@ a { color: #1565c0; }`;
             if (_observedTbodies.has(tbody)) return;
             _observedTbodies.add(tbody);
 
+            // Every dispatch below is gated on _isJesus2099Treleases() rather
+            // than on the bare `treleases` class: MusicBrainz marks a release
+            // tracklist's own Length column with that exact class (see the
+            // predicate's JSDoc), and _repairTreleasesTd() rebuilds the cell
+            // from plain textContent — so an ungated observer fired on our own
+            // freshly-rendered native cells, stripping MusicBrainz's class and
+            // discarding any filter-highlight spans inside them.
             const observer = new MutationObserver(mutations => {
                 for (const mutation of mutations) {
                     if (mutation.type === 'childList') {
                         for (const node of mutation.addedNodes) {
                             if (node.nodeType !== Node.ELEMENT_NODE) continue;
-                            if (node.classList?.contains('treleases')) {
+                            if (_isJesus2099Treleases(node)) {
                                 _repairTreleasesTd(node);
                             } else {
-                                node.querySelectorAll('[class="treleases"]')
-                                    .forEach(el => _repairTreleasesTd(el));
+                                node.querySelectorAll('.treleases')
+                                    .forEach(el => { if (_isJesus2099Treleases(el)) _repairTreleasesTd(el); });
                             }
                         }
                     } else if (mutation.type === 'attributes') {
                         // Jesus2099 mutates an existing <td>'s class to 'treleases'
                         const node = mutation.target;
-                        if (node.nodeType === Node.ELEMENT_NODE &&
-                            node.classList?.contains('treleases')) {
+                        if (node.nodeType === Node.ELEMENT_NODE && _isJesus2099Treleases(node)) {
                             _repairTreleasesTd(node);
                         }
                     }

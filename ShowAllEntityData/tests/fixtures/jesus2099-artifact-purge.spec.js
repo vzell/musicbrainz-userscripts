@@ -158,6 +158,11 @@ test.describe('jesus2099 artifact purge on the final rendered page', () => {
                 '<div class="jesus2099userjs81127toolzone">decoration</div>',
                 '<span class="jesus2099userjs81127recdis comment">(live, 2002)</span>',
                 '<table><tbody><tr>',
+                // NATIVE MusicBrainz Length cell: `treleases` with no plugin
+                // title and no yellow text-shadow. MusicBrainz marks a release
+                // tracklist's own Length column exactly like this, so it must
+                // survive untouched — see _isJesus2099Treleases().
+                '<td class="treleases">3:12</td>',
                 '<td class="treleases" title="SUPER MIND CONTROL" style="text-shadow: yellow 0px 0px 2px;">4:50</td>',
                 '</tr></tbody></table>',
             ].join('');
@@ -166,14 +171,21 @@ test.describe('jesus2099 artifact purge on the final rendered page', () => {
         });
 
         expect(result).not.toBeNull();
-        // The toolzone div is the only removal; the treleases <td> and the
-        // recdis <span> are marker-stripped; the caa-icon anchor is skipped.
+        // The toolzone div is the only removal; the jesus2099 treleases <td>
+        // (plugin title present) and the recdis <span> are marker-stripped; the
+        // caa-icon anchor and the NATIVE treleases <td> are both skipped.
         expect(result.removed).toBe(1);
         expect(result.stripped).toBe(2);
 
-        // Artwork family untouched — its marker is deliberately still there.
+        // Only the artwork family is still reported as an outstanding marker
+        // (it is owned elsewhere, with a load-bearing gate). The native
+        // `treleases` cell does NOT appear here: markersLeft is built from
+        // _j2MarkerTokens(), which no longer attributes an unaccompanied
+        // `treleases` to jesus2099 at all — so its survival is asserted on the
+        // resulting markup instead.
         expect(result.markersLeft).toEqual(['jesus2099userjs154481']);
         expect(result.html).toContain('caa-icon');
+        expect(result.html).toContain('<td class="treleases">3:12</td>');
 
         expect(result.html).not.toContain('toolzone');
         expect(result.html).not.toContain('decoration');
