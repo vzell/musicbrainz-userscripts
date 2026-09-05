@@ -77,6 +77,13 @@ get wrong by hand, and the reason this is a script:
   longest-token-first (so `WIP.10` survives the `WIP.1` rule) and treats an
   unknown reference as a hard error.
 
+  **Writing a WIP entry that mentions a `WIP.N` token as a STRING — rather
+  than citing a release — wrap it in backticks.** A bare token is a citation
+  and gets rewritten. Both failure modes are real: a literal naming a number
+  the batch does not contain aborts the whole fold, and a literal naming one
+  it DOES contain is silently turned into a version, so a sentence about a
+  placeholder becomes a false claim about a release.
+
 Then sanity-check the result before committing:
 
 ```bash
