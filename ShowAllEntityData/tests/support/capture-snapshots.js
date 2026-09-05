@@ -29,6 +29,7 @@ const { loadFromDiskFixture } = require('./diskFixture');
 const { waitForRenderComplete } = require('./browser');
 const { captureRaw, captureRendered, scrub, diffSummary } = require('./snapshot');
 const { seedGmValues } = require('./gmStubs');
+const { authStorageState } = require('./authState');
 const { dismissCustomConfirmDialog } = require('./customDialog');
 const {
     waitForFilterSettled, waitForSortSettled, waitForActualRowCount, waitForColHeaderCountsStable,
@@ -40,7 +41,6 @@ const {
 } = require('./artistEventsFixture');
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
-const AUTH_FILE = path.join(REPO_ROOT, 'playwright', '.auth', 'vzell.json');
 const SNAPSHOTS_DIR = path.join(__dirname, '..', 'snapshots');
 const PAGETYPES_PATH = path.join(__dirname, '..', 'pagetypes.json');
 const USERSCRIPT_PATH = path.join(REPO_ROOT, 'ShowAllEntityData.user.js');
@@ -104,7 +104,7 @@ async function captureOne(browser, config) {
         pageType, url, showAllButtonSelector, seedGmValues: seedValues,
         hasCaaOrEaa, hasRelationships, waitForAutoResize = true, renderTimeout = 90000,
     } = config;
-    const context = await browser.newContext(fs.existsSync(AUTH_FILE) ? { storageState: AUTH_FILE } : {});
+    const context = await browser.newContext(authStorageState({ label: 'capture-snapshots' }));
     const page = await context.newPage();
 
     const dir = path.join(SNAPSHOTS_DIR, pageType);
@@ -291,7 +291,7 @@ async function measureOnce(browser, config) {
         url, showAllButtonSelector, seedGmValues: seedValues,
         hasCaaOrEaa, hasRelationships, waitForAutoResize = true, renderTimeout = 90000,
     } = config;
-    const context = await browser.newContext(fs.existsSync(AUTH_FILE) ? { storageState: AUTH_FILE } : {});
+    const context = await browser.newContext(authStorageState({ label: 'capture-snapshots' }));
     const page = await context.newPage();
 
     await seedGmValues(page, seedValues);

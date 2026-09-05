@@ -74,6 +74,17 @@
     "url": "https://musicbrainz.org/series/aa3694d3-a3d0-48ed-8f07-5b576de87908",
     "tableMode": "single",
     "showAllButtonSelector": "button[data-label=\"Show all Releases for Series\"]",
+    "seedGmValues": { "sa_enable_caa_pics": false, "sa_enable_relationships_column": false },
+    "hasCaaOrEaa": false,
+    "hasRelationships": false,
+    "waitForAutoResize": true
+  },
+  {
+    "pageType": "series-recordings",
+    "url": "https://musicbrainz.org/series/83a184b0-1759-4205-9844-37e18957da5c",
+    "tableMode": "single",
+    "showAllButtonSelector": "button[data-label=\"Show all Recordings for Series\"]",
+    "seedGmValues": { "sa_enable_caa_pics": false, "sa_enable_relationships_column": false, "sa_enable_event_parts_extractor": true },
     "hasCaaOrEaa": false,
     "hasRelationships": false,
     "waitForAutoResize": true

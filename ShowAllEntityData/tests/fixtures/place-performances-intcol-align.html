@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Place “The Stone Pony” - Performances - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        A place-performances-filtered page (link_type_id present => tableMode
+        'single'), shaped to reproduce ONE specific defect: integerColumns'
+        `colIdx` being resolved against a column list that omits the
+        `eventParts` synthetic columns.
+
+        The three ingredients have to coexist, and place-performances
+        (-filtered) is the only pageType where they do:
+
+          1. `extractMainColumn: 'Title'` -> synthetic MB-Name/Comment/
+             Primary alias columns.
+          2. a `syntheticColumnExtractors` entry sourcing from that synthetic
+             'Comment' (`eventParts`) -> nine Event-* columns. Every Title
+             cell below therefore carries a real live-performance
+             disambiguation, so the extractor actually emits cells.
+          3. `integerColumns` entries that resolve AFTER those Event-*
+             columns — here R-DD/R-MM/R-YYYY, which come from
+             `injectedColumnExtractors` off the injected 'Release events'
+             column. That column only has to be DECLARED for the bug to
+             appear; its WS/2 fetch is stubbed empty, since what matters is
+             the column list, not the data.
+
+        With the Event-* names missing from that list, every later column
+        resolved nine indices too low and `applyIntegerColumnStyling()` —
+        which addresses cells POSITIONALLY via `row.cells[colIdx]` — stamped
+        its alignment onto whatever happened to sit there. R-YYYY (align 'C')
+        landed on 'MB-Name', centring a text column; R-DD/R-MM (align 'R')
+        landed on two Event-* columns.
+
+        Column shape matches the real page (see the sibling
+        place-performances-ms-length.html fixture): Date | Title | Attributes
+        | Artist | Length.
+    -->
+    <div id="content">
+        <div class="wrap-anywhere placeheader">
+            <h1><a href="/place/6a59a67c-fcc5-491f-949c-bfc45bc97463"><bdi>The Stone Pony</bdi></a></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/performances">Performances</a></li></ul>
+        </div>
+        <h2>Performances</h2>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Title</th>
+                    <th>Attributes</th>
+                    <th>Artist</th>
+                    <th>Length</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1976-05-30</td>
+                    <td><a class="wrap-anywhere" href="/recording/528327c7-0f7a-46d1-b03f-700ebc39f747"><bdi>Havin&#x2019; a Party</bdi></a> <span class="comment">(<bdi>live, 1976-05-30: The Stone Pony, Asbury Park, NJ, USA</bdi>)</span></td>
+                    <td></td>
+                    <td><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"><bdi>Bruce Springsteen</bdi></a></td>
+                    <td>5:05</td>
+                </tr>
+                <tr>
+                    <td>1976-05-30</td>
+                    <td><a class="wrap-anywhere" href="/recording/de9ff1d7-dd78-4ed6-a328-c1ab126304e6"><bdi>That&#x2019;s How It Feels</bdi></a> <span class="comment">(<bdi>live, 1976-05-30: The Stone Pony, Asbury Park, NJ, USA</bdi>)</span></td>
+                    <td></td>
+                    <td><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"><bdi>Bruce Springsteen</bdi></a></td>
+                    <td>4:24</td>
+                </tr>
+                <tr>
+                    <td>1977-04-17</td>
+                    <td><a class="wrap-anywhere" href="/recording/089026d3-1c1d-45bb-bf16-072d0bff8412"><bdi>I Don&#x2019;t Want to Go Home</bdi></a> <span class="comment">(<bdi>live, 1977-04-17: The Stone Pony, Asbury Park, NJ, USA</bdi>)</span></td>
+                    <td></td>
+                    <td><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"><bdi>Bruce Springsteen</bdi></a></td>
+                    <td>5:35</td>
+                </tr>
+                <tr>
+                    <td>1977-04-17</td>
+                    <td><a class="wrap-anywhere" href="/recording/299b2860-570e-4dca-9166-9e3842d8c381"><bdi>The Fever</bdi></a> <span class="comment">(<bdi>live, 1977-04-17: The Stone Pony, Asbury Park, NJ, USA</bdi>)</span></td>
+                    <td></td>
+                    <td><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"><bdi>Bruce Springsteen</bdi></a></td>
+                    <td>7:52</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
