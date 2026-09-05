@@ -125,7 +125,52 @@ test.describe('unique-values dropdown: "Date info - Precision"/"- Decade"/"- Mon
         expect(highlightedText).toBe('1973-08-09 – 1973-09-23');
     });
 
-    test('checking "August" narrows to B/D/F, highlighting ONLY the matching atom in D\'s range (not "1973-09-23")', async ({ page }) => {
+    test('checking decade "1970-1980" narrows to B/C/D, highlighting ONLY the year "1973" (not "-08-09"/"-09-23") in D\'s range', async ({ page }) => {
+        await loadUserscriptPage(page, { url: ARTIST_EVENTS_URL, fixtureFile: FIXTURE_FILE, testMode: true });
+        await page.click('button[data-label="Show all Events for Artist"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+
+        const totalBefore = await page.evaluate(() => document.querySelectorAll('table.tbl tbody tr').length);
+
+        await page.evaluate(() => window.__saTest.getUniqDropSections('Date'));
+        await page.evaluate(() => {
+            const sectionEl = Array.from(document.querySelectorAll('#mb-col-uniq-dropdown .mb-uniq-section'))
+                .find((s) => s.querySelector('.mb-uniq-section-label')?.textContent === 'Date info - Decade');
+            const item = Array.from(sectionEl.querySelectorAll('.mb-col-uniq-item'))
+                .find((el) => el.dataset.mbUniqSynLabel === '» decade: 1970-1980');
+            item.click();
+        });
+
+        await page.waitForFunction((expected) => {
+            const rows = Array.from(document.querySelectorAll('table.tbl tbody tr')).filter((r) => r.style.display !== 'none');
+            return rows.length > 0 && rows.length < expected;
+        }, totalBefore, { timeout: 15000 });
+
+        const visibleRows = await page.evaluate(() =>
+            Array.from(document.querySelectorAll('table.tbl tbody tr'))
+                .filter((r) => r.style.display !== 'none')
+                .map((r) => r.cells[0].textContent.trim())
+        );
+        expect(visibleRows.sort()).toEqual(['Event B', 'Event C', 'Event D']);
+
+        // C's cell is the bare year-only atom "1974" — the whole cell text
+        // IS the year, so highlighting it looks the same either way; D's
+        // range cell is the load-bearing case: both atoms share this
+        // decade, so BOTH years get their own highlight span, but the
+        // "-08-09"/"-09-23" day/month portions must stay untouched.
+        const dCell = await page.evaluate(() => {
+            const row = Array.from(document.querySelectorAll('table.tbl tbody tr'))
+                .find((r) => r.cells[0].textContent.trim() === 'Event D');
+            return {
+                fullText: row.cells[1].textContent,
+                highlights: Array.from(row.cells[1].querySelectorAll('.mb-column-filter-highlight')).map((el) => el.textContent),
+            };
+        });
+        expect(dCell.fullText).toBe('1973-08-09 – 1973-09-23');
+        expect(dCell.highlights).toEqual(['1973', '1973']);
+    });
+
+    test('checking "August" narrows to B/D/F, highlighting ONLY the month digits "08" in D\'s range (not "1973"/"-09" from either side)', async ({ page }) => {
         await loadUserscriptPage(page, { url: ARTIST_EVENTS_URL, fixtureFile: FIXTURE_FILE, testMode: true });
         await page.click('button[data-label="Show all Events for Artist"]');
         await waitForRenderComplete(page, { waitForAutoResize: false });
@@ -153,11 +198,17 @@ test.describe('unique-values dropdown: "Date info - Precision"/"- Decade"/"- Mon
         );
         expect(visibleRows.sort()).toEqual(['Event B', 'Event D', 'Event F']);
 
-        const dRowHighlights = await page.evaluate(() => {
+        const dCell = await page.evaluate(() => {
             const row = Array.from(document.querySelectorAll('table.tbl tbody tr'))
                 .find((r) => r.cells[0].textContent.trim() === 'Event D');
-            return Array.from(row.cells[1].querySelectorAll('.mb-column-filter-highlight')).map((el) => el.textContent);
+            return {
+                fullText: row.cells[1].textContent,
+                highlights: Array.from(row.cells[1].querySelectorAll('.mb-column-filter-highlight')).map((el) => el.textContent),
+            };
         });
-        expect(dRowHighlights).toEqual(['1973-08-09']);
+        expect(dCell.fullText).toBe('1973-08-09 – 1973-09-23');
+        // Only the START atom's own "08" — the END atom is September (09),
+        // and neither atom's year/day digits are highlighted.
+        expect(dCell.highlights).toEqual(['08']);
     });
 });

@@ -37108,15 +37108,28 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Highlights the specific atom(s) matching a `datedecade:`/`datemonth:`
-     * compound structure-mode filter — re-derives from
-     * `_findCellDateExpressionParts()` directly, then highlights only the
-     * matching atom's own raw "YYYY[-MM[-DD]]" substring(s): for a 'range'
-     * cell where only one side falls in the checked decade/month, the
-     * OTHER side is deliberately left unhighlighted (unlike
+     * Highlights ONLY the specific YYYY (decade) or MM (month) component of
+     * the matching atom(s) for a `datedecade:`/`datemonth:` compound
+     * structure-mode filter — NOT the whole atom (e.g. checking decade
+     * "1970-1980" on "2008-07-15" would be wrong to highlight; checking it
+     * on the atom that actually matches, e.g. "1973-08-09", highlights only
+     * "1973", not "-08-09" too; checking month "August" on "2008-07-15"
+     * never matches at all, and on a matching atom highlights only "07" —
+     * the digit pair the raw cell text actually shows, not the month
+     * NAME). Re-derives from `_findCellDateExpressionParts()` directly. For
+     * a 'range' cell where only one side falls in the checked decade/
+     * month, the OTHER side is deliberately left unhighlighted (unlike
      * `_highlightDatePrecisionMatch()` above, which always highlights the
      * whole expression since Precision matches the row as a whole, not one
      * specific atom).
+     *
+     * Lookbehind/lookahead anchor each pattern to the EXACT position of the
+     * matching atom's own year/month substring (never a same-looking digit
+     * run elsewhere in the cell, e.g. a different atom sharing the same
+     * year) — the year/month digits themselves are the only thing inside
+     * the match (lookaround assertions are zero-width, so the surrounding
+     * "-MM-DD"/"YYYY-"/"-DD" context they require is never itself
+     * highlighted).
      *
      * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
      * @param {string} mode - The compound mode string, e.g.
@@ -37131,9 +37144,20 @@ a { color: #1565c0; }`;
         if (!parts) return;
         const matching = parts.atoms.filter(atom => (isDecade ? _dateAtomDecade(atom) : _dateAtomMonth(atom)) === want);
         if (matching.length === 0) return;
+        const _esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const patterns = matching.map((atom) => {
+            if (isDecade) {
+                const year = atom.slice(0, 4);
+                const rest = _esc(atom.slice(4));
+                return `\\b${year}(?=${rest}(?:\\D|$))`;
+            }
+            const before = _esc(atom.slice(0, 5));  // "YYYY-"
+            const month  = atom.slice(5, 7);        // "MM"
+            const after  = _esc(atom.slice(7));     // "-DD" or ""
+            return `(?<=${before})${month}(?=${after}(?:\\D|$))`;
+        });
         cell.normalize();
-        const pattern = matching.map(atom => atom.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
-        highlightCrossTag(cell, new RegExp(pattern, 'g'), 'mb-column-filter-highlight');
+        highlightCrossTag(cell, new RegExp(patterns.join('|'), 'g'), 'mb-column-filter-highlight');
     }
 
     /**
