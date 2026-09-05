@@ -1,5 +1,51 @@
 [
   {
+    "version": "9.99.1018",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`integerColumns` alignment could be stamped onto columns it was never configured for, most visibly centring `place-performances`(-filtered)'s free-text `MB-Name` column. The styling is applied POSITIONALLY (`applyIntegerColumnStyling()` reaches for `row.cells[entry.colIdx]`) against indices resolved once from a reconstructed list of the final column names — and that list's synthetic-column-extractor step guarded on `_finalColNames.includes(entry.sourceColumn)`, while `eventParts` sources from `'Comment'`, which the MB-Name/Comment/Primary alias step only appends AFTERWARDS. The entry therefore looked unresolved, its nine `Event-*` names were dropped from the list even though the cells were still rendered, and every column resolved past that point came out nine indices too low: `R-YYYY` (align `'C'`) landed on `MB-Name`, `R-DD`/`R-MM` (align `'R'`) on two `Event-*` columns. The guard now also counts the `extractMainColumn` trio, which at row-assembly time genuinely does exist before a synthetic-column extractor reads it — that is how `eventParts` works at all.",
+          "The defect needed three ingredients at once — `extractMainColumn`, a `syntheticColumnExtractors` entry sourcing from its synthetic `Comment`, and an `integerColumns` entry resolved AFTER it (i.e. fed by `injectedColumnExtractors`). An audit of all 23 pageTypes declaring `eventParts` confirms `place-performances` and `place-performances-filtered` are the only two that combine all three, via `R-DD`/`R-MM`/`R-YYYY` off the injected `Release events` column; every other one's integerColumns resolve before the gap and were never affected. It was latent until those two pageTypes gained `eventParts`.",
+          "Regression coverage: `tests/fixtures/place-performances-intcol-align.{html,spec.js}`, which fails on the pre-fix code and passes after. Its main assertion is the general invariant — NO column outside `features.integerColumns` may carry the styling marker — rather than the narrow \"MB-Name is not centred\", so any future recurrence is caught wherever it lands. Note the fixture must keep `sa_enable_relationships_column` ON: that column contributes one more name to the reconstructed list, and it is precisely what makes `R-YYYY` land on `MB-Name` rather than one column earlier, so with it off the reported symptom does not reproduce."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The ⏱ millisecond-Length toggle is now offered on a series' Recordings listing (`series-releases`' `entityFeatures.Recordings`), where the Length column previously had no glyph at all. Source is `'batch'`, not `'ws2'`: `_msWs2PageKey()`'s regex covers only work/artist/place/area, and a series' recordings are its PARTS rather than a relationship list that one `inc=recording-rels` answer would cover — so the batched search endpoint, keyed on the recording MBIDs the page actually renders, is the only source that applies. HELP's \"where the data comes from\" list resynced to name series-recordings alongside the other batched pageTypes."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1017",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The `eventParts` syntheticColumnExtractor now runs on ELEVEN further recording-listing pageTypes, closing an audit gap: `place-performances`, `place-performances-filtered`, `artist-relationships`, `artist-relationships-filtered`, and the `'Recordings'` entityFeatures of `search`, `collections-releases`, `series-releases`, `tag-value`, `tag-value-entity`, `user-tag-value` and `user-tag-value-entity`. A recording's disambiguation comment on these pages encodes live-performance metadata in MusicBrainz's usual free-form shape (e.g. \"live, 1975-10-18, early show: The Roxy Theatre, West Hollywood, CA, USA\"); it is now split into the nine `Event-Type`/`Event-Date`/`Event-Detail`/`Event-Venue`/`Event-Venue-Detail`/`Event-City`/`Event-State`/`Event-Country`/`Event-Additional-Info` columns, the same treatment the twelve already-wired recording pageTypes (`work-recordings`, `area-recordings`, `artist-recordings`, `instrument-recordings`, `isrc`, `release-tracks`, `user-ratings`, `artist-credit`, and their siblings) have had all along. Every one of the eleven already produced the synthetic `Comment` source column via `extractMainColumn` — no new plumbing was needed, the extractor was simply never declared.",
+          "No pageType needed a new mechanism for this. The nine `entityFeatures`-based entries rely on the existing merge precedence in `startFetchingProcess` — `entitySpecificFeatures` is spread BEFORE `baseDef.features`, so a per-entity `syntheticColumnExtractors` survives only while the base definition declares no key of that name. Verified for all four tag-value-family pageTypes plus `search`, `collections-releases` and `series-releases`: every existing `syntheticColumnExtractors` in those definitions already lives inside an `entityFeatures` entry (e.g. `'Events'` → `dateParts`), never in the top-level `features` block, so nothing is shadowed."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "HELP resynced: the Event-* derived-column entry no longer names two example page styles but describes the actual rule — every page that lists recordings — with the concrete surfaces enumerated.",
+          "`scripts/add-eventparts-to-recording-pagetypes.py` records the edit rather than being run and discarded. It addresses each of the eleven insertion points by LINE NUMBER, not by a text anchor, because four PAIRS of the target blocks are byte-identical to one another (`collections-releases`/`series-releases` Recordings, `user-tag-value`/`tag-value` Recordings, both `place-performances` variants, both `artist-relationships` variants) and so cannot be told apart by content. Each insertion is guarded by an assertion on both the block's opening line and its `columnExtractors` closing line, and the script refuses to write if any guard fails."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Ruled OUT as non-candidates during the same audit, recorded so the next pass does not re-derive them: `recording-releases` (its rows are RELEASES — the `Comment` there is a release disambiguation, not performance metadata), `label-relationships`/`-filtered` (release-shaped: no `Length` column, no `msTrackLengthWs2`), `recording-fingerprints`, `release-discids`, `cd-stub`, `top-cd-stub` (whose `Comment` is synthesised from the \"lastupdate\" info row, not a native disambiguation span), `entity-aliases`, `annotations`, `ratings-entity`, and `report-detail` (its `extractMainColumn` candidate list does include `Recording`, but across 117 differently-shaped reports that column is not live-performance metadata)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1016",
     "date": "2026-09-05",
     "sections": [
