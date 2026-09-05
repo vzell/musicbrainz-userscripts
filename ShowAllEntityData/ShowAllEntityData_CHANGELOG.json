@@ -1129,7 +1129,7 @@
       {
         "label": "⚙️ Internal",
         "items": [
-          "Added `tests/live/uniqdrop-structure-section.spec.js`, the first live Playwright spec built on WIP.1's `window.__saTest` hook — exercises the unique-values dropdown's \"Structure\" section (empty/single-row/collapsed/expanded cell states) against a real MusicBrainz page. Test tooling only; no userscript runtime changes."
+          "Added `tests/live/uniqdrop-structure-section.spec.js`, the first live Playwright spec built on 9.99.931's `window.__saTest` hook — exercises the unique-values dropdown's \"Structure\" section (empty/single-row/collapsed/expanded cell states) against a real MusicBrainz page. Test tooling only; no userscript runtime changes."
         ]
       }
     ]
@@ -3141,8 +3141,8 @@
       {
         "label": "🐛 Fix",
         "items": [
-          "Fixed \"Phonographic copyright (℗) by label\" (WIP.26) never appearing at all, even on a release with real label credits for it (`debug/greetings-original.html`). MusicBrainz can render a track's ARs as multiple SIBLING `<dl class=\"ars\">` blocks inside the same bare `div.ars` — one `<dl>` crediting an artist directly, followed by a separate sibling `<dl>` crediting labels, both using the exact same `<dt>phonographic copyright (℗) by:</dt>` phrase. The lookup used a first-match-only `.find()`, so every `<dt>` after the first (the label one, in this case) was silently dropped, both in the page-wide \"does this column exist\" gate and in the per-row cell builder. It now collects every matching `<dt>` across every sibling `<dl>` and merges their `<dd>`s, mirroring `_findCreditDts`'s own \"collect every match\" convention (which was never `.find()`-based and so was unaffected by this bug).",
-          "Fixed every credit-role column header (\"Recording engineer\", \"Mixer\", \"Engineer\", \"Producer\", \"Miscellaneous support\") and both \"Phonographic copyright\" headers (WIP.26) never actually showing MusicBrainz's marker glyph, despite that being WIP.26's stated intent (`debug/greetings-rendered.html`). The glyph `<span>` was appended directly to the `<th>` at creation time, but `makeTableSortableUnified()` unconditionally rebuilds every `<th>` from a plain `textContent` string shortly after (as part of the existing sort-icon/unique-value-count UI setup), discarding any child element added before that point — the same root cause already diagnosed and fixed for \"Recording of\"'s own glyph in an earlier session. The glyph is now injected post-render by the existing `_initColHeaderGlyph()` helper instead, called from `renderGroupedTable()`'s tail alongside the pre-existing \"Recording of\"/\"Recorded at event\"/\"Recorded at place\" calls — the established, already-working pattern for this exact problem, which this feature should have reused from the start."
+          "Fixed \"Phonographic copyright (℗) by label\" never appearing at all, even on a release with real label credits for it (`debug/greetings-original.html`). MusicBrainz can render a track's ARs as multiple SIBLING `<dl class=\"ars\">` blocks inside the same bare `div.ars` — one `<dl>` crediting an artist directly, followed by a separate sibling `<dl>` crediting labels, both using the exact same `<dt>phonographic copyright (℗) by:</dt>` phrase. The lookup used a first-match-only `.find()`, so every `<dt>` after the first (the label one, in this case) was silently dropped, both in the page-wide \"does this column exist\" gate and in the per-row cell builder. It now collects every matching `<dt>` across every sibling `<dl>` and merges their `<dd>`s, mirroring `_findCreditDts`'s own \"collect every match\" convention (which was never `.find()`-based and so was unaffected by this bug).",
+          "Fixed every credit-role column header (\"Recording engineer\", \"Mixer\", \"Engineer\", \"Producer\", \"Miscellaneous support\") and both \"Phonographic copyright\" headers never actually showing MusicBrainz's marker glyph, despite that being's stated intent (`debug/greetings-rendered.html`). The glyph `<span>` was appended directly to the `<th>` at creation time, but `makeTableSortableUnified()` unconditionally rebuilds every `<th>` from a plain `textContent` string shortly after (as part of the existing sort-icon/unique-value-count UI setup), discarding any child element added before that point — the same root cause already diagnosed and fixed for \"Recording of\"'s own glyph in an earlier session. The glyph is now injected post-render by the existing `_initColHeaderGlyph()` helper instead, called from `renderGroupedTable()`'s tail alongside the pre-existing \"Recording of\"/\"Recorded at event\"/\"Recorded at place\" calls — the established, already-working pattern for this exact problem, which this feature should have reused from the start."
         ]
       }
     ]
@@ -13140,6 +13140,7 @@
     ]
   },
   {
+    "version": "9.99.45",
     "date": "2026-03-06",
     "sections": [
       {
@@ -14157,6 +14158,7 @@
     ]
   },
   {
+    "version": "9.90.1",
     "date": "2026-02-24",
     "sections": [
       {

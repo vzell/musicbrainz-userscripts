@@ -1,0 +1,23 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-05",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Repaired two unresolved `WIP.N` placeholders left in shipped changelog entries by hand-folds that predate `scripts/fold-wip-changelog.py` — they rewrote each entry's own `version` field but not the cross-references buried in its prose, which is precisely the defect that script now treats as a hard error. 9.99.932's \"WIP.1\" now reads 9.99.931, confirmed twice over: 9.99.931 is the entry that introduced the `window.__saTest` hook the sentence cites, and replaying that fold's own WIP file from git maps WIP.1 to 9.99.931 exactly.",
+          "9.99.783's two \"WIP.26\" citations were DELETED rather than repointed, because no such version exists to point at. WIP.26 never appeared in any committed WIP file — the pre-fold file jumps WIP.25 to WIP.27, no commit in the repository's history contains a `\"WIP.26\"`, and no shipped entry introduces the \"Phonographic copyright (℗) by artist/label\" columns the sentence refers to: the commit that first put that column name into the userscript is the very commit that entry describes. It was a mis-numbered reference from the moment it was written, and inventing a plausible target would have been worse than removing one.",
+          "Gave a `version` to the two entries that had none, which made any tool reading `entry['version']` bail: the 2026-03-06 entry between 9.99.46 and 9.99.44 is now 9.99.45, and the 2026-02-24 entry between 9.91.0 and 9.90.0 is now 9.90.1. The first is unambiguous — one free integer slot in a strictly descending sequence. The second is a RECONSTRUCTION rather than a recovery: its neighbours are all `9.9x.0`, no integer fits between 90 and 91, and both entries entered git in the initial import, so nothing records what they actually shipped as. 9.90.1 is the only value that keeps the sequence strictly descending without colliding.",
+          "The repair is `scripts/repair-changelog-placeholders.py`, committed rather than run and discarded: it is the record of which shipped release notes were edited and on what evidence. It is idempotent and refuses to act if the entries it targets have shifted."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "`merge-push-remove`'s post-fold sanity check is a whole-file `grep` for `WIP.` again. It had just been narrowed to the fold's own added lines precisely because those two historical stragglers made the whole-file version fire every time — and a check that always fires is one you learn to ignore. With the file clean, any hit is now a live defect."
+        ]
+      }
+    ]
+  }
+]
