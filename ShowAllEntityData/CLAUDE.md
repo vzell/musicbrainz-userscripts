@@ -700,10 +700,21 @@ through to a tie-breaking column.
   have NO length data in the page at all, confirmed by
   `scripts/probe-work-page-json.py`), or `null` (no toggle offered).
 - The `'ws2'` request is LAZY: `_msToggleLengthPrecision()` fires it on the
-  first press only, never during render, and `_msWs2Cache` holds the result —
-  including a `null` for failure — for the page's lifetime, so sorting,
-  filtering and re-toggling never re-request. `_msToggleInFlight` guards a
-  double click. The button carries `loading`/`unavailable` states.
+  first press only, never during render. `_msToggleInFlight` guards a double
+  click.
+- **Only a SUCCESSFUL answer is cached in `_msWs2Cache`** — including a
+  successful-but-empty one, which is a real, stable fact about the entity. A
+  transport failure (any non-OK status or thrown error) is deliberately NOT
+  cached: MusicBrainz's Web Service 503s under bot load, and caching that
+  turned a few seconds of upstream trouble into a permanently dead button
+  *and* claimed "no sub-second length on record", which was simply untrue.
+  `_msFetchWs2RecordingLengths()` therefore returns
+  `{outcome: 'ok'|'empty'|'error', map, detail}`, and the button has four
+  states: `loading` (⏳), `retry` (yellow, still clickable, names the error,
+  not cached), `unavailable` (dimmed + `aria-disabled`, the settled "no data"
+  answer, cached), and normal. Never collapse `retry` back into
+  `unavailable` — they are different facts and only one of them is worth a
+  second click.
 - MusicBrainz DOES populate the Length column natively on those pages
   (`scripts/probe-native-work-length.js` reads back `5:05`/`5:35`/`?:??`), and
   it rounds there too — so `data-mb-sec-text` round-tripping and the

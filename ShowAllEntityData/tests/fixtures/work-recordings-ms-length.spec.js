@@ -39,12 +39,19 @@ const WS2_BODY = JSON.stringify({
 const SECONDS = ['5:05', '5:05', '5:35', '?:??', '4:24', '2:00'];
 const MILLIS = ['5:05.146', '5:05.000', '5:34.866', '?:??', '4:24.000', '2:00'];
 
-/** Installs the fixture + a counting WS2 mock. Returns a live request counter. */
-async function setup(page, { ws2Body = WS2_BODY, ws2Status = 200 } = {}) {
+/**
+ * Installs the fixture + a counting WS2 mock. Returns a live request counter.
+ *
+ * `ws2Sequence` serves one entry per request (the last repeating), so a test
+ * can make the first attempt fail and the retry succeed.
+ */
+async function setup(page, { ws2Body = WS2_BODY, ws2Status = 200, ws2Sequence } = {}) {
     const counter = { ws2: 0 };
+    const seq = ws2Sequence || [{ status: ws2Status, body: ws2Body }];
     await page.route('**/ws/2/work/**', (route) => {
+        const step = seq[Math.min(counter.ws2, seq.length - 1)];
         counter.ws2 += 1;
-        route.fulfill({ status: ws2Status, contentType: 'application/json', body: ws2Body });
+        route.fulfill({ status: step.status, contentType: 'application/json', body: step.body });
     });
     await loadUserscriptPage(page, { url: WORK_URL, fixtureFile: FIXTURE_FILE, testMode: true });
     await page.click('button[data-label="Show all Recordings for Work"]');
@@ -196,22 +203,70 @@ test.describe('work-recordings: millisecond Length precision via the Web Service
         expect((await lengthValues(page))[0]).toBe('5:05.146');
     });
 
-    test('a failed request reports "unavailable" rather than silently doing nothing', async ({ page }) => {
-        const counter = await setup(page, { ws2Status: 503, ws2Body: '{}' });
+    test('a transient failure stays RETRYABLE — yellow, clickable, and not cached', async ({ page }) => {
+        // Reported live: a single "HTTP 503" (MusicBrainz's Web Service is
+        // intermittently flaky under bot load) was followed by nothing but
+        // "cache hit" lines, so the button was dead for the rest of the page's
+        // life — and its tooltip claimed "MusicBrainz has no sub-second length
+        // on record for these recordings", which was simply untrue.
+        // First request 503s, the retry succeeds.
+        const counter = await setup(page, {
+            ws2Sequence: [
+                { status: 503, body: '{}' },
+                { status: 200, body: WS2_BODY },
+            ],
+        });
+
+        await toggle(page).click();
+        await expect(toggle(page)).toHaveAttribute('data-mb-ms-retry', '1');
+        expect(counter.ws2).toBe(1);
+
+        // Tells the truth: names the failure, and says to try again.
+        const title = await toggle(page).getAttribute('title');
+        expect(title).toContain('HTTP 503');
+        expect(title).toContain('Click again to retry');
+        expect(title).not.toContain('no sub-second length on record');
+
+        // Still operable — a transport failure must not disable the control.
+        expect(await toggle(page).getAttribute('aria-disabled')).toBeNull();
+        // Yellow warning tint rather than the dimmed "settled" look. Two
+        // wrinkles, both real rather than incidental: the pointer is still
+        // resting on the button after .click(), so :hover's deeper 0.65 shade
+        // applies until it is moved away; and the button carries a 150ms
+        // background transition, so this needs the auto-retrying toHaveCSS
+        // rather than a one-shot getComputedStyle() that would sample an
+        // intermediate alpha.
+        await page.mouse.move(0, 0);
+        await expect(toggle(page)).toHaveCSS('background-color', 'rgba(255, 193, 7, 0.45)');
+
+        // Column untouched by the failure.
+        expect(await lengthValues(page)).toEqual(SECONDS);
+
+        // The retry actually re-requests, and succeeds.
+        await toggle(page).click();
+        await expect(toggle(page)).toHaveAttribute('aria-pressed', 'true');
+        expect(counter.ws2).toBe(2);
+        expect(await lengthValues(page)).toEqual(MILLIS);
+        expect(await toggle(page).getAttribute('data-mb-ms-retry')).toBeNull();
+    });
+
+    test('a successful but empty answer IS the settled "unavailable" state, and is cached', async ({ page }) => {
+        // Distinct from the case above: MusicBrainz answered, and the answer is
+        // that it holds no length for these recordings. That is a real, stable
+        // fact, so it is cached and the button reports it as unavailable.
+        const counter = await setup(page, { ws2Body: JSON.stringify({ relations: [] }) });
 
         await toggle(page).click();
         await expect(toggle(page)).toHaveAttribute('aria-disabled', 'true');
-        expect(await toggle(page).getAttribute('title')).toContain('unavailable');
-        // Column untouched.
+        const title = await toggle(page).getAttribute('title');
+        expect(title).toContain('no sub-second length on record');
+        expect(await toggle(page).getAttribute('data-mb-ms-retry')).toBeNull();
         expect(await lengthValues(page)).toEqual(SECONDS);
         expect(counter.ws2).toBe(1);
 
-        // The failure is cached too — a second press does not retry. `force`
-        // because the button now reports aria-disabled="true", which Playwright
-        // honours as non-actionable for a role=button; that attribute is
-        // accurate (the failure is cached, so the control really is inert for
-        // the rest of the page's life) and the point here is precisely that
-        // even a click that gets through changes nothing.
+        // Cached: a further press does not re-request. `force` because the
+        // button is legitimately aria-disabled here, which Playwright honours
+        // as non-actionable for role=button.
         await toggle(page).click({ force: true });
         expect(counter.ws2).toBe(1);
     });

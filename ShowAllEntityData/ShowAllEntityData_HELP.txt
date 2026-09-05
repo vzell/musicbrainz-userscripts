@@ -778,9 +778,18 @@ is fetched at all:
     work from that one response.  The tooltip tells you in advance which of
     the two cases you are in.
 
-If the data can't be had (the request fails, or MusicBrainz simply has no
-sub-second length on record for these recordings), the toggle dims and says
-so instead of quietly doing nothing.
+When the data can't be had, the toggle says which of two quite different
+things went wrong instead of quietly doing nothing:
+
+  • The Web Service could not be reached (a 503 is common — MusicBrainz gets
+    hammered by bots).  The button turns YELLOW and says so, naming the
+    error and inviting you to click again.  Nothing is cached in this case,
+    so a later press really does retry; the milliseconds are probably there,
+    we just couldn't fetch them this second.
+
+  • MusicBrainz answered, and genuinely has no sub-second length on record
+    for these recordings.  The button dims and says that.  This one IS
+    cached — it's a settled fact, so clicking again would achieve nothing.
 
 A row MusicBrainz shows as "?:??" has no length on record at all and stays
 "?:??" in both modes — the toggle never invents a number for it.  Likewise,

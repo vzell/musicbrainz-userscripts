@@ -16216,20 +16216,34 @@
      * every recording relationship of the page entity with its `length` in
      * milliseconds — one request for the whole table, not one per row.
      *
-     * Cached in `_msWs2Cache` for the lifetime of the page, so pressing the
-     * toggle off and on again, sorting, filtering or re-rendering never
-     * re-request it. A failure is cached as `null` too: a page whose entity has
-     * no recording relationships (or whose request failed) should report
-     * "unavailable" once rather than retry on every click.
+     * A SUCCESSFUL answer is cached in `_msWs2Cache` for the lifetime of the
+     * page, so pressing the toggle off and on again, sorting, filtering or
+     * re-rendering never re-request it. That includes a successful but EMPTY
+     * answer — "this entity has no recording relationship with a length" is a
+     * real, stable fact, so it is cached and reported as unavailable.
      *
-     * @returns {Promise<?Map<string, number>>} `null` when unavailable.
+     * A TRANSPORT failure is deliberately NOT cached. MusicBrainz's Web Service
+     * is intermittently flaky (503s when it is being hammered by bots), and
+     * caching that would turn a few seconds of upstream trouble into a
+     * permanently dead button for the rest of the page's life — which is
+     * exactly what happened: a single `HTTP 503` was followed by nothing but
+     * `cache hit` lines, so every later press was a silent no-op. Any non-OK
+     * status or thrown error is therefore reported as retryable. Erring toward
+     * "retryable" is the safe direction: the cost of being wrong is one extra
+     * request that the user explicitly asked for by clicking again.
+     *
+     * @returns {Promise<{outcome: ('ok'|'empty'|'error'), map: ?Map<string, number>, detail: string}>}
+     *   `'ok'` with a map; `'empty'` when MusicBrainz genuinely has no lengths
+     *   here (cached); `'error'` for a transient failure (not cached), with
+     *   `detail` naming it for the tooltip, e.g. `"HTTP 503"`.
      */
     async function _msFetchWs2RecordingLengths() {
         const key = _msWs2PageKey();
-        if (!key) return null;
+        if (!key) return { outcome: 'empty', map: null, detail: '' };
         if (_msWs2Cache.has(key)) {
             _msDbg(`_msFetchWs2RecordingLengths: cache hit for ${key}`);
-            return _msWs2Cache.get(key);
+            const cached = _msWs2Cache.get(key);
+            return { outcome: cached ? 'ok' : 'empty', map: cached, detail: '' };
         }
 
         const [entityType, entityId] = key.split(':');
@@ -16239,15 +16253,15 @@
         try {
             const resp = await fetch(url, { headers: { Accept: 'application/json' } });
             if (!resp.ok) {
-                _msDbg(`_msFetchWs2RecordingLengths: HTTP ${resp.status}`);
-                _msWs2Cache.set(key, null);
-                return null;
+                // NOT cached: a transport failure says nothing about the data.
+                _msDbg(`_msFetchWs2RecordingLengths: HTTP ${resp.status} — transient, not cached, retryable`);
+                return { outcome: 'error', map: null, detail: `HTTP ${resp.status}` };
             }
             relations = (await resp.json()).relations || [];
         } catch (err) {
-            _msDbg('_msFetchWs2RecordingLengths: fetch error:', err.message || String(err));
-            _msWs2Cache.set(key, null);
-            return null;
+            const detail = err.message || String(err);
+            _msDbg(`_msFetchWs2RecordingLengths: fetch error (${detail}) — transient, not cached, retryable`);
+            return { outcome: 'error', map: null, detail: 'the request failed' };
         }
 
         const map = new Map();
@@ -16256,9 +16270,11 @@
             if (rec && rec.id && typeof rec.length === 'number') map.set(rec.id, rec.length);
         });
         _msDbg(`_msFetchWs2RecordingLengths: ${relations.length} relation(s), ${map.size} with a length`);
+        // Only a SUCCESSFUL answer is cached — including a genuinely empty one,
+        // which is a real and stable fact about this entity.
         const result = map.size ? map : null;
         _msWs2Cache.set(key, result);
-        return result;
+        return { outcome: result ? 'ok' : 'empty', map: result, detail: '' };
     }
 
     /**
@@ -16403,7 +16419,7 @@
      * @param   {boolean} showing
      * @returns {void}
      */
-    function _msUpdateColHdrBtn(btn, showing, state) {
+    function _msUpdateColHdrBtn(btn, showing, state, detail) {
         if (state === 'loading') {
             btn.textContent = '⏳';
             btn.setAttribute('aria-busy', 'true');
@@ -16414,6 +16430,25 @@
         btn.removeAttribute('aria-busy');
         btn.textContent = showing ? '▼⏱' : '▶⏱';
         btn.setAttribute('aria-pressed', showing ? 'true' : 'false');
+        delete btn.dataset.mbMsRetry;
+
+        // A transient transport failure is NOT the same fact as "MusicBrainz has
+        // no sub-second data here", and must not be reported as if it were:
+        // the data may well be there, we just could not reach it this second.
+        // Stays clickable (no aria-disabled) because pressing again is exactly
+        // the right thing to do, and is tinted yellow so it reads as a warning
+        // rather than as the settled, dimmed "there is nothing here" state.
+        if (state === 'retry') {
+            delete btn.dataset.mbMsUnavailable;
+            btn.removeAttribute('aria-disabled');
+            btn.dataset.mbMsRetry = '1';
+            const because = detail ? ` (${detail})` : '';
+            btn.title = `Could not load millisecond lengths${because} — the MusicBrainz Web Service `
+                      + 'is temporarily unavailable, which happens when it is under heavy load. '
+                      + 'Click again to retry.';
+            btn.setAttribute('aria-label', 'Could not load millisecond lengths — click again to retry');
+            return;
+        }
 
         if (state === 'unavailable') {
             btn.dataset.mbMsUnavailable = '1';
@@ -16441,9 +16476,9 @@
     }
 
     /** Repaints every Length header toggle to the same state. */
-    function _msRepaintColHdrBtns(showing, state) {
+    function _msRepaintColHdrBtns(showing, state, detail) {
         document.querySelectorAll('.mb-ms-col-hdr-btn')
-            .forEach(btn => _msUpdateColHdrBtn(btn, showing, state));
+            .forEach(btn => _msUpdateColHdrBtn(btn, showing, state, detail));
     }
 
     /** Guards against a second click while a WS2 request is still in flight. */
@@ -16477,8 +16512,16 @@
             _msToggleInFlight = true;
             _msRepaintColHdrBtns(false, 'loading');
             try {
-                const map = await _msFetchWs2RecordingLengths();
-                if (!map || !_msStampSourceRowsFromMap(map)) {
+                const res = await _msFetchWs2RecordingLengths();
+                // A transport failure leaves the button retryable, not dead:
+                // the data may well exist, we just could not reach it. Nothing
+                // was cached, so the next press really does try again.
+                if (res.outcome === 'error') {
+                    _msRepaintColHdrBtns(false, 'retry', res.detail);
+                    return;
+                }
+                // Everything else is a settled answer about the data itself.
+                if (!res.map || !_msStampSourceRowsFromMap(res.map)) {
                     _msRepaintColHdrBtns(false, 'unavailable');
                     return;
                 }
@@ -31460,6 +31503,20 @@ a { color: #1565c0; }`;
             opacity: 1;
             background: rgba(0, 100, 255, 0.13);
             border-color: #9bb8e8;
+        }
+        /* Transient failure (e.g. a 503 while MusicBrainz's Web Service is under
+           load): yellow warning tint, and the button stays fully clickable —
+           pressing it again retries. Distinct on purpose from the settled,
+           dimmed "MusicBrainz has no sub-second data here" state, which is a
+           fact about the data rather than about reachability. */
+        .mb-ms-col-hdr-btn[data-mb-ms-retry="1"] {
+            opacity: 1;
+            background: rgba(255, 193, 7, 0.45);
+            border-color: #d6a100;
+        }
+        .mb-ms-col-hdr-btn[data-mb-ms-retry="1"]:hover {
+            background: rgba(255, 193, 7, 0.65);
+            border-color: #b98900;
         }
 
         #mb-col-uniq-dropdown {

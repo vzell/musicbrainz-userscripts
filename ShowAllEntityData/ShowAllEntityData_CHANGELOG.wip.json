@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.7",
+    "date": "2026-09-05",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A failed millisecond-length request is no longer cached as if MusicBrainz had answered \"there is no sub-second data here\". MusicBrainz's Web Service is intermittently flaky — a 503 while it is being hammered by bots is routine — and caching that turned a few seconds of upstream trouble into a permanently dead ⏱ button for the rest of the page's life. Reported from a live console log: one `HTTP 503` followed by nothing but `cache hit` lines, so every later press was a silent no-op. Only a SUCCESSFUL answer is cached now; a transport failure (any non-OK status or thrown error) leaves nothing behind, so pressing the button again really does retry.",
+          "The tooltip in that situation was also flatly wrong: it read \"Millisecond precision unavailable here — MusicBrainz has no sub-second length on record for these recordings\", a claim about the DATA, when what had actually happened was that the service could not be reached. The button now distinguishes the two. A transient failure turns it YELLOW, names the error (e.g. \"Could not load millisecond lengths (HTTP 503) — the MusicBrainz Web Service is temporarily unavailable, which happens when it is under heavy load. Click again to retry.\") and stays fully clickable, with no `aria-disabled`, because clicking again is exactly the right response. The dimmed, `aria-disabled` \"no sub-second length on record\" state is now reserved for what it actually describes: MusicBrainz answered, and the answer is that it holds no lengths here — a settled fact, so that one stays cached."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.6",
     "date": "2026-09-05",
     "sections": [
