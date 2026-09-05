@@ -203,6 +203,65 @@ test.describe('work-recordings: millisecond Length precision via the Web Service
         expect((await lengthValues(page))[0]).toBe('5:05.146');
     });
 
+    test('rows that arrive ALREADY showing milliseconds can be switched back off', async ({ page }) => {
+        // Reproduces the sub-table handoff: pressing "Show all N rows" on a
+        // multi-table page opens that sub-table in its own tab, hydrated from a
+        // snapshot of rows this script had already rendered. If milliseconds
+        // were on at that moment, the cells arrive carrying data-mb-ms,
+        // data-mb-sec-text and data-mb-ms-shown, already rendered at
+        // millisecond precision.
+        //
+        // The bug: that page's toggle was never injected — the hydration path
+        // (like startFetchingProcess's single-table branch) calls
+        // renderFinalTable() several steps BEFORE makeTableSortableUnified()
+        // builds the .mb-col-hdr-flex the button lives in — so the column came
+        // up in milliseconds with no way to switch it back.
+        //
+        // Simulated by rewriting the fixture's Length cells to the
+        // already-stamped, already-shown shape before the page is served.
+        const STAMPED = {
+            '5:05': { ms: 305146, text: '5:05.146' },
+            '5:35': { ms: 334866, text: '5:34.866' },
+            '4:24': { ms: 264000, text: '4:24.000' },
+        };
+        const raw = require('fs').readFileSync(FIXTURE_FILE, 'utf8');
+        let hydrated = raw;
+        for (const [secs, { ms, text }] of Object.entries(STAMPED)) {
+            hydrated = hydrated.split(`<td>${secs}</td>`).join(
+                `<td data-mb-ms="${ms}" data-mb-sec-text="${secs}" data-mb-ms-shown="1">${text}</td>`);
+        }
+        expect(hydrated).not.toBe(raw);
+
+        let ws2 = 0;
+        await page.route('**/ws/2/work/**', (route) => {
+            ws2 += 1;
+            route.fulfill({ status: 200, contentType: 'application/json', body: WS2_BODY });
+        });
+        // Loaded with a link_type_id so it resolves to the -filtered
+        // (single-table) pageType — the shape a sub-table tab actually opens
+        // as, and the one whose render order hid the button.
+        const url = `${WORK_URL}?link_type_id=278`;
+        await page.route(`${url}**`, (route) => route.fulfill({ body: hydrated, contentType: 'text/html' }));
+        await loadUserscriptPage(page, { url, testMode: true });
+        await page.click('button[data-label="Show all Recordings for Work (complete)"]');
+        await page.waitForSelector('#mb-filter-container');
+
+        // The toggle exists and correctly reports the column as already on.
+        await expect(toggle(page)).toHaveCount(1);
+        await expect(toggle(page)).toHaveAttribute('aria-pressed', 'true');
+        expect((await lengthValues(page))[0]).toBe('5:05.146');
+
+        // And switching back off works, from the stashed seconds text.
+        await toggle(page).click();
+        await expect(toggle(page)).toHaveAttribute('aria-pressed', 'false');
+        const secs = await lengthValues(page);
+        expect(secs[0]).toBe('5:05');
+        expect(secs[2]).toBe('5:35');
+
+        // Nothing needed fetching — the values came in with the rows.
+        expect(ws2).toBe(0);
+    });
+
     test('a transient failure stays RETRYABLE — yellow, clickable, and not cached', async ({ page }) => {
         // Reported live: a single "HTTP 503" (MusicBrainz's Web Service is
         // intermittently flaky under bot load) was followed by nothing but

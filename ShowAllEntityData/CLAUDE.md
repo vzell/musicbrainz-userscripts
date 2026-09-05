@@ -687,7 +687,19 @@ through to a tie-breaking column.
   back restores it rather than recomputing (MusicBrainz rounds, so `3:11.666`
   must return to `3:12`, not `3:11`).
 - State lives in the DOM (`data-mb-ms-shown`), not a module variable, so it
-  survives `cloneNode(true)` re-renders for free.
+  survives `cloneNode(true)` re-renders for free — and travels with a
+  sub-table opened in its own tab, whose rows are hydrated from a snapshot
+  and so can arrive already rendered at millisecond precision.
+- **`_initMsLengthColHeaderToggle()` is hooked at the END of
+  `makeTableSortableUnified()`, and that is the only correct place.** That
+  function is what builds the `.mb-col-hdr-flex` the button lives in (it wipes
+  `th.innerHTML` first), so it is the one site guaranteed to run after the
+  layout exists. Every other candidate has to *know* it runs late enough, and
+  two didn't: `startFetchingProcess()`'s single-table branch and
+  `_hydrateAndRenderFromSnapshotData()` both call `renderFinalTable()` — whose
+  tail also tries — several steps BEFORE reaching it, so the button was
+  silently never injected on `tableMode: 'single'` pages or on a sub-table
+  tab. Don't add a fourth per-caller call site; extend the hook.
 - Toggling rewrites the SOURCE rows then calls `runFilter()`; filters, sort
   order and highlighting come along automatically because every consumer reads
   the rendered text. The uniq-dropdown cache must be force-invalidated (its

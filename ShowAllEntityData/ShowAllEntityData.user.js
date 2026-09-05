@@ -16553,16 +16553,25 @@
      *
      * @returns {void}
      */
-    function _initMsLengthColHeaderToggle() {
+    function _initMsLengthColHeaderToggle(scopeTable) {
         if (Lib.settings.sa_enable_ms_track_length === false) return;
-        // Offered either because values are already stamped (the embedded
-        // source ran during pre-processing) or because a one-off Web Service
-        // request could supply them on demand. A pageType with neither gets no
-        // button rather than a dead one.
-        if (!_msAnyStamped() && _msLengthSource() !== 'ws2') return;
+        // Offered either because this page HAS a source (embedded values were
+        // stamped during pre-processing, or a one-off Web Service request could
+        // supply them on demand) or because cells arrived already stamped — the
+        // case for a sub-table opened in its own tab, whose rows are hydrated
+        // from a snapshot of the multi-table page and may already be rendered
+        // at millisecond precision. A page with neither gets no button rather
+        // than a dead one.
+        //
+        // Source is checked FIRST because it is O(1), while `_msAnyStamped()`
+        // walks every captured row and only short-circuits when it finds one —
+        // i.e. it is slowest in exactly the common "nothing stamped yet" case,
+        // which this ordering skips entirely for both real sources.
+        if (!_msLengthSource() && !_msAnyStamped()) return;
 
         const showing = _msLengthPrecisionShown();
-        document.querySelectorAll('table.tbl').forEach(table => {
+        const tables = scopeTable ? [scopeTable] : Array.from(document.querySelectorAll('table.tbl'));
+        tables.forEach(table => {
             const th = Array.from(table.querySelectorAll('thead th'))
                 .find(h => (h.dataset.colName || '') === 'Length');
             if (!th) return;
@@ -43427,19 +43436,13 @@ a { color: #1565c0; }`;
                 // is fully available before we collapse the initial view here.
                 if (mainTable) initCollapsableColumns(mainTable);
 
-                // Inject the ⏱ millisecond-precision toggle — for tableMode:'single'
-                // it MUST be here, not in renderFinalTable()'s tail. That tail runs
-                // before the makeTableSortableUnified() call above, which is what
-                // builds the `.mb-col-hdr-flex` the button is inserted into, so the
-                // tail's own call finds no flex row and silently does nothing on the
-                // first render. (Same ordering caveat initAreaFlagRegionObserver()
-                // documents a few lines up.) The tail call still earns its keep for
-                // every LATER render — runFilter() re-enters renderFinalTable() once
-                // the header layout already exists — and this one is idempotent, so
-                // the two never fight. The multi-table path needs no equivalent:
-                // renderGroupedTable() calls makeTableSortableUnified() inside its
-                // own group loop, well before its tail.
-                _initMsLengthColHeaderToggle();
+                // NOTE: the ⏱ millisecond toggle is NOT injected here. It used to
+                // be, to work around renderFinalTable()'s tail running before the
+                // makeTableSortableUnified() call above — but that hook now lives
+                // at the end of makeTableSortableUnified() itself, which is the
+                // only place guaranteed to run after the `.mb-col-hdr-flex` the
+                // button lives in has been built, and so covers this path, the
+                // multi-table group loop and the snapshot-hydration path alike.
 
                 // Series page: disable sorting UI for the "#" (number) column - (DOM-only cleanup; no logic changes)
                 if (location.pathname.startsWith('/series/')) {
@@ -54987,6 +54990,20 @@ a { color: #1565c0; }`;
         } else {
             clearMultiSortColumnTints();
         }
+
+        // Inject the ⏱ millisecond-precision toggle for THIS table, here rather
+        // than at each caller. This function is what builds the
+        // `.mb-col-hdr-flex` the button lives in (it wipes `th.innerHTML`
+        // first), so it is the one place guaranteed to run after that layout
+        // exists — every other candidate site had to know it ran late enough,
+        // and two of them didn't: `startFetchingProcess()`'s single-table
+        // branch and `_hydrateAndRenderFromSnapshotData()` both call
+        // `renderFinalTable()` — whose tail also tries — several steps BEFORE
+        // getting here, so the button was silently never injected on
+        // tableMode:'single' pages or on a sub-table opened in its own tab.
+        // Idempotent, and scoped to `table` so a many-sub-table page doesn't
+        // re-scan every table once per group.
+        _initMsLengthColHeaderToggle(table);
     }
 
     /**
