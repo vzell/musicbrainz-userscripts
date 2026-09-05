@@ -13421,7 +13421,10 @@
                     tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], 'Artist' ]
                 },
                 'Recordings': {
-                    columnExtractors: [ { sourceColumn: 'Recording', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ]
+                    columnExtractors: [ { sourceColumn: 'Recording', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ],
+                    syntheticColumnExtractors: [
+                        { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
+                    ]
                 },
                 'Series': {},
                 'Works': {}
@@ -13489,6 +13492,9 @@
                     columnExtractors: [
                         { sourceColumn: 'Recording', extractor: 'artistCredit', syntheticColumns: ['Artist'] },
                         { sourceColumn: 'Recording', extractor: 'video',        syntheticColumns: ['Video'] }
+                    ],
+                    syntheticColumnExtractors: [
+                        { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                     ]
                 },
                 'Series': {},
@@ -13574,6 +13580,9 @@
                         { sourceColumn: 'Recording', extractor: 'tagCount',     syntheticColumns: ['Tag count'] },
                         { sourceColumn: 'Recording', extractor: 'artistCredit', syntheticColumns: ['Artist'] }
                     ],
+                    syntheticColumnExtractors: [
+                        { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
+                    ],
                     integerColumns: [ {sourceColumn: 'Tag count', align: 'R'} ]
                 },
                 'Series': {
@@ -13640,6 +13649,9 @@
                     columnExtractors: [
                         { sourceColumn: 'Recording', extractor: 'artistCredit', syntheticColumns: ['Artist'] },
                         { sourceColumn: 'Recording', extractor: 'video',        syntheticColumns: ['Video'] }
+                    ],
+                    syntheticColumnExtractors: [
+                        { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                     ]
                 },
                 'Series': {},
@@ -13778,6 +13790,9 @@
                 'Recordings': {
                     columnExtractors: [
                         { sourceColumn: 'Name', extractor: 'video', syntheticColumns: ['Video'] }
+                    ],
+                    syntheticColumnExtractors: [
+                        { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                     ],
                     integerColumns: [ {sourceColumn: 'Length', align: ':'} ],
                     extractMainColumn: 'Name',
@@ -14044,6 +14059,9 @@
                     columnErasers: [ { sourceColumn: 'Release', erasers: ['jesus2099'] } ],
                     columnExtractors: [
                         { sourceColumn: 'Name', extractor: 'video', syntheticColumns: ['Video'] }
+                    ],
+                    syntheticColumnExtractors: [
+                        { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                     ],
                     collapsableColumns: [ 'ISRCs', 'Release' ],
                     msTrackLengthBatch: true,   // results span every entity — see _msLengthSource()
@@ -14560,6 +14578,9 @@
                     { sourceColumn: 'Title', extractor: 'video',     syntheticColumns: ['Video'] },
                     { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
                 ],
+                syntheticColumnExtractors: [
+                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
+                ],
                 injectedColumns: [ 'Release events', 'Relationships' ],
                 injectedColumnExtractors: [
                     { sourceColumn: 'Release events', extractor: 'splitCountryDate', syntheticColumns: ['Release country', 'Release date'] },
@@ -14586,6 +14607,9 @@
                 columnExtractors: [
                     { sourceColumn: 'Title', extractor: 'video',     syntheticColumns: ['Video'] },
                     { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
+                ],
+                syntheticColumnExtractors: [
+                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
                 injectedColumns: [ 'Release events', 'Relationships' ],
                 injectedColumnExtractors: [
@@ -14704,6 +14728,16 @@
                     columnExtractors: [
                         { sourceColumn: 'Name', extractor: 'video', syntheticColumns: ['Video'] }
                     ],
+                    syntheticColumnExtractors: [
+                        { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
+                    ],
+                    // 'batch', not 'ws2': _msWs2PageKey()'s regex covers only
+                    // work/artist/place/area, so a series has no single-request
+                    // source — and a series' recordings are its PARTS, not a
+                    // relationship list one inc=recording-rels answer would cover.
+                    // The batched search endpoint keys off the recording MBIDs the
+                    // page actually renders, which these rows all carry.
+                    msTrackLengthBatch: true,   // no ws2 source for series — see _msLengthSource()
                     integerColumns: [ {sourceColumn: 'Length', align: ':'} ],
                     extractMainColumn: 'Name',
                     stickyColumn: 'Name'
@@ -14852,6 +14886,9 @@
                     { sourceColumn: 'Title', extractor: 'video', syntheticColumns: ['Video'] },
                     { sourceColumn: 'Title', extractor: 'caa', syntheticColumns: ['CAA'] }
                 ],
+                syntheticColumnExtractors: [
+                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
+                ],
                 injectedColumns: [ 'Relationships' ],
                 msTrackLengthWs2: true,   // no length data in the page — see _msLengthSource()
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'Length', align: ':'} ],
@@ -14876,6 +14913,9 @@
                     { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] },
                     { sourceColumn: 'Title', extractor: 'video', syntheticColumns: ['Video'] },
                     { sourceColumn: 'Title', extractor: 'caa', syntheticColumns: ['CAA'] }
+                ],
+                syntheticColumnExtractors: [
+                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
                 injectedColumns: [ 'Relationships' ],
                 msTrackLengthWs2: true,   // no length data in the page — see _msLengthSource()
@@ -42649,9 +42689,30 @@ a { color: #1565c0; }`;
                         entry.syntheticColumns.forEach(cn => _finalColNames.push(cn));
                     });
                     // 3. Synthetic columns from synthetic-column extractors (second pass).
-                    // Similarly guard on source column presence.
+                    // Similarly guard on source column presence — but that guard MUST also
+                    // count the extractMainColumn trio, which step 4 below only appends to
+                    // _finalColNames AFTERWARDS. At row-assembly time those cells already
+                    // exist by the time a synthetic-column extractor reads them, which is
+                    // exactly how `eventParts` (sourceColumn: 'Comment', and 'Disambiguation'
+                    // on release-tracks) works at all. Checking only _finalColNames here
+                    // declared such an entry unresolved and silently dropped its synthetic
+                    // names from the list — while the cells were still rendered — so every
+                    // column resolved after that point came out N indices too low, N being
+                    // the number of omitted names. That mis-resolves integerColumns' colIdx,
+                    // which is applied POSITIONALLY (row.cells[colIdx], see
+                    // applyIntegerColumnStyling), landing alignment styling on wholly
+                    // unrelated columns. Concretely, on place-performances(-filtered) —
+                    // the only pageTypes combining eventParts with integerColumns fed by
+                    // injectedColumnExtractors (step 7), so the only ones that could hit
+                    // this — the nine Event-* names went missing and R-YYYY (align 'C')
+                    // landed on 'MB-Name', centering it, while R-DD/R-MM (align 'R') landed
+                    // on two Event-* columns.
+                    const _mainColTrio = mainColIdx !== -1
+                        ? ['MB-Name', 'Comment', 'Primary alias']
+                        : [];
                     activeSyntheticColumnExtractors.forEach(entry => {
-                        const _srcPresent = _finalColNames.includes(entry.sourceColumn);
+                        const _srcPresent = _finalColNames.includes(entry.sourceColumn) ||
+                                            _mainColTrio.includes(entry.sourceColumn);
                         if (!_srcPresent) return;
                         entry.syntheticColumns.forEach(cn => _finalColNames.push(cn));
                     });

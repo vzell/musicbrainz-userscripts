@@ -716,7 +716,12 @@ COLUMN MANAGEMENT
     — "Event-Type" + "Event-Date" + "Event-Detail" + "Event-Venue" +
       "Event-Venue-Detail" + "Event-City" + "Event-State" + "Event-Country" +
       "Event-Additional-Info"  derived from the extracted "Comment" column on
-                                Work-Recordings/Artist-Recordings-style pages
+                                every page that lists RECORDINGS — a work's,
+                                artist's, area's, place's, instrument's or
+                                ISRC's recordings, artist relationships,
+                                release tracks, recording search results,
+                                and the Recordings section of tag, rating,
+                                collection, series and artist-credit pages
                                 (requires "Enable Event Parts synthetic
                                 column extractor" setting).  Event-Date also
                                 recognizes MusicBrainz's "uncertain day"
@@ -780,12 +785,12 @@ is fetched at all:
     hangs off the one entity the page is about — so those need exactly one
     MusicBrainz Web Service request for the whole table.
 
-  • Artist-recordings, instrument-recordings, ISRC and recording search-result
-    pages are lists that no single lookup covers, so those are fetched in
-    batches of 100 recordings, one request per second.  The ⏳ glyph counts
-    them off ("⏳2/5") so you can see it working.  The tooltip says up front
-    how many requests pressing would cost, and a page of 100 rows or fewer
-    is a single request like the cases above.
+  • Artist-recordings, instrument-recordings, ISRC, recording search-result
+    and series-recordings pages are lists that no single lookup covers, so
+    those are fetched in batches of 100 recordings, one request per second.
+    The ⏳ glyph counts them off ("⏳2/5") so you can see it working.  The
+    tooltip says up front how many requests pressing would cost, and a page
+    of 100 rows or fewer is a single request like the cases above.
 
   In every case the request happens only when you first press the toggle —
   never while the page renders — so a page you don't ask for precision on
