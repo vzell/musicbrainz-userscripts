@@ -1,5 +1,47 @@
 [
   {
+    "version": "9.99.1015",
+    "date": "2026-09-05",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Millisecond \"Length\" precision now reaches the pageTypes that no single Web Service lookup can cover: `artist-recordings`, `instrument-recordings`, `isrc`, and recording search results. These are fetched in batches keyed on the recording MBIDs the page actually renders — `/ws/2/recording?query=rid:(…)`, 100 at a time, one request per second — so a page of 100 rows or fewer costs a single request. The ⏳ glyph counts the batches off (\"⏳2/5\") and the tooltip quotes the cost before you spend it.",
+          "A batched lookup rather than the `?artist=` browse endpoint, because a browse loop's cost is set by the ENTITY's whole catalogue instead of by the page: Bruce Springsteen's `recording-count` is 74,540, i.e. 746 requests and roughly fourteen minutes, whether the table lists ten rows or ten thousand. It also cannot serve `instrument-recordings` at all — `/ws/2/instrument/<mbid>?inc=recording-rels` returns zero relations for a page listing 100 recordings, because MusicBrainz models instrument credits as artist-recording relationships carrying an instrument attribute. 100 MBIDs per request is the measured ceiling, not a guess: 150 is accepted but silently capped by the endpoint's own limit, and 200 is rejected as `HTTP 414 URI Too Long` (scripts/probe-ms-rid-batch-size.py).",
+          "Fetched lengths are cached per RECORDING in IndexedDB (`ms-rec-len` store), not per page, so a recording already seen on one page is free on every other page that lists it and free again after a reload. New settings `sa_ms_idb_enable` (default on) and `sa_ms_idb_ttl_days` (default 30) control it, and the 📊 Statistics panel reports the store's size alongside the existing art and relationship caches. Each batch's answers are written in ONE IndexedDB transaction rather than one per recording, which at a hundred rows per batch is the difference between one write and a hundred."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "`area-recordings` and `area-recordings-filtered` gained the ⏱ toggle through the existing SINGLE-request path rather than the new batched one. An area's own `inc=recording-rels` answer covers its recordings page exactly — Asbury Park returns 24 relations with lengths for a page listing those same 24 recordings — so one request beats chunking the rows.",
+          "A partly-failed batched run now shows the rows that did arrive and says the column is incomplete (the same yellow tint the retry state uses), instead of either discarding usable data or presenting a half-filled column as finished. Failed batches cache nothing, so switching the toggle off and on again re-requests exactly the missing MBIDs and fills the gaps rather than starting over. Worth having rather than theoretical: the Web Service was returning 503 for roughly one request in three while this was being built."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The background IndexedDB sweep has never actually swept the `rel-ws2` store. `sweepStore()` measured every record's age from a `storedAt` field, which only the `images` and `metadata` records carry — a `rel-ws2` record timestamps itself as `ts`, so it always read as age 0 and was never deleted. Those entries did still expire, but only lazily and one at a time, whenever `_relIdbGet()` happened to read one. It now reads either field, which also lets the new `ms-rec-len` store be swept properly rather than inheriting the same silent no-op."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "`recording-releases` is now documented in the source as deliberately having NO millisecond source, so it does not acquire one later by analogy with its neighbours. Its rows are releases rather than recordings and carry no `/recording/` link at all, and its \"Length\" is the per-release TRACK length — a different stored field from the recording's own length, which genuinely differs (4 of `Born to Run`'s 8 tracks disagree, one by 3 s). Substituting the recording length would be showing a different measurement rather than more precision on the shown one, the same objection that already keeps `release-discids`' TOC-derived lengths out. Doing it properly needs a release-keyed source, which is its own mechanism."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "New fixture-based coverage for the batched source (`tests/fixtures/artist-recordings-ms-batch.spec.js`, 130 generated rows over two batches) asserting what the mechanism is actually about: how many requests go out, which MBIDs each asks for, that a \"?:??\" row is never requested, that answers are cached across sorting/filtering/re-toggling, and both failure shapes. Plus `area-recordings-ms-length.spec.js`, which pins the one-regex-token `area` path a typo would otherwise disable silently. Both were verified by mutation — reverting the code they cover makes them fail.",
+          "`__saTest.msPendingLengthLookups()` exposes how many recordings are still outstanding, because the interesting case is invisible from the DOM: a row answered as \"no length on record\" is never stamped and so looks identical to an unanswered one.",
+          "`tests/support/idbFixture.js` resynced to IndexedDB version 3 and the new `ms-rec-len` store. It seeds the database before the userscript opens it, so a stale version there would have left the userscript holding a handle to a database it believed current with a store missing — its own comment already asked for exactly this re-check whenever the version drifts.",
+          "`tests/fixtures/length-column-filter-colon-gap.spec.js` now identifies its column by `data-col-name` instead of stripping decorations out of the header text — `artist-recordings` headers now carry the ⏱ toggle, which that helper's strip list did not know about."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1014",
     "date": "2026-09-05",
     "sections": [
