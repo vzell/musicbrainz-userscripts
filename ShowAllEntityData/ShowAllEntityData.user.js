@@ -2263,6 +2263,33 @@
                          + 'easy to scan.'
         },
 
+        sa_ms_idb_enable: {
+            label: 'Enable IndexedDB millisecond length cache',
+            type: 'checkbox',
+            default: true,
+            description: 'Cache each recording\'s millisecond length in IndexedDB, keyed by '
+                         + 'recording MBID, so a page whose lengths were fetched once does not '
+                         + 're-request them on a later visit. The cache is per RECORDING rather '
+                         + 'than per page, so a recording already seen on one page is free on '
+                         + 'every other page that lists it. Entries expire after '
+                         + 'sa_ms_idb_ttl_days. Uses the same IndexedDB database as the artwork '
+                         + 'and relationship caches (vz-mb-saed-art-cache, store: ms-rec-len).'
+        },
+
+        sa_ms_idb_ttl_days: {
+            label: 'Millisecond length IDB cache TTL (days)',
+            type: 'number',
+            default: 30,
+            min: 1,
+            max: 365,
+            description: 'Maximum age in days for a cached millisecond length (IndexedDB store '
+                         + '"ms-rec-len") before it is considered expired and re-fetched. '
+                         + 'Mirrors sa_rel_idb_ttl_days for the relationship cache. A track '
+                         + 'length changes only when an editor corrects it, so a long TTL is '
+                         + 'safe: a stale value that no longer matches the seconds MusicBrainz '
+                         + 'renders is discarded on arrival rather than displayed.'
+        },
+
         sa_enable_ms_length_debug: {
             label: 'Enable millisecond track length debug logging',
             type: 'checkbox',
@@ -13216,6 +13243,7 @@
                 syntheticColumnExtractors: [
                     { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
+                msTrackLengthBatch: true,   // one batch: an ISRC lists few recordings
                 integerColumns: [ { sourceColumn: 'Length', align: ':' } ],
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
@@ -14018,6 +14046,7 @@
                         { sourceColumn: 'Name', extractor: 'video', syntheticColumns: ['Video'] }
                     ],
                     collapsableColumns: [ 'ISRCs', 'Release' ],
+                    msTrackLengthBatch: true,   // results span every entity — see _msLengthSource()
                     integerColumns: [
                         { sourceColumn: 'Medium', align: 'R' },
                         { sourceColumn: 'Track',  align: 'R' },
@@ -14167,6 +14196,7 @@
                 ],
                 renderMultiRowCell: [ 'Relationship types' ],
                 collapsableColumns: [ 'ISRCs', 'Relationship types' ],
+                msTrackLengthBatch: true,   // instrument inc=recording-rels is empty — see _msWs2PageKey()
                 integerColumns: [
                     { sourceColumn: 'Length', align: ':' }
                 ],
@@ -14431,6 +14461,7 @@
                 syntheticColumnExtractors: [
                     { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
+                msTrackLengthWs2: true,   // area inc=recording-rels covers the page — see _msWs2PageKey()
                 integerColumns: [
 		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
 		    {sourceColumn: 'Length', align: ':'}
@@ -14452,6 +14483,7 @@
                 syntheticColumnExtractors: [
                     { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
+                msTrackLengthWs2: true,   // area inc=recording-rels covers the page — see _msWs2PageKey()
                 integerColumns: [
 		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
 		    {sourceColumn: 'Length', align: ':'}
@@ -14974,6 +15006,7 @@
                 syntheticColumnExtractors: [
                     { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
+                msTrackLengthBatch: true,   // no single lookup covers this — see _msLengthSource()
                 integerColumns: [ {sourceColumn: 'Length', align: ':'} ],
                 collapsableColumns: [ 'Release groups', 'CAA' ],
                 tooltipColumns: [ 'Release groups', 'Name', 'italic:Comment', 'Artist', '---', ['Length', '-', 'Video'], 'ISRCs' ],
@@ -15123,6 +15156,22 @@
             tableMode: 'single'
             //rowTargetSelector: '.acoustid-fingerprints table.tbl'
         },
+        // Deliberately has NO millisecond Length source, and must not grow one
+        // by analogy with its neighbours. Two independent reasons, both
+        // verified against the live page (scripts/probe-ms-page-shapes.js):
+        //   - Its rows are RELEASES, not recordings, and carry no
+        //     `/recording/` link at all — the page's only recording is its own
+        //     subject — so there is nothing for
+        //     `_extractRecordingMbidFromRow()` to key a lookup on.
+        //   - Its "Length" is the TRACK length on each release, which is a
+        //     different stored field from the recording's own length and
+        //     genuinely differs (4 of `Born to Run`'s 8 tracks disagree, one by
+        //     3 s). Substituting the recording length would be showing a
+        //     different measurement, not more precision on the shown one —
+        //     the same objection that keeps `release-discids`' TOC/sector-derived
+        //     Length out. Doing this properly needs a release-keyed source
+        //     (`/ws/2/release?recording=<mbid>&inc=media+recordings`), which is
+        //     its own mechanism, not this one.
         {
             type: 'recording-releases',
             match: (path) => path.includes('/recording'),
@@ -16279,11 +16328,21 @@
 
     /**
      * Page-entity key for the WS2 millisecond lookup, e.g. `"work:8727a75a-…"`.
+     *
+     * `area` is here because an area's own `inc=recording-rels` answer covers
+     * its recordings page exactly — Asbury Park returns 24 relations, all with
+     * lengths, for a page listing those same 24 recordings
+     * (scripts/probe-ms-browse-endpoints.py) — so one request beats the batched
+     * path. `instrument` is deliberately NOT here: the same lookup returns zero
+     * relations for a page listing 100 recordings, because MusicBrainz models
+     * instrument credits as artist-recording relationships carrying an
+     * instrument attribute. That pageType uses `'batch'` instead.
+     *
      * @returns {?string} `null` when the URL is not one of the supported shapes.
      */
     function _msWs2PageKey() {
         const m = window.location.pathname.match(
-            /^\/(work|artist|place)\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/
+            /^\/(work|artist|place|area)\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/
         );
         return m ? `${m[1]}:${m[2]}` : null;
     }
@@ -16300,15 +16359,31 @@
      *                  data of their own at all (confirmed against every
      *                  embedded JSON blob on a work page — see
      *                  scripts/probe-work-page-json.py — where `"length"` does
-     *                  not appear once).
+     *                  not appear once). The page entity's own
+     *                  `inc=recording-rels` answer covers the whole table, so
+     *                  one request is enough.
+     *   `'batch'`    — several requests, keyed on the recording MBIDs the page
+     *                  actually renders (`features.msTrackLengthBatch`). For
+     *                  pageTypes whose table is NOT one entity's relationship
+     *                  list — an artist's recordings, an instrument's, a search
+     *                  result — so there is no single lookup that covers it.
+     *                  See `_msFetchBatchRecordingLengths()`.
      *   `null`       — no source; no toggle is offered.
      *
-     * @returns {?('embedded'|'ws2')}
+     * Checked in cost order, cheapest first: already-in-the-document beats one
+     * request beats several. All three are O(1) — in particular `'batch'` keys
+     * off the feature flag alone and does NOT walk the rows looking for
+     * recording links, because `_initMsLengthColHeaderToggle()` calls this on
+     * every render specifically to avoid that cost. A flagged page that turns
+     * out to have no usable rows resolves to `'unavailable'` when pressed.
+     *
+     * @returns {?('embedded'|'ws2'|'batch')}
      */
     function _msLengthSource() {
         if (Lib.settings.sa_enable_ms_track_length === false) return null;
         if (_buildReleaseTrackLengthMap()) return 'embedded';
         if (activeDefinition?.features?.msTrackLengthWs2 && _msWs2PageKey()) return 'ws2';
+        if (activeDefinition?.features?.msTrackLengthBatch) return 'batch';
         return null;
     }
 
@@ -16379,6 +16454,301 @@
         const result = map.size ? map : null;
         _msWs2Cache.set(key, result);
         return { outcome: result ? 'ok' : 'empty', map: result, detail: '' };
+    }
+
+    /**
+     * MBIDs per batched `rid:` request.
+     *
+     * 100 is the measured ceiling, not a guess (scripts/probe-ms-rid-batch-size.py):
+     * a 100-MBID query is a 4,468-character URL and returns all 100 recordings
+     * with lengths identical to the browse endpoint's; 150 is still accepted but
+     * the search endpoint's own `limit` caps the answer at 100, silently
+     * dropping the rest; 200 is rejected outright with `HTTP 414 URI Too Long`.
+     */
+    const _MS_BATCH_SIZE = 100;
+
+    /** Attempts per batch, including the first. WS2 503s intermittently under bot load. */
+    const _MS_BATCH_TRIES = 3;
+
+    /** Milliseconds between batches — the MusicBrainz Web Service allows 1 req/s. */
+    const _MS_BATCH_DELAY = 1100;
+
+    /**
+     * @type {Map<string, ?number>} L1 cache: recording MBID → milliseconds, or
+     * `null` for "MusicBrainz has no length on record for this recording".
+     */
+    const _msBatchMemCache = new Map();
+
+    /**
+     * Reads one recording's cached millisecond length from IndexedDB.
+     *
+     * Mirrors `_relIdbGet()` exactly, including its "never reject" contract:
+     * the cache is an optimisation, so an unavailable IDB (private browsing,
+     * a blocked upgrade) degrades to a network fetch rather than an error.
+     *
+     * @param   {string} gid  Recording MBID.
+     * @returns {Promise<?{ms: ?number}>} `null` when disabled, missing or expired.
+     */
+    function _msIdbGetLength(gid) {
+        if (Lib.settings.sa_ms_idb_enable === false) return Promise.resolve(null);
+        return _artIdbGet('ms-rec-len', gid)
+            .then(rec => {
+                if (!rec) return null;
+                const ttlDays = Lib.settings.sa_ms_idb_ttl_days || 30;
+                if (Date.now() - (rec.ts || 0) > ttlDays * 86400 * 1000) {
+                    _artIdbDelete('ms-rec-len', gid).catch(() => {});
+                    return null;
+                }
+                return { ms: typeof rec.ms === 'number' ? rec.ms : null };
+            })
+            .catch(() => null);
+    }
+
+    /**
+     * Writes one batch's worth of recording lengths to IndexedDB, in ONE
+     * transaction.
+     *
+     * Deliberately not a loop over the shared `_artIdbPut()` the way
+     * `_relIdbPut()` writes its single record: that helper opens its own
+     * transaction per call, which is fine for one entity but would mean one
+     * transaction per RECORDING here — a hundred per batch, and thousands on
+     * a large artist's recordings page.
+     *
+     * `null` is a real answer worth storing — "MusicBrainz has no sub-second
+     * length for this recording" is a stable fact, and caching it is what stops
+     * a page of length-less recordings from re-requesting them on every visit.
+     *
+     * Never rejects: the cache is an optimisation, so an unavailable IDB
+     * (private browsing, a blocked upgrade) simply means the next visit
+     * re-fetches.
+     *
+     * @param   {Array<[string, ?number]>} entries  `[recordingMbid, ms|null]` pairs.
+     * @returns {void}
+     */
+    function _msIdbPutLengths(entries) {
+        if (Lib.settings.sa_ms_idb_enable === false || !entries.length) return;
+        _artOpenIdb().then(db => {
+            const tx = db.transaction('ms-rec-len', 'readwrite');
+            const store = tx.objectStore('ms-rec-len');
+            const ts = Date.now();
+            entries.forEach(([gid, ms]) => {
+                store.put({ gid, ms: typeof ms === 'number' ? ms : null, ts });
+            });
+        }).catch(() => {});
+    }
+
+    /**
+     * The recording MBIDs this page still needs a millisecond length for.
+     *
+     * Deliberately narrower than "every recording on the page" — batch slots
+     * are the scarce resource, so a row is skipped when it cannot benefit:
+     *
+     *   - already stamped (`data-mb-ms`), including from a previous press;
+     *   - already answered in `_msBatchMemCache`, INCLUDING answered as "no
+     *     length on record" — such a row never gets stamped, so without this it
+     *     would look like outstanding work forever. Emptiness of this list is
+     *     what tells the toggle there is nothing left to fetch;
+     *   - no `/recording/` link in the row (nothing to key a lookup on);
+     *   - a Length cell that does not parse, i.e. `"?:??"`. Such a row has no
+     *     seconds text to round-trip a fetched value against, so
+     *     `_msStampSourceRowsFromMap()` would discard the answer anyway.
+     *
+     * @returns {string[]} Unique recording MBIDs, in row order.
+     */
+    function _msCollectRecordingMbids() {
+        const colIdx = _msLengthColumnIndex();
+        if (colIdx < 0) return [];
+        const seen = new Set();
+        _msSourceRows().forEach(row => {
+            const td = row.cells[colIdx];
+            if (!td || td.dataset.mbMs) return;
+            const gid = _extractRecordingMbidFromRow(row);
+            if (!gid || seen.has(gid) || _msBatchMemCache.has(gid)) return;
+            const secText = (getCleanColumnText(td) || td.textContent || '').trim();
+            if (_parseDurationToMs(secText) === null) return;
+            seen.add(gid);
+        });
+        return Array.from(seen);
+    }
+
+    /** @type {?{value: number}} Per-task memo for `_msBatchRequestCount()`. */
+    let _msBatchCountMemo = null;
+
+    /**
+     * How many batched requests pressing the toggle would cost right now.
+     *
+     * Memoised for the current task because the header tooltip wants it and a
+     * repaint touches EVERY Length header: `_msCollectRecordingMbids()` walks
+     * every captured row and calls `getCleanColumnText()` on each Length cell,
+     * so recomputing it once per button would turn a multi-table page's repaint
+     * into that walk repeated once per table. The memo is dropped in a
+     * microtask, i.e. as soon as the synchronous repaint pass that shares it
+     * ends, so the next render always recounts.
+     *
+     * @returns {number}
+     */
+    function _msBatchRequestCount() {
+        if (_msBatchCountMemo) return _msBatchCountMemo.value;
+        _msBatchCountMemo = { value: Math.ceil(_msCollectRecordingMbids().length / _MS_BATCH_SIZE) };
+        Promise.resolve().then(() => { _msBatchCountMemo = null; });
+        return _msBatchCountMemo.value;
+    }
+
+    /**
+     * Fetches one batch of recording lengths from the search endpoint.
+     *
+     * `/ws/2/recording?query=rid:(mbid OR mbid OR …)` is used instead of the
+     * `/ws/2/recording?artist=…` BROWSE endpoint on purpose. A browse loop's
+     * cost is set by the page ENTITY's whole catalogue rather than by what the
+     * page shows — Bruce Springsteen's `recording-count` is 74,540, i.e. 746
+     * requests and about fourteen minutes, whether the table lists ten rows or
+     * ten thousand. Keying on the MBIDs actually rendered costs
+     * `ceil(rows / 100)` instead, and works on the pageTypes that have no
+     * browse endpoint at all: `/ws/2/instrument/<mbid>?inc=recording-rels`
+     * returns zero relations for a page listing 100 recordings, because
+     * MusicBrainz models instrument credits as artist-recording relationships
+     * carrying an instrument attribute (scripts/probe-ms-browse-endpoints.py).
+     *
+     * A 503 is retried rather than treated as an answer: the Web Service
+     * returns them in bursts under bot load — measured at roughly one request
+     * in three while this was being built — and a burst is not a fact about
+     * the data.
+     *
+     * @param   {string[]} ids  Up to `_MS_BATCH_SIZE` recording MBIDs.
+     * @returns {Promise<{ok: boolean, recordings: Array<Object>, detail: string}>}
+     */
+    async function _msFetchOneBatch(ids) {
+        const query = encodeURIComponent(`rid:(${ids.join(' OR ')})`);
+        const url = `/ws/2/recording?query=${query}&limit=${_MS_BATCH_SIZE}&fmt=json`;
+        let detail = '';
+        for (let attempt = 1; attempt <= _MS_BATCH_TRIES; attempt++) {
+            try {
+                const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    return { ok: true, recordings: data.recordings || [], detail: '' };
+                }
+                detail = `HTTP ${resp.status}`;
+                // Only a 503 is worth another attempt; a 4xx will not change.
+                if (resp.status !== 503) break;
+                _msDbg(`_msFetchOneBatch: ${detail} on attempt ${attempt}/${_MS_BATCH_TRIES}`);
+            } catch (err) {
+                detail = 'the request failed';
+                _msDbg(`_msFetchOneBatch: ${err.message || String(err)} on attempt ${attempt}`);
+            }
+            if (attempt < _MS_BATCH_TRIES) {
+                await new Promise(r => setTimeout(r, _MS_BATCH_DELAY * attempt));
+            }
+        }
+        return { ok: false, recordings: [], detail };
+    }
+
+    /**
+     * Resolves every rendered recording's millisecond length, in batches.
+     *
+     * Two phases, the same shape `initRelationshipsColumn()` uses:
+     *
+     *   1. Cache lookup for every MBID — L1 memory first, then IndexedDB for
+     *      the rest, in parallel. Both tiers are per RECORDING, not per page,
+     *      so a recording already seen on another pageType is free here.
+     *   2. Only the misses go to the network, chunked into `_MS_BATCH_SIZE`
+     *      requests spaced `_MS_BATCH_DELAY` apart.
+     *
+     * A SUCCESSFUL batch is an answer for every MBID it was asked about,
+     * including the ones it did not return or returned without a `length` —
+     * both are cached as `null` ("no sub-second length on record"), which is
+     * what stops a page of length-less recordings re-requesting them forever.
+     * A FAILED batch caches nothing, so its MBIDs are retried on the next
+     * press; that is why a partly-failed run is reported as `'partial'` rather
+     * than quietly presented as complete.
+     *
+     * @param   {function(number, number):void} [onProgress]  `(done, total)` batches.
+     * @returns {Promise<{outcome: ('ok'|'partial'|'empty'|'error'), map: ?Map<string, number>,
+     *                    detail: string, tiers: {mem: number, idb: number, net: number}}>}
+     */
+    async function _msFetchBatchRecordingLengths(onProgress) {
+        const mbids = _msCollectRecordingMbids();
+        const tiers = { mem: 0, idb: 0, net: 0 };
+        if (!mbids.length) {
+            _msDbg('_msFetchBatchRecordingLengths: no recording MBIDs to look up');
+            return { outcome: 'empty', map: null, detail: '', tiers };
+        }
+
+        const map = new Map();
+        /** Records one resolved answer in the result map and the L1 cache. */
+        const accept = (gid, ms) => {
+            _msBatchMemCache.set(gid, typeof ms === 'number' ? ms : null);
+            if (typeof ms === 'number') map.set(gid, ms);
+        };
+
+        // ── Phase 1: caches ────────────────────────────────────────────────
+        const uncached = [];
+        mbids.forEach(gid => {
+            if (_msBatchMemCache.has(gid)) {
+                tiers.mem++;
+                const ms = _msBatchMemCache.get(gid);
+                if (typeof ms === 'number') map.set(gid, ms);
+            } else {
+                uncached.push(gid);
+            }
+        });
+        const idbHits = await Promise.all(uncached.map(gid => _msIdbGetLength(gid)));
+        const misses = [];
+        uncached.forEach((gid, i) => {
+            const hit = idbHits[i];
+            if (hit) {
+                tiers.idb++;
+                accept(gid, hit.ms);
+            } else {
+                misses.push(gid);
+            }
+        });
+        _msDbg(`_msFetchBatchRecordingLengths: ${mbids.length} MBID(s) — ` +
+               `${tiers.mem} memory, ${tiers.idb} IDB, ${misses.length} to fetch`);
+
+        // ── Phase 2: throttled network batches for the misses only ─────────
+        const batches = [];
+        for (let i = 0; i < misses.length; i += _MS_BATCH_SIZE) {
+            batches.push(misses.slice(i, i + _MS_BATCH_SIZE));
+        }
+        if (onProgress) onProgress(0, batches.length);
+
+        let failed = 0, lastDetail = '';
+        for (let b = 0; b < batches.length; b++) {
+            if (b > 0) await new Promise(r => setTimeout(r, _MS_BATCH_DELAY));
+            const res = await _msFetchOneBatch(batches[b]);
+            if (!res.ok) {
+                // Nothing cached: these MBIDs stay unknown and retryable.
+                failed++;
+                lastDetail = res.detail;
+            } else {
+                const returned = new Map();
+                res.recordings.forEach(rec => {
+                    if (rec && rec.id) returned.set(rec.id, typeof rec.length === 'number' ? rec.length : null);
+                });
+                const toStore = batches[b].map(gid => {
+                    const ms = returned.has(gid) ? returned.get(gid) : null;
+                    accept(gid, ms);
+                    return [gid, ms];
+                });
+                _msIdbPutLengths(toStore);
+                tiers.net += batches[b].length;
+            }
+            if (onProgress) onProgress(b + 1, batches.length);
+        }
+
+        _msDbg(`_msFetchBatchRecordingLengths: ${batches.length} batch(es), ${failed} failed, ` +
+               `${map.size} recording(s) with a length`);
+
+        if (failed === batches.length && batches.length > 0 && !map.size) {
+            return { outcome: 'error', map: null, detail: lastDetail, tiers };
+        }
+        if (!map.size) return { outcome: 'empty', map: null, detail: '', tiers };
+        if (failed) {
+            const suffix = failed === 1 ? '' : 'es';
+            return { outcome: 'partial', map, detail: `${failed} batch${suffix} failed (${lastDetail})`, tiers };
+        }
+        return { outcome: 'ok', map, detail: '', tiers };
     }
 
     /**
@@ -16531,10 +16901,18 @@
      */
     function _msUpdateColHdrBtn(btn, showing, state, detail) {
         if (state === 'loading') {
-            btn.textContent = '⏳';
+            // `detail` carries batch progress ("2/5") on the batched source,
+            // which can take a visible number of seconds — a bare hourglass
+            // gives no sign of whether anything is happening. A single-request
+            // source passes nothing and keeps the plain glyph.
+            btn.textContent = detail ? `⏳${detail}` : '⏳';
             btn.setAttribute('aria-busy', 'true');
-            btn.title = 'Loading millisecond lengths from the MusicBrainz Web Service…';
-            btn.setAttribute('aria-label', 'Loading millisecond lengths');
+            btn.title = detail
+                ? `Loading millisecond lengths from the MusicBrainz Web Service — batch ${detail}…`
+                : 'Loading millisecond lengths from the MusicBrainz Web Service…';
+            btn.setAttribute('aria-label', detail
+                ? `Loading millisecond lengths, batch ${detail}`
+                : 'Loading millisecond lengths');
             return;
         }
         btn.removeAttribute('aria-busy');
@@ -16560,6 +16938,24 @@
             return;
         }
 
+        // Some batches came back and some did not. The rows that resolved are
+        // shown rather than thrown away, but the button must not read as
+        // finished: the failed batches cached nothing, so pressing again
+        // re-requests exactly those and fills in the gaps. Same yellow tint as
+        // `retry`, because it means the same thing — there is more to get.
+        if (state === 'partial') {
+            delete btn.dataset.mbMsUnavailable;
+            btn.removeAttribute('aria-disabled');
+            btn.dataset.mbMsRetry = '1';
+            const because = detail ? ` (${detail})` : '';
+            btn.title = `Some millisecond lengths could not be loaded${because} — the rows that did `
+                      + 'load are shown. The MusicBrainz Web Service is temporarily unavailable, '
+                      + 'which happens when it is under heavy load. Click twice to retry the rest.';
+            btn.setAttribute('aria-label',
+                'Some millisecond lengths could not be loaded — click again to retry the rest');
+            return;
+        }
+
         if (state === 'unavailable') {
             btn.dataset.mbMsUnavailable = '1';
             btn.title = 'Millisecond precision unavailable here — MusicBrainz has no sub-second '
@@ -16571,15 +16967,28 @@
 
         delete btn.dataset.mbMsUnavailable;
         btn.removeAttribute('aria-disabled');
-        // Mention the one-off request only where there actually is one: on a
-        // release page the values are already in the document.
-        const needsFetch = !showing && !_msAnyStamped() && _msLengthSource() === 'ws2';
+        // Mention the request only where there actually is one: on a release
+        // page the values are already in the document.
+        const _src = (!showing && !_msAnyStamped()) ? _msLengthSource() : null;
+        let _fetchNote = '';
+        if (_src === 'ws2') {
+            _fetchNote = ' — one MusicBrainz Web Service request, cached for this page';
+        } else if (_src === 'batch') {
+            // Counted, not guessed: the row walk is what decides how many
+            // requests a press actually costs, and quoting it lets the user
+            // decide before spending them. Memoised per repaint pass — see
+            // `_msBatchRequestCount()`.
+            const _n = _msBatchRequestCount();
+            if (_n > 1) {
+                _fetchNote = ` — up to ${_n} MusicBrainz Web Service requests, one per second, `
+                           + 'cached afterwards';
+            } else if (_n === 1) {
+                _fetchNote = ' — one MusicBrainz Web Service request, cached afterwards';
+            }   // _n === 0: everything is already cached, so promise no request
+        }
         btn.title = showing
             ? 'Hide millisecond precision — show "Length" as M:SS (MusicBrainz\'s own rounding)'
-            : (needsFetch
-                ? 'Show millisecond precision for "Length" — one MusicBrainz Web Service request, '
-                  + 'cached for this page'
-                : 'Show millisecond precision for "Length"');
+            : `Show millisecond precision for "Length"${_fetchNote}`;
         btn.setAttribute('aria-label', showing
             ? 'Hide millisecond precision in the Length column'
             : 'Show millisecond precision in the Length column');
@@ -16614,26 +17023,53 @@
         // this moment rather than done during render, so a page nobody asks for
         // precision on never makes the request at all. The result is cached for
         // the page's lifetime, so every later toggle, sort or filter is local.
-        if (next && !_msAnyStamped()) {
-            if (_msLengthSource() !== 'ws2') {
+        let partialDetail = '';
+        // Is there anything left to fetch? For the single-request sources the
+        // answer is "only if nothing is stamped yet". The batched source can
+        // also be PARTLY resolved — a run in which some batches failed stamps
+        // what arrived — and those failures cached nothing, so pressing again
+        // must re-request exactly the outstanding MBIDs.
+        // `_msCollectRecordingMbids()` is precisely that list.
+        const source = next ? _msLengthSource() : null;
+        const needFetch = next && (
+            !_msAnyStamped() || (source === 'batch' && _msCollectRecordingMbids().length > 0)
+        );
+        if (needFetch) {
+            if (source !== 'ws2' && source !== 'batch') {
                 _msRepaintColHdrBtns(false, 'unavailable');
                 return;
             }
             _msToggleInFlight = true;
             _msRepaintColHdrBtns(false, 'loading');
             try {
-                const res = await _msFetchWs2RecordingLengths();
-                // A transport failure leaves the button retryable, not dead:
-                // the data may well exist, we just could not reach it. Nothing
-                // was cached, so the next press really does try again.
-                if (res.outcome === 'error') {
-                    _msRepaintColHdrBtns(false, 'retry', res.detail);
+                // Both sources answer in the same shape, so everything below is
+                // written once. They differ only in cost: `'ws2'` is a single
+                // lookup of the page entity, `'batch'` is one request per 100
+                // rendered recordings and therefore reports progress.
+                const res = source === 'batch'
+                    ? await _msFetchBatchRecordingLengths((done, total) => {
+                        if (total > 1) _msRepaintColHdrBtns(false, 'loading', `${done}/${total}`);
+                    })
+                    : await _msFetchWs2RecordingLengths();
+                if (res.map) _msStampSourceRowsFromMap(res.map);
+                // What matters now is whether the column can be shown at all,
+                // which is "is anything stamped" — not whether THIS run
+                // returned something. A retry press that fetches nothing new
+                // still has the previous run's rows to display.
+                if (!_msAnyStamped()) {
+                    // A transport failure leaves the button retryable, not
+                    // dead: the data may well exist, we just could not reach
+                    // it. Nothing was cached, so the next press really does try
+                    // again. Anything else is a settled answer about the data.
+                    _msRepaintColHdrBtns(false, res.outcome === 'error' ? 'retry' : 'unavailable',
+                                         res.detail);
                     return;
                 }
-                // Everything else is a settled answer about the data itself.
-                if (!res.map || !_msStampSourceRowsFromMap(res.map)) {
-                    _msRepaintColHdrBtns(false, 'unavailable');
-                    return;
+                // Some of it arrived and some did not. Show what did, and
+                // remember to say so, rather than either hiding usable rows or
+                // presenting an incomplete column as finished.
+                if (res.outcome === 'error' || res.outcome === 'partial') {
+                    partialDetail = res.detail || 'the request failed';
                 }
             } finally {
                 _msToggleInFlight = false;
@@ -16641,7 +17077,8 @@
         }
 
         _msApplyLengthPrecision(next);
-        _msRepaintColHdrBtns(next);
+        if (partialDetail) _msRepaintColHdrBtns(next, 'partial', partialDetail);
+        else _msRepaintColHdrBtns(next);
     }
 
     /**
@@ -26226,6 +26663,7 @@ ${sections.join('\n')}
 
             const _idbEnabled    = !!Lib.settings.sa_art_idb_enable;
             const _relIdbEnabled = !!Lib.settings.sa_rels_idb_enable;
+            const _msIdbEnabled  = Lib.settings.sa_ms_idb_enable !== false;
             const _fmtTs = (ts) => {
                 if (!ts) return '—';
                 const d = new Date(ts);
@@ -26259,6 +26697,14 @@ ${sections.join('\n')}
                     _id:     'mb-stats-idb-relws2',
                 },
                 {
+                    stat:    `⏱️ Millisecond length store (IDB)`,
+                    value:   '<em class="sa-stats-faint">querying…</em>',
+                    comment: _msIdbEnabled
+                        ? `TTL: ${Lib.settings.sa_ms_idb_ttl_days || 30} days — recording MBID → milliseconds (sa_ms_idb_enable)`
+                        : '⚠️ IDB millisecond length cache disabled (sa_ms_idb_enable = false)',
+                    _id:     'mb-stats-idb-msreclen',
+                },
+                {
                     stat:    '💡 L1 memory — art images (this session)',
                     value:   String(_artIdbMemCache.size),
                     comment: 'Per-session in-memory blob: URL Map; cleared on page unload',
@@ -26271,12 +26717,19 @@ ${sections.join('\n')}
                     _id:     null,
                 },
                 {
+                    stat:    '💡 L1 memory — millisecond lengths (this session)',
+                    value:   String(_msBatchMemCache.size),
+                    comment: 'Per-session recording MBID → milliseconds Map; a null value records '
+                           + '"MusicBrainz has no sub-second length for this recording"',
+                    _id:     null,
+                },
+                {
                     stat:    '🧹 Last idle sweep — expired records removed',
                     value:   _artIdbLastSweep.ts !== null
                         ? String(_artIdbLastSweep.deleted)
                         : '— (not yet run this session)',
                     comment: _artIdbLastSweep.ts !== null
-                        ? `Ran at ${_fmtTs(_artIdbLastSweep.ts)} — images, metadata, rel-ws2 stores`
+                        ? `Ran at ${_fmtTs(_artIdbLastSweep.ts)} — images, metadata, rel-ws2, ms-rec-len stores`
                         : 'Scheduled after first render (idle callback)',
                     _id:     null,
                 },
@@ -26314,12 +26767,13 @@ ${sections.join('\n')}
             });
 
             // Async: fill in the live counts.
-            if (_idbEnabled || _relIdbEnabled) {
+            if (_idbEnabled || _relIdbEnabled || _msIdbEnabled) {
                 Promise.all([
                     _artIdbCountStore('images'),
                     _artIdbCountStore('metadata'),
                     _artIdbCountStore('rel-ws2'),
-                ]).then(([imgCount, metaCount, relCount]) => {
+                    _artIdbCountStore('ms-rec-len'),
+                ]).then(([imgCount, metaCount, relCount, msCount]) => {
                     // Panel may have been closed by the time the counts arrive.
                     if (!document.getElementById('mb-stats-panel')) return;
 
@@ -26339,13 +26793,14 @@ ${sections.join('\n')}
                     _setVal(_rowFor('Art images store'), `${imgCount.toLocaleString()} entries`);
                     _setVal(_rowFor('Art metadata store'), `${metaCount.toLocaleString()} entries`);
                     _setVal(_rowFor('Rel WS2 store'), `${relCount.toLocaleString()} entries`);
+                    _setVal(_rowFor('Millisecond length store'), `${msCount.toLocaleString()} entries`);
                 }).catch(e => {
                     Lib.warn('idb', 'showStatsPanel: IDB count query failed:', e);
                 });
             } else {
-                // Both disabled — replace all three "querying…" cells immediately.
+                // All disabled — replace every "querying…" cell immediately.
                 const _allRows = Array.from(_idbTbl.querySelectorAll('tbody tr'));
-                [0, 1, 2].forEach(i => {
+                [0, 1, 2, 3].forEach(i => {
                     const td = _allRows[i] && _allRows[i].querySelectorAll('td')[1];
                     if (td) td.innerHTML = '<em class="sa-stats-faint">disabled</em>';
                 });
@@ -62669,6 +63124,16 @@ a { color: #1565c0; }`;
     //                  sweep/count/clear code path (see _artIdbSweepExpired,
     //                  _artIdbCountStore).
     //
+    //     'ms-rec-len' — added in version 3. Keyed by `gid` (a recording MBID).
+    //                  Value: { gid, ms, ts }, where `ms` is the recording's
+    //                  length in milliseconds or `null` for "MusicBrainz has no
+    //                  sub-second length on record". Used by the millisecond
+    //                  Length column's L2 cache (_msIdbGetLength /
+    //                  _msIdbPutLength). Keyed per RECORDING rather than per
+    //                  page entity on purpose: the same recording is listed by
+    //                  many pageTypes, so one page's fetch warms every other.
+    //                  Shares this database for the same reason 'rel-ws2' does.
+    //
     // Three-tier lookup for image blobs (_artFetchCachedImage):
     //   Tier 1 — per-session in-memory Map (_artIdbMemCache): zero overhead,
     //            covers sort/filter re-renders within the same page load.
@@ -62690,7 +63155,7 @@ a { color: #1565c0; }`;
 
     /** DB name and current schema version. */
     const _ART_IDB_NAME    = 'vz-mb-saed-art-cache';
-    const _ART_IDB_VERSION = 2;  // bumped to add rel-ws2 store
+    const _ART_IDB_VERSION = 3;  // bumped to add rel-ws2, then ms-rec-len store
 
     /**
      * Cached IDB database connection promise.
@@ -62751,7 +63216,8 @@ a { color: #1565c0; }`;
     /**
      * Opens (or reuses) the IndexedDB connection for the art cache.
      *
-     * Creates the 'images' and 'metadata' object stores on first open.
+     * Creates the 'images', 'metadata', 'rel-ws2' and 'ms-rec-len' object
+     * stores on first open.
      * Resolves with the IDBDatabase instance; rejects if IDB is unavailable
      * (e.g. private-browsing mode on certain browsers) or if `onblocked` fires.
      *
@@ -62778,6 +63244,13 @@ a { color: #1565c0; }`;
                 }
                 if (!db.objectStoreNames.contains('rel-ws2')) {
                     db.createObjectStore('rel-ws2', { keyPath: 'ckey' });
+                }
+                // Millisecond track lengths, keyed by recording MBID rather
+                // than by page entity: the same recording is listed by many
+                // pageTypes, so a per-recording cache is reusable across all
+                // of them. See _msIdbGetLength().
+                if (!db.objectStoreNames.contains('ms-rec-len')) {
+                    db.createObjectStore('ms-rec-len', { keyPath: 'gid' });
                 }
             };
             req.onsuccess  = (ev) => {
@@ -62808,7 +63281,7 @@ a { color: #1565c0; }`;
     /**
      * Reads a single record from an IDB object store.
      *
-     * @param   {string} storeName  'images' | 'metadata' | 'rel-ws2'
+     * @param   {string} storeName  'images' | 'metadata' | 'rel-ws2' | 'ms-rec-len'
      * @param   {string} key        Record key to look up.
      * @returns {Promise<any|null>} Resolves with the record or null if not found.
      */
@@ -62828,7 +63301,7 @@ a { color: #1565c0; }`;
     /**
      * Writes (creates or replaces) a single record in an IDB object store.
      *
-     * @param   {string} storeName  'images' | 'metadata' | 'rel-ws2'
+     * @param   {string} storeName  'images' | 'metadata' | 'rel-ws2' | 'ms-rec-len'
      * @param   {object} record     Record to store; must include the store's keyPath.
      * @returns {Promise<void>}
      */
@@ -62871,7 +63344,7 @@ a { color: #1565c0; }`;
      * Returns the number of records currently in one IDB object store.
      * Resolves to 0 when IDB is unavailable or the store does not exist.
      *
-     * @param   {string} storeName  'images' | 'metadata' | 'rel-ws2'
+     * @param   {string} storeName  'images' | 'metadata' | 'rel-ws2' | 'ms-rec-len'
      * @returns {Promise<number>}
      */
     function _artIdbCountStore(storeName) {
@@ -63065,6 +63538,15 @@ a { color: #1565c0; }`;
 
                 /**
                  * Cursors through `storeName` deleting records older than `ttlMs`.
+                 *
+                 * The two record shapes in this database timestamp themselves
+                 * differently — `images`/`metadata` use `storedAt`, `rel-ws2`
+                 * and `ms-rec-len` use `ts` — so both are read. Looking only at
+                 * `storedAt` made this sweep a silent no-op for `rel-ws2`: every
+                 * record read as age 0 and nothing was ever deleted. Those
+                 * entries did still expire, but only lazily, one at a time, when
+                 * `_relIdbGet()` happened to read one.
+                 *
                  * @param   {string} storeName
                  * @param   {number} ttlMs
                  * @returns {Promise<void>}
@@ -63076,7 +63558,8 @@ a { color: #1565c0; }`;
                         req.onsuccess = (ev) => {
                             const cursor = ev.target.result;
                             if (!cursor) { resolve(); return; }
-                            if ((Date.now() - (cursor.value.storedAt || 0)) > ttlMs) {
+                            const _stamp = cursor.value.storedAt || cursor.value.ts || 0;
+                            if ((Date.now() - _stamp) > ttlMs) {
                                 cursor.delete();
                                 deleted++;
                             }
@@ -63089,17 +63572,19 @@ a { color: #1565c0; }`;
                 });
 
                 const relTtlMs = (Lib.settings.sa_rel_idb_ttl_days || 30) * 86400 * 1000;
+                const msTtlMs  = (Lib.settings.sa_ms_idb_ttl_days  || 30) * 86400 * 1000;
                 Promise.all([
-                    sweepStore('images',   imgTtlMs),
-                    sweepStore('metadata', metaTtlMs),
-                    sweepStore('rel-ws2',  relTtlMs),
+                    sweepStore('images',     imgTtlMs),
+                    sweepStore('metadata',   metaTtlMs),
+                    sweepStore('rel-ws2',    relTtlMs),
+                    sweepStore('ms-rec-len', msTtlMs),
                 ]).then(() => {
                     _artIdbLastSweep = { deleted, ts: Date.now() };
                     Lib.debug('idb', `_artIdbSweepExpired: sweep complete — deleted ${deleted} expired record(s)`);
                     if (deleted > 0) {
                         _setInfoSub('mb-info-display-generic',
                             `🗄️ IDB sweep: removed ${deleted} expired entr${deleted === 1 ? 'y' : 'ies'}`,
-                            `Background IndexedDB sweep deleted ${deleted} expired record(s) from images, metadata, and rel-ws2 stores`);
+                            `Background IndexedDB sweep deleted ${deleted} expired record(s) from images, metadata, rel-ws2, and ms-rec-len stores`);
                     }
                 }).catch(e => {
                     Lib.warn('idb', '_artIdbSweepExpired: sweep error:', e);
@@ -69715,6 +70200,24 @@ a { color: #1565c0; }`;
              */
             closeUniqDrop() {
                 closeUniqDrop();
+            },
+
+            /**
+             * How many recording MBIDs the batched millisecond source would
+             * still ask the Web Service about, i.e. `ceil(this / 100)`
+             * requests if the ⏱ toggle were pressed right now.
+             *
+             * Read-only wrapper around `_msCollectRecordingMbids()`. Exposed
+             * because the interesting cases are invisible from the DOM: a row
+             * whose length was answered as "none on record" is never stamped,
+             * so it looks identical to an unanswered one, and only this
+             * number distinguishes "nothing left to fetch" from "129 rows
+             * still pending".
+             *
+             * @returns {number}
+             */
+            msPendingLengthLookups() {
+                return _msCollectRecordingMbids().length;
             },
 
             /**

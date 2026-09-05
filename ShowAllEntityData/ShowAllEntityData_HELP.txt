@@ -775,15 +775,30 @@ is fetched at all:
     values are already embedded in the page MusicBrainz served, so the
     toggle switches instantly and no request is ever made.
 
-  • Work, artist-relationships and place-performances pages carry no
-    sub-second data of their own, so those need one MusicBrainz Web Service
-    request.  It is made only when you first press the toggle — never while
-    the page renders — so a page you don't ask for precision on costs
-    nothing either.  The ⏱ glyph turns into ⏳ while the request is in
-    flight, and the answer is then cached for as long as you stay on the
-    page: sorting, filtering and switching the toggle off and on again all
-    work from that one response.  The tooltip tells you in advance which of
-    the two cases you are in.
+  • Work, artist-relationships, place-performances and area-recordings pages
+    carry no sub-second data of their own, but every recording they list
+    hangs off the one entity the page is about — so those need exactly one
+    MusicBrainz Web Service request for the whole table.
+
+  • Artist-recordings, instrument-recordings, ISRC and recording search-result
+    pages are lists that no single lookup covers, so those are fetched in
+    batches of 100 recordings, one request per second.  The ⏳ glyph counts
+    them off ("⏳2/5") so you can see it working.  The tooltip says up front
+    how many requests pressing would cost, and a page of 100 rows or fewer
+    is a single request like the cases above.
+
+  In every case the request happens only when you first press the toggle —
+  never while the page renders — so a page you don't ask for precision on
+  costs nothing.  The ⏱ glyph turns into ⏳ while requests are in flight,
+  and answers are then cached: sorting, filtering and switching the toggle
+  off and on again all work from what was already fetched.
+
+  The batched cases cache each recording individually, and in your browser
+  rather than only for the current page, so they carry over.  A recording
+  you have already seen on one page is free on every other page that lists
+  it, and free again after a reload — a second visit to the same page often
+  makes no request at all.  This can be turned off, or given a shorter
+  expiry, under "Enable IndexedDB millisecond length cache" in ⚙️ Settings.
 
 When the data can't be had, the toggle says which of two quite different
 things went wrong instead of quietly doing nothing:
@@ -797,6 +812,13 @@ things went wrong instead of quietly doing nothing:
   • MusicBrainz answered, and genuinely has no sub-second length on record
     for these recordings.  The button dims and says that.  This one IS
     cached — it's a settled fact, so clicking again would achieve nothing.
+
+  • Some of it arrived and some didn't, which only the batched pages can hit:
+    one batch failed while others succeeded.  The rows that did load are
+    shown rather than thrown away, and the button turns YELLOW to say the
+    column is incomplete.  Only the failed batches are missing from the
+    cache, so switching the toggle off and on again re-requests exactly
+    those and fills in the gaps — it does not start over.
 
 A row MusicBrainz shows as "?:??" has no length on record at all and stays
 "?:??" in both modes — the toggle never invents a number for it.  Likewise,
@@ -1344,6 +1366,9 @@ labels and descriptions.  Major setting groups:
     — Enable millisecond track lengths (default: ON) — adds the ⏱ toggle to
       the "Length" column header
     — Hide a ".000" millisecond part (default: OFF)
+    — Enable IndexedDB millisecond length cache (default: ON) — remembers each
+      recording's length across pages and reloads
+    — Millisecond length IDB cache TTL (days) (default: 30)
     — Enable millisecond track length debug logging (default: OFF)
 
 • 📅 RELEASE EVENTS COLUMN
