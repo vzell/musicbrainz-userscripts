@@ -53,13 +53,27 @@
 // ============================================================================================================================================
 // @name         mb. SUPER MIND CONTROL Ⅱ X TURBO
 // @description  musicbrainz.org power-ups: RELEASE_CLONER. copy/paste releases / DOUBLE_CLICK_SUBMIT / CONTROL_ENTER_SUBMIT / TRACKLIST_TOOLS. search→replace, track length parser, remove recording relationships, set selected recording dates / LAST_SEEN_EDIT. handy for subscribed entities / COOL_SEARCH_LINKS / COPY_TOC / ROW_HIGHLIGHTER / SPOT_CAA / SPOT_AC / RECORDING_LENGTH_COLUMN / RELEASE_EVENT_COLUMN / WARN_NEW_WINDOW / SERVER_SWITCH / TAG_TOOLS / USER_STATS / EASY_DATE. paste full dates in one go / STATIC_MENU / SLOW_DOWN_RETRY / CENTER_FLAGS / RATINGS_ON_TOP / HIDE_RATINGS / UNLINK_ENTITY_HEADER / MARK_PENDING_EDIT_MEDIUMS
-// @version      2026.1.9
+// @version      2026.5.21
 // @author       jesus2099
 // @licence      CC-BY-NC-SA-4.0; https://creativecommons.org/licenses/by-nc-sa/4.0/
 // @licence      GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
 // @downloadURL  https://github.com/jesus2099/konami-command/raw/master/mb_SUPER-MIND-CONTROL-II-X-TURBO.user.js
 //
-//   uses just: RELEASE_EVENT_COLUMN ==> Displays release dates in label relationships page
+//   uses just: RELEASE_EVENT_COLUMN     ==> Displays release dates in label relationships page
+//              RECORDING_LENGTH_COLUMN  ==> Displays recording lengths at millisecond precision
+//
+//   The "Release events" column and the ⏱ millisecond track-length feature are both INSPIRED BY,
+//   and were modelled on, jesus2099's code in this script — not copied from it, and not dependent
+//   on it at runtime: this script fetches and renders the same data itself, and deliberately
+//   strips jesus2099's own versions of these columns from its rendered tables so the two never
+//   fight (see purgeJesus2099Artifacts()). Two ideas taken directly from his implementation:
+//     • the single per-page-entity Web Service call, /ws/2/{type}/{mbid}?inc=recording-rels
+//       (+release-rels), rather than one request per row — see _msFetchWs2RecordingLengths()
+//       and initReleaseEventsColumn();
+//     • the "[H:]M:SS.mmm" display shape his time() helper produces, which _msFormatDuration()
+//       reproduces so both scripts read consistently on a page where both are installed.
+//   RECORDING_LENGTH_COLUMN is itself credited by jesus2099 as inspired by loujine's
+//   mbz-showperformancedurations.user.js.
 // ============================================================================================================================================
 // @name         mb. FUNKEY ILLUSTRATED RECORDS
 // @description  musicbrainz.org: CAA front cover art archive pictures/images (release groups and releases) Big illustrated discography and/or inline everywhere possible without cluttering the pages
@@ -2214,6 +2228,49 @@
                          'notification appears in the bottom-right corner confirming completion. ' +
                          'It dismisses automatically after this many seconds, or immediately on click. ' +
                          'Set to 0 to disable the notification entirely.'
+        },
+
+        // ============================================================
+        // TRACK LENGTH PRECISION SECTION
+        // ============================================================
+        divider_ms_track_length: {
+            type: 'divider',
+            label: '⏱️ TRACK LENGTH PRECISION'
+        },
+
+        sa_enable_ms_track_length: {
+            label: 'Enable millisecond track lengths',
+            type: 'checkbox',
+            default: true,
+            description: 'MusicBrainz stores every track length in milliseconds but displays it '
+                         + 'rounded to the nearest second ("4:50"). When enabled, a ⏱ toggle appears '
+                         + 'in the "Length" column header; clicking it re-renders the whole column at '
+                         + 'full millisecond precision ("4:50.160"), and clicking again returns to '
+                         + 'seconds. Sorting, filtering and the 📊 unique-values dropdown always follow '
+                         + 'whatever the column is currently showing. Turn this off to remove the toggle '
+                         + 'entirely and leave the column exactly as MusicBrainz renders it.'
+        },
+
+        sa_ms_length_trim_zero_ms: {
+            label: 'Hide a ".000" millisecond part',
+            type: 'checkbox',
+            default: false,
+            description: 'With millisecond precision shown, render a length whose milliseconds are '
+                         + 'exactly zero as "3:19" instead of "3:19.000". MusicBrainz stores a length '
+                         + 'that was entered as plain "m:ss" with zero milliseconds, so ".000" really '
+                         + 'means "no sub-second data on record" rather than "exactly zero". Off by '
+                         + 'default, which keeps every value the same width and so keeps the column '
+                         + 'easy to scan.'
+        },
+
+        sa_enable_ms_length_debug: {
+            label: 'Enable millisecond track length debug logging',
+            type: 'checkbox',
+            default: false,
+            description: 'Enable detailed console logging for the millisecond track length pipeline '
+                         + '(which data source was used, how many cells were stamped, and any track '
+                         + 'whose millisecond value disagrees with the second-precision value '
+                         + 'MusicBrainz already rendered). Uses Lib.debug(\'length\', ...).'
         },
 
         // ============================================================
@@ -5041,7 +5098,12 @@
                 // script's own rows permanently free of it — genuine future
                 // jesus2099 mutations on the LIVE table are untouched by this
                 // and still repaired reactively by the observer as intended.
-                if (cell.classList.contains('treleases')) {
+                // Gated on _isJesus2099Treleases(): `treleases` is MusicBrainz's
+                // OWN class on a release tracklist's Length column (see that
+                // predicate's JSDoc), and this eraser is declared for exactly
+                // that column on release-tracks — so an ungated strip deleted
+                // native markup on every release page.
+                if (_isJesus2099Treleases(cell)) {
                     cell.classList.remove('treleases');
                     cell.removeAttribute('title');
                     cell.style.cssText = '';
@@ -7846,6 +7908,12 @@
 
         const _tables = Array.from(document.querySelectorAll('table.tbl'));
         if (_tables.length === 0) return;
+
+        // Stamp the millisecond track lengths MusicBrainz already embeds in this
+        // page onto the native Length cells, before row extraction captures
+        // them. Display is untouched here — the ⏱ column-header toggle
+        // (_initMsLengthColHeaderToggle) is what switches precision later.
+        _msStampReleaseTrackLengths(_tables);
 
         const _acoustIdEnabled = Lib.settings.sa_enable_release_tracks_acoustid_column === true;
         const _isrcEnabled = Lib.settings.sa_enable_release_tracks_isrc_column === true;
@@ -14465,6 +14533,7 @@
                     { sourceColumn: 'Release events', extractor: 'splitCountryDate', syntheticColumns: ['Release country', 'Release date'] },
                     { sourceColumn: 'Release date',   extractor: 'dateParts',        syntheticColumns: ['R-DD', 'R-MM', 'R-YYYY', 'R-Day', 'R-Month'] }
                  ],
+                msTrackLengthWs2: true,   // no length data in the page — see _msLengthSource()
                 integerColumns: [
 		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
 		    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'},
@@ -14491,6 +14560,7 @@
                     { sourceColumn: 'Release events', extractor: 'splitCountryDate', syntheticColumns: ['Release country', 'Release date'] },
                     { sourceColumn: 'Release date',   extractor: 'dateParts',        syntheticColumns: ['R-DD', 'R-MM', 'R-YYYY', 'R-Day', 'R-Month'] }
                  ],
+                msTrackLengthWs2: true,   // no length data in the page — see _msLengthSource()
                 integerColumns: [
 		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
 		    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'},
@@ -14708,6 +14778,7 @@
                 syntheticColumnExtractors: [
                     { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
+                msTrackLengthWs2: true,   // no length data in the page — see _msLengthSource()
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'Length', align: ':'} ],
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
@@ -14726,6 +14797,7 @@
                 syntheticColumnExtractors: [
                     { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
+                msTrackLengthWs2: true,   // no length data in the page — see _msLengthSource()
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'Length', align: ':'} ],
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
@@ -14749,6 +14821,7 @@
                     { sourceColumn: 'Title', extractor: 'caa', syntheticColumns: ['CAA'] }
                 ],
                 injectedColumns: [ 'Relationships' ],
+                msTrackLengthWs2: true,   // no length data in the page — see _msLengthSource()
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'Length', align: ':'} ],
                 collapsableColumns: [ 'CAA' ],
                 tooltipColumns: [ 'Title', 'Artist', '---', 'Date', 'Attributes' ],
@@ -14773,6 +14846,7 @@
                     { sourceColumn: 'Title', extractor: 'caa', syntheticColumns: ['CAA'] }
                 ],
                 injectedColumns: [ 'Relationships' ],
+                msTrackLengthWs2: true,   // no length data in the page — see _msLengthSource()
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'Length', align: ':'} ],
                 collapsableColumns: [ 'CAA' ],
                 tooltipColumns: [ 'Title', 'Artist', '---', 'Length', 'Date', 'Credited as', 'Attributes' ],
@@ -15681,24 +15755,989 @@
     }
 
     /**
+     * Parses a displayed duration into total milliseconds.
+     *
+     * Accepts `M:SS`, `M:SS.mmm` and `H:MM:SS[.mmm]`, i.e. exactly what a
+     * "Length" cell renders — including the millisecond precision jesus2099's
+     * `RECORDING_LENGTH_COLUMN` writes (`"5:05.146"`, see
+     * `_repairTreleasesTd()`). A fractional part shorter than three digits is
+     * right-padded, so `"5:05.5"` is 500 ms, not 5 ms.
+     *
+     * Returns `null` — never `0` — for MusicBrainz's own `"?:??"`
+     * unknown-duration placeholder and for anything else unparseable. That
+     * distinction is the whole point: `null` means "no duration on record",
+     * which both comparators sort LAST in either direction rather than
+     * treating as zero length (the old `parseFloat(…) || 0` collapsed the two,
+     * floating every unknown to the top of an ascending sort).
+     *
+     * @param   {?string} text  Cell text, already collapsed by
+     *   `getCleanVisibleText()`/`getCleanColumnText()` (which fold
+     *   `applyIntegerColumnStyling()`'s three `.mb-ic-left`/`.mb-ic-sep`/
+     *   `.mb-ic-right` spans back into one `"5:05.146"` string).
+     * @returns {?number} Total milliseconds, or `null` when unknown.
+     */
+    function _parseDurationToMs(text) {
+        if (!text) return null;
+        const m = String(text).trim().match(/^(?:(\d+):)?(\d+):(\d{2})(?:\.(\d{1,3}))?$/);
+        if (!m) return null;
+        const hours   = m[1] ? parseInt(m[1], 10) : 0;
+        const minutes = parseInt(m[2], 10);
+        const seconds = parseInt(m[3], 10);
+        const millis  = m[4] ? parseInt(m[4].padEnd(3, '0'), 10) : 0;
+        return ((hours * 60 + minutes) * 60 + seconds) * 1000 + millis;
+    }
+
+    /**
+     * Resolves a `<th>`'s column name the way sorting needs it: the
+     * `data-col-name` stamped by `makeTableSortableUnified()` when present,
+     * else a decoration-stripped `textContent`.
+     *
+     * Preferring the dataset matters because by sort time the header's text
+     * also contains the live uniq-count badge digits (e.g. `"94"`) and any
+     * injected glyph, so a pure-`textContent` strip is ambiguous for a column
+     * whose real name contains a digit (e.g. `"1st seconder"`).
+     *
+     * @param   {?HTMLTableCellElement} th
+     * @returns {string} Column name, `''` when `th` is missing.
+     */
+    function _sortColumnHeaderName(th) {
+        if (!th) return '';
+        return th.dataset.colName || th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim();
+    }
+
+    /**
+     * Classifies how a column must be compared when sorting: as a duration,
+     * as a number, or as text.
+     *
+     * Single source of truth for BOTH `createSortComparator()` (single-column
+     * sorts) and `createMultiColumnComparator()` (Ctrl+Click chains), which
+     * previously disagreed: the single-column path consulted
+     * `activeIntegerColumns` first and only then fell back to a name
+     * heuristic, while the multi-column path used the raw header-text
+     * heuristic alone and never looked at the page definition at all.
+     *
+     * Duration detection is data-driven: `integerColumns`' `align: ':'`
+     * descriptor already means "colon-split duration" and is used exclusively
+     * for "Length" columns across every pageType (see
+     * `_findCellLengthBucket()`'s own JSDoc, which relies on the same
+     * invariant). A column literally named `"Length"` also qualifies, so a
+     * pageType that renders durations without declaring an `integerColumns`
+     * entry for them (e.g. `release-discids`' per-disc totals) still sorts as
+     * a duration rather than falling through to `parseFloat`.
+     *
+     * @param   {string} name  Column name from `_sortColumnHeaderName()`.
+     * @returns {('duration'|'numeric'|'text')}
+     */
+    function _sortColumnKind(name) {
+        if (!name) return 'text';
+        if (name === 'Length') return 'duration';
+        if (activeIntegerColumns.some(e => e.sourceColumn === name && e.align === ':')) return 'duration';
+        // Primary source: integerColumns declared in the page definition.
+        if (activeIntegerColumns.some(e => e.sourceColumn === name)) return 'numeric';
+        // Legacy heuristic, for pages with no integerColumns declaration at all.
+        // `includes('Length')` is kept here even though the exact-name check
+        // above already claims the only "Length"-ish column that exists today
+        // (verified via scripts/check-length-named-columns.py against every
+        // rendered snapshot AND every sourceColumn/syntheticColumns declaration
+        // in this file): without it, a future column named e.g. "Track length"
+        // would silently drop from 'numeric' to 'text' rather than staying on
+        // its current behaviour.
+        if (name.includes('Year') || name.includes('Releases') ||
+            name.includes('Track') || name.includes('Length') ||
+            name.includes('#')) return 'numeric';
+        return 'text';
+    }
+
+    /**
+     * Compares two duration cell texts, keeping unknown durations (`"?:??"`)
+     * LAST regardless of sort direction.
+     *
+     * The returned number is ALWAYS direction-final — callers must return it
+     * as-is and never negate it for a descending sort. That is what pins
+     * `"?:??"` to the bottom both ways: the unknown cases resolve direction
+     * here (deliberately ignoring `isAscending`) instead of going through a
+     * caller's shared sign flip, which would otherwise float them to the top
+     * when descending.
+     *
+     * `0` means "indistinguishable" — two equal durations, or two unknowns —
+     * and carries no direction, so a caller with a tie-breaking chain
+     * (`createMultiColumnComparator()`) may fall through to its next column.
+     *
+     * @param   {string} valA
+     * @param   {string} valB
+     * @param   {boolean} isAscending
+     * @returns {number} Direction-final comparison; `0` when indistinguishable.
+     */
+    function _compareDurations(valA, valB, isAscending) {
+        const aMs = _parseDurationToMs(valA);
+        const bMs = _parseDurationToMs(valB);
+        // Unknown length is absent data, not zero length.
+        if (aMs === null && bMs === null) return 0;
+        if (aMs === null) return 1;
+        if (bMs === null) return -1;
+        return isAscending ? aMs - bMs : bMs - aMs;
+    }
+
+    /**
+     * Conditional debug logger for the millisecond track-length pipeline,
+     * gated on `sa_enable_ms_length_debug`.
+     * @param {...*} args
+     * @returns {void}
+     */
+    function _msDbg(...args) {
+        if (Lib.settings.sa_enable_ms_length_debug) Lib.debug('length', ...args);
+    }
+
+    /** @type {?Object|undefined} `undefined` = not looked for yet, `null` = not present. */
+    let _msEmbeddedReleaseCache;
+
+    /**
+     * Returns MusicBrainz's own embedded release payload for the current page,
+     * or `null` when this page has none.
+     *
+     * A release page inlines its tracklist component's props as a
+     * `<script type="application/json">` — the object whose `.release.mediums`
+     * carries, per track, the exact millisecond length MusicBrainz itself only
+     * ever DISPLAYS rounded to the nearest second. No network request is needed
+     * for release pages at all; the data is already in the document.
+     *
+     * Memoized because that blob is large (~800 KB on a full release) and
+     * several of this feature's steps ask for it. The textual `"mediums"` guard
+     * avoids `JSON.parse`-ing the four unrelated sibling blobs (sidebar
+     * annotation, tags, ISWCs, …) just to reject them.
+     *
+     * @returns {?Object} The parsed payload, or `null` when absent/unparseable.
+     */
+    function _readEmbeddedReleaseJson() {
+        if (_msEmbeddedReleaseCache !== undefined) return _msEmbeddedReleaseCache;
+        _msEmbeddedReleaseCache = null;
+        for (const script of document.querySelectorAll('script[type="application/json"]')) {
+            const raw = script.textContent;
+            if (!raw || raw.indexOf('"mediums"') === -1) continue;
+            try {
+                const parsed = JSON.parse(raw);
+                if (parsed && parsed.release && Array.isArray(parsed.release.mediums)) {
+                    _msEmbeddedReleaseCache = parsed;
+                    _msDbg(`_readEmbeddedReleaseJson: found release payload (${raw.length} bytes, ` +
+                           `${parsed.release.mediums.length} medium(s))`);
+                    break;
+                }
+            } catch (err) {
+                _msDbg('_readEmbeddedReleaseJson: unparseable blob skipped:', err.message || String(err));
+            }
+        }
+        if (!_msEmbeddedReleaseCache) _msDbg('_readEmbeddedReleaseJson: no embedded release payload on this page');
+        return _msEmbeddedReleaseCache;
+    }
+
+    /** @type {?{byRecording: Map<string, number>, byPosition: Map<string, number>}|undefined} */
+    let _msTrackLengthMapCache;
+
+    /**
+     * Builds the millisecond lookup for the current release page's tracks.
+     *
+     * Reads **`tracks[].length`** — the TRACK's length — never
+     * `tracks[].recording.length`. Those are different values in MusicBrainz's
+     * data model and they disagree constantly: on `Born to Run`
+     * (`1d404e1d-…`), four of eight tracks differ, one by three whole seconds
+     * (`Meeting Across the River`: track `3:19.000` vs recording `3:16.000`).
+     * MusicBrainz renders the TRACK length, rounded to the nearest second —
+     * provable from that same release, whose `Tenth Avenue Freeze‐Out` shows
+     * `3:12`, a value only `3:11.666` (track) rounds to and never `3:11.000`
+     * (recording). Substituting the recording length would therefore silently
+     * change the number already on screen instead of refining it, so this
+     * feature's whole contract is "reveal more precision in the value shown",
+     * never "show a different measurement".
+     *
+     * Two keys per track, because neither alone is fully safe:
+     *   - `byRecording` — the recording MBID, read from the Title cell's own
+     *     direct-child anchor. Primary key.
+     *   - `byPosition` — `` `m${mediumIndex}n${trackNumber}` ``, using the
+     *     DISPLAYED track number (`"A1"` on vinyl, `"1"` on CD), which is what
+     *     the native `#` cell contains. Fallback for a row whose Title cell
+     *     has no resolvable recording link.
+     *
+     * @returns {?{byRecording: Map<string, number>, byPosition: Map<string, number>}}
+     *   `null` when this page carries no embedded release payload.
+     */
+    function _buildReleaseTrackLengthMap() {
+        if (_msTrackLengthMapCache !== undefined) return _msTrackLengthMapCache;
+        _msTrackLengthMapCache = null;
+        const payload = _readEmbeddedReleaseJson();
+        if (!payload) return _msTrackLengthMapCache;
+
+        const byRecording = new Map();
+        const byPosition  = new Map();
+        (payload.release.mediums || []).forEach((medium, medIdx) => {
+            (medium.tracks || []).forEach(track => {
+                // A data track or a video with no track length of its own has
+                // `length: null`; skip it so the cell keeps whatever
+                // MusicBrainz rendered (typically "?:??").
+                if (typeof track.length !== 'number') return;
+                const gid = track.recording && track.recording.gid;
+                if (gid) byRecording.set(gid, track.length);
+                if (track.number != null) byPosition.set(`m${medIdx}n${String(track.number).trim()}`, track.length);
+            });
+        });
+        if (!byRecording.size && !byPosition.size) {
+            _msDbg('_buildReleaseTrackLengthMap: payload had no track lengths');
+            return _msTrackLengthMapCache;
+        }
+        _msTrackLengthMapCache = { byRecording, byPosition };
+        _msDbg(`_buildReleaseTrackLengthMap: ${byRecording.size} by recording, ${byPosition.size} by position`);
+        return _msTrackLengthMapCache;
+    }
+
+    /**
+     * Formats a millisecond duration the way the Length column renders it:
+     * `M:SS.mmm`, or `H:MM:SS.mmm` once past an hour — the same shape
+     * jesus2099's own `time()` produces, so a page where both are present
+     * reads consistently.
+     *
+     * @param   {number} ms
+     * @param   {boolean} [trimZeroMs] When true, a `.000` fractional part is
+     *   omitted entirely. Reads `sa_ms_length_trim_zero_ms` when not passed.
+     *   MusicBrainz stores a length entered as plain `m:ss` with zero
+     *   milliseconds, so `.000` means "no sub-second data on record" rather
+     *   than "exactly zero".
+     * @returns {string}
+     */
+    function _msFormatDuration(ms, trimZeroMs) {
+        const trim = trimZeroMs === undefined
+            ? Lib.settings.sa_ms_length_trim_zero_ms === true
+            : !!trimZeroMs;
+        const totalSeconds = Math.floor(ms / 1000);
+        const frac    = ms % 1000;
+        const hours   = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        const head = hours
+            ? `${hours}:${String(minutes).padStart(2, '0')}`
+            : String(minutes);
+        const base = `${head}:${String(seconds).padStart(2, '0')}`;
+        return (trim && frac === 0) ? base : `${base}.${String(frac).padStart(3, '0')}`;
+    }
+
+    /**
+     * Formats a millisecond duration the way MusicBrainz itself displays it:
+     * rounded to the NEAREST second, never truncated.
+     *
+     * The rounding is not cosmetic. MusicBrainz shows `3:11.666` as `"3:12"`
+     * and `5:34.866` as `"5:35"` (both verified against live pages), so
+     * truncating would render a second that MusicBrainz never showed and would
+     * make a round trip through the ⏱ toggle visibly lossy.
+     *
+     * @param   {number} ms
+     * @returns {string} `M:SS`, or `H:MM:SS` past an hour.
+     */
+    function _msFormatSeconds(ms) {
+        const total   = Math.round(ms / 1000);
+        const hours   = Math.floor(total / 3600);
+        const minutes = Math.floor((total % 3600) / 60);
+        const seconds = total % 60;
+        return hours
+            ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+            : `${minutes}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    /**
+     * Writes duration text into a Length cell, preserving the three
+     * `.mb-ic-left`/`.mb-ic-sep`/`.mb-ic-right` split-alignment spans
+     * `applyIntegerColumnStyling()` builds when they are present.
+     *
+     * Rewriting the two halves in place rather than replacing the cell's
+     * content keeps the column's `:`-alignment intact without needing the whole
+     * cell rebuilt — which matters where there is no restyling pass afterwards
+     * to put it back (`_stripTransientCellState()` runs on captured/hydrated
+     * cells, long after any styling pass). The `textContent` fallback also
+     * clears `data-mb-int-col-styled`, so a cell that DOES get a later
+     * `applyIntegerColumnStyling()` pass is rebuilt rather than skipped as
+     * already-styled.
+     *
+     * @param   {HTMLTableCellElement} td
+     * @param   {string} text
+     * @returns {void}
+     */
+    function _msWriteDurationText(td, text) {
+        const left  = td.querySelector('.mb-ic-left');
+        const right = td.querySelector('.mb-ic-right');
+        if (left && right) {
+            const idx = text.lastIndexOf(':');
+            left.textContent  = idx !== -1 ? text.slice(0, idx) : '';
+            right.textContent = idx !== -1 ? text.slice(idx + 1) : text;
+            return;
+        }
+        td.textContent = text;
+        delete td.dataset.mbIntColStyled;
+    }
+
+    /**
+     * Shape of a Length cell rendered at millisecond precision, matched against
+     * the cell's ENTIRE trimmed text so ordinary prose that merely contains
+     * something duration-like (a comment quoting "1:23.456") can never match.
+     * The only column whose whole content is a bare duration is "Length".
+     * @type {RegExp}
+     */
+    const _MS_RENDERED_DURATION_RE = /^\d{1,3}:\d{2}(?::\d{2})?\.\d{1,3}$/;
+
+    /**
+     * Resets a Length cell that arrived already rendered at millisecond
+     * precision back to MusicBrainz's own seconds form.
+     *
+     * Millisecond display is transient DISPLAY state, and this is the hook that
+     * normalises such state on captured and hydrated cells — so a sub-table
+     * opened in its own tab, or a table loaded from disk, always starts from
+     * what MusicBrainz itself renders, exactly like a page that was never
+     * toggled.
+     *
+     * It has to work from the TEXT alone: `captureSubtableSnapshot()` stores
+     * `cell.innerHTML`, so the `<td>`'s own `data-mb-ms`/`data-mb-sec-text`
+     * attributes never survive the handoff — only the rendered `"11:17.000"`
+     * does. That asymmetry caused a genuinely confusing bug: the destination
+     * page re-stamped those cells, took the millisecond string it found as
+     * "the seconds MusicBrainz rendered", stashed it in `data-mb-sec-text`, and
+     * so restored milliseconds when the toggle was switched OFF — the glyph
+     * flipped while the column did not move. Recovering the seconds form here
+     * is exact, because the value is derivable from the milliseconds we can
+     * parse straight back out of the text.
+     *
+     * @param   {HTMLTableCellElement} el
+     * @returns {void}
+     */
+    function _msResetCarriedOverPrecision(el) {
+        const text = (el.textContent || '').trim();
+        if (!_MS_RENDERED_DURATION_RE.test(text)) return;
+        const ms = _parseDurationToMs(text);
+        if (ms === null) return;
+        _msWriteDurationText(el, _msFormatSeconds(ms));
+        delete el.dataset.mbMs;
+        delete el.dataset.mbSecText;
+        delete el.dataset.mbMsShown;
+    }
+
+    /**
+     * Stamps each native Length `<td>` of a release tracklist with the data the
+     * millisecond toggle needs, WITHOUT changing what the cell displays:
+     *
+     *   `data-mb-ms`       — the track's length in milliseconds.
+     *   `data-mb-sec-text` — the seconds-precision text MusicBrainz rendered,
+     *                        kept verbatim so toggling back restores exactly
+     *                        that string. MusicBrainz ROUNDS (`3:11.666` shows
+     *                        as `3:12`), so recomputing the seconds form from
+     *                        the milliseconds would not reliably reproduce it.
+     *
+     * Runs during `applyExtractTrackTitleData()`'s pre-processing, against the
+     * NATIVE page tables — before row extraction, so the attributes ride along
+     * into the captured rows and every `cloneNode(true)` copy made from them
+     * (attributes survive cloning; only listeners and JS properties do not).
+     *
+     * A stamped value is discarded when `Math.round(ms / 1000)` disagrees with
+     * the seconds MusicBrainz already rendered: that means the row was keyed to
+     * the wrong track, and showing a wrong duration is far worse than showing
+     * no extra precision. Cells MusicBrainz renders as `"?:??"` are skipped
+     * outright for the same reason — they stay unknown in both modes rather
+     * than gaining a number the page itself does not claim.
+     *
+     * @param   {HTMLTableElement[]} tables  Native `table.tbl` elements, in document order.
+     * @returns {void}
+     */
+    function _msStampReleaseTrackLengths(tables) {
+        if (Lib.settings.sa_enable_ms_track_length === false) return;
+        const maps = _buildReleaseTrackLengthMap();
+        if (!maps) return;
+
+        let stamped = 0, noData = 0, mismatched = 0;
+        tables.forEach((table, medIdx) => {
+            const thRow = table.querySelector(':scope > thead > tr');
+            const tbody = table.querySelector(':scope > tbody');
+            if (!thRow || !tbody) return;
+            const ths      = Array.from(thRow.querySelectorAll('th'));
+            const lenIdx   = ths.findIndex(th => th.textContent.trim() === 'Length');
+            const titleIdx = ths.findIndex(th => th.textContent.trim() === 'Title');
+            const posIdx   = ths.findIndex(th => th.textContent.trim() === '#');
+            if (lenIdx === -1) return;
+
+            Array.from(tbody.querySelectorAll(':scope > tr')).forEach(tr => {
+                const lenTd = tr.children[lenIdx];
+                if (!lenTd || lenTd.dataset.mbMs) return;   // idempotent
+
+                let ms;
+                // Primary key: the Title cell's own DIRECT-CHILD recording
+                // anchor. Scoped deliberately — a track's `<div class="ars">`
+                // can carry further /recording/ links (e.g. a "DJ-mix of"
+                // relationship), and an unscoped query would grab one of those.
+                const titleTd = titleIdx === -1 ? null : tr.children[titleIdx];
+                const recA    = titleTd && titleTd.querySelector(':scope > a[href*="/recording/"]');
+                const gidM    = recA && recA.getAttribute('href').match(/\/recording\/([0-9a-f-]{36})/);
+                if (gidM && maps.byRecording.has(gidM[1])) ms = maps.byRecording.get(gidM[1]);
+
+                if (ms === undefined && posIdx !== -1) {
+                    const num = (tr.children[posIdx].textContent || '').trim();
+                    const key = `m${medIdx}n${num}`;
+                    if (maps.byPosition.has(key)) ms = maps.byPosition.get(key);
+                }
+                if (ms === undefined) { noData++; return; }
+
+                const secText = lenTd.textContent.trim();
+                const shownMs = _parseDurationToMs(secText);
+                if (shownMs === null) { noData++; return; }   // "?:??" and anything unparseable
+                if (Math.round(ms / 1000) !== Math.round(shownMs / 1000)) {
+                    mismatched++;
+                    _msDbg(`_msStampReleaseTrackLengths: REJECTED — MusicBrainz shows "${secText}" but the ` +
+                           `embedded payload says ${ms}ms ("${_msFormatDuration(ms, false)}"); wrong track keyed?`);
+                    return;
+                }
+
+                lenTd.dataset.mbMs      = String(ms);
+                // Never stash a millisecond-shaped string as the seconds baseline:
+                // if this cell already arrived at millisecond precision, derive the
+                // seconds form instead, or switching the toggle OFF would "restore"
+                // milliseconds. Belt-and-braces — _stripTransientCellState() already
+                // normalises carried-over cells — because being wrong here is silent.
+                lenTd.dataset.mbSecText = _MS_RENDERED_DURATION_RE.test(secText)
+                    ? _msFormatSeconds(ms)
+                    : secText;
+                stamped++;
+            });
+        });
+        _msDbg(`_msStampReleaseTrackLengths: stamped ${stamped} cell(s), ${noData} without usable data, ` +
+               `${mismatched} rejected as mismatched`);
+    }
+
+    /**
+     * Extracts the recording MBID a data row is *about*.
+     *
+     * Deliberately NOT folded into `_extractMbidFromRow()`, which matches
+     * `release-group|release|work` only: both the Release-events and
+     * Relationships injected columns depend on that exact behaviour, and
+     * teaching it about recordings would silently change which entity they
+     * key their own WS2 lookups on.
+     *
+     * Scans the row's cells in order and takes the first `/recording/<mbid>`
+     * anchor. On every pageType this is used for (work-recordings,
+     * artist-relationships, place-performances and their `-filtered` twins) the
+     * row's subject is a recording and its title link sits in the leading
+     * sticky/title column, well before any relationship icon cell.
+     *
+     * @param   {HTMLTableRowElement} row
+     * @returns {?string} Recording MBID, or `null` when the row has none.
+     */
+    function _extractRecordingMbidFromRow(row) {
+        for (const a of row.querySelectorAll('a[href]')) {
+            const href = a.getAttribute('href');
+            if (!href) continue;
+            const m = href.match(/\/recording\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/);
+            if (m) return m[1];
+        }
+        return null;
+    }
+
+    /**
+     * Every captured source row of the current render, across both table modes.
+     *
+     * These — not the live cells — are what the millisecond feature mutates:
+     * `runFilter()` rebuilds the table from `cloneNode(true)` copies of them,
+     * so a change made only to the live DOM is undone by the next keystroke.
+     *
+     * @returns {HTMLTableRowElement[]}
+     */
+    function _msSourceRows() {
+        const rows = [];
+        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => rows.push(...g.rows));
+        if (typeof allRows !== 'undefined') rows.push(...allRows);
+        return rows;
+    }
+
+    /** @returns {boolean} Whether any source row already carries a stamped millisecond value. */
+    function _msAnyStamped() {
+        return _msSourceRows().some(row => row.querySelector('td[data-mb-ms]'));
+    }
+
+    /**
+     * Resolves the rendered index of the "Length" column.
+     *
+     * One index serves every table: on a multi-table page `renderGroupedTable()`
+     * clones a single `<thead>` template for every group, and the two
+     * column-suppression helpers (`_suppressReleaseEventsIfNoReleaseLinks()`,
+     * `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()`) only ever remove
+     * injected columns, which `cleanupHeaders()` appends AFTER every original
+     * and synthetic one — so nothing they drop can shift "Length".
+     *
+     * @returns {number} Column index, or `-1` when this page has no Length column.
+     */
+    function _msLengthColumnIndex() {
+        for (const table of document.querySelectorAll('table.tbl')) {
+            const ths = Array.from(table.querySelectorAll('thead th'));
+            const idx = ths.findIndex(th => (th.dataset.colName || '') === 'Length');
+            if (idx >= 0) return idx;
+        }
+        return -1;
+    }
+
+    /** @type {Map<string, ?Map<string, number>>} WS2 results, keyed `"entityType:mbid"`. */
+    const _msWs2Cache = new Map();
+
+    /**
+     * Page-entity key for the WS2 millisecond lookup, e.g. `"work:8727a75a-…"`.
+     * @returns {?string} `null` when the URL is not one of the supported shapes.
+     */
+    function _msWs2PageKey() {
+        const m = window.location.pathname.match(
+            /^\/(work|artist|place)\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/
+        );
+        return m ? `${m[1]}:${m[2]}` : null;
+    }
+
+    /**
+     * Where this page's millisecond track lengths can come from, if anywhere.
+     *
+     *   `'embedded'` — already in the document. Release pages inline their
+     *                  tracklist props, so the values are free and are stamped
+     *                  during pre-processing.
+     *   `'ws2'`      — one MusicBrainz Web Service request, made ONLY when the
+     *                  toggle is first pressed. Declared per pageType via
+     *                  `features.msTrackLengthWs2`; these pages carry no length
+     *                  data of their own at all (confirmed against every
+     *                  embedded JSON blob on a work page — see
+     *                  scripts/probe-work-page-json.py — where `"length"` does
+     *                  not appear once).
+     *   `null`       — no source; no toggle is offered.
+     *
+     * @returns {?('embedded'|'ws2')}
+     */
+    function _msLengthSource() {
+        if (Lib.settings.sa_enable_ms_track_length === false) return null;
+        if (_buildReleaseTrackLengthMap()) return 'embedded';
+        if (activeDefinition?.features?.msTrackLengthWs2 && _msWs2PageKey()) return 'ws2';
+        return null;
+    }
+
+    /**
+     * Fetches (once per page) the recording→milliseconds map for the page
+     * entity, from a single WS2 request.
+     *
+     * `/ws/2/{work|artist|place}/{mbid}?inc=recording-rels&fmt=json` returns
+     * every recording relationship of the page entity with its `length` in
+     * milliseconds — one request for the whole table, not one per row.
+     *
+     * A SUCCESSFUL answer is cached in `_msWs2Cache` for the lifetime of the
+     * page, so pressing the toggle off and on again, sorting, filtering or
+     * re-rendering never re-request it. That includes a successful but EMPTY
+     * answer — "this entity has no recording relationship with a length" is a
+     * real, stable fact, so it is cached and reported as unavailable.
+     *
+     * A TRANSPORT failure is deliberately NOT cached. MusicBrainz's Web Service
+     * is intermittently flaky (503s when it is being hammered by bots), and
+     * caching that would turn a few seconds of upstream trouble into a
+     * permanently dead button for the rest of the page's life — which is
+     * exactly what happened: a single `HTTP 503` was followed by nothing but
+     * `cache hit` lines, so every later press was a silent no-op. Any non-OK
+     * status or thrown error is therefore reported as retryable. Erring toward
+     * "retryable" is the safe direction: the cost of being wrong is one extra
+     * request that the user explicitly asked for by clicking again.
+     *
+     * @returns {Promise<{outcome: ('ok'|'empty'|'error'), map: ?Map<string, number>, detail: string}>}
+     *   `'ok'` with a map; `'empty'` when MusicBrainz genuinely has no lengths
+     *   here (cached); `'error'` for a transient failure (not cached), with
+     *   `detail` naming it for the tooltip, e.g. `"HTTP 503"`.
+     */
+    async function _msFetchWs2RecordingLengths() {
+        const key = _msWs2PageKey();
+        if (!key) return { outcome: 'empty', map: null, detail: '' };
+        if (_msWs2Cache.has(key)) {
+            _msDbg(`_msFetchWs2RecordingLengths: cache hit for ${key}`);
+            const cached = _msWs2Cache.get(key);
+            return { outcome: cached ? 'ok' : 'empty', map: cached, detail: '' };
+        }
+
+        const [entityType, entityId] = key.split(':');
+        const url = `/ws/2/${entityType}/${entityId}?inc=recording-rels&fmt=json`;
+        _msDbg(`_msFetchWs2RecordingLengths: fetching ${url}`);
+        let relations;
+        try {
+            const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+            if (!resp.ok) {
+                // NOT cached: a transport failure says nothing about the data.
+                _msDbg(`_msFetchWs2RecordingLengths: HTTP ${resp.status} — transient, not cached, retryable`);
+                return { outcome: 'error', map: null, detail: `HTTP ${resp.status}` };
+            }
+            relations = (await resp.json()).relations || [];
+        } catch (err) {
+            const detail = err.message || String(err);
+            _msDbg(`_msFetchWs2RecordingLengths: fetch error (${detail}) — transient, not cached, retryable`);
+            return { outcome: 'error', map: null, detail: 'the request failed' };
+        }
+
+        const map = new Map();
+        relations.forEach(rel => {
+            const rec = rel.recording;
+            if (rec && rec.id && typeof rec.length === 'number') map.set(rec.id, rec.length);
+        });
+        _msDbg(`_msFetchWs2RecordingLengths: ${relations.length} relation(s), ${map.size} with a length`);
+        // Only a SUCCESSFUL answer is cached — including a genuinely empty one,
+        // which is a real and stable fact about this entity.
+        const result = map.size ? map : null;
+        _msWs2Cache.set(key, result);
+        return { outcome: result ? 'ok' : 'empty', map: result, detail: '' };
+    }
+
+    /**
+     * Stamps `data-mb-ms`/`data-mb-sec-text` onto every source row whose
+     * recording appears in `map`, without changing what any cell displays.
+     *
+     * Same discard rule as the embedded-source path
+     * (`_msStampReleaseTrackLengths()`): a value is only accepted when
+     * `Math.round(ms / 1000)` agrees with the seconds MusicBrainz already
+     * rendered. MusicBrainz DOES populate this column natively (verified with a
+     * bare browser via scripts/probe-native-work-length.js: `5:05`, `5:35`,
+     * `?:??`, …) and it ROUNDS, so that check is meaningful here and also
+     * doubles as a guard against a wrong column index — a mis-resolved column
+     * simply stamps nothing instead of writing durations into another column.
+     * `"?:??"` rows are skipped, staying unknown in both modes.
+     *
+     * @param   {Map<string, number>} map  Recording MBID → milliseconds.
+     * @returns {number} How many cells were stamped.
+     */
+    function _msStampSourceRowsFromMap(map) {
+        const colIdx = _msLengthColumnIndex();
+        if (colIdx < 0) {
+            _msDbg('_msStampSourceRowsFromMap: no "Length" column on this page');
+            return 0;
+        }
+        let stamped = 0, noData = 0, mismatched = 0;
+        _msSourceRows().forEach(row => {
+            const td = row.cells[colIdx];
+            if (!td || td.dataset.mbMs) return;             // idempotent
+            const gid = _extractRecordingMbidFromRow(row);
+            if (!gid) { noData++; return; }
+            const ms = map.get(gid);
+            if (typeof ms !== 'number') { noData++; return; }
+
+            const secText = (getCleanColumnText(td) || td.textContent || '').trim();
+            const shownMs = _parseDurationToMs(secText);
+            if (shownMs === null) { noData++; return; }     // "?:??" and anything unparseable
+            if (Math.round(ms / 1000) !== Math.round(shownMs / 1000)) {
+                mismatched++;
+                _msDbg(`_msStampSourceRowsFromMap: REJECTED — MusicBrainz shows "${secText}" but the Web ` +
+                       `Service says ${ms}ms ("${_msFormatDuration(ms, false)}") for recording ${gid}`);
+                return;
+            }
+            td.dataset.mbMs      = String(ms);
+            // Never stash a millisecond-shaped string as the seconds baseline:
+            // if this cell already arrived at millisecond precision, derive the
+            // seconds form instead, or switching the toggle OFF would "restore"
+            // milliseconds. Belt-and-braces — _stripTransientCellState() already
+            // normalises carried-over cells — because being wrong here is silent.
+            td.dataset.mbSecText = _MS_RENDERED_DURATION_RE.test(secText)
+                ? _msFormatSeconds(ms)
+                : secText;
+            stamped++;
+        });
+        _msDbg(`_msStampSourceRowsFromMap: stamped ${stamped} cell(s), ${noData} without usable data, ` +
+               `${mismatched} rejected as mismatched`);
+        return stamped;
+    }
+
+    /**
+     * Whether the Length column is currently rendering milliseconds.
+     *
+     * Read from the DOM (the `data-mb-ms-shown` flag on a stamped cell) rather
+     * than from a module variable, so the state survives every re-render for
+     * free: `runFilter()` rebuilds the table from `cloneNode(true)` copies of
+     * the captured source rows, and attributes come along on the clone.
+     *
+     * @returns {boolean}
+     */
+    function _msLengthPrecisionShown() {
+        return !!document.querySelector('table.tbl tbody td[data-mb-ms][data-mb-ms-shown]');
+    }
+
+    /**
+     * Rewrites one stamped Length cell to the requested precision.
+     *
+     * Clears `data-mb-int-col-styled` so `applyIntegerColumnStyling()` (which
+     * is idempotent precisely on that flag) rebuilds the cell's three
+     * `.mb-ic-left`/`.mb-ic-sep`/`.mb-ic-right` split-alignment spans around
+     * the new text.
+     *
+     * @param   {HTMLTableCellElement} td  A cell carrying `data-mb-ms`.
+     * @param   {boolean} showMs
+     * @returns {void}
+     */
+    function _msSetCellText(td, showMs) {
+        const ms = parseInt(td.dataset.mbMs, 10);
+        if (!Number.isFinite(ms)) return;
+        _msWriteDurationText(td, showMs
+            ? _msFormatDuration(ms)
+            : (td.dataset.mbSecText || _msFormatSeconds(ms)));
+        if (showMs) td.dataset.mbMsShown = '1';
+        else delete td.dataset.mbMsShown;
+    }
+
+    /**
+     * Switches the whole Length column between seconds and milliseconds.
+     *
+     * Rewrites the CAPTURED SOURCE rows (`groupedRows`/`allRows`) rather than
+     * the live cells, then lets `runFilter()` re-render from them. That is the
+     * script's own re-render path, so it comes with everything already wired:
+     * the live table is rebuilt from clones of the rows just updated, the
+     * active column/global filters are re-applied and re-highlighted against
+     * the new text, and the current sort order is preserved. Editing live cells
+     * instead would be undone by the very next keystroke.
+     *
+     * Sorting, filtering and the 📊 unique-values dropdown all read the
+     * column's rendered text (via `getCleanVisibleText()`/
+     * `getCleanColumnText()`), so they follow the new precision with no
+     * further work — including `_findCellLengthSeconds()`, which already
+     * parses a `.mmm` part, so the "Length info - Deviation" buckets simply
+     * become finer-grained. The dropdown's cached per-table bundle is keyed on
+     * which rows are visible and cannot notice cell text changing underneath
+     * it, so it is force-invalidated here (same reason
+     * `initReleaseEventsColumn()` does it after populating its own column).
+     *
+     * @param   {boolean} showMs
+     * @returns {void}
+     */
+    function _msApplyLengthPrecision(showMs) {
+        const rows = [];
+        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => rows.push(...g.rows));
+        if (typeof allRows !== 'undefined') rows.push(...allRows);
+        if (!rows.length) return;
+
+        let changed = 0;
+        rows.forEach(row => {
+            row.querySelectorAll('td[data-mb-ms]').forEach(td => { _msSetCellText(td, showMs); changed++; });
+            applyIntegerColumnStyling(row, activeIntegerColumns);
+        });
+        // Re-derive the column's min-widths: the ".mmm" part changes the widest
+        // right-hand segment, so the ':' would otherwise no longer line up.
+        finalizeSplitAlignedColumns(rows, activeIntegerColumns);
+
+        document.querySelectorAll('table.tbl').forEach(t => _invalidateUniqDropDataCacheForTable(t));
+        _msDbg(`_msApplyLengthPrecision: ${showMs ? 'milliseconds' : 'seconds'} — ${changed} cell(s) rewritten`);
+        runFilter();
+    }
+
+    /**
+     * Paints one `.mb-ms-col-hdr-btn` for the given state: `▶⏱` when the column
+     * shows seconds (there is more precision behind this), `▼⏱` when it is
+     * already showing it. `aria-pressed` carries the same state for assistive
+     * technology, and the CSS tints the engaged button so it is scannable
+     * across a wide table without relying on the glyph alone.
+     *
+     * @param   {HTMLElement} btn
+     * @param   {boolean} showing
+     * @returns {void}
+     */
+    function _msUpdateColHdrBtn(btn, showing, state, detail) {
+        if (state === 'loading') {
+            btn.textContent = '⏳';
+            btn.setAttribute('aria-busy', 'true');
+            btn.title = 'Loading millisecond lengths from the MusicBrainz Web Service…';
+            btn.setAttribute('aria-label', 'Loading millisecond lengths');
+            return;
+        }
+        btn.removeAttribute('aria-busy');
+        btn.textContent = showing ? '▼⏱' : '▶⏱';
+        btn.setAttribute('aria-pressed', showing ? 'true' : 'false');
+        delete btn.dataset.mbMsRetry;
+
+        // A transient transport failure is NOT the same fact as "MusicBrainz has
+        // no sub-second data here", and must not be reported as if it were:
+        // the data may well be there, we just could not reach it this second.
+        // Stays clickable (no aria-disabled) because pressing again is exactly
+        // the right thing to do, and is tinted yellow so it reads as a warning
+        // rather than as the settled, dimmed "there is nothing here" state.
+        if (state === 'retry') {
+            delete btn.dataset.mbMsUnavailable;
+            btn.removeAttribute('aria-disabled');
+            btn.dataset.mbMsRetry = '1';
+            const because = detail ? ` (${detail})` : '';
+            btn.title = `Could not load millisecond lengths${because} — the MusicBrainz Web Service `
+                      + 'is temporarily unavailable, which happens when it is under heavy load. '
+                      + 'Click again to retry.';
+            btn.setAttribute('aria-label', 'Could not load millisecond lengths — click again to retry');
+            return;
+        }
+
+        if (state === 'unavailable') {
+            btn.dataset.mbMsUnavailable = '1';
+            btn.title = 'Millisecond precision unavailable here — MusicBrainz has no sub-second '
+                      + 'length on record for these recordings';
+            btn.setAttribute('aria-label', 'Millisecond precision unavailable for the Length column');
+            btn.setAttribute('aria-disabled', 'true');
+            return;
+        }
+
+        delete btn.dataset.mbMsUnavailable;
+        btn.removeAttribute('aria-disabled');
+        // Mention the one-off request only where there actually is one: on a
+        // release page the values are already in the document.
+        const needsFetch = !showing && !_msAnyStamped() && _msLengthSource() === 'ws2';
+        btn.title = showing
+            ? 'Hide millisecond precision — show "Length" as M:SS (MusicBrainz\'s own rounding)'
+            : (needsFetch
+                ? 'Show millisecond precision for "Length" — one MusicBrainz Web Service request, '
+                  + 'cached for this page'
+                : 'Show millisecond precision for "Length"');
+        btn.setAttribute('aria-label', showing
+            ? 'Hide millisecond precision in the Length column'
+            : 'Show millisecond precision in the Length column');
+    }
+
+    /** Repaints every Length header toggle to the same state. */
+    function _msRepaintColHdrBtns(showing, state, detail) {
+        document.querySelectorAll('.mb-ms-col-hdr-btn')
+            .forEach(btn => _msUpdateColHdrBtn(btn, showing, state, detail));
+    }
+
+    /** Guards against a second click while a WS2 request is still in flight. */
+    let _msToggleInFlight = false;
+
+    /**
+     * Toggles the Length column's precision and repaints every header button.
+     *
+     * All buttons are updated, not just the clicked one: the toggle is
+     * page-wide by design. On a multi-medium release each medium renders its
+     * own table with its own Length header, and a release whose CD showed
+     * milliseconds while its vinyl showed seconds would be actively
+     * misleading.
+     *
+     * @returns {void}
+     */
+    async function _msToggleLengthPrecision() {
+        if (_msToggleInFlight) return;
+        const next = !_msLengthPrecisionShown();
+
+        // Turning precision ON with nothing stamped yet means this page's
+        // millisecond data has to be fetched first — deliberately deferred to
+        // this moment rather than done during render, so a page nobody asks for
+        // precision on never makes the request at all. The result is cached for
+        // the page's lifetime, so every later toggle, sort or filter is local.
+        if (next && !_msAnyStamped()) {
+            if (_msLengthSource() !== 'ws2') {
+                _msRepaintColHdrBtns(false, 'unavailable');
+                return;
+            }
+            _msToggleInFlight = true;
+            _msRepaintColHdrBtns(false, 'loading');
+            try {
+                const res = await _msFetchWs2RecordingLengths();
+                // A transport failure leaves the button retryable, not dead:
+                // the data may well exist, we just could not reach it. Nothing
+                // was cached, so the next press really does try again.
+                if (res.outcome === 'error') {
+                    _msRepaintColHdrBtns(false, 'retry', res.detail);
+                    return;
+                }
+                // Everything else is a settled answer about the data itself.
+                if (!res.map || !_msStampSourceRowsFromMap(res.map)) {
+                    _msRepaintColHdrBtns(false, 'unavailable');
+                    return;
+                }
+            } finally {
+                _msToggleInFlight = false;
+            }
+        }
+
+        _msApplyLengthPrecision(next);
+        _msRepaintColHdrBtns(next);
+    }
+
+    /**
+     * Injects the `▶⏱`/`▼⏱` millisecond toggle into every rendered Length
+     * column header, as the first child of `.mb-col-hdr-flex` — so the header
+     * reads `[⏱] Length ⇅ ▲ ▼ [ N 📊 ]`, the same slot and idiom
+     * `.mb-caa-col-hdr-btn` already occupies on CAA/EAA columns.
+     *
+     * Must run POST-render, from the render tail: `makeTableSortableUnified()`
+     * rebuilds every `<th>` from a plain column-name string and wipes
+     * `th.innerHTML` first, so anything injected earlier is destroyed when the
+     * real flex layout is built (the same constraint documented on
+     * `_initColHeaderGlyph()`). Idempotent via a presence check, so re-running
+     * on a later render pass is safe.
+     *
+     * No-ops when the feature is off, or when no cell was ever stamped — a
+     * pageType with no millisecond source has nothing to toggle, so it gets no
+     * button rather than a dead one.
+     *
+     * @returns {void}
+     */
+    function _initMsLengthColHeaderToggle(scopeTable) {
+        if (Lib.settings.sa_enable_ms_track_length === false) return;
+        // Offered either because this page HAS a source (embedded values were
+        // stamped during pre-processing, or a one-off Web Service request could
+        // supply them on demand) or because cells arrived already stamped — the
+        // case for a sub-table opened in its own tab, whose rows are hydrated
+        // from a snapshot of the multi-table page and may already be rendered
+        // at millisecond precision. A page with neither gets no button rather
+        // than a dead one.
+        //
+        // Source is checked FIRST because it is O(1), while `_msAnyStamped()`
+        // walks every captured row and only short-circuits when it finds one —
+        // i.e. it is slowest in exactly the common "nothing stamped yet" case,
+        // which this ordering skips entirely for both real sources.
+        if (!_msLengthSource() && !_msAnyStamped()) return;
+
+        const showing = _msLengthPrecisionShown();
+        const tables = scopeTable ? [scopeTable] : Array.from(document.querySelectorAll('table.tbl'));
+        tables.forEach(table => {
+            const th = Array.from(table.querySelectorAll('thead th'))
+                .find(h => (h.dataset.colName || '') === 'Length');
+            if (!th) return;
+            const hdrFlex = th.querySelector('.mb-col-hdr-flex');
+            if (!hdrFlex) return;
+
+            let btn = hdrFlex.querySelector('.mb-ms-col-hdr-btn');
+            if (!btn) {
+                btn = document.createElement('span');
+                btn.className = 'mb-ms-col-hdr-btn';
+                btn.setAttribute('role', 'button');
+                btn.tabIndex = 0;
+                const activate = (ev) => {
+                    // stopPropagation: the <th> itself carries sort handlers.
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    _msToggleLengthPrecision();
+                };
+                btn.addEventListener('click', activate);
+                btn.addEventListener('keydown', (ev) => {
+                    if (ev.key === 'Enter' || ev.key === ' ') activate(ev);
+                });
+                hdrFlex.insertBefore(btn, hdrFlex.firstChild);
+            }
+            _msUpdateColHdrBtn(btn, showing);
+        });
+    }
+
+    /**
      * Create a comparison function for table sorting
      * @param {number} index - Column index
      * @param {boolean} isAscending - Sort direction
-     * @param {boolean} isNumeric - Whether to use numeric comparison
+     * @param {('duration'|'numeric'|'text')} kind - Comparison kind, from
+     *   `_sortColumnKind()`. Was previously an `isNumeric` boolean; `'duration'`
+     *   is the added case, which parses `M:SS[.mmm]` properly and pins `"?:??"`
+     *   last instead of comparing a digits-only `parseFloat` of the text.
      * @param {boolean} [byLength=false] - When true, sort by visible text length instead of value
      * @returns {Function} Comparison function
      */
-    function createSortComparator(index, isAscending, isNumeric, byLength = false) {
+    function createSortComparator(index, isAscending, kind, byLength = false) {
         return (a, b) => {
             const valA = getCleanVisibleText(a.cells[index]).trim().toLowerCase() || '';
             const valB = getCleanVisibleText(b.cells[index]).trim().toLowerCase() || '';
 
+            // Alt+Click "sort by column length" is a deliberate text-length
+            // sort and outranks the column's own kind, durations included.
             if (byLength) {
                 const result = valA.length - valB.length;
                 return isAscending ? result : -result;
             }
 
-            if (isNumeric) {
+            if (kind === 'duration') {
+                return _compareDurations(valA, valB, isAscending);
+            }
+
+            if (kind === 'numeric') {
                 const numA = parseFloat(valA.replace(/[^0-9.-]/g, '')) || 0;
                 const numB = parseFloat(valB.replace(/[^0-9.-]/g, '')) || 0;
                 return isAscending ? numA - numB : numB - numA;
@@ -15726,16 +16765,23 @@
                 const valA = getCleanVisibleText(a.cells[idx]).trim().toLowerCase() || '';
                 const valB = getCleanVisibleText(b.cells[idx]).trim().toLowerCase() || '';
 
-                // Derive column name for numeric detection (strip sort/collapse icons and superscripts)
-                const hdrName = headers[idx]
-                    ? headers[idx].textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim()
-                    : '';
-                const isNumeric = hdrName.includes('Year') || hdrName.includes('Releases') ||
-                                  hdrName.includes('Track') || hdrName.includes('Length') ||
-                                  hdrName.includes('#');
+                // Same resolver the single-column path uses — see
+                // `_sortColumnKind()`'s JSDoc for the divergence this replaced
+                // (this branch used to consult only the raw header text and
+                // never the page definition's own integerColumns descriptors).
+                const kind = _sortColumnKind(_sortColumnHeaderName(headers[idx]));
 
                 let result;
-                if (isNumeric) {
+                if (kind === 'duration') {
+                    // Already direction-final — return it directly, bypassing
+                    // the shared sign flip below (which would float a pinned
+                    // "?:??" to the TOP of a descending sort). Only a 0 falls
+                    // through, so equal durations still reach the next
+                    // tie-breaking column in the chain.
+                    const durCmp = _compareDurations(valA, valB, isAscending);
+                    if (durCmp !== 0) return durCmp;
+                    result = 0;
+                } else if (kind === 'numeric') {
                     const numA = parseFloat(valA.replace(/[^0-9.-]/g, '')) || 0;
                     const numB = parseFloat(valB.replace(/[^0-9.-]/g, '')) || 0;
                     result = numA - numB;
@@ -30538,6 +31584,60 @@ a { color: #1565c0; }`;
             border-color: #bbb;
         }
 
+        /* Per-column millisecond precision toggle in the "Length" column header.
+           Prepended as the first child of .mb-col-hdr-flex, in the same slot and
+           with the same box metrics as .mb-caa-col-hdr-btn above: ▶⏱ shows
+           seconds (more precision available), ▼⏱ shows milliseconds.
+           The engaged state is ALSO tinted, borrowing
+           .mb-col-uniq-wrap.mb-col-uniq-active's "this control is on" idiom, so
+           it stays scannable across a wide table without relying on telling ▶
+           from ▼ at a glance. */
+        .mb-ms-col-hdr-btn {
+            cursor: pointer;
+            font-size: 0.80em;
+            line-height: 1;
+            opacity: 0.60;
+            user-select: none;
+            padding: 1px 3px;
+            margin-right: 3px;
+            border-radius: 3px;
+            border: 1px solid transparent;
+            transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+            vertical-align: middle;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+        .mb-ms-col-hdr-btn:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.07);
+            border-color: #bbb;
+        }
+        .mb-ms-col-hdr-btn:focus-visible {
+            outline: 2px solid rgba(0, 100, 255, 0.55);
+            outline-offset: 1px;
+        }
+        .mb-ms-col-hdr-btn[aria-pressed="true"] {
+            opacity: 1;
+            background: rgba(0, 100, 255, 0.13);
+            border-color: #9bb8e8;
+        }
+        /* Transient failure (e.g. a 503 while MusicBrainz's Web Service is under
+           load): yellow warning tint, and the button stays fully clickable —
+           pressing it again retries. Distinct on purpose from the settled,
+           dimmed "MusicBrainz has no sub-second data here" state, which is a
+           fact about the data rather than about reachability. */
+        .mb-ms-col-hdr-btn[data-mb-ms-retry="1"] {
+            opacity: 1;
+            background: rgba(255, 193, 7, 0.45);
+            border-color: #d6a100;
+        }
+        .mb-ms-col-hdr-btn[data-mb-ms-retry="1"]:hover {
+            background: rgba(255, 193, 7, 0.65);
+            border-color: #b98900;
+        }
+
         #mb-col-uniq-dropdown {
             position: fixed;
             z-index: 999999;
@@ -42446,6 +43546,14 @@ a { color: #1565c0; }`;
                 // is fully available before we collapse the initial view here.
                 if (mainTable) initCollapsableColumns(mainTable);
 
+                // NOTE: the ⏱ millisecond toggle is NOT injected here. It used to
+                // be, to work around renderFinalTable()'s tail running before the
+                // makeTableSortableUnified() call above — but that hook now lives
+                // at the end of makeTableSortableUnified() itself, which is the
+                // only place guaranteed to run after the `.mb-col-hdr-flex` the
+                // button lives in has been built, and so covers this path, the
+                // multi-table group loop and the snapshot-hydration path alike.
+
                 // Series page: disable sorting UI for the "#" (number) column - (DOM-only cleanup; no logic changes)
                 if (location.pathname.startsWith('/series/')) {
                     document.querySelectorAll('th.number-column').forEach(th => {
@@ -42821,6 +43929,233 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Class-name suffixes identifying jesus2099 elements that are PURE
+     * DECORATION — they carry no MusicBrainz content of their own, so the
+     * whole element is removed rather than just its marker class.
+     *
+     * Matched as a case-insensitive SUFFIX because jesus2099's scripts embed
+     * an install/version-specific numeric id in every class name (e.g.
+     * `jesus2099userjs81127toolzone`, where `81127` differs per install) —
+     * the same reason `applyColumnErasers()`'s `'jesus2099-any'` sentinel
+     * matches by prefix rather than by exact class. Verified shapes (see
+     * debug/therising.html):
+     *
+     *   <div class="jesus2099userjs81127toolzone" style="display:none">   +merge / Edit / Open edits
+     *   <div class="jesus2099userjs81127editbutt" style="display:none">   Edit
+     *   <div class="jesus2099userjs81127openEdits" style="display:none">  Open edits
+     *
+     * `toolzone` nests the other two, so removing it takes them along; they
+     * are listed individually anyway because either can also appear on its
+     * own, and a redundant removal is harmless.
+     *
+     * Everything NOT listed here defaults to marker-stripping (keep the
+     * element, drop the class) — the fail-safe direction. A future jesus2099
+     * feature we have never seen then leaves a harmless invisible artifact
+     * instead of us deleting genuine MusicBrainz content. This matters
+     * concretely: `jesus2099userjs81127recording` sits on the recording
+     * TITLE anchor and `…acoustids-handled` on the Title `<td>` itself, both
+     * of which must survive (see `applyColumnErasers()`'s Strategy 3 JSDoc,
+     * which documents the same hazard for the `'jesus2099-any'` sentinel).
+     * @type {string[]}
+     */
+    const _J2_DECORATION_SUFFIXES = ['toolzone', 'editbutt', 'openedits', 'idcountzone'];
+
+    /**
+     * Decides whether an element's `treleases` class was put there by
+     * jesus2099 — or by MusicBrainz itself.
+     *
+     * **`treleases` is genuine MusicBrainz markup on release tracklists.** A
+     * release page natively renders its Length column as
+     * `<th class="treleases">` plus one `<td class="treleases">` per track;
+     * verified in `tests/snapshots/release-tracks/raw.html`, which the
+     * Playwright harness captures with only this script loaded — 9 occurrences
+     * there, and not one `jesus2099` string, plugin `title` or yellow
+     * `text-shadow` anywhere in the file (see
+     * scripts/check-treleases-provenance.py).
+     *
+     * jesus2099's `RECORDING_LENGTH_COLUMN` reuses that same class name on the
+     * page types MusicBrainz does NOT mark — work, artist-relationships,
+     * place-performances — where it adds it to the header and cells it
+     * rewrites. Crucially it never adds the class alone: the same statements
+     * also set its own script name as the `title` (`"SUPER MIND CONTROL Ⅱ X
+     * TURBO"`, with NON-BREAKING spaces) and, on the header, a yellow
+     * `text-shadow`. That co-occurrence is the only reliable discriminator,
+     * and it is what this predicate tests.
+     *
+     * Treating a bare `treleases` as jesus2099's is therefore wrong, and
+     * destructive: it deletes MusicBrainz's own class off every release
+     * tracklist's Length column, taking whatever MusicBrainz styles through it
+     * along too.
+     *
+     * Conservative by construction — with no corroborating evidence the class
+     * is left alone, so the failure direction is "a stale third-party class
+     * survives", never "native markup is deleted".
+     *
+     * @param   {Element} el
+     * @returns {boolean} True only when jesus2099 demonstrably added the class.
+     */
+    function _isJesus2099Treleases(el) {
+        if (!el.classList.contains('treleases')) return false;
+        // MusicBrainz puts no title on its own Length <th>/<td>; jesus2099
+        // always does, in the same breath as the class.
+        if (el.hasAttribute('title')) return true;
+        return /yellow/i.test(el.style.textShadow || '');
+    }
+
+    /**
+     * Returns every class token on `el` that marks it as touched by one of
+     * jesus2099's userscripts: any token starting with `jesus2099`, plus a
+     * `treleases` token that `_isJesus2099Treleases()` attributes to
+     * jesus2099 rather than to MusicBrainz itself.
+     *
+     * @param   {Element} el
+     * @returns {string[]} Marker tokens, empty when the element is untouched.
+     */
+    function _j2MarkerTokens(el) {
+        return Array.from(el.classList).filter(t => (
+            t === 'treleases' ? _isJesus2099Treleases(el) : /^jesus2099/i.test(t)
+        ));
+    }
+
+    /**
+     * True when `el` belongs to the jesus2099 cover-art icon family, which
+     * `_stripJesus2099InTable()` must leave completely alone.
+     *
+     * That family already has its own two-layer, deliberately GATED handling:
+     * `applyColumnErasers()`'s Strategy 2 (the `'jesus2099'` columnEraser
+     * sentinel) at extraction time, and `_stripTransientCellState()`'s
+     * `_hadInlineArtPh`-gated strip at capture/serialisation time. That gate
+     * exists because an unconditional strip destroyed the ONLY art content in
+     * the cell on pageTypes where `ColumnDataExtractor.caa`'s Path A moves
+     * jesus2099's own anchor into the synthetic "CAA" column (e.g.
+     * artist-relationships) — confirmed via debug/CAA-missing-doubled.org's
+     * RAW-vs-STRIPPED fingerprint log. Re-stripping it here, ungated, would
+     * reintroduce exactly that regression.
+     *
+     * @param   {Element} el
+     * @returns {boolean}
+     */
+    function _j2IsArtworkFamily(el) {
+        if (el.classList.contains('caa-icon') ||
+            el.classList.contains('eaa-icon') ||
+            el.classList.contains('artwork-icon')) return true;
+        if (Array.from(el.classList).some(t => /bigbox$/i.test(t))) return true;
+        return !!el.closest('a[href*="/cover-art"]');
+    }
+
+    /**
+     * Removes every jesus2099 artifact from one of THIS script's rendered
+     * tables (or from one captured source `<tr>`), so the consolidated table
+     * we render carries no third-party leftovers.
+     *
+     * Scope is deliberately limited to what is handed in — always a
+     * `table.tbl` we built, or a captured row destined for one. Everything
+     * jesus2099 puts OUTSIDE our tables (its sidebar/sub-header search links,
+     * the pending-edit toggles, its own toolbar) is left untouched: those are
+     * live features of the surrounding page, which must keep working exactly
+     * as before. The audit behind that boundary (scripts/scope-jesus2099-
+     * leaks.py against debug/work-rec.html and debug/therising.html) found
+     * 108–123 `jesus2099_all-links_*` and `jesus2099PendingEdits*` markers
+     * outside our tables versus only `treleases` and the
+     * `jesus2099userjs81127*` tracklist family inside them.
+     *
+     * Three dispositions, in priority order:
+     *   1. Cover-art icon family (`_j2IsArtworkFamily`) → skipped entirely;
+     *      already owned, with a load-bearing gate, elsewhere.
+     *   2. Pure decoration (`_J2_DECORATION_SUFFIXES`) → element removed.
+     *   3. Anything else → marker class token(s) removed, element kept.
+     *      Additionally, on a `<th>`/`<td>` only: the plugin `title` (which
+     *      jesus2099 sets to its own script name — e.g.
+     *      `"SUPER MIND CONTROL Ⅱ X TURBO"`, note the
+     *      NON-BREAKING spaces) and its `text-shadow` are dropped too. Both
+     *      are restricted to marker-carrying cells on purpose: native
+     *      MusicBrainz puts meaningful `title`s on `<a>`/`<abbr>` elements
+     *      (artist sort names, country abbreviations), and a `text-shadow`
+     *      with no jesus2099 marker belongs to some other third-party script
+     *      (30 unrelated `<span style="color:red; …text-shadow:yellow…">`
+     *      elements in debug/therising.html alone — verified via
+     *      scripts/check-text-shadow-owner.py), so neither may be stripped
+     *      blind.
+     *
+     * Idempotent: a second call finds nothing and is a no-op. Safe on a
+     * detached node, which is what the captured-source-row pass relies on.
+     *
+     * @param   {?(Element)} root  A `table.tbl`, or one captured `<tr>`.
+     * @returns {{removed: number, stripped: number}} Per-call counts, for logging.
+     */
+    function _stripJesus2099InTable(root) {
+        const result = { removed: 0, stripped: 0 };
+        if (!root || root.nodeType !== Node.ELEMENT_NODE) return result;
+
+        // Include `root` itself: jesus2099 mutates existing elements in place,
+        // so a captured <tr>/<td> handed in directly can be the marked node
+        // (querySelectorAll never matches its own root).
+        const candidates = Array.from(root.querySelectorAll('[class*="jesus2099"], .treleases'));
+        if (_j2MarkerTokens(root).length) candidates.unshift(root);
+
+        candidates.forEach(el => {
+            const tokens = _j2MarkerTokens(el);
+            if (!tokens.length) return;                 // already cleaned by an ancestor removal
+            if (_j2IsArtworkFamily(el)) return;         // disposition 1
+
+            const isDecoration = tokens.some(t =>
+                _J2_DECORATION_SUFFIXES.some(sfx => t.toLowerCase().endsWith(sfx)));
+            if (isDecoration) {                         // disposition 2
+                el.remove();
+                result.removed++;
+                return;
+            }
+
+            tokens.forEach(t => el.classList.remove(t)); // disposition 3
+            if (!el.classList.length) el.removeAttribute('class');
+            if (el.tagName === 'TH' || el.tagName === 'TD') {
+                el.removeAttribute('title');
+                el.style.removeProperty('text-shadow');
+            }
+            result.stripped++;
+        });
+
+        return result;
+    }
+
+    /**
+     * Applies `_stripJesus2099InTable()` across everything a render produces:
+     * every live `table.tbl` (header row included) AND every captured source
+     * row in `groupedRows`/`allRows`.
+     *
+     * The source-row half is not optional. `runFilter()` re-renders by
+     * inserting `cloneNode(true)` copies of those captured rows on every
+     * keystroke, and classes/attributes/inline styles survive cloning — so
+     * cleaning only the live DOM would let the very next filter keystroke
+     * paste every marker straight back in. Same live-plus-source shape as
+     * `initReleaseEventsColumn()`'s own cell-population pass.
+     *
+     * Deliberately NOT gated behind any setting: keeping our rendered tables
+     * free of third-party artifacts is unconditional, independent of the
+     * millisecond-precision feature that shares this code's subject matter.
+     *
+     * @returns {void}
+     */
+    function purgeJesus2099Artifacts() {
+        const total = { removed: 0, stripped: 0 };
+        const _apply = (el) => {
+            const r = _stripJesus2099InTable(el);
+            total.removed  += r.removed;
+            total.stripped += r.stripped;
+        };
+
+        document.querySelectorAll('table.tbl').forEach(_apply);
+        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => g.rows.forEach(_apply));
+        if (typeof allRows !== 'undefined' && allRows.length) allRows.forEach(_apply);
+
+        if (total.removed || total.stripped) {
+            Lib.debug('cleanup',
+                `purgeJesus2099Artifacts: removed ${total.removed} decoration element(s), ` +
+                `stripped markers from ${total.stripped} element(s).`);
+        }
+    }
+
+    /**
      * _repairTreleasesTd — re-styles a <td class="treleases"> in place.
      *
      * Jesus2099's "mb. SUPER MIND CONTROL Ⅱ X TURBO" mutates Length cells of
@@ -42949,23 +44284,29 @@ a { color: #1565c0; }`;
             if (_observedTbodies.has(tbody)) return;
             _observedTbodies.add(tbody);
 
+            // Every dispatch below is gated on _isJesus2099Treleases() rather
+            // than on the bare `treleases` class: MusicBrainz marks a release
+            // tracklist's own Length column with that exact class (see the
+            // predicate's JSDoc), and _repairTreleasesTd() rebuilds the cell
+            // from plain textContent — so an ungated observer fired on our own
+            // freshly-rendered native cells, stripping MusicBrainz's class and
+            // discarding any filter-highlight spans inside them.
             const observer = new MutationObserver(mutations => {
                 for (const mutation of mutations) {
                     if (mutation.type === 'childList') {
                         for (const node of mutation.addedNodes) {
                             if (node.nodeType !== Node.ELEMENT_NODE) continue;
-                            if (node.classList?.contains('treleases')) {
+                            if (_isJesus2099Treleases(node)) {
                                 _repairTreleasesTd(node);
                             } else {
-                                node.querySelectorAll('[class="treleases"]')
-                                    .forEach(el => _repairTreleasesTd(el));
+                                node.querySelectorAll('.treleases')
+                                    .forEach(el => { if (_isJesus2099Treleases(el)) _repairTreleasesTd(el); });
                             }
                         }
                     } else if (mutation.type === 'attributes') {
                         // Jesus2099 mutates an existing <td>'s class to 'treleases'
                         const node = mutation.target;
-                        if (node.nodeType === Node.ELEMENT_NODE &&
-                            node.classList?.contains('treleases')) {
+                        if (node.nodeType === Node.ELEMENT_NODE && _isJesus2099Treleases(node)) {
                             _repairTreleasesTd(node);
                         }
                     }
@@ -43704,6 +45045,17 @@ a { color: #1565c0; }`;
         // own JSDoc. renderFinalTable() replaces tbody content wholesale on every
         // render, which never saw toggleColumn()'s display:none mutation.
         _reapplyColumnVisibility(table);
+
+        // Purge every jesus2099 artifact that rode along in the scraped rows
+        // and header — unconditional, and BEFORE initTreleasesObserver() below
+        // so the observer only ever sees genuinely NEW late mutations.
+        purgeJesus2099Artifacts();
+
+        // Inject the ⏱ millisecond-precision toggle into the "Length" column
+        // header. Must be here, post-render: makeTableSortableUnified() wipes
+        // th.innerHTML when it builds the real .mb-col-hdr-flex layout, so
+        // anything injected earlier would be destroyed.
+        _initMsLengthColHeaderToggle();
 
         // Install (or re-confirm) the MutationObserver that strips jesus2099 treleases
         // nodes from Length cells the instant they are injected into the live tbody.
@@ -46260,6 +47612,17 @@ a { color: #1565c0; }`;
         if (Lib.settings.sa_enable_save_load) {
             saveToDiskBtn.style.display = 'inline-block';
         }
+
+        // Purge every jesus2099 artifact that rode along in the scraped rows
+        // and header — unconditional, and BEFORE initTreleasesObserver() below
+        // so the observer only ever sees genuinely NEW late mutations.
+        purgeJesus2099Artifacts();
+
+        // Inject the ⏱ millisecond-precision toggle into the "Length" column
+        // header. Must be here, post-render: makeTableSortableUnified() wipes
+        // th.innerHTML when it builds the real .mb-col-hdr-flex layout, so
+        // anything injected earlier would be destroyed.
+        _initMsLengthColHeaderToggle();
 
         // Install (or re-confirm) the MutationObserver that strips jesus2099 treleases
         // nodes from Length cells the instant they are injected into any live tbody.
@@ -53323,32 +54686,22 @@ a { color: #1565c0; }`;
         multiSortTintRegistry.set(sortKey, { applyTints: applyMultiSortColumnTints, clearTints: clearMultiSortColumnTints });
 
         // --- Helper: derive clean column name from a th element ---------------
-        // Prefer th.dataset.colName — set once, exactly, when the header is
-        // first built (see the `headers.forEach` loop below) — over re-deriving
-        // from th.textContent, which by the time this runs also contains the
-        // live uniq-count badge digits (e.g. "94") injected into the header's
-        // flex layout. Stripping plain ASCII 0-9 from that combined text would
-        // be ambiguous whenever the real column name itself contains a digit
-        // (e.g. "1st seconder"), so the fallback path is only exercised for a
-        // th that predates dataset.colName being set.
-        const getCleanColName = (th) =>
-            th ? (th.dataset.colName || th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim()) : '';
+        // Local alias for the module-level `_sortColumnHeaderName()`, which
+        // `createMultiColumnComparator()` uses too — keeping one implementation
+        // so the two sort paths can never disagree about a column's name. See
+        // its JSDoc for why th.dataset.colName is preferred over re-deriving
+        // from th.textContent (by sort time that text also carries the live
+        // uniq-count badge digits, making a digit-stripping regex ambiguous for
+        // a column whose real name contains a digit, e.g. "1st seconder").
+        const getCleanColName = (th) => _sortColumnHeaderName(th);
 
-        // --- Helper: is a column name numeric? ---------------------------------
-        // Primary source: activeIntegerColumns declared in the page definition's
-        // `features.integerColumns`.  Any column listed there is considered numeric
-        // and will use locale-numeric comparison during sorting.
-        // Fallback heuristic (legacy): applied only for columns not covered by the
-        // page definition, so that pages without an integerColumns declaration keep
-        // their existing sort behaviour.
-        const _intColNameSet = new Set(activeIntegerColumns.map(e => e.sourceColumn));
-        const isNumericCol = (name) => {
-            if (_intColNameSet.has(name)) return true;
-            // Legacy heuristic for pages that have no integerColumns declaration
-            return name.includes('Year') || name.includes('Releases') ||
-                   name.includes('Track') || name.includes('Length') ||
-                   name.includes('#');
-        };
+        // --- How is a column compared when sorting? ----------------------------
+        // Delegated to the module-level `_sortColumnKind()` so this path and
+        // `createMultiColumnComparator()` can no longer drift apart (they had:
+        // this one consulted the page definition's own integerColumns
+        // descriptors, that one only the raw header text). It also classifies
+        // colon-split "Length" columns as 'duration', which sort via
+        // `_compareDurations()` with "?:??" pinned last in both directions.
 
         // Register this table's current-sort comparator getter so runFilter()/
         // _applyDiscographyViewFilter('merged') can re-sort a merged category's
@@ -53363,11 +54716,11 @@ a { color: #1565c0; }`;
             if (state.multiSortColumns.length === 1) {
                 const col = state.multiSortColumns[0];
                 const cn = getCleanColName(headers[col.colIndex]);
-                return createSortComparator(col.colIndex, col.direction === 1, isNumericCol(cn));
+                return createSortComparator(col.colIndex, col.direction === 1, _sortColumnKind(cn));
             }
             if (state.lastSortIndex < 0 || state.sortState === 0) return null;
             const cn = getCleanColName(headers[state.lastSortIndex]);
-            return createSortComparator(state.lastSortIndex, state.sortState === 1, isNumericCol(cn), state.sortByLength);
+            return createSortComparator(state.lastSortIndex, state.sortState === 1, _sortColumnKind(cn), state.sortByLength);
         });
 
         // -----------------------------------------------------------------------
@@ -53545,11 +54898,11 @@ a { color: #1565c0; }`;
                                     // Single entry in chain (Ctrl+clicked one column)
                                     const col = state.multiSortColumns[0];
                                     const cn = getCleanColName(headers[col.colIndex]);
-                                    compareFn = createSortComparator(col.colIndex, col.direction === 1, isNumericCol(cn));
+                                    compareFn = createSortComparator(col.colIndex, col.direction === 1, _sortColumnKind(cn));
                                 } else {
                                     // Plain or Alt+Click single-column sort
                                     const cn = getCleanColName(headers[index]);
-                                    compareFn = createSortComparator(index, state.sortState === 1, isNumericCol(cn), state.sortByLength);
+                                    compareFn = createSortComparator(index, state.sortState === 1, _sortColumnKind(cn), state.sortByLength);
                                 }
 
                                 await sortLargeArray(sortedData, compareFn, null);
@@ -53747,6 +55100,20 @@ a { color: #1565c0; }`;
         } else {
             clearMultiSortColumnTints();
         }
+
+        // Inject the ⏱ millisecond-precision toggle for THIS table, here rather
+        // than at each caller. This function is what builds the
+        // `.mb-col-hdr-flex` the button lives in (it wipes `th.innerHTML`
+        // first), so it is the one place guaranteed to run after that layout
+        // exists — every other candidate site had to know it ran late enough,
+        // and two of them didn't: `startFetchingProcess()`'s single-table
+        // branch and `_hydrateAndRenderFromSnapshotData()` both call
+        // `renderFinalTable()` — whose tail also tries — several steps BEFORE
+        // getting here, so the button was silently never injected on
+        // tableMode:'single' pages or on a sub-table opened in its own tab.
+        // Idempotent, and scoped to `table` so a many-sub-table page doesn't
+        // re-scan every table once per group.
+        _initMsLengthColHeaderToggle(table);
     }
 
     /**
@@ -55469,6 +56836,14 @@ a { color: #1565c0; }`;
         // cells so that disk files saved before 9.99.157 (which still carry
         // these markers verbatim) are cleaned up at load time as well.
         _stripTransientCellState(clone);
+
+        // Millisecond Length precision is transient DISPLAY state: whatever was
+        // on screen when this cell was captured, what gets serialised is
+        // MusicBrainz's own seconds form. Deliberately NOT inside
+        // _stripTransientCellState(), which runFilter() also calls on the live
+        // re-render clones — resetting there would undo the toggle on every
+        // keystroke.
+        _msResetCarriedOverPrecision(clone);
 
         return clone.innerHTML;
     }
@@ -58563,6 +59938,9 @@ a { color: #1565c0; }`;
                             // with 9.99.157+ have already been cleaned, so this is
                             // a cheap no-op for them.
                             _stripTransientCellState(td);
+                            // Reset a cell that was captured mid-toggle, so a
+                            // hydrated table always starts in seconds.
+                            _msResetCarriedOverPrecision(td);
                             tr.appendChild(td);
                         });
 
@@ -58708,6 +60086,10 @@ a { color: #1565c0; }`;
                         const _beforeFp = Lib.settings.sa_enable_art_diagnostic_logging
                             ? _caaArtDebugFingerprint(cellData.html) : null;
                         _stripTransientCellState(td);
+                        // Reset a cell that was captured mid-toggle, so a
+                        // sub-table opened in its own tab always starts in
+                        // seconds — exactly like one reached by pagination.
+                        _msResetCarriedOverPrecision(td);
                         if (_beforeFp !== null) {
                             const _afterFp = _caaArtDebugFingerprint(td.innerHTML);
                             Lib.debug('cache',
@@ -68433,6 +69815,85 @@ a { color: #1565c0; }`;
              */
             entityNameSplitsByHref(entityType) {
                 return _entityNameSplitsByHref(entityType);
+            },
+
+            /**
+             * Thin wrappers around the duration-sort primitives, so a test can
+             * pin the parse, the column classification and the `"?:??"`-last
+             * ordering rule directly rather than inferring them from a rendered
+             * row order.
+             *
+             * `compareDurations` returns the DIRECTION-FINAL comparison (see
+             * `_compareDurations()`'s own JSDoc) — a positive value from a
+             * descending call still means "a sorts after b", which is exactly
+             * what pins an unknown duration to the bottom both ways.
+             *
+             * @param {?string} text - Duration text, e.g. `"5:05.146"`/`"?:??"`.
+             * @returns {?number} Milliseconds, `null` when unknown.
+             */
+            parseDurationToMs(text) {
+                return _parseDurationToMs(text);
+            },
+
+            /**
+             * @param {string} name - Column name as `_sortColumnHeaderName()` yields it.
+             * @returns {('duration'|'numeric'|'text')} Resolved sort kind.
+             */
+            sortColumnKind(name) {
+                return _sortColumnKind(name);
+            },
+
+            /**
+             * Thin wrapper around `_msResetCarriedOverPrecision()` — the reset
+             * that runs on captured (`getCleanCellHtml()`) and hydrated
+             * (`_hydrateAndRenderFromSnapshotData()`) cells so a table always
+             * starts from MusicBrainz's own seconds form. Exposed because
+             * driving the real capture-then-hydrate handoff from a test would
+             * mean seeding a captured snapshot payload into GM storage.
+             *
+             * @param {string} selector - CSS selector for the cell to reset.
+             * @returns {void}
+             */
+            resetCarriedOverPrecision(selector) {
+                const el = document.querySelector(selector);
+                if (el) _msResetCarriedOverPrecision(el);
+            },
+
+            /**
+             * @param {string} valA
+             * @param {string} valB
+             * @param {boolean} isAscending
+             * @returns {number} Direction-final comparison; `0` when indistinguishable.
+             */
+            compareDurations(valA, valB, isAscending) {
+                return _compareDurations(valA, valB, isAscending);
+            },
+
+            /**
+             * Thin wrapper around `_stripJesus2099InTable()` — runs the real
+             * artifact purge against the element `selector` matches and
+             * reports what survived, so a test can assert each of the three
+             * dispositions (skip the cover-art family / remove pure
+             * decoration / strip the marker but keep the element) directly,
+             * without needing a full fetch+render cycle to set them up.
+             *
+             * @param {string} selector - CSS selector for the root to purge.
+             * @returns {?{removed: number, stripped: number, markersLeft: string[],
+             *   html: string}} `markersLeft` lists every jesus2099/treleases
+             *   class token still present under the root afterwards (empty
+             *   when the purge was complete); `html` is the resulting
+             *   `innerHTML`, so a test can assert content survived. `null`
+             *   when `selector` matches nothing.
+             */
+            stripJesus2099InTable(selector) {
+                const root = document.querySelector(selector);
+                if (!root) return null;
+                const counts = _stripJesus2099InTable(root);
+                const markersLeft = [];
+                const collect = (el) => _j2MarkerTokens(el).forEach(t => markersLeft.push(t));
+                collect(root);
+                root.querySelectorAll('*').forEach(collect);
+                return { ...counts, markersLeft, html: root.innerHTML };
             },
 
             /**

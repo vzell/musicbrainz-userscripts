@@ -737,6 +737,93 @@ The "Length" column on recording pages uses colon-split alignment so the ":"
 separator lines up across all rows.  Numeric alignment can be disabled
 globally in ⚙️ Settings.
 
+Sorting a "Length" column compares real durations, not the digits of the
+text: "10:00" correctly sorts after "5:05", milliseconds break a tie inside
+the same second, and MusicBrainz's own "?:??" unknown-duration placeholder
+is pinned LAST in both ascending and descending order (it means "no length
+on record", not "zero length").  Alt+Click still sorts by text length, as
+on every other column.
+
+TRACK LENGTH PRECISION  (⏱️ TRACK LENGTH PRECISION in ⚙️ Settings)
+------------------------------------------------------------------
+MusicBrainz stores every track length in milliseconds but displays it
+rounded to the nearest second ("4:50").  Where the finer value is available,
+a ⏱ toggle appears at the left edge of the "Length" column header:
+
+    ▶⏱ Length ⇅ ▲ ▼          [ 37 📊 ]    seconds (the default)
+    ▼⏱ Length ⇅ ▲ ▼          [ 37 📊 ]    milliseconds — button tinted
+
+Clicking it re-renders the whole column at full precision ("4:50.160");
+clicking again restores exactly what MusicBrainz had rendered.  The toggle
+is page-wide, so on a multi-medium release every medium switches together
+rather than leaving one disc reading seconds and another milliseconds.
+
+Every table starts in seconds, including a sub-table opened in its own tab
+via "Show all N rows" — even when milliseconds were showing on the page you
+opened it from.  Precision is a per-page view setting, not something that
+follows the data around, so a tab always starts from what MusicBrainz itself
+renders and it is always the same whether that sub-table was small enough to
+hand over directly or had to be re-fetched page by page.
+Sorting, filtering, highlighting and the 📊 unique-values dropdown always
+follow whatever the column is currently showing, so with precision on you
+can filter for ".666" or spot two tracks that differ only below the second.
+
+Where the data comes from depends on the page, and so does whether anything
+is fetched at all:
+
+  • Release pages (a release's own tracklist) cost nothing — the millisecond
+    values are already embedded in the page MusicBrainz served, so the
+    toggle switches instantly and no request is ever made.
+
+  • Work, artist-relationships and place-performances pages carry no
+    sub-second data of their own, so those need one MusicBrainz Web Service
+    request.  It is made only when you first press the toggle — never while
+    the page renders — so a page you don't ask for precision on costs
+    nothing either.  The ⏱ glyph turns into ⏳ while the request is in
+    flight, and the answer is then cached for as long as you stay on the
+    page: sorting, filtering and switching the toggle off and on again all
+    work from that one response.  The tooltip tells you in advance which of
+    the two cases you are in.
+
+When the data can't be had, the toggle says which of two quite different
+things went wrong instead of quietly doing nothing:
+
+  • The Web Service could not be reached (a 503 is common — MusicBrainz gets
+    hammered by bots).  The button turns YELLOW and says so, naming the
+    error and inviting you to click again.  Nothing is cached in this case,
+    so a later press really does retry; the milliseconds are probably there,
+    we just couldn't fetch them this second.
+
+  • MusicBrainz answered, and genuinely has no sub-second length on record
+    for these recordings.  The button dims and says that.  This one IS
+    cached — it's a settled fact, so clicking again would achieve nothing.
+
+A row MusicBrainz shows as "?:??" has no length on record at all and stays
+"?:??" in both modes — the toggle never invents a number for it.  Likewise,
+a value that disagrees with the seconds already on screen is discarded
+rather than displayed: that can only mean the row was matched to the wrong
+recording, and showing a wrong duration would be worse than showing no
+extra precision.
+
+Two details worth knowing:
+
+  • The value shown is the TRACK length, which in MusicBrainz is a separate
+    field from the underlying RECORDING's length — the two often differ, on
+    some releases by seconds.  MusicBrainz displays the track length, so
+    that is what gets refined; the number on screen never changes to a
+    different measurement, only to a more precise form of the same one.
+    Because MusicBrainz rounds, the whole-second part may tick up by one
+    when precision is turned on (3:11.666 was displayed as "3:12").
+
+  • ".000" means "no sub-second data on record", not "exactly zero" — a
+    length that was entered as plain "m:ss" is stored with zero
+    milliseconds.  "Hide a '.000' millisecond part" (default: OFF) renders
+    those as plain "3:19"; leaving it off keeps every value the same width,
+    which keeps the column easier to scan.
+
+Turning the feature off in ⚙️ Settings removes the toggle entirely and
+leaves the column exactly as MusicBrainz renders it.
+
 ANNOTATION COLUMNS  (📝 ANNOTATION COLUMNS in ⚙️ Settings)
 ------------------------------------------------------------
 Free-text columns declared as collapsable (e.g. "Annotation" on report pages
@@ -1252,6 +1339,12 @@ labels and descriptions.  Major setting groups:
 • 🗄️ ART ARCHIVE INDEXEDDB CACHE
     — Enable / disable the three-tier IDB artwork image cache
     — Cache TTL, max entries, store sizes
+
+• ⏱️ TRACK LENGTH PRECISION
+    — Enable millisecond track lengths (default: ON) — adds the ⏱ toggle to
+      the "Length" column header
+    — Hide a ".000" millisecond part (default: OFF)
+    — Enable millisecond track length debug logging (default: OFF)
 
 • 📅 RELEASE EVENTS COLUMN
     — Enable / disable the asynchronous Release events column

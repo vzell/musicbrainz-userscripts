@@ -236,7 +236,7 @@ exhaustive — `configSchema` (~212-2670) currently defines 216 distinct
 `idb`, `cache`, `collapse`, `expand`, `cleanup`, `highlight`, `ui`, `settings`,
 `picard`, `barcode`, `erg`, `cdtoc`, `navigation`, `meta`, `density`, `export`,
 `shortcuts`, `resize`, `tooltips`, `relationships`, `unicode`, `stats`,
-`success`, `indices`
+`success`, `indices`, `length`
 
 Enable via the `sa_enable_debug_logging` setting or the Tampermonkey menu.
 
@@ -279,6 +279,22 @@ pagination is specifically the point), and tracks `captured` vs `planned`
 status per representative. `tests/live/registry.org` and `tests/snapshots/
 registry.org` are the hand-maintained dashboards of what's actually wired
 up today (spec/pageType, URL, what it verifies).
+
+**Cross-tab sub-table handoff** (`tests/support/subtableTab.js`) drives the
+real `openSubtableAsSingleTableTab()` → `_hydrateAndRenderFromSnapshotData()`
+round trip, in the same spirit as `diskFixture.js`: the source page captures
+its own snapshot, nothing is hand-built. Three non-obvious requirements, all
+documented in that file — the GM store must be shared (it is:
+`gmStubs.js` keeps every value in ONE `localStorage` entry,
+`__sa_test_gm_values__`, installed via `context.addInitScript`), routes must
+be registered on the CONTEXT (the popup navigates before a `page.route()`
+could attach), and the userscript must be `addScriptTag`'d into the popup by
+hand. Note the destination `GM_deleteValue`s the payload the moment it
+consumes it, so `openSubtableTab()` reads it in the window before injecting
+the script — reading afterwards always comes back empty. Sub-sections render
+COLLAPSED, so a test must click the master toggle before anything inside a
+sub-table is clickable (a toggle in a hidden table is a 0×0 element
+Playwright will never click).
 
 **Skills** for the recurring workflows (`.claude/skills/`):
 - `add-snapshot-pagetype` — capture a new baseline + wire it into
@@ -637,6 +653,114 @@ below, which mixed unrelated topics under one header.
 | v9.99.886 | "Event info" renamed to "Event info - Event date"; new sibling "Event info - Event cancelled" |
 | v9.99.893 | "Credit details" → `creditAttr`/`creditTask`/`creditDate`/`creditInstrument`/`creditAltName` |
 | next | Structure/Flags/Format info/Tracks info/Catalog info/CAA info/EAA info each split further; "Release events"/"Country details" labels normalized to the current naming convention (see `// @version` header for the exact version) |
+
+## Track length precision (`Length` column) and the `treleases` trap
+
+**`treleases` is a NATIVE MusicBrainz class**, not a jesus2099 marker. A
+release page renders its Length column as `<th class="treleases">` plus one
+`<td class="treleases">` per track — verified in
+`tests/snapshots/release-tracks/raw.html`, which the Playwright harness
+captures with only this script loaded (9 occurrences, zero `jesus2099`
+strings). jesus2099's `RECORDING_LENGTH_COLUMN` merely REUSES that class name
+on the page types MusicBrainz does not mark (work, artist-relationships,
+place-performances), and never adds it alone — the same statements also set
+its own script name as the `title` and, on the header, a yellow
+`text-shadow`. `_isJesus2099Treleases()` tests for exactly that
+co-occurrence and is the ONLY correct way to ask "did jesus2099 put this
+here"; three separate call sites once keyed on the bare class and were each
+deleting native markup (see git log). Anything new that touches `treleases`
+must go through that predicate.
+
+`purgeJesus2099Artifacts()`/`_stripJesus2099InTable()` strip every remaining
+jesus2099 artifact from the tables this script renders — header row included,
+plus the captured source rows in `groupedRows`/`allRows` (cleaning only the
+live DOM would let the next `runFilter()` keystroke paste them back from the
+clones). Scope stops at `table.tbl`: jesus2099's features on the surrounding
+page keep working. The cover-art icon family is deliberately EXCLUDED — it
+already has its own `_hadInlineArtPh`-gated handling in
+`applyColumnErasers()` Strategy 2 / `_stripTransientCellState()`.
+
+**Sorting** goes through `_sortColumnKind()` (`'duration'`/`'numeric'`/
+`'text'`) for BOTH `createSortComparator()` and
+`createMultiColumnComparator()` — they used to disagree. `_compareDurations()`
+returns a DIRECTION-FINAL number, which is how `"?:??"` is pinned last in
+both directions; a caller must never negate it, and only its `0` may fall
+through to a tie-breaking column.
+
+**Millisecond precision** is opt-in per page via the `▶⏱`/`▼⏱`
+`.mb-ms-col-hdr-btn` prepended to the Length header's `.mb-col-hdr-flex`
+(same slot/idiom as `.mb-caa-col-hdr-btn`), gated by
+`sa_enable_ms_track_length`. Key invariants:
+
+- Source is **`tracks[].length`**, never `tracks[].recording.length`. Those
+  are different MusicBrainz fields and differ constantly (4 of `Born to Run`'s
+  8 tracks, one by 3 s). MusicBrainz renders the TRACK length ROUNDED, so the
+  contract is "reveal more precision in the number already shown", never
+  "show a different measurement". `_msStampReleaseTrackLengths()` enforces it
+  with a round-trip check and discards any value that disagrees with the
+  seconds MusicBrainz rendered.
+- `data-mb-sec-text` stores the original seconds string verbatim; toggling
+  back restores it rather than recomputing (MusicBrainz rounds, so `3:11.666`
+  must return to `3:12`, not `3:11`). Both stampers refuse to stash a
+  millisecond-shaped string there — if the cell already displays milliseconds
+  they derive the seconds form via `_msFormatSeconds()` instead, or switching
+  the toggle OFF would "restore" milliseconds.
+- **Millisecond display must be reset on CAPTURED and HYDRATED cells only.**
+  `captureSubtableSnapshot()` stores `cell.innerHTML`, so the `<td>`'s own
+  `data-mb-*` never survives the sub-table handoff — only the rendered
+  `"11:17.000"` text does — and the destination then re-stamped it as if it
+  were MusicBrainz's seconds. `_msResetCarriedOverPrecision()` recovers the
+  seconds form from the text and is called from `getCleanCellHtml()` (capture)
+  and both `_hydrateAndRenderFromSnapshotData()` cell loops. **Do NOT put it in
+  `_stripTransientCellState()`** — that helper looks like the natural home, but
+  `runFilter()` also calls it on the live re-render clones, so the reset would
+  undo the toggle on every keystroke (tried; it broke five tests).
+- State lives in the DOM (`data-mb-ms-shown`), not a module variable, so it
+  survives `cloneNode(true)` re-renders for free — and travels with a
+  sub-table opened in its own tab, whose rows are hydrated from a snapshot
+  and so can arrive already rendered at millisecond precision.
+- **`_initMsLengthColHeaderToggle()` is hooked at the END of
+  `makeTableSortableUnified()`, and that is the only correct place.** That
+  function is what builds the `.mb-col-hdr-flex` the button lives in (it wipes
+  `th.innerHTML` first), so it is the one site guaranteed to run after the
+  layout exists. Every other candidate has to *know* it runs late enough, and
+  two didn't: `startFetchingProcess()`'s single-table branch and
+  `_hydrateAndRenderFromSnapshotData()` both call `renderFinalTable()` — whose
+  tail also tries — several steps BEFORE reaching it, so the button was
+  silently never injected on `tableMode: 'single'` pages or on a sub-table
+  tab. Don't add a fourth per-caller call site; extend the hook.
+- Toggling rewrites the SOURCE rows then calls `runFilter()`; filters, sort
+  order and highlighting come along automatically because every consumer reads
+  the rendered text. The uniq-dropdown cache must be force-invalidated (its
+  key is the visible row set, which does not change).
+- `_msLengthSource()` is the single answer to "where can this page's
+  milliseconds come from": `'embedded'` (release pages — already in the page's
+  own `<script type="application/json">` at `$.release.mediums[].tracks[]`, so
+  stamped during pre-processing, no network), `'ws2'` (declared per pageType
+  via `features.msTrackLengthWs2` — work/artist-relationships/place-performances
+  have NO length data in the page at all, confirmed by
+  `scripts/probe-work-page-json.py`), or `null` (no toggle offered).
+- The `'ws2'` request is LAZY: `_msToggleLengthPrecision()` fires it on the
+  first press only, never during render. `_msToggleInFlight` guards a double
+  click.
+- **Only a SUCCESSFUL answer is cached in `_msWs2Cache`** — including a
+  successful-but-empty one, which is a real, stable fact about the entity. A
+  transport failure (any non-OK status or thrown error) is deliberately NOT
+  cached: MusicBrainz's Web Service 503s under bot load, and caching that
+  turned a few seconds of upstream trouble into a permanently dead button
+  *and* claimed "no sub-second length on record", which was simply untrue.
+  `_msFetchWs2RecordingLengths()` therefore returns
+  `{outcome: 'ok'|'empty'|'error', map, detail}`, and the button has four
+  states: `loading` (⏳), `retry` (yellow, still clickable, names the error,
+  not cached), `unavailable` (dimmed + `aria-disabled`, the settled "no data"
+  answer, cached), and normal. Never collapse `retry` back into
+  `unavailable` — they are different facts and only one of them is worth a
+  second click.
+- MusicBrainz DOES populate the Length column natively on those pages
+  (`scripts/probe-native-work-length.js` reads back `5:05`/`5:35`/`?:??`), and
+  it rounds there too — so `data-mb-sec-text` round-tripping and the
+  round-trip discard check are both meaningful, and the check doubles as a
+  guard against a mis-resolved column index.
 
 ## Common pitfalls
 
