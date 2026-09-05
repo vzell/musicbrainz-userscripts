@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.10",
+    "date": "2026-09-05",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Test coverage for the cross-tab sub-table handoff — `openSubtableAsSingleTableTab()` through to `_hydrateAndRenderFromSnapshotData()` — which had none at all despite several features crossing it: CAA/EAA art cells, the Relationships column, collapse state and now millisecond Length precision. New `tests/support/subtableTab.js` drives the real thing in the same spirit as `diskFixture.js`: the source page captures its own snapshot and nothing is hand-built. Asserts both that the payload really lands in GM storage under the documented key shape carrying just that sub-table's rows, and that the opened tab hydrates from it, starts with milliseconds hidden, and round-trips the ⏱ toggle cleanly.",
+          "Verified meaningful rather than merely green: with BOTH millisecond resets disabled the round-trip test fails. Disabling either one alone does not, because the capture-side and hydration-side resets are redundant by design — each is sufficient on its own."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.9",
     "date": "2026-09-05",
     "sections": [
@@ -31,7 +44,7 @@
       {
         "label": "🐛 Fix",
         "items": [
-          "Opening a sub-table in its own tab (the \"Show all N rows\" button) while milliseconds were switched on produced a \"Length\" column stuck at millisecond precision with no way to switch it back: the ⏱ toggle was never injected on that page at all. The rows are hydrated from a snapshot of what was already rendered, so they arrive carrying `data-mb-ms`/`data-mb-sec-text`/`data-mb-ms-shown` and display milliseconds immediately — correct, and deliberate continuity — but the button that undoes it was missing. Same root cause as the WIP.6 fix, in a path that fix did not reach.",
+          "The ⏱ millisecond toggle was missing entirely from the \"Length\" header on a sub-table opened in its own tab, so a column showing milliseconds had no control to switch it back. Same root cause as WIP.6 — the button is injected from a hook that ran before the header layout existed — in a path that fix did not reach: `_hydrateAndRenderFromSnapshotData()` calls `renderFinalTable()` well before `makeTableSortableUnified()`, which is what builds the `.mb-col-hdr-flex` the button lives in.",
           "Rather than patch a third caller, the injection now hooks the END of `makeTableSortableUnified()` — the function that actually builds the `.mb-col-hdr-flex` the button lives in, and so the one place guaranteed to run after that layout exists. Every other candidate site had to know it ran late enough, and two of them didn't: `startFetchingProcess()`'s single-table branch and `_hydrateAndRenderFromSnapshotData()` both call `renderFinalTable()` — whose tail also tries — several steps earlier. This covers the single-table path, the multi-table group loop and snapshot hydration alike, and the WIP.6 per-caller workaround has been removed in favour of it. The hook is scoped to the table being processed, so a page with many sub-tables doesn't re-scan them all once per group, and its cheap `_msLengthSource()` check now runs before the row-walking `_msAnyStamped()` fallback."
         ]
       }

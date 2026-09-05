@@ -280,6 +280,22 @@ status per representative. `tests/live/registry.org` and `tests/snapshots/
 registry.org` are the hand-maintained dashboards of what's actually wired
 up today (spec/pageType, URL, what it verifies).
 
+**Cross-tab sub-table handoff** (`tests/support/subtableTab.js`) drives the
+real `openSubtableAsSingleTableTab()` → `_hydrateAndRenderFromSnapshotData()`
+round trip, in the same spirit as `diskFixture.js`: the source page captures
+its own snapshot, nothing is hand-built. Three non-obvious requirements, all
+documented in that file — the GM store must be shared (it is:
+`gmStubs.js` keeps every value in ONE `localStorage` entry,
+`__sa_test_gm_values__`, installed via `context.addInitScript`), routes must
+be registered on the CONTEXT (the popup navigates before a `page.route()`
+could attach), and the userscript must be `addScriptTag`'d into the popup by
+hand. Note the destination `GM_deleteValue`s the payload the moment it
+consumes it, so `openSubtableTab()` reads it in the window before injecting
+the script — reading afterwards always comes back empty. Sub-sections render
+COLLAPSED, so a test must click the master toggle before anything inside a
+sub-table is clickable (a toggle in a hidden table is a 0×0 element
+Playwright will never click).
+
 **Skills** for the recurring workflows (`.claude/skills/`):
 - `add-snapshot-pagetype` — capture a new baseline + wire it into
   `tests/pagetypes.json`/`tests/snapshots/registry.org`.

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Place “Test Studio” - Performances - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        A multi-table place-performances page: `table.tbl` whose tbody is split
+        into relationship-type groups by <tr class="subh"> rows, each of which
+        renderGroupedTable() turns into its own sub-table with its own header
+        and controls.
+
+        place-performances is one of SA_SNAPSHOT_SUPPORTED_PAGETYPES, so each
+        sub-table gets a "Show single-table" button — the control that drives
+        the real cross-tab snapshot handoff (openSubtableAsSingleTableTab() ->
+        _hydrateAndRenderFromSnapshotData()). The second group deliberately
+        mirrors the reported case: a single-row "shooting location for
+        recording" section.
+
+        Column shape and the <tr class="subh"> grouping match a real page (see
+        debug/place-performances-final.html, whose rendered columns are
+        Date | Title | Attributes | Artist | Length | … ). Recording MBIDs and
+        the seconds shown are the real values behind the WS2 payload the spec
+        mocks, so MusicBrainz's own ROUNDING is exercised: 5:34.866 displays as
+        "5:35".
+    -->
+    <div id="content">
+        <div class="wrap-anywhere placeheader">
+            <h1><a href="/place/6a59a67c-fcc5-491f-949c-bfc45bc97463"><bdi>Test Studio</bdi></a></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/performances">Performances</a></li></ul>
+        </div>
+        <h2>Performances</h2>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Title</th>
+                    <th>Attributes</th>
+                    <th>Artist</th>
+                    <th>Length</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="subh"><th></th><th colspan="4">recording location for recording</th></tr>
+                <tr>
+                    <td>2001-12</td>
+                    <td><a href="/recording/528327c7-0f7a-46d1-b03f-700ebc39f747"><bdi>First Recording</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/aaaaaaaa-1111-4111-8111-111111111111"><bdi>Test Artist</bdi></a></td>
+                    <td>5:05</td>
+                </tr>
+                <tr>
+                    <td>2002-01</td>
+                    <td><a href="/recording/de9ff1d7-dd78-4ed6-a328-c1ab126304e6"><bdi>Second Recording</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/aaaaaaaa-1111-4111-8111-111111111111"><bdi>Test Artist</bdi></a></td>
+                    <td>5:05</td>
+                </tr>
+                <tr class="subh"><th></th><th colspan="4">shooting location for recording</th></tr>
+                <!-- 5:35 is MusicBrainz's ROUNDED rendering of 5:34.866. -->
+                <tr>
+                    <td>2003-01</td>
+                    <td><a href="/recording/089026d3-1c1d-45bb-bf16-072d0bff8412"><bdi>Shot Here</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/aaaaaaaa-1111-4111-8111-111111111111"><bdi>Test Artist</bdi></a></td>
+                    <td>5:35</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
