@@ -82,7 +82,13 @@ Then sanity-check the result before committing:
 ```bash
 git diff --stat
 head -20 ShowAllEntityData_CHANGELOG.json
-grep -n 'WIP\.' ShowAllEntityData_CHANGELOG.json    # must print nothing
+# Scope the check to the lines THIS fold added — a whole-file grep is useless
+# here, because two historical entries (9.99.783 and 9.99.932) shipped with an
+# unresolved WIP.26 / WIP.1 in their prose, from folds done by hand before this
+# script existed. They are exactly the defect the script now prevents; leave
+# them alone unless the user asks, since editing them rewrites shipped release
+# notes.
+git diff ShowAllEntityData_CHANGELOG.json | grep '^+' | grep 'WIP\.'   # must print nothing
 ```
 
 While reading the folded entries, check that anything user-visible in them is
