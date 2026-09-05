@@ -89,15 +89,20 @@ Then sanity-check the result before committing:
 ```bash
 git diff --stat
 head -20 ShowAllEntityData_CHANGELOG.json
-grep -n 'WIP\.' ShowAllEntityData_CHANGELOG.json    # must print nothing, anywhere
+python3 scripts/audit-changelog.py     # must exit 0
 ```
 
-The whole-file grep is meaningful again: two historical entries (9.99.783 and
-9.99.932) carried unresolved placeholders from hand-folds predating the fold
-script, and were repaired by `scripts/repair-changelog-integrity.py` — which
-also removed the file's duplicate and non-numeric versions, so the whole
-changelog now passes a hygiene audit. Any hit is a live defect: either this
-fold's, or a regression somewhere else.
+Not a `grep`. The audit checks six things at once — missing, non-numeric,
+duplicate and out-of-order versions, missing dates, and unrewritten `WIP.N`
+citations — and every one of them is a defect this file actually had. The
+last is why a regex is not enough: an entry explaining the placeholder
+mechanism quotes the tokens as backticked literals (9.99.1016 does), which
+are correct, and `` `"WIP.26"` `` sits inside a backtick span whose adjacent
+characters are quotes, so a lookaround regex calls it bare and cries wolf.
+The audit splits on backtick spans instead.
+
+The file is clean as of `scripts/repair-changelog-integrity.py`, so any
+failure is a live defect: this fold's, or a regression somewhere else.
 
 While reading the folded entries, check that anything user-visible in them is
 actually reflected in `ShowAllEntityData_HELP.txt` — the branch was supposed

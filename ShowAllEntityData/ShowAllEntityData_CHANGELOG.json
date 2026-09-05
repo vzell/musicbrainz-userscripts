@@ -1,5 +1,31 @@
 [
   {
+    "version": "9.99.1016",
+    "date": "2026-09-05",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Repaired two unresolved `WIP.N` placeholders left in shipped changelog entries by hand-folds that predate `scripts/fold-wip-changelog.py` — they rewrote each entry's own `version` field but not the cross-references buried in its prose, which is precisely the defect that script now treats as a hard error. 9.99.932's `WIP.1` now reads 9.99.931, confirmed twice over: 9.99.931 is the entry that introduced the `window.__saTest` hook the sentence cites, and replaying that fold's own WIP file from git maps `WIP.1` to 9.99.931 exactly.",
+          "9.99.783's two `WIP.26` citations were DELETED rather than repointed, because no such version exists to point at. `WIP.26` never appeared in any committed WIP file — the pre-fold file jumps `WIP.25` to `WIP.27`, no commit in the repository's history contains a `\"WIP.26\"`, and no shipped entry introduces the \"Phonographic copyright (℗) by artist/label\" columns the sentence refers to: the commit that first put that column name into the userscript is the very commit that entry describes. It was a mis-numbered reference from the moment it was written, and inventing a plausible target would have been worse than removing one.",
+          "Gave a `version` to the two entries that had none, which made any tool reading `entry['version']` bail: the 2026-03-06 entry between 9.99.46 and 9.99.44 is now 9.99.45, and the 2026-02-24 entry between 9.91.0 and 9.90.0 is now 9.90.1. The first is unambiguous — one free integer slot in a strictly descending sequence. The second is a RECONSTRUCTION rather than a recovery: its neighbours are all `9.9x.0`, no integer fits between 90 and 91, and both entries entered git in the initial import, so nothing records what they actually shipped as. 9.90.1 is the only value that keeps the sequence strictly descending without colliding.",
+          "The repair is `scripts/repair-changelog-integrity.py`, committed rather than run and discarded: it is the record of which shipped release notes were edited and on what evidence.",
+          "Removed three duplicate version numbers, which were three different accidents and so took three different fixes. 9.99.338 was the SAME entry stored twice, byte-identical — one copy deleted. 9.99.247 and 9.99.547 were each two different write-ups of one release, a rewrite appended instead of replacing its predecessor; both texts are kept, merged into a single entry. Renumbering was not an option for either: 9.99.547's neighbours leave no free slot, and while 9.99.247 has a free 9.99.246 beside it, BOTH of its write-ups cite \"the previous attempt (v9.99.246)\" as the thing they replace, so numbering either of them 9.99.246 would have made it cite itself. Dropping one would have needed a judgement about which write-up is authoritative, and nothing in the data says.",
+          "Normalised the two non-numeric versions `9.99.483-dbg`/`9.99.482-dbg` to their plain numeric form — they broke any tool doing `int(version.split('.')[2])`, which is the exact class of bail this pass exists to remove. Both slots were free and the surrounding sequence had room for exactly those two. Their five in-prose citations were normalised with them, which needed a WHOLE-FILE pass rather than a per-entry one: a citation names some other entry's version, so `v9.99.482-dbg` appears in 9.99.483's text, and a scoped rewrite left every one of them behind. Nothing is lost — both entries still open by calling themselves a temporary debug build, which is all the suffix conveyed.",
+          "The changelog now passes a full hygiene audit: 1,186 entries, every one with a parseable `version` and a `date`, no duplicates, no unresolved placeholders, and strictly descending version order end to end. The repair was verified not to lose anything — every item text present beforehand is still present, the only reduction being the byte-identical duplicate's second copy."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "`merge-push-remove`'s post-fold sanity check is a whole-file `grep` for `WIP.` again. It had just been narrowed to the fold's own added lines precisely because those two historical stragglers made the whole-file version fire every time — and a check that always fires is one you learn to ignore. With the file clean, any hit is now a live defect.",
+          "The repair script is `scripts/repair-changelog-integrity.py` (renamed from `repair-changelog-placeholders.py` once it grew past placeholders). Idempotent, refuses to act if the entries it targets have shifted, and treats a pair it expects to be byte-identical no longer being so as a hard error rather than deleting the wrong one.",
+          "`scripts/fold-wip-changelog.py` now treats a backtick-quoted `WIP.N` as a LITERAL and rewrites only bare ones. Found by this very entry: it discusses placeholder tokens as strings, and the fold aborted on the ones naming numbers no batch contains. The quieter half is worse — a literal naming a token the batch DOES contain was being silently rewritten into a version number, turning a sentence about a placeholder into a false claim about a release. Backticks are how this file quotes every other identifier, so the rule costs nothing to follow, and the error message now names it when a citation really is dangling."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1015",
     "date": "2026-09-05",
     "sections": [
