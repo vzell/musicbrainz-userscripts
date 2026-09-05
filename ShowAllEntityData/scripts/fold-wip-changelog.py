@@ -20,6 +20,8 @@ names, in order:
      placeholder that no test catches. Substitution is longest-token-first
      so `WIP.10` is never mangled by the `WIP.1` rule, and an unknown
      reference is a hard error rather than a silent pass-through.
+     A backtick-quoted token is a literal and is left alone — see
+     `rewrite_refs()` for why that distinction is load-bearing.
   3. Prepend the folded entries newest-first, keeping each one's own `date`
      verbatim — a WIP entry is dated when it was written, not when it ships.
   4. Bump `// @version` in the userscript header to the highest assigned
@@ -52,6 +54,9 @@ USERSCRIPT = 'ShowAllEntityData.user.js'
 
 WIP_VERSION_RE = re.compile(r'^WIP\.(\d+)$')
 WIP_REF_RE = re.compile(r'\bWIP\.(\d+)\b')
+# Captures backtick spans so str.split() yields alternating outside/inside
+# parts: index 0, 2, 4… are outside, 1, 3, 5… are the quoted literals.
+BACKTICK_SPLIT_RE = re.compile(r'(`[^`]*`)')
 # Matches the userscript header line, e.g. "// @version      9.99.1014+2026-09-05".
 HEADER_VERSION_RE = re.compile(r'^(//\s*@version\s+)(\d+\.\d+\.\d+)(\+\d{4}-\d{2}-\d{2})?\s*$')
 RELEASE_VERSION_RE = re.compile(r'^(\d+)\.(\d+)\.(\d+)$')
@@ -117,19 +122,34 @@ def sorted_wip_entries(entries):
 
 
 def rewrite_refs(value, mapping, log):
-    """Recursively rewrites every `WIP.N` token in a JSON value's strings.
+    """Recursively rewrites every `WIP.N` CROSS-REFERENCE in a JSON value.
 
     Walks the whole entry rather than a known list of fields, so a reference
     in a section label or a future key is caught too.
+
+    A token wrapped in backticks is a LITERAL and is left alone. An entry that
+    talks ABOUT the placeholder mechanism — "the pre-fold file jumps `WIP.25`
+    to `WIP.27`" — is quoting a string, not citing a release, and both of the
+    obvious failures here are real: a literal naming an absent number aborts
+    the whole fold, and a literal naming a PRESENT one is silently rewritten
+    into a version, turning a sentence about a placeholder into a false claim
+    about a release. Backticks are how this file quotes every other
+    identifier, so the rule costs nothing to follow.
     """
     if isinstance(value, str):
         def sub(m):
             key = f'WIP.{m.group(1)}'
             if key not in mapping:
-                sys.exit(f'error: dangling cross-reference "{key}" — no such WIP entry')
+                sys.exit(f'error: dangling cross-reference "{key}" — no such WIP entry.\n'
+                         f'       If this is a literal mention rather than a citation, '
+                         f'wrap it in backticks: `{key}`')
             log.append((key, mapping[key]))
             return mapping[key]
-        return WIP_REF_RE.sub(sub, value)
+        # Rewrite only OUTSIDE backtick spans; `...` chunks pass through whole.
+        return ''.join(
+            part if i % 2 else WIP_REF_RE.sub(sub, part)
+            for i, part in enumerate(BACKTICK_SPLIT_RE.split(value))
+        )
     if isinstance(value, list):
         return [rewrite_refs(v, mapping, log) for v in value]
     if isinstance(value, dict):

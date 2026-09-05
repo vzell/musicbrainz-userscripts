@@ -1129,7 +1129,7 @@
       {
         "label": "⚙️ Internal",
         "items": [
-          "Added `tests/live/uniqdrop-structure-section.spec.js`, the first live Playwright spec built on WIP.1's `window.__saTest` hook — exercises the unique-values dropdown's \"Structure\" section (empty/single-row/collapsed/expanded cell states) against a real MusicBrainz page. Test tooling only; no userscript runtime changes."
+          "Added `tests/live/uniqdrop-structure-section.spec.js`, the first live Playwright spec built on 9.99.931's `window.__saTest` hook — exercises the unique-values dropdown's \"Structure\" section (empty/single-row/collapsed/expanded cell states) against a real MusicBrainz page. Test tooling only; no userscript runtime changes."
         ]
       }
     ]
@@ -3141,8 +3141,8 @@
       {
         "label": "🐛 Fix",
         "items": [
-          "Fixed \"Phonographic copyright (℗) by label\" (WIP.26) never appearing at all, even on a release with real label credits for it (`debug/greetings-original.html`). MusicBrainz can render a track's ARs as multiple SIBLING `<dl class=\"ars\">` blocks inside the same bare `div.ars` — one `<dl>` crediting an artist directly, followed by a separate sibling `<dl>` crediting labels, both using the exact same `<dt>phonographic copyright (℗) by:</dt>` phrase. The lookup used a first-match-only `.find()`, so every `<dt>` after the first (the label one, in this case) was silently dropped, both in the page-wide \"does this column exist\" gate and in the per-row cell builder. It now collects every matching `<dt>` across every sibling `<dl>` and merges their `<dd>`s, mirroring `_findCreditDts`'s own \"collect every match\" convention (which was never `.find()`-based and so was unaffected by this bug).",
-          "Fixed every credit-role column header (\"Recording engineer\", \"Mixer\", \"Engineer\", \"Producer\", \"Miscellaneous support\") and both \"Phonographic copyright\" headers (WIP.26) never actually showing MusicBrainz's marker glyph, despite that being WIP.26's stated intent (`debug/greetings-rendered.html`). The glyph `<span>` was appended directly to the `<th>` at creation time, but `makeTableSortableUnified()` unconditionally rebuilds every `<th>` from a plain `textContent` string shortly after (as part of the existing sort-icon/unique-value-count UI setup), discarding any child element added before that point — the same root cause already diagnosed and fixed for \"Recording of\"'s own glyph in an earlier session. The glyph is now injected post-render by the existing `_initColHeaderGlyph()` helper instead, called from `renderGroupedTable()`'s tail alongside the pre-existing \"Recording of\"/\"Recorded at event\"/\"Recorded at place\" calls — the established, already-working pattern for this exact problem, which this feature should have reused from the start."
+          "Fixed \"Phonographic copyright (℗) by label\" never appearing at all, even on a release with real label credits for it (`debug/greetings-original.html`). MusicBrainz can render a track's ARs as multiple SIBLING `<dl class=\"ars\">` blocks inside the same bare `div.ars` — one `<dl>` crediting an artist directly, followed by a separate sibling `<dl>` crediting labels, both using the exact same `<dt>phonographic copyright (℗) by:</dt>` phrase. The lookup used a first-match-only `.find()`, so every `<dt>` after the first (the label one, in this case) was silently dropped, both in the page-wide \"does this column exist\" gate and in the per-row cell builder. It now collects every matching `<dt>` across every sibling `<dl>` and merges their `<dd>`s, mirroring `_findCreditDts`'s own \"collect every match\" convention (which was never `.find()`-based and so was unaffected by this bug).",
+          "Fixed every credit-role column header (\"Recording engineer\", \"Mixer\", \"Engineer\", \"Producer\", \"Miscellaneous support\") and both \"Phonographic copyright\" headers never actually showing MusicBrainz's marker glyph, despite that being's stated intent (`debug/greetings-rendered.html`). The glyph `<span>` was appended directly to the `<th>` at creation time, but `makeTableSortableUnified()` unconditionally rebuilds every `<th>` from a plain `textContent` string shortly after (as part of the existing sort-icon/unique-value-count UI setup), discarding any child element added before that point — the same root cause already diagnosed and fixed for \"Recording of\"'s own glyph in an earlier session. The glyph is now injected post-render by the existing `_initColHeaderGlyph()` helper instead, called from `renderGroupedTable()`'s tail alongside the pre-existing \"Recording of\"/\"Recorded at event\"/\"Recorded at place\" calls — the established, already-working pattern for this exact problem, which this feature should have reused from the start."
         ]
       }
     ]
@@ -6171,18 +6171,7 @@
       {
         "label": "🐛 Fix",
         "items": [
-          "Fix per-sub-table 'Case Sensitive' (Cc), 'RegExp' (Rx), and 'Exclude' (Ex) checkboxes in the h3 header line on multi-table pages not being honoured when filtering on the column level: root cause was that `runFilter()` only read the per-sub-table Rx checkbox for passing to `getColFilters()`, while the Case and Exclude checkboxes were never read. `getColFilters()` now receives all three per-sub-table flags (`_colIsCase`, `_colIsRegExp`, `_colIsExclude`) which it embeds as `{isCaseSensitive, isRegExp, isExclude}` into every filter object `f` it produces. `testRowMatch()` reads them back via `f.isCaseSensitive`, `f.isRegExp`, `f.isExclude` (with fallbacks to the global ctx flags for single-table pages and legacy filter objects). Three additional fixes in the same patch: (1) Single-table `getColFilters` call now passes the global `isExclude` so column-filter objects correctly embed `f.isExclude` instead of always receiving `false` from the default parameter — previously, the global Exclude checkbox was silently ignored for single-table column filters; (2) `_activeFilterHighlightCtx` is now also updated with `isCaseSensitive` per group (alongside the existing `isRegExp` update) so that art-cell highlight rebuilds via `_artHighlightImageLi` use the correct per-sub-table case flag; (3) Relationship icon column-filter highlight in `testRowMatch` finalHit block: moved the `colFilters.forEach` rel-cell highlight loop outside the global `!isExclude` guard so it uses only its own per-filter `!_fIsExclude` gate — previously, a checked global Exclude checkbox suppressed all column-level rel-icon match-box highlights even when the sub-table's own Ex checkbox was unchecked."
-        ]
-      }
-    ]
-  },
-  {
-    "version": "9.99.547",
-    "date": "2026-04-27",
-    "sections": [
-      {
-        "label": "🐛 Fix",
-        "items": [
+          "Fix per-sub-table 'Case Sensitive' (Cc), 'RegExp' (Rx), and 'Exclude' (Ex) checkboxes in the h3 header line on multi-table pages not being honoured when filtering on the column level: root cause was that `runFilter()` only read the per-sub-table Rx checkbox for passing to `getColFilters()`, while the Case and Exclude checkboxes were never read. `getColFilters()` now receives all three per-sub-table flags (`_colIsCase`, `_colIsRegExp`, `_colIsExclude`) which it embeds as `{isCaseSensitive, isRegExp, isExclude}` into every filter object `f` it produces. `testRowMatch()` reads them back via `f.isCaseSensitive`, `f.isRegExp`, `f.isExclude` (with fallbacks to the global ctx flags for single-table pages and legacy filter objects). Three additional fixes in the same patch: (1) Single-table `getColFilters` call now passes the global `isExclude` so column-filter objects correctly embed `f.isExclude` instead of always receiving `false` from the default parameter — previously, the global Exclude checkbox was silently ignored for single-table column filters; (2) `_activeFilterHighlightCtx` is now also updated with `isCaseSensitive` per group (alongside the existing `isRegExp` update) so that art-cell highlight rebuilds via `_artHighlightImageLi` use the correct per-sub-table case flag; (3) Relationship icon column-filter highlight in `testRowMatch` finalHit block: moved the `colFilters.forEach` rel-cell highlight loop outside the global `!isExclude` guard so it uses only its own per-filter `!_fIsExclude` gate — previously, a checked global Exclude checkbox suppressed all column-level rel-icon match-box highlights even when the sub-table's own Ex checkbox was unchecked.",
           "Fix per-subtable Case Sensitive (Cc), RegExp (Rx), and Exclude (Ex) checkboxes being ignored for column-level filters on multi-table pages — only the global h2 checkbox states were honoured. Root cause was three-fold: (1) `runFilter()` multi-table path only read the per-subtable Rx checkbox (`[id$=\"-rx-checkbox\"]`) and passed the global `isCaseSensitive` and `isExclude` to `getColFilters`; (2) `getColFilters()` did not embed any checkbox flags in its returned filter objects, so `testRowMatch()` had no per-filter state to read; (3) `testRowMatch()` used `ctx.isRegExp`, `ctx.isCaseSensitive`, and `ctx.isExclude` (all global) for every column-filter test regardless of the sub-table's own checkboxes. Fix: (a) `getColFilters(table, isCaseSensitive, isRegExp, isExclude = false)` gains an `isExclude` parameter and now embeds `isRegExp`, `isCaseSensitive`, and `isExclude` on every pushed filter object; (b) `runFilter()` multi-table path also reads the per-subtable `[id$=\"-case-checkbox\"]` and `[id$=\"-ex-checkbox\"]` elements and passes all three to `getColFilters`; (c) `testRowMatch()` column-filter loop resolves `_fIsRegExp`, `_fIsCase`, and `_fIsExclude` from the filter object (falling back to global ctx values for single-table pages and backward compatibility), uses them for cell-text matching, and gates both `highlightText()` and `_highlightRelCellIcons()` calls on `!_fIsExclude`; (d) the async art-cell highlight path (`_artHighlightImageLi` outer call) also reads all three per-subtable checkboxes and passes them to `getColFilters`, and the column-filter loop inside `_artHighlightImageLi` uses `f.isRegExp`/`f.isCaseSensitive` per-filter (with ctx-level fallback) when building the per-column highlight regex."
         ]
       }
@@ -6989,25 +6978,25 @@
       {
         "label": "🐛 Fix",
         "items": [
-          "CAA/EAA per-subtable badge count wrong after switching between discography views (merged → official / complete): badge showed e.g. 84 instead of 21. Root cause identified via targeted debug logging (v9.99.482-dbg / v9.99.483-dbg): _artCountLinks and _artInitBigPics scan 'tbody td a[href]' to find unique entity links for bigbox image loading and badge counting. On the first render (gen=1) this is correct because only the title column contains matching /release-group/GUID hrefs. However, two features inject additional matching hrefs into the rows asynchronously after gen=1: (1) applyStickyColumn adds a td.mb-sticky-col clone of the title column to every row, duplicating the title link; (2) the Relationships column (td.mb-rel-cell) injects related release-group anchors. On every subsequent initCaaPics()/initEaaPics() call triggered by a view switch, these columns are already present, causing seen.size to be 4× the row count for affected tables. Fix: changed the selector in both _artCountLinks and _artInitBigPics from 'tbody td a[href]' to 'tbody td:not(.mb-sticky-col):not(.mb-rel-cell) a[href]', excluding the sticky-column duplicate and the relationships column from the entity-link scan. Also removed all temporary debug console.log statements added in v9.99.482-dbg and v9.99.483-dbg."
+          "CAA/EAA per-subtable badge count wrong after switching between discography views (merged → official / complete): badge showed e.g. 84 instead of 21. Root cause identified via targeted debug logging (v9.99.482 / v9.99.483): _artCountLinks and _artInitBigPics scan 'tbody td a[href]' to find unique entity links for bigbox image loading and badge counting. On the first render (gen=1) this is correct because only the title column contains matching /release-group/GUID hrefs. However, two features inject additional matching hrefs into the rows asynchronously after gen=1: (1) applyStickyColumn adds a td.mb-sticky-col clone of the title column to every row, duplicating the title link; (2) the Relationships column (td.mb-rel-cell) injects related release-group anchors. On every subsequent initCaaPics()/initEaaPics() call triggered by a view switch, these columns are already present, causing seen.size to be 4× the row count for affected tables. Fix: changed the selector in both _artCountLinks and _artInitBigPics from 'tbody td a[href]' to 'tbody td:not(.mb-sticky-col):not(.mb-rel-cell) a[href]', excluding the sticky-column duplicate and the relationships column from the entity-link scan. Also removed all temporary debug console.log statements added in v9.99.482 and v9.99.483."
         ]
       }
     ]
   },
   {
-    "version": "9.99.483-dbg",
+    "version": "9.99.483",
     "date": "2026-04-18",
     "sections": [
       {
         "label": "🔬 Debug",
         "items": [
-          "Second debug build refining the CAA count diagnosis. v9.99.482-dbg confirmed the shape of the bug: at gen=1 (initial render) seen.size equals tbody_rows (1 link/row), but after the merged → official round-trip seen.size is 4× tbody_rows for affected tables (e.g. tbl-0: 21 rows → 84 links). Added targeted [ART-HREF] log inside the seen.add path in _artInitBigPics that records: table index, column index (cellIndex), entity type matched, full href, and parent element tag+class. This will identify which column the 3 extra hrefs per row come from and whether they are /release-group/GUID or /release/GUID paths. Log fires once per unique matched href per _artInitBigPics call. With debug logging enabled (Settings > Enable debug logging) filter console to [ART-HREF] for gen=1 and gen=3 passes on tbl-0 to spot the new hrefs and their column."
+          "Second debug build refining the CAA count diagnosis. v9.99.482 confirmed the shape of the bug: at gen=1 (initial render) seen.size equals tbody_rows (1 link/row), but after the merged → official round-trip seen.size is 4× tbody_rows for affected tables (e.g. tbl-0: 21 rows → 84 links). Added targeted [ART-HREF] log inside the seen.add path in _artInitBigPics that records: table index, column index (cellIndex), entity type matched, full href, and parent element tag+class. This will identify which column the 3 extra hrefs per row come from and whether they are /release-group/GUID or /release/GUID paths. Log fires once per unique matched href per _artInitBigPics call. With debug logging enabled (Settings > Enable debug logging) filter console to [ART-HREF] for gen=1 and gen=3 passes on tbl-0 to spot the new hrefs and their column."
         ]
       }
     ]
   },
   {
-    "version": "9.99.482-dbg",
+    "version": "9.99.482",
     "date": "2026-04-18",
     "sections": [
       {
@@ -8918,18 +8907,6 @@
     ]
   },
   {
-    "version": "9.99.338",
-    "date": "2026-03-27",
-    "sections": [
-      {
-        "label": "🐛 Fix",
-        "items": [
-          "Ghost icon: removed 'relationships' class from injected <td> elements (MBS td.relationships CSS adds visual content that appeared as ghost icons), and removed class='favicon' from <img> elements (MBS .favicon CSS applies sprite background-image to any element with that class). Injected <td> is now plain 'mb-rel-cell'. Google favicon <img> carries no MBS classes."
-        ]
-      }
-    ]
-  },
-  {
     "version": "9.99.337",
     "date": "2026-03-27",
     "sections": [
@@ -10198,18 +10175,7 @@
       {
         "label": "🐛 Bug Fixes",
         "items": [
-          "integerColumns align:':' — correct approach for stripping jesus2099 'mb. SUPER MIND CONTROL Ⅱ X TURBO' Length-cell annotations: the previous attempt (v9.99.246) called `cell.querySelectorAll('[class=\"treleases\"]…').forEach(el => el.remove())` inside `applyIntegerColumnStyling` (pass 1, during row import). This ran too early — jesus2099 injects its `treleases` nodes into the *live rendered table* after our entire pipeline has completed, so the removal was a no-op. Fixed by: (1) removing the ineffective pass-1 strip entirely, and (2) introducing `initTreleasesObserver()` — a `MutationObserver` that watches every `table.tbl tbody` via `{ childList: true, subtree: true }` and removes any `[class=\"treleases\"]` element the instant it is inserted, before the browser paints. A module-level `WeakSet _observedTbodies` prevents double-observing the same tbody across repeated re-renders. `initTreleasesObserver()` is called at the end of both `renderFinalTable` and `renderGroupedTable` so all table modes are covered."
-        ]
-      }
-    ]
-  },
-  {
-    "version": "9.99.247",
-    "date": "2026-03-20",
-    "sections": [
-      {
-        "label": "🐛 Bug Fixes",
-        "items": [
+          "integerColumns align:':' — correct approach for stripping jesus2099 'mb. SUPER MIND CONTROL Ⅱ X TURBO' Length-cell annotations: the previous attempt (v9.99.246) called `cell.querySelectorAll('[class=\"treleases\"]…').forEach(el => el.remove())` inside `applyIntegerColumnStyling` (pass 1, during row import). This ran too early — jesus2099 injects its `treleases` nodes into the *live rendered table* after our entire pipeline has completed, so the removal was a no-op. Fixed by: (1) removing the ineffective pass-1 strip entirely, and (2) introducing `initTreleasesObserver()` — a `MutationObserver` that watches every `table.tbl tbody` via `{ childList: true, subtree: true }` and removes any `[class=\"treleases\"]` element the instant it is inserted, before the browser paints. A module-level `WeakSet _observedTbodies` prevents double-observing the same tbody across repeated re-renders. `initTreleasesObserver()` is called at the end of both `renderFinalTable` and `renderGroupedTable` so all table modes are covered.",
           "integerColumns align:':' — fix jesus2099 'treleases' annotation stripping: the previous approach (v9.99.246) called `cell.querySelectorAll('[class=\"treleases\"]…').forEach(el => el.remove())` inside `applyIntegerColumnStyling`, which runs during row import — before rows are inserted into the live DOM. The jesus2099 'mb. SUPER MIND CONTROL Ⅱ X TURBO' userscript injects its `<… class=\"treleases\" title=\"SUPER MIND CONTROL…\">` nodes into the *rendered* live table after our entire pipeline has completed, so the early removal had no effect. Fixed with a `MutationObserver` approach: new `initTreleasesObserver()` function installs an observer on every `table.tbl tbody` that fires synchronously on `childList + subtree` mutations and removes any `[class=\"treleases\"]` element the instant it is inserted, before the browser paints. A module-level `WeakSet` (`_observedTbodies`) prevents double-observing the same tbody across re-renders. `initTreleasesObserver()` is called at the end of both `renderFinalTable` and `renderGroupedTable` so all render paths (initial, load-from-disk, runFilter) are covered. The ineffective `querySelectorAll` strip was removed from `applyIntegerColumnStyling`."
         ]
       }
@@ -13140,6 +13106,7 @@
     ]
   },
   {
+    "version": "9.99.45",
     "date": "2026-03-06",
     "sections": [
       {
@@ -14157,6 +14124,7 @@
     ]
   },
   {
+    "version": "9.90.1",
     "date": "2026-02-24",
     "sections": [
       {

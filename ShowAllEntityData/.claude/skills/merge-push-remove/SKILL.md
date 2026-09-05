@@ -77,19 +77,27 @@ get wrong by hand, and the reason this is a script:
   longest-token-first (so `WIP.10` survives the `WIP.1` rule) and treats an
   unknown reference as a hard error.
 
+  **Writing a WIP entry that mentions a `WIP.N` token as a STRING — rather
+  than citing a release — wrap it in backticks.** A bare token is a citation
+  and gets rewritten. Both failure modes are real: a literal naming a number
+  the batch does not contain aborts the whole fold, and a literal naming one
+  it DOES contain is silently turned into a version, so a sentence about a
+  placeholder becomes a false claim about a release.
+
 Then sanity-check the result before committing:
 
 ```bash
 git diff --stat
 head -20 ShowAllEntityData_CHANGELOG.json
-# Scope the check to the lines THIS fold added — a whole-file grep is useless
-# here, because two historical entries (9.99.783 and 9.99.932) shipped with an
-# unresolved WIP.26 / WIP.1 in their prose, from folds done by hand before this
-# script existed. They are exactly the defect the script now prevents; leave
-# them alone unless the user asks, since editing them rewrites shipped release
-# notes.
-git diff ShowAllEntityData_CHANGELOG.json | grep '^+' | grep 'WIP\.'   # must print nothing
+grep -n 'WIP\.' ShowAllEntityData_CHANGELOG.json    # must print nothing, anywhere
 ```
+
+The whole-file grep is meaningful again: two historical entries (9.99.783 and
+9.99.932) carried unresolved placeholders from hand-folds predating the fold
+script, and were repaired by `scripts/repair-changelog-integrity.py` — which
+also removed the file's duplicate and non-numeric versions, so the whole
+changelog now passes a hygiene audit. Any hit is a live defect: either this
+fold's, or a regression somewhere else.
 
 While reading the folded entries, check that anything user-visible in them is
 actually reflected in `ShowAllEntityData_HELP.txt` — the branch was supposed
