@@ -53,13 +53,27 @@
 // ============================================================================================================================================
 // @name         mb. SUPER MIND CONTROL Ⅱ X TURBO
 // @description  musicbrainz.org power-ups: RELEASE_CLONER. copy/paste releases / DOUBLE_CLICK_SUBMIT / CONTROL_ENTER_SUBMIT / TRACKLIST_TOOLS. search→replace, track length parser, remove recording relationships, set selected recording dates / LAST_SEEN_EDIT. handy for subscribed entities / COOL_SEARCH_LINKS / COPY_TOC / ROW_HIGHLIGHTER / SPOT_CAA / SPOT_AC / RECORDING_LENGTH_COLUMN / RELEASE_EVENT_COLUMN / WARN_NEW_WINDOW / SERVER_SWITCH / TAG_TOOLS / USER_STATS / EASY_DATE. paste full dates in one go / STATIC_MENU / SLOW_DOWN_RETRY / CENTER_FLAGS / RATINGS_ON_TOP / HIDE_RATINGS / UNLINK_ENTITY_HEADER / MARK_PENDING_EDIT_MEDIUMS
-// @version      2026.1.9
+// @version      2026.5.21
 // @author       jesus2099
 // @licence      CC-BY-NC-SA-4.0; https://creativecommons.org/licenses/by-nc-sa/4.0/
 // @licence      GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
 // @downloadURL  https://github.com/jesus2099/konami-command/raw/master/mb_SUPER-MIND-CONTROL-II-X-TURBO.user.js
 //
-//   uses just: RELEASE_EVENT_COLUMN ==> Displays release dates in label relationships page
+//   uses just: RELEASE_EVENT_COLUMN     ==> Displays release dates in label relationships page
+//              RECORDING_LENGTH_COLUMN  ==> Displays recording lengths at millisecond precision
+//
+//   The "Release events" column and the ⏱ millisecond track-length feature are both INSPIRED BY,
+//   and were modelled on, jesus2099's code in this script — not copied from it, and not dependent
+//   on it at runtime: this script fetches and renders the same data itself, and deliberately
+//   strips jesus2099's own versions of these columns from its rendered tables so the two never
+//   fight (see purgeJesus2099Artifacts()). Two ideas taken directly from his implementation:
+//     • the single per-page-entity Web Service call, /ws/2/{type}/{mbid}?inc=recording-rels
+//       (+release-rels), rather than one request per row — see _msFetchWs2RecordingLengths()
+//       and initReleaseEventsColumn();
+//     • the "[H:]M:SS.mmm" display shape his time() helper produces, which _msFormatDuration()
+//       reproduces so both scripts read consistently on a page where both are installed.
+//   RECORDING_LENGTH_COLUMN is itself credited by jesus2099 as inspired by loujine's
+//   mbz-showperformancedurations.user.js.
 // ============================================================================================================================================
 // @name         mb. FUNKEY ILLUSTRATED RECORDS
 // @description  musicbrainz.org: CAA front cover art archive pictures/images (release groups and releases) Big illustrated discography and/or inline everywhere possible without cluttering the pages
@@ -43355,6 +43369,20 @@ a { color: #1565c0; }`;
                 // expandShowAllCells already ran during the fetch phase, so all cell data
                 // is fully available before we collapse the initial view here.
                 if (mainTable) initCollapsableColumns(mainTable);
+
+                // Inject the ⏱ millisecond-precision toggle — for tableMode:'single'
+                // it MUST be here, not in renderFinalTable()'s tail. That tail runs
+                // before the makeTableSortableUnified() call above, which is what
+                // builds the `.mb-col-hdr-flex` the button is inserted into, so the
+                // tail's own call finds no flex row and silently does nothing on the
+                // first render. (Same ordering caveat initAreaFlagRegionObserver()
+                // documents a few lines up.) The tail call still earns its keep for
+                // every LATER render — runFilter() re-enters renderFinalTable() once
+                // the header layout already exists — and this one is idempotent, so
+                // the two never fight. The multi-table path needs no equivalent:
+                // renderGroupedTable() calls makeTableSortableUnified() inside its
+                // own group loop, well before its tail.
+                _initMsLengthColHeaderToggle();
 
                 // Series page: disable sorting UI for the "#" (number) column - (DOM-only cleanup; no logic changes)
                 if (location.pathname.startsWith('/series/')) {

@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-09-05",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The ⏱ millisecond toggle was missing entirely from the \"Length\" header on single-table pageTypes (`place-performances-filtered`, `work-recordings-filtered`, `artist-relationships-filtered`, and every other `tableMode: 'single'` page). Those pages build their header layout AFTER `renderFinalTable()` returns — `startFetchingProcess()` only calls `makeTableSortableUnified()`, which creates the `.mb-col-hdr-flex` the button is inserted into, several steps later — so the render tail's own injection found no flex row and silently did nothing. The button then appeared only if some unrelated later re-render happened to run that tail again, which is why the same page could have it or not depending on whether anything had been filtered or sorted yet: reported live on `place-performances-filtered`, where the 398-row \"Recording location for recording\" sub-table had no button at all while the 1-row \"Shooting location for recording\" one did. Now also injected right after `makeTableSortableUnified()`/`initCollapsableColumns()` in the single-table path; the injection is idempotent, so the two call sites never fight. The multi-table path was never affected — `renderGroupedTable()` calls `makeTableSortableUnified()` inside its own group loop, well before its tail."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Expanded the \"mb. SUPER MIND CONTROL Ⅱ X TURBO\" third-party attribution block: it now credits `RECORDING_LENGTH_COLUMN` alongside `RELEASE_EVENT_COLUMN`, records that the ⏱ millisecond track-length feature and the \"Release events\" column are both INSPIRED BY and modelled on jesus2099's code — not copied from it, and not dependent on it at runtime — and names the two ideas taken directly from his implementation (the single per-page-entity Web Service call rather than one request per row, and the `[H:]M:SS.mmm` display shape his `time()` helper produces, which `_msFormatDuration()` reproduces so both scripts read consistently where both are installed). Also notes that jesus2099 in turn credits loujine's `mbz-showperformancedurations.user.js` as the inspiration for `RECORDING_LENGTH_COLUMN`, and refreshes the recorded `@version` from 2026.1.9 to 2026.5.21."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.5",
     "date": "2026-09-04",
     "sections": [

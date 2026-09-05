@@ -163,6 +163,39 @@ test.describe('work-recordings: millisecond Length precision via the Web Service
         expect(counter.ws2).toBe(1);
     });
 
+    test('the toggle is present on the FIRST render of a single-table page', async ({ page }) => {
+        // Regression: tableMode:'single' pages build their header layout AFTER
+        // renderFinalTable() returns — startFetchingProcess() calls
+        // makeTableSortableUnified() (which creates .mb-col-hdr-flex) several
+        // steps later. The render tail's own injection therefore found no flex
+        // row and silently did nothing, so the button was missing until some
+        // unrelated re-render happened to run the tail again. Observed live on
+        // place-performances-filtered: the 398-row "Recording location for
+        // recording" sub-table had no button at all (debug/recording-location.html)
+        // while the 1-row "Shooting location" one did (debug/shooting-location.html).
+        //
+        // Same fixture, loaded with a link_type_id so it resolves to the
+        // -filtered (single-table) pageType instead of the multi-table one.
+        const url = `${WORK_URL}?link_type_id=278`;
+        await page.route('**/ws/2/work/**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json', body: WS2_BODY,
+        }));
+        await loadUserscriptPage(page, { url, fixtureFile: FIXTURE_FILE, testMode: true });
+        await page.route(`${url}**`, (route) => route.fulfill({ path: FIXTURE_FILE, contentType: 'text/html' }));
+        await page.click('button[data-label="Show all Recordings for Work (complete)"]');
+        await page.waitForSelector('#mb-filter-container');
+
+        // No filtering, no sorting, no second render — straight after the
+        // initial one, exactly as a person first sees the page.
+        await expect(page.locator('.mb-ms-col-hdr-btn')).toHaveCount(1);
+        await expect(toggle(page)).toHaveAttribute('aria-pressed', 'false');
+
+        // And it works from that first render.
+        await toggle(page).click();
+        await expect(toggle(page)).toHaveAttribute('aria-pressed', 'true');
+        expect((await lengthValues(page))[0]).toBe('5:05.146');
+    });
+
     test('a failed request reports "unavailable" rather than silently doing nothing', async ({ page }) => {
         const counter = await setup(page, { ws2Status: 503, ws2Body: '{}' });
 
