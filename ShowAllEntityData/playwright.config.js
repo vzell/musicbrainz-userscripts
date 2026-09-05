@@ -1,7 +1,6 @@
 // @ts-check
 const { defineConfig, devices } = require('@playwright/test');
-const fs = require('fs');
-const path = require('path');
+const { authStorageState } = require('./tests/support/authState');
 
 // Populated by `npm run auth:login` (tests/support/auth-setup.js) — a real,
 // interactive login you do yourself, never automated/scripted. When present,
@@ -9,7 +8,11 @@ const path = require('path');
 // (see the "Log in" link vs. your username in the header). Absent by
 // default (gitignored — a saved session is as good as your password), so
 // live tests run logged-out until you opt in.
-const AUTH_FILE = path.join(__dirname, 'playwright', '.auth', 'vzell.json');
+//
+// authStorageState() also WARNS when the file exists but its session has
+// expired — that state is silent otherwise (Playwright loads the cookies, MB
+// rejects them, the run proceeds logged out) and is easily mistaken for a
+// real behavioural change. See tests/support/authState.js.
 
 /**
  * Playwright config for ShowAllEntityData.
@@ -50,7 +53,7 @@ module.exports = defineConfig({
             timeout: 120000,
             use: {
                 ...devices['Desktop Chrome'],
-                ...(fs.existsSync(AUTH_FILE) ? { storageState: AUTH_FILE } : {}),
+                ...authStorageState({ label: 'chromium-live' }),
             },
         },
     ],
