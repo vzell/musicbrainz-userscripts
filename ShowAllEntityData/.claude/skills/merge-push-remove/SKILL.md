@@ -87,9 +87,10 @@ grep -n 'WIP\.' ShowAllEntityData_CHANGELOG.json    # must print nothing, anywhe
 
 The whole-file grep is meaningful again: two historical entries (9.99.783 and
 9.99.932) carried unresolved placeholders from hand-folds predating the fold
-script, and were repaired by `scripts/repair-changelog-placeholders.py`. The
-file is clean, so ANY hit is a live defect — either this fold's, or a
-regression somewhere else.
+script, and were repaired by `scripts/repair-changelog-integrity.py` — which
+also removed the file's duplicate and non-numeric versions, so the whole
+changelog now passes a hygiene audit. Any hit is a live defect: either this
+fold's, or a regression somewhere else.
 
 While reading the folded entries, check that anything user-visible in them is
 actually reflected in `ShowAllEntityData_HELP.txt` — the branch was supposed
