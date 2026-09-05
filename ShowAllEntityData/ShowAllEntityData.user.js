@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1002+2026-09-03
+// @version      9.99.1004+2026-09-05
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -19237,6 +19237,102 @@
     }
 
     /**
+     * Classifies a native MusicBrainz "Date" cell's own displayed date
+     * expression — reused across every `dateParts`-fed column (any column
+     * declared with `extractor: 'dateParts'` in a pageType's
+     * `columnExtractors`/`syntheticColumnExtractors`, e.g. "Date", "Begin",
+     * "End", "Release date" — see debug/date-uvd.html, a work page's
+     * "Recordings" table) — into one of three precision shapes, PLUS the
+     * raw "YYYY[-MM[-DD]]" token(s) (`atoms`) that make it up:
+     *
+     *   'complete' — a full "YYYY-MM-DD" date (e.g. "2020-04-08") — one atom
+     *   'partial'  — a year-only "YYYY" or year-month "YYYY-MM" date
+     *                (e.g. "1974", "1974-08") — never split further, since
+     *                both are equally "not a complete date" — one atom
+     *   'range'    — two dates joined by an en dash or hyphen, e.g.
+     *                "1973-08-09 – 1973-09-23" — TWO atoms (start, end),
+     *                NEVER assumed to both be complete dates; a range can
+     *                mix a complete start with a partial end or vice versa
+     *
+     * `dateParts` (`ColumnDataExtractor`) already detects the 'range' shape
+     * for its own, unrelated purpose (skipping synthetic DD/MM/YYYY/Day/
+     * Month extraction — a range has no single scalar date to split into
+     * those columns), but gives up immediately once it sees a range
+     * separator. This function additionally captures BOTH sides of that
+     * range as independent atoms so "Date info - Decade"/"- Month" (see
+     * `_dateAtomDecade()`/`_dateAtomMonth()`) can bucket each side on its
+     * own — independent of and never modifying `dateParts`' own
+     * synthetic-column output.
+     *
+     * Deliberately only called for a column whose declared extractor is
+     * `dateParts` (gated by an `activeColumnExtractors`/
+     * `activeSyntheticColumnExtractors` lookup at the `openUniqDrop()` call
+     * site, mirroring `_findCellTagCount()`'s own `tagCount`-extractor-
+     * lookup gating) — plain free-text parsing with no CSS-class safety
+     * net; a column not shaped like a date would simply fail the leading
+     * regex below and return `null`.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?{kind: 'complete'|'partial'|'range', value: string, atoms: string[]}}
+     *   `atoms` holds one raw "YYYY[-MM[-DD]]" token for 'complete'/
+     *   'partial', two (start, end) for 'range'. `null` when the cell's
+     *   text isn't a recognizable date expression at all (empty cell, or
+     *   free text that doesn't match any shape above).
+     */
+    function _findCellDateExpressionParts(cell) {
+        if (!cell) return null;
+        const text = getCleanColumnText(cell);
+        if (!text) return null;
+        const DATE_TOKEN = '\\d{4}(?:-\\d{2}(?:-\\d{2})?)?';
+        const leadMatch = text.match(new RegExp(`^(${DATE_TOKEN})`));
+        if (!leadMatch) return null;
+        const firstToken = leadMatch[1];
+        const rest = text.slice(firstToken.length).trim();
+        if (!rest) return { kind: firstToken.split('-').length === 3 ? 'complete' : 'partial', value: text, atoms: [firstToken] };
+        const rangeMatch = rest.match(new RegExp(`^[–-]\\s*(${DATE_TOKEN})$`));
+        if (!rangeMatch) return null;
+        return { kind: 'range', value: text, atoms: [firstToken, rangeMatch[1]] };
+    }
+
+    /**
+     * Buckets one `_findCellDateExpressionParts()` atom (a raw
+     * "YYYY[-MM[-DD]]" token) into its own decade range label, e.g.
+     * "1973-08-09" → "1970-1980", "1974" → "1970-1980". Always succeeds for
+     * any well-formed atom (a year is present in every precision shape),
+     * unlike `_dateAtomMonth()` below, which needs a month component that
+     * a year-only 'partial' atom doesn't have.
+     *
+     * @param {string} atom
+     * @returns {string}
+     */
+    function _dateAtomDecade(atom) {
+        const year = parseInt(atom.slice(0, 4), 10);
+        const decadeStart = Math.floor(year / 10) * 10;
+        return `${decadeStart}-${decadeStart + 10}`;
+    }
+
+    /**
+     * Buckets one `_findCellDateExpressionParts()` atom into its own
+     * calendar month NAME (not the raw "01"-"12" number), e.g.
+     * "1973-08-09" → "August", "1974-08" → "August". Returns `null` for a
+     * year-only 'partial' atom (e.g. "1974") — no month component to
+     * bucket.
+     *
+     * @param {string} atom
+     * @returns {?string}
+     */
+    function _dateAtomMonth(atom) {
+        const m = atom.match(/^\d{4}-(\d{2})/);
+        if (!m) return null;
+        const MONTH_NAMES = [
+            'January', 'February', 'March',    'April',   'May',      'June',
+            'July',    'August',   'September', 'October', 'November', 'December'
+        ];
+        const month = parseInt(m[1], 10);
+        return (month >= 1 && month <= 12) ? MONTH_NAMES[month - 1] : null;
+    }
+
+    /**
      * Extracts the leading integer tag-vote count (e.g. "26" from "26 -
      * Johnny Cash") from a tag-value-entity cell — the same text-node walk
      * and regex as `ColumnDataExtractor.tagCount`, so both agree on the
@@ -19736,6 +19832,36 @@
             // own extraction.
             const want = mode.slice(10);
             return !!cell && _findCellEventDateParts(cell).includes(want);
+        }
+        if (mode === 'date-complete' || mode === 'date-partial' || mode === 'date-range') {
+            // Fixed-flag modes — true when a `dateParts`-fed column's own
+            // date expression has this precision shape, from
+            // _findCellDateExpressionParts()'s own classification (see its
+            // JSDoc). Row-level ("does this row's date have this shape"),
+            // not tied to one specific date value — mirrors
+            // release-quality-high/-low/-normal's own fixed 3-flag shape.
+            const _wantKind = mode === 'date-complete' ? 'complete' : mode === 'date-partial' ? 'partial' : 'range';
+            const parts = cell && _findCellDateExpressionParts(cell);
+            return !!parts && parts.kind === _wantKind;
+        }
+        if (mode.startsWith('datedecade:')) {
+            // Compound mode — matches a `dateParts`-fed column's own date
+            // expression when ANY of its atoms (see
+            // _findCellDateExpressionParts()'s own JSDoc — one atom for a
+            // complete/partial date, two for a range) falls in this decade
+            // (e.g. "1970-1980"), from _dateAtomDecade()'s own bucketing.
+            const want = mode.slice(11);
+            const parts = cell && _findCellDateExpressionParts(cell);
+            return !!parts && parts.atoms.some(atom => _dateAtomDecade(atom) === want);
+        }
+        if (mode.startsWith('datemonth:')) {
+            // Compound mode counterpart of 'datedecade:' above — matches
+            // when any atom's own calendar MONTH NAME (e.g. "August"),
+            // from _dateAtomMonth(), equals `want`. A year-only 'partial'
+            // atom has no month and never matches.
+            const want = mode.slice(10);
+            const parts = cell && _findCellDateExpressionParts(cell);
+            return !!parts && parts.atoms.some(atom => _dateAtomMonth(atom) === want);
         }
         if (mode.startsWith('tagcount:')) {
             // Compound mode — matches the leading integer tag-vote count of
@@ -36860,6 +36986,26 @@ a { color: #1565c0; }`;
         // split above). See `_findCellInstrumentFacets()`'s own JSDoc.
         instrumentHasComment:     { label: 'Instrument info - Comment',     glyph: '💬' },
         instrumentHasDescription: { label: 'Instrument info - Description', glyph: '📝' },
+        // "Date info" — split into three independently-checkable facets
+        // (mirrors Format info's/Tracks info's own "one flat cell, several
+        // value families" split), applying automatically to every
+        // `dateParts`-fed column on every pageType (gated by extractor
+        // lookup, not a page-specific feature flag — see
+        // `_findCellDateExpressionParts()`'s own JSDoc):
+        //   - Precision: a FIXED 3-flag family (complete/partial/range —
+        //     see MB_UNIQ_MODE_TO_SECTION's 'date-complete'/'date-partial'/
+        //     'date-range' keys), not an open per-value list — checking one
+        //     matches every row of that shape, not one specific date text
+        //     (that's already what the plain column-value list below does).
+        //   - Decade/Month: two open per-value families bucketing each
+        //     date's own YEAR/MONTH component (see `_dateAtomDecade()`/
+        //     `_dateAtomMonth()`), independent of Precision.
+        dateExprPrecision: { label: 'Date info - Precision', glyph: '📅' },
+        dateExprDecade:    { label: 'Date info - Decade',    glyph: '🗓️' },
+        // 📆 intentionally reused from releaseEventsWeekday — same facet
+        // (a calendar-based grouping), same reuse rationale as 📅 across
+        // creditDate/releaseEventsDate/partOfSeriesDate/eventInfo.
+        dateExprMonth:     { label: 'Date info - Month',     glyph: '📆' },
     };
 
     /**
@@ -36898,6 +37044,7 @@ a { color: #1565c0; }`;
         'locale-primary': 'localePrimary', 'locale-not-primary': 'localePrimary',
         'instrument-has-comment': 'instrumentHasComment',
         'instrument-has-description': 'instrumentHasDescription',
+        'date-complete': 'dateExprPrecision', 'date-partial': 'dateExprPrecision', 'date-range': 'dateExprPrecision',
     };
 
     /**
@@ -36946,6 +37093,7 @@ a { color: #1565c0; }`;
         editordeleted: 'editorDeleted', editorrecordedname: 'editorRecordedName',
         editormembership: 'editorMembership', editorcomment: 'editorComment',
         localelanguage: 'localeLanguage',
+        datedecade: 'dateExprDecade', datemonth: 'dateExprMonth',
     };
 
     /**
@@ -37847,6 +37995,79 @@ a { color: #1565c0; }`;
         if (_findCellLengthBucket(cell) !== _want) return;
         cell.normalize();
         highlightCrossTag(cell, /\d+:\d{2}(?:\.\d+)?|\?:\?\?/g, 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights the whole date expression for a `date-complete`/
+     * `date-partial`/`date-range` FIXED structure-mode filter — re-derives
+     * from `_findCellDateExpressionParts()` directly (same "verify before
+     * highlighting" pattern as every other `_highlightXxxMatch()` here). A
+     * `dateParts`-fed column has no per-value wrapper element to scope to,
+     * same reasoning as `_highlightLengthBucketMatch()` above.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - `"date-complete"`, `"date-partial"`, or `"date-range"`.
+     */
+    function _highlightDatePrecisionMatch(cell, mode) {
+        if (!cell) return;
+        const _wantKind = mode === 'date-complete' ? 'complete' : mode === 'date-partial' ? 'partial' : 'range';
+        const parts = _findCellDateExpressionParts(cell);
+        if (!parts || parts.kind !== _wantKind) return;
+        cell.normalize();
+        highlightCrossTag(cell, /\d{4}(?:-\d{2}(?:-\d{2})?)?(?:\s*[–-]\s*\d{4}(?:-\d{2}(?:-\d{2})?)?)?/g, 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights ONLY the specific YYYY (decade) or MM (month) component of
+     * the matching atom(s) for a `datedecade:`/`datemonth:` compound
+     * structure-mode filter — NOT the whole atom (e.g. checking decade
+     * "1970-1980" on "2008-07-15" would be wrong to highlight; checking it
+     * on the atom that actually matches, e.g. "1973-08-09", highlights only
+     * "1973", not "-08-09" too; checking month "August" on "2008-07-15"
+     * never matches at all, and on a matching atom highlights only "07" —
+     * the digit pair the raw cell text actually shows, not the month
+     * NAME). Re-derives from `_findCellDateExpressionParts()` directly. For
+     * a 'range' cell where only one side falls in the checked decade/
+     * month, the OTHER side is deliberately left unhighlighted (unlike
+     * `_highlightDatePrecisionMatch()` above, which always highlights the
+     * whole expression since Precision matches the row as a whole, not one
+     * specific atom).
+     *
+     * Lookbehind/lookahead anchor each pattern to the EXACT position of the
+     * matching atom's own year/month substring (never a same-looking digit
+     * run elsewhere in the cell, e.g. a different atom sharing the same
+     * year) — the year/month digits themselves are the only thing inside
+     * the match (lookaround assertions are zero-width, so the surrounding
+     * "-MM-DD"/"YYYY-"/"-DD" context they require is never itself
+     * highlighted).
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"datedecade:1970-1980"` or `"datemonth:August"`.
+     */
+    function _highlightDateAtomMatch(cell, mode) {
+        if (!cell) return;
+        const isDecade = mode.startsWith('datedecade:');
+        const want = mode.slice(mode.indexOf(':') + 1);
+        if (!want) return;
+        const parts = _findCellDateExpressionParts(cell);
+        if (!parts) return;
+        const matching = parts.atoms.filter(atom => (isDecade ? _dateAtomDecade(atom) : _dateAtomMonth(atom)) === want);
+        if (matching.length === 0) return;
+        const _esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const patterns = matching.map((atom) => {
+            if (isDecade) {
+                const year = atom.slice(0, 4);
+                const rest = _esc(atom.slice(4));
+                return `\\b${year}(?=${rest}(?:\\D|$))`;
+            }
+            const before = _esc(atom.slice(0, 5));  // "YYYY-"
+            const month  = atom.slice(5, 7);        // "MM"
+            const after  = _esc(atom.slice(7));     // "-DD" or ""
+            return `(?<=${before})${month}(?=${after}(?:\\D|$))`;
+        });
+        cell.normalize();
+        highlightCrossTag(cell, new RegExp(patterns.join('|'), 'g'), 'mb-column-filter-highlight');
     }
 
     /**
@@ -38753,7 +38974,7 @@ a { color: #1565c0; }`;
                     // 'countrycode:'/'revdate:'/'revweekday:'/'catalogprefix:'/
                     // 'catalog-none'/'partofseriesname:'/'partofseriesdate:'/
                     // 'partofseriesnumber:'/'trackspermedium:'/'lengthbucket:'/'lengthdeviation-*'/'lengthlive-yes'/'eventdate:'/'tagcount:'/
-                    // 'entitycancelled:'/'eventcancelled:'/
+                    // 'entitycancelled:'/'eventcancelled:'/'date-complete'/'date-partial'/'date-range'/'datedecade:'/'datemonth:'/
                     // 'formatsize:'/'formatcount:'/'formatcombo:'/'formattype:'/
                     // 'role:'/'roletoken:'/'editordeleted:'/'editor-any-deleted'/
                     // 'editorcomment:'/'changelog-no-message' and 'name-variation'
@@ -38830,6 +39051,10 @@ a { color: #1565c0; }`;
                                     _highlightInstrumentDescriptionMatch(row.cells[f.idx]);
                                 } else if (mode.startsWith('eventdate:')) {
                                     _highlightEventDateMatch(row.cells[f.idx], mode);
+                                } else if (mode === 'date-complete' || mode === 'date-partial' || mode === 'date-range') {
+                                    _highlightDatePrecisionMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('datedecade:') || mode.startsWith('datemonth:')) {
+                                    _highlightDateAtomMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('tagcount:')) {
                                     _highlightTagCountMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('entitycancelled:') || mode.startsWith('eventcancelled:')) {
@@ -49104,6 +49329,15 @@ a { color: #1565c0; }`;
         // independent of catalogHasPrefixCount/catalogNoPrefixCount above,
         // since a row's list can mix "[none]" items with real ones.
         let catalogNoneCount = _uniqCacheHit ? _uniqCacheHit.catalogNoneCount : 0;
+        // "Date info - Precision" — a FIXED 3-flag family (mirrors
+        // releaseQualityHighCount/-LowCount/-NormalCount below): how many
+        // visible rows' own `dateParts`-fed column text is a complete
+        // date, a partial (year/year-month) date, or a dash-joined range —
+        // see `_findCellDateExpressionParts()`'s own JSDoc. Column-gated
+        // (isDateExprCol below).
+        let dateCompleteCount = _uniqCacheHit ? _uniqCacheHit.dateCompleteCount : 0;
+        let datePartialCount  = _uniqCacheHit ? _uniqCacheHit.datePartialCount  : 0;
+        let dateRangeCount    = _uniqCacheHit ? _uniqCacheHit.dateRangeCount    : 0;
         // Any column: distinct credit attribute words (e.g. "additional",
         // "assistant", "co", "executive" — the credit-role columns' own
         // `<span class="mb-credit-attr">` sentinel, see
@@ -49288,6 +49522,13 @@ a { color: #1565c0; }`;
         // CBS") — see `_findCellCatalogParts()`'s own JSDoc. Column-gated
         // (isCatalogCol below).
         const catalogPrefixValueCounts = _uniqCacheHit ? _uniqCacheHit.catalogPrefixValueCounts : new Map();
+        // Distinct "Date info - Decade"/"- Month" values — see
+        // `_dateAtomDecade()`/`_dateAtomMonth()`'s own JSDoc. Column-gated
+        // (isDateExprCol below). "Date info - Precision" is a FIXED 3-flag
+        // family (dateCompleteCount/datePartialCount/dateRangeCount, declared
+        // alongside catalogHasPrefixCount et al. below), not an open list.
+        const dateDecadeValueCounts = _uniqCacheHit ? _uniqCacheHit.dateDecadeValueCounts : new Map();
+        const dateMonthValueCounts  = _uniqCacheHit ? _uniqCacheHit.dateMonthValueCounts  : new Map();
         // Distinct "Length info - Duration" bucket values (e.g. "5 to 6
         // minutes", "Unknown length") — see `_findCellLengthBucket()`'s
         // own JSDoc. Column-gated (isLengthCol below).
@@ -49431,6 +49672,19 @@ a { color: #1565c0; }`;
         // page-type check), so this applies automatically to every
         // pageType with a "Length" column.
         const isLengthCol  = _colHeaderName === 'Length';
+        // Column-name gate for "Date info - Complete"/"- Partial"/"- Range"
+        // — unlike isFormatCol/isTracksCol/isCatalogCol/isLengthCol above
+        // (a single fixed column name), this checks whether the CURRENTLY
+        // OPEN column is actually fed into a `dateParts` extractor
+        // (checking both the primary and synthetic extractor registries —
+        // "Date" is a primary column on some pageTypes, e.g. artist-events,
+        // and a synthetic one produced by `splitCountryDate` on others,
+        // e.g. artist-releases), so this applies automatically to every
+        // `dateParts`-fed column name ("Date", "Begin", "End", "Release
+        // date", …) on every pageType — see
+        // `_findCellDateExpressionParts()`'s own JSDoc.
+        const isDateExprCol = activeColumnExtractors.some(e => e.extractor === 'dateParts' && e.sourceColumn === _colHeaderName) ||
+            activeSyntheticColumnExtractors.some(e => e.extractor === 'dateParts' && e.sourceColumn === _colHeaderName);
         // Column-name gate for release-tracks' dynamic-fallback "Part of
         // series" AR column — same convention as isFormatCol/isTracksCol/
         // isCatalogCol/isEventCol above (name-only, no page-type check).
@@ -49704,6 +49958,26 @@ a { color: #1565c0; }`;
                 if (isEventCol) {
                     const _eventDates = _findCellEventDateParts(cell);
                     new Set(_eventDates).forEach(t => eventDateValueCounts.set(t, (eventDateValueCounts.get(t) || 0) + 1));
+                }
+                if (isDateExprCol) {
+                    const _dateExpr = _findCellDateExpressionParts(cell);
+                    if (_dateExpr) {
+                        if (_dateExpr.kind === 'complete')     dateCompleteCount++;
+                        else if (_dateExpr.kind === 'partial') datePartialCount++;
+                        else                                   dateRangeCount++;
+                        // Bucket every atom (one for complete/partial, two
+                        // — start+end — for a range) into its own decade/
+                        // month, deduped per row via Set so a range whose
+                        // start/end share a decade or month counts once.
+                        const _rowDecadeValues = new Set(), _rowMonthValues = new Set();
+                        _dateExpr.atoms.forEach(atom => {
+                            _rowDecadeValues.add(_dateAtomDecade(atom));
+                            const _month = _dateAtomMonth(atom);
+                            if (_month) _rowMonthValues.add(_month);
+                        });
+                        _rowDecadeValues.forEach(t => dateDecadeValueCounts.set(t, (dateDecadeValueCounts.get(t) || 0) + 1));
+                        _rowMonthValues.forEach(t => dateMonthValueCounts.set(t, (dateMonthValueCounts.get(t) || 0) + 1));
+                    }
                 }
                 if (isTagEntityCol) {
                     const _tagCount = _findCellTagCount(cell);
@@ -50687,6 +50961,7 @@ a { color: #1565c0; }`;
                 emptyCellCount, multiRowCollapsedCount, multiRowExpandedCount, singleRowCount,
                 titleMismatchCount, nameVariationCount, multiMediumCount,
                 catalogHasPrefixCount, catalogNoPrefixCount, catalogNoneCount,
+                dateCompleteCount, datePartialCount, dateRangeCount,
                 attrValueCounts, taskValueCounts, dateValueCounts, eventDateValueCounts,
                 instrumentValueCounts, altNameValueCounts,
                 entityNameValueCounts, entityCommentValueCounts, entityAliasValueCounts,
@@ -50699,6 +50974,7 @@ a { color: #1565c0; }`;
                 revCountryValueCounts, revCountryFlagMap, revDateValueCounts, revWeekdayValueCounts,
                 countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap,
                 tracksPerMediumValueCounts, catalogPrefixValueCounts, lengthBucketValueCounts,
+                dateDecadeValueCounts, dateMonthValueCounts,
                 partOfSeriesNameValueCounts, partOfSeriesDateValueCounts, partOfSeriesNumberValueCounts,
                 editorDeletedValueCounts, editorAnyDeletedCount, editorRecordedNameValueCounts,
                 editorMembershipValueCounts, editorCommentValueCounts,
@@ -50729,6 +51005,7 @@ a { color: #1565c0; }`;
             multiRowCollapsedCount + multiRowExpandedCount,
             titleMismatchCount, nameVariationCount,
             multiMediumCount, catalogHasPrefixCount, catalogNoPrefixCount, catalogNoneCount,
+            dateCompleteCount, datePartialCount, dateRangeCount,
             acoustidLinkedCount, acoustidUnlinkedCount,
             lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
             lengthDeviationShorter25to50Count, lengthDeviationLonger25to50Count,
@@ -50762,6 +51039,7 @@ a { color: #1565c0; }`;
             ...countryNameValueCounts.values(), ...countryCodeValueCounts.values(),
             ...tracksPerMediumValueCounts.values(), ...catalogPrefixValueCounts.values(),
             ...lengthBucketValueCounts.values(),
+            ...dateDecadeValueCounts.values(), ...dateMonthValueCounts.values(),
             ...partOfSeriesNameValueCounts.values(), ...partOfSeriesDateValueCounts.values(),
             ...partOfSeriesNumberValueCounts.values(),
             ...localeLanguageValueCounts.values()
@@ -51138,7 +51416,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'lengthbucket'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'lengthbucket'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'|'datedecade'|'datemonth'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -51273,6 +51551,8 @@ a { color: #1565c0; }`;
                  : kind === 'editormembership'   ? '» membership: '
                  : kind === 'editorcomment'      ? '» comment: '
                  : kind === 'localelanguage'     ? '» language: '
+                 : kind === 'datedecade'         ? '» decade: '
+                 : kind === 'datemonth'          ? '» month: '
                  : '» ');
             if (kind === 'arttype') {
                 // Render the value as an actual pill (see
@@ -51521,6 +51801,17 @@ a { color: #1565c0; }`;
         const _sortedArtTypeValues    = Array.from(artTypeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedArtCommentValues = Array.from(artCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedLocaleLanguageValues = Array.from(localeLanguageValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        // Numeric sort by decade start year (not lexicographic — matters
+        // once a page spans century boundaries, e.g. "990-1000" vs
+        // "1990-2000").
+        const _sortedDateDecadeValues = Array.from(dateDecadeValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+        // Calendar order (January..December), not alphabetical — "April"
+        // must not sort before "August".
+        const _MONTH_SORT_ORDER = [
+            'January', 'February', 'March',    'April',   'May',      'June',
+            'July',    'August',   'September', 'October', 'November', 'December'
+        ];
+        const _sortedDateMonthValues = Array.from(dateMonthValueCounts.keys()).sort((a, b) => _MONTH_SORT_ORDER.indexOf(a) - _MONTH_SORT_ORDER.indexOf(b));
         const _hasValueEntries = _sortedAttrValues.length > 0 || _sortedTaskValues.length > 0 ||
             _sortedDateValues.length > 0 || _sortedEventDateValues.length > 0 || _sortedInstrumentValues.length > 0 ||
             _sortedAltNameValues.length > 0 ||
@@ -51537,7 +51828,8 @@ a { color: #1565c0; }`;
             _sortedEditorMembershipValues.length > 0 || _sortedEditorCommentValues.length > 0 ||
             _sortedRoleValues.length > 0 || _sortedRoleTokenValues.length > 0 ||
             _sortedArtTypeValues.length > 0 || _sortedArtCommentValues.length > 0 ||
-            _sortedLocaleLanguageValues.length > 0;
+            _sortedLocaleLanguageValues.length > 0 ||
+            _sortedDateDecadeValues.length > 0 || _sortedDateMonthValues.length > 0;
 
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 ||
             multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
@@ -51548,6 +51840,7 @@ a { color: #1565c0; }`;
             lengthDeviationShorter50plusCount > 0 || lengthDeviationLonger50plusCount > 0 ||
             (_lengthColAvgs && _lengthColAvgs.hasLiveCol && (_lengthColAvgs.studioKnownCount > 0 || _lengthColAvgs.liveKnownCount > 0)) ||
             acoustidLinkedCount > 0 || acoustidUnlinkedCount > 0 ||
+            dateCompleteCount > 0 || datePartialCount > 0 || dateRangeCount > 0 ||
             localePrimaryCount > 0 || localeNotPrimaryCount > 0 ||
             instrumentHasCommentCount > 0 || instrumentHasDescriptionCount > 0 || _hasValueEntries)) {
              // "empty cells" pinned first; remaining entries in ascending complexity order.
@@ -51603,6 +51896,14 @@ a { color: #1565c0; }`;
             // extraLabelClass param (see that param's own JSDoc).
             if (acoustidLinkedCount > 0)   makeSynItem('acoustid-linked', '🔗 linked', acoustidLinkedCount);
             if (acoustidUnlinkedCount > 0) makeSynItem('acoustid-unlinked', '🚫 unlinked', acoustidUnlinkedCount, 'disabled-acoustid');
+            // "Date info - Precision" — fixed 3-value flag family (mirrors
+            // release-quality-*/acoustid-* above): how many visible rows'
+            // date is a complete/partial/range expression, NOT one entry
+            // per distinct date value (that's the plain column-value list
+            // below, unaffected by this section).
+            if (dateCompleteCount > 0) makeSynItem('date-complete', '📅 complete dates', dateCompleteCount);
+            if (datePartialCount > 0)  makeSynItem('date-partial', '🌓 partial dates', datePartialCount);
+            if (dateRangeCount > 0)    makeSynItem('date-range', '↔️ date ranges', dateRangeCount);
             // "Locale info - Primary" — fixed 2-value flag pair, mirrors
             // release-quality-*/acoustid-* above.
             if (localePrimaryCount > 0)    makeSynItem('locale-primary', '🥇 primary', localePrimaryCount);
@@ -51655,6 +51956,8 @@ a { color: #1565c0; }`;
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
             _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
             _sortedLocaleLanguageValues.forEach(v => makeValueSynItem('localelanguage', v, localeLanguageValueCounts.get(v)));
+            _sortedDateDecadeValues.forEach(v => makeValueSynItem('datedecade', v, dateDecadeValueCounts.get(v)));
+            _sortedDateMonthValues.forEach(v => makeValueSynItem('datemonth', v, dateMonthValueCounts.get(v)));
         } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 ||
                    multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
                    editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
@@ -51664,6 +51967,7 @@ a { color: #1565c0; }`;
                    lengthDeviationShorter50plusCount > 0 || lengthDeviationLonger50plusCount > 0 ||
                    (_lengthColAvgs && _lengthColAvgs.hasLiveCol && (_lengthColAvgs.studioKnownCount > 0 || _lengthColAvgs.liveKnownCount > 0)) ||
                    acoustidLinkedCount > 0 || acoustidUnlinkedCount > 0 ||
+                   dateCompleteCount > 0 || datePartialCount > 0 || dateRangeCount > 0 ||
                    localePrimaryCount > 0 || localeNotPrimaryCount > 0 ||
                    instrumentHasCommentCount > 0 || instrumentHasDescriptionCount > 0 || _hasValueEntries) {
             // Non-collapsable column (or a collapsable one with zero rows in
@@ -51694,6 +51998,14 @@ a { color: #1565c0; }`;
             }
             if (acoustidLinkedCount > 0)   makeSynItem('acoustid-linked', '🔗 linked', acoustidLinkedCount);
             if (acoustidUnlinkedCount > 0) makeSynItem('acoustid-unlinked', '🚫 unlinked', acoustidUnlinkedCount, 'disabled-acoustid');
+            // "Date info - Precision" — fixed 3-value flag family (mirrors
+            // release-quality-*/acoustid-* above): how many visible rows'
+            // date is a complete/partial/range expression, NOT one entry
+            // per distinct date value (that's the plain column-value list
+            // below, unaffected by this section).
+            if (dateCompleteCount > 0) makeSynItem('date-complete', '📅 complete dates', dateCompleteCount);
+            if (datePartialCount > 0)  makeSynItem('date-partial', '🌓 partial dates', datePartialCount);
+            if (dateRangeCount > 0)    makeSynItem('date-range', '↔️ date ranges', dateRangeCount);
             if (localePrimaryCount > 0)    makeSynItem('locale-primary', '🥇 primary', localePrimaryCount);
             if (localeNotPrimaryCount > 0) makeSynItem('locale-not-primary', '◦ not primary', localeNotPrimaryCount);
             if (instrumentHasCommentCount > 0)     makeSynItem('instrument-has-comment', '💬 has comment', instrumentHasCommentCount);
@@ -51735,6 +52047,8 @@ a { color: #1565c0; }`;
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
             _sortedArtCommentValues.forEach(v => makeValueSynItem('artcomment', v, artCommentValueCounts.get(v)));
             _sortedLocaleLanguageValues.forEach(v => makeValueSynItem('localelanguage', v, localeLanguageValueCounts.get(v)));
+            _sortedDateDecadeValues.forEach(v => makeValueSynItem('datedecade', v, dateDecadeValueCounts.get(v)));
+            _sortedDateMonthValues.forEach(v => makeValueSynItem('datemonth', v, dateMonthValueCounts.get(v)));
         }
 
         // ── Relationships column: unique icon entries ─────────────────────────────────────────────
@@ -52245,6 +52559,11 @@ a { color: #1565c0; }`;
         if (mode === 'lengthlive-yes') return '🎙️ Live recording';
         if (mode === 'lengthlive-no')  return '⚪ Not live';
         if (mode.startsWith('localelanguage:')) return `» language: ${mode.slice(15)}`;
+        if (mode === 'date-complete') return '📅 complete dates';
+        if (mode === 'date-partial')  return '🌓 partial dates';
+        if (mode === 'date-range')    return '↔️ date ranges';
+        if (mode.startsWith('datedecade:')) return `» decade: ${mode.slice(11)}`;
+        if (mode.startsWith('datemonth:'))  return `» month: ${mode.slice(10)}`;
         if (mode === 'locale-primary')     return '🥇 primary';
         if (mode === 'locale-not-primary') return '◦ not primary';
         if (mode === 'instrument-has-comment')     return '💬 has comment';
@@ -52332,6 +52651,11 @@ a { color: #1565c0; }`;
         if (mode === 'lengthlive-yes') return '🎙️ = this row\'s live-flag cell (e.g. "Attributes") contains the word "live" — excluded from the page\'s reference average, still bucketed against it in "Length info - Deviation".';
         if (mode === 'lengthlive-no')  return '⚪ = no "live" word found — either a studio recording, or this page has no live-flag column at all.';
         if (mode.startsWith('localelanguage:')) return 'One "Locale" cell\'s own language text (e.g. "English", "Chinese (China)").';
+        if (mode === 'date-complete') return '📅 = this row\'s date is a full "YYYY-MM-DD" expression.';
+        if (mode === 'date-partial')  return '🌓 = this row\'s date is a year-only "YYYY" or year-month "YYYY-MM" expression.';
+        if (mode === 'date-range')    return '↔️ = this row\'s date is two dates joined by a dash — each side may independently be complete or partial.';
+        if (mode.startsWith('datedecade:')) return 'The decade (e.g. "1970-1980") one of this date\'s own YYYY[-MM[-DD]] components falls in — a range cell can match two different decades.';
+        if (mode.startsWith('datemonth:'))  return 'The calendar month name (e.g. "August") one of this date\'s own YYYY-MM[-DD] components falls in — a year-only date has no month and never matches.';
         if (mode === 'locale-primary') return '🥇 = this alias\'s "Locale" cell carries MusicBrainz\'s own `(primary)` marker for its locale.';
         if (mode === 'locale-not-primary') return '◦ = a non-empty locale with no `(primary)` marker. Excludes alias `Type`s with no locale at all (e.g. "Legal name", "Search hint").';
         if (mode === 'instrument-has-comment') return '💬 = this instrument\'s own cell carries a `<span class="comment">` (a short parenthetical, e.g. "(harmonica/accordion hybrid)").';
