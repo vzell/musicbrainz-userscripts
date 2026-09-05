@@ -356,8 +356,11 @@ every distinct non-empty value currently visible in that column.
                        range contributes BOTH its start and end dates
                        independently to Decade/Month, so e.g. "1973-08-09 –
                        1973-09-23" counts toward both "August" and
-                       "September"; checking one only highlights the
-                       matching side of the range
+                       "September"; checking a Decade/Month entry highlights
+                       ONLY the matching side's own year (Decade) or "MM"
+                       digit pair (Month) — e.g. checking "August" on that
+                       same range highlights just the "08", not the "1973"
+                       or the "1973-09-23" side
     — 🗣️/🥇 Locale info — on an alias table's "Locale" column: "- Language"
                        (distinct locale languages, e.g. "English", "Chinese
                        (China)") and "- Primary" ("🥇 primary" / "◦ not
