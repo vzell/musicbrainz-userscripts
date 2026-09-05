@@ -3,9 +3,13 @@
 const fs = require('fs');
 
 // Must match ShowAllEntityData.user.js's `_ART_IDB_NAME`/`_ART_IDB_VERSION`
-// exactly (currently 'vz-mb-saed-art-cache' / 2) — re-grep if either drifts.
+// exactly (currently 'vz-mb-saed-art-cache' / 3) — re-grep if either drifts.
+// The seed below must also create every store that version's
+// `onupgradeneeded` creates; seeding at the right version but with a store
+// missing leaves the userscript holding a handle to a database it thinks is
+// current and finding no store to read.
 const ART_IDB_NAME = 'vz-mb-saed-art-cache';
-const ART_IDB_VERSION = 2;
+const ART_IDB_VERSION = 3;
 
 /**
  * Seeds the art-cache IndexedDB database's `images` store with real
@@ -16,7 +20,7 @@ const ART_IDB_VERSION = 2;
  *
  * Must be called BEFORE `loadUserscriptPage()` (init scripts apply to the
  * navigation `page.goto()` triggers, and only scripts registered before
- * that call are included). Opens the database itself (creating all three
+ * that call are included). Opens the database itself (creating all four
  * object stores if this is a fresh context, matching the userscript's own
  * `onupgradeneeded` schema) so the DB already exists at the target version
  * by the time the userscript's own `indexedDB.open()` runs — it just gets a
@@ -45,6 +49,7 @@ async function seedArtIdbFixture(page, fixturePath) {
                     if (!db.objectStoreNames.contains('images'))   db.createObjectStore('images',   { keyPath: 'url' });
                     if (!db.objectStoreNames.contains('metadata')) db.createObjectStore('metadata', { keyPath: 'entityPath' });
                     if (!db.objectStoreNames.contains('rel-ws2'))  db.createObjectStore('rel-ws2',  { keyPath: 'ckey' });
+                    if (!db.objectStoreNames.contains('ms-rec-len')) db.createObjectStore('ms-rec-len', { keyPath: 'gid' });
                 };
                 req.onsuccess = function () {
                     var db = req.result;

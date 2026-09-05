@@ -222,6 +222,9 @@ exhaustive — `configSchema` (~212-2670) currently defines 216 distinct
   `sa_enable_eaa_pics` — EAA reuses this same key)
 - `sa_enable_picard_tagger` — gates the Picard-tagger column feature
 - `sa_enable_expand_rg` — gates `initExpandRGsFeature()`
+- `sa_enable_ms_track_length` — master toggle for the ⏱ millisecond Length
+  feature; `sa_ms_idb_enable`/`sa_ms_idb_ttl_days` gate its per-recording
+  IndexedDB cache (`ms-rec-len` store)
 - `sa_enable_annotation_collapse`, `sa_annotation_column_max_width`,
   `sa_annotation_column_max_height_em`, `sa_annotation_h2_bg`/
   `sa_annotation_h2_color` — prose-cell (Annotation) collapse/clamp behavior
@@ -266,6 +269,15 @@ package.json`, `playwright.config.js`). Two projects, split by directory:
     (`tests/live/artist-events-interactions.spec.js`). `npm run
     test:live:perf`.
   - `npm run test:all` runs literally everything (fixtures + live).
+
+The `vz-mb-saed-art-cache` IndexedDB database is shared by three unrelated
+features purely so they get one sweep/count/clear code path: `images` +
+`metadata` (artwork), `rel-ws2` (Relationships column), and `ms-rec-len`
+(millisecond Length). Adding a store means bumping `_ART_IDB_VERSION`. Note
+the two record shapes timestamp themselves differently — `storedAt` for the
+artwork stores, `ts` for the other two — which `sweepStore()` must keep
+reading both of; keying on `storedAt` alone made the sweep a silent no-op for
+`rel-ws2` for its whole existence.
 
 **Snapshot regression coverage** (`tests/snapshots/<pageType>/{raw,
 rendered}.html`, captured via `node tests/support/capture-snapshots.js`)
@@ -734,15 +746,73 @@ through to a tie-breaking column.
   the rendered text. The uniq-dropdown cache must be force-invalidated (its
   key is the visible row set, which does not change).
 - `_msLengthSource()` is the single answer to "where can this page's
-  milliseconds come from": `'embedded'` (release pages — already in the page's
-  own `<script type="application/json">` at `$.release.mediums[].tracks[]`, so
-  stamped during pre-processing, no network), `'ws2'` (declared per pageType
-  via `features.msTrackLengthWs2` — work/artist-relationships/place-performances
-  have NO length data in the page at all, confirmed by
-  `scripts/probe-work-page-json.py`), or `null` (no toggle offered).
-- The `'ws2'` request is LAZY: `_msToggleLengthPrecision()` fires it on the
-  first press only, never during render. `_msToggleInFlight` guards a double
-  click.
+  milliseconds come from", checked in cost order: `'embedded'` (release pages —
+  already in the page's own `<script type="application/json">` at
+  `$.release.mediums[].tracks[]`, so stamped during pre-processing, no
+  network), `'ws2'` (ONE lookup of the page entity, declared per pageType via
+  `features.msTrackLengthWs2` — work/artist-relationships/place-performances/
+  area-recordings have NO length data in the page at all, confirmed by
+  `scripts/probe-work-page-json.py`), `'batch'` (SEVERAL requests keyed on the
+  rendered recording MBIDs, `features.msTrackLengthBatch`), or `null` (no
+  toggle offered). All three branches must stay O(1) — `_initMsLengthColHeaderToggle()`
+  calls this on every render specifically to avoid a row walk, which is why
+  `'batch'` keys off the feature flag alone rather than checking for recording
+  links.
+- Both fetching sources are LAZY: `_msToggleLengthPrecision()` fires them on
+  the first press only, never during render. `_msToggleInFlight` guards a
+  double click.
+
+**`'ws2'` vs `'batch'` — pick by what the page's table IS**, not by entity
+type. `'ws2'` works only where the table is one entity's own relationship
+list, so a single `inc=recording-rels` answer covers it; verified per entity
+with `scripts/probe-ms-browse-endpoints.py`. An `area`'s answer covers its
+recordings page exactly (Asbury Park: 24 relations, 24 rows). An
+`instrument`'s returns **zero** relations for a page listing 100 recordings —
+MusicBrainz models instrument credits as artist-recording relationships
+carrying an instrument attribute — so `instrument` is deliberately absent from
+`_msWs2PageKey()`'s regex and uses `'batch'`.
+
+**The `'batch'` source uses the SEARCH endpoint, not the browse endpoint,
+and that is load-bearing.** `/ws/2/recording?query=rid:(m1 OR m2 …)` costs
+`ceil(rendered rows / 100)`; `/ws/2/recording?artist=…` costs
+`ceil(the artist's whole catalogue / 100)` — 746 requests for Bruce
+Springsteen (`recording-count: 74540`) whether the page shows ten rows or ten
+thousand, and it cannot serve instrument/isrc/search at all.
+`_MS_BATCH_SIZE = 100` is a **measured** ceiling
+(`scripts/probe-ms-rid-batch-size.py`): 150 MBIDs is accepted but silently
+capped by the endpoint's own `limit`, 200 is `HTTP 414 URI Too Long`. Values
+come back identical to the browse endpoint's.
+
+- **`_msCollectRecordingMbids()` is the "what is still outstanding" list**, and
+  three exclusions matter: already stamped, already answered in
+  `_msBatchMemCache` (INCLUDING answered as `null`/"no length on record" — such
+  a row is never stamped, so without this it looks like pending work forever),
+  and a Length cell that does not parse (`"?:??"` has no seconds text to
+  round-trip an answer against). Its emptiness is what tells
+  `_msToggleLengthPrecision()` there is nothing left to fetch. Exposed to tests
+  as `__saTest.msPendingLengthLookups()` because none of this is visible in the
+  DOM.
+- **A partly-failed batched run is its own outcome (`'partial'`), not a
+  success and not an error.** Failed batches cache nothing, so the rows that
+  arrived are shown while the button keeps the yellow retry tint, and pressing
+  the toggle off and on again re-requests exactly the outstanding MBIDs. This
+  is why `needFetch` in `_msToggleLengthPrecision()` cannot simply be
+  `!_msAnyStamped()` — that would strand the gap permanently, since partial
+  data makes `_msAnyStamped()` true.
+- **The L2 cache is keyed per RECORDING, not per page** (`ms-rec-len` store,
+  `_msIdbGetLength`/`_msIdbPutLength`, gated by `sa_ms_idb_enable`/
+  `sa_ms_idb_ttl_days`). A recording seen on one pageType is free on every
+  other one that lists it. `null` is cached deliberately — "MusicBrainz has no
+  sub-second length for this recording" is a stable fact, and caching it is
+  what stops a page of length-less recordings re-requesting them every visit.
+- **`recording-releases` is deliberately excluded and must stay that way** —
+  its rows are RELEASES carrying no `/recording/` link at all, and its Length
+  is the per-release TRACK length, a different stored field from the
+  recording's own. Same correctness objection as `release-discids`'
+  TOC/sector-derived Length. Doing it properly needs a release-keyed source
+  (`/ws/2/release?recording=<mbid>&inc=media+recordings`). The reasoning is
+  repeated as a comment on the pageDefinition itself, because the pageType sits
+  among neighbours that all DO have a source.
 - **Only a SUCCESSFUL answer is cached in `_msWs2Cache`** — including a
   successful-but-empty one, which is a real, stable fact about the entity. A
   transport failure (any non-OK status or thrown error) is deliberately NOT
@@ -750,12 +820,16 @@ through to a tie-breaking column.
   turned a few seconds of upstream trouble into a permanently dead button
   *and* claimed "no sub-second length on record", which was simply untrue.
   `_msFetchWs2RecordingLengths()` therefore returns
-  `{outcome: 'ok'|'empty'|'error', map, detail}`, and the button has four
-  states: `loading` (⏳), `retry` (yellow, still clickable, names the error,
-  not cached), `unavailable` (dimmed + `aria-disabled`, the settled "no data"
-  answer, cached), and normal. Never collapse `retry` back into
-  `unavailable` — they are different facts and only one of them is worth a
-  second click.
+  `{outcome: 'ok'|'empty'|'error', map, detail}` (the batched sibling adds
+  `'partial'`), and the button has five states: `loading` (⏳, carrying
+  `"2/5"` batch progress when there is more than one), `retry` (yellow, still
+  clickable, names the error, not cached), `partial` (yellow, pressed, some
+  rows shown and the rest retryable), `unavailable` (dimmed +
+  `aria-disabled`, the settled "no data" answer, cached), and normal. Never
+  collapse `retry` back into `unavailable` — they are different facts and only
+  one of them is worth a second click. Per-batch 503s are retried three times
+  with a widening backoff before a batch is called failed, because MusicBrainz
+  fails in bursts (measured at roughly one request in three during this work).
 - MusicBrainz DOES populate the Length column natively on those pages
   (`scripts/probe-native-work-length.js` reads back `5:05`/`5:35`/`?:??`), and
   it rounds there too — so `data-mb-sec-text` round-tripping and the

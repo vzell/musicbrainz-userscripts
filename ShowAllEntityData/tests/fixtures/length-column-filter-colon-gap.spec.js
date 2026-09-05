@@ -32,9 +32,14 @@ test('typing "5:0" into the "Length" column filter matches "5:05.146" (not defea
     const before = await getPageRowCount(page);
     expect(before.filtered).toBe(5);
 
+    // Identified by `data-col-name`, not by stripping decorations out of the
+    // header text: this pageType's "Length" header also carries the ⏱
+    // millisecond toggle, and any future header decoration would break a
+    // text-matching helper the same way. `data-col-name` is what the script
+    // itself keys on (`_msLengthColumnIndex()`, `initCollapsableColumns()`).
     const colIdx = await page.evaluate((colName) => {
-        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
-        return Array.from(document.querySelectorAll('table.tbl thead th')).findIndex((t) => strip(t.textContent) === colName);
+        return Array.from(document.querySelectorAll('table.tbl thead th'))
+            .findIndex((t) => (t.dataset.colName || '') === colName);
     }, FILTER_COLUMN);
     expect(colIdx).toBeGreaterThanOrEqual(0);
 
