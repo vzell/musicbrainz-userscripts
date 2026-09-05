@@ -16019,6 +16019,103 @@
     }
 
     /**
+     * Formats a millisecond duration the way MusicBrainz itself displays it:
+     * rounded to the NEAREST second, never truncated.
+     *
+     * The rounding is not cosmetic. MusicBrainz shows `3:11.666` as `"3:12"`
+     * and `5:34.866` as `"5:35"` (both verified against live pages), so
+     * truncating would render a second that MusicBrainz never showed and would
+     * make a round trip through the ⏱ toggle visibly lossy.
+     *
+     * @param   {number} ms
+     * @returns {string} `M:SS`, or `H:MM:SS` past an hour.
+     */
+    function _msFormatSeconds(ms) {
+        const total   = Math.round(ms / 1000);
+        const hours   = Math.floor(total / 3600);
+        const minutes = Math.floor((total % 3600) / 60);
+        const seconds = total % 60;
+        return hours
+            ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+            : `${minutes}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    /**
+     * Writes duration text into a Length cell, preserving the three
+     * `.mb-ic-left`/`.mb-ic-sep`/`.mb-ic-right` split-alignment spans
+     * `applyIntegerColumnStyling()` builds when they are present.
+     *
+     * Rewriting the two halves in place rather than replacing the cell's
+     * content keeps the column's `:`-alignment intact without needing the whole
+     * cell rebuilt — which matters where there is no restyling pass afterwards
+     * to put it back (`_stripTransientCellState()` runs on captured/hydrated
+     * cells, long after any styling pass). The `textContent` fallback also
+     * clears `data-mb-int-col-styled`, so a cell that DOES get a later
+     * `applyIntegerColumnStyling()` pass is rebuilt rather than skipped as
+     * already-styled.
+     *
+     * @param   {HTMLTableCellElement} td
+     * @param   {string} text
+     * @returns {void}
+     */
+    function _msWriteDurationText(td, text) {
+        const left  = td.querySelector('.mb-ic-left');
+        const right = td.querySelector('.mb-ic-right');
+        if (left && right) {
+            const idx = text.lastIndexOf(':');
+            left.textContent  = idx !== -1 ? text.slice(0, idx) : '';
+            right.textContent = idx !== -1 ? text.slice(idx + 1) : text;
+            return;
+        }
+        td.textContent = text;
+        delete td.dataset.mbIntColStyled;
+    }
+
+    /**
+     * Shape of a Length cell rendered at millisecond precision, matched against
+     * the cell's ENTIRE trimmed text so ordinary prose that merely contains
+     * something duration-like (a comment quoting "1:23.456") can never match.
+     * The only column whose whole content is a bare duration is "Length".
+     * @type {RegExp}
+     */
+    const _MS_RENDERED_DURATION_RE = /^\d{1,3}:\d{2}(?::\d{2})?\.\d{1,3}$/;
+
+    /**
+     * Resets a Length cell that arrived already rendered at millisecond
+     * precision back to MusicBrainz's own seconds form.
+     *
+     * Millisecond display is transient DISPLAY state, and this is the hook that
+     * normalises such state on captured and hydrated cells — so a sub-table
+     * opened in its own tab, or a table loaded from disk, always starts from
+     * what MusicBrainz itself renders, exactly like a page that was never
+     * toggled.
+     *
+     * It has to work from the TEXT alone: `captureSubtableSnapshot()` stores
+     * `cell.innerHTML`, so the `<td>`'s own `data-mb-ms`/`data-mb-sec-text`
+     * attributes never survive the handoff — only the rendered `"11:17.000"`
+     * does. That asymmetry caused a genuinely confusing bug: the destination
+     * page re-stamped those cells, took the millisecond string it found as
+     * "the seconds MusicBrainz rendered", stashed it in `data-mb-sec-text`, and
+     * so restored milliseconds when the toggle was switched OFF — the glyph
+     * flipped while the column did not move. Recovering the seconds form here
+     * is exact, because the value is derivable from the milliseconds we can
+     * parse straight back out of the text.
+     *
+     * @param   {HTMLTableCellElement} el
+     * @returns {void}
+     */
+    function _msResetCarriedOverPrecision(el) {
+        const text = (el.textContent || '').trim();
+        if (!_MS_RENDERED_DURATION_RE.test(text)) return;
+        const ms = _parseDurationToMs(text);
+        if (ms === null) return;
+        _msWriteDurationText(el, _msFormatSeconds(ms));
+        delete el.dataset.mbMs;
+        delete el.dataset.mbSecText;
+        delete el.dataset.mbMsShown;
+    }
+
+    /**
      * Stamps each native Length `<td>` of a release tracklist with the data the
      * millisecond toggle needs, WITHOUT changing what the cell displays:
      *
@@ -16092,7 +16189,14 @@
                 }
 
                 lenTd.dataset.mbMs      = String(ms);
-                lenTd.dataset.mbSecText = secText;
+                // Never stash a millisecond-shaped string as the seconds baseline:
+                // if this cell already arrived at millisecond precision, derive the
+                // seconds form instead, or switching the toggle OFF would "restore"
+                // milliseconds. Belt-and-braces — _stripTransientCellState() already
+                // normalises carried-over cells — because being wrong here is silent.
+                lenTd.dataset.mbSecText = _MS_RENDERED_DURATION_RE.test(secText)
+                    ? _msFormatSeconds(ms)
+                    : secText;
                 stamped++;
             });
         });
@@ -16319,7 +16423,14 @@
                 return;
             }
             td.dataset.mbMs      = String(ms);
-            td.dataset.mbSecText = secText;
+            // Never stash a millisecond-shaped string as the seconds baseline:
+            // if this cell already arrived at millisecond precision, derive the
+            // seconds form instead, or switching the toggle OFF would "restore"
+            // milliseconds. Belt-and-braces — _stripTransientCellState() already
+            // normalises carried-over cells — because being wrong here is silent.
+            td.dataset.mbSecText = _MS_RENDERED_DURATION_RE.test(secText)
+                ? _msFormatSeconds(ms)
+                : secText;
             stamped++;
         });
         _msDbg(`_msStampSourceRowsFromMap: stamped ${stamped} cell(s), ${noData} without usable data, ` +
@@ -16356,10 +16467,9 @@
     function _msSetCellText(td, showMs) {
         const ms = parseInt(td.dataset.mbMs, 10);
         if (!Number.isFinite(ms)) return;
-        td.textContent = showMs
+        _msWriteDurationText(td, showMs
             ? _msFormatDuration(ms)
-            : (td.dataset.mbSecText || _msFormatDuration(ms, true));
-        delete td.dataset.mbIntColStyled;
+            : (td.dataset.mbSecText || _msFormatSeconds(ms)));
         if (showMs) td.dataset.mbMsShown = '1';
         else delete td.dataset.mbMsShown;
     }
@@ -56727,6 +56837,14 @@ a { color: #1565c0; }`;
         // these markers verbatim) are cleaned up at load time as well.
         _stripTransientCellState(clone);
 
+        // Millisecond Length precision is transient DISPLAY state: whatever was
+        // on screen when this cell was captured, what gets serialised is
+        // MusicBrainz's own seconds form. Deliberately NOT inside
+        // _stripTransientCellState(), which runFilter() also calls on the live
+        // re-render clones — resetting there would undo the toggle on every
+        // keystroke.
+        _msResetCarriedOverPrecision(clone);
+
         return clone.innerHTML;
     }
 
@@ -59820,6 +59938,9 @@ a { color: #1565c0; }`;
                             // with 9.99.157+ have already been cleaned, so this is
                             // a cheap no-op for them.
                             _stripTransientCellState(td);
+                            // Reset a cell that was captured mid-toggle, so a
+                            // hydrated table always starts in seconds.
+                            _msResetCarriedOverPrecision(td);
                             tr.appendChild(td);
                         });
 
@@ -59965,6 +60086,10 @@ a { color: #1565c0; }`;
                         const _beforeFp = Lib.settings.sa_enable_art_diagnostic_logging
                             ? _caaArtDebugFingerprint(cellData.html) : null;
                         _stripTransientCellState(td);
+                        // Reset a cell that was captured mid-toggle, so a
+                        // sub-table opened in its own tab always starts in
+                        // seconds — exactly like one reached by pagination.
+                        _msResetCarriedOverPrecision(td);
                         if (_beforeFp !== null) {
                             const _afterFp = _caaArtDebugFingerprint(td.innerHTML);
                             Lib.debug('cache',
@@ -69716,6 +69841,22 @@ a { color: #1565c0; }`;
              */
             sortColumnKind(name) {
                 return _sortColumnKind(name);
+            },
+
+            /**
+             * Thin wrapper around `_msResetCarriedOverPrecision()` — the reset
+             * that runs on captured (`getCleanCellHtml()`) and hydrated
+             * (`_hydrateAndRenderFromSnapshotData()`) cells so a table always
+             * starts from MusicBrainz's own seconds form. Exposed because
+             * driving the real capture-then-hydrate handoff from a test would
+             * mean seeding a captured snapshot payload into GM storage.
+             *
+             * @param {string} selector - CSS selector for the cell to reset.
+             * @returns {void}
+             */
+            resetCarriedOverPrecision(selector) {
+                const el = document.querySelector(selector);
+                if (el) _msResetCarriedOverPrecision(el);
             },
 
             /**

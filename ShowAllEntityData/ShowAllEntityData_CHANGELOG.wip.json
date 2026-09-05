@@ -1,5 +1,30 @@
 [
   {
+    "version": "WIP.9",
+    "date": "2026-09-05",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The ⏱ toggle could flip its glyph without the \"Length\" column moving at all. The cause was a poisoned baseline: both stampers read the cell's current text as the seconds to restore when the toggle goes off, and if that text was ALREADY at millisecond precision the stashed baseline was itself a millisecond string — so switching off dutifully restored milliseconds. Visible in the reported capture as `data-mb-sec-text=\"11:17.000\"`. They now refuse to record a millisecond-shaped string and derive the seconds form from the milliseconds instead, rounded the way MusicBrainz rounds (5:34.866 gives \"5:35\", never \"5:34\"). This holds however the millisecond text reached the cell.",
+          "Separately, and correct on its own terms though not what fixed the report: a \"Length\" cell that arrives already rendered at millisecond precision is now reset to MusicBrainz's seconds form, recovered exactly from the text. `captureSubtableSnapshot()` stores `cell.innerHTML`, so a cell's own `data-mb-*` attributes never cross the sub-table handoff — only the rendered text does — and the destination would otherwise re-stamp that text as if it were MusicBrainz's own seconds."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "A sub-table opened in its own tab via \"Show single-table\" now always starts with milliseconds hidden, whatever was showing on the page it was opened from. Precision is a per-page view setting rather than something that follows the data around — and it makes the behaviour uniform with a paginated sub-table, which is re-fetched from MusicBrainz and so always started in seconds."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "`CLAUDE.md` records that this reset belongs ONLY on the capture and hydration paths and must NOT be added to `_stripTransientCellState()`: that helper looks like the obvious home, but `runFilter()` also calls it on the live re-render clones, so putting it there silently undoes the toggle on every keystroke."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.8",
     "date": "2026-09-05",
     "sections": [

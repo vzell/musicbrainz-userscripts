@@ -685,7 +685,20 @@ through to a tie-breaking column.
   seconds MusicBrainz rendered.
 - `data-mb-sec-text` stores the original seconds string verbatim; toggling
   back restores it rather than recomputing (MusicBrainz rounds, so `3:11.666`
-  must return to `3:12`, not `3:11`).
+  must return to `3:12`, not `3:11`). Both stampers refuse to stash a
+  millisecond-shaped string there — if the cell already displays milliseconds
+  they derive the seconds form via `_msFormatSeconds()` instead, or switching
+  the toggle OFF would "restore" milliseconds.
+- **Millisecond display must be reset on CAPTURED and HYDRATED cells only.**
+  `captureSubtableSnapshot()` stores `cell.innerHTML`, so the `<td>`'s own
+  `data-mb-*` never survives the sub-table handoff — only the rendered
+  `"11:17.000"` text does — and the destination then re-stamped it as if it
+  were MusicBrainz's seconds. `_msResetCarriedOverPrecision()` recovers the
+  seconds form from the text and is called from `getCleanCellHtml()` (capture)
+  and both `_hydrateAndRenderFromSnapshotData()` cell loops. **Do NOT put it in
+  `_stripTransientCellState()`** — that helper looks like the natural home, but
+  `runFilter()` also calls it on the live re-render clones, so the reset would
+  undo the toggle on every keystroke (tried; it broke five tests).
 - State lives in the DOM (`data-mb-ms-shown`), not a module variable, so it
   survives `cloneNode(true)` re-renders for free — and travels with a
   sub-table opened in its own tab, whose rows are hydrated from a snapshot

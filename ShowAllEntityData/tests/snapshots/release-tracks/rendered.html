@@ -713,6 +713,20 @@
             background: rgba(0, 100, 255, 0.13);
             border-color: #9bb8e8;
         }
+        /* Transient failure (e.g. a 503 while MusicBrainz's Web Service is under
+           load): yellow warning tint, and the button stays fully clickable —
+           pressing it again retries. Distinct on purpose from the settled,
+           dimmed "MusicBrainz has no sub-second data here" state, which is a
+           fact about the data rather than about reachability. */
+        .mb-ms-col-hdr-btn[data-mb-ms-retry="1"] {
+            opacity: 1;
+            background: rgba(255, 193, 7, 0.45);
+            border-color: #d6a100;
+        }
+        .mb-ms-col-hdr-btn[data-mb-ms-retry="1"]:hover {
+            background: rgba(255, 193, 7, 0.65);
+            border-color: #b98900;
+        }
 
         #mb-col-uniq-dropdown {
             position: fixed;

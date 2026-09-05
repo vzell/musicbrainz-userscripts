@@ -262,6 +262,93 @@ test.describe('work-recordings: millisecond Length precision via the Web Service
         expect(ws2).toBe(0);
     });
 
+    test('a cell already displaying milliseconds still records a genuine SECONDS baseline', async ({ page }) => {
+        // The real sub-table handoff, exactly: captureSubtableSnapshot() stores
+        // `cell.innerHTML`, so the <td>'s own data-mb-* attributes never travel
+        // — only the rendered "11:17.000" text does. The destination page then
+        // re-stamped those cells, took that millisecond string to BE "the
+        // seconds MusicBrainz rendered", stashed it in data-mb-sec-text, and so
+        // restored milliseconds when the toggle was switched off: the glyph
+        // flipped while the column did not move. Captured live in
+        // debug/shooting-location-bug.html, whose one cell reads
+        // data-mb-sec-text="11:17.000".
+        //
+        // Note this fixture carries the millisecond TEXT and NO attributes,
+        // which is what actually crosses the handoff.
+        const raw = require('fs').readFileSync(FIXTURE_FILE, 'utf8');
+        const carried = raw
+            .split('<td>5:05</td>').join('<td>5:05.146</td>')
+            .split('<td>5:35</td>').join('<td>5:34.866</td>')
+            .split('<td>4:24</td>').join('<td>4:24.000</td>');
+        expect(carried).not.toBe(raw);
+
+        let ws2 = 0;
+        await page.route('**/ws/2/work/**', (route) => {
+            ws2 += 1;
+            route.fulfill({ status: 200, contentType: 'application/json', body: WS2_BODY });
+        });
+        const url = `${WORK_URL}?link_type_id=278`;
+        await page.route(`${url}**`, (route) => route.fulfill({ body: carried, contentType: 'text/html' }));
+        await loadUserscriptPage(page, { url, testMode: true });
+        await page.click('button[data-label="Show all Recordings for Work (complete)"]');
+        await page.waitForSelector('#mb-filter-container');
+
+        // Nothing has reset these cells (this fixture arrives as a NATIVE page,
+        // not through the snapshot handoff), so they still show milliseconds.
+        expect((await lengthValues(page))[2]).toBe('5:34.866');
+
+        // Toggle on, then off. The bug was that stamping took the millisecond
+        // string on screen to BE "the seconds MusicBrainz rendered" and stashed
+        // it in data-mb-sec-text, so switching off restored milliseconds and
+        // the column never moved. It must land on genuine seconds — and on
+        // MusicBrainz's ROUNDED "5:35", not a truncated "5:34".
+        await toggle(page).click();
+        await expect(toggle(page)).toHaveAttribute('aria-pressed', 'true');
+        expect(ws2).toBe(1);
+
+        await toggle(page).click();
+        await expect(toggle(page)).toHaveAttribute('aria-pressed', 'false');
+        expect(await lengthValues(page)).toEqual(SECONDS);
+    });
+
+    test('_msResetCarriedOverPrecision recovers MusicBrainz\'s seconds from millisecond text', async ({ page }) => {
+        // The reset that runs on captured (getCleanCellHtml) and hydrated
+        // (_hydrateAndRenderFromSnapshotData) cells, so a sub-table opened in
+        // its own tab always starts in seconds — like one reached by
+        // pagination. Unit-tested directly: driving the real handoff would need
+        // a captured snapshot payload seeded into GM storage.
+        await setup(page);   // loads the userscript in test mode (window.__saTest)
+        const out = await page.evaluate(() => {
+            const host = document.createElement('div');
+            host.id = 'ms-reset-unit';
+            host.innerHTML = '<table><tbody><tr>'
+                + '<td id="r1" data-mb-ms="677000" data-mb-sec-text="11:17.000" data-mb-ms-shown="1">11:17.000</td>'
+                + '<td id="r2">5:34.866</td>'
+                + '<td id="r3">4:24.000</td>'
+                + '<td id="r4">3:12</td>'
+                + '<td id="r5">a comment mentioning 1:23.456 in passing</td>'
+                + '</tr></tbody></table>';
+            document.body.appendChild(host);
+            const read = (id) => {
+                const td = document.getElementById(id);
+                window.__saTest.resetCarriedOverPrecision('#' + id);
+                return { text: td.textContent.trim(), ms: td.dataset.mbMs ?? null, shown: td.dataset.mbMsShown ?? null };
+            };
+            return { r1: read('r1'), r2: read('r2'), r3: read('r3'), r4: read('r4'), r5: read('r5') };
+        });
+
+        // The exact cell from debug/shooting-location-bug.html, whose poisoned
+        // data-mb-sec-text="11:17.000" was the smoking gun.
+        expect(out.r1).toEqual({ text: '11:17', ms: null, shown: null });
+        // Rounded, not truncated: 5:34.866 is displayed by MusicBrainz as 5:35.
+        expect(out.r2.text).toBe('5:35');
+        expect(out.r3.text).toBe('4:24');
+        // Already seconds, and ordinary prose that merely contains something
+        // duration-like: both untouched.
+        expect(out.r4.text).toBe('3:12');
+        expect(out.r5.text).toBe('a comment mentioning 1:23.456 in passing');
+    });
+
     test('a transient failure stays RETRYABLE — yellow, clickable, and not cached', async ({ page }) => {
         // Reported live: a single "HTTP 503" (MusicBrainz's Web Service is
         // intermittently flaky under bot load) was followed by nothing but

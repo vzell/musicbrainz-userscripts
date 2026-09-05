@@ -757,6 +757,13 @@ Clicking it re-renders the whole column at full precision ("4:50.160");
 clicking again restores exactly what MusicBrainz had rendered.  The toggle
 is page-wide, so on a multi-medium release every medium switches together
 rather than leaving one disc reading seconds and another milliseconds.
+
+Every table starts in seconds, including a sub-table opened in its own tab
+via "Show all N rows" — even when milliseconds were showing on the page you
+opened it from.  Precision is a per-page view setting, not something that
+follows the data around, so a tab always starts from what MusicBrainz itself
+renders and it is always the same whether that sub-table was small enough to
+hand over directly or had to be re-fetched page by page.
 Sorting, filtering, highlighting and the 📊 unique-values dropdown always
 follow whatever the column is currently showing, so with precision on you
 can filter for ".666" or spot two tracks that differ only below the second.
