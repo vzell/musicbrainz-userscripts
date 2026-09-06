@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Test Artist - Recordings - MusicBrainz</title>
+</head>
+<body>
+    <div id="content">
+        <div class="artistheader">
+            <h1><bdi>Test Artist</bdi></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350/recordings">Recordings</a></li></ul>
+        </div>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Length</th>
+                    <th>Artist</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/ac413c4f-f270-4c32-8adc-a17e3bd7b60f"><bdi>Test Recording</bdi></a></td>
+                    <td>3:45</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                </tr>
+            </tbody>
+        </table>
+        <ul class="pagination"></ul>
+
+        <!-- Hidden, isolated CAA art cells for
+             tests/fixtures/caa-icon-preserve.spec.js — deliberately NOT part
+             of the rendered table above.
+
+             The page shape itself is artist-recordings (same as
+             artist-recordings.html) purely so pageType detection resolves and
+             the userscript initialises far enough to define window.__saTest.
+             The cells below are driven directly through
+             __saTest.stripTransientCellState(), so the host pageType is
+             irrelevant to what is being asserted.
+
+             Each cell mirrors the real shape _artLoadIcon()/_artEnrichIcon()
+             produce: an art anchor carrying data-caa-enriched, wrapping a
+             span.caa-icon whose thumbnail is painted as a CSS
+             background-image. The background-image itself is assigned by the
+             spec at runtime, because a live blob: URL can only be minted
+             inside the page session (see __saTest.artMintBlobUrl()). -->
+        <table style="display:none">
+            <tbody>
+                <tr>
+                    <td id="art-cell-live">
+                        <a href="/release/1d404e1d-fcb6-3a52-b478-e706e893c897/cover-art" data-caa-enriched="1"><span class="caa-icon"></span></a>
+                    </td>
+                    <td id="art-cell-default">
+                        <a href="/release/2d404e1d-fcb6-3a52-b478-e706e893c897/cover-art" data-caa-enriched="1"><span class="caa-icon"></span></a>
+                    </td>
+                    <td id="art-cell-dead">
+                        <a href="/release/3d404e1d-fcb6-3a52-b478-e706e893c897/cover-art" data-caa-enriched="1"><span class="caa-icon"></span></a>
+                    </td>
+                    <td id="art-cell-http">
+                        <a href="/release/4d404e1d-fcb6-3a52-b478-e706e893c897/cover-art" data-caa-enriched="1"><span class="caa-icon"></span></a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

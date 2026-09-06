@@ -42155,7 +42155,20 @@ a { color: #1565c0; }`;
                 // subsequent runFilter calls (user typing) are still served from the IDB/memory
                 // cache without redundant network calls — exactly the same approach used in the
                 // multi-table path's groupedRows.forEach clone loop.
-                Array.from(clone.cells).forEach(td => _stripTransientCellState(td));
+                //
+                // preserveLiveArt: this clone is going straight back into the
+                // SAME document that owns the icon thumbnails' object URLs, so
+                // an icon already painted from a live blob keeps it instead of
+                // being blanked and immediately repainted with the identical
+                // URL from the Tier-1 memory cache. That repaint is what made
+                // the whole icon column flash empty on every keystroke and
+                // every sort. Only the single-table path opts in: on
+                // tableMode:'multi' the source rows are permanently separate
+                // elements that never carry any artwork to preserve (see
+                // _artSyncSearchTextToSourceRow()'s JSDoc), and the three
+                // serialising call sites must never opt in at all (see
+                // _stripTransientCellState()'s own JSDoc).
+                Array.from(clone.cells).forEach(td => _stripTransientCellState(td, { preserveLiveArt: true }));
                 // Restore art-cell expand state from the authoritative expandedCells
                 // map.  allRows are detached source rows that never carry live expand
                 // state, so expandedCells is the only way to replay the user's
@@ -68435,6 +68448,17 @@ a { color: #1565c0; }`;
     function _artInitSmallPics(ctx, table, cacheBust = false) {
         if (!Lib.settings.sa_caa_pics_small) return;
 
+        // DO NOT add an idempotency guard here that skips icons which already
+        // carry a background-image. It looks like free work-avoidance now that
+        // _stripTransientCellState(…, {preserveLiveArt:true}) leaves those
+        // backgrounds in place, but _artLoadIcon() does more than paint: its
+        // completion path also (re-)attaches this icon's hover-preview
+        // listeners, which cloneNode(true) drops on every re-render. Skipping
+        // an already-painted icon would leave it looking perfectly correct
+        // while its hover preview silently stopped working — the exact failure
+        // mode the runFilter() strip comments describe. Re-enqueuing every icon
+        // is what keeps that wiring alive; the repaint itself is a Tier-1
+        // memory-cache hit.
         const icons = table.querySelectorAll(ctx.iconSel);
 
         icons.forEach(icon => {
@@ -72466,6 +72490,63 @@ a { color: #1565c0; }`;
              */
             msPendingLengthLookups() {
                 return _msCollectRecordingMbids().length;
+            },
+
+            /**
+             * Mints a real object URL and registers it in `_artIdbBlobUrls`,
+             * exactly as `_artFetchCachedImage()` does on a Tier-2/Tier-3
+             * resolve, and returns the URL string.
+             *
+             * Exposed because "is this blob still live" is not answerable from
+             * the DOM: `_artIdbBlobUrls` is the sole authority distinguishing a
+             * URL this session still owns from a blob-shaped string left over
+             * in a serialised style, and a test for
+             * `_stripTransientCellState()`'s `preserveLiveArt` contract has to
+             * be able to construct both cases. Minting through the real
+             * `URL.createObjectURL` (rather than faking a `blob:…` string) is
+             * the point — a fabricated string would pass a prefix test but
+             * must NOT pass the liveness test.
+             *
+             * @param {boolean} [register=true] - When false, the URL is created
+             *   but deliberately NOT registered, producing the "dead blob"
+             *   case (a previous session's URL, or one already revoked).
+             * @returns {string} The object URL.
+             */
+            artMintBlobUrl(register = true) {
+                const url = URL.createObjectURL(new Blob([new Uint8Array([0])], { type: 'image/png' }));
+                if (register) _artIdbBlobUrls.add(url);
+                return url;
+            },
+
+            /**
+             * Runs the real `_stripTransientCellState()` over a live cell and
+             * reports back the artwork-related state a caller cares about.
+             *
+             * Exposed because this helper is pure side effect on a detached
+             * clone — `runFilter()` calls it between `cloneNode(true)` and
+             * insertion, so the intermediate state a test needs to assert on
+             * is never in the document. Driving the real function (rather than
+             * re-deriving its rules) is what makes this a regression test
+             * rather than a restatement.
+             *
+             * @param {string}  selector - CSS selector for the target cell.
+             * @param {Object}  [opts]   - Forwarded verbatim to
+             *   `_stripTransientCellState()` (e.g. `{preserveLiveArt: true}`).
+             * @returns {?{backgroundImage: string, backgroundSize: string,
+             *   inlinePlaceholders: number, caaEnriched: boolean}} `null` when
+             *   `selector` matches nothing.
+             */
+            stripTransientCellState(selector, opts) {
+                const cell = document.querySelector(selector);
+                if (!cell) return null;
+                _stripTransientCellState(cell, opts);
+                const icon = cell.querySelector('span.caa-icon, span.eaa-icon, span.artwork-icon');
+                return {
+                    backgroundImage:    icon ? icon.style.backgroundImage : '',
+                    backgroundSize:     icon ? icon.style.backgroundSize  : '',
+                    inlinePlaceholders: cell.querySelectorAll('.mb-caa-inline-ph, .mb-eaa-inline-ph').length,
+                    caaEnriched:        !!cell.querySelector('a[data-caa-enriched]'),
+                };
             },
 
             /**

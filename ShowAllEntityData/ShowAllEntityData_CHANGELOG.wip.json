@@ -1,0 +1,23 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The CAA/EAA icon column no longer flashes empty on every sort and every filter keystroke on `tableMode: 'single'` pages. Sorting a column is not a DOM reorder — it re-enters `runFilter()`, which re-clones every row and ran `_stripTransientCellState()` over each one, and that helper unconditionally removed the `background-image` from every artwork icon. The icon was then immediately repainted with the *identical* object URL, served from the session's Tier-1 in-memory cache — no network request, no new blob, nothing actually re-fetched. The whole column simply blanked and refilled, once per keystroke, which is what made sorting look like it was re-downloading every image. A live icon background is now left alone instead: `_stripTransientCellState()` takes a new opt-in `preserveLiveArt` option, and only `runFilter()`'s single-table branch passes it.",
+          "The check is deliberately narrow. A background is preserved only when it is a `blob:` URL still tracked in `_artIdbBlobUrls` (new `_artIconBackgroundIsLiveBlob()`), which is the `background-image` twin of the `blobIsAlive` test `_artInitInlinePics()`'s Case C1 already applies to an inline placeholder's `<img>.src`. A blob-*shaped* string is not enough — after a `pagehide`, or on a row hydrated from a disk snapshot, the URL survives in the serialised style while the object behind it is gone, so a prefix test alone would have \"preserved\" broken images. Anything else (dead blob, plain http(s) URL, no background) is still cleared and re-fetched exactly as before.",
+          "`preserveLiveArt` defaults to false, and that default is load-bearing rather than cautious: `_stripTransientCellState()` has five call sites and three of them serialise the cell — `getCleanCellHtml()` (Save-to-Disk and the sub-table snapshot), `loadTableDataFromDisk()` and `_hydrateAndRenderFromSnapshotData()`. Every object URL is alive by definition in the tab that created it, so an unconditional liveness check would have written `url(blob:…)` into saved files, where it is guaranteed dead on load, and persisted the `.mb-art-cache-hint-*` indicators so a restored file misreported which cache tier its images came from. Only a caller re-rendering into the same live document may opt in."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Added a standing warning to `_artInitSmallPics()` against adding an idempotency guard that skips icons which already carry a background-image. It now looks like free work-avoidance, but `_artLoadIcon()`'s completion path (`_onIconLoaded`) both paints the background and re-attaches the icon's hover-preview listeners, which `cloneNode(true)` drops on every re-render — so skipping a painted icon would leave it looking correct while its hover preview silently stopped working.",
+          "Two additions to the test-mode-only `__saTest` surface (`window.__SA_TEST_MODE__` gated; no UI, no user-visible behavior outside the Playwright harness): `artMintBlobUrl(register)` mints and optionally registers a real object URL the way `_artFetchCachedImage()` does, and `stripTransientCellState(selector, opts)` drives the real helper over a live cell and reports the artwork state back. Both exist because the interesting states here are unobservable from the DOM — the strip runs on a DETACHED clone between `cloneNode(true)` and insertion, and \"is this blob still live\" is answerable only from `_artIdbBlobUrls`."
+        ]
+      }
+    ]
+  }
+]
