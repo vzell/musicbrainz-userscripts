@@ -829,18 +829,22 @@
         },
 
         sa_enable_pending_edits_section: {
-            label: 'Enable "Pending edits" dropdown sections',
+            label: 'Enable "Pending edits" Filtering',
             type: 'checkbox',
             default: true,
-            description: 'Adds two sections to EVERY column\'s unique-values (📊) dropdown, ' +
-                         'on every page type: "Pending edits - Presence" ("⏳ has pending ' +
-                         'edits" / "○ no pending edits") and "Pending edits - Entity" (one ' +
-                         '"» pending edit:" entry per distinct entity in that column that ' +
-                         'currently has open edits). Both read MusicBrainz\'s OWN native ' +
-                         '<span class="mp"> marker — the orange highlight it puts on an ' +
-                         'entity whose /open_edits list is non-empty — so no extra request ' +
-                         'is made. Both sections stay hidden entirely on any column where ' +
-                         'nothing is pending, which is the overwhelming majority.'
+            description: 'Surfaces entities that currently have OPEN EDITS on musicbrainz.org, ' +
+                         'in two places. (1) A ⏳ toggle in the filter bar showing only rows ' +
+                         'that credit such an entity — on multi-table pages every sub-section ' +
+                         'gets its own toggle plus one page-wide toggle that drives them all ' +
+                         'and reports "all"/"some"/"none". (2) Two sections in EVERY column\'s ' +
+                         'unique-values (📊) dropdown, on every page type: "Pending edits - ' +
+                         'Presence" ("⏳ has pending edits" / "○ no pending edits") and ' +
+                         '"Pending edits - Entity" (one "» pending edit:" entry per distinct ' +
+                         'entity in that column that has open edits). All of it reads ' +
+                         'MusicBrainz\'s OWN native <span class="mp"> marker — the orange ' +
+                         'highlight it puts on an entity whose /open_edits list is non-empty — ' +
+                         'so no extra request is made. Everything stays hidden entirely ' +
+                         'wherever nothing is pending, which is the overwhelming majority.'
         },
 
         sa_uniq_dropdown_visible_rows: {
@@ -21222,6 +21226,28 @@
     }
 
     /**
+     * Row-level counterpart of `_findCellPendingEdits()` — the single source of
+     * truth for "does ANY cell in this row credit an entity with open edits",
+     * which is the question the ⏳ filter-bar toggles ask (see
+     * `_applyPendingEditsFilter()`). The per-cell function answers a different,
+     * narrower question (which entities, by name, in ONE column) and feeds the
+     * 📊 dropdown's per-column sections instead.
+     *
+     * Deliberately a direct `querySelector` rather than a loop over
+     * `_findCellPendingEdits()` per cell: this runs once per row inside
+     * `testRowMatch()`, on every keystroke of every filter pass, and needs only
+     * a boolean — resolving every entity's display name here would do real
+     * work (a `getCleanColumnText()` clone-and-strip per marker) and throw all
+     * of it away. Scoped to `td` so a `span.mp` in a header can never match.
+     *
+     * @param {?HTMLTableRowElement} row
+     * @returns {boolean}
+     */
+    function _rowHasPendingEdits(row) {
+        return !!row && !!row.querySelector('td span.mp');
+    }
+
+    /**
      * Tests whether a table cell matches a "Cell structure" checkbox mode
      * from `openUniqDrop()`'s synthetic entries (`makeSynItem`/
      * `makeValueSynItem`/`makeInlineArtItem`) — the single source of truth
@@ -24519,6 +24545,14 @@ ${sections.join('\n')}
         // The length-mismatch summary filter is structural, not a query, so
         // clearing the inputs above would otherwise leave it silently engaged.
         _lenMismatchFilterKind = null;
+
+        // Same for the ⏳ pending-edits toggles. On multi-table pages the state
+        // lives on each sub-table's own button, so every one of them has to be
+        // released — clearing only the module flag would leave the sub-sections
+        // filtered with nothing left in the UI explaining why.
+        _pendingEditsFilterActive = false;
+        document.querySelectorAll('.mb-subtable-pending-edits-btn')
+            .forEach(btn => { btn.dataset.mbPendingActive = '0'; });
 
         // Re-run filter to update display
         if (typeof runFilter === 'function') {
@@ -31843,6 +31877,22 @@ a { color: #1565c0; }`;
     // others. `#mb-status-display` appends itself last, as it always did.
     filterContainer.appendChild(summaryGroup);
     filterContainer.appendChild(filterGroup);
+
+    // ⏳ "pending edits" page-global toggle — deliberately a direct child of
+    // the bar, in its own slot between the filter widget and the action
+    // buttons, rather than inside either group: it belongs to neither (it is
+    // not part of the filter widget, and it filters rather than acting on an
+    // existing filter). Created here so its position is fixed by append order;
+    // everything about its label, tri-state and visibility is owned by
+    // _updatePendingEditsButtons(), including staying hidden when the page has
+    // no pending edits at all.
+    const pendingEditsBtn = document.createElement('button');
+    pendingEditsBtn.id = 'mb-pending-edits-btn';
+    pendingEditsBtn.type = 'button';
+    pendingEditsBtn.style.cssText = `${uiFilterBarBtnCSS()} display:none; color:#8a6d00; border-color:#e0c14a;`;
+    pendingEditsBtn.addEventListener('click', () => _applyPendingEditsFilter());
+    filterContainer.appendChild(pendingEditsBtn);
+
     filterContainer.appendChild(actionsGroup);
 
     const filterWrapper = document.createElement('span');
@@ -32459,6 +32509,293 @@ a { color: #1565c0; }`;
         runFilter();
     }
 
+    // ── ⏳ "pending edits" pre-filter ─────────────────────────────────────────
+    // Shows only rows crediting an entity that currently has open edits on
+    // musicbrainz.org (MusicBrainz's own `<span class="mp">` marker — see
+    // `_rowHasPendingEdits()`).
+    //
+    // Structural, like the length-mismatch buttons and unlike the live-date
+    // ones: `.mp` is a CSS-only orange highlight carrying NO text of its own,
+    // so there is nothing to type into the global filter. `testRowMatch()`
+    // consults a predicate instead.
+    //
+    // What is new here, and has no precedent in this file, is that the filter
+    // is SCOPED PER SUB-TABLE on multi-table pages while also having one
+    // page-global toggle. Length-mismatch runs on a multi-table page type
+    // (release-tracks) but is strictly page-wide: one module scalar that
+    // `testRowMatch()` reads directly, with no notion of which table a row
+    // belongs to. Two consequences shape everything below:
+    //
+    //   - Per-sub-table state lives in the DOM, on the button itself
+    //     (`data-mb-pending-active`), NOT in a module Map. The `<h3>` survives
+    //     every re-render (`renderGroupedTable()`'s reuse branch never touches
+    //     it — `runFilter()` always passes a truthy query), so the button and
+    //     its state survive with it, for free and with no re-wire hook. This
+    //     is the same reason the sub-table filter can stash
+    //     `container._mbApplySubFilter`, and the same reason the ⏱ length
+    //     toggle keeps `data-mb-ms-shown` in the DOM.
+    //   - `testRowMatch()` must read the flag off `ctx`, never off a module
+    //     variable, because its value differs per group. `runFilter()` already
+    //     rebuilds `matchCtx` per group (that is how `colFilters` are scoped);
+    //     resolving the flag there once per group keeps this O(1) per row
+    //     instead of walking up to the row's `<h3>`.
+    //
+    // The class-only button (no id) is deliberate: merged discography view
+    // renders duplicate category names, and the `mb-stf-${safeId}-…` id scheme
+    // produces genuine duplicate ids there. Every lookup here is `<h3>`-scoped,
+    // so an id would buy nothing and break in exactly that case.
+
+    /**
+     * Whether the page-global ⏳ toggle is engaged, on SINGLE-table page types.
+     *
+     * Multi-table pages deliberately do not use this — there the state is
+     * per-sub-table (on each button's own `data-mb-pending-active`) and the
+     * global button's appearance is DERIVED from those, so a second copy of
+     * the truth here could only drift out of sync with them.
+     *
+     * @type {boolean}
+     */
+    let _pendingEditsFilterActive = false;
+
+    /** @returns {boolean} true on multi-table page types. */
+    function _pendingEditsIsMultiTable() {
+        return !!(activeDefinition && activeDefinition.tableMode === 'multi');
+    }
+
+    /**
+     * Resolves each rendered sub-table together with its `<h3>` and its own
+     * count of rows carrying a pending-edits marker.
+     *
+     * Counts SOURCE rows (`groupedRows[i].rows`), never the live `<tbody>`:
+     * `runFilter()` REMOVES non-matching rows from a multi-table tbody rather
+     * than hiding them, so a live-DOM tally would report only what the current
+     * filter happened to leave behind — filtering to pending edits would make
+     * the very counts that describe the filter shrink to match it. This is the
+     * same trap `_countLengthMismatchRows()` documents, and the reason it reads
+     * `_msSourceRows()`; that helper flattens every group into one array and so
+     * cannot answer a per-group question, which is why this walks `groupedRows`
+     * itself.
+     *
+     * Table↔group binding is by INDEX, exactly as `runFilter()`'s own
+     * multi-table loop does it (`tables[groupIdx]`), over the same
+     * `.mb-col-filter-row`-bearing table set — so a group and its table can
+     * never disagree about which rows belong to which.
+     *
+     * @returns {Array<{table: HTMLTableElement, h3: ?HTMLElement, count: number}>}
+     */
+    function _pendingEditsGroups() {
+        if (typeof groupedRows === 'undefined' || !Array.isArray(groupedRows)) return [];
+        const tables = Array.from(document.querySelectorAll('table.tbl'))
+            .filter(t => t.querySelector('.mb-col-filter-row'));
+        return groupedRows.map((group, i) => ({
+            table: tables[i] || null,
+            h3: tables[i] ? findH3ForTable(tables[i]) : null,
+            count: (group.rows || []).reduce((n, r) => n + (_rowHasPendingEdits(r) ? 1 : 0), 0),
+        })).filter(g => g.table);
+    }
+
+    /**
+     * Total rows carrying a pending-edits marker on a SINGLE-table page.
+     * Reads `allRows` for the same source-not-DOM reason as
+     * `_pendingEditsGroups()`.
+     *
+     * @returns {number}
+     */
+    function _countPendingEditRowsSingle() {
+        if (typeof allRows === 'undefined' || !Array.isArray(allRows)) return 0;
+        return allRows.reduce((n, r) => n + (_rowHasPendingEdits(r) ? 1 : 0), 0);
+    }
+
+    /**
+     * Whether one sub-table's own ⏳ toggle is engaged.
+     * @param {?HTMLElement} h3
+     * @returns {boolean}
+     */
+    function _pendingEditsScopeActive(h3) {
+        const btn = h3 ? h3.querySelector('.mb-subtable-pending-edits-btn') : null;
+        return !!btn && btn.dataset.mbPendingActive === '1';
+    }
+
+    /**
+     * The page-global toggle's tri-state, derived from the per-sub-table
+     * buttons (multi) or the module flag (single).
+     *
+     * `'partial'` exists because a binary button cannot distinguish "no
+     * sub-section filtered" from "some filtered" — the two look identical while
+     * the table is visibly narrowed, which is the same dead end
+     * `updateFilterButtonsVisibility()` already guards against for the
+     * length-mismatch filter.
+     *
+     * @param {Array<{h3: ?HTMLElement, count: number}>} groups
+     * @returns {'off'|'partial'|'all'}
+     */
+    function _pendingEditsGlobalState(groups) {
+        if (!_pendingEditsIsMultiTable()) return _pendingEditsFilterActive ? 'all' : 'off';
+        const eligible = groups.filter(g => g.count > 0);
+        if (eligible.length === 0) return 'off';
+        const on = eligible.filter(g => _pendingEditsScopeActive(g.h3)).length;
+        if (on === 0) return 'off';
+        return on === eligible.length ? 'all' : 'partial';
+    }
+
+    /**
+     * True when ANY pending-edits filtering is engaged anywhere on the page —
+     * the "is this an active filter" question `updateFilterButtonsVisibility()`
+     * and `clearAllFilters()` both need.
+     *
+     * @returns {boolean}
+     */
+    function _pendingEditsAnyActive() {
+        return _pendingEditsIsMultiTable()
+            ? _pendingEditsGroups().some(g => _pendingEditsScopeActive(g.h3))
+            : _pendingEditsFilterActive;
+    }
+
+    /**
+     * Toggles one sub-table's own ⏳ filter.
+     * @param {HTMLElement} h3
+     * @returns {void}
+     */
+    function _applyPendingEditsFilterForScope(h3) {
+        const btn = h3 && h3.querySelector('.mb-subtable-pending-edits-btn');
+        if (!btn) return;
+        const now = btn.dataset.mbPendingActive === '1' ? '0' : '1';
+        btn.dataset.mbPendingActive = now;
+        Lib.debug('filter', `_applyPendingEditsFilterForScope(): sub-table now ${now === '1' ? 'on' : 'off'}`);
+        runFilter();
+    }
+
+    /**
+     * Toggles the page-global ⏳ filter.
+     *
+     * Broadcast semantics: from `off` OR `partial` it turns every eligible
+     * sub-section ON; only from `all` does it turn everything off. Pressing it
+     * while partial therefore completes the set rather than clearing it, which
+     * is the reading that makes a partial state recoverable in one click — the
+     * alternative (partial → off) would silently discard the sub-sections the
+     * user had already chosen.
+     *
+     * @returns {void}
+     */
+    function _applyPendingEditsFilter() {
+        if (!_pendingEditsIsMultiTable()) {
+            _pendingEditsFilterActive = !_pendingEditsFilterActive;
+            Lib.debug('filter', `_applyPendingEditsFilter(): now ${_pendingEditsFilterActive ? 'on' : 'off'}`);
+            runFilter();
+            return;
+        }
+        const groups = _pendingEditsGroups();
+        const turnOn = _pendingEditsGlobalState(groups) !== 'all';
+        groups.forEach(g => {
+            if (g.count === 0 || !g.h3) return;
+            const btn = g.h3.querySelector('.mb-subtable-pending-edits-btn');
+            if (btn) btn.dataset.mbPendingActive = turnOn ? '1' : '0';
+        });
+        Lib.debug('filter', `_applyPendingEditsFilter(): broadcast ${turnOn ? 'on' : 'off'} to `
+                          + `${groups.filter(g => g.count > 0).length} eligible sub-table(s)`);
+        runFilter();
+    }
+
+    /**
+     * Creates (once) and repaints the global and per-sub-table ⏳ toggles.
+     *
+     * Called only from `updateFilterButtonsVisibility()`, alongside
+     * `_updateLiveDateFlagButtons()`/`_updateLengthMismatchButtons()`, so it
+     * inherits every render- and filter-completion hook those already have —
+     * deliberately no call sites of its own, which is what keeps the three
+     * summary-button families impossible to get out of step with each other.
+     *
+     * Self-scoping: a button is hidden outright wherever its scope has no
+     * pending rows, so nothing appears on the overwhelming majority of pages
+     * and no page-type check is needed — the same idiom as the live-date and
+     * length-mismatch buttons.
+     *
+     * @returns {void}
+     */
+    function _updatePendingEditsButtons() {
+        const globalBtn = document.getElementById('mb-pending-edits-btn');
+        if (!globalBtn) return;
+        if (!Lib.settings.sa_enable_pending_edits_section) {
+            globalBtn.style.display = 'none';
+            return;
+        }
+
+        const isMulti = _pendingEditsIsMultiTable();
+        const groups = isMulti ? _pendingEditsGroups() : [];
+        const total = isMulti
+            ? groups.reduce((n, g) => n + g.count, 0)
+            : _countPendingEditRowsSingle();
+
+        // ── Per-sub-table buttons ────────────────────────────────────────────
+        groups.forEach(g => {
+            if (!g.h3) return;
+            let btn = g.h3.querySelector('.mb-subtable-pending-edits-btn');
+            if (g.count === 0) { if (btn) btn.style.display = 'none'; return; }
+            if (!btn) {
+                btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'mb-subtable-pending-edits-btn';
+                btn.dataset.mbPendingActive = '0';
+                btn.addEventListener('click', (ev) => {
+                    // The <h3> click handler collapses the section; this button
+                    // sits inside it, so the event must not reach it.
+                    ev.stopPropagation();
+                    ev.preventDefault();
+                    _applyPendingEditsFilterForScope(g.h3);
+                });
+                // Slot 8 of the <h3>: after the filter panel, before the
+                // collapse button and the controls bar — the same anchor (and
+                // the same fallback) the "Show all N rows" button already uses.
+                // `.after()` explicitly rather than appendChild: unlike that
+                // button, this one is created long after `.mb-subtable-controls`
+                // exists, so appending would land it last.
+                const anchor = g.h3.querySelector('.mb-subtable-filter-container') ||
+                               g.h3.querySelector('.mb-subtable-filter-toggle-icon');
+                if (anchor) anchor.after(btn); else g.h3.appendChild(btn);
+            }
+            const active = btn.dataset.mbPendingActive === '1';
+            const name = (g.h3.querySelector('.mb-subtable-filter-container') || {}).dataset?.categoryName || '';
+            btn.textContent = `(${g.count}) ⏳`;
+            btn.title = `${g.count} row${g.count === 1 ? '' : 's'} with pending edits`
+                      + `${name ? ` in "${name}"` : ' in this sub-section'}`
+                      + `. Click to show only ${g.count === 1 ? 'that row' : 'those rows'}`
+                      + `${active ? ' — click again to show all rows.' : '.'}`;
+            btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+            btn.style.cssText = `${uiFilterBarBtnCSS()} margin-left:6px; color:#8a6d00; border-color:#e0c14a;`
+                              + (active ? ' font-weight:bold; background:#fff3cd;' : '');
+            btn.style.display = 'inline-block';
+        });
+
+        // ── Global button ────────────────────────────────────────────────────
+        if (total === 0) { globalBtn.style.display = 'none'; return; }
+        const state = _pendingEditsGlobalState(groups);
+        const eligible = groups.filter(g => g.count > 0).length;
+        const on = groups.filter(g => g.count > 0 && _pendingEditsScopeActive(g.h3)).length;
+
+        globalBtn.textContent = `(${total}) ⏳`;
+        globalBtn.title = isMulti
+            ? `${total} row${total === 1 ? '' : 's'} with pending edits across `
+              + `${eligible} sub-section${eligible === 1 ? '' : 's'}. `
+              + (state === 'all'
+                  ? 'All are filtered — click to show all rows again.'
+                  : state === 'partial'
+                      ? `${on} of ${eligible} filtered — click to filter all.`
+                      : 'Click to filter every sub-section to those rows.')
+            : `${total} row${total === 1 ? '' : 's'} with pending edits. `
+              + (state === 'all'
+                  ? 'Click again to show all rows.'
+                  : `Click to show only ${total === 1 ? 'that row' : 'those rows'}.`);
+        // `mixed` is the standard ARIA value for a tri-state toggle, so the
+        // partial state is announced rather than merely looking different.
+        globalBtn.setAttribute('aria-pressed', state === 'all' ? 'true' : state === 'partial' ? 'mixed' : 'false');
+        globalBtn.style.fontWeight = state === 'off' ? '' : 'bold';
+        globalBtn.style.backgroundColor = state === 'all' ? '#fff3cd' : state === 'partial' ? '#fffdf0' : '';
+        globalBtn.style.borderStyle = state === 'partial' ? 'dashed' : 'solid';
+        globalBtn.style.display = 'inline-block';
+        Lib.debug('filter', `_updatePendingEditsButtons(): ${total} row(s), state=${state}`
+                          + (isMulti ? `, ${on}/${eligible} sub-table(s) on` : ''));
+    }
+
     function _applyLiveDateFlagFilter(icon) {
         Lib.debug('filter', `_applyLiveDateFlagFilter(): applying one-off filter for icon "${icon}".`);
         document.querySelectorAll('.mb-col-filter-input').forEach(input => {
@@ -32533,8 +32870,10 @@ a { color: #1565c0; }`;
         // narrowed while every "clear" affordance stayed hidden — leaving the
         // pressed summary button as the only way out, which is exactly the
         // dead end a user would not think to look for.
+        // The ⏳ pending-edits toggles count for exactly the same reason as the
+        // length-mismatch filter above — no input holds them either.
         clearAllFiltersBtn.style.display =
-            (globalFilterActive || stfFiltersActive || _lenMismatchFilterKind)
+            (globalFilterActive || stfFiltersActive || _lenMismatchFilterKind || _pendingEditsAnyActive())
                 ? 'inline-block' : 'none';
 
         // Update visibility, labels, and in-panel clear button for per-subtable controls.
@@ -32609,6 +32948,7 @@ a { color: #1565c0; }`;
         // rather than needing its own.
         _updateLiveDateFlagButtons();
         _updateLengthMismatchButtons();
+        _updatePendingEditsButtons();
     }
 
     // Make this function globally accessible so runFilter can call it
@@ -40791,6 +41131,14 @@ a { color: #1565c0; }`;
             if (!row.querySelector(_sel)) return false;
         }
 
+        // The ⏳ pending-edits toggle is engaged for THIS table. Same placement
+        // rationale as the length-mismatch check above (after the highlight
+        // reset, before every query test), but read off `ctx` rather than a
+        // module variable: on multi-table pages each sub-table has its own
+        // toggle, so the answer differs per group. runFilter() resolves it once
+        // per group into matchCtx — see _updatePendingEditsButtons().
+        if (ctx.pendingEditsOnly && !_rowHasPendingEdits(row)) return false;
+
         // --- Global filter ---
         let globalHit = !globalQuery;
         if (!globalHit) {
@@ -41210,6 +41558,10 @@ a { color: #1565c0; }`;
             // correctly, pressing it again to clear did nothing at all, because
             // "no query, no column filters" hashed identically in both states.
             m: _lenMismatchFilterKind,
+            // Same reasoning, same bug if omitted — and this one is per-group
+            // rather than page-wide, so it has to come off matchCtx (which
+            // runFilter() rebuilds per group) rather than a module variable.
+            p: !!matchCtx.pendingEditsOnly,
             f: matchCtx.colFilters.map(f => f.isMultiValueFilter
                 ? { i: f.idx, u: Array.from(f.valueSet).sort(),
                     sm: Array.from(f.structureModes || []).sort(),
@@ -41247,6 +41599,25 @@ a { color: #1565c0; }`;
             c: matchCtx.isCaseSensitive,
             r: matchCtx.isRegExp,
             x: matchCtx.isExclude,
+            // The ⏳ pending-edits toggle, upholding this key's contract that it
+            // covers everything EXCEPT globalQuery.
+            //
+            // Defence in depth, not a fix for a reachable bug: no current
+            // sequence can slip past it, because toggling always calls
+            // runFilter() with the query UNCHANGED, and `_canNarrow` demands a
+            // strictly longer query — so a toggle press always takes the full
+            // scan, refreshing `_incrLastPartialKey`/`_incrMatchSet` before any
+            // later keystroke can narrow. Removing this line was confirmed not
+            // to fail any test. It stays because the moment some future caller
+            // flips the flag WITHOUT a full runFilter in between, an extending
+            // keystroke would narrow the previous match set under the wrong
+            // flag — silently, and only on single-table pages.
+            //
+            // (`_lenMismatchFilterKind` is absent here for a weaker reason: it
+            // only ever runs on release-tracks, which is multi-table, so it
+            // never reaches this single-table path at all. Pending edits
+            // applies to every page type, so it does.)
+            p: !!matchCtx.pendingEditsOnly,
             f: matchCtx.colFilters.map(f => f.isMultiValueFilter
                 ? { i: f.idx, u: Array.from(f.valueSet).sort(),
                     sm: Array.from(f.structureModes || []).sort(),
@@ -41457,6 +41828,13 @@ a { color: #1565c0; }`;
                 // not-yet-inserted clone) — needed by the 'lengthdeviation-*'
                 // fixed-flag family.
                 matchCtx.table = _subTable;
+                // Resolve this sub-table's own ⏳ toggle ONCE per group. It has
+                // to live on matchCtx (not a module variable like
+                // _lenMismatchFilterKind) precisely because it differs per
+                // group, and it has to be resolved here rather than inside
+                // testRowMatch() so the answer costs one DOM lookup per group
+                // instead of one per row.
+                matchCtx.pendingEditsOnly = _pendingEditsScopeActive(_subH3);
                 // Keep _activeFilterHighlightCtx in sync so _artHighlightImageLi()
                 // uses the correct per-sub-table column filters when the CAA/EAA
                 // art-cell rebuild fires asynchronously for this group.
@@ -41667,6 +42045,10 @@ a { color: #1565c0; }`;
             // not-yet-inserted clone) — needed by the 'lengthdeviation-*'
             // fixed-flag family.
             matchCtx.table = _singleTable;
+            // Single-table pages have one scope, so the page-global flag IS the
+            // per-table one — see _pendingEditsFilterActive's own JSDoc for why
+            // multi-table deliberately does not use that variable at all.
+            matchCtx.pendingEditsOnly = _pendingEditsFilterActive;
             // Keep _activeFilterHighlightCtx in sync so _artHighlightImageLi()
             // uses the correct column filters for this single-table render.
             if (_activeFilterHighlightCtx) {

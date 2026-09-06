@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bruce Springsteen - MusicBrainz</title>
+</head>
+<body>
+    <div id="content">
+        <div class="artistheader">
+            <h1><bdi>Bruce Springsteen</bdi></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f">Overview</a></li></ul>
+        </div>
+        <h2 class="discography">Discography</h2>
+        <!--
+            Regression fixture for the multi-table half of the pending-edits
+            (span class="mp") filter toggles. Structure copied from
+            tests/snapshots/artist-releasegroups/raw.html — one <h3> per
+            release-group type, each with its own table.tbl.
+
+            Album has 2 of 3 rows with pending edits, Single 1 of 2, Live none.
+            Two eligible sub-tables is the minimum that can produce a "partial"
+            global state; Live proves a sub-table with nothing pending is
+            offered no toggle at all.
+        -->
+        <h3>Album</h3><table class="tbl release-group-list mergeable-table"><thead><tr><th colspan="1" class="year c">Year</th><th colspan="1">Title</th><th colspan="1" class="artist">Artist</th><th colspan="1" class="count c">Releases</th></tr></thead><tbody><tr class="odd"><td class="c">1973</td><td><a class="wrap-anywhere" href="/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c"><bdi>Greetings From Asbury Park, N.J.</bdi></a></td><td><bdi><span class="mp"><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Bruce Springsteen">Bruce Springsteen</a></span></bdi></td><td class="c">1</td></tr><tr class="even"><td class="c">1975</td><td><a class="wrap-anywhere" href="/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c"><bdi>Born to Run</bdi></a></td><td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Bruce Springsteen">Bruce Springsteen</a></bdi></td><td class="c">1</td></tr><tr class="odd"><td class="c">1980</td><td><a class="wrap-anywhere" href="/release-group/aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa"><bdi>The River</bdi></a></td><td><bdi><span class="mp"><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Bruce Springsteen">Bruce Springsteen</a></span></bdi></td><td class="c">1</td></tr></tbody></table>
+        <h3>Single</h3><table class="tbl release-group-list mergeable-table"><thead><tr><th colspan="1" class="year c">Year</th><th colspan="1">Title</th><th colspan="1" class="artist">Artist</th><th colspan="1" class="count c">Releases</th></tr></thead><tbody><tr class="odd"><td class="c">1984</td><td><a class="wrap-anywhere" href="/release-group/bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb"><bdi>Dancing in the Dark</bdi></a></td><td><bdi><span class="mp"><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Bruce Springsteen">Bruce Springsteen</a></span></bdi></td><td class="c">1</td></tr><tr class="even"><td class="c">1985</td><td><a class="wrap-anywhere" href="/release-group/cccccccc-3333-4333-8333-cccccccccccc"><bdi>Glory Days</bdi></a></td><td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Bruce Springsteen">Bruce Springsteen</a></bdi></td><td class="c">1</td></tr></tbody></table>
+        <h3>Live</h3><table class="tbl release-group-list mergeable-table"><thead><tr><th colspan="1" class="year c">Year</th><th colspan="1">Title</th><th colspan="1" class="artist">Artist</th><th colspan="1" class="count c">Releases</th></tr></thead><tbody><tr class="odd"><td class="c">1986</td><td><a class="wrap-anywhere" href="/release-group/dddddddd-4444-4444-8444-dddddddddddd"><bdi>Live/1975-85</bdi></a></td><td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Bruce Springsteen">Bruce Springsteen</a></bdi></td><td class="c">1</td></tr><tr class="even"><td class="c">2001</td><td><a class="wrap-anywhere" href="/release-group/eeeeeeee-5555-4555-8555-eeeeeeeeeeee"><bdi>Live in New York City</bdi></a></td><td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Bruce Springsteen">Bruce Springsteen</a></bdi></td><td class="c">1</td></tr></tbody></table>
+        <ul class="pagination"></ul>
+    </div>
+</body>
+</html>
