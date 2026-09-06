@@ -7252,3 +7252,175 @@ waits for at least 3 popup cells to reach `data-rel-done="1"` and asserts
 none carry duplicate `<a>` hrefs. Confirmed failing pre-fix (reproduced
 the exact `debug/work-rec-double-relationships.html` duplicate) and
 passing post-fix.
+
+## 2026-09-06 — search?type=recording continuation rows shifted four columns left (fixed)
+
+**Snapshots**: `debug/search-recordings-initial.html` (native page 1) and
+`debug/search-recordings-final.html` (after "Show all Search Results for
+Recordings"), both for
+`https://musicbrainz.org/search?query=roulette&type=recording&method=indexed`.
+
+**Shape**: MusicBrainz paginates these results by RECORDING — "Found 5,362
+results" over 215 pages, 25 per page — but renders one `<tr>` per
+*(recording, release)* pair. The recording's own four columns (Name, Length,
+Artist, ISRCs) appear only on the first release's row; every further release
+is a **continuation row**:
+
+```html
+<tr><td colspan="4">&nbsp;</td>
+    <td>…release…</td><td>7/10</td><td>4</td><td>Album + Compilation</td></tr>
+```
+
+Page 1 of the initial snapshot is 42 `<tr>`: **25 base rows + 17 continuation
+rows**. Because pagination is per recording, a recording's continuation rows
+are always on the same page as its base row — there is no page-boundary case
+to carry across a fetch.
+
+**Root cause**: the row-import loop had no notion of a continuation row. Such a
+row has `cells.length === 5 > 1`, so it passed the generic data-row test, was
+imported, and then had its cells addressed **positionally** — `row.cells[colIdx]`
+ignores `colSpan` entirely. Everything on it read four columns to the left:
+release title → Length, Track → Artist, Medium → ISRCs, Type → Release.
+
+**Why the symptom looked like a Length-column bug**: with a release title
+sitting in the Length column, `applyIntegerColumnStyling` wrapped it in that
+column's `align: ':'` split spans, and `finalizeSplitAlignedColumns` then sized
+*every* Length cell in the table to the longest title — visible in the final
+snapshot as `min-width: 51ch` on `.mb-ic-right` and a 5557 px-wide table. The
+misaligned Medium/Type values also picked up `.mb-text-clamp-marker` prose
+wrappers, because a bare non-list cell in a `collapsableColumns` column is a
+prose candidate.
+
+**Fix**: new `features.mergeContinuationRows` (enabled on the search pageType's
+`Recordings` entityFeatures), plus `_isContinuationRow()` /
+`_buildContinuationSourceRow()` / `_mergeContinuationRowInto()`. A continuation
+row is folded into the preceding data row, one extra `<li>` per column, and the
+four release-side columns are declared in `renderMultiRowCell` so every row —
+including single-release ones — carries the same `<ul><li>` shape. Detection is
+structural (an empty spanning first cell), not keyed on the page type.
+
+Two things fell out for free because both already handled `ul > li` cells:
+`_artInitInlinePics()` gives each release in a merged cell its own inline
+thumbnail, and `initExpandRGsFeature()` gives each its own ▶ toggle.
+
+**Also fixed alongside**: `finalizeRLCColumnWidths()` sized an L/R/C integer
+column from `span.textContent`, which on a merged cell is the *concatenation*
+of every `<li>` — a three-release "Track" cell read as `"7/1012/254/9"`, 12
+chars instead of 5. New `_rlcValueLength()` measures the longest single `<li>`
+instead. This only ever mattered for a column that is both an `integerColumns`
+and a multi-row column, which "Track"/"Medium" here are the first instance of.
+
+**Regression test**: `tests/fixtures/search-recordings-continuation.{html,spec.js}`
+— hand-trimmed 3-recording fixture (3 releases / 2 releases / 1 release).
+Asserts 3 rendered rows rather than 6, no surviving `td[colspan]`, every row's
+Length parsing as `M:SS` (the direct assertion against the shift), the per-column
+`<li>` counts, that the four columns stay row-aligned, that a comma-bearing
+release title is not comma-split, and the 2ch `min-width` on the Medium value
+span. Confirmed failing pre-fix (6 rows) and passing post-fix.
+
+## 2026-09-06 — follow-up on the above: three separate reasons Track/Medium wouldn't line up
+
+Reported from a live screenshot of the fixed page: the merge itself was right,
+but the "Track" and "Medium" values "looked distorted". Three independent
+causes, found by measuring `getBoundingClientRect()` in a Playwright fixture
+rather than reading CSS — worth recording because two of them are invisible in
+the DOM and the third only reproduces WITHOUT MusicBrainz's stylesheet.
+
+**1. `padding-right` on some cells only (10.5 px drift).**
+`td.mb-has-collapse-toggle { padding-right: 22px !important }` reserves space
+for the absolutely-positioned toggle, but lands only on cells that HAVE a
+toggle. `applyIntegerColumnStyling` centres its value span in the `<td>`, so
+half of that padding shifts the value: the same "1" in "Medium" measured
+`right: 1264.5` in a toggle row and `1275` in a single-row one. New
+`td.mb-collapse-col-pad` reserves the same space on every other cell of a
+toggle-bearing column (added by `initCollapsableColumns`, cleared by its own
+idempotent cleanup pass). No-op for left-aligned columns; no width cost, since
+the auto-resize pass already budgets the toggle once per column.
+
+**2. An unstyled `<ul>` (4 px drift) — only reproducible without MB's CSS.**
+`applyRenderMultiRowCells` was the ONLY list builder in the script that didn't
+reset the `<ul>` it creates (`splitCountryDate` line ~4710 and the CAA art list
+both do `list-style:none;margin:0;padding:0`). Measured in the fixture:
+`padding-inline-start: 40px`, `margin: 16px 0`, `list-style-type: disc`. The
+40 px is added to the containing box, so the `.mb-ic-val` span measured 56 px
+for a 2-char cell and 48 px for a 1-char one — `min-width: 2ch` (16 px) never
+binds — and centring turned that into a 4 px drift. On the real page MB's own
+stylesheet hides this; the dependency is still a bug. Now reset like the rest.
+Lesson: a fixture with no MusicBrainz CSS is a FEATURE here — it surfaces exactly
+this class of "works only because the host page happens to fix it" defect.
+
+**3. Merged `<li>`s never got integer-column styling (the actual "distortion").**
+`applyIntegerColumnStyling()` is the last step of row assembly and guards on a
+per-CELL `data-mb-int-col-styled` flag — but a continuation row isn't parsed
+until after the base row is fully assembled, so every `<li>` the merge appends
+arrives too late. Invisible for `align: 'R'` (that branch wraps the whole `<ul>`
+in one `.mb-ic-val`, so late items land inside it and inherit everything), but
+for a split-aligned column it meant each cell had exactly ONE `.mb-ic-sep`, on
+its first item. `_mergeContinuationRowInto()` now styles what it appends, via
+`_styleIntColListItem()`, resolving the column's `align` from
+`activeIntegerColumns` by the destination index.
+
+**Also**: "Track" ("N/M") switched from `align: 'R'` to `align: '/'`, so the
+separator sits at one horizontal position for the column instead of values
+merely ending flush right ("5/13" and "23/39" lined up on the 3 and the 9).
+That required teaching split alignment about multi-row cells at all:
+`applyIntegerColumnStyling` builds one `.mb-ic-wrap` per `<li>` (the old code
+read the cell's concatenated text, split at its LAST separator, and cleared the
+cell to rebuild it — destroying the list), and `finalizeSplitAlignedColumns`
+measures/widens every span pair in a cell, not just the first.
+
+**Measured after all four changes**: every "Track" separator at x=246.8 and
+every "Medium" item's right edge at x=1208.5, across all 6 items in 3 rows,
+toggle rows and non-toggle rows alike. Locked in by a second test in the same
+spec file, which drives the real `#mb-col-collapse-all-btn` (and must
+`waitForFunction` on all 6 items having layout — reading straight after the
+click catches the table mid-re-render and sees only each cell's first item).
+
+**Picard**: `_picardExtractRowEntity()` → `_picardExtractRowEntities()`, one ♪
+button per release. The first taggable anchor in document order still decides
+the entity type AND the cell — unchanged on every other page — but that whole
+cell is now harvested. Anchoring on the first match's own cell is what stops it
+over-collecting elsewhere (a `release-tracks` AR column holds many unrelated
+`/recording/` links, but is never the row's first entity cell). Note this page's
+`stickyColumn: 'Name'` is why it targets Release and not the recording at all:
+the extractor skips `.mb-sticky-col`, so the Name column's `/recording/` link was
+never a candidate.
+
+**Picard, round 2 — making it an actual multi-row column.** Buttons laid out
+inline read badly the moment a recording had eight releases (screenshot: a row
+of eight ♪ crowded onto one line, aligned with nothing). One `<li>` per entity
+instead. The interesting part is why it can't just be declared collapsable:
+
+- `initPicardTaggerColumn()` runs LAST on every render path, and has to — the
+  Picard `<td>` must be appended after the Relationships cells to stay
+  rightmost. So both the initial render (`initCollapsableColumns` at the
+  `renderFinalTable` tail, Picard ~250 lines later) and `runFilter()`'s
+  single-table branch (collapse pass, then Picard rewire) do their collapse
+  pass before the column exists.
+- Worse, rewire mode does `_td.innerHTML = ''` and refills, which would wipe a
+  `.mb-cell-collapse-toggle` the collapse pass had added (the toggle is a `<td>`
+  child, not inside the `<ul>`).
+- Reordering the call sites was the tempting fix and is the risky one — the
+  Picard-after-Relationships ordering is load-bearing on several paths.
+
+So `initPicardTaggerColumn()` registers "Picard" on
+`activeDefinition.features.collapsableColumns` and re-runs
+`initCollapsableColumns()` itself, but ONLY when some row actually produced >1
+button (`_anyMultiRowPicardCell`) — so no other page pays for it. Registration
+is `concat`, not `push`: `activeDefinition.features` is rebuilt per fetch but
+its `collapsableColumns` VALUE is the page definition's own array, and pushing
+would mutate the definition for the session. `initCollapsableColumns()` never
+calls back into Picard, so there is no loop.
+
+Measured after: Picard cells 3/2/1 `<li>`, collapsed to 1 with a `▶3▤` toggle
+matching the Release cell beside them, and expanding together via
+`#mb-col-collapse-all-btn`.
+
+**Known limitation, not new to Picard**: when a source `<li>` WRAPS to two lines
+(a long release title in a narrow column) the neighbouring columns' items no
+longer line up with it — each `<td>` has its own `<ul>` and its own item
+heights. Measured in the fixture, where the Release column is narrow: Release
+item tops 267/286/323 against Picard's 285/304/323. This affects Track/Medium/
+Type and Label/Catalog# on other pages identically; it is inherent to the
+multi-row-cell approach, and does not show on the real page, where auto-resize
+gives the Release column enough width not to wrap.

@@ -1,0 +1,91 @@
+[
+  {
+    "version": "WIP.3",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The Picard column is now a multi-row cell in its own right — one `<li>` per entity — so on a merged recording-search row each ♪ sits on the line of the release it sends, rather than all of them crowding onto one line. Always a `<ul>`, even for a single entity, so the column has one uniform cell structure (the same always-wrap rule `applyRenderMultiRowCells` documents); with the list reset, a one-item cell renders exactly as the bare button did, so no other page changes visually.",
+          "It also collapses and expands with the rest: `initPicardTaggerColumn()` registers \"Picard\" on `activeDefinition.features.collapsableColumns` (only when some row actually produced more than one button, so nothing runs on the pages where the column is one button per row) and re-runs `initCollapsableColumns()` itself. That extra call is the price of the column being injected LAST on every render path — it has to be, since its `<td>` must land after the Relationships cells to stay rightmost, which puts it after each path's own collapse pass; and rewire mode rebuilds each cell's `innerHTML`, which would wipe a toggle that pass had added. `initCollapsableColumns()` is idempotent and never calls back, so there is no loop.",
+          "Registration uses `concat`, not `push`: `activeDefinition.features` is rebuilt per fetch but its `collapsableColumns` VALUE is the page definition's own array, so pushing would mutate that definition for the rest of the session."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "One Picard ♪ button per release on a merged recording-search row, instead of one for whichever release happened to be listed first. `_picardExtractRowEntity()` became `_picardExtractRowEntities()`: the first taggable anchor in document order still decides both the entity type and the cell to read — so nothing changes on any other page — but the whole of THAT cell is now harvested rather than just its first anchor. Anchoring on the first match's own cell is what keeps this from over-collecting: a `release-tracks` AR column can hold a dozen unrelated `/recording/` links, but it is never the row's first entity cell.",
+          "Each button names its own entity in its tooltip (\"Send to Picard (Hotel Diablo — release)\"). With several buttons in one cell an 8-character MBID prefix does not tell you which release a given ♪ would send."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"Track\" and \"Medium\" on the recording search results did not line up across the table. `td.mb-has-collapse-toggle` sets `padding-right:22px` so cell content never slides under the absolutely-positioned collapse toggle, but it lands only on cells that HAVE a toggle — which in a centred or right-aligned column makes a value's position depend on whether its own row happens to be multi-row. Measured: the same \"1\" in \"Medium\" sat 10.5 px (half the padding) further left in a row with a toggle. A new `td.mb-collapse-col-pad` reserves the same space on every other cell of a toggle-bearing column. A no-op for the left-aligned text columns this mechanism is usually applied to, and it costs no width — the auto-resize pass already budgets the toggle's space once per column.",
+          "`applyRenderMultiRowCells()` built a bare `<ul>` and relied on MusicBrainz's own stylesheet to neutralise the UA defaults — the only list builder in the script that did not reset the list it creates (`splitCountryDate`'s two lists and the CAA art list all do). That is a real bug, not just an inconsistency: the UA's `padding-inline-start:40px` is added to the width of whatever box contains the list, so an integer column's `min-width:Nch` — set on the `.mb-ic-val` span AROUND the list — never binds, and a centred column's values then sit at a position that depends on their own text width. Now reset like every other one.",
+          "A `<li>` appended by `mergeContinuationRows` never received its column's integer-alignment treatment. `applyIntegerColumnStyling()` is the last step of row assembly and guards on a per-CELL `data-mb-int-col-styled` flag, but a continuation row is not parsed until after the base row is fully assembled — so in a split-aligned column each cell ended up with exactly one separator, on its first item, while every merged item kept raw text. The merge now styles the items it appends (new `_styleIntColListItem()`, resolving the column's `align` from `activeIntegerColumns` by the destination index)."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "\"Track\" (\"N/M\", track N of M) is now split-aligned on its \"/\" the way \"Length\" is on its \":\", so the separator sits at one horizontal position for the whole column. Right-alignment alone lined \"5/13\" and \"23/39\" up on the 3 and the 9, which reads as noise.",
+          "Split-character alignment works on multi-row cells at all now: `applyIntegerColumnStyling()` builds one `.mb-ic-wrap` unit per `<li>` instead of one per cell (the old code read the cell's CONCATENATED text, split it at its LAST separator, and cleared the cell to rebuild it — destroying the list outright), and `finalizeSplitAlignedColumns()` measures and widens every span pair in a cell rather than just the first. So a cell's own items align with each other as well as with the rest of the column."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The three-span split-align unit is now built by `_buildSplitAlignWrap()` and multi-row detection by `_intColListItems()`, both shared between `applyIntegerColumnStyling()`'s two branches and the measurement passes — previously inline, and impossible to reuse per `<li>`. The 'L'/'R'/'C' branch deliberately stays whole-cell: it wraps the cell's entire `<ul>` in one `.mb-ic-val`, so a later-appended `<li>` lands inside that span and inherits its alignment and width for free."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Recording search results (`/search?type=recording`) rendered every release after a recording's first one as a broken row. MusicBrainz paginates those results by RECORDING (25 per page) but emits one `<tr>` per (recording, release) pair, with the recording's own four columns rendered only on the first — every further release arrives as a \"continuation\" row whose leading four columns are a single empty `<td colspan=\"4\">`. That row has 5 cells for an 8-column table, and the row-import loop addresses cells POSITIONALLY, so all of its content was read four columns to the left: release TITLES landed in the Length column, Track in Artist, Medium in ISRCs, Type in Release. Page 1 of a `roulette` search is 25 real rows plus 17 of these.",
+          "The most expensive part of that was invisible as a cause: a release title inside the Length column was wrapped in that column's `:`-alignment spans, which made `finalizeSplitAlignedColumns` size EVERY Length cell in the table to the longest title — 51ch — and blew the rendered table out to 5557 px wide."
+        ]
+      },
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New page-definition feature `mergeContinuationRows`, enabled on the recording search results. A continuation row is now folded into the preceding data row instead of being imported as its own, one extra `<li>` per column, so \"Release\", \"Track\", \"Medium\" and \"Type\" become multi-row cells with the collapse toggles, per-cell counts, filter-match tinting and unique-values entries every other multi-row column already has. The rendered row count is now exactly MusicBrainz's own \"Found N results\", instead of that plus one broken row per extra release.",
+          "The merged columns are derived from the data, not declared: they are exactly the columns NOT covered by the continuation row's own `colSpan`, which is what MusicBrainz's markup already says they are. The detection (`_isContinuationRow`) is structural — an empty spanning first cell — rather than keyed on a page type, so the feature is a flag away for any other page MusicBrainz renders this way.",
+          "The four columns are also declared in `renderMultiRowCell`, which is what gives EVERY row the same uniform `<ul><li>` shape — a recording with one release now has exactly the cell structure of one with ten, which is what `_classifyCollapseCell`, `testRowMatch` and the statistics panel all assume. It is safe against comma-splitting here because a release title lives inside `<a><bdi>…</bdi></a>`, an element child rather than a top-level text node, so a title like \"2001-12-06: Copper Dragon, Carbondale, IL, USA\" is left whole.",
+          "Two features fall out for free, because both already understood `ul > li` cells: each release in a merged cell gets its own inline cover-art thumbnail (`_artInitInlinePics`) and its own ▶ entity-page toggle (`initExpandRGsFeature`)."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "`finalizeRLCColumnWidths()` now sizes an L/R/C integer column from the longest SINGLE list item rather than the cell's concatenated text (new `_rlcValueLength()` helper). \"Track\" and \"Medium\" are integer columns AND multi-row columns on this page, so the old measurement read a three-release cell as `\"7/1012/254/9\"` — 12 characters instead of 5 — and stretched the whole column by a factor of the row count. Each `<li>` is its own visual line inside the value span, so the longest item is the width the column actually needs."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The merge reuses the ordinary pipeline rather than reimplementing it: `_buildContinuationSourceRow()` pads the continuation row back out to the table's ORIGINAL, pre-deletion column indices (`colSpan` empty leading cells, then its own trailing cells), which lets `applyColumnErasers()` and `applyRenderMultiRowCells()` run over it verbatim with their already-resolved `colIdx` values. The destination index is then computed by subtracting the excluded columns that precede it — the base row is already post-`deleteCell` — rather than assuming `indicesToExclude` is empty, so a foreign userscript column or a setting-gated removal (Rating, checkbox-cell) can't silently shift the merge one column over.",
+          "Exactly one `<li>` is appended per column per continuation row, empty when the source cell is empty, so the four parallel lists stay row-aligned with each other. A destination column that is NOT declared in `renderMultiRowCell` has its existing content wrapped on the fly, so the feature degrades to \"correct, just only wrapped where a merge happened\" instead of dropping data."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "New \"MULTI-ROW CELLS FROM REPEATED-SUBJECT ROWS\" section in the help text, and a dated `debug/NOTES.md` entry recording the two snapshots this was diagnosed from and why the symptom looked like a Length-column bug."
+        ]
+      }
+    ]
+  }
+]

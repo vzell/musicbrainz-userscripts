@@ -12128,6 +12128,126 @@
     }
 
     /**
+     * _intColListItems — the `<li>` items of a MULTI-ROW integer cell, or `[]`
+     * for an ordinary single-value one.
+     *
+     * A column can be BOTH an `integerColumns` and a `renderMultiRowCell` /
+     * `mergeContinuationRows` column — "Track" and "Medium" on the recording
+     * search results are the first instance — in which case the alignment
+     * treatment has to be applied to each item rather than to the cell's
+     * concatenated text.
+     *
+     * Deliberately a direct-child query rather than `_findCellListItems()`: this
+     * runs during row assembly, where a multi-row cell's `<ul>` is the `<td>`'s
+     * only child (applyRenderMultiRowCells sets `td.innerHTML` then appends it),
+     * and a nested list belonging to some other markup must NOT be treated as
+     * the cell's own value list. The `root` parameter lets the post-render
+     * measurement passes ask the same question of a `.mb-ic-val` span, which is
+     * where applyIntegerColumnStyling moves the list to.
+     *
+     * @param   {HTMLElement} root  A `<td>` (during assembly) or a value span.
+     * @returns {HTMLLIElement[]}
+     */
+    function _intColListItems(root) {
+        if (!root) return [];
+        return Array.from(root.querySelectorAll(':scope > ul > li, :scope > ol > li'));
+    }
+
+    /**
+     * _buildSplitAlignWrap — builds one split-aligned value unit for
+     * `applyIntegerColumnStyling`'s split-character branch:
+     *
+     * ```html
+     * <span class="mb-ic-wrap">
+     *   <span class="mb-ic-left" > left part </span>   ← text-align:right
+     *   <span class="mb-ic-sep"  > separator  </span>  ← visual centre
+     *   <span class="mb-ic-right"> right part</span>   ← text-align:left
+     * </span>
+     * ```
+     *
+     * `min-width` is left unset on both parts; `finalizeSplitAlignedColumns`
+     * sets it to `Nch` in a later pass so the separator lands at an identical
+     * horizontal position for every value in the column.
+     *
+     * Split at the LAST occurrence of the separator, so `'[H:]M:S'` always
+     * splits at the M/S boundary and `'N.M'` at its only one. A value with no
+     * separator at all is treated as a pure right part.
+     *
+     * Extracted from the inline code it replaces so the multi-row branch can
+     * build one of these per `<li>` — see `_intColListItems()`.
+     *
+     * @param   {string} rawText
+     * @param   {string} splitChar  Single separator character (e.g. ':' or '/').
+     * @returns {HTMLSpanElement}
+     */
+    function _buildSplitAlignWrap(rawText, splitChar) {
+        const splitIdx  = rawText.lastIndexOf(splitChar);
+        const leftText  = splitIdx !== -1 ? rawText.slice(0, splitIdx)  : '';
+        const rightText = splitIdx !== -1 ? rawText.slice(splitIdx + 1) : rawText;
+
+        // Outer wrapper: inline-block so the three spans sit on one line and the
+        // whole unit is centred by the td's text-align:center.
+        const wrap = document.createElement('span');
+        wrap.className = 'mb-ic-wrap';
+        wrap.style.cssText = 'display:inline-block; white-space:nowrap;';
+
+        const spanLeft = document.createElement('span');
+        spanLeft.className = 'mb-ic-left';
+        spanLeft.style.cssText =
+            'display:inline-block; text-align:right;' +
+            'font-variant-numeric:tabular-nums;';
+        spanLeft.textContent = leftText;
+
+        const spanSep = document.createElement('span');
+        spanSep.className = 'mb-ic-sep';
+        spanSep.textContent = splitChar;
+
+        const spanRight = document.createElement('span');
+        spanRight.className = 'mb-ic-right';
+        spanRight.style.cssText =
+            'display:inline-block; text-align:left;' +
+            'font-variant-numeric:tabular-nums;';
+        spanRight.textContent = rightText;
+
+        wrap.appendChild(spanLeft);
+        wrap.appendChild(spanSep);
+        wrap.appendChild(spanRight);
+        return wrap;
+    }
+
+    /**
+     * _styleIntColListItem — applies an integer column's alignment treatment to
+     * ONE `<li>` of a multi-row cell.
+     *
+     * Split-character columns build a `.mb-ic-wrap` unit per item, so an item
+     * that arrives AFTER `applyIntegerColumnStyling` has already processed its
+     * cell — which is every `<li>` `_mergeContinuationRowInto()` appends, since
+     * a continuation row is only parsed once the base row has been fully
+     * assembled — has to be styled on arrival or it silently keeps raw text
+     * while its cell's first item is split-aligned. That is exactly what a
+     * "Track" column looked like before this existed: one separator per cell
+     * instead of one per value.
+     *
+     * A no-op for 'L'/'R'/'C' columns, and deliberately so: that branch wraps
+     * the cell's whole `<ul>` in a single `.mb-ic-val` span, so a later-appended
+     * `<li>` lands INSIDE that span and inherits its alignment and width for
+     * free. Only the split branch is per-item.
+     *
+     * Idempotent — an item that already carries its wrap is left alone.
+     *
+     * @param {HTMLLIElement} li
+     * @param {string}        align  An `integerColumns` descriptor's `align`.
+     */
+    function _styleIntColListItem(li, align) {
+        if (!li) return;
+        if (align === 'L' || align === 'R' || align === 'C') return;
+        if (li.querySelector(':scope > .mb-ic-wrap')) return;
+        const raw = li.textContent.trim();
+        li.textContent = '';
+        li.appendChild(_buildSplitAlignWrap(raw, align));
+    }
+
+    /**
      * Applies the centered inline-block + content-alignment technique to every
      * cell in a data row whose column index matches an integerColumns descriptor.
      * Must be called AFTER all synthetic cells have been appended to the row.
@@ -12186,46 +12306,23 @@
                 // meet it; right part grows left away from it.
                 const splitChar = entry.align;
 
-                const rawText = cell.textContent.trim();
-                // Use lastIndexOf so that '[H:]M:S' always splits at the M/S boundary,
-                // and 'N.M' splits at the only separator — lastIndexOf handles both.
-                const splitIdx  = rawText.lastIndexOf(splitChar);
-                const leftText  = splitIdx !== -1 ? rawText.slice(0, splitIdx)  : '';
-                const rightText = splitIdx !== -1 ? rawText.slice(splitIdx + 1) : rawText;
-
-                cell.textContent = ''; // clear
-                // Center the inline-block wrapper — this puts ':' at the column center
+                // Center the inline-block wrapper — this puts the separator at
+                // the column centre.
                 cell.style.textAlign = 'center';
 
-                // Outer wrapper: inline-block so the three spans sit on one line
-                // and the whole unit is centred by the td's text-align:center
-                const wrap = document.createElement('span');
-                wrap.className = 'mb-ic-wrap';
-                wrap.style.cssText = 'display:inline-block; white-space:nowrap;';
-
-                const spanLeft = document.createElement('span');
-                spanLeft.className = 'mb-ic-left';
-                spanLeft.style.cssText =
-                    'display:inline-block; text-align:right;' +
-                    'font-variant-numeric:tabular-nums;';
-                // min-width set to '' here; finalizeSplitAlignedColumns sets it to Nch
-                spanLeft.textContent = leftText;
-
-                const spanSep = document.createElement('span');
-                spanSep.className = 'mb-ic-sep';
-                spanSep.textContent = splitChar;
-
-                const spanRight = document.createElement('span');
-                spanRight.className = 'mb-ic-right';
-                spanRight.style.cssText =
-                    'display:inline-block; text-align:left;' +
-                    'font-variant-numeric:tabular-nums;';
-                spanRight.textContent = rightText;
-
-                wrap.appendChild(spanLeft);
-                wrap.appendChild(spanSep);
-                wrap.appendChild(spanRight);
-                cell.appendChild(wrap);
+                // A MULTI-ROW cell is split per <li>, so the separator lines up
+                // between a cell's own items as well as between rows — the whole
+                // cell's text would otherwise be one nonsense string ("7/10" +
+                // "12/25" split at its LAST separator), and clearing the cell to
+                // rebuild it would destroy the list outright.
+                const _lis = _intColListItems(cell);
+                if (_lis.length) {
+                    _lis.forEach(li => _styleIntColListItem(li, splitChar));
+                } else {
+                    const rawText = cell.textContent.trim();
+                    cell.textContent = ''; // clear
+                    cell.appendChild(_buildSplitAlignWrap(rawText, splitChar));
+                }
             } else {
                 // ── Standard centered inline-block + L / R / C ────────────────────
                 const contentAlignMap = { L: 'left', R: 'right', C: 'center' };
@@ -12292,13 +12389,20 @@
             // identical horizontal position across all rows regardless of value length.
             let maxLeftLen  = 0;
             let maxRightLen = 0;
+            // querySelectorAll, not querySelector: a MULTI-ROW cell carries one
+            // span pair per <li> (see _intColListItems in applyIntegerColumnStyling),
+            // and every one of them has to be measured and then widened, or a
+            // cell's 2nd..Nth items keep their natural widths and their
+            // separators drift away from the column's.
             for (const row of rows) {
                 const cell = row.cells[entry.colIdx];
                 if (!cell) continue;
-                const ls = cell.querySelector('.mb-ic-left');
-                const rs = cell.querySelector('.mb-ic-right');
-                if (ls) maxLeftLen  = Math.max(maxLeftLen,  ls.textContent.length);
-                if (rs) maxRightLen = Math.max(maxRightLen, rs.textContent.length);
+                cell.querySelectorAll('.mb-ic-left').forEach(ls => {
+                    maxLeftLen = Math.max(maxLeftLen, ls.textContent.length);
+                });
+                cell.querySelectorAll('.mb-ic-right').forEach(rs => {
+                    maxRightLen = Math.max(maxRightLen, rs.textContent.length);
+                });
             }
 
             if (maxLeftLen === 0 && maxRightLen === 0) continue;
@@ -12309,13 +12413,39 @@
             for (const row of rows) {
                 const cell = row.cells[entry.colIdx];
                 if (!cell) continue;
-                const ls = cell.querySelector('.mb-ic-left');
-                const rs = cell.querySelector('.mb-ic-right');
-                if (ls && minWL) ls.style.minWidth = minWL;
-                if (rs && minWR) rs.style.minWidth = minWR;
+                if (minWL) cell.querySelectorAll('.mb-ic-left').forEach(ls => { ls.style.minWidth = minWL; });
+                if (minWR) cell.querySelectorAll('.mb-ic-right').forEach(rs => { rs.style.minWidth = minWR; });
             }
             Lib.debug('render', `finalizeSplitAlignedColumns: column "${entry.sourceColumn}"(splitChar='${entry.align}') → left=${maxLeftLen}ch right=${maxRightLen}ch across ${rows.length} rows`);
         }
+    }
+
+    /**
+     * _rlcValueLength — the character count `finalizeRLCColumnWidths` should
+     * size an L/R/C integer column from, for one `.mb-ic-val` value span.
+     *
+     * For an ordinary single-value cell that is simply the span's own text.
+     * For a MULTI-ROW cell — an integer column that is ALSO a
+     * `renderMultiRowCell` / `mergeContinuationRows` column, e.g. "Track" and
+     * "Medium" on the recording search results — `span.textContent` is the
+     * CONCATENATION of every `<li>` ("7/10" + "12/25" + "4/9" → 12 chars where
+     * the widest single value is 5), which would blow the column's `min-width`
+     * out by a factor of the row count. Each `<li>` is its own visual line inside the
+     * inline-block span, so the width the column actually needs is the LONGEST
+     * SINGLE item.
+     *
+     * `applyIntegerColumnStyling` moves the cell's whole content into the span,
+     * so the list — when there is one — is always inside it.
+     *
+     * @param   {HTMLElement} span  A `.mb-ic-val` value span.
+     * @returns {number}            Character count to size the column from.
+     */
+    function _rlcValueLength(span) {
+        const lis = _intColListItems(span);
+        if (!lis.length) return span.textContent.trim().length;
+        let maxLen = 0;
+        lis.forEach(li => { maxLen = Math.max(maxLen, li.textContent.trim().length); });
+        return maxLen;
     }
 
     /**
@@ -12327,6 +12457,9 @@
      * horizontal block.  Without this pass a right-aligned '86' and '124'
      * would sit at different positions even though both spans are centred
      * in the <td>, because the spans auto-size to content width.
+     *
+     * MULTI-ROW cells are measured per `<li>`, not per cell — see
+     * `_rlcValueLength()`.
      *
      * @param {HTMLTableRowElement[]}                                       rows
      * @param {Array<{sourceColumn: string, align: string, colIdx: number}>} descriptors
@@ -12344,7 +12477,7 @@
                 if (!cell) continue;
                 const span = cell.querySelector('.mb-ic-val');
                 if (!span) continue;
-                const len = span.textContent.trim().length;
+                const len = _rlcValueLength(span);
                 if (len > maxLen) maxLen = len;
             }
             if (maxLen === 0) continue;
@@ -12487,6 +12620,20 @@
             if (nonEmptyGroups.length < 1) continue;
 
             const ul = document.createElement('ul');
+            // Same reset every other list builder in this script applies to a
+            // <ul> it creates (splitCountryDate's ulCountry/ulDate, the CAA
+            // art list, …) — and this one was the sole exception, silently
+            // relying on MusicBrainz's own stylesheet to neutralise the UA
+            // defaults (`list-style: disc`, `padding-inline-start: 40px`,
+            // `margin: 16px 0`). That dependency is a real bug, not just an
+            // inconsistency: the 40px inline padding is added to the width of
+            // whatever box contains the list, so an integer column's
+            // `min-width:Nch` (set on the .mb-ic-val span AROUND the list by
+            // finalizeRLCColumnWidths) never binds, and a centred column's
+            // values then sit at a position that depends on their own text
+            // width — measured at a 4px drift between a 1-char and a 2-char
+            // "Medium" cell in a stylesheet-free test fixture.
+            ul.style.cssText = 'list-style:none;margin:0;padding:0;';
             nonEmptyGroups.forEach(group => {
                 const li = document.createElement('li');
                 group.forEach(node => li.appendChild(node.cloneNode(true)));
@@ -12498,6 +12645,182 @@
 
             Lib.debug('extract', `renderMultiRowCell: column "${entry.columnName}" (colIdx=${entry.colIdx}) — wrapped into ${nonEmptyGroups.length} li row(s)`);
         }
+    }
+
+    /**
+     * _isContinuationRow — recognises a MusicBrainz "continuation" row: a `<tr>`
+     * that is NOT a data row of its own but the tail of the preceding one.
+     *
+     * MusicBrainz emits this shape whenever one subject entity maps to several
+     * rows' worth of trailing data and the leading columns would just repeat.
+     * The recording search results (`/search?type=recording`) are the canonical
+     * case — the page paginates by RECORDING, but renders one `<tr>` per
+     * (recording, release) pair, with the recording's own four columns rendered
+     * only on the first:
+     *
+     * ```html
+     * <tr><td>…Roulette…</td><td>3:42</td><td>…artist…</td><td>…isrcs…</td>
+     *     <td>…release 1…</td><td>7/10</td><td>4</td><td>Album</td></tr>
+     * <tr><td colspan="4">&nbsp;</td>
+     *     <td>…release 2…</td><td>7/10</td><td>4</td><td>Album</td></tr>
+     * ```
+     *
+     * Such a row has FEWER cells than the table has columns, so the row-import
+     * loop's positional `row.cells[colIdx]` addressing silently reads every cell
+     * from the wrong column — see `_mergeContinuationRowInto` for the fix and
+     * debug/NOTES.md for what that looked like in the rendered output.
+     *
+     * Deliberately structural (an empty spanning first cell) rather than keyed
+     * on a page type: it is the only shape that can carry this meaning, and the
+     * feature is gated by `features.mergeContinuationRows` at the call site.
+     *
+     * Note on the emptiness test: MusicBrainz fills the spanned cell with a
+     * single `&nbsp;` (U+00A0), which `String.prototype.trim()` DOES strip —
+     * U+00A0 is `<NBSP>` in the spec's WhiteSpace set — so no explicit NBSP
+     * handling is needed here.
+     *
+     * @param   {HTMLTableRowElement} tr
+     * @returns {boolean}
+     */
+    function _isContinuationRow(tr) {
+        if (!tr || !tr.cells || tr.cells.length < 2) return false;
+        const first = tr.cells[0];
+        if (!first || first.colSpan <= 1) return false;
+        return !first.textContent.trim() && !first.firstElementChild;
+    }
+
+    /**
+     * _buildContinuationSourceRow — pads a continuation row (see
+     * `_isContinuationRow`) into a detached `<tr>` whose cell indices line up
+     * with the ORIGINAL, pre-deletion header indices of the table.
+     *
+     * The spanned leading cell is replaced by `colSpan` individual empty `<td>`s
+     * and the row's own trailing cells are cloned in after them, so
+     * `padded.cells[i]` addresses header `i` exactly the way a real data row's
+     * cells do at that stage of the pipeline. That alignment is the whole point:
+     * it lets `_mergeContinuationRowInto` run the ordinary
+     * `applyColumnErasers()` / `applyRenderMultiRowCells()` helpers over the
+     * continuation data verbatim, with their already-resolved (pre-deletion)
+     * `colIdx` values, instead of reimplementing either one for this shape.
+     *
+     * @param   {HTMLTableRowElement} contRow
+     * @returns {HTMLTableRowElement} Detached, never inserted into the document.
+     */
+    function _buildContinuationSourceRow(contRow) {
+        const padded = document.createElement('tr');
+        const span   = contRow.cells[0].colSpan;
+        for (let i = 0; i < span; i++) padded.appendChild(document.createElement('td'));
+        for (let i = 1; i < contRow.cells.length; i++) {
+            padded.appendChild(contRow.cells[i].cloneNode(true));
+        }
+        return padded;
+    }
+
+    /**
+     * _mergeContinuationRowInto — folds one continuation row's trailing cells
+     * into the preceding data row, one extra `<li>` per column.
+     *
+     * Enabled per page via `features.mergeContinuationRows`. The columns that
+     * get merged are derived from the data, not declared: they are exactly the
+     * columns NOT covered by the continuation row's leading `colSpan`, which is
+     * what MusicBrainz's own markup already says they are.
+     *
+     * The destination cells are expected to already hold a `<ul>` — declare the
+     * same columns in `features.renderMultiRowCell` and every row gets that
+     * uniform `<ul><li>` shape, including the ones with no continuation rows at
+     * all (see `applyRenderMultiRowCells`' "always wrap non-empty cells" note
+     * for why that consistency matters to `_classifyCollapseCell`, `testRowMatch`
+     * and the statistics panel). A destination with no `<ul>` is still handled —
+     * its existing content is wrapped on the fly — so an undeclared column
+     * degrades to "correct but only wrapped where a merge happened" rather than
+     * losing data.
+     *
+     * EXACTLY ONE `<li>` is appended per column per continuation row, empty when
+     * the source cell is empty, so the parallel lists in the merged columns stay
+     * row-aligned with each other.
+     *
+     * `baseRow` is already POST-deletion (the row-import loop has run
+     * `deleteCell` over `indicesToExclude` by the time it is in `allRows` /
+     * `groupedRows`), while `padded`/`headerCount`/`indicesToExclude` are all
+     * pre-deletion, so each destination index is computed by subtracting the
+     * excluded columns that precede it. Doing the arithmetic rather than
+     * assuming `indicesToExclude` is empty keeps this correct on a page where a
+     * foreign userscript column or a setting-gated removal (Rating,
+     * checkbox-cell, …) shifts everything left.
+     *
+     * @param {HTMLTableRowElement} baseRow          The preceding, fully-processed data row.
+     * @param {HTMLTableRowElement} contRow          The raw continuation row from the fetched document.
+     * @param {number}              headerCount      Number of ORIGINAL (pre-deletion) columns.
+     * @param {number[]}            indicesToExclude Original indices deleted from every data row.
+     */
+    function _mergeContinuationRowInto(baseRow, contRow, headerCount, indicesToExclude) {
+        const padded = _buildContinuationSourceRow(contRow);
+
+        // Reuse the ordinary pipeline on the padded row so the merged content is
+        // cleaned and shaped exactly like the base row's own cells were.
+        applyColumnErasers(padded, activeColumnErasers);
+        applyRenderMultiRowCells(padded, activeRenderMultiRowCols);
+
+        const excluded = new Set(indicesToExclude);
+        const startCol = contRow.cells[0].colSpan;
+        let mergedCols = 0;
+
+        for (let i = startCol; i < headerCount && i < padded.cells.length; i++) {
+            if (excluded.has(i)) continue;
+
+            let dstIdx = i;
+            for (const ex of excluded) if (ex < i) dstIdx--;
+
+            const src = padded.cells[i];
+            const dst = baseRow.cells[dstIdx];
+            if (!src || !dst) continue;
+
+            // Both shapes a renderMultiRowCell <ul> can be in at this point, and
+            // ONLY those: applyRenderMultiRowCells appends it as a direct child of
+            // the <td>, and applyIntegerColumnStyling (integer columns only) then
+            // moves it inside the cell's .mb-ic-val inline-block wrapper. A bare
+            // querySelector('ul') would also match a NATIVE nested list further
+            // down an undeclared column's cell and append into that instead.
+            let dstUl = dst.querySelector(':scope > ul, :scope > .mb-ic-val > ul');
+            if (!dstUl) {
+                // Column not declared in renderMultiRowCell — wrap whatever the
+                // base cell holds so the merge still has somewhere to append.
+                dstUl = document.createElement('ul');
+                const li0 = document.createElement('li');
+                while (dst.firstChild) li0.appendChild(dst.firstChild);
+                dstUl.appendChild(li0);
+                dst.appendChild(dstUl);
+            }
+
+            const srcUl = src.querySelector('ul');
+            const added = [];
+            if (srcUl && srcUl.children.length) {
+                Array.from(srcUl.children).forEach(li => { dstUl.appendChild(li); added.push(li); });
+            } else {
+                // Either an unwrapped cell (column not in renderMultiRowCell) or
+                // an empty one — a single <li> either way, so the columns stay
+                // row-aligned.
+                const li = document.createElement('li');
+                while (src.firstChild) li.appendChild(src.firstChild);
+                dstUl.appendChild(li);
+                added.push(li);
+            }
+
+            // applyIntegerColumnStyling already ran on this row (it is the last
+            // step of row assembly, and a continuation row is not parsed until
+            // after that), so a split-aligned column's freshly appended items
+            // would otherwise keep raw text while the cell's first item alone
+            // carried the separator spans. activeIntegerColumns' colIdx is
+            // resolved against the FINAL column list, which is what dstIdx is.
+            const intEntry = activeIntegerColumns.find(e => e.colIdx === dstIdx);
+            if (intEntry) added.forEach(li => _styleIntColListItem(li, intEntry.align));
+
+            mergedCols++;
+        }
+
+        Lib.debug('parse',
+            `mergeContinuationRows: folded a continuation row into row idx=${baseRow.dataset.mbRowIdx} ` +
+            `(${mergedCols} column(s), from original column ${startCol})`);
     }
 
     // --- Configuration: Page Definitions ---
@@ -14236,11 +14559,27 @@
                     syntheticColumnExtractors: [
                         { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                     ],
-                    collapsableColumns: [ 'ISRCs', 'Release' ],
+                    // MusicBrainz paginates these results by RECORDING (25 per page)
+                    // but renders one <tr> per (recording, release) pair — every
+                    // release after the first arrives as a continuation row whose
+                    // leading four columns are one empty <td colspan="4">. Fold those
+                    // back into the preceding row (see _isContinuationRow /
+                    // _mergeContinuationRowInto); renderMultiRowCell gives all four
+                    // release-side columns the uniform <ul><li> shape the merge appends
+                    // into, so a single-release recording has exactly the same cell
+                    // structure as a ten-release one.
+                    mergeContinuationRows: true,
+                    renderMultiRowCell: [ 'Release', 'Track', 'Medium', 'Type' ],
+                    collapsableColumns: [ 'ISRCs', 'Release', 'Track', 'Medium', 'Type' ],
                     msTrackLengthBatch: true,   // results span every entity — see _msLengthSource()
                     integerColumns: [
                         { sourceColumn: 'Medium', align: 'R' },
-                        { sourceColumn: 'Track',  align: 'R' },
+                        // "N/M" (track N of M) — split-aligned on the '/' the way
+                        // "Length" is on its ':', so the separator sits at one
+                        // horizontal position for the whole column instead of
+                        // every value merely ending flush right ("5/13" and
+                        // "23/39" line up on the 3 and the 9, not the '/').
+                        { sourceColumn: 'Track',  align: '/' },
                         { sourceColumn: 'Length', align: ':' }
                     ],
                     addCAA: 'Release',
@@ -32760,9 +33099,18 @@ a { color: #1565c0; }`;
             filter: brightness(1.12);
         }
         /* <td> that hosts a collapse toggle: provides the absolute-positioning
-           context and right padding so cell content never overlaps the toggle. */
+           context and right padding so cell content never overlaps the toggle.
+           .mb-collapse-col-pad carries the SAME right padding on every other
+           cell of that column (see initCollapsableColumns) — without it a
+           centred or right-aligned column's values shift by half the padding
+           between rows that have a toggle and rows that don't. It deliberately
+           does NOT get position:relative: only a cell that actually hosts a
+           toggle needs the positioning context. */
         td.mb-has-collapse-toggle {
             position: relative !important;
+            padding-right: 22px !important;
+        }
+        td.mb-collapse-col-pad {
             padding-right: 22px !important;
         }
 
@@ -44326,6 +44674,31 @@ a { color: #1565c0; }`;
                                     // fills each subsequent row's empty first <td> from it.
                                     pendingUrlLinkedGroupCell = node.cells[0].cloneNode(true);
                                     // Skip — do not add to allRows
+                                } else if (activeDefinition.features?.mergeContinuationRows &&
+                                           _isContinuationRow(node)) {
+                                    // ── Continuation row: the tail of the PRECEDING data row ──────
+                                    // MusicBrainz renders one <tr> per (subject, target) pair while
+                                    // paginating by SUBJECT, so every target after the first arrives
+                                    // as a row whose leading columns are one empty <td colspan="N">
+                                    // (see _isContinuationRow). It has fewer cells than the table has
+                                    // columns, so the data-row branch below would import it and then
+                                    // address every cell from the wrong column — on the recording
+                                    // search results that put release TITLES into the Length column.
+                                    // Fold it into the preceding row instead, one extra <li> per
+                                    // merged column. Same both-tableModes "last data row" idiom as
+                                    // the cdtoc tracklist branch above.
+                                    const _contBaseRow = (activeDefinition.tableMode === 'multi')
+                                        ? (groupedRows.length > 0
+                                            ? groupedRows[groupedRows.length - 1].rows[groupedRows[groupedRows.length - 1].rows.length - 1]
+                                            : null)
+                                        : (allRows.length > 0 ? allRows[allRows.length - 1] : null);
+
+                                    if (_contBaseRow) {
+                                        _mergeContinuationRowInto(_contBaseRow, node, headerNames.length, indicesToExclude);
+                                    } else {
+                                        Lib.warn('parse', 'mergeContinuationRows: continuation row with no preceding data row — dropped');
+                                    }
+                                    // Skip — do not add to allRows / groupedRows
                                 } else if (
                                     (node.cells.length > 1 ||
                                      // Allow single-cell rows only when the cell does NOT span multiple
@@ -55179,6 +55552,8 @@ a { color: #1565c0; }`;
         //   .mb-caa-col-hdr-btn       — CAA/EAA col-header expand btn (removed; re-injected later)
         //   .mb-cell-collapse-toggle  — per-cell toggle span in tbody (removed unconditionally)
         //   td.mb-has-collapse-toggle — td class that sets position:relative + padding-right
+        //   td.mb-collapse-col-pad    — td class reserving that same padding on the REST of a
+        //                               toggle-bearing column's cells (see the per-column pass below)
         //   tbody td ul > li          — list items whose display was set to 'none' when collapsed
         //   .mb-text-clamp-marker     — prose-cell wrapper (kept, cheap to reuse); reset to bare
         //                               (unclamped, uncollapsed) state — the per-column wiring
@@ -55188,7 +55563,7 @@ a { color: #1565c0; }`;
         table.querySelectorAll(
             '.mb-col-collapse-hdr-btn, .mb-caa-col-hdr-btn, ' +
             '.mb-cell-collapse-toggle, ' +
-            'td.mb-has-collapse-toggle, ' +
+            'td.mb-has-collapse-toggle, td.mb-collapse-col-pad, ' +
             'tbody td ul > li, ' +
             '.mb-text-clamp-marker'
         ).forEach(el => {
@@ -55214,8 +55589,10 @@ a { color: #1565c0; }`;
                 // (or, for the "ARs" column, sa_enable_ars_collapse).
                 el.classList.remove('mb-text-clamp-inner', 'mb-text-clamp-inner-ars', 'mb-text-clamp-expanded');
             } else if (el.tagName === 'TD') {
-                // td.mb-has-collapse-toggle — clear positioning class.
-                el.classList.remove('mb-has-collapse-toggle');
+                // td.mb-has-collapse-toggle / td.mb-collapse-col-pad — clear the
+                // positioning and reserved-space classes; both are re-applied by
+                // the per-column wiring pass below when still warranted.
+                el.classList.remove('mb-has-collapse-toggle', 'mb-collapse-col-pad');
             } else {
                 // tbody td ul > li — reset display unless art-managed.
                 if (!el.classList.contains('mb-caa-art-li')) {
@@ -55748,6 +56125,25 @@ a { color: #1565c0; }`;
 
             collapseHdrBtns.push(collapseHdrBtn);
             if (_anyCellStartedExpanded) anyCellInAnyColumnStartedExpanded = true;
+
+            // ── Uniform reserved toggle space across the whole column ─────────
+            // `td.mb-has-collapse-toggle` sets `padding-right:22px` so cell
+            // content never slides under the absolutely-positioned toggle — but
+            // it lands only on the cells that actually HAVE a toggle. In a
+            // centre- or right-aligned column that makes a value's horizontal
+            // position depend on whether its own row happens to be multi-row:
+            // measured on the recording search results, the same "1" in "Medium"
+            // sat 10.5 px (half the padding) further left in a row with a toggle
+            // than in one without, so nothing in the column lined up.
+            // Reserve the same space on every cell instead. A no-op for the
+            // left-aligned text columns this mechanism is usually applied to
+            // (padding-right does not move left-aligned content), and it costs
+            // no width: the auto-resize pass already budgets the toggle's space
+            // once per column.
+            bodyRows.forEach(tr => {
+                const td = tr.cells[colIndex];
+                if (td) td.classList.add('mb-collapse-col-pad');
+            });
         });
 
         // ── Wire global ▶/◀ toggle button ────────────────────────────────────
@@ -70606,35 +71002,75 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Extracts the MusicBrainz GUID and entity type from a table row's primary
-     * anchor element.
+     * Extracts every taggable MusicBrainz entity from a table row's primary
+     * entity cell.
      *
-     * Searches for the first `<a href>` matching:
+     * Recognised anchors:
      *   /release-group/<guid>   →  entity type 'release-group'
      *   /release/<guid>         →  entity type 'release'
      *   /recording/<guid>       →  entity type 'recording'
      *
+     * The FIRST such anchor in document order still decides what the row is
+     * about — both the entity type and the cell to read — exactly as when this
+     * returned a single entity. What changed is that the whole of THAT cell is
+     * then harvested rather than just its first anchor, so a multi-row cell
+     * yields one entity per entry: on the recording search results a recording
+     * released five times gets five buttons, one per release, instead of one for
+     * whichever release happened to be listed first.
+     *
+     * Anchoring on the first match's own cell (rather than scanning the row) is
+     * what keeps this from over-collecting elsewhere — a `release-tracks` AR
+     * column can hold a dozen unrelated `/recording/` links, but it is never the
+     * row's FIRST entity cell, so it is never harvested.
+     *
      * The search intentionally skips `.mb-sticky-col` and `.mb-rel-cell` cells,
-     * which contain duplicate or unrelated hrefs.
+     * which contain duplicate or unrelated hrefs. Results are deduplicated by
+     * MBID (a cell can link the same entity twice) and keep document order.
      *
      * @param   {HTMLTableRowElement} tr
-     * @returns {{ guid: string, entityType: string }|null}
+     * @returns {Array<{ guid: string, entityType: string, name: string }>}
      */
-    function _picardExtractRowEntity(tr) {
+    function _picardExtractRowEntities(tr) {
         const _GUID_RE = /\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/;
         const _TYPES   = ['release-group', 'release', 'recording'];
 
-        for (const td of tr.querySelectorAll(
-            'td:not(.mb-sticky-col):not(.mb-rel-cell) a[href]'
-        )) {
-            const href = td.getAttribute('href');
+        /** @returns {{type: string, guid: string}|null} */
+        const _classify = (a) => {
+            const href = a.getAttribute('href') || '';
             for (const t of _TYPES) {
                 if (!href.includes('/' + t + '/')) continue;
                 const m = href.match(_GUID_RE);
-                if (m) return { guid: m[1], entityType: t };
+                if (m) return { type: t, guid: m[1] };
             }
+            return null;
+        };
+
+        const anchors = Array.from(tr.querySelectorAll(
+            'td:not(.mb-sticky-col):not(.mb-rel-cell) a[href]'
+        ));
+
+        // First match decides the entity type AND the cell to harvest.
+        let targetType = null;
+        let targetCell = null;
+        for (const a of anchors) {
+            const hit = _classify(a);
+            if (!hit) continue;
+            targetType = hit.type;
+            targetCell = a.closest('td');
+            break;
         }
-        return null;
+        if (!targetType || !targetCell) return [];
+
+        const seen = new Set();
+        const out  = [];
+        for (const a of anchors) {
+            if (a.closest('td') !== targetCell) continue;
+            const hit = _classify(a);
+            if (!hit || hit.type !== targetType || seen.has(hit.guid)) continue;
+            seen.add(hit.guid);
+            out.push({ guid: hit.guid, entityType: hit.type, name: a.textContent.trim() });
+        }
+        return out;
     }
 
     /**
@@ -70695,13 +71131,19 @@ a { color: #1565c0; }`;
      *
      * @param   {string} entityType
      * @param   {string} guid
+     * @param   {string} [name]  The entity's own name, used in the tooltip. Load-
+     *                           bearing when a row carries SEVERAL buttons (one
+     *                           per release on a merged recording-search row) —
+     *                           an 8-character MBID prefix does not tell the user
+     *                           which release a given ♪ icon would send.
      * @returns {HTMLButtonElement}
      */
-    function _picardCreateButton(entityType, guid) {
+    function _picardCreateButton(entityType, guid, name) {
+        const _label = name ? `${name} — ${entityType}` : `${entityType} ${guid.slice(0, 8)}…`;
         const _btn = document.createElement('button');
         _btn.type       = 'button';
         _btn.className  = 'mb-picard-btn';
-        _btn.title      = `Send to Picard (${entityType} ${guid.slice(0, 8)}…)`;
+        _btn.title      = `Send to Picard (${_label})`;
         _btn.style.cssText =
             'display:inline-flex; align-items:center; justify-content:center;' +
             ' width:18px; height:18px; cursor:pointer; background:none; border:none;' +
@@ -70730,7 +71172,7 @@ a { color: #1565c0; }`;
                 const r = await _picardRequest(_url, 3000);
                 if (r.status >= 200 && r.status < 400) {
                     _img.src   = _PICARD_ICON_OK;
-                    _btn.title = `Sent to Picard ✓ (${entityType} ${guid.slice(0, 8)}…)`;
+                    _btn.title = `Sent to Picard ✓ (${_label})`;
                     Lib.debug('picard', `Tagger request successful: ${r.responseText}`);
                 } else {
                     _img.src   = _PICARD_ICON_ERR;
@@ -70814,6 +71256,10 @@ a { color: #1565c0; }`;
             return;
         }
 
+        // Set by _picardApplyToRow when any row yields more than one entity —
+        // see the collapsable-column registration at the end of this function.
+        let _anyMultiRowPicardCell = false;
+
         /**
          * Applies (full mode) or re-wires (rewireOnly mode) one row's picard
          * cell — shared by the live-DOM pass below and the `allRows`
@@ -70830,16 +71276,34 @@ a { color: #1565c0; }`;
          * @param {HTMLTableRowElement} tr
          */
         function _picardApplyToRow(tr) {
-            const _entity = _picardExtractRowEntity(tr);
+            const _entities = _picardExtractRowEntities(tr);
+            if (_entities.length > 1) _anyMultiRowPicardCell = true;
+            // One <li> per entity, so a row whose source cell is multi-row gets a
+            // Picard cell of the same shape — each ♪ on the line of the release it
+            // sends. Always a <ul>, even for one entity, so the column has one
+            // uniform cell structure (the same rule applyRenderMultiRowCells
+            // documents for its own always-wrap behaviour); with the list reset
+            // below, a single-item cell renders exactly as the bare button did.
+            const _fill = (td) => {
+                if (!_entities.length) return;
+                const ul = document.createElement('ul');
+                ul.style.cssText = 'list-style:none;margin:0;padding:0;';
+                _entities.forEach(e => {
+                    const li = document.createElement('li');
+                    li.appendChild(_picardCreateButton(e.entityType, e.guid, e.name));
+                    ul.appendChild(li);
+                });
+                td.appendChild(ul);
+            };
             let _td = tr.querySelector('td.mb-picard-cell');
             if (_td) {
                 _td.innerHTML = '';
-                if (_entity) _td.appendChild(_picardCreateButton(_entity.entityType, _entity.guid));
+                _fill(_td);
             } else if (!rewireOnly) {
                 _td = document.createElement('td');
                 _td.className = 'mb-picard-cell';
                 _td.style.cssText = 'text-align:center; vertical-align:middle; padding:2px 4px;';
-                if (_entity) _td.appendChild(_picardCreateButton(_entity.entityType, _entity.guid));
+                _fill(_td);
                 tr.appendChild(_td);
             }
         }
@@ -70939,6 +71403,36 @@ a { color: #1565c0; }`;
                 `initPicardTaggerColumn: ${rewireOnly ? 'rewired' : 'injected'} Picard column ` +
                 `(th-injected=${table.dataset.picardThInjected})`);
         });
+
+        // ── Register "Picard" as a collapsable column, and wire it ────────────
+        // Only when a row actually produced more than one button — on every
+        // other page the column is one button per row and there is nothing to
+        // collapse, so nothing here runs and no behaviour changes.
+        //
+        // Registering the name follows applyExtractTrackTitleData()'s precedent
+        // for a column whose existence isn't known at authoring time, but with
+        // one difference that forces the extra initCollapsableColumns() call
+        // below: that function runs during pre-processing, comfortably BEFORE
+        // the collapse pass, whereas this one runs at the very END of every
+        // render path (it has to — the Picard <td> must be appended after the
+        // Relationships cells to stay rightmost). Both the initial render and
+        // runFilter() therefore run their collapse pass before this column even
+        // exists, and rewire mode then rebuilds each cell's innerHTML — which
+        // would wipe a toggle the collapse pass had added. Re-running it here,
+        // after the cells are final, is what makes the column behave like every
+        // other multi-row one. initCollapsableColumns() is idempotent and never
+        // calls back into this function, so there is no loop.
+        //
+        // `concat` rather than `push`: activeDefinition.features is rebuilt per
+        // fetch but its collapsableColumns VALUE is the page definition's own
+        // array, and pushing would mutate that definition for the session.
+        if (_anyMultiRowPicardCell && activeDefinition && activeDefinition.features) {
+            const _feats = activeDefinition.features;
+            const _cols  = Array.isArray(_feats.collapsableColumns) ? _feats.collapsableColumns : [];
+            if (!_cols.includes('Picard')) _feats.collapsableColumns = _cols.concat('Picard');
+            Lib.debug('picard', 'initPicardTaggerColumn: multi-row Picard cells present — re-running initCollapsableColumns');
+            _tables.forEach(table => initCollapsableColumns(table));
+        }
     }
 
     // ── end Picard Tagger feature ─────────────────────────────────────────────

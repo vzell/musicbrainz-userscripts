@@ -73,6 +73,9 @@ Each entry follows this shape:
         listToTable: ['genres','tags'], // convert <ul id="X"> → <table class="tbl">
         removeSelector: 'css-selector', // remove DOM element after rendering
         showAllTags: true,
+        mergeContinuationRows: true,  // fold "<td colspan=N> empty" continuation rows
+                                      // into the preceding row as extra <li> rows —
+                                      // pair with renderMultiRowCell on the same columns
 
         // Column pipeline:
         columnExtractors: [ { extractor: 'name', sourceColumn: 'Col', syntheticColumns: ['A','B'] } ],
