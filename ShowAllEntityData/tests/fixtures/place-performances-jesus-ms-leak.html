@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Place “Test Studio” - Performances - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        Reproduces the real-world leak confirmed via debug/place-perf-final.html:
+        jesus2099's "mb. SUPER MIND CONTROL Ⅱ X TURBO" userscript
+        (RECORDING_LENGTH_COLUMN feature) writes its own "M:SS.mmm"-formatted
+        Length values directly into the NATIVE table on page types MusicBrainz
+        itself renders no Length column for (place-performances is one — see
+        _isJesus2099Treleases()'s own JSDoc) — marking each cell `class="treleases"
+        title="…"` with a yellow text-shadow. purgeJesus2099Artifacts() strips
+        that markup, but before the fix below it never touched the CELL TEXT
+        itself, so the millisecond suffix rode straight through into the final
+        consolidated table unmarked and indistinguishable from genuine content.
+
+        Row 1 (528327c7…) simulates a row jesus2099 touched: a real page
+        navigation, matching a real `curl`-verified capture (`5:37.533`,
+        jesus2099userjs85790 markers, exactly as debug/place-perf-final.html
+        showed it BEFORE the fix). Row 2 (de9ff1d7…) simulates a row pulled in
+        via ShowAllEntityData's own internal pagination fetch, which
+        Tampermonkey never runs jesus2099 against (only real navigations match
+        its @match) — plain, untouched "5:05" — matching
+        debug/place-perf-single-tabbed-final.html's own mixed-row finding.
+    -->
+    <div id="content">
+        <div class="wrap-anywhere placeheader">
+            <h1><a href="/place/6a59a67c-fcc5-491f-949c-bfc45bc97463"><bdi>Test Studio</bdi></a></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/performances">Performances</a></li></ul>
+        </div>
+        <h2>Performances</h2>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Title</th>
+                    <th>Attributes</th>
+                    <th>Artist</th>
+                    <th class="treleases" title="SUPER&nbsp;MIND&nbsp;CONTROL&nbsp;Ⅱ&nbsp;X&nbsp;TURBO" style="text-shadow: yellow 0px 0px 2px;">Length</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>2001-12</td>
+                    <td><a href="/recording/528327c7-0f7a-46d1-b03f-700ebc39f747"><bdi>First Recording</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/aaaaaaaa-1111-4111-8111-111111111111"><bdi>Test Artist</bdi></a></td>
+                    <td class="treleases jesus2099userjs85790" title="SUPER&nbsp;MIND&nbsp;CONTROL&nbsp;Ⅱ&nbsp;X&nbsp;TURBO" style="text-align: right;">5:37.533</td>
+                </tr>
+                <tr>
+                    <td>2002-01</td>
+                    <td><a href="/recording/de9ff1d7-dd78-4ed6-a328-c1ab126304e6"><bdi>Second Recording</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/aaaaaaaa-1111-4111-8111-111111111111"><bdi>Test Artist</bdi></a></td>
+                    <td>5:05</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

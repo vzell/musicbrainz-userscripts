@@ -53,7 +53,10 @@ function buildGmStubsScript(initialValues = {}) {
             persist();
 
             window.GM_info = {
-                script: { name: 'ShowAllEntityData (test)', version: 'test' },
+                script: {
+                    name: 'ShowAllEntityData (test)', version: 'test', description: '', namespace: '',
+                    homepage: '', supportURL: '', icon: '',
+                },
             };
 
             window.GM_addStyle = function (css) {

@@ -16,7 +16,8 @@
         "test:live:artist-releases:full": "TEST_PREFILTER_LOAD=1 TEST_COLVIS=1 PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/artist-releases-full.json playwright test tests/live/artist-releases-filter-sort.spec.js --project=chromium-live --reporter=list,json; e=$?; node tests/support/generate-filtersort-report.js < test-results/artist-releases-full.json; exit $e",
         "test:live:report:releasegroup-releases": "PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/releasegroup-releases-report.json playwright test tests/live/releasegroup-releases-filter-sort.spec.js --project=chromium-live --reporter=list,json; e=$?; node tests/support/generate-releasegroup-releases-filtersort-report.js < test-results/releasegroup-releases-report.json; exit $e",
         "report": "playwright show-report",
-        "auth:login": "node tests/support/auth-setup.js"
+        "auth:login": "node tests/support/auth-setup.js",
+        "live-interop": "node tests/support/run-live-interop.js"
     },
     "devDependencies": {
         "@playwright/test": "^1.62.1",

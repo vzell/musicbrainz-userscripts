@@ -110,12 +110,27 @@ test.describe('jesus2099 artifact purge on the final rendered page', () => {
         expect(tdClasses).toContain('wrap-anywhere');
         expect(tdClasses.filter((c) => /^jesus2099/i.test(c))).toEqual([]);
 
-        // All three Length values still render (the purge touches decoration,
-        // never the duration text jesus2099 had written).
+        // All three Length values still render, but a jesus2099-leaked
+        // millisecond value is now ADOPTED into ShowAllEntityData's OWN
+        // ms-toggle tracking (_adoptJesus2099MsLength()) rather than left as
+        // raw, un-toggleable text: displayed at MusicBrainz's own ROUNDED
+        // seconds precision (290160ms → "4:50"; 191666ms rounds UP to "3:12",
+        // not a truncated "3:11" — see _msFormatSeconds()'s own JSDoc for
+        // this exact example), with the real millisecond value preserved in
+        // data-mb-ms/data-mb-sec-text for the ⏱ toggle to use instantly, no
+        // re-fetch needed. "?:??" (no usable duration) is left alone.
         const lengthIdx = await columnIndex(page, 'Length');
         const lengths = await page.evaluate((idx) => Array.from(document.querySelectorAll('table.tbl tbody tr'))
             .map((tr) => tr.cells[idx].textContent.replace(/\s+/g, '')), lengthIdx);
-        expect(lengths).toEqual(['4:50.160', '3:11.666', '?:??']);
+        expect(lengths).toEqual(['4:50', '3:12', '?:??']);
+
+        const msAttrs = await page.evaluate((idx) => Array.from(document.querySelectorAll('table.tbl tbody tr'))
+            .map((tr) => { const td = tr.cells[idx]; return { ms: td.dataset.mbMs || null, secText: td.dataset.mbSecText || null }; }), lengthIdx);
+        expect(msAttrs).toEqual([
+            { ms: '290160', secText: '4:50' },
+            { ms: '191666', secText: '3:12' },
+            { ms: null, secText: null },
+        ]);
     });
 
     test('jesus2099 features OUTSIDE table.tbl are left untouched', async ({ page }) => {

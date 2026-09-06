@@ -17136,6 +17136,34 @@
         return Array.from(seen);
     }
 
+    /**
+     * Whether any rendered Length cell with a parseable duration still lacks
+     * `data-mb-ms` — a MORE PRECISE question than `_msAnyStamped()`'s "has
+     * anything been stamped AT ALL", needed now that a page can arrive with
+     * a PARTIAL stamp before the first press: `_adoptJesus2099MsLength()`
+     * stamps whichever rows jesus2099 happened to touch (a real page
+     * navigation) at render time, while rows ShowAllEntityData pulled in via
+     * its own internal pagination fetch (which jesus2099 never runs
+     * against) arrive unstamped in the very same table.
+     *
+     * Source-agnostic by design — unlike `_msCollectRecordingMbids()`, which
+     * is coupled to the `'batch'` source's own `_msBatchMemCache` L1 tier —
+     * so it works for the `'ws2'` single-request source too. See the
+     * `needFetch` fix in `_msToggleLengthPrecision()` this exists for.
+     *
+     * @returns {boolean}
+     */
+    function _msHasUnstampedLengthCell() {
+        const colIdx = _msLengthColumnIndex();
+        if (colIdx < 0) return false;
+        return _msSourceRows().some(row => {
+            const td = row.cells[colIdx];
+            if (!td || td.dataset.mbMs) return false;
+            const secText = (getCleanColumnText(td) || td.textContent || '').trim();
+            return _parseDurationToMs(secText) !== null;
+        });
+    }
+
     /** @type {?{value: number}} Per-task memo for `_msBatchRequestCount()`. */
     let _msBatchCountMemo = null;
 
@@ -17596,14 +17624,27 @@
         // the page's lifetime, so every later toggle, sort or filter is local.
         let partialDetail = '';
         // Is there anything left to fetch? For the single-request sources the
-        // answer is "only if nothing is stamped yet". The batched source can
-        // also be PARTLY resolved — a run in which some batches failed stamps
-        // what arrived — and those failures cached nothing, so pressing again
-        // must re-request exactly the outstanding MBIDs.
-        // `_msCollectRecordingMbids()` is precisely that list.
+        // answer used to be "only if nothing is stamped yet" — true until a
+        // page could arrive PARTIALLY stamped before the first press
+        // (`_adoptJesus2099MsLength()`: jesus2099 stamps whichever rows it
+        // touched, ShowAllEntityData's own internal pagination fetch pulls in
+        // others jesus2099 never ran against). `!_msAnyStamped()` alone would
+        // then skip the 'ws2' fetch entirely the moment ANY row was already
+        // stamped, permanently leaving the rest unresolved — the
+        // `source === 'ws2'` branch below closes that gap with the same
+        // "is there real work left" question `_msHasUnstampedLengthCell()`
+        // answers generically. The batched source can also be PARTLY
+        // resolved — a run in which some batches failed stamps what arrived
+        // — and those failures cached nothing, so pressing again must
+        // re-request exactly the outstanding MBIDs; `_msCollectRecordingMbids()`
+        // is precisely that list, kept as its own branch (rather than folded
+        // into the generic check) because it is ALSO source-specific
+        // (`_msBatchMemCache`), unlike `_msHasUnstampedLengthCell()`.
         const source = next ? _msLengthSource() : null;
         const needFetch = next && (
-            !_msAnyStamped() || (source === 'batch' && _msCollectRecordingMbids().length > 0)
+            !_msAnyStamped()
+            || (source === 'batch' && _msCollectRecordingMbids().length > 0)
+            || (source === 'ws2' && _msHasUnstampedLengthCell())
         );
         if (needFetch) {
             if (source !== 'ws2' && source !== 'batch') {
@@ -19856,18 +19897,23 @@
     /**
      * Whether a 'Title' column cell carries a third-party userscript's
      * "track name differs from underlying recording name" flag — MusicBrainz
-     * itself doesn't render this; it's injected by e.g. jesus2099's
-     * userscript as an anchor `title="track name: …\n≠rec. name: …"`
-     * tooltip when the two differ (see debug/title.html: `<a title="track
-     * name: Rave On!\n≠rec. name: Rave On" …>Rave On!</a>`).
+     * itself doesn't render this; it's injected by jesus2099's "mb. INLINE
+     * STUFF" userscript (confirmed via its class-name fragment below, and
+     * again directly against its own source — see
+     * `tests/fixtures/live-userscripts/manifest.json`'s
+     * `jesus2099-inline-stuff` entry) as an anchor `title="track name:
+     * …\n≠rec. name: …"` tooltip when the two differ (see debug/title.html:
+     * `<a title="track name: Rave On!\n≠rec. name: Rave On" …>Rave
+     * On!</a>`).
      *
      * Tests for the literal "≠" character rather than the exact tooltip
      * wording or the third-party script's own class name
-     * (`jesus2099userjs81127recording`/`…recname`) — the inequality glyph
-     * is the actual signal being flagged (the tooltip presumably uses "="
-     * instead when the names match, though no real example of that case has
-     * been captured), so this is immune to exactly which third-party
-     * script produced it or how its class names are versioned.
+     * (`jesus2099userjs81127recording`/`…recname` — `81127` is "mb. INLINE
+     * STUFF"'s own internal id) — the inequality glyph is the actual signal
+     * being flagged (the tooltip presumably uses "=" instead when the names
+     * match, though no real example of that case has been captured), so
+     * this is immune to exactly which third-party script produced it or how
+     * its class names are versioned.
      *
      * @param {Element} cell - A `<td>` in the 'Title' column.
      * @returns {boolean}
@@ -45442,6 +45488,58 @@ a { color: #1565c0; }`;
      * @param   {?(Element)} root  A `table.tbl`, or one captured `<tr>`.
      * @returns {{removed: number, stripped: number}} Per-call counts, for logging.
      */
+    /**
+     * Adopts a jesus2099-leaked millisecond-precision Length value into
+     * ShowAllEntityData's OWN ms-toggle tracking (`data-mb-ms`/
+     * `data-mb-sec-text` — the exact shape `_msStampSourceRowsFromMap()`/
+     * `_msStampReleaseTrackLengths()` use) instead of either destroying it
+     * (an earlier version of this fix just regex-stripped the ".mmm" suffix)
+     * or leaving it as unmarked, un-toggleable text (the ORIGINAL behaviour
+     * — see `tests/fixtures/jesus2099-artifact-purge.spec.js`'s now-
+     * superseded "the purge touches decoration, never the duration text"
+     * assertion).
+     *
+     * jesus2099's own `RECORDING_LENGTH_COLUMN` fetches this value from the
+     * EXACT SAME MusicBrainz Web Service data ShowAllEntityData's own
+     * `ws2`/`batch` ms-source paths would otherwise request — adopting it
+     * is not a guess, it is reusing data that already cost a real network
+     * request, and it means our own lazy fetch never re-requests this
+     * recording once adopted (see the `needFetch` change in
+     * `_msToggleLengthPrecision()`).
+     *
+     * Resets the cell's DISPLAYED text back to plain seconds
+     * (`data-mb-sec-text`, MusicBrainz's own rounding) rather than leaving
+     * the millisecond text visible — millisecond display is transient
+     * DISPLAY state (the same principle `_msResetCarriedOverPrecision()`
+     * applies to cross-tab-hydrated cells, for a different reason: there it
+     * DISCARDS the value entirely, because a hydrated cell carries no
+     * independently-fetched `ms` to safely re-derive `data-mb-sec-text`
+     * from; here jesus2099's own text IS that source, parsed once via
+     * `_parseDurationToMs()`). This matters most on a page mixing
+     * jesus2099-touched rows (a real navigation) with rows ShowAllEntityData
+     * pulled in via its own internal pagination fetch — which jesus2099
+     * never runs against, since Tampermonkey only injects on real page
+     * loads matching its own `@match` (confirmed via
+     * `debug/place-perf-single-tabbed-final.html`: some rows arrived
+     * decorated, others plain, in the SAME final table): every row starts
+     * from the SAME collapsed state instead of a confusing per-row mix.
+     *
+     * @param   {HTMLTableCellElement} td  A Length `<td>` whose current text
+     *   may be jesus2099's own `M:SS[.mmm]` format.
+     * @returns {boolean} Whether a value was adopted.
+     */
+    function _adoptJesus2099MsLength(td) {
+        if (td.dataset.mbMs) return false;              // idempotent
+        const text = td.textContent.trim();
+        if (!_MS_RENDERED_DURATION_RE.test(text)) return false;
+        const ms = _parseDurationToMs(text);
+        if (ms === null) return false;
+        td.dataset.mbMs = String(ms);
+        td.dataset.mbSecText = _msFormatSeconds(ms);
+        _msWriteDurationText(td, td.dataset.mbSecText);
+        return true;
+    }
+
     function _stripJesus2099InTable(root) {
         const result = { removed: 0, stripped: 0 };
         if (!root || root.nodeType !== Node.ELEMENT_NODE) return result;
@@ -45465,6 +45563,7 @@ a { color: #1565c0; }`;
                 return;
             }
 
+            const wasTreleases = tokens.includes('treleases');
             tokens.forEach(t => el.classList.remove(t)); // disposition 3
             if (!el.classList.length) el.removeAttribute('class');
             if (el.tagName === 'TH' || el.tagName === 'TD') {
@@ -45473,6 +45572,11 @@ a { color: #1565c0; }`;
                 // tooltips, and blindly dropping the title would delete ours.
                 if (!_isOwnColumnTooltip(el)) el.removeAttribute('title');
                 el.style.removeProperty('text-shadow');
+                // treleases is Length-column-only on any page MusicBrainz
+                // doesn't render it natively (see _isJesus2099Treleases()'s
+                // own JSDoc) — a <td> carrying it can only be a duration
+                // cell, so this is always safe to attempt.
+                if (el.tagName === 'TD' && wasTreleases) _adoptJesus2099MsLength(el);
             }
             result.stripped++;
         });
@@ -45531,6 +45635,13 @@ a { color: #1565c0; }`;
      * @param {HTMLTableCellElement} td
      */
     function _repairTreleasesTd(td) {
+        // Adopt jesus2099's own millisecond precision into our OWN ms-toggle
+        // tracking BEFORE reading rawText below, so a cell this observer
+        // catches gets the same treatment as one purgeJesus2099Artifacts()
+        // finds at scrape time — see _adoptJesus2099MsLength()'s own JSDoc.
+        // A no-op (returns false, leaves td untouched) for anything that
+        // isn't a bare "M:SS[.mmm]" duration, e.g. "?:??".
+        _adoptJesus2099MsLength(td);
         const rawText = td.textContent.trim();
         const tr      = td.parentElement;
         if (!tr) return;
@@ -50855,8 +50966,9 @@ a { color: #1565c0; }`;
         let multiRowCollapsedCount = _uniqCacheHit ? _uniqCacheHit.multiRowCollapsedCount : 0;
         let multiRowExpandedCount  = _uniqCacheHit ? _uniqCacheHit.multiRowExpandedCount  : 0;
         let singleRowCount         = _uniqCacheHit ? _uniqCacheHit.singleRowCount         : 0;
-        // 'Title' column only: rows where a third-party userscript (e.g.
-        // jesus2099's) has flagged the recording's Title-cell display name as
+        // 'Title' column only: rows where a third-party userscript
+        // (jesus2099's "mb. INLINE STUFF" — see _titleHasRecNameMismatch()'s
+        // own JSDoc) has flagged the recording's Title-cell display name as
         // different from its underlying recording name, via a "≠" character
         // in the anchor's own title="track name: …\n≠rec. name: …" tooltip
         // (see debug/title.html) — "=" is presumed used when they match, so
