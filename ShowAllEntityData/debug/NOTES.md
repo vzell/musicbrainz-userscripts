@@ -7425,18 +7425,20 @@ Type and Label/Catalog# on other pages identically; it is inherent to the
 multi-row-cell approach, and does not show on the real page, where auto-resize
 gives the Release column enough width not to wrap.
 
-## 2026-09-07 — `_artSyncSearchTextToSourceRow()` cannot reach a merged-view row (open, not fixed)
+## 2026-09-07 — `_artSyncSearchTextToSourceRow()`'s index lookup in merged view (investigated: NOT a live bug)
 
-Found while finishing the verification of the artwork mirror (9.99.1038), not
-by a failing test. **Recorded only — deliberately not fixed in that session**,
-since it is a userscript change needing its own branch, version bump, changelog
-entry and a fails-before/passes-after test.
+**This entry supersedes an earlier version of itself that claimed a
+user-visible symptom. That claim was wrong** — it was reasoned from the code
+and written up before anything ran. Measured, the symptom does not occur. What
+follows is the corrected record.
+
+### The weakness (real, in the code)
 
 `_artSyncSearchTextToSourceRow()` mirrors a CAA/EAA cell's per-image
-type/comment search text onto the source row, which is what makes a plain-text
-filter over a CAA column match at all on `tableMode: 'multi'` pages (the live
-cell is a clone; the row `runFilter()` reads is not). It resolves that source
-row by table POSITION:
+type/comment text onto the source row, which is what makes a typed filter over
+a CAA column match at all on `tableMode: 'multi'` pages (the live cell is a
+clone; the row `runFilter()` reads is not). It resolves that source row by
+table POSITION:
 
 ```js
 const tableIndex = Array.from(document.querySelectorAll('table.tbl')).indexOf(liveTable);
@@ -7447,24 +7449,54 @@ if (!sourceRow) return;          // ← silently gives up
 ```
 
 That assumes every row in a live table belongs to the group at the same index.
-**Merged discography view breaks the assumption**: `runFilter()`'s merged branch
-combines every same-category group's rows into the FIRST-OCCURRENCE table, so
-rows from other groups sit in a table whose `groupedRows` entry does not contain
-them. `find()` misses, the function returns early, and those rows never get
-their search text — so a CAA type/comment filter silently finds zero matches for
-exactly them, forever. No error, no visible symptom other than "the filter finds
-nothing".
+Merged discography view does break the assumption: `_applyDiscographyViewFilter()`
+fills each first-occurrence table with CLONES of every same-category group's
+rows, so relocated rows sit in a table whose `groupedRows` entry does not
+contain them, and the lookup misses.
 
-**The fix is one line**: use `_findMasterRowByIdx()` instead, which searches
-`allRows` and then every group and is therefore correct in all four
-`discographyViewState` modes. That is precisely why the sibling written for the
-icon mirror, `_artResolveSourceCounterpart()`, uses it — see its JSDoc, which
-documents this same trap as the reason.
+### Why it produces no symptom
 
-**Not currently covered by any test.**
-`releasegroup-releases-caa-type-comment-filter.spec.js` is the CAA-text-filter
-spec (3 tests, all green on 9.99.1038) but runs on `releasegroup-releases`,
-which has no merged view. `discography-view-artwork.spec.js` does exercise
-merged view with artwork loaded, but asserts on painted icons, never on the
-column's text filter. A regression test would have to sit at that intersection:
-merged view + a typed CAA type/comment filter.
+A folded-away duplicate section keeps its STALE rows in the DOM —
+`_applyDiscographyViewFilter()` marks the h3 `data-mb-disc-hidden="true"` and
+hides the table but never empties it — and **artwork is built in those hidden
+tables too**, where the DOM index still lines up with the row's own
+`groupedRows` entry. Every relocated row therefore gets its search text synced
+through its hidden twin, and the failed lookup on the visible merged copy costs
+nothing.
+
+Measured on `/artist/5d02f264-…` (Simon & Garfunkel, 123 rows / 17 sections,
+22 rows in duplicate sections), switching to merged view BEFORE any artwork was
+built so nothing could have synced beforehand:
+
+```
+CAA cells built, visible tables    85
+CAA cells built, hidden tables     72     ← the masking mechanism
+sampled relocated row              105, one hidden twin, twin's cell built
+typed CAA filter on its own text   row survives — sync DID reach it
+```
+
+### What was done about it
+
+Nothing to the userscript. `CLAUDE.md` requires a fails-before/passes-after
+test for a DOM/rendering fix, and no such test can be written for a defect that
+does not manifest; changing a working lookup on reasoning alone is how a
+regression gets introduced for free.
+
+Instead `tests/live/merged-view-caa-search-sync.spec.js` was added as a
+REGRESSION GUARD. It passes today. The masking rests on pure waste — 72 artwork
+builds nobody can see — so the obvious future optimisation ("don't build
+artwork in hidden tables") would remove it and make the weakness live
+immediately. That spec is what would catch it, and it names the one-line fix
+(`_findMasterRowByIdx()`, which `_artResolveSourceCounterpart()` already uses)
+in its own header.
+
+### Method note
+
+The first attempt to write this test compared each row's table index before and
+after the switch to decide "was it relocated". That is wrong twice over: the
+view switch re-renders the whole table set, and the stale twin means a
+relocated row exists in TWO tables afterwards, so the diff can resolve to the
+hidden copy. It did — the run picked a row inside a hidden table and failed on
+the filter input's visibility, nowhere near what it meant to assert. The
+working signal is the section's category ORDINAL: merged view moves exactly the
+rows in the 2nd, 3rd, … occurrence of a category.
