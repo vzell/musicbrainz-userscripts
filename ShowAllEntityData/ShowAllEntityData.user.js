@@ -31791,6 +31791,60 @@ a { color: #1565c0; }`;
     // h3-hosted equivalents (createSubTableCollapseButton, etc.).
     filterContainer.style.cssText = 'display:none; align-items:center; white-space:nowrap; gap:5px; font-size:1rem; line-height:1;';
 
+    // ── Semantic grouping of the filter bar's own children ────────────────────
+    // The bar used to hold every control as one flat run of direct children,
+    // mixing four unrelated concerns, which left nothing to anchor new controls
+    // on — the sub-table bar has had `.mb-subtable-filter-container` for exactly
+    // that purpose since it was written (see createSubTableFilterContainer()).
+    // These three spans give the global bar the same shape; `#mb-status-display`
+    // below is already a container of its own and just gains the matching class
+    // rather than a redundant fourth wrapper.
+    //
+    // `display:contents` is load-bearing, NOT a style choice. These groups must
+    // add DOM structure while changing layout by exactly nothing:
+    //   - Every child of the summary group, and every child of the actions
+    //     group, starts `display:none` (revealed later by
+    //     _updateLiveDateFlagButtons()/_updateLengthMismatchButtons()/
+    //     updateFilterButtonsVisibility()). A `display:none` CHILD generates no
+    //     flex gap; an `inline-flex` WRAPPER whose children are all hidden is
+    //     itself still a zero-width flex item that DOES generate this
+    //     container's `gap:5px` on both sides — so wrapping them in a rendered
+    //     box would add dead space to the bar on every page type that isn't
+    //     release-tracks, and again whenever no filter is active.
+    //   - `display:contents` removes the wrapper's own box entirely, so its
+    //     children stay direct flex items of `#mb-filter-container` and inherit
+    //     its `gap`/`align-items`/font-size reset exactly as before. No nested
+    //     flex context, no second baseline resolution, no wrapping change.
+    // Grouping spans carry no ARIA role, so `display:contents` has no
+    // accessibility cost here (the a11y-tree bug it once had applies to
+    // elements with semantics of their own, which these deliberately lack).
+    //
+    // Naming: do NOT shorten any of these to `mb-global-filter`. A dead
+    // selector `document.querySelector('.mb-global-filter input')` targets a
+    // class that exists nowhere; creating it would silently make that code live
+    // and match `#mb-global-filter-input`. The `-container` suffix keeps them
+    // distinct class tokens.
+    const _GROUP_CSS = 'display:contents;';
+
+    const summaryGroup = document.createElement('span');
+    summaryGroup.className = 'mb-global-summary-container';
+    summaryGroup.style.cssText = _GROUP_CSS;
+
+    const filterGroup = document.createElement('span');
+    filterGroup.className = 'mb-global-filter-container';
+    filterGroup.style.cssText = _GROUP_CSS;
+
+    const actionsGroup = document.createElement('span');
+    actionsGroup.className = 'mb-global-actions-container';
+    actionsGroup.style.cssText = _GROUP_CSS;
+
+    // Appended up front, in final visual order, so each control below can be
+    // appended to its own group without any group needing to know about the
+    // others. `#mb-status-display` appends itself last, as it always did.
+    filterContainer.appendChild(summaryGroup);
+    filterContainer.appendChild(filterGroup);
+    filterContainer.appendChild(actionsGroup);
+
     const filterWrapper = document.createElement('span');
     filterWrapper.id = 'mb-global-filter-wrapper';
     filterWrapper.style.cssText = 'display:inline-flex; align-items:stretch; position:relative;';
@@ -31966,14 +32020,14 @@ a { color: #1565c0; }`;
     warningFlagBtn.type = 'button';
     warningFlagBtn.style.cssText = `${uiFilterBarBtnCSS()} display:none; color:#8a6d00; border-color:#e0c14a;`;
     warningFlagBtn.addEventListener('click', () => _applyLiveDateFlagFilter('⚠️'));
-    filterContainer.appendChild(warningFlagBtn);
+    summaryGroup.appendChild(warningFlagBtn);
 
     const errorFlagBtn = document.createElement('button');
     errorFlagBtn.id = 'mb-live-date-error-btn';
     errorFlagBtn.type = 'button';
     errorFlagBtn.style.cssText = `${uiFilterBarBtnCSS()} display:none; color:#a33; border-color:#e08a8a;`;
     errorFlagBtn.addEventListener('click', () => _applyLiveDateFlagFilter('❌'));
-    filterContainer.appendChild(errorFlagBtn);
+    summaryGroup.appendChild(errorFlagBtn);
 
     // ── release-tracks-only length-mismatch summary buttons ────────────────
     // Same idea and same self-scoping as the two above — `[data-mb-len-flag]`
@@ -31992,21 +32046,21 @@ a { color: #1565c0; }`;
     lenWarnBtn.type = 'button';
     lenWarnBtn.style.cssText = `${uiFilterBarBtnCSS()} display:none; color:#8a6d00; border-color:#e0c14a;`;
     lenWarnBtn.addEventListener('click', () => _applyLengthMismatchFilter('warn'));
-    filterContainer.appendChild(lenWarnBtn);
+    summaryGroup.appendChild(lenWarnBtn);
 
     const lenSevereBtn = document.createElement('button');
     lenSevereBtn.id = 'mb-len-mismatch-severe-btn';
     lenSevereBtn.type = 'button';
     lenSevereBtn.style.cssText = `${uiFilterBarBtnCSS()} display:none; color:#a33; border-color:#e08a8a;`;
     lenSevereBtn.addEventListener('click', () => _applyLengthMismatchFilter('severe'));
-    filterContainer.appendChild(lenSevereBtn);
+    summaryGroup.appendChild(lenSevereBtn);
 
-    filterContainer.appendChild(filterWrapper);
-    filterContainer.appendChild(gfHistAnchor);
-    filterContainer.appendChild(caseLabel);
-    filterContainer.appendChild(regexpLabel);
-    filterContainer.appendChild(excludeLabel);
-    filterContainer.appendChild(preFilterMsg);
+    filterGroup.appendChild(filterWrapper);
+    filterGroup.appendChild(gfHistAnchor);
+    filterGroup.appendChild(caseLabel);
+    filterGroup.appendChild(regexpLabel);
+    filterGroup.appendChild(excludeLabel);
+    actionsGroup.appendChild(preFilterMsg);
 
     // Create prefilter toggle button (only visible when data loaded from disk with prefilter)
     const prefilterToggleBtn = document.createElement('button');
@@ -32079,7 +32133,7 @@ a { color: #1565c0; }`;
             Lib.debug('highlight', 'Prefilter highlights restored');
         }
     };
-    filterContainer.appendChild(prefilterToggleBtn);
+    actionsGroup.appendChild(prefilterToggleBtn);
 
     // Create filter toggle button (for global and column filter highlighting)
     const unhighlightAllBtn = document.createElement('button');
@@ -32132,7 +32186,7 @@ a { color: #1565c0; }`;
             Lib.debug('highlight', 'Filter highlights restored');
         }
     };
-    filterContainer.appendChild(unhighlightAllBtn);
+    actionsGroup.appendChild(unhighlightAllBtn);
 
     // Global ▶ collapse button — collapses all collapsable columns at once.
     // Inserted BEFORE the '🎨 Toggle ALL highlighting' button so it is easy to find.
@@ -32144,7 +32198,7 @@ a { color: #1565c0; }`;
     globalCollapseBtn.style.cssText = `${uiFilterBarBtnCSS()} align-items:center; gap:4px; display:none;`;
     globalCollapseBtn.title =
         'Expand ALL collapsed multi-row cells in EVERY collapsable table column';
-    filterContainer.insertBefore(globalCollapseBtn, unhighlightAllBtn);
+    actionsGroup.insertBefore(globalCollapseBtn, unhighlightAllBtn);
 
     const xSymbol = document.createElement('span');
     xSymbol.textContent = '✗ ';
@@ -32175,7 +32229,7 @@ a { color: #1565c0; }`;
 
         Lib.debug('filter', 'All column filters cleared');
     };
-    filterContainer.appendChild(clearColumnFiltersBtn);
+    actionsGroup.appendChild(clearColumnFiltersBtn);
 
     const clearAllFiltersBtn = document.createElement('button');
     // Attach a CLONE of the symbol to the second button
@@ -32201,7 +32255,7 @@ a { color: #1565c0; }`;
         // Also call the main clearAllFilters function
         clearAllFilters();
     };
-    filterContainer.appendChild(clearAllFiltersBtn);
+    actionsGroup.appendChild(clearAllFiltersBtn);
 
     /**
      * Scans every rendered `table.tbl` for `.mb-live-date-flag` spans (added
@@ -32562,6 +32616,13 @@ a { color: #1565c0; }`;
 
     const statusDisplay = document.createElement('span');
     statusDisplay.id = 'mb-status-display';
+    // The filter bar's fourth semantic group (see summaryGroup/filterGroup/
+    // actionsGroup above). It already IS a container — it holds exactly the
+    // filter- and sort-status spans — so it takes the group class directly
+    // instead of gaining a redundant wrapper. Unlike the other three it is a
+    // real rendered box (its own flex context, `gap:4px`), so it deliberately
+    // does NOT take `display:contents`.
+    statusDisplay.className = 'mb-global-status-container';
     statusDisplay.style.cssText = 'font-size:0.9em; color:#333; display:flex; align-items:center; height:24px; font-weight:bold; gap:4px;';
 
     // Create separate filter and sort status displays
@@ -69728,6 +69789,14 @@ a { color: #1565c0; }`;
     /**
      * Creates or updates the global CAA/EAA column-header all-toggle button that
      * sits in the h2 filter bar, immediately after `#mb-col-collapse-all-btn`.
+     *
+     * Since the filter bar was grouped into semantic containers, that anchor
+     * lives inside `.mb-global-actions-container`, so this button is inserted
+     * there too rather than as a direct child of `#mb-filter-container`. That
+     * placement is correct (it IS an action button) and visually identical:
+     * the group is `display:contents`, so its children remain direct flex items
+     * of the bar and still pick up its `gap` — see the group-construction
+     * comment next to `#mb-filter-container` for why that matters.
      *
      * The button is only rendered for multi-table page types that carry at least
      * one `.mb-caa-col-hdr-btn` in the DOM (i.e. pages with a CAA or EAA column).
