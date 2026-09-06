@@ -1,5 +1,27 @@
 [
   {
+    "version": "9.99.1037",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Artwork that does not exist is no longer re-requested on every sort. A sort of a page with cover-art now issues ZERO requests to the archive: images that exist come from the session memory cache, absences are remembered, and the JSON metadata is already in `ctx.countCache`. Previously each re-render fired one doomed request per art-less entity — 20 of them per sort on the pilot page — each with a ⌛ the user watched until it failed.",
+          "Root cause: every tier of `_artFetchCachedImage()` recorded successes ONLY. The `_artIdbMemCache.set()` and `_artIdbPut('images', …)` lines sit *after* the `await` that throws, so a URL that 404s left no trace in memory, in IndexedDB, or anywhere else. \"This artwork does not exist\" and \"this artwork has not been fetched yet\" were therefore the same state — an absent memory entry — and the only possible response to an absent entry is to ask again.",
+          "New per-session negative cache (`_artMissCache`), the Tier-1 sibling of `_artIdbMemCache`, consulted immediately after it. Only a DEFINITIVE absence is recorded (HTTP 404/410, per `_ART_MISS_STATUSES`): a 5xx, network error or timeout is deliberately left uncached, because the Cover Art Archive fails in bursts and treating a bad minute as \"this artwork does not exist\" would hide real images for the rest of the session. This is the same distinction `_msFetchWs2RecordingLengths()` already draws between a successful-but-empty answer and a transport failure. `_artGmFetchBlob()` now carries the HTTP status on its rejection so the two can be told apart at all.",
+          "`_artInitBigPics()` additionally consults `ctx.countCache` before building a wrapper at all. `_artEnrichIcon()` has always stored a 0 there (and persisted it to IndexedDB) the moment the archive reports an entity has no images — with a comment about suppressing exactly these repeated requests — but the stripe builder never read it, and went on deriving a `front-{size}` URL for every anchor in the table regardless. Self-correcting by ordering rather than by guesswork: `_artInitBigPics()` runs BEFORE `_artEnrichTable()`, so the first render still attempts every entity exactly as before and only re-renders skip.",
+          "The two overlap deliberately, and each covers a case the other cannot. The URL-level miss cache catches an entity that HAS images but no front cover — its count is non-zero, so the metadata check would pass it through. The metadata check catches an art-less entity whose image URL answers 5xx rather than 404, which the miss cache must never record. Verified by mutation: with only the metadata check, one hourglass survives; with only the miss cache, the 5xx case rebuilds its wrapper on every render."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The ⟳ per-table retry button now clears `_artMissCache` wholesale. Its cache-busted `?_cb=…` URLs would sidestep the miss cache on their own, but the un-busted URL would stay marked missing afterwards — so a retry that actually recovered an image would have been undone by the next ordinary render."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1036",
     "date": "2026-09-06",
     "sections": [

@@ -984,6 +984,14 @@ CAA/EAA ILLUSTRATED DISCOGRAPHY  (🖼️ in ⚙️ Settings)
   the strip per sub-table; a global toggle in the h2 header controls all
   strips at once.  Retry buttons (⟳ and 🔗⟳) force a fresh network fetch
   with IDB cache invalidation.
+• Missing artwork is remembered for the session.  Once the archive reports
+  that an entity has no cover art (or that a specific image is absent), it is
+  not requested again — so sorting and filtering a page cost no network
+  traffic at all rather than re-asking for every absent image on each
+  re-render.  Only a definitive "does not exist" answer is remembered: if the
+  archive is merely unreachable or erroring, the image is retried normally.
+  If you upload artwork while the page is open, press ⟳ to clear the
+  remembered absences (or simply reload).
 • Inline thumbnails — display context-aware tooltips (driven by tooltipColumns
   in the page definition) when hovering; tooltip shows name, comment, artist,
   format, etc. depending on the page type.
