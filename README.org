@@ -95499,7 +95499,7 @@ on the initial page has been pressed to early), see the following final rendered
 * TODO Add test URL(s) in front of each pageType definition as a comment
 
 Add test URL(s) in front of each pageType definition as a comment, use the @pageTypes-testing-reference.org file as a reference
-but change the URLs there in rela copy/pastable URLs inside the comments in the userscript
+but change the URLs there in real copy/pastable URLs inside the comments in the userscript
 
 e.g.
 
@@ -95507,7 +95507,6 @@ e.g.
 https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf - Events for Series
 https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordings - Recordings for Instruments
 #+end_example
-
 
 
 * TODO Add support for userscript "Tracklist Display" by @Better DJ-mix when present
@@ -95685,7 +95684,7 @@ in that file yet.
 Add additionally after the new feature
 
 #+begin_example
-* **Every track on a release, in one table** --- a new button on any release page pulls every disc/medium's tracklist into a single view you can filter and sort, instead of scrolling through separate native tables per medium.
+ * **Every track on a release, in one table** --- a new button on any release page pulls every disc/medium's tracklist into a single view you can filter and sort, instead of scrolling through separate native tables per medium.
 [SCREENSHOT: the new "Show all Tracks for Release" button and the resulting consolidated tracklist table]
 #+end_example
 
@@ -95730,12 +95729,13 @@ that it's configurable (by default true)
 5.)
 
 For **"Show single-table" button**" mention that this feature works in multi-table pages and enables subtables which do
-not automatically are overflow tables to shop as singel tables in a new tab
+not automatically are overflow tables to show as single tables in a new tab
 
 6.)
 
 Do not mention fixes in the "### Fixes" section which are actually part of the changes after "version: 9.99.746", as
 they are not userfacing anymore anyway
+
 
 * TODO plan: check branch filter-performance-fix
 ** i
@@ -96885,7 +96885,7 @@ flickering when sorting/filtering on multi-table pageTypes IF CAA big-stripe is 
 Implement filter checkboxes per column, see my other userscript
 
 
-* TODO what is this ??
+* TODO what is this ?? - FIX
 
 #+begin_example
 - There is also a vestigial `id="mb-file-input"` toolbar input (~line 27736)
@@ -96931,6 +96931,7 @@ saved snapshot, unlike CAA/EAA) — worth documenting.
 
 
 * TODO fix automatic redirect when Tagger third party script is installed and displaying sub-table in new tabindex
+* TODO fix the presence of the original "Tagger" script automatically redirecting for pages sub-table pages in a new tab
 
 
 * TODO add a new boolean configuation variable (default: false) for explicitely enabling CAA/EAA debugging, when it comes to logging individual fetching of images (inline/big picture stripe and details) 
@@ -96963,8 +96964,7 @@ Show the output in a new popup frame
 
 * TODO Rework the current three buttons (keyboard, setting, help) into one, like majkinetors doing
 
-
-* TODO problem with "Eventdate" appearing before main column - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
+* DONE problem with "Eventdate" appearing before main column - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
 
 https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships ==> "Instruments release"
 
@@ -97093,11 +97093,10 @@ https://musicbrainz.org/report/LowDataQualityReleases?filter=1 - report with low
 Usa a skill.
 This data quality attribute is probably present on all pageType where releases are involved
 
-** as new column on the 'artist-releases' pageType
+** TODO as new column on the 'artist-releases' pageType
 
 
 * TODO add back the select checkboxes for specific pageTypse and rewire the action listeners for e.g. merging releases etc. (see 'annotations' button re-wiring)
-
 
 * DONE edit mismatches
 
@@ -97107,8 +97106,9 @@ the same version "9.99.926" How should I proceed to get these in sync again. On 
 
 * TODO question how can we test the influence of other userscripts normally available in a real browser environment
 
- and also our userscript uses these functionalities sometimes if available (other times we just want to see the side effects of other userscripts presetn when our userscript
-  runs and does not yet handle them/theit side effects properly)
+question how can we test the influence of other userscripts normally available in a real browser environment and also
+our userscript uses these functionalities sometimes if available (other times we just want to see the side effects of
+other userscripts present when our userscript runs and does not yet handle them/their side effects properly)
 
 ● Two distinct things to test here, and our existing harness already has the pieces for both:
 
@@ -97125,9 +97125,6 @@ the same version "9.99.926" How should I proceed to get these in sync again. On 
   live install.
 
   Want me to build this out, starting with the two known cases (jesus2099 marker + the filter-poisoning regression)?
-
-* TODO fix the presence of the original "Tagger" script automatically redirecting for pages sub-table pages in a new tab
-
 
 * DONE merge test framework into performance branch
 ** DONE i
@@ -97421,12 +97418,10 @@ Which of the gaps found should the implementation actually fix?
 
 ** maybe - add a warning string not dialog
 
-UX decision: stay lenient, no new warning dialog. A version mismatch is
- not a data-integrity risk the way a pageType mismatch is (showLoadFilterDialog
- already has that hard confirm) — an old 1.0 file still loads correctly, just
- without the new fast paths (full Relationships re-fetch, no tracklist-toggle
- restore). Don't add a blocking dialog; optionally add a one-line
- Lib.debug('cache', ...) log noting the loaded format version.
+UX decision: stay lenient, no new warning dialog. A version mismatch is not a data-integrity risk the way a pageType
+mismatch is (showLoadFilterDialog already has that hard confirm) — an old 1.0 file still loads correctly, just without
+the new fast paths (full Relationships re-fetch, no tracklist-toggle restore). Don't add a blocking dialog; optionally
+add a one-line Lib.debug('cache', ...) log noting the loaded format version.
   
 * TODO plan: check if "Relationships" column is saved to persistent storage with "Save to disk"
 
@@ -98702,11 +98697,11 @@ goes on for each row and rendering happens only in the "Release" column, and aft
   Want me to plan and implement that hand-off as a follow-up on this same branch, or a new one?
 
 
-* a- Gemini
+* ansers - Gemini
 
 Refactoring a monolithic "just working" userscript provides clear architectural benefits, though it should be approached incrementally to avoid introducing regressions into a complex feature set.
 
-**Core Refactoring Advantages**
+ **Core Refactoring Advantages**
 
 | Area            | Key Benefits                                                                             |
 | ---             | ---                                                                                      |
@@ -98724,22 +98719,22 @@ Refactoring a monolithic "just working" userscript provides clear architectural 
 
 <br>• Enables automated unit testing (e.g., Vitest) for string parsing, date splitting, and sorting logic. |
 
-**Recommended Step-by-Step Refactoring Strategy**
+ **Recommended Step-by-Step Refactoring Strategy**
 
-* **Introduce a Bundler Build Step**:
+ * **Introduce a Bundler Build Step**:
 Set up Vite or Rollup with a userscript plugin (such as `vite-plugin-tampermonkey`). Keep the compiled output as a single `.user.js` file while modularizing source files in a structured `/src` directory.
-* **Phase 1: Extract Static Configuration & Constants**:
+ * **Phase 1: Extract Static Configuration & Constants**:
 Move `configSchema`, static mapping objects (`AREA_FLAG_REGION_COUNTRIES`), and remote URLs into dedicated files (e.g., `src/config/schema.js`, `src/config/constants.js`).
-* **Phase 2: Module-by-Feature Extraction (Pure Refactoring)**:
+ * **Phase 2: Module-by-Feature Extraction (Pure Refactoring)**:
 Extract independent subsystems into standalone files without changing execution logic or deleting existing comments and debug logs:
-* `src/cache/artIdb.js`: IndexedDB and artwork storage logic.
-* `src/extractors/`: Individual entity row extractors (`releaseTracks.js`, `eventParts.js`).
-* `src/ui/`: UI components such as the settings dialog, statistics panel, and floating tooltips.
+ * `src/cache/artIdb.js`: IndexedDB and artwork storage logic.
+ * `src/extractors/`: Individual entity row extractors (`releaseTracks.js`, `eventParts.js`).
+ * `src/ui/`: UI components such as the settings dialog, statistics panel, and floating tooltips.
 
 
-* **Phase 3: Establish Clear Data Interfaces**:
+ * **Phase 3: Establish Clear Data Interfaces**:
 Pass explicit state/config objects to extractors and renderers rather than relying on shared higher-scope variables.
-* **Phase 4: Incremental Validation**:
+ * **Phase 4: Incremental Validation**:
 Migrate one feature at a time, validating against live MusicBrainz endpoints to ensure DOM side-effects, keyboard shortcuts, and logging remain intact.
 
 
