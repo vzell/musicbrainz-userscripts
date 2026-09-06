@@ -2,7 +2,7 @@
 
 const { test, expect } = require('../support/test');
 const { loadUserscriptPageWithRealNetwork } = require('../support/realNetworkGmXhr');
-const { collectPageErrors, clickMasterToggleAndExpandAll } = require('../support/liveAssertions');
+const { collectPageErrors } = require('../support/liveAssertions');
 const { waitForSortSettled } = require('../support/filterSortAssertions');
 
 /**
@@ -26,10 +26,15 @@ const { waitForSortSettled } = require('../support/filterSortAssertions');
  *      and refills a few images at a time (memory-cached images are painted at
  *      build time), and artwork already known not to exist is not re-requested
  *      (`_artMissCache`). Neither of those is single-table-specific.
- *   2. **NOT fixed, only cheap.** The icon column and the inline thumbnails on
- *      a multi page are still torn down and rebuilt on every sort, and EVERY
- *      sub-table is rebuilt, not just the sorted one. That work now completes
- *      out of the Tier-1 memory cache fast enough to be invisible, which is a
+ *   2. **Now also fixed: the icon column.** `_artMirrorIconToSourceRow()`
+ *      mirrors a painted icon's `background-image` onto the multi-table SOURCE
+ *      row, so `preserveLiveArt` finally has something to preserve on this path
+ *      and re-inserted rows arrive already painted.
+ *   3. **STILL not fixed.** The inline thumbnails are still torn down (their
+ *      placeholder is injected into live rows only, so there is no counterpart
+ *      on the source row to mirror onto — that needs its own change), and EVERY
+ *      sub-table is still rebuilt, not just the sorted one. Both complete out
+ *      of the Tier-1 memory cache fast enough to be invisible, which is a
  *      timing property, not a structural one.
  *
  * The assertions below are therefore split: the (1) invariants are asserted
@@ -46,8 +51,8 @@ const { waitForSortSettled } = require('../support/filterSortAssertions');
  *                                            the assertion fires
  * archiveFetches         0      guaranteed
  * completionToastReFired 0      guaranteed
- * iconsPaintedAtInsert   0/7    measured    — vs 7 painted before the sort
- * inlineThumbsAtInsert   0/7    measured
+ * iconsPaintedAtInsert   =before  GUARANTEED — was 0 before the icon mirror
+ * inlineThumbsAtInsert   0/7    measured    — still torn down, see (3) above
  * rowsInserted           7      measured    — i.e. BOTH sub-tables' rows, not
  *                                            just the sorted one's
  * tablesInserted         0      measured    — the <table> elements themselves
@@ -104,12 +109,18 @@ const DEFAULT_RELEASE_GROUP_URL = 'https://musicbrainz.org/release-group/f83d221
 // spec runs in the @extended suite, where a multi-minute artwork drain would
 // be a poor trade.
 //
-//   MULTI_CAA_URL=<release-group url> \
+//   MULTI_CAA_URL=<multi-table page url> \
+//   MULTI_CAA_BUTTON='<css selector for its "show all" button>' \
 //   MULTI_CAA_SETTLE_MS=1500000 \
 //   npx playwright test tests/live/caa-icon-survives-sort-multi.spec.js --project=chromium-live
 const RELEASE_GROUP_URL = process.env.MULTI_CAA_URL || DEFAULT_RELEASE_GROUP_URL;
 const SETTLE_MS = Number(process.env.MULTI_CAA_SETTLE_MS || 300000);
-const SHOW_ALL_BUTTON = 'button[data-label="Show all Releases for ReleaseGroup"]';
+// Each multi-table pageType labels its own "show all" button, so measuring a
+// different one needs the selector too, not just the URL: `releasegroup-releases`
+// declares `label: 'Show all Releases for ReleaseGroup'`, while
+// `artist-releasegroups` declares `mainLabel: '🧮 Artist RGs'`.
+const SHOW_ALL_BUTTON = process.env.MULTI_CAA_BUTTON
+    || 'button[data-label="Show all Releases for ReleaseGroup"]';
 
 /**
  * Tags every currently-rendered sub-table so a rebuild is detectable
@@ -315,6 +326,56 @@ async function waitForArtworkSettled(page, { timeoutMs = SETTLE_MS, pollMs = 500
     return { artworkItems: last, samples, elapsedMs: Date.now() - started, stable: false };
 }
 
+/**
+ * Expands every sub-section, whichever state the page starts in.
+ *
+ * NOT `liveAssertions.js`'s `clickMasterToggleAndExpandAll()`, which asserts
+ * `data-state="collapsed"` and then clicks. That holds for
+ * `releasegroup-releases` but NOT for `artist-releasegroups`, which renders
+ * its sub-sections ALREADY EXPANDED — measured here, the master toggle came up
+ * `data-state="expanded"` / "Hide all sub-sections", and the shared helper
+ * failed on its very first assertion. Clicking unconditionally would have been
+ * worse than failing: it would have COLLAPSED all 17 sub-tables, and a
+ * collapsed sub-table is `display:none`, so no artwork would ever load and the
+ * probe would have measured nothing while looking like it worked.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+async function ensureSubSectionsExpanded(page) {
+    const masterToggle = page.locator('.mb-master-toggle');
+    await expect(masterToggle).toBeVisible();
+    if ((await masterToggle.getAttribute('data-state')) === 'collapsed') {
+        await masterToggle.click();
+    }
+    await expect(masterToggle).toHaveAttribute('data-state', 'expanded');
+
+    // `data-state="expanded"` on the master toggle does NOT guarantee every
+    // section is open: measured on artist-releasegroups, the toggle read
+    // "expanded" while individual sub-tables were still hidden. When that
+    // happens, drive the toggle through a full collapse->expand cycle, which
+    // forces every section into the same state rather than trusting the flag.
+    const hiddenCount = () => page.evaluate(() => Array.from(
+        document.querySelectorAll('table.tbl')
+    ).filter((t) => t.offsetParent === null).length);
+
+    if (await hiddenCount() > 0) {
+        await masterToggle.click();                                    // collapse all
+        await expect(masterToggle).toHaveAttribute('data-state', 'collapsed');
+        await masterToggle.click();                                    // expand all
+        await expect(masterToggle).toHaveAttribute('data-state', 'expanded');
+    }
+
+    const total = await page.locator('table.tbl').count();
+    const hidden = await hiddenCount();
+    expect(total, 'no tables rendered').toBeGreaterThan(0);
+    expect(total - hidden, 'every sub-table is hidden — nothing could load artwork').toBeGreaterThan(0);
+    if (hidden > 0) {
+        // Not fatal: a view mode may legitimately hide sections. Recorded so a
+        // baseline is never silently taken over a mostly-hidden page.
+        console.log(`[multi-probe] NOTE: ${hidden}/${total} sub-tables still hidden after expanding`);
+    }
+}
+
 test.describe('CAA artwork across a sort (multi-table)', { tag: '@extended' }, () => {
     test('sorting one sub-table: what survives, what is rebuilt, and what is re-fetched', async ({ page }) => {
         // Well over the 120 s project default: a real CAA queue drain across
@@ -337,13 +398,13 @@ test.describe('CAA artwork across a sort (multi-table)', { tag: '@extended' }, (
         // makes this probe silently measure nothing (measured: 0 painted
         // icons, settling in 16 s, as if artwork were switched off):
         //
-        //  1. Sub-sections render COLLAPSED. A collapsed sub-table is
+        //  1. Sub-sections may render COLLAPSED. A collapsed sub-table is
         //     display:none, so none of its artwork ever loads.
         //  2. `sa_caa_pics_initially_collapsed` defaults to true, so the
         //     big-picture strips start collapsed too and need the global
         //     toggle — same step `subtable-filter-sort-caa-interaction.spec.js`
         //     takes for the same reason.
-        await clickMasterToggleAndExpandAll(page);
+        await ensureSubSectionsExpanded(page);
         const globalCaaBtn = page.locator('#mb-caa-toggle-btn-global');
         await expect(globalCaaBtn).toBeVisible({ timeout: 30000 });
         await globalCaaBtn.click();
@@ -353,6 +414,7 @@ test.describe('CAA artwork across a sort (multi-table)', { tag: '@extended' }, (
 
         console.log('[multi-probe] dom census: ' + JSON.stringify(await page.evaluate(() => ({
             tables: document.querySelectorAll('table.tbl').length,
+            tablesHidden: Array.from(document.querySelectorAll('table.tbl')).filter((t) => t.offsetParent === null).length,
             caaIcons: document.querySelectorAll('table.tbl span.caa-icon').length,
             inlinePh: document.querySelectorAll('table.tbl .mb-caa-inline-ph').length,
             bigboxes: document.querySelectorAll('.mb-caa-bigbox, .mb-eaa-bigbox').length,
@@ -391,6 +453,8 @@ test.describe('CAA artwork across a sort (multi-table)', { tag: '@extended' }, (
         const target = await page.evaluate(() => {
             let best = null;
             document.querySelectorAll('table.tbl').forEach((t) => {
+                // A hidden sub-table never loaded artwork and cannot be clicked.
+                if (t.offsetParent === null) return;
                 const painted = Array.from(t.querySelectorAll('tbody span.caa-icon'))
                     .filter((i) => /url\(/.test(i.style.backgroundImage || '')).length;
                 let h3 = t.previousElementSibling;
@@ -477,18 +541,43 @@ test.describe('CAA artwork across a sort (multi-table)', { tag: '@extended' }, (
 
         // Recorded so a future per-sub-table scoping change has a "before"
         // number to point at. Today EVERY sub-table is rebuilt when one is
-        // sorted, so this is expected to be 0.
+        // sorted, so this is expected to be 0. (Harmless for artwork since the
+        // icon mirror landed — the rows come back painted either way — but it
+        // is still wasted work.)
         console.log(
             `[multi-probe] sub-tables surviving a sort of one of them: ` +
             `${after.survivingTagged}/${tagged}`
         );
 
-        // Same: on the multi path the source rows carry no artwork, so rows
-        // are expected to arrive blank and repaint from RAM afterwards.
         console.log(
             `[multi-probe] icons already painted at insertion: ` +
             `${probe.iconsPaintedAtInsert}/${probe.iconsSeen} ` +
             `(single-table equivalent would be ${before.painted})`
+        );
+
+        // ── The icon mirror's guarantee ──────────────────────────────────────
+        //
+        // Every icon that was painted before the sort must come back painted at
+        // INSERTION time, not repainted a tick later. NOT "all icons": a
+        // release with no cover art keeps an empty .caa-icon forever, so the
+        // invariant is "whatever was painted survives", the same one the
+        // single-table spec pins.
+        //
+        // Was 0 before `_artMirrorIconToSourceRow()` — on the multi path the
+        // source rows carried no artwork at all, so `preserveLiveArt` had
+        // nothing to preserve and every row arrived blank.
+        expect(
+            probe.iconsPaintedAtInsert,
+            'rows re-inserted by a sort lost their artwork icons — the source-row mirror is not working'
+        ).toBe(before.painted);
+
+        // Inline thumbnails are deliberately NOT yet guaranteed: their
+        // placeholder is injected into live rows only, so a source row has no
+        // counterpart to mirror onto. Recorded so the follow-up change has a
+        // "before" number.
+        console.log(
+            `[multi-probe] inline thumbs at insertion: ` +
+            `${probe.inlineThumbsAtInsert}/${before.inlineThumbs} (not yet mirrored)`
         );
 
         expect(pageErrors, 'uncaught page errors during the sort').toEqual([]);
