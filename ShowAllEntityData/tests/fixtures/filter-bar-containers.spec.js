@@ -31,14 +31,19 @@ test.describe('global filter bar: semantic containers', () => {
             const bar = document.getElementById('mb-filter-container');
             return Array.from(bar.children).map((g) => ({
                 cls: g.className,
+                id: g.id,
                 display: getComputedStyle(g).display,
                 children: Array.from(g.children).map((c) => c.id || `${c.tagName.toLowerCase()}(anon)`),
             }));
         });
 
-        expect(groups.map((g) => g.cls)).toEqual([
+        // The four groups, plus the ⏳ pending-edits toggle in its own slot
+        // between the filter widget and the actions — it belongs to neither
+        // group, so it is deliberately a direct child of the bar.
+        expect(groups.map((g) => g.cls || `#${g.id}`)).toEqual([
             'mb-global-summary-container',
             'mb-global-filter-container',
+            '#mb-pending-edits-btn',
             'mb-global-actions-container',
             'mb-global-status-container',
         ]);
@@ -54,11 +59,11 @@ test.describe('global filter bar: semantic containers', () => {
         // #mb-col-collapse-all-btn is insertBefore'd ahead of the highlight
         // button, so its position here also proves that insert still resolves
         // within the actions group rather than throwing NotFoundError.
-        expect(groups[2].children).toEqual([
+        expect(groups[3].children).toEqual([
             'mb-preload-filter-msg', 'mb-toggle-prefilter-btn', 'mb-col-collapse-all-btn',
             'mb-toggle-filter-highlight-btn', 'mb-clear-column-filters-btn', 'mb-clear-all-filters-btn',
         ]);
-        expect(groups[3].children).toEqual(['mb-filter-status-display', 'mb-sort-status-display']);
+        expect(groups[4].children).toEqual(['mb-filter-status-display', 'mb-sort-status-display']);
     });
 
     test('the three grouping spans generate no box of their own', async ({ page }) => {

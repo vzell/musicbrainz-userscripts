@@ -395,8 +395,44 @@ every distinct non-empty value currently visible in that column.
                        on a joined "Queen & David Bowie" credit where only
                        Bowie has open edits, only Bowie is marked. Reads
                        markup already on the page — no extra request.
-                       Toggled by the "Enable 'Pending edits' dropdown
-                       sections" setting (default on)
+                       Toggled by the "Enable 'Pending edits' Filtering"
+                       setting (default on), which also controls the ⏳
+                       filter-bar toggle described below.  The two compose:
+                       this dropdown filters ONE column to a named entity,
+                       the ⏳ toggle filters whole ROWS across every column
+
+
+⏳ PENDING-EDITS FILTER TOGGLE
+------------------------------
+A ⏳ button appears in the filter bar as soon as any row on the table credits
+an entity that currently has open edits on musicbrainz.org (MusicBrainz's own
+orange "modification pending" marker).  Pressing it shows only those rows.
+
+  (N) ⏳       N = how many rows have pending edits.  The count always
+               describes the whole table, so it does not shrink as other
+               filters narrow the view
+
+On multi-table page types every sub-section that has pending edits gets its
+OWN ⏳ button next to its filter panel, and the one in the filter bar becomes
+a master with three states:
+
+  plain        nothing is filtered
+  bold         every eligible sub-section is filtered
+  dashed       SOME are — the tooltip names how many ("3 of 5 filtered")
+
+Pressing the master when it is plain or dashed filters every sub-section;
+pressing it when bold clears them all.  So a partial state is completed in one
+click rather than discarded — the sub-sections you already chose are never
+silently thrown away.  Pressing a sub-section's own button toggles just that
+table, and the master repaints to match.
+
+A sub-section with nothing pending gets no button at all, and on a page with
+no pending edits anywhere nothing appears — which makes the button's presence
+itself the signal that something on the page is mid-edit.
+
+The toggle composes with every other filter (type a query and press ⏳, in
+either order).  It is held by no input, so "✗ Clear all filters" becomes
+visible while it is engaged and releases it, page-wide.
     — 🎭 Roles         — "» role:" entries, one per distinct artist event-role
                        found in a native artist-roles list or the plain-text
                        "Role" column on an artist's own Events tab
