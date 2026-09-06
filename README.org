@@ -98738,7 +98738,7 @@ Pass explicit state/config objects to extractors and renderers rather than relyi
 Migrate one feature at a time, validating against live MusicBrainz endpoints to ensure DOM side-effects, keyboard shortcuts, and logging remain intact.
 
 
-* DONE Explain what our userscript currently does with the
+* DONE Explain what our userscript currently does with the "Release events" column from jesus2099
 ** i
 
 Explain what our userscript currently does regarding the "Release events" column. There is the usersript from jesus2099 which typically produces this column, see
@@ -98816,3 +98816,834 @@ Two separate mechanisms share similar names:
 (Also unrelated: the expandEvents column eraser at :4914 strips Dvir Yitzchaki's "Expand events" toggle button, a different userscript.)
 
 No files changed, so no version bump or changelog entry needed for this.
+
+
+* DONE Search results for recordings
+** i
+
+https://musicbrainz.org/search?query=roulette&type=recording&method=indexed
+
+multiple releases sharing the same recording are rendering without repeating the recording names and related info ==> So Release/Track/Medium/Type should be multi-row columns
+
+#+begin_example
+@debug/search-recordings-initial.html - initial page for https://musicbrainz.org/search?query=roulette&type=recording&method=indexed
+@debug/search-recordings-final.html -final rendered page for https://musicbrainz.org/search?query=roulette&type=recording&method=indexed
+#+end_example
+
+** b
+
+1.)
+
+yes, one picard button per release
+
+2.)
+
+the "Track" and "Medium" column cell values look distorted:
+
+a.)
+
+"Medium" column values should be rigth aligend over the whole table
+
+b.)
+
+"Track" column values center aligned on the "/" character between e.g. "23/39"
+
+** a
+
+Done — the Picard column is now a proper multi-row cell. 99/99 fixture tests pass.
+
+One <li> per entity, so each ♪ sits on the line of the release it sends. Always a <ul> even for a single entity, so the
+column has one uniform cell structure; with the list reset a one-item cell renders exactly as the bare button did, so no
+other page changes visually.
+
+The interesting part was making it collapse with everything else. initPicardTaggerColumn() runs last on every render
+path — and has to, since its <td> must land after the Relationships cells to stay rightmost. So both the initial render
+and runFilter()'s single-table branch do their collapse pass before this column exists, and rewire mode then rebuilds
+each cell's innerHTML, which would wipe a toggle that pass had added (the toggle is a <td> child, not inside the
+<ul>). Reordering those call sites was the tempting fix and the risky one, so instead the column registers 'Picard' on
+activeDefinition.features.collapsableColumns and re-runs initCollapsableColumns() itself — but only when some row
+actually produced more than one button, so no other page pays for the extra pass. Registration uses concat rather than
+push, since activeDefinition.features is rebuilt per fetch but its collapsableColumns value is the page definition's own
+array.
+
+Verified: cells of 3 / 2 / 1 <li>, collapsed to one behind a ▶3▤ toggle matching the Release cell beside them, expanding
+together via the global button.
+
+One limitation worth knowing, and it isn't new to Picard: when a source <li> wraps to two lines, the neighbouring
+columns' items stop lining up with it — each <td> has its own <ul> and its own item heights. I measured it in the
+fixture, where the Release column is narrow (Release tops 267/286/323 vs Picard 285/304/323). Track/Medium/Type and
+Label/Catalog# on other pages behave identically; it's inherent to the multi-row-cell approach, and doesn't show on the
+real page where auto-resize gives Release enough width. Say the word if you want the columns height-synced.
+
+Three commits on search-recordings-continuation-rows, still unpushed. README.org still has your own typo edits, left
+unstaged. Ready to push or run /merge-push-remove whenever you are.
+
+* DONE jesus2099 track length funtionality in our script
+** i
+
+Add another plan for the following:
+
+Is it possible to natively integrate from the userscript 
+
+#+begin_example
+// @name         mb. SUPER MIND CONTROL Ⅱ X TURBO
+// @version      2026.5.21
+// @description  musicbrainz.org power-ups: RELEASE_CLONER. copy/paste releases / DOUBLE_CLICK_SUBMIT / CONTROL_ENTER_SUBMIT / TRACKLIST_TOOLS. search→replace, track length parser, remove recording relationships, set selected recording dates / LAST_SEEN_EDIT. handy for subscribed entities / COOL_SEARCH_LINKS / COPY_TOC / ROW_HIGHLIGHTER / SPOT_CAA / SPOT_AC / RECORDING_LENGTH_COLUMN / RELEASE_EVENT_COLUMN / WARN_NEW_WINDOW / SERVER_SWITCH / TAG_TOOLS / USER_STATS / EASY_DATE. paste full dates in one go / STATIC_MENU / SLOW_DOWN_RETRY / CENTER_FLAGS / RATINGS_ON_TOP / HIDE_RATINGS / UNLINK_ENTITY_HEADER / MARK_PENDING_EDIT_MEDIUMS
+// @namespace    https://github.com/jesus2099/konami-command
+// @homepage     https://github.com/jesus2099/konami-command/blob/master/mb_SUPER-MIND-CONTROL-II-X-TURBO.md
+// @supportURL   https://github.com/jesus2099/konami-command/labels/mb_SUPER-MIND-CONTROL-II-X-TURBO
+// @downloadURL  https://github.com/jesus2099/konami-command/raw/master/mb_SUPER-MIND-CONTROL-II-X-TURBO.user.js
+// @author       jesus2099
+#+end_example
+
+specifically the functionality of extracting track lengths to the precision of milliseconds in our userscript. While
+you're at it please report on the current state of affairs regarding this functionality.
+
+** a
+
+I'll investigate the current state in our script first, then look at what jesus2099's script actually does.
+
+  Searched for 20 patterns, read 6 files, listed 5 directories, ran 33 shell commands
+
+One more check to settle how to key the embedded-JSON data:
+
+  Ran 2 shell commands
+
+Part 1 — Report: current state of affairs
+
+Every millisecond you see today comes from jesus2099. We produce none.
+
+The evidence chain is airtight:
+
+1. Our own snapshot proves it. debug/work-rec.html is a dump of our rendered table. Its Length header is
+
+<th class="treleases mb-original-column" title="SUPER MIND CONTROL Ⅱ X TURBO"
+    style="text-shadow: yellow 0px 0px 2px; …" data-col-name="Length">
+
+and its 39 <td class="treleases"> cells read 5:05.000, 5:05.146, 5:34.866, ?:??, 4:24.000, 4:07.000, 5:10.000, 4:02.000.
+
+2. I reproduced those exact numbers from the endpoint jesus2099 calls. Same work (8727a75a-…, "A Rainy Night in Soho"),
+   GET /ws/2/work/<mbid>?inc=recording-rels&fmt=json → relations[].recording.length = 305146, 305000, 334866, null,
+   264000, 242000, 247000, 310000. Run through jesus2099's time() formatter (debug/jesus2099-turbo.js:1758, Date-based,
+   always 3 decimals, ?:?? for null) that is byte-for-byte the snapshot.
+
+3. Our script never asks for it. initReleaseEventsColumn() (ShowAllEntityData.user.js:55578) fetches inc=release-rels only. Nothing anywhere reads a length field, from WS2 or from page JSON.
+
+Coverage today (and only with SMC-II installed)
+
+jesus2099's gate (debug/jesus2099-turbo.js:1496) fires on exactly three URL shapes → 6 of our 16 Length-bearing pageTypes get ms:
+
+┌──────────────────────────────┬─────────────────────────────────────────────────────┐
+│             URL              │                    our pageTypes                    │
+├──────────────────────────────┼─────────────────────────────────────────────────────┤
+│ /work/<mbid>                 │ work-recordings, work-recordings-filtered           │
+├──────────────────────────────┼─────────────────────────────────────────────────────┤
+│ /artist/<mbid>/relationships │ artist-relationships, artist-relationships-filtered │
+├──────────────────────────────┼─────────────────────────────────────────────────────┤
+│ /place/<mbid>/performances   │ place-performances, place-performances-filtered     │
+└──────────────────────────────┴─────────────────────────────────────────────────────┘
+
+The other ten never see ms:
+
+#+begin_example
+artist-recordings
+area-recordings(-filtered)
+instrument-recordings
+isrc
+recording-releases
+release-tracks
+search
+collections-releases (Recordings sub-entity)
+series-releases
+#+end_example
+
+Note jesus2099 does not add a column — it repurposes the native Length <th> (thead > tr).lastChild) and overwrites each cell's text in place.
+
+We've already built three pieces of machinery just to cope with this
+
+- _repairTreleasesTd() (:42611) — rebuilds the cell after SMC-II sets class="treleases" + title + text-align:right, re-applying our align: ':' split styling. Its JSDoc even names the format: "0:28.000".
+- initTreleasesObserver() (:42722) — MutationObserver for the late/live case.
+- applyColumnErasers() Strategy 3/3b (:5013) — the jesus2099-any eraser, declared on release-tracks' Length column (:15014). The comment at :5027 documents a real hazard: a leaked treleases class makes _repairTreleasesTd() fire on our own freshly-rendered cell and silently discard filter-highlight spans.
+
+The consumption side is already fully ms-ready
+
+Someone wrote all of this against observed SMC-II output:
+
+┌───────────────────────────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                           Site                            │                                                                    Status                                                                    │
+├───────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ _findCellLengthSeconds() :18040                           │ /^(\d+):(\d{2}(?:\.\d+)?)/ → "5:05.146" → 305.146 ✓                                                                                          │
+├───────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ _findCellLengthBucket() :18010                            │ .mmm tolerated ✓                                                                                                                             │
+├───────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ highlighters :36939, :36971                               │ \d+:\d{2}(?:\.\d+)? ✓                                                                                                                        │
+├───────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ applyIntegerColumnStyling() align: ':'                    │ lastIndexOf(':') → left "5" / right "05.146" ✓                                                                                               │
+├───────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ getCleanColumnText() / getCleanVisibleText()              │ collapse .mb-ic-wrap → filter text reads "5:05.146", not "5 : 05.146" ✓                                                                      │
+├───────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ sorting createSortComparator /                            │ numeric path: "5:05.146" → 505.146. Monotonic (SS zero-padded, ms 3-digit), so it sorts correctly by accident and gains true ms resolution   │
+│ createMultiColumnComparator                               │ for free                                                                                                                                     │
+├───────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ tests/fixtures/uniq-drop-length-bucket.html               │ already hardcodes 5:05.146 — on artist-recordings, a pageType that in reality never shows ms                                                 │
+└───────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+So the plumbing is done. Only the data source is missing. Our own test fixtures already assert a precision we don't produce.
+
+Minor staleness found: the attribution header (:56) pins SMC-II at 2026.1.9; your local copy debug/jesus2099-turbo.js is 2026.5.21. And :62's uses just: RELEASE_EVENT_COLUMN omits RECORDING_LENGTH_COLUMN, which we demonstrably also lean on.
+
+---
+
+Part 2 — Is native integration possible? Yes, via two verified sources
+
+Source A — MusicBrainz's own embedded page JSON (release pages, zero network)
+
+Verified in debug/tracklist-single-medium.html: the ~800 KB <script type="application/json"> (tracklist props, begins {"initialCreditsMode":"inline",…}) carries
+
+$.release.length                              → 4377554   (release total)
+$.release.mediums[].tracks[].length           → 248293    ← TRACK length = what the column shows
+$.release.mediums[].tracks[].recording.length → 248293    (recording length)
+$.release.mediums[].tracks[].recording.gid    → b742f9b0-…  ← keyable to the row's /recording/ link
+$.release.mediums[].{pregap_length, data_track_lengths, cdtoc_tracks[]}
+
+Two caveats worth building around: track.length ≠ recording.length in general, and tests/snapshots/*/raw.html strips all <script> tags, so this data is invisible to the snapshot harness.
+
+Source B — WS2 relationship include (relationship/performance pages, 1 request)
+
+Verified live: /ws/2/{work|artist|place}/<mbid>?inc=recording-rels&fmt=json → relations[].recording = {id, title,
+length, video, disambiguation}, length in ms, null when unknown. And inc=recording-rels+release-rels returns 200 — so on
+place-performances this folds into the existing initReleaseEventsColumn() call for free.
+
+Not cheaply available
+
+artist-recordings, area-recordings(-filtered), instrument-recordings, isrc, recording-releases, search — no embedded ms, no page-entity relationship include. These need a paged /ws/2/recording?artist=…&limit=100 browse loop at 1 req/s.
+
+Deliberately excluded on correctness grounds: release-discids' Length column (tests/snapshots/release-discids/rendered.html) is TOC/sector-derived, not the recording's stored length. Substituting WS2 ms there would be wrong.
+
+---
+
+Part 3 — Plan
+
+Branch: feat/track-length-ms. Per CLAUDE.md: no // @version / ShowAllEntityData_CHANGELOG.json touch on the branch — record WIP.1, WIP.2, … in ShowAllEntityData_CHANGELOG.wip.json, resolve at merge. Current version is 9.99.1002+2026-09-03.
+
+Suggested split: three sessions, one logical change each.
+
+New settings — ⏱️ TRACK LENGTH PRECISION section in configSchema
+
+┌───────────────────────────┬─────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│            Key            │ Default │                                                                               Purpose                                                                               │
+├───────────────────────────┼─────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ sa_enable_ms_track_length │ true    │ master toggle                                                                                                                                                       │
+├───────────────────────────┼─────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ sa_ms_length_trim_zero_ms │ false   │ render 5:05 instead of 5:05.000. Real payoff: 5 of the 8 sampled values were .000 — MB stores an m:ss-entered length as *000, so .000 means "no ms data", not       │
+│                           │         │ "exactly zero". Default off keeps jesus2099's uniform-width column                                                                                                  │
+├───────────────────────────┼─────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ sa_enable_ms_length_debug │ false   │ gates a new Lib.debug('length', …) channel                                                                                                                          │
+└───────────────────────────┴─────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+Session 1 — release-tracks, no network
+
+1. _readEmbeddedReleaseJson() — find the application/json script whose parsed object has .release.mediums; memoize the parse (the blob is ~800 KB, parse once).
+2. _buildTrackLengthMap() → Map<recordingGid, ms> keyed off tracks[].recording.gid, plus a m{medPos}t{trackPos} fallback map.
+3. Write into the Length <td> from inside applyExtractTrackTitleData() — release-tracks already bypasses the generic column pipeline for exactly this kind of in-place <td> surgery, it already knows the row↔track identity, and it runs before applyIntegerColumnStyling().
+4. Use tracks[].length (the column means track length); surface recording.length in the tooltip only if you want it.
+5. Handle length: null → ?:??, isDataTrack, and medium.pregap_length.
+
+Session 2 — the 6 relationship/performance pageTypes, 1 WS2 call
+
+1. initRecordingLengthColumn(), modeled 1:1 on initReleaseEventsColumn() (:55578): same URL parse, same single page-entity fetch, same byMbid population, same "sync the populated text back into groupedRows/allRows so a filter re-render doesn't lose it", same _invalidateUniqDropDataCacheForTable() + initCollapsableColumns() tail.
+2. features.msTrackLength: true on the 6 definitions + buildActiveMsLengthColumns(def) mirroring buildActiveReleaseEventColumns() (:4696).
+3. New _extractRecordingMbidFromRow(row). Do not extend _extractMbidFromRow() (:55170) — it matches release-group|release|work only, and both the Release-events and Relationships columns depend on that exact behaviour.
+4. On place-performances(-filtered), merge into the existing release-events fetch as inc=recording-rels+release-rels (verified accepted) — no extra request. work-recordings / artist-relationships get one new standalone call.
+5. Add columnErasers: [{ sourceColumn: 'Length', erasers: ['jesus2099-any'] }] to all 6, mirroring release-tracks (:15014). This keeps SMC-II's treleases class out of our captured rows and removes the highlight-clobbering hazard at :5027.
+6. Guard the payload: artist-relationships for a prolific artist can return a very large relations array — log size via the new length channel and bail above a threshold.
+
+Session 3 — optional, deferred
+
+Browse-loop coverage for artist-recordings & friends (paged WS2 + IDB caching, following the initRelationshipsColumn() cache pattern). I'd not do this until 1–2 are proven.
+
+Test & docs impact (the CLAUDE.md mandatory audit)
+
+Must change:
+- tests/snapshots/release-tracks/rendered.html — 8 split-aligned Length cells change. Re-capture via node tests/support/capture-snapshots.js (add-snapshot-pagetype skill). raw.html is unaffected.
+- New fixture spec required (tests/fixtures/): inline a minimal release blob in a <script type="application/json">, assert the Length column renders 4:08.293 and that sort + column filter work on it. Necessary because the snapshot harness strips <script> tags and so cannot exercise Source A.
+
+Stale comments to fix (defects even though nothing fails):
+- tests/fixtures/length-column-filter-colon-gap.spec.js:9-20, uniq-drop-length-bucket.spec.js, uniq-drop-length-deviation.spec.js — all still pass (their fixture hardcodes 5:05.146), but their prose frames ms as an external artifact.
+- CLAUDE.md — add the length debug channel; add a "Track length precision" section; document the _repairTreleasesTd() relationship.
+- ShowAllEntityData_HELP.txt — extend the note at :716, add the settings section, add a precision note to ⏱️ Length info - Duration (:314).
+- Attribution header :56/:62 — bump SMC-II to 2026.5.21, add RECORDING_LENGTH_COLUMN to the uses just: line.
+
+Verified unaffected: tests/fixtures/saved-data/*.json.gz (none of the three has a Length column); tests/support/*.js JSDoc (no Length references).
+
+Three judgment calls I'd want confirmed before coding
+
+1. Track vs recording length on release-tracks — I recommend track length.
+2. .000 rendering — I recommend keeping it by default (uniform column width, matches jesus2099), with the trim setting available.
+3. Sorting — currently correct only by accident. I'd add an explicit duration comparator rather than rely on parseFloat("505.146"); it's a small, contained change, but it does touch a shared code path used by every numeric column.
+
+---
+
+I left the analysis scripts under scripts/ (untracked) — map-length-pagetypes.py, inspect-ws2-lengths.py, inspect-track-keys.py and friends are the re-runnable evidence for the claims above. Say the word if you'd rather I drop them.
+
+Nothing was modified in the userscript, so no version bump or changelog entry for this turn. Tell me which session to start and I'll cut the branch.
+
+** more questions - re-plan
+
+Some more questions and two answers:
+
+Currently the track length in milliseconds is only rendered on the final rendered page if it's already present on the
+initial page (so that means that the jesus2099 userscript has finish processing the initial page).
+When I click the action button fast enough, I never get any milliseconds displayed on the final page.
+
+1.)
+
+after your last track/recording length investigation, I'm wondering if the milliseconds track length is actually fetched
+by the jesus2099 userscript from the network, or is the data already IN the pages somewhere but not rendered visually
+without the jesus2009 script running
+
+2.)
+
+Why do some third-party userscripts fire even on our final rendered page, while others e.g. the jesus2099 one, seem to
+fire only on the initial page
+
+3.)
+
+For the two open questions
+
+Open questions — now two, not three
+
+a.) .000 rendering => keep the default
+b.) Sorting => add an explicit duration comparator
+
+** a
+
+Good — two clear answers to fold in. Let me verify the two questions against the code and snapshots rather than reason from memory.
+
+  Searched for 1 pattern, ran 5 shell commands
+
+Both questions have clean answers in the code and the snapshots.
+
+1. Is the ms data in the page, or fetched?
+
+It depends entirely on the page family — and the split is the opposite of what's convenient.
+
+┌──────────────────────────────────────────────────┬─────────────────────────┬────────────────────────────────────────────────────────────────┐
+│                   Page family                    │ ms present in the page? │                          What's there                          │
+├──────────────────────────────────────────────────┼─────────────────────────┼────────────────────────────────────────────────────────────────┤
+│ Release pages (release-tracks)                   │ Yes                     │ $.release.mediums[].tracks[].length in MB's own hydration JSON │
+├──────────────────────────────────────────────────┼─────────────────────────┼────────────────────────────────────────────────────────────────┤
+│ Work / artist-relationships / place-performances │ No — nothing            │ must be fetched                                                │
+└──────────────────────────────────────────────────┴─────────────────────────┴────────────────────────────────────────────────────────────────┘
+
+For the work-page family I probed every embedded application/json blob in debug/work-rec.html, work.recordings.html and work-rec-double-relationships.html. All five blobs are sidebar furniture:
+
+['collapse','entity','numberOfRevisions']
+['cachedWikipediaExtract','entity']
+['isSidebar','iswcs']
+['attributes','isSidebar']
+['aggregatedTags','entity','genreMap','more','userTags']
+
+The string "length" appears 0 times in those files, and the ms values we know that work has (305146, 334866, 264000)
+appear 0 times. There are no numeric length fields at any depth. So on those pages jesus2099 genuinely fetches it —
+debug/jesus2099-turbo.js:1596:
+
+xhr.open("get", MBS + "/ws/2" + <entity path> + "?inc=recording-rels+release-rels&fmt=json", true);
+
+The punchline: release-tracks is the one page family where the data is free and already in the DOM, and it's also the
+one family jesus2099's RECORDING_LENGTH_COLUMN deliberately doesn't cover. Nobody is currently exploiting it.
+
+This changes the value of the plan. Session 1 isn't just de-duplicating jesus2099 — it produces ms where neither script
+does today, with zero requests, and (like the release-events expansion) it works on fetched pages too, not only the open
+one. Session 2 doesn't merely replicate jesus2099 either: because we'd fetch after render on our own schedule, it
+eliminates the race you're describing.
+
+2. Why jesus2099's ms never survives a fast click
+
+Three properties of SMC-II combine into exactly your symptom:
+
+1. @run-at document-end, one-shot, no MutationObserver. The RECORDING_LENGTH_COLUMN block is straight-line code reached ~line 1496 of 1775, after the script has worked through a dozen other features.
+2. It caches the table node before fetching (:1502): relationshipTable = document.querySelector("div#content table.tbl").
+3. Its XHR load handler (:1507) writes into relationshipTable.querySelectorAll("tbody > tr") — resolved at completion time, against that cached element.
+
+What happens next depends on our tableMode:
+
+- tableMode: 'single' (work-recordings-filtered, artist-relationships-filtered, place-performances-filtered) —
+  renderFinalTable grabs the existing table.tbl tbody and does tbody.innerHTML = '' (:43416). The element survives, so a
+  late jesus2099 write lands on our rows. This is precisely why initTreleasesObserver() (:43486) and
+  _repairTreleasesTd() exist.
+- tableMode: 'multi' (work-recordings, artist-relationships, place-performances) — renderGroupedTable runs
+  container.querySelectorAll('h3, table.tbl, …').forEach(el => el.remove()) (:44664). The original table is detached
+  from the document. jesus2099's late write goes into a node nobody can see, permanently. The observer at :46042 is
+  attached to our new tbodies and correctly never fires — the data never arrives at them.
+
+And the race is trivially easy to win: all three of those multi pageTypes are non_paginated: true, so our render is pure
+local DOM work with zero fetches, while jesus2099 is waiting on a WS2 round trip. I timed that exact call three times
+just now: 107 ms, 179 ms, 269 ms. You only have to click before it returns.
+
+So "why do some third-party scripts fire on our final page and others don't" isn't a property of the script — it's a property of the hook:
+
+┌────────────────────────────────────────────────┬──────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                   Hook style                   │   Survives our render?   │                                                           Example                                                            │
+├────────────────────────────────────────────────┼──────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ MutationObserver / document-level delegation   │ Yes                      │ jesus2099's SPOT_CAA cover-art icons — page-wide, own schedule, lands late. _watchForLateJesus2099Injections() (:42384)      │
+│                                                │                          │ exists for it                                                                                                                │
+├────────────────────────────────────────────────┼──────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Re-queries the DOM at action time              │ Yes                      │ most toggle-style scripts                                                                                                    │
+├────────────────────────────────────────────────┼──────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Caches a node, then writes into it             │ Only if we reuse that    │ RECORDING_LENGTH_COLUMN — survives on single, lost on multi                                                                  │
+│ asynchronously                                 │ node                     │                                                                                                                              │
+├────────────────────────────────────────────────┼──────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ One-shot at document-end, no re-entry          │ No                       │ anything that decorates rows once                                                                                            │
+└────────────────────────────────────────────────┴──────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+Same reason our own code needs initExpandRGsFeature(), _cdtocInitTracklistToggles(), _rewireNestedTableH2Toggles() and initPicardTaggerColumn(rewireOnly) re-wired after every cloneNode(true).
+
+Note this also means ms presence on those pages is nondeterministic today — it depends on how fast you click. Anything we snapshot- or live-test there would be inherently flaky until we own the data.
+
+3. Plan deltas from your two answers
+
+Everything else in the plan stands. Three changes:
+
+Settings — .000 kept by default (answer a)
+
+sa_ms_length_trim_zero_ms stays in the schema at default false, i.e. 3:19.000 renders as-is and the column keeps uniform width. It's an opt-out for people who'd rather read 3:19 where MB has no sub-second data on record.
+
+New Session 0 — explicit duration comparator (answer b), first commit on the branch
+
+Sequenced before Session 1, because Length sorting must be right the moment ms appears, and it's an independently testable change.
+
+1. New _parseDurationToMs(text) → total ms or null; handles [H:]M:SS[.mmm] and ?:??.
+2. Detect duration columns data-driven, not by name: activeIntegerColumns.filter(e => e.align === ':'). That descriptor
+   already means "colon-split duration" and is used exclusively for Length columns across every pageType —
+   _findCellLengthBucket()'s JSDoc (:18000) states exactly that invariant. This covers all 16 Length-bearing pageTypes
+   automatically.
+3. Add a duration branch ahead of the numeric branch in both createSortComparator() and createMultiColumnComparator().
+4. Fix a pre-existing divergence while in there: the single-column path resolves numeric-ness via isNumericCol()
+   (:53021), which consults activeIntegerColumns first and falls back to a heuristic. createMultiColumnComparator()
+   (:15720) skips that entirely and uses only the raw header-text heuristic (hdrName.includes('Length') ||
+   includes('Track') || includes('#') …). Same commit should route both through one resolver.
+5. Preserve today's ?:?? behaviour exactly — null → 0, unknowns first when ascending. Changing that is a visible behaviour change; see the sub-decision below.
+
+One thing I want to be straight about: this is not fixing a currently-observable wrong sort. The existing
+parseFloat(text.replace(/[^0-9.-]/g,'')) computes M*100 + S + ms/1000, which is strictly monotonic in true duration as
+long as seconds are zero-padded — and they always are, including H:MM:SS and trimmed-.000 mixes. The value of the change
+is that it stops depending on an undocumented invariant, unifies the two comparator paths, and makes ?:?? an explicit
+decision instead of a || 0 accident.
+
+Sub-decision for you: should ?:?? keep sorting first-when-ascending (today's behaviour), or get pinned last in both
+directions? Pinned-last is arguably more correct — unknown length is absent data, not zero-length — but it's a
+user-visible change to existing sorts, so I'll keep today's behaviour unless you say otherwise.
+
+Session 1 acceptance table — one row now interacts with setting (a)
+
+B3 Meeting Across the River 3:19 → 3:19.000 is the row that renders as 3:19 if sa_ms_length_trim_zero_ms is ever
+switched on, so the fixture spec must pin that setting explicitly. It's also one of the four rows that catch a
+recording.length mistake, so it can't be dropped from the assertions.
+
+---
+
+Ready to cut feat/track-length-ms and start with Session 0 whenever you say — just confirm the ?:?? sub-decision, or tell me to keep current behaviour and I'll proceed.
+
+** what I want
+
+What I really want is:
+
+1.)
+
+a.)
+
+Actually the real goal is to completely get rid of the jesus2099 userscript functionality on our final rendered
+page. The initial page should still work as is, but on the final rendered page we should be reponsible for that
+milliseconds feature.
+
+Currently the column header when the jesus2099 userscript is in effect looks like e.g.
+
+#+begin_example
+<th class="treleases mb-original-column" title="SUPER&nbsp;MIND&nbsp;CONTROL&nbsp;Ⅱ&nbsp;X&nbsp;TURBO" style="text-shadow: yellow 0px 0px 2px; cursor: default; position: relative; min-width: 131px;" data-col-name="Length" data-mb-resize-min="108"><div class="mb-col-hdr-flex">Length <span class="sort-icon-btn" title="Restore original sort order (clears multi-sort columns) — keyboard: Ctrl+# when a column filter is focused">⇅</span><span class="sort-icon-btn" title="Sort ascending — Ctrl+Click to add to multi-column sort / Alt+Click to sort by column length — keyboard: Ctrl+ArrowUp when a column filter is focused">▲</span><span class="sort-icon-btn" title="Sort descending — Ctrl+Click to add to multi-column sort / Alt+Click to sort by column length — keyboard: Ctrl+ArrowDown when a column filter is focused">▼</span><span class="mb-col-uniq-wrap" tabindex="0" role="button" aria-label="Show the 37 different unique values in this column, with the ability to quick filter by either clicking or selecting with the keyboard and pressing &quot;Enter&quot; on an entry — keyboard: Ctrl+M then Q when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for Ctrl+Q)" title="Show the 37 different unique values in this column, with the ability to quick filter by either clicking or selecting with the keyboard and pressing &quot;Enter&quot; on an entry — keyboard: Ctrl+M then Q when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for Ctrl+Q)"><span class="mb-col-uniq-count">37</span><span class="mb-col-uniq-btn">📊</span></span></div><div class="column-resizer" style="position: absolute; right: 0px; top: 0px; width: 8px; height: 100%; cursor: col-resize; user-select: none; z-index: 1; background: transparent;"></div></th>
+#+end_example
+
+We don't want his artifacts on the final rendered page
+
+b.)
+
+To get rid of the jesus2099 userscript on our final rendered page should be the definite goal all the time, except
+injecting our action buttons
+
+c.)
+
+on pageTypes where data about milliseconds is available inline, use it
+
+2.)
+
+Global boolean which handles the millisecinds feature on the highest level - "default: true". So basically everything
+should still render/work the same as before when switching this feature off
+
+3.)
+
+Column level toggle glyph with state aware tooltip, if the global boolean is in effect, (make some suggestions how to
+implement this visually) before the "Length" columns name header maybe, e.g.
+
+#+begin_example
+[milliseconds toggle glyph] <length column name, normally "Length">
+#+end_example
+
+to toggle the display of milliseconds (make sure that sorting, filtering, unique value drop down menu section
+calculations are still honoured, depending on the presence of the millisecnds feature
+
+4.)
+
+Except on pages where the milliseconds are present in metadata, the above toggle glyph should only grab the track length
+info when the glyph is actually pressed the first time, otherwise the response should be cached as long as we stay on
+the same page, so that sorting/filtering is not triggering it again
+
+5.)
+
+"?:??" should be get pinned last in both directions
+
+** my a
+
+1.)
+
+- Scope boundary: Everything jesus2099 puts outside table.tbl (sidebar, page headings, its own toolbar) stays untouched
+something broader.
+
+- initial toggle state ==> seconds everywhere
+
+2.)
+
+Sessions A and B stay active regardless — they're separate concerns - NOT under the same switch.
+
+3.)
+
+ship A plus B's tint.
+
+Two sub-decisions:
+
+a.)
+
+- Initial state ==> default to seconds everywhere
+
+  b.)
+
+- The flat value list ==>leave it honest
+
+** ▶⏱/▼⏱ prepended to the Length header, page-wide, seconds by default, tinted when engaged. Three settings in a new ⏱️ TRACK LENGTH PRECISION section.
+
+Two design choices worth calling out:
+
+State lives in the DOM, not a variable. data-mb-ms-shown on the cells survives cloneNode(true), so precision persists
+through every filter/sort re-render for free.
+
+Toggling rewrites the source rows, then calls runFilter(). That reuses the script's own re-render path, so filters,
+highlighting and sort order all come along. Editing live cells would have been undone by the next keystroke.
+
+The tracks[].length vs recording.length constraint is enforced at runtime, not just documented: any stamped value whose
+rounded seconds disagree with what MB rendered is discarded, and ?:?? cells are skipped.
+
+* DONE bug - place-performances
+** DONE i
+
+On pageType 'place-performances' e.g. https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/performances
+the display of milliseconds works after pressing the '<span class="mb-ms-col-hdr-btn" role="button"' button see
+@debug/place-performances-final.html
+
+1.)
+
+When clicking the
+
+#+begin_example
+<button title="Click to show all 398 rows in a new browser tab for this sub-section (MusicBrainz Artist-Relationships pages have currently a limit of 100 rows rendered at most per relationship type section)" class="mb-show-all-subtable-btn" type="button" style="background: rgb(204, 255, 204);">Show all 398 rows</button>
+#+end_example
+
+button on the sub-table "Recording location for recording", on the new tabbed page https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/performances?direction=1&link_type_id=693&page=1
+of pageType 'place-performances-filtered', the '<span class="mb-ms-col-hdr-btn" role="button"' button is NOT even present, see @debug/recording-location.html
+
+2.)
+
+Whereas when clicking the button on the sub-table "Shooting location for recording", on the new tabbed page (which
+happens to have just on row, the milliseconds button works see @debug/shooting-location.html
+
+3.)
+
+Also mention in the section
+
+#+begin_example
+// ============================================================================================================================================
+// @name         mb. SUPER MIND CONTROL Ⅱ X TURBO
+// @description  musicbrainz.org power-ups: RELEASE_CLONER. copy/paste releases / DOUBLE_CLICK_SUBMIT / CONTROL_ENTER_SUBMIT / TRACKLIST_TOOLS. search→replace, track length parser, remove recording relationships, set selected recording dates / LAST_SEEN_EDIT. handy for subscribed entities / COOL_SEARCH_LINKS / COPY_TOC / ROW_HIGHLIGHTER / SPOT_CAA / SPOT_AC / RECORDING_LENGTH_COLUMN / RELEASE_EVENT_COLUMN / WARN_NEW_WINDOW / SERVER_SWITCH / TAG_TOOLS / USER_STATS / EASY_DATE. paste full dates in one go / STATIC_MENU / SLOW_DOWN_RETRY / CENTER_FLAGS / RATINGS_ON_TOP / HIDE_RATINGS / UNLINK_ENTITY_HEADER / MARK_PENDING_EDIT_MEDIUMS
+// @version      2026.1.9
+// @author       jesus2099
+// @licence      CC-BY-NC-SA-4.0; https://creativecommons.org/licenses/by-nc-sa/4.0/
+// @licence      GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
+// @downloadURL  https://github.com/jesus2099/konami-command/raw/master/mb_SUPER-MIND-CONTROL-II-X-TURBO.user.js
+//
+//   uses just: RELEASE_EVENT_COLUMN ==> Displays release dates in label relationships page
+
+#+end_example
+
+that our feature is inspired by his code
+
+** DONE bug
+
+When the console log shows a "HTTP 503" error (normally it works, but sometimes the MusicBrainz webservice is flaky
+because it sometimes get hit by many bot requests)
+
+#+begin_example
+[VZ-ShowAllEntityData: place-performances] 🖥️ Column visibility checkboxes built for pageType "place-performances": ["Date","Title","Attributes","Artist","⏱Length","Video","DD","MM","YYYY","Day","Month","MB-Name","Comment","Primary alias"] 
+18:39:29.643 [VZ-ShowAllEntityData: place-performances] 📝 _msFetchWs2RecordingLengths: fetching /ws/2/place/6a59a67c-fcc5-491f-949c-bfc45bc97463?inc=recording-rels&fmt=json 
+18:39:29.661 [VZ-ShowAllEntityData: place-performances] 📝 _msFetchWs2RecordingLengths: HTTP 503 
+18:39:31.399 [VZ-ShowAllEntityData: place-performances] 📝 _msFetchWs2RecordingLengths: cache hit for place:6a59a67c-fcc5-491f-949c-bfc45bc97463 
+18:39:46.437 [VZ-ShowAllEntityData: place-performances] 📝 _msFetchWs2RecordingLengths: cache hit for place:6a59a67c-fcc5-491f-949c-bfc45bc97463 
+18:39:47.740 [VZ-ShowAllEntityData: place-performances] 📝 _msFetchWs2RecordingLengths: cache hit for place:6a59a67c-fcc5-491f-949c-bfc45bc97463 
+#+end_example
+
+the tooltip currently shows "Millisecond precision unavailable here — MusicBrainz has no sub-second length on record for
+these recordings" which is clearly wrong, as it worked in my last tests. In such a case, change the tooltip to tell the
+truth and tell the enduser he should retry later and change the background color to yellow for the '<span
+class="mb-ms-col-hdr-btn" role="button"' button. If our code wrongly chaches tht result, adjust the code
+
+** when millseconds are already show on a multitable page, on the single-table tabbed page for a sub-table, the column starts out with millisecond display it's not possible to hide the milliseconds again
+*** i
+
+when millseconds are already shown on a multi-table page, then when clicking the "Show all <n> rows" button on a
+sub-table and the single-table tabbed page for such a sub-table happens to be feeded by a non-paginated initial page, the "Lenght" column
+starts out already with millisecond display and it's not possible to hide the milliseconds again.
+E.g. this happesn on the sub-table "Shooting location for recording" which happens to have just one row
+
+*** b
+
+1.)
+
+the bug ist still present, when on the tabbed-page and clicking the milliseconds toggle icon, the toogle icon changes,
+but the milliseconds are still displayed, see @debug/shooting-location-bug.html for the inconsistency between the button
+state and the milliseconds display
+
+2.)
+
+While you're at it, make the tabbed-pages always start without the milliseconds display, so e.g, all pages which are not
+rendered from pagination e.g. "Shooting location for recording" , because the paginated ones e.g. "Recording location for recording" always start with the
+milliseconds NOT shown
+
+** One honest limit
+
+that test drives the single-table pageType, which reproduces the ordering bug faithfully, but not
+_hydrateAndRenderFromSnapshotData() itself — that would need a captured snapshot payload seeded into GM storage. Both
+paths share the identical cause and the one hook fixes both, but the hydration path specifically is covered by reasoning
+plus your live report, not by a test.
+
+One limit I want to be straight about: none of these tests drives the real captureSubtableSnapshot →
+_hydrateAndRenderFromSnapshotData round trip, which would need a captured payload seeded into GM storage. They cover the
+reset function directly and the single-table pageType. So please do re-check the actual "Shooting location" tab — that
+path is covered by reasoning plus your report, not by a test.
+
+** what needs to be done
+
+OK, it works, I confirmed it in a live browser. But what needs to be done for
+
+#+begin_example
+One limit I want to be straight about: none of these tests drives the real captureSubtableSnapshot →
+_hydrateAndRenderFromSnapshotData round trip, which would need a captured payload seeded into GM storage.
+#+end_example
+
+** what about the other pageTypes which have "Length" columns
+*** i
+
+Now Session 3, in a new branch:
+
+The following is what you already found out:
+
+#+begin_example
+Browse-loop coverage for artist-recordings & friends (paged WS2 + IDB caching, following the initRelationshipsColumn()
+cache pattern). 
+
+artist-recordings, area-recordings(-filtered), instrument-recordings, isrc, recording-releases, search — no embedded ms,
+no page-entity relationship include. These need a paged /ws/2/recording?artist=…&limit=100 browse loop at 1 req/s.
+
+Deliberately excluded on correctness grounds: release-discids' Length column
+(tests/snapshots/release-discids/rendered.html) is TOC/sector-derived, not the recording's stored length. Substituting
+WS2 ms there would be wrong.
+#+end_example
+
+*** a
+
+I probed the actual endpoints before writing anything. The spec's premise doesn't survive contact — reporting that first, since it changes the work.
+
+A browse loop is the wrong shape here. Its cost is set by the entity's catalog, not by the page:
+
+┌─────────────────────────┬────────────────────────────────────────────────┬─────────────────────────────────────────────────────┐
+│                         │                ?artist= browse                 │                 batched rid: lookup                 │
+├─────────────────────────┼────────────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+│ Springsteen /recordings │ 746 requests ≈ 14 min (recording-count: 74540) │ ceil(rendered rows / 100) — 5 requests for 500 rows │
+├─────────────────────────┼────────────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+│ instrument-recordings   │ no endpoint exists                             │ works                                               │
+├─────────────────────────┼────────────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+│ cache unit              │ per page-entity                                │ per recording — reusable across pages               │
+└─────────────────────────┴────────────────────────────────────────────────┴─────────────────────────────────────────────────────┘
+
+I verified rid:(m1 OR m2 …) batches return 100/100 with lengths, values identical to the browse endpoint. Batch 150 is accepted but capped by limit=100; batch 200 is HTTP 414 (URI too long, 8868 chars). So 100 is the exact ceiling.
+
+Two other findings:
+
+- instrument-recordings has no browse or lookup path at all. /ws/2/instrument/<mbid>?inc=recording-rels returns 0 relations while the page lists 100 recordings — MB models those as artist-recording rels carrying an instrument attribute. The browse plan could never have covered this pageType.
+- area-recordings needs no loop. /ws/2/area/<mbid>?inc=recording-rels returned 24/24 with lengths, exactly matching the page's 24 rows — so it just needs area added to the existing single-request path's regex.
+
+Also relevant: WS2 is 503ing roughly 1 in 3 requests right now. A 746-request loop is fragile in a way a 5-request one isn't.
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+←  ☐ Fetch design  ☐ recording-releases  ✔ Submit  →
+
+│ Given the browse loop costs 746 requests for Springsteen and can't cover instrument-recordings at all, which fetch architecture should Session 3 build?
+
+❯ 1. Batched rid: lookup (Recommended)                 │ cost = ceil(rendered_rows / 100)            │
+  2. Paged browse loop as specced                       │   500-row page   ->  5 requests  (~6s)      │
+  3. Both, per pageType           │   100-row page   ->  1 request              │
+                                  │                                             │
+                                  │ cache: per-recording, so a recording seen   │
+                                  │ on one page warms every other page          │
+                                  └─────────────────────────────────────────────┘
+
+* DONE add synthetic extractor
+** i
+
+Add the following syntheticColumnExtractor
+
+#+begin_example
+                syntheticColumnExtractors: [
+                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
+                ],
+#+end_example
+
+to the pageTypes
+
+#+begin_example
+place-performances-filtered
+place-performances
+#+end_example
+
+and also check other recording related pageTypes if that syntheticColumnExtractor is possibly missing (report before you change)
+
+** add
+
+Add a new snapshot baseline for the following series-recordings https://musicbrainz.org/series/83a184b0-1759-4205-9844-37e18957da5c
+to test e.g. the current syntheticColumnExtractors feature
+
+** two bugs
+
+1.)
+
+On https://musicbrainz.org/series/83a184b0-1759-4205-9844-37e18957da5c the "Length" column doesn't have the milliseconds
+fetch glyph, see [Image #2]
+
+2.)
+
+On the URLs, https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/performances and https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/performances?direction=1&link_type_id=693&page=1
+entries in the "MB-Name" column are center aligned instead of left, see [Image #3]
+
+3.)
+
+scripts should warn on an expired session
+
+
+* TODO One observation worth your call - there's a real argument for capturing everything except the genuinely login-gated pages
+
+Chasing this turned up something about the harness generally, not just my capture: the logged-in baselines are
+inherently perishable. The Aug 23 session cookie expired Aug 23 +1 day; anyone re-capturing any of the 10 existing
+baselines today gets logged-out header chrome in the diff, exactly as I did with series-releases. "Logged out" is a
+permanently reproducible state; "logged in as vzell" needs a live session that keeps expiring.
+
+So there's a real argument for capturing everything except the genuinely login-gated pages (user-open-edits, and
+notes-received) logged out. That's a harness-policy change though, well outside what you asked for — I'm flagging it,
+not doing it.
+
+* DONE add a recording length column on pageType "release-tracks" as this data seems to be available in an application/josn structure in the HTML itself
+** i
+
+Add a recording length column on pageType "release-tracks" after the "Length" column as this data seems to be available
+in an application/json structure in the HTML itself. How would you call it, given "Length" is already occupied.
+
+Also add proper tooltips to both length columns explaining what they are and where they are coming from
+
+** how can we flag if track length and recording length differ by more than <n> seconds (make it user configurable)
+
+1.)
+
+how can we best flag if track length and recording length differ by more than <n> seconds (make it user configurable),
+show me some choices, maybe highlightning, or flagging with warning icons, etc.
+
+2.)
+
+also enable tooltips on such differing lenghts, explaining how much they differ etc.
+
+
+* DONE Two things worth your attention - jQuery UI races to assign ui-id-1/2/3
+*** i
+
+- The release-tracks snapshot baseline was 13 versions stale (2026-08-23, v9.99.936) and captured logged-out, unlike
+  every other baseline. My re-capture is logged in, so its diff has two independent causes — I've documented both in
+  tests/snapshots/registry.org so it isn't read as one change.
+- raw.html reports "changed" on nearly every capture of this page, pre-existing and unrelated: jQuery UI races to assign
+  ui-id-1/2/3 between MB's autocomplete and artwork dialog, so identical captures differ only by permuted
+  ids. rendered.html is stable. A ui-id-\d+ scrub rule would fix it — I left that out as out of scope, but can do it
+  separately.
+
+*** One thing worth knowing
+
+that verification run printed a "session expired — continuing LOGGED OUT" warning from authState.js, but the capture was
+demonstrably still logged in (it matched the logged-in baseline exactly). authState.js's expiry heuristic is more
+conservative than MusicBrainz actually is, so that warning can cry wolf — pre-existing, not something this change
+introduced.
+
+
+* parse HTML with json
+
+#+begin_src bash
+cd ~/
+#+end_src
+
+#+begin_src bash
+python3 -c "
+import sys, json
+from bs4 import BeautifulSoup
+
+with open(sys.argv[1]) as f:
+    soup = BeautifulSoup(f, 'html.parser')
+
+for tag in soup.find_all('script', type='application/json'):
+    if tag.string and tag.string.strip():
+        data = json.loads(tag.string)
+        tag.string = json.dumps(data, indent=2)
+
+print(soup.prettify())
+" tttr-initial.html > beauty-tttr-initial.html
+#+end_src
+
+#+begin_src bash
+tidy -indent -wrap 100 tttr-initial.html > tidy-tttr-initial.html
+#+end_src
+
+#+begin_src bash
+python3 -c "
+import sys, json, re
+
+with open(sys.argv[1]) as f:
+    html = f.read()
+
+def reformat(m):
+    raw = m.group(2)
+    try:
+        data = json.loads(raw)
+        pretty = json.dumps(data, indent=2)
+    except json.JSONDecodeError:
+        return m.group(0)
+    return m.group(1) + '\n' + pretty + '\n' + m.group(3)
+
+pattern = re.compile(
+    r'(<script type=\"application/json\"[^>]*>)(.*?)(</script>)',
+    re.DOTALL
+)
+print(pattern.sub(reformat, html))
+" tidy-tttr-initial.html > beauty-tidy-tttr-initial.html
+#+end_src
+
+
