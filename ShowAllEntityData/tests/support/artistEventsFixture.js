@@ -13,10 +13,19 @@ const path = require('path');
  * targets those three files exercise never drift apart from each other.
  *
  * `FILTER_VALUE`/`FILTER_VALUE_COUNT` and the multi-row Location cell count
- * below were derived directly from the committed fixture/snapshot data
- * (`tests/fixtures/saved-data/artist-events.json.gz`,
- * `tests/snapshots/artist-events/rendered.html`) — re-verify them if that
- * fixture is ever re-captured against materially different data.
+ * below were derived directly from the committed DISK FIXTURE
+ * (`tests/fixtures/saved-data/artist-events.json.gz`, 4174 rows) — re-verify
+ * them if that fixture is ever re-captured against materially different data.
+ *
+ * Corroborate them against `post-filter.html`/`post-sort.html`, NOT against
+ * `rendered.html`. All three are snapshots of this page, but only the first
+ * two are generated FROM this disk fixture and so stay pinned to it;
+ * `rendered.html` is a live 42-page fetch of musicbrainz.org and drifts with
+ * the real data (it read 4174 rows/4158 Event uniques when these constants
+ * were written, and 4178/4162 as of the capture committed alongside the
+ * filter-bar container refactor). That divergence is expected and is the
+ * whole point of pinning a fixture: these constants describe the fixture, so
+ * a live snapshot moving underneath them invalidates nothing.
  */
 
 const URL = 'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events';
@@ -46,13 +55,18 @@ const UNIQ_DROP_COLLAPSABLE_CELL_COUNT = 5;
 // low-cardinality column like Country (37) can look plausible while still
 // being computed over a fraction of the rows.
 //
-// All four values were derived from tests/snapshots/artist-events/
-// rendered.html — the ONLY committed snapshot of this page whose render path
-// awaits renderFinalTable(), and therefore the only one whose header badges
-// were computed over the complete table. (post-sort.html predates the fix and
-// still bakes in the partial-scan numbers 984/6/1.) The extraction was
-// validated against that snapshot's own `.mb-col-uniq-count` badge before
-// being committed here: same 4158.
+// All four values describe the DISK FIXTURE, and post-sort.html is the
+// snapshot to check them against: it is generated from that fixture, and its
+// render path awaits renderFinalTable(), so its header badges are computed
+// over the complete table — its `.mb-col-uniq-count` reads the same 4158.
+//
+// These were originally derived from rendered.html instead, back when it was
+// the only snapshot with complete badges (post-sort.html then still baked in
+// the partial-scan numbers 984/6/1, from the chunked-render race). Both
+// halves of that have since changed: post-sort.html was re-captured after
+// the fix and now carries the full-scan numbers, and rendered.html — a live
+// fetch, unlike the other two — has drifted to 4162 Event uniques over 4178
+// rows. So it is no longer the reference for anything pinned to the fixture.
 const UNIQ_COUNT_COLUMN = 'Event';
 const UNIQ_COUNT_TOTAL = 4158;
 // 3 rows, each with a distinct Event value, so the filtered badge reads 3.
