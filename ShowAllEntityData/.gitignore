@@ -9,3 +9,10 @@ playwright/.auth/
 # a multi-MB blob doesn't bloat history on every re-capture. See that
 # file's own JSDoc.
 tests/fixtures/local-large/
+# Real third-party userscript bodies copied from the local Tampermonkey
+# install, used only by tests/support/run-live-interop.js for live-interop
+# debugging. Not ours to redistribute — only the harness that loads them
+# (tests/support/liveUserscripts.js, tests/support/run-live-interop.js) and
+# the manifest.json that names them is committed. See that directory's own
+# README.md.
+tests/fixtures/live-userscripts/*.user.js
