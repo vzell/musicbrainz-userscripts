@@ -1,5 +1,29 @@
 [
   {
+    "version": "9.99.1031",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The release-tracks millisecond-precision ⏱ toggle now backfills the `Length`/`Recording length` columns for tracks MusicBrainz's own embedded page payload doesn't cover — confirmed on a real 1209-track release whose SSR hydration blob only ever carries data for the first 100 (the overflow-loading \"Load all tracks...\" call fills the live DOM but never updates that blob). Pressing the toggle now fires one supplemental `/ws/2/release/<mbid>?inc=recordings` request — verified live to return the release's COMPLETE, unpaginated tracklist regardless of size — only when some cell is still unstamped after the embedded payload's own pass, so a normal small release costs nothing extra. New `_msFetchFullReleaseTrackLengths()`/`_msStampFullReleaseRows()`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1030",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The release-tracks track-vs-recording length-mismatch tint (`td[data-mb-len-flag=\"warn\"/\"severe\"]`) silently failed to render on any row that happened to land on MusicBrainz's own zebra-striped \"even\" `<tr>` — its native `tr.even > td { background: … }` rule (specificity 0,0,1,2) outranks a plain `td[data-mb-len-flag=\"…\"]` background-color declaration (0,0,1,1) and painted right over it, leaving only the ⚠️/❌ glyph visible with no tint. Confirmed live (screenshot: an odd \"far over\" row showed its red tint fine, two even \"warn\" rows showed none) and reproduced by simulating MusicBrainz's real zebra rule against the local test fixture, which — lacking musicbrainz.org's own stylesheet — never exercised this conflict before. Both declarations now carry `!important`, the same fix already used for the identical class of conflict in `_ensureDetableifyStyle()`'s own zebra-vs-diff-color rules."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1029",
     "date": "2026-09-06",
     "sections": [

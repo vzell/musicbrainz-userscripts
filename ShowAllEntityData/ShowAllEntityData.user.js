@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1029+2026-09-06
+// @version      9.99.1031+2026-09-06
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -17246,6 +17246,51 @@
         return -1;
     }
 
+    /**
+     * Resolves the rendered index of release-tracks' "Recording length"
+     * column — same one-index-serves-every-table reasoning as
+     * `_msLengthColumnIndex()`. Used only by `_msStampFullReleaseRows()`,
+     * where it doubles as the "does this column even exist on this release"
+     * check: a release whose first 100 tracks never disagreed with their
+     * recordings never got the column at all (`_pageHasRecLength`, decided
+     * once at extraction time from the same incomplete embedded payload),
+     * so a backfill has nothing to write a NEWLY-discovered disagreement
+     * among the later tracks into.
+     *
+     * @returns {number} Column index, or `-1` when this page has no such column.
+     */
+    function _msRecordingLengthColumnIndex() {
+        for (const table of document.querySelectorAll('table.tbl')) {
+            const ths = Array.from(table.querySelectorAll('thead th'));
+            const idx = ths.findIndex(th => (th.dataset.colName || '') === 'Recording length');
+            if (idx >= 0) return idx;
+        }
+        return -1;
+    }
+
+    /**
+     * Resolves the rendered index of the "Title" column — the same
+     * one-index-serves-every-table reasoning as `_msLengthColumnIndex()`.
+     * Used only by `_msStampFullReleaseRows()` to re-locate each row's own
+     * recording link at STAMP time (post-render), rather than reusing the
+     * generic `_extractRecordingMbidFromRow()` (documented for
+     * work-recordings/artist-relationships/place-performances only): a
+     * release-tracks row's Title cell can still be followed by AR columns
+     * carrying further `/recording/` links of their own (e.g. a "DJ-mix of"
+     * relationship), so the lookup stays scoped to the Title cell's own
+     * DIRECT-CHILD anchor, exactly like `_msLengthForRow()`.
+     *
+     * @returns {number} Column index, or `-1` when this page has no Title column.
+     */
+    function _msTitleColumnIndex() {
+        for (const table of document.querySelectorAll('table.tbl')) {
+            const ths = Array.from(table.querySelectorAll('thead th'));
+            const idx = ths.findIndex(th => (th.dataset.colName || '') === 'Title');
+            if (idx >= 0) return idx;
+        }
+        return -1;
+    }
+
     /** @type {Map<string, ?Map<string, number>>} WS2 results, keyed `"entityType:mbid"`. */
     const _msWs2Cache = new Map();
 
@@ -17275,7 +17320,16 @@
      *
      *   `'embedded'` — already in the document. Release pages inline their
      *                  tracklist props, so the values are free and are stamped
-     *                  during pre-processing.
+     *                  during pre-processing. On a very large tracklist that
+     *                  payload can itself be INCOMPLETE (see
+     *                  `_msFetchFullReleaseTrackLengths()`'s JSDoc) — this
+     *                  source still reports `'embedded'` in that case (most of
+     *                  the page's data really is free), and
+     *                  `_msToggleLengthPrecision()` transparently fires one
+     *                  supplemental Web Service request of its own, the same
+     *                  "is there real work left" check the `'ws2'` branch
+     *                  already uses, to backfill whatever the embedded payload
+     *                  did not cover.
      *   `'ws2'`      — one MusicBrainz Web Service request, made ONLY when the
      *                  toggle is first pressed. Declared per pageType via
      *                  `features.msTrackLengthWs2`; these pages carry no length
@@ -17377,6 +17431,111 @@
         const result = map.size ? map : null;
         _msWs2Cache.set(key, result);
         return { outcome: result ? 'ok' : 'empty', map: result, detail: '' };
+    }
+
+    /**
+     * The current page's release MBID, for the `release-tracks` "full release"
+     * backfill request below — analogous to `_msWs2PageKey()`, but keyed on
+     * the URL alone (no page-entity-type prefix needed; this is only ever
+     * called on a release page).
+     *
+     * @returns {?string}
+     */
+    function _msCurrentReleaseGid() {
+        const m = window.location.pathname.match(
+            /^\/release\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/
+        );
+        return m ? m[1] : null;
+    }
+
+    /**
+     * @type {Map<string, ?{trackByRecording: Map<string, number>, recByRecording: Map<string, ?number>}>}
+     * Full-release WS2 results, keyed by release MBID.
+     */
+    const _msFullReleaseCache = new Map();
+
+    /**
+     * Fetches (once per page) the COMPLETE track/recording length data for the
+     * current release, straight from the Web Service — the backfill for the
+     * embedded `<script type="application/json">` payload's own gap on a very
+     * large tracklist.
+     *
+     * MusicBrainz's release page inlines its own tracklist hydration payload
+     * (`_readEmbeddedReleaseJson()`), but that blob is a snapshot of the page
+     * as SERVER-RENDERED — it reflects only the tracks shown before any
+     * "Load all tracks..." overflow AJAX call completes (100, at the time of
+     * writing), and is never updated afterward even though the live DOM goes
+     * on to render every track. Confirmed live on a 1209-track release: the
+     * embedded payload's own `mediums[0].tracks` stopped at 100 entries while
+     * `combined_track_count` in that same payload said 1209.
+     *
+     * `GET /ws/2/release/<mbid>?inc=recordings&fmt=json` has no such gap — it
+     * returns the release's ENTIRE tracklist in one unpaginated response,
+     * verified directly against this same release: 1209/1209 tracks, each
+     * carrying both its own `length` and its `recording.length` (confirmed via
+     * a live fetch while diagnosing this — see the release-tracks length-
+     * mismatch/ms-precision investigation). One request backfills BOTH
+     * duration columns at once, which is cheaper than the generic `'ws2'`
+     * source above (that one only ever answers for a single entity's
+     * relationship list, i.e. one column's data).
+     *
+     * Keyed by RECORDING MBID only, not position — unlike
+     * `_buildReleaseTrackLengthMap()`'s two-key scheme. This backfill only
+     * ever fires for rows the embedded payload's own byRecording/byPosition
+     * lookup already failed to resolve (see `_msStampFullReleaseRows()`), and
+     * a row with no resolvable recording link at all is already a rare edge
+     * case there; adding a parallel position-keyed map here (which would need
+     * its own per-row medium index, not just `_msSourceRows()`'s flattened
+     * list) is not worth the complexity for that residual sliver.
+     *
+     * Same cache/error-handling contract as `_msFetchWs2RecordingLengths()`:
+     * a successful (including genuinely empty) answer is cached for the page's
+     * lifetime; a transport failure is not, so it stays retryable.
+     *
+     * @returns {Promise<{outcome: ('ok'|'empty'|'error'),
+     *   maps: ?{trackByRecording: Map<string, number>, recByRecording: Map<string, ?number>},
+     *   detail: string}>}
+     */
+    async function _msFetchFullReleaseTrackLengths() {
+        const gid = _msCurrentReleaseGid();
+        if (!gid) return { outcome: 'empty', maps: null, detail: '' };
+        if (_msFullReleaseCache.has(gid)) {
+            _msDbg(`_msFetchFullReleaseTrackLengths: cache hit for ${gid}`);
+            const cached = _msFullReleaseCache.get(gid);
+            return { outcome: cached ? 'ok' : 'empty', maps: cached, detail: '' };
+        }
+
+        const url = `/ws/2/release/${gid}?inc=recordings&fmt=json`;
+        _msDbg(`_msFetchFullReleaseTrackLengths: fetching ${url}`);
+        let media;
+        try {
+            const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+            if (!resp.ok) {
+                _msDbg(`_msFetchFullReleaseTrackLengths: HTTP ${resp.status} — transient, not cached, retryable`);
+                return { outcome: 'error', maps: null, detail: `HTTP ${resp.status}` };
+            }
+            media = (await resp.json()).media || [];
+        } catch (err) {
+            const detail = err.message || String(err);
+            _msDbg(`_msFetchFullReleaseTrackLengths: fetch error (${detail}) — transient, not cached, retryable`);
+            return { outcome: 'error', maps: null, detail: 'the request failed' };
+        }
+
+        const trackByRecording = new Map();
+        const recByRecording = new Map();
+        media.forEach(medium => {
+            (medium.tracks || []).forEach(track => {
+                const rid = track.recording && track.recording.id;
+                if (!rid) return;
+                if (typeof track.length === 'number') trackByRecording.set(rid, track.length);
+                recByRecording.set(rid, typeof track.recording.length === 'number' ? track.recording.length : null);
+            });
+        });
+        _msDbg(`_msFetchFullReleaseTrackLengths: ${trackByRecording.size} track length(s), ` +
+               `${recByRecording.size} recording(s) seen`);
+        const result = (trackByRecording.size || recByRecording.size) ? { trackByRecording, recByRecording } : null;
+        _msFullReleaseCache.set(gid, result);
+        return { outcome: result ? 'ok' : 'empty', maps: result, detail: '' };
     }
 
     /**
@@ -17760,6 +17919,95 @@
     }
 
     /**
+     * Stamps `data-mb-ms`/`data-mb-sec-text` from `_msFetchFullReleaseTrackLengths()`'s
+     * maps onto whichever "Length"/"Recording length" cells the embedded
+     * payload's own (possibly incomplete — see that function's JSDoc) stamping
+     * pass left behind, without touching any cell already stamped.
+     *
+     * The two columns are handled differently, mirroring exactly how each was
+     * built in the first place:
+     *
+     *   - "Length" — round-trip validated against the cell's own displayed
+     *     text, the same discard rule `_msStampReleaseTrackLengths()` uses:
+     *     MusicBrainz already rendered a real value for every row regardless
+     *     of the embedded payload's coverage (only the HYDRATION payload is
+     *     truncated, not the native page), so a mismatch here means the wrong
+     *     track was keyed and the value is discarded rather than trusted.
+     *   - "Recording length" — accepted unconditionally, like
+     *     `applyExtractTrackTitleData()`'s own original stamping: an
+     *     unresolved row shows literal `"?:??"` placeholder text (not a real
+     *     MusicBrainz value) precisely because nothing was known about it yet,
+     *     so there is nothing to round-trip against — the fetched value simply
+     *     replaces the placeholder, same as if it had been known from the
+     *     start. A `null` answer (MusicBrainz genuinely has no recording
+     *     length on record) is left as `"?:??"` and not stamped, matching the
+     *     resolved-vs-unresolved distinction `_buildReleaseRecordingLengthMap()`
+     *     already draws.
+     *
+     * @param   {Map<string, number>} trackByRecording
+     * @param   {Map<string, ?number>} recByRecording
+     * @returns {{lengthStamped: number, recordingStamped: number}}
+     */
+    function _msStampFullReleaseRows(trackByRecording, recByRecording) {
+        const titleIdx = _msTitleColumnIndex();
+        const lenIdx = _msLengthColumnIndex();
+        const recIdx = _msRecordingLengthColumnIndex();
+        if (titleIdx < 0 || (lenIdx < 0 && recIdx < 0)) {
+            _msDbg('_msStampFullReleaseRows: no Title/Length column found — nothing to backfill');
+            return { lengthStamped: 0, recordingStamped: 0 };
+        }
+
+        let lengthStamped = 0, recordingStamped = 0;
+        _msSourceRows().forEach(row => {
+            const titleTd = row.cells[titleIdx];
+            // Direct-child only — see this function's own column-index
+            // helper's JSDoc for why an unscoped query is unsafe here.
+            const recA = titleTd && titleTd.querySelector(':scope > a[href*="/recording/"]');
+            const gidM = recA && recA.getAttribute('href').match(/\/recording\/([0-9a-f-]{36})/);
+            const gid = gidM && gidM[1];
+            if (!gid) return;
+
+            if (lenIdx >= 0) {
+                const td = row.cells[lenIdx];
+                const ms = trackByRecording.get(gid);
+                if (td && !td.dataset.mbMs && typeof ms === 'number') {
+                    const secText = (getCleanColumnText(td) || td.textContent || '').trim();
+                    const shownMs = _parseDurationToMs(secText);
+                    if (shownMs !== null && Math.round(ms / 1000) === Math.round(shownMs / 1000)) {
+                        td.dataset.mbMs = String(ms);
+                        td.dataset.mbSecText = _MS_RENDERED_DURATION_RE.test(secText)
+                            ? _msFormatSeconds(ms)
+                            : secText;
+                        lengthStamped++;
+                    } else if (shownMs !== null) {
+                        _msDbg(`_msStampFullReleaseRows: REJECTED Length — MusicBrainz shows "${secText}" but ` +
+                               `the Web Service says ${ms}ms for recording ${gid}`);
+                    }
+                }
+            }
+
+            if (recIdx >= 0) {
+                const td = row.cells[recIdx];
+                if (td && !td.dataset.mbMs && recByRecording.has(gid)) {
+                    const ms = recByRecording.get(gid);
+                    if (typeof ms === 'number') {
+                        const text = _msFormatSeconds(ms);
+                        td.textContent = text;
+                        td.dataset.mbMs = String(ms);
+                        td.dataset.mbSecText = text;
+                        recordingStamped++;
+                    }
+                    // `null` — no recording length on record — leaves the
+                    // existing "?:??" placeholder exactly as-is.
+                }
+            }
+        });
+        _msDbg(`_msStampFullReleaseRows: ${lengthStamped} Length cell(s), ${recordingStamped} ` +
+               'Recording length cell(s) backfilled');
+        return { lengthStamped, recordingStamped };
+    }
+
+    /**
      * Whether the duration columns are currently rendering milliseconds.
      *
      * Read from the DOM (the `data-mb-ms-shown` flag on a stamped cell) rather
@@ -17998,48 +18246,67 @@
         // is precisely that list, kept as its own branch (rather than folded
         // into the generic check) because it is ALSO source-specific
         // (`_msBatchMemCache`), unlike `_msHasUnstampedLengthCell()`.
+        // `'embedded'` gets the exact same treatment as `'ws2'` here — see
+        // `_msFetchFullReleaseTrackLengths()`'s JSDoc for why the embedded
+        // payload itself can be incomplete on a very large release.
         const source = next ? _msLengthSource() : null;
         const needFetch = next && (
             !_msAnyStamped()
             || (source === 'batch' && _msCollectRecordingMbids().length > 0)
-            || (source === 'ws2' && _msHasUnstampedLengthCell())
+            || ((source === 'ws2' || source === 'embedded') && _msHasUnstampedLengthCell())
         );
         if (needFetch) {
-            if (source !== 'ws2' && source !== 'batch') {
+            if (source !== 'ws2' && source !== 'batch' && source !== 'embedded') {
                 _msRepaintColHdrBtns(false, 'unavailable');
                 return;
             }
             _msToggleInFlight = true;
             _msRepaintColHdrBtns(false, 'loading');
             try {
-                // Both sources answer in the same shape, so everything below is
-                // written once. They differ only in cost: `'ws2'` is a single
-                // lookup of the page entity, `'batch'` is one request per 100
-                // rendered recordings and therefore reports progress.
-                const res = source === 'batch'
-                    ? await _msFetchBatchRecordingLengths((done, total) => {
-                        if (total > 1) _msRepaintColHdrBtns(false, 'loading', `${done}/${total}`);
-                    })
-                    : await _msFetchWs2RecordingLengths();
-                if (res.map) _msStampSourceRowsFromMap(res.map);
-                // What matters now is whether the column can be shown at all,
-                // which is "is anything stamped" — not whether THIS run
-                // returned something. A retry press that fetches nothing new
-                // still has the previous run's rows to display.
-                if (!_msAnyStamped()) {
-                    // A transport failure leaves the button retryable, not
-                    // dead: the data may well exist, we just could not reach
-                    // it. Nothing was cached, so the next press really does try
-                    // again. Anything else is a settled answer about the data.
-                    _msRepaintColHdrBtns(false, res.outcome === 'error' ? 'retry' : 'unavailable',
-                                         res.detail);
-                    return;
-                }
-                // Some of it arrived and some did not. Show what did, and
-                // remember to say so, rather than either hiding usable rows or
-                // presenting an incomplete column as finished.
-                if (res.outcome === 'error' || res.outcome === 'partial') {
-                    partialDetail = res.detail || 'the request failed';
+                if (source === 'embedded') {
+                    // One request backfills BOTH duration columns at once —
+                    // stamping happens inline here rather than through the
+                    // shared `_msStampSourceRowsFromMap()` below, since that
+                    // helper only ever touches the "Length" column.
+                    const res = await _msFetchFullReleaseTrackLengths();
+                    if (res.maps) _msStampFullReleaseRows(res.maps.trackByRecording, res.maps.recByRecording);
+                    if (!_msAnyStamped()) {
+                        _msRepaintColHdrBtns(false, res.outcome === 'error' ? 'retry' : 'unavailable',
+                                             res.detail);
+                        return;
+                    }
+                    if (res.outcome === 'error') partialDetail = res.detail || 'the request failed';
+                } else {
+                    // Both remaining sources answer in the same shape, so
+                    // everything below is written once. They differ only in
+                    // cost: `'ws2'` is a single lookup of the page entity,
+                    // `'batch'` is one request per 100 rendered recordings and
+                    // therefore reports progress.
+                    const res = source === 'batch'
+                        ? await _msFetchBatchRecordingLengths((done, total) => {
+                            if (total > 1) _msRepaintColHdrBtns(false, 'loading', `${done}/${total}`);
+                        })
+                        : await _msFetchWs2RecordingLengths();
+                    if (res.map) _msStampSourceRowsFromMap(res.map);
+                    // What matters now is whether the column can be shown at all,
+                    // which is "is anything stamped" — not whether THIS run
+                    // returned something. A retry press that fetches nothing new
+                    // still has the previous run's rows to display.
+                    if (!_msAnyStamped()) {
+                        // A transport failure leaves the button retryable, not
+                        // dead: the data may well exist, we just could not reach
+                        // it. Nothing was cached, so the next press really does try
+                        // again. Anything else is a settled answer about the data.
+                        _msRepaintColHdrBtns(false, res.outcome === 'error' ? 'retry' : 'unavailable',
+                                             res.detail);
+                        return;
+                    }
+                    // Some of it arrived and some did not. Show what did, and
+                    // remember to say so, rather than either hiding usable rows or
+                    // presenting an incomplete column as finished.
+                    if (res.outcome === 'error' || res.outcome === 'partial') {
+                        partialDetail = res.detail || 'the request failed';
+                    }
                 }
             } finally {
                 _msToggleInFlight = false;
@@ -33377,11 +33644,21 @@ a { color: #1565c0; }`;
            pointer-events:none keeps the td's own title tooltip reachable
            through it. */
         td[data-mb-len-flag] { position: relative; }
+        /* !important is load-bearing, not defensive styling: MusicBrainz's own
+           native zebra-striping rule (tr.even > td { background: … }) outranks
+           a plain td[data-mb-len-flag="…"] background-color declaration on
+           specificity alone (0,0,1,2 beats 0,0,1,1) — the same class of
+           conflict _ensureDetableifyStyle() already documents for the "edits"
+           pageType's own zebra rule. Confirmed live: a flagged row on an
+           "odd" (unstriped) <tr> showed its tint fine, but the identical flag
+           on an "even" <tr> rendered with no tint at all, regardless of any
+           other row's severity — MusicBrainz's zebra rule simply painted over
+           it. */
         td[data-mb-len-flag="warn"] {
-            background-color: ${Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd'};
+            background-color: ${Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd'} !important;
         }
         td[data-mb-len-flag="severe"] {
-            background-color: ${Lib.settings.sa_release_tracks_length_mismatch_severe_bg || '#f8d7da'};
+            background-color: ${Lib.settings.sa_release_tracks_length_mismatch_severe_bg || '#f8d7da'} !important;
         }
         td[data-mb-len-flag]::after {
             position: absolute;
