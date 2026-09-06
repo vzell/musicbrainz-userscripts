@@ -117,8 +117,16 @@ test('search?type=recording: continuation rows fold into the preceding row as mu
         'Send to Picard (The Ties That Bind: The River Collection — release)',
         'Send to Picard (2001-12-06: Copper Dragon, Carbondale, IL, USA — release)',
     ]);
-    await expect(rows.filter({ hasText: 'Burn The Incline' })
-        .locator('td.mb-picard-cell button.mb-picard-btn')).toHaveCount(1);
+
+    // The Picard cell is itself a multi-row cell mirroring the Release cell —
+    // one <li> per release, so each ♪ sits on the line of the release it sends.
+    // Including the single-release row, which is a one-item <ul> rather than a
+    // bare button, so the column has one uniform cell structure.
+    for (const row of await rows.all()) {
+        const releaseLiCount = await row.locator('td').nth(COL.RELEASE).locator('ul > li').count();
+        const picardLiCount  = await row.locator('td.mb-picard-cell ul > li').count();
+        expect(picardLiCount).toBe(releaseLiCount);
+    }
 });
 
 test('search?type=recording: Track and Medium line up across the whole table, toggle or no toggle', async ({ page }) => {
@@ -128,6 +136,18 @@ test('search?type=recording: Track and Medium line up across the whole table, to
 
     await page.click('button[data-label="Show all Search Results for Recordings"]');
     await waitForRenderComplete(page, { waitForAutoResize: false });
+
+    // The Picard column collapses like any other multi-row column: injected
+    // late (it must stay rightmost, so it lands after every render path's own
+    // collapse pass), it registers itself as collapsable and re-runs the pass —
+    // so its cells start collapsed to one ♪ behind a "3"-count toggle, in step
+    // with the Release cell beside them.
+    const picardCell = page.locator('table.tbl tbody tr')
+        .filter({ hasText: 'Studio Collection 1972–1979' })
+        .locator('td.mb-picard-cell');
+    await expect(picardCell.locator('.mb-cell-collapse-toggle')).toHaveText('▶3▤');
+    expect(await picardCell.locator('ul > li').evaluateAll(
+        lis => lis.filter(li => li.offsetParent !== null).length)).toBe(1);
 
     // Every list item has to be on screen to have real geometry, and going
     // through the real "expand all multi-row cells" button rather than poking
@@ -184,4 +204,9 @@ test('search?type=recording: Track and Medium line up across the whole table, to
     expect(geom.mediumRights).toHaveLength(6);
     expect(new Set(geom.sepLefts).size).toBe(1);
     expect(new Set(geom.mediumRights).size).toBe(1);
+
+    // The same button expanded the Picard column along with the rest.
+    await expect(picardCell.locator('.mb-cell-collapse-toggle')).toHaveText('▼3▤');
+    expect(await picardCell.locator('ul > li').evaluateAll(
+        lis => lis.filter(li => li.offsetParent !== null).length)).toBe(3);
 });

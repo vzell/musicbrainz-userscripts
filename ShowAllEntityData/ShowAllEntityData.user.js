@@ -71256,6 +71256,10 @@ a { color: #1565c0; }`;
             return;
         }
 
+        // Set by _picardApplyToRow when any row yields more than one entity —
+        // see the collapsable-column registration at the end of this function.
+        let _anyMultiRowPicardCell = false;
+
         /**
          * Applies (full mode) or re-wires (rewireOnly mode) one row's picard
          * cell — shared by the live-DOM pass below and the `allRows`
@@ -71273,15 +71277,23 @@ a { color: #1565c0; }`;
          */
         function _picardApplyToRow(tr) {
             const _entities = _picardExtractRowEntities(tr);
-            // One button per entity, laid out inline rather than stacked to
-            // mirror the source cell's <li> rows: a multi-row cell renders
-            // COLLAPSED (only its first item visible), so a stacked Picard cell
-            // would have to track that collapse state to stay aligned with it.
-            // The buttons are 18px icons, so a handful sit comfortably on one
-            // line, and each names its own entity in its tooltip.
+            if (_entities.length > 1) _anyMultiRowPicardCell = true;
+            // One <li> per entity, so a row whose source cell is multi-row gets a
+            // Picard cell of the same shape — each ♪ on the line of the release it
+            // sends. Always a <ul>, even for one entity, so the column has one
+            // uniform cell structure (the same rule applyRenderMultiRowCells
+            // documents for its own always-wrap behaviour); with the list reset
+            // below, a single-item cell renders exactly as the bare button did.
             const _fill = (td) => {
-                _entities.forEach(e =>
-                    td.appendChild(_picardCreateButton(e.entityType, e.guid, e.name)));
+                if (!_entities.length) return;
+                const ul = document.createElement('ul');
+                ul.style.cssText = 'list-style:none;margin:0;padding:0;';
+                _entities.forEach(e => {
+                    const li = document.createElement('li');
+                    li.appendChild(_picardCreateButton(e.entityType, e.guid, e.name));
+                    ul.appendChild(li);
+                });
+                td.appendChild(ul);
             };
             let _td = tr.querySelector('td.mb-picard-cell');
             if (_td) {
@@ -71290,9 +71302,7 @@ a { color: #1565c0; }`;
             } else if (!rewireOnly) {
                 _td = document.createElement('td');
                 _td.className = 'mb-picard-cell';
-                _td.style.cssText =
-                    'text-align:center; vertical-align:middle; padding:2px 4px;' +
-                    ' white-space:nowrap;';
+                _td.style.cssText = 'text-align:center; vertical-align:middle; padding:2px 4px;';
                 _fill(_td);
                 tr.appendChild(_td);
             }
@@ -71393,6 +71403,36 @@ a { color: #1565c0; }`;
                 `initPicardTaggerColumn: ${rewireOnly ? 'rewired' : 'injected'} Picard column ` +
                 `(th-injected=${table.dataset.picardThInjected})`);
         });
+
+        // ── Register "Picard" as a collapsable column, and wire it ────────────
+        // Only when a row actually produced more than one button — on every
+        // other page the column is one button per row and there is nothing to
+        // collapse, so nothing here runs and no behaviour changes.
+        //
+        // Registering the name follows applyExtractTrackTitleData()'s precedent
+        // for a column whose existence isn't known at authoring time, but with
+        // one difference that forces the extra initCollapsableColumns() call
+        // below: that function runs during pre-processing, comfortably BEFORE
+        // the collapse pass, whereas this one runs at the very END of every
+        // render path (it has to — the Picard <td> must be appended after the
+        // Relationships cells to stay rightmost). Both the initial render and
+        // runFilter() therefore run their collapse pass before this column even
+        // exists, and rewire mode then rebuilds each cell's innerHTML — which
+        // would wipe a toggle the collapse pass had added. Re-running it here,
+        // after the cells are final, is what makes the column behave like every
+        // other multi-row one. initCollapsableColumns() is idempotent and never
+        // calls back into this function, so there is no loop.
+        //
+        // `concat` rather than `push`: activeDefinition.features is rebuilt per
+        // fetch but its collapsableColumns VALUE is the page definition's own
+        // array, and pushing would mutate that definition for the session.
+        if (_anyMultiRowPicardCell && activeDefinition && activeDefinition.features) {
+            const _feats = activeDefinition.features;
+            const _cols  = Array.isArray(_feats.collapsableColumns) ? _feats.collapsableColumns : [];
+            if (!_cols.includes('Picard')) _feats.collapsableColumns = _cols.concat('Picard');
+            Lib.debug('picard', 'initPicardTaggerColumn: multi-row Picard cells present — re-running initCollapsableColumns');
+            _tables.forEach(table => initCollapsableColumns(table));
+        }
     }
 
     // ── end Picard Tagger feature ─────────────────────────────────────────────

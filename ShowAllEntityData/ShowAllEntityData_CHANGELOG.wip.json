@@ -1,5 +1,19 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The Picard column is now a multi-row cell in its own right — one `<li>` per entity — so on a merged recording-search row each ♪ sits on the line of the release it sends, rather than all of them crowding onto one line. Always a `<ul>`, even for a single entity, so the column has one uniform cell structure (the same always-wrap rule `applyRenderMultiRowCells` documents); with the list reset, a one-item cell renders exactly as the bare button did, so no other page changes visually.",
+          "It also collapses and expands with the rest: `initPicardTaggerColumn()` registers \"Picard\" on `activeDefinition.features.collapsableColumns` (only when some row actually produced more than one button, so nothing runs on the pages where the column is one button per row) and re-runs `initCollapsableColumns()` itself. That extra call is the price of the column being injected LAST on every render path — it has to be, since its `<td>` must land after the Relationships cells to stay rightmost, which puts it after each path's own collapse pass; and rewire mode rebuilds each cell's `innerHTML`, which would wipe a toggle that pass had added. `initCollapsableColumns()` is idempotent and never calls back, so there is no loop.",
+          "Registration uses `concat`, not `push`: `activeDefinition.features` is rebuilt per fetch but its `collapsableColumns` VALUE is the page definition's own array, so pushing would mutate that definition for the rest of the session."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-09-06",
     "sections": [
@@ -7,7 +21,7 @@
         "label": "🚀 Feature",
         "items": [
           "One Picard ♪ button per release on a merged recording-search row, instead of one for whichever release happened to be listed first. `_picardExtractRowEntity()` became `_picardExtractRowEntities()`: the first taggable anchor in document order still decides both the entity type and the cell to read — so nothing changes on any other page — but the whole of THAT cell is now harvested rather than just its first anchor. Anchoring on the first match's own cell is what keeps this from over-collecting: a `release-tracks` AR column can hold a dozen unrelated `/recording/` links, but it is never the row's first entity cell.",
-          "Each button names its own entity in its tooltip (\"Send to Picard (Hotel Diablo — release)\"). With several buttons in one cell an 8-character MBID prefix does not tell you which release a given ♪ would send. The buttons are laid out inline rather than stacked to mirror the source cell's rows: a multi-row cell renders COLLAPSED, so a stacked Picard cell would have to track that collapse state to stay aligned with it."
+          "Each button names its own entity in its tooltip (\"Send to Picard (Hotel Diablo — release)\"). With several buttons in one cell an 8-character MBID prefix does not tell you which release a given ♪ would send."
         ]
       },
       {

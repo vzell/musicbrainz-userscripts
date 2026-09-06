@@ -877,8 +877,10 @@ as ordinary multi-row cells:
   • The four columns stay row-aligned with each other: entry 3 of "Track"
     always belongs to entry 3 of "Release".
   • Every release keeps its own inline cover-art thumbnail, its own ▶
-    entity-page toggle, and its own ♪ Picard button — the Picard cell holds
-    one button per release, each naming its release in the tooltip.
+    entity-page toggle, and its own ♪ Picard button. The Picard column is
+    itself a multi-row cell — one ♪ per release, on the line of the release
+    it sends, collapsing and expanding in step with the others — and each
+    button names its release in the tooltip.
   • "Track" is split-aligned on its "/" (like "Length" on its ":"), so
     "5/13" and "23/39" line up on the separator rather than merely ending
     flush right; "Medium" is right-aligned against a common edge. Both line

@@ -7385,3 +7385,42 @@ over-collecting elsewhere (a `release-tracks` AR column holds many unrelated
 `stickyColumn: 'Name'` is why it targets Release and not the recording at all:
 the extractor skips `.mb-sticky-col`, so the Name column's `/recording/` link was
 never a candidate.
+
+**Picard, round 2 — making it an actual multi-row column.** Buttons laid out
+inline read badly the moment a recording had eight releases (screenshot: a row
+of eight ♪ crowded onto one line, aligned with nothing). One `<li>` per entity
+instead. The interesting part is why it can't just be declared collapsable:
+
+- `initPicardTaggerColumn()` runs LAST on every render path, and has to — the
+  Picard `<td>` must be appended after the Relationships cells to stay
+  rightmost. So both the initial render (`initCollapsableColumns` at the
+  `renderFinalTable` tail, Picard ~250 lines later) and `runFilter()`'s
+  single-table branch (collapse pass, then Picard rewire) do their collapse
+  pass before the column exists.
+- Worse, rewire mode does `_td.innerHTML = ''` and refills, which would wipe a
+  `.mb-cell-collapse-toggle` the collapse pass had added (the toggle is a `<td>`
+  child, not inside the `<ul>`).
+- Reordering the call sites was the tempting fix and is the risky one — the
+  Picard-after-Relationships ordering is load-bearing on several paths.
+
+So `initPicardTaggerColumn()` registers "Picard" on
+`activeDefinition.features.collapsableColumns` and re-runs
+`initCollapsableColumns()` itself, but ONLY when some row actually produced >1
+button (`_anyMultiRowPicardCell`) — so no other page pays for it. Registration
+is `concat`, not `push`: `activeDefinition.features` is rebuilt per fetch but
+its `collapsableColumns` VALUE is the page definition's own array, and pushing
+would mutate the definition for the session. `initCollapsableColumns()` never
+calls back into Picard, so there is no loop.
+
+Measured after: Picard cells 3/2/1 `<li>`, collapsed to 1 with a `▶3▤` toggle
+matching the Release cell beside them, and expanding together via
+`#mb-col-collapse-all-btn`.
+
+**Known limitation, not new to Picard**: when a source `<li>` WRAPS to two lines
+(a long release title in a narrow column) the neighbouring columns' items no
+longer line up with it — each `<td>` has its own `<ul>` and its own item
+heights. Measured in the fixture, where the Release column is narrow: Release
+item tops 267/286/323 against Picard's 285/304/323. This affects Track/Medium/
+Type and Label/Catalog# on other pages identically; it is inherent to the
+multi-row-cell approach, and does not show on the real page, where auto-resize
+gives the Release column enough width not to wrap.
