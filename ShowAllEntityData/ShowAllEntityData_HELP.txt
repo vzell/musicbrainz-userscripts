@@ -876,8 +876,13 @@ as ordinary multi-row cells:
     like Catalog#/Label do elsewhere.
   • The four columns stay row-aligned with each other: entry 3 of "Track"
     always belongs to entry 3 of "Release".
-  • Every release keeps its own inline cover-art thumbnail and its own ▶
-    entity-page toggle.
+  • Every release keeps its own inline cover-art thumbnail, its own ▶
+    entity-page toggle, and its own ♪ Picard button — the Picard cell holds
+    one button per release, each naming its release in the tooltip.
+  • "Track" is split-aligned on its "/" (like "Length" on its ":"), so
+    "5/13" and "23/39" line up on the separator rather than merely ending
+    flush right; "Medium" is right-aligned against a common edge. Both line
+    up across the whole table, in rows with and without a collapse toggle.
   • A recording with a single release has exactly the same cell structure as
     one with ten, so filtering by cell structure and the 📊 unique-values
     dropdown behave consistently across the whole table.

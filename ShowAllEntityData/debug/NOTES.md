@@ -7315,5 +7315,73 @@ and a multi-row column, which "Track"/"Medium" here are the first instance of.
 Asserts 3 rendered rows rather than 6, no surviving `td[colspan]`, every row's
 Length parsing as `M:SS` (the direct assertion against the shift), the per-column
 `<li>` counts, that the four columns stay row-aligned, that a comma-bearing
-release title is not comma-split, and the 5ch `min-width` on the Track value
+release title is not comma-split, and the 2ch `min-width` on the Medium value
 span. Confirmed failing pre-fix (6 rows) and passing post-fix.
+
+## 2026-09-06 — follow-up on the above: three separate reasons Track/Medium wouldn't line up
+
+Reported from a live screenshot of the fixed page: the merge itself was right,
+but the "Track" and "Medium" values "looked distorted". Three independent
+causes, found by measuring `getBoundingClientRect()` in a Playwright fixture
+rather than reading CSS — worth recording because two of them are invisible in
+the DOM and the third only reproduces WITHOUT MusicBrainz's stylesheet.
+
+**1. `padding-right` on some cells only (10.5 px drift).**
+`td.mb-has-collapse-toggle { padding-right: 22px !important }` reserves space
+for the absolutely-positioned toggle, but lands only on cells that HAVE a
+toggle. `applyIntegerColumnStyling` centres its value span in the `<td>`, so
+half of that padding shifts the value: the same "1" in "Medium" measured
+`right: 1264.5` in a toggle row and `1275` in a single-row one. New
+`td.mb-collapse-col-pad` reserves the same space on every other cell of a
+toggle-bearing column (added by `initCollapsableColumns`, cleared by its own
+idempotent cleanup pass). No-op for left-aligned columns; no width cost, since
+the auto-resize pass already budgets the toggle once per column.
+
+**2. An unstyled `<ul>` (4 px drift) — only reproducible without MB's CSS.**
+`applyRenderMultiRowCells` was the ONLY list builder in the script that didn't
+reset the `<ul>` it creates (`splitCountryDate` line ~4710 and the CAA art list
+both do `list-style:none;margin:0;padding:0`). Measured in the fixture:
+`padding-inline-start: 40px`, `margin: 16px 0`, `list-style-type: disc`. The
+40 px is added to the containing box, so the `.mb-ic-val` span measured 56 px
+for a 2-char cell and 48 px for a 1-char one — `min-width: 2ch` (16 px) never
+binds — and centring turned that into a 4 px drift. On the real page MB's own
+stylesheet hides this; the dependency is still a bug. Now reset like the rest.
+Lesson: a fixture with no MusicBrainz CSS is a FEATURE here — it surfaces exactly
+this class of "works only because the host page happens to fix it" defect.
+
+**3. Merged `<li>`s never got integer-column styling (the actual "distortion").**
+`applyIntegerColumnStyling()` is the last step of row assembly and guards on a
+per-CELL `data-mb-int-col-styled` flag — but a continuation row isn't parsed
+until after the base row is fully assembled, so every `<li>` the merge appends
+arrives too late. Invisible for `align: 'R'` (that branch wraps the whole `<ul>`
+in one `.mb-ic-val`, so late items land inside it and inherit everything), but
+for a split-aligned column it meant each cell had exactly ONE `.mb-ic-sep`, on
+its first item. `_mergeContinuationRowInto()` now styles what it appends, via
+`_styleIntColListItem()`, resolving the column's `align` from
+`activeIntegerColumns` by the destination index.
+
+**Also**: "Track" ("N/M") switched from `align: 'R'` to `align: '/'`, so the
+separator sits at one horizontal position for the column instead of values
+merely ending flush right ("5/13" and "23/39" lined up on the 3 and the 9).
+That required teaching split alignment about multi-row cells at all:
+`applyIntegerColumnStyling` builds one `.mb-ic-wrap` per `<li>` (the old code
+read the cell's concatenated text, split at its LAST separator, and cleared the
+cell to rebuild it — destroying the list), and `finalizeSplitAlignedColumns`
+measures/widens every span pair in a cell, not just the first.
+
+**Measured after all four changes**: every "Track" separator at x=246.8 and
+every "Medium" item's right edge at x=1208.5, across all 6 items in 3 rows,
+toggle rows and non-toggle rows alike. Locked in by a second test in the same
+spec file, which drives the real `#mb-col-collapse-all-btn` (and must
+`waitForFunction` on all 6 items having layout — reading straight after the
+click catches the table mid-re-render and sees only each cell's first item).
+
+**Picard**: `_picardExtractRowEntity()` → `_picardExtractRowEntities()`, one ♪
+button per release. The first taggable anchor in document order still decides
+the entity type AND the cell — unchanged on every other page — but that whole
+cell is now harvested. Anchoring on the first match's own cell is what stops it
+over-collecting elsewhere (a `release-tracks` AR column holds many unrelated
+`/recording/` links, but is never the row's first entity cell). Note this page's
+`stickyColumn: 'Name'` is why it targets Release and not the recording at all:
+the extractor skips `.mb-sticky-col`, so the Name column's `/recording/` link was
+never a candidate.

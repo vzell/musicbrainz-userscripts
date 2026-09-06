@@ -1,5 +1,39 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "One Picard ♪ button per release on a merged recording-search row, instead of one for whichever release happened to be listed first. `_picardExtractRowEntity()` became `_picardExtractRowEntities()`: the first taggable anchor in document order still decides both the entity type and the cell to read — so nothing changes on any other page — but the whole of THAT cell is now harvested rather than just its first anchor. Anchoring on the first match's own cell is what keeps this from over-collecting: a `release-tracks` AR column can hold a dozen unrelated `/recording/` links, but it is never the row's first entity cell.",
+          "Each button names its own entity in its tooltip (\"Send to Picard (Hotel Diablo — release)\"). With several buttons in one cell an 8-character MBID prefix does not tell you which release a given ♪ would send. The buttons are laid out inline rather than stacked to mirror the source cell's rows: a multi-row cell renders COLLAPSED, so a stacked Picard cell would have to track that collapse state to stay aligned with it."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"Track\" and \"Medium\" on the recording search results did not line up across the table. `td.mb-has-collapse-toggle` sets `padding-right:22px` so cell content never slides under the absolutely-positioned collapse toggle, but it lands only on cells that HAVE a toggle — which in a centred or right-aligned column makes a value's position depend on whether its own row happens to be multi-row. Measured: the same \"1\" in \"Medium\" sat 10.5 px (half the padding) further left in a row with a toggle. A new `td.mb-collapse-col-pad` reserves the same space on every other cell of a toggle-bearing column. A no-op for the left-aligned text columns this mechanism is usually applied to, and it costs no width — the auto-resize pass already budgets the toggle's space once per column.",
+          "`applyRenderMultiRowCells()` built a bare `<ul>` and relied on MusicBrainz's own stylesheet to neutralise the UA defaults — the only list builder in the script that did not reset the list it creates (`splitCountryDate`'s two lists and the CAA art list all do). That is a real bug, not just an inconsistency: the UA's `padding-inline-start:40px` is added to the width of whatever box contains the list, so an integer column's `min-width:Nch` — set on the `.mb-ic-val` span AROUND the list — never binds, and a centred column's values then sit at a position that depends on their own text width. Now reset like every other one.",
+          "A `<li>` appended by `mergeContinuationRows` never received its column's integer-alignment treatment. `applyIntegerColumnStyling()` is the last step of row assembly and guards on a per-CELL `data-mb-int-col-styled` flag, but a continuation row is not parsed until after the base row is fully assembled — so in a split-aligned column each cell ended up with exactly one separator, on its first item, while every merged item kept raw text. The merge now styles the items it appends (new `_styleIntColListItem()`, resolving the column's `align` from `activeIntegerColumns` by the destination index)."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "\"Track\" (\"N/M\", track N of M) is now split-aligned on its \"/\" the way \"Length\" is on its \":\", so the separator sits at one horizontal position for the whole column. Right-alignment alone lined \"5/13\" and \"23/39\" up on the 3 and the 9, which reads as noise.",
+          "Split-character alignment works on multi-row cells at all now: `applyIntegerColumnStyling()` builds one `.mb-ic-wrap` unit per `<li>` instead of one per cell (the old code read the cell's CONCATENATED text, split it at its LAST separator, and cleared the cell to rebuild it — destroying the list outright), and `finalizeSplitAlignedColumns()` measures and widens every span pair in a cell rather than just the first. So a cell's own items align with each other as well as with the rest of the column."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The three-span split-align unit is now built by `_buildSplitAlignWrap()` and multi-row detection by `_intColListItems()`, both shared between `applyIntegerColumnStyling()`'s two branches and the measurement passes — previously inline, and impossible to reuse per `<li>`. The 'L'/'R'/'C' branch deliberately stays whole-cell: it wraps the cell's entire `<ul>` in one `.mb-ic-val`, so a later-appended `<li>` lands inside that span and inherits its alignment and width for free."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-09-06",
     "sections": [

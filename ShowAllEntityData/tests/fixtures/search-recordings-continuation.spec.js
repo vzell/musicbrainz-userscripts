@@ -101,10 +101,87 @@ test('search?type=recording: continuation rows fold into the preceding row as mu
 
     // finalizeRLCColumnWidths sizes an L/R/C integer column from the LONGEST
     // SINGLE <li> (_rlcValueLength), not from the cell's concatenated text —
-    // "12/25" is 5ch, whereas "7/10"+"12/25"+"4/9" would give 12ch and stretch
-    // the whole column by a factor of the row count.
+    // "13" is 2ch, whereas "4"+"13"+"1" would give 4ch and stretch the whole
+    // column by roughly a factor of the row count.
     // Asserted against the inline style rather than the computed value, which
     // resolves 'ch' to px and would tie the test to the font metrics.
-    const trackValSpan = springsteen.locator('td').nth(COL.TRACK).locator('.mb-ic-val');
-    await expect(trackValSpan).toHaveAttribute('style', /min-width:\s*5ch/);
+    const mediumValSpan = springsteen.locator('td').nth(COL.MEDIUM).locator('.mb-ic-val');
+    await expect(mediumValSpan).toHaveAttribute('style', /min-width:\s*2ch/);
+
+    // One Picard button per release, each naming its own release — the cell
+    // used to hold a single button for whichever release came first.
+    const picardTitles = await springsteen.locator('td.mb-picard-cell button.mb-picard-btn')
+        .evaluateAll(btns => btns.map(b => b.title));
+    expect(picardTitles).toEqual([
+        'Send to Picard (Studio Collection 1972–1979 — release)',
+        'Send to Picard (The Ties That Bind: The River Collection — release)',
+        'Send to Picard (2001-12-06: Copper Dragon, Carbondale, IL, USA — release)',
+    ]);
+    await expect(rows.filter({ hasText: 'Burn The Incline' })
+        .locator('td.mb-picard-cell button.mb-picard-btn')).toHaveCount(1);
+});
+
+test('search?type=recording: Track and Medium line up across the whole table, toggle or no toggle', async ({ page }) => {
+    await loadUserscriptPage(page, { url: SEARCH_URL, fixtureFile: FIXTURE_FILE, testMode: true });
+    await page.route('https://musicbrainz.org/search**', (route) =>
+        route.fulfill({ path: FIXTURE_FILE, contentType: 'text/html' }));
+
+    await page.click('button[data-label="Show all Search Results for Recordings"]');
+    await waitForRenderComplete(page, { waitForAutoResize: false });
+
+    // Every list item has to be on screen to have real geometry, and going
+    // through the real "expand all multi-row cells" button rather than poking
+    // display:none also exercises _applyCollapseState on these new columns.
+    // The button re-renders the table, so wait for all 6 items (3 + 2 + 1) to
+    // be laid out before measuring anything — reading straight after the click
+    // catches the table mid-render and sees only the first item of each cell.
+    await page.click('#mb-col-collapse-all-btn');
+    await page.waitForFunction((trackIdx) => {
+        const lis = Array.from(document.querySelectorAll('table.tbl tbody tr'))
+            .flatMap(tr => Array.from(tr.cells[trackIdx].querySelectorAll('li')));
+        return lis.length === 6 && lis.every(li => li.getBoundingClientRect().width > 0);
+    }, COL.TRACK);
+
+    const geom = await page.evaluate(([trackIdx, mediumIdx]) => {
+        const rows = Array.from(document.querySelectorAll('table.tbl tbody tr'));
+        const read = (idx, pick) => {
+            const out = [];
+            for (const tr of rows) {
+                for (const li of tr.cells[idx].querySelectorAll('li')) {
+                    const el = pick(li);
+                    if (el) out.push(Math.round(el.getBoundingClientRect().left * 10) / 10);
+                }
+            }
+            return out;
+        };
+        return {
+            // The '/' separator's own position — Track is split-aligned on it.
+            sepLefts: read(trackIdx, li => li.querySelector('.mb-ic-sep')),
+            // Medium is plain right-aligned, so compare the item's right edge.
+            mediumRights: (() => {
+                const out = [];
+                for (const tr of rows) {
+                    for (const li of tr.cells[mediumIdx].querySelectorAll('li')) {
+                        out.push(Math.round(li.getBoundingClientRect().right * 10) / 10);
+                    }
+                }
+                return out;
+            })(),
+            // Sanity: some rows have a toggle and some don't. That difference —
+            // td.mb-has-collapse-toggle's 22px padding-right landing on SOME
+            // cells only — is exactly what used to shift a centred value by
+            // half the padding between rows.
+            withToggle: rows.filter(tr => tr.cells[mediumIdx].classList.contains('mb-has-collapse-toggle')).length,
+            withoutToggle: rows.filter(tr => !tr.cells[mediumIdx].classList.contains('mb-has-collapse-toggle')).length,
+        };
+    }, [COL.TRACK, COL.MEDIUM]);
+
+    expect(geom.withToggle).toBeGreaterThan(0);
+    expect(geom.withoutToggle).toBeGreaterThan(0);
+
+    // 6 track/medium entries across 3 rows (3 + 2 + 1).
+    expect(geom.sepLefts).toHaveLength(6);
+    expect(geom.mediumRights).toHaveLength(6);
+    expect(new Set(geom.sepLefts).size).toBe(1);
+    expect(new Set(geom.mediumRights).size).toBe(1);
 });
