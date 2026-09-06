@@ -1,0 +1,25 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The global filter bar (`#mb-filter-container`) now groups its own children into four semantic containers instead of holding every control as one flat run of 16 direct children mixing four unrelated concerns: `.mb-global-summary-container` (the live-date ⚠️/❌ and length-mismatch summary buttons), `.mb-global-filter-container` (the filter input wrapper, pin/history widget and the Cc/Rx/Ex labels), `.mb-global-actions-container` (prefilter message and toggle, collapse-all, highlight toggle, and the two clear buttons), and `.mb-global-status-container`. This mirrors the shape the sub-table bar has always had via `.mb-subtable-filter-container`, and gives the global bar the stable anchor for inserting new controls that it previously lacked.",
+          "`#mb-status-display` takes the fourth group's class directly rather than gaining a wrapper — it already IS a container holding exactly the filter- and sort-status spans, so a fourth nesting level would have added nothing.",
+          "The three new grouping spans are `display:contents`, which is load-bearing rather than cosmetic. Every child of the summary group and of the actions group starts `display:none`. A `display:none` CHILD generates no flex gap, but a rendered wrapper whose children are all hidden is itself a zero-width flex item that DOES generate the bar's `gap:5px` on both sides — so a normal `inline-flex` wrapper would have added dead space to the bar on every page type that isn't release-tracks, and again whenever no filter was active. `display:contents` removes the wrapper's box entirely, leaving its children direct flex items of the bar with the same gap, alignment and font-size reset as before: no nested flex context, no second baseline resolution, no wrapping change.",
+          "Verified layout-neutral by measurement, not by eye: the bounding box of every rendered element in the bar is identical before and after, on both a page with a visible summary button and one where every summary and action button is hidden. The only DOM difference on that second page is the added class name.",
+          "`_artInitGlobalCaaColHdrToggle()`'s button now lands inside `.mb-global-actions-container`, since it is inserted with `.after()` on `#mb-col-collapse-all-btn`, which moved there. That is the semantically correct group for it and is visually identical; its JSDoc records the new location.",
+          "Naming note carried in the code: none of these may be shortened to `mb-global-filter`. A dead `document.querySelector('.mb-global-filter input')` targets a class that exists nowhere, and creating it would silently make that code live and match `#mb-global-filter-input`."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "New `tests/fixtures/filter-bar-containers.spec.js` (4 fixture tests): group membership and ordering, the `display:contents`/`flex` computed values, that `#mb-col-collapse-all-btn`'s `insertBefore` still resolves inside its group rather than throwing, and — the real guard — that no dead space appears when a whole group is hidden. That last test deliberately ignores zero-width boxes, because an empty rendered wrapper is itself zero-width and consecutive gaps either side of it still read 5px; ignoring it collapses them into one 10px gap between the real controls, which is what fails. Confirmed to fail against an `inline-flex` wrapper and pass against `display:contents`."
+        ]
+      }
+    ]
+  }
+]
