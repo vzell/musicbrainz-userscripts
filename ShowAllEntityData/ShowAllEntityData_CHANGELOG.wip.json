@@ -1,5 +1,20 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Split `_artWireImageLi()` out of `_artBuildImageLi()`: the per-image art `<li>`'s broken-image handler, hover-preview popup and type-badge tooltip are now attached by a function that can be re-applied to an `<li>` that already exists. No behavioral change on its own — the builder calls it as its last step, so the same listeners land on the same elements as before. Groundwork for preserving art rows across a re-render instead of rebuilding them, which is impossible while the listeners close over `_artBuildImageLi()`'s locals.",
+          "The wiring now reads everything it needs back off the element (`data-li-tooltip-types`, `data-li-tooltip-comment`, and the new `data-li-big-src` hover-preview URL) rather than from the archive payload. The first two were already stamped; the third was trapped in the closure, and is the reason a cloned `<li>` could never be re-wired. It is stored regardless of `sa_caa_hover_preview`, so toggling that setting no longer implies rebuilding the cell from the archive response.",
+          "Deliberately no \"already wired\" marker: `cloneNode(true)` copies attributes but not listeners, so a marker would be inherited by every clone and report wiring that no longer exists — exactly the trap `_artInitInlinePics()`'s Case C1 documents for `hoverWiredAttr` and defuses by deleting the inherited value first. A clone is a fresh instance with no listeners, so re-wiring one is always correct.",
+          "Covered by new tests, since the per-image hover preview and type-badge tooltip previously had none at all — which made them the riskiest part of the extraction: the listeners are attached with `addEventListener`, so a broken split would leave the `<li>` looking completely correct and fail only on hover. Mutation-verified (disabling the wiring fails the new test and nothing else)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-09-06",
     "sections": [

@@ -67016,6 +67016,128 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Attaches an image `<li>`'s own event listeners: the broken-image handler,
+     * the hover-preview popup and the type-badge HTML tooltip.
+     *
+     * Split out of `_artBuildImageLi()` so the wiring can be re-applied to an
+     * `<li>` that already exists. `cloneNode(true)` copies attributes but never
+     * listeners, so every re-render path produces visually complete art rows
+     * whose hover preview and tooltip are dead — the failure the `runFilter()`
+     * strip comments describe. Rebuilding the whole `<li>` was previously the
+     * only cure, because everything the listeners close over lived in
+     * `_artBuildImageLi()`'s local scope.
+     *
+     * Everything needed is therefore read back off the element itself:
+     * `data-li-tooltip-types`, `data-li-tooltip-comment` and `data-li-big-src`,
+     * all stamped at build time. Those survive `cloneNode`, so a clone carries
+     * its own wiring instructions and no archive payload is needed.
+     *
+     * **Call exactly once per element instance.** There is deliberately no
+     * "already wired" marker: a marker would be copied onto every clone while
+     * the listeners themselves were not, so it would report wired-ness that no
+     * longer exists — the precise trap `_artInitInlinePics()`'s Case C1
+     * documents for `hoverWiredAttr`, which it defuses by unconditionally
+     * deleting the inherited value first. Since a clone is a fresh instance
+     * with no listeners at all, re-wiring a clone is always correct; only
+     * calling this twice on the *same* live element would duplicate.
+     *
+     * @param {HTMLLIElement} li  An image `<li>` built by `_artBuildImageLi()`.
+     * @returns {void}
+     */
+    function _artWireImageLi(li) {
+        const img = li.querySelector('img');
+        if (!img) return; // no thumbnail (no usable URL in the archive payload)
+
+        const typeText    = li.dataset.liTooltipTypes   || '';
+        const commentText = li.dataset.liTooltipComment || '';
+        const bigSrc      = li.dataset.liBigSrc         || '';
+
+        img.addEventListener('error', function() { this.style.display = 'none'; });
+
+        // ── Hover preview + HTML badge tooltip wiring ────────────────────────
+        // Both the hover-preview popup and the type-badge tooltip are anchored
+        // to the same img.mouseenter event so they always appear and disappear
+        // together.  The tooltip is positioned top-right of the preview popup
+        // when it is visible (sa_caa_hover_preview ON), or top-right of the img
+        // itself when the preview is disabled.
+
+        /**
+         * Shows the type-badge HTML tooltip positioned top-right of `anchorEl`.
+         *
+         * @param {HTMLElement} anchorEl  Element whose right/top edge is the anchor.
+         */
+        const _showLiTooltip = (anchorEl) => {
+            const _tip = _ensureArtBigboxTooltip();
+            if (!_tip) return;
+            _tip.innerHTML = '';
+
+            // Row 1: type pill labels (bold).
+            if (typeText) {
+                const _typesLine = document.createElement('div');
+                _typesLine.style.cssText = 'font-weight:600; margin-bottom:2px;';
+                typeText.split(' / ').forEach((t, i) => {
+                    if (i > 0) _typesLine.appendChild(document.createTextNode(' / '));
+                    const _pill = document.createElement('span');
+                    _pill.style.cssText =
+                        'display:inline-block; background:#555; color:#cdd6f4;' +
+                        ' border-radius:3px; padding:0 4px; font-size:0.9em;' +
+                        ' font-weight:600; line-height:1.5; white-space:nowrap;';
+                    _pill.textContent = t;
+                    _typesLine.appendChild(_pill);
+                });
+                _tip.appendChild(_typesLine);
+            }
+            // Row 2: comment in italic (when present).
+            if (commentText) {
+                const _commentLine = document.createElement('div');
+                _commentLine.style.cssText = 'font-style:italic; color:#cdd6f4;';
+                _commentLine.textContent   = '(' + commentText + ')';
+                _tip.appendChild(_commentLine);
+            }
+
+            // Position top-right of anchorEl (the preview popup or the img).
+            const _r  = anchorEl.getBoundingClientRect();
+            const _vw = window.innerWidth, _vh = window.innerHeight;
+            _tip.style.display = 'block';
+            const _tw = _tip.offsetWidth, _th = _tip.offsetHeight;
+            let _x = _r.right + 8;
+            let _y = _r.top;
+            if (_x + _tw > _vw - 6) _x = _r.left - _tw - 8;
+            if (_y + _th > _vh - 6) _y = _vh - _th - 6;
+            if (_x < 4) _x = 4;
+            if (_y < 4) _y = 4;
+            _tip.style.left = _x + 'px';
+            _tip.style.top  = _y + 'px';
+        };
+
+        const _hideLiTooltip = () => {
+            const _tip = document.getElementById('mb-art-bigbox-tooltip');
+            if (_tip) _tip.style.display = 'none';
+        };
+
+        if (Lib.settings.sa_caa_hover_preview && bigSrc) {
+            img.style.cursor = 'crosshair';
+            img.addEventListener('mouseenter', () => {
+                _showArtHoverPreview(bigSrc, img);
+                // The preview popup is now visible and positioned — use it
+                // as the anchor so the tooltip appears to its right.
+                const _preview = document.getElementById('mb-art-hover-preview');
+                _showLiTooltip(_preview && _preview.style.display !== 'none'
+                    ? _preview : img);
+            });
+            img.addEventListener('mouseleave', () => {
+                _hideArtHoverPreview();
+                _hideLiTooltip();
+            });
+        } else {
+            // sa_caa_hover_preview OFF, or no big source available —
+            // tooltip anchors to the img directly, with no preview.
+            img.addEventListener('mouseenter', () => _showLiTooltip(img));
+            img.addEventListener('mouseleave', _hideLiTooltip);
+        }
+    }
+
+    /**
      * Builds one `<li class="mb-caa-art-li mb-caa-art-li-image">` element for a
      * single image entry from the CAA/EAA JSON API response.
      *
@@ -67026,7 +67148,9 @@ a { color: #1565c0; }`;
      * shared singleton popup showing a larger version of that specific image
      * (derived from `imgData.thumbnails` at `sa_caa_big_img_size`).  Unlike the
      * icon-column hover, which always fetches `/front-{size}`, each li uses its
-     * own archive URL so Back, Booklet, etc. images preview correctly.
+     * own archive URL so Back, Booklet, etc. images preview correctly. The
+     * listeners themselves are attached by `_artWireImageLi()`, called at the
+     * end of this function — see there for why they are separable at all.
      *
      * The <li> starts with `style="display:none"` so the parent collapse
      * toggle controls its visibility.  Protocol-relative URLs (`//`) are used
@@ -67059,7 +67183,8 @@ a { color: #1565c0; }`;
         // ── Type badge ────────────────────────────────────────────────────────
         // `types` is an array of human-readable strings ("Front", "Booklet", …).
         // Join with " / " so a multi-type image reads naturally, e.g. "Front / Back".
-        // Resolved before the thumbnail block so the tooltip can reference typeText.
+        // Resolved early because both the type-badge pills below and the
+        // data-li-tooltip-types stamp at the end of this function use it.
         const typeText = (Array.isArray(imgData.types) && imgData.types.length > 0)
             ? imgData.types.join(' / ')
             : '(no type)';
@@ -67074,111 +67199,31 @@ a { color: #1565c0; }`;
             img.src      = thumbSrc;
             img.alt      = '';
             img.loading  = 'lazy';
-            img.addEventListener('error', function() { this.style.display = 'none'; });
             li.appendChild(img);
 
-            // ── Hover preview wiring (multi-row art cell) ─────────────────────
+            // ── Hover preview source (multi-row art cell) ────────────────────
             // Unlike the icon-column hover (which always shows /front-{bigSize}),
             // each per-image row must show its own artwork — Front, Back, Booklet,
             // etc. — so the preview URL is derived directly from imgData.thumbnails
             // rather than the entity's canonical front-image path.
             // Prefer the user-configured big size; fall back through available sizes.
-            // ── Hover preview + HTML badge tooltip wiring ────────────────────
-            // Both the hover-preview popup and the type-badge tooltip are anchored
-            // to the same img.mouseenter event so they always appear and disappear
-            // together.  The tooltip is positioned top-right of the preview popup
-            // when it is visible (sa_caa_hover_preview ON), or top-right of the img
-            // itself when the preview is disabled.
+            //
+            // Resolved HERE because it is the last point that still has imgData,
+            // and stashed on the <li> so _artWireImageLi() can re-derive the whole
+            // wiring from the element alone — see its JSDoc. Stored regardless of
+            // sa_caa_hover_preview, so flipping that setting does not require the
+            // cell to be rebuilt from the archive payload.
+            const bigSize  = Lib.settings.sa_caa_big_img_size || 250;
+            const bigThumb = imgData.thumbnails && (
+                imgData.thumbnails[String(bigSize)] ||
+                imgData.thumbnails['1200']          ||
+                imgData.thumbnails['large']         ||
+                imgData.thumbnails['500']
+            );
+            const bigSrc = (bigThumb || imgData.image || '').replace(/^http:/, '');
+            if (bigSrc) li.dataset.liBigSrc = bigSrc;
 
-            /**
-             * Shows the type-badge HTML tooltip positioned top-right of `anchorEl`.
-             *
-             * @param {HTMLElement} anchorEl  Element whose right/top edge is the anchor.
-             */
-            const _showLiTooltip = (anchorEl) => {
-                const _tip = _ensureArtBigboxTooltip();
-                if (!_tip) return;
-                _tip.innerHTML = '';
-
-                // Row 1: type pill labels (bold).
-                if (typeText) {
-                    const _typesLine = document.createElement('div');
-                    _typesLine.style.cssText = 'font-weight:600; margin-bottom:2px;';
-                    typeText.split(' / ').forEach((t, i) => {
-                        if (i > 0) _typesLine.appendChild(document.createTextNode(' / '));
-                        const _pill = document.createElement('span');
-                        _pill.style.cssText =
-                            'display:inline-block; background:#555; color:#cdd6f4;' +
-                            ' border-radius:3px; padding:0 4px; font-size:0.9em;' +
-                            ' font-weight:600; line-height:1.5; white-space:nowrap;';
-                        _pill.textContent = t;
-                        _typesLine.appendChild(_pill);
-                    });
-                    _tip.appendChild(_typesLine);
-                }
-                // Row 2: comment in italic (when present).
-                if (commentText) {
-                    const _commentLine = document.createElement('div');
-                    _commentLine.style.cssText = 'font-style:italic; color:#cdd6f4;';
-                    _commentLine.textContent   = '(' + commentText + ')';
-                    _tip.appendChild(_commentLine);
-                }
-
-                // Position top-right of anchorEl (the preview popup or the img).
-                const _r  = anchorEl.getBoundingClientRect();
-                const _vw = window.innerWidth, _vh = window.innerHeight;
-                _tip.style.display = 'block';
-                const _tw = _tip.offsetWidth, _th = _tip.offsetHeight;
-                let _x = _r.right + 8;
-                let _y = _r.top;
-                if (_x + _tw > _vw - 6) _x = _r.left - _tw - 8;
-                if (_y + _th > _vh - 6) _y = _vh - _th - 6;
-                if (_x < 4) _x = 4;
-                if (_y < 4) _y = 4;
-                _tip.style.left = _x + 'px';
-                _tip.style.top  = _y + 'px';
-            };
-
-            const _hideLiTooltip = () => {
-                const _tip = document.getElementById('mb-art-bigbox-tooltip');
-                if (_tip) _tip.style.display = 'none';
-            };
-
-            if (Lib.settings.sa_caa_hover_preview) {
-                const bigSize  = Lib.settings.sa_caa_big_img_size || 250;
-                const bigThumb = imgData.thumbnails && (
-                    imgData.thumbnails[String(bigSize)] ||
-                    imgData.thumbnails['1200']          ||
-                    imgData.thumbnails['large']         ||
-                    imgData.thumbnails['500']
-                );
-                const bigSrc = (bigThumb || imgData.image || '').replace(/^http:/, '');
-                if (bigSrc) {
-                    img.style.cursor = 'crosshair';
-                    img.addEventListener('mouseenter', () => {
-                        _showArtHoverPreview(bigSrc, img);
-                        // The preview popup is now visible and positioned — use it
-                        // as the anchor so the tooltip appears to its right.
-                        const _preview = document.getElementById('mb-art-hover-preview');
-                        _showLiTooltip(_preview && _preview.style.display !== 'none'
-                            ? _preview : img);
-                    });
-                    img.addEventListener('mouseleave', () => {
-                        _hideArtHoverPreview();
-                        _hideLiTooltip();
-                    });
-                } else {
-                    // No bigSrc — wire tooltip only (no preview).
-                    img.addEventListener('mouseenter', () => _showLiTooltip(img));
-                    img.addEventListener('mouseleave', _hideLiTooltip);
-                }
-            } else {
-                // sa_caa_hover_preview OFF — tooltip anchors to img directly.
-                img.addEventListener('mouseenter', () => _showLiTooltip(img));
-                img.addEventListener('mouseleave', _hideLiTooltip);
-            }
-
-            // Plain img.title is intentionally omitted — the HTML tooltip above
+            // Plain img.title is intentionally omitted — the HTML tooltip
             // provides the same information with richer formatting.
         }
 
@@ -67228,11 +67273,19 @@ a { color: #1565c0; }`;
             li.appendChild(pending);
         }
 
-        // Tooltip type/comment data stored for external reference.
-        // The actual tooltip rendering is wired on img.mouseenter above,
-        // co-located with the hover-preview listener (_showLiTooltip / _hideLiTooltip).
+        // Tooltip type/comment data. Also read back by _artWireImageLi() below,
+        // which is why these are stamped BEFORE it runs rather than as a
+        // trailing "for external reference" note: together with data-li-big-src
+        // they are the complete input the wiring needs, so a cloned <li> can be
+        // re-wired without its original archive payload.
         li.dataset.liTooltipTypes   = typeText;
         if (commentText) li.dataset.liTooltipComment = commentText;
+
+        // Listeners last — _artWireImageLi() reads the dataset values set above.
+        // The <img>'s src is already assigned, but its load/error events cannot
+        // fire before this synchronous call completes, so the error handler is
+        // still attached in time.
+        _artWireImageLi(li);
 
         return li;
     }

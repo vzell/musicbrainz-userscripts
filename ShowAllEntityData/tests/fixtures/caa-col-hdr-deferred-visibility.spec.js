@@ -95,6 +95,50 @@ test.describe('CAA/EAA per-column collapse glyph: deferred visibility', () => {
     });
 });
 
+// Same rationale as the describe below: shares this file's fixture, GUID,
+// PNG bytes and routing.
+test.describe('per-image art <li> hover preview and type-badge tooltip', () => {
+    // This wiring had no coverage at all, which made it the riskiest part of
+    // splitting _artWireImageLi() out of _artBuildImageLi(): the listeners are
+    // attached with addEventListener, so nothing about a broken extraction
+    // would show up in the DOM or in any existing assertion. The <li> keeps
+    // its thumbnail, its badge and its comment either way — only hovering
+    // reveals whether it is still wired.
+    test('hovering a per-image thumbnail opens the preview popup and the type tooltip', async ({ page }) => {
+        await loadUserscriptPage(page, {
+            url: ARTIST_EVENTS_URL,
+            fixtureFile: FIXTURE_FILE,
+            testMode: true,
+            settingsOverride: {
+                sa_enable_caa_pics: true,
+                sa_art_idb_enable: false,
+                sa_caa_hover_preview: true,
+            },
+        });
+        await routeEventArtArchive(page, 0);
+
+        await page.click('button[data-label="Show all Events for Artist"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await waitForCaaEaaComplete(page);
+
+        // Per-image <li>s are built collapsed (display:none); a hidden element
+        // is a 0x0 hover target, so the cell has to be expanded first.
+        await page.click('[data-caa-expand-btn]');
+
+        const artImg = page.locator('li.mb-caa-art-li-image img').first();
+        await expect(artImg).toBeVisible();
+
+        await artImg.hover();
+
+        // Both are anchored to the same mouseenter, so they appear together.
+        await expect(page.locator('#mb-art-hover-preview')).toBeVisible();
+        const tip = page.locator('#mb-art-bigbox-tooltip');
+        await expect(tip).toBeVisible();
+        // The fixture's single image is types: ['Front'].
+        await expect(tip).toContainText('Front');
+    });
+});
+
 // Lives in this file rather than its own because it needs the identical
 // fixture, event GUID, PNG bytes and eventartarchive routing as the suite
 // above — a separate spec would duplicate all of it to assert one thing.
