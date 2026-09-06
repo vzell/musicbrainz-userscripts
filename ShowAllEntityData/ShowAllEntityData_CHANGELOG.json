@@ -1,5 +1,29 @@
 [
   {
+    "version": "9.99.1028",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "jesus2099's \"mb. SUPER MIND CONTROL Ⅱ X TURBO\" (`RECORDING_LENGTH_COLUMN`) writes its own millisecond-precision `M:SS.mmm` Length values into the native page on pageTypes MusicBrainz itself renders no Length column for (`place-performances`, `work-recordings`, `artist-relationships`, ...). `purgeJesus2099Artifacts()`/`_stripJesus2099InTable()` already stripped the `treleases` class/title/text-shadow, but never touched the cell's own TEXT, so the leaked millisecond value rode straight through into the final rendered table — indistinguishable from genuine content, and leaving ShowAllEntityData's own ⏱ millisecond-precision toggle honestly unpressed while some cells already showed decimals (confirmed via a live-interop investigation against a real page, `tests/support/run-live-interop.js`, and three real captures: `debug/place-perf-initial-with-jesus-milliseconds.html`, `debug/place-perf-final.html`, `debug/place-perf-single-tabbed-final.html` — the last of which showed the leak was PARTIAL, only on rows from the page's first real navigation, since Tampermonkey never runs jesus2099 against ShowAllEntityData's own internal AJAX pagination fetches). New `_adoptJesus2099MsLength()` (wired into both `_stripJesus2099InTable()` and the live `_repairTreleasesTd()` mutation-observer path) now ADOPTS the leaked value into ShowAllEntityData's own `data-mb-ms`/`data-mb-sec-text` ms-toggle tracking instead of leaving it as unmarked text — displayed at MusicBrainz's own ROUNDED seconds precision by default (not jesus2099's raw truncated minutes:seconds), with the real millisecond value preserved for the ⏱ toggle to use instantly, no re-fetch needed. `_msToggleLengthPrecision()`'s `needFetch` logic also gained a `'ws2'`-source branch (`_msHasUnstampedLengthCell()`) so a page mixing adopted and un-adopted rows resolves BOTH in a single press instead of silently stranding the un-adopted ones once anything was already stamped."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1027",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "`_titleHasRecNameMismatch()`'s JSDoc and its call-site comment (near `showStatsPanel`'s `titleMismatchCount` tally) now name the actual source of the '≠' track/recording-name-mismatch marker explicitly — jesus2099's \"mb. INLINE STUFF\" userscript — instead of a generic \"e.g. jesus2099's userscript\". Confirmed by scanning that script's real source directly while building the new `tests/support/run-live-interop.js` live third-party-userscript harness (see `tests/fixtures/live-userscripts/manifest.json`'s `jesus2099-inline-stuff` entry) — its `jesus2099userjs81127` class-name fragment, already cited in the comment, turned out to be that exact script's own internal id."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1026",
     "date": "2026-09-06",
     "sections": [
