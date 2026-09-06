@@ -65705,6 +65705,43 @@ a { color: #1565c0; }`;
      */
     const _artIdbBlobUrls = new Set();
 
+    /**
+     * Per-session NEGATIVE image cache (the Tier-1 sibling of
+     * `_artIdbMemCache`): canonical URLs the archive has definitively answered
+     * "this does not exist" for.
+     *
+     * Without it, "no artwork" and "not fetched yet" are indistinguishable.
+     * Every tier of `_artFetchCachedImage()` records successes only — the
+     * `_artIdbMemCache.set()` / `_artIdbPut('images', …)` lines sit *after* the
+     * `await` that throws — so a URL that 404s leaves no trace anywhere and is
+     * re-requested on every single re-render. On a page where some entities
+     * have no cover art that is a fixed toll of doomed requests per sort, and
+     * the "⌛" those wrappers display is the visible half of it.
+     *
+     * Only a DEFINITIVE absence is recorded (see `_ART_MISS_STATUSES`). A 5xx,
+     * a network error or a timeout is deliberately NOT cached: the Cover Art
+     * Archive fails in bursts, and treating a bad minute as "this artwork does
+     * not exist" would hide real images for the rest of the session. Same
+     * distinction `_msFetchWs2RecordingLengths()` already draws between a
+     * successful-but-empty answer (cacheable fact) and a transport failure (not).
+     *
+     * Session-scoped on purpose, with no IndexedDB tier: the metadata layer
+     * already persists its own negatives (`_artIdbPutMetadata()` stores
+     * `count: 0`), and `_artInitBigPics()` now consults that before it ever
+     * builds a wrapper — so the cross-reload case is covered without adding a
+     * store and bumping `_ART_IDB_VERSION`.
+     *
+     * @type {Set<string>}
+     */
+    const _artMissCache = new Set();
+
+    /**
+     * HTTP statuses that mean "this artwork does not exist", as opposed to
+     * "the archive could not answer right now".
+     * @type {number[]}
+     */
+    const _ART_MISS_STATUSES = [404, 410];
+
     // Revoke all object URLs on page unload to release Blob memory.
     window.addEventListener('pagehide', () => {
         _artIdbBlobUrls.forEach(u => {
@@ -65916,7 +65953,17 @@ a { color: #1565c0; }`;
                     if (resp.status >= 200 && resp.status < 300) {
                         resolve(resp.response);
                     } else {
-                        reject(new Error(`HTTP ${resp.status} for ${url}`));
+                        // Carry the status on the Error. `_artFetchCachedImage()`
+                        // needs to tell a DEFINITIVE absence (404/410 — this
+                        // artwork does not exist and asking again will not change
+                        // that) from a transport failure (5xx, network error,
+                        // timeout — the archive is having a bad minute). Only the
+                        // former may be cached as a miss; caching the latter would
+                        // turn a few seconds of upstream trouble into artwork that
+                        // stays missing for the rest of the session.
+                        const err = new Error(`HTTP ${resp.status} for ${url}`);
+                        err.status = resp.status;
+                        reject(err);
                     }
                 },
                 onerror:   (err) => reject(new Error('GM_xhr network error: ' + url)),
@@ -65959,6 +66006,20 @@ a { color: #1565c0; }`;
             return { objectUrl: _artIdbMemCache.get(normUrl), fromIdb: false, fromMemory: true };
         }
 
+        // ── Tier 1b: per-session negative cache ────────────────────────────────
+        // A URL the archive has already answered "404" for. Rejecting here
+        // costs nothing and skips an IDB read plus a doomed network request
+        // that would otherwise repeat on every re-render — see _artMissCache.
+        if (_artMissCache.has(normUrl)) {
+            if (Lib.settings.sa_enable_art_cache_fetch_debug_logging) {
+                Lib.debug('idb', `_artFetchCachedImage: known-missing (cached) — ${normUrl}`);
+            }
+            const missErr = new Error(`Known missing artwork: ${normUrl}`);
+            missErr.status     = 404;
+            missErr.cachedMiss = true;
+            throw missErr;
+        }
+
         // ── Tier 2: IndexedDB ──────────────────────────────────────────────────
         try {
             const rec = await _artIdbGet('images', normUrl);
@@ -65980,7 +66041,21 @@ a { color: #1565c0; }`;
         if (Lib.settings.sa_enable_art_cache_fetch_debug_logging) {
             Lib.debug('idb', `_artFetchCachedImage: network fetch — ${normUrl}`);
         }
-        const blob   = await _artGmFetchBlob(normUrl);
+        let blob;
+        try {
+            blob = await _artGmFetchBlob(normUrl);
+        } catch (fetchErr) {
+            // Record ONLY a definitive absence. A 5xx/network/timeout failure is
+            // left uncached so a later render can succeed — see _artMissCache.
+            if (_ART_MISS_STATUSES.includes(fetchErr && fetchErr.status)) {
+                _artMissCache.add(normUrl);
+                if (Lib.settings.sa_enable_art_cache_fetch_debug_logging) {
+                    Lib.debug('idb',
+                        `_artFetchCachedImage: caching miss (HTTP ${fetchErr.status}) — ${normUrl}`);
+                }
+            }
+            throw fetchErr;
+        }
         const objUrl = URL.createObjectURL(blob);
         _artIdbBlobUrls.add(objUrl);
         _artIdbMemCache.set(normUrl, objUrl);
@@ -69174,8 +69249,58 @@ a { color: #1565c0; }`;
                 if (m && !seen.has(href)) {
                     seen.add(href);
 
+                    // ── Skip entities already known to have no artwork ────────
+                    // `_artEnrichIcon()` stores a 0 here (and persists it to IDB)
+                    // the moment the archive's JSON says an entity has no images,
+                    // with a comment about suppressing exactly these repeated
+                    // requests — but this builder never consulted it, so it went
+                    // on deriving a front-{size} URL and a wrapper for every
+                    // anchor in the table, artwork or not. Each of those is a
+                    // request that is known in advance to 404, plus a "⌛" the
+                    // user watches until it fails.
+                    //
+                    // Ordering makes this self-correcting rather than a guess:
+                    // `_artInitPics()` runs `_artInitBigPics()` BEFORE
+                    // `_artEnrichTable()`, so on the very first render the cache
+                    // is still empty and every entity is attempted exactly as
+                    // before. Only re-renders — the sorts and filter keystrokes
+                    // where the answer is already known — skip.
+                    //
+                    // `!cacheBust` keeps the ⟳ retry button rebuilding
+                    // everything unconditionally (it also purges countCache for
+                    // this table's links, so this would be undefined anyway —
+                    // the guard states the intent rather than relying on that).
+                    if (!cacheBust && ctx.countCache.get(href) === 0) {
+                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                            Lib.debug(ctx.key,
+                                `${ctx.key}InitBigPics: skipping ${href} — archive reports no artwork`);
+                        }
+                        break;
+                    }
+
                     const imgurl = ctx.archiveHost + '/' + type + '/' + m[1] + '/front-' + size +
                                    (cacheBust ? '?_cb=' + Date.now() : '');
+
+                    // ── Skip URLs already known to 404 ────────────────────────
+                    // The countCache check above catches entities with NO
+                    // artwork at all. This catches the other shape: an entity
+                    // the archive says HAS images, none of which is a front
+                    // cover, so this specific front-{size} URL 404s while the
+                    // entity's own metadata is a perfectly good non-zero count.
+                    //
+                    // _artFetchCachedImage() would reject such a URL from
+                    // _artMissCache without touching the network, but only once
+                    // the wrapper and its "⌛" already exist — the fetch is
+                    // dispatched after the DOM is built. Checking here is what
+                    // removes the glyph rather than merely making it brief.
+                    if (!cacheBust && _artMissCache.has(_artNormaliseUrl(imgurl))) {
+                        if (Lib.settings.sa_enable_art_fetch_debug_logging) {
+                            Lib.debug(ctx.key,
+                                `${ctx.key}InitBigPics: skipping ${imgurl} — known missing (cached 404)`);
+                        }
+                        break;
+                    }
+
                     if (!firstImgUrl) firstImgUrl = imgurl;
 
                     // ── Build wrapper tooltip text ─────────────────────────────
@@ -70192,6 +70317,15 @@ a { color: #1565c0; }`;
                 ctx.imagesCache.delete(clean);
             }
         });
+
+        // Drop every cached "this artwork does not exist" verdict too. The
+        // cache-busted URLs this retry issues (?_cb=…) would sidestep the miss
+        // cache on their own, but the un-busted URL would stay marked missing
+        // afterwards — so a retry that actually recovered an image would be
+        // undone by the next ordinary render. Cleared wholesale rather than
+        // per-URL: this is the user explicitly asking for everything to be
+        // tried again, and the set is rebuilt for free on the next pass.
+        _artMissCache.clear();
 
         // ── 3. Strip enrichedAttr and multiBuiltAttr so _artEnrichIcon
         //       and _artBuildMultiRowArtCell re-run from scratch ────────────
