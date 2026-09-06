@@ -7424,3 +7424,47 @@ item tops 267/286/323 against Picard's 285/304/323. This affects Track/Medium/
 Type and Label/Catalog# on other pages identically; it is inherent to the
 multi-row-cell approach, and does not show on the real page, where auto-resize
 gives the Release column enough width not to wrap.
+
+## 2026-09-07 — `_artSyncSearchTextToSourceRow()` cannot reach a merged-view row (open, not fixed)
+
+Found while finishing the verification of the artwork mirror (9.99.1038), not
+by a failing test. **Recorded only — deliberately not fixed in that session**,
+since it is a userscript change needing its own branch, version bump, changelog
+entry and a fails-before/passes-after test.
+
+`_artSyncSearchTextToSourceRow()` mirrors a CAA/EAA cell's per-image
+type/comment search text onto the source row, which is what makes a plain-text
+filter over a CAA column match at all on `tableMode: 'multi'` pages (the live
+cell is a clone; the row `runFilter()` reads is not). It resolves that source
+row by table POSITION:
+
+```js
+const tableIndex = Array.from(document.querySelectorAll('table.tbl')).indexOf(liveTable);
+const group = groupedRows[tableIndex];
+if (!group) return;
+const sourceRow = group.rows.find(r => r.dataset.mbRowIdx === rowIdx);
+if (!sourceRow) return;          // ← silently gives up
+```
+
+That assumes every row in a live table belongs to the group at the same index.
+**Merged discography view breaks the assumption**: `runFilter()`'s merged branch
+combines every same-category group's rows into the FIRST-OCCURRENCE table, so
+rows from other groups sit in a table whose `groupedRows` entry does not contain
+them. `find()` misses, the function returns early, and those rows never get
+their search text — so a CAA type/comment filter silently finds zero matches for
+exactly them, forever. No error, no visible symptom other than "the filter finds
+nothing".
+
+**The fix is one line**: use `_findMasterRowByIdx()` instead, which searches
+`allRows` and then every group and is therefore correct in all four
+`discographyViewState` modes. That is precisely why the sibling written for the
+icon mirror, `_artResolveSourceCounterpart()`, uses it — see its JSDoc, which
+documents this same trap as the reason.
+
+**Not currently covered by any test.**
+`releasegroup-releases-caa-type-comment-filter.spec.js` is the CAA-text-filter
+spec (3 tests, all green on 9.99.1038) but runs on `releasegroup-releases`,
+which has no merged view. `discography-view-artwork.spec.js` does exercise
+merged view with artwork loaded, but asserts on painted icons, never on the
+column's text filter. A regression test would have to sit at that intersection:
+merged view + a typed CAA type/comment filter.
