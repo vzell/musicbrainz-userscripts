@@ -95,8 +95,80 @@ test.describe('CAA/EAA per-column collapse glyph: deferred visibility', () => {
     });
 });
 
-// Same rationale as the describe below: shares this file's fixture, GUID,
+// Same rationale as the describes below: shares this file's fixture, GUID,
 // PNG bytes and routing.
+test.describe('big-picture stripe skips entities the archive reports as art-less', () => {
+    // Guards _artInitBigPics()'s ctx.countCache check specifically, and it has
+    // to be a 5xx to do that. The negative image cache (_artMissCache) already
+    // suppresses repeat requests for a URL that 404s, and on a real page it
+    // gets there first — disabling the countCache check does not change the
+    // live BoDeans spec at all, because those URLs 404 and are remembered that
+    // way. A 5xx is deliberately NOT miss-cached (the archive fails in bursts;
+    // caching that would hide real artwork for the session), so this is the
+    // one shape where only the metadata answer can prevent the retry.
+    test('an entity whose JSON reports zero images is not re-requested after a re-render', async ({ page }) => {
+        await loadUserscriptPage(page, {
+            url: ARTIST_EVENTS_URL,
+            fixtureFile: FIXTURE_FILE,
+            testMode: true,
+            settingsOverride: { sa_enable_caa_pics: true, sa_art_idb_enable: false },
+        });
+
+        // Metadata: a successful answer that says "this event has no artwork".
+        // Image bytes: 503, so nothing may be recorded as a definitive miss.
+        await page.route('https://eventartarchive.org/**', async (route) => {
+            const url = route.request().url();
+            if (new RegExp(`/event/${EVENT_GUID}$`).test(url)) {
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ images: [] }),
+                });
+                return;
+            }
+            await route.fulfill({ status: 503, contentType: 'text/plain', body: 'upstream sad' });
+        });
+
+        await page.click('button[data-label="Show all Events for Artist"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await waitForCaaEaaComplete(page);
+
+        // Counting requests would not isolate this: the icon column re-requests
+        // on every render by design (its loads are re-enqueued to re-attach
+        // hover listeners), and a 503 is never miss-cached, so those retries are
+        // expected noise. What fix this test guards is narrower and directly
+        // observable — whether the stripe BUILDS A WRAPPER for an entity it has
+        // already been told has no artwork. On the first render it legitimately
+        // does (_artInitBigPics() runs before _artEnrichTable(), so the count is
+        // not known yet); on every render after that it must not.
+        await page.evaluate(() => {
+            window.__bigboxWrappersBuilt = 0;
+            document.querySelectorAll('.mb-caa-bigbox, .mb-eaa-bigbox').forEach((box) => {
+                new MutationObserver((muts) => {
+                    for (const m of muts) {
+                        for (const node of m.addedNodes) {
+                            if (node.nodeType !== 1) continue;
+                            if (node.matches('a[data-caa-href], a[data-eaa-href]')) {
+                                window.__bigboxWrappersBuilt++;
+                            }
+                        }
+                    }
+                }).observe(box, { childList: true, subtree: true });
+            });
+        });
+
+        // Re-render. By now ctx.countCache holds the 0.
+        await page.fill('#mb-global-filter-input', 'e');
+        await page.waitForTimeout(1500);
+        await page.fill('#mb-global-filter-input', '');
+        await page.waitForTimeout(1500);
+
+        expect(
+            await page.evaluate(() => window.__bigboxWrappersBuilt),
+            'a re-render rebuilt a stripe wrapper for artwork the archive already said does not exist'
+        ).toBe(0);
+    });
+});
 test.describe('per-image art <li> hover preview and type-badge tooltip', () => {
     // This wiring had no coverage at all, which made it the riskiest part of
     // splitting _artWireImageLi() out of _artBuildImageLi(): the listeners are

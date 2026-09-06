@@ -69,8 +69,23 @@ async function installInsertionProbe(page) {
     await page.evaluate(() => {
         window.__artInsertProbe = {
             iconsSeen: 0, iconsPaintedAtInsert: 0, inlineThumbsAtInsert: 0,
-            bigboxHourglasses: 0, bigboxImgsAdded: 0,
+            bigboxHourglasses: 0, bigboxImgsAdded: 0, archiveFetches: 0,
         };
+
+        // Count every archive request the sort issues. These go out through
+        // realNetworkGmXhr.js's `__realGmFetch` bridge rather than the browser's
+        // own network stack, so page.on('request') cannot see them — wrapping
+        // the bridge is the only way to observe them from here.
+        const _origGmFetch = window.__realGmFetch;
+        if (_origGmFetch) {
+            window.__realGmFetch = function (url) {
+                if (/coverartarchive\.org|eventartarchive\.org/.test(String(url))) {
+                    window.__artInsertProbe.archiveFetches++;
+                }
+                return _origGmFetch.apply(this, arguments);
+            };
+        }
+
         const table = document.querySelector('table.tbl');
 
         // The big-picture strip lives OUTSIDE the table (inserted immediately
@@ -232,25 +247,40 @@ test.describe('CAA icon column survives a sort (single-table)', { tag: '@extende
         expect(probe.bigboxImgsAdded, 'the strip was not rebuilt — the hourglass probe would be vacuous')
             .toBeGreaterThan(0);
 
-        // Only a wrapper whose image never resolved may show a "⌛". On this
-        // page those are the releases with no cover art in the archive: a
-        // rebuild re-attempts them, the fetch fails again, and the wrapper is
-        // removed — so an hourglass there is honest, and it is why
-        // before.bigboxWrappers (36, counted after the failures were swept)
-        // is smaller than the number actually created during a rebuild (56).
+        // NO hourglass at all on a re-render — not even for the releases with
+        // no cover art. Three separate facts have to hold for this:
         //
-        // Every image that WAS on screen must come straight back out of the
-        // session memory cache with no holding glyph at all. Before the fix
-        // every one of the 56 got an hourglass and trickled back four at a
-        // time through the fetch queue.
+        //   1. an image already resolved in the session memory cache is painted
+        //      at build time, so it never needs a holding glyph;
+        //   2. an entity the archive reported as having NO artwork is skipped
+        //      before a wrapper is built, because _artInitBigPics() now consults
+        //      the same ctx.countCache that _artEnrichIcon() already populated;
+        //   3. a URL that returned 404 is remembered in _artMissCache, covering
+        //      the other shape — an entity that HAS images but no front cover,
+        //      so its front-{size} URL 404s while its count is non-zero.
+        //
+        // History, since the expected value here has moved twice: it was every
+        // wrapper (56) before any of this, then the art-less rows only (20)
+        // once memory-cached images stopped queuing, and is 0 now that the two
+        // negative-cache paths landed.
         const artlessRows = probe.iconsSeen - paintedBefore;
-        expect(artlessRows, 'no art-less rows — the arithmetic below would be trivial')
+        expect(artlessRows, 'no art-less rows — this page would not exercise the negative caches')
             .toBeGreaterThan(0);
         expect(
             probe.bigboxHourglasses,
-            `expected an hourglass only for the ${artlessRows} art-less row(s), ` +
-            `never for any of the ${paintedBefore} already-loaded image(s)`
-        ).toBe(artlessRows);
+            `a re-render must show no hourglass at all: the ${paintedBefore} loaded image(s) ` +
+            `come from memory, and the ${artlessRows} art-less row(s) are known-missing and skipped`
+        ).toBe(0);
+
+        // The direct form of the same claim: a sort must not talk to the
+        // archive AT ALL. Every image is in memory, every absence is already
+        // known, and the JSON metadata is served from ctx.countCache — so the
+        // honest measure of "is this refetching?" is the number of archive
+        // requests the sort issues, which is zero.
+        expect(
+            probe.archiveFetches,
+            'a sort issued archive requests — something is still re-fetching'
+        ).toBe(0);
 
         // ── The completion pass after a memory-only re-render ────────────────
         //
