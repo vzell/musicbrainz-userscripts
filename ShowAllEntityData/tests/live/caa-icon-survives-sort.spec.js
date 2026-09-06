@@ -69,8 +69,49 @@ async function installInsertionProbe(page) {
     await page.evaluate(() => {
         window.__artInsertProbe = {
             iconsSeen: 0, iconsPaintedAtInsert: 0, inlineThumbsAtInsert: 0,
+            bigboxHourglasses: 0, bigboxImgsAdded: 0,
         };
         const table = document.querySelector('table.tbl');
+
+        // The big-picture strip lives OUTSIDE the table (inserted immediately
+        // before it), so it needs its own observer. Unlike the rows, this strip
+        // is legitimately rebuilt from scratch on every render — what matters is
+        // whether each image comes back instantly from the session memory cache
+        // or is parked behind a "⌛" while it waits for a _caaQueue slot.
+        const boxes = document.querySelectorAll('.mb-caa-bigbox, .mb-eaa-bigbox');
+        window.__artBigboxObs = [];
+        boxes.forEach((box) => {
+            const bobs = new MutationObserver((muts) => {
+                for (const m of muts) {
+                    for (const node of m.addedNodes) {
+                        if (node.nodeType === Node.TEXT_NODE) {
+                            if (node.textContent.includes('⌛')) {
+                                window.__artInsertProbe.bigboxHourglasses++;
+                            }
+                            continue;
+                        }
+                        if (node.nodeType !== 1) continue;
+
+                        window.__artInsertProbe.bigboxImgsAdded +=
+                            node.tagName === 'IMG' ? 1 : node.querySelectorAll('img').length;
+
+                        // The "⌛" is appended to the wrapper while it is still
+                        // DETACHED, so it arrives as part of this subtree rather
+                        // than as its own mutation record — counting only direct
+                        // text-node additions misses every one of them (found by
+                        // mutation-testing this probe: it passed against code
+                        // that definitely produced hourglasses).
+                        for (const child of node.childNodes) {
+                            if (child.nodeType === Node.TEXT_NODE && child.textContent.includes('⌛')) {
+                                window.__artInsertProbe.bigboxHourglasses++;
+                            }
+                        }
+                    }
+                }
+            });
+            bobs.observe(box, { childList: true, subtree: true });
+            window.__artBigboxObs.push(bobs);
+        });
         const obs = new MutationObserver((muts) => {
             for (const m of muts) {
                 for (const node of m.addedNodes) {
@@ -133,6 +174,12 @@ test.describe('CAA icon column survives a sort (single-table)', { tag: '@extende
                 'table.tbl tbody .mb-caa-inline-ph img[src^="blob:"], ' +
                 'table.tbl tbody .mb-eaa-inline-ph img[src^="blob:"]'
             ).length,
+            bigboxWrappers: document.querySelectorAll(
+                '.mb-caa-bigbox a[data-caa-href], .mb-eaa-bigbox a[data-eaa-href]'
+            ).length,
+            bigboxLoaded: Array.from(document.querySelectorAll(
+                '.mb-caa-bigbox img, .mb-eaa-bigbox img'
+            )).filter((i) => i.style.display !== 'none').length,
         }));
         const paintedBefore = before.painted;
         expect(paintedBefore, 'no artwork was painted before the sort — the probe would be vacuous')
@@ -159,6 +206,7 @@ test.describe('CAA icon column survives a sort (single-table)', { tag: '@extende
 
         const probe = await page.evaluate(() => {
             window.__artInsertObs.disconnect();
+            (window.__artBigboxObs || []).forEach((o) => o.disconnect());
             return window.__artInsertProbe;
         });
 
@@ -174,6 +222,35 @@ test.describe('CAA icon column survives a sort (single-table)', { tag: '@extende
         // were deleted outright by the strip and re-injected afterwards.
         // Before the fix this was 0.
         expect(probe.inlineThumbsAtInsert).toBe(before.inlineThumbs);
+
+        // The big-picture strip IS rebuilt on a re-render — that part is by
+        // design, since the strip must follow the table's new row order. What
+        // must not happen is every one of its images dropping to a "⌛" and
+        // trickling back a few at a time through the fetch queue. Each image
+        // is already in the session memory cache, so it needs no queue slot and
+        // no holding glyph.
+        expect(probe.bigboxImgsAdded, 'the strip was not rebuilt — the hourglass probe would be vacuous')
+            .toBeGreaterThan(0);
+
+        // Only a wrapper whose image never resolved may show a "⌛". On this
+        // page those are the releases with no cover art in the archive: a
+        // rebuild re-attempts them, the fetch fails again, and the wrapper is
+        // removed — so an hourglass there is honest, and it is why
+        // before.bigboxWrappers (36, counted after the failures were swept)
+        // is smaller than the number actually created during a rebuild (56).
+        //
+        // Every image that WAS on screen must come straight back out of the
+        // session memory cache with no holding glyph at all. Before the fix
+        // every one of the 56 got an hourglass and trickled back four at a
+        // time through the fetch queue.
+        const artlessRows = probe.iconsSeen - paintedBefore;
+        expect(artlessRows, 'no art-less rows — the arithmetic below would be trivial')
+            .toBeGreaterThan(0);
+        expect(
+            probe.bigboxHourglasses,
+            `expected an hourglass only for the ${artlessRows} art-less row(s), ` +
+            `never for any of the ${paintedBefore} already-loaded image(s)`
+        ).toBe(artlessRows);
 
         // ── The completion pass after a memory-only re-render ────────────────
         //

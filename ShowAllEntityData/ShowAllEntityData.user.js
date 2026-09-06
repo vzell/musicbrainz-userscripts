@@ -65579,6 +65579,28 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Synchronously reports whether an image URL is already resolved in the
+     * Tier-1 session memory cache, without touching IndexedDB or the network.
+     *
+     * `_artFetchCachedImage()` answers the same question, but only ever as a
+     * Promise — so a caller cannot use it to decide, *before* building any DOM,
+     * whether this image is going to be instant. That decision is the whole
+     * point here: an image already in `_artIdbMemCache` costs one Map lookup
+     * and reuses an object URL that is already in the browser's blob registry,
+     * so it neither needs the `_caaQueue` concurrency budget nor a "⌛" holding
+     * glyph. Treating it like a fetch is what made a re-render's whole
+     * big-picture strip empty out to hourglasses and refill a few images at a
+     * time.
+     *
+     * @param   {string} url  Raw (possibly protocol-relative) image URL.
+     * @returns {?string} The cached object URL, or null when not in memory.
+     */
+    function _artMemCachedObjectUrl(url) {
+        const normUrl = _artNormaliseUrl(url);
+        return _artIdbMemCache.has(normUrl) ? _artIdbMemCache.get(normUrl) : null;
+    }
+
+    /**
      * Fetches one artwork image blob using GM_xmlhttpRequest (bypasses CORS) and
      * resolves with the raw Blob.
      *
@@ -68969,13 +68991,49 @@ a { color: #1565c0; }`;
                     wrapper.style.cssText = 'display:' + (_rowHiddenByStf ? 'none' : 'inline-block') +
                                              '; height:100%; margin:8px 8px 4px 4px; position:relative;';
 
-                    wrapper.appendChild(document.createTextNode('⌛'));
+                    // "⌛" holding glyph — only for an image that actually has to
+                    // be fetched. One already resolved in this session's memory
+                    // cache is painted immediately below, so an hourglass for it
+                    // would only ever be a flicker: on a re-render the whole
+                    // strip emptied to hourglasses and refilled a few images at
+                    // a time as queue slots freed up, which read as a reload.
+                    //
+                    // _onBigLoaded() only removes a LEADING TEXT node, so
+                    // skipping this is safe — the <img> becomes firstChild and
+                    // is left alone.
+                    const _bigMemCached = _artMemCachedObjectUrl(imgurl);
+                    if (!_bigMemCached) wrapper.appendChild(document.createTextNode('⌛'));
 
                     const img     = document.createElement('img');
                     img.alt           = _anchorText;
                     img.style.cssText = 'vertical-align:middle; display:none;' +
                                         ' max-height:' + maxH + ';' +
                                         ' box-shadow:1px 1px 4px black;';
+
+                    // Paint a memory-cached image NOW, at build time, instead of
+                    // leaving it blank until its queue task runs. The object URL
+                    // already exists in this session's blob registry, so this
+                    // costs a Map lookup and no I/O at all.
+                    //
+                    // The queued task below is still dispatched, unchanged. It
+                    // becomes visually idempotent (_onBigLoaded()'s first act is
+                    // `if (img.src !== src) img.src = src`, and display is
+                    // already 'inline'), but it is what keeps ALL the
+                    // bookkeeping on its original schedule: the per-table badge
+                    // increment, the render-generation guard, the STF-hidden
+                    // check, the toggle-button thumbnail and the cache-hint
+                    // overlay. That ordering is load-bearing — the global toggle
+                    // button is created synchronously before any image resolves
+                    // and its count is driven entirely by these callbacks, so
+                    // resolving them early instead double-counts against the
+                    // wrong generation (caught by
+                    // subtable-filter-sort-caa-interaction.spec.js's global-badge
+                    // assertion, which is exactly what an earlier attempt at this
+                    // broke).
+                    if (_bigMemCached) {
+                        img.src = _bigMemCached;
+                        img.style.display = 'inline';
+                    }
 
                     /**
                      * Shared bigbox image success handler.
@@ -68995,6 +69053,19 @@ a { color: #1565c0; }`;
                             wrapper.removeChild(first);
                         }
                         img.style.display = 'inline';
+                        // Explicit "this image has resolved" marker.
+                        // _artUpdateBigBoxForTable() needs to count exactly the
+                        // images that have been through THIS callback, and used
+                        // to infer that from `display === 'inline'`. That proxy
+                        // stopped being equivalent once a memory-cached image
+                        // could be painted at build time — it is visible from
+                        // the first frame, but its badge/generation bookkeeping
+                        // still belongs to this callback, on its original
+                        // schedule. Counting the style instead of the marker
+                        // inflated the per-table badge, and through it the
+                        // global one (caught by
+                        // subtable-filter-sort-caa-interaction.spec.js).
+                        img.dataset.artBigLoaded = '1';
 
                         // Live-update the toggle button badge.
                         // Guard: skip if a newer render pass has already started.
@@ -69464,7 +69535,11 @@ a { color: #1565c0; }`;
             if (visibleHrefs.has(wrapper.getAttribute(ctx.hrefAttrName))) {
                 wrapper.style.display = '';
                 const img = wrapper.querySelector('img');
-                if (img && img.style.display === 'inline') loadedVisible++;
+                // data-art-big-loaded, not display:inline — see _onBigLoaded().
+                // A memory-cached image is painted (display:inline) at build
+                // time, before its bookkeeping callback has run, so the style
+                // no longer answers "has this resolved through _onBigLoaded()".
+                if (img && img.dataset.artBigLoaded === '1') loadedVisible++;
             } else {
                 wrapper.style.display = 'none';
             }

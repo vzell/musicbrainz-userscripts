@@ -1,5 +1,25 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The CAA/EAA big-picture image stripe no longer empties out to a row of ⌛ hourglasses on every sort, refilling a few images at a time. Unlike the icon column and the inline thumbnails, this strip legitimately IS rebuilt on each re-render — it has to follow the table's new row order — but every one of its images was then re-resolved through `_caaQueue`, waiting for one of `sa_caa_fetch_concurrency` slots even though the image was already sitting in the session memory cache. An image already resolved in that cache is now painted at build time, from a plain Map lookup with no I/O, and gets no hourglass. Only images that genuinely have to be fetched still show one — on a page with releases that have no cover art at all, those wrappers really are re-attempted (and removed again) on each render.",
+          "New `_artMemCachedObjectUrl()` answers \"is this image already resolved in memory?\" synchronously. `_artFetchCachedImage()` can only answer as a Promise, which is too late to decide whether to build a holding glyph in the first place."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`_artUpdateBigBoxForTable()` now counts bigbox images via an explicit `data-art-big-loaded` marker set by `_onBigLoaded()`, instead of inferring \"has this image loaded\" from `img.style.display === 'inline'`. The two were equivalent only while nothing could paint an image before its load callback ran; painting memory-cached images at build time broke that equivalence and inflated the per-table badge — and through it the page-wide global badge — after a sort with a sub-table filter active. Caught by `subtable-filter-sort-caa-interaction.spec.js`'s global-badge assertion.",
+          "The queued fetch task is still dispatched for every image, unchanged, including ones already painted. It is visually idempotent but keeps ALL the bookkeeping on its original schedule: the per-table badge increment, the render-generation guard, the STF-hidden check, the toggle-button thumbnail and the cache-hint overlay. That ordering is load-bearing — the global toggle button is created synchronously before any image resolves and its count is driven entirely by these callbacks — and an earlier attempt that let memory hits skip the queue outright double-counted against the wrong render generation."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-09-06",
     "sections": [
