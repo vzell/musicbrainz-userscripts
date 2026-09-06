@@ -311,6 +311,40 @@ COLLAPSED, so a test must click the master toggle before anything inside a
 sub-table is clickable (a toggle in a hidden table is a 0×0 element
 Playwright will never click).
 
+**CAA/EAA artwork tests: expand every sub-table BEFORE measuring, and assert
+it worked.** A collapsed sub-table is `display:none`, so none of its artwork
+ever loads — a test that measures a partly-collapsed page reports clean,
+plausible numbers while measuring almost nothing. It passes for the wrong
+reason, which is worse than failing. Specifics, each of which cost a wasted
+run:
+
+- **Do not trust `.mb-master-toggle`'s `data-state`.** On `artist-releasegroups`
+  it reads `expanded` while individual sub-tables are still hidden. Drive a
+  full collapse→expand cycle whenever anything is hidden rather than believing
+  the flag.
+- **Never click the master toggle unconditionally.** The initial state differs
+  per pageType — `releasegroup-releases` renders sub-sections COLLAPSED,
+  `artist-releasegroups` renders them EXPANDED — so a blind click collapses all
+  17 sub-tables and the run reports clean zeros. `liveAssertions.js`'s
+  `clickMasterToggleAndExpandAll()` asserts `collapsed` first and therefore
+  cannot drive both; see `caa-icon-survives-sort-multi.spec.js`'s
+  `ensureSubSectionsExpanded()`.
+- **Re-expand after every discography view switch.** `_applyDiscographyViewFilter()`
+  re-collapses the sub-sections, silently undoing the expansion done at page
+  load. Measured: after switching to "Complete", the painted-icon count SETTLED
+  at 6 on a page that settles at 85 expanded. Exclude view-hidden sections
+  (`[data-mb-disc-hidden="true"]`) from the "nothing is collapsed" assertion —
+  Official/Non-Official hide sections legitimately.
+- **Assert a plausible floor after settling** (zero collapsed tables, and an
+  artwork count in the expected range), so a mostly-hidden page fails loudly.
+- **Settle, don't sleep.** A view switch re-inits artwork page-wide, so a fixed
+  `waitForTimeout()` samples mid-repaint. Poll until the painted count is
+  stable AND non-zero — a count of 0 means "the pass has not produced anything
+  yet", not "settled". (A view with genuinely no artwork is the one exception,
+  so allow zero to settle only after a longer run of identical samples.)
+- `sa_caa_pics_initially_collapsed` defaults true, so the big-picture strips
+  also need `#mb-caa-toggle-btn-global` clicked before they load.
+
 **Skills** for the recurring workflows (`.claude/skills/`):
 - `add-snapshot-pagetype` — capture a new baseline + wire it into
   `tests/pagetypes.json`/`tests/snapshots/registry.org`.

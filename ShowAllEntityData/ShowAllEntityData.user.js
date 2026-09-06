@@ -42280,7 +42280,20 @@ a { color: #1565c0; }`;
                     // on the actual rendered DOM rows.  The source rows in groupedRows
                     // keep their markers so subsequent runFilter calls (user typing) are
                     // still served from cache without redundant network calls.
-                    Array.from(clone.cells).forEach(td => _stripTransientCellState(td));
+                    //
+                    // preserveLiveArt: the source rows now carry a mirrored icon
+                    // background for any artwork already resolved this session
+                    // (see _artMirrorIconToSourceRow()), so this clone can keep
+                    // it instead of arriving blank and being repainted a tick
+                    // later from the Tier-1 memory cache. Before the mirror this
+                    // option was a no-op here — there was never anything on a
+                    // multi-table clone to preserve.
+                    //
+                    // It does NOT preserve the enrichment markers stripped
+                    // above: _artEnrichIcon must still re-run on the clone, since
+                    // it is the only path to _artHighlightArtCell() and to the
+                    // uniq-dropdown cache invalidation.
+                    Array.from(clone.cells).forEach(td => _stripTransientCellState(td, { preserveLiveArt: true }));
                     // Restore art-cell expand state from the authoritative expandedCells
                     // map.  _stripTransientCellState() unconditionally collapses every
                     // [data-caa-expand-btn] span; without this call any cells the user
@@ -68157,6 +68170,96 @@ a { color: #1565c0; }`;
         if (cached) { cached.cols[colIdx] = undefined; cached.full = null; }
     }
 
+    /** Selector for artwork-icon spans — the same one `_stripTransientCellState()` clears. */
+    const _ART_ICON_SPAN_SEL = 'span.caa-icon, span.eaa-icon, span.artwork-icon';
+
+    /**
+     * Resolves the element on the SOURCE row that corresponds to `liveEl` on a
+     * rendered row, matching by `data-mb-row-idx` + cell index + position among
+     * `selector` matches within that cell.
+     *
+     * Uses `_findMasterRowByIdx()` rather than
+     * `_artSyncSearchTextToSourceRow()`'s `groupedRows[indexOf(liveTable)]`
+     * lookup, and that difference is load-bearing. The index-based form assumes
+     * a live table's rows all belong to the group at the same index — which
+     * merged discography view breaks: `runFilter()`'s merged branch combines
+     * every same-category group's rows into the first-occurrence table, so rows
+     * from OTHER groups sit in a table whose `groupedRows` entry does not
+     * contain them. The index lookup returns early for exactly those rows, and
+     * they would silently lose their artwork. `_findMasterRowByIdx()` searches
+     * `allRows` and then every group, so it is correct in all four
+     * `discographyViewState` modes.
+     *
+     * @param {HTMLElement} liveEl    Element on the connected, rendered row.
+     * @param {string}      selector  Selector `liveEl` matches within its `<td>`.
+     * @returns {HTMLElement|null} The source-row counterpart, or null.
+     */
+    function _artResolveSourceCounterpart(liveEl, selector) {
+        if (!activeDefinition || activeDefinition.tableMode !== 'multi') return null;
+        const liveRow = liveEl.closest('tr');
+        if (!liveRow) return null;
+        const rowIdx = liveRow.dataset.mbRowIdx;
+        if (rowIdx === undefined) return null;
+        const sourceRow = _findMasterRowByIdx(rowIdx);
+        // Same node on single-table pages (allRows' rows ARE the live rows), so
+        // there is nothing to mirror and no work to do.
+        if (!sourceRow || sourceRow === liveRow) return null;
+        const liveCell = liveEl.closest('td');
+        if (!liveCell) return null;
+        const sourceCell = sourceRow.cells[liveCell.cellIndex];
+        if (!sourceCell) return null;
+        const pos = Array.from(liveCell.querySelectorAll(selector)).indexOf(liveEl);
+        if (pos === -1) return null;
+        return sourceCell.querySelectorAll(selector)[pos] || null;
+    }
+
+    /**
+     * Mirrors a just-painted artwork icon's `background-image` onto the matching
+     * SOURCE row, so it survives the next `runFilter()` re-render.
+     *
+     * ## Why this is needed at all
+     *
+     * `_stripTransientCellState(td, {preserveLiveArt: true})` already keeps a
+     * live icon across a re-render, and that is what makes `tableMode: 'single'`
+     * arrive with its thumbnails intact. On `tableMode: 'multi'` it is a no-op,
+     * because there is nothing on the clone to preserve: `renderGroupedTable()`
+     * ALWAYS inserts clones, so painting happens on the rendered clone while
+     * `groupedRows[i].rows` — the rows `runFilter()` clones from — stay blank
+     * forever. Measured before this: 0 of 123 icons painted at insertion on
+     * `artist-releasegroups`, against 85 painted a moment earlier.
+     *
+     * Mirroring the value back onto the source row is the same shape of
+     * write-back `_artSyncSearchTextToSourceRow()` already performs for the
+     * per-image search text, and which `_findMasterRowByIdx()`'s own JSDoc
+     * endorses ("mutating the master row directly … is what lets
+     * `_forceLocalityToRegion` survive every subsequent sort/filter re-render").
+     *
+     * ## Why a dead object URL cannot leak through
+     *
+     * Only a URL still in `_artIdbBlobUrls` is mirrored, and
+     * `_artIconBackgroundIsLiveBlob()` re-checks membership on the way out
+     * during the strip. A revoked URL therefore fails both tests and the icon
+     * is cleared and re-fetched exactly as before.
+     *
+     * ## Why this creates no Save-to-Disk hazard
+     *
+     * Multi serialisation runs `getCleanCellHtml()` →
+     * `_stripTransientCellState()` WITHOUT `preserveLiveArt`, so a mirrored
+     * blob URL is stripped at save time. That is the same reason the option has
+     * to default to false, and it still holds.
+     *
+     * @param {HTMLElement} liveSpan  The rendered artwork-icon span just painted.
+     */
+    function _artMirrorIconToSourceRow(liveSpan) {
+        const bg = liveSpan.style.backgroundImage;
+        const m  = bg && bg.match(/url\(\s*["']?(blob:[^"')]+)/);
+        if (!m || !_artIsLiveBlobUrl(m[1])) return;
+        const target = _artResolveSourceCounterpart(liveSpan, _ART_ICON_SPAN_SEL);
+        if (!target) return;
+        target.style.setProperty('background-size',  'contain');
+        target.style.setProperty('background-image', bg);
+    }
+
     function _artBuildMultiRowArtCell(ctx, artCell, images) {
         // TEMP DEBUG (bug 2 investigation) — call counter and row lookup kept
         // unconditional (cheap, reused by the second TEMP DEBUG block below);
@@ -68385,6 +68488,11 @@ a { color: #1565c0; }`;
         const _onIconLoaded = (src, wasIdbHit, wasMemoryHit = false) => {
             artIcon.style.setProperty('background-size',  'contain');
             artIcon.style.setProperty('background-image', 'url(' + src + ')');
+
+            // Mirror it onto the multi-table source row so the next re-render's
+            // clone arrives already painted — see _artMirrorIconToSourceRow().
+            // No-op on single-table pages and for non-blob URLs.
+            _artMirrorIconToSourceRow(artIcon);
 
             // ── Hover preview wiring (CAA/EAA icon column) ────────────────
             // Attach mouseenter/mouseleave to the anchor so hovering over the

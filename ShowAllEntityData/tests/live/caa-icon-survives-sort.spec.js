@@ -5,6 +5,7 @@ const { loadUserscriptPageWithRealNetwork } = require('../support/realNetworkGmX
 const { collectPageErrors } = require('../support/liveAssertions');
 const { waitForCaaEaaComplete } = require('../support/asyncCompletion');
 const { waitForSortSettled, getPageRowCount } = require('../support/filterSortAssertions');
+const { stopAfterPages } = require('../support/stopButton');
 
 /**
  * End-to-end guard for the CAA icon column surviving a sort on a
@@ -43,18 +44,61 @@ const { waitForSortSettled, getPageRowCount } = require('../support/filterSortAs
  * `artist-releases-filter-sort.spec.js` (via its disk fixture), so its CAA
  * coverage is already known-good.
  *
- * A larger artist was tried first and rejected on evidence: on
- * `/artist/70248960-…/releases` (Bruce Springsteen) the live fetch did not
- * advance past its FIRST page within 200 s through this harness — the
- * `#mb-fetch-progress-fill` bar stayed at 0% and `#mb-fetch-progress-label`
- * stayed empty the whole time, so `stopAfterPages()` had nothing to wait on.
- * That is a property of the harness/page, not of this fix; anything wanting
- * a large-artist CAA baseline needs that investigated first.
+ * A larger artist is no longer excluded: `/artist/70248960-…/releases`
+ * (Bruce Springsteen, 82 pages) runs fine via `SINGLE_CAA_URL` +
+ * `SINGLE_CAA_STOP_PAGES` + `SINGLE_CAA_MAX_PAGE`, and was measured at 300
+ * rows / 296 with artwork, all 296 arriving painted.
+ *
+ * **Correction to what this comment used to say.** It previously recorded
+ * that the same artist "did not advance past its FIRST page within 200 s
+ * through this harness", with the progress bar at 0% and the label empty,
+ * and concluded that was "a property of the harness/page". That conclusion
+ * was wrong, and it kept a large-artist baseline out of reach for two
+ * further attempts. The fetch was not stalled at all — the script had
+ * detected 82 pages, found that over `sa_max_page`, and was waiting on its
+ * own "⚠️ High Page Count … Proceed?" confirmation, which nothing headless
+ * answers. See `MAX_PAGE_OVERRIDE` below. MusicBrainz's bot-verification
+ * gateway was also suspected and also innocent: `context.request` shares the
+ * browser's cookie jar (`__meb_verified` included) and returns the real page.
  */
 
 // BoDeans — a single-table pageType (artist-releases) with a real CAA column,
 // per that pageDefinition's `caa` columnExtractor. One native page of rows.
-const ARTIST_RELEASES_URL = 'https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases';
+const DEFAULT_ARTIST_RELEASES_URL = 'https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases';
+
+// Overridable so a large artist can be measured on demand without editing the
+// spec. The defaults reproduce this file's committed behaviour exactly — the
+// small one-page artist, no Stop click, the original 180 s artwork budget —
+// so the @extended suite is unaffected.
+//
+//   SINGLE_CAA_URL=<artist releases url> \
+//   SINGLE_CAA_STOP_PAGES=2 \
+//   SINGLE_CAA_SETTLE_MS=900000 \
+//   npx playwright test tests/live/caa-icon-survives-sort.spec.js --project=chromium-live
+//
+// `SINGLE_CAA_STOP_PAGES` drives the real `#mb-stop-btn` via
+// `stopAfterPages()`, which is how a paginated artist is cut down to a
+// measurable size without inventing a new mechanism.
+const ARTIST_RELEASES_URL = process.env.SINGLE_CAA_URL || DEFAULT_ARTIST_RELEASES_URL;
+const STOP_AFTER_PAGES = Number(process.env.SINGLE_CAA_STOP_PAGES || 0);
+const CAA_SETTLE_MS = Number(process.env.SINGLE_CAA_SETTLE_MS || 180000);
+
+// Raises `sa_max_page`, the threshold above which the script asks the user to
+// confirm before committing to a big paginated fetch.
+//
+// **This is not optional on a large artist, and its absence looks exactly
+// like a hung fetch.** Measured on Springsteen's /releases (82 pages): the
+// script logged "Determined maxPage: 82" / "Total pages to fetch: 82" and
+// then went silent — no Stop button, no progress label, no errors, the 100
+// native rows still sitting there — because it was awaiting
+// `Lib.showCustomConfirm()`'s "⚠️ High Page Count … Proceed?" modal, which
+// nothing in a headless run ever answers. `stopAfterPages()` then timed out
+// waiting for a page number that could never arrive. Two earlier attempts at
+// a large-artist baseline were abandoned on the strength of that symptom,
+// once blamed on the harness and once on MusicBrainz's bot-verification
+// gateway; neither was the cause.
+const MAX_PAGE_OVERRIDE = Number(process.env.SINGLE_CAA_MAX_PAGE || 0);
+const SETTINGS_OVERRIDE = MAX_PAGE_OVERRIDE > 0 ? { sa_max_page: MAX_PAGE_OVERRIDE } : {};
 const SHOW_ALL_BUTTON = 'button[data-label="🧮 Artist releases"]';
 const SORT_COLUMN = 'Date';
 
@@ -70,6 +114,7 @@ async function installInsertionProbe(page) {
         window.__artInsertProbe = {
             iconsSeen: 0, iconsPaintedAtInsert: 0, inlineThumbsAtInsert: 0,
             bigboxHourglasses: 0, bigboxImgsAdded: 0, archiveFetches: 0,
+            rowsInserted: 0,
         };
 
         // Count every archive request the sort issues. These go out through
@@ -131,6 +176,7 @@ async function installInsertionProbe(page) {
             for (const m of muts) {
                 for (const node of m.addedNodes) {
                     if (node.nodeType !== 1 || node.tagName !== 'TR') continue;
+                    window.__artInsertProbe.rowsInserted++;
 
                     // CAA/EAA column icon: thumbnail painted as a CSS background.
                     const icons = node.querySelectorAll('span.caa-icon, span.eaa-icon, span.artwork-icon');
@@ -160,18 +206,27 @@ test.describe('CAA icon column survives a sort (single-table)', { tag: '@extende
     test('rows re-inserted by a sort arrive with their thumbnails already painted', async ({ page }) => {
         // Over the 120 s project default: a real CAA queue drain for every
         // rendered row has to finish before the sort can even be triggered.
-        test.setTimeout(300000);
+        test.setTimeout(CAA_SETTLE_MS + 300000);
 
         const pageErrors = collectPageErrors(page);
 
-        await loadUserscriptPageWithRealNetwork(page, { url: ARTIST_RELEASES_URL, testMode: true });
+        await loadUserscriptPageWithRealNetwork(page, {
+            url: ARTIST_RELEASES_URL, testMode: true, settingsOverride: SETTINGS_OVERRIDE,
+        });
 
         const showAllBtn = page.locator(SHOW_ALL_BUTTON);
         await expect(showAllBtn).toBeVisible();
         await showAllBtn.click();
 
-        await expect(page.locator('#mb-filter-container')).toBeVisible({ timeout: 120000 });
-        await waitForCaaEaaComplete(page, { timeout: 180000 });
+        // Cut a paginated artist down to a measurable size with the real Stop
+        // button. Generous timeout: on a large artist the first page fetch
+        // alone can take a while to report progress.
+        if (STOP_AFTER_PAGES > 0) {
+            await stopAfterPages(page, { n: STOP_AFTER_PAGES, timeout: 300000 });
+        }
+
+        await expect(page.locator('#mb-filter-container')).toBeVisible({ timeout: 180000 });
+        await waitForCaaEaaComplete(page, { timeout: CAA_SETTLE_MS });
 
         // Baseline: how many icons are actually carrying a thumbnail right
         // now. NOT every row has one — a release with no cover art in the
@@ -224,6 +279,14 @@ test.describe('CAA icon column survives a sort (single-table)', { tag: '@extende
             (window.__artBigboxObs || []).forEach((o) => o.disconnect());
             return window.__artInsertProbe;
         });
+
+        console.log('[single-probe] ' + JSON.stringify({
+            beforePainted: paintedBefore,
+            beforeInlineThumbs: before.inlineThumbs,
+            beforeBigboxWrappers: before.bigboxWrappers,
+            rowsBefore,
+            ...probe,
+        }, null, 2));
 
         // The sort must actually have re-inserted rows, or there is nothing
         // to have measured.

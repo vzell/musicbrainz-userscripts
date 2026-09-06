@@ -75,10 +75,14 @@ function buildPassthroughGmXhrScript() {
  * the CAA network" requirement) needed the identical pattern.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{ url: string, testMode?: boolean }} opts
+ * @param {{ url: string, testMode?: boolean, settingsOverride?: Object }} opts
+ *   `settingsOverride` seeds GM storage exactly as `loadUserscriptPage()`'s
+ *   option of the same name does — this loader had no way to set a setting,
+ *   so a live spec could not switch on e.g. `sa_enable_debug_logging` or
+ *   force a feature flag the way a fixture spec can.
  * @returns {Promise<void>}
  */
-async function loadUserscriptPageWithRealNetwork(page, { url, testMode }) {
+async function loadUserscriptPageWithRealNetwork(page, { url, testMode, settingsOverride = {} }) {
     const context = page.context();
 
     await page.exposeFunction('__realGmFetch', async (fetchUrl) => {
@@ -94,7 +98,7 @@ async function loadUserscriptPageWithRealNetwork(page, { url, testMode }) {
     if (testMode) {
         await page.addInitScript({ content: 'window.__SA_TEST_MODE__ = true;' });
     }
-    await page.addInitScript({ content: buildGmStubsScript({}) });
+    await page.addInitScript({ content: buildGmStubsScript(settingsOverride) });
     await page.addInitScript({ content: buildPassthroughGmXhrScript() });
 
     await page.goto(url);
