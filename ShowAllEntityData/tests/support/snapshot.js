@@ -201,6 +201,29 @@ const GENERIC_SCRUB_RULES = [
     // anchored on " left" rather than a label-prefix match, since "- " on
     // its own is too generic a prefix to be a safe match anchor.
     (html) => html.replace(/\d+(?:\.\d+)?s left/g, '[SCRUBBED] left'),
+    // jQuery UI's auto-incrementing `ui-id-N`, which MusicBrainz's own page JS
+    // hands out in a nondeterministic ORDER. On a release page the empty
+    // `ui-autocomplete` <ul> and the `artwork-dialog` race to claim ui-id-1/2/3,
+    // so two back-to-back captures of an unchanged page came out the same byte
+    // length with those ids permuted — reported as "raw.html changed — check if
+    // MB updated the page" on nearly every run, which is exactly the verdict
+    // that then cannot be trusted when MB really does change something.
+    //
+    // TWO rules, because normalising the id VALUE alone is NOT enough: the
+    // scaffold <ul> also MOVES, landing before the dialog in one run and after
+    // it in the next (verified by scrubbing two real captures and diffing —
+    // still differed, as a delete/insert pair of that element). Dropping it
+    // removes both the id and the position; it is an empty, display:none
+    // placeholder jQuery UI appends for autocomplete menus and carries no
+    // information about the page or about this script.
+    //
+    // Scoped to an EMPTY <ul> on purpose: a populated autocomplete menu would
+    // be real content and must survive.
+    (html) => html.replace(
+        /<ul\b[^>]*\bclass="[^"]*\bui-autocomplete\b[^"]*"[^>]*>\s*<\/ul>/g,
+        ''
+    ),
+    (html) => html.replace(/ui-id-\d+/g, 'ui-id-SCRUBBED'),
 ];
 
 /**
