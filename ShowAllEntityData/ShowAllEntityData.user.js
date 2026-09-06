@@ -59417,7 +59417,43 @@ a { color: #1565c0; }`;
         const bg = span.style.backgroundImage;
         if (!bg) return false;
         const m = bg.match(/url\(\s*["']?(blob:[^"')]+)/);
-        return !!m && _artIdbBlobUrls.has(m[1]);
+        return !!m && _artIsLiveBlobUrl(m[1]);
+    }
+
+    /**
+     * Reports whether a URL string is an object URL this session created and
+     * has not yet revoked.
+     *
+     * `_artIdbBlobUrls` is the only authority for this. A `blob:`-shaped string
+     * proves nothing on its own: it outlives the object it named, surviving in
+     * a serialised style or `src` attribute long after the `pagehide` that
+     * revoked it, so a prefix test alone would happily "preserve" a broken
+     * image.
+     *
+     * @param {string} url
+     * @returns {boolean}
+     */
+    function _artIsLiveBlobUrl(url) {
+        return !!url && url.startsWith('blob:') && _artIdbBlobUrls.has(url);
+    }
+
+    /**
+     * Reports whether an inline-thumbnail placeholder is currently displaying
+     * an image from a still-live object URL.
+     *
+     * The `<img>.src` twin of `_artIconBackgroundIsLiveBlob()`, and the same
+     * question `_artInitInlinePics()`'s Case C1 asks as `blobIsAlive` — C1 is
+     * in fact what consumes this: leaving such a placeholder in place makes
+     * that cell fall into Case C on the next pass (the `done` marker is still
+     * stripped), where C1 re-wires the hover listeners and keeps the image
+     * rather than re-fetching it.
+     *
+     * @param {HTMLElement} ph - A `.mb-caa-inline-ph` / `.mb-eaa-inline-ph` span.
+     * @returns {boolean}
+     */
+    function _artInlinePhIsLiveBlob(ph) {
+        const img = ph.querySelector('img');
+        return !!img && _artIsLiveBlobUrl(img.src);
     }
 
     /**
@@ -59567,7 +59603,23 @@ a { color: #1565c0; }`;
         const _hadInlineArtPh = !!el.querySelector('.mb-caa-inline-ph, .mb-eaa-inline-ph');
 
         // Inline-thumbnail placeholder spans (_artInitInlinePics re-injects them)
-        el.querySelectorAll('.mb-caa-inline-ph, .mb-eaa-inline-ph').forEach(ph => ph.remove());
+        //
+        // With preserveLiveArt, a placeholder still showing an image from a
+        // live object URL is kept instead of being deleted and re-injected —
+        // that delete/re-inject cycle is what made every inline thumbnail
+        // vanish and pop back on each keystroke and each sort.
+        //
+        // The `done` marker is deliberately still deleted above: this cell must
+        // land in _artInitInlinePics()'s Case C, not Case A. Case A is the
+        // "already processed, skip" branch and does NOT re-wire, which would
+        // leave the surviving thumbnail with dead hover listeners
+        // (cloneNode(true) copies no listeners). Case C1 is the branch that
+        // re-wires hover + bigbox tooltip, keeps the live image, and only then
+        // stamps the marker — precisely the behaviour wanted here.
+        el.querySelectorAll('.mb-caa-inline-ph, .mb-eaa-inline-ph').forEach(ph => {
+            if (preserveLiveArt && _artInlinePhIsLiveBlob(ph)) return;
+            ph.remove();
+        });
         // NOTE: .mb-inline-art-sort-key spans are intentionally NOT removed here.
         // In the multi-table (addCAA) path runFilter() clones rows and calls
         // _stripTransientCellState() before testRowMatch(); removing the sort-key span

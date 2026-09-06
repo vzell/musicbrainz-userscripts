@@ -67,12 +67,16 @@ const SORT_COLUMN = 'Date';
  */
 async function installInsertionProbe(page) {
     await page.evaluate(() => {
-        window.__artInsertProbe = { iconsSeen: 0, iconsPaintedAtInsert: 0 };
+        window.__artInsertProbe = {
+            iconsSeen: 0, iconsPaintedAtInsert: 0, inlineThumbsAtInsert: 0,
+        };
         const table = document.querySelector('table.tbl');
         const obs = new MutationObserver((muts) => {
             for (const m of muts) {
                 for (const node of m.addedNodes) {
                     if (node.nodeType !== 1 || node.tagName !== 'TR') continue;
+
+                    // CAA/EAA column icon: thumbnail painted as a CSS background.
                     const icons = node.querySelectorAll('span.caa-icon, span.eaa-icon, span.artwork-icon');
                     for (const i of icons) {
                         window.__artInsertProbe.iconsSeen++;
@@ -80,6 +84,14 @@ async function installInsertionProbe(page) {
                             window.__artInsertProbe.iconsPaintedAtInsert++;
                         }
                     }
+
+                    // Inline thumbnails injected into the Release column
+                    // (artist-releases declares addCAA: 'Release'). These are
+                    // real <img> elements inside a placeholder span, so a
+                    // surviving one still carries its blob: src on arrival.
+                    window.__artInsertProbe.inlineThumbsAtInsert += node.querySelectorAll(
+                        '.mb-caa-inline-ph img[src^="blob:"], .mb-eaa-inline-ph img[src^="blob:"]'
+                    ).length;
                 }
             }
         });
@@ -114,11 +126,18 @@ test.describe('CAA icon column survives a sort (single-table)', { tag: '@extende
         // Also guards against a vacuous pass: if nothing ever got painted (no
         // network, no artwork at all), the assertion below could not fail no
         // matter how the code behaved.
-        const paintedBefore = await page.evaluate(() =>
-            Array.from(document.querySelectorAll('table.tbl tbody span.caa-icon'))
-                .filter((i) => /url\(/.test(i.style.backgroundImage || '')).length
-        );
+        const before = await page.evaluate(() => ({
+            painted: Array.from(document.querySelectorAll('table.tbl tbody span.caa-icon'))
+                .filter((i) => /url\(/.test(i.style.backgroundImage || '')).length,
+            inlineThumbs: document.querySelectorAll(
+                'table.tbl tbody .mb-caa-inline-ph img[src^="blob:"], ' +
+                'table.tbl tbody .mb-eaa-inline-ph img[src^="blob:"]'
+            ).length,
+        }));
+        const paintedBefore = before.painted;
         expect(paintedBefore, 'no artwork was painted before the sort — the probe would be vacuous')
+            .toBeGreaterThan(0);
+        expect(before.inlineThumbs, 'no inline thumbnails loaded — that probe would be vacuous')
             .toBeGreaterThan(0);
 
         const rowsBefore = await getPageRowCount(page);
@@ -150,6 +169,11 @@ test.describe('CAA icon column survives a sort (single-table)', { tag: '@extende
         // The fix. Before it this was 0 — every icon arrived blank and was
         // repainted afterwards, one queue task at a time.
         expect(probe.iconsPaintedAtInsert).toBe(paintedBefore);
+
+        // Same story for the inline thumbnails in the Release column, which
+        // were deleted outright by the strip and re-injected afterwards.
+        // Before the fix this was 0.
+        expect(probe.inlineThumbsAtInsert).toBe(before.inlineThumbs);
 
         // ── The completion pass after a memory-only re-render ────────────────
         //

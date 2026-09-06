@@ -1,5 +1,19 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Inline CAA/EAA thumbnails (the small images injected into the Release/Title column) no longer vanish and pop back on every sort and every filter keystroke on `tableMode: 'single'` pages. `_stripTransientCellState()` deleted each `.mb-caa-inline-ph`/`.mb-eaa-inline-ph` placeholder outright — taking its `<img>` with it — and `_artInitInlinePics()` then re-injected and re-resolved every one of them. As with the icon column, nothing was re-fetched: the images came back out of the session memory cache. Under `preserveLiveArt`, a placeholder still showing an image from a live object URL is now kept.",
+          "The `done` marker (`data-caa-inline-done`) is deliberately still stripped, which is what makes the surviving placeholder correct rather than merely present. Keeping both marker and placeholder would land the cell in `_artInitInlinePics()`'s Case A — the \"already processed, skip\" branch, which does NOT re-wire — leaving a thumbnail that looks perfect but whose hover preview is dead, since `cloneNode(true)` copies no listeners. Stripping the marker routes the cell into Case C1 instead: re-wire hover and bigbox tooltip, keep the live image, skip the fetch, and only then stamp the marker. That branch already existed and already did exactly this; it was simply unreachable from the re-render path, because the placeholder it needs had been deleted a moment earlier.",
+          "New shared `_artIsLiveBlobUrl()` underpins both liveness checks (`_artIconBackgroundIsLiveBlob()` for the icon column's CSS background, `_artInlinePhIsLiveBlob()` for an inline placeholder's `<img>.src`), so \"is this object URL still ours\" is answered in exactly one place."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-09-06",
     "sections": [
