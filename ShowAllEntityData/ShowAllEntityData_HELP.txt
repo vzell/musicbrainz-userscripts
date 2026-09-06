@@ -857,6 +857,31 @@ Two details worth knowing:
 Turning the feature off in ⚙️ Settings removes the toggle entirely and
 leaves the column exactly as MusicBrainz renders it.
 
+MULTI-ROW CELLS FROM REPEATED-SUBJECT ROWS
+--------------------------------------------
+Some MusicBrainz listings paginate by one entity but render one table row per
+PAIR of entities, showing the shared subject's columns only on the first row
+and leaving them blank (as one spanning empty cell) on every row after it.
+The recording search results (/search?type=recording) are the main example:
+the page counts 25 RECORDINGS per page, but a recording that appears on five
+releases occupies five rows.
+
+Those trailing rows are folded back into the row they belong to, so you get
+one row per recording with "Release", "Track", "Medium" and "Type" rendered
+as ordinary multi-row cells:
+
+  • The rendered row count matches MusicBrainz's own "Found N results".
+  • Each cell collapses to its first entry behind a ▶ N ▤ toggle, and
+    responds to the column-header and global expand/collapse buttons, just
+    like Catalog#/Label do elsewhere.
+  • The four columns stay row-aligned with each other: entry 3 of "Track"
+    always belongs to entry 3 of "Release".
+  • Every release keeps its own inline cover-art thumbnail and its own ▶
+    entity-page toggle.
+  • A recording with a single release has exactly the same cell structure as
+    one with ten, so filtering by cell structure and the 📊 unique-values
+    dropdown behave consistently across the whole table.
+
 ANNOTATION COLUMNS  (📝 ANNOTATION COLUMNS in ⚙️ Settings)
 ------------------------------------------------------------
 Free-text columns declared as collapsable (e.g. "Annotation" on report pages

@@ -1,0 +1,43 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Recording search results (`/search?type=recording`) rendered every release after a recording's first one as a broken row. MusicBrainz paginates those results by RECORDING (25 per page) but emits one `<tr>` per (recording, release) pair, with the recording's own four columns rendered only on the first — every further release arrives as a \"continuation\" row whose leading four columns are a single empty `<td colspan=\"4\">`. That row has 5 cells for an 8-column table, and the row-import loop addresses cells POSITIONALLY, so all of its content was read four columns to the left: release TITLES landed in the Length column, Track in Artist, Medium in ISRCs, Type in Release. Page 1 of a `roulette` search is 25 real rows plus 17 of these.",
+          "The most expensive part of that was invisible as a cause: a release title inside the Length column was wrapped in that column's `:`-alignment spans, which made `finalizeSplitAlignedColumns` size EVERY Length cell in the table to the longest title — 51ch — and blew the rendered table out to 5557 px wide."
+        ]
+      },
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New page-definition feature `mergeContinuationRows`, enabled on the recording search results. A continuation row is now folded into the preceding data row instead of being imported as its own, one extra `<li>` per column, so \"Release\", \"Track\", \"Medium\" and \"Type\" become multi-row cells with the collapse toggles, per-cell counts, filter-match tinting and unique-values entries every other multi-row column already has. The rendered row count is now exactly MusicBrainz's own \"Found N results\", instead of that plus one broken row per extra release.",
+          "The merged columns are derived from the data, not declared: they are exactly the columns NOT covered by the continuation row's own `colSpan`, which is what MusicBrainz's markup already says they are. The detection (`_isContinuationRow`) is structural — an empty spanning first cell — rather than keyed on a page type, so the feature is a flag away for any other page MusicBrainz renders this way.",
+          "The four columns are also declared in `renderMultiRowCell`, which is what gives EVERY row the same uniform `<ul><li>` shape — a recording with one release now has exactly the cell structure of one with ten, which is what `_classifyCollapseCell`, `testRowMatch` and the statistics panel all assume. It is safe against comma-splitting here because a release title lives inside `<a><bdi>…</bdi></a>`, an element child rather than a top-level text node, so a title like \"2001-12-06: Copper Dragon, Carbondale, IL, USA\" is left whole.",
+          "Two features fall out for free, because both already understood `ul > li` cells: each release in a merged cell gets its own inline cover-art thumbnail (`_artInitInlinePics`) and its own ▶ entity-page toggle (`initExpandRGsFeature`)."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "`finalizeRLCColumnWidths()` now sizes an L/R/C integer column from the longest SINGLE list item rather than the cell's concatenated text (new `_rlcValueLength()` helper). \"Track\" and \"Medium\" are integer columns AND multi-row columns on this page, so the old measurement read a three-release cell as `\"7/1012/254/9\"` — 12 characters instead of 5 — and stretched the whole column by a factor of the row count. Each `<li>` is its own visual line inside the value span, so the longest item is the width the column actually needs."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The merge reuses the ordinary pipeline rather than reimplementing it: `_buildContinuationSourceRow()` pads the continuation row back out to the table's ORIGINAL, pre-deletion column indices (`colSpan` empty leading cells, then its own trailing cells), which lets `applyColumnErasers()` and `applyRenderMultiRowCells()` run over it verbatim with their already-resolved `colIdx` values. The destination index is then computed by subtracting the excluded columns that precede it — the base row is already post-`deleteCell` — rather than assuming `indicesToExclude` is empty, so a foreign userscript column or a setting-gated removal (Rating, checkbox-cell) can't silently shift the merge one column over.",
+          "Exactly one `<li>` is appended per column per continuation row, empty when the source cell is empty, so the four parallel lists stay row-aligned with each other. A destination column that is NOT declared in `renderMultiRowCell` has its existing content wrapped on the fly, so the feature degrades to \"correct, just only wrapped where a merge happened\" instead of dropping data."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "New \"MULTI-ROW CELLS FROM REPEATED-SUBJECT ROWS\" section in the help text, and a dated `debug/NOTES.md` entry recording the two snapshots this was diagnosed from and why the symptom looked like a Length-column bug."
+        ]
+      }
+    ]
+  }
+]

@@ -7252,3 +7252,68 @@ waits for at least 3 popup cells to reach `data-rel-done="1"` and asserts
 none carry duplicate `<a>` hrefs. Confirmed failing pre-fix (reproduced
 the exact `debug/work-rec-double-relationships.html` duplicate) and
 passing post-fix.
+
+## 2026-09-06 — search?type=recording continuation rows shifted four columns left (fixed)
+
+**Snapshots**: `debug/search-recordings-initial.html` (native page 1) and
+`debug/search-recordings-final.html` (after "Show all Search Results for
+Recordings"), both for
+`https://musicbrainz.org/search?query=roulette&type=recording&method=indexed`.
+
+**Shape**: MusicBrainz paginates these results by RECORDING — "Found 5,362
+results" over 215 pages, 25 per page — but renders one `<tr>` per
+*(recording, release)* pair. The recording's own four columns (Name, Length,
+Artist, ISRCs) appear only on the first release's row; every further release
+is a **continuation row**:
+
+```html
+<tr><td colspan="4">&nbsp;</td>
+    <td>…release…</td><td>7/10</td><td>4</td><td>Album + Compilation</td></tr>
+```
+
+Page 1 of the initial snapshot is 42 `<tr>`: **25 base rows + 17 continuation
+rows**. Because pagination is per recording, a recording's continuation rows
+are always on the same page as its base row — there is no page-boundary case
+to carry across a fetch.
+
+**Root cause**: the row-import loop had no notion of a continuation row. Such a
+row has `cells.length === 5 > 1`, so it passed the generic data-row test, was
+imported, and then had its cells addressed **positionally** — `row.cells[colIdx]`
+ignores `colSpan` entirely. Everything on it read four columns to the left:
+release title → Length, Track → Artist, Medium → ISRCs, Type → Release.
+
+**Why the symptom looked like a Length-column bug**: with a release title
+sitting in the Length column, `applyIntegerColumnStyling` wrapped it in that
+column's `align: ':'` split spans, and `finalizeSplitAlignedColumns` then sized
+*every* Length cell in the table to the longest title — visible in the final
+snapshot as `min-width: 51ch` on `.mb-ic-right` and a 5557 px-wide table. The
+misaligned Medium/Type values also picked up `.mb-text-clamp-marker` prose
+wrappers, because a bare non-list cell in a `collapsableColumns` column is a
+prose candidate.
+
+**Fix**: new `features.mergeContinuationRows` (enabled on the search pageType's
+`Recordings` entityFeatures), plus `_isContinuationRow()` /
+`_buildContinuationSourceRow()` / `_mergeContinuationRowInto()`. A continuation
+row is folded into the preceding data row, one extra `<li>` per column, and the
+four release-side columns are declared in `renderMultiRowCell` so every row —
+including single-release ones — carries the same `<ul><li>` shape. Detection is
+structural (an empty spanning first cell), not keyed on the page type.
+
+Two things fell out for free because both already handled `ul > li` cells:
+`_artInitInlinePics()` gives each release in a merged cell its own inline
+thumbnail, and `initExpandRGsFeature()` gives each its own ▶ toggle.
+
+**Also fixed alongside**: `finalizeRLCColumnWidths()` sized an L/R/C integer
+column from `span.textContent`, which on a merged cell is the *concatenation*
+of every `<li>` — a three-release "Track" cell read as `"7/1012/254/9"`, 12
+chars instead of 5. New `_rlcValueLength()` measures the longest single `<li>`
+instead. This only ever mattered for a column that is both an `integerColumns`
+and a multi-row column, which "Track"/"Medium" here are the first instance of.
+
+**Regression test**: `tests/fixtures/search-recordings-continuation.{html,spec.js}`
+— hand-trimmed 3-recording fixture (3 releases / 2 releases / 1 release).
+Asserts 3 rendered rows rather than 6, no surviving `td[colspan]`, every row's
+Length parsing as `M:SS` (the direct assertion against the shift), the per-column
+`<li>` counts, that the four columns stay row-aligned, that a comma-bearing
+release title is not comma-split, and the 5ch `min-width` on the Track value
+span. Confirmed failing pre-fix (6 rows) and passing post-fix.

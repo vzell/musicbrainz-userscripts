@@ -12319,6 +12319,34 @@
     }
 
     /**
+     * _rlcValueLength — the character count `finalizeRLCColumnWidths` should
+     * size an L/R/C integer column from, for one `.mb-ic-val` value span.
+     *
+     * For an ordinary single-value cell that is simply the span's own text.
+     * For a MULTI-ROW cell — an integer column that is ALSO a
+     * `renderMultiRowCell` / `mergeContinuationRows` column, e.g. "Track" and
+     * "Medium" on the recording search results — `span.textContent` is the
+     * CONCATENATION of every `<li>` ("7/10" + "12/25" + "4/9" → 12 chars where
+     * the widest single value is 5), which would blow the column's `min-width`
+     * out by a factor of the row count. Each `<li>` is its own visual line inside the
+     * inline-block span, so the width the column actually needs is the LONGEST
+     * SINGLE item.
+     *
+     * `applyIntegerColumnStyling` moves the cell's whole content into the span,
+     * so the list — when there is one — is always inside it.
+     *
+     * @param   {HTMLElement} span  A `.mb-ic-val` value span.
+     * @returns {number}            Character count to size the column from.
+     */
+    function _rlcValueLength(span) {
+        const lis = span.querySelectorAll(':scope > ul > li, :scope > ol > li');
+        if (!lis.length) return span.textContent.trim().length;
+        let maxLen = 0;
+        lis.forEach(li => { maxLen = Math.max(maxLen, li.textContent.trim().length); });
+        return maxLen;
+    }
+
+    /**
      * finalizeRLCColumnWidths — pass 2 for L / R / C integer columns.
      *
      * For each L/R/C integerColumns descriptor, scans all collected rows to
@@ -12327,6 +12355,9 @@
      * horizontal block.  Without this pass a right-aligned '86' and '124'
      * would sit at different positions even though both spans are centred
      * in the <td>, because the spans auto-size to content width.
+     *
+     * MULTI-ROW cells are measured per `<li>`, not per cell — see
+     * `_rlcValueLength()`.
      *
      * @param {HTMLTableRowElement[]}                                       rows
      * @param {Array<{sourceColumn: string, align: string, colIdx: number}>} descriptors
@@ -12344,7 +12375,7 @@
                 if (!cell) continue;
                 const span = cell.querySelector('.mb-ic-val');
                 if (!span) continue;
-                const len = span.textContent.trim().length;
+                const len = _rlcValueLength(span);
                 if (len > maxLen) maxLen = len;
             }
             if (maxLen === 0) continue;
@@ -12498,6 +12529,170 @@
 
             Lib.debug('extract', `renderMultiRowCell: column "${entry.columnName}" (colIdx=${entry.colIdx}) — wrapped into ${nonEmptyGroups.length} li row(s)`);
         }
+    }
+
+    /**
+     * _isContinuationRow — recognises a MusicBrainz "continuation" row: a `<tr>`
+     * that is NOT a data row of its own but the tail of the preceding one.
+     *
+     * MusicBrainz emits this shape whenever one subject entity maps to several
+     * rows' worth of trailing data and the leading columns would just repeat.
+     * The recording search results (`/search?type=recording`) are the canonical
+     * case — the page paginates by RECORDING, but renders one `<tr>` per
+     * (recording, release) pair, with the recording's own four columns rendered
+     * only on the first:
+     *
+     * ```html
+     * <tr><td>…Roulette…</td><td>3:42</td><td>…artist…</td><td>…isrcs…</td>
+     *     <td>…release 1…</td><td>7/10</td><td>4</td><td>Album</td></tr>
+     * <tr><td colspan="4">&nbsp;</td>
+     *     <td>…release 2…</td><td>7/10</td><td>4</td><td>Album</td></tr>
+     * ```
+     *
+     * Such a row has FEWER cells than the table has columns, so the row-import
+     * loop's positional `row.cells[colIdx]` addressing silently reads every cell
+     * from the wrong column — see `_mergeContinuationRowInto` for the fix and
+     * debug/NOTES.md for what that looked like in the rendered output.
+     *
+     * Deliberately structural (an empty spanning first cell) rather than keyed
+     * on a page type: it is the only shape that can carry this meaning, and the
+     * feature is gated by `features.mergeContinuationRows` at the call site.
+     *
+     * Note on the emptiness test: MusicBrainz fills the spanned cell with a
+     * single `&nbsp;` (U+00A0), which `String.prototype.trim()` DOES strip —
+     * U+00A0 is `<NBSP>` in the spec's WhiteSpace set — so no explicit NBSP
+     * handling is needed here.
+     *
+     * @param   {HTMLTableRowElement} tr
+     * @returns {boolean}
+     */
+    function _isContinuationRow(tr) {
+        if (!tr || !tr.cells || tr.cells.length < 2) return false;
+        const first = tr.cells[0];
+        if (!first || first.colSpan <= 1) return false;
+        return !first.textContent.trim() && !first.firstElementChild;
+    }
+
+    /**
+     * _buildContinuationSourceRow — pads a continuation row (see
+     * `_isContinuationRow`) into a detached `<tr>` whose cell indices line up
+     * with the ORIGINAL, pre-deletion header indices of the table.
+     *
+     * The spanned leading cell is replaced by `colSpan` individual empty `<td>`s
+     * and the row's own trailing cells are cloned in after them, so
+     * `padded.cells[i]` addresses header `i` exactly the way a real data row's
+     * cells do at that stage of the pipeline. That alignment is the whole point:
+     * it lets `_mergeContinuationRowInto` run the ordinary
+     * `applyColumnErasers()` / `applyRenderMultiRowCells()` helpers over the
+     * continuation data verbatim, with their already-resolved (pre-deletion)
+     * `colIdx` values, instead of reimplementing either one for this shape.
+     *
+     * @param   {HTMLTableRowElement} contRow
+     * @returns {HTMLTableRowElement} Detached, never inserted into the document.
+     */
+    function _buildContinuationSourceRow(contRow) {
+        const padded = document.createElement('tr');
+        const span   = contRow.cells[0].colSpan;
+        for (let i = 0; i < span; i++) padded.appendChild(document.createElement('td'));
+        for (let i = 1; i < contRow.cells.length; i++) {
+            padded.appendChild(contRow.cells[i].cloneNode(true));
+        }
+        return padded;
+    }
+
+    /**
+     * _mergeContinuationRowInto — folds one continuation row's trailing cells
+     * into the preceding data row, one extra `<li>` per column.
+     *
+     * Enabled per page via `features.mergeContinuationRows`. The columns that
+     * get merged are derived from the data, not declared: they are exactly the
+     * columns NOT covered by the continuation row's leading `colSpan`, which is
+     * what MusicBrainz's own markup already says they are.
+     *
+     * The destination cells are expected to already hold a `<ul>` — declare the
+     * same columns in `features.renderMultiRowCell` and every row gets that
+     * uniform `<ul><li>` shape, including the ones with no continuation rows at
+     * all (see `applyRenderMultiRowCells`' "always wrap non-empty cells" note
+     * for why that consistency matters to `_classifyCollapseCell`, `testRowMatch`
+     * and the statistics panel). A destination with no `<ul>` is still handled —
+     * its existing content is wrapped on the fly — so an undeclared column
+     * degrades to "correct but only wrapped where a merge happened" rather than
+     * losing data.
+     *
+     * EXACTLY ONE `<li>` is appended per column per continuation row, empty when
+     * the source cell is empty, so the parallel lists in the merged columns stay
+     * row-aligned with each other.
+     *
+     * `baseRow` is already POST-deletion (the row-import loop has run
+     * `deleteCell` over `indicesToExclude` by the time it is in `allRows` /
+     * `groupedRows`), while `padded`/`headerCount`/`indicesToExclude` are all
+     * pre-deletion, so each destination index is computed by subtracting the
+     * excluded columns that precede it. Doing the arithmetic rather than
+     * assuming `indicesToExclude` is empty keeps this correct on a page where a
+     * foreign userscript column or a setting-gated removal (Rating,
+     * checkbox-cell, …) shifts everything left.
+     *
+     * @param {HTMLTableRowElement} baseRow          The preceding, fully-processed data row.
+     * @param {HTMLTableRowElement} contRow          The raw continuation row from the fetched document.
+     * @param {number}              headerCount      Number of ORIGINAL (pre-deletion) columns.
+     * @param {number[]}            indicesToExclude Original indices deleted from every data row.
+     */
+    function _mergeContinuationRowInto(baseRow, contRow, headerCount, indicesToExclude) {
+        const padded = _buildContinuationSourceRow(contRow);
+
+        // Reuse the ordinary pipeline on the padded row so the merged content is
+        // cleaned and shaped exactly like the base row's own cells were.
+        applyColumnErasers(padded, activeColumnErasers);
+        applyRenderMultiRowCells(padded, activeRenderMultiRowCols);
+
+        const excluded = new Set(indicesToExclude);
+        const startCol = contRow.cells[0].colSpan;
+        let mergedCols = 0;
+
+        for (let i = startCol; i < headerCount && i < padded.cells.length; i++) {
+            if (excluded.has(i)) continue;
+
+            let dstIdx = i;
+            for (const ex of excluded) if (ex < i) dstIdx--;
+
+            const src = padded.cells[i];
+            const dst = baseRow.cells[dstIdx];
+            if (!src || !dst) continue;
+
+            // Both shapes a renderMultiRowCell <ul> can be in at this point, and
+            // ONLY those: applyRenderMultiRowCells appends it as a direct child of
+            // the <td>, and applyIntegerColumnStyling (integer columns only) then
+            // moves it inside the cell's .mb-ic-val inline-block wrapper. A bare
+            // querySelector('ul') would also match a NATIVE nested list further
+            // down an undeclared column's cell and append into that instead.
+            let dstUl = dst.querySelector(':scope > ul, :scope > .mb-ic-val > ul');
+            if (!dstUl) {
+                // Column not declared in renderMultiRowCell — wrap whatever the
+                // base cell holds so the merge still has somewhere to append.
+                dstUl = document.createElement('ul');
+                const li0 = document.createElement('li');
+                while (dst.firstChild) li0.appendChild(dst.firstChild);
+                dstUl.appendChild(li0);
+                dst.appendChild(dstUl);
+            }
+
+            const srcUl = src.querySelector('ul');
+            if (srcUl && srcUl.children.length) {
+                Array.from(srcUl.children).forEach(li => dstUl.appendChild(li));
+            } else {
+                // Either an unwrapped cell (column not in renderMultiRowCell) or
+                // an empty one — a single <li> either way, so the columns stay
+                // row-aligned.
+                const li = document.createElement('li');
+                while (src.firstChild) li.appendChild(src.firstChild);
+                dstUl.appendChild(li);
+            }
+            mergedCols++;
+        }
+
+        Lib.debug('parse',
+            `mergeContinuationRows: folded a continuation row into row idx=${baseRow.dataset.mbRowIdx} ` +
+            `(${mergedCols} column(s), from original column ${startCol})`);
     }
 
     // --- Configuration: Page Definitions ---
@@ -14236,7 +14431,18 @@
                     syntheticColumnExtractors: [
                         { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                     ],
-                    collapsableColumns: [ 'ISRCs', 'Release' ],
+                    // MusicBrainz paginates these results by RECORDING (25 per page)
+                    // but renders one <tr> per (recording, release) pair — every
+                    // release after the first arrives as a continuation row whose
+                    // leading four columns are one empty <td colspan="4">. Fold those
+                    // back into the preceding row (see _isContinuationRow /
+                    // _mergeContinuationRowInto); renderMultiRowCell gives all four
+                    // release-side columns the uniform <ul><li> shape the merge appends
+                    // into, so a single-release recording has exactly the same cell
+                    // structure as a ten-release one.
+                    mergeContinuationRows: true,
+                    renderMultiRowCell: [ 'Release', 'Track', 'Medium', 'Type' ],
+                    collapsableColumns: [ 'ISRCs', 'Release', 'Track', 'Medium', 'Type' ],
                     msTrackLengthBatch: true,   // results span every entity — see _msLengthSource()
                     integerColumns: [
                         { sourceColumn: 'Medium', align: 'R' },
@@ -44326,6 +44532,31 @@ a { color: #1565c0; }`;
                                     // fills each subsequent row's empty first <td> from it.
                                     pendingUrlLinkedGroupCell = node.cells[0].cloneNode(true);
                                     // Skip — do not add to allRows
+                                } else if (activeDefinition.features?.mergeContinuationRows &&
+                                           _isContinuationRow(node)) {
+                                    // ── Continuation row: the tail of the PRECEDING data row ──────
+                                    // MusicBrainz renders one <tr> per (subject, target) pair while
+                                    // paginating by SUBJECT, so every target after the first arrives
+                                    // as a row whose leading columns are one empty <td colspan="N">
+                                    // (see _isContinuationRow). It has fewer cells than the table has
+                                    // columns, so the data-row branch below would import it and then
+                                    // address every cell from the wrong column — on the recording
+                                    // search results that put release TITLES into the Length column.
+                                    // Fold it into the preceding row instead, one extra <li> per
+                                    // merged column. Same both-tableModes "last data row" idiom as
+                                    // the cdtoc tracklist branch above.
+                                    const _contBaseRow = (activeDefinition.tableMode === 'multi')
+                                        ? (groupedRows.length > 0
+                                            ? groupedRows[groupedRows.length - 1].rows[groupedRows[groupedRows.length - 1].rows.length - 1]
+                                            : null)
+                                        : (allRows.length > 0 ? allRows[allRows.length - 1] : null);
+
+                                    if (_contBaseRow) {
+                                        _mergeContinuationRowInto(_contBaseRow, node, headerNames.length, indicesToExclude);
+                                    } else {
+                                        Lib.warn('parse', 'mergeContinuationRows: continuation row with no preceding data row — dropped');
+                                    }
+                                    // Skip — do not add to allRows / groupedRows
                                 } else if (
                                     (node.cells.length > 1 ||
                                      // Allow single-cell rows only when the cell does NOT span multiple
