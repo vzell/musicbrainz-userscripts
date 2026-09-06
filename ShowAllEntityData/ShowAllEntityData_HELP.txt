@@ -762,6 +762,11 @@ Clicking it re-renders the whole column at full precision ("4:50.160");
 clicking again restores exactly what MusicBrainz had rendered.  The toggle
 is page-wide, so on a multi-medium release every medium switches together
 rather than leaving one disc reading seconds and another milliseconds.
+On a release tracklist showing the "Recording length" column (see
+RELEASE-TRACKS PAGE above) the same single button switches BOTH duration
+columns at once — comparing the two at different precisions would be
+meaningless, and it is at millisecond precision that most of their
+differences actually show up ("4:50.293" vs "4:49.826" both round to "4:50").
 
 Every table starts in seconds, including a sub-table opened in its own tab
 via "Show all N rows" — even when milliseconds were showing on the page you
@@ -778,7 +783,8 @@ is fetched at all:
 
   • Release pages (a release's own tracklist) cost nothing — the millisecond
     values are already embedded in the page MusicBrainz served, so the
-    toggle switches instantly and no request is ever made.
+    toggle switches instantly and no request is ever made.  That same
+    embedded data is what the "Recording length" column is built from.
 
   • Work, artist-relationships, place-performances and area-recordings pages
     carry no sub-second data of their own, but every recording they list
@@ -959,6 +965,65 @@ standard filterable/sortable multi-table view (one sub-table per medium).
   is credited to someone other than the release's own artist, e.g. a
   cover/guest performance), and Streaming/Downloads (from the third-party
   "MB: Inline per-recording streaming & download links" userscript).
+• "Recording length" column — MusicBrainz stores TWO lengths for a track and
+  the "Length" column only shows one of them.  "Length" is the track length,
+  this release's own value; the recording each track links to carries its
+  own length, shared by every release that uses that recording.  When at
+  least one track on the release has a recording length that disagrees with
+  its track length, a "Recording length" column is added immediately after
+  "Length" so the two read side by side:
+
+      #   Title                        Length   Recording length
+      A2  Tenth Avenue Freeze-Out       3:12         3:11
+      B3  Meeting Across the River      3:19         3:16
+
+  The values come from the release data MusicBrainz already embeds in the
+  page, so nothing is fetched.  Where the two agree on every track the
+  column is not added at all, rather than rendering an exact copy of
+  "Length".  "?:??" means MusicBrainz has no length on record for that
+  recording — which is also the case the column is most useful for, since a
+  track with no length of its own shows "?:??" under "Length" while the
+  recording behind it may well have one.
+  Both column headers carry a tooltip explaining which of the two lengths
+  they show and where the value came from — hover either one.
+• Length-mismatch flagging — when the two lengths differ by more than a
+  configurable threshold, BOTH duration cells on that track are tinted and
+  marked, and both get a tooltip saying exactly how far apart they are and in
+  which direction:
+
+      #   Title                       Length      Recording length
+      A1  Thunder Road                 4:50            4:50
+      B3  Meeting Across the River   ░ 3:19 ⚠️ ░    ░ 3:16 ⚠️ ░
+
+  Hovering either cell explains it from that cell's own point of view — the
+  Length cell says "Track length 3:19.000 is 3 s LONGER than the recording's
+  own length, 3:16.000", the Recording length cell says the mirror image —
+  then why the two can differ at all, and which threshold this row tripped.
+  The durations are always quoted at full millisecond precision, even while
+  the columns are showing seconds: that is exactly when the numbers behind
+  the flag are least visible.
+
+  Two levels, both configurable in ⚙️ Settings → 💿 RELEASE TRACKLIST:
+    ⚠️  past the threshold                (default 1000 ms = 1 second)
+    ❌  past the threshold × a multiple    (default 3, so 3 seconds)
+  The threshold is in MILLISECONDS because that is the unit MusicBrainz
+  stores lengths in.  One second is the default because it is the smallest
+  difference actually VISIBLE at the columns' default seconds precision —
+  below it both columns can read "4:50" while the stored values differ.  Set
+  it to 0 to flag every difference, or raise it to only catch gross ones.
+  Set the multiple to 1 to disable the ❌ level entirely.  Both tint colors
+  are configurable too.
+
+  Two summary buttons appear in the filter bar when anything is flagged:
+
+      (3) LENGTH ⚠️    (1) LENGTH ❌
+
+  They count TRACKS (not cells — each flagged track marks two), and clicking
+  one shows just those rows.  Unlike the live-recording WARNING/ERROR buttons
+  these are toggles: the button stays pressed while the filter is on, and
+  clicking it again (or "Clear ALL filters") releases it.  They filter
+  structurally rather than by typing a glyph into the global filter, so they
+  compose with a typed query — press ⚠️, then type to narrow further.
 • "Recording of"/"Recorded at"/"Recorded in"/"Mixed at" column family —
   "Recording of work" (with any Acappella/Cover/Demo/Instrumental/Karaoke/
   Live/Medley/Partial attribute rendered inline), "Recording date",

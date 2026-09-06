@@ -1,0 +1,78 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Track-vs-recording length mismatch flagging on `release-tracks`, building on WIP.1's \"Recording length\" column. When a track's two lengths differ by more than a configurable threshold, BOTH duration cells are tinted and marked — `⚠️` past the threshold, `❌` past `threshold × multiple` — and both carry a tooltip. Five new settings in 💿 RELEASE TRACKLIST: an on/off master (`sa_enable_release_tracks_length_mismatch_flag`, default on), `sa_release_tracks_length_mismatch_threshold_ms` (default 1000), `sa_release_tracks_length_mismatch_severe_factor` (default 3), and a configurable tint per level.",
+          "The threshold is in MILLISECONDS, not seconds, for two reasons: it is the unit MusicBrainz stores lengths in, and the settings dialog's number input has no `step` (implicit `step=1`), so a seconds-based field could not express a sub-second tolerance at all without a change to `VZ_MBLibrary.user.js` — a different project. 1000 ms is the default because one second is the smallest difference actually VISIBLE at the columns' default seconds precision; below it both columns can read \"4:50\" while the stored values differ, so flagging would look arbitrary until the ⏱ toggle is pressed. On `Born to Run`, 1000 flags 1 of 8 tracks and 0 flags 6 of 8.",
+          "The severe level is `threshold × factor`, and is DISABLED (never reached) whenever that product is not strictly greater than the threshold. Two settings reach that state — a factor of 1, and a threshold of 0 — and in both cases promoting every flag to `❌` would be the opposite of what the numbers ask for.",
+          "Each flagged cell's tooltip is written from THAT cell's point of view rather than sharing one neutral sentence: the Length cell reads \"Track length 3:19.000 is 3 s LONGER than the recording's own length, 3:16.000\" and the Recording length cell reads the mirror image. The two columns are easy to mix up, so naming the direction relative to the cell being hovered removes the ambiguity instead of restating it. Durations are always quoted at full millisecond precision regardless of what the column currently displays — at seconds precision the two values can read identically, which is exactly when the numbers behind the flag are least visible.",
+          "New `(N) LENGTH ⚠️`/`(N) LENGTH ❌` summary buttons in the filter bar, counting TRACKS (each flagged track marks two cells, so a per-cell tally would report double) and filtering to them on click. Unlike the live-recording WARNING/ERROR buttons they are TOGGLES with a pressed state, and they compose with a typed query rather than clearing it — press ⚠️, then type to narrow further."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The marking is carried ENTIRELY by a `data-mb-len-flag` attribute, with both the tint and the `⚠️`/`❌` glyph coming from CSS (`td[data-mb-len-flag]::after`); no marker element exists in the cell at all. Three independent reasons, two of them silent if broken: `applyIntegerColumnStyling()` rebuilds these cells with `cell.textContent = ''` to build the `:`-alignment spans, so a child marker would simply be deleted; a glyph in the cell TEXT would reach `_compareDurations()` — which parses this column's rendered text to sort it — making a flagged row sort as if its duration were unparseable, besides widening that one row's colon-split segment; and attributes survive `cloneNode(true)`, so the marking needs no re-wire hook on any render path, where a JS-painted marker would need one on every path.",
+          "`_msRecordingLengthForRow()` renamed to `_msLengthForRow()` and made map-agnostic. The row-resolution rule (recording MBID first, displayed `mN·nN` position as fallback) is identical for the track-length and recording-length maps, and the mismatch check needs one row looked up in BOTH; two copies that could drift apart is exactly how a row would end up compared against another track's length. It also now takes the row's cells as an ARRAY captured before insertion rather than reading `tr.children` live — both indices come from the pre-insertion header list, and the caller has already inserted Video/Disambiguation/Recording artist cells by then. Those all land after \"Title\" today so a live lookup still resolved, but only by luck."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`_buildFilterKey()` now includes the length-mismatch filter state. It appears nowhere else in the key, so \"no query, no column filters\" hashed identically whether the structural filter was engaged or not — `_filterResultCache` returned the previous pass's rows, and pressing a summary button a second time to clear it did nothing at all. Found in testing, before shipping.",
+          "`_countLengthMismatchRows()` counts the captured source rows (`_msSourceRows()`), not the live tbody. `runFilter()` REMOVES non-matching rows from a multi-table tbody rather than hiding them, so a live-DOM tally reports only whatever the current filter left behind: filtering to `⚠️` made the `❌` button disappear, since no `❌` row was still rendered. A summary button has to state a stable fact about the release and stay reachable while the other severity is engaged.",
+          "`updateFilterButtonsVisibility()` counts the length-mismatch filter as active, so \"Clear ALL filters\" is offered while it is on. It is the one active filter with NO input holding it, so without this the rows narrowed while every clear affordance stayed hidden — leaving the pressed summary button as the only way out. `clearAllFilters()` resets it explicitly for the same reason."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "HELP gains a \"Length-mismatch flagging\" block under RELEASE-TRACKS PAGE (worked example, both severity levels and their defaults, why the threshold is in milliseconds, and how the toggle-style summary buttons differ from the live-recording ones). CLAUDE.md's track-length section gains the attribute-only marking rationale and the three pieces of state that must stay in sync with `_lenMismatchFilterKind`, each of which broke in testing."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New \"Recording length\" column on `release-tracks`, showing the length MusicBrainz stores on the RECORDING each track links to — `tracks[].recording.length` in the release payload the page already inlines, so it costs no request of any kind. It sits immediately after the native \"Length\", because reading the two side by side is the entire point: \"Length\" is `tracks[].length`, THIS release's own tracklist value, while a recording's length belongs to the recording entity every release using it shares. The two disagree constantly — on `Born to Run` six of eight tracks differ, `Meeting Across the River` by three whole seconds (track 3:19 vs recording 3:16).",
+          "Named to match the pair the tracklist already has: native \"Artist\" (the release-level credit) alongside the injected \"Recording artist\" (the recording's own). \"Length\"/\"Recording length\" now reads the same way, and matches MusicBrainz's own data-model terms.",
+          "Added only when at least one track's recording length actually disagrees with its track length — the same page-wide-decision pattern as Video/Disambiguation/Recording artist (`renderGroupedTable()` clones ONE `<thead>` template from the first `table.tbl`, so a column can only be decided for the whole release, never per medium). Where every recording length matches, the column would be an exact duplicate of \"Length\" and is not added at all rather than costing a full column's width. Measured over every release snapshot in `debug/` (scripts/scan-track-vs-recording-length.py), 2 of 11 releases fall on that side.",
+          "A track length with NO recording length behind it (`4:37` vs `?:??`) deliberately does NOT earn the column on its own: it is a difference, but a column added on that basis alone would be every row `?:??`, stating only \"MusicBrainz has no recording lengths here\". Where the column is earned by some other row, those rows still render `?:??` — the informative half is kept, the empty column is not. The reverse case (`?:??` under Length, a real value under Recording length) is exactly where the column shows something \"Length\" structurally cannot, e.g. `The Rising: Tour Edition`'s DVD track `Lonesome Day (music video)`.",
+          "The existing ⏱ millisecond toggle in the \"Length\" header now switches BOTH duration columns together, rather than gaining a second button. This falls out of the mechanism rather than being bolted on: `_msApplyLengthPrecision()` rewrites every `td[data-mb-ms]` on a row, not one resolved column index, so stamping the new cells with the same `data-mb-ms`/`data-mb-sec-text` pair is all it takes. Comparing the two at different precisions would be meaningless anyway — and milliseconds are where most of their differences actually live (`4:50.293` vs `4:49.826` both round to `4:50`). The column itself is independent of `sa_enable_ms_track_length`: with that off the column still renders seconds, just unstamped and with no toggle."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Both duration column headers on `release-tracks` now carry an explanatory native tooltip, each leading with WHICH entity owns the value rather than with how it is displayed — that being the distinction the two columns exist to draw. \"Length\" explains that the value belongs to the release and is displayed rounded to the nearest second; \"Recording length\" explains that it belongs to the shared recording entity, that it was read from data already in the page, why the column is present at all, and what `?:??` means there. Both mention the shared ⏱ toggle, and both drop that sentence when `sa_enable_ms_track_length` is off rather than pointing at a button that isn't there.",
+          "Scoped to `release-tracks` on purpose, exactly like `_initColHeaderGlyph()`. A \"Length\" column appears on ~20 other pageTypes where it means something else — the recording's own length on `work-recordings`, a TOC/sector-derived value on `release-discids` — so a page-agnostic tooltip would confidently state something false on most of them.",
+          "Injected from the tail of `makeTableSortableUnified()`, alongside `_initMsLengthColHeaderToggle()`, and for the identical reason: that function is what rebuilds every `<th>`, so it is the one site guaranteed to run after the header exists on every render path (single-table, grouped, and sub-table-in-its-own-tab alike)."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`_isJesus2099Treleases()` hardened against a `title` this script writes itself. Its discriminator is literally \"does this `treleases` cell have a `title`?\" — sound when written, because MusicBrainz puts none on its own Length `<th>` and jesus2099's `RECORDING_LENGTH_COLUMN` always does. Adding the Length tooltip above broke that assumption from a completely unrelated direction: the predicate began reporting the release tracklist's own NATIVE header as jesus2099's, so `purgeJesus2099Artifacts()` stripped MusicBrainz's `treleases` class off it and removed the tooltip again on every render — precisely the destructive outcome the predicate's own JSDoc warns about, and which three earlier call sites had already caused once each.",
+          "Our own tooltips now carry `data-mb-col-tip`, and both places that key off bare `title` presence — `_isJesus2099Treleases()` and `_stripJesus2099InTable()`'s disposition-3 title removal — consult the new `_isOwnColumnTooltip()` instead. Anything that puts a `title` on a `treleases` `<th>`/`<td>` in future must mark it the same way; the predicate's JSDoc now says so.",
+          "Regression coverage for exactly this: `tests/fixtures/release-tracks-recording-length.spec.js` asserts the Length header keeps MusicBrainz's `treleases` class AND its tooltip, both on first render and after a re-render (which is when the purge runs again)."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "HELP gains a \"Recording length\" bullet under RELEASE-TRACKS PAGE (with a worked Born to Run example, the not-added-when-identical rule, and what `?:??` means there), and TRACK LENGTH PRECISION now states that one ⏱ button drives both duration columns and that the embedded release data feeds the new column too.",
+          "`scripts/build-ms-length-fixture.py` now carries `tracks[].recording.length` into the fixture — the field was trimmed out as unread, which is no longer true — and emits a second fixture, `tests/fixtures/release-tracks-recording-length-match.html`, with every recording length forced equal to its track length. That is the other side of the gate: the column must NOT appear. Forced rather than borrowed from a release that genuinely agrees, because the payload has to keep keying THIS DOM — rows are matched by recording MBID, so another release's payload would match nothing and the column would be absent for the wrong reason, passing the test while proving nothing."
+        ]
+      }
+    ]
+  }
+]
