@@ -1736,6 +1736,72 @@
                          'it visible.'
         },
 
+        sa_enable_release_tracks_length_mismatch_flag: {
+            label: 'Flag tracks whose two lengths disagree',
+            type: 'checkbox',
+            default: true,
+            description: 'When the consolidated release tracklist shows the "Recording length" '
+                         + 'column, mark every track whose recording length differs from its '
+                         + 'track length by more than the threshold below. The Length and '
+                         + 'Recording length cells are tinted and get a ⚠️ (or ❌ past the '
+                         + '"far over" multiple) marker, plus a tooltip saying exactly how far '
+                         + 'apart the two are and in which direction. Turn this off to keep the '
+                         + 'Recording length column but drop all marking.'
+        },
+
+        sa_release_tracks_length_mismatch_threshold_ms: {
+            label: 'Length-mismatch threshold (milliseconds)',
+            type: 'number',
+            default: 1000,
+            min: 0,
+            max: 60000,
+            description: 'How far apart the two lengths must be before a track is flagged. '
+                         + 'In MILLISECONDS, because that is the unit MusicBrainz stores lengths '
+                         + 'in — 1000 (the default) means one second. One second is the smallest '
+                         + 'difference that is actually VISIBLE at the column\'s default '
+                         + 'seconds precision: below it, both columns can read "4:50" while the '
+                         + 'stored values differ, so flagging would look arbitrary until the ⏱ '
+                         + 'toggle is pressed. Lower it (e.g. 500, or 0 for every difference) to '
+                         + 'catch the sub-second ones too. On "Born to Run", 1000 flags 1 of 8 '
+                         + 'tracks; 0 flags 6 of 8.'
+        },
+
+        sa_release_tracks_length_mismatch_severe_factor: {
+            label: 'Length-mismatch "far over" multiple',
+            type: 'number',
+            default: 3,
+            min: 1,
+            max: 20,
+            description: 'Difference at which a flag is promoted from ⚠️ to ❌, as a multiple of '
+                         + 'the threshold above — 3 (the default) with a 1000 ms threshold means '
+                         + 'anything more than 3 seconds apart. Scales with whatever threshold '
+                         + 'you set, so the two levels always mean "past my tolerance" and "well '
+                         + 'past my tolerance". Set to 1 to disable the second level entirely '
+                         + '(everything flagged stays ⚠️); a threshold of 0 also leaves every '
+                         + 'flag at ⚠️, since no multiple of zero is stricter than zero.'
+        },
+
+        sa_release_tracks_length_mismatch_warn_bg: {
+            label: 'Length-mismatch ⚠️ cell background color',
+            type: 'color_picker',
+            default: '#fff3cd',
+            description: 'Background tint of the Length / Recording length cells on a track whose '
+                         + 'two lengths differ by more than the threshold. Default is a pale amber '
+                         + '(#fff3cd) chosen to stay legible against both the white and light-grey '
+                         + 'alternating row backgrounds, and to read as a caution rather than an '
+                         + 'error.'
+        },
+
+        sa_release_tracks_length_mismatch_severe_bg: {
+            label: 'Length-mismatch ❌ cell background color',
+            type: 'color_picker',
+            default: '#f8d7da',
+            description: 'Background tint used instead of the ⚠️ color once the difference passes '
+                         + 'the "far over" multiple. Default is a pale red (#f8d7da), the same '
+                         + 'family as the amber above so the two read as two levels of one scale '
+                         + 'rather than two unrelated states.'
+        },
+
         sa_enable_release_tracks_acoustid_isrc_observer: {
             label: 'Watch for late-arriving AcoustID/ISRC data',
             type: 'checkbox',
@@ -2246,9 +2312,12 @@
                          + 'rounded to the nearest second ("4:50"). When enabled, a ⏱ toggle appears '
                          + 'in the "Length" column header; clicking it re-renders the whole column at '
                          + 'full millisecond precision ("4:50.160"), and clicking again returns to '
-                         + 'seconds. Sorting, filtering and the 📊 unique-values dropdown always follow '
-                         + 'whatever the column is currently showing. Turn this off to remove the toggle '
-                         + 'entirely and leave the column exactly as MusicBrainz renders it.'
+                         + 'seconds. On a release tracklist that also shows the "Recording length" '
+                         + 'column, the same button switches both columns together, so the two '
+                         + 'durations are always compared at the same precision. Sorting, filtering '
+                         + 'and the 📊 unique-values dropdown always follow whatever the columns are '
+                         + 'currently showing. Turn this off to remove the toggle entirely and leave '
+                         + 'the columns exactly as MusicBrainz renders them.'
         },
 
         sa_ms_length_trim_zero_ms: {
@@ -7912,6 +7981,20 @@
      *     resolved, above) and `_parseCreditDateAnnotation`/
      *     `_parseBareParenDate`/`_liveDateCheckResult`/`_appendLiveDateFlag`.
      *
+     * One column this function adds comes from OUTSIDE the row entirely:
+     * "Recording length", built from `tracks[].recording.length` in the
+     * release payload MusicBrainz already inlines in the page (see
+     * `_buildReleaseRecordingLengthMap()`), and inserted immediately after
+     * the native "Length" it is meant to be read against. It is the only
+     * column here that moves no node out of the Title cell, and — like
+     * Video/Disambiguation/Recording artist — it is decided page-wide, but
+     * with a stricter condition: it appears only where at least one track's
+     * recording length actually disagrees with its track length
+     * (`_releaseHasDifferingRecordingLength()`), so it can never render as an
+     * exact duplicate of "Length". Its cells carry the same
+     * `data-mb-ms`/`data-mb-sec-text` stamps the native Length cells get,
+     * which is what makes the single ⏱ toggle switch both columns at once.
+     *
      * Unlike every `ColumnDataExtractor` entry (`splitLocation`,
      * `splitArea`, `eventParts`, …), which are purely additive (read
      * `sourceCell`, return new `<td>`s, never mutate the source), this
@@ -7997,6 +8080,27 @@
         const _pageHasStreaming = _anyTitleCellMatches(
             td => td.querySelector('dl.ar dd.recording-url-links a')
         );
+
+        // "Recording length" — the length stored on the RECORDING each track
+        // links to, read from the release payload MusicBrainz already inlines
+        // in this page (no request of any kind). Same page-wide-decision
+        // reasoning as Video/Disambiguation/Recording artist above, with the
+        // condition that makes it worth a column: it is added only where at
+        // least one track's recording length actually disagrees with its track
+        // length, so it never renders as an exact copy of "Length". See
+        // _releaseHasDifferingRecordingLength()/_buildReleaseRecordingLengthMap().
+        // Independent of sa_enable_ms_track_length — that setting governs only
+        // the ⏱ precision toggle, not whether this column exists.
+        const _recLengthMaps  = _buildReleaseRecordingLengthMap();
+        const _pageHasRecLength = !!_recLengthMaps && _releaseHasDifferingRecordingLength();
+        // The TRACK-length side of the mismatch flag. Read from the payload
+        // rather than from the Length cell's own `data-mb-ms`, because that
+        // stamp only exists while `sa_enable_ms_track_length` is on and the
+        // flag is deliberately independent of it. Skips tracks whose length is
+        // `null` (`_buildReleaseTrackLengthMap()` never records those), which
+        // is correct: with no track length there is nothing to compare against,
+        // so such a row is never flagged.
+        const _trackLengthMaps = _pageHasRecLength ? _buildReleaseTrackLengthMap() : null;
 
         // "Recording of" + its attribute columns are purely additive (see
         // this function's JSDoc) and gated by their own setting — skipped
@@ -8158,7 +8262,11 @@
             });
         }
 
-        _tables.forEach(table => {
+        // The medium index is what `_buildReleaseRecordingLengthMap()`'s
+        // `byPosition` fallback key is built from, and it must be the index
+        // into THIS array — the same one `_msStampReleaseTrackLengths(_tables)`
+        // above already keyed its own identical fallback on.
+        _tables.forEach((table, _medIdx) => {
             const _theadRow = table.querySelector(':scope > thead > tr');
             const _tbody = table.querySelector(':scope > tbody');
             if (!_theadRow || !_tbody) return;
@@ -8178,8 +8286,14 @@
             const _hasAcoustId = _headerCells.some(th => th.textContent.trim() === 'AcoustIDs');
             const _hasIsrc = _headerCells.some(th => th.textContent.trim() === 'ISRCs');
             const _hasVideo = _headerCells.some(th => th.textContent.trim() === 'Video');
+            const _hasRecLength = _headerCells.some(th => th.textContent.trim() === 'Recording length');
+            // "Recording length" sits immediately after the native "Length" it
+            // is meant to be read against, so a table without one has nowhere
+            // to put it and is skipped rather than guessed at.
+            const _lengthIdx = _headerCells.findIndex(th => th.textContent.trim() === 'Length');
+            const _posIdx    = _headerCells.findIndex(th => th.textContent.trim() === '#');
 
-            let _disambigTh = null, _recArtistTh = null, _arsTh = null, _streamingTh = null, _acoustIdTh = null, _isrcTh = null, _videoTh = null;
+            let _disambigTh = null, _recArtistTh = null, _arsTh = null, _streamingTh = null, _acoustIdTh = null, _isrcTh = null, _videoTh = null, _recLengthTh = null;
 
             // Video: added to every medium's table uniformly once ANY medium
             // on the release has at least one video track (see _pageHasVideo
@@ -8199,6 +8313,14 @@
             if (!_hasRecArtist && _pageHasRecArtist) {
                 _recArtistTh = document.createElement('th');
                 _recArtistTh.textContent = 'Recording artist';
+            }
+            // Recording length: same page-wide-decision reasoning as Video —
+            // created here, positioned relative to the native "Length" column
+            // further below rather than appended at the tail (like Video/
+            // Disambiguation/Recording artist, and unlike every AR column).
+            if (!_hasRecLength && _pageHasRecLength && _lengthIdx !== -1) {
+                _recLengthTh = document.createElement('th');
+                _recLengthTh.textContent = 'Recording length';
             }
             if (!_hasArs) {
                 _arsTh = document.createElement('th');
@@ -8489,6 +8611,14 @@
             if (_recArtistTh) {
                 (_artistIdx !== -1 ? _headerCells[_artistIdx] : _titleHeaderCursor).after(_recArtistTh);
             }
+            // Recording length goes right after the native "Length" — reading
+            // the two durations side by side is the entire point of the column,
+            // and the reason it isn't chained off Title like Video/
+            // Disambiguation. `_recLengthTh` is only ever non-null when
+            // `_lengthIdx !== -1` (see its creation block above).
+            if (_recLengthTh) {
+                _headerCells[_lengthIdx].after(_recLengthTh);
+            }
 
             // NOTE: the "extracted column" header background (see
             // `_stampArColumnHeaderBg()`) is intentionally NOT applied here.
@@ -8505,7 +8635,7 @@
             // `renderGroupedTable()`'s tail.
 
             if (!_disambigTh && !_recArtistTh && !_arsTh && !_streamingTh && !_acoustIdTh && !_isrcTh && !_videoTh &&
-                !_recOfTh && !_recOfDateTh &&
+                !_recLengthTh && !_recOfTh && !_recOfDateTh &&
                 !_recordedAtEventTh && !_recordedAtPlaceTh && !_recordedInAreaTh &&
                 !_performerTh && !_instrumentsTh && !_vocalsTh &&
                 _creditRoleThs.length === 0 && !_mixedAtPlaceTh &&
@@ -8596,6 +8726,49 @@
                     // every other extracted node in this function.
                     if (_recArtistBdi) _td.appendChild(_recArtistBdi);
                     (_artistIdx !== -1 ? _cells[_artistIdx] : _rowInsertCursor).after(_td);
+                }
+                // Recording length — the one column here built from the page's
+                // embedded payload rather than extracted from the Title cell,
+                // so it is also the one that moves no node.
+                //
+                // Rendered at MusicBrainz's own seconds precision, and stamped
+                // with the same `data-mb-ms`/`data-mb-sec-text` pair the native
+                // Length cell carries, which is what makes the single ⏱ toggle
+                // in the Length header switch BOTH columns together:
+                // `_msApplyLengthPrecision()` rewrites every `td[data-mb-ms]`
+                // on the row, not one resolved column. Stamping is skipped when
+                // the millisecond feature is off — there is no toggle then, so
+                // no cell should claim data nothing will ask for.
+                if (_recLengthTh) {
+                    const _td = document.createElement('td');
+                    const _recMs = _msLengthForRow(_cells, _medIdx, _titleIdx, _posIdx, _recLengthMaps);
+                    if (typeof _recMs === 'number') {
+                        _td.textContent = _msFormatSeconds(_recMs);
+                        if (Lib.settings.sa_enable_ms_track_length !== false) {
+                            _td.dataset.mbMs      = String(_recMs);
+                            _td.dataset.mbSecText = _td.textContent;
+                        }
+                    } else {
+                        // `null` ("MusicBrainz has no length for this
+                        // recording") and `undefined` ("this row matched no
+                        // track in the payload") are both nothing to show, and
+                        // MusicBrainz's own "?:??" is exactly what the Length
+                        // column beside it renders in that case.
+                        _td.textContent = _MS_UNKNOWN_LENGTH_TEXT;
+                    }
+                    _cells[_lengthIdx].after(_td);
+
+                    // Mark BOTH duration cells when the two lengths are far
+                    // enough apart — attributes only, so nothing here survives
+                    // into the cells' text or their duration sorting. See
+                    // _applyLengthMismatchFlag()'s JSDoc for why that matters.
+                    if (_trackLengthMaps) {
+                        _applyLengthMismatchFlag(
+                            _cells[_lengthIdx], _td,
+                            _msLengthForRow(_cells, _medIdx, _titleIdx, _posIdx, _trackLengthMaps),
+                            _recMs
+                        );
+                    }
                 }
 
                 // "Recording of" + "Recording date" + "Recorded at event" +
@@ -15163,6 +15336,14 @@
                 integerColumns: [
                     { sourceColumn: '#', align: 'C' },
                     { sourceColumn: 'Length', align: ':' },
+                    // Only present on releases where at least one recording
+                    // length disagrees with its track length (see
+                    // _releaseHasDifferingRecordingLength()); an entry for an
+                    // absent column is simply never matched. `align: ':'` is
+                    // load-bearing beyond the visual colon alignment — it is
+                    // also what _sortColumnKind() reads to sort this column as
+                    // a duration rather than through parseFloat.
+                    { sourceColumn: 'Recording length', align: ':' },
                     { sourceColumn: 'Rating', align: 'C' }
                 ],
                 syntheticColumnExtractors: [
@@ -16038,6 +16219,11 @@
      * feature's whole contract is "reveal more precision in the value shown",
      * never "show a different measurement".
      *
+     * The recording's own length is not discarded, just kept out of THIS
+     * column: `_buildReleaseRecordingLengthMap()` below reads it for the
+     * separate "Recording length" column, where showing a different
+     * measurement is the entire point rather than a bug.
+     *
      * Two keys per track, because neither alone is fully safe:
      *   - `byRecording` — the recording MBID, read from the Title cell's own
      *     direct-child anchor. Primary key.
@@ -16075,6 +16261,343 @@
         _msTrackLengthMapCache = { byRecording, byPosition };
         _msDbg(`_buildReleaseTrackLengthMap: ${byRecording.size} by recording, ${byPosition.size} by position`);
         return _msTrackLengthMapCache;
+    }
+
+    /** @type {?{byRecording: Map<string, ?number>, byPosition: Map<string, ?number>}|undefined} */
+    let _msRecordingLengthMapCache;
+
+    /**
+     * Builds the millisecond lookup for the RECORDING behind each of this
+     * release's tracks — `tracks[].recording.length`, the sibling field
+     * `_buildReleaseTrackLengthMap()` above deliberately refuses to read.
+     *
+     * The two are different measurements, which is exactly why this feeds a
+     * separate "Recording length" column rather than becoming another source
+     * for "Length": a track length belongs to THIS release's tracklist, while a
+     * recording length belongs to the recording entity that every release using
+     * it shares. On `Born to Run` six of eight tracks disagree, one by three
+     * whole seconds (`Meeting Across the River`: track `3:19.000` vs recording
+     * `3:16.000`); on `The Rising: Tour Edition` the DVD's `Lonesome Day (music
+     * video)` has no track length at all (MusicBrainz renders `?:??`) while its
+     * recording is `4:37.000`.
+     *
+     * Keyed exactly like the track map — recording MBID first, the displayed
+     * `` `m${mediumIndex}n${trackNumber}` `` as fallback — so one row
+     * resolution serves both.
+     *
+     * Unlike the track map, a missing length is RECORDED as `null` rather than
+     * skipped: "MusicBrainz has no length for this recording" is a fact this
+     * column states (as `?:??`), and the caller must be able to tell it apart
+     * from "this row matched no track at all". Probe with `.has()`, never with
+     * a truthiness test on `.get()`.
+     *
+     * @returns {?{byRecording: Map<string, ?number>, byPosition: Map<string, ?number>}}
+     *   `null` when this page carries no embedded release payload.
+     */
+    function _buildReleaseRecordingLengthMap() {
+        if (_msRecordingLengthMapCache !== undefined) return _msRecordingLengthMapCache;
+        _msRecordingLengthMapCache = null;
+        const payload = _readEmbeddedReleaseJson();
+        if (!payload) return _msRecordingLengthMapCache;
+
+        const byRecording = new Map();
+        const byPosition  = new Map();
+        (payload.release.mediums || []).forEach((medium, medIdx) => {
+            (medium.tracks || []).forEach(track => {
+                // A track with no linked recording (never seen in practice, but
+                // the payload's shape permits it) has nothing to say here.
+                const rec = track.recording;
+                if (!rec) return;
+                const ms = typeof rec.length === 'number' ? rec.length : null;
+                if (rec.gid) byRecording.set(rec.gid, ms);
+                if (track.number != null) byPosition.set(`m${medIdx}n${String(track.number).trim()}`, ms);
+            });
+        });
+        if (!byRecording.size && !byPosition.size) {
+            _msDbg('_buildReleaseRecordingLengthMap: payload had no linked recordings');
+            return _msRecordingLengthMapCache;
+        }
+        _msRecordingLengthMapCache = { byRecording, byPosition };
+        _msDbg(`_buildReleaseRecordingLengthMap: ${byRecording.size} by recording, ` +
+               `${byPosition.size} by position`);
+        return _msRecordingLengthMapCache;
+    }
+
+    /**
+     * Whether ANY track on this release has a recording length that disagrees
+     * with its own track length — the page-wide gate for the "Recording length"
+     * column.
+     *
+     * Same page-wide-decision reasoning as `_pageHasVideo`/`_pageHasDisambig`/
+     * `_pageHasRecArtist` in `applyExtractTrackTitleData()`:
+     * `renderGroupedTable()` clones ONE `<thead>` template from the first
+     * `table.tbl`, so a column can only be decided for the whole release, never
+     * per medium. Deciding it at all — rather than always showing the column —
+     * is what keeps it informative: where every recording length matches its
+     * track length the column would duplicate "Length" exactly, so it is not
+     * added and costs no width. Measured across every release snapshot in
+     * `debug/` (scripts/scan-track-vs-recording-length.py), 2 of 11 releases
+     * fall on that side.
+     *
+     * Read straight from the payload rather than from the rendered cells: the
+     * payload's own `length: null` is precisely what makes MusicBrainz render
+     * `?:??`, so no DOM round trip is needed to spot the most interesting case.
+     *
+     * The recording length must be PRESENT to count, which is the whole test:
+     *   - present and unequal — including a sub-second-only difference, which
+     *     the shared ⏱ toggle is what reveals (`290160` and `290000` both
+     *     render as `4:50`);
+     *   - present while the track has none (`?:??` vs `4:37`) — the case where
+     *     this column shows something "Length" structurally cannot.
+     *
+     * A track length with NO recording length behind it (`4:37` vs `?:??`)
+     * deliberately does NOT qualify. It is a difference, but not an informative
+     * one: a column added on that basis alone would be every row `?:??`,
+     * stating only "MusicBrainz has no recording lengths here" at the cost of a
+     * full column's width. Where the column is earned by some other row, those
+     * rows still render `?:??` — the useful half is kept, the empty column is
+     * not. (Both-absent is not a disagreement at all and needs no special case:
+     * the `recMs !== null` test already excludes it.)
+     *
+     * @returns {boolean}
+     */
+    function _releaseHasDifferingRecordingLength() {
+        const payload = _readEmbeddedReleaseJson();
+        if (!payload) return false;
+        for (const medium of (payload.release.mediums || [])) {
+            for (const track of (medium.tracks || [])) {
+                const recMs = typeof track.recording?.length === 'number' ? track.recording.length : null;
+                if (recMs === null) continue;
+                const trackMs = typeof track.length === 'number' ? track.length : null;
+                if (recMs !== trackMs) return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Decides whether a track's two lengths are far enough apart to flag, and
+     * at which of the two severity levels.
+     *
+     * Both thresholds are read fresh on every call rather than cached: they are
+     * plain settings, this runs once per row during pre-processing, and caching
+     * them would only create a way for a settings change to half-apply.
+     *
+     * The comparison is on the RAW millisecond values, not on the rendered
+     * seconds. Two tracks can both render `4:50` while differing by 293 ms, and
+     * two others can render `3:19`/`3:16` while differing by exactly 3000 ms —
+     * only the stored values can tell those apart, and the threshold is
+     * expressed in milliseconds for the same reason.
+     *
+     * The severe level is `threshold × factor`, and is deliberately DISABLED
+     * (never reached) whenever that product is not strictly greater than the
+     * threshold itself. Two settings reach that state — a factor of 1, and a
+     * threshold of 0 — and in both cases promoting every flag to ❌ would be
+     * the opposite of what the numbers ask for.
+     *
+     * @param   {?number|undefined} trackMs  This release's track length.
+     * @param   {?number|undefined} recMs    The recording entity's own length.
+     * @returns {?{kind: ('warn'|'severe'), diffMs: number, absMs: number,
+     *             thresholdMs: number, severeMs: ?number}}
+     *   `null` when the feature is off, either length is missing, or the two
+     *   are within the threshold. `diffMs` is SIGNED, recording minus track, so
+     *   a negative value means the recording is the shorter of the two.
+     */
+    function _lengthMismatchFlag(trackMs, recMs) {
+        if (Lib.settings.sa_enable_release_tracks_length_mismatch_flag === false) return null;
+        if (typeof trackMs !== 'number' || typeof recMs !== 'number') return null;
+
+        const diffMs = recMs - trackMs;
+        const absMs  = Math.abs(diffMs);
+
+        const rawThreshold = Number(Lib.settings.sa_release_tracks_length_mismatch_threshold_ms);
+        const thresholdMs  = Number.isFinite(rawThreshold) && rawThreshold >= 0 ? rawThreshold : 1000;
+        if (!(absMs > thresholdMs)) return null;
+
+        const rawFactor = Number(Lib.settings.sa_release_tracks_length_mismatch_severe_factor);
+        const factor    = Number.isFinite(rawFactor) && rawFactor >= 1 ? rawFactor : 3;
+        const product   = thresholdMs * factor;
+        const severeMs  = product > thresholdMs ? product : null;
+
+        return {
+            kind: (severeMs !== null && absMs > severeMs) ? 'severe' : 'warn',
+            diffMs, absMs, thresholdMs, severeMs,
+        };
+    }
+
+    /**
+     * Formats a millisecond gap the way the mismatch tooltips talk about it:
+     * seconds, with up to three decimals and no trailing zeros — `"3 s"`,
+     * `"0.666 s"`, `"1.5 s"`.
+     *
+     * Seconds rather than raw milliseconds because that is the unit the columns
+     * themselves are read in; the settings are in milliseconds only because
+     * that is what MusicBrainz stores and what an integer-only settings input
+     * can express precisely.
+     *
+     * @param   {number} ms
+     * @returns {string}
+     */
+    function _msFormatGapSeconds(ms) {
+        const secs = Math.abs(ms) / 1000;
+        // toFixed(3) then trim: avoids both "0.6660000000000001" and a bare
+        // "3.000" where "3" reads better.
+        return `${secs.toFixed(3).replace(/\.?0+$/, '')} s`;
+    }
+
+    /**
+     * Builds the tooltip for ONE of the two duration cells on a flagged track,
+     * written from that cell's own point of view.
+     *
+     * Each cell says what IT holds first, then how it relates to the other —
+     * so the Length cell reads "…is 3 s longer than the recording's own length"
+     * while the Recording length cell reads "…is 3 s shorter than this
+     * release's track length". Phrasing them symmetrically rather than sharing
+     * one neutral sentence is the point: the columns are easy to mix up, and a
+     * tooltip that names the direction relative to the cell you are actually
+     * hovering removes the ambiguity instead of restating it.
+     *
+     * Durations are quoted at full millisecond precision regardless of what the
+     * column currently displays. At seconds precision the two values can read
+     * identically, which is exactly when a reader most needs the tooltip to
+     * show the numbers the flag was computed from.
+     *
+     * @param   {{kind: string, diffMs: number, absMs: number, thresholdMs: number, severeMs: ?number}} flag
+     * @param   {('track'|'recording')} which  Which cell this tooltip is for.
+     * @param   {number} trackMs
+     * @param   {number} recMs
+     * @returns {string}
+     */
+    function _lengthMismatchTooltip(flag, which, trackMs, recMs) {
+        const isTrack   = which === 'track';
+        const ownMs     = isTrack ? trackMs : recMs;
+        const otherMs   = isTrack ? recMs : trackMs;
+        const ownLabel  = isTrack ? 'Track length' : 'Recording length';
+        const otherName = isTrack
+            ? "the recording's own length"
+            : "this release's track length";
+        // diffMs is recording-minus-track, so it answers the Recording length
+        // cell's question directly and must be read the other way round for the
+        // track's.
+        const ownIsLonger = isTrack ? (trackMs > recMs) : (recMs > trackMs);
+        const direction   = ownIsLonger ? 'LONGER' : 'SHORTER';
+
+        const gap = _msFormatGapSeconds(flag.absMs);
+        const lead = `${ownLabel} ${_msFormatDuration(ownMs, false)} is ${gap} ${direction} than `
+                   + `${otherName}, ${_msFormatDuration(otherMs, false)}.`;
+
+        const why = ' These are two different MusicBrainz fields: the track length belongs to '
+                  + 'this release\'s tracklist, while the recording length belongs to the '
+                  + 'recording entity that every release using it shares.';
+
+        const level = flag.kind === 'severe'
+            ? ` Flagged ❌ because they differ by more than ${_msFormatGapSeconds(flag.severeMs)}, `
+              + `this page's "far over" level (${_msFormatGapSeconds(flag.thresholdMs)} threshold `
+              + '× the configured multiple).'
+            : ` Flagged ⚠️ because they differ by more than the ${_msFormatGapSeconds(flag.thresholdMs)} `
+              + 'threshold.';
+
+        return lead + why + level + ' Both are configurable in ⚙️ Settings → 💿 RELEASE TRACKLIST.';
+    }
+
+    /**
+     * Marks a flagged track's two duration `<td>`s.
+     *
+     * Everything the marking needs rides on ATTRIBUTES — `data-mb-len-flag`
+     * drives both the tint and the ⚠️/❌ glyph from CSS, `title` carries the
+     * explanation — and that is load-bearing in three separate ways:
+     *
+     *   1. `applyIntegerColumnStyling()` rebuilds each of these cells with
+     *      `cell.textContent = ''` to build its `:`-alignment spans, so any
+     *      marker appended as a CHILD would simply be deleted. Attributes are
+     *      untouched by it.
+     *   2. A glyph in the cell's TEXT would be swept into the colon split
+     *      (`"30 ⚠️"` as the right-hand segment, widening that row alone) and,
+     *      worse, would reach `_compareDurations()` — which parses this
+     *      column's rendered text — so a flagged row would sort as if its
+     *      duration were unparseable. A CSS `::after` glyph is in neither.
+     *   3. Attributes survive `cloneNode(true)`, which is how `runFilter()`
+     *      re-renders on every keystroke. A JS-painted marker would need a
+     *      re-wire hook on every render path; this needs none.
+     *
+     * `data-mb-col-tip` is not optional. The native Length `<td>`s on a release
+     * tracklist carry MusicBrainz's own `class="treleases"`, and
+     * `_isJesus2099Treleases()` treats "a treleases cell with a title" as
+     * jesus2099's work — so without the marker these tooltips would get the
+     * cells' native class stripped and the tooltips themselves removed. Same
+     * trap the column headers hit; see `_isOwnColumnTooltip()`.
+     *
+     * @param   {?HTMLTableCellElement} trackTd  The native "Length" cell.
+     * @param   {?HTMLTableCellElement} recTd    The "Recording length" cell.
+     * @param   {?number|undefined} trackMs
+     * @param   {?number|undefined} recMs
+     * @returns {?string} The flag kind applied, or `null` when nothing was.
+     */
+    function _applyLengthMismatchFlag(trackTd, recTd, trackMs, recMs) {
+        const flag = _lengthMismatchFlag(trackMs, recMs);
+        if (!flag) return null;
+        [[trackTd, 'track'], [recTd, 'recording']].forEach(([td, which]) => {
+            if (!td) return;
+            td.dataset.mbLenFlag = flag.kind;
+            td.title              = _lengthMismatchTooltip(flag, which, trackMs, recMs);
+            td.dataset.mbColTip   = '1';
+        });
+        return flag.kind;
+    }
+
+    /**
+     * MusicBrainz's own rendering of "no length on record", used verbatim by
+     * the "Recording length" column so an unknown recording length reads
+     * identically to an unknown track length beside it (verified against
+     * `debug/check-track-lenght.html`, whose DVD medium renders five of these).
+     * @type {string}
+     */
+    const _MS_UNKNOWN_LENGTH_TEXT = '?:??';
+
+    /**
+     * Resolves one native tracklist row to its length in milliseconds in
+     * whichever track-keyed map is handed in, using the same two keys — and the
+     * same priority — as `_msStampReleaseTrackLengths()`.
+     *
+     * Map-agnostic on purpose: the row-resolution rule is identical for the
+     * track-length map (`_buildReleaseTrackLengthMap()`) and the
+     * recording-length map (`_buildReleaseRecordingLengthMap()`), and the
+     * mismatch flag needs to look a single row up in BOTH. Two copies of this
+     * that could drift apart is exactly how a row would end up compared
+     * against another track's length.
+     *
+     * The recording anchor is read from the Title cell's own DIRECT-CHILD
+     * `<a>` deliberately: a track's `<div class="ars">` can carry further
+     * `/recording/` links (a "DJ-mix of" relationship, say), and an unscoped
+     * query would key the row to one of those instead.
+     *
+     * Takes the row's cells as an ARRAY captured before this function's caller
+     * started inserting `<td>`s, never `tr.children` read live: both indices
+     * come from the header list as it was BEFORE any insertion, and the caller
+     * has already inserted Video/Disambiguation/Recording artist cells by the
+     * time it gets here. Those all land after "Title" today, so a live lookup
+     * happens to still resolve — but only by luck, and it would break silently
+     * the day a column is inserted ahead of it.
+     *
+     * @param   {HTMLTableCellElement[]} cells  The row's cells, captured pre-insertion.
+     * @param   {number} medIdx                 Index of the medium's table in document order.
+     * @param   {number} titleIdx               Column index of "Title", or `-1`.
+     * @param   {number} posIdx                 Column index of "#", or `-1`.
+     * @param   {{byRecording: Map<string, ?number>, byPosition: Map<string, ?number>}} maps
+     * @returns {?number|undefined} Milliseconds; `null` when MusicBrainz has no
+     *   length for the recording; `undefined` when the row matched no track.
+     */
+    function _msLengthForRow(cells, medIdx, titleIdx, posIdx, maps) {
+        const titleTd = titleIdx === -1 ? null : cells[titleIdx];
+        const recA    = titleTd && titleTd.querySelector(':scope > a[href*="/recording/"]');
+        const gidM    = recA && recA.getAttribute('href').match(/\/recording\/([0-9a-f-]{36})/);
+        if (gidM && maps.byRecording.has(gidM[1])) return maps.byRecording.get(gidM[1]);
+
+        if (posIdx !== -1 && cells[posIdx]) {
+            const key = `m${medIdx}n${(cells[posIdx].textContent || '').trim()}`;
+            if (maps.byPosition.has(key)) return maps.byPosition.get(key);
+        }
+        return undefined;
     }
 
     /**
@@ -16164,7 +16687,9 @@
      * Shape of a Length cell rendered at millisecond precision, matched against
      * the cell's ENTIRE trimmed text so ordinary prose that merely contains
      * something duration-like (a comment quoting "1:23.456") can never match.
-     * The only column whose whole content is a bare duration is "Length".
+     * The only columns whose whole content is a bare duration are "Length" and
+     * its release-tracks companion "Recording length" — both are stamped
+     * cells this regex is meant to recognise, and matching either is correct.
      * @type {RegExp}
      */
     const _MS_RENDERED_DURATION_RE = /^\d{1,3}:\d{2}(?::\d{2})?\.\d{1,3}$/;
@@ -16849,7 +17374,7 @@
     }
 
     /**
-     * Whether the Length column is currently rendering milliseconds.
+     * Whether the duration columns are currently rendering milliseconds.
      *
      * Read from the DOM (the `data-mb-ms-shown` flag on a stamped cell) rather
      * than from a module variable, so the state survives every re-render for
@@ -16885,7 +17410,13 @@
     }
 
     /**
-     * Switches the whole Length column between seconds and milliseconds.
+     * Switches every stamped duration column between seconds and milliseconds.
+     *
+     * "Every stamped" rather than "the Length column": the selector below is
+     * `td[data-mb-ms]`, not a resolved column index, so on a release tracklist
+     * carrying the "Recording length" column both columns flip together from
+     * the single ⏱ button — which is the intended behaviour, since comparing
+     * the two at different precisions would be meaningless.
      *
      * Rewrites the CAPTURED SOURCE rows (`groupedRows`/`allRows`) rather than
      * the live cells, then lets `runFilter()` re-render from them. That is the
@@ -17184,6 +17715,78 @@
                 hdrFlex.insertBefore(btn, hdrFlex.firstChild);
             }
             _msUpdateColHdrBtn(btn, showing);
+        });
+    }
+
+    /**
+     * Native `title` tooltips for a release tracklist's two duration columns,
+     * explaining what each one measures and where its value came from.
+     *
+     * The two are easy to mistake for the same number — they usually agree, and
+     * "Recording length" only exists at all where they don't — so each tooltip
+     * leads with WHICH entity owns the value (this release's tracklist vs. the
+     * shared recording entity) rather than with how it is displayed.
+     *
+     * Scoped to `release-tracks` on purpose, exactly like `_initColHeaderGlyph()`.
+     * A "Length" column appears on ~20 other pageTypes where it means something
+     * else — the recording's own length on `work-recordings`, a TOC/sector-derived
+     * value on `release-discids` — so a page-agnostic tooltip here would confidently
+     * state something false on most of them.
+     *
+     * Set on the `<th>`, which is why this must run POST-render from the render
+     * tail: `makeTableSortableUnified()` rebuilds every header and wipes
+     * `th.innerHTML` first. The attribute itself would survive that (only child
+     * nodes are discarded), but the `<th>`s this would otherwise be set on
+     * during pre-processing are a different, discarded set of DOM nodes
+     * entirely — the same constraint documented on `_initColHeaderGlyph()`.
+     * Descendants without a `title` of their own inherit the tooltip, so
+     * hovering anywhere in the header shows it, while the ⏱ and 📊 controls
+     * keep their own.
+     *
+     * @param {HTMLTableElement} [scopeTable]  Limit to one table; every
+     *   `table.tbl` when omitted.
+     * @returns {void}
+     */
+    function _initLengthColHeaderTooltips(scopeTable) {
+        if (activeDefinition?.type !== 'release-tracks') return;
+
+        // Only mention the toggle where it exists — with the feature off there
+        // is no ⏱ button to point at.
+        const msHint = Lib.settings.sa_enable_ms_track_length === false
+            ? ''
+            : ' The ⏱ button in the "Length" header switches both duration columns '
+              + 'between seconds and full millisecond precision together.';
+
+        const titles = {
+            'Length':
+                'Track length — the duration MusicBrainz stores for this track on THIS release\'s '
+                + 'tracklist. The value belongs to the release, not to the recording: another '
+                + 'release using the same recording can store a different one. MusicBrainz keeps '
+                + 'it in milliseconds but displays it rounded to the nearest second, so "4:50" can '
+                + 'be anything from 4:49.500 to 4:50.499.' + msHint,
+            'Recording length':
+                'Recording length — the duration MusicBrainz stores on the recording entity this '
+                + 'track links to, shared by every release that uses that recording. Read from the '
+                + 'release data MusicBrainz already embeds in this page, so it costs no extra '
+                + 'request. This column is shown only when at least one track on the release has a '
+                + 'recording length that disagrees with its track length; "?:??" means MusicBrainz '
+                + 'has no length on record for that recording.' + msHint,
+        };
+
+        const tables = scopeTable ? [scopeTable] : Array.from(document.querySelectorAll('table.tbl'));
+        tables.forEach(table => {
+            table.querySelectorAll('thead th').forEach(th => {
+                const text = titles[th.dataset.colName || ''];
+                if (!text) return;
+                th.title = text;
+                // Claim the tooltip as ours. MusicBrainz natively marks a
+                // release tracklist's Length <th> with `class="treleases"`, and
+                // `_isJesus2099Treleases()` reads "a treleases cell with a
+                // title" as jesus2099's handiwork — so an unmarked tooltip here
+                // gets that native header stripped and the tooltip removed
+                // again. See `_isOwnColumnTooltip()`.
+                th.dataset.mbColTip = '1';
+            });
         });
     }
 
@@ -23479,6 +24082,10 @@ ${sections.join('\n')}
             input.value = '';
             input.style.backgroundColor = '';
         });
+
+        // The length-mismatch summary filter is structural, not a query, so
+        // clearing the inputs above would otherwise leave it silently engaged.
+        _lenMismatchFilterKind = null;
 
         // Re-run filter to update display
         if (typeof runFilter === 'function') {
@@ -30935,6 +31542,32 @@ a { color: #1565c0; }`;
     errorFlagBtn.addEventListener('click', () => _applyLiveDateFlagFilter('❌'));
     filterContainer.appendChild(errorFlagBtn);
 
+    // ── release-tracks-only length-mismatch summary buttons ────────────────
+    // Same idea and same self-scoping as the two above — `[data-mb-len-flag]`
+    // cells are only ever produced by `_applyLengthMismatchFlag()` — but a
+    // different filtering mechanism, and deliberately so. The live-date
+    // buttons work by typing their own glyph into the GLOBAL filter, which
+    // only works because `.mb-live-date-flag`'s ⚠️/❌ is real cell text. A
+    // length mismatch is marked purely by an attribute (a glyph in a duration
+    // cell's text would break that column's sorting — see
+    // `_applyLengthMismatchFlag()`), so there is no text to type. These
+    // instead TOGGLE a structural predicate that `testRowMatch()` consults,
+    // and show a pressed state while active so a filter that no typed query
+    // explains can never be left on invisibly.
+    const lenWarnBtn = document.createElement('button');
+    lenWarnBtn.id = 'mb-len-mismatch-warn-btn';
+    lenWarnBtn.type = 'button';
+    lenWarnBtn.style.cssText = `${uiFilterBarBtnCSS()} display:none; color:#8a6d00; border-color:#e0c14a;`;
+    lenWarnBtn.addEventListener('click', () => _applyLengthMismatchFilter('warn'));
+    filterContainer.appendChild(lenWarnBtn);
+
+    const lenSevereBtn = document.createElement('button');
+    lenSevereBtn.id = 'mb-len-mismatch-severe-btn';
+    lenSevereBtn.type = 'button';
+    lenSevereBtn.style.cssText = `${uiFilterBarBtnCSS()} display:none; color:#a33; border-color:#e08a8a;`;
+    lenSevereBtn.addEventListener('click', () => _applyLengthMismatchFilter('severe'));
+    filterContainer.appendChild(lenSevereBtn);
+
     filterContainer.appendChild(filterWrapper);
     filterContainer.appendChild(gfHistAnchor);
     filterContainer.appendChild(caseLabel);
@@ -31221,6 +31854,124 @@ a { color: #1565c0; }`;
      *
      * @param {string} icon - `'⚠️'` or `'❌'`.
      */
+    /**
+     * Which length-mismatch severity, if any, is currently being filtered to.
+     *
+     * Module state rather than part of the filter `ctx` bag because it is not a
+     * query: no input holds it, nothing the user types sets or clears it, and
+     * it must survive every re-render until the button that set it is pressed
+     * again (or `clearAllFilters()` runs). `testRowMatch()` reads it directly,
+     * the same way it already reads `activeDefinition`.
+     *
+     * @type {?('warn'|'severe')}
+     */
+    let _lenMismatchFilterKind = null;
+
+    /**
+     * Tallies rows carrying a length-mismatch flag, by severity.
+     *
+     * Counts ROWS, not cells: `_applyLengthMismatchFlag()` marks BOTH duration
+     * cells of a flagged track, so a per-cell tally (which is what
+     * `_countLiveDateFlags()` does, correctly, for its own one-cell-per-credit
+     * flags) would report exactly double here and read as twice as many
+     * problems as the release has.
+     *
+     * Counts the CAPTURED SOURCE rows (`_msSourceRows()`), not the live tbody.
+     * That is not a detail: on a multi-table page `runFilter()` re-renders each
+     * tbody with only the matching rows — filtered-out rows are removed from
+     * the DOM, not merely hidden — so a live-DOM tally would report whatever
+     * the current filter left behind. It showed up immediately: filtering to
+     * ⚠️ made the ❌ button disappear, because no ❌ row was still rendered.
+     * A summary button has to state a stable fact about the release, and be
+     * reachable while the other severity is engaged.
+     *
+     * The source rows carry the flags because `_applyLengthMismatchFlag()`
+     * stamps them during pre-processing, before row extraction — the same
+     * ride-along the millisecond stamps rely on.
+     *
+     * @returns {{warn: number, severe: number}}
+     */
+    function _countLengthMismatchRows() {
+        const counts = { warn: 0, severe: 0 };
+        _msSourceRows().forEach(row => {
+            // Severity is per-row, and both of a row's cells always carry the
+            // same kind, so the first flagged cell settles it.
+            const flagged = row.querySelector('td[data-mb-len-flag]');
+            if (!flagged) return;
+            const kind = flagged.dataset.mbLenFlag;
+            if (kind === 'severe') counts.severe++;
+            else if (kind === 'warn') counts.warn++;
+        });
+        return counts;
+    }
+
+    /**
+     * Shows/hides and relabels the length-mismatch summary buttons from
+     * `_countLengthMismatchRows()`. Called from
+     * `updateFilterButtonsVisibility()` alongside `_updateLiveDateFlagButtons()`,
+     * so it inherits every render/filter-completion hook that function already
+     * has — no new call sites.
+     *
+     * Also paints the pressed state, since these buttons toggle a filter rather
+     * than typing one into a visible input.
+     *
+     * @returns {void}
+     */
+    function _updateLengthMismatchButtons() {
+        const warnBtn   = document.getElementById('mb-len-mismatch-warn-btn');
+        const severeBtn = document.getElementById('mb-len-mismatch-severe-btn');
+        if (!warnBtn || !severeBtn) return;
+
+        const counts = _countLengthMismatchRows();
+        const _fmt = (kind, icon, n, btn) => {
+            if (n === 0) {
+                btn.style.display = 'none';
+                return;
+            }
+            const active = _lenMismatchFilterKind === kind;
+            btn.textContent = `(${n}) LENGTH ${icon}`;
+            btn.title = `${n} track${n === 1 ? '' : 's'} whose recording length differs from its `
+                      + `track length by more than the ${kind === 'severe' ? '"far over" level' : 'threshold'}`
+                      + ` (⚙️ Settings → 💿 RELEASE TRACKLIST). Click to show only ${n === 1 ? 'that row' : 'those rows'}`
+                      + `${active ? ' — click again to show all rows.' : '.'}`;
+            btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+            btn.style.fontWeight = active ? 'bold' : '';
+            btn.style.backgroundColor = active
+                ? (kind === 'severe'
+                    ? (Lib.settings.sa_release_tracks_length_mismatch_severe_bg || '#f8d7da')
+                    : (Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd'))
+                : '';
+            btn.style.display = 'inline-block';
+        };
+        _fmt('warn',   '⚠️', counts.warn,   warnBtn);
+        _fmt('severe', '❌', counts.severe, severeBtn);
+        Lib.debug('filter', `_updateLengthMismatchButtons(): ${counts.warn} warn row(s), `
+                          + `${counts.severe} severe row(s), active filter = ${_lenMismatchFilterKind}`);
+    }
+
+    /**
+     * Toggles the "show only length-mismatch rows" filter.
+     *
+     * Structural rather than text-based (see the button-creation comment):
+     * `testRowMatch()` reads `_lenMismatchFilterKind` directly, so this only has
+     * to set it and re-run the existing filter engine. Pressing the active
+     * severity again clears it, which is the only way back — nothing the user
+     * can type will, since no query string is involved.
+     *
+     * Unlike `_applyLiveDateFlagFilter()`, this deliberately does NOT clear the
+     * other filters: it composes with them, so you can flag-filter and then
+     * narrow further by typing. The pressed button is what keeps that
+     * combination legible.
+     *
+     * @param {('warn'|'severe')} kind
+     * @returns {void}
+     */
+    function _applyLengthMismatchFilter(kind) {
+        _lenMismatchFilterKind = _lenMismatchFilterKind === kind ? null : kind;
+        Lib.debug('filter', `_applyLengthMismatchFilter(): now ${_lenMismatchFilterKind || '(off)'}`);
+        runFilter();
+    }
+
     function _applyLiveDateFlagFilter(icon) {
         Lib.debug('filter', `_applyLiveDateFlagFilter(): applying one-off filter for icon "${icon}".`);
         document.querySelectorAll('.mb-col-filter-input').forEach(input => {
@@ -31288,8 +32039,15 @@ a { color: #1565c0; }`;
         // "Clear ALL filters" — visible when the global filter OR at least one STF
         // filter is active.  Column-only active is already covered by
         // clearColumnFiltersBtn; this button is not needed in that case.
+        //
+        // The length-mismatch summary filter counts too, and has to: it is the
+        // one active filter with NO input holding it (see
+        // _applyLengthMismatchFilter), so without this the rows would be
+        // narrowed while every "clear" affordance stayed hidden — leaving the
+        // pressed summary button as the only way out, which is exactly the
+        // dead end a user would not think to look for.
         clearAllFiltersBtn.style.display =
-            (globalFilterActive || stfFiltersActive)
+            (globalFilterActive || stfFiltersActive || _lenMismatchFilterKind)
                 ? 'inline-block' : 'none';
 
         // Update visibility, labels, and in-panel clear button for per-subtable controls.
@@ -31363,6 +32121,7 @@ a { color: #1565c0; }`;
         // too — piggybacks on every existing call site of this function
         // rather than needing its own.
         _updateLiveDateFlagButtons();
+        _updateLengthMismatchButtons();
     }
 
     // Make this function globally accessible so runFilter can call it
@@ -31707,6 +32466,37 @@ a { color: #1565c0; }`;
             background-color: ${Lib.settings.sa_annotation_h2_bg || '#e3f2fd'};
             color: ${Lib.settings.sa_annotation_h2_color || '#1565c0'};
         }
+        /* Track-vs-recording length mismatch (release-tracks only, see
+           _applyLengthMismatchFlag()). Driven ENTIRELY off the td's own
+           data-mb-len-flag attribute — no marker element exists in the cell at
+           all. That is deliberate: applyIntegerColumnStyling() rebuilds these
+           cells from scratch (cell.textContent = '') to build the ':'-alignment
+           spans, so a child marker would be destroyed; and a glyph in the cell
+           TEXT would both widen this row's colon-split segment and reach
+           _compareDurations(), which parses this column's rendered text to sort
+           it. An ::after glyph is in neither, and the attribute rides along on
+           every cloneNode(true) re-render for free.
+           position:relative scopes the absolutely-positioned glyph to the cell;
+           pointer-events:none keeps the td's own title tooltip reachable
+           through it. */
+        td[data-mb-len-flag] { position: relative; }
+        td[data-mb-len-flag="warn"] {
+            background-color: ${Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd'};
+        }
+        td[data-mb-len-flag="severe"] {
+            background-color: ${Lib.settings.sa_release_tracks_length_mismatch_severe_bg || '#f8d7da'};
+        }
+        td[data-mb-len-flag]::after {
+            position: absolute;
+            right: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.8em;
+            line-height: 1;
+            pointer-events: none;
+        }
+        td[data-mb-len-flag="warn"]::after   { content: '⚠️'; }
+        td[data-mb-len-flag="severe"]::after { content: '❌'; }
         .mb-toggle-icon { font-size: 0.8em; margin-right: 8px; color: #666; width: 12px; display: inline-block; cursor: pointer; }
         .mb-master-toggle {
             cursor: pointer;
@@ -39432,6 +40222,18 @@ a { color: #1565c0; }`;
                 .forEach(a => a.classList.remove('mb-rel-icon-match'));
         }
 
+        // A length-mismatch summary button is engaged: rows without a flag of
+        // that severity are out regardless of what any query says. Placed after
+        // the highlight reset above (so a row leaving the set does not keep
+        // stale marks) and before every query test below, since no query can
+        // bring such a row back — see _applyLengthMismatchFilter().
+        if (_lenMismatchFilterKind) {
+            const _sel = _lenMismatchFilterKind === 'severe'
+                ? 'td[data-mb-len-flag="severe"]'
+                : 'td[data-mb-len-flag="warn"]';
+            if (!row.querySelector(_sel)) return false;
+        }
+
         // --- Global filter ---
         let globalHit = !globalQuery;
         if (!globalHit) {
@@ -39838,6 +40640,13 @@ a { color: #1565c0; }`;
             c: matchCtx.isCaseSensitive,
             r: matchCtx.isRegExp,
             x: matchCtx.isExclude,
+            // The length-mismatch summary filter is structural, not a query, so
+            // it appears NOWHERE else in this key — and leaving it out made the
+            // cache return the previous pass's rows when the only thing that
+            // changed was this. Symptom: pressing the button filtered
+            // correctly, pressing it again to clear did nothing at all, because
+            // "no query, no column filters" hashed identically in both states.
+            m: _lenMismatchFilterKind,
             f: matchCtx.colFilters.map(f => f.isMultiValueFilter
                 ? { i: f.idx, u: Array.from(f.valueSet).sort(),
                     sm: Array.from(f.structureModes || []).sort(),
@@ -44477,6 +45286,25 @@ a { color: #1565c0; }`;
     const _J2_DECORATION_SUFFIXES = ['toolzone', 'editbutt', 'openedits', 'idcountzone'];
 
     /**
+     * Whether a `title` on this element is one THIS script wrote, rather than a
+     * third-party plugin's.
+     *
+     * Exists because two of jesus2099's fingerprints are "there is a `title`
+     * here at all" (`_isJesus2099Treleases()`) and "drop the `title` on a
+     * marked `<th>`/`<td>`" (`_stripJesus2099InTable()`'s disposition 3) — both
+     * written when nothing in this script put a `title` on a table cell.
+     * `_initLengthColHeaderTooltips()` now does, so our own tooltips carry
+     * `data-mb-col-tip` and both places consult this instead of testing bare
+     * attribute presence.
+     *
+     * @param   {Element} el
+     * @returns {boolean}
+     */
+    function _isOwnColumnTooltip(el) {
+        return !!(el.dataset && el.dataset.mbColTip);
+    }
+
+    /**
      * Decides whether an element's `treleases` class was put there by
      * jesus2099 — or by MusicBrainz itself.
      *
@@ -44507,14 +45335,27 @@ a { color: #1565c0; }`;
      * is left alone, so the failure direction is "a stale third-party class
      * survives", never "native markup is deleted".
      *
+     * **A `title` THIS script wrote does not count**, and the carve-out is not
+     * hypothetical: the `title`-presence test below reads "MusicBrainz puts no
+     * title on its own Length `<th>`" — true of MusicBrainz, but no longer true
+     * of us, since `_initLengthColHeaderTooltips()` explains the Length column
+     * in exactly such a tooltip. Without the `data-mb-col-tip` check that
+     * tooltip made this predicate report the release tracklist's own native
+     * header as jesus2099's, which stripped MusicBrainz's `treleases` class off
+     * it (and removed the tooltip again on the next render) — the precise
+     * destructive outcome the paragraph above warns about, reintroduced from a
+     * completely unrelated direction. Anything that puts a `title` on a
+     * `treleases` `<th>`/`<td>` in future must mark it the same way.
+     *
      * @param   {Element} el
      * @returns {boolean} True only when jesus2099 demonstrably added the class.
      */
     function _isJesus2099Treleases(el) {
         if (!el.classList.contains('treleases')) return false;
         // MusicBrainz puts no title on its own Length <th>/<td>; jesus2099
-        // always does, in the same breath as the class.
-        if (el.hasAttribute('title')) return true;
+        // always does, in the same breath as the class. Ours is marked and is
+        // therefore not evidence of anything — see this JSDoc.
+        if (el.hasAttribute('title') && !_isOwnColumnTooltip(el)) return true;
         return /yellow/i.test(el.style.textShadow || '');
     }
 
@@ -44583,7 +45424,9 @@ a { color: #1565c0; }`;
      *      Additionally, on a `<th>`/`<td>` only: the plugin `title` (which
      *      jesus2099 sets to its own script name — e.g.
      *      `"SUPER MIND CONTROL Ⅱ X TURBO"`, note the
-     *      NON-BREAKING spaces) and its `text-shadow` are dropped too. Both
+     *      NON-BREAKING spaces) and its `text-shadow` are dropped too —
+     *      except a `title` of our own, marked `data-mb-col-tip` (see
+     *      `_isOwnColumnTooltip()`). Both
      *      are restricted to marker-carrying cells on purpose: native
      *      MusicBrainz puts meaningful `title`s on `<a>`/`<abbr>` elements
      *      (artist sort names, country abbreviations), and a `text-shadow`
@@ -44625,7 +45468,10 @@ a { color: #1565c0; }`;
             tokens.forEach(t => el.classList.remove(t)); // disposition 3
             if (!el.classList.length) el.removeAttribute('class');
             if (el.tagName === 'TH' || el.tagName === 'TD') {
-                el.removeAttribute('title');
+                // Our own column tooltips are explicitly exempt — a cell can
+                // carry a genuine jesus2099 marker class AND one of our
+                // tooltips, and blindly dropping the title would delete ours.
+                if (!_isOwnColumnTooltip(el)) el.removeAttribute('title');
                 el.style.removeProperty('text-shadow');
             }
             result.stripped++;
@@ -55630,6 +56476,11 @@ a { color: #1565c0; }`;
         // Idempotent, and scoped to `table` so a many-sub-table page doesn't
         // re-scan every table once per group.
         _initMsLengthColHeaderToggle(table);
+        // Same hook, same reason: this function is what rebuilt these <th>s, so
+        // it is the one place guaranteed to run after they exist on every
+        // render path (single-table, grouped, and sub-table-in-its-own-tab
+        // alike). Don't add a per-caller call site — extend the hook.
+        _initLengthColHeaderTooltips(table);
     }
 
     /**

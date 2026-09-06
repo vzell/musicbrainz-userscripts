@@ -23,9 +23,18 @@
     beside it precisely because the two disagree on this release.
 -->
 <!--
-    MusicBrainz's real values, untouched: six of the eight tracks have a
-    recording length that differs from their track length, so the
-    "Recording length" column IS added on this fixture.
+    The OTHER side of the _releaseHasDifferingRecordingLength() gate.
+
+    Same DOM and the same track lengths, but every recording length is
+    forced EQUAL to its own track length, so there is nothing to disagree
+    about and the "Recording length" column must NOT be added at all
+    rather than render as an exact copy of "Length".
+
+    Forced rather than taken from a release that genuinely agrees (several
+    do — see scripts/scan-track-vs-recording-length.py) because the payload
+    has to keep keying THIS DOM: the rows are matched by recording MBID,
+    so another release's payload would match nothing and the column would
+    be absent for the wrong reason, passing the test while proving nothing.
 -->
-<script type="application/json">{"release":{"gid":"1d404e1d-fcb6-3a52-b478-e706e893c897","name":"Born to Run","mediums":[{"position":1,"tracks":[{"number":"A1","position":1,"length":290160,"recording":{"gid":"bbcedc0f-2fff-42f4-9ca6-6d2263d1a042","length":290000}},{"number":"A2","position":2,"length":191666,"recording":{"gid":"34a6e904-0d0b-4393-9ff0-07ef217c7d3d","length":191000}},{"number":"A3","position":3,"length":181800,"recording":{"gid":"5d2e78bc-c616-484f-b1e4-8e010aa3641e","length":181000}},{"number":"A4","position":4,"length":390506,"recording":{"gid":"c9fae3aa-03ce-4455-95e2-22fce0caa0c5","length":390506}},{"number":"B1","position":5,"length":270360,"recording":{"gid":"7ada2178-c1db-4a24-9760-810681e95308","length":270000}},{"number":"B2","position":6,"length":270800,"recording":{"gid":"b4e0497b-e8a6-4af6-8f23-314639309d48","length":270000}},{"number":"B3","position":7,"length":199000,"recording":{"gid":"4fc4a847-8270-433e-b410-394cdf398fa3","length":196000}},{"number":"B4","position":8,"length":573866,"recording":{"gid":"d7f8e734-6ede-46f5-90cd-983d052ca691","length":573866}}]}]}}</script>
+<script type="application/json">{"release":{"gid":"1d404e1d-fcb6-3a52-b478-e706e893c897","name":"Born to Run","mediums":[{"position":1,"tracks":[{"number":"A1","position":1,"length":290160,"recording":{"gid":"bbcedc0f-2fff-42f4-9ca6-6d2263d1a042","length":290160}},{"number":"A2","position":2,"length":191666,"recording":{"gid":"34a6e904-0d0b-4393-9ff0-07ef217c7d3d","length":191666}},{"number":"A3","position":3,"length":181800,"recording":{"gid":"5d2e78bc-c616-484f-b1e4-8e010aa3641e","length":181800}},{"number":"A4","position":4,"length":390506,"recording":{"gid":"c9fae3aa-03ce-4455-95e2-22fce0caa0c5","length":390506}},{"number":"B1","position":5,"length":270360,"recording":{"gid":"7ada2178-c1db-4a24-9760-810681e95308","length":270360}},{"number":"B2","position":6,"length":270800,"recording":{"gid":"b4e0497b-e8a6-4af6-8f23-314639309d48","length":270800}},{"number":"B3","position":7,"length":199000,"recording":{"gid":"4fc4a847-8270-433e-b410-394cdf398fa3","length":199000}},{"number":"B4","position":8,"length":573866,"recording":{"gid":"d7f8e734-6ede-46f5-90cd-983d052ca691","length":573866}}]}]}}</script>
 </body></html>

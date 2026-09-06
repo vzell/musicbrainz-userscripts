@@ -683,6 +683,20 @@ here"; three separate call sites once keyed on the bare class and were each
 deleting native markup (see git log). Anything new that touches `treleases`
 must go through that predicate.
 
+**A `title` THIS script writes is not evidence of jesus2099**, and the
+carve-out is load-bearing. The predicate's cheapest discriminator is bare
+`title` presence — sound only because nothing else ever put one on a Length
+`<th>`/`<td>`. `_initLengthColHeaderTooltips()` now does, and without the
+exemption it made the predicate report the release tracklist's own NATIVE
+header as jesus2099's: `purgeJesus2099Artifacts()` then stripped
+MusicBrainz's `treleases` class off it and removed the tooltip again on
+every render — the exact destructive failure above, reintroduced from a
+completely unrelated direction. Our tooltips carry `data-mb-col-tip`, and
+BOTH bare-`title` call sites (`_isJesus2099Treleases()` and
+`_stripJesus2099InTable()`'s disposition-3 title removal) go through
+`_isOwnColumnTooltip()`. Anything that puts a `title` on a `treleases`
+`<th>`/`<td>` must mark it the same way.
+
 `purgeJesus2099Artifacts()`/`_stripJesus2099InTable()` strip every remaining
 jesus2099 artifact from the tables this script renders — header row included,
 plus the captured source rows in `groupedRows`/`allRows` (cleaning only the
@@ -699,6 +713,64 @@ returns a DIRECTION-FINAL number, which is how `"?:??"` is pinned last in
 both directions; a caller must never negate it, and only its `0` may fall
 through to a tie-breaking column.
 
+**`release-tracks` has a SECOND duration column, "Recording length"**, fed by
+`tracks[].recording.length` from the same embedded payload
+(`_buildReleaseRecordingLengthMap()`), inserted right after the native
+"Length" by `applyExtractTrackTitleData()`. It is page-wide-gated by
+`_releaseHasDifferingRecordingLength()` — added ONLY where some track's
+recording length is present AND disagrees with its track length, so it can
+never render as an exact copy of "Length". A track length with no recording
+length behind it deliberately does not qualify (that alone would be a column
+of `?:??`). Its cells carry the same `data-mb-ms`/`data-mb-sec-text` stamps,
+which is the whole reason the single ⏱ button switches both columns:
+`_msApplyLengthPrecision()` rewrites every `td[data-mb-ms]` on a row, NOT one
+resolved column index. Independent of `sa_enable_ms_track_length` — that
+setting governs the toggle and the stamping, not whether the column exists.
+
+**Track-vs-recording length mismatch flagging** (`_lengthMismatchFlag()`/
+`_applyLengthMismatchFlag()`, release-tracks only) marks BOTH duration cells
+when the two lengths differ by more than `sa_release_tracks_length_mismatch_threshold_ms`
+(default 1000), promoting `⚠️` to `❌` past `threshold × sa_release_tracks_length_mismatch_severe_factor`
+(default 3). The severe level is disabled whenever that product is not
+strictly greater than the threshold — a factor of 1, or a threshold of 0.
+
+**The marking is ATTRIBUTES ONLY (`data-mb-len-flag`), with the tint and the
+glyph both coming from CSS (`td[data-mb-len-flag]::after`).** All three
+reasons are load-bearing, and two of them are silent if broken:
+- `applyIntegerColumnStyling()` rebuilds these cells with
+  `cell.textContent = ''` to build the `:`-alignment spans, so a marker
+  appended as a CHILD is simply deleted.
+- A glyph in the cell TEXT reaches `_compareDurations()`, which parses this
+  column's rendered text — the flagged row would sort as if its duration were
+  unparseable — and would also widen that one row's colon-split segment.
+- Attributes survive `cloneNode(true)`, so the marking needs NO re-wire hook
+  on any render path. A JS-painted marker would need one on every path.
+
+The `<td>`s also carry `data-mb-col-tip` alongside their `title`, for the
+same reason the headers do — a native Length `<td>` is `class="treleases"`,
+and `_isJesus2099Treleases()` reads "a treleases cell with a title" as
+jesus2099's. See the `treleases` section above.
+
+**The `(N) LENGTH ⚠️`/`(N) LENGTH ❌` summary buttons filter STRUCTURALLY**,
+not by typing a glyph into the global filter the way the live-date
+WARNING/ERROR buttons do (they can, because `.mb-live-date-flag`'s glyph is
+real cell text; this one has no text at all). `testRowMatch()` reads the
+module-level `_lenMismatchFilterKind` directly. Three things must stay in
+sync with it, each of which broke in testing:
+- **`_buildFilterKey()` must include it.** It appears nowhere else in the
+  key, so "no query, no column filters" hashed identically whether the flag
+  filter was on or off — `_filterResultCache` returned the previous pass's
+  rows and pressing the button a second time did nothing at all.
+- **`_countLengthMismatchRows()` must count `_msSourceRows()`, not the live
+  tbody.** `runFilter()` REMOVES non-matching rows from a multi-table tbody
+  rather than hiding them, so a live-DOM tally reports only what the current
+  filter left — filtering to ⚠️ made the ❌ button vanish.
+- **`updateFilterButtonsVisibility()` must count it as an active filter**, or
+  the rows narrow while every "clear" affordance stays hidden. It is the one
+  active filter with no input holding it, so `clearAllFilters()` resets it
+  explicitly too.
+It counts TRACKS, not cells — each flagged track marks two.
+
 **Millisecond precision** is opt-in per page via the `▶⏱`/`▼⏱`
 `.mb-ms-col-hdr-btn` prepended to the Length header's `.mb-col-hdr-flex`
 (same slot/idiom as `.mb-caa-col-hdr-btn`), gated by
@@ -708,7 +780,10 @@ through to a tie-breaking column.
   are different MusicBrainz fields and differ constantly (4 of `Born to Run`'s
   8 tracks, one by 3 s). MusicBrainz renders the TRACK length ROUNDED, so the
   contract is "reveal more precision in the number already shown", never
-  "show a different measurement". `_msStampReleaseTrackLengths()` enforces it
+  "show a different measurement". The recording's own length is not
+  discarded, just kept out of THIS column — it feeds "Recording length"
+  above, where showing a different measurement is the point.
+  `_msStampReleaseTrackLengths()` enforces it
   with a round-trip check and discards any value that disagrees with the
   seconds MusicBrainz rendered.
 - `data-mb-sec-text` stores the original seconds string verbatim; toggling
