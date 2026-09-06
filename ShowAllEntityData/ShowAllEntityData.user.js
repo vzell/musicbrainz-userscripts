@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1028+2026-09-06
+// @version      9.99.1029+2026-09-06
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -29584,11 +29584,20 @@ a { color: #1565c0; }`;
      * artist-releasegroups, releasegroup-releases) and MB never imposes any
      * per-category cap to begin with, so overflow simply doesn't exist as a
      * concept there.
+     *
+     * `work-recordings`, `area-recordings`, `area-works`, `area-releases`
+     * share the exact same "grouped by relationship/link type, MB's own
+     * 100-row-per-category cap" shape as `artist-relationships`/
+     * `label-relationships`/`place-performances` (see the "7 pairs" cluster
+     * in pageTypes-testing-reference.org) but were missing from this Set —
+     * on any area/work whose categories all stay under the cap, that left
+     * neither button rendered at all.
      * @type {Set<string>}
      */
     const SA_SNAPSHOT_SUPPORTED_PAGETYPES = new Set([
         'artist-relationships', 'label-relationships', 'place-performances',
         'artist-releasegroups', 'releasegroup-releases',
+        'work-recordings', 'area-recordings', 'area-works', 'area-releases',
     ]);
 
     /**
@@ -29603,10 +29612,18 @@ a { color: #1565c0; }`;
      * native table on that bare page already carries class="tbl", so the
      * bare URL alone gives _hydrateAndRenderFromSnapshotData something to
      * hydrate into with no extra routing trick needed.
+     *
+     * `work-recordings`, `area-recordings`, `area-works`, `area-releases`
+     * each have a matching `-filtered` sibling reachable the same way
+     * (`work-recordings-filtered`, `area-recordings-filtered`,
+     * `area-works-filtered`, `area-releases-filtered`, all matching on the
+     * mere presence of `link_type_id` regardless of its value), so they
+     * route through the same `?link_type_id=1` placeholder.
      * @type {Set<string>}
      */
     const SA_SNAPSHOT_LINK_TYPE_ID_PAGETYPES = new Set([
         'artist-relationships', 'label-relationships', 'place-performances',
+        'work-recordings', 'area-recordings', 'area-works', 'area-releases',
     ]);
 
     /**

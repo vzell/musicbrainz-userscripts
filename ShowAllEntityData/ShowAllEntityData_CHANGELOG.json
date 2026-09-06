@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1029",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The \"Show single-table\" sub-table button (and, transitively, the real \"Show all N rows\" overflow button it stands in for) was missing entirely on `work-recordings`, `area-recordings`, `area-works` and `area-releases` whenever every relationship/link-type category on the page stayed under MusicBrainz's own 100-row-per-category cap — e.g. https://musicbrainz.org/area/a36544c1-cb40-4f44-9e0e-7a5a69e403a8/recordings. These four pageTypes share the exact same grouped-by-link-type, MB-capped shape as `artist-relationships`/`label-relationships`/`place-performances` (the \"7 pairs\" cluster in pageTypes-testing-reference.org) but had never been added to `SA_SNAPSHOT_SUPPORTED_PAGETYPES`/`SA_SNAPSHOT_LINK_TYPE_ID_PAGETYPES`, so `renderGroupedTable()`'s fallback branch silently skipped them. Added all four to both Sets."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1028",
     "date": "2026-09-06",
     "sections": [
