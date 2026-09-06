@@ -42449,7 +42449,20 @@ a { color: #1565c0; }`;
                 // subsequent runFilter calls (user typing) are still served from the IDB/memory
                 // cache without redundant network calls — exactly the same approach used in the
                 // multi-table path's groupedRows.forEach clone loop.
-                Array.from(clone.cells).forEach(td => _stripTransientCellState(td));
+                //
+                // preserveLiveArt: this clone is going straight back into the
+                // SAME document that owns the icon thumbnails' object URLs, so
+                // an icon already painted from a live blob keeps it instead of
+                // being blanked and immediately repainted with the identical
+                // URL from the Tier-1 memory cache. That repaint is what made
+                // the whole icon column flash empty on every keystroke and
+                // every sort. Only the single-table path opts in: on
+                // tableMode:'multi' the source rows are permanently separate
+                // elements that never carry any artwork to preserve (see
+                // _artSyncSearchTextToSourceRow()'s JSDoc), and the three
+                // serialising call sites must never opt in at all (see
+                // _stripTransientCellState()'s own JSDoc).
+                Array.from(clone.cells).forEach(td => _stripTransientCellState(td, { preserveLiveArt: true }));
                 // Restore art-cell expand state from the authoritative expandedCells
                 // map.  allRows are detached source rows that never carry live expand
                 // state, so expandedCells is the only way to replay the user's
@@ -59673,6 +59686,71 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Reports whether an artwork-icon span's `background-image` is a `blob:`
+     * URL that is STILL LIVE in this session.
+     *
+     * The icon column paints its thumbnail as a CSS background rather than an
+     * `<img>` (see `_onIconLoaded()`), so it needs its own liveness test —
+     * this is the `background-image` twin of the `blobIsAlive` check
+     * `_artInitInlinePics()`'s Case C1 already applies to an inline
+     * placeholder's `<img>.src`. Both ask the same question of the same
+     * authority: is this object URL one we created and have not yet revoked?
+     *
+     * A URL that is merely blob-SHAPED is not enough. After a `pagehide` in a
+     * previous session, or on a row hydrated from a disk snapshot, the string
+     * survives in the serialised style while the underlying object is long
+     * gone — `_artIdbBlobUrls` is the only thing that can tell those apart, so
+     * a string-prefix test alone would happily "preserve" a broken image.
+     *
+     * @param {HTMLElement} span - An artwork-icon span (`.caa-icon`/`.eaa-icon`/
+     *   `.artwork-icon`).
+     * @returns {boolean} True only when the background is a live, revocable
+     *   object URL this session still owns.
+     */
+    function _artIconBackgroundIsLiveBlob(span) {
+        const bg = span.style.backgroundImage;
+        if (!bg) return false;
+        const m = bg.match(/url\(\s*["']?(blob:[^"')]+)/);
+        return !!m && _artIsLiveBlobUrl(m[1]);
+    }
+
+    /**
+     * Reports whether a URL string is an object URL this session created and
+     * has not yet revoked.
+     *
+     * `_artIdbBlobUrls` is the only authority for this. A `blob:`-shaped string
+     * proves nothing on its own: it outlives the object it named, surviving in
+     * a serialised style or `src` attribute long after the `pagehide` that
+     * revoked it, so a prefix test alone would happily "preserve" a broken
+     * image.
+     *
+     * @param {string} url
+     * @returns {boolean}
+     */
+    function _artIsLiveBlobUrl(url) {
+        return !!url && url.startsWith('blob:') && _artIdbBlobUrls.has(url);
+    }
+
+    /**
+     * Reports whether an inline-thumbnail placeholder is currently displaying
+     * an image from a still-live object URL.
+     *
+     * The `<img>.src` twin of `_artIconBackgroundIsLiveBlob()`, and the same
+     * question `_artInitInlinePics()`'s Case C1 asks as `blobIsAlive` — C1 is
+     * in fact what consumes this: leaving such a placeholder in place makes
+     * that cell fall into Case C on the next pass (the `done` marker is still
+     * stripped), where C1 re-wires the hover listeners and keeps the image
+     * rather than re-fetching it.
+     *
+     * @param {HTMLElement} ph - A `.mb-caa-inline-ph` / `.mb-eaa-inline-ph` span.
+     * @returns {boolean}
+     */
+    function _artInlinePhIsLiveBlob(ph) {
+        const img = ph.querySelector('img');
+        return !!img && _artIsLiveBlobUrl(img.src);
+    }
+
+    /**
      * Strips all transient JS-only state from a `<td>` (or a clone of one)
      * so that it is safe to use as a source row after a disk-load restore.
      *
@@ -59706,9 +59784,38 @@ a { color: #1565c0; }`;
      *     stripping it unconditionally destroyed it outright (WIP.91)
      *   - data-erg-injected dataset marker removed
      *
+     * ## `preserveLiveArt` — opt-in, and why it MUST default to false
+     *
+     * This function is NOT `runFilter()`'s private helper. It has five call
+     * sites, and only two of them are re-render paths:
+     *
+     *   - `runFilter()` multi-table branch  — re-render
+     *   - `runFilter()` single-table branch — re-render
+     *   - `getCleanCellHtml()`              — **Save-to-Disk / captureSubtableSnapshot**
+     *   - `loadTableDataFromDisk()`         — disk restore
+     *   - `_hydrateAndRenderFromSnapshotData()` — sub-table tab hydration
+     *
+     * A `blob:` URL is alive only inside the session that created it — every
+     * one of them is revoked on `pagehide` (see `_artIdbBlobUrls`'s own
+     * unload handler). So "this artwork is still valid" is true *by
+     * definition* in the saving tab, and a liveness check applied
+     * unconditionally would fire there too — serialising `url(blob:…)` into
+     * the saved cell HTML, where it is guaranteed to be dead by the time
+     * anyone loads the file. The `.mb-art-cache-hint-*` indicators would
+     * likewise be persisted, making a restored file misreport which cache
+     * tier its images came from.
+     *
+     * Hence: opt-in per call site, never a blanket behaviour change. Only a
+     * caller that is re-rendering into the SAME live document may pass it.
+     *
      * @param {HTMLElement} el - The <td> element to clean in-place.
+     * @param {Object}  [opts]
+     * @param {boolean} [opts.preserveLiveArt=false] - When true, leave artwork
+     *   in place that is still valid in THIS session (see
+     *   `_artIconBackgroundIsLiveBlob()`), instead of blanking it for a
+     *   re-fetch. Callers that serialise the cell must never set this.
      */
-    function _stripTransientCellState(el) {
+    function _stripTransientCellState(el, { preserveLiveArt = false } = {}) {
         // CAA/EAA enrichment markers
         el.querySelectorAll('a[data-caa-enriched], a[data-eaa-enriched]').forEach(a => {
             delete a.dataset.caaEnriched;
@@ -59768,7 +59875,16 @@ a { color: #1565c0; }`;
         });
 
         // Artwork-icon background-image (session-scoped or will be re-fetched)
+        //
+        // With preserveLiveArt, an icon already painted from a live object URL
+        // keeps it: the re-render is inserting this clone into the same
+        // document that owns the blob, so blanking it only makes the column
+        // flash empty until _artLoadIcon paints the identical URL back from
+        // the Tier-1 memory cache. Anything else — a dead blob from a previous
+        // session, a plain http(s) URL, no background at all — still gets
+        // cleared, so the normal re-fetch path is unchanged.
         el.querySelectorAll('span.caa-icon, span.eaa-icon, span.artwork-icon').forEach(span => {
+            if (preserveLiveArt && _artIconBackgroundIsLiveBlob(span)) return;
             span.style.removeProperty('background-image');
             span.style.removeProperty('background-size');
         });
@@ -59781,7 +59897,23 @@ a { color: #1565c0; }`;
         const _hadInlineArtPh = !!el.querySelector('.mb-caa-inline-ph, .mb-eaa-inline-ph');
 
         // Inline-thumbnail placeholder spans (_artInitInlinePics re-injects them)
-        el.querySelectorAll('.mb-caa-inline-ph, .mb-eaa-inline-ph').forEach(ph => ph.remove());
+        //
+        // With preserveLiveArt, a placeholder still showing an image from a
+        // live object URL is kept instead of being deleted and re-injected —
+        // that delete/re-inject cycle is what made every inline thumbnail
+        // vanish and pop back on each keystroke and each sort.
+        //
+        // The `done` marker is deliberately still deleted above: this cell must
+        // land in _artInitInlinePics()'s Case C, not Case A. Case A is the
+        // "already processed, skip" branch and does NOT re-wire, which would
+        // leave the surviving thumbnail with dead hover listeners
+        // (cloneNode(true) copies no listeners). Case C1 is the branch that
+        // re-wires hover + bigbox tooltip, keeps the live image, and only then
+        // stamps the marker — precisely the behaviour wanted here.
+        el.querySelectorAll('.mb-caa-inline-ph, .mb-eaa-inline-ph').forEach(ph => {
+            if (preserveLiveArt && _artInlinePhIsLiveBlob(ph)) return;
+            ph.remove();
+        });
         // NOTE: .mb-inline-art-sort-key spans are intentionally NOT removed here.
         // In the multi-table (addCAA) path runFilter() clones rows and calls
         // _stripTransientCellState() before testRowMatch(); removing the sort-key span
@@ -65741,6 +65873,28 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Synchronously reports whether an image URL is already resolved in the
+     * Tier-1 session memory cache, without touching IndexedDB or the network.
+     *
+     * `_artFetchCachedImage()` answers the same question, but only ever as a
+     * Promise — so a caller cannot use it to decide, *before* building any DOM,
+     * whether this image is going to be instant. That decision is the whole
+     * point here: an image already in `_artIdbMemCache` costs one Map lookup
+     * and reuses an object URL that is already in the browser's blob registry,
+     * so it neither needs the `_caaQueue` concurrency budget nor a "⌛" holding
+     * glyph. Treating it like a fetch is what made a re-render's whole
+     * big-picture strip empty out to hourglasses and refill a few images at a
+     * time.
+     *
+     * @param   {string} url  Raw (possibly protocol-relative) image URL.
+     * @returns {?string} The cached object URL, or null when not in memory.
+     */
+    function _artMemCachedObjectUrl(url) {
+        const normUrl = _artNormaliseUrl(url);
+        return _artIdbMemCache.has(normUrl) ? _artIdbMemCache.get(normUrl) : null;
+    }
+
+    /**
      * Fetches one artwork image blob using GM_xmlhttpRequest (bypasses CORS) and
      * resolves with the raw Blob.
      *
@@ -67230,6 +67384,128 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Attaches an image `<li>`'s own event listeners: the broken-image handler,
+     * the hover-preview popup and the type-badge HTML tooltip.
+     *
+     * Split out of `_artBuildImageLi()` so the wiring can be re-applied to an
+     * `<li>` that already exists. `cloneNode(true)` copies attributes but never
+     * listeners, so every re-render path produces visually complete art rows
+     * whose hover preview and tooltip are dead — the failure the `runFilter()`
+     * strip comments describe. Rebuilding the whole `<li>` was previously the
+     * only cure, because everything the listeners close over lived in
+     * `_artBuildImageLi()`'s local scope.
+     *
+     * Everything needed is therefore read back off the element itself:
+     * `data-li-tooltip-types`, `data-li-tooltip-comment` and `data-li-big-src`,
+     * all stamped at build time. Those survive `cloneNode`, so a clone carries
+     * its own wiring instructions and no archive payload is needed.
+     *
+     * **Call exactly once per element instance.** There is deliberately no
+     * "already wired" marker: a marker would be copied onto every clone while
+     * the listeners themselves were not, so it would report wired-ness that no
+     * longer exists — the precise trap `_artInitInlinePics()`'s Case C1
+     * documents for `hoverWiredAttr`, which it defuses by unconditionally
+     * deleting the inherited value first. Since a clone is a fresh instance
+     * with no listeners at all, re-wiring a clone is always correct; only
+     * calling this twice on the *same* live element would duplicate.
+     *
+     * @param {HTMLLIElement} li  An image `<li>` built by `_artBuildImageLi()`.
+     * @returns {void}
+     */
+    function _artWireImageLi(li) {
+        const img = li.querySelector('img');
+        if (!img) return; // no thumbnail (no usable URL in the archive payload)
+
+        const typeText    = li.dataset.liTooltipTypes   || '';
+        const commentText = li.dataset.liTooltipComment || '';
+        const bigSrc      = li.dataset.liBigSrc         || '';
+
+        img.addEventListener('error', function() { this.style.display = 'none'; });
+
+        // ── Hover preview + HTML badge tooltip wiring ────────────────────────
+        // Both the hover-preview popup and the type-badge tooltip are anchored
+        // to the same img.mouseenter event so they always appear and disappear
+        // together.  The tooltip is positioned top-right of the preview popup
+        // when it is visible (sa_caa_hover_preview ON), or top-right of the img
+        // itself when the preview is disabled.
+
+        /**
+         * Shows the type-badge HTML tooltip positioned top-right of `anchorEl`.
+         *
+         * @param {HTMLElement} anchorEl  Element whose right/top edge is the anchor.
+         */
+        const _showLiTooltip = (anchorEl) => {
+            const _tip = _ensureArtBigboxTooltip();
+            if (!_tip) return;
+            _tip.innerHTML = '';
+
+            // Row 1: type pill labels (bold).
+            if (typeText) {
+                const _typesLine = document.createElement('div');
+                _typesLine.style.cssText = 'font-weight:600; margin-bottom:2px;';
+                typeText.split(' / ').forEach((t, i) => {
+                    if (i > 0) _typesLine.appendChild(document.createTextNode(' / '));
+                    const _pill = document.createElement('span');
+                    _pill.style.cssText =
+                        'display:inline-block; background:#555; color:#cdd6f4;' +
+                        ' border-radius:3px; padding:0 4px; font-size:0.9em;' +
+                        ' font-weight:600; line-height:1.5; white-space:nowrap;';
+                    _pill.textContent = t;
+                    _typesLine.appendChild(_pill);
+                });
+                _tip.appendChild(_typesLine);
+            }
+            // Row 2: comment in italic (when present).
+            if (commentText) {
+                const _commentLine = document.createElement('div');
+                _commentLine.style.cssText = 'font-style:italic; color:#cdd6f4;';
+                _commentLine.textContent   = '(' + commentText + ')';
+                _tip.appendChild(_commentLine);
+            }
+
+            // Position top-right of anchorEl (the preview popup or the img).
+            const _r  = anchorEl.getBoundingClientRect();
+            const _vw = window.innerWidth, _vh = window.innerHeight;
+            _tip.style.display = 'block';
+            const _tw = _tip.offsetWidth, _th = _tip.offsetHeight;
+            let _x = _r.right + 8;
+            let _y = _r.top;
+            if (_x + _tw > _vw - 6) _x = _r.left - _tw - 8;
+            if (_y + _th > _vh - 6) _y = _vh - _th - 6;
+            if (_x < 4) _x = 4;
+            if (_y < 4) _y = 4;
+            _tip.style.left = _x + 'px';
+            _tip.style.top  = _y + 'px';
+        };
+
+        const _hideLiTooltip = () => {
+            const _tip = document.getElementById('mb-art-bigbox-tooltip');
+            if (_tip) _tip.style.display = 'none';
+        };
+
+        if (Lib.settings.sa_caa_hover_preview && bigSrc) {
+            img.style.cursor = 'crosshair';
+            img.addEventListener('mouseenter', () => {
+                _showArtHoverPreview(bigSrc, img);
+                // The preview popup is now visible and positioned — use it
+                // as the anchor so the tooltip appears to its right.
+                const _preview = document.getElementById('mb-art-hover-preview');
+                _showLiTooltip(_preview && _preview.style.display !== 'none'
+                    ? _preview : img);
+            });
+            img.addEventListener('mouseleave', () => {
+                _hideArtHoverPreview();
+                _hideLiTooltip();
+            });
+        } else {
+            // sa_caa_hover_preview OFF, or no big source available —
+            // tooltip anchors to the img directly, with no preview.
+            img.addEventListener('mouseenter', () => _showLiTooltip(img));
+            img.addEventListener('mouseleave', _hideLiTooltip);
+        }
+    }
+
+    /**
      * Builds one `<li class="mb-caa-art-li mb-caa-art-li-image">` element for a
      * single image entry from the CAA/EAA JSON API response.
      *
@@ -67240,7 +67516,9 @@ a { color: #1565c0; }`;
      * shared singleton popup showing a larger version of that specific image
      * (derived from `imgData.thumbnails` at `sa_caa_big_img_size`).  Unlike the
      * icon-column hover, which always fetches `/front-{size}`, each li uses its
-     * own archive URL so Back, Booklet, etc. images preview correctly.
+     * own archive URL so Back, Booklet, etc. images preview correctly. The
+     * listeners themselves are attached by `_artWireImageLi()`, called at the
+     * end of this function — see there for why they are separable at all.
      *
      * The <li> starts with `style="display:none"` so the parent collapse
      * toggle controls its visibility.  Protocol-relative URLs (`//`) are used
@@ -67273,7 +67551,8 @@ a { color: #1565c0; }`;
         // ── Type badge ────────────────────────────────────────────────────────
         // `types` is an array of human-readable strings ("Front", "Booklet", …).
         // Join with " / " so a multi-type image reads naturally, e.g. "Front / Back".
-        // Resolved before the thumbnail block so the tooltip can reference typeText.
+        // Resolved early because both the type-badge pills below and the
+        // data-li-tooltip-types stamp at the end of this function use it.
         const typeText = (Array.isArray(imgData.types) && imgData.types.length > 0)
             ? imgData.types.join(' / ')
             : '(no type)';
@@ -67288,111 +67567,31 @@ a { color: #1565c0; }`;
             img.src      = thumbSrc;
             img.alt      = '';
             img.loading  = 'lazy';
-            img.addEventListener('error', function() { this.style.display = 'none'; });
             li.appendChild(img);
 
-            // ── Hover preview wiring (multi-row art cell) ─────────────────────
+            // ── Hover preview source (multi-row art cell) ────────────────────
             // Unlike the icon-column hover (which always shows /front-{bigSize}),
             // each per-image row must show its own artwork — Front, Back, Booklet,
             // etc. — so the preview URL is derived directly from imgData.thumbnails
             // rather than the entity's canonical front-image path.
             // Prefer the user-configured big size; fall back through available sizes.
-            // ── Hover preview + HTML badge tooltip wiring ────────────────────
-            // Both the hover-preview popup and the type-badge tooltip are anchored
-            // to the same img.mouseenter event so they always appear and disappear
-            // together.  The tooltip is positioned top-right of the preview popup
-            // when it is visible (sa_caa_hover_preview ON), or top-right of the img
-            // itself when the preview is disabled.
+            //
+            // Resolved HERE because it is the last point that still has imgData,
+            // and stashed on the <li> so _artWireImageLi() can re-derive the whole
+            // wiring from the element alone — see its JSDoc. Stored regardless of
+            // sa_caa_hover_preview, so flipping that setting does not require the
+            // cell to be rebuilt from the archive payload.
+            const bigSize  = Lib.settings.sa_caa_big_img_size || 250;
+            const bigThumb = imgData.thumbnails && (
+                imgData.thumbnails[String(bigSize)] ||
+                imgData.thumbnails['1200']          ||
+                imgData.thumbnails['large']         ||
+                imgData.thumbnails['500']
+            );
+            const bigSrc = (bigThumb || imgData.image || '').replace(/^http:/, '');
+            if (bigSrc) li.dataset.liBigSrc = bigSrc;
 
-            /**
-             * Shows the type-badge HTML tooltip positioned top-right of `anchorEl`.
-             *
-             * @param {HTMLElement} anchorEl  Element whose right/top edge is the anchor.
-             */
-            const _showLiTooltip = (anchorEl) => {
-                const _tip = _ensureArtBigboxTooltip();
-                if (!_tip) return;
-                _tip.innerHTML = '';
-
-                // Row 1: type pill labels (bold).
-                if (typeText) {
-                    const _typesLine = document.createElement('div');
-                    _typesLine.style.cssText = 'font-weight:600; margin-bottom:2px;';
-                    typeText.split(' / ').forEach((t, i) => {
-                        if (i > 0) _typesLine.appendChild(document.createTextNode(' / '));
-                        const _pill = document.createElement('span');
-                        _pill.style.cssText =
-                            'display:inline-block; background:#555; color:#cdd6f4;' +
-                            ' border-radius:3px; padding:0 4px; font-size:0.9em;' +
-                            ' font-weight:600; line-height:1.5; white-space:nowrap;';
-                        _pill.textContent = t;
-                        _typesLine.appendChild(_pill);
-                    });
-                    _tip.appendChild(_typesLine);
-                }
-                // Row 2: comment in italic (when present).
-                if (commentText) {
-                    const _commentLine = document.createElement('div');
-                    _commentLine.style.cssText = 'font-style:italic; color:#cdd6f4;';
-                    _commentLine.textContent   = '(' + commentText + ')';
-                    _tip.appendChild(_commentLine);
-                }
-
-                // Position top-right of anchorEl (the preview popup or the img).
-                const _r  = anchorEl.getBoundingClientRect();
-                const _vw = window.innerWidth, _vh = window.innerHeight;
-                _tip.style.display = 'block';
-                const _tw = _tip.offsetWidth, _th = _tip.offsetHeight;
-                let _x = _r.right + 8;
-                let _y = _r.top;
-                if (_x + _tw > _vw - 6) _x = _r.left - _tw - 8;
-                if (_y + _th > _vh - 6) _y = _vh - _th - 6;
-                if (_x < 4) _x = 4;
-                if (_y < 4) _y = 4;
-                _tip.style.left = _x + 'px';
-                _tip.style.top  = _y + 'px';
-            };
-
-            const _hideLiTooltip = () => {
-                const _tip = document.getElementById('mb-art-bigbox-tooltip');
-                if (_tip) _tip.style.display = 'none';
-            };
-
-            if (Lib.settings.sa_caa_hover_preview) {
-                const bigSize  = Lib.settings.sa_caa_big_img_size || 250;
-                const bigThumb = imgData.thumbnails && (
-                    imgData.thumbnails[String(bigSize)] ||
-                    imgData.thumbnails['1200']          ||
-                    imgData.thumbnails['large']         ||
-                    imgData.thumbnails['500']
-                );
-                const bigSrc = (bigThumb || imgData.image || '').replace(/^http:/, '');
-                if (bigSrc) {
-                    img.style.cursor = 'crosshair';
-                    img.addEventListener('mouseenter', () => {
-                        _showArtHoverPreview(bigSrc, img);
-                        // The preview popup is now visible and positioned — use it
-                        // as the anchor so the tooltip appears to its right.
-                        const _preview = document.getElementById('mb-art-hover-preview');
-                        _showLiTooltip(_preview && _preview.style.display !== 'none'
-                            ? _preview : img);
-                    });
-                    img.addEventListener('mouseleave', () => {
-                        _hideArtHoverPreview();
-                        _hideLiTooltip();
-                    });
-                } else {
-                    // No bigSrc — wire tooltip only (no preview).
-                    img.addEventListener('mouseenter', () => _showLiTooltip(img));
-                    img.addEventListener('mouseleave', _hideLiTooltip);
-                }
-            } else {
-                // sa_caa_hover_preview OFF — tooltip anchors to img directly.
-                img.addEventListener('mouseenter', () => _showLiTooltip(img));
-                img.addEventListener('mouseleave', _hideLiTooltip);
-            }
-
-            // Plain img.title is intentionally omitted — the HTML tooltip above
+            // Plain img.title is intentionally omitted — the HTML tooltip
             // provides the same information with richer formatting.
         }
 
@@ -67442,11 +67641,19 @@ a { color: #1565c0; }`;
             li.appendChild(pending);
         }
 
-        // Tooltip type/comment data stored for external reference.
-        // The actual tooltip rendering is wired on img.mouseenter above,
-        // co-located with the hover-preview listener (_showLiTooltip / _hideLiTooltip).
+        // Tooltip type/comment data. Also read back by _artWireImageLi() below,
+        // which is why these are stamped BEFORE it runs rather than as a
+        // trailing "for external reference" note: together with data-li-big-src
+        // they are the complete input the wiring needs, so a cloned <li> can be
+        // re-wired without its original archive payload.
         li.dataset.liTooltipTypes   = typeText;
         if (commentText) li.dataset.liTooltipComment = commentText;
+
+        // Listeners last — _artWireImageLi() reads the dataset values set above.
+        // The <img>'s src is already assigned, but its load/error events cannot
+        // fire before this synchronous call completes, so the error handler is
+        // still attached in time.
+        _artWireImageLi(li);
 
         return li;
     }
@@ -68662,6 +68869,17 @@ a { color: #1565c0; }`;
     function _artInitSmallPics(ctx, table, cacheBust = false) {
         if (!Lib.settings.sa_caa_pics_small) return;
 
+        // DO NOT add an idempotency guard here that skips icons which already
+        // carry a background-image. It looks like free work-avoidance now that
+        // _stripTransientCellState(…, {preserveLiveArt:true}) leaves those
+        // backgrounds in place, but _artLoadIcon() does more than paint: its
+        // completion path also (re-)attaches this icon's hover-preview
+        // listeners, which cloneNode(true) drops on every re-render. Skipping
+        // an already-painted icon would leave it looking perfectly correct
+        // while its hover preview silently stopped working — the exact failure
+        // mode the runFilter() strip comments describe. Re-enqueuing every icon
+        // is what keeps that wiring alive; the repaint itself is a Tier-1
+        // memory-cache hit.
         const icons = table.querySelectorAll(ctx.iconSel);
 
         icons.forEach(icon => {
@@ -69067,13 +69285,49 @@ a { color: #1565c0; }`;
                     wrapper.style.cssText = 'display:' + (_rowHiddenByStf ? 'none' : 'inline-block') +
                                              '; height:100%; margin:8px 8px 4px 4px; position:relative;';
 
-                    wrapper.appendChild(document.createTextNode('⌛'));
+                    // "⌛" holding glyph — only for an image that actually has to
+                    // be fetched. One already resolved in this session's memory
+                    // cache is painted immediately below, so an hourglass for it
+                    // would only ever be a flicker: on a re-render the whole
+                    // strip emptied to hourglasses and refilled a few images at
+                    // a time as queue slots freed up, which read as a reload.
+                    //
+                    // _onBigLoaded() only removes a LEADING TEXT node, so
+                    // skipping this is safe — the <img> becomes firstChild and
+                    // is left alone.
+                    const _bigMemCached = _artMemCachedObjectUrl(imgurl);
+                    if (!_bigMemCached) wrapper.appendChild(document.createTextNode('⌛'));
 
                     const img     = document.createElement('img');
                     img.alt           = _anchorText;
                     img.style.cssText = 'vertical-align:middle; display:none;' +
                                         ' max-height:' + maxH + ';' +
                                         ' box-shadow:1px 1px 4px black;';
+
+                    // Paint a memory-cached image NOW, at build time, instead of
+                    // leaving it blank until its queue task runs. The object URL
+                    // already exists in this session's blob registry, so this
+                    // costs a Map lookup and no I/O at all.
+                    //
+                    // The queued task below is still dispatched, unchanged. It
+                    // becomes visually idempotent (_onBigLoaded()'s first act is
+                    // `if (img.src !== src) img.src = src`, and display is
+                    // already 'inline'), but it is what keeps ALL the
+                    // bookkeeping on its original schedule: the per-table badge
+                    // increment, the render-generation guard, the STF-hidden
+                    // check, the toggle-button thumbnail and the cache-hint
+                    // overlay. That ordering is load-bearing — the global toggle
+                    // button is created synchronously before any image resolves
+                    // and its count is driven entirely by these callbacks, so
+                    // resolving them early instead double-counts against the
+                    // wrong generation (caught by
+                    // subtable-filter-sort-caa-interaction.spec.js's global-badge
+                    // assertion, which is exactly what an earlier attempt at this
+                    // broke).
+                    if (_bigMemCached) {
+                        img.src = _bigMemCached;
+                        img.style.display = 'inline';
+                    }
 
                     /**
                      * Shared bigbox image success handler.
@@ -69093,6 +69347,19 @@ a { color: #1565c0; }`;
                             wrapper.removeChild(first);
                         }
                         img.style.display = 'inline';
+                        // Explicit "this image has resolved" marker.
+                        // _artUpdateBigBoxForTable() needs to count exactly the
+                        // images that have been through THIS callback, and used
+                        // to infer that from `display === 'inline'`. That proxy
+                        // stopped being equivalent once a memory-cached image
+                        // could be painted at build time — it is visible from
+                        // the first frame, but its badge/generation bookkeeping
+                        // still belongs to this callback, on its original
+                        // schedule. Counting the style instead of the marker
+                        // inflated the per-table badge, and through it the
+                        // global one (caught by
+                        // subtable-filter-sort-caa-interaction.spec.js).
+                        img.dataset.artBigLoaded = '1';
 
                         // Live-update the toggle button badge.
                         // Guard: skip if a newer render pass has already started.
@@ -69562,7 +69829,11 @@ a { color: #1565c0; }`;
             if (visibleHrefs.has(wrapper.getAttribute(ctx.hrefAttrName))) {
                 wrapper.style.display = '';
                 const img = wrapper.querySelector('img');
-                if (img && img.style.display === 'inline') loadedVisible++;
+                // data-art-big-loaded, not display:inline — see _onBigLoaded().
+                // A memory-cached image is painted (display:inline) at build
+                // time, before its bookkeeping callback has run, so the style
+                // no longer answers "has this resolved through _onBigLoaded()".
+                if (img && img.dataset.artBigLoaded === '1') loadedVisible++;
             } else {
                 wrapper.style.display = 'none';
             }
@@ -71646,15 +71917,51 @@ a { color: #1565c0; }`;
     // ── Public entry points ───────────────────────────────────────────────────
 
     /**
-     * Shows a small non-intrusive toast in the bottom-right corner of the
-     * viewport confirming that all CAA/EAA artwork has finished loading.
-     * Auto-dismisses after `sa_caa_completion_toast_duration` seconds (0 = disabled).
-     * Clicking the toast dismisses it immediately.
+     * Runs the CAA/EAA "artwork finished loading" completion pass.
+     *
+     * Despite the name this does FOUR things, and only the first is the toast:
+     *
+     *   1. Shows a small non-intrusive toast in the bottom-right corner.
+     *      Auto-dismisses after `sa_caa_completion_toast_duration` seconds
+     *      (0 = disabled); clicking it dismisses immediately.
+     *   2. Writes the `#mb-info-display-caa` status-bar segment — which is
+     *      also the completion SIGNAL the Playwright harness waits on (see
+     *      tests/support/asyncCompletion.js's `waitForCaaEaaComplete()`).
+     *   3. Appends the one-time global status summary (initial load only).
+     *   4. Refreshes the Statistics panel, if open, with the final counts.
+     *
+     * ## Only the toast is conditional
+     *
+     * Steps 2-4 run on every completion pass, unconditionally. Step 1 is
+     * suppressed when this pass did not actually fetch anything — i.e. when
+     * every image came out of the Tier-1 session memory cache.
+     *
+     * That distinction is the whole point. `_artInitQueue()` resets
+     * `_caaFetchStats` at the start of every render pass, so these counters
+     * describe THIS pass only, and a re-render (sort, filter keystroke)
+     * re-enqueues every image but resolves all of them from RAM. Popping
+     * "🎨 All CAA/EAA artwork loaded" again after each of those told the user
+     * their artwork had just been re-downloaded, when nothing had left the
+     * machine — a large part of why sorting *looked* like a reload. A pass
+     * that genuinely does fetch (initial load, a disk restore, rows scrolled
+     * into view for the first time) still reports normally.
+     *
+     * `browser` counts as fetching: that tier is the native `img.src` path
+     * taken when IDB is disabled, which still goes out to the network stack.
+     * `memory` is the only tier that costs nothing.
+     *
+     * Note the previous shape of this function put the
+     * `sa_caa_completion_toast_duration <= 0` check as an early return at the
+     * very top, so switching the toast off also silently switched off the
+     * status-bar segment, the global summary and the stats refresh — and with
+     * them the harness's own completion signal. Setting a user-facing toast
+     * duration to zero must not disable an unrelated status display, so that
+     * check now gates step 1 alone.
      */
     function _showCaaCompletionToast() {
         const secs = Lib.settings.sa_caa_completion_toast_duration;
-        if (typeof secs === 'number' && secs <= 0) return;
         const duration = (typeof secs === 'number' ? secs : 10) * 1000;
+        const toastEnabled = !(typeof secs === 'number' && secs <= 0);
 
         // ── Snapshot telemetry ────────────────────────────────────────────────
         const s         = _caaFetchStats;
@@ -71758,26 +72065,37 @@ a { color: #1565c0; }`;
         }
 
         // ── Show toast ────────────────────────────────────────────────────────
-        const toast = document.createElement('div');
-        toast.id = 'mb-caa-completion-toast';
-        toast.textContent = toastText;
-        toast.style.cssText =
-            'position:fixed; bottom:20px; right:20px; z-index:99999;' +
-            ' background:rgba(30,30,30,0.88); color:#fff;' +
-            ' padding:8px 14px; border-radius:6px; font-size:0.85em;' +
-            ' font-family:sans-serif; cursor:pointer; user-select:none;' +
-            ' box-shadow:0 2px 8px rgba(0,0,0,0.35);' +
-            ' opacity:1; transition:opacity 0.35s ease;' +
-            ' white-space:pre; line-height:1.55;';
+        //
+        // Suppressed when this pass resolved everything from the Tier-1 session
+        // memory cache — see this function's JSDoc. `memory` is the only
+        // no-cost tier; `browser` is the native img.src path and still hits the
+        // network stack, so it counts as a real fetch.
+        const _fetchedSomething =
+            (s.icon.idb   + s.icon.network   + s.icon.browser +
+             s.inline.idb + s.inline.network + s.inline.browser) > 0;
 
-        const dismiss = () => {
-            toast.style.opacity = '0';
-            clearTimeout(timer);
-            setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 380);
-        };
-        toast.addEventListener('click', dismiss);
-        document.body.appendChild(toast);
-        const timer = setTimeout(dismiss, duration);
+        if (toastEnabled && _fetchedSomething) {
+            const toast = document.createElement('div');
+            toast.id = 'mb-caa-completion-toast';
+            toast.textContent = toastText;
+            toast.style.cssText =
+                'position:fixed; bottom:20px; right:20px; z-index:99999;' +
+                ' background:rgba(30,30,30,0.88); color:#fff;' +
+                ' padding:8px 14px; border-radius:6px; font-size:0.85em;' +
+                ' font-family:sans-serif; cursor:pointer; user-select:none;' +
+                ' box-shadow:0 2px 8px rgba(0,0,0,0.35);' +
+                ' opacity:1; transition:opacity 0.35s ease;' +
+                ' white-space:pre; line-height:1.55;';
+
+            const dismiss = () => {
+                toast.style.opacity = '0';
+                clearTimeout(timer);
+                setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 380);
+            };
+            toast.addEventListener('click', dismiss);
+            document.body.appendChild(toast);
+            const timer = setTimeout(dismiss, duration);
+        }
 
         // ── Live-update the Statistics panel if it is currently open ─────────
         // By the time this toast fires, all artwork has loaded and _caaFetchStats
@@ -72693,6 +73011,63 @@ a { color: #1565c0; }`;
              */
             msPendingLengthLookups() {
                 return _msCollectRecordingMbids().length;
+            },
+
+            /**
+             * Mints a real object URL and registers it in `_artIdbBlobUrls`,
+             * exactly as `_artFetchCachedImage()` does on a Tier-2/Tier-3
+             * resolve, and returns the URL string.
+             *
+             * Exposed because "is this blob still live" is not answerable from
+             * the DOM: `_artIdbBlobUrls` is the sole authority distinguishing a
+             * URL this session still owns from a blob-shaped string left over
+             * in a serialised style, and a test for
+             * `_stripTransientCellState()`'s `preserveLiveArt` contract has to
+             * be able to construct both cases. Minting through the real
+             * `URL.createObjectURL` (rather than faking a `blob:…` string) is
+             * the point — a fabricated string would pass a prefix test but
+             * must NOT pass the liveness test.
+             *
+             * @param {boolean} [register=true] - When false, the URL is created
+             *   but deliberately NOT registered, producing the "dead blob"
+             *   case (a previous session's URL, or one already revoked).
+             * @returns {string} The object URL.
+             */
+            artMintBlobUrl(register = true) {
+                const url = URL.createObjectURL(new Blob([new Uint8Array([0])], { type: 'image/png' }));
+                if (register) _artIdbBlobUrls.add(url);
+                return url;
+            },
+
+            /**
+             * Runs the real `_stripTransientCellState()` over a live cell and
+             * reports back the artwork-related state a caller cares about.
+             *
+             * Exposed because this helper is pure side effect on a detached
+             * clone — `runFilter()` calls it between `cloneNode(true)` and
+             * insertion, so the intermediate state a test needs to assert on
+             * is never in the document. Driving the real function (rather than
+             * re-deriving its rules) is what makes this a regression test
+             * rather than a restatement.
+             *
+             * @param {string}  selector - CSS selector for the target cell.
+             * @param {Object}  [opts]   - Forwarded verbatim to
+             *   `_stripTransientCellState()` (e.g. `{preserveLiveArt: true}`).
+             * @returns {?{backgroundImage: string, backgroundSize: string,
+             *   inlinePlaceholders: number, caaEnriched: boolean}} `null` when
+             *   `selector` matches nothing.
+             */
+            stripTransientCellState(selector, opts) {
+                const cell = document.querySelector(selector);
+                if (!cell) return null;
+                _stripTransientCellState(cell, opts);
+                const icon = cell.querySelector('span.caa-icon, span.eaa-icon, span.artwork-icon');
+                return {
+                    backgroundImage:    icon ? icon.style.backgroundImage : '',
+                    backgroundSize:     icon ? icon.style.backgroundSize  : '',
+                    inlinePlaceholders: cell.querySelectorAll('.mb-caa-inline-ph, .mb-eaa-inline-ph').length,
+                    caaEnriched:        !!cell.querySelector('a[data-caa-enriched]'),
+                };
             },
 
             /**

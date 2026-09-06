@@ -94,3 +94,83 @@ test.describe('CAA/EAA per-column collapse glyph: deferred visibility', () => {
         await expect(hdrBtnDuringLoad).toHaveAttribute('data-mb-caa-col-hdr-ready', '1');
     });
 });
+
+// Same rationale as the describe below: shares this file's fixture, GUID,
+// PNG bytes and routing.
+test.describe('per-image art <li> hover preview and type-badge tooltip', () => {
+    // This wiring had no coverage at all, which made it the riskiest part of
+    // splitting _artWireImageLi() out of _artBuildImageLi(): the listeners are
+    // attached with addEventListener, so nothing about a broken extraction
+    // would show up in the DOM or in any existing assertion. The <li> keeps
+    // its thumbnail, its badge and its comment either way — only hovering
+    // reveals whether it is still wired.
+    test('hovering a per-image thumbnail opens the preview popup and the type tooltip', async ({ page }) => {
+        await loadUserscriptPage(page, {
+            url: ARTIST_EVENTS_URL,
+            fixtureFile: FIXTURE_FILE,
+            testMode: true,
+            settingsOverride: {
+                sa_enable_caa_pics: true,
+                sa_art_idb_enable: false,
+                sa_caa_hover_preview: true,
+            },
+        });
+        await routeEventArtArchive(page, 0);
+
+        await page.click('button[data-label="Show all Events for Artist"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await waitForCaaEaaComplete(page);
+
+        // Per-image <li>s are built collapsed (display:none); a hidden element
+        // is a 0x0 hover target, so the cell has to be expanded first.
+        await page.click('[data-caa-expand-btn]');
+
+        const artImg = page.locator('li.mb-caa-art-li-image img').first();
+        await expect(artImg).toBeVisible();
+
+        await artImg.hover();
+
+        // Both are anchored to the same mouseenter, so they appear together.
+        await expect(page.locator('#mb-art-hover-preview')).toBeVisible();
+        const tip = page.locator('#mb-art-bigbox-tooltip');
+        await expect(tip).toBeVisible();
+        // The fixture's single image is types: ['Front'].
+        await expect(tip).toContainText('Front');
+    });
+});
+
+// Lives in this file rather than its own because it needs the identical
+// fixture, event GUID, PNG bytes and eventartarchive routing as the suite
+// above — a separate spec would duplicate all of it to assert one thing.
+test.describe('CAA/EAA completion pass is independent of the toast setting', () => {
+    test('the status-bar segment still appears when the toast duration is 0', async ({ page }) => {
+        // _showCaaCompletionToast() used to early-return on
+        // sa_caa_completion_toast_duration <= 0 before doing ANY of its work,
+        // so switching off a cosmetic toast also switched off the
+        // #mb-info-display-caa status segment, the global summary and the
+        // stats refresh — and with them waitForCaaEaaComplete()'s own signal.
+        // Only the toast may depend on that setting.
+        await loadUserscriptPage(page, {
+            url: ARTIST_EVENTS_URL,
+            fixtureFile: FIXTURE_FILE,
+            testMode: true,
+            settingsOverride: {
+                sa_enable_caa_pics: true,
+                sa_art_idb_enable: false,
+                sa_caa_completion_toast_duration: 0,
+            },
+        });
+        await routeEventArtArchive(page, 0);
+
+        await page.click('button[data-label="Show all Events for Artist"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+
+        // Resolves only if the completion pass ran — this is the assertion
+        // that fails (by timeout) without the fix.
+        await waitForCaaEaaComplete(page);
+        await expect(page.locator('#mb-info-display-caa')).toBeVisible();
+
+        // The toast itself must still honour the setting.
+        await expect(page.locator('#mb-caa-completion-toast')).toHaveCount(0);
+    });
+});

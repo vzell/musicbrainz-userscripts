@@ -1,0 +1,85 @@
+[
+  {
+    "version": "WIP.5",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The CAA/EAA big-picture image stripe no longer empties out to a row of ⌛ hourglasses on every sort, refilling a few images at a time. Unlike the icon column and the inline thumbnails, this strip legitimately IS rebuilt on each re-render — it has to follow the table's new row order — but every one of its images was then re-resolved through `_caaQueue`, waiting for one of `sa_caa_fetch_concurrency` slots even though the image was already sitting in the session memory cache. An image already resolved in that cache is now painted at build time, from a plain Map lookup with no I/O, and gets no hourglass. Only images that genuinely have to be fetched still show one — on a page with releases that have no cover art at all, those wrappers really are re-attempted (and removed again) on each render.",
+          "New `_artMemCachedObjectUrl()` answers \"is this image already resolved in memory?\" synchronously. `_artFetchCachedImage()` can only answer as a Promise, which is too late to decide whether to build a holding glyph in the first place."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`_artUpdateBigBoxForTable()` now counts bigbox images via an explicit `data-art-big-loaded` marker set by `_onBigLoaded()`, instead of inferring \"has this image loaded\" from `img.style.display === 'inline'`. The two were equivalent only while nothing could paint an image before its load callback ran; painting memory-cached images at build time broke that equivalence and inflated the per-table badge — and through it the page-wide global badge — after a sort with a sub-table filter active. Caught by `subtable-filter-sort-caa-interaction.spec.js`'s global-badge assertion.",
+          "The queued fetch task is still dispatched for every image, unchanged, including ones already painted. It is visually idempotent but keeps ALL the bookkeeping on its original schedule: the per-table badge increment, the render-generation guard, the STF-hidden check, the toggle-button thumbnail and the cache-hint overlay. That ordering is load-bearing — the global toggle button is created synchronously before any image resolves and its count is driven entirely by these callbacks — and an earlier attempt that let memory hits skip the queue outright double-counted against the wrong render generation."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.4",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Inline CAA/EAA thumbnails (the small images injected into the Release/Title column) no longer vanish and pop back on every sort and every filter keystroke on `tableMode: 'single'` pages. `_stripTransientCellState()` deleted each `.mb-caa-inline-ph`/`.mb-eaa-inline-ph` placeholder outright — taking its `<img>` with it — and `_artInitInlinePics()` then re-injected and re-resolved every one of them. As with the icon column, nothing was re-fetched: the images came back out of the session memory cache. Under `preserveLiveArt`, a placeholder still showing an image from a live object URL is now kept.",
+          "The `done` marker (`data-caa-inline-done`) is deliberately still stripped, which is what makes the surviving placeholder correct rather than merely present. Keeping both marker and placeholder would land the cell in `_artInitInlinePics()`'s Case A — the \"already processed, skip\" branch, which does NOT re-wire — leaving a thumbnail that looks perfect but whose hover preview is dead, since `cloneNode(true)` copies no listeners. Stripping the marker routes the cell into Case C1 instead: re-wire hover and bigbox tooltip, keep the live image, skip the fetch, and only then stamp the marker. That branch already existed and already did exactly this; it was simply unreachable from the re-render path, because the placeholder it needs had been deleted a moment earlier.",
+          "New shared `_artIsLiveBlobUrl()` underpins both liveness checks (`_artIconBackgroundIsLiveBlob()` for the icon column's CSS background, `_artInlinePhIsLiveBlob()` for an inline placeholder's `<img>.src`), so \"is this object URL still ours\" is answered in exactly one place."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Split `_artWireImageLi()` out of `_artBuildImageLi()`: the per-image art `<li>`'s broken-image handler, hover-preview popup and type-badge tooltip are now attached by a function that can be re-applied to an `<li>` that already exists. No behavioral change on its own — the builder calls it as its last step, so the same listeners land on the same elements as before. Groundwork for preserving art rows across a re-render instead of rebuilding them, which is impossible while the listeners close over `_artBuildImageLi()`'s locals.",
+          "The wiring now reads everything it needs back off the element (`data-li-tooltip-types`, `data-li-tooltip-comment`, and the new `data-li-big-src` hover-preview URL) rather than from the archive payload. The first two were already stamped; the third was trapped in the closure, and is the reason a cloned `<li>` could never be re-wired. It is stored regardless of `sa_caa_hover_preview`, so toggling that setting no longer implies rebuilding the cell from the archive response.",
+          "Deliberately no \"already wired\" marker: `cloneNode(true)` copies attributes but not listeners, so a marker would be inherited by every clone and report wiring that no longer exists — exactly the trap `_artInitInlinePics()`'s Case C1 documents for `hoverWiredAttr` and defuses by deleting the inherited value first. A clone is a fresh instance with no listeners, so re-wiring one is always correct.",
+          "Covered by new tests, since the per-image hover preview and type-badge tooltip previously had none at all — which made them the riskiest part of the extraction: the listeners are attached with `addEventListener`, so a broken split would leave the `<li>` looking completely correct and fail only on hover. Mutation-verified (disabling the wiring fails the new test and nothing else)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The \"🎨 All CAA/EAA artwork loaded\" toast no longer pops after every sort and every filter keystroke. `_artInitQueue()` resets `_caaFetchStats` at the start of each render pass, so those counters describe that pass alone — and a re-render re-enqueues every image but resolves all of them from the Tier-1 session memory cache. Announcing a completed load there told the user their artwork had just been re-downloaded when nothing had left the machine, which was a large part of why sorting *looked* like a reload. The toast is now shown only when the pass actually fetched something (`idb`/`network`/`browser` tiers; `memory` is the only no-cost tier — `browser` is the native `img.src` path and still hits the network stack). A pass that genuinely fetches — initial load, disk restore, newly-rendered rows — still reports exactly as before.",
+          "Setting `sa_caa_completion_toast_duration` to 0 no longer switches off three unrelated things. `_showCaaCompletionToast()` does four jobs, and the duration check was an early return at the very top, so disabling a cosmetic toast also disabled the `#mb-info-display-caa` status-bar segment, the one-time global status summary and the Statistics-panel refresh — and with them the completion signal the Playwright harness waits on (`waitForCaaEaaComplete()`). Those three now always run; the setting gates the toast alone. The Relationships sibling (`sa_rel_completion_toast_duration`) already had this ordering right, writing `#mb-info-display-rel` before its own early return — this brings CAA/EAA in line with it."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The CAA/EAA icon column no longer flashes empty on every sort and every filter keystroke on `tableMode: 'single'` pages. Sorting a column is not a DOM reorder — it re-enters `runFilter()`, which re-clones every row and ran `_stripTransientCellState()` over each one, and that helper unconditionally removed the `background-image` from every artwork icon. The icon was then immediately repainted with the *identical* object URL, served from the session's Tier-1 in-memory cache — no network request, no new blob, nothing actually re-fetched. The whole column simply blanked and refilled, once per keystroke, which is what made sorting look like it was re-downloading every image. A live icon background is now left alone instead: `_stripTransientCellState()` takes a new opt-in `preserveLiveArt` option, and only `runFilter()`'s single-table branch passes it.",
+          "The check is deliberately narrow. A background is preserved only when it is a `blob:` URL still tracked in `_artIdbBlobUrls` (new `_artIconBackgroundIsLiveBlob()`), which is the `background-image` twin of the `blobIsAlive` test `_artInitInlinePics()`'s Case C1 already applies to an inline placeholder's `<img>.src`. A blob-*shaped* string is not enough — after a `pagehide`, or on a row hydrated from a disk snapshot, the URL survives in the serialised style while the object behind it is gone, so a prefix test alone would have \"preserved\" broken images. Anything else (dead blob, plain http(s) URL, no background) is still cleared and re-fetched exactly as before.",
+          "`preserveLiveArt` defaults to false, and that default is load-bearing rather than cautious: `_stripTransientCellState()` has five call sites and three of them serialise the cell — `getCleanCellHtml()` (Save-to-Disk and the sub-table snapshot), `loadTableDataFromDisk()` and `_hydrateAndRenderFromSnapshotData()`. Every object URL is alive by definition in the tab that created it, so an unconditional liveness check would have written `url(blob:…)` into saved files, where it is guaranteed dead on load, and persisted the `.mb-art-cache-hint-*` indicators so a restored file misreported which cache tier its images came from. Only a caller re-rendering into the same live document may opt in."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Added a standing warning to `_artInitSmallPics()` against adding an idempotency guard that skips icons which already carry a background-image. It now looks like free work-avoidance, but `_artLoadIcon()`'s completion path (`_onIconLoaded`) both paints the background and re-attaches the icon's hover-preview listeners, which `cloneNode(true)` drops on every re-render — so skipping a painted icon would leave it looking correct while its hover preview silently stopped working.",
+          "Two additions to the test-mode-only `__saTest` surface (`window.__SA_TEST_MODE__` gated; no UI, no user-visible behavior outside the Playwright harness): `artMintBlobUrl(register)` mints and optionally registers a real object URL the way `_artFetchCachedImage()` does, and `stripTransientCellState(selector, opts)` drives the real helper over a live cell and reports the artwork state back. Both exist because the interesting states here are unobservable from the DOM — the strip runs on a DETACHED clone between `cloneNode(true)` and insertion, and \"is this blob still live\" is answerable only from `_artIdbBlobUrls`."
+        ]
+      }
+    ]
+  }
+]
