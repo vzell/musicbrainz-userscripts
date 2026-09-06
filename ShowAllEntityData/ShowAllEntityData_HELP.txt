@@ -1309,7 +1309,11 @@ The Statistics panel is a draggable, resizable overlay showing two sections:
   rows with artwork.  The artwork count reads from the per-table toggle button
   badge (incremented by each confirmed image load) and shows "—" until loading
   completes; both the global total and all per-sub-table cells update
-  automatically when the completion toast fires.
+  automatically once the artwork queue drains.  That refresh is independent of
+  the "🎨 All CAA/EAA artwork loaded" toast: the toast is shown only when the
+  pass actually fetched something, so it stays silent on a sort or filter that
+  served every image from the session memory cache, while these counts still
+  update as usual.
   Below the header a collapsible per-column breakdown lists every column with:
     — its index number
     — name (accented for extracted/derived columns)
