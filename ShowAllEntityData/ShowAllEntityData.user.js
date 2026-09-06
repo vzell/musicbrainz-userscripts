@@ -59379,6 +59379,35 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Reports whether an artwork-icon span's `background-image` is a `blob:`
+     * URL that is STILL LIVE in this session.
+     *
+     * The icon column paints its thumbnail as a CSS background rather than an
+     * `<img>` (see `_onIconLoaded()`), so it needs its own liveness test —
+     * this is the `background-image` twin of the `blobIsAlive` check
+     * `_artInitInlinePics()`'s Case C1 already applies to an inline
+     * placeholder's `<img>.src`. Both ask the same question of the same
+     * authority: is this object URL one we created and have not yet revoked?
+     *
+     * A URL that is merely blob-SHAPED is not enough. After a `pagehide` in a
+     * previous session, or on a row hydrated from a disk snapshot, the string
+     * survives in the serialised style while the underlying object is long
+     * gone — `_artIdbBlobUrls` is the only thing that can tell those apart, so
+     * a string-prefix test alone would happily "preserve" a broken image.
+     *
+     * @param {HTMLElement} span - An artwork-icon span (`.caa-icon`/`.eaa-icon`/
+     *   `.artwork-icon`).
+     * @returns {boolean} True only when the background is a live, revocable
+     *   object URL this session still owns.
+     */
+    function _artIconBackgroundIsLiveBlob(span) {
+        const bg = span.style.backgroundImage;
+        if (!bg) return false;
+        const m = bg.match(/url\(\s*["']?(blob:[^"')]+)/);
+        return !!m && _artIdbBlobUrls.has(m[1]);
+    }
+
+    /**
      * Strips all transient JS-only state from a `<td>` (or a clone of one)
      * so that it is safe to use as a source row after a disk-load restore.
      *
@@ -59412,9 +59441,38 @@ a { color: #1565c0; }`;
      *     stripping it unconditionally destroyed it outright (WIP.91)
      *   - data-erg-injected dataset marker removed
      *
+     * ## `preserveLiveArt` — opt-in, and why it MUST default to false
+     *
+     * This function is NOT `runFilter()`'s private helper. It has five call
+     * sites, and only two of them are re-render paths:
+     *
+     *   - `runFilter()` multi-table branch  — re-render
+     *   - `runFilter()` single-table branch — re-render
+     *   - `getCleanCellHtml()`              — **Save-to-Disk / captureSubtableSnapshot**
+     *   - `loadTableDataFromDisk()`         — disk restore
+     *   - `_hydrateAndRenderFromSnapshotData()` — sub-table tab hydration
+     *
+     * A `blob:` URL is alive only inside the session that created it — every
+     * one of them is revoked on `pagehide` (see `_artIdbBlobUrls`'s own
+     * unload handler). So "this artwork is still valid" is true *by
+     * definition* in the saving tab, and a liveness check applied
+     * unconditionally would fire there too — serialising `url(blob:…)` into
+     * the saved cell HTML, where it is guaranteed to be dead by the time
+     * anyone loads the file. The `.mb-art-cache-hint-*` indicators would
+     * likewise be persisted, making a restored file misreport which cache
+     * tier its images came from.
+     *
+     * Hence: opt-in per call site, never a blanket behaviour change. Only a
+     * caller that is re-rendering into the SAME live document may pass it.
+     *
      * @param {HTMLElement} el - The <td> element to clean in-place.
+     * @param {Object}  [opts]
+     * @param {boolean} [opts.preserveLiveArt=false] - When true, leave artwork
+     *   in place that is still valid in THIS session (see
+     *   `_artIconBackgroundIsLiveBlob()`), instead of blanking it for a
+     *   re-fetch. Callers that serialise the cell must never set this.
      */
-    function _stripTransientCellState(el) {
+    function _stripTransientCellState(el, { preserveLiveArt = false } = {}) {
         // CAA/EAA enrichment markers
         el.querySelectorAll('a[data-caa-enriched], a[data-eaa-enriched]').forEach(a => {
             delete a.dataset.caaEnriched;
@@ -59474,7 +59532,16 @@ a { color: #1565c0; }`;
         });
 
         // Artwork-icon background-image (session-scoped or will be re-fetched)
+        //
+        // With preserveLiveArt, an icon already painted from a live object URL
+        // keeps it: the re-render is inserting this clone into the same
+        // document that owns the blob, so blanking it only makes the column
+        // flash empty until _artLoadIcon paints the identical URL back from
+        // the Tier-1 memory cache. Anything else — a dead blob from a previous
+        // session, a plain http(s) URL, no background at all — still gets
+        // cleared, so the normal re-fetch path is unchanged.
         el.querySelectorAll('span.caa-icon, span.eaa-icon, span.artwork-icon').forEach(span => {
+            if (preserveLiveArt && _artIconBackgroundIsLiveBlob(span)) return;
             span.style.removeProperty('background-image');
             span.style.removeProperty('background-size');
         });
