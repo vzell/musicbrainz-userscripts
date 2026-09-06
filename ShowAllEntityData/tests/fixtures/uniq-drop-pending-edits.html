@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Test Artist - Recordings - MusicBrainz</title>
+</head>
+<body>
+    <div id="content">
+        <div class="artistheader">
+            <h1><bdi>Test Artist</bdi></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350/recordings">Recordings</a></li></ul>
+        </div>
+        <h2>Recordings</h2>
+        <!--
+            Regression fixture for _findCellPendingEdits() / the "Pending
+            edits - Presence" and "- Entity" dropdown sections.
+
+            The "Artist" column mixes MusicBrainz's own native <span
+            class="mp"> open-edits wrapper with unwrapped credits, in the
+            three real shapes confirmed in live data:
+
+              - Row A / Row D: a SOLO "mp"-wrapped credit — the shape in
+                debug/rock-on-recordings.html's #bowie-solo-cell. Two rows
+                for the SAME entity, so its "» pending edit:" entry must
+                count ROWS (2), proving the per-row Set dedupe.
+              - Row B: a JOINED credit where only ONE of the two artists is
+                "mp"-wrapped — debug/rock-on-recordings.html's real "Queen &
+                David Bowie" cell, verbatim. Checking the Bowie entry must
+                highlight Bowie alone, not the whole cell.
+              - Row C: an "mp" wrapper around a <span class="name-variation">
+                which in turn wraps the <a> — the nesting seen in
+                tests/snapshots/artist-events/rendered.html's Location
+                column. getCleanColumnText() must read straight through it.
+              - Row E: no wrapper at all — the control that feeds
+                "○ no pending edits".
+
+            The "Release groups" column deliberately has NO wrapper on any
+            row, so it proves the emit gate: a column with nothing pending
+            must show neither section, even though both are column-agnostic.
+        -->
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Length</th>
+                    <th>Artist</th>
+                    <th>Release groups</th>
+                    <th>Rating</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555501"><bdi>Track A</bdi></a></td>
+                    <td>0:45</td>
+                    <td><bdi><span class="mp"><a href="/artist/5441c29d-3602-4898-b1a1-b77fa23b8e50" title="Bowie, David (English singer&#8208;songwriter)">David Bowie</a></span> <span class="comment"><bdi>(English singer&#8208;songwriter)</bdi></span></bdi></td>
+                    <td><a href="/release-group/22222222-2222-4333-8444-555555555501"><bdi>Group One</bdi></a></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555502"><bdi>Track B</bdi></a></td>
+                    <td>1:30</td>
+                    <td><bdi><a href="/artist/0383dadf-2a4e-4d10-a46a-e9e041da8eb3" title="Queen (UK rock group)">Queen</a>&nbsp;<span class="comment"><bdi>(UK rock group)</bdi></span> &amp; <span class="mp"><a href="/artist/5441c29d-3602-4898-b1a1-b77fa23b8e50" title="Bowie, David (English singer&#8208;songwriter)">David Bowie</a></span> <span class="comment"><bdi>(English singer&#8208;songwriter)</bdi></span></bdi></td>
+                    <td><a href="/release-group/22222222-2222-4333-8444-555555555502"><bdi>Group Two</bdi></a></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555503"><bdi>Track C</bdi></a></td>
+                    <td>2:15</td>
+                    <td><bdi><span class="mp"><span class="name-variation"><a href="/artist/b071f9fa-14b0-4217-8e97-eb41da73f598" title="Rolling Stones, The">The Rolling Stones</a></span></span></bdi></td>
+                    <td><a href="/release-group/22222222-2222-4333-8444-555555555503"><bdi>Group Three</bdi></a></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555504"><bdi>Track D</bdi></a></td>
+                    <td>3:00</td>
+                    <td><bdi><span class="mp"><a href="/artist/5441c29d-3602-4898-b1a1-b77fa23b8e50" title="Bowie, David (English singer&#8208;songwriter)">David Bowie</a></span> <span class="comment"><bdi>(English singer&#8208;songwriter)</bdi></span></bdi></td>
+                    <td><a href="/release-group/22222222-2222-4333-8444-555555555504"><bdi>Group Four</bdi></a></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555505"><bdi>Track E</bdi></a></td>
+                    <td>4:20</td>
+                    <td><bdi><a href="/artist/4d5447d7-c61c-4120-ba1b-d7f471d385b9" title="Lennon, John (The Beatles)">John Lennon</a>&nbsp;<span class="comment"><bdi>(The Beatles)</bdi></span></bdi></td>
+                    <td><a href="/release-group/22222222-2222-4333-8444-555555555505"><bdi>Group Five</bdi></a></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+        <ul class="pagination"></ul>
+    </div>
+</body>
+</html>

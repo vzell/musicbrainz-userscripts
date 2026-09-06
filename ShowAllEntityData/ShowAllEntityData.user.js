@@ -828,6 +828,21 @@
                          'very large tables.'
         },
 
+        sa_enable_pending_edits_section: {
+            label: 'Enable "Pending edits" dropdown sections',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds two sections to EVERY column\'s unique-values (📊) dropdown, ' +
+                         'on every page type: "Pending edits - Presence" ("⏳ has pending ' +
+                         'edits" / "○ no pending edits") and "Pending edits - Entity" (one ' +
+                         '"» pending edit:" entry per distinct entity in that column that ' +
+                         'currently has open edits). Both read MusicBrainz\'s OWN native ' +
+                         '<span class="mp"> marker — the orange highlight it puts on an ' +
+                         'entity whose /open_edits list is non-empty — so no extra request ' +
+                         'is made. Both sections stay hidden entirely on any column where ' +
+                         'nothing is pending, which is the overwhelming majority.'
+        },
+
         sa_uniq_dropdown_visible_rows: {
             label: "Unique-Values Dropdown Visible Rows",
             type: "number",
@@ -21152,6 +21167,61 @@
     }
 
     /**
+     * Resolves every entity in `cell` that currently has OPEN (pending)
+     * edits on musicbrainz.org — MusicBrainz's own native `<span
+     * class="mp">` wrapper, the orange highlight it paints on an entity
+     * whose `/entity/<mbid>/open_edits` list is non-empty. Confirmed
+     * against real data in `debug/rock-on-recordings.html` (the "Queen &
+     * David Bowie" cell, where only Bowie's `<a>` carries the wrapper) and
+     * `tests/snapshots/artist-events/rendered.html` (a "Location" cell's
+     * `<li>`, wrapping a `<span class="name-variation">` which in turn
+     * wraps the `<a>`).
+     *
+     * Deliberately NOT column-gated at its `openUniqDrop()` call site —
+     * unlike `_findCellReleaseDataQuality()`/`_findCellLocaleInfo()`/etc.,
+     * this marker is a property of the ENTITY, not of any one column's
+     * grammar, so it can legitimately appear in any cell of any column on
+     * any page type. That is exactly why the two sections it feeds are
+     * additionally suppressed whenever nothing in the open column is
+     * pending (see `openUniqDrop()`'s `pendingEditsYesCount > 0` emit
+     * gate) — without that, every column on every page would grow a "○ no
+     * pending edits (N)" entry saying nothing.
+     *
+     * `name` is read via `getCleanColumnText()`, not raw `textContent`, for
+     * the reason the uniq-dropdown-section skill calls out: once
+     * `_highlightPendingEditsMatch()` has wrapped this same span's text in
+     * a `<span class="mb-column-filter-highlight">`, a later re-filter or
+     * dropdown reopen re-runs this function over its OWN output — and
+     * `getCleanColumnText()` is the helper that already unwraps those spans
+     * (and strips `_CLEAN_STRIP_SEL` sentinels) instead of fragmenting or
+     * dropping the text.
+     *
+     * Scoped to `span.mp` DESCENDANTS of a `<td>`, which is also what keeps
+     * jesus2099's `RECORDING_LENGTH_COLUMN`-style reuse of this same class
+     * name out of the count: its own "<artist> open edits (N)" banner lives
+     * in the page header's `.separator` block (see
+     * `debug/work.recordings.html`), never inside `table.tbl`'s cells.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Array<{name: string, node: Element}>} One entry per
+     *   `span.mp` carrying non-empty text; `[]` for a falsy cell, and for
+     *   the overwhelming majority of cells, which have no pending edits at
+     *   all. `node` is the `span.mp` itself, so
+     *   `_highlightPendingEditsMatch()` can scope its highlight to exactly
+     *   the element the value came from (same approach as
+     *   `_highlightLocalePrimaryMatch()`).
+     */
+    function _findCellPendingEdits(cell) {
+        if (!cell) return [];
+        const out = [];
+        cell.querySelectorAll('span.mp').forEach(span => {
+            const name = getCleanColumnText(span).trim();
+            if (name) out.push({ name, node: span });
+        });
+        return out;
+    }
+
+    /**
      * Tests whether a table cell matches a "Cell structure" checkbox mode
      * from `openUniqDrop()`'s synthetic entries (`makeSynItem`/
      * `makeValueSynItem`/`makeInlineArtItem`) — the single source of truth
@@ -21173,7 +21243,8 @@
      *   `name:${string}`, `comment:${string}`, `alias:${string}`, `rel:${string}`,
      *   `role:${string}`, `roletoken:${string}`, `altname:${string}`,
      *   `joinphrase:${string}`, `namevariation:${string}`, `eventdate:${string}`,
-     *   `tagcount:${string}`, and the format/country/catalog/art-info families —
+     *   `tagcount:${string}`, `pendingedit:${string}`, and the
+     *   format/country/catalog/art-info families —
      *   don't duplicate the list here, it drifts; read the dispatch chain).
      * @param {HTMLTableCellElement} cell
      * @param {HTMLTableRowElement}  row
@@ -21677,6 +21748,29 @@
             // _findCellLocaleInfo()'s own JSDoc.
             const info = _findCellLocaleInfo(cell);
             return !!info && info.primary === false;
+        }
+        if (mode === 'pending-edits-yes' || mode === 'pending-edits-no') {
+            // Fixed 2-value flag pair — whether ANY entity in this cell
+            // carries MusicBrainz's own native `<span class="mp">`
+            // open-edits marker (see _findCellPendingEdits()'s own JSDoc).
+            // Applies to every column on every page type, so unlike the
+            // column-gated flags above there is no `is…Col` guard here.
+            // The settings check mirrors `lengthdeviation-*`'s: purely
+            // defensive, guarding against a `pending-edits-*` value
+            // surviving in a persisted/URL-restored filter from a session
+            // where the setting was on, after the user later turns it off.
+            if (!Lib.settings.sa_enable_pending_edits_section) return false;
+            const hasPending = _findCellPendingEdits(cell).length > 0;
+            return mode === 'pending-edits-yes' ? hasPending : !hasPending;
+        }
+        if (mode.startsWith('pendingedit:')) {
+            // Compound mode — matches ONE specific open-edits entity by its
+            // own display name (e.g. "pendingedit:David Bowie"), the
+            // per-value counterpart of the fixed flag pair above. Same
+            // defensive settings guard, same reasoning.
+            if (!Lib.settings.sa_enable_pending_edits_section) return false;
+            const want = mode.slice(12);
+            return _findCellPendingEdits(cell).some(p => p.name === want);
         }
         if (mode === 'instrument-has-comment') {
             // Fixed flag — true when this instrument-list first-column cell
@@ -38829,6 +38923,23 @@ a { color: #1565c0; }`;
         // (a calendar-based grouping), same reuse rationale as 📅 across
         // creditDate/releaseEventsDate/partOfSeriesDate/eventInfo.
         dateExprMonth:     { label: 'Date info - Month',     glyph: '📆' },
+        // "Pending edits" — MusicBrainz's own native `<span class="mp">`
+        // open-edits marker (see `_findCellPendingEdits()`'s own JSDoc),
+        // split into the binary presence FLAG pair ("- Presence") and the
+        // open per-ENTITY value list ("- Entity"), the same
+        // values-kind/flag-mode split Tracks info and Locale info already
+        // use. Unlike EVERY other family in this table, these two are
+        // column-agnostic: the marker belongs to the entity, not to a
+        // column's grammar, so both sections are offered on every column of
+        // every page type — and, for exactly that reason, suppressed
+        // wholesale on any column where nothing is actually pending (see
+        // `openUniqDrop()`'s `pendingEditsYesCount > 0` emit gate). Last in
+        // this table because they are also emitted last of all the flag
+        // families (right before the per-value ones), which is what
+        // actually decides section order — see this table's own JSDoc.
+        // Gated by `sa_enable_pending_edits_section`.
+        pendingEditsPresence: { label: 'Pending edits - Presence', glyph: '⏳' },
+        pendingEditsEntity:   { label: 'Pending edits - Entity',   glyph: '✏️' },
     };
 
     /**
@@ -38868,6 +38979,7 @@ a { color: #1565c0; }`;
         'instrument-has-comment': 'instrumentHasComment',
         'instrument-has-description': 'instrumentHasDescription',
         'date-complete': 'dateExprPrecision', 'date-partial': 'dateExprPrecision', 'date-range': 'dateExprPrecision',
+        'pending-edits-yes': 'pendingEditsPresence', 'pending-edits-no': 'pendingEditsPresence',
     };
 
     /**
@@ -38917,6 +39029,7 @@ a { color: #1565c0; }`;
         editormembership: 'editorMembership', editorcomment: 'editorComment',
         localelanguage: 'localeLanguage',
         datedecade: 'dateExprDecade', datemonth: 'dateExprMonth',
+        pendingedit: 'pendingEditsEntity',
     };
 
     /**
@@ -40072,6 +40185,41 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights the open-edits entity name(s) for a `pending-edits-yes`
+     * fixed structure-mode filter or a `pendingedit:<name>` compound one —
+     * re-derives from `_findCellPendingEdits()` directly (same "verify via
+     * the same extraction function before highlighting" pattern as
+     * `_highlightLocalePrimaryMatch()`/`_highlightInstrumentCommentMatch()`
+     * above), then scopes the highlight to each matching `span.mp` element
+     * itself, so exactly the text MusicBrainz already paints orange gets
+     * wrapped and nothing around it can collide.
+     *
+     * `'pending-edits-yes'` highlights EVERY pending entity in the cell (a
+     * joined credit can legitimately have two, each with its own wrapper);
+     * `'pendingedit:<name>'` highlights only the one whose name was checked
+     * — so on a "Queen & David Bowie" cell, checking the Bowie entry marks
+     * Bowie alone.
+     *
+     * `'pending-edits-no'` gets no highlighter — an absence has nothing to
+     * point at, same reasoning as `'locale-not-primary'`/`'catalog-has-
+     * prefix'`/etc. (see the big dispatch comment in `testRowMatch`).
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - `"pending-edits-yes"`, or a compound
+     *   `"pendingedit:David Bowie"`.
+     */
+    function _highlightPendingEditsMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.startsWith('pendingedit:') ? mode.slice(12) : null;
+        if (_want === '') return;
+        _findCellPendingEdits(cell).forEach(p => {
+            if (_want !== null && p.name !== _want) return;
+            p.node.normalize();
+            highlightCrossTag(p.node, /[\s\S]+/g, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
      * Highlights the comment text for an `instrument-has-comment` fixed
      * structure-mode filter — re-derives from `_findCellInstrumentFacets()`
      * directly, then scopes the highlight to the cell's own direct-child
@@ -40820,7 +40968,11 @@ a { color: #1565c0; }`;
                     // `span.comment` "primary" text); 'instrument-has-comment'/
                     // 'instrument-has-description' likewise each get their own
                     // (see _highlightInstrumentCommentMatch/
-                    // _highlightInstrumentDescriptionMatch); the other structure
+                    // _highlightInstrumentDescriptionMatch); 'pending-edits-yes'
+                    // and 'pendingedit:' both get one too (see
+                    // _highlightPendingEditsMatch — MusicBrainz's own
+                    // `span.mp` open-edits wrapper is real, visible cell
+                    // text); the other structure
                     // modes (empty/single/
                     // collapsed/expanded/any/title-mismatch/inline-art-yes/no/
                     // 'editorrecordedname:'/'editormembership:' — both facts live
@@ -40830,7 +40982,7 @@ a { color: #1565c0; }`;
                     // prefix' having no highlighter either — and 'release-quality-
                     // high'/'release-quality-low'/'release-quality-normal'/
                     // 'acoustid-linked'/'acoustid-unlinked'/'lengthlive-no'/
-                    // 'locale-not-primary' — the marker span/
+                    // 'locale-not-primary'/'pending-edits-no' — the marker span/
                     // class is empty/decorative, nothing visible to
                     // highlight) operate on pure DOM/
                     // attribute state with no single corresponding visible
@@ -40880,6 +41032,8 @@ a { color: #1565c0; }`;
                                     _highlightLocaleLanguageMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'locale-primary') {
                                     _highlightLocalePrimaryMatch(row.cells[f.idx]);
+                                } else if (mode === 'pending-edits-yes' || mode.startsWith('pendingedit:')) {
+                                    _highlightPendingEditsMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'instrument-has-comment') {
                                     _highlightInstrumentCommentMatch(row.cells[f.idx]);
                                 } else if (mode === 'instrument-has-description') {
@@ -51527,6 +51681,18 @@ a { color: #1565c0; }`;
         // (isInstrumentListCol below).
         let instrumentHasCommentCount     = _uniqCacheHit ? _uniqCacheHit.instrumentHasCommentCount     : 0;
         let instrumentHasDescriptionCount = _uniqCacheHit ? _uniqCacheHit.instrumentHasDescriptionCount : 0;
+        // EVERY column, EVERY page type: MusicBrainz's own native `<span
+        // class="mp">` open-edits marker — a binary presence flag pair plus
+        // one entry per distinct pending entity name (see
+        // `_findCellPendingEdits()`'s own JSDoc). The ONE family here with
+        // no `is…Col` gate at all: the marker is a property of the entity,
+        // not of a column's grammar. Both are instead suppressed at emit
+        // time whenever `pendingEditsYesCount` is 0, so a column with
+        // nothing pending — nearly all of them — shows neither section.
+        // Gated by `sa_enable_pending_edits_section`.
+        const pendingEditValueCounts = _uniqCacheHit ? _uniqCacheHit.pendingEditValueCounts : new Map();
+        let pendingEditsYesCount = _uniqCacheHit ? _uniqCacheHit.pendingEditsYesCount : 0;
+        let pendingEditsNoCount  = _uniqCacheHit ? _uniqCacheHit.pendingEditsNoCount  : 0;
         // Distinct event-role values (e.g. "main performer", "guest
         // performer", "support act", "participant", "host") from a native
         // MusicBrainz `.artist-roles` list — the query-time counterpart of
@@ -51887,6 +52053,22 @@ a { color: #1565c0; }`;
                     const _instrumentFacets = _findCellInstrumentFacets(cell);
                     if (_instrumentFacets.hasComment)     instrumentHasCommentCount++;
                     if (_instrumentFacets.hasDescription) instrumentHasDescriptionCount++;
+                }
+                if (Lib.settings.sa_enable_pending_edits_section) {
+                    // No column gate — see pendingEditValueCounts' own
+                    // comment above. Names are deduped per row (a joined
+                    // credit can carry the same entity twice) using the
+                    // same collect-into-a-Set-first idiom as
+                    // attrValueCounts/taskValueCounts, so each entry's
+                    // count stays "how many ROWS", not "how many spans".
+                    const _pendingEdits = _findCellPendingEdits(cell);
+                    if (_pendingEdits.length > 0) {
+                        pendingEditsYesCount++;
+                        new Set(_pendingEdits.map(p => p.name)).forEach(n =>
+                            pendingEditValueCounts.set(n, (pendingEditValueCounts.get(n) || 0) + 1));
+                    } else {
+                        pendingEditsNoCount++;
+                    }
                 }
                 if (isEventCol) {
                     const _eventDates = _findCellEventDateParts(cell);
@@ -52919,6 +53101,7 @@ a { color: #1565c0; }`;
                 acoustidLinkedCount, acoustidUnlinkedCount,
                 localeLanguageValueCounts, localePrimaryCount, localeNotPrimaryCount,
                 instrumentHasCommentCount, instrumentHasDescriptionCount,
+                pendingEditValueCounts, pendingEditsYesCount, pendingEditsNoCount,
                 eventRoleValueCounts, roleTokenValueCounts, artTypeValueCounts, artCommentValueCounts,
                 flagIconMap, isRelCellCol, relIconCounts,
                 inlineArtType, inlineArtYes, inlineArtNo,
@@ -52945,6 +53128,10 @@ a { color: #1565c0; }`;
             lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
             localePrimaryCount, localeNotPrimaryCount,
             instrumentHasCommentCount, instrumentHasDescriptionCount,
+            // "○ no pending edits" is normally the LARGEST count in the
+            // whole panel (every row that isn't pending), so omitting it
+            // here is what would visibly clip the badge column.
+            pendingEditsYesCount, pendingEditsNoCount, ...pendingEditValueCounts.values(),
             inlineArtYes, inlineArtNo,
             ...attrValueCounts.values(), ...taskValueCounts.values(),
             ...dateValueCounts.values(), ...instrumentValueCounts.values(),
@@ -53280,7 +53467,7 @@ a { color: #1565c0; }`;
          * can be surfaced for every column type (plain text, extractor synthetic,
          * etc.), not only for columns with multi-row / collapsable structure.
          *
-         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | 'multi-medium' | 'catalog-has-prefix' | 'catalog-no-prefix' | 'catalog-none' | 'editor-any-deleted' | 'changelog-has-message' | 'changelog-no-message' | 'acoustid-linked' | 'acoustid-unlinked' | 'locale-primary' | 'locale-not-primary' | 'instrument-has-comment' | 'instrument-has-description'
+         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | 'multi-medium' | 'catalog-has-prefix' | 'catalog-no-prefix' | 'catalog-none' | 'editor-any-deleted' | 'changelog-has-message' | 'changelog-no-message' | 'acoustid-linked' | 'acoustid-unlinked' | 'locale-primary' | 'locale-not-primary' | 'instrument-has-comment' | 'instrument-has-description' | 'pending-edits-yes' | 'pending-edits-no'
          * @param {string} label   - Human-readable display text
          * @param {number} count   - Number of visible rows matching this mode
          * @param {string} [extraLabelClass] - An extra CSS class to add to
@@ -53486,6 +53673,7 @@ a { color: #1565c0; }`;
                  : kind === 'localelanguage'     ? '» language: '
                  : kind === 'datedecade'         ? '» decade: '
                  : kind === 'datemonth'          ? '» month: '
+                 : kind === 'pendingedit'        ? '» pending edit: '
                  : '» ');
             if (kind === 'arttype') {
                 // Render the value as an actual pill (see
@@ -53745,6 +53933,7 @@ a { color: #1565c0; }`;
             'July',    'August',   'September', 'October', 'November', 'December'
         ];
         const _sortedDateMonthValues = Array.from(dateMonthValueCounts.keys()).sort((a, b) => _MONTH_SORT_ORDER.indexOf(a) - _MONTH_SORT_ORDER.indexOf(b));
+        const _sortedPendingEditValues = Array.from(pendingEditValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _hasValueEntries = _sortedAttrValues.length > 0 || _sortedTaskValues.length > 0 ||
             _sortedDateValues.length > 0 || _sortedEventDateValues.length > 0 || _sortedInstrumentValues.length > 0 ||
             _sortedAltNameValues.length > 0 ||
@@ -53762,7 +53951,8 @@ a { color: #1565c0; }`;
             _sortedRoleValues.length > 0 || _sortedRoleTokenValues.length > 0 ||
             _sortedArtTypeValues.length > 0 || _sortedArtCommentValues.length > 0 ||
             _sortedLocaleLanguageValues.length > 0 ||
-            _sortedDateDecadeValues.length > 0 || _sortedDateMonthValues.length > 0;
+            _sortedDateDecadeValues.length > 0 || _sortedDateMonthValues.length > 0 ||
+            _sortedPendingEditValues.length > 0;
 
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 ||
             multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
@@ -53846,6 +54036,19 @@ a { color: #1565c0; }`;
             // comment).
             if (instrumentHasCommentCount > 0)     makeSynItem('instrument-has-comment', '💬 has comment', instrumentHasCommentCount);
             if (instrumentHasDescriptionCount > 0) makeSynItem('instrument-has-description', '📝 has description', instrumentHasDescriptionCount);
+            // "Pending edits - Presence"/"- Entity" — emitted together, and
+            // ONLY when something in this column is actually pending. The
+            // `pendingEditsYesCount > 0` gate is what keeps these two
+            // column-agnostic sections (the only ones with no `is…Col` gate
+            // — see _findCellPendingEdits()'s own JSDoc) from adding a
+            // meaningless "○ no pending edits (N)" row to every column of
+            // every page. The negative flag is still worth offering INSIDE a
+            // column that has pending edits — there it means "the rest".
+            if (pendingEditsYesCount > 0) {
+                makeSynItem('pending-edits-yes', '⏳ has pending edits', pendingEditsYesCount);
+                if (pendingEditsNoCount > 0) makeSynItem('pending-edits-no', '○ no pending edits', pendingEditsNoCount);
+                _sortedPendingEditValues.forEach(v => makeValueSynItem('pendingedit', v, pendingEditValueCounts.get(v)));
+            }
             // Credit-role columns' per-attribute / per-task / per-date /
             // per-instrument dynamic value entries (see attrValueCounts/
             // taskValueCounts/dateValueCounts/instrumentValueCounts' own
@@ -53943,6 +54146,15 @@ a { color: #1565c0; }`;
             if (localeNotPrimaryCount > 0) makeSynItem('locale-not-primary', '◦ not primary', localeNotPrimaryCount);
             if (instrumentHasCommentCount > 0)     makeSynItem('instrument-has-comment', '💬 has comment', instrumentHasCommentCount);
             if (instrumentHasDescriptionCount > 0) makeSynItem('instrument-has-description', '📝 has description', instrumentHasDescriptionCount);
+            // "Pending edits - Presence"/"- Entity" — see the identical
+            // block in the collapsable-column branch above for why these
+            // are gated on pendingEditsYesCount rather than emitted
+            // unconditionally like every other flag here.
+            if (pendingEditsYesCount > 0) {
+                makeSynItem('pending-edits-yes', '⏳ has pending edits', pendingEditsYesCount);
+                if (pendingEditsNoCount > 0) makeSynItem('pending-edits-no', '○ no pending edits', pendingEditsNoCount);
+                _sortedPendingEditValues.forEach(v => makeValueSynItem('pendingedit', v, pendingEditValueCounts.get(v)));
+            }
             _sortedAttrValues.forEach(v => makeValueSynItem('attr', v, attrValueCounts.get(v)));
             _sortedTaskValues.forEach(v => makeValueSynItem('task', v, taskValueCounts.get(v)));
             _sortedDateValues.forEach(v => makeValueSynItem('date', v, dateValueCounts.get(v)));

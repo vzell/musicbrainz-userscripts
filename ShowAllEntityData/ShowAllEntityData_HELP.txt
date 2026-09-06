@@ -376,6 +376,27 @@ every distinct non-empty value currently visible in that column.
                        links, e.g. a family naming its member instruments).
                        Two independent flags — a row can have neither, one,
                        or both
+    — ⏳/✏️ Pending edits — on EVERY column, on every page type (the only
+                       section family that isn't tied to one column's own
+                       grammar): MusicBrainz's own native open-edits marker,
+                       the orange highlight it paints on an entity whose
+                       /open_edits list is non-empty. "- Presence" is the
+                       binary flag pair ("⏳ has pending edits" / "○ no
+                       pending edits"); "- Entity" lists one "» pending
+                       edit:" entry per distinct entity in that column that
+                       currently has open edits, counted by ROWS. Both stay
+                       hidden entirely on any column where nothing is
+                       pending, which is the overwhelming majority — so
+                       spotting a column with in-flight edits is just a
+                       matter of the section appearing at all. Checking
+                       "⏳ has pending edits" highlights every pending
+                       entity in each matching row; checking a single
+                       "» pending edit:" entry highlights only that one, so
+                       on a joined "Queen & David Bowie" credit where only
+                       Bowie has open edits, only Bowie is marked. Reads
+                       markup already on the page — no extra request.
+                       Toggled by the "Enable 'Pending edits' dropdown
+                       sections" setting (default on)
     — 🎭 Roles         — "» role:" entries, one per distinct artist event-role
                        found in a native artist-roles list or the plain-text
                        "Role" column on an artist's own Events tab
