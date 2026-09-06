@@ -71443,15 +71443,51 @@ a { color: #1565c0; }`;
     // ── Public entry points ───────────────────────────────────────────────────
 
     /**
-     * Shows a small non-intrusive toast in the bottom-right corner of the
-     * viewport confirming that all CAA/EAA artwork has finished loading.
-     * Auto-dismisses after `sa_caa_completion_toast_duration` seconds (0 = disabled).
-     * Clicking the toast dismisses it immediately.
+     * Runs the CAA/EAA "artwork finished loading" completion pass.
+     *
+     * Despite the name this does FOUR things, and only the first is the toast:
+     *
+     *   1. Shows a small non-intrusive toast in the bottom-right corner.
+     *      Auto-dismisses after `sa_caa_completion_toast_duration` seconds
+     *      (0 = disabled); clicking it dismisses immediately.
+     *   2. Writes the `#mb-info-display-caa` status-bar segment — which is
+     *      also the completion SIGNAL the Playwright harness waits on (see
+     *      tests/support/asyncCompletion.js's `waitForCaaEaaComplete()`).
+     *   3. Appends the one-time global status summary (initial load only).
+     *   4. Refreshes the Statistics panel, if open, with the final counts.
+     *
+     * ## Only the toast is conditional
+     *
+     * Steps 2-4 run on every completion pass, unconditionally. Step 1 is
+     * suppressed when this pass did not actually fetch anything — i.e. when
+     * every image came out of the Tier-1 session memory cache.
+     *
+     * That distinction is the whole point. `_artInitQueue()` resets
+     * `_caaFetchStats` at the start of every render pass, so these counters
+     * describe THIS pass only, and a re-render (sort, filter keystroke)
+     * re-enqueues every image but resolves all of them from RAM. Popping
+     * "🎨 All CAA/EAA artwork loaded" again after each of those told the user
+     * their artwork had just been re-downloaded, when nothing had left the
+     * machine — a large part of why sorting *looked* like a reload. A pass
+     * that genuinely does fetch (initial load, a disk restore, rows scrolled
+     * into view for the first time) still reports normally.
+     *
+     * `browser` counts as fetching: that tier is the native `img.src` path
+     * taken when IDB is disabled, which still goes out to the network stack.
+     * `memory` is the only tier that costs nothing.
+     *
+     * Note the previous shape of this function put the
+     * `sa_caa_completion_toast_duration <= 0` check as an early return at the
+     * very top, so switching the toast off also silently switched off the
+     * status-bar segment, the global summary and the stats refresh — and with
+     * them the harness's own completion signal. Setting a user-facing toast
+     * duration to zero must not disable an unrelated status display, so that
+     * check now gates step 1 alone.
      */
     function _showCaaCompletionToast() {
         const secs = Lib.settings.sa_caa_completion_toast_duration;
-        if (typeof secs === 'number' && secs <= 0) return;
         const duration = (typeof secs === 'number' ? secs : 10) * 1000;
+        const toastEnabled = !(typeof secs === 'number' && secs <= 0);
 
         // ── Snapshot telemetry ────────────────────────────────────────────────
         const s         = _caaFetchStats;
@@ -71555,26 +71591,37 @@ a { color: #1565c0; }`;
         }
 
         // ── Show toast ────────────────────────────────────────────────────────
-        const toast = document.createElement('div');
-        toast.id = 'mb-caa-completion-toast';
-        toast.textContent = toastText;
-        toast.style.cssText =
-            'position:fixed; bottom:20px; right:20px; z-index:99999;' +
-            ' background:rgba(30,30,30,0.88); color:#fff;' +
-            ' padding:8px 14px; border-radius:6px; font-size:0.85em;' +
-            ' font-family:sans-serif; cursor:pointer; user-select:none;' +
-            ' box-shadow:0 2px 8px rgba(0,0,0,0.35);' +
-            ' opacity:1; transition:opacity 0.35s ease;' +
-            ' white-space:pre; line-height:1.55;';
+        //
+        // Suppressed when this pass resolved everything from the Tier-1 session
+        // memory cache — see this function's JSDoc. `memory` is the only
+        // no-cost tier; `browser` is the native img.src path and still hits the
+        // network stack, so it counts as a real fetch.
+        const _fetchedSomething =
+            (s.icon.idb   + s.icon.network   + s.icon.browser +
+             s.inline.idb + s.inline.network + s.inline.browser) > 0;
 
-        const dismiss = () => {
-            toast.style.opacity = '0';
-            clearTimeout(timer);
-            setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 380);
-        };
-        toast.addEventListener('click', dismiss);
-        document.body.appendChild(toast);
-        const timer = setTimeout(dismiss, duration);
+        if (toastEnabled && _fetchedSomething) {
+            const toast = document.createElement('div');
+            toast.id = 'mb-caa-completion-toast';
+            toast.textContent = toastText;
+            toast.style.cssText =
+                'position:fixed; bottom:20px; right:20px; z-index:99999;' +
+                ' background:rgba(30,30,30,0.88); color:#fff;' +
+                ' padding:8px 14px; border-radius:6px; font-size:0.85em;' +
+                ' font-family:sans-serif; cursor:pointer; user-select:none;' +
+                ' box-shadow:0 2px 8px rgba(0,0,0,0.35);' +
+                ' opacity:1; transition:opacity 0.35s ease;' +
+                ' white-space:pre; line-height:1.55;';
+
+            const dismiss = () => {
+                toast.style.opacity = '0';
+                clearTimeout(timer);
+                setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 380);
+            };
+            toast.addEventListener('click', dismiss);
+            document.body.appendChild(toast);
+            const timer = setTimeout(dismiss, duration);
+        }
 
         // ── Live-update the Statistics panel if it is currently open ─────────
         // By the time this toast fires, all artwork has loaded and _caaFetchStats

@@ -123,6 +123,15 @@ test.describe('CAA icon column survives a sort (single-table)', { tag: '@extende
 
         const rowsBefore = await getPageRowCount(page);
 
+        // Clear the INITIAL load's completion toast before sorting. That one is
+        // legitimate — the first pass really did fetch — and it lingers for
+        // sa_caa_completion_toast_duration seconds, long enough to still be on
+        // screen when the sort happens and be mistaken for a second one.
+        const infoBefore = await page.evaluate(() => {
+            document.getElementById('mb-caa-completion-toast')?.remove();
+            return document.getElementById('mb-info-display-caa')?.textContent ?? '';
+        });
+
         await installInsertionProbe(page);
 
         const columnTh = page.locator('table.tbl thead th', { hasText: SORT_COLUMN }).first();
@@ -141,6 +150,28 @@ test.describe('CAA icon column survives a sort (single-table)', { tag: '@extende
         // The fix. Before it this was 0 — every icon arrived blank and was
         // repainted afterwards, one queue task at a time.
         expect(probe.iconsPaintedAtInsert).toBe(paintedBefore);
+
+        // ── The completion pass after a memory-only re-render ────────────────
+        //
+        // The post-sort pass rewrites #mb-info-display-caa with its own elapsed
+        // time, so waiting for that text to change is a real signal that the
+        // pass actually ran — rather than asserting "no toast" before the queue
+        // had even drained, which would pass for the wrong reason.
+        await page.waitForFunction(
+            (prev) => (document.getElementById('mb-info-display-caa')?.textContent ?? '') !== prev,
+            infoBefore,
+            { timeout: 60000 }
+        );
+
+        // The status segment stays — it is the harness's completion signal and
+        // must never depend on the toast.
+        await expect(page.locator('#mb-info-display-caa')).toBeVisible();
+
+        // ...but no toast, because this pass fetched nothing: every image came
+        // straight back out of the Tier-1 session memory cache. Announcing
+        // "All CAA/EAA artwork loaded" here was telling the user their artwork
+        // had been re-downloaded when nothing left the machine.
+        await expect(page.locator('#mb-caa-completion-toast')).toHaveCount(0);
 
         // Sorting must not have changed what is on the page.
         expect(await getPageRowCount(page)).toEqual(rowsBefore);

@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-09-06",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The \"🎨 All CAA/EAA artwork loaded\" toast no longer pops after every sort and every filter keystroke. `_artInitQueue()` resets `_caaFetchStats` at the start of each render pass, so those counters describe that pass alone — and a re-render re-enqueues every image but resolves all of them from the Tier-1 session memory cache. Announcing a completed load there told the user their artwork had just been re-downloaded when nothing had left the machine, which was a large part of why sorting *looked* like a reload. The toast is now shown only when the pass actually fetched something (`idb`/`network`/`browser` tiers; `memory` is the only no-cost tier — `browser` is the native `img.src` path and still hits the network stack). A pass that genuinely fetches — initial load, disk restore, newly-rendered rows — still reports exactly as before.",
+          "Setting `sa_caa_completion_toast_duration` to 0 no longer switches off three unrelated things. `_showCaaCompletionToast()` does four jobs, and the duration check was an early return at the very top, so disabling a cosmetic toast also disabled the `#mb-info-display-caa` status-bar segment, the one-time global status summary and the Statistics-panel refresh — and with them the completion signal the Playwright harness waits on (`waitForCaaEaaComplete()`). Those three now always run; the setting gates the toast alone. The Relationships sibling (`sa_rel_completion_toast_duration`) already had this ordering right, writing `#mb-info-display-rel` before its own early return — this brings CAA/EAA in line with it."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-09-06",
     "sections": [

@@ -94,3 +94,39 @@ test.describe('CAA/EAA per-column collapse glyph: deferred visibility', () => {
         await expect(hdrBtnDuringLoad).toHaveAttribute('data-mb-caa-col-hdr-ready', '1');
     });
 });
+
+// Lives in this file rather than its own because it needs the identical
+// fixture, event GUID, PNG bytes and eventartarchive routing as the suite
+// above — a separate spec would duplicate all of it to assert one thing.
+test.describe('CAA/EAA completion pass is independent of the toast setting', () => {
+    test('the status-bar segment still appears when the toast duration is 0', async ({ page }) => {
+        // _showCaaCompletionToast() used to early-return on
+        // sa_caa_completion_toast_duration <= 0 before doing ANY of its work,
+        // so switching off a cosmetic toast also switched off the
+        // #mb-info-display-caa status segment, the global summary and the
+        // stats refresh — and with them waitForCaaEaaComplete()'s own signal.
+        // Only the toast may depend on that setting.
+        await loadUserscriptPage(page, {
+            url: ARTIST_EVENTS_URL,
+            fixtureFile: FIXTURE_FILE,
+            testMode: true,
+            settingsOverride: {
+                sa_enable_caa_pics: true,
+                sa_art_idb_enable: false,
+                sa_caa_completion_toast_duration: 0,
+            },
+        });
+        await routeEventArtArchive(page, 0);
+
+        await page.click('button[data-label="Show all Events for Artist"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+
+        // Resolves only if the completion pass ran — this is the assertion
+        // that fails (by timeout) without the fix.
+        await waitForCaaEaaComplete(page);
+        await expect(page.locator('#mb-info-display-caa')).toBeVisible();
+
+        // The toast itself must still honour the setting.
+        await expect(page.locator('#mb-caa-completion-toast')).toHaveCount(0);
+    });
+});
