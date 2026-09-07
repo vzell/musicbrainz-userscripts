@@ -2890,7 +2890,7 @@
                          'natively via `table.details td.old`/`table.details td.new` selectors, ' +
                          'but those require a real `<table>` ancestor, which "Edit details" no ' +
                          'longer has after being de-tableified to avoid corrupting this script\'s ' +
-                         'own table-wide row-processing (see debug/NOTES.md) — so the colors below ' +
+                         'own table-wide row-processing (see DEBUG-NOTES.md) — so the colors below ' +
                          'are applied independently instead of relying on MusicBrainz\'s stylesheet.'
         },
 
@@ -2921,7 +2921,7 @@
             description: 'Background color for odd rows in a nested compare table inside "Edit ' +
                          'details" (e.g. a medium edit\'s Old/New tracklist) — MusicBrainz\'s own ' +
                          'zebra striping no longer reaches these rows once de-tableified (see ' +
-                         'debug/NOTES.md). A reasonable default, not sourced from MusicBrainz\'s ' +
+                         'DEBUG-NOTES.md). A reasonable default, not sourced from MusicBrainz\'s ' +
                          'stylesheet.'
         },
 
@@ -6324,7 +6324,7 @@
      * at the token boundary), silently recoloring every Remove/Merge edit
      * as "Edit". Matching the literal known tokens sidesteps this entirely.
      * `open` = `/open/` found in the class list, else closed/applied. See
-     * `debug/act.org` and `debug/NOTES.md`.
+     * `debug/act.org` and `DEBUG-NOTES.md`.
      *
      * @param {string} headerClassName - `.edit-header`'s `className`.
      * @returns {string|null} A CSS color value from the `sa_edits_color_*`
@@ -6589,7 +6589,7 @@
      * declaration was confirmed to lose there even though its own selector
      * is more specific ("odd"/white rows worked fine, since nothing
      * conflicts with an unstyled/default background). See
-     * sa_enable_edits_diff_colors / debug/NOTES.md.
+     * sa_enable_edits_diff_colors / DEBUG-NOTES.md.
      *
      * Also restores zebra striping (`.mb-dt-tr.odd`/`.mb-dt-tr.even` —
      * `_detableify()` preserves the original `odd`/`even` class on the
@@ -6605,7 +6605,7 @@
      * background relies on painting through cells with no background of
      * their own, which silently fails to show on "even"/grey rows the
      * moment anything sets an explicit competing background on the cell
-     * itself (see debug/NOTES.md, "row background colour fix didn't
+     * itself (see DEBUG-NOTES.md, "row background colour fix didn't
      * actually work"); MusicBrainz's own equivalent rule colors `<td>`
      * directly for the same reason. All three rules use `!important` for
      * the same defensive reason as the diff colors above; the hover rule's
@@ -6666,7 +6666,7 @@
      * unvoted edits" banner (search-results pages only) reuses the same
      * `div.edit-list` class for an unrelated button row and is skipped, though
      * still removed from the DOM along with the real blocks. See
-     * `debug/NOTES.md` for the annotated source DOM this was reverse-engineered
+     * `DEBUG-NOTES.md` for the annotated source DOM this was reverse-engineered
      * from.
      *
      * This is a DOM pre-processing step for pageTypes that carry
@@ -6974,7 +6974,7 @@
      * nothing else to pick), cramming the whole action-button toolbar, row-count
      * badge, CAA toggle, and filter bar into one native heading — which then
      * also gets made collapsible by `makeH2sCollapsible()` (every `<h2>` is
-     * fair game, unlike an `<h1>` page title). See debug/NOTES.md's
+     * fair game, unlike an `<h1>` page title). See DEBUG-NOTES.md's
      * "## 2026-07-29 — user-edits/user-open-edits cram everything onto one
      * heading" entry (the standalone debug/user-edits-wrong.org snapshot this
      * used to point to is gone).
@@ -12728,7 +12728,7 @@
      * Such a row has FEWER cells than the table has columns, so the row-import
      * loop's positional `row.cells[colIdx]` addressing silently reads every cell
      * from the wrong column — see `_mergeContinuationRowInto` for the fix and
-     * debug/NOTES.md for what that looked like in the rendered output.
+     * DEBUG-NOTES.md for what that looked like in the rendered output.
      *
      * Deliberately structural (an empty spanning first cell) rather than keyed
      * on a page type: it is the only shape that can carry this meaning, and the
@@ -13731,7 +13731,7 @@
                 // enough here.
                 insertH2: 'Report',
                 // report-detail is column-agnostic (117 differently-shaped reports —
-                // see debug/NOTES.md); a given report's table only ever carries ONE
+                // see DEBUG-NOTES.md); a given report's table only ever carries ONE
                 // of these candidate columns, so array form picks whichever is present.
                 addCAA: [ 'Release', 'Release group' ],
                 addEAA: 'Event',
@@ -14554,7 +14554,7 @@
         // pageType did exactly that) makes the page-load button toolbar AND
         // the post-render filter/count/CAA-toggle UI both resolve to the
         // SAME element, cramming everything onto one collapsible line — see
-        // debug/NOTES.md's "## 2026-07-29 — user-edits/user-open-edits cram
+        // DEBUG-NOTES.md's "## 2026-07-29 — user-edits/user-open-edits cram
         // everything onto one heading" entry (the standalone
         // debug/user-edits-wrong.org snapshot this used to point to is gone).
         // renameH2ToH1 promotes that native
@@ -30086,7 +30086,7 @@ a { color: #1565c0; }`;
      * share the exact same "grouped by relationship/link type, MB's own
      * 100-row-per-category cap" shape as `artist-relationships`/
      * `label-relationships`/`place-performances` (see the "7 pairs" cluster
-     * in pageTypes-testing-reference.org) but were missing from this Set —
+     * in PAGETYPES-TESTING-REFERENCE.org) but were missing from this Set —
      * on any area/work whose categories all stay under the cap, that left
      * neither button rendered at all.
      * @type {Set<string>}
@@ -32202,7 +32202,7 @@ a { color: #1565c0; }`;
         // fetch label ("Loading page 999 of 999... (99999 rows) - 9999.9s
         // left", ~55 chars) but not the longer overflow-tracks label
         // ("Loading overflow tracks: medium 20 of 20... (99999 tracks) -
-        // 9999.9s left", ~73 chars) added later — see debug/NOTES.md.
+        // 9999.9s left", ~73 chars) added later — see DEBUG-NOTES.md.
         'min-width:600px',
         'max-width:750px',
         'height:20px',
@@ -38735,7 +38735,7 @@ a { color: #1565c0; }`;
      *   `<bdi>` entity name running
      *   into a sibling `<span class="comment"><bdi>` (Release/Label columns)
      *   and on a native `<abbr>`/`<span class="release-date">` pair
-     *   (Country/Date column) — see debug/NOTES.md's 2026-08-29 entry. Fixed
+     *   (Country/Date column) — see DEBUG-NOTES.md's 2026-08-29 entry. Fixed
      *   by inserting the same unconditional single-space gap between every
      *   pair of accepted entries here too (both in the offset bookkeeping and
      *   in `fullText` itself), mirroring `join(' ')` exactly.
@@ -38896,7 +38896,7 @@ a { color: #1565c0; }`;
             // fullText at all here, and this function returns with zero highlight
             // spans despite testRowMatch() having correctly matched the row.
             // Confirmed live on Release/Label/Country-Date comment-boundary and
-            // compound queries — see debug/NOTES.md's 2026-08-29 entry.
+            // compound queries — see DEBUG-NOTES.md's 2026-08-29 entry.
             //
             // EXCEPT at a comma/paren/bracket boundary, where
             // normalizeExtractedText() (getCleanColumnText()'s own second pass)
@@ -43717,7 +43717,7 @@ a { color: #1565c0; }`;
     /**
      * Detects whether a MusicBrainz edit-listing page's pagination widget is
      * "ambiguous" — i.e. MusicBrainz could not compute an exact result count
-     * (see `debug/NOTES.md` / `debug/act.org`) and the widget shows a
+     * (see `DEBUG-NOTES.md` / `debug/act.org`) and the widget shows a
      * milestone-with-ellipsis window (`1 … 6 7 8 9 10 11 … Next`) instead of
      * the true last page. True only when an ellipsis placeholder
      * (`<li><span>…</span></li>`) appears anywhere inside `ul.pagination`.
@@ -44572,7 +44572,7 @@ a { color: #1565c0; }`;
         //   1. Demote all existing <h2> elements to <h3> (section labels) — OR
         //      promote them to <h1> (page title) when the page has no native
         //      <h1> of its own at all (e.g. 'user-edits'/'user-open-edits' —
-        //      see debug/NOTES.md's "## 2026-07-29 — user-edits/user-open-edits
+        //      see DEBUG-NOTES.md's "## 2026-07-29 — user-edits/user-open-edits
         //      cram everything onto one heading" entry; the standalone
         //      debug/user-edits-wrong.org snapshot this used to point to is gone).
         //   2. Inject a fresh <h2> after <div class="tabs"> (or, absent that,
@@ -44698,7 +44698,7 @@ a { color: #1565c0; }`;
         const maxThreshold = Lib.settings.sa_max_page;
 
         // For edits pageTypes, MusicBrainz's pagination is only ambiguous
-        // (no true last page discoverable — see debug/NOTES.md / debug/act.org)
+        // (no true last page discoverable — see DEBUG-NOTES.md / debug/act.org)
         // when the widget shows an ellipsis milestone window. Small result
         // sets either have no pagination at all (debug/willow.html) or a
         // complete, gap-free widget that already reveals the real last page
@@ -44714,7 +44714,7 @@ a { color: #1565c0; }`;
             // MusicBrainz edit-listing pagination never reveals a true last page
             // (the widget is a sliding window around the current page, and
             // "Found at least N edits" keeps growing the deeper you page — see
-            // debug/NOTES.md). determineMaxPageFromDOM()/fetchMaxPageGeneric()
+            // DEBUG-NOTES.md). determineMaxPageFromDOM()/fetchMaxPageGeneric()
             // would silently undercount, so skip them entirely: use the
             // configured safety cap as the loop bound, and rely on the
             // empty-page break in the fetch loop below to stop at the real end.
@@ -44951,7 +44951,7 @@ a { color: #1565c0; }`;
                 // isAmbiguousEditsPagination is true, maxPage is just the
                 // configured safety cap (MusicBrainz's edit-listing pagination
                 // never reveals a true last page for large result sets — see
-                // debug/NOTES.md). The real "we're done" signal there is a
+                // DEBUG-NOTES.md). The real "we're done" signal there is a
                 // fetched page with zero real edit blocks; stop the whole fetch
                 // loop right here rather than the generic
                 // tablesToProcess.length === 0 → continue below, which would
@@ -49923,7 +49923,7 @@ a { color: #1565c0; }`;
                 // always reads 0/0 in a real browser, so any collapsable column
                 // (ARs/AcoustID/ISRC) on a table left hidden here permanently never gets
                 // its overflow-triggered toggle, even after the user later expands the
-                // section manually (see debug/NOTES.md).
+                // section manually (see DEBUG-NOTES.md).
                 const isSingleSubTable = dataArray.length === 1;
                 const isReleaseTracks = activeDefinition?.type === 'release-tracks';
                 const shouldStayOpen = isSingleSubTable || isReleaseTracks ||
@@ -57188,7 +57188,7 @@ a { color: #1565c0; }`;
             // OWN initial glyph/aria-expanded/title (built further down),
             // which used to be unconditionally hardcoded to the collapsed
             // state regardless of the cells' actual starting state. See
-            // debug/NOTES.md.
+            // DEBUG-NOTES.md.
             let _anyCellStartedExpanded = false;
             const multiRowCells = [];
             bodyRows.forEach(tr => {
@@ -57395,7 +57395,7 @@ a { color: #1565c0; }`;
             // sa_edits_enable_notes_collapse do NOT gate it off entirely
             // (that would remove the toggle handle along with the clamp,
             // leaving no way to manually collapse a cell at all — see
-            // debug/NOTES.md). Instead those settings control only the
+            // DEBUG-NOTES.md). Instead those settings control only the
             // INITIAL expand state (see the expandedCells pre-population
             // below); the toggle itself works identically to Annotation's
             // either way, in both directions, at any time.
@@ -57571,7 +57571,7 @@ a { color: #1565c0; }`;
             // expanded (_anyCellStartedExpanded) — previously hardcoded to
             // "collapsed", which was fine for every column until "Edit
             // details"/"Edit notes" started defaulting to expanded (see
-            // debug/NOTES.md). Not tri-state: on the very first render after
+            // DEBUG-NOTES.md). Not tri-state: on the very first render after
             // a fetch a column's cells are always uniformly all-expanded or
             // all-collapsed (nothing produces a genuine mixed state yet), so
             // "any" is an equally sufficient signal as "all" would be here.
@@ -57687,7 +57687,7 @@ a { color: #1565c0; }`;
                     // Reset on every (re-)init to reflect actual cell state —
                     // collapsed, unless some column's cells started expanded
                     // (e.g. "Edit details"/"Edit notes" defaulting open; see
-                    // anyCellInAnyColumnStartedExpanded above / debug/NOTES.md).
+                    // anyCellInAnyColumnStartedExpanded above / DEBUG-NOTES.md).
                     globalBtn.innerHTML = makeCollapseExpandBtnHTML(!anyCellInAnyColumnStartedExpanded);
                     globalBtn.title = anyCellInAnyColumnStartedExpanded
                         ? 'Collapse ALL expanded multi-row cells in EVERY collapsable table column'
@@ -58837,7 +58837,7 @@ a { color: #1565c0; }`;
      * Rather than make the restriction filter-aware, it's dropped
      * entirely: every radio is simply always enabled, so any combination
      * — including ones MB's own page would never let you reach — is
-     * always clickable. See debug/NOTES.md's 2026-08-23 entry.
+     * always clickable. See DEBUG-NOTES.md's 2026-08-23 entry.
      *
      * Still needs to run after every (re)render: cloneNode(true)/
      * importNode re-apply those pristine static `disabled` attributes
@@ -66108,7 +66108,7 @@ a { color: #1565c0; }`;
     //                  length in milliseconds or `null` for "MusicBrainz has no
     //                  sub-second length on record". Used by the millisecond
     //                  Length column's L2 cache (_msIdbGetLength /
-    //                  _msIdbPutLength). Keyed per RECORDING rather than per
+    //                  _msIdbPutLengths). Keyed per RECORDING rather than per
     //                  page entity on purpose: the same recording is listed by
     //                  many pageTypes, so one page's fetch warms every other.
     //                  Shares this database for the same reason 'rel-ws2' does.

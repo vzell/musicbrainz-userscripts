@@ -1235,7 +1235,7 @@ Three things worth keeping:
 
 *** TODO Step 20: Separate "re-apply artwork highlight" from "re-fetch artwork enrichment"
 
-Found 2026-08-29 while verifying an unrelated fix (see ~debug/NOTES.md~,
+Found 2026-08-29 while verifying an unrelated fix (see ~DEBUG-NOTES.md~,
 "CAA/EAA completion signal never fires after runFilter()"), scoped out at the
 time as needing its own design pass, and never recorded in this file until now.
 
@@ -1465,7 +1465,7 @@ in practice than the single-query headline table above suggests on its own.
 
 ~performance.now()~ marks added directly inside each branch's
 ~runFilter()~ single-table branch (profiled, then reverted — not committed;
-see ~debug/NOTES.md~'s 2026-08-24 entry for the full trace and how to
+see ~DEBUG-NOTES.md~'s 2026-08-24 entry for the full trace and how to
 reproduce), for the narrow ("United Kingdom", 158/4174) case:
 
 | Sub-step                          |    ~main~ | ~perf-steps-1-4~ |

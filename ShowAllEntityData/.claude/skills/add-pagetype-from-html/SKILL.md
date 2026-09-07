@@ -43,7 +43,7 @@ directly into a `features` flag or a `pageDefinitions` field below. Use
    - A real `<h1>` plus zero or more `<h2>` — no pre-processing needed.
    - Only `<h2>`s, no `<h1>` at all — needs `renameH2ToH1` on the first one
      **plus** `insertH2` for a fresh section title, per the checklist (see
-     `applyRenameH2ToH1`'s JSDoc and the `debug/NOTES.md` entry titled
+     `applyRenameH2ToH1`'s JSDoc and the `DEBUG-NOTES.md` entry titled
      "user-edits/user-open-edits cram everything onto one heading" for what
      goes wrong if you only do the rename half).
    - Native `<h2>`s that are actually sub-section headers under a synthetic
@@ -110,7 +110,7 @@ This is a separate, upstream mechanism from `pageDefinitions`'s own
 entry and still be completely unreachable if its URL isn't covered by one
 of these four patterns first. Nothing throws, no button appears, and the
 bug is easy to miss because the code "looks done" — this is exactly what
-happened building the `annotations` pageType (see `debug/NOTES.md`'s
+happened building the `annotations` pageType (see `DEBUG-NOTES.md`'s
 `## 2026-08-22 — annotations page type` entry).
 
 Check this before considering the entry finished:
@@ -175,7 +175,7 @@ cleanup — don't just assume it works because the code compiles.
 If the HTML file under `debug/` isn't already named descriptively, rename
 it to `<pagetype>.html` (or `<pagetype>-original.html` if you expect to also
 capture a `-final.html` post-render snapshot later). Add an entry to
-`debug/NOTES.md` in the same style as the existing ones (see the
+`DEBUG-NOTES.md` in the same style as the existing ones (see the
 `## 2026-07-01 — report pages` entry for the level of detail expected: has
 `div#content`?, heading shape, table/list shape, column count, pagination,
 row-count estimate). This is what saves the next session from re-deriving

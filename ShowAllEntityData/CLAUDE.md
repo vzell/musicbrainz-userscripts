@@ -2,60 +2,68 @@
 
 ## Project overview
 
-`ShowAllEntityData.user.js` is a Tampermonkey userscript (~74,000 lines, ~4.1 MB as of
-v9.99.1045) for MusicBrainz. It consolidates paginated and non-paginated entity table
-lists into a single view with real-time multi-column filtering and sorting.
+`ShowAllEntityData.user.js` is a large single-file Tampermonkey userscript for
+MusicBrainz. It consolidates paginated and non-paginated entity table lists into
+a single view with real-time multi-column filtering and sorting.
+
+Read the current version from the `// @version` line of the `==UserScript==`
+header, and the current size with `wc -l`/`wc -c` — never quote either from
+memory or from this file. Same for the changelog: the newest entry in
+`ShowAllEntityData_CHANGELOG.json` is the authority on what shipped.
 
 **Changelog:** `ShowAllEntityData_CHANGELOG.json` (JSON, lives alongside the script)
 **Help:** `ShowAllEntityData_HELP.txt` (TEXT, lives alongside the script)
 **Library dependency:** `VZ_MBLibrary.user.js` (external `@require`; provides `Lib.*`)
 **External dependencies:** `iro` (colour picker), `pako` (compression)
+**Other top-level docs:** `PERFORMANCE.org` (measurements + numbered Steps),
+`PAGETYPES-TESTING-REFERENCE.org` (every pageType, its URL, its coverage plan),
+`DEBUG-NOTES.md` (dated root-cause log), `REFACTORING.org`, `forum.org`
 
 ## File structure
 
 Everything lives inside a single IIFE `(function() { 'use strict'; … })()`.
-There are no ES modules. Key sections in order:
+There are no ES modules.
 
-```
-lines 1-35     ==UserScript== header + attribution comments
-lines 37-132   Third-party script attribution block (do not edit)
-lines 137-211  Script constants: SCRIPT_BASE_NAME, SCRIPT_ID, remote URLs
-lines 212-2670 configSchema — settings menu definitions (checkboxes, colour pickers, etc.)
-line 2671      const Lib = (typeof VZ_MBLibrary !== 'undefined') ? new VZ_MBLibrary(…) : {…}
-               — library initialisation, with a fallback stub object if the
-               @require'd library failed to load
-lines 2950-    ColumnDataExtractor registry (named extractor functions)
-lines 4067-    SyntheticColumnDataExtractor registry
-lines 4380-    buildActive* helpers (column extractors, erasers, injected columns)
-lines 5102-    DOM pre-processing helpers: applyListToTable, applyRenameH2ToH3,
-               applyRenameH2ToH1, applyInsertH2, applyInsertPrependH2, applyShowAllTags
-lines 12051-   pageDefinitions[] array — one entry per recognised URL pattern
-lines 27220-   Init block: page type detection, header location, button injection
-lines 36023-   runFilter() — real-time filter logic
-lines 37737-   startFetchingProcess() — main fetch pipeline entry point
-lines 41071-   renderFinalTable() — single-table render (tableMode: 'single')
-lines 42175-   renderGroupedTable() — multi-table render (tableMode: 'multi')
-lines 44413-   makeH2sCollapsible()
-line 15315     sortLargeArray() — async row-array sort, defined much earlier
-               than its callers
-lines 49225-   makeTableSortableUnified() — attaches column-header sort click
-               handlers, delegates to sortLargeArray()
-lines 56187-   initExpandRGsFeature() — release-group expand/collapse
-lines 57414-   CAA_CTX / EAA_CTX context descriptors
-lines 62927-   initCaaPics() / initEaaPics() — artwork feature entry points
-lines 63430-   initBarcodeHighlight()
-line 14836     ctrlMFunctionMap declared empty (`let ctrlMFunctionMap = {}`);
-               populated with real entries at line 63453, right after
-               initBarcodeHighlight() — keyboard shortcut registry
-```
+**This inventory carries grep anchors, not line numbers, on purpose.** The file
+grows on nearly every commit, so absolute line numbers are stale almost
+immediately — a previous version of this table had 21 of 23 rows wrong, several
+by more than 6,000 lines, which is worse than having no table at all. Grep the
+anchor. The listing order below is the file's own top-to-bottom order, which is
+the part that stays true and is what makes it useful for orientation.
 
-Line numbers above drift as the file grows — re-grep the symbol name if a
-number looks stale rather than trusting it blindly.
+| Grep for | What it is |
+|---|---|
+| `// ==UserScript==` | Header, then a third-party attribution block (do not edit) |
+| `const SCRIPT_BASE_NAME` | Script constants: `SCRIPT_ID`, remote URLs |
+| `const configSchema` | Settings-menu definitions (checkboxes, colour pickers, …); by far the largest single block |
+| `const Lib = (typeof VZ_MBLibrary` | Library init, with a fallback stub if the `@require`'d library failed to load |
+| `const ColumnDataExtractor` | Named column-extractor registry |
+| `const SyntheticColumnDataExtractor` | Synthetic-column extractor registry |
+| `function buildActiveColumnExtractors` | First of the `buildActive*` helpers (extractors, erasers, injected columns) |
+| `function applyListToTable` | DOM pre-processing; `applyRenameH2ToH3`/`applyRenameH2ToH1`/`applyInsertH2`/`applyInsertPrependH2`/`applyShowAllTags` follow it |
+| `function applyExtractTrackTitleData` | `release-tracks`' bespoke AR pipeline (see its own section below) |
+| `const pageDefinitions = [` | One entry per recognised URL pattern |
+| `let ctrlMFunctionMap` | Declared empty here; populated right after `initBarcodeHighlight()` |
+| `function sortLargeArray` | Async row-array sort — defined much earlier than its callers |
+| `// --- Initialization Logic ---` | Page-type detection, header location, button injection |
+| `function runFilter` | Real-time filter logic |
+| `function startFetchingProcess` | Main fetch-pipeline entry point |
+| `function renderFinalTable` | Single-table render (`tableMode: 'single'`) |
+| `function renderGroupedTable` | Multi-table render (`tableMode: 'multi'`) |
+| `function makeH2sCollapsible` | Page-level h2 collapse |
+| `function makeTableSortableUnified` | Column-header sort handlers; delegates to `sortLargeArray()` |
+| `function initExpandRGsFeature` | Release-group expand/collapse |
+| `const CAA_CTX` / `const EAA_CTX` | Artwork context descriptors |
+| `function initCaaPics` / `function initEaaPics` | Artwork feature entry points |
+| `function initBarcodeHighlight` | Barcode highlighting |
 
 ## Page definition anatomy
 
-All supported URL patterns are registered in `const pageDefinitions` (line 12051).
-Each entry follows this shape:
+All supported URL patterns are registered in `const pageDefinitions` (grep
+`const pageDefinitions = [`). To count them, count `type:` keys inside that
+array — don't carry the number here; `PAGETYPES-TESTING-REFERENCE.org` is the
+authority on the pageType roster and its coverage plan. Each entry follows this
+shape:
 
 ```javascript
 {
@@ -161,13 +169,153 @@ master-toggle's `container.querySelectorAll('table.tbl')` finds nothing.
 **Do not add `renameH2ToH3` or `insertH2` to the `user-tags` definition.**
 The native `<h2>Tags vzell upvoted</h2>` is already the correct targetHeader.
 
+## CAA/EAA artwork — what must not break
+
+**Single- and multi-table sorting currently works correctly for all three
+artwork surfaces — inline thumbnails, the CAA/EAA columns, and the big-image
+strips. Keeping it that way outranks any change that would jeopardise it.**
+Every one of these mechanisms was landed to fix a real, shipped regression, and
+several of them failed silently rather than loudly. If a change touches sorting,
+filtering, re-rendering, or the artwork pipeline, say up front how it preserves
+each of the following.
+
+**Sorting by artwork presence** goes through **`_sortCellText()`** (declared next
+to `_sortColumnKind()`), called by **both** `createSortComparator()` and
+`createMultiColumnComparator()`. The single shared resolver exists because those
+two have silently disagreed before. It is scoped to
+`.mb-caa-sort-key`/`.mb-eaa-sort-key` **alone**, and the rule to carry forward is:
+*only add a class to `_sortCellText()` if that class is also stripped from the
+visible text.* Folding in `mb-cancelled-sort-key` would silently reverse the
+order of a column that was never broken — a cancelled-event cell also carries the
+visible word "cancelled", so its sort text is `"cancelled yes"` vs `"no"`, and
+`"c" < "n"` already puts cancelled events first ascending.
+
+For the background: `_CLEAN_STRIP_SEL` strips the artwork sentinels, and
+`getCleanVisibleText()` removes them by clone-and-remove before its TreeWalker
+runs. **The strip is correct and must stay** — a typed filter of `"no"` would
+otherwise match `"not readable"` and the sentinel text itself. Sorting was simply
+the one consumer never given a replacement for it. `.mb-eaa-sort-key` is in the
+selector but never actually created; the `caa` extractor writes
+`mb-caa-sort-key` for both.
+
+**Artwork presence is filtered exclusively via the 📊 unique-values dropdown's
+structure mode** ("✓ has artwork" / "✗ no artwork", `_cellMatchesStructureMode()`).
+The old typed-filter sentinel bypass in `testRowMatch()` was **removed** — it made
+one typed word mean two unrelated things, since `no` matched both "no artwork"
+and rows whose image type genuinely contains it (e.g. `Matrix/Runout`). Do not
+reintroduce it. Removing it also fixed a plain-vs-regexp inconsistency: both
+bypasses lived in the NON-regexp branch, so an anchored `^no$` matched nothing
+while a plain `no` matched presence. `mb-inline-art-sort-key`'s bypass was
+deliberately **kept** — its `caa-inline-yes`/`caa-inline-no` values collide with
+no English word.
+
+**Surviving a re-render.** `renderFinalTable`/`renderGroupedTable` insert
+`cloneNode(true)` copies, so live artwork has to be mirrored back onto the SOURCE
+rows or it is destroyed and re-fetched on every sort and every filter keystroke:
+
+- `_artMirrorIconToSourceRow()` copies a `background-image` VALUE onto a
+  `span.caa-icon` the source row already owns (it comes from MusicBrainz's own
+  markup, and inline styles survive the clone).
+- `_artMirrorInlineThumbToSourceRow()` clones the whole placeholder, because an
+  inline thumbnail is a NODE this script creates — on a multi-table page the
+  source rows have never held one, so there is nothing to copy a value onto and
+  `_stripTransientCellState()`'s `preserveLiveArt` branch had nothing to match.
+- Both resolve their target via `_artResolveSourceCell()` plus
+  `_findMasterRowByIdx()`. The latter is required because merged view folds other
+  groups' rows into the first-occurrence table, so a group-index lookup misses
+  exactly those rows.
+- The receiving halves are `_stripTransientCellState()`'s `preserveLiveArt`
+  branch and `_artInitInlinePics()`'s Case C1 (hover + bigbox re-wired, live
+  image kept, nothing re-resolved).
+
+**Scoped sub-table sort.** `_renderDirtyGroupIdxs` (a `Set`, or `null` meaning
+"render everything", which is what every non-sort entry into `runFilter()` sees),
+`_invalidateFilterCacheForGroups()` and `_sortDirtyGroupIdxs()`. Sorting one
+sub-table now re-renders only that group. Two consequences bind any new test:
+
+- **Artwork in an untouched sub-table is never re-inserted**, so it cannot appear
+  in an insertion-time tally. Compare against the SORTED sub-table's own counts,
+  never a page-wide count. Getting this wrong is how one spec silently became
+  `1 of 1` in three views and `0 of 0` in a fourth — passing, proving nothing.
+- **The colon-alignment finalizers are deliberately skipped on a scoped pass.**
+  They measure one shared width across the whole rendered row set; a re-order
+  does not change that set, and running them with the undisturbed groups emptied
+  would narrow every column to what the sorted sub-table alone needs.
+
+The cache drop is by group index across ALL `discographyViewState` values (the
+key is `m:<view>:<groupIdx>`), or a pre-sort ordering cached under another view
+comes back on the next switch.
+
+**Big-image strips** are `#mb-caa-toggle-btn-global` /
+`#mb-eaa-toggle-btn-global`, with per-section `#mb-caa-toggle-btn-{i}` and
+retry buttons at `#mb-caa-toggle-btn-retry-{i}`.
+`sa_caa_pics_initially_collapsed` defaults **true**, so they load nothing until
+toggled — see the testing section for why that matters to every artwork test.
+
+**Those ids are constructed, not literal — grepping for them in the userscript
+finds only JSDoc.** They are `ctx.btnPrefix + '-global'`, where `btnPrefix` is
+`'mb-caa-toggle-btn'` on `CAA_CTX` and `'mb-eaa-toggle-btn'` on `EAA_CTX`. To
+find the code, grep `btnPrefix`. This is the same trap as the `caa`/`eaa` debug
+channels (see that section): a real, stable identifier that no string search for
+its full name will locate.
+
+## Testing expectations
+
+**Every implementation ships with test cases. More coverage is always better.**
+This is not a judgement call to re-litigate per change; the only question is
+which kind of test, and the routing is:
+
+| Kind | Where | When |
+|---|---|---|
+| Fixture spec | `tests/fixtures/*.spec.js` | Anything reproducible from saved HTML. Network-free, fast, the default. Prefer this. |
+| Live spec | `tests/live/*.spec.js`, tagged `@core`/`@extended`/`@perf` | Real-page behavior that a fixture cannot reproduce (pagination, real artwork throughput, third-party interop). |
+| Snapshot baseline | `tests/snapshots/<pageType>/` | A new pageType's structural shape. |
+
+The existing rule stands and is stricter than the table: **every DOM/rendering
+fix needs a regression test that fails before the fix and passes after.** Verify
+the "fails before" half rather than assuming it — mutation-check by reverting the
+fix, or by planting an early `return`.
+
+**Name the guarantee precisely, or the test proves something adjacent.** The
+CAA/EAA presence-sorting bug above went unnoticed for the whole visible history
+of the repo *while two specs covered the column*: they asserted artwork
+**survives** a sort, which is a different guarantee and was always met. Nothing
+asserted it **orders** by artwork. When writing an assertion, state which
+property it pins, and check that a plausible bug in the neighbouring property
+would still fail it.
+
+See `tests/README.org` for how to run each suite and what it costs in wall clock.
+
+## Performance is a priority
+
+**Performance is a gate, not an afterthought. If a change would make filtering,
+sorting, rendering, or artwork throughput worse, flag it BEFORE implementing and
+let the user decide** — including when the change is otherwise correct and the
+regression is the price of correctness. Say what gets slower, by roughly how
+much, and what the alternative would be.
+
+- `PERFORMANCE.org` holds the measurements and the numbered Steps. Its
+  TODO/DONE keyword tracks "landed on `main`", not effort.
+- The `run-perf-comparison` skill runs and interprets the instrumentation.
+- Committed baselines: `tests/snapshots/artist-events/interaction-perf-*.json`
+  (interaction latency) and `tests/snapshots/artist-releasegroups/perf-baseline*.json`
+  (end-to-end fetch/render). Both are medians of 5 samples, kept per-branch.
+- Current `main` reference point, on the 4174-row `artist-events` disk fixture:
+  global filter ~1735 ms, column filter ~1730 ms, sort ~3968 ms, uniq-dropdown
+  ~31 100 ms cold / ~863 ms warm. Re-measure rather than trusting these if a
+  decision hinges on them.
+
+Note the warm uniq-dropdown figure: it was ~29 700 ms before caching landed. A
+change that reverts a win that large should be impossible to make by accident,
+which is the reason these baselines are committed.
+
 ## Git Workflow
 - Never commit feature work directly to `main`. Always create a feature branch first (`git checkout -b <topic>`), commit there, then merge via PR or fast-forward and push.
 - Every user-visible change requires: version bump in the userscript header, a CHANGELOG entry, and a HELP/docs resync in the same commit.
 - After finishing a task, always commit AND push; then offer to merge `main` into the active perf/feature branch to keep it current.
 
-## File Safety' section, immediately after the Git Workflow section.\n\n## File Safety
-- NEVER use the Write tool on existing long-lived files such as `debug/NOTES.md`, `CHANGELOG`, or `PERFORMANCE.org`. Read the file first, then use Edit to append or modify. Write is only for genuinely new files.
+## File Safety
+- NEVER use the Write tool on existing long-lived files such as `DEBUG-NOTES.md`, `CHANGELOG`, `PERFORMANCE.org`, or `PAGETYPES-TESTING-REFERENCE.org`. Read the file first, then use Edit to append or modify. Write is only for genuinely new files.
 
 ## Tooling Conventions
 - Never run inline `python3 -c "..."` or inline `node -e "..."`. Write a script file under `scripts/` (or `test/`) and execute it, so the logic is reviewable and re-runnable.
@@ -213,9 +361,11 @@ When in plan mode, do not edit files. Present the plan first and explicitly stat
 
 ## Settings keys (GM storage via `Lib.settings`)
 
-All settings are prefixed `sa_`. This is a curated "key ones" subset, not
-exhaustive — `configSchema` (~212-2670) currently defines 216 distinct
-`sa_*` keys in total.
+All settings are prefixed `sa_`. This is a curated "key ones" subset, and a
+small fraction of the whole — grep `const configSchema` and read the block for
+the full set rather than assuming this list is complete or that a key you
+remember still has the name you remember. (`sa_enable_expand_rg` was documented
+here for a long time; the real key is `sa_enable_expand_rgs`, plural.)
 
 - `sa_enable_debug_logging` — enables `Lib.debug(channel, …)` output
 - `sa_ui_h2_bg`, `sa_ui_h3_bg` — h2/h3 header background colours
@@ -224,7 +374,7 @@ exhaustive — `configSchema` (~212-2670) currently defines 216 distinct
 - `sa_enable_caa_pics` — shared CAA/EAA master toggle (there is no separate
   `sa_enable_eaa_pics` — EAA reuses this same key)
 - `sa_enable_picard_tagger` — gates the Picard-tagger column feature
-- `sa_enable_expand_rg` — gates `initExpandRGsFeature()`
+- `sa_enable_expand_rgs` — gates `initExpandRGsFeature()` (note the plural)
 - `sa_enable_ms_track_length` — master toggle for the ⏱ millisecond Length
   feature; `sa_ms_idb_enable`/`sa_ms_idb_ttl_days` gate its per-recording
   IndexedDB cache (`ms-rec-len` store)
@@ -238,23 +388,40 @@ exhaustive — `configSchema` (~212-2670) currently defines 216 distinct
 
 ## Debug channels (`Lib.debug('channel', …)`)
 
-`init`, `render`, `fetch`, `filter`, `sort`, `parse`, `extract`, `caa`, `eaa`,
-`idb`, `cache`, `collapse`, `expand`, `cleanup`, `highlight`, `ui`, `settings`,
-`picard`, `barcode`, `erg`, `cdtoc`, `navigation`, `meta`, `density`, `export`,
-`shortcuts`, `resize`, `tooltips`, `relationships`, `unicode`, `stats`,
-`success`, `indices`, `length`
-
 Enable via the `sa_enable_debug_logging` setting or the Tampermonkey menu.
 
+**For the current list, grep `Lib.debug(` and collect the first arguments** — a
+hardcoded list here goes stale silently (the previous one had drifted to include
+a channel with no call site and to omit a real one). What a naive grep will
+*not* tell you, and what is therefore worth recording:
+
+- **`caa` and `eaa` have no literal call sites at all.** They are emitted as
+  `Lib.debug(ctx.key, …)`, where `ctx` is `CAA_CTX`/`EAA_CTX` and `key` is
+  `'caa'`/`'eaa'`. Grepping for `'eaa'` as a debug channel finds nothing; the
+  channel is entirely real.
+- **`filter-hist` and `gf`** likewise come from `Lib.debug(cfg.context, …)`,
+  defaulting to `'filter-hist'` with a single `context: 'gf'` override.
+
+So three of the channel names exist only as data. Anything new that routes a
+channel through a variable should be added to this note.
+
 ## Debug material
-- HTML snapshots and console logs live in `debug/` subdirectories
-- `debug/` is gitignored (root `.gitignore`), so snapshots and logs stay local —
-  but `debug/NOTES.md` and `debug/adjust-mainColumn-extractor.org` are TRACKED
-  exceptions. Edits to `NOTES.md` DO get committed; write it as durable,
-  reviewable material, not scratch
-- Always read `debug/NOTES.md` if it exists before starting work
+- HTML snapshots and console logs live in `debug/`
+- **`DEBUG-NOTES.md` is the dated root-cause log and lives at the project top
+  level, tracked and committed like any other doc.** It used to be
+  `debug/NOTES.md`; it was moved out precisely so it no longer depends on an
+  index-only exception to an ignore rule. Always read it before starting work,
+  and append a dated entry when you finish — write it as durable, reviewable
+  material, not scratch
+- `debug/` is gitignored via a bare `debug/` in the ROOT `.gitignore`, so
+  snapshots and logs stay local. **There is no `!` negation anywhere in the
+  repo, and one could not work** — git never descends into an excluded
+  directory, so `!debug/<file>` has no effect. The one file still tracked in
+  there, `debug/adjust-mainColumn-extractor.org`, is tracked only because it
+  was force-added to the index; re-adding it after a `git rm --cached` needs
+  `git add -f`. Prefer the top level for any new durable doc
 - Always read the relevant `debug/*.html` before proposing any DOM fix
-- Document snapshots in `debug/NOTES.md` with date and what they show
+- Document snapshots in `DEBUG-NOTES.md` with date and what they show
 
 ## Testing (Playwright)
 
@@ -276,6 +443,29 @@ package.json`, `playwright.config.js`). Two projects, split by directory:
     test:live:perf`.
   - `npm run test:all` runs literally everything (fixtures + live).
 
+`tests/README.org` is the end-user-facing guide to the harness: every npm
+script, measured wall-clock timings per suite, the login step, and how to read
+the results. Keep it in sync when a script or a project timeout changes.
+
+Three pieces of harness infrastructure worth knowing before you reach for
+something new:
+
+- **`tests/support/customDialog.js`** — clicks through `Lib.showCustomConfirm`'s
+  plain-DOM overlay, which Playwright's native dialog handling cannot see. See
+  the threshold-dialog table below for its one blind spot.
+- **`tests/fixtures/live-userscripts/`** — real third-party userscript bodies
+  copied from the local Tampermonkey install, driven by `manifest.json` and
+  `tests/support/run-live-interop.js` (`npm run live-interop`). The bodies are
+  gitignored (not ours to redistribute); only the harness and manifest are
+  committed. This is a **debugging aid with no pass/fail, deliberately not a
+  regression gate** — don't treat a clean run as coverage. The
+  `register-live-userscript` skill maintains the manifest.
+- **`npm run auth:login`** writes `playwright/.auth/vzell.json` (gitignored — a
+  session cookie is as good as a password). Without it live specs run **logged
+  out**, which silently changes what login-gated pageTypes render rather than
+  failing; `tests/support/authState.js` warns when the file exists but has
+  expired.
+
 The `vz-mb-saed-art-cache` IndexedDB database is shared by three unrelated
 features purely so they get one sweep/count/clear code path: `images` +
 `metadata` (artwork), `rel-ws2` (Relationships column), and `ms-rec-len`
@@ -286,17 +476,27 @@ reading both of; keying on `storedAt` alone made the sweep a silent no-op for
 `rel-ws2` for its whole existence.
 
 **Snapshot regression coverage** (`tests/snapshots/<pageType>/{raw,
-rendered}.html`, captured via `node tests/support/capture-snapshots.js`)
-currently covers 4 of the script's 86 pageTypes. `pageTypes-testing-
-reference.org`'s "Coverage clusters & representatives" section is the
-authoritative coverage plan — it groups the 86 pageTypes into structural
-clusters, names 1-2 representatives per cluster (avoiding redundant
+rendered}.html`, captured via `node tests/support/capture-snapshots.js`) covers
+a small minority of pageTypes. Don't carry the count here — `tests/snapshots/registry.org`
+is the authority for what is captured, and `tests/pagetypes.json` for what is
+wired into the harness. The two can legitimately differ: a pageType on a
+personal account can be configured without its baseline being committed.
+
+`PAGETYPES-TESTING-REFERENCE.org`'s "Coverage clusters & representatives"
+section is the authoritative coverage *plan* — it groups the pageTypes into
+structural clusters, names 1-2 representatives per cluster (avoiding redundant
 captures of near-identical shapes), gives identifier-selection criteria
-(Springsteen-connected first, smallest qualifying catalog unless
-pagination is specifically the point), and tracks `captured` vs `planned`
-status per representative. `tests/live/registry.org` and `tests/snapshots/
-registry.org` are the hand-maintained dashboards of what's actually wired
-up today (spec/pageType, URL, what it verifies).
+(Springsteen-connected first, smallest qualifying catalog unless pagination is
+specifically the point), and tracks `captured` vs `planned` per representative.
+`tests/live/registry.org` and `tests/snapshots/registry.org` are the
+hand-maintained dashboards of what's wired up today (spec/pageType, URL, what
+it verifies); the latter also has an "Expected drift" section to read before
+treating a re-capture diff as a regression.
+
+Keep any filename in this file on ONE line. A hard-wrapped
+`PAGETYPES-TESTING-REFERENCE.org` (broken across a newline mid-name) is
+invisible to the `git grep` that a rename audit depends on, and that is exactly
+how one reference here survived a rename undetected.
 
 **Cross-tab sub-table handoff** (`tests/support/subtableTab.js`) drives the
 real `openSubtableAsSingleTableTab()` → `_hydrateAndRenderFromSnapshotData()`
@@ -365,17 +565,66 @@ run:
   A "toast never appeared" timeout is evidence about the page's size, never
   about the change being tested — re-run the spec standalone, or on reverted
   code, before believing it caught anything.
-- `sa_caa_pics_initially_collapsed` defaults true, so the big-picture strips
-  also need `#mb-caa-toggle-btn-global` clicked before they load.
+- **Always uncollapse the big-image strips, in BOTH single- and multi-table
+  pageTypes, and assert the uncollapse worked.** `sa_caa_pics_initially_collapsed`
+  defaults true, so a strip loads *nothing* until toggled — the same
+  "passes while measuring nothing" failure as a collapsed sub-table, and it
+  applies to `tableMode: 'single'` too, where there is no master toggle to make
+  the problem visible. Click `#mb-caa-toggle-btn-global` (and
+  `#mb-eaa-toggle-btn-global` on a page carrying EAA — `tag-value-sort-overflow-row.spec.js`
+  needs both), then verify the strips actually populated before measuring.
+  Per-section buttons are `#mb-caa-toggle-btn-{i}`.
+  There is no shared helper for this yet: roughly seven live specs hand-roll
+  the click, unlike sub-table expansion which has
+  `liveAssertions.js`'s `clickMasterToggleAndExpandAll()`. If you touch more
+  than one of them, factor it out.
 
-**Skills** for the recurring workflows (`.claude/skills/`):
-- `add-snapshot-pagetype` — capture a new baseline + wire it into
-  `tests/pagetypes.json`/`tests/snapshots/registry.org`.
-- `add-live-behavior-test` — write a new `tests/live/*.spec.js`, including
-  how to pick its tag.
-- `run-perf-comparison` — run/interpret the perf-comparison instrumentation
-  (`capture-interaction-perf.js`, `capture-snapshots.js --perf`,
-  `PERFORMANCE.org`); manual only, no CI gate.
+**Threshold dialogs will stall a test — check this before writing a new spec or
+re-running an old one on a bigger page.** There are FOUR blocking dialogs, they
+are plain DOM overlays rather than native `confirm()`s (so Playwright's
+`page.on('dialog')` never fires), and the existing helper only clears three:
+
+| Gate | Fires when | Shape | Cleared by |
+|---|---|---|---|
+| `ℹ️ Unknown Page Count` | `features.unboundedPagination` + ambiguous pagination widget | `Lib.showCustomConfirm`, OK/Cancel | `dismissCustomConfirmDialog()` |
+| `⚠️ High Page Count` | `maxPage > sa_max_page` (default **50**) | `Lib.showCustomConfirm`, OK/Cancel | `dismissCustomConfirmDialog()` |
+| `showRenderDecisionDialog()` | `totalRows > sa_render_threshold` (default **5000**) | **three** buttons: `#mb-dialog-save` / `#mb-dialog-render` / `#mb-dialog-cancel` | **nothing — see below** |
+| `⚠️ Large Render Warning` | `totalRows > sa_render_warning_threshold` (default **10000**) | `Lib.showCustomConfirm`, OK/Cancel | `dismissCustomConfirmDialog()` |
+
+Three things make this a live hazard rather than a theoretical one:
+
+- **`tests/support/customDialog.js`'s `dismissCustomConfirmDialog()` cannot clear
+  the render-decision dialog.** It clicks `getByRole('button', {name: 'OK', exact: true})`;
+  that dialog's buttons are `💾 Save to Disk` / `🎨 Render Now` / `❌ Cancel`.
+  A test that can reach it must click `#mb-dialog-render` explicitly.
+- **No `tests/live/*.spec.js` calls that helper at all** — it is wired only into
+  `capture-snapshots.js`, `capture-fixture.js` and `run-live-interop.js`. The
+  live suite passes today only because its largest page (`artist-events`, 4174
+  rows) sits just under the 5000 default. Any new spec on a bigger listing
+  crosses it.
+- **The last two gates fire AFTER the fetch completes**, so hitting one burns
+  the entire multi-minute fetch and then times out with nothing to show. The
+  symptom is a run that looks stalled with no console error and no progress.
+
+**Preferred fix is to seed the settings so the dialogs never fire**, not to
+dismiss them: `seedGmValues` in `tests/pagetypes.json`,
+`buildGmStubsScript(initialValues)` for fixture specs, `realNetworkGmXhr`'s
+`settingsOverride` for live specs. Dismissing is the fallback.
+
+**One trap when seeding: `sa_render_threshold: 0` does NOT disable that dialog**,
+despite the setting's own description saying "0 to disable". The code reads
+`Lib.settings.sa_render_threshold || 5000`, so `0` is falsy and becomes 5000 —
+seed a large number instead. `sa_render_warning_threshold` uses `?? 10000` and
+*does* honour `0`. `sa_chunked_render_threshold` has the same `|| 1000` defect.
+This is a real bug in the settings, filed but not yet fixed; don't write a test
+against the "0 to disable" premise.
+
+**Skills.** This project's recurring workflows are packaged as skills in
+`.claude/skills/`. They are auto-discovered and listed with their own
+descriptions at the start of every session, so they are NOT enumerated here —
+an out-of-date list is worse than none (this file named 3 of them long after
+there were 10). Check the session's skill listing, or `ls .claude/skills/`, and
+prefer invoking the matching skill over improvising the workflow.
 
 **`PERFORMANCE.org` Step numbers were reconciled — check the provenance table
 before following any "Step N" reference.** Three copies of that file (`main`,
@@ -424,7 +673,7 @@ change — a stale comment is still a defect.
    toolbar and the post-render filter/count UI both end up crammed onto the
    same native heading (see `applyRenameH2ToH1`'s JSDoc; the standalone
    `debug/user-edits-wrong.org` snapshot this used to point to is gone — see
-   `debug/NOTES.md`'s `## 2026-07-29 — user-edits/user-open-edits cram
+   `DEBUG-NOTES.md`'s `## 2026-07-29 — user-edits/user-open-edits cram
    everything onto one heading` entry instead)
 8. Bump version, add changelog entry
 
@@ -472,7 +721,7 @@ declared column — no separate feature key or page-definition change needed:
   (no toggle, rendered untouched), never prose.
 - **Prose cells** — free-form content with no direct-child list (e.g.
   "Annotation" columns, which are wiki-rendered `<div>/<p>/<bdi>` text — see
-  `debug/annotation.html`). Always wrapped in `.mb-text-clamp-marker`
+  `debug/annotations.html`). Always wrapped in `.mb-text-clamp-marker`
   (unconditionally — this is what `_isProseCollapseColumn` keys off, see
   below). When the `sa_enable_annotation_collapse` setting (default `true`,
   "📝 ANNOTATION COLUMNS" section in `configSchema`) is on, the wrapper also
@@ -610,8 +859,10 @@ restriction — two different relationship *shapes* share the same
   different peer kind mean MULTIPLE DISTINCT credited entities
   (comma/"and"-joined artists, or a mix of artists and labels — see
   `_buildPhonographicCopyrightTds`; comma/"and"-joined source recordings on a
-  dynamic-fallback column like "DJ-mix of" — see `debug/DJ-mix-of-original.html`,
-  a 26-target credit). Each marker is a real segment boundary. `recording` is
+  dynamic-fallback column like "DJ-mix of", a 26-target credit — the
+  `debug/DJ-mix-of-original.html` snapshot this used to cite is gone, so see
+  `DEBUG-NOTES.md` for the dated entry instead). Each marker is a real segment
+  boundary. `recording` is
   safe here specifically because a credited recording's own artist marker
   (`<span class="artistlink">`) always sits nested inside a `<bdi>`, never as
   a direct child of `<dd>` — so it never itself competes as a second kind, and
@@ -947,7 +1198,7 @@ come back identical to the browse endpoint's.
   `!_msAnyStamped()` — that would strand the gap permanently, since partial
   data makes `_msAnyStamped()` true.
 - **The L2 cache is keyed per RECORDING, not per page** (`ms-rec-len` store,
-  `_msIdbGetLength`/`_msIdbPutLength`, gated by `sa_ms_idb_enable`/
+  `_msIdbGetLength`/`_msIdbPutLengths`, gated by `sa_ms_idb_enable`/
   `sa_ms_idb_ttl_days`). A recording seen on one pageType is free on every
   other one that lists it. `null` is cached deliberately — "MusicBrainz has no
   sub-second length for this recording" is a stable fact, and caching it is

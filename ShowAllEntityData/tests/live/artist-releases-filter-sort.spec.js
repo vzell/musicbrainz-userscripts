@@ -205,7 +205,7 @@ function assertHighlight(actualSpans, caseDef) {
     if (caseDef.crossTag) {
         // A comment-boundary (or other cross-element) match produces TWO
         // highlight spans per matching row — see highlightCrossTag()'s own
-        // JSDoc and debug/NOTES.md's 2026-08-29 entry. Every matching row
+        // JSDoc and DEBUG-NOTES.md's 2026-08-29 entry. Every matching row
         // contributes exactly one of each fragment.
         const { spans } = caseDef.highlight;
         expect(actualSpans.length).toBe(caseDef.expected * spans.length);

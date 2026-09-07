@@ -64,7 +64,7 @@ const COLUMN_INDEX = {
  * join-space between two sibling elements), expecting TWO highlight spans
  * per match (`highlight: { spans: [...] }`) rather than one. This exercises
  * `highlightCrossTag()`'s cross-tag algorithm directly — see that
- * function's own JSDoc and debug/NOTES.md's 2026-08-29 entry for the real
+ * function's own JSDoc and DEBUG-NOTES.md's 2026-08-29 entry for the real
  * bug this shape of case caught and fixed (the function used to lose that
  * synthetic space entirely, producing zero highlights despite a correct
  * row match).
@@ -85,7 +85,7 @@ const FILTER_CASES = [
         // highlightCrossTag() used to concatenate accepted text nodes with
         // no separator, losing the synthetic space getCleanColumnText()
         // inserts between every collected text-node piece; see that
-        // function's own JSDoc and debug/NOTES.md's 2026-08-29 entry for
+        // function's own JSDoc and DEBUG-NOTES.md's 2026-08-29 entry for
         // the root cause and fix). Produces TWO highlight spans per match:
         // the trailing fragment inside the title's own <bdi> ("In"), and
         // the leading fragment inside the comment's <bdi> ("(Disc").
