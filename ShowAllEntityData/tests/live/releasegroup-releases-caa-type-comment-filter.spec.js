@@ -11,12 +11,19 @@ const { getSubTableRowCounts } = require('../support/filterSortAssertions');
  * (tableMode: 'multi'): typing a free-text substring into the CAA column's
  * own filter input that only matches a cover-art image's TYPE/COMMENT text
  * (as opposed to the "yes"/"no" presence sentinel every other CAA-column
- * test on this pageType uses) narrows to ZERO rows — even when a row
- * genuinely has a matching image. `releasegroup-releases-filter-sort.spec.js`
- * already documented this as a known gap (see its own CAA_HIGHLIGHT_FILTER
- * comment: "a typed substring search against it produces ZERO matches and
- * ZERO .mb-column-filter-highlight spans, regardless of column") without a
+ * test on this pageType used at the time) narrows to ZERO rows — even when a
+ * row genuinely has a matching image.
+ * `releasegroup-releases-filter-sort.spec.js` already documented this as a
+ * known gap (see the JSDoc on what is now its `CAA_TYPE_FILTER` constant:
+ * "a typed substring search against it produces ZERO matches and ZERO
+ * .mb-column-filter-highlight spans, regardless of column") without a
  * dedicated regression test or root-cause fix — this spec is that.
+ *
+ * Note the presence sentinel is no longer typed-matchable at all: artwork
+ * presence is now exclusively the unique-values dropdown's
+ * '✓ has artwork'/'✗ no artwork' entries, so that constant has been
+ * repointed at a real image TYPE. Typed CAA filtering — what this spec
+ * covers — is unaffected.
  *
  * Ground truth (confirmed live via the Cover Art Archive JSON API,
  * 2026-08-31): of this page's 6 "Official release" rows, exactly one —

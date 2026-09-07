@@ -1,0 +1,39 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-09-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "CAA/EAA column: typing \"no\" or \"yes\" into the column's own filter box no longer secretly filters by artwork PRESENCE. It used to mean two unrelated things at once — the rows whose image types/comments really contain that text (e.g. \"no\" inside a \"Matrix/Runout\" type), PLUS every row with no artwork at all. Presence is now exclusively the unique-values dropdown's '✓ has artwork' / '✗ no artwork' entries; a typed filter matches only what the cell actually says.",
+          "This also removes an inconsistency between the plain and regexp filter modes: the sentinel shortcut lived only in the non-regexp code path, so an anchored `^no$` matched nothing while a plain `no` matched presence. Both now agree.",
+          "CAA/EAA column: sorting now actually sorts. Ascending lists the rows WITHOUT artwork first, descending the rows WITH artwork first. Previously the column had no sort basis at all — its every element (the artwork icon, the count badge, the per-image rows, and the hidden presence sentinel) is excluded from the text the comparators read, so every row's sort value was the empty string, all rows compared equal, and clicking the header silently left the order untouched.",
+          "Both comparators now share one `_sortCellText()` resolver instead of each inlining the same text lookup — the same single-source-of-truth split `_sortColumnKind()` already exists to prevent. Deliberately scoped to the CAA/EAA presence sentinel: the \"Video\" and \"Cancelled\" columns' own sentinels are not excluded from the visible text, so they already sorted correctly and are left exactly as they were."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Corrected three JSDoc blocks that documented behaviour which had not happened since the artwork sort keys were first excluded from the extracted text (PERFORMANCE.org Step 21's own fix-shape list): the `caa` extractor's sortability claim and its inner `appendSortKey` note (both still said the sort keys were walked by `getCleanColumnText()`/`getCleanVisibleText()`), and `_artSetInlineSortKey()`'s claim that the strip pass excludes its class and that no bypass is required — both false; it is stripped, and it works only because of an explicit bypass.",
+          "Also corrected one stale PERFORMANCE.org cross-reference in `_visibleRowSetSignature()`'s JSDoc, which described Step 3 as \"not part of this branch\" — written while that helper itself lived on a branch."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-09-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Unique-values dropdown (📊) on a CAA/EAA column: every entry now actually filters. On `tableMode: 'multi'` pages (e.g. any release-group's release list) the panel listed entries with correct, non-zero count badges and clicking them narrowed to ZERO rows — '✓ has artwork', every 'CAA info - Type' / 'CAA info - Comment' entry, and every per-image '▤' item entry. '✗ no artwork' was the only one that worked.",
+          "Cause: the dropdown COUNTS from the live table rows, but `runFilter()` MATCHES against the source rows in `groupedRows`, which on multi-table pages are permanently separate DOM elements that never receive the async artwork markup (no `ul.mb-caa-art-ul`, no image `<li>`s, no type badges, no comment spans). Every matcher behind those entries is a DOM query against exactly that markup. '✗ no artwork' was right only by accident — a row with no artwork has nothing to find either way.",
+          "`_artSyncSearchTextToSourceRow()` now mirrors four structural facts onto the source cell alongside the flat search text it already carried (image-`<li>` count, per-`<li>` texts, distinct type labels, distinct comments), read back through the new single-parser `_findCellSyncedArtFacts()`. `_classifyCollapseCell()` and the `arttype:`/`artcomment:`/`▤` matchers consult it only when their live-DOM query comes up empty — the same ordering `getCleanColumnText()` already used for the search text.",
+          "Typing a substring directly into a CAA/EAA column's filter input was already fixed earlier and is unchanged."
+        ]
+      }
+    ]
+  }
+]

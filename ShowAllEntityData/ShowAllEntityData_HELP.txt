@@ -223,7 +223,12 @@ every distinct non-empty value currently visible in that column.
   a plain click vs. Ctrl+Click will do:
     — 🔠 Structure   — empty / single / collapsed / expanded / multi-row cell
                        state, each with its own glyph (▶/◀/✗/✓ — explained
-                       in its own tooltip)
+                       in its own tooltip).  On a CAA/EAA column these two
+                       read "✓ has artwork" / "✗ no artwork" and are the ONLY
+                       way to filter by artwork presence — typing "yes"/"no"
+                       into that column's own filter box searches the real
+                       image type/comment text instead (so e.g. "no" finds a
+                       "Matrix/Runout" image, not the rows without artwork)
     — 🖼️ Structure - Inline artwork — presence of a loaded inline thumbnail
                        (addCAA/addEAA feature columns only, e.g. "Release"/
                        "Event"): "🖼️ front-image available"/"poster
@@ -750,7 +755,10 @@ COLUMN MANAGEMENT
                                 "English"), and "true" when that row's locale
                                 carries MusicBrainz's own "(primary)" marker
     — "CAA" / "EAA"             cover / event art thumbnail column on pages
-                                that carry artwork
+                                that carry artwork.  Sorts by artwork
+                                presence: ascending lists the rows WITHOUT
+                                artwork first, descending the rows WITH it
+                                first
     — "Video"                   extracted from the Title cell on recording
                                 pages, and on the Recordings sub-table of
                                 tag/user-tag pages

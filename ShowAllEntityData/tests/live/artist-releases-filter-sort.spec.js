@@ -614,6 +614,84 @@ test('§C sort-then-restore checkpoints preserve row count across every scenario
     expect(pageErrors).toEqual([]);
 });
 
+// ─────────────────────────── §C2 — CAA column sort order ───────────────────────────
+
+/**
+ * The CAA column must sort by artwork PRESENCE: ascending puts every row
+ * without artwork first, descending puts every row with artwork first.
+ *
+ * Before the fix it sorted by nothing at all, and silently. A CAA cell's only
+ * content is the artwork anchor plus a hidden `.mb-caa-sort-key` sentinel
+ * reading 'yes'/'no' — and `getCleanVisibleText()`, which both comparators
+ * used, rejects every one of those (the sentinel, `.caa-icon`,
+ * `.mb-caa-count-badge`, each `li.mb-caa-art-li-image`). So every row's sort
+ * text was `''`, all rows compared equal, and the click left the existing
+ * order untouched. `_sortCellText()` now reads the sentinel.
+ *
+ * §C already sorts this same column, but only asserts the ROW COUNT survives
+ * — which an inert sort passes trivially. That is why this gap lived here
+ * unnoticed; order has to be asserted explicitly.
+ *
+ * Reads the sentinel directly rather than any visible text: presence has no
+ * visible representation in the cell (the icon is a background image), so
+ * there is nothing else to read. `display:none` does not hide it from
+ * `textContent`.
+ */
+test('§C2 CAA column sorts by artwork presence, not arbitrarily', { tag: '@extended' }, async ({ page }) => {
+    const pageErrors = collectPageErrors(page);
+    await loadBodeans(page);
+
+    const readPresence = () => page.evaluate((idx) => Array.from(document.querySelectorAll('table.tbl tbody tr'))
+        .map((tr) => {
+            const cell = tr.cells[idx];
+            const sk = cell && cell.querySelector('.mb-caa-sort-key, .mb-eaa-sort-key');
+            return sk ? sk.textContent.trim() : null;
+        }), COLUMN_INDEX.CAA);
+
+    const initial = await readPresence();
+    expect(initial.length, 'every row must be read').toBe(TOTAL_ROWS);
+    expect(initial.every((v) => v === 'yes' || v === 'no'), 'every CAA cell carries a presence sentinel').toBe(true);
+
+    // Both groups must be non-empty or the ordering assertions below would
+    // pass vacuously on a single-valued column.
+    const yesCount = initial.filter((v) => v === 'yes').length;
+    const noCount = initial.filter((v) => v === 'no').length;
+    expect(yesCount, 'some rows have artwork').toBeGreaterThan(0);
+    expect(noCount, 'some rows have none').toBeGreaterThan(0);
+
+    const columnTh = page.locator('table.tbl thead th[data-col-name="CAA"]').first();
+    const ascBtn = columnTh.locator('.sort-icon-btn', { hasText: '▲' }).first();
+    const descBtn = columnTh.locator('.sort-icon-btn', { hasText: '▼' }).first();
+    const restoreBtn = columnTh.locator('.sort-icon-btn', { hasText: '⇅' }).first();
+
+    await test.step('ascending: no artwork first', async () => {
+        await waitForSortSettled(page, () => ascBtn.click());
+        const seq = await readPresence();
+        expect(seq.filter((v) => v === 'no').length).toBe(noCount);
+        expect(seq.filter((v) => v === 'yes').length).toBe(yesCount);
+        expect(
+            seq.lastIndexOf('no') < seq.indexOf('yes'),
+            `every "no" must precede every "yes"; got ${JSON.stringify(seq)}`
+        ).toBe(true);
+    });
+
+    await test.step('descending: has artwork first', async () => {
+        await waitForSortSettled(page, () => descBtn.click());
+        const seq = await readPresence();
+        expect(
+            seq.lastIndexOf('yes') < seq.indexOf('no'),
+            `every "yes" must precede every "no"; got ${JSON.stringify(seq)}`
+        ).toBe(true);
+    });
+
+    await test.step('restore returns the original order', async () => {
+        await waitForSortSettled(page, () => restoreBtn.click());
+        expect(await readPresence()).toEqual(initial);
+    });
+
+    expect(pageErrors).toEqual([]);
+});
+
 // ─────────────────────────── §D — uniq-dropdown checks, filters cleared ───────────────────────────
 
 test('§D uniq-dropdown contents (filters cleared) are self-consistent and survive a reopen', { tag: '@extended' }, async ({ page }) => {

@@ -1305,6 +1305,24 @@ consumers were each given a replacement and sorting was not:
 | Unique-values dropdown | migrated to structure-mode relabeling ("✓ has artwork" / "✗ no artwork" via ~_cellMatchesStructureMode()~) |
 | *Sort* | *nothing* |
 
+*Update (branch* ~fix/caa-column-filter-and-sort-semantics~ *): the "Column
+filter" row above no longer describes* ~main~. That bypass was REMOVED on
+user report: it made one typed word mean two unrelated things at once, since
+~"no"~ matched both the rows whose image types/comments genuinely contain it
+(e.g. a ~"Matrix/Runout"~ type) and every row with no artwork. Artwork
+presence is now *exclusively* the dropdown row above. Two consequences worth
+keeping:
+
+- The removal also fixed a plain-vs-regexp inconsistency this file did not
+  know about: *both* sentinel bypasses lived in ~testRowMatch()~'s NON-regexp
+  branch, so an anchored ~^no$~ never reached them and matched nothing while a
+  plain ~no~ matched presence. That is the "not yet root-caused" anchoring
+  anomaly ~bodeansArtistReleasesFixture.js~ had recorded against this very
+  column. Plain and regexp now agree.
+- ~mb-inline-art-sort-key~'s own bypass was deliberately KEPT: its
+  ~'caa-inline-yes'~/~'caa-inline-no'~ values are strings nobody types by
+  accident, so they carry no collision with ordinary English.
+
 An audit of every sort-key class the script creates shows the damage is
 confined to the two artwork ones — the other two never entered
 ~_CLEAN_STRIP_SEL~ and still sort as documented:
@@ -1348,6 +1366,38 @@ Mirror the filter bypass, which is the precedent this should follow:
 
 All three are userscript JSDoc, so this step carries a version bump and a
 changelog entry; the consolidation revision that filed it did not.
+
+**** Implemented on ~fix/caa-column-filter-and-sort-semantics~ (2026-09-07)
+
+Keyword stays ~TODO~ per this file's own convention — it tracks "landed on
+~main~", and this branch is not merged yet.
+
+All three fix-shape points are done, with one deliberate deviation from
+point 1: rather than repeating the sentinel lookup inside each comparator,
+both now call a single shared ~_sortCellText()~ resolver (declared next to
+~_sortColumnKind()~). Same reasoning point 1 gives for changing them
+together — they have disagreed before — taken one step further, so they
+cannot drift again.
+
+~_sortCellText()~ is scoped to the artwork sentinel ALONE, and the audit
+table above is why: folding in ~mb-cancelled-sort-key~ would have changed a
+column that was never broken. A cancelled-event cell also carries the
+visible word "cancelled", so its sort text today is ~"cancelled yes"~ vs
+~"no"~ — and ~"c" < "n"~ puts cancelled events FIRST ascending, whereas
+sentinel-only would silently reverse that. The rule to carry forward: only
+add a class to ~_sortCellText()~ if it is also being stripped from the
+visible text.
+
+Point 2's regression test is ~§C2~ in
+~tests/live/artist-releases-filter-sort.spec.js~ (BoDeans disk fixture, so
+deterministic and network-free). It asserts the ordering itself, not just
+that the row count survives — which is precisely the gap "Why it went
+unnoticed" identifies above. Verified failing before the change, with the
+presence sequence after an ascending sort coming back fully unsorted.
+
+Point 3's third item (~:56576~) was narrower than filed: Step 3 is still
+~TODO~, so only the parenthetical "not part of this branch" was stale, not
+the cross-reference itself.
 
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 
