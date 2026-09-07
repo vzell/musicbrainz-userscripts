@@ -10,7 +10,7 @@ const { waitForRenderComplete } = require('../support/browser');
 // 'report-multiple-linked' family uses (e.g. ASINsWithMultipleReleases),
 // so its match() needed an explicit REPORT_MULTIPLE_LINKED_INCLUSIONS
 // entry — see ShowAllEntityData.user.js's pageDefinitions comment and
-// debug/NOTES.md's "2026-09-02 — CollaborationRelationships report routed
+// DEBUG-NOTES.md's "2026-09-02 — CollaborationRelationships report routed
 // to report-detail instead of report-multiple-linked" entry. Before that
 // fix this page fell through to the generic 'report-detail' catch-all,
 // which has no group-header/empty-first-<td> merge logic, so every

@@ -1,6 +1,6 @@
 ---
 name: add-snapshot-pagetype
-description: Add a new pageType to ShowAllEntityData's HTML-snapshot regression harness (tests/snapshots/) — capture a raw/rendered baseline pair against a real musicbrainz.org page and wire it into tests/pagetypes.json + tests/snapshots/registry.org. Use this whenever the user asks to "add snapshot coverage for X", "capture a baseline for this pageType", "add X to the regression harness", or references pageTypes-testing-reference.org's "Coverage clusters & representatives" backlog and wants the next `planned` row turned into `captured`.
+description: Add a new pageType to ShowAllEntityData's HTML-snapshot regression harness (tests/snapshots/) — capture a raw/rendered baseline pair against a real musicbrainz.org page and wire it into tests/pagetypes.json + tests/snapshots/registry.org. Use this whenever the user asks to "add snapshot coverage for X", "capture a baseline for this pageType", "add X to the regression harness", or references PAGETYPES-TESTING-REFERENCE.org's "Coverage clusters & representatives" backlog and wants the next `planned` row turned into `captured`.
 ---
 
 # Adding a pageType to the snapshot regression harness
@@ -10,13 +10,13 @@ diffed on every future capture run — this is how a code change to the
 render/column pipeline gets caught even without a hand-written assertion.
 Today only 4 of 86 pageTypes are covered
 (`artist-releasegroups`, `release-tracks`, `releasegroup-releases`,
-`artist-events` — see `pageTypes-testing-reference.org`'s "Coverage
+`artist-events` — see `PAGETYPES-TESTING-REFERENCE.org`'s "Coverage
 clusters & representatives" section for the full cluster/representative
 plan and which rows are still `planned`).
 
 ## 1. Pick the pageType and its identifier
 
-- Find the row in `pageTypes-testing-reference.org`'s "Coverage clusters &
+- Find the row in `PAGETYPES-TESTING-REFERENCE.org`'s "Coverage clusters &
   representatives" table (or the "Bespoke / one-off" table) matching what
   the user asked for. If it names a representative already, use that
   identifier; if the row's notes flag it as needing a smaller substitute
@@ -108,7 +108,7 @@ idb-cache-hit-bigbox.spec.js` for that pattern).
   header — capture date, what feature/change this capture verifies, and
   any quirks found, following the existing rows' level of detail).
 - Flip the pageType's row from `planned` to `captured` in
-  `pageTypes-testing-reference.org`'s "Coverage clusters & representatives"
+  `PAGETYPES-TESTING-REFERENCE.org`'s "Coverage clusters & representatives"
   table.
 - Commit `tests/snapshots/<pageType>/{raw,rendered}.html` alongside the
   `tests/pagetypes.json`/registry.org changes as one baseline.

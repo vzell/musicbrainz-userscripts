@@ -146,7 +146,7 @@ async function ensureSubSectionsExpanded(page) {
  * Deliberately does NOT use `waitForCaaEaaComplete()`: that waits on
  * `#mb-info-display-caa`, written from the CAA queue's `onIdle`, which does
  * not reliably fire on every page (see `caa-icon-survives-sort-multi.spec.js`'s
- * own note and `debug/NOTES.md`, 2026-08-29).
+ * own note and `DEBUG-NOTES.md`, 2026-08-29).
  *
  * **Never settles on zero.** A count of 0 means "the pass has not produced
  * anything yet", not "finished" — treating it as settled is how an artwork

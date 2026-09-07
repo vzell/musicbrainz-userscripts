@@ -15,7 +15,7 @@ const { waitForRenderComplete } = require('../support/browser');
 // content four columns left. The most visible symptom was release TITLES
 // rendered inside the Length column (complete with that column's ':'-alignment
 // spans, which then forced a ~50ch min-width on every Length cell in the
-// table). See debug/NOTES.md's "search?type=recording continuation rows" entry.
+// table). See DEBUG-NOTES.md's "search?type=recording continuation rows" entry.
 const SEARCH_URL =
     'https://musicbrainz.org/search?query=roulette&type=recording&method=indexed';
 const FIXTURE_FILE = path.join(__dirname, 'search-recordings-continuation.html');

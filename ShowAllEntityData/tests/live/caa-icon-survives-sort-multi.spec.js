@@ -292,7 +292,7 @@ async function installInsertionProbe(page) {
  * this page that never happens: measured here, the span was still empty and
  * hidden after 300 s (529 polls) even though artwork was visibly painting
  * the whole time. That is the same "completion signal never fires" shape
- * `debug/NOTES.md` recorded on 2026-08-29, and it is a property of the page,
+ * `DEBUG-NOTES.md` recorded on 2026-08-29, and it is a property of the page,
  * not of the artwork-preservation work — so this probe measures the settled
  * state directly instead of waiting on a signal that will not arrive.
  *

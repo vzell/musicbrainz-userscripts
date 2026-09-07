@@ -17,7 +17,7 @@ whole page still render the same DOM."
 ## 1. Pick the pageType/URL and identifier
 
 Same criteria as `add-snapshot-pagetype`: check
-`pageTypes-testing-reference.org`'s "Coverage clusters & representatives"
+`PAGETYPES-TESTING-REFERENCE.org`'s "Coverage clusters & representatives"
 section first for an already-chosen representative/identifier; otherwise
 default to a Bruce Springsteen-connected entity, prefer the smallest
 qualifying catalog unless the test is specifically about pagination (then

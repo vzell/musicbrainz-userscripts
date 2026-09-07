@@ -16,7 +16,7 @@ position, the row matches (correctly) and highlighting produces zero spans
 (incorrectly) — the query works, but nothing turns yellow.
 
 This has happened four times already (`highlightCrossTag()`'s own JSDoc
-documents each as "gap 1" through "gap 4"; see `debug/NOTES.md`'s
+documents each as "gap 1" through "gap 4"; see `DEBUG-NOTES.md`'s
 `2026-08-29`, and the two `2026-09-01` entries, commits `a25ed83`/`ee5b2eb`).
 Every occurrence has the same shape: `normalizeExtractedText()` does
 something clever to the joined text (strip a space, collapse a run) that
@@ -197,11 +197,11 @@ directly above the `@param` block.
   `tests/snapshots/<other-pageType>/*.html` files you didn't mean to
   change, `git checkout --` them back. The commit should touch exactly:
   `ShowAllEntityData.user.js`, the one `tests/live/*.spec.js` file,
-  `debug/NOTES.md`, and the WIP changelog file.
+  `DEBUG-NOTES.md`, and the WIP changelog file.
 
 ## 8. Document, branch, commit, push
 
-1. Append a dated entry to `debug/NOTES.md`, following the exact chain style
+1. Append a dated entry to `DEBUG-NOTES.md`, following the exact chain style
    of the existing `highlightCrossTag()` entries (root cause, fix, test,
    regression results) — link it as a follow-up to the prior entry by name.
 2. Create a feature branch first (never commit directly to `main`).
@@ -209,7 +209,7 @@ directly above the `@param` block.
    plain-language description of the symptom and cell shape) — no
    `// @version` bump and no touching the real `CHANGELOG.json` on a
    feature branch, per project convention.
-4. Commit (fix + test + NOTES + WIP changelog together) with a message
+4. Commit (fix + test + DEBUG-NOTES + WIP changelog together) with a message
    naming the root cause and citing the prior commit this is a follow-up to,
    push the branch.
 
