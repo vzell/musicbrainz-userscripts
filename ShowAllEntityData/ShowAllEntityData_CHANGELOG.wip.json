@@ -1,0 +1,50 @@
+[
+  {
+    "version": "WIP.4",
+    "date": "2026-09-07",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Removed the dead `injectedColumns: ['Relationships']` declaration from the `'Release groups'` entityFeatures block on `user-ratings`/`user-ratings-type` (see debug/user-rating-no-relationship.html — the column never rendered). No behavior change: the declaration was already inert, since `resolveEntityFeaturesFromH2()` resolves the page's FIRST entityFeatures key ('Artists', which declares no `injectedColumns`) at fetch time, and `renderGroupedTable()`'s per-group thead rebuild never re-derives `activeInjectedColumns`/`activeReleaseEventColumns` per group the way it does `activeColumnExtractors` etc. Even fixing that staleness wouldn't make the column correct here: `buildActiveInjectedColumns()` picks its WS2 entity type by pageType alone (user-ratings/-type fall through to its generic 'release' branch — wrong namespace for a release-group MBID), and `_initRelationshipsColumnImpl()`'s `_ensureRelCell` scans every `table.tbl` row on the page unconditionally, so a single resolved entityType would mis-tag every OTHER sub-table's rows (Artist/Event/Label/Place/Recording/Work ratings) as release-groups too. The 'Relationships' column's own setting description already scopes it to artist-releasegroups/artist-releases/label-releases/releasegroup-releases only; making it work on a multi-entity-type page like user-ratings would need a per-table-scoped redesign, not a bug fix."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-09-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The \"Release group ratings\" sub-table on `user-ratings`/`user-ratings-type` desynced every appended MB-Name/Comment/Primary-alias cell one position late — the release group's own name rendered under the \"Comment\" header instead of \"MB-Name\", which also meant the CAA hover tooltip's `tooltipColumns: ['MB-Name', 'Artist']` showed only the artist, never the release group's own name. Root cause: that entityFeatures block declared `columnExtractors: [{ sourceColumn: 'Release group', extractor: 'artistCredit', ... }]`, but Structure H's native `<li>`→`<table>` conversion for this entity type already splits \"ReleaseGroup by Artist\" into two NATIVE columns (Release group, Artist) — exactly like `'Recordings'`, which never declared this extractor for the same reason. The redundant extractor read the now-artist-free \"Release group\" cell, produced a permanently EMPTY synthetic \"Artist\" cell that was never excluded, leaving one extra unaccounted-for cell that shifted everything appended after it. Removed the extractor from both `user-ratings` and `user-ratings-type`; also reordered `tooltipColumns` to `['Artist', 'MB-Name']` per user request, so the hover tooltip now reads artist name first, then the release group's own name."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-09-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The 📊 unique-values dropdown's \"Date info - Decade\"/\"- Month\" sections were missing on `user-ratings`/`tag-value`/`user-tag-value`'s per-entity-type sub-tables (e.g. the \"Event ratings\" table's \"Date\" column) whenever more than one entity-type section with its own `entityFeatures` was present on the page. `openUniqDrop()`'s `isDateExprCol` gate read the shared `activeColumnExtractors`/`activeSyntheticColumnExtractors` module state, which `renderGroupedTable()`'s per-group rebuild leaves reflecting whichever group rendered LAST by the time a later click opens the dropdown — not necessarily the group the clicked column belongs to. `renderGroupedTable()` now also snapshots each group's own dateParts-fed column names onto `table.dataset.mbEntityDateExprColumns` (new `_dateExprColumnNames()`), mirroring the existing `mbEntityTooltipColumns`/`mbEntityExtractMainColumn` per-table annotations; `isDateExprCol` prefers that snapshot when present and falls back to the original check everywhere else, unchanged."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-09-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The CAA/EAA inline-thumbnail and big-picture-strip hover tooltip crashed with `TypeError: features.extractMainColumn.toLowerCase is not a function` and never appeared, on every pageType declaring `extractMainColumn` as a numeric column INDEX (`user-ratings`, `user-ratings-type`, `report-multiple-linked`, `tag-value`(-entity), `user-tag-value`(-entity)) rather than a column-name string. `_renderBigboxTooltipFromColumns()` now only reads `extractMainColumn` as a name when it actually is a string, treating the numeric form the same as \"absent\" (no tooltip spec entry can match a numeric marker by name) instead of crashing the whole hover handler."
+        ]
+      }
+    ]
+  }
+]
