@@ -7813,3 +7813,68 @@ version bump, a changelog entry, a regression test (there is none) and three
 JSDoc corrections, so it gets its own session. Fix shape is in Step 21 — mirror
 the filter bypass at `:41749`, and change both comparators together, since they
 have silently disagreed before.
+
+## 2026-09-07 — column-header count scan cached; multi-table sub-tables were cancelling each other (fixed)
+
+Branch `perf-step-3-header-count-cache`. PERFORMANCE.org Steps 3 and 22.
+
+**What the scan costs.** `_updateAllColHeaderCounts()` re-derives every visible
+cell's clean text and collapse structure per column — 4174 rows × 21 columns is
+~88 000 `getCleanColumnText()` calls on the `artist-events` fixture — and runs on
+every filter apply, every filter clear, every sort, every column show/hide and
+every multi-table sub-table render. It now memoizes per `<table>`, keyed by an
+order-independent signature of the visible `data-mb-row-idx` values, keeping the
+last four row sets.
+
+**The shared-token bug, found while reading that code.** `_colHeaderCountsToken`
+was one module-level counter, but `renderGroupedTable()` schedules a scan once
+per sub-table from inside its own loop. Each schedule bumped the shared counter,
+so every sub-table but the last abandoned itself before writing a single badge —
+silently, because an unwritten badge is an empty `<span>`, not an error. It is
+sitting in the committed baselines:
+
+| Baseline                                        | uniq badges | populated |
+|-------------------------------------------------|-------------|-----------|
+| `artist-releasegroups/rendered.html` (47 tables) |         423 |         1 |
+| `releasegroup-releases/rendered.html` (2 tables) |          42 |        14 |
+| `artist-events/rendered.html` (1 table)          |          21 |         1 |
+
+The `artist-events` row is a different, benign case: one table, nothing to
+cancel — `captureOne()` simply snapshots while the scan is still working through
+its per-column slices, and that page's own `post-filter.html`/`post-sort.html`
+(captured after `waitForColHeaderCountsStable()`) read 18 and 20 of 21. The token
+is now per-table.
+
+**Where the win actually landed, and where it could not.** Measured on
+`artist-events`, median of 5, same session: `headerCountsRestore` 12631 → 8944 ms
+(−29%, about 3.7 s of scan removed from a filter-clear), `headerCountsInitial`
+8507 → 8066 ms (−5%, the micro-costs, not the cache). Everything else flat. That
+distribution is the whole finding: a full-table scan happens only at initial
+render (a cold miss) and at a filter cleared back to the full set (a cache hit).
+Every other scan runs over an already-filtered row set that is small by
+construction, so the filter metrics this branch was predicted to improve never
+had seconds of work in them to remove.
+
+**A per-cell text memo was built, measured and removed** for exactly that
+reason: it can only help a miss, and the only full-table miss is the cold one
+where it is still empty. It cost ~88 000 retained strings on this page and a
+second staleness surface. See PERFORMANCE.org Step 3's own section.
+
+**Two harness defects the work exposed, both fixed:**
+
+- The new `headerCounts*` metrics first waited only for the `Event` badge and
+  reported 1884 ms while most of the header was still blank. The same too-narrow
+  wait made this branch's own sort regression test report "sorting changed 15
+  badges" when the sort had merely *completed* a scan the test caught mid-flight.
+  Both now wait for the value AND for every badge to stop changing.
+- `loadFromDiskFixture()` is not offline. It makes the table DATA deterministic,
+  but passes no `fixtureFile` to `loadUserscriptPage()`, so no route is
+  registered and the page SHELL is fetched from the live site. Two complete
+  20-minute perf runs died on a 30 s navigation timeout while roughly one probe
+  in three to musicbrainz.org was timing out. `capture-interaction-perf.js` now
+  retries a failed sample; `tests/README.org` records the distinction.
+
+**Pre-existing, not caused by this work:** the five `pending-edits-filter.spec.js`
+multi-table cases time out at the 30 s default under heavy machine load —
+reproduced identically on `main` in the same conditions, and passing on both when
+the machine is quiet. Worth raising the timeout for that file if it recurs.

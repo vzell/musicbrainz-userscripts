@@ -137,6 +137,7 @@ revision.
 |        17 | —                          | —                | *8*                                     |
 |        18 | *6* (added 2026-09-07)     | —                | —                                       |
 |     19-21 | — (new in this revision)   | —                | —                                       |
+|        22 | — (new in this revision)   | —                | —                                       |
 
 Consequences worth knowing:
 
@@ -183,14 +184,17 @@ visible row set actually changes (not on every trigger). Needed even after
 Steps 1-2, since global expand/collapse-all clicks and multi-table renders
 still call it unconditionally.
 
-*Still entirely unlanded as of 9.99.1045.* ~_updateAllColHeaderCounts()~
-(~:56710~) has exactly two mitigations and neither is a cache: a coalescing
-token (~_colHeaderCountsToken~, ~:56606~) so back-to-back schedules cost one
-scan instead of three, and one ~await _yieldToEventLoop()~ per column so the
-pass is never a single unbroken task. It still performs two full ~tbody.rows~
-walks per column on every filter apply and every filter clear.
-~_visibleRowSetSignature(table)~ (~:56589~) — the intended cache key — exists
-and is used, but only by Step 4's ~_uniqDropDataCache~.
+*Was entirely unlanded through 9.99.1048; implemented on branch
+~perf-step-3-header-count-cache~ — see "Implemented" below.* Before that,
+~_updateAllColHeaderCounts()~ had exactly two mitigations and neither was a
+cache: a coalescing token (~_colHeaderCountsToken~, since replaced by a
+per-table ~WeakMap~ — see Step 22) so back-to-back schedules cost one scan
+instead of three, and one ~await _yieldToEventLoop()~ per column so the pass was
+never a single unbroken task. It performed two full ~tbody.rows~ walks per
+column on every filter apply and every filter clear.
+~_visibleRowSetSignature(table)~ — long described here as the intended cache key
+— exists and is used, but only by Step 4's ~_uniqDropDataCache~, and this step
+deliberately does NOT share it (see below).
 
 **** Partially mitigated by Step 18 — multi-table sorts only
 
@@ -310,6 +314,117 @@ would help most, deliberately left out of the fix branch as separate concerns:
   uses, invalidated wherever ~_invalidateUniqDropDataCacheForTable()~ already
   is (cell content can change with no row show/hide). Step 6 must land with or
   before this, or a sort will invalidate the new cache on every click.
+
+/Both were done, and the second one differently than written — the shared
+signature turned out not to be the right key and Step 6 not to be a
+prerequisite. See below./
+
+**** Implemented — branch ~perf-step-3-header-count-cache~, 2026-09-07
+
+Shipped shape, and the three places it deviates from the plan above:
+
+- *Its own signature, not* ~_visibleRowSetSignature()~. Every prediction in this
+  file assumed the two would share a key, and Step 6 (making that helper
+  order-independent) was listed as a prerequisite. It is not one.
+  ~_colHeaderCountsRowSetSignature()~ sorts the visible ~data-mb-row-idx~ values
+  before joining, which is sound *for these three outputs specifically* — a
+  distinct-value count, a multi-row-cell count and an inline-art flag are all
+  order-independent — while Step 4's bundle genuinely is not
+  (~entityNameGlyphMap~ and friends are first-seen-in-row-order). Both helpers
+  now carry a pointer to the other saying not to unify them. So Step 6 stays
+  open, and Step 3 no longer waits on it.
+- *The last four row sets, not the last one.* A single slot makes the cycle
+  people actually perform — filter, clear, filter — miss on every leg. The
+  signatures are the only real weight, one row-index list each.
+- *A superseded pass publishes nothing.* The never-merged ~perf-steps-3-4~
+  sketch (~8132bcd~) stored its key before the loop; since a scan abandons
+  itself at a column boundary when its token goes stale, that would serve a
+  half-filled result as complete for as long as the row set stayed put.
+
+Invalidation is delegated from ~_invalidateUniqDropDataCache()~/~…ForTable()~
+rather than duplicated across their dozen call sites, which is sound by a subset
+argument: this cache reads clean cell text, list/prose structure and inline-art
+placeholder presence, and ~openUniqDrop()~'s bundle reads all three and more.
+That closes Step 8's remaining header-count half by construction. It also
+uncovered one site that invalidated *neither* cache —
+~_maybeCorrectAreaFlagRegion()~, which rewrites two cells' text up to six
+seconds after render — fixed here.
+
+***** Measured, 2026-09-07, same machine / same session, median of 5
+
+~tests/support/capture-interaction-perf.js --pageType=artist-events~ (4174 rows,
+21 columns, fresh page per sample). ~main~ is 9.99.1048 with only
+~ShowAllEntityData.user.js~ swapped, so both arms share the harness.
+
+| Interaction            |   ~main~ | this branch |        Δ |
+|------------------------+----------+-------------+----------|
+| Global filter          |  3503 ms |     3669 ms |    +4.7% |
+| Column filter          |  3311 ms |     3515 ms |    +6.2% |
+| Sort                   |  6932 ms |     6917 ms |    -0.2% |
+| Uniq-dropdown, cold    | 48844 ms |    48563 ms |    -0.6% |
+| Uniq-dropdown, warm    |  1903 ms |     1678 ms |   -11.8% |
+| Header counts, initial |  8507 ms |     8066 ms |    -5.2% |
+| Header counts, restore | 12631 ms |     8944 ms | *-29.2%* |
+
+*These are NOT comparable to the 9.99.1045 figures earlier in this file.* That
+capture read 1735/1730/3968/31149/863; this session's machine ran roughly twice
+as slow throughout, on both arms. Only the within-session ratio means anything.
+
+*Read the two filter rows as noise, not a regression.* ~main~ was captured twice
+in this session and its own spread covers them: global filter 3757 then 3503 (a
+7% swing), sort 7393 then 6932, cold 52514 then 48844. Column filter was the
+steadier of the two (3327/3311) and the +6.2% sits just outside it, so it is the
+one number worth re-checking if it ever reproduces.
+
+***** The win is narrow, and where it lands is the interesting part
+
+Only ~headerCountsRestore~ moved materially: about 3.7 s of scan removed from a
+filter-clear. Everything else is flat, and that is *correct behaviour, not a
+disappointing result* — it falls straight out of when a full-table scan actually
+happens:
+
+- *Initial render* — a cold miss by definition. The -5.2% there is the two
+  micro-costs (the per-column ~Array.from(tbody.rows)~, materialised up to 42
+  times per pass, and the per-cell inline-art probe, now behind one lazy
+  table-wide ~querySelector~), not the cache.
+- *Filter cleared back to the full set* — the LRU hit, and the -29.2%.
+- *Everything else* — the scan runs over an already-filtered row set that is
+  small by construction. There was never seconds of work there to remove.
+
+That last point invalidated the premise this branch started from. The plan
+predicted the filter metrics would improve; they cannot, because filtering is
+not where the expensive scan is.
+
+***** Two new metrics, and why the first version of them was wrong
+
+The five original metrics observe this scan only indirectly, as main-thread
+pressure delaying a CDP poll of ~#mb-filter-status-display~.
+~headerCountsInitial~/~headerCountsRestore~ watch it directly.
+
+Their first version waited only for the ~Event~ badge to reach its true 4158 and
+reported *1884 ms* — while most of the header was still blank. The same
+too-narrow wait made this branch's own sort regression test report "sorting
+changed 15 badges", when the sort had in fact *completed* a scan the test caught
+mid-flight. Both now wait for the value AND for every badge to stop changing.
+That leaves a ~1 s floor from ~waitForColHeaderCountsStable()~, identical on
+every arm, so it compresses a ratio and never inflates one.
+
+***** A per-cell tier was built, measured, and removed
+
+An additional tier memoized ~getCleanColumnText()~ per ~data-mb-row-idx~, to
+make a cache MISS cheap. The arm above was captured with it
+(~interaction-perf-step3-l1-l2.json~). It earned nothing — for the reason in
+"where the win lands": the only full-table scans are a cold miss, where the memo
+is empty and pure overhead, and an LRU hit, where it is never read. Against that
+it cost roughly a string per rendered cell (~88 000 on this page) and a second
+staleness surface. Removed.
+
+*The shipped configuration therefore has no arm of its own*: musicbrainz.org
+became unreachable before one could be captured (the disk fixture supplies the
+table data, not the page shell — see ~tests/README.org~). The table above is the
+closest available evidence, and it can only understate the shipped code, since
+every measured win came from tier-1 hits and the tier that was removed only ever
+added work to the miss path. Re-capturing it is a follow-up.
 
 *** DONE Step 4: ~openUniqDrop()~ per-open caching
 
@@ -1403,6 +1518,48 @@ presence sequence after an ascending sort coming back fully unsorted.
 Point 3's third item (~:56576~) was narrower than filed: Step 3 is still
 ~TODO~, so only the parenthetical "not part of this branch" was stale, not
 the cross-reference itself.
+
+*** TODO Step 22: One coalescing token per table, not one per page
+
+Found while implementing Step 3, and shipped for as long as
+~_scheduleColHeaderCounts()~ has existed.
+
+~_colHeaderCountsToken~ is a single module-level counter. Every schedule
+increments it, and a scan abandons itself the moment it sees a newer value.
+That is exactly right for the case it was written for — ~initReleaseEventsColumn()~
+firing ~initCollapsableColumns()~ three times in a row over the SAME table,
+which should cost one scan and not three.
+
+It is wrong for the case nobody checked. ~renderGroupedTable()~ calls
+~initCollapsableColumns()~ once per sub-table, inside its own loop (both the
+reuse branch and the new-table branch), and
+~syncCollapseButtonsWithColumnVisibility()~ does the same across every
+~table.tbl~ on the page. Each of those schedules bumps the shared counter, so
+on a multi-table page *every sub-table except the last cancels itself* before
+writing a single badge.
+
+The failure is silent — an unwritten badge is an empty ~<span>~, not an error —
+but it is sitting in the committed baselines:
+
+| Baseline                                                    | ~.mb-col-uniq-count~ spans | populated |
+|-------------------------------------------------------------+----------------------------+-----------|
+| ~tests/snapshots/artist-releasegroups/rendered.html~         |                        423 |         1 |
+| ~tests/snapshots/releasegroup-releases/rendered.html~        |                         42 |        14 |
+| ~tests/snapshots/artist-events/rendered.html~ (single-table) |                         21 |         1 |
+
+The ~artist-events~ row is a different, benign case and worth separating: that
+page has one table, so nothing cancels it. Its scan is simply still running
+when ~capture-snapshots.js~ takes the snapshot, and the same page's
+~post-filter.html~/~post-sort.html~ — captured after
+~waitForColHeaderCountsStable()~ — read 18 and 20 of 21.
+
+Fix: key the token by table (a ~WeakMap~), so same-table schedules still
+coalesce and siblings stop interfering.
+
+*This makes multi-table pages do more work, and that is the point.* A page
+rendering 47 sub-tables goes from ~1 scan to 47. It buys 423 badges that are
+currently just absent, and Step 3's cache is what keeps the bill payable — each
+sub-table's row set is small, and every render after the first is a hit.
 
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 

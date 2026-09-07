@@ -99829,3 +99829,15 @@ recording name cells shifted without column header names
 work on Step 3 in @PERFORMANCE.org and summarize performance statistics before/afer the fix
 
 
+* TODO fix - sa_render_threshold: 0
+
+**One trap when seeding: `sa_render_threshold: 0` does NOT disable that dialog**,
+despite the setting's own description saying "0 to disable". The code reads
+`Lib.settings.sa_render_threshold || 5000`, so `0` is falsy and becomes 5000 —
+seed a large number instead. `sa_render_warning_threshold` uses `?? 10000` and
+*does* honour `0`. `sa_chunked_render_threshold` has the same `|| 1000` defect.
+This is a real bug in the settings, filed but not yet fixed; don't write a test
+against the "0 to disable" premise.
+
+also adjust CLAUDE.md after the fix
+

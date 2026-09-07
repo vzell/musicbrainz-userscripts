@@ -51,6 +51,36 @@ Not affected, and worth knowing so the diff is not over-read:
     `npm test` reads a snapshot baseline at all. The review window expiring can
     never turn the suite red.
 
+** Column-header count badges filling in
+
+Unlike everything else in this section, this one is OUR movement, not
+MusicBrainz's — recorded here because a re-capture makes it look like a large,
+alarming diff spread across every =<thead>=.
+
+The =.mb-col-uniq-count= badges are written by =_updateAllColHeaderCounts()=,
+which used to abandon itself on multi-table pages: one module-level coalescing
+token, one schedule per sub-table, so every sub-table but the last cancelled
+before writing anything (PERFORMANCE.org Step 22). What the current baselines
+therefore record is mostly EMPTY badges:
+
+| Baseline                              | uniq badges | populated when captured |
+|---------------------------------------+-------------+-------------------------|
+| artist-releasegroups/rendered.html    |         423 |                       1 |
+| releasegroup-releases/rendered.html   |          42 |                      14 |
+| artist-events/rendered.html           |          21 |                       1 |
+
+A re-capture after Step 22 should populate far more of them. **That is the
+correct new baseline — commit it.** Badges going the other way, from populated
+to empty, is a real regression.
+
+The artist-events row has a separate, benign cause and does not need Step 22:
+that page has a single table, so nothing cancels its scan — captureOne() simply
+snapshots while the scan is still working through its per-column slices. Its own
+post-filter.html/post-sort.html are captured after
+=waitForColHeaderCountsStable()= and already read 18 and 20 of 21; they are
+generated from the frozen disk fixture and must still reproduce byte-identically
+apart from this.
+
 ** Wikipedia extract on the Springsteen pages
 
 artist-releasegroups/raw.html embeds MusicBrainz's own sidebar Wikipedia
