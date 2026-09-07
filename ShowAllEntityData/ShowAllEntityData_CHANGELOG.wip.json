@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On `tag-value-entity`/`tag-value`/`user-tag-value-entity`/`user-tag-value` pages (e.g. `/tag/rock/recording`), the \"MB-Name\", \"Comment\", and \"Primary alias\" columns rendered empty, with the recording's own name and disambiguation comment instead appearing as unlabeled trailing cells (see debug/tag-rock-recording-final.html). Root cause: `cleanupHeaders()` gated its `_resolvedPrimaryCols` set (which decides whether a `syntheticColumnExtractors` entry sourced from 'MB-Name'/'Comment'/'Primary alias', e.g. the `eventParts` extractor's nine `Event-*` columns, gets a header at all) on a plain truthy check of `features.extractMainColumn` — but these four pageTypes declare it as the numeric index `0` (their single native column is always first), which is falsy even though genuinely active. A second, correct check 30-odd lines below the same function already used strict `!== undefined && !== null` and DID inject the MB-Name/Comment/Primary-alias headers themselves — so the header row ended up 9 columns short of the row's actual cell count, and the browser's positional header/cell alignment shifted every column from \"Artist\" onward. Fixed by hoisting that one strict check to the top of the function and reusing it for both gates, so a single source of truth answers \"is extractMainColumn active\" consistently."
+        ]
+      }
+    ]
+  }
+]

@@ -43313,8 +43313,18 @@ a { color: #1565c0; }`;
                 .filter(e => e.colIdx !== -1)
                 .flatMap(e => e.syntheticColumns)
         );
+        // Check if the generic split feature is enabled for this page definition.
+        // Strict !== undefined/null check — extractMainColumn can legitimately be the
+        // numeric index 0 (e.g. tag-value-entity's single native "Recording" column),
+        // which is falsy. A plain truthy check here previously left 'MB-Name'/'Comment'/
+        // 'Primary alias' out of _resolvedPrimaryCols for such pages, silently dropping
+        // every syntheticColumnExtractor sourced from them (e.g. eventParts' 9 Event-*
+        // headers) and desyncing every header after that point from its data cell.
+        // See debug/tag-rock-recording-final.html.
+        const mainColConfig = activeDefinition.features?.extractMainColumn;
+        const isMainColEnabled = mainColConfig !== undefined && mainColConfig !== null;
         // Also include MB-Name, Comment, and Primary alias when extractMainColumn is active.
-        if (activeDefinition?.features?.extractMainColumn) {
+        if (isMainColEnabled) {
             _resolvedPrimaryCols.add('MB-Name');
             _resolvedPrimaryCols.add('Comment');
             _resolvedPrimaryCols.add('Primary alias');
@@ -43345,10 +43355,6 @@ a { color: #1565c0; }`;
                 }
             });
         });
-
-        // Check if the generic split feature is enabled for this page definition
-        const mainColConfig = activeDefinition.features?.extractMainColumn;
-        const isMainColEnabled = mainColConfig !== undefined && mainColConfig !== null;
 
         // On pages where the configuration is enabled, create the "MB-Name", "Comment",
         // and "Primary alias" columns
