@@ -23,6 +23,12 @@ const { authStorageState } = require('../support/authState');
  * so the mirror put live blob URLs directly into the save path's input for the
  * first time.
  *
+ * `_artMirrorInlineThumbToSourceRow()` widened that exposure: it mirrors the
+ * whole `.mb-caa-inline-ph` / `.mb-eaa-inline-ph` NODE onto the source row
+ * (the placeholder is injected into live rows only, so there is nothing there
+ * to copy a value onto), carrying both another `blob:` URL and a piece of
+ * live-render DOM into the same save path. Step 3 below guards both.
+ *
  * That is safe only because `getCleanCellHtml()` calls
  * `_stripTransientCellState()` WITHOUT `preserveLiveArt`, which blanks every
  * icon background unconditionally. Both the fix commit and
@@ -55,10 +61,12 @@ const { authStorageState } = require('../support/authState');
  *      same guarantee `caa-icon-survives-sort-multi.spec.js` pins, re-derived
  *      here because it is this spec's non-vacuity precondition, not an
  *      incidental check.
- *   3. **Contract** — save, gunzip, and assert the JSON carries no `blob:`
- *      and no `data-caa-enriched` (the strip deletes that marker too, so its
+ *   3. **Contract** — save, gunzip, and assert the JSON carries no `blob:`,
+ *      no `data-caa-enriched` (the strip deletes that marker too, so its
  *      absence is free evidence the strip RAN, as opposed to the artwork
- *      simply never having been there).
+ *      simply never having been there), and no `mb-caa-inline-ph` /
+ *      `mb-eaa-inline-ph` (the second artefact the mirrors put on the source
+ *      rows — see the note on `_artMirrorInlineThumbToSourceRow()` below).
  *   4. **Round trip** — load the freshly-saved file back and assert it still
  *      renders every row, proving the stripping did not corrupt the payload.
  *
@@ -356,6 +364,20 @@ test.describe('Save to Disk strips live artwork', { tag: '@extended' }, () => {
         const enrichedHits = (rawJson.match(/data-caa-enriched|data-eaa-enriched/g) || []).length;
         expect(enrichedHits, 'CAA/EAA enrichment markers leaked into the saved payload')
             .toBe(0);
+
+        // The inline-thumbnail placeholder is the SECOND artefact the mirrors
+        // put on the source rows this payload is built from
+        // (`_artMirrorInlineThumbToSourceRow()` clones the whole node across,
+        // not just a value), so it needs its own guard rather than riding on
+        // the blob: count. A placeholder whose image never resolved carries no
+        // blob: URL at all and would slip past the check above while still
+        // being live-render state that has no business in a saved file.
+        const inlinePhHits = (rawJson.match(/mb-caa-inline-ph|mb-eaa-inline-ph/g) || []).length;
+        expect(
+            inlinePhHits,
+            'inline-thumbnail placeholders leaked into the saved payload — ' +
+            '_stripTransientCellState() must remove them when preserveLiveArt is off'
+        ).toBe(0);
 
         // ── 4. Round trip: the stripped payload still loads ──────────────────
         //

@@ -30,17 +30,22 @@ const { waitForSortSettled } = require('../support/filterSortAssertions');
  *      mirrors a painted icon's `background-image` onto the multi-table SOURCE
  *      row, so `preserveLiveArt` finally has something to preserve on this path
  *      and re-inserted rows arrive already painted.
- *   3. **STILL not fixed.** The inline thumbnails are still torn down (their
- *      placeholder is injected into live rows only, so there is no counterpart
- *      on the source row to mirror onto — that needs its own change), and EVERY
- *      sub-table is still rebuilt, not just the sorted one. Both complete out
- *      of the Tier-1 memory cache fast enough to be invisible, which is a
- *      timing property, not a structural one.
+ *   3. **Now also fixed: the inline thumbnails.**
+ *      `_artMirrorInlineThumbToSourceRow()` mirrors the whole placeholder NODE
+ *      (not just a value — `_artInitInlinePics()` injects it into live rows
+ *      only, so the source row had no counterpart to copy onto) back to the
+ *      source row, where `preserveLiveArt` keeps it and the re-inserted clone
+ *      lands in `_artInitInlinePics()`'s Case C1: hover and bigbox tooltip
+ *      re-wired, live image kept, nothing re-resolved.
+ *   4. **STILL not fixed.** EVERY sub-table is rebuilt when one is sorted, not
+ *      just the sorted one. It completes out of the Tier-1 memory cache fast
+ *      enough to be invisible, which is a timing property, not a structural
+ *      one.
  *
- * The assertions below are therefore split: the (1) invariants are asserted
- * as guarantees, while the (2) measurements are recorded via `console.log`
- * and asserted only where a regression would be unambiguous. Turning any of
- * the (2) numbers into a hard guarantee requires the per-sub-table render
+ * The assertions below are therefore split: the (1)-(3) invariants are asserted
+ * as guarantees, while the (4) measurements are recorded via `console.log`
+ * and asserted only where a regression would be unambiguous. Turning the
+ * remaining (4) numbers into a hard guarantee requires the per-sub-table render
  * scoping that is still deferred — see the plan's "Deferred" section.
  *
  * ## Measured on this page (7 rows across 2 sub-tables, sorting the 6-row one)
@@ -52,7 +57,7 @@ const { waitForSortSettled } = require('../support/filterSortAssertions');
  * archiveFetches         0      guaranteed
  * completionToastReFired 0      guaranteed
  * iconsPaintedAtInsert   =before  GUARANTEED — was 0 before the icon mirror
- * inlineThumbsAtInsert   0/7    measured    — still torn down, see (3) above
+ * inlineThumbsAtInsert   =before  GUARANTEED — was 0/7 before the inline mirror
  * rowsInserted           7      measured    — i.e. BOTH sub-tables' rows, not
  *                                            just the sorted one's
  * tablesInserted         0      measured    — the <table> elements themselves
@@ -64,12 +69,10 @@ const { waitForSortSettled } = require('../support/filterSortAssertions');
  *                                            installInsertionProbe())
  * ```
  *
- * The two zero-of-seven numbers are the honest statement of what is NOT
- * fixed on a multi page: the icons and inline thumbnails are still torn down
- * and repainted, they just repaint out of the Tier-1 memory cache fast enough
- * to be invisible at this size. That is a timing property, not a guarantee —
- * unlike the single-table page, where rows demonstrably arrive already
- * painted.
+ * `rowsInserted` is now the only honest statement of what is NOT fixed on a
+ * multi page: every sub-table's rows are still torn down and re-inserted when
+ * one sub-table is sorted. They come back carrying their artwork, so nothing
+ * is re-resolved — but the DOM work itself is still wasted.
  *
  * Needs REAL CAA network access, same rationale as the single-table spec:
  * `gmStubs.js`'s always-404 `GM_xmlhttpRequest` would leave every icon
@@ -541,9 +544,9 @@ test.describe('CAA artwork across a sort (multi-table)', { tag: '@extended' }, (
 
         // Recorded so a future per-sub-table scoping change has a "before"
         // number to point at. Today EVERY sub-table is rebuilt when one is
-        // sorted, so this is expected to be 0. (Harmless for artwork since the
-        // icon mirror landed — the rows come back painted either way — but it
-        // is still wasted work.)
+        // sorted, so this is expected to be 0. (Harmless for artwork now that
+        // both mirrors have landed — the rows come back with their icons AND
+        // their inline thumbnails either way — but it is still wasted work.)
         console.log(
             `[multi-probe] sub-tables surviving a sort of one of them: ` +
             `${after.survivingTagged}/${tagged}`
@@ -571,14 +574,26 @@ test.describe('CAA artwork across a sort (multi-table)', { tag: '@extended' }, (
             'rows re-inserted by a sort lost their artwork icons — the source-row mirror is not working'
         ).toBe(before.painted);
 
-        // Inline thumbnails are deliberately NOT yet guaranteed: their
-        // placeholder is injected into live rows only, so a source row has no
-        // counterpart to mirror onto. Recorded so the follow-up change has a
-        // "before" number.
+        // ── The inline-thumbnail mirror's guarantee ──────────────────────────
+        //
+        // Same shape as the icon guarantee above, and the same reason it is
+        // "whatever was showing survives" rather than "all cells": a release
+        // with no cover art keeps an empty placeholder forever.
+        //
+        // Was 0 before `_artMirrorInlineThumbToSourceRow()`. The icon mirror
+        // could not cover this: an icon is an element the source row already
+        // owns, so painting it writes a VALUE that `cloneNode(true)` carries
+        // through, whereas the inline placeholder is a NODE that only ever
+        // existed on the live rows — it has to be constructed on the source
+        // row, not copied.
         console.log(
             `[multi-probe] inline thumbs at insertion: ` +
-            `${probe.inlineThumbsAtInsert}/${before.inlineThumbs} (not yet mirrored)`
+            `${probe.inlineThumbsAtInsert}/${before.inlineThumbs}`
         );
+        expect(
+            probe.inlineThumbsAtInsert,
+            'rows re-inserted by a sort lost their inline thumbnails — the source-row placeholder mirror is not working'
+        ).toBe(before.inlineThumbs);
 
         expect(pageErrors, 'uncaught page errors during the sort').toEqual([]);
     });
