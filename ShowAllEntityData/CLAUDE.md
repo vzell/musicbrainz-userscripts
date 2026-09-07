@@ -2,9 +2,9 @@
 
 ## Project overview
 
-`ShowAllEntityData.user.js` is a Tampermonkey userscript (~63,500 lines, ~3.4 MB) for
-MusicBrainz. It consolidates paginated and non-paginated entity table lists into a single
-view with real-time multi-column filtering and sorting.
+`ShowAllEntityData.user.js` is a Tampermonkey userscript (~74,000 lines, ~4.1 MB as of
+v9.99.1045) for MusicBrainz. It consolidates paginated and non-paginated entity table
+lists into a single view with real-time multi-column filtering and sorting.
 
 **Changelog:** `ShowAllEntityData_CHANGELOG.json` (JSON, lives alongside the script)
 **Help:** `ShowAllEntityData_HELP.txt` (TEXT, lives alongside the script)
@@ -248,7 +248,10 @@ Enable via the `sa_enable_debug_logging` setting or the Tampermonkey menu.
 
 ## Debug material
 - HTML snapshots and console logs live in `debug/` subdirectories
-- `debug/` folders are gitignored
+- `debug/` is gitignored (root `.gitignore`), so snapshots and logs stay local —
+  but `debug/NOTES.md` and `debug/adjust-mainColumn-extractor.org` are TRACKED
+  exceptions. Edits to `NOTES.md` DO get committed; write it as durable,
+  reviewable material, not scratch
 - Always read `debug/NOTES.md` if it exists before starting work
 - Always read the relevant `debug/*.html` before proposing any DOM fix
 - Document snapshots in `debug/NOTES.md` with date and what they show
@@ -353,6 +356,18 @@ run:
 - `run-perf-comparison` — run/interpret the perf-comparison instrumentation
   (`capture-interaction-perf.js`, `capture-snapshots.js --perf`,
   `PERFORMANCE.org`); manual only, no CI gate.
+
+**`PERFORMANCE.org` Step numbers were reconciled — check the provenance table
+before following any "Step N" reference.** Three copies of that file (`main`,
+`perf-steps-1-4`, `filter-performance-fix-caa-throughput`) had drifted into
+three incompatible schemes, each with a different Step 6, which silently broke
+a cross-reference in the userscript's own JSDoc. Steps 1-5 never moved;
+`perf-steps-1-4`'s 6-14 became canonical; `caa-throughput`'s 6/7/8 became
+15/16/17; `main`'s Step 6 became 18. Branch commit messages and older
+`debug/*.org` session logs still carry the OLD numbers, so map them through
+`PERFORMANCE.org`'s "Step-number provenance" section rather than reading them
+at face value. Its TODO/DONE keyword tracks "landed on `main`", not effort —
+several steps were implemented on an unmerged branch and still read TODO.
 
 No `// @version` bump or `ShowAllEntityData_CHANGELOG.json` entry for
 anything under `tests/` — test tooling isn't part of the userscript
