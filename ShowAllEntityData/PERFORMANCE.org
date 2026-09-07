@@ -272,6 +272,35 @@ grew is the background work running after it, which delays the poll. So the
 deltas above overstate the change in perceived filter latency, but they do
 represent real extra main-thread work.
 
+**** Re-measured 2026-09-07 at 9.99.1045: the cost is still being paid
+
+The table above was captured at v9.99.976 and never re-run, so it could not
+say whether the +34%/+42%/+37% was still real. It is. Same harness, same
+fixture, same machine, median of 5 — and this arm IS committed, as
+~interaction-perf-main.json~:
+
+| Interaction         | pre-fix (v9.99.976) | post-fix (v9.99.976) | now (v9.99.1045) | vs pre-fix |
+|---------------------+---------------------+----------------------+------------------+------------|
+| Global filter       |             1307 ms |              1752 ms |          1735 ms | +33%       |
+| Column filter       |             1335 ms |              1891 ms |          1730 ms | +30%       |
+| Sort                |             3103 ms |              4241 ms |          3968 ms | +28%       |
+| Uniq-dropdown, cold |            29450 ms |             30920 ms |         31149 ms | +6%        |
+| Uniq-dropdown, warm |              553 ms |               914 ms |          863 ms  | +56%       |
+
+Three conclusions, all of which the older table could only guess at:
+
+- *Step 3 is still owed the whole of it.* 69 versions of other work — Step 4,
+  Step 18, the entire Step 19 artwork series — moved these numbers by a few
+  percent at most. Column filter and sort came down slightly from the v9.99.976
+  post-fix figures, but both remain roughly 30% above the pre-fix baseline.
+  Nothing has substituted for the memoization.
+- *Steps 18 and 19 are invisible here, exactly as predicted*, and the flatness
+  is the evidence for the prediction rather than against the work. See Step
+  18's "Measurement coverage" note for why this page cannot see either of them.
+- *The warm-dropdown figure is Step 4's, and it is holding.* 863 ms against the
+  31 149 ms cold open is the ~36x that step bought, still intact 74 versions
+  later.
+
 Bringing that cost back down is precisely this step. The two follow-ups that
 would help most, deliberately left out of the fix branch as separate concerns:
 - invert the loop to row-outer/column-inner with per-column accumulators — the
@@ -855,8 +884,8 @@ branch: ~debug/flags-rendering.html~'s single sampled ~<td>~ is 305KB,
 carrying two inline ~data:image/svg+xml;base64,…~ images (~84KB and ~221KB
 of base64 text — up to ~230KB of raw SVG vector art combined) for one row's
 venue location. A single-table render has always fully materialized every
-row's DOM at once (true on unmodified ~main~ too, long before Steps 1-5 and 15) —
-what's new here is just that this particular kind of page makes that
+row's DOM at once (true on unmodified ~main~ too, long before Steps 1-5 and
+15) — what's new here is just that this particular kind of page makes that
 already-large DOM dramatically larger per row.
 
 Mechanism (browser compositing, not our JS): ~applyStickyColumn~ sets
@@ -1093,6 +1122,25 @@ Baselines on disk, and their real vintage:
 | ~artist-events/interaction-perf-fix-chunked-render-header-counts.json~ | 2026-08-31 | 9.99.976 | the de-facto current-~main~ row for a long time, filed under a branch since merged and deleted |
 | ~artist-events/interaction-perf-worktree-perf-step-4.json~ | 2026-08-31 | 9.99.970 | Step 4's own branch arm |
 | ~artist-releasegroups/perf-baseline.json~ | see file | see file | initial fetch+render wall time, from ~capture-snapshots.js --perf~ |
+
+Refreshed 2026-09-07 at 9.99.1045, since both files above had gone stale
+enough to mislead (the ~main~ interaction row was 87 versions old and predated
+Step 4, and the fetch baseline was 109 versions old):
+
+- ~interaction-perf-main.json~ is now a genuine current-~main~ capture. Its
+  numbers are in Step 3's re-measurement table, which is where they answer
+  something.
+- ~perf-baseline.json~: median wall *33 436 ms → 26 378 ms*, fetch
+  *23 059 ms → 16 692 ms*, render *502 ms → 533 ms*, itemCount 2142 → 2143.
+  Verdict ~ok~.
+
+*Do not read that 21% as a win.* This measurement brackets a live 43-page fetch
+against musicbrainz.org, and the whole difference sits in the ~fetch~ stage —
+upstream response time, which varies by more than this between sessions. The
+one stage this codebase controls, ~render~, is flat at ~500 ms. The itemCount
+drift is MusicBrainz gaining a release group. The useful content of the run is
+therefore negative: *no regression* across 109 versions on the initial
+fetch+render path, and nothing attributable as a gain.
 
 *A CAA-on baseline is still unavailable, and that is a rate-limit problem, not
 a missing script.* The two pages worth measuring — Springsteen's
