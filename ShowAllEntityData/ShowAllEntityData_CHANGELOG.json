@@ -1,5 +1,23 @@
 [
   {
+    "version": "9.99.1039",
+    "date": "2026-09-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Inline cover-art thumbnails (the 20×20 image inside each Release/Title cell) no longer vanish and pop back on every sort or filter keystroke on multi-table page types (artist-releasegroups, releasegroup-releases, …). Rows re-inserted by a re-render now arrive with their thumbnail already showing. This completes the artwork-preservation work started in 9.99.1038, which covered the icon column only.",
+          "Technical: the icon fix could not cover this. Painting an icon writes a VALUE (`background-image`) onto a `span.caa-icon` the source row already owns, and `cloneNode(true)` carries values through; an inline thumbnail is a NODE (`.mb-caa-inline-ph` / `.mb-eaa-inline-ph`) that `_artInitInlinePics()` injects only into the live rows, so `groupedRows[i].rows` never held one and `_stripTransientCellState()`'s `preserveLiveArt` placeholder branch had nothing to match. New `_artMirrorInlineThumbToSourceRow()` mirrors the whole placeholder onto the matching source row, constructing it there rather than copying a value.",
+          "The mirrored placeholder rides through `renderGroupedTable()`'s row-insertion clone (which deliberately does not strip), so the live row arrives with the image in place and lands in `_artInitInlinePics()`'s Case C1 — hover preview and bigbox tooltip re-wired (`cloneNode(true)` copies no listeners), live image kept, nothing re-resolved. Measured: inline thumbnails present at row insertion went from 0 of 7 to 7 of 7 on the small pilot release group, and from 0 of 119 to 119 of 119 on a 124-row/3-sub-table one — with zero requests to the archive in both cases.",
+          "`_artResolveSourceCounterpart()` is split: its row/cell half becomes `_artResolveSourceCell()`, since the icon mirror resolves an element that already exists on the source row while the inline mirror has to build one. Both keep the `_findMasterRowByIdx()` lookup, which is what makes merged discography view work — it folds other groups' rows into the first-occurrence table, where a group-index lookup silently misses exactly those rows.",
+          "Placement matches the live injection: after the container's own `[data-erg-btn]` when there is one, else first. Source rows carry no ERG button (that feature injects into the live DOM), so the mirrored placeholder lands first — and on the next render `initExpandRGsFeature()` runs before the inline-thumbnail pass and prepends its ▶ ahead of it, giving the same order as a freshly built page.",
+          "No live `blob:` URL and no placeholder can reach a saved file: Save-to-Disk serialises through `getCleanCellHtml()` → `_stripTransientCellState()` WITHOUT `preserveLiveArt`, which removes both unconditionally. The `_hadInlineArtPh` jesus2099 gate cannot misfire on a mirrored cell either — `ColumnDataExtractor.caa`'s Path A MOVES a jesus2099 anchor into the synthetic \"CAA\" column, and no page definition ever names \"CAA\" as its `addCAA`/`addEAA` inline-thumbnail column, so the two are never in the same source cell.",
+          "Still not changed: sorting one sub-table re-renders all of them. It issues no network request — every row comes back carrying both its icon and its inline thumbnail — but the DOM work itself is still wasted."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1038",
     "date": "2026-09-07",
     "sections": [
