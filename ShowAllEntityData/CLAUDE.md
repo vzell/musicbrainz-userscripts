@@ -345,6 +345,26 @@ run:
   stable AND non-zero — a count of 0 means "the pass has not produced anything
   yet", not "settled". (A view with genuinely no artwork is the one exception,
   so allow zero to settle only after a longer run of identical samples.)
+- **`waitForCaaEaaComplete()` DOES NOT WORK on a large page — do not reach for
+  it as the artwork wait.** It waits for `#mb-info-display-caa` to become
+  visible, which `_showCaaCompletionToast()` writes on the `_caaQueue`'s
+  `onIdle`. On a big listing that toast never fires: measured still empty and
+  hidden after 300 s (529 polls) on `artist-releasegroups` while artwork was
+  visibly painting the whole time, and the same on `releasegroup-releases`'
+  124-row "Greetings From Asbury Park, N.J." page — at the archive's
+  ~1.2 req/s a per-entity metadata sweep of that size simply outlasts any
+  sane timeout. **Poll the thing you actually care about until it stops
+  changing** (painted icons, built `<ul>`s, `.mb-caa-type-badge` spans),
+  per "Settle, don't sleep" above; `caa-icon-survives-sort-multi.spec.js`'s
+  `waitForArtworkSettled()` is the worked example. The same applies to
+  `waitForRelationshipsComplete()`/`#mb-info-display-rel`. This has cost a
+  wasted run many times over, and it is ALSO why
+  `releasegroup-releases-filter-sort.spec.js` fails on `main` — its
+  `setupExpandedGreetingsPage()` still waits on both toasts, so all six of
+  its tests fail in setup on that page regardless of the code under test.
+  A "toast never appeared" timeout is evidence about the page's size, never
+  about the change being tested — re-run the spec standalone, or on reverted
+  code, before believing it caught anything.
 - `sa_caa_pics_initially_collapsed` defaults true, so the big-picture strips
   also need `#mb-caa-toggle-btn-global` clicked before they load.
 
