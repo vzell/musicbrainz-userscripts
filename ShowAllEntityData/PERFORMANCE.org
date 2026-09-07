@@ -7,6 +7,22 @@ keyword. Flip TODO -> DONE (and add a short note: what changed, which commit
 range / branch) as each step lands. Do not delete completed steps — the
 history of what was tried and why is the point of this file.
 
+*The keyword tracks* ~main~, *not effort.* A step reads DONE only when its code
+is on ~main~. Several steps below were implemented and measured on a branch
+that was never merged; those stay TODO and say so in their own text, so that
+"what is true of the script people actually run" is readable straight off the
+keywords. As of this revision the DONE set is exactly Steps 4, 18 and 19.
+
+*One canonical numbering.* Three copies of this file drifted into three
+incompatible schemes — ~main~, ~perf-steps-1-4~ and
+~filter-performance-fix-caa-throughput~ each had a different "Step 6". They are
+now reconciled here; see "Step-number provenance" below before trusting any
+"Step N" reference in a branch commit message or an old session log.
+
+*Line references* (~:12345~) are only valid for the script version named
+alongside them. Re-grep the symbol rather than trusting a number that looks
+stale — the userscript is ~74 000 lines and they drift constantly.
+
 ** Context
 
 ~runFilter()~ currently clones every matching row with ~cloneNode(true)~ on
@@ -30,33 +46,52 @@ for reference — the ideas need a fresh reimplementation against current
 
 ** Findings: is the underlying problem still real?
 
-Yes, confirmed directly against current ~main~ (~ShowAllEntityData.user.js~):
+Yes — re-confirmed against ~main~ at *9.99.1045+2026-09-07*, which is also the
+version every line reference in this section was read at:
 
-- ~runFilter()~'s single-table branch (~:36407-36434~) still clones every
-  matching row and fully rebuilds the tbody on every keystroke.
-- The multi-table branch (~:36240-36280~) does the same per group.
-- No ~IntersectionObserver~ exists anywhere in the file — lazy CAA/EAA
-  loading was never independently reimplemented.
-- The "Show single-table" button (~:1070-1626~) now lets any non-overflowing
-  multi-table sub-table be viewed as its own single-table snapshot tab, which
-  makes a single-table-only fix cover *more* ground than when the old branch
-  was written. Performance work should keep targeting single-table mode
-  first, same as the old branch already did (its own WIP changelog scoped
-  Fix C to single-table mode only).
+- ~runFilter()~ (~:42225~) still clones every matching row and fully rebuilds
+  the tbody on every keystroke, in both branches.
+- The multi-table branch does the same per group, *except for a sort*, which
+  since Step 18 touches only the sub-table it re-ordered: ~runFilter()~
+  (~:42450~) pushes an empty ~_mbSkipRender~ group for every undisturbed
+  index and ~renderGroupedTable()~ (~:49379~) leaves those ~<tbody>~ elements
+  alone. Filters still re-render everything.
+- No ~IntersectionObserver~ exists anywhere in the file — zero occurrences —
+  so lazy CAA/EAA loading (Step 5) was never independently reimplemented.
+- The "Show single-table" button (~openSubtableAsSingleTableTab()~) now lets
+  any non-overflowing multi-table sub-table be viewed as its own single-table
+  snapshot tab, which makes a single-table-only fix cover *more* ground than
+  when the old branch was written. Performance work should keep targeting
+  single-table mode first, same as the old branch already did (its own WIP
+  changelog scoped Fix C to single-table mode only).
 
 *** The dominant, previously-underweighted cost: ~_updateAllColHeaderCounts~
 
-The file's own comments (~:48541-48543~, ~:49212-49216~) document that this
+The file's own comments (~:56886-56888~, ~:57587~) document that this
 O(rows x columns) per-column unique-value + multi-row-count scan can take
-"30-120s synchronously" for 8k+ rows — enough to trigger Chrome's "Page
-Unresponsive" dialog, which is why it's already deferred via
-~setTimeout(0)~ rather than fixed at the root. It runs at the tail of
-~initCollapsableColumns()~, which today fires on *every* single-table filter
-keystroke (~:36480~), every sort (~:40029~, ~:54785~), every global
-expand/collapse-all click (~:16555~, ~:52626~, ~:52637~), and every
-multi-table render (~:42703~, ~:43249~). Scaled to 5,000 rows that's roughly
-19-75s of background work re-triggered on every one of those actions —
-larger than the cloneNode/DOM-rebuild cost the old branch was framed around.
+"30–120 s synchronously" for 8 k+ rows — enough to trigger Chrome's "Page
+Unresponsive" dialog, which is why it's already deferred rather than fixed at
+the root. ~:56694~ puts the same cost concretely for the harness page:
+~artist-events~ at 4174 rows × 21 columns is *~88 000 ~getCleanColumnText()~
+calls* per full pass.
+
+It runs at the tail of ~initCollapsableColumns()~ (~:56878~), reached from
+~_scheduleColHeaderCounts()~ (~:56650~), which today fires from:
+
+| Call site | Function | Frequency |
+|-----------+----------+-----------|
+| ~:42747~ | ~runFilter()~, single-table branch | *every keystroke and every sort* |
+| ~:49738~ | ~renderGroupedTable()~, reuse branch, per sub-table | every multi-table render — *except undisturbed groups on a sort, since Step 18* |
+| ~:50271~ | ~renderGroupedTable()~, new-table branch, per sub-table | every multi-table render |
+| ~:19699~ | ~syncCollapseButtonsWithColumnVisibility()~ | every column show/hide, page-wide |
+| ~:61362~, ~:61377~ | ~initReleaseEventsColumn()~ | up to 3x in a row post-fetch (what the coalescing token exists for) |
+| ~:46421~ | ~startFetchingProcess()~ | once per fetch |
+| ~:73505~ | ~initPicardTaggerColumn()~ | post-render |
+
+Scaled to 5,000 rows that is roughly 19-75 s of background work re-triggered
+on most of those actions — larger than the cloneNode/DOM-rebuild cost the old
+branch was framed around. Step 3 is the remedy and is still TODO; Step 18
+removed one slice of it (see that step, and Step 3's own note).
 
 ** Ranked areas + estimated impact (5,000-row, ~20-column table)
 
@@ -73,6 +108,48 @@ acceptance check for each step.
 | 3 | Cache ~_updateAllColHeaderCounts~                | ~90%+ on toggle / multi-table triggers           |
 | 4 | ~openUniqDrop()~ per-open caching                | ~90-98% on repeat dropdown opens                 |
 | 5 | Lazy CAA/EAA loading (IntersectionObserver)      | ~99% fewer art requests queued at initial load   |
+
+** Step-number provenance
+
+Three copies of this file drifted into three incompatible numberings. All of
+them agreed on Steps 1-5, and all three then reused 6, 7 and 8 for completely
+different work. The canonical scheme below keeps ~perf-steps-1-4~'s 6-14,
+because that was the most-developed set *and* because ~main~'s own code and
+prose already pointed at it — ~ShowAllEntityData.user.js:56582~ cites "Step 6"
+for the order-independent signature, and Step 4's hazard-2 note cites "Step 8"
+for the async-column invalidations. Both are correct under this scheme with no
+edit. What moved instead was ~caa-throughput~'s 6/7/8 and ~main~'s own Step 6,
+which was only one day old.
+
+Read this table before trusting a "Step N" reference in a branch commit
+message, a ~debug/*.org~ session log, or a changelog entry written before this
+revision.
+
+| Canonical | ~main~ (pre-consolidation) | ~perf-steps-1-4~ | ~filter-performance-fix-caa-throughput~ |
+|-----------+----------------------------+------------------+-----------------------------------------|
+| 1-5       | 1-5 (same)                 | 1-5 (same)       | 1-5 (same)                              |
+| 6         | —                          | *6*              | —                                       |
+| 7         | —                          | *7*              | —                                       |
+| 8         | cited as "Step 8", no body | *8*              | —                                       |
+| 9-14      | —                          | *9-14*           | —                                       |
+| 15        | —                          | —                | *6*                                     |
+| 16        | —                          | —                | *7*                                     |
+| 17        | —                          | —                | *8*                                     |
+| 18        | *6* (added 2026-09-07)     | —                | —                                       |
+| 19-21     | — (new in this revision)   | —                | —                                       |
+
+Consequences worth knowing:
+
+- A ~caa-throughput~ commit message saying "PERFORMANCE.org Step 6" means
+  canonical *15*, and "Step 7"/"Step 8" mean *16*/*17*.
+- ~tests/live/caa-icon-survives-sort-multi.spec.js~ and
+  ~tests/live/registry.org~ referenced ~main~'s old Step 6 and now say *18*.
+- The changelog's two references ("PERFORMANCE.org Step 3", "Step 4") are
+  unaffected — those numbers never moved — so no changelog entry was
+  retroactively edited.
+- Steps 12 and 14 (~perf-steps-1-4~) and 15 and 16 (~caa-throughput~) are
+  marked DONE on their own branches. They are TODO here because their code is
+  not on ~main~; each says so in its own text.
 
 ** Implementation steps
 
@@ -105,6 +182,39 @@ Memoize per-column unique-value/multi-row counts, invalidated only when the
 visible row set actually changes (not on every trigger). Needed even after
 Steps 1-2, since global expand/collapse-all clicks and multi-table renders
 still call it unconditionally.
+
+*Still entirely unlanded as of 9.99.1045.* ~_updateAllColHeaderCounts()~
+(~:56710~) has exactly two mitigations and neither is a cache: a coalescing
+token (~_colHeaderCountsToken~, ~:56606~) so back-to-back schedules cost one
+scan instead of three, and one ~await _yieldToEventLoop()~ per column so the
+pass is never a single unbroken task. It still performs two full ~tbody.rows~
+walks per column on every filter apply and every filter clear.
+~_visibleRowSetSignature(table)~ (~:56589~) — the intended cache key — exists
+and is used, but only by Step 4's ~_uniqDropDataCache~.
+
+**** Partially mitigated by Step 18 — multi-table sorts only
+
+Step 18 (scoped sub-table sort) skips the whole per-group decorate pass,
+~initCollapsableColumns()~ → ~_scheduleColHeaderCounts()~ included, for every
+sub-table a sort did not disturb. That is a real reduction in this step's
+cost, and it is *correct* rather than merely cheaper: a sort changes a group's
+row ORDER, never its row SET, so the counts it would recompute are the ones
+already displayed. Filters, which DO change row sets, never take the scoped
+path.
+
+Two limits on how much of Step 3 that covers, both important:
+
+- *Multi-table pages only, and only on a sort.* Single-table mode has no
+  equivalent narrowing by design (~allRows~ is one array under one cache
+  key), and no filter keystroke on any page takes the scoped path.
+- *Therefore invisible in the numbers below.* They were captured on
+  ~artist-events~, which is ~tableMode: 'single'~. Step 18 cannot move them,
+  and did not.
+
+A user-visible side effect worth recording: the 📊 unique-value count badges
+now SURVIVE a sort of an unrelated sub-section instead of blanking back to a
+placeholder and being re-scheduled. Measured on a saved payload, 19 of 22
+badges populated afterwards against 0 of 22 before.
 
 **** Re-costed after the chunked-render fix (branch ~fix-chunked-render-header-counts~)
 
@@ -142,9 +252,17 @@ working tree with only ~ShowAllEntityData.user.js~ stashed) vs this branch's:
 | Uniq-dropdown, cold   | 29450 ms |    30920 ms | +5% (noise)      |
 | Uniq-dropdown, warm   |   553 ms |      914 ms | +65%             |
 
-Committed as ~interaction-perf-fix-chunked-render-header-counts.json~. Read
-these as a *correctness cost, not a regression in the work being done*: the
-scan they are paying for used to cover a 500-row prefix and produce wrong
+*Both columns are v9.99.976 numbers, and only the right-hand one was ever
+committed* — as ~interaction-perf-fix-chunked-render-header-counts.json~,
+under the name of a branch that has since been merged and deleted. The ~main~
+column exists only as this table. Neither has been re-measured since, so read
+them as "the cost of the chunked-render fix, at the version it landed", not as
+current absolute latencies; ~main~ is now 69 versions further on. See Step
+18's "Measurement coverage" note for what the harness can and cannot see
+today.
+
+Read these as a *correctness cost, not a regression in the work being done*:
+the scan they are paying for used to cover a 500-row prefix and produce wrong
 numbers, and now covers all 4174 rows. Note also what the harness actually
 measures — it polls ~#mb-filter-status-display~ over CDP every 100 ms and
 needs two stable reads, so it is sensitive to main-thread pressure. The
@@ -161,7 +279,8 @@ would help most, deliberately left out of the fix branch as separate concerns:
   times per pass;
 - memoize on ~_visibleRowSetSignature(table)~, the primitive Step 4 already
   uses, invalidated wherever ~_invalidateUniqDropDataCacheForTable()~ already
-  is (cell content can change with no row show/hide).
+  is (cell content can change with no row show/hide). Step 6 must land with or
+  before this, or a sort will invalidate the new cache on every click.
 
 *** DONE Step 4: ~openUniqDrop()~ per-open caching
 
@@ -196,12 +315,14 @@ while rebasing onto ~main~).
   The branch result is committed as
   ~tests/snapshots/artist-events/interaction-perf-worktree-perf-step-4.json~.
   The ~main~ column was measured for this comparison and NOT committed — the
-  repo's ~interaction-perf-main.json~ is the 2026-08-24 / 9.99.953 capture
-  from a different machine (1418/1595/2994/29802/29700), deliberately left
-  untouched; it is not directly comparable, since ~main~ has since grown 17
-  versions of extra dropdown work (~roleTokenValueCounts~, the editor/
-  changelog/data-quality scans, several ~SYN_SECTION_META~ splits) that a
-  cold open has to pay.
+  2026-08-24 / 9.99.953 capture from a different machine
+  (1418/1595/2994/29802/29700) was deliberately left untouched, and now lives
+  at ~interaction-perf-main-2026-08-24-v9.99.953.json~ (renamed when a real
+  current-~main~ capture finally took the plain ~interaction-perf-main.json~
+  name — see Step 18's "Measurement coverage" note). It is not directly
+  comparable, since ~main~ had since grown 17 versions of extra dropdown work
+  (~roleTokenValueCounts~, the editor/changelog/data-quality scans, several
+  ~SYN_SECTION_META~ splits) that a cold open has to pay.
 
   On the cold ~+7.6%~: treated as noise, not a regression. Cold open is
   ~30s of 5 full ~tbody.rows~ passes over 4174 rows; observed run-to-run
@@ -298,7 +419,10 @@ while rebasing onto ~main~).
   Doing it properly has to account for several cached values that are
   themselves first-seen-in-row-order (~entityNameGlyphMap~,
   ~entityNameTypeMap~, ~entityNameFlagMap~, ~valueItemSequence~), so it
-  belongs in its own step.
+  belongs in its own step — that is Step 6, harvested below. Note Step 6's
+  own text (written on ~perf-steps-1-4~, where Steps 1, 3 and 4 are all
+  landed) calls this "the highest-impact regression"; the sentence above is
+  the accurate reading for ~main~, and Step 6 carries a note saying so.
 
 **** Follow-ups
 
@@ -310,11 +434,595 @@ while rebasing onto ~main~).
   with no further groundwork.
 - The full multi-step analysis — Steps 1/2/5's measurements, the traced
   forced-reflow root cause, the CSS-containment negative result, and the
-  2026-08-25 code-review findings — lives on the ~perf-steps-1-4~ copy of
-  this file. It was deliberately NOT merged here: it asserts things about
-  Steps 1/2/3/5 that are not true of ~main~.
+  2026-08-25 code-review findings — used to live only on the
+  ~perf-steps-1-4~ copy of this file, deliberately unmerged because it
+  asserts things about Steps 1/2/3/5 that are not true of ~main~. It has
+  since been harvested into this file instead of left there, because a
+  branch is a poor place to keep a negative result: ~debug/perf.org~
+  (2026-08-24) proposed re-running the very ~content-visibility~ experiment
+  that ~filter-performance-fix-caa-throughput~ had already recorded as
+  FAILED, with no trace of that failure on ~main~ to prevent it. Everything
+  harvested is marked with the branch and version it was measured on, and
+  with the fact that its code is not on ~main~ — see the Step-number
+  provenance table.
 
-*** DONE Step 6: Scope a multi-table sort's re-render to the sorted sub-table
+*** TODO Step 5: Lazy CAA/EAA loading (IntersectionObserver)
+
+Defer CAA/EAA icon loads + JSON-API enrichment until a row's art cell
+scrolls near the viewport, instead of firing for every row at initial
+render. Reference: ~archive/filter-performance-fix-v1-single-table~'s WIP.2
+("Pattern 5") — ~sa_caa_io_threshold~ setting, per-ctx persistent observer.
+Independent of Steps 1-4 (different subsystem); can be done in any order
+relative to them.
+
+*** TODO Step 6: Fix ~_visibleRowSetSignature~ order-dependence
+
+/Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31, script v9.99.976). A
+proposal: no implementation exists on that branch or on ~main~.
+
+*Severity differs between* ~main~ *and that branch, and the branch text below
+overstates it for* ~main~. On ~perf-steps-1-4~ Steps 1, 3 and 4 are all landed,
+so an order-dependent signature really does throw away two shipped caching wins
+on every sort — hence "highest-impact regression" below. On ~main~ only Step 4
+is landed, and ~main~'s own note (see Step 4, "Not included") is the accurate
+one: /"On ~main~ (no Step 1) a sort rebuilds the tbody anyway, so this is a
+missed extra win, not a regression versus ~main~."/ Read the branch's severity
+claim as conditional — it becomes true here the moment Step 1 lands.
+
+Root-cause fix for the highest-impact regression found in the 2026-08-25
+code-review (see "Findings from performance code-review" below, regression
+#1) — it silently undoes Steps 3 and 4's caching wins after any sort. Make
+the signature genuinely order-independent (e.g. sort the visible
+~data-mb-row-idx~ values before joining, or hash as an unordered set)
+rather than concatenating in DOM/current-row-order. Highest priority of
+this batch: it's a one-function fix that restores two already-shipped,
+already-measured wins rather than adding a new one.
+
+*** TODO Step 7: Fix Step 5's multi-table lazy-load gate
+
+/Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31, script
+v9.99.976). A proposal: no implementation exists on that branch or on ~main~.
+
+~_useIO~ (~:63104~) checks ~allRows.length~, which is always 0 in
+~tableMode: 'multi'~ mode, so lazy CAA/EAA loading never activates on any
+multi-table art page (e.g. ~user-ratings~) regardless of row count — see
+"Findings" regression #2. Fix: compute the row count from ~groupedRows~
+(summed across sub-tables) when in multi-table mode, so the threshold
+check means something there too.
+
+*** TODO Step 8: Invalidate Step 3/4 caches for async-populated columns
+
+/Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31, script
+v9.99.976). A proposal: no implementation exists on that branch or on ~main~.
+
+~initReleaseEventsColumn()~ invalidates Step 3's header-count cache but not
+Step 4's uniq-drop cache (regression #3); ~initRelationshipsColumn()~/
+~initPicardTaggerColumn()~ invalidate neither (regression #4, pre-existing
+gap for Step 3, new gap for Step 4). Add
+~_invalidateUniqDropDataCache(table, colIndex)~ calls alongside the
+existing ~_invalidateColHeaderCountsCache~ call in
+~initReleaseEventsColumn()~, and add both invalidation calls to
+~initRelationshipsColumn()~/~initPicardTaggerColumn()~'s post-population
+paths.
+
+*Extended by the 2026-08-25 cloud ultra review*: a third uninvalidated site
+— ~_artSetInlineSortKey()~ (~:63570~), called from ~8 CAA/EAA
+fetch-completion callbacks, stamps the ~.mb-inline-art-sort-key~ sentinel
+that ~openUniqDrop~'s inline-art scan reads, with no corresponding
+invalidation call either. Same fix shape: call
+~_invalidateUniqDropDataCache(table, colIndex)~ there too.
+
+*** TODO Step 9: Invalidate ~_rowTextCache~ for async-populated columns
+
+/Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31, script
+v9.99.976). A proposal: no implementation exists on that branch or on ~main~.
+
+Pre-existing gap (regression #5), not introduced by this branch, but worth
+fixing alongside Step 8 since it's the same shape of bug (cache built from
+pre-population placeholder content, no invalidation hook when the async
+column later fills in). Lower priority than Steps 6-8 — only bites when a
+user filters before an async column finishes loading, a narrower window
+than the always-on caches above.
+
+*** TODO Step 10: Precompute sort keys before ~sortLargeArray~
+
+/Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31, script
+v9.99.976). A proposal: no implementation exists on that branch or on ~main~.
+
+Candidate opportunity #1 from the 2026-08-25 code-review. Decorate each row
+with its per-column clean sort-key text (and cache each column's
+~isNumeric~) once before sorting, instead of re-deriving both inside the
+comparator on every pairwise comparison — likely the largest uninvestigated
+contributor to sort's remaining ~23% regression vs ~main~ noted in the
+Session-summary Takeaways below. Needs before/after DevTools profiling on
+~artist-events~ to confirm, same as prior steps.
+
+*** TODO Step 11: Combine ~applyExtractTrackTitleData~'s presence-check scans
+
+/Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31, script
+v9.99.976). A proposal: no implementation exists on that branch or on ~main~.
+
+Candidate opportunity #2 from the 2026-08-25 code-review. Replace the
+~10-15 independent full-table ~_anyTitleCellMatches()~ calls (one per
+AR-column presence check) with one combined per-track characterization
+pass that answers all of them in a single walk. ~release-tracks~-specific;
+independent of Steps 1-9.
+
+*** TODO Step 12: Fix undeclared ~_caaImgQueue~/~_caaMetaQueue~ crash in Step 5 (urgent)
+
+/Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31, script
+v9.99.976), where this step is marked ~DONE~. The code is NOT on ~main~, so it
+is ~TODO~ here: per this file's preamble the keyword tracks whether a step has
+landed on ~main~, not whether anyone ever wrote it.
+
+Found by the 2026-08-25 cloud ultra review — not a missed optimization, a
+live bug in already-~DONE~ code. ~_artProcessIoEntriesBatched()~ (added by
+the animation-frame-batching fix under Step 5, ~:61449-61470~) references
+~_caaImgQueue~/~_caaMetaQueue~, neither of which is declared anywhere in
+the file — the real queue is ~_caaQueue~ (~:58083~), which every other call
+site (including this function's own eager-path sibling
+~_artInitSmallPics~) uses correctly. Under ~'use strict'~, reading either
+undeclared name throws ~ReferenceError~ the moment the IntersectionObserver
+callback first fires — the ~if (_caaImgQueue)~ guard does NOT save it,
+since reading an undeclared identifier throws before the condition can be
+evaluated. Net effect: on exactly the large single-table CAA/EAA page Step
+5 targets (~sa_caa_io_threshold~ default 500, e.g. ~artist-events~' 4174
+rows), the *only* code path that loads an icon after initial render is
+broken — no icon ever loads once the observer starts firing, and the
+onIdle queue-completion signal never fires either. Missed by this branch's
+own Step-5 measurement session because the dedicated CAA-queue-completion
+timing predates the animation-frame-batching commit, and the regular
+filter/sort perf snapshots seed ~sa_caa_pics_small: false~. Fix: rename
+both references to ~_caaQueue~ (two-line change, confined to
+~_artProcessIoEntriesBatched()~).
+
+*Fixed*: both references in ~_artProcessIoEntriesBatched()~ renamed to the
+real ~_caaQueue~, matching every other call site's guard shape.
+
+*** TODO Step 13: Restore cdtoc sub-row expansion state across a filter hide→show cycle
+
+/Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31, script
+v9.99.976). A proposal: no implementation exists on that branch or on ~main~.
+
+Found by the 2026-08-25 cloud ultra review. ~runFilter()~'s single-table
+branch (~:37125-37145~) explicitly hides a cdtoc tracklist sub-row when its
+parent row no longer matches (correct — prevents an orphaned visible
+sub-row), but the matched/show branch never restores it, even though the
+adjacent comment claims "a visible row's sub-row is left exactly as the
+user last toggled it." Since the sub-row's live inline ~style.display~ is
+the ONLY record of the user's toggle state (unlike per-cell collapse
+toggles, which persist to the ~expandedCells~ Map), the hide branch's own
+overwrite permanently destroys that state — a user-expanded tracklist that
+gets hidden by a filter and later re-shown comes back collapsed, with its
+own toggle link still (incorrectly) reading "hide tracklist" until clicked
+twice. Nit severity — narrow (cdtoc pageType only, specific action
+sequence), one-click recoverable, and strictly better than pre-Step-1
+behaviour (which lost the same state on every keystroke via a different
+mechanism). Fix: stamp a marker (e.g.
+~sub-row.dataset.mbCdtocUserOpen = '1'~) at the hide site when the sub-row
+isn't already ~display: none~, and restore to ~''~ in the show branch iff
+that marker is set.
+
+*** TODO Step 14: In-flight de-duplication for the shared CAA/EAA image cache
+
+/Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31, script
+v9.99.976), where this step is marked ~DONE~. The code is NOT on ~main~, so it
+is ~TODO~ here: per this file's preamble the keyword tracks whether a step has
+landed on ~main~, not whether anyone ever wrote it.
+
+Landed on branch ~caa-eaa-icon-fetch-dedup~ (branched off this branch's tip,
+not ~main~ — see that branch's own commit history for the full change).
+
+Prompted by a user question: on a page whose "Release"-family column shows
+an inline CAA front-cover thumbnail AND has a separate "CAA" column
+(~addCAA~), can the CAA column's "main" icon just reuse the inline icon's
+already-fetched image instead of fetching it again? Investigation found the
+two DO already fetch the byte-identical front-thumbnail URL
+(~ctx.archiveHost + entityPath + '/front-' + size~) through the same shared
+three-tier cache, ~_artFetchCachedImage()~ (~:58705~ before this change) —
+so on any table where the inline pass (always run first, never IO-gated)
+has time to resolve before the CAA-column's own icon task is dequeued from
+the shared ~_caaQueue~ (true for essentially all tables above trivial
+size), reuse was already happening for free via Tier 1 (in-memory) / Tier 2
+(IndexedDB). The only real gap was a narrow race: ~_artFetchCachedImage~ had
+no in-flight de-duplication, so on small tables (row count ≲
+~sa_caa_fetch_concurrency~, default 4) a row's inline task and its
+CAA-column icon task could both miss Tier 1/2 and independently issue a
+real network fetch for the same URL.
+
+Note the count/type enrichment (image count, back cover, medium, spine,
+booklet, …) can NEVER be served from this reuse — it comes from a
+structurally different endpoint (~ctx.apiHost + entityPath~, full JSON via
+~_artEnrichIcon~) than the front-thumbnail binary URL. Out of scope by
+construction, not a gap left open by this step.
+
+Fix: added an ~_artInFlightFetches~ Map (normalised URL → in-progress
+promise) inside ~_artFetchCachedImage~. A concurrent call for a URL already
+in flight joins that same promise instead of starting a second IDB read /
+network fetch; the Tier 2/3 body was split out into
+~_artFetchUncachedImage()~ so the wrapping/bookkeeping stays in one place.
+No call-site changes — ~_artLoadIcon~, the inline ~loadTask~, and
+~_caaFetchStats~ are all unaffected; a joined follower call transparently
+resolves with whatever ~{fromIdb, fromMemory}~ the leading call determined.
+Applies uniformly to CAA and EAA, and to both the inline and column
+pipelines, since all four go through this one shared function. Also applies
+to a THIRD consumer of the same cache found while verifying this step: the
+release-group bigbox strip (~_artInitBigPics~ → ~_loadBigImgIdb~, ~:62282~
+before this change) fetches the identical front-thumbnail URL too (its
+~sa_caa_big_img_size~ setting defaults to the same 250 as
+~sa_caa_small_img_size~), so all three now share the same de-dup.
+
+**Verification finding, worth recording**: reproducing the concurrent-
+overlap window end-to-end through the live CAA/EAA render pipeline (all
+three consumers above sharing one ~_caaQueue~) turned out NOT to be
+reliably reproducible from outside. Traced live against the "Tougher Than
+the Rest" pilot page (7 releases, concurrency 4): because bigbox/CAA-icon/
+inline each enqueue an entire pass of per-row tasks strictly after the
+previous pass's own enqueue loop finishes, and ~_caaQueue~ is a plain FIFO,
+a later pipeline's task for a given release is never admitted until every
+earlier-queued task ahead of it (including that SAME release's own earlier
+pipeline task) has already been admitted and settled — so in practice no
+genuine overlap for the same URL ever occurred on this page, and a 404
+response is never cached (only a successful fetch populates Tier 1/2), so
+each pipeline ended up making its own independent, fully-serialized attempt
+regardless of this step's fix. This does not mean the fix is pointless —
+the underlying race (two callers both past the Tier 1/2 check, before
+either has cached the result) is real and this closes it — it just means
+that race is narrower/timing-dependent enough that it isn't the dominant
+source of redundant fetches on typical pages, and a live E2E test cannot
+deterministically force it. Verified instead via a direct test-mode hook
+(~window.__saTest.fetchCachedImageConcurrent(url, n)~, calls
+~_artFetchCachedImage~ N times synchronously in one JS turn — guaranteed
+overlap, no queue/timing dependency) in
+~tests/live/caa-icon-fetch-dedup.spec.js~; confirmed to fail (5 network
+calls instead of 1) with the fix temporarily disabled and pass with it
+restored.
+
+*** TODO Step 15: CAA/EAA request-throughput tuning
+
+/Harvested from/ ~filter-performance-fix-caa-throughput~ (branch tip
+2026-08-21), where this step is marked ~DONE~ and its own numbering called it
+Step 6. The code is NOT on ~main~ — that branch is 290 commits behind — so it
+is ~TODO~ here. See the Step-number provenance table above.
+
+Split the single shared ~_caaQueue~ (concurrency 4, ~sa_caa_fetch_concurrency~)
+into two independent queues — ~_caaImgQueue~ for image loads and
+~_caaMetaQueue~ for ~_artEnrichIcon~'s JSON count-lookup ~fetch()~ calls.
+Independent of Steps 1-5 (different dimension of the same CAA/EAA subsystem
+Step 5 touches: this fixes *how fast* an already-fired request completes,
+not *when* it fires).
+
+Trigger: comparing against ~debug/jesus-coverart.js~ (jesus2099's
+~mb_FUNKEY-ILLUSTRATED-RECORDS~, the script this feature was originally
+modeled on) — its inline cover-art icons load dramatically faster and never
+seem to hit the Cover Art Archive's request limit, despite firing every
+request completely unthrottled.
+
+*Landed*: branch ~filter-performance-fix-caa-throughput~ (branched from
+~filter-performance-fix~, not ~main~ — Step 5's ~IntersectionObserver~/
+~_caaQueue~ code only exists on ~filter-performance-fix~), see
+~ShowAllEntityData_CHANGELOG.wip.json~ ~WIP.6~.
+
+- Root cause: jesus2099's script never needs manual throttling because
+  neither of its request kinds is actually CORS-bound — native
+  ~<img src>~ loads are never subject to CORS (CORS only gates script code
+  *reading* response bytes via ~fetch()~/XHR/canvas, not the browser
+  displaying an image), and its RG-count lookups are unthrottled ~XHR~ calls
+  that simply never got flagged in practice. Our own two CAA/EAA request
+  kinds have asymmetric CORS exposure: ~_artLoadIcon~'s image loads (IDB
+  path via ~GM_xmlhttpRequest~, which explicitly bypasses CORS; native
+  fallback via plain ~<img src>~) are equally CORS-free, but
+  ~_artEnrichIcon~'s JSON count lookups use a page-context ~fetch()~, which
+  *is* subject to CORS. Both kinds were nonetheless sharing one 4-slot
+  queue, so on any table with more than a handful of rows nearly everything
+  serialized behind a cap that was only ever necessary for the JSON path.
+- New settings ~sa_caa_img_concurrency~ (default 12, was 4) and
+  ~sa_caa_meta_concurrency~ (default 6) replace ~sa_caa_fetch_concurrency~.
+  ~_artInitQueue()~ now creates/cancels both queues every render pass; a new
+  ~_caaQueuesOnIdle()~ helper fires the completion toast once both queues
+  (not one shared queue) have drained.
+- All 10 former ~_caaQueue.enqueue()~ call sites were reclassified by what
+  they enqueue: 8 image-load sites (~ergInjectCaaInlineThumbnails~,
+  ~_artLoadIcon~'s retry handler, ~_artInitLazyPics~'s icon branch,
+  ~_artInitSmallPics~, ~_loadBigImgIdb~/~_loadBigImg~, the inline-pics
+  refetch task, ~init{CAA,EAA}InlinePics~'s ~loadTask~) now enqueue on
+  ~_caaImgQueue~; the 2 ~_artEnrichIcon~ sites (~_artInitLazyPics~'s
+  enrichment branch, ~_artEnrichTable~) now enqueue on ~_caaMetaQueue~.
+- No change to *when* requests fire — Step 5's ~sa_caa_io_threshold~/
+  ~IntersectionObserver~ lazy-loading is untouched; only how many of each
+  request kind can run concurrently changed.
+
+*** TODO Step 16: Decouple IDB caching from the icon-render hot path
+
+/Harvested from/ ~filter-performance-fix-caa-throughput~ (branch tip
+2026-08-21), where this step is marked ~DONE~ and its own numbering called it
+Step 7. The code is NOT on ~main~, so it is ~TODO~ here.
+
+Found alongside Step 15 but deliberately not implemented there — bigger risk
+profile (changes ~_artLoadIcon~'s IDB-path/native-fallback branching and the
+cache-hint telemetry semantics), so it gets its own independently-verifiable
+step, same pattern as every prior step in this file.
+
+Today, when IDB caching is enabled (~sa_art_idb_enable~, the default) and an
+icon is a cache miss, ~_artLoadIcon~ gates the *visible* render on a full
+~GM_xmlhttpRequest → Blob → URL.createObjectURL~ round-trip before the
+background-image is ever assigned — jesus2099's script, by contrast, just
+assigns ~img.src~ to the plain URL immediately and lets the browser's own
+(streaming, off-main-thread-decoding) image pipeline take over, which is a
+meaningful part of why it *feels* faster even independent of Step 15's
+concurrency fix.
+
+Proposed approach: assign the plain remote URL immediately for display (no
+~GM_xmlhttpRequest~, no blob, minimal/no queue wait) — matching jesus2099's
+~<img src>~ exactly — then, in the background and without blocking the
+visible render, fetch the same URL via ~GM_xmlhttpRequest~ and write the
+blob into IndexedDB purely so a *future* page load (or "Load from Disk")
+can skip the network. IDB becomes a background accelerator for next-session
+speed rather than something the current page's first paint waits on. Needs
+its own before/after telemetry check on the cache-hint reporting (a
+cold-cache load would report as "browser" instead of "network" even with
+IDB enabled, since the blob fetch would no longer be what puts pixels on
+screen).
+
+*Landed*: branch ~filter-performance-fix-caa-throughput~, see
+~ShowAllEntityData_CHANGELOG.wip.json~ ~WIP.8~. Findings while implementing,
+beyond this step's own original text above:
+
+- **Corrected premise**: the "jesus2099 just assigns ~img.src~ immediately
+  with no blocking round-trip" framing above is not accurate, confirmed by
+  reading ~debug/jesus-coverart.js~'s ~loadCaaIcon~ (lines 217-235) directly.
+  That function ALSO gates its visible ~background-image~ assignment on the
+  ~<img>~'s ~load~ event — it just has no IDB/blob middleman in front of it.
+  So the real gap was never "blocking vs. non-blocking" (both approaches
+  block); it was that our own IDB-miss path added an *extra*
+  ~GM_xmlhttpRequest~+Blob+~createObjectURL~ hop, routed through a
+  userscript-manager-privileged XHR and queued behind ~_caaImgQueue~, before
+  the browser's own native image pipeline ever got a chance to run. The fix
+  actually landed is: match jesus2099's plain ~<img src>~ for the *display*
+  leg of a miss (reusing the pre-existing native-fallback branch, previously
+  only reached when IDB was disabled or on a ~cacheBust~ retry — now factored
+  into a shared ~_artLoadNativeImg(ctx, imgurl, onSuccess, onError)~ helper),
+  while adding a new background-only leg (~_artBackgroundCacheToIdb~) to
+  preserve the IDB-population benefit for future page loads.
+- **Deviation from the plan's literal design, found and fixed during
+  implementation**: the plan's first draft proposed "splitting"
+  ~_artFetchCachedImage~ into a local-cache-only checker and a
+  network-fetch-only helper in place. That would have broken its five OTHER
+  callers (~ergInjectCaaInlineThumbnails~'s inline loader, ~58282~'s hover
+  preview, ~_loadBigImgIdb~ inside ~_artInitBigPics~, and two inline-thumbnail
+  ~loadTask~ call sites) — all of them rely on ~_artFetchCachedImage~'s full
+  three-tier (including network) *blocking* behaviour for their own display,
+  and are explicitly out of scope for this step. Fixed by leaving
+  ~_artFetchCachedImage~ completely untouched and instead adding two new,
+  separate functions: ~_artCheckLocalCache(url)~ (a small, intentionally
+  duplicated Tier-1/Tier-2-only copy, used solely by ~_artLoadIcon~'s new miss
+  path) and ~_artBackgroundCacheToIdb(url)~ (a thin wrapper that just calls
+  ~_artFetchCachedImage~ and discards/swallows its result — reusing the
+  existing fetch+IDB-write logic rather than duplicating it). Zero risk to
+  the five unrelated callers.
+- New ~_caaBgCacheQueue~ (default concurrency 4, new
+  ~sa_art_idb_bg_cache_concurrency~ setting) keeps background-caching tasks
+  off ~_caaImgQueue~ entirely — bypassing ~_caaImgQueue~ for the new
+  *display* leg was considered and rejected: ~_artInitSmallPics~'s own
+  comment and ~sa_caa_img_concurrency~'s description both document a real,
+  previously-hit ~ERR_INSUFFICIENT_RESOURCES~ failure from unthrottled image
+  loads on large tables, so the display leg still goes through
+  ~_caaImgQueue~ exactly as before. ~_caaQueuesOnIdle()~ (the completion-toast
+  gate) deliberately still only waits on ~_caaImgQueue~+~_caaMetaQueue~ — the
+  new queue draining later, silently, after the toast fires, is intentional.
+- **Cache-hint telemetry**: per the user's explicit choice, no new badge
+  state was added. A miss-then-native-display icon now flows through the
+  same ~getResourceTimingHint~ path the native-fallback branch already used,
+  landing in the ~browser~ stats bucket instead of the old synthetic
+  ~network~ bucket — more accurate (reflects what the browser actually
+  observed), not a regression. ~_caaFetchStats~'s doc comment was updated to
+  describe this; background-cache fetches are deliberately not counted in
+  ~_caaFetchStats~ at all (they never call ~_onIconLoaded~).
+- **Double-fetch bandwidth tradeoff** (a cold miss now issues two requests
+  for the same URL — native ~<img>~ for display, separate ~GM_xhr~ for IDB
+  storage): shipped without blocking on pre-verification, as planned. Not
+  yet measured against a real archive response via DevTools Network tab
+  whether the second request is served from the browser's HTTP cache —
+  follow-up measurement, not a blocker.
+- Both existing retry mechanisms (per-icon ⚠⟳ click-retry,
+  per-table "Retry" button) were confirmed unaffected — both already forced
+  ~cacheBust=true~, already routing through what is now the shared
+  ~_artLoadNativeImg~ helper; behaviour is unchanged, only the code path is
+  now shared with the new miss-case display leg instead of duplicated.
+
+*** TODO Step 17: ~content-visibility: auto~ for off-screen rows
+
+/Harvested from/ ~filter-performance-fix-caa-throughput~ (branch tip
+2026-08-21), where its own numbering called it Step 8.
+
+*This is the one step whose approach was tested and rejected.* It was validated
+manually against a real 6,440-row page before any code was written, and it
+FAILED — see "Manual validation gate result" below. No settings, helper
+functions or render-path hooks were ever written, on that branch or on ~main~.
+The named fallback direction is unstarted. Anyone reaching for
+~content-visibility~ on this codebase should read that gate first.
+
+Trigger: on tables whose rows carry inline flag imagery from the "More
+Flags Everywhere"/"Canadian Province Flags Everywhere" companion userscripts
+(custom/subdivision-level flags, e.g. a venue's city rendered as its own
+icon — see ~debug/flags-rendering.html~), a fast scrollbar-drag shows the
+sticky column (entity name) painting immediately while the rest of the row
+stays blank for a noticeable moment. Confirmed NOT the same mechanism as
+Step 5's fix (that's the "Location"/area column's flags, an entirely
+different column and a different, third-party-injected DOM subtree — CAA/EAA's
+~IntersectionObserver~ never touches it) and NOT a regression from this
+branch: ~debug/flags-rendering.html~'s single sampled ~<td>~ is 305KB,
+carrying two inline ~data:image/svg+xml;base64,…~ images (~84KB and ~221KB
+of base64 text — up to ~230KB of raw SVG vector art combined) for one row's
+venue location. A single-table render has always fully materialized every
+row's DOM at once (true on unmodified ~main~ too, long before Steps 1-5 and 15) —
+what's new here is just that this particular kind of page makes that
+already-large DOM dramatically larger per row.
+
+Mechanism (browser compositing, not our JS): ~applyStickyColumn~ sets
+~position: sticky~ on the sticky column's cells, which Chromium typically
+promotes to its own compositor layer — a thin, text-only layer that paints
+independently and cheaply. The rest of a flag-heavy row sits in the table's
+main content layer alongside hundreds of KB of embedded vector art; that
+layer's raster tile takes real, measurable time to decode/paint the first
+time it scrolls into view. A fast scrollbar-drag jump exposes a large batch
+of never-yet-rasterized rows in one step, so the (already fully built,
+already in the DOM) main-layer content stays visually blank until the raster
+catches up — while the sticky layer, having nothing expensive to paint,
+shows immediately.
+
+Goal: stop the browser from doing ANY layout/paint work for rows that are
+nowhere near the viewport, so a fast scroll never has a large batch of
+never-yet-rasterized heavy rows to catch up on — a fix at the actual
+mechanism (browser rendering), not a workaround in our JS (there is no
+practical way to "lazy load" a ~data:~ URI's decode cost the way Step 5
+lazy-loads a network request — the bytes are already inline in the DOM;
+the only lever is whether the browser bothers to lay out/paint them yet).
+
+**** Proposed approach
+
+~content-visibility: auto~ + ~contain-intrinsic-size: auto <estimate>px~ on
+every ~<tr>~ in ~table.tbl tbody~ (single-table mode first, matching every
+prior step's scoping precedent). Semantics that matter for this codebase
+specifically:
+
+- While a ~<tr>~ is off-screen (outside an internal "near viewport" margin,
+  conceptually similar to ~IntersectionObserver~), the browser skips layout,
+  style recalc for layout purposes, paint, and hit-testing for its entire
+  subtree — but does NOT remove or hide the DOM. ~textContent~, attributes,
+  ~querySelectorAll~, ~cloneNode~, and non-geometric ~getComputedStyle~
+  reads (colours, etc.) all keep working normally on a skipped row.
+- What DOES break: any read of *layout geometry* on a skipped row or its
+  descendants — ~getBoundingClientRect()~, ~offsetWidth~/~offsetHeight~,
+  ~scrollWidth~/~scrollHeight~, ~clientWidth~/~clientHeight~ — reports
+  placeholder/zero values while skipped, not the row's real laid-out size.
+- ~contain-intrinsic-size~ is the row's OWN placeholder height (so total
+  ~scrollHeight~/scrollbar-thumb size stay stable while rows skip in and
+  out) — it does not, by itself, fix geometry reads on a skipped row's
+  *descendants*, which is the actual audit concern below.
+
+**** Audit checklist
+
+Preliminary pass already done (grepped every ~getBoundingClientRect~/
+~offsetWidth~/~offsetHeight~/~scrollWidth~/~scrollHeight~ call site — 83
+total hits, most on dialogs/tooltips/dropdowns unrelated to table rows):
+
+- *Safe, confirmed* — auto-resize column-width measurement
+  (~:26247-26277~, the "Measure ALL data rows — no sampling" loop): clones
+  each cell's child nodes (~cloneNode(true)~) into a separate, always-
+  rendered ~measureDiv~ appended to ~document.body~, then reads
+  ~measureDiv.offsetWidth~ — never reads the live row's own geometry, so
+  content-visibility skipping a row doesn't affect it. (Note: this also
+  means the pass's own O(rows) cost is NOT reduced by this step either —
+  it clones every visible-per-filter row's cells regardless of scroll
+  position, both before and after. Not a goal of this step, not a risk.)
+- *Safe, confirmed* — ~applyStickyColumn~'s per-row loop
+  (~:16036-16111~): reads ~getComputedStyle(cell).backgroundColor~ only
+  (non-geometric, unaffected by skipping); ~_leftOffset()~
+  (~:15970-15972~) is hardcoded to return ~0~, no geometry read at all.
+- *Safe, confirmed* — ~_findCellListItems~ (~:16897~),
+  ~_classifyCollapseCell~ (~:17419~), ~initBarcodeHighlight~ (~:64011~),
+  ~_cdtocInitTracklistToggles~ (~:50256~): none read
+  offsetWidth/offsetHeight/getBoundingClientRect/scrollWidth/scrollHeight
+  anywhere in their bodies (grepped directly).
+- *Safe by construction* — every tooltip/hover-preview positioning call
+  site (~getBoundingClientRect~ on hover targets, e.g. ~:53454~, ~:59054~,
+  ~:60981~, ~:62578~): these only run on ~mouseenter~ of an element the
+  user is currently pointing at, which by definition cannot be in the
+  skipped (off-screen) state at that moment.
+- *Not yet checked* — ~_updateAllColHeaderCounts~/~openUniqDrop~'s row
+  scans: expected safe (textContent/DOM-structure based per Steps 3-4's own
+  analysis, no geometry reads spotted in the preliminary grep), but not
+  individually re-verified line-by-line.
+- *Not yet checked* — the CSV/JSON/org/HTML export functions: iterate every
+  row regardless of scroll position; must confirm they read only
+  ~textContent~/attributes, never geometry.
+- *Not yet checked* — sizing ~contain-intrinsic-size~ itself: row height
+  varies a lot by content (collapsed vs. expanded prose-clamp cells,
+  single- vs. multi-line lists, CAA/EAA multi-image cells) — a single fixed
+  estimate will either overshoot (wasted scroll-height padding for typical
+  rows) or undershoot (visible layout shift as a row expands past its
+  placeholder on first real render). Needs a measured-not-guessed default,
+  e.g. sampling the first N already-rendered rows' real heights at initial
+  render.
+- *Not yet checked* — Steps 1/2's show/hide (~display:none~) and reorder
+  (~appendChild~) passes: both already skip/move rows without reading their
+  geometry (confirmed for Step 2's tint-boundary walk, which was already
+  fixed to check ~tr.style.display~ only), but should be re-confirmed
+  against a ~content-visibility~-skipped row specifically, since ~appendChild~
+  on a skipped element is untested territory in this codebase.
+
+**** Verification plan
+
+DevTools Performance recording of the exact fast-scrollbar-drag gesture on
+a flags-heavy ~series/events~ page, before/after — the actual acceptance
+check per this file's own standard (see "Ranked areas" above), not the
+operation-count estimates. Confirm: reduced/eliminated blank-paint duration
+during the drag; auto-resize column widths, sticky column, filtering,
+sorting, and CAA/EAA Step-5 lazy-loading all still behave correctly for a
+row that was skipped and later scrolled into view; no scrollbar-thumb
+jumping from a bad ~contain-intrinsic-size~ estimate.
+
+**** Browser support
+
+Chromium ~85+ and Firefox 125+; not yet in Safari as of this writing. Needs
+a feature-detect guard (~CSS.supports('content-visibility', 'auto')~,
+mirroring Step 5's ~typeof IntersectionObserver !== 'undefined'~ pattern) —
+unsupported browsers simply don't get the property applied, no fallback
+behaviour needed since it's purely a rendering hint with no functional
+dependency elsewhere in the script.
+
+**** Manual validation gate result (2026-08-20): FAILED — do not implement as designed
+
+Before writing any settings/production code, this step's own risk (noted
+during planning, not in the original doc: ~<tr>~ computes to
+~display: table-row~, an "internal table box" display type with a history
+of uneven ~content-visibility~/containment support across engines) was
+checked manually against a real, live MusicBrainz page — 6,440 rows, flags
+from the companion userscripts, same fixture class as ~debug/flags-rendering.html~
+above. DevTools console snippet used:
+
+#+begin_src js
+document.querySelectorAll('table.tbl tbody tr').forEach(tr => {
+    tr.style.contentVisibility = 'auto';
+    tr.style.containIntrinsicSize = `auto ${Math.max(tr.offsetHeight, 1)}px`;
+});
+#+end_src
+
+Result: after applying the snippet and scrollbar-dragging back toward a
+previously-marked heavy row, **nothing rendered at all** — the table went
+blank rather than cleanly skipping/unskipping individual off-screen rows.
+A DevTools Performance recording taken across the same gesture got stuck at
+"Stopping timeline..." for an extended period (unclear whether this was
+merely slow trace processing on a large capture, or a symptom of the same
+underlying breakage), which blocked completing the rest of the planned
+diagnostic checklist (confirming whether the DOM row count was still
+intact, whether clearing the two style properties restored rendering, and
+which browser/version was in use). The test was stopped at this point
+rather than pushed further — the empirical result (broken rendering on a
+real page, immediately, on the very first manual try) was judged clear
+enough on its own to treat as a NO-GO without needing the full root-cause
+trace.
+
+**Decision**: do not implement ~content-visibility: auto~ on ~<tr>~
+elements as proposed above. This closes out this step's approach; it
+remains TODO, not DONE — no settings, helper functions, or render-path
+hooks from the "Proposed approach"/"Implementation" sections above were
+ever written to the userscript. No code changes resulted from this step.
+
+**Next step, if this is revisited**: per the risk noted in "Proposed
+approach" above, table-row-level containment is not a safe primitive on
+this codebase's real pages. Any future attempt needs a structurally
+different approach — e.g. wrapping each row's heavy cell content in a
+nested, non-table-row ~<div>~ and applying ~content-visibility~ to that
+wrapper instead, sidestepping the internal-table-box constraint — which
+was flagged as the fallback direction during planning but deliberately not
+designed in detail, since the validation gate existed specifically to
+avoid investing in a full design before confirming the primitive works at
+all. That fallback is unstarted; this doc should be treated as blocked
+here until someone picks that back up.
+
+*** DONE Step 18: Scope a multi-table sort's re-render to the sorted sub-table
 
 Landed on ~main~ as part of the artwork-preservation series (see the
 ~// @version~ header for the exact version); branch
@@ -356,14 +1064,580 @@ Artwork is unaffected in both arms — zero archive requests, icons and
 inline thumbnails still painted at insertion — because the two source-row
 mirrors land independently of this.
 
-*** TODO Step 5: Lazy CAA/EAA loading (IntersectionObserver)
+**** Measurement coverage: what the harness can and cannot see
 
-Defer CAA/EAA icon loads + JSON-API enrichment until a row's art cell
-scrolls near the viewport, instead of firing for every row at initial
-render. Reference: ~archive/filter-performance-fix-v1-single-table~'s WIP.2
-("Pattern 5") — ~sa_caa_io_threshold~ setting, per-ctx persistent observer.
-Independent of Steps 1-4 (different subsystem); can be done in any order
-relative to them.
+Recorded here because two other steps point at it, and because the answer is
+counter-intuitive: *none of the CAA/EAA work in Steps 18 and 19 can show up in
+this repo's interaction-perf numbers at all.*
+
+~tests/support/capture-interaction-perf.js~ is hardcoded to ~artist-events~,
+which is ~tableMode: 'single'~ — so Step 18's scoping, a multi-table-sort
+mechanism, cannot reach it — *and* it seeds ~sa_enable_caa_pics: false~, so
+Step 19's artwork mirrors cannot reach it either. Those numbers being flat
+across this work is a property of the harness, not evidence about the work.
+
+What each step was measured with instead:
+
+- *Step 18*: an in-place A/B via
+  ~tests/live/caa-icon-survives-sort-multi.spec.js~ with ~MULTI_CAA_URL~ /
+  ~MULTI_CAA_BUTTON~, reading the sub-table's own ~.mb-sort-status~ text —
+  the table above.
+- *Step 19*: insertion-time COUNTS rather than milliseconds, which is the
+  right metric for work whose point is eliminating requests and DOM churn.
+
+Baselines on disk, and their real vintage:
+
+| File (under ~tests/snapshots/~) | Captured | Version | What it is |
+|---------------------------------+----------+---------+------------|
+| ~artist-events/interaction-perf-main-2026-08-24-v9.99.953.json~ | 2026-08-24 | 9.99.953 | pre-Step-4, pre-chunked-render-fix, pre-Step-18; a different machine |
+| ~artist-events/interaction-perf-fix-chunked-render-header-counts.json~ | 2026-08-31 | 9.99.976 | the de-facto current-~main~ row for a long time, filed under a branch since merged and deleted |
+| ~artist-events/interaction-perf-worktree-perf-step-4.json~ | 2026-08-31 | 9.99.970 | Step 4's own branch arm |
+| ~artist-releasegroups/perf-baseline.json~ | see file | see file | initial fetch+render wall time, from ~capture-snapshots.js --perf~ |
+
+*A CAA-on baseline is still unavailable, and that is a rate-limit problem, not
+a missing script.* The two pages worth measuring — Springsteen's
+~artist-relationships~ (24 sub-tables, 418 synthetic CAA anchors, 338 stripe
+wrappers, ~750 artwork items) and his ~artist-releases~ — stall cold:
+measured, the Cover Art Archive served 56 requests in the first 45 s at its
+rate limit, with ZERO icons painted, and a 300 s wait never saw
+~#mb-info-display-caa~ because the queue had not drained. A real browser
+profile hides this behind a warm IndexedDB cache; a fresh harness profile has
+none.
+
+The enabling pieces already exist and are unused for this:
+~tests/support/capture-idb-fixture.js~ captures real
+~{url, base64, contentType}~ records, and ~tests/support/idbFixture.js~'s
+~seedArtIdbFixture()~ rebuilds genuine ~Blob~s inside the page before the
+userscript opens its DB (~storageState~ cannot round-trip Blobs — see that
+file's own JSDoc). Extending that capture to a large multi-table page and
+adding a CAA-on arm to ~capture-interaction-perf.js~ is the unstarted work;
+until it exists, Steps 18 and 19 are measured by counts and by one bespoke
+A/B, not by this repo's standing latency harness.
+
+*** DONE Step 19: CAA/EAA artwork preserved across a re-render
+
+Landed on ~main~ as versions *9.99.1032 → 9.99.1039* (2026-09-06/07), across
+seven short-lived branches. Not originally part of this plan — it was reported
+as a visual bug ("sorting looks like it re-downloads every image") and only
+turned out to be a performance item once measured. Recorded here because two
+of its pieces are pure request-elimination and because it is the sibling of
+Step 5: Step 5 is about *when* an artwork request fires, this step is about
+*not firing it again*.
+
+The whole series in landing order, with the mechanism each added:
+
+| Version | What stopped happening | Mechanism |
+|---------+------------------------+-----------|
+| 9.99.1032 | icon column blanking on every keystroke/sort, single-table | opt-in ~preserveLiveArt~ on ~_stripTransientCellState()~ |
+| 9.99.1033 | "all artwork loaded" toast re-firing on every sort | ~_showCaaCompletionToast()~ split into four jobs |
+| 9.99.1035 | inline thumbnails vanishing, single-table | placeholder branch + ~_artInlinePhIsLiveBlob()~ |
+| 9.99.1036 | the big-picture stripe emptying to ⌛ hourglasses | ~_artMemCachedObjectUrl()~ paints from the session memory cache at build time |
+| 9.99.1037 | *20 doomed archive requests per sort* | ~_artMissCache~ / ~_ART_MISS_STATUSES~ (404 and 410 only) |
+| 9.99.1038 | icons blanking, *multi*-table | ~_artMirrorIconToSourceRow()~ |
+| 9.99.1039 | inline thumbnails vanishing, *multi*-table | ~_artMirrorInlineThumbToSourceRow()~ |
+
+*Measured as counts, not milliseconds*, deliberately: the point of the work is
+that DOM nodes are not destroyed and requests are not issued, and a count says
+that unambiguously where a timing delta would not.
+
+|                            | small RG (7 rows) | Springsteen RG (124 rows / 3 tables) | 17-section artist page |
+|----------------------------+-------------------+--------------------------------------+------------------------|
+| inline thumbs at insertion | 0/7 → 7/7         | 0/119 → 119/119                      | —                      |
+| icons painted at insertion | 7/7 (unchanged)   | 119/124 (unchanged)                  | 0/123 → 85/123         |
+| archive requests per sort  | 20 → 0            | 0                                    | 0                      |
+
+Three things worth keeping:
+
+- *Why the icon fix could not be reused for the thumbnails.*
+  ~_artMirrorIconToSourceRow()~ writes a VALUE (~background-image~) onto a
+  ~span.caa-icon~ the source row already owns, and ~cloneNode(true)~ carries
+  inline styles through. An inline thumbnail is a NODE this script creates, and
+  ~_artInitInlinePics()~ only ever injects it into the live clones — so on
+  ~tableMode: 'multi'~ the rows in ~groupedRows[i].rows~ never held one, and
+  the placeholder branch that makes single-table work had nothing to match.
+  The fix had to CONSTRUCT the placeholder on the source cell, not copy a value.
+- *Both mirrors use* ~_findMasterRowByIdx()~, not a group-index lookup. Merged
+  discography view folds other groups' rows into the first-occurrence table, so
+  an index lookup silently misses exactly those rows.
+- *Only a DEFINITIVE absence is negative-cached* (404/410). A 5xx, network
+  error or timeout is left uncached on purpose, because the Cover Art Archive
+  fails in bursts and caching that would turn a few seconds of upstream trouble
+  into a permanently blank column.
+
+*Still open from this series*: the re-enrichment shape — see Step 20.
+
+*** TODO Step 20: Separate "re-apply artwork highlight" from "re-fetch artwork enrichment"
+
+Found 2026-08-29 while verifying an unrelated fix (see ~debug/NOTES.md~,
+"CAA/EAA completion signal never fires after runFilter()"), scoped out at the
+time as needing its own design pass, and never recorded in this file until now.
+
+~runFilter()~ deliberately strips every cloned row's
+~data-caa-enriched~/~data-eaa-enriched~ markers before re-rendering, so that
+~_artHighlightImageLi~ re-applies the active filter's highlight to CAA/EAA art
+cells. That part is necessary and not a bug. The side effect is that
+~_artEnrichIcon~ then treats every cell as unenriched too, and re-queues a full
+re-fetch of every image's enrichment data on every single filter or sort
+action — including the first ~runFilter()~ after a disk restore, where the data
+was already fully populated in the fixture.
+
+*Measured* on the BoDeans ~artist-releases~ fixture (56 rows): ~_caaQueue~ held
+*220 pending + 4 running* tasks immediately after a disk-load's first
+~runFilter()~, taking real wall-clock time to drain. Contrast
+~initRelationshipsColumn()~, which correctly skips already-~relDone~ cells and
+never re-fetches them.
+
+*Status: mitigated, not closed.* Step 19 removed the observable cost on the
+paths it covers — the mirrors mean a re-render no longer arrives with blank art
+to re-resolve, and ~_artMissCache~ stops the doomed retries, so a sort on a
+covered page now issues zero archive requests. But the strip-and-re-enrich
+shape is unchanged: the markers are still stripped on every pass, and
+~_artEnrichIcon~ still cannot tell "re-apply a highlight to art I already know
+about" from "go and fetch enrichment data". Any page or path the Step 19
+mirrors do not cover still pays it.
+
+The fix is to make that distinction explicit rather than to stop stripping —
+the highlight genuinely does need re-applying. Two shapes worth considering:
+a separate marker for "enrichment data known" that survives the strip, or
+moving the highlight re-application off the enrichment path entirely.
+
+*** TODO Step 21: Artwork-presence sort keys are stripped from the sort path
+
+A correctness bug, filed here because it was found while auditing Step 18/19's
+sorting work and because its fix belongs with the sort-key handling Step 10
+touches. *Pre-existing and long-standing* — not introduced by Steps 18 or 19.
+The pickaxe bottoms out at ~cf5042c~ (2026-05-16, a repo-wide rename), so it
+predates the visible history.
+
+*Sorting a CAA/EAA column does not order rows by artwork presence.* It cannot:
+both comparators read only ~getCleanVisibleText()~, and that function strips
+the sentinel the ordering depends on.
+
+The mechanism, verified at 9.99.1045:
+
+- ~_CLEAN_STRIP_SEL~ (~:38143~) contains ~'.mb-caa-sort-key,.mb-eaa-sort-key,'~
+  (~:38166~) and ~'.mb-inline-art-sort-key,'~ (~:38150~) — plus ~.caa-icon~,
+  ~.artwork-icon~, ~.mb-caa-count-badge~ and the cache-hint wrappers, so a
+  plain CAA/EAA icon cell has no surviving text at all.
+- ~getCleanVisibleText()~ (~:38082~) removes all of it by clone-and-remove
+  *before* its TreeWalker runs, with a ~FILTER_REJECT~ belt-and-braces at
+  ~:38108~.
+- ~createSortComparator()~ (~:18563~, values at ~:18565-18566~) and
+  ~createMultiColumnComparator()~ (~:18598~, ~:18604-18605~) read *only*
+  ~getCleanVisibleText()~. ~_sortColumnKind()~ (~:16552~) has no CAA/EAA
+  branch and classifies these columns ~'text'~.
+
+*The strip itself is correct and must stay* — its own comment explains why: a
+typed column filter of ~"no"~ would otherwise match ~"not readable"~,
+~"known"~, and the sentinel text itself. What is missing is that the other two
+consumers were each given a replacement and sorting was not:
+
+| Consumer | How it survives the strip |
+|----------+---------------------------|
+| Column filter | explicit bypass in ~testRowMatch()~ (~:41738-41749~) — exact-match test straight against the span |
+| Unique-values dropdown | migrated to structure-mode relabeling ("✓ has artwork" / "✗ no artwork" via ~_cellMatchesStructureMode()~) |
+| *Sort* | *nothing* |
+
+An audit of every sort-key class the script creates shows the damage is
+confined to the two artwork ones — the other two never entered
+~_CLEAN_STRIP_SEL~ and still sort as documented:
+
+| Sort-key class | In ~_CLEAN_STRIP_SEL~? | Contract |
+|----------------+------------------------+----------|
+| ~mb-caa-sort-key~ (serves EAA too) | *yes* (~:38166~) | *broken* — JSDoc ~:3614~ still claims ~"no" < "yes"~ works |
+| ~mb-inline-art-sort-key~ | *yes* (~:38150~) | filter-only by design, so no sort contract broken — but ~_artSetInlineSortKey()~'s JSDoc claims the strip pass excludes its class, and that no bypass is needed. Both false. |
+| ~mb-cancelled-sort-key~ | no | intact — JSDoc ~:3827~ correct |
+| ~mb-video-sort-key~ | no | intact — JSDoc ~:3525~ correct |
+
+Note ~.mb-eaa-sort-key~ is in the strip selector but is never created: the
+~caa~ extractor always writes ~mb-caa-sort-key~ regardless of CAA vs EAA.
+
+*Why it went unnoticed*: no spec asserts that a CAA/EAA column orders by
+artwork presence. ~caa-icon-survives-sort.spec.js~ and its multi-table sibling
+assert that artwork *survives* a sort, which is a different guarantee and is
+met.
+
+**** Fix shape
+
+Mirror the filter bypass, which is the precedent this should follow:
+
+1. In ~createSortComparator()~ and ~createMultiColumnComparator()~, before
+   falling through to the text compare, read
+   ~cell.querySelector('.mb-caa-sort-key,.mb-eaa-sort-key')~ directly and use
+   its ~'yes'~/~'no'~ text — exactly as ~:41749~ already does for filtering.
+   Both comparators must change together; they have disagreed before (see
+   ~_sortColumnKind()~'s own JSDoc for that history).
+2. Add a regression test. There is currently none for this guarantee, which is
+   why it regressed silently.
+3. Correct three JSDoc blocks that document behaviour which does not happen:
+   - ~:3609-3617~ (and the inner ~appendSortKey~ block) — the ~"no" < "yes"~
+     sortability claim.
+   - ~_artSetInlineSortKey()~ — the "strip pass does not include this class"
+     and "no bypass required" claims.
+   - ~:56576~ — describes Step 3 as "not part of this branch", written when
+     ~_visibleRowSetSignature~ lived on a branch. Unrelated to this bug, but
+     it is the one remaining stale ~PERFORMANCE.org~ cross-reference in the
+     userscript and it is cheap to fix in the same pass.
+
+All three are userscript JSDoc, so this step carries a version bump and a
+changelog entry; the consolidation revision that filed it did not.
+
+** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
+
+/Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31). *Everything below
+was measured with Steps 1, 2, 3 and 5 applied, none of which are on* ~main~ —
+so the "this branch" column describes a configuration that does not exist here.
+It is kept because the two findings it establishes are branch-independent and
+expensive to rediscover: that Fix C's win depends on filter selectivity (it
+LOSES on a narrow filter, which is the common case), and the traced reason why.
+
+Consolidated results from a full measurement session on ~artist-events~
+(Bruce Springsteen's events tab, 4174 rows, 21 columns — the pageType
+~tests/snapshots/registry.org~ earmarks as the dedicated performance-
+comparison target). All numbers are external/user-perceived wall-clock via
+Playwright unless marked "internal" (self-reported ~performance.now()~
+duration from inside the userscript itself, which excludes debounce/
+Playwright-polling overhead but — see the sort row below — can also
+understate real perceived latency when a forced-reflow call is what's
+being removed). Full methodology, test files, and raw JSON:
+~tests/live/artist-events-interactions.spec.js~,
+~tests/support/capture-interaction-perf.js~,
+~tests/snapshots/artist-events/interaction-perf-<branch>.json~.
+
+*** Headline: narrow filter (real usage: a specific, mostly-complete search term)
+
+"Country" = "United Kingdom" — 158 of 4174 rows match (~4%).
+
+| Interaction           |     ~main~ | ~perf-steps-1-4~ | Δ                     |
+|------------------------+-----------+------------------+------------------------|
+| Global filter          |   1418 ms |          2383 ms | +68% slower            |
+| Column filter          |   1595 ms |          2437 ms | +53% slower            |
+| Sort (unfiltered)      |   2994 ms |          3669 ms | +23% slower (was +47%) |
+| Uniq-dropdown, cold    |  29802 ms |         27838 ms | ~parity                |
+| Uniq-dropdown, warm    |  29700 ms |           791 ms | *37x faster*           |
+
+Sort's "was +47%" parenthetical is the *before* number for the ~e6aa959~
+sort-skip fix (see its own subsection below) — landed mid-session, already
+reflected in the "now" column above.
+
+*** Filter selectivity flips the winner: wide filter
+
+Same mechanism, different query — "Country" = "United States", 3380 of 4174
+rows match (~81%). *Internal* (self-reported) duration, since this was a
+targeted root-cause probe, not a full external-wall-clock run:
+
+| Interaction (internal) | ~main~ | ~perf-steps-1-4~ | Δ                    |
+|-------------------------+-------+------------------+-----------------------|
+| Column filter, narrow (4%)  |  230 ms |   321-348 ms | perf-steps-1-4 slower |
+| Column filter, wide (81%)   |  977 ms |         397 ms | *perf-steps-1-4 2.5x faster* |
+
+~main~'s cost scales *linearly* with match count (cloneNode+insert+rescan
+is proportional to the rebuilt table's size). ~perf-steps-1-4~'s cost is
+roughly *constant* regardless of match rate (dominated by a fixed
+forced-reflow cost across the full 4174-row table, whether 158 or 3380 rows
+end up visible). Real interactive typing is progressive — early keystrokes
+are wide, later ones narrow — so Steps 1-2 likely net out closer to a wash
+in practice than the single-query headline table above suggests on its own.
+
+*** Root cause of the narrow-filter regression (traced via temporary instrumentation)
+
+~performance.now()~ marks added directly inside each branch's
+~runFilter()~ single-table branch (profiled, then reverted — not committed;
+see ~debug/NOTES.md~'s 2026-08-24 entry for the full trace and how to
+reproduce), for the narrow ("United Kingdom", 158/4174) case:
+
+| Sub-step                          |    ~main~ | ~perf-steps-1-4~ |
+|------------------------------------+----------+------------------|
+| Filter-test scan (all 4174 rows)   |   39.6 ms |          37.3 ms |
+| Row mutation (clone vs. style-toggle) | 18.0 ms |       23.5 ms |
+| DOM insert/replace                 |  121.4 ms |               — |
+| *Forced reflow*                    |   34.8 ms |         219.3 ms |
+| ~initCollapsableColumns()~ rescan  |    7.4 ms |             0 ms |
+| ~_syncCollapseHasMatchInTable()~   |         — |          38.8 ms |
+| *Total (self-reported)*            |  ~230 ms |          ~321-348 ms |
+
+~main~ pays ~139ms more for cloning/inserting rows; ~perf-steps-1-4~ pays
+~184ms more in forced-reflow cost alone, which dominates. Root cause:
+~main~'s rebuild only ever lays out a table containing the MATCHES (158
+rows); Step 1 keeps all 4174 rows permanently in the live DOM, so the next
+forced reflow (here, ~window.scrollTo()~, called unconditionally at the end
+of every ~runFilter()~ pass to restore scroll position) must lay out the
+FULL row set, including the ~4016 now-hidden ones. Interestingly,
+~initCollapsableColumns()~'s documented "30-120s for 8k+ rows" cost — the
+ORIGINAL dominant-cost target behind Steps 1-4 — turns out to be cheap here
+specifically BECAUSE ~main~'s rebuild already shrinks the table to just the
+matches before that rescan runs; it may still dominate for a filter that
+narrows only slightly (not verified).
+
+**** Attempted mitigation: CSS containment — did not work
+
+Tried both ~content-visibility: auto~ on every ~<tr>~ (see this file's own
+"Known limitations" section below for why that's a considered, deferred
+technique for a related cost) and ~table-layout: fixed~ with locked
+~<col>~ widths (the exact technique this codebase's own manual-resize
+handler already uses, with the comment "so subsequent width writes are
+cheap" — see ~ShowAllEntityData.user.js~ around ~:25860~). Measured against
+the same forced-reflow probe, isolated to the table (~table.offsetHeight~,
+not ~document.body.offsetHeight~, to rule out unrelated page content):
+
+| Technique                          | forced reflow (2 runs) |
+|--------------------------------------+------------------------|
+| Baseline (table-layout: auto)        | 200.0 ms / 199.8 ms   |
+| ~content-visibility: auto~ on all ~<tr>~ | 250.8 ms / 198.7 ms (no improvement; sometimes worse) |
+| ~table-layout: fixed~ + locked ~<col>~   | 211.5 ms / 177.7 ms (within noise, no real win) |
+
+Neither technique meaningfully reduces the cost — it isn't the
+auto-table-layout column-width algorithm that dominates, it's the sheer
+per-row layout bookkeeping for the table's 4174 ~<tr>~ elements, which neither
+technique eliminates. A real fix would need actual DOM virtualization
+(rendering only the rows near the viewport), a materially bigger change
+than either of these. Not implemented.
+
+*** Sort-skip fix (landed, commit ~e6aa959~): internal vs. external gap
+
+Sort always called ~runFilter()~ internally after reordering, even with no
+filter active — pure no-op work once the DOM is already correctly
+reordered. Gated behind a new ~_hasAnyActiveSingleTableFilter()~ check.
+
+| Measurement                          | before fix | after fix | Δ            |
+|----------------------------------------+-----------+-----------+---------------|
+| Internal (self-reported) sort duration | 2842 ms   |    995 ms | -65%          |
+| External (wall-clock) sort duration    | ~4388 ms  |   3669 ms | -16%          |
+
+*Methodology lesson*: internal ~performance.now()~ deltas alone are NOT a
+reliable proxy for perceived latency when a forced-reflow call is what's
+being removed — the layout cost doesn't disappear, it's deferred to
+whenever the browser (or a later DOM read, e.g. Playwright's own status-
+text polling) next needs it. Always cross-check against external wall-clock
+for this class of change. Even after this fix, sort remains ~23% slower
+than ~main~ (see headline table above) — the fix mitigates the Step 1-2
+regression, it does not close it.
+
+*** Step 5 (lazy CAA/EAA): dramatic, unambiguous win
+
+~artist-events~ normally seeds ~sa_enable_caa_pics: false~ for every other
+measurement in this session (the EAA queue doesn't complete in reasonable
+time at this row count) — but the pageType's own ~addEAA: 'Event'~ feature
+makes CAA/EAA a real, relevant cost to measure once, with CAA force-enabled
+and ~GM_xmlhttpRequest~ still stubbed (always a fast 404, so this isolates
+queue/DOM-update overhead, not real network latency):
+
+| Branch                         | Time to CAA/EAA queue completion |
+|----------------------------------+-----------------------------------|
+| ~main~ (no Step 5, eager loading) | *did not complete within 180s*   |
+| ~perf-steps-1-4~ (Step 5, lazy)   | 42.2 s                           |
+
+Matches PERFORMANCE.org's own ~99% estimate for this step. Unambiguous win,
+no caveats found.
+
+*** Cross-check: Steps 3-4 alone (branch ~perf-steps-3-4~, main + only these 2 commits)
+
+Cherry-picked Steps 3-4 directly onto ~main~ (skipping 1-2-5) to isolate
+their effect, confirming they have no dependency on Steps 1-2's DOM-mutation
+approach — both only wrap ~_updateAllColHeaderCounts()~/~openUniqDrop()~,
+neither of which Steps 1-2 touch:
+
+| Interaction         |     ~main~ | ~perf-steps-3-4~ | Δ                          |
+|-----------------------+-----------+------------------+-----------------------------|
+| Global filter         |   1418 ms |          1340 ms | no regression (noise)      |
+| Column filter         |   1595 ms |          1602 ms | no regression (noise)      |
+| Sort                  |   2994 ms |          2907 ms | no regression (noise)      |
+| Uniq-dropdown, warm   |  29700 ms |           739 ms | *40x faster*               |
+
+~post-filter.html~/~post-sort.html~ diffed against ~main~'s committed
+baseline as byte-for-byte *"unchanged"* — Steps 3-4 add caching only, never
+alter rendered output. This is the clean, no-downside subset: all of the
+uniq-dropdown win, none of the filter/sort regression. Pushed to
+~origin/perf-steps-3-4~, PR not yet opened.
+
+*** Takeaways
+
+- *Steps 3-4 (header-count + uniq-dropdown caching): ship these.* Clean,
+  large win (~37-40x on uniq-dropdown warm-open), zero measured downside,
+  verified independent of Steps 1-2. Live on ~perf-steps-3-4~.
+- *Step 5 (lazy CAA/EAA): ship this too*, independently — dramatic,
+  unambiguous win for any CAA/EAA-relevant page over the lazy-load
+  threshold, no regression surface found.
+- *Steps 1-2 (filter/sort in-place re-render): real tradeoff, not a clean
+  win.* Loses on narrow/completed-query filters and (even after the
+  sort-skip mitigation) on sort; wins substantially on wide filters. The
+  original premise — that ~initCollapsableColumns()~'s "30-120s for 8k+
+  rows" rescan is the dominant unaddressed cost — doesn't hold for a narrow
+  filter on this page: that rescan turns out to already be cheap on ~main~,
+  because its own rebuild shrinks the table to just the matches *before*
+  the rescan runs. Worth keeping and iterating on (real, if partial, wins
+  exist — sort-skip is proof), but should not be presented as a strict
+  improvement over ~main~ without the caveats in this section.
+
+** Findings from performance code-review (2026-08-25)
+
+/Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31). These findings were
+raised against *that branch's* Steps 1-5, so the "regressions" listed are
+regressions in unmerged code, not in ~main~. They became this file's Steps
+6-14; read them as the rationale behind those steps. Two exceptions apply to
+~main~ directly and are noted inline: the ~_visibleRowSetSignature~
+order-dependence (Step 6, which affects ~main~'s shipped Step 4) and the
+async-column invalidation gaps (Step 8, whose uniq-drop half landed on ~main~
+with Step 4).
+
+Local ~/code-review~ pass (forked agent, ~12 min / 55 tool calls — not the
+cloud ultra review, no ultra credit spent), scoped to two questions:
+correctness regressions in already-landed Steps 1-5, and further
+performance opportunities not yet covered by them. Ranked most severe/
+highest-impact first within each group; each item below becomes its own
+Step 6+ heading in "Implementation steps".
+
+*** Correctness regressions in Steps 1-5
+
+1. ~_visibleRowSetSignature()~ (~:49412~) is documented as order-independent
+   ("regardless of row order") but is actually an order-DEPENDENT string
+   concat over ~tbody.rows~ in DOM iteration order. Sort (Step 2) reorders
+   rows in place without hiding/showing any of them, so the row SET is
+   unchanged but the signature STRING changes — every cache keyed on this
+   signature (both Step 3's header-counts cache and Step 4's uniq-drop
+   cache) spuriously misses after any sort, forcing the full O(rows x
+   columns) recompute both steps were built to skip. This silently negates
+   the "37-40x faster warm uniq-dropdown open" win documented above the
+   moment a sort has happened first — far and away the highest-impact
+   regression found, since it undoes two already-shipped, already-measured
+   steps at once.
+2. Step 5's lazy-load gate (~_useIO~, ~:63104~) computes
+   ~allRows.length >= sa_caa_io_threshold~, but ~allRows~ is only populated
+   in single-table mode — it stays empty for every ~tableMode: 'multi'~
+   page (e.g. ~user-ratings~' "Release groups"/"Events" sub-tables, which
+   declare ~addCAA~/~addEAA~). ~_useIO~ is therefore always ~false~ on
+   multi-table CAA/EAA pages regardless of row count, so lazy loading never
+   activates there — reproducing the exact "did not complete within 180s"
+   eager-load queue-saturation failure Step 5 was built to fix, for every
+   multi-table art page.
+3. ~initReleaseEventsColumn()~'s post-population re-init (~:53971~) calls
+   Step 3's ~_invalidateColHeaderCountsCache(t)~ but never Step 4's
+   ~_invalidateUniqDropDataCache~ — a uniq-drop dropdown opened for
+   Release events/Country/Date while that column is still populating can
+   cache a near-empty bundle that then never refreshes (nothing invalidates
+   it afterward) until an unrelated filter/sort happens to change the
+   row-set signature.
+4. ~initRelationshipsColumn()~/~initPicardTaggerColumn()~ (~:54689~) never
+   re-trigger ~initCollapsableColumns()~/the recount pass at all — Step 3's
+   own implementation notes already flagged this as a pre-existing gap for
+   header counts; Step 4 adds a second, equally uninvalidated cache
+   (~relIconCounts~ and friends) on top of it with no new invalidation path
+   either.
+5. ~_rowTextCache~ (~:30460~, filter-match text memoization) is never
+   invalidated anywhere in the file. A filter run before an async column
+   (Release events/Relationships/Picard) finishes populating permanently
+   caches that row's pre-population (often empty) text; a later filter
+   query that should match the now-arrived data silently won't, for the
+   rest of that render's lifetime. Pre-existing, not introduced by this
+   branch — but Step 1 (rows now persist live across far more filter passes
+   than before) makes it bite more often.
+
+*** New performance opportunities (candidate Step 6+, not yet in the plan above)
+
+1. ~sortLargeArray~'s comparator (~createSortComparator~/
+   ~createMultiColumnComparator~, ~:15508~) calls ~getCleanVisibleText()~
+   (clone + ~TreeWalker~ text extraction) fresh on every pairwise
+   comparison instead of once per row before sorting — for a 5,000-row
+   merge sort (~n log n~ ~ 60,000+ comparisons), that's 100,000+ redundant
+   DOM-text extractions instead of the 5,000 actually needed.
+   ~createMultiColumnComparator~ additionally re-derives each column's
+   ~isNumeric~ from the header text on every single comparison, even though
+   it's invariant per column for the whole sort. Likely the single largest
+   un-investigated contributor to the "Sort (unfiltered): 2994ms main /
+   3669ms perf-steps-1-4" numbers above — the root-cause trace in this file
+   only examined reflow/rebuild cost, never the comparator itself. Fix:
+   precompute each row's sort-key text (and each column's ~isNumeric~) once
+   before calling ~sortLargeArray~ (decorate-sort-undecorate).
+2. ~applyExtractTrackTitleData()~'s ~_anyTitleCellMatches()~ helper
+   (~:7748~) runs one independent full-table DOM scan per "does any track
+   need column X" presence check (video/recArtist/disambig/streaming/
+   recOf/recordedAtEvent/recordedAtPlace/recordedInArea/mixedAtPlace/
+   recOfDate, ...) — ~10-15 sequential full re-walks of every row for what
+   is logically one combined page-wide characterization pass, on every
+   ~release-tracks~ fetch/re-render.
+
+*** Cross-check: cloud ultra review (2026-08-25)
+
+Ran the first of 3 free ~/code-review ultra~ passes against this branch's
+diff vs ~main~ (multi-agent, cloud, ~5-10 min). Independently re-derived
+three of the five regressions above with no visibility into this file's
+own analysis (confirms they're real, not local-review artifacts) and
+surfaced two things the local pass missed:
+
+- Confirmed, matching Steps 6/7/9 above one-for-one: ~_visibleRowSetSignature~
+  order-dependence (severity ~normal~ — the review's own words: "silently
+  negating this branch's own measured 37-40x faster warm uniq-dropdown open
+  headline win"), the multi-table Step-5 IO gate (severity ~nit~ — correctly
+  notes it's a no-regression-vs-~main~ miss, not a new break), and
+  ~_rowTextCache~ (severity ~pre_existing~, matching this file's own framing
+  exactly).
+- Extended Step 8: found a third uninvalidated ~_uniqDropDataCache~ site
+  (~_artSetInlineSortKey()~ — folded into Step 8 above).
+- **New, most severe finding overall — a live crash, not a missed
+  optimization**: Step 5's animation-frame-batching fix references two
+  undeclared variables (~_caaImgQueue~/~_caaMetaQueue~ instead of
+  ~_caaQueue~), throwing ~ReferenceError~ the first time the
+  IntersectionObserver callback fires — breaking lazy CAA/EAA loading
+  entirely on exactly the large-table case Step 5 was built for. Filed as
+  new Step 12 above, ahead of Steps 6-11 in urgency since it's already-
+  shipped, already-broken code rather than a future optimization.
+- New nit: cdtoc sub-row expansion state lost across a filter hide→show
+  cycle (Step 1's else-branch overwrites the only state record without a
+  restore path). Filed as new Step 13 above.
+
+** Known limitations (out of scope)
+
+/Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31). Applies to ~main~
+unchanged — it is a property of the companion flag userscripts and the
+browser's rasterizer, not of any step in this plan.
+
+*** Flag-image rasterization cost on flag-heavy tables
+
+Reported symptom, distinct from the Step 5 scroll-jank fix above: on tables
+whose rows carry inline flag imagery from the "More Flags Everywhere"/
+"Canadian Province Flags Everywhere" companion userscripts (custom/
+subdivision-level flags, e.g. a venue's city rendered as its own icon — see
+~debug/flags-rendering.html~), a fast scrollbar-drag shows the sticky column
+(entity name) painting immediately while the rest of the row stays blank for
+a noticeable moment. Confirmed NOT the same mechanism as the CAA/EAA fix
+above (that's the "Location"/area column's flags, an entirely different
+column and a different, third-party-injected DOM subtree — CAA/EAA's
+~IntersectionObserver~ never touches it) and NOT a regression from this
+branch: ~debug/flags-rendering.html~'s single sampled ~<td>~ is 305KB,
+carrying two inline ~data:image/svg+xml;base64,…~ images (~84KB and ~221KB
+of base64 text — up to ~230KB of raw SVG vector art combined) for one row's
+venue location. A single-table render has always fully materialized every
+row's DOM at once (true on unmodified ~main~ too, long before this work) —
+what's new here is just that this particular kind of page makes that
+already-large DOM dramatically larger per row.
+
+Mechanism (browser compositing, not our JS): ~applyStickyColumn~ sets
+~position: sticky~ on the sticky column's cells, which Chromium typically
+promotes to its own compositor layer — a thin, text-only layer that paints
+independently and cheaply. The rest of a flag-heavy row sits in the table's
+main content layer alongside hundreds of KB of embedded vector art; that
+layer's raster tile takes real, measurable time to decode/paint the first
+time it scrolls into view. A fast scrollbar-drag jump exposes a large batch
+of never-yet-rasterized rows in one step, so the (already fully built,
+already in the DOM) main-layer content stays visually blank until the raster
+catches up — while the sticky layer, having nothing expensive to paint,
+shows immediately.
+
+Not implemented — deliberately deferred rather than folded into Step 5,
+since a real fix (the standards mechanism for "skip layout/paint of
+off-screen content until it's about to be needed" is CSS
+~content-visibility: auto~ + ~contain-intrinsic-size~ on ~<tr>~) is a
+structural change with real risk: every place that reads a row/cell's
+dimensions while it *could* be off-screen — auto-resize column-width
+measurement, the sticky-column left-offset calculation, anything using
+~getBoundingClientRect~/~offsetWidth~/~offsetHeight~ on a row not currently
+in the viewport — would need auditing, since ~content-visibility: auto~
+makes an element report placeholder (contain-intrinsic-size) dimensions
+while off-screen rather than its real laid-out size. Candidate for its own
+dedicated, independently-verifiable step if picked up later. Not pursued on
+this branch — CAA/EAA request-throughput tuning (Steps 6-8 on the source
+branches) is out of scope for this port; see this file's git history on
+~filter-performance-fix-caa-throughput~ if that work is wanted later.
 
 ** Resuming after /clear
 

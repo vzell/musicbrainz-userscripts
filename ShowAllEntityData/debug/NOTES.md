@@ -7727,3 +7727,89 @@ passed; the failure was the final `expect(pageErrors).toEqual([])`). It did not
 reproduce: 4/4 green on the branch afterwards and 3/3 on the unmodified tree.
 Consistent with MusicBrainz serving an HTML error page for some resource during
 a burst, not with this change, which parses nothing.
+
+## 2026-09-07 — PERFORMANCE.org consolidated; CAA/EAA sort-key regression found (recorded, NOT fixed)
+
+Two unrelated things, both from one question: "do the latest CAA/EAA sorting
+changes affect what PERFORMANCE.org says?"
+
+### The doc had forked into three incompatible numberings
+
+`main`, `perf-steps-1-4` and `filter-performance-fix-caa-throughput` each had a
+different **Step 6** — the sub-table sort scoping (added 2026-09-07),
+`_visibleRowSetSignature` order-dependence, and CAA/EAA request-throughput
+tuning respectively. That had already broken a live cross-reference:
+`ShowAllEntityData.user.js:56582` says "making it order-independent is
+PERFORMANCE.org Step 6", which on `main` pointed at the sort scoping. `main`'s
+own Step 4 text also cited a "Step 8" that `main`'s copy did not contain.
+
+Resolved by adopting `perf-steps-1-4`'s 6-14 verbatim — the most-developed
+scheme, and the one `main`'s own code and prose already pointed at, so both
+those references became correct with no edit. What moved instead was
+`caa-throughput`'s 6/7/8 (→ 15/16/17) and `main`'s one-day-old Step 6 (→ 18).
+There is now a "Step-number provenance" table mapping every old number, because
+branch commit messages reference "Step 5/7/12/14" and would otherwise dangle.
+
+The branch-only prose was harvested rather than left in place. The reason is
+concrete, not tidiness: `filter-performance-fix-caa-throughput` records
+`content-visibility: auto` on `<tr>` as **"Manual validation gate result
+(2026-08-20): FAILED — do not implement as designed"**, and `debug/perf.org`
+(2026-08-24) proposes re-running exactly that experiment. `main` had no trace of
+the failure to prevent it. 374 → 1647 lines; a `verify-no-loss.py` pass confirms
+every retained source line survived, with the 18 deliberate edits enumerated.
+
+Also fixed while in there: `main`'s Findings section had entirely stale line
+numbers (it cited `:36407` for `runFilter`, now `:42225`) and claimed the
+multi-table branch re-clones per group on every render — no longer true for a
+sort since Step 18. And the "30–120 s / 8 k+ rows" anchor it cites is still in
+the code, at `:56886`; it uses an en-dash, which is why a grep for "30-120"
+comes back empty.
+
+### CAA/EAA columns do not sort by artwork presence (pre-existing)
+
+Filed as Step 21. **Not caused by the 9.99.1032-1040 series** — the pickaxe
+bottoms out at `cf5042c` (2026-05-16, a repo-wide rename), so it predates the
+visible history.
+
+`_CLEAN_STRIP_SEL` (`:38143`) strips `.mb-caa-sort-key` (`:38166`), and
+`getCleanVisibleText()` (`:38082`) removes it by clone-and-remove before its
+TreeWalker even runs, with a `FILTER_REJECT` belt-and-braces at `:38108`. Both
+comparators — `createSortComparator()` (`:18565-18566`) and
+`createMultiColumnComparator()` (`:18604-18605`) — read *only*
+`getCleanVisibleText()`. `_sortColumnKind()` (`:16552`) has no CAA/EAA branch.
+Since `.caa-icon`, `.artwork-icon` and `.mb-caa-count-badge` are in the same
+selector, a plain CAA/EAA icon cell resolves to the empty string for every row.
+
+**The strip is correct and must stay** — its own comment gives the reason: a
+typed filter of `"no"` would otherwise match `"not readable"`. The real finding
+is that the other two consumers each got a replacement and sorting got nothing:
+
+| Consumer | Replacement |
+|---|---|
+| Column filter | explicit bypass, `testRowMatch():41738-41749` |
+| Uniq-values dropdown | migrated to structure-mode relabeling ("✓ has artwork") |
+| **Sort** | **none** |
+
+An audit of every sort-key class the script creates shows the damage is confined
+to the artwork pair — worth knowing, because "CAA/EAA sorting is broken" was the
+first summary and it was too broad:
+
+| Class | In `_CLEAN_STRIP_SEL`? | Contract |
+|---|---|---|
+| `mb-caa-sort-key` (serves EAA too) | yes `:38166` | **broken**; JSDoc `:3614` still claims `"no" < "yes"` |
+| `mb-inline-art-sort-key` | yes `:38150` | filter-only by design, no sort contract broken — but `_artSetInlineSortKey()`'s JSDoc claims the strip pass excludes its class and that no bypass is needed. Both false. |
+| `mb-cancelled-sort-key` | no | intact; JSDoc `:3827` correct |
+| `mb-video-sort-key` | no | intact; JSDoc `:3525` correct |
+
+`.mb-eaa-sort-key` is in the selector but never created — the `caa` extractor
+always writes `mb-caa-sort-key` for both.
+
+**Why it went unnoticed:** no spec asserts a CAA/EAA column *orders* by artwork
+presence. `caa-icon-survives-sort.spec.js` and its multi sibling assert artwork
+*survives* a sort — a different guarantee, and one that is met.
+
+Deliberately not fixed in that session: it is a userscript change needing a
+version bump, a changelog entry, a regression test (there is none) and three
+JSDoc corrections, so it gets its own session. Fix shape is in Step 21 — mirror
+the filter bypass at `:41749`, and change both comparators together, since they
+have silently disagreed before.

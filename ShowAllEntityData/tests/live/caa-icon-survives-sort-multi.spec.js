@@ -94,7 +94,7 @@ const { waitForSortSettled } = require('../support/filterSortAssertions');
  * ```
  *
  * The 17-section page is where the scoping is worth anything — see
- * `PERFORMANCE.org`'s Step 6 for the full 3-run A/B those figures come from.
+ * `PERFORMANCE.org`'s Step 18 for the full 3-run A/B those figures come from.
  *
  * Needs REAL CAA network access, same rationale as the single-table spec:
  * `gmStubs.js`'s always-404 `GM_xmlhttpRequest` would leave every icon
