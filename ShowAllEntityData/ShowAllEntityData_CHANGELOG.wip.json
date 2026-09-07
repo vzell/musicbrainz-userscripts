@@ -1,0 +1,26 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-09-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The 📊 unique-values dropdown's \"Date info - Decade\"/\"- Month\" sections were missing on `user-ratings`/`tag-value`/`user-tag-value`'s per-entity-type sub-tables (e.g. the \"Event ratings\" table's \"Date\" column) whenever more than one entity-type section with its own `entityFeatures` was present on the page. `openUniqDrop()`'s `isDateExprCol` gate read the shared `activeColumnExtractors`/`activeSyntheticColumnExtractors` module state, which `renderGroupedTable()`'s per-group rebuild leaves reflecting whichever group rendered LAST by the time a later click opens the dropdown — not necessarily the group the clicked column belongs to. `renderGroupedTable()` now also snapshots each group's own dateParts-fed column names onto `table.dataset.mbEntityDateExprColumns` (new `_dateExprColumnNames()`), mirroring the existing `mbEntityTooltipColumns`/`mbEntityExtractMainColumn` per-table annotations; `isDateExprCol` prefers that snapshot when present and falls back to the original check everywhere else, unchanged."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-09-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The CAA/EAA inline-thumbnail and big-picture-strip hover tooltip crashed with `TypeError: features.extractMainColumn.toLowerCase is not a function` and never appeared, on every pageType declaring `extractMainColumn` as a numeric column INDEX (`user-ratings`, `user-ratings-type`, `report-multiple-linked`, `tag-value`(-entity), `user-tag-value`(-entity)) rather than a column-name string. `_renderBigboxTooltipFromColumns()` now only reads `extractMainColumn` as a name when it actually is a string, treating the numeric form the same as \"absent\" (no tooltip spec entry can match a numeric marker by name) instead of crashing the whole hover handler."
+        ]
+      }
+    ]
+  }
+]

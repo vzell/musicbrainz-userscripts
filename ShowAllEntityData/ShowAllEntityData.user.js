@@ -4856,6 +4856,33 @@
     }
 
     /**
+     * Column names fed by a `dateParts` extractor, from either the primary or
+     * synthetic extractor registry — see `openUniqDrop()`'s `isDateExprCol`
+     * for why both are checked (e.g. "Date" is a primary column on some
+     * pageTypes, a synthetic one produced by `splitCountryDate` on others).
+     *
+     * Exists so `renderGroupedTable()`'s per-group extractor rebuild (user-
+     * ratings / tag-value / user-tag-value / instrument-list) can snapshot
+     * the answer onto each group's OWN table — mirroring
+     * `table.dataset.mbEntityTooltipColumns` — instead of `openUniqDrop()`
+     * reading the shared `activeColumnExtractors`/`activeSyntheticColumnExtractors`
+     * module state directly, which on those pageTypes reflects whichever
+     * group's rebuild ran LAST by the time the dropdown is actually opened
+     * (a later, unrelated user click), not necessarily the group the open
+     * column belongs to.
+     *
+     * @param   {Array<{extractor: string, sourceColumn: string}>} columnExtractors
+     * @param   {Array<{extractor: string, sourceColumn: string}>} syntheticColumnExtractors
+     * @returns {string[]} Unique column names, in first-seen order.
+     */
+    function _dateExprColumnNames(columnExtractors, syntheticColumnExtractors) {
+        const names = new Set();
+        (columnExtractors || []).forEach(e => { if (e.extractor === 'dateParts') names.add(e.sourceColumn); });
+        (syntheticColumnExtractors || []).forEach(e => { if (e.extractor === 'dateParts') names.add(e.sourceColumn); });
+        return Array.from(names);
+    }
+
+    /**
      * Derives the runtime injected-column extractor descriptor list from a merged
      * activeDefinition object.
      *
@@ -49320,6 +49347,20 @@ a { color: #1565c0; }`;
                             } else {
                                 delete table.dataset.mbEntityExtractMainColumn;
                             }
+                            // Same staleness problem as tooltipColumns/extractMainColumn
+                            // above, hitting a different consumer: openUniqDrop()'s
+                            // isDateExprCol reads the shared activeColumnExtractors/
+                            // activeSyntheticColumnExtractors module state, which by the
+                            // time a LATER user click opens the 📊 dropdown reflects
+                            // whichever group rendered last — not necessarily the one the
+                            // clicked column belongs to. Snapshot per-table instead; see
+                            // _dateExprColumnNames()'s own JSDoc.
+                            const _urDateExprCols = _dateExprColumnNames(activeColumnExtractors, activeSyntheticColumnExtractors);
+                            if (_urDateExprCols.length) {
+                                table.dataset.mbEntityDateExprColumns = JSON.stringify(_urDateExprCols);
+                            } else {
+                                delete table.dataset.mbEntityDateExprColumns;
+                            }
                         }
                         // Resolve colIdx for each extractor by scanning the thead cells, then
                         // call cleanupHeaders — unconditionally, so MB-Name/Comment/MB-Primary
@@ -49372,6 +49413,20 @@ a { color: #1565c0; }`;
                                     _groupEntityFeatures.extractMainColumn;
                             } else {
                                 delete table.dataset.mbEntityExtractMainColumn;
+                            }
+                            // Same staleness problem as tooltipColumns/extractMainColumn
+                            // above, hitting a different consumer: openUniqDrop()'s
+                            // isDateExprCol reads the shared activeColumnExtractors/
+                            // activeSyntheticColumnExtractors module state, which by the
+                            // time a LATER user click opens the 📊 dropdown reflects
+                            // whichever group rendered last — not necessarily the one the
+                            // clicked column belongs to. Snapshot per-table instead; see
+                            // _dateExprColumnNames()'s own JSDoc.
+                            const _tvDateExprCols = _dateExprColumnNames(activeColumnExtractors, activeSyntheticColumnExtractors);
+                            if (_tvDateExprCols.length) {
+                                table.dataset.mbEntityDateExprColumns = JSON.stringify(_tvDateExprCols);
+                            } else {
+                                delete table.dataset.mbEntityDateExprColumns;
                             }
                         }
                         // 1. Reset all extractors.
@@ -52662,8 +52717,20 @@ a { color: #1565c0; }`;
         // `dateParts`-fed column name ("Date", "Begin", "End", "Release
         // date", …) on every pageType — see
         // `_findCellDateExpressionParts()`'s own JSDoc.
-        const isDateExprCol = activeColumnExtractors.some(e => e.extractor === 'dateParts' && e.sourceColumn === _colHeaderName) ||
-            activeSyntheticColumnExtractors.some(e => e.extractor === 'dateParts' && e.sourceColumn === _colHeaderName);
+        //
+        // Prefer `table`'s own per-group snapshot (`mbEntityDateExprColumns`
+        // — set by renderGroupedTable() for user-ratings/tag-value/
+        // user-tag-value/instrument-list, see `_dateExprColumnNames()`)
+        // over the shared activeColumnExtractors/activeSyntheticColumnExtractors
+        // module state, which on those pageTypes reflects whichever group
+        // rendered LAST by the time this dropdown is opened (a later,
+        // unrelated click) — not necessarily the group `table` belongs to.
+        // Every other pageType never sets the attribute and falls through
+        // to the original, unstaled check unchanged.
+        const isDateExprCol = table.dataset.mbEntityDateExprColumns
+            ? JSON.parse(table.dataset.mbEntityDateExprColumns).includes(_colHeaderName)
+            : (activeColumnExtractors.some(e => e.extractor === 'dateParts' && e.sourceColumn === _colHeaderName) ||
+               activeSyntheticColumnExtractors.some(e => e.extractor === 'dateParts' && e.sourceColumn === _colHeaderName));
         // Column-name gate for release-tracks' dynamic-fallback "Part of
         // series" AR column — same convention as isFormatCol/isTracksCol/
         // isCatalogCol/isEventCol above (name-only, no page-type check).
@@ -67228,7 +67295,16 @@ a { color: #1565c0; }`;
             return false;
         }
 
-        const mainColLower = (features.extractMainColumn || '').toLowerCase();
+        // extractMainColumn is a column-NAME string on most pageTypes, but a
+        // 0-based column INDEX on a few (e.g. user-ratings: "Entity column
+        // always sits at index 1" — see its pageDefinition). There is no
+        // string to compare tooltipColumns spec entries against in that case,
+        // so it is treated the same as "absent" (empty string, matching no
+        // spec entry) rather than crashing .toLowerCase() on a number — this
+        // silently killed the entire tooltip (both the inline-thumbnail and
+        // bigbox-strip hover popups share this function) on every pageType
+        // using the numeric form.
+        const mainColLower = (typeof features.extractMainColumn === 'string' ? features.extractMainColumn : '').toLowerCase();
         if (Lib.settings.sa_enable_tooltip_debug) Lib.debug('tooltips', '[_renderBigboxTooltipFromColumns] mainCol=' + mainColLower +
             ' specs=' + JSON.stringify(features.tooltipColumns));
 
