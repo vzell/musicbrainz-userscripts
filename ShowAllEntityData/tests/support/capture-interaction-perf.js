@@ -17,7 +17,12 @@
  * Loads via the committed disk fixture (`tests/support/capture-fixture.js`,
  * `tests/support/diskFixture.js`) rather than a live "Show all" click, so
  * repeated samples are fast and don't re-pay a ~42-page live fetch each
- * time. Each sample gets its own fresh page load (mirroring
+ * time. Note what that does and does not make network-free: the TABLE DATA
+ * comes off disk, but `loadFromDiskFixture()` still `page.goto()`s the real
+ * musicbrainz.org for the page shell (it passes no `fixtureFile`, so
+ * `loadUserscriptPage()` registers no route). Hence `withRetry()` below — the
+ * page load itself is outside every measurement bracket, but a navigation
+ * timeout still aborts the whole run. Each sample gets its own fresh page load (mirroring
  * `capture-snapshots.js`'s `runPerf()`/`measureOnce()` convention), so an
  * interaction's timing bracket never includes another sample's leftover
  * state.
@@ -140,6 +145,40 @@ function readCurrentBranch() {
     } catch {
         return 'unknown';
     }
+}
+
+/**
+ * Runs one sample, retrying a few times before giving up.
+ *
+ * Every sample loads its page with `page.goto()` against the real
+ * musicbrainz.org: the disk fixture supplies the TABLE DATA, not the page
+ * shell, so "no network" describes this harness's data determinism and not its
+ * page load. MusicBrainz is intermittently unreachable often enough that two
+ * complete 20-minute runs were lost to a single 30 s navigation timeout, with
+ * host probes timing out roughly one request in three at the time.
+ *
+ * A retry cannot distort a timing: the measurement bracket inside each
+ * `measure*Once()` starts AFTER its page has loaded, so a failed attempt
+ * contributes nothing but wall clock. Only genuinely completed samples reach
+ * `median()`.
+ *
+ * @template T
+ * @param {string} label - metric name, for the retry notice
+ * @param {() => Promise<T>} fn
+ * @param {number} [attempts]
+ * @returns {Promise<T>}
+ */
+async function withRetry(label, fn, attempts = 3) {
+    let lastErr;
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+        try {
+            return await fn();
+        } catch (err) {
+            lastErr = err;
+            console.warn(`  ${label}: attempt ${attempt}/${attempts} failed (${err.message.split('\n')[0]})`);
+        }
+    }
+    throw lastErr;
 }
 
 /** @param {number[]} values @returns {number} */
@@ -347,14 +386,20 @@ async function runAll(browser, config) {
     const headerCountsRestoreMs = [];
 
     for (let i = 0; i < SAMPLES; i++) {
-        globalFilterMs.push(await measureGlobalFilterOnce(browser, config, config.filterValues[i]));
-        columnFilterMs.push(await measureColumnFilterOnce(browser, config, config.filterValues[i]));
-        sortMs.push(await measureSortOnce(browser, config, i % 2 === 0));
-        const { coldMs, warmMs } = await measureUniqDropColdWarmOnce(browser, config);
+        globalFilterMs.push(await withRetry('globalFilter',
+            () => measureGlobalFilterOnce(browser, config, config.filterValues[i])));
+        columnFilterMs.push(await withRetry('columnFilter',
+            () => measureColumnFilterOnce(browser, config, config.filterValues[i])));
+        sortMs.push(await withRetry('sort',
+            () => measureSortOnce(browser, config, i % 2 === 0)));
+        const { coldMs, warmMs } = await withRetry('uniqDrop',
+            () => measureUniqDropColdWarmOnce(browser, config));
         uniqDropColdMs.push(coldMs);
         uniqDropWarmMs.push(warmMs);
-        headerCountsInitialMs.push(await measureHeaderCountsInitialOnce(browser, config));
-        headerCountsRestoreMs.push(await measureHeaderCountsRestoreOnce(browser, config));
+        headerCountsInitialMs.push(await withRetry('headerCountsInitial',
+            () => measureHeaderCountsInitialOnce(browser, config)));
+        headerCountsRestoreMs.push(await withRetry('headerCountsRestore',
+            () => measureHeaderCountsRestoreOnce(browser, config)));
     }
 
     return {

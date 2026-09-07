@@ -378,6 +378,12 @@ test('sorting does not disturb any column-header count badge', { tag: '@perf' },
     //     B -> A" case below exists alongside it.
     //   - a cache HIT must re-apply the numbers rather than leave whatever the
     //     re-rendered header happened to carry.
+    // Well above chromium-live's 120 s default, and needed. This case drives
+    // two full 4174-row re-renders and waits out the header-count scan after
+    // each, which measured 114 s on an idle machine — inside the default, but
+    // only just, so it failed whenever the machine was busy. The other cases in
+    // this file run serially before it and are enough to do that.
+    test.setTimeout(300000);
     const pageErrors = collectPageErrors(page);
     await loadArtistEvents(page);
     // BOTH waits, and the second is not optional: waitForColHeaderUniqCount()
@@ -421,6 +427,9 @@ test('re-applying a filter reproduces its own header counts exactly', { tag: '@p
     // between two different filters of the same table and serves B's numbers
     // for A. `_filterResultCache` guarantees the second A is a genuinely
     // different code path from the first, not a no-op.
+    // See the sort case above: three full-table renders plus three
+    // header-count settles do not fit chromium-live's 120 s default.
+    test.setTimeout(300000);
     const pageErrors = collectPageErrors(page);
     await loadArtistEvents(page);
     await waitForColHeaderUniqCount(page, UNIQ_COUNT_COLUMN, UNIQ_COUNT_TOTAL);
