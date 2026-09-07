@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Tag &ldquo;rock&rdquo; - Recordings - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        A tag-value-entity page (/tag/rock/recording), shaped to reproduce ONE
+        specific defect: cleanupHeaders()'s _resolvedPrimaryCols gate on
+        `extractMainColumn` used a plain truthy check, but this pageType's
+        `extractMainColumn` is the numeric index 0 (the single native
+        "Recording" column) — falsy, even though it is genuinely active. The
+        strict !== undefined/null check used everywhere else in the same
+        function correctly treats 0 as active.
+
+        The three ingredients have to coexist:
+          1. `features.extractMainColumn: 0` -> synthetic MB-Name/Comment/
+             Primary alias columns, driven by a FALSY-but-valid config value.
+          2. `entityFeatures.Recordings.syntheticColumnExtractors` sourcing
+             `eventParts` from the synthetic 'Comment' column -> nine Event-*
+             columns. The Comment text below ("original single stereo
+             version") doesn't match the live-performance format, so the
+             extractor emits empty cells — irrelevant to this bug, only the
+             cells' EXISTENCE/position matters.
+          3. `entityFeatures.Recordings.columnExtractors` (tagCount, then
+             artistCredit) resolving BEFORE the MB-Name/Comment/Primary-alias
+             trio, so a header/cell desync elsewhere in the row shows up
+             clearly.
+
+        With the Event-* headers dropped by the truthy-check bug, the row's
+        actual cell count (Recording/Tag count/Artist + 9 Event-* + MB-Name/
+        Comment/Primary alias = 15) outruns the header count (6), and the
+        browser aligns headers to <td>s positionally — "MB-Name"/"Comment"/
+        "Primary alias" visually land on the first 3 (empty) Event-* cells,
+        while the real content renders as unlabeled trailing columns. See
+        debug/tag-rock-recording-final.html (real capture of this exact bug)
+        and debug/tag-rock-initial.html (native "Brown Sugar" / tag-count 16 /
+        "original single stereo version" / The Rolling Stones data reused
+        here verbatim).
+    -->
+    <div class="fullwidth " id="page">
+        <div id="content">
+            <div class="tagheader">
+                <h1>Tag &ldquo;<a href="/tag/rock">rock</a>&rdquo;</h1>
+                <p class="subheader"><span class="prefix">~</span> Tag</p>
+            </div>
+            <div class="tabs">
+                <ul class="tabs">
+                    <li class=""><a href="/tag/rock">Overview</a></li>
+                    <li class=""><a href="/tag/rock/artist">Artists</a></li>
+                    <li class=""><a href="/tag/rock/release-group">Release groups</a></li>
+                    <li class=""><a href="/tag/rock/release">Releases</a></li>
+                    <li class="sel"><a href="/tag/rock/recording">Recordings</a></li>
+                    <li class=""><a href="/tag/rock/work">Works</a></li>
+                    <li class=""><a href="/tag/rock/label">Labels</a></li>
+                    <li class=""><a href="/tag/rock/place">Places</a></li>
+                    <li class=""><a href="/tag/rock/area">Areas</a></li>
+                    <li class=""><a href="/tag/rock/instrument">Instruments</a></li>
+                    <li class=""><a href="/tag/rock/series">Series</a></li>
+                    <li class=""><a href="/tag/rock/event">Events</a></li>
+                </ul>
+            </div>
+            <h2>Recordings tagged as &ldquo;<a href="/tag/rock">rock</a>&rdquo;</h2>
+            <p>2 recordings found</p>
+            <ul>
+                <li>16 - <a href="/recording/8d2338a2-4acc-4d99-b2a7-1151f428cab6"><bdi>Brown Sugar</bdi></a> <span class="comment">(<bdi>original single stereo version</bdi>)</span> by <bdi><a href="/artist/b071f9fa-14b0-4217-8e97-eb41da73f598" title="Rolling Stones, The">The Rolling Stones</a></bdi></li>
+                <li>9 - <a href="/recording/ec04e3c5-0548-4e73-bfc3-19a26108f302"><bdi>Imagine</bdi></a> <span class="comment">(<bdi>original studio mix</bdi>)</span> by <bdi><a href="/artist/4d5447d7-c61c-4120-ba1b-d7f471d385b9" title="Lennon, John (The Beatles)">John Lennon</a></bdi></li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
