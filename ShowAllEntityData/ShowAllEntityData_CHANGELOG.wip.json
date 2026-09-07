@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-09-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The \"Release group ratings\" sub-table on `user-ratings`/`user-ratings-type` desynced every appended MB-Name/Comment/Primary-alias cell one position late — the release group's own name rendered under the \"Comment\" header instead of \"MB-Name\", which also meant the CAA hover tooltip's `tooltipColumns: ['MB-Name', 'Artist']` showed only the artist, never the release group's own name. Root cause: that entityFeatures block declared `columnExtractors: [{ sourceColumn: 'Release group', extractor: 'artistCredit', ... }]`, but Structure H's native `<li>`→`<table>` conversion for this entity type already splits \"ReleaseGroup by Artist\" into two NATIVE columns (Release group, Artist) — exactly like `'Recordings'`, which never declared this extractor for the same reason. The redundant extractor read the now-artist-free \"Release group\" cell, produced a permanently EMPTY synthetic \"Artist\" cell that was never excluded, leaving one extra unaccounted-for cell that shifted everything appended after it. Removed the extractor from both `user-ratings` and `user-ratings-type`; also reordered `tooltipColumns` to `['Artist', 'MB-Name']` per user request, so the hover tooltip now reads artist name first, then the release group's own name."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-09-07",
     "sections": [

@@ -13342,10 +13342,25 @@
                     // below ALSO injects its own inline thumbnail into the same cell,
                     // showing the cover art twice.
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ],
+                    // NO columnExtractors here — deliberately. Structure H's native
+                    // <li>→<table> conversion for this entity type already splits the
+                    // "ReleaseGroup by Artist" <li> into TWO NATIVE columns (Release
+                    // group, Artist), exactly like 'Recordings' below (which also
+                    // omits an artistCredit extractor for the same reason). A
+                    // `columnExtractors: [{ sourceColumn: 'Release group', extractor:
+                    // 'artistCredit', ... }]` entry here (removed) read the WRONG
+                    // (already-artist-free) cell, produced a permanently EMPTY "Artist"
+                    // synthetic cell, and — because the real native Artist column was
+                    // never excluded — left one extra, unaccounted-for cell in the row.
+                    // That shifted every appended MB-Name/Comment/Primary-alias cell one
+                    // position late: MB-Name (the release group's own name) rendered
+                    // under the "Comment" header, and "MB-Name"/"Artist" ended up
+                    // pointing at the wrong cells throughout — including the CAA hover
+                    // tooltip, which showed only "Artist" and never the release group's
+                    // own name. Confirmed live against a real /user/<name>/ratings page.
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
-                    tooltipColumns: [ 'MB-Name', 'Artist' ]
+                    tooltipColumns: [ 'Artist', 'MB-Name' ]
                 },
                 'Recordings': {
                     columnExtractors: [
@@ -13414,10 +13429,25 @@
                     // ALSO injects its own inline thumbnail into the same cell,
                     // showing the cover art twice.
                     columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
-                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ],
+                    // NO columnExtractors here — deliberately. Structure H's native
+                    // <li>→<table> conversion for this entity type already splits the
+                    // "ReleaseGroup by Artist" <li> into TWO NATIVE columns (Release
+                    // group, Artist), exactly like 'Recordings' below (which also
+                    // omits an artistCredit extractor for the same reason). A
+                    // `columnExtractors: [{ sourceColumn: 'Release group', extractor:
+                    // 'artistCredit', ... }]` entry here (removed) read the WRONG
+                    // (already-artist-free) cell, produced a permanently EMPTY "Artist"
+                    // synthetic cell, and — because the real native Artist column was
+                    // never excluded — left one extra, unaccounted-for cell in the row.
+                    // That shifted every appended MB-Name/Comment/Primary-alias cell one
+                    // position late: MB-Name (the release group's own name) rendered
+                    // under the "Comment" header, and "MB-Name"/"Artist" ended up
+                    // pointing at the wrong cells throughout — including the CAA hover
+                    // tooltip, which showed only "Artist" and never the release group's
+                    // own name. Confirmed live against a real /user/<name>/ratings page.
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
-                    tooltipColumns: [ 'MB-Name', 'Artist' ]
+                    tooltipColumns: [ 'Artist', 'MB-Name' ]
                 },
                 'Recordings': {
                     columnExtractors: [

@@ -91,4 +91,84 @@ test.describe('user-ratings: multi-group entityFeatures staleness', () => {
         expect(tooltip.display).not.toBe('none');
         expect(tooltip.hasContent).toBe(true);
     });
+
+    test('the "Release group ratings" row is NOT desynced by the redundant artistCredit extractor', async ({ page }) => {
+        // Structure H's native <li>→<table> conversion for this entity type
+        // already splits "ReleaseGroup by Artist" into two NATIVE columns
+        // (Release group, Artist) — a `columnExtractors: [{ sourceColumn:
+        // 'Release group', extractor: 'artistCredit', ... }]` entry (which
+        // this entityFeatures block used to declare) reads the Release-group
+        // cell for a bdi that Structure H already moved into its own native
+        // Artist column, producing a permanently EMPTY synthetic "Artist"
+        // cell that was never excluded — leaving one extra, unaccounted-for
+        // cell in the row and shifting every appended MB-Name/Comment/
+        // Primary-alias cell one position late (MB-Name's real content
+        // rendered under the "Comment" header instead). 'Recordings' below
+        // never declared this extractor for the same reason and was never
+        // affected — see the removed columnExtractors entry's own comment.
+        await page.context().addInitScript({ content: `
+            window.__gmXhrResponses = {
+                'https://coverartarchive.org/release-group/065db277-9ec0-45af-9fd2-b4435674d834/front-250':
+                    { status: 200, blob: new Blob(['x'], { type: 'image/png' }) },
+            };
+        ` });
+
+        await openRatings(page);
+        await expandSection(page, 'Release group ratings');
+
+        const rowData = await page.evaluate(() => {
+            const h3 = Array.from(document.querySelectorAll('h3')).find((h) => /release group ratings/i.test(h.textContent));
+            let table = h3.nextElementSibling;
+            while (table && table.tagName !== 'TABLE') table = table.nextElementSibling;
+            const headers = Array.from(table.querySelectorAll('thead th')).map((th) => th.dataset.colName || th.textContent.trim());
+            const idx = (name) => headers.indexOf(name);
+            const row = table.querySelector('tbody tr');
+            const cellText = (name) => {
+                const i = idx(name);
+                return i >= 0 ? row.cells[i].textContent.replace(/\s+/g, ' ').trim() : null;
+            };
+            return {
+                artist: cellText('Artist'),
+                mbName: cellText('MB-Name'),
+                comment: cellText('Comment'),
+                primaryAlias: cellText('Primary alias'),
+            };
+        });
+
+        expect(rowData.artist).toContain('Two Minutes to Late Night');
+        expect(rowData.mbName).toContain('Covers Vol. 11');
+        // The release group's own name must land under "MB-Name", never
+        // leak into "Comment"/"Primary alias" from the desync this fixes.
+        expect(rowData.comment).toBe('');
+        expect(rowData.primaryAlias).toBe('');
+    });
+
+    test('the CAA hover tooltip shows Artist then the release group\'s own name, per tooltipColumns order', async ({ page }) => {
+        await page.context().addInitScript({ content: `
+            window.__gmXhrResponses = {
+                'https://coverartarchive.org/release-group/065db277-9ec0-45af-9fd2-b4435674d834/front-250':
+                    { status: 200, blob: new Blob(['x'], { type: 'image/png' }) },
+                'https://coverartarchive.org/release-group/3eb2f3c8-1975-48b2-b455-acc202057386/front-250':
+                    { status: 200, blob: new Blob(['x'], { type: 'image/png' }) },
+            };
+        ` });
+
+        await openRatings(page);
+        await expandSection(page, 'Release group ratings');
+
+        const thumb = page.locator(
+            'h3:has-text("Release group ratings") ~ table .mb-caa-inline-ph',
+        ).first();
+        await expect(thumb).toHaveCount(1);
+        await page.waitForTimeout(300);
+        await thumb.hover();
+        await page.waitForTimeout(200);
+
+        const tooltipLines = await page.evaluate(() => {
+            const tip = document.getElementById('mb-art-bigbox-tooltip');
+            return tip ? Array.from(tip.children).map((el) => el.textContent.trim()) : null;
+        });
+
+        expect(tooltipLines).toEqual(['Two Minutes to Late Night', 'Covers Vol. 11']);
+    });
 });
