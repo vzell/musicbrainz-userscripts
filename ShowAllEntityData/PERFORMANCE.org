@@ -519,6 +519,11 @@ multi-table art page (e.g. ~user-ratings~) regardless of row count — see
 (summed across sub-tables) when in multi-table mode, so the threshold
 check means something there too.
 
+*Moot until Step 5 lands.* This corrects a gate inside Step 5's
+~IntersectionObserver~ code, and there is no ~IntersectionObserver~ anywhere in
+~main~ — so there is nothing here to fix yet. Fold it into Step 5 when that
+step is reimplemented; it is not independent work.
+
 *** TODO Step 8: Invalidate Step 3/4 caches for async-populated columns
 
 /Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31, script
@@ -540,6 +545,14 @@ fetch-completion callbacks, stamps the ~.mb-inline-art-sort-key~ sentinel
 that ~openUniqDrop~'s inline-art scan reads, with no corresponding
 invalidation call either. Same fix shape: call
 ~_invalidateUniqDropDataCache(table, colIndex)~ there too.
+
+*Half of this is already on* ~main~. The uniq-drop cache half shipped with Step
+4, with invalidations at every site named above plus three the branch text did
+not know about — see Step 4's "Correctness hazard 2", which cites this step by
+number and lists what it folded in. What remains is the header-count half, and
+that is moot until Step 3 exists: there is no header-count cache on ~main~ to
+invalidate. Read this as "finish it when Step 3 lands", not as an outstanding
+bug against ~main~.
 
 *** TODO Step 9: Invalidate ~_rowTextCache~ for async-populated columns
 
@@ -604,6 +617,12 @@ timing predates the animation-frame-batching commit, and the regular
 filter/sort perf snapshots seed ~sa_caa_pics_small: false~. Fix: rename
 both references to ~_caaQueue~ (two-line change, confined to
 ~_artProcessIoEntriesBatched()~).
+
+*Moot until Step 5 lands.* The crashing function,
+~_artProcessIoEntriesBatched()~, was added by Step 5's animation-frame batching
+fix and exists only on that branch — ~main~ has neither. This is recorded so
+the crash is not reintroduced when Step 5 is reimplemented, not as work
+outstanding against ~main~.
 
 *Fixed*: both references in ~_artProcessIoEntriesBatched()~ renamed to the
 real ~_caaQueue~, matching every other call site's guard shape.
@@ -1264,7 +1283,7 @@ the sentinel the ordering depends on.
 The mechanism, verified at 9.99.1045:
 
 - ~_CLEAN_STRIP_SEL~ (~:38143~) contains ~'.mb-caa-sort-key,.mb-eaa-sort-key,'~
-  (~:38166~) and ~'.mb-inline-art-sort-key,'~ (~:38150~) — plus ~.caa-icon~,
+  (~:38166~) and ~'.mb-inline-art-sort-key,'~ (~:38155~) — plus ~.caa-icon~,
   ~.artwork-icon~, ~.mb-caa-count-badge~ and the cache-hint wrappers, so a
   plain CAA/EAA icon cell has no surviving text at all.
 - ~getCleanVisibleText()~ (~:38082~) removes all of it by clone-and-remove
@@ -1293,7 +1312,7 @@ confined to the two artwork ones — the other two never entered
 | Sort-key class | In ~_CLEAN_STRIP_SEL~? | Contract |
 |----------------+------------------------+----------|
 | ~mb-caa-sort-key~ (serves EAA too) | *yes* (~:38166~) | *broken* — JSDoc ~:3614~ still claims ~"no" < "yes"~ works |
-| ~mb-inline-art-sort-key~ | *yes* (~:38150~) | filter-only by design, so no sort contract broken — but ~_artSetInlineSortKey()~'s JSDoc claims the strip pass excludes its class, and that no bypass is needed. Both false. |
+| ~mb-inline-art-sort-key~ | *yes* (~:38155~) | filter-only by design, so no sort contract broken — but ~_artSetInlineSortKey()~'s JSDoc claims the strip pass excludes its class, and that no bypass is needed. Both false. |
 | ~mb-cancelled-sort-key~ | no | intact — JSDoc ~:3827~ correct |
 | ~mb-video-sort-key~ | no | intact — JSDoc ~:3525~ correct |
 

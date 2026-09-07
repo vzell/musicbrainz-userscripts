@@ -7797,7 +7797,7 @@ first summary and it was too broad:
 | Class | In `_CLEAN_STRIP_SEL`? | Contract |
 |---|---|---|
 | `mb-caa-sort-key` (serves EAA too) | yes `:38166` | **broken**; JSDoc `:3614` still claims `"no" < "yes"` |
-| `mb-inline-art-sort-key` | yes `:38150` | filter-only by design, no sort contract broken — but `_artSetInlineSortKey()`'s JSDoc claims the strip pass excludes its class and that no bypass is needed. Both false. |
+| `mb-inline-art-sort-key` | yes `:38155` | filter-only by design, no sort contract broken — but `_artSetInlineSortKey()`'s JSDoc claims the strip pass excludes its class and that no bypass is needed. Both false. |
 | `mb-cancelled-sort-key` | no | intact; JSDoc `:3827` correct |
 | `mb-video-sort-key` | no | intact; JSDoc `:3525` correct |
 
