@@ -1268,7 +1268,15 @@ the highlight genuinely does need re-applying. Two shapes worth considering:
 a separate marker for "enrichment data known" that survives the strip, or
 moving the highlight re-application off the enrichment path entirely.
 
-*** TODO Step 21: Artwork-presence sort keys are stripped from the sort path
+*** DONE Step 21: Artwork-presence sort keys are stripped from the sort path
+
+Landed on ~main~ as version *9.99.1047* (2026-09-07); branch
+~fix/caa-column-filter-and-sort-semantics~ (merge ~775eff8~, fold ~d9dd871~).
+Fixed alongside a second, user-reported bug in the same column — a typed
+filter of ~"no"~/~"yes"~ matching artwork PRESENCE — which is what removed the
+"Column filter" bypass this step's own analysis table below relied on. See
+"Implemented" at the end of this step for what landed and the one deliberate
+deviation from the fix shape.
 
 A correctness bug, filed here because it was found while auditing Step 18/19's
 sorting work and because its fix belongs with the sort-key handling Step 10
@@ -1305,9 +1313,9 @@ consumers were each given a replacement and sorting was not:
 | Unique-values dropdown | migrated to structure-mode relabeling ("✓ has artwork" / "✗ no artwork" via ~_cellMatchesStructureMode()~) |
 | *Sort* | *nothing* |
 
-*Update (branch* ~fix/caa-column-filter-and-sort-semantics~ *): the "Column
-filter" row above no longer describes* ~main~. That bypass was REMOVED on
-user report: it made one typed word mean two unrelated things at once, since
+*Update (9.99.1047): the "Column filter" row above no longer describes*
+~main~. That bypass was REMOVED on user report: it made one typed word mean
+two unrelated things at once, since
 ~"no"~ matched both the rows whose image types/comments genuinely contain it
 (e.g. a ~"Matrix/Runout"~ type) and every row with no artwork. Artwork
 presence is now *exclusively* the dropdown row above. Two consequences worth
@@ -1367,10 +1375,7 @@ Mirror the filter bypass, which is the precedent this should follow:
 All three are userscript JSDoc, so this step carries a version bump and a
 changelog entry; the consolidation revision that filed it did not.
 
-**** Implemented on ~fix/caa-column-filter-and-sort-semantics~ (2026-09-07)
-
-Keyword stays ~TODO~ per this file's own convention — it tracks "landed on
-~main~", and this branch is not merged yet.
+**** Implemented — 9.99.1047, 2026-09-07
 
 All three fix-shape points are done, with one deliberate deviation from
 point 1: rather than repeating the sentinel lookup inside each comparator,
