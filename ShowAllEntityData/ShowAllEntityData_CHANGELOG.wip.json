@@ -1,0 +1,17 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Unique-values dropdown (📊) on a CAA/EAA column: every entry now actually filters. On `tableMode: 'multi'` pages (e.g. any release-group's release list) the panel listed entries with correct, non-zero count badges and clicking them narrowed to ZERO rows — '✓ has artwork', every 'CAA info - Type' / 'CAA info - Comment' entry, and every per-image '▤' item entry. '✗ no artwork' was the only one that worked.",
+          "Cause: the dropdown COUNTS from the live table rows, but `runFilter()` MATCHES against the source rows in `groupedRows`, which on multi-table pages are permanently separate DOM elements that never receive the async artwork markup (no `ul.mb-caa-art-ul`, no image `<li>`s, no type badges, no comment spans). Every matcher behind those entries is a DOM query against exactly that markup. '✗ no artwork' was right only by accident — a row with no artwork has nothing to find either way.",
+          "`_artSyncSearchTextToSourceRow()` now mirrors four structural facts onto the source cell alongside the flat search text it already carried (image-`<li>` count, per-`<li>` texts, distinct type labels, distinct comments), read back through the new single-parser `_findCellSyncedArtFacts()`. `_classifyCollapseCell()` and the `arttype:`/`artcomment:`/`▤` matchers consult it only when their live-DOM query comes up empty — the same ordering `getCleanColumnText()` already used for the search text.",
+          "Typing a substring directly into a CAA/EAA column's filter input was already fixed earlier and is unchanged."
+        ]
+      }
+    ]
+  }
+]

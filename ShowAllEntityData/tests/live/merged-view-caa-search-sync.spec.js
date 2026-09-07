@@ -14,7 +14,12 @@ const { collectPageErrors } = require('../support/liveAssertions');
  * SOURCE row in `groupedRows`, never the rendered clone — so a CAA cell's
  * per-image type/comment text only becomes filterable once
  * `_artSyncSearchTextToSourceRow()` has copied it there
- * (`td.dataset.mbArtSearchSync`, read by `getCleanColumnText()`). That function
+ * (`td.dataset.mbArtSearchSync`, read by `getCleanColumnText()` — the
+ * function now also mirrors four structural facts alongside it, for the 📊
+ * unique-values dropdown's own entries; see
+ * `releasegroup-releases-caa-uniqdrop-filter.spec.js`. This spec exercises
+ * the TYPED-filter path, so `mbArtSearchSync` is the only one it depends on,
+ * but the position lookup below governs all five equally). That function
  * resolves its target row by table POSITION:
  *
  *     const tableIndex = [...document.querySelectorAll('table.tbl')].indexOf(liveTable);

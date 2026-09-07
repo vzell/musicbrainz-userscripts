@@ -20581,6 +20581,55 @@
     }
 
     /**
+     * Reads back the CAA/EAA artwork facts `_artSyncSearchTextToSourceRow()`
+     * mirrored onto a SOURCE-row `<td>`, and is the single parser of that
+     * format (see that function's JSDoc for what each attribute holds and
+     * why the mirror exists at all).
+     *
+     * On `tableMode: 'multi'` pages the row `runFilter()` matches against is
+     * the source row, which NEVER receives the async artwork markup — no
+     * `ul.mb-caa-art-ul`, no `li.mb-caa-art-li-image`, no
+     * `.mb-caa-type-badge`, no `.mb-caa-art-comment`. Every matcher behind a
+     * CAA/EAA unique-values dropdown entry is a DOM query against exactly
+     * that markup, so each one found nothing and the entry filtered to zero
+     * rows while its count badge advertised a real number. These attributes
+     * are what let those matchers answer correctly here.
+     *
+     * Callers keep their live-DOM query as the PRIMARY path and consult this
+     * only when it comes up empty — the same `if (real ul) … else if (dataset
+     * sync) …` shape `getCleanColumnText()` already uses for
+     * `mbArtSearchSync`. That ordering also makes the attributes harmless on
+     * a live clone, which inherits them via `cloneNode(true)`: once the
+     * artwork is (re)built there the real markup wins, and during the rebuild
+     * window the inherited facts are the correct answer anyway.
+     *
+     * The `mbArtLiCountSync === undefined` early return is what keeps this
+     * cheap enough for `_classifyCollapseCell()` to call on every row of every
+     * filter pass: one dataset read on a non-artwork cell, which is every cell
+     * on every page that has no artwork column. On an artwork cell it does
+     * parse all four facts even for a caller that only wants `liCount` —
+     * deliberately, rather than growing a second cheaper reader: three
+     * `split('\n')` calls are dominated many times over by the
+     * `_findCellListItems()` `querySelector` and `getCleanColumnText()` DOM
+     * clone already on that same path, and a second reader would put this
+     * attribute format's knowledge in two places.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?{liCount: number, itemTexts: string[], types: string[], comments: string[]}}
+     *   `null` when this cell carries no synced artwork facts.
+     */
+    function _findCellSyncedArtFacts(cell) {
+        if (!cell || !cell.dataset || cell.dataset.mbArtLiCountSync === undefined) return null;
+        const _split = s => (s ? s.split('\n').filter(t => t) : []);
+        return {
+            liCount:   parseInt(cell.dataset.mbArtLiCountSync, 10) || 0,
+            itemTexts: _split(cell.dataset.mbArtItemTextsSync),
+            types:     _split(cell.dataset.mbArtTypesSync),
+            comments:  _split(cell.dataset.mbArtCommentsSync)
+        };
+    }
+
+    /**
      * Classifies a table cell's "collapse structure" — unifies list cells
      * (see `_findCellListItems`, e.g. Catalog#/Label/Authors) and prose cells
      * (free-text columns like "Annotation" that overflow their height-clamp
@@ -20605,6 +20654,17 @@
         const lis = _findCellListItems(cell);
         if (lis.length >= 2) return { isMultiRow: true,  isSingleRow: false };
         if (lis.length === 1) return { isMultiRow: false, isSingleRow: true  };
+        // No list in the DOM, but a CAA/EAA source row can still know how many
+        // `<li>`s its live counterpart has — see `_findCellSyncedArtFacts()`.
+        // Without this, '✓ has artwork' (and collapsed/expanded/single) matched
+        // ZERO rows on every `tableMode: 'multi'` page, because the row
+        // `runFilter()` tests never carries the artwork list at all. Checked
+        // before the prose branch since an artwork cell is never prose.
+        const _artFacts = _findCellSyncedArtFacts(cell);
+        if (_artFacts) {
+            if (_artFacts.liCount >= 2) return { isMultiRow: true,  isSingleRow: false };
+            if (_artFacts.liCount === 1) return { isMultiRow: false, isSingleRow: true  };
+        }
         // No qualifying list: a prose cell counts as "multi-row" only once
         // it actually overflowed its clamp and got a real toggle — a short,
         // never-clamped annotation is plain content, not a collapse state.
@@ -22221,17 +22281,30 @@
             // per-image <li>, exact trimmed match. Same DOM shape/classes
             // for both CAA and EAA columns — _artBuildImageLi() is not
             // context-parameterized.
+            //
+            // The synced fallback is what makes this work at all on
+            // `tableMode: 'multi'` pages: the source row `runFilter()` tests
+            // has no image `<li>`s to query, so the live-DOM pass below
+            // always missed there and the entry filtered to zero rows — see
+            // `_findCellSyncedArtFacts()`.
             const want = mode.slice(8);
-            return !!cell && Array.from(cell.querySelectorAll('.mb-caa-type-badge > span'))
-                .some(s => s.textContent.trim() === want);
+            if (!cell) return false;
+            if (Array.from(cell.querySelectorAll(_ART_SYNC_TYPE_SEL))
+                .some(s => s.textContent.trim() === want)) return true;
+            const _typeFacts = _findCellSyncedArtFacts(cell);
+            return !!_typeFacts && _typeFacts.types.includes(want);
         }
         if (mode.startsWith('artcomment:')) {
             // Compound mode counterpart of 'arttype:' above — matches one
             // image's own free-text comment (e.g. "Front cover, booklet
-            // page i").
+            // page i"). Same live-DOM-then-synced-fallback ordering, for the
+            // same reason.
             const want = mode.slice(11);
-            return !!cell && Array.from(cell.querySelectorAll('.mb-caa-art-comment'))
-                .some(s => s.textContent.trim() === want);
+            if (!cell) return false;
+            if (Array.from(cell.querySelectorAll(_ART_SYNC_COMMENT_SEL))
+                .some(s => s.textContent.trim() === want)) return true;
+            const _cmtFacts = _findCellSyncedArtFacts(cell);
+            return !!_cmtFacts && _cmtFacts.comments.includes(want);
         }
         return false;
     }
@@ -41648,12 +41721,30 @@ a { color: #1565c0; }`;
                 // cheap-phase-1/expensive-phase-2 shape as the sentinel-value fallback
                 // below.
                 if (!isMember && f.hasItemValues && cell) {
-                    isMember = _findCellListItems(cell).some(li => {
+                    const _itemLis = _findCellListItems(cell);
+                    isMember = _itemLis.some(li => {
                         const t = getCleanColumnText(li);
                         if (!t) return false;
                         const p = f.isCaseSensitive ? t : t.toLowerCase();
                         return f.valueSet.has(MB_UNIQ_ITEM_VALUE_PREFIX + p);
                     });
+                    // A CAA/EAA cell's images ARE a qualifying `<li>` list, so
+                    // the dropdown offers one "▤" entry per image — but only
+                    // the LIVE cell has those `<li>`s. On `tableMode: 'multi'`
+                    // pages the row tested here is the source row, where the
+                    // walk above finds nothing, so every one of those entries
+                    // filtered to zero rows. The synced item texts are the same
+                    // strings `openUniqDrop()` collected off the live cell —
+                    // see `_findCellSyncedArtFacts()`.
+                    if (!isMember && _itemLis.length === 0) {
+                        const _itemFacts = _findCellSyncedArtFacts(cell);
+                        if (_itemFacts) {
+                            isMember = _itemFacts.itemTexts.some(t => {
+                                const p = f.isCaseSensitive ? t : t.toLowerCase();
+                                return f.valueSet.has(MB_UNIQ_ITEM_VALUE_PREFIX + p);
+                            });
+                        }
+                    }
                 }
                 // Entity-reference fallback: a checked entity-glyph entry
                 // (MB_UNIQ_ENTITY_HREF_PREFIX) represents one specific entity
@@ -68443,11 +68534,39 @@ a { color: #1565c0; }`;
      * this was a genuine, page-wide bug on every `releasegroup-releases`
      * page, not a caching/timing race.
      *
-     * Only copies the search-index attribute, not the full image-list
-     * markup — the source row is never itself rendered, so it only needs to
-     * stay matchable, not visually correct. Also drops any cached filter
-     * text for this (row, column) pair so a stale pre-sync read can't
-     * shadow the freshly-synced value on the very next filter keystroke.
+     * Copies FACTS, never the image-list markup — the source row is never
+     * itself rendered, so it only needs to stay matchable, not visually
+     * correct. Five plain `<td>` dataset attributes, all read back by
+     * `_findCellSyncedArtFacts()` (the single parser of this format):
+     *
+     *   - `mbArtSearchSync`    — the flat `_artBuildSearchText()` index, read
+     *                            by `getCleanColumnText()`; makes a TYPED
+     *                            substring filter match.
+     *   - `mbArtLiCountSync`   — how many `<li>`s `_findCellListItems()` sees
+     *                            on the live cell (li-0 summary + one per
+     *                            image), so `_classifyCollapseCell()` can
+     *                            reach the same multi-row/single-row verdict
+     *                            here. Drives the '✓ has artwork' / collapsed
+     *                            / expanded / single structure modes.
+     *   - `mbArtItemTextsSync` — each of those `<li>`s' own clean text, for
+     *                            the unique-values dropdown's per-`<li>` "▤"
+     *                            item entries.
+     *   - `mbArtTypesSync`     — distinct type-badge pill labels, for the
+     *                            "CAA info - Type" (`arttype:`) entries.
+     *   - `mbArtCommentsSync`  — distinct per-image comments, for the
+     *                            "CAA info - Comment" (`artcomment:`) entries.
+     *
+     * The four structural ones exist because the dropdown COUNTS from the
+     * live rows while `runFilter()` MATCHES against these source rows: every
+     * matcher behind those entries is a DOM query (`.mb-caa-type-badge`,
+     * `ul > li`, …) that finds nothing here, so each entry advertised a real
+     * count and then filtered to zero rows. `mbArtSearchSync` alone could not
+     * cover them — a flat search string cannot answer "how many images",
+     * "which pill exactly", or "which `<li>`".
+     *
+     * Also drops any cached filter text for this (row, column) pair so a
+     * stale pre-sync read can't shadow the freshly-synced value on the very
+     * next filter keystroke.
      *
      * No-op on single-table pages (`allRows`' rows ARE the live DOM rows
      * already, so no sync is needed) and when the corresponding source row
@@ -68471,17 +68590,76 @@ a { color: #1565c0; }`;
         const colIdx = liveArtCell.cellIndex;
         const sourceCell = sourceRow.cells[colIdx];
         if (!sourceCell) return;
-        // A plain dataset attribute on the <td> itself — deliberately NOT a
+        // Plain dataset attributes on the <td> itself — deliberately NOT a
         // `ul.mb-caa-art-ul` element (see this function's own JSDoc for why
         // that would corrupt the next rebuild once this source row is
         // cloned again for a fresh render).
         sourceCell.dataset.mbArtSearchSync = artSearchText;
+
+        // ── Structural facts, read back off the just-built LIVE cell ──────────
+        // Deliberately re-read from the DOM rather than derived from the
+        // `images` payload the caller still holds: `openUniqDrop()` counts
+        // these same values off this same live cell, so reading the rendered
+        // markup is what guarantees the synced strings are byte-identical to
+        // the entries the dropdown actually offered (e.g. `_artBuildImageLi()`
+        // substitutes '(no type)' for a typeless image — the payload has no
+        // such string in it).
+        // `_findCellListItems()` — NOT a fresh `:scope > li` query — because
+        // that is the function `openUniqDrop()`'s item-entry collection and
+        // `_classifyCollapseCell()` both ask, and the whole point of these
+        // attributes is to give the source cell the SAME answers. A separate
+        // query here could diverge from it (its sibling "competing text" check
+        // has no equivalent in a bare `ul > li` walk) and re-open the gap in a
+        // subtler form.
+        const liveLis = _findCellListItems(liveArtCell);
+        if (liveLis.length === 0) {
+            // No qualifying list on the live cell either: clear every synced
+            // fact rather than leaving a previous build's values behind, so the
+            // source cell falls through exactly as the live one does.
+            delete sourceCell.dataset.mbArtLiCountSync;
+            delete sourceCell.dataset.mbArtItemTextsSync;
+            delete sourceCell.dataset.mbArtTypesSync;
+            delete sourceCell.dataset.mbArtCommentsSync;
+        } else {
+            // '\n' is the join separator throughout: no image type or
+            // disambiguation comment can contain a newline, and
+            // `getCleanColumnText()` collapses whitespace, so it can never
+            // appear inside an item text either.
+            const _distinctTexts = sel => {
+                const out = new Set();
+                liveArtCell.querySelectorAll(sel).forEach(el => {
+                    const t = el.textContent.trim();
+                    if (t) out.add(t);
+                });
+                return Array.from(out);
+            };
+            sourceCell.dataset.mbArtLiCountSync = String(liveLis.length);
+            sourceCell.dataset.mbArtItemTextsSync = liveLis
+                .map(li => getCleanColumnText(li))
+                .filter(t => t)
+                .join('\n');
+            sourceCell.dataset.mbArtTypesSync    = _distinctTexts(_ART_SYNC_TYPE_SEL).join('\n');
+            sourceCell.dataset.mbArtCommentsSync = _distinctTexts(_ART_SYNC_COMMENT_SEL).join('\n');
+        }
+
         const cached = _rowTextCache.get(sourceRow);
         if (cached) { cached.cols[colIdx] = undefined; cached.full = null; }
     }
 
     /** Selector for artwork-icon spans — the same one `_stripTransientCellState()` clears. */
     const _ART_ICON_SPAN_SEL = 'span.caa-icon, span.eaa-icon, span.artwork-icon';
+
+    // ── Per-image type/comment selectors ─────────────────────────────────────
+    // Shared by `_cellMatchesStructureMode()`'s `arttype:`/`artcomment:`
+    // branches (which read the LIVE cell) and
+    // `_artSyncSearchTextToSourceRow()` (which mirrors the same values onto
+    // the source cell), so the two can never drift apart.
+    //
+    // Only the `mb-caa-*` spelling exists for both archives:
+    // `_artBuildImageLi()` is not context-parameterized and emits these class
+    // names for CAA and EAA alike.
+    const _ART_SYNC_TYPE_SEL    = '.mb-caa-type-badge > span';
+    const _ART_SYNC_COMMENT_SEL = '.mb-caa-art-comment';
 
     /**
      * Resolves the element on the SOURCE row that corresponds to `liveEl` on a
