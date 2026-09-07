@@ -24,7 +24,19 @@
  *
  * `headerCountsInitial`/`headerCountsRestore` time the column-header count
  * scan (`_updateAllColHeaderCounts()`) directly, by waiting on the `Event`
- * badge reaching its true 4158 rather than on a status string. They replace
+ * badge reaching its true 4158 AND THEN on every badge on the page holding
+ * still. Both halves are needed: the value wait proves the scan really reached
+ * that column (a scan that is superseded and abandoned leaves the badges stable
+ * but wrong, which a stability check alone would happily time as a fast
+ * result), and the stability wait covers the other twenty columns, which on
+ * this page are still empty long after `Event` is correct. Measured with only
+ * the value wait, this page reported ~1.9 s while most of its header was still
+ * blank.
+ *
+ * `waitForColHeaderCountsStable()` needs four identical polls at 250 ms, so
+ * both metrics carry a ~1 s floor. That floor is identical on every arm being
+ * compared, so it compresses the ratio between arms slightly and never
+ * exaggerates it. They replace
  * an earlier note here claiming no such metric was possible because the
  * scan's cost "is already folded into the filter/sort numbers" — that is true
  * but not sufficient. The five metrics below observe it only indirectly, as
@@ -55,6 +67,7 @@ const { seedGmValues } = require('./gmStubs');
 const { waitForRenderComplete } = require('./browser');
 const {
     waitForFilterSettled, waitForSortSettled, waitForColHeaderUniqCount,
+    waitForColHeaderCountsStable,
 } = require('./filterSortAssertions');
 const {
     URL, FIXTURE_PATH, SEED_GM_VALUES, FILTER_COLUMN, FILTER_VALUE, SORT_COLUMN, UNIQ_DROP_COLUMN,
@@ -270,6 +283,7 @@ async function measureHeaderCountsInitialOnce(browser, config) {
     const page = await loadPage(browser, config);
     const start = Date.now();
     await waitForColHeaderUniqCount(page, config.headerCountColumn, config.headerCountTotal, { timeout: 120000 });
+    await waitForColHeaderCountsStable(page);
     const ms = Date.now() - start;
     await page.close();
     return ms;
@@ -291,6 +305,7 @@ async function measureHeaderCountsInitialOnce(browser, config) {
 async function measureHeaderCountsRestoreOnce(browser, config) {
     const page = await loadPage(browser, config);
     await waitForColHeaderUniqCount(page, config.headerCountColumn, config.headerCountTotal, { timeout: 120000 });
+    await waitForColHeaderCountsStable(page);
 
     const colIdx = await page.evaluate((name) => {
         const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
@@ -311,6 +326,7 @@ async function measureHeaderCountsRestoreOnce(browser, config) {
     const start = Date.now();
     await columnFilterClear(page, colIdx).click();
     await waitForColHeaderUniqCount(page, config.headerCountColumn, config.headerCountTotal, { timeout: 120000 });
+    await waitForColHeaderCountsStable(page);
     const ms = Date.now() - start;
     await page.close();
     return ms;

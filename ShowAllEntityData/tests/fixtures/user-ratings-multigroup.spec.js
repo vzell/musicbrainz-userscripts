@@ -171,4 +171,41 @@ test.describe('user-ratings: multi-group entityFeatures staleness', () => {
 
         expect(tooltipLines).toEqual(['Two Minutes to Late Night', 'Covers Vol. 11']);
     });
+    test('every sub-table gets its column-header unique-value counts, not just the last one', async ({ page }) => {
+        // `_scheduleColHeaderCounts()` used to share ONE module-level
+        // coalescing token across every table on the page, while
+        // `renderGroupedTable()` calls `initCollapsableColumns()` — and so
+        // schedules a scan — once per sub-table inside its own loop. Each
+        // schedule bumped the shared token, so every sub-table but the last
+        // abandoned its scan before writing a single badge.
+        //
+        // The damage was invisible because an empty badge renders as an empty
+        // span, not as an error. It IS however baked into the committed
+        // baselines: tests/snapshots/artist-releasegroups/rendered.html has 1
+        // of 423 `.mb-col-uniq-count` spans populated across its 47 tables,
+        // and releasegroup-releases/rendered.html 14 of 42.
+        //
+        // The token is now per-table, so repeat schedules for the SAME table
+        // still coalesce (which is the whole reason it exists —
+        // initReleaseEventsColumn() fires initCollapsableColumns() three times
+        // in a row) while siblings no longer cancel each other.
+        await openRatings(page);
+
+        // Every rendered sub-table must end up with at least one populated
+        // unique-value badge. Asserted per table rather than as a page-wide
+        // total: a page-wide count passes as soon as ONE big table fills in,
+        // which is exactly the bug.
+        await page.waitForFunction(() => {
+            const tables = Array.from(document.querySelectorAll('table.tbl'));
+            if (tables.length < 2) return false;
+            return tables.every((t) => Array.from(t.querySelectorAll('thead .mb-col-uniq-count'))
+                .some((el) => el.textContent.trim() !== ''));
+        }, null, { timeout: 30000 });
+
+        const perTable = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl'))
+            .map((t) => Array.from(t.querySelectorAll('thead .mb-col-uniq-count'))
+                .filter((el) => el.textContent.trim() !== '').length));
+        expect(perTable.length).toBeGreaterThan(1);
+        expect(perTable.filter((n) => n > 0)).toHaveLength(perTable.length);
+    });
 });
