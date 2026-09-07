@@ -272,8 +272,13 @@ test.describe('Save to Disk strips live artwork', { tag: '@extended' }, () => {
                 let h3 = t.previousElementSibling;
                 while (h3 && h3.tagName !== 'H3') h3 = h3.previousElementSibling;
                 if (!h3) return;
-                const painted = Array.from(t.querySelectorAll('tbody span.caa-icon'))
-                    .filter((i) => /url\(/.test(i.style.backgroundImage || '')).length;
+                // Selector matches the insertion probe's `inspectRow()` exactly
+                // (not just `span.caa-icon`), because this count is compared
+                // against `iconsPaintedAtInsert` below and the two must not
+                // drift on a page that also renders eaa/artwork icons.
+                const painted = Array.from(t.querySelectorAll(
+                    'tbody span.caa-icon, tbody span.eaa-icon, tbody span.artwork-icon'
+                )).filter((i) => /url\(/.test(i.style.backgroundImage || '')).length;
                 // h3.textContent carries the whole per-section toolbar, so take
                 // only the label ahead of the "(N)" row count.
                 const label = (h3.textContent.trim().match(/^[^(]+/) || [''])[0]
@@ -306,11 +311,24 @@ test.describe('Save to Disk strips live artwork', { tag: '@extended' }, () => {
 
         expect(probe.rowsInserted, 'the sort re-inserted no rows — nothing was measured')
             .toBeGreaterThan(0);
+        // Compared against the SORTED sub-table's own painted count, not the
+        // page-wide one. Since the render scoping landed a sort re-inserts only
+        // that table's rows, so the untouched sub-tables' artwork can never
+        // appear in an insertion-time tally — measured here as 6 arriving
+        // painted against 7 on the page, which is correct and complete.
+        //
+        // The control loses no strength: what it has to establish is that the
+        // mirrors put live blob URLs on the source rows this payload is built
+        // from, and "every painted icon in the sorted table came back painted"
+        // establishes exactly that. The `> 0` floor is what keeps it from
+        // passing on a page with no artwork at all.
+        expect(target.painted, 'the chosen sub-table holds no painted artwork — nothing to prove')
+            .toBeGreaterThan(0);
         expect(
             probe.iconsPaintedAtInsert,
             'rows arrived unpainted — the source-row mirror is not running, so this payload ' +
             'would be vacuously blob-free and prove nothing'
-        ).toBe(live.paintedIcons);
+        ).toBe(target.painted);
 
         // ── 3. The contract: save, and inspect the real payload ──────────────
         //
@@ -372,6 +390,16 @@ test.describe('Save to Disk strips live artwork', { tag: '@extended' }, () => {
         // the blob: count. A placeholder whose image never resolved carries no
         // blob: URL at all and would slip past the check above while still
         // being live-render state that has no business in a saved file.
+        // Logged, not asserted: how many 📊 unique-value count badges the saved
+        // headers carry. This is why the payload grew ~20% when the sort-render
+        // scoping landed — an undisturbed sub-table no longer has its badges
+        // reset to the empty placeholder and re-scheduled, so a save catches
+        // them populated (19 of 22 here, against 0 of 22 before). Recorded so
+        // the next reader who diffs two payload sizes does not re-derive it.
+        const badges = (rawJson.match(/mb-col-uniq-count\\">(.*?)</g) || []);
+        const filledBadges = badges.filter((b) => !/count\\">\s*</.test(b)).length;
+        console.log(`[save-probe] uniq-count badges in saved headers: ${filledBadges}/${badges.length} populated`);
+
         const inlinePhHits = (rawJson.match(/mb-caa-inline-ph|mb-eaa-inline-ph/g) || []).length;
         expect(
             inlinePhHits,

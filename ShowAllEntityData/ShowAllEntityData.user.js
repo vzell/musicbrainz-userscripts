@@ -41878,6 +41878,88 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * The multi-table sort's narrower alternative to `_invalidateFilterCache()`:
+     * drops only the cached match sets of the groups a sort actually disturbed.
+     *
+     * A cached entry is an ARRAY of source rows in filter order, so a reorder
+     * invalidates the sorted group's entry even though it cannot change which
+     * rows MATCH. Every other group's array is still correct, element for element
+     * — and clearing them was costing a full `testRowMatch()` pass over every row
+     * of every untouched sub-table on each sort (16 of 17 groups on the pilot
+     * artist page).
+     *
+     * Deletion is by group index across ALL `discographyViewState` values, not
+     * just the current one: `_buildFilterKey()`'s multi prefix is
+     * `m:<dvState>:<groupIdx>`, so keying on the current view alone would leave a
+     * pre-sort ordering cached under another view, ready to be resurrected the
+     * moment the user switches to it.
+     *
+     * Single-table sorts keep calling `_invalidateFilterCache()` — `allRows` is
+     * one array with one `s|…` key, so there is nothing to narrow.
+     *
+     * @param {Set<number>} idxSet - Group indices whose cached order is now stale.
+     */
+    function _invalidateFilterCacheForGroups(idxSet) {
+        if (!idxSet || idxSet.size === 0) { _invalidateFilterCache(); return; }
+        for (const key of Array.from(_filterResultCache.keys())) {
+            const m = /^m:[^:]*:(\d+)\|/.exec(key);
+            if (m && idxSet.has(Number(m[1]))) _filterResultCache.delete(key);
+        }
+        // The incremental-filter optimisation is single-table only (its keys carry
+        // the 's' prefix), but it is cheap and stateful, so reset it exactly as the
+        // wholesale invalidator does rather than reasoning about reachability.
+        _incrLastGlobalQuery = '';
+        _incrLastPartialKey  = '';
+        _incrMatchSet        = null;
+    }
+
+    /**
+     * Group indices whose sub-table must be re-rendered by the `runFilter()` call
+     * currently in flight, or `null` when every group must be (the default, and
+     * what every filter-driven call uses).
+     *
+     * Set ONLY by `makeTableSortableUnified()`'s multi-table sort handler, which is
+     * the one caller that knows a single group's row order changed and nothing else
+     * did. Cleared in that handler's `finally`, so any other entry into
+     * `runFilter()` — a keystroke, a view switch, a disk load — sees `null` and gets
+     * the unconditional full re-render it has always had.
+     *
+     * @type {?Set<number>}
+     */
+    let _renderDirtyGroupIdxs = null;
+
+    /**
+     * The set of `groupedRows` indices a sort of `groupIdx` actually disturbs.
+     *
+     * Normally just `groupIdx` itself. **Merged discography view is the carve-out**:
+     * `runFilter()` builds a visible category's row set by concatenating EVERY
+     * same-category group and re-sorting the union through
+     * `mergedSortComparatorRegistry` (see its merged-view row-source block), so
+     * sorting the first-occurrence table changes what every contributor's table
+     * would render as well. Treating them as undisturbed would leave a hidden
+     * duplicate's tbody — which `_applyDiscographyViewFilter()` keeps populated
+     * rather than emptying — holding the pre-sort order, ready to be restored on
+     * the next view switch.
+     *
+     * Category identity is resolved exactly as `runFilter()` resolves it, so the
+     * two cannot drift: `h3_all_category_header_array[i]` when that index exists,
+     * else the group's own `category`/`key`.
+     *
+     * @param {number} groupIdx - The group whose rows were just re-ordered.
+     * @returns {Set<number>}
+     */
+    function _sortDirtyGroupIdxs(groupIdx) {
+        const dirty = new Set([groupIdx]);
+        if (discographyViewState !== 'merged') return dirty;
+        const catOf = (i) => (i < h3_all_category_header_array.length)
+            ? h3_all_category_header_array[i]
+            : ((groupedRows[i] && (groupedRows[i].category || groupedRows[i].key)) || 'Other');
+        const sortedCat = catOf(groupIdx);
+        groupedRows.forEach((_g, i) => { if (catOf(i) === sortedCat) dirty.add(i); });
+        return dirty;
+    }
+
+    /**
      * Builds a stable string key from the current filter context for use in
      * _filterResultCache.  Includes global query, flags, and per-column filter
      * specs.  Multi-table callers prepend a group-specific prefix.
@@ -42258,6 +42340,26 @@ a { color: #1565c0; }`;
                     _matchingSrc = _sourceRows.filter(r => testRowMatch(r, matchCtx, true));
                     _filterCacheSet(_mk, _matchingSrc);
                 }
+
+                // ── Scoped re-render: leave an undisturbed sub-table alone ──────
+                //
+                // A sort changes the row ORDER of exactly one group, so every other
+                // group's live tbody already holds the right rows, in the right
+                // order, with the right highlighting. Rebuilding them meant cloning
+                // and re-decorating every row of all 17 sub-tables to reorder one —
+                // the rows came back carrying their artwork (both source-row mirrors
+                // see to that), so nothing was ever re-fetched, but the DOM work was
+                // pure waste.
+                //
+                // _matchingSrc is still resolved above, because the row counts below
+                // must stay exact whether or not this group is re-rendered — and on
+                // this path it is a cache hit, so it costs nothing.
+                if (_renderDirtyGroupIdxs && !_renderDirtyGroupIdxs.has(groupIdx)) {
+                    filteredArray.push({ ...group, rows: [], _mbSkipRender: true });
+                    totalFiltered += _matchingSrc.length;
+                    return; // continue forEach
+                }
+
                 const matches = _matchingSrc.map(r => {
                     const clone = r.cloneNode(true);
                     // Strip CAA/EAA enrichment markers from every cell in the clone.
@@ -42314,8 +42416,15 @@ a { color: #1565c0; }`;
                 totalFiltered += matches.length;
             });
 
-            // Finalize colon-aligned columns on the filtered subset before re-render
-            if (Lib.settings.sa_enable_numeric_alignment !== false) {
+            // Finalize colon-aligned columns on the filtered subset before re-render.
+            //
+            // Skipped entirely on a scoped (sort-driven) pass. These two measure a
+            // shared column width across the WHOLE rendered row set, and a sort does
+            // not change that set — only one group's order — so the widths already
+            // in force are still the right ones. Running them on a scoped pass would
+            // measure `filteredArray` with every undisturbed group emptied out and
+            // narrow the columns to whatever the sorted sub-table alone needs.
+            if (Lib.settings.sa_enable_numeric_alignment !== false && !_renderDirtyGroupIdxs) {
                 finalizeSplitAlignedColumns(filteredArray.flatMap(g => g.rows), activeIntegerColumns);
                 finalizeRLCColumnWidths(filteredArray.flatMap(g => g.rows), activeIntegerColumns);
             }
@@ -49150,6 +49259,29 @@ a { color: #1565c0; }`;
         dataArray.forEach((group, index) => {
             // Defensive check: ensure category exists
             const categoryName = group.category || group.key || 'Unknown';
+
+            // ── Scoped re-render: this sub-table was not disturbed ──────────────
+            //
+            // Set by runFilter()'s multi branch when a SORT of one sub-table is
+            // driving this render (see _renderDirtyGroupIdxs). The group arrives
+            // with rows:[] deliberately — nothing here may consume group.rows —
+            // and its live tbody already holds the correct rows, in the correct
+            // order, with the correct highlighting. Leaving it alone skips the
+            // tbody wipe, the per-row cloneNode(true), and the whole per-group
+            // decorate pass below (the two column-suppression guards, the tint
+            // re-apply, initCollapsableColumns() and its full unique-value column
+            // scan, and updateSubTableCollapseButton()).
+            //
+            // Safe to return before everything that follows: the reuse branch
+            // never advances `lastInsertedElement` (only the new-table branch
+            // does), and the h3 row-count/tooltip block reads the LIVE tbody
+            // rather than group.rows, so a count it would have recomputed here is
+            // already the one on screen.
+            if (group._mbSkipRender && query && existingTables[index]) {
+                Lib.debug('render', `Scoped re-render: leaving table ${index} ("${categoryName}") untouched.`);
+                return; // continue forEach
+            }
+
             Lib.debug('render', `Processing group: "${categoryName}" with ${group.rows.length} rows.`);
             let table, h3, tbody;
             if (query && existingTables[index]) {
@@ -57622,8 +57754,13 @@ a { color: #1565c0; }`;
 
                     // === Identify target data ===
                     let targetRows = [], originalRows = [], targetGroup = null;
+                    // Kept outside the branch below: the scoped re-render needs it
+                    // after the sort completes, to name the one group whose row
+                    // order changed (see _renderDirtyGroupIdxs).
+                    let targetGroupIdx = -1;
                     if (isMultiTable) {
                         const groupIndex = parseInt(sortKey.split('_').pop(), 10);
+                        targetGroupIdx = groupIndex;
                         targetGroup = groupedRows[groupIndex];
                         if (targetGroup) {
                             targetRows = targetGroup.rows;
@@ -57765,7 +57902,23 @@ a { color: #1565c0; }`;
                                 allRows = sortedData;
                             }
 
-                            _invalidateFilterCache();
+                            // A multi-table sort re-orders ONE group's rows, so both
+                            // the cache drop and the re-render can be scoped to it
+                            // (plus its merged-view co-contributors). Single-table
+                            // keeps the wholesale invalidation — `allRows` is one
+                            // array under one cache key, so there is nothing to
+                            // narrow.
+                            //
+                            // _renderDirtyGroupIdxs is cleared in the finally below
+                            // rather than right after runFilter(): an exception
+                            // thrown mid-render must not leave a later keystroke
+                            // rendering only one sub-table.
+                            if (isMultiTable && targetGroupIdx >= 0) {
+                                _renderDirtyGroupIdxs = _sortDirtyGroupIdxs(targetGroupIdx);
+                                _invalidateFilterCacheForGroups(_renderDirtyGroupIdxs);
+                            } else {
+                                _invalidateFilterCache();
+                            }
                             runFilter();
 
                             // Apply or clear column tints AFTER runFilter(), which is when
@@ -57852,6 +58005,10 @@ a { color: #1565c0; }`;
                                 sortStatusDisplay.style.color = 'red';
                             }
                         } finally {
+                            // Every other entry into runFilter() — a keystroke, a
+                            // view switch, a disk load — must see null and get the
+                            // unconditional full re-render it has always had.
+                            _renderDirtyGroupIdxs = null;
                             if (showWaitCursor) document.body.classList.remove('mb-sorting-active');
                         }
                     })();

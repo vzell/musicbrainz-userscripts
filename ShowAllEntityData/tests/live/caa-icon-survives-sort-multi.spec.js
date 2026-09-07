@@ -37,16 +37,17 @@ const { waitForSortSettled } = require('../support/filterSortAssertions');
  *      source row, where `preserveLiveArt` keeps it and the re-inserted clone
  *      lands in `_artInitInlinePics()`'s Case C1: hover and bigbox tooltip
  *      re-wired, live image kept, nothing re-resolved.
- *   4. **STILL not fixed.** EVERY sub-table is rebuilt when one is sorted, not
- *      just the sorted one. It completes out of the Tier-1 memory cache fast
- *      enough to be invisible, which is a timing property, not a structural
- *      one.
+ *   4. **Now also fixed: the render is scoped to the sorted sub-table.** A sort
+ *      re-orders one group's rows, so `_renderDirtyGroupIdxs` lets
+ *      `runFilter()` skip the clone/strip/highlight pass and
+ *      `renderGroupedTable()` skip the tbody rebuild for every other group.
+ *      Merged discography view is the carve-out — it renders a category from
+ *      the union of every same-category group — so those co-contributors are
+ *      re-rendered too.
  *
- * The assertions below are therefore split: the (1)-(3) invariants are asserted
- * as guarantees, while the (4) measurements are recorded via `console.log`
- * and asserted only where a regression would be unambiguous. Turning the
- * remaining (4) numbers into a hard guarantee requires the per-sub-table render
- * scoping that is still deferred — see the plan's "Deferred" section.
+ * Everything above is asserted as a guarantee. The remaining `console.log`
+ * lines are context for a future reader (which sub-table was chosen, how much
+ * artwork it carried), not deferred work.
  *
  * ## Measured on this page (7 rows across 2 sub-tables, sorting the 6-row one)
  *
@@ -56,10 +57,18 @@ const { waitForSortSettled } = require('../support/filterSortAssertions');
  *                                            the assertion fires
  * archiveFetches         0      guaranteed
  * completionToastReFired 0      guaranteed
- * iconsPaintedAtInsert   =before  GUARANTEED — was 0 before the icon mirror
- * inlineThumbsAtInsert   =before  GUARANTEED — was 0/7 before the inline mirror
- * rowsInserted           7      measured    — i.e. BOTH sub-tables' rows, not
- *                                            just the sorted one's
+ * iconsPaintedAtInsert   6      GUARANTEED  — == the SORTED sub-table's own
+ *                                            painted count, not the page-wide
+ *                                            one (the untouched sub-tables'
+ *                                            rows are never re-inserted, so
+ *                                            their artwork cannot show up in an
+ *                                            insertion-time tally). Was 0
+ *                                            before the icon mirror
+ * inlineThumbsAtInsert   6      GUARANTEED  — same basis. Was 0 before the
+ *                                            inline-thumbnail mirror
+ * rowsInserted           6      GUARANTEED  — the sorted sub-table's rows ONLY.
+ *                                            Was 7 (BOTH sub-tables) before the
+ *                                            render scoping
  * tablesInserted         0      measured    — the <table> elements themselves
  * survivingTaggedTables  2/2                  are reused; only their rows are
  *                                            replaced
@@ -69,10 +78,23 @@ const { waitForSortSettled } = require('../support/filterSortAssertions');
  *                                            installInsertionProbe())
  * ```
  *
- * `rowsInserted` is now the only honest statement of what is NOT fixed on a
- * multi page: every sub-table's rows are still torn down and re-inserted when
- * one sub-table is sorted. They come back carrying their artwork, so nothing
- * is re-resolved — but the DOM work itself is still wasted.
+ * Nothing on the multi path is left unfixed as of this revision: rows arrive
+ * carrying both their icon and their inline thumbnail, and only the sorted
+ * sub-table's rows are re-inserted at all.
+ *
+ * ## Measured at scale, via the overrides below
+ *
+ * ```
+ * page                              rowsInserted   sort duration
+ * releasegroup-releases, 124 rows        119        — (within noise: the
+ *   / 3 sub-tables, sorting the 119-row             sorted table is already
+ *                                                   119 of the 124 rows)
+ * artist-releasegroups, 123 rows          61        83 ms, vs 114 ms with the
+ *   / 17 sub-tables, sorting a 61-row               scoping switched off
+ * ```
+ *
+ * The 17-section page is where the scoping is worth anything — see
+ * `PERFORMANCE.org`'s Step 6 for the full 3-run A/B those figures come from.
  *
  * Needs REAL CAA network access, same rationale as the single-table spec:
  * `gmStubs.js`'s always-404 `GM_xmlhttpRequest` would leave every icon
@@ -464,6 +486,20 @@ test.describe('CAA artwork across a sort (multi-table)', { tag: '@extended' }, (
                 while (h3 && h3.tagName !== 'H3') h3 = h3.previousElementSibling;
                 if (!h3) return;
                 const rows = t.querySelectorAll('tbody tr').length;
+                // Per-sub-table baselines for the two artwork guarantees. They
+                // have to be measured HERE rather than page-wide, because the
+                // render is scoped: a sort re-inserts only this table's rows, so
+                // artwork sitting in the untouched sub-tables is never re-inserted
+                // and must not be counted as missing. Selectors are byte-identical
+                // to `installInsertionProbe()`'s `inspectRow()`, so the two sides
+                // of the comparison cannot drift.
+                const paintedProbe = Array.from(t.querySelectorAll(
+                    'tbody span.caa-icon, tbody span.eaa-icon, tbody span.artwork-icon'
+                )).filter((i) => /url\(/.test(i.style.backgroundImage || '')).length;
+                const inlineThumbs = t.querySelectorAll(
+                    'tbody .mb-caa-inline-ph img[src^="blob:"], ' +
+                    'tbody .mb-eaa-inline-ph img[src^="blob:"]'
+                ).length;
                 // Prefer the sub-table carrying the most painted artwork; fall
                 // back to the biggest one when this page paints its artwork
                 // into the stripe/inline thumbnails rather than a CAA column.
@@ -474,13 +510,17 @@ test.describe('CAA artwork across a sort (multi-table)', { tag: '@extended' }, (
                     // label ahead of the "(N)" row count.
                     const label = (h3.textContent.trim().match(/^[^(]+/) || [''])[0]
                         .replace(/^[\u25b6\u25bc\s]+/, '').trim();
-                    best = { heading: label, painted, rows, score };
+                    best = { heading: label, painted, paintedProbe, inlineThumbs, rows, score };
                 }
             });
             return best;
         });
         expect(target, 'no sub-table with an h3 heading was found').not.toBeNull();
-        console.log(`[multi-probe] target sub-table: "${target.heading}" (${target.painted} painted icons, ${target.rows} rows)`);
+        console.log(
+            `[multi-probe] target sub-table: "${target.heading}" (${target.painted} painted icons, ` +
+            `${target.inlineThumbs} inline thumbs, ${target.rows} rows) — page-wide: ` +
+            `${before.painted} painted, ${before.inlineThumbs} inline thumbs`
+        );
 
         const tagged = await tagSubTables(page);
 
@@ -510,6 +550,14 @@ test.describe('CAA artwork across a sort (multi-table)', { tag: '@extended' }, (
             tables: document.querySelectorAll('table.tbl').length,
             toast: document.getElementById('mb-caa-completion-toast') ? 1 : 0,
         }));
+
+        // The script's own end-to-end sort timing, straight off the sub-table's
+        // status span ("✓ Sorted by: 'Col'▲ (N rows in Xms)"). Logged, never
+        // asserted — a live page's wall clock is far too noisy for a threshold —
+        // but it is the number a perf comparison of the render scoping reads,
+        // and having it here means such a comparison needs no throwaway script.
+        const sortStatusText = await targetH3.locator('.mb-sort-status').textContent().catch(() => null);
+        console.log(`[multi-probe] sort status: ${JSON.stringify(sortStatusText)}`);
 
         console.log('[multi-probe] ' + JSON.stringify({
             beforePainted: before.painted,
@@ -542,20 +590,34 @@ test.describe('CAA artwork across a sort (multi-table)', { tag: '@extended' }, (
 
         // ---- Measurements (documented, deliberately not guarantees) ----
 
-        // Recorded so a future per-sub-table scoping change has a "before"
-        // number to point at. Today EVERY sub-table is rebuilt when one is
-        // sorted, so this is expected to be 0. (Harmless for artwork now that
-        // both mirrors have landed — the rows come back with their icons AND
-        // their inline thumbnails either way — but it is still wasted work.)
+        // `survivingTagged` measures <table> ELEMENT identity, not tbody
+        // rebuilds, and has always been N/N: `renderGroupedTable()`'s reuse
+        // branch keeps every <table>/<thead>/<h3> and replaces only rows. It
+        // stays a measurement because it cannot distinguish the two states this
+        // spec cares about — `rowsInserted` below is the signal that can.
         console.log(
             `[multi-probe] sub-tables surviving a sort of one of them: ` +
             `${after.survivingTagged}/${tagged}`
         );
 
+        // ── The scoped-re-render guarantee ───────────────────────────────────
+        //
+        // Sorting one sub-table must re-insert only THAT sub-table's rows.
+        // Before `_renderDirtyGroupIdxs` this was every row of every group —
+        // 7 here, 124 on the 3-sub-table release group — to reorder one.
+        //
+        // Equality, not `toBeLessThan`: the sorted table must still be rebuilt
+        // in full, so a change that skipped too much would fail just as loudly
+        // as one that skips nothing.
+        expect(
+            probe.rowsInserted,
+            'a sort re-inserted rows from sub-tables it did not touch — the render scoping is not working'
+        ).toBe(target.rows);
+
         console.log(
             `[multi-probe] icons already painted at insertion: ` +
             `${probe.iconsPaintedAtInsert}/${probe.iconsSeen} ` +
-            `(single-table equivalent would be ${before.painted})`
+            `(sorted sub-table held ${target.paintedProbe}; page-wide ${before.painted})`
         );
 
         // ── The icon mirror's guarantee ──────────────────────────────────────
@@ -569,10 +631,15 @@ test.describe('CAA artwork across a sort (multi-table)', { tag: '@extended' }, (
         // Was 0 before `_artMirrorIconToSourceRow()` — on the multi path the
         // source rows carried no artwork at all, so `preserveLiveArt` had
         // nothing to preserve and every row arrived blank.
+        //
+        // Compared against the SORTED sub-table's own count, not the page-wide
+        // one: since the render scoping landed, the other sub-tables' rows are
+        // never re-inserted, so their artwork cannot appear in an insertion-time
+        // tally and page-wide would fail for the wrong reason.
         expect(
             probe.iconsPaintedAtInsert,
             'rows re-inserted by a sort lost their artwork icons — the source-row mirror is not working'
-        ).toBe(before.painted);
+        ).toBe(target.paintedProbe);
 
         // ── The inline-thumbnail mirror's guarantee ──────────────────────────
         //
@@ -588,12 +655,12 @@ test.describe('CAA artwork across a sort (multi-table)', { tag: '@extended' }, (
         // row, not copied.
         console.log(
             `[multi-probe] inline thumbs at insertion: ` +
-            `${probe.inlineThumbsAtInsert}/${before.inlineThumbs}`
+            `${probe.inlineThumbsAtInsert}/${target.inlineThumbs} (sorted sub-table)`
         );
         expect(
             probe.inlineThumbsAtInsert,
             'rows re-inserted by a sort lost their inline thumbnails — the source-row placeholder mirror is not working'
-        ).toBe(before.inlineThumbs);
+        ).toBe(target.inlineThumbs);
 
         expect(pageErrors, 'uncaught page errors during the sort').toEqual([]);
     });

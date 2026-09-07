@@ -533,6 +533,12 @@ SORTING
   to single-column mode
 • Large tables use an async chunked merge-sort; a progress indicator is shown
   when the row count exceeds the configurable sort-progress threshold
+• On a page with several sub-sections, sorting one of them rebuilds only that
+  sub-table.  The others keep their rows, their sort order, their filters and
+  their artwork exactly as they were, so sorting a small section stays fast no
+  matter how large the rest of the page is.  In the merged discography view a
+  section is drawn from several groups at once, so sorting it refreshes those
+  too
 
 COLLAPSING / EXPANDING
 -----------------------
