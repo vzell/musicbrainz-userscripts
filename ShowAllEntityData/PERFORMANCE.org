@@ -314,6 +314,48 @@ while rebasing onto ~main~).
   this file. It was deliberately NOT merged here: it asserts things about
   Steps 1/2/3/5 that are not true of ~main~.
 
+*** DONE Step 6: Scope a multi-table sort's re-render to the sorted sub-table
+
+Landed on ~main~ as part of the artwork-preservation series (see the
+~// @version~ header for the exact version); branch
+~perf/scoped-subtable-sort-render~.
+
+Sorting one sub-table re-ordered exactly one array (~groupedRows[i].rows~)
+and then called ~_invalidateFilterCache(); runFilter();~ — which cleared
+every group's cached match set and re-cloned, re-stripped, re-highlighted
+and re-inserted every row of every group, plus the whole per-group decorate
+pass (~initCollapsableColumns()~ and its unique-value column scan included).
+
+~_renderDirtyGroupIdxs~ now names the groups a sort actually disturbed;
+~runFilter()~'s multi branch skips the clone/strip/highlight pass for the
+rest and ~renderGroupedTable()~'s reuse branch leaves their ~<tbody>~ alone.
+~_invalidateFilterCacheForGroups()~ drops only their cache entries — a
+re-order cannot change which rows MATCH, only the order of an
+already-correct array.
+
+*Measured, 2026-09-07*, ~/artist/5d02f264-…~ (Simon & Garfunkel,
+~artist-releasegroups~: 123 rows across 17 sub-tables, 85 with cover art),
+sorting the same 61-row "Album + Compilation" section by "Year" each time.
+A/B on one tree, one variable — the scoping was toggled off in place rather
+than switching branches — via
+~tests/live/caa-icon-survives-sort-multi.spec.js~ with ~MULTI_CAA_URL~ /
+~MULTI_CAA_BUTTON~, reading the sub-table's own ~.mb-sort-status~ text.
+
+| Arm      | Rows re-inserted | Sort duration (3 runs) | Median  |
+|----------+------------------+------------------------+---------|
+| Unscoped |              123 | 108 / 116 / 114 ms     |  114 ms |
+| Scoped   |               61 | 77 / 85 / 83 ms        |   83 ms |
+
+~27% faster, and half the rows touched. The gain scales with how much of
+the page is NOT the sorted section: on a 124-row release group whose sorted
+sub-table already holds 119 of the rows, re-insertions only fall 124 → 119
+and the timing difference is inside the noise. The 17-section page is the
+shape this is for.
+
+Artwork is unaffected in both arms — zero archive requests, icons and
+inline thumbnails still painted at insertion — because the two source-row
+mirrors land independently of this.
+
 *** TODO Step 5: Lazy CAA/EAA loading (IntersectionObserver)
 
 Defer CAA/EAA icon loads + JSON-API enrichment until a row's art cell

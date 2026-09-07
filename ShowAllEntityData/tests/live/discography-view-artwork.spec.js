@@ -266,45 +266,106 @@ test.describe('discography views: artwork survives sorting and filtering in ever
             }
 
             // ── Sort a visible sub-table ────────────────────────────────────
-            const heading = await page.evaluate(() => {
-                const h3 = Array.from(document.querySelectorAll('h3.mb-toggle-h3'))
-                    .find((h) => h.dataset.mbDiscHidden !== 'true');
-                if (!h3) return null;
-                return (h3.textContent.trim().match(/^[^(]+/) || [''])[0]
-                    .replace(/^[▶▼\s]+/, '').trim();
+            // Pick the visible sub-section carrying the MOST painted artwork,
+            // not simply the first one.
+            //
+            // This mattered only once the render scoping landed. Before it, a
+            // sort re-rendered all 17 sub-tables, so sorting whichever section
+            // came first still exercised all 123 rows. Now a sort touches only
+            // the sorted table — and the first visible section on this page holds
+            // exactly one row, which made the "nothing had to be repainted"
+            // assertion read `1 of 1` in three views and `0 of 0` in
+            // Non-Official, i.e. vacuous.
+            const target = await page.evaluate(() => {
+                let best = null;
+                document.querySelectorAll('h3.mb-toggle-h3').forEach((h3) => {
+                    if (h3.dataset.mbDiscHidden === 'true') return;
+                    let t = h3.nextElementSibling;
+                    while (t && t.tagName !== 'TABLE') t = t.nextElementSibling;
+                    if (!t || t.offsetParent === null) return;
+                    const painted = Array.from(t.querySelectorAll(
+                        'tbody span.caa-icon, tbody span.eaa-icon, tbody span.artwork-icon'
+                    )).filter((i) => /url\(/.test(i.style.backgroundImage || '')).length;
+                    const rows = t.querySelectorAll('tbody tr').length;
+                    const score = painted * 1000 + rows;
+                    if (!best || score > best.score) {
+                        best = {
+                            heading: (h3.textContent.trim().match(/^[^(]+/) || [''])[0]
+                                .replace(/^[▶▼\s]+/, '').trim(),
+                            painted, rows, score,
+                        };
+                    }
+                });
+                return best;
             });
+            expect(target, `${view.name}: no visible sub-section to sort`).not.toBeNull();
+            const heading = target.heading;
             expect(heading, `${view.name}: no visible sub-section to sort`).toBeTruthy();
+            // Non-vacuity floor: a one-row section would make the repaint
+            // assertion below prove nothing.
+            expect(target.rows, `${view.name}: the chosen sub-table "${heading}" is too small to measure`)
+                .toBeGreaterThan(1);
+            expect(target.painted, `${view.name}: the chosen sub-table "${heading}" holds no painted artwork`)
+                .toBeGreaterThan(0);
+
+            // Scope the lookup to sections the CURRENT view actually shows.
+            // `hasText` matches on text content regardless of visibility, so a
+            // plain `h3.mb-toggle-h3` + `.first()` can resolve to a hidden
+            // duplicate — every click against it then times out. Non-Official
+            // hides 11 of 17 sections, which is where this first bit.
+            const h3Loc = page.locator('h3.mb-toggle-h3:not([data-mb-disc-hidden="true"])',
+                { hasText: heading }).first();
+            const tbl = h3Loc.locator('xpath=following-sibling::table[1]');
+
+            // The sorted sub-table's OWN pre-sort figures. Since the render
+            // scoping landed, a sort re-inserts only this table's rows, so these
+            // — not the page-wide counts — are what an insertion-time probe can
+            // possibly observe. Selectors match `armProbe()`'s `inspectRow()`.
+            const tblBefore = await tbl.evaluate((t) => ({
+                rows: t.querySelectorAll('tbody tr').length,
+                painted: Array.from(t.querySelectorAll(
+                    'tbody span.caa-icon, tbody span.eaa-icon, tbody span.artwork-icon'
+                )).filter((i) => /url\(/.test(i.style.backgroundImage || '')).length,
+            }));
+            const visibleBefore = await paintedVisible(page);
 
             await armProbe(page);
-            const tbl = page.locator('h3.mb-toggle-h3', { hasText: heading }).first()
-                .locator('xpath=following-sibling::table[1]');
             await waitForSortSettled(page, () => tbl.locator('thead .sort-icon-btn', { hasText: '▲' }).first().click(),
-                { timeout: 120000, subTableHeading: heading });
+                { timeout: 120000, statusLocator: h3Loc.locator('.mb-sort-status') });
             const sortProbe = await readProbe(page);
             const steady = await paintedAll(page);
+            const visibleAfter = await paintedVisible(page);
 
             console.log(`[view-art] ${view.name} sort: ${JSON.stringify(sortProbe)} ` +
-                        `(painted before=${beforePainted}, after=${steady})`);
+                        `(sorted table before=${JSON.stringify(tblBefore)}, ` +
+                        `visible ${visibleBefore}->${visibleAfter}, page-wide after=${steady})`);
             expect(sortProbe.rows, `${view.name}: the sort re-inserted no rows`).toBeGreaterThan(0);
 
-            // The invariant is "nothing had to be REPAINTED": every icon the
-            // page ends up with was already painted at the moment its row was
-            // inserted. Compared against the post-sort steady state, NOT the
-            // pre-sort one — merged view legitimately drops icons across a
-            // sort, and comparing to the pre-sort count would fail for a reason
-            // that has nothing to do with artwork.
-            //
-            // Merged view combines several groups' rows into the
-            // first-occurrence table and leaves the hidden duplicates populated
-            // until the next render; `runFilter()`'s merged branch then pushes
-            // an empty row set for those duplicates, so their tbodies are
-            // emptied. Measured: 157 painted before the sort (85 in the visible
-            // merged tables + 72 still in the hidden duplicates), 85 after.
-            // Nothing was lost — the duplicates were cleared by design.
+            // ── The render scoping ──────────────────────────────────────────
+            // Only the sorted sub-table's rows may be re-inserted. Merged view
+            // needs no exception: its dirty set also covers the same-category
+            // co-contributors, but those are the HIDDEN duplicates whose rows
+            // were already folded into this visible table — re-rendering them
+            // empties their tbodies and inserts nothing.
+            expect(sortProbe.rows, `${view.name}: the sort re-inserted rows from sub-tables it did not touch`)
+                .toBe(tblBefore.rows);
+
+            // ── Nothing had to be REPAINTED ─────────────────────────────────
+            // Every icon that was painted in the sorted table came back painted
+            // at the moment its row was inserted, not a tick later.
             expect(
                 sortProbe.painted,
                 `${view.name}: rows re-inserted by a sort arrived with their artwork blanked`
-            ).toBe(steady);
+            ).toBe(tblBefore.painted);
+
+            // ── Nothing was LOST from view ──────────────────────────────────
+            // The page-wide tally is not a usable invariant here: merged view
+            // leaves hidden duplicate tables populated until something
+            // re-renders them, so `paintedAll` legitimately drops as those get
+            // cleared. What must hold in every view is that the artwork the user
+            // can actually SEE is unchanged by a reorder.
+            expect(visibleAfter, `${view.name}: artwork disappeared from a visible section across the sort`)
+                .toBe(visibleBefore);
             expect(steady, `${view.name}: no artwork survived at all`).toBeGreaterThan(0);
             expect(sortProbe.archive, `${view.name}: the sort hit the archive`).toBe(0);
 

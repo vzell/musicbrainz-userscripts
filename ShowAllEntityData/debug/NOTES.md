@@ -7577,3 +7577,153 @@ sort of the 119-row sub-table; `survivingTaggedTables` 3/3 — the `<table>`
 elements are reused, only their rows are replaced). It costs no network traffic
 now that both mirrors have landed, so this is CPU/DOM waste rather than anything
 visible.
+
+## 2026-09-07 — sorting one sub-table re-rendered all of them (fixed)
+
+The last of the two items 9.99.1038 carried forward, and the one three earlier
+sessions deferred as "needs the render redesign". It did not: the information a
+scoped render needs is already in hand at click time.
+
+### What was actually happening
+
+`makeTableSortableUnified()`'s handler mutates exactly one array
+(`groupedRows[groupIndex].rows`) and then does:
+
+```js
+_invalidateFilterCache();
+runFilter();
+```
+
+Two separate pieces of waste follow from those two lines:
+
+- The wholesale cache clear forces a full `testRowMatch()` membership pass over
+  every row of every group — but a re-order cannot change which rows MATCH, only
+  the order of an already-correct array.
+- `runFilter()`'s multi branch then re-clones, re-strips, re-highlights and
+  re-inserts every row of every group, and `renderGroupedTable()`'s reuse branch
+  wipes all 17 tbodies and re-runs the whole per-group decorate pass —
+  `initCollapsableColumns()` and its full unique-value column scan included.
+
+### The fix
+
+`_renderDirtyGroupIdxs` (a `Set`, or `null` meaning "everything", which is what
+every other entry into `runFilter()` sees) plus `_invalidateFilterCacheForGroups()`
+and `_sortDirtyGroupIdxs()`. Set in the sort handler, cleared in its `finally` —
+not right after `runFilter()`, so an exception mid-render cannot strand a later
+keystroke rendering only one sub-table.
+
+Two details worth keeping:
+
+- **The cache drop is by group index across ALL `discographyViewState` values.**
+  The key is `m:<view>:<groupIdx>`, so dropping only the current view's entry
+  leaves a pre-sort ordering cached under another view, ready to come back on the
+  next switch.
+- **The colon-alignment finalizers are skipped on a scoped pass.** They measure
+  one shared width across the whole rendered row set. A re-order does not change
+  that set, and running them on a `filteredArray` with the undisturbed groups
+  emptied would narrow every column to what the sorted sub-table alone needs.
+
+### Merged view: carved out, then measured
+
+`_sortDirtyGroupIdxs()` adds every same-category group in merged view, because
+`runFilter()` renders such a category from the union of all of them. Measured
+afterwards: those co-contributors cost nothing. They are the hidden duplicate
+tables whose rows are already folded into the visible one, so re-rendering them
+empties their tbody and inserts no rows — `sortProbe.rows` came out equal to the
+sorted table's own row count in merged view exactly as in the other three, so the
+spec needed no merged-view exception at all.
+
+### Measured
+
+```
+                          small RG (2 tables)   Springsteen RG (3 tables)
+rows re-inserted by a sort   7 -> 6                124 -> 119
+icons painted at insertion   6/6                   (unchanged)
+inline thumbs at insertion   6/6                   (unchanged)
+archive requests             0                     0
+```
+
+### A test-quality trap this created
+
+`discography-view-artwork.spec.js` picked "the first visible sub-section" to
+sort. That was harmless while a sort re-rendered all 17 tables — it still
+exercised 123 rows — but under scoping it exercises only the sorted one, and this
+page's first visible section holds ONE row. The artwork assertion silently became
+`1 of 1` in three views and `0 of 0` in Non-Official: passing, and proving
+nothing. It now picks the visible section carrying the most painted artwork and
+asserts a non-vacuity floor (>1 row, >0 painted) before measuring.
+
+The same shift applies to `caa-icon-survives-sort-multi.spec.js`: its artwork
+guarantees now compare against the SORTED sub-table's own counts rather than the
+page-wide ones, because artwork in an untouched sub-table is never re-inserted
+and cannot appear in an insertion-time tally.
+
+### Follow-up: why the saved payload got 20% bigger (not a leak)
+
+Noticed during verification: `save-to-disk-strips-live-artwork.spec.js` reported
+65-67 KB of JSON before the scoping and 78-82 KB after, consistently. Chased it
+rather than waving it off, by capturing a payload from each arm (scoping toggled
+in place, one variable) and diffing them by top-level key:
+
+```
+key        unscoped   scoped     delta
+headers       25654    38748    +13094      <- essentially all of it
+groups        28352    30155     +1803
+```
+
+Per-column, every header differed in the same way — and in the SCOPED payload's
+favour:
+
+```
+                        badges  filled  populated-tooltips  placeholder-tooltips
+unscoped.json.gz            22       0                   0                    22
+scoped.json.gz              22      19                  38                     2
+```
+
+The 📊 unique-value count badges (`.mb-col-uniq-count`) and their real tooltips
+("Show the 6 different unique values in this column…") are PRESENT after a
+scoped sort and ABSENT before it. `initCollapsableColumns(table)` →
+`_scheduleColHeaderCounts(table)` is part of the per-group work now skipped for
+an undisturbed sub-table; unscoped, every sort reset all 17 tables' badges to
+the empty placeholder and re-scheduled the scan, and a save landing before that
+finished captured them empty.
+
+Skipping it is correct, not merely cheaper: a sort changes a group's row ORDER,
+never its row SET, so the counts it would recompute are the ones already
+displayed. Filters — which DO change row sets — never take the scoped path
+(`_renderDirtyGroupIdxs` is null for every non-sort entry into `runFilter()`),
+so the badges still refresh whenever they can actually change.
+
+So the bigger payload is a more complete one, and the user-visible effect is
+that the 📊 counts stop blanking out when you sort some other sub-section.
+
+### Two test-side adjustments the scoping forced
+
+Both specs compared an insertion-time artwork tally against a PAGE-WIDE count.
+That was right while a sort re-rendered everything and is wrong now — an
+untouched sub-table's rows are never re-inserted, so its artwork cannot appear
+in such a tally. Both now compare against the SORTED sub-table's own counts:
+
+- `caa-icon-survives-sort-multi.spec.js` — `target.paintedProbe` /
+  `target.inlineThumbs`, measured with selectors byte-identical to the probe's
+  `inspectRow()` so the two sides cannot drift.
+- `save-to-disk-strips-live-artwork.spec.js` — `target.painted`, whose own
+  selector was widened to match the probe for the same reason. Its non-vacuity
+  control loses nothing: what it must establish is that the mirrors put live
+  blob URLs on the source rows being serialised, and "every painted icon in the
+  sorted table came back painted, and there was at least one" establishes
+  exactly that.
+
+`waitForSortSettled()` gained an optional `statusLocator`. Its `subTableHeading`
+form resolves via `hasText` + `.first()`, which ignores visibility — in
+Non-Official view (11 of 17 sections hidden) that resolved to a hidden
+duplicate and every action against it timed out.
+
+### One transient, recorded rather than buried
+
+`tag-value-sort-overflow-row.spec.js` failed twice in one window on a
+page-level `SyntaxError: Unexpected token '<'` (its own overflow-row assertions
+passed; the failure was the final `expect(pageErrors).toEqual([])`). It did not
+reproduce: 4/4 green on the branch afterwards and 3/3 on the unmodified tree.
+Consistent with MusicBrainz serving an HTML error page for some resource during
+a burst, not with this change, which parses nothing.

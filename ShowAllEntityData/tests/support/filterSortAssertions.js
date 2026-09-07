@@ -103,15 +103,29 @@ async function waitForFilterSettled(page, trigger, { timeout = 30000 } = {}) {
  * page — see ShowAllEntityData.user.js's `makeTableSortableUnified()`
  * sort-click handler).
  *
+ * `statusLocator` is the escape hatch for a caller that has already resolved
+ * the section it means (see the note in the body): pass that section's own
+ * `.mb-sort-status` locator and `subTableHeading` is ignored.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {() => Promise<void>} trigger
- * @param {{ timeout?: number, subTableHeading?: string }} [opts]
+ * @param {{ timeout?: number, subTableHeading?: string,
+ *           statusLocator?: import('@playwright/test').Locator }} [opts]
  * @returns {Promise<void>}
  */
-async function waitForSortSettled(page, trigger, { timeout = 30000, subTableHeading } = {}) {
-    const locator = subTableHeading
-        ? page.locator('h3.mb-toggle-h3', { hasText: subTableHeading }).first().locator('.mb-sort-status')
-        : page.locator('#mb-sort-status-display');
+async function waitForSortSettled(page, trigger, { timeout = 30000, subTableHeading, statusLocator } = {}) {
+    // `statusLocator` wins when given. `subTableHeading` resolves via
+    // `hasText` + `.first()`, which matches on text content regardless of
+    // visibility — so on a page where a view mode hides some sections
+    // (artist-releasegroups' discography views) it can land on a hidden
+    // duplicate whose heading merely CONTAINS the wanted one, and every
+    // subsequent action against that section times out. A caller that has
+    // already resolved the section it means should hand the locator over
+    // rather than round-trip through the text.
+    const locator = statusLocator
+        || (subTableHeading
+            ? page.locator('h3.mb-toggle-h3', { hasText: subTableHeading }).first().locator('.mb-sort-status')
+            : page.locator('#mb-sort-status-display'));
     await _runAndWaitForSettledText(locator, trigger, timeout);
 }
 
