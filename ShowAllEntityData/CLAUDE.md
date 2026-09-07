@@ -31,31 +31,31 @@ by more than 6,000 lines, which is worse than having no table at all. Grep the
 anchor. The listing order below is the file's own top-to-bottom order, which is
 the part that stays true and is what makes it useful for orientation.
 
-| Grep for | What it is |
-|---|---|
-| `// ==UserScript==` | Header, then a third-party attribution block (do not edit) |
-| `const SCRIPT_BASE_NAME` | Script constants: `SCRIPT_ID`, remote URLs |
-| `const configSchema` | Settings-menu definitions (checkboxes, colour pickers, …); by far the largest single block |
-| `const Lib = (typeof VZ_MBLibrary` | Library init, with a fallback stub if the `@require`'d library failed to load |
-| `const ColumnDataExtractor` | Named column-extractor registry |
-| `const SyntheticColumnDataExtractor` | Synthetic-column extractor registry |
-| `function buildActiveColumnExtractors` | First of the `buildActive*` helpers (extractors, erasers, injected columns) |
-| `function applyListToTable` | DOM pre-processing; `applyRenameH2ToH3`/`applyRenameH2ToH1`/`applyInsertH2`/`applyInsertPrependH2`/`applyShowAllTags` follow it |
-| `function applyExtractTrackTitleData` | `release-tracks`' bespoke AR pipeline (see its own section below) |
-| `const pageDefinitions = [` | One entry per recognised URL pattern |
-| `let ctrlMFunctionMap` | Declared empty here; populated right after `initBarcodeHighlight()` |
-| `function sortLargeArray` | Async row-array sort — defined much earlier than its callers |
-| `// --- Initialization Logic ---` | Page-type detection, header location, button injection |
-| `function runFilter` | Real-time filter logic |
-| `function startFetchingProcess` | Main fetch-pipeline entry point |
-| `function renderFinalTable` | Single-table render (`tableMode: 'single'`) |
-| `function renderGroupedTable` | Multi-table render (`tableMode: 'multi'`) |
-| `function makeH2sCollapsible` | Page-level h2 collapse |
-| `function makeTableSortableUnified` | Column-header sort handlers; delegates to `sortLargeArray()` |
-| `function initExpandRGsFeature` | Release-group expand/collapse |
-| `const CAA_CTX` / `const EAA_CTX` | Artwork context descriptors |
-| `function initCaaPics` / `function initEaaPics` | Artwork feature entry points |
-| `function initBarcodeHighlight` | Barcode highlighting |
+| Grep for                                        | What it is                                                                                                                      |
+|-------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| `// ==UserScript==`                             | Header, then a third-party attribution block (do not edit)                                                                      |
+| `const SCRIPT_BASE_NAME`                        | Script constants: `SCRIPT_ID`, remote URLs                                                                                      |
+| `const configSchema`                            | Settings-menu definitions (checkboxes, colour pickers, …); by far the largest single block                                      |
+| `const Lib = (typeof VZ_MBLibrary`              | Library init, with a fallback stub if the `@require`'d library failed to load                                                   |
+| `const ColumnDataExtractor`                     | Named column-extractor registry                                                                                                 |
+| `const SyntheticColumnDataExtractor`            | Synthetic-column extractor registry                                                                                             |
+| `function buildActiveColumnExtractors`          | First of the `buildActive*` helpers (extractors, erasers, injected columns)                                                     |
+| `function applyListToTable`                     | DOM pre-processing; `applyRenameH2ToH3`/`applyRenameH2ToH1`/`applyInsertH2`/`applyInsertPrependH2`/`applyShowAllTags` follow it |
+| `function applyExtractTrackTitleData`           | `release-tracks`' bespoke AR pipeline (see its own section below)                                                               |
+| `const pageDefinitions = [`                     | One entry per recognised URL pattern                                                                                            |
+| `let ctrlMFunctionMap`                          | Declared empty here; populated right after `initBarcodeHighlight()`                                                             |
+| `function sortLargeArray`                       | Async row-array sort — defined much earlier than its callers                                                                    |
+| `// --- Initialization Logic ---`               | Page-type detection, header location, button injection                                                                          |
+| `function runFilter`                            | Real-time filter logic                                                                                                          |
+| `function startFetchingProcess`                 | Main fetch-pipeline entry point                                                                                                 |
+| `function renderFinalTable`                     | Single-table render (`tableMode: 'single'`)                                                                                     |
+| `function renderGroupedTable`                   | Multi-table render (`tableMode: 'multi'`)                                                                                       |
+| `function makeH2sCollapsible`                   | Page-level h2 collapse                                                                                                          |
+| `function makeTableSortableUnified`             | Column-header sort handlers; delegates to `sortLargeArray()`                                                                    |
+| `function initExpandRGsFeature`                 | Release-group expand/collapse                                                                                                   |
+| `const CAA_CTX` / `const EAA_CTX`               | Artwork context descriptors                                                                                                     |
+| `function initCaaPics` / `function initEaaPics` | Artwork feature entry points                                                                                                    |
+| `function initBarcodeHighlight`                 | Barcode highlighting                                                                                                            |
 
 ## Page definition anatomy
 
@@ -265,11 +265,11 @@ its full name will locate.
 This is not a judgement call to re-litigate per change; the only question is
 which kind of test, and the routing is:
 
-| Kind | Where | When |
-|---|---|---|
-| Fixture spec | `tests/fixtures/*.spec.js` | Anything reproducible from saved HTML. Network-free, fast, the default. Prefer this. |
-| Live spec | `tests/live/*.spec.js`, tagged `@core`/`@extended`/`@perf` | Real-page behavior that a fixture cannot reproduce (pagination, real artwork throughput, third-party interop). |
-| Snapshot baseline | `tests/snapshots/<pageType>/` | A new pageType's structural shape. |
+| Kind              | Where                                                      | When                                                                                                           |
+|-------------------|------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
+| Fixture spec      | `tests/fixtures/*.spec.js`                                 | Anything reproducible from saved HTML. Network-free, fast, the default. Prefer this.                           |
+| Live spec         | `tests/live/*.spec.js`, tagged `@core`/`@extended`/`@perf` | Real-page behavior that a fixture cannot reproduce (pagination, real artwork throughput, third-party interop). |
+| Snapshot baseline | `tests/snapshots/<pageType>/`                              | A new pageType's structural shape.                                                                             |
 
 The existing rule stands and is stricter than the table: **every DOM/rendering
 fix needs a regression test that fails before the fix and passes after.** Verify
@@ -326,28 +326,28 @@ Before proposing a fix for a rendering or 'element not appearing' bug, first con
 
 ## DOM conventions
 
-| Element / class | Purpose |
-|---|---|
-| `table.tbl` | All data tables created by this script |
-| `.mb-master-toggle` | Show/Hide all sub-sections button (multi-table pages) |
-| `.mb-toggle-h3` | Clickable h3 section headers |
-| `.mb-toggle-h2` | Clickable h2 section headers |
-| `.mb-filter-container` | Filter bar wrapper |
-| `.mb-sort-status` | Sort indicator |
-| `.mb-caa-sort-key` | Hidden sort/filter sentinel for CAA artwork presence |
-| `.mb-eaa-sort-key` | Hidden sort/filter sentinel for EAA artwork presence |
-| `.mb-inline-art-sort-key` | Hidden sort key for inline thumbnail presence |
-| `.mb-rel-cell` | Relationship icon cell |
-| `.mb-sticky-col` | Sticky first column |
-| `.mb-cell-collapse-toggle` | Per-cell ▶/▼ collapse toggle — drives BOTH list cells (`ul>li`) and prose cells (`.mb-text-clamp-inner`) |
-| `.mb-text-clamp-marker` | Unconditional marker on every prose-collapse column's wrapper — `_isProseCollapseColumn` keys off this, independent of the `.mb-text-clamp-inner` clamp itself (see `collapsableColumns` below) |
-| `.mb-text-clamp-inner` | Wrapper around a "prose" collapsable cell's content (e.g. "Annotation"); height-clamped by default |
-| `.mb-text-clamp-expanded` | Toggled on `.mb-text-clamp-inner` to lift the height clamp |
-| `.mb-col-collapse-hdr-btn` | Column-header collapse/expand-all button |
-| `.mb-col-collapse-count` | Per-column live multi-row count badge, kept in sync by `_updateAllColHeaderCounts` |
-| `[data-caa-expand-btn]` | CAA/EAA cell-expand button attribute — the precedent `collapsableColumns` below points to for a "fourth cell kind" |
-| `.mb-uniq-section` / `.mb-uniq-section-hdr` | Unique-values dropdown's collapsible section wrapper/header (see `SYN_SECTION_META` below) |
-| `.mb-col-uniq-item` | Unique-values dropdown row item |
+| Element / class                             | Purpose                                                                                                                                                                                         |
+|---------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `table.tbl`                                 | All data tables created by this script                                                                                                                                                          |
+| `.mb-master-toggle`                         | Show/Hide all sub-sections button (multi-table pages)                                                                                                                                           |
+| `.mb-toggle-h3`                             | Clickable h3 section headers                                                                                                                                                                    |
+| `.mb-toggle-h2`                             | Clickable h2 section headers                                                                                                                                                                    |
+| `.mb-filter-container`                      | Filter bar wrapper                                                                                                                                                                              |
+| `.mb-sort-status`                           | Sort indicator                                                                                                                                                                                  |
+| `.mb-caa-sort-key`                          | Hidden sort/filter sentinel for CAA artwork presence                                                                                                                                            |
+| `.mb-eaa-sort-key`                          | Hidden sort/filter sentinel for EAA artwork presence                                                                                                                                            |
+| `.mb-inline-art-sort-key`                   | Hidden sort key for inline thumbnail presence                                                                                                                                                   |
+| `.mb-rel-cell`                              | Relationship icon cell                                                                                                                                                                          |
+| `.mb-sticky-col`                            | Sticky first column                                                                                                                                                                             |
+| `.mb-cell-collapse-toggle`                  | Per-cell ▶/▼ collapse toggle — drives BOTH list cells (`ul>li`) and prose cells (`.mb-text-clamp-inner`)                                                                                        |
+| `.mb-text-clamp-marker`                     | Unconditional marker on every prose-collapse column's wrapper — `_isProseCollapseColumn` keys off this, independent of the `.mb-text-clamp-inner` clamp itself (see `collapsableColumns` below) |
+| `.mb-text-clamp-inner`                      | Wrapper around a "prose" collapsable cell's content (e.g. "Annotation"); height-clamped by default                                                                                              |
+| `.mb-text-clamp-expanded`                   | Toggled on `.mb-text-clamp-inner` to lift the height clamp                                                                                                                                      |
+| `.mb-col-collapse-hdr-btn`                  | Column-header collapse/expand-all button                                                                                                                                                        |
+| `.mb-col-collapse-count`                    | Per-column live multi-row count badge, kept in sync by `_updateAllColHeaderCounts`                                                                                                              |
+| `[data-caa-expand-btn]`                     | CAA/EAA cell-expand button attribute — the precedent `collapsableColumns` below points to for a "fourth cell kind"                                                                              |
+| `.mb-uniq-section` / `.mb-uniq-section-hdr` | Unique-values dropdown's collapsible section wrapper/header (see `SYN_SECTION_META` below)                                                                                                      |
+| `.mb-col-uniq-item`                         | Unique-values dropdown row item                                                                                                                                                                 |
 
 ## Things to check before any DOM-related fix
 
@@ -584,12 +584,12 @@ re-running an old one on a bigger page.** There are FOUR blocking dialogs, they
 are plain DOM overlays rather than native `confirm()`s (so Playwright's
 `page.on('dialog')` never fires), and the existing helper only clears three:
 
-| Gate | Fires when | Shape | Cleared by |
-|---|---|---|---|
-| `ℹ️ Unknown Page Count` | `features.unboundedPagination` + ambiguous pagination widget | `Lib.showCustomConfirm`, OK/Cancel | `dismissCustomConfirmDialog()` |
-| `⚠️ High Page Count` | `maxPage > sa_max_page` (default **50**) | `Lib.showCustomConfirm`, OK/Cancel | `dismissCustomConfirmDialog()` |
-| `showRenderDecisionDialog()` | `totalRows > sa_render_threshold` (default **5000**) | **three** buttons: `#mb-dialog-save` / `#mb-dialog-render` / `#mb-dialog-cancel` | **nothing — see below** |
-| `⚠️ Large Render Warning` | `totalRows > sa_render_warning_threshold` (default **10000**) | `Lib.showCustomConfirm`, OK/Cancel | `dismissCustomConfirmDialog()` |
+| Gate                         | Fires when                                                    | Shape                                                                            | Cleared by                     |
+|------------------------------|---------------------------------------------------------------|----------------------------------------------------------------------------------|--------------------------------|
+| `ℹ️ Unknown Page Count`       | `features.unboundedPagination` + ambiguous pagination widget  | `Lib.showCustomConfirm`, OK/Cancel                                               | `dismissCustomConfirmDialog()` |
+| `⚠️ High Page Count`          | `maxPage > sa_max_page` (default **50**)                      | `Lib.showCustomConfirm`, OK/Cancel                                               | `dismissCustomConfirmDialog()` |
+| `showRenderDecisionDialog()` | `totalRows > sa_render_threshold` (default **5000**)          | **three** buttons: `#mb-dialog-save` / `#mb-dialog-render` / `#mb-dialog-cancel` | **nothing — see below**        |
+| `⚠️ Large Render Warning`     | `totalRows > sa_render_warning_threshold` (default **10000**) | `Lib.showCustomConfirm`, OK/Cancel                                               | `dismissCustomConfirmDialog()` |
 
 Three things make this a live hazard rather than a theoretical one:
 
@@ -980,14 +980,14 @@ below, which mixed unrelated topics under one header.
 
 **Split history**, for context:
 
-| Version | What split |
-|---|---|
-| v9.99.872 | "Entity info" → one sub-section per entity type (`entity_*`) plus Comment/Alias |
-| v9.99.873 | New sections carved out: Format info, Release events (country/date/weekday), Country name/code details, Tracks info, Catalog info |
-| v9.99.882 | New "Event info" section (event dates on native tag-value listings) |
-| v9.99.886 | "Event info" renamed to "Event info - Event date"; new sibling "Event info - Event cancelled" |
-| v9.99.893 | "Credit details" → `creditAttr`/`creditTask`/`creditDate`/`creditInstrument`/`creditAltName` |
-| next | Structure/Flags/Format info/Tracks info/Catalog info/CAA info/EAA info each split further; "Release events"/"Country details" labels normalized to the current naming convention (see `// @version` header for the exact version) |
+| Version   | What split                                                                                                                                                                                                                        |
+|-----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| v9.99.872 | "Entity info" → one sub-section per entity type (`entity_*`) plus Comment/Alias                                                                                                                                                   |
+| v9.99.873 | New sections carved out: Format info, Release events (country/date/weekday), Country name/code details, Tracks info, Catalog info                                                                                                 |
+| v9.99.882 | New "Event info" section (event dates on native tag-value listings)                                                                                                                                                               |
+| v9.99.886 | "Event info" renamed to "Event info - Event date"; new sibling "Event info - Event cancelled"                                                                                                                                     |
+| v9.99.893 | "Credit details" → `creditAttr`/`creditTask`/`creditDate`/`creditInstrument`/`creditAltName`                                                                                                                                      |
+| next      | Structure/Flags/Format info/Tracks info/Catalog info/CAA info/EAA info each split further; "Release events"/"Country details" labels normalized to the current naming convention (see `// @version` header for the exact version) |
 
 ## Track length precision (`Length` column) and the `treleases` trap
 

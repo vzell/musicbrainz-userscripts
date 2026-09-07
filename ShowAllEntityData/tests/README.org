@@ -26,10 +26,10 @@ musicbrainz.org.
 
 The harness is split into two Playwright projects, by directory.
 
-| Project              | Directory         | Tests            | Network      | Per-test timeout |
-|----------------------+-------------------+------------------+--------------+------------------|
-| =chromium-fixtures=  | =tests/fixtures/= | 140 in 31 files  | none         | 30 s (default)   |
-| =chromium-live=      | =tests/live/=     | 71 in 37 files   | real MB.org  | 120 s            |
+| Project             | Directory         | Tests           | Network     | Per-test timeout |
+|---------------------+-------------------+-----------------+-------------+------------------|
+| =chromium-fixtures= | =tests/fixtures/= | 140 in 31 files | none        | 30 s (default)   |
+| =chromium-live=     | =tests/live/=     | 71 in 37 files  | real MB.org | 120 s            |
 
 *Fixtures* serve a saved local HTML file at a real musicbrainz.org-shaped URL
 via Playwright's =page.route()=, so the userscript believes it is on the real
@@ -48,32 +48,32 @@ Playwright defaults to half the machine's cores.
 
 Every live spec carries exactly one tag, and the npm scripts select on it:
 
-| Tag         | What it is                                                                 |
-|-------------+----------------------------------------------------------------------------|
-| =@core=     | Shared-mechanism sanity net — filter, sort, fetch, pagination basics       |
+| Tag         | What it is                                                                                                             |
+|-------------+------------------------------------------------------------------------------------------------------------------------|
+| =@core=     | Shared-mechanism sanity net — filter, sort, fetch, pagination basics                                                   |
 | =@extended= | Bespoke / pageType-specific edge cases — Stop button, IDB cache tiers, third-party interop, sub-table filters, artwork |
-| =@perf=     | The deliberate perf-comparison instrumentation only                        |
+| =@perf=     | The deliberate perf-comparison instrumentation only                                                                    |
 
 Current split: =@core= 10 tests / 9 files · =@extended= 54 / 28 · =@perf= 7 / 1.
 
 * Every npm script
 
-| Command                                        | Runs                                          |
-|------------------------------------------------+-----------------------------------------------|
-| =npm test=                                     | Fixtures only. The default and CI-safe suite. |
-| =npm run test:live=                            | Live =@core= only                             |
-| =npm run test:live:extended=                   | Live =@core= + =@extended= (64 tests)         |
-| =npm run test:live:perf=                       | Live =@perf= only                             |
-| =npm run test:all=                             | Literally everything, fixtures and live       |
-| =npm run test:ui=                              | Playwright's interactive UI mode              |
-| =npm run test:headed=                          | Same tests, visible browser                   |
-| =npm run test:live:save-html=                  | Live suite, saving rendered HTML per test     |
-| =npm run test:live:report:artist-releases=     | One spec + generates an =.org=/=.html= report |
-| =npm run test:live:artist-releases:full=       | Same, with both opt-in test groups enabled    |
-| =npm run test:live:report:releasegroup-releases= | Multi-table sibling of the above            |
-| =npm run report=                               | Open the last HTML report                     |
-| =npm run auth:login=                           | One-time interactive MusicBrainz login        |
-| =npm run live-interop=                         | Debugging aid, not a test — see below         |
+| Command                                          | Runs                                          |
+|--------------------------------------------------+-----------------------------------------------|
+| =npm test=                                       | Fixtures only. The default and CI-safe suite. |
+| =npm run test:live=                              | Live =@core= only                             |
+| =npm run test:live:extended=                     | Live =@core= + =@extended= (64 tests)         |
+| =npm run test:live:perf=                         | Live =@perf= only                             |
+| =npm run test:all=                               | Literally everything, fixtures and live       |
+| =npm run test:ui=                                | Playwright's interactive UI mode              |
+| =npm run test:headed=                            | Same tests, visible browser                   |
+| =npm run test:live:save-html=                    | Live suite, saving rendered HTML per test     |
+| =npm run test:live:report:artist-releases=       | One spec + generates an =.org=/=.html= report |
+| =npm run test:live:artist-releases:full=         | Same, with both opt-in test groups enabled    |
+| =npm run test:live:report:releasegroup-releases= | Multi-table sibling of the above              |
+| =npm run report=                                 | Open the last HTML report                     |
+| =npm run auth:login=                             | One-time interactive MusicBrainz login        |
+| =npm run live-interop=                           | Debugging aid, not a test — see below         |
 
 To run a single spec directly:
 
@@ -88,16 +88,16 @@ Two of these are *measured*; the rest are estimates or declared ceilings, and
 the "Basis" column says which is which. Re-measure before relying on any of
 them for a decision.
 
-| Suite / spec                                | Wall clock  | Basis                                          |
-|---------------------------------------------+-------------+------------------------------------------------|
-| =npm test= (140 fixture tests)              | *≈ 65–75 s* | measured twice, 2026-09-07 (66 s and 72 s)      |
-| slowest single fixture spec                 | ≈ 60 s      | measured — =release-tracks-recording-length= (18 tests) |
-| median individual fixture test              | ≈ 1.4 s     | measured                                       |
-| slowest individual fixture test             | ≈ 9 s       | measured                                       |
-| =npm run test:live= (=@core=, 10 tests)     | a few min   | estimate — mostly at the 120 s default         |
-| =artist-releases-filter-sort.spec.js=       | *≈ 7 m 45 s* | measured 2026-08-31, 11 tests, both opt-ins on |
-| =releasegroup-releases-filter-sort.spec.js= | ≈ 12 min+   | the spec's own note: ~2 min setup *per test* × 6 |
-| =npm run test:live:extended= (64 tests)     | tens of min | estimate; declared ceiling is 3 h 41 m         |
+| Suite / spec                                | Wall clock   | Basis                                                   |
+|---------------------------------------------+--------------+---------------------------------------------------------|
+| =npm test= (140 fixture tests)              | *≈ 65–75 s*  | measured twice, 2026-09-07 (66 s and 72 s)              |
+| slowest single fixture spec                 | ≈ 60 s       | measured — =release-tracks-recording-length= (18 tests) |
+| median individual fixture test              | ≈ 1.4 s      | measured                                                |
+| slowest individual fixture test             | ≈ 9 s        | measured                                                |
+| =npm run test:live= (=@core=, 10 tests)     | a few min    | estimate — mostly at the 120 s default                  |
+| =artist-releases-filter-sort.spec.js=       | *≈ 7 m 45 s* | measured 2026-08-31, 11 tests, both opt-ins on          |
+| =releasegroup-releases-filter-sort.spec.js= | ≈ 12 min+    | the spec's own note: ~2 min setup *per test* × 6        |
+| =npm run test:live:extended= (64 tests)     | tens of min  | estimate; declared ceiling is 3 h 41 m                  |
 
 The fixture suite's 66 s wall clock against ~327 s of summed test time is
 parallelism doing its job across workers.
@@ -109,20 +109,20 @@ group simply takes that long, so those specs raise their own timeouts and poll
 until the painted-artwork count stops changing. Their settle budgets are
 environment-tunable (all in ms):
 
-| Variable                | Default | Used by                                      |
-|-------------------------+---------+----------------------------------------------|
-| =SINGLE_CAA_SETTLE_MS=  | 180000  | =caa-icon-survives-sort.spec.js=             |
-| =MULTI_CAA_SETTLE_MS=   | 300000  | =caa-icon-survives-sort-multi.spec.js=       |
-| =MERGED_CAA_SETTLE_MS=  | 180000  | =merged-view-caa-search-sync.spec.js=        |
-| =SAVE_ART_SETTLE_MS=    | 180000  | =save-to-disk-strips-live-artwork.spec.js=   |
+| Variable               | Default | Used by                                    |
+|------------------------+---------+--------------------------------------------|
+| =SINGLE_CAA_SETTLE_MS= |  180000 | =caa-icon-survives-sort.spec.js=           |
+| =MULTI_CAA_SETTLE_MS=  |  300000 | =caa-icon-survives-sort-multi.spec.js=     |
+| =MERGED_CAA_SETTLE_MS= |  180000 | =merged-view-caa-search-sync.spec.js=      |
+| =SAVE_ART_SETTLE_MS=   |  180000 | =save-to-disk-strips-live-artwork.spec.js= |
 
 ** Opt-in test groups (off by default)
 
-| Variable                | Effect                                                        |
-|-------------------------+---------------------------------------------------------------|
+| Variable                | Effect                                                                      |
+|-------------------------+-----------------------------------------------------------------------------|
 | =TEST_PREFILTER_LOAD=1= | Adds the pre-filtered disk-load group — roughly doubles that spec's runtime |
-| =TEST_COLVIS=1=         | Adds the column-visibility group                              |
-| =SAVE_HTML=1=           | Dumps each test's rendered HTML under =test-results/rendered-html/= |
+| =TEST_COLVIS=1=         | Adds the column-visibility group                                            |
+| =SAVE_HTML=1=           | Dumps each test's rendered HTML under =test-results/rendered-html/=         |
 
 * Login
 
@@ -162,12 +162,12 @@ has four gates that block until answered, and they are plain DOM overlays rather
 than native browser dialogs, so nothing dismisses them automatically and no
 console error appears.
 
-| Gate                       | Fires when                                              |
-|----------------------------+---------------------------------------------------------|
-| ℹ️ Unknown Page Count      | An edit-listing page whose pagination has no true last page |
-| ⚠️ High Page Count         | More pages than =sa_max_page= (default 50)              |
-| 💾 Save to Disk / 🎨 Render Now | More rows than =sa_render_threshold= (default 5000) |
-| ⚠️ Large Render Warning    | More rows than =sa_render_warning_threshold= (default 10000) |
+| Gate                            | Fires when                                                   |
+|---------------------------------+--------------------------------------------------------------|
+| ℹ️ Unknown Page Count           | An edit-listing page whose pagination has no true last page  |
+| ⚠️ High Page Count              | More pages than =sa_max_page= (default 50)                   |
+| 💾 Save to Disk / 🎨 Render Now | More rows than =sa_render_threshold= (default 5000)          |
+| ⚠️ Large Render Warning         | More rows than =sa_render_warning_threshold= (default 10000) |
 
 The last two fire *after* the fetch finishes, so hitting one wastes the entire
 fetch and then times out. Run with =npm run test:headed= to see which dialog is
@@ -198,13 +198,13 @@ becomes 5000 again, despite the setting's description promising "0 to disable".
 
 * Where the maps are
 
-| File                                   | What it tells you                                               |
-|----------------------------------------+-----------------------------------------------------------------|
-| =tests/live/registry.org=              | Every live spec: pageType, URL, what it verifies, known quirks  |
-| =tests/snapshots/registry.org=         | Every snapshot baseline, plus an *"Expected drift"* section to read before treating a re-capture diff as a regression |
-| =tests/pagetypes.json=                 | The 11 pageTypes wired into the snapshot harness, with their settings seeds |
-| =PAGETYPES-TESTING-REFERENCE.org=      | Every pageType, a real URL for each, and the coverage plan       |
-| =tests/fixtures/live-userscripts/README.md= | The real-third-party-userscript interop harness             |
+| File                                        | What it tells you                                                                                                     |
+|---------------------------------------------+-----------------------------------------------------------------------------------------------------------------------|
+| =tests/live/registry.org=                   | Every live spec: pageType, URL, what it verifies, known quirks                                                        |
+| =tests/snapshots/registry.org=              | Every snapshot baseline, plus an *"Expected drift"* section to read before treating a re-capture diff as a regression |
+| =tests/pagetypes.json=                      | The 11 pageTypes wired into the snapshot harness, with their settings seeds                                           |
+| =PAGETYPES-TESTING-REFERENCE.org=           | Every pageType, a real URL for each, and the coverage plan                                                            |
+| =tests/fixtures/live-userscripts/README.md= | The real-third-party-userscript interop harness                                                                       |
 
 Note that =tests/snapshots/registry.org= lists more pageTypes than there are
 directories on disk: baselines for personal-account pages are configured but not

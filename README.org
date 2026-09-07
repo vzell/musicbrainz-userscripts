@@ -99647,3 +99647,185 @@ print(pattern.sub(reformat, html))
 #+end_src
 
 
+* Why is the "Show all <n> rows" button not present on all multi-table pageTypes
+** DONE i
+
+1.)
+
+Analyse why is the "Show all <n> rows" button not present on all multi-table pageTypes, e.g. on https://musicbrainz.org/area/a36544c1-cb40-4f44-9e0e-7a5a69e403a8/recordings
+
+2.)
+
+show me a summary before implementing
+
+** maybe add "release-tracks" pageType
+
+maybe add "release-tracks" pageType
+
+
+* bugs regarding milliseconds track lenght and difference between track and recording length
+** i
+
+bugs regarding milliseconds track length and difference between track and recording length:
+
+1.)
+
+On e.g. https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b (see also
+@debug/milliseconds-difference.html for the final rendered page) when clicking the "Show milliseconds" glyph in the
+"Length" column, only the "Recording length" column actually renders the milliseconds
+
+2.)
+
+when track and recording differ more than the threshhold, the yellow/orange background colouring is not present on rows
+when at the same time there is a row which also differs with the "far over" level
+
+** bug
+
+After clicking two times the milliseconds glyph, I coudn't reproduce my first bug greport regarding 1.), see console log @debug/milliseconds-difference.log
+
+for 2.) see screenshot 
+
+#+begin_example
+[Image #3] - after the final rendering, no key press at all on the final rendered page
+#+end_example
+
+** possible ?
+
+Regarding
+
+#+begin_example
+This release ("SXSW 2013 Showcasing Artists") has 1209 tracks, but MusicBrainz's own embedded <script type="application/json"> hydration payload — the source both duration columns read — only contains data for the first 100 tracks.
+#+end_example
+
+is it possible to still request the missing data also on the other pagined fetches
+
+** /uvd add a section with unique values for the treshholds
+
+/uvd add a section with unique values for the treshholds
+
+** add a popup dialog during rerendering or maybe exactly that one for long running operations
+
+add a popup dialog during rerendering or maybe exactly that one for long running operations
+
+
+* DONE "Date" column not showing the usual "Date info - Decade/Month"
+
+Additionally:
+
+"Date" column is not showing the usual "Date info - Decade/Month" on e.g, pageType https://musicbrainz.org/user/vzell/ratings
+
+Are there probably any others, show me a summary not implementing yet
+
+* DONE No big image tooltip on https://musicbrainz.org/user/vzell/ratings
+
+
+
+* TODO Why is there no tooltip on the CAA images on the pageType https://musicbrainz.org/user/vzell/ratings
+** DONE i
+
+Why is there no tooltip on the CAA images on the pageType https://musicbrainz.org/user/vzell/ratings
+Only analyze no implementation yet
+
+** DONE Verified — one correction, one confirmation
+
+CAA tooltip — my original theory was wrong. The artwork does load correctly (I initially saw it fail, but that was a bug in my own test stub: GM_xmlhttpRequest with responseType: 'blob' wasn't handled, so the real image fetch never actually failed — I fixed the stub and re-ran;
+the image loads fine, caa-inline-yes, real blob URL). The actual, now directly-observed bug is different and more precise: hovering the inline thumbnail should pop up a rich HTML tooltip (by design — there's no native title attribute at all here, that's intentional), but it
+never appears. I caught the real cause live as a thrown exception:
+
+TypeError: (features.extractMainColumn || "").toLowerCase is not a function
+
+_renderBigboxTooltipFromColumns() (line 67226) assumes features.extractMainColumn is always a column-name string and unconditionally calls .toLowerCase() on it. user-ratings declares it as a numeric column index instead (extractMainColumn: 1 — "Entity column always sits at
+index 1"), which is a legitimate, documented alternate form elsewhere in this codebase. 1.toLowerCase doesn't exist, the hover handler throws, and the tooltip <div> never gets shown. This crash kills the tooltip for both the inline thumbnail and the big-picture-strip hover
+(same shared function).
+
+Seven pageTypes declare extractMainColumn as a number: user-ratings-type, user-ratings, report-multiple-linked, user-tag-value-entity, user-tag-value, tag-value-entity, tag-value. The crash fires on any of them that also has tooltipColumns configured (all the
+tag-value/user-tag-value/user-ratings family do) — so this is a real, broader bug, just a different and much simpler one than I first guessed.
+
+Date column dropdown — confirmed exactly as suspected. I called the test hook directly (window.__saTest.getUniqDropSections('Date')) against the live "Event ratings" table and got back [] — genuinely empty, no sections at all. This matches the "last group wins" staleness in
+activeSyntheticColumnExtractors I described earlier, and I also caught the tell-tale side effect live in the debug log: syntheticColumnExtractor: source column "Date" not found in primary output map or header list — extractor "dateParts" skipped, fired while a different group's
+table was being processed. Confirmed scoped to user-ratings/tag-value/user-tag-value (the only pageTypes rendering multiple simultaneous entity-type sections per page load).
+
+Summary of confirmed fixes needed
+
+1. _renderBigboxTooltipFromColumns(): coerce extractMainColumn to a string before .toLowerCase() — one-line fix,
+   unblocks the hover tooltip on 7 pageTypes.
+2. The activeSyntheticColumnExtractors/activeColumnExtractors staleness for the 📊 dropdown on
+   user-ratings/tag-value/user-tag-value — needs the dropdown-open code path to resolve extractors from the clicked
+   column's own table/group, not the shared module state (same class of fix already applied elsewhere for the bigbox
+   tooltip via table.dataset.mbEntityTooltipColumns).
+
+** DONE tooltip ONLY shows the "Artist" name but not the "Release group" from the corresponding row columns
+
+the tooltip ONLY shows the "Artist" name but not the "Release group" from the corresponding row columns, looks like the config is wrong
+
+#+begin_example
+                'Release groups': {
+                    // 'jesus2099' eraser: /user/<username>/ratings' "Release group
+                    // ratings" <li>s carry the jesus2099 "mb. SUPER MIND CONTROL"
+                    // userscript's own <a href=".../cover-art"><span class="caa-icon
+                    // jesus2099userjs…"></span></a> cover-art icon natively (see
+                    // debug/cell.html) — without erasing it first, addCAA below
+                    // ALSO injects its own inline thumbnail into the same cell,
+                    // showing the cover art twice.
+                    columnErasers: [ { sourceColumn: 'Release group', erasers: ['jesus2099'] } ],
+                    columnExtractors: [ { sourceColumn: 'Release group', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ],
+                    injectedColumns: [ 'Relationships' ],
+                    addCAA: 'Release group',
+                    tooltipColumns: [ 'MB-Name', 'Artist' ]
+                },
+#+end_example
+
+I want first the "Artist", then the "Release group" name
+
+** DONE The injectedColumns: [ 'Relationships' ] is not there
+
+Also declared
+
+#+begin_example
+                    injectedColumns: [ 'Relationships' ],
+#+end_example
+
+it's not visible @debug/user-rating-no-relationship.html
+
+** TODO bug - need redesign
+
+● I've root-caused this one. Here's what's actually going on:
+
+  Confirmed via the debug snapshot: data-col-name="Relationships" appears zero times anywhere in debug/user-rating-no-relationship.html — the column truly never renders, on any sub-table, not just "Release group ratings".
+
+  Root cause has two layers:
+
+  1. Same staleness bug class as the Date/tooltip fixes — renderGroupedTable()'s per-group thead rebuild for user-ratings (ShowAllEntityData.user.js:49361-49394) rebuilds activeColumnExtractors/activeSyntheticColumnExtractors/activeInjectedColumnExtractors/activeIntegerColumns
+     for the current group, but not activeInjectedColumns (nor activeReleaseEventColumns). So the injectedColumns: ['Relationships'] declared on the 'Release groups' entityFeatures block is simply never picked up — activeInjectedColumns stays whatever was resolved from the page's
+     first h2 at fetch time ('Artists': {}, which declares no injectedColumns at all), so it's [] for the whole render.
+  2. A deeper, pre-existing design mismatch, even setting (1) aside: buildActiveInjectedColumns() (line 4945) picks the WS2 entity type/inc options from the pageType alone — artist-releasegroups → release-group, artist-works → work, everything else → release.
+     user-ratings/user-ratings-type fall into "everything else," so even with the staleness fixed, it would try to fetch /ws/2/release/<release-group-mbid>?inc=url-rels — wrong entity namespace, would just fail/404.
+
+     Worse: _initRelationshipsColumnImpl()'s cell-injection (_ensureRelCell) scans document.querySelectorAll('table.tbl tbody tr') unconditionally — i.e. every row on the whole page, across all seven entity-type sub-tables — and stamps them all with whatever single entityType
+     activeInjectedColumns[0] resolves to. On a single-entity-type page (its only current users: artist-releasegroups, artist-releases, label-releases, releasegroup-releases — see the setting's own description) that's fine. On user-ratings, it would tag
+     Artist/Event/Label/Place/Recording/Work rows with the "release-group" entity type too, producing garbage relationship lookups on every other sub-table.
+
+  Given the setting's own description explicitly scopes this feature to those 4 pageTypes, and making it actually work correctly for user-ratings would mean redesigning _ensureRelCell to be per-table/per-entity-type-aware — a real feature addition, not a bug fix — I'd lean toward
+  just removing the dead injectedColumns: ['Relationships'] line from both user-ratings/user-ratings-type 'Release groups' blocks, matching how the redundant artistCredit extractor was removed earlier this session.
+
+** TODO redesigning _ensureRelCell to be per-table/per-entity-type-aware
+  
+
+* UVD - "Catalog" column needs a overwhole, the prefix stuff is currently not completely OK
+
+"Catalog" column needs a overwhole, the prefix stuff is currently not completely OK
+
+
+* "MB-Name", "Comment", "Primary alias" empty
+
+On pageType https://musicbrainz.org/tag/rock/recording there is a rendering bug, see @debug/tag-rock-recording-final.html
+
+"MB-Name", "Comment", "Primary alias" columns empty on https://musicbrainz.org/tag/rock/recording and comment and
+recording name cells shifted without column header names
+
+
+* plan: work on Step 3 in @PERFORMANCE.org and summarize performance statistics before/afer the fix
+
+work on Step 3 in @PERFORMANCE.org and summarize performance statistics before/afer the fix
+
+

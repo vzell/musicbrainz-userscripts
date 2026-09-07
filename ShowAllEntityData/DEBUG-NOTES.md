@@ -7784,22 +7784,22 @@ selector, a plain CAA/EAA icon cell resolves to the empty string for every row.
 typed filter of `"no"` would otherwise match `"not readable"`. The real finding
 is that the other two consumers each got a replacement and sorting got nothing:
 
-| Consumer | Replacement |
-|---|---|
-| Column filter | explicit bypass, `testRowMatch():41738-41749` |
+| Consumer             | Replacement                                             |
+|----------------------|---------------------------------------------------------|
+| Column filter        | explicit bypass, `testRowMatch():41738-41749`           |
 | Uniq-values dropdown | migrated to structure-mode relabeling ("✓ has artwork") |
-| **Sort** | **none** |
+| **Sort**             | **none**                                                |
 
 An audit of every sort-key class the script creates shows the damage is confined
 to the artwork pair — worth knowing, because "CAA/EAA sorting is broken" was the
 first summary and it was too broad:
 
-| Class | In `_CLEAN_STRIP_SEL`? | Contract |
-|---|---|---|
-| `mb-caa-sort-key` (serves EAA too) | yes `:38166` | **broken**; JSDoc `:3614` still claims `"no" < "yes"` |
-| `mb-inline-art-sort-key` | yes `:38155` | filter-only by design, no sort contract broken — but `_artSetInlineSortKey()`'s JSDoc claims the strip pass excludes its class and that no bypass is needed. Both false. |
-| `mb-cancelled-sort-key` | no | intact; JSDoc `:3827` correct |
-| `mb-video-sort-key` | no | intact; JSDoc `:3525` correct |
+| Class                              | In `_CLEAN_STRIP_SEL`? | Contract                                                                                                                                                                 |
+|------------------------------------|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `mb-caa-sort-key` (serves EAA too) | yes `:38166`           | **broken**; JSDoc `:3614` still claims `"no" < "yes"`                                                                                                                    |
+| `mb-inline-art-sort-key`           | yes `:38155`           | filter-only by design, no sort contract broken — but `_artSetInlineSortKey()`'s JSDoc claims the strip pass excludes its class and that no bypass is needed. Both false. |
+| `mb-cancelled-sort-key`            | no                     | intact; JSDoc `:3827` correct                                                                                                                                            |
+| `mb-video-sort-key`                | no                     | intact; JSDoc `:3525` correct                                                                                                                                            |
 
 `.mb-eaa-sort-key` is in the selector but never created — the `caa` extractor
 always writes `mb-caa-sort-key` for both.
