@@ -52465,43 +52465,33 @@ a { color: #1565c0; }`;
      * brand-new table — a fresh fetch, a disk-load, another multi-table
      * sub-table — is a miss for free with no manual reset anywhere.
      *
-     * Entry shape — two tiers, invalidated together but scoped differently:
+     * Entry shape:
      *   {
      *     results: Map<sig, Map<colIndex, {
      *       uniq, multiRow, hasInlineArt,   // the three measured values
      *       hadUniq, hadCollapse            // which header spans they were measured FOR
-     *     }>>,
-     *     cells:   Map<colIndex, {
-     *       text:  Map<rowIdx, string>,     // getCleanColumnText() per cell
-     *       multi: Map<rowIdx, boolean>,    // _classifyCollapseCell().isMultiRow
-     *       art:   Map<rowIdx, boolean>     // inline-thumbnail placeholder present
-     *     }>
+     *     }>>
      *   }
      *
-     * `results` answers "this exact set of rows again" and so is keyed by the
-     * row-set signature. It holds the last `_COL_HEADER_COUNTS_SIG_LRU` of them
-     * rather than only the newest, because the cycle a person actually performs
-     * is filter -> clear -> filter: with a single slot every leg of that misses,
-     * while a handful of slots turns the whole cycle into hits. The signatures
-     * are the only real weight (one row-index list each), so the cap is small
-     * and the map is pruned in insertion order, oldest first.
+     * Keyed by the row-set signature, holding the last
+     * `_COL_HEADER_COUNTS_SIG_LRU` of them rather than only the newest: the
+     * cycle a person actually performs is filter -> clear -> filter, and with a
+     * single slot every leg of that misses. The signatures are the only real
+     * weight (one row-index list each), so the cap is small and the map is
+     * pruned in insertion order, oldest first.
      *
-     * `cells` answers "this row's cell, whoever else is visible", so it is
-     * independent of the row set entirely and survives every miss. It is what
-     * makes a genuine miss cheap: after one full pass, a filter's scan derives
-     * nothing new, it only re-aggregates. Keyed by `data-mb-row-idx` rather
-     * than by the cell element because `renderFinalTable()`/
-     * `renderGroupedTable()` insert `cloneNode(true)` copies, so every cell is
-     * a new object on every render and an element-keyed memo would never hit.
-     * Its cost is one string per rendered cell — the same order as
-     * `_rowTextCache` already carries, against a DOM that is far larger.
-     *
-     * Not `_rowTextCache`, deliberately, even though it caches the same
-     * function: that one is keyed by the SOURCE `<tr>` in `allRows`/
-     * `groupedRows`, and post-render decoration is applied to the rendered
-     * clones without always being mirrored back — so its text can legitimately
-     * differ from what the header is counting. Reading it here would import
-     * PERFORMANCE.org Step 9's open staleness gap into a second consumer.
+     * **A per-cell tier was built here and then removed — do not re-add it
+     * without measuring first.** The idea was to memoize
+     * `getCleanColumnText()` per `data-mb-row-idx` so that a MISS stopped
+     * re-deriving text, on the reasoning that it would speed up filtering. It
+     * does not, and cannot: a full-table scan happens at exactly two moments —
+     * the initial render, where the memo is empty and is pure overhead, and a
+     * filter cleared back to the full set, which this signature cache already
+     * answers as a hit. Every other scan runs over an already-filtered row set
+     * that is small by construction. Measured on the 4174-row `artist-events`
+     * fixture it moved nothing outside `main`'s own run-to-run spread, while
+     * costing roughly a string per rendered cell (~88 000 of them) and a second
+     * staleness surface to keep correct. See PERFORMANCE.org Step 3.
      *
      * `hadUniq`/`hadCollapse` exist because header buttons are injected at
      * different times — `initCollapsableColumns()` builds the collapse button,
@@ -57103,7 +57093,7 @@ a { color: #1565c0; }`;
         const _sig = _colHeaderCountsRowSetSignature(table);
         let _tableEntry = _colHeaderCountsCache.get(table);
         if (!_tableEntry) {
-            _tableEntry = { results: new Map(), cells: new Map() };
+            _tableEntry = { results: new Map() };
             _colHeaderCountsCache.set(table, _tableEntry);
         }
         const _hit = _tableEntry.results.get(_sig) || null;
@@ -57119,24 +57109,6 @@ a { color: #1565c0; }`;
         // answer — the defect in the never-merged perf-steps-3-4 sketch of this
         // step, which stored its key before the loop rather than after it.
         const _results = _hit || new Map();
-        // Tier 2 is independent of the row set, so it is read and written on a
-        // miss as well: a row's own cell content does not change because other
-        // rows were hidden or reordered.
-        const _cellMemo = _tableEntry.cells;
-
-        /**
-         * The per-row memo maps for one column, created on first use.
-         * @param {number} colIndex
-         * @returns {{text: Map, multi: Map, art: Map}}
-         */
-        const _colMemo = (colIndex) => {
-            let m = _cellMemo.get(colIndex);
-            if (!m) {
-                m = { text: new Map(), multi: new Map(), art: new Map() };
-                _cellMemo.set(colIndex, m);
-            }
-            return m;
-        };
 
         // Table-wide early-out for the per-cell inline-art probe below. A page
         // with no addCAA/addEAA inline thumbnails anywhere — which is most of
@@ -57198,18 +57170,11 @@ a { color: #1565c0; }`;
                     // Iterated live rather than through Array.from(): the old
                     // shape materialised the whole row list up to twice per
                     // column (42 times per pass on `artist-events`).
-                    const _memo = _colMemo(colIndex).multi;
                     for (const row of tbody.rows) {
                         if (row.style.display === 'none') continue;
                         const cell = row.cells[colIndex];
                         if (!cell) continue;
-                        const _rid = row.dataset.mbRowIdx;
-                        let _m = _rid === undefined ? undefined : _memo.get(_rid);
-                        if (_m === undefined) {
-                            _m = _classifyCollapseCell(cell).isMultiRow;
-                            if (_rid !== undefined) _memo.set(_rid, _m);
-                        }
-                        if (_m) multiRowCount++;
+                        if (_classifyCollapseCell(cell).isMultiRow) multiRowCount++;
                     }
                 }
                 countSpan.textContent = String(multiRowCount);
@@ -57219,17 +57184,11 @@ a { color: #1565c0; }`;
             if (uniqCountSpan) {
                 if (!_usable) {
                     const seen = new Set();
-                    const _memo = _colMemo(colIndex);
                     for (const row of tbody.rows) {
                         if (row.style.display === 'none') continue;
                         const cell = row.cells[colIndex];
                         if (!cell) continue;
-                        const _rid = row.dataset.mbRowIdx;
-                        let v = _rid === undefined ? undefined : _memo.text.get(_rid);
-                        if (v === undefined) {
-                            v = getCleanColumnText(cell);
-                            if (_rid !== undefined) _memo.text.set(_rid, v);
-                        }
+                        const v = getCleanColumnText(cell);
                         if (v) seen.add(v);
                         // Piggy-back on this existing per-row scan (rather than a
                         // third full table pass) to detect the addCAA/addEAA
@@ -57239,13 +57198,9 @@ a { color: #1565c0; }`;
                         // never runs this per cell — and memoized per row for the
                         // pages that do, where every column that ISN'T the art
                         // column would otherwise probe every one of its cells.
-                        if (!hasInlineArt && _tableHasInlineArt()) {
-                            let a = _rid === undefined ? undefined : _memo.art.get(_rid);
-                            if (a === undefined) {
-                                a = !!cell.querySelector('.mb-caa-inline-ph, .mb-eaa-inline-ph');
-                                if (_rid !== undefined) _memo.art.set(_rid, a);
-                            }
-                            if (a) hasInlineArt = true;
+                        if (!hasInlineArt && _tableHasInlineArt() &&
+                            cell.querySelector('.mb-caa-inline-ph, .mb-eaa-inline-ph')) {
+                            hasInlineArt = true;
                         }
                     }
                     uniqCount = seen.size;
