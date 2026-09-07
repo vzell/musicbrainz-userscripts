@@ -12,7 +12,7 @@ const {
     URL, TOTAL_ROWS, GROUPS, COLUMN_INDEX,
     PROMOTION_FILTER_CASES, PROMOTION_COMBO_CASES,
     OFFICIAL_FILTER_CASES, OFFICIAL_COMBO_CASES,
-    INTERLEAVE_CASES, SORT_CHECKPOINTS, CAA_HIGHLIGHT_FILTER,
+    INTERLEAVE_CASES, SORT_CHECKPOINTS, CAA_TYPE_FILTER,
     UNIQ_DROP_COLUMNS_CLEARED, UNIQ_DROP_ACTIVE_FILTER,
 } = require('../support/greetingsReleaseGroupReleasesFixture');
 
@@ -631,15 +631,15 @@ test('sort-then-restore checkpoints (Official release + Promotion release)', { t
                 // received the async CAA/EAA enrichment applied to the
                 // live, rendered clone. Fixed via `_artSyncSearchTextToSourceRow()`
                 // (ShowAllEntityData.user.js). This narrows further and
-                // confirms the CAA presence column survives a sort/filter
+                // confirms the CAA column survives a sort/filter
                 // interaction on this multi-table page too — a full
                 // v9.99.970-style CAA highlight-duplication guard would
                 // need the dropdown-driven mechanism instead (not
                 // implemented here — see this comment as the TODO).
-                await applyColumnFilter(page, group.tableIndex, group.label, CAA_HIGHLIGHT_FILTER, null);
+                await applyColumnFilter(page, group.tableIndex, group.label, CAA_TYPE_FILTER, null);
                 after = (await getSubTableRowCounts(page)).find((g) => g.groupLabel === group.label);
                 const combinedCount = after.filtered;
-                expect(combinedCount, 'at least one row must match the CAA presence filter').toBeGreaterThan(0);
+                expect(combinedCount, 'at least one row must match the CAA image-type filter').toBeGreaterThan(0);
 
                 const columnTh = page.locator('table.tbl').nth(group.tableIndex)
                     .locator('thead th', { hasText: checkpoint.sortColumn }).first();
@@ -653,7 +653,7 @@ test('sort-then-restore checkpoints (Official release + Promotion release)', { t
                     expect(after.filtered, `row count after ${label} sort`).toBe(combinedCount);
                 }
 
-                await clearColumnFilter(page, group.tableIndex, group.label, CAA_HIGHLIGHT_FILTER.column, checkpoint.expectedCount);
+                await clearColumnFilter(page, group.tableIndex, group.label, CAA_TYPE_FILTER.column, checkpoint.expectedCount);
                 for (let i = 0; i < checkpoint.filters.length; i++) {
                     const isLast = i === checkpoint.filters.length - 1;
                     await clearColumnFilter(page, group.tableIndex, group.label, checkpoint.filters[i].column, isLast ? group.total : null);

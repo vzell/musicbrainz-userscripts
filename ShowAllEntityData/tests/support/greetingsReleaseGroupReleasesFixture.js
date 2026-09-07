@@ -487,21 +487,37 @@ const UNIQ_DROP_COMBO_CASES = { OFFICIAL: [], PROMOTION: [] };
  * checkpoint's own filter, exercising the CAA presence column through a
  * sort/filter interaction on this multi-table page.
  *
- * "yes" (not e.g. "Front") — chosen for a simple, deterministic narrowing
- * target here, not because a typed substring search against the CAA
- * column's per-image TYPE/comment text doesn't work: it used to produce
- * ZERO row matches page-wide on every `tableMode: 'multi'` page (root-
- * caused and fixed — see `_artSyncSearchTextToSourceRow()` in
- * ShowAllEntityData.user.js, and
- * `releasegroup-releases-caa-type-comment-filter.spec.js` for the dedicated
- * regression test). Per-image type/comment values are ALSO exposed via a
- * separate DROPDOWN-DRIVEN exact-value mechanism (not exercised by this
- * constant/test — see the spec's own comment for why a full
- * v9.99.970-style CAA highlight-duplication guard would need that
- * mechanism, not a typed filter). "yes" confirmed live: 116 of 119
- * Official release rows, matches at least 1 Promotion release row too.
+ * This used to be `"yes"`, the artwork-PRESENCE sentinel, "confirmed live:
+ * 116 of 119 Official release rows". That no longer matches anything: a
+ * typed filter deliberately can't reach `.mb-caa-sort-key` any more (one
+ * typed word used to mean both "rows whose image text says this" and "rows
+ * with no artwork" at once), so presence is now exclusively the
+ * unique-values dropdown's '✓ has artwork'/'✗ no artwork' entries — see
+ * `_CLEAN_STRIP_SEL`'s own comment and `_sortCellText()` in
+ * ShowAllEntityData.user.js.
+ *
+ * `"Front"` replaces it: a real per-image TYPE present on this page (113 of
+ * the 119 Official rows carry a Front image, read off the column's own
+ * unique-values panel), so it still narrows and still matches in both
+ * groups. Typed matching against per-image type/comment text works via
+ * `_artSyncSearchTextToSourceRow()`'s search index — it used to return ZERO
+ * rows page-wide on every `tableMode: 'multi'` page (root-caused and fixed;
+ * see `releasegroup-releases-caa-type-comment-filter.spec.js`).
+ *
+ * Per-image values are ALSO exposed via the DROPDOWN-DRIVEN exact-value
+ * mechanism (not exercised by this constant — see the spec's own comment
+ * for why a full v9.99.970-style CAA highlight-duplication guard would need
+ * that mechanism rather than a typed filter, and
+ * `releasegroup-releases-caa-uniqdrop-filter.spec.js` for that mechanism's
+ * own coverage).
+ *
+ * UNVERIFIED against a live run: this spec currently fails in setup on
+ * `main` regardless of the code under test (`setupExpandedGreetingsPage()`
+ * waits on the `#mb-info-display-caa`/`-rel` completion toasts, which never
+ * fire on a page this size — see CLAUDE.md). The "Front" count above comes
+ * from a direct panel read, not from this spec passing.
  */
-const CAA_HIGHLIGHT_FILTER = { column: 'CAA', value: 'yes' };
+const CAA_TYPE_FILTER = { column: 'CAA', value: 'Front' };
 
 module.exports = {
     URL,
@@ -516,7 +532,7 @@ module.exports = {
     OFFICIAL_COMBO_CASES,
     INTERLEAVE_CASES,
     SORT_CHECKPOINTS,
-    CAA_HIGHLIGHT_FILTER,
+    CAA_TYPE_FILTER,
     UNIQ_DROP_COLUMNS_CLEARED,
     UNIQ_DROP_ACTIVE_FILTER,
     UNIQ_DROP_SINGLE_CASES,

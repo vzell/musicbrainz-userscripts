@@ -155,22 +155,33 @@ const FILTER_CASES = [
         expectHighlightCount: 5, checkCollapseHasMatch: { expectedCount: 1 },
     },
     { column: 'Barcode', value: '[none]', expected: 8, highlight: '[none]' },
-    // CAA: filtering the hidden .mb-caa-sort-key sentinel text.
-    // "no" plain-substring ALSO matches "Matrix/Runout" (a CAA image type
-    // present on 9 "yes" rows — "Ru-no-ut" contains "no") — a genuine
-    // naive-substring collision, confirmed live (19 "no" rows + 9
-    // "Runout" rows = 28), NOT a bug. `^no$` anchored regex demonstrates
-    // the stable, collision-free count — mirrors the DD `1`/`^1$` pair.
-    { column: 'CAA', value: 'no', expected: 28, highlight: 'no' },
-    // An anchored `^no$`/`^no.*$` regex variant was tried here as a second
-    // Rx demo (mirroring DD's `1`/`^1$` pair) but consistently returned 0
-    // rows live regardless of pattern permissiveness, while DD's own
-    // anchored case works fine — something about this column's matched-
-    // text shape breaks `^`/`$` anchoring specifically, not yet root-caused.
-    // Not pursued further: DD's `^1$` case already covers the "anchored
-    // regex avoids a substring collision" pattern for this suite, and this
-    // is representative coverage, not exhaustive.
-    { column: 'CAA', value: 'yes', expected: 37, highlight: null }, // sort-key span is display:none — matches, but nothing visible to highlight (confirmed live)
+    // ── CAA: a TYPED filter matches the cell's real text, never artwork
+    // presence. Both cases below are deliberate regression coverage for that
+    // rule; they are not incidental counts.
+    //
+    // "no" matches ONLY the 9 rows carrying a "Matrix/Runout" image type
+    // ("Ru-no-ut" contains "no"). It used to return 28 — those 9 PLUS the 19
+    // rows with no artwork at all — because `testRowMatch()` carried a bypass
+    // that exact-matched a typed value against the hidden
+    // `.mb-caa-sort-key` 'yes'/'no' sentinel, so one typed word silently
+    // meant two unrelated things at once. Artwork presence is now exclusively
+    // the unique-values dropdown's '✓ has artwork'/'✗ no artwork' entries.
+    { column: 'CAA', value: 'no', expected: 9, highlight: 'no' },
+    // The counterpart, and the sharper of the two: "yes" appears nowhere in
+    // any real image type or comment on this page, so it now matches NOTHING
+    // — where it used to return all 37 artwork-bearing rows off the sentinel.
+    // A 0-row expectation is the point here.
+    //
+    // This pair also resolved a long-standing puzzle recorded here: an
+    // anchored `^no$` Rx variant was tried as a second Rx demo (mirroring
+    // DD's `1`/`^1$` pair) and "consistently returned 0 rows live regardless
+    // of pattern permissiveness, while DD's own anchored case works fine —
+    // not yet root-caused." The cause was the bypass itself: both sentinel
+    // bypasses lived in `testRowMatch()`'s NON-regexp branch, so a regexp
+    // filter never reached them and tested against the cell's (empty) clean
+    // text, while a plain filter did reach them. Plain and regexp now agree,
+    // and there is no longer an anchoring anomaly to demo.
+    { column: 'CAA', value: 'yes', expected: 0, highlight: null },
     // CAA type/comment combos — real "Booklet"-type images and "Booklet
     // Page N" comments exist in BoDeans' own artwork. Row counts confirmed
     // LIVE (re-derived from a fresh disk-fixture load — the row-count side
@@ -346,7 +357,13 @@ const SORT_CHECKPOINTS = [
         expectedCount: 55,
         sortColumn: 'Artist',
     },
-    { name: 'after CAA no', filters: [{ column: 'CAA', value: 'no' }], expectedCount: 28, sortColumn: 'CAA' },
+    // 9, not the old 28 — see FILTER_CASES' own CAA note: a typed 'no' no
+    // longer matches artwork presence, only the "Matrix/Runout" image type.
+    // `sortColumn: 'CAA'` is now a real sort rather than a no-op: this column
+    // used to have NO sort basis at all (every cell's sort text was ''), so
+    // the checkpoint was silently asserting that an inert sort preserved the
+    // row count. It now orders by the presence sentinel — see `_sortCellText()`.
+    { name: 'after CAA no', filters: [{ column: 'CAA', value: 'no' }], expectedCount: 9, sortColumn: 'CAA' },
     {
         name: 'after order-pair result',
         filters: [{ column: 'Format', value: 'CD' }], // global 'Home' applied separately in the spec

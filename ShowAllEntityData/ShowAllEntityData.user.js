@@ -3608,13 +3608,23 @@
          * Sortability and dropdown filtering:
          *   An invisible <span class="mb-caa-sort-key" style="display:none"> is
          *   always appended to tdCaa containing the text "yes" when an artwork anchor
-         *   was found, or "no" otherwise.  The span is not rendered by the browser
-         *   but IS walked by getCleanColumnText() / getCleanVisibleText() (both use
-         *   a TreeWalker that does not skip display:none elements), so:
-         *     - Sorting ascending/descending works ("no" < "yes" alphabetically).
-         *     - The unique-values dropdown shows exactly "no" and "yes".
-         *     - Clicking "yes" in the dropdown filters to rows that carry artwork;
-         *       clicking "no" filters to rows without any artwork anchor.
+         *   was found, or "no" otherwise.
+         *
+         *   Unlike its `video`/`cancelledEvent` siblings below, this span is NOT
+         *   picked up by getCleanColumnText()/getCleanVisibleText() — it was
+         *   later added to `_CLEAN_STRIP_SEL` precisely so a typed filter of
+         *   'no' could not match it (see that constant's own comment). Its only
+         *   consumers are now:
+         *     - Sorting: read directly by `_sortCellText()`, which is what makes
+         *       "no" < "yes" (ascending = rows WITHOUT artwork first) work. This
+         *       is the column's ONLY sort basis — every other element in the cell
+         *       is stripped from the visible text as well.
+         *     - The saved-HTML `hasSortYes` probes.
+         *   It is NOT what the unique-values dropdown filters on: presence there
+         *   is the '✓ has artwork'/'✗ no artwork' entries, which are structure
+         *   modes resolved via `_classifyCollapseCell()`. The dropdown does not
+         *   offer bare "yes"/"no" values at all, and a typed filter matches only
+         *   the cell's real image type/comment text.
          *
          * Synthetic columns: ['CAA'] or ['EAA']
          *
@@ -3625,11 +3635,15 @@
             const tdCaa = document.createElement('td');
 
             /**
-             * Appends an invisible text label used exclusively as a sort/filter key.
-             * The label is never rendered — style="display:none" hides it visually —
-             * but the TreeWalker inside getCleanColumnText() and getCleanVisibleText()
-             * does not skip display:none nodes, so sorting and the unique-value
-             * dropdown both pick it up correctly.
+             * Appends an invisible text label used exclusively as a SORT key.
+             * The label is never rendered — style="display:none" hides it
+             * visually — and `display:none` alone would not hide it from a
+             * TreeWalker, which is how this used to reach the filter and the
+             * dropdown as well. It no longer does: the class is in
+             * `_CLEAN_STRIP_SEL`, so both `getCleanColumnText()` and
+             * `getCleanVisibleText()` strip it. `_sortCellText()` reads it
+             * directly — see the extractor's own JSDoc above for the full
+             * consumer list.
              *
              * @param {string} label - "yes" when artwork is present, "no" otherwise
              */
@@ -16527,6 +16541,53 @@
     }
 
     /**
+     * Resolves the text a cell SORTS by. Single source of truth for BOTH
+     * `createSortComparator()` and `createMultiColumnComparator()`, which both
+     * used to inline `getCleanVisibleText(cell).trim().toLowerCase()` — the
+     * same duplication `_sortColumnKind()` below exists to prevent.
+     *
+     * Almost always just that expression. The one exception is a CAA/EAA
+     * column, which otherwise **has no sort basis at all**: its cell holds
+     * nothing but the artwork anchor and a hidden `.mb-caa-sort-key`/
+     * `.mb-eaa-sort-key` sentinel reading `'yes'`/`'no'`, and
+     * `getCleanVisibleText()` rejects every one of those — the sentinel,
+     * `.caa-icon`, `.mb-caa-count-badge`, and each `li.mb-caa-art-li-image`.
+     * So both comparators saw `''` for every row, artwork or not, compared
+     * them all equal, and left the existing order untouched: clicking the CAA
+     * header appeared to sort by nothing, because it sorted by nothing.
+     *
+     * Reading the sentinel restores the order its extractor always intended
+     * (`'no' < 'yes'`, so ascending puts rows WITHOUT artwork first). The
+     * `caa` extractor's JSDoc had claimed this worked all along — it was
+     * written before `_CLEAN_STRIP_SEL` existed and stripped the span out
+     * from under it.
+     *
+     * **Deliberately scoped to the CAA/EAA sentinel, not the other two.**
+     * `.mb-video-sort-key` and `.mb-cancelled-sort-key` are NOT in
+     * `_CLEAN_STRIP_SEL`, so `getCleanVisibleText()` already sees them and
+     * those columns already sort correctly. Folding them in here would not be
+     * harmlessly redundant: a cancelled-event cell also carries the visible
+     * word "cancelled", so its current sort text is `"cancelled yes"` vs
+     * `"no"` — and `"c" < "n"` puts cancelled events FIRST ascending, whereas
+     * sentinel-only would reverse that. Only add a class here if it is also
+     * being stripped from the visible text.
+     *
+     * The query is a plain descendant lookup, NOT `:scope >`: the sentinel
+     * starts as a direct child of the `<td>` but
+     * `_artBuildMultiRowArtCell()`'s first build moves every existing child
+     * into the `li-0` summary row, so after enrichment it sits one level down.
+     *
+     * @param   {?HTMLTableCellElement} cell
+     * @returns {string} Lower-cased, trimmed sort text (`''` for a missing cell).
+     */
+    function _sortCellText(cell) {
+        if (!cell) return '';
+        const artKey = cell.querySelector('.mb-caa-sort-key, .mb-eaa-sort-key');
+        if (artKey) return artKey.textContent.trim().toLowerCase();
+        return getCleanVisibleText(cell).trim().toLowerCase();
+    }
+
+    /**
      * Classifies how a column must be compared when sorting: as a duration,
      * as a number, or as text.
      *
@@ -18562,11 +18623,14 @@
      */
     function createSortComparator(index, isAscending, kind, byLength = false) {
         return (a, b) => {
-            const valA = getCleanVisibleText(a.cells[index]).trim().toLowerCase() || '';
-            const valB = getCleanVisibleText(b.cells[index]).trim().toLowerCase() || '';
+            const valA = _sortCellText(a.cells[index]);
+            const valB = _sortCellText(b.cells[index]);
 
             // Alt+Click "sort by column length" is a deliberate text-length
             // sort and outranks the column's own kind, durations included.
+            // On a CAA/EAA column this now compares 2 ('no') against 3
+            // ('yes') instead of 0 against 0, which happens to give the same
+            // order as the ordinary sort — see `_sortCellText()`.
             if (byLength) {
                 const result = valA.length - valB.length;
                 return isAscending ? result : -result;
@@ -18601,8 +18665,8 @@
                 const idx = sortCol.colIndex;
                 const isAscending = sortCol.direction === 1;
 
-                const valA = getCleanVisibleText(a.cells[idx]).trim().toLowerCase() || '';
-                const valB = getCleanVisibleText(b.cells[idx]).trim().toLowerCase() || '';
+                const valA = _sortCellText(a.cells[idx]);
+                const valB = _sortCellText(b.cells[idx]);
 
                 // Same resolver the single-column path uses — see
                 // `_sortColumnKind()`'s JSDoc for the divergence this replaced
@@ -38233,9 +38297,18 @@ a { color: #1565c0; }`;
         // structure modes — _cellMatchesStructureMode() reads _classifyCollapseCell,
         // which already reflects artwork presence for these columns).
         // Without stripping, a manually-typed column filter value of 'no' would
-        // match 'not readable', 'no artwork', sort-key text, etc. A manually-typed
-        // 'yes'/'no' bypasses getCleanColumnText and uses a direct .mb-caa-sort-key
-        // check in testRowMatch — exactly mirroring the mb-inline-art-sort-key pattern.
+        // match 'not readable', 'no artwork', sort-key text, etc.
+        // A manually-typed 'yes'/'no' does NOT reach this sentinel any more, and
+        // that is the point: it used to, via a bypass in testRowMatch, which made
+        // one typed word mean two unrelated things (the rows whose image
+        // types/comments contain "no", plus every row with no artwork). Presence
+        // filtering belongs solely to the dropdown entries named above. Unlike
+        // .mb-inline-art-sort-key just above — whose 'caa-inline-yes'/'-no'
+        // sentinel values are strings nobody types by accident — this one
+        // collides with ordinary English, so it gets no bypass.
+        // Still read directly by _sortCellText() (this column's ONLY sort basis,
+        // since everything else in the cell is stripped here too) and by the
+        // saved-HTML `hasSortYes` probes.
         '.mb-caa-sort-key,.mb-eaa-sort-key,' +
         // .mb-cell-collapse-toggle is the UI widget injected into multi-row cells
         // (Catalog#, Label, …) that shows "▶ 2 ▤" (glyph + item-count + rack icon).
@@ -41826,27 +41899,26 @@ a { color: #1565c0; }`;
                             ? skVal === f.val
                             : skVal.toLowerCase() === f.val.toLowerCase();
                     }
-                    // ── CAA/EAA sort-key bypass ─────────────────────────────────────
-                    // .mb-caa-sort-key (and .mb-eaa-sort-key) hold 'yes' or 'no' — the
-                    // artwork-presence sentinel stamped by _artBuildMultiRowArtCell /
-                    // initRelGroupings.  These spans are now in _CLEAN_STRIP_SEL so
-                    // getCleanColumnText never sees them, preventing filter strings like
-                    // 'no' from matching 'not readable', 'known', etc.
-                    // A column filter set to the exact sentinel value 'yes' / 'no'
-                    // must still filter correctly, so we check the span with an
-                    // exact-match test.
-                    if (!match) {
-                        const _csk = cell
-                            ? (cell.querySelector('.mb-caa-sort-key') ||
-                               cell.querySelector('.mb-eaa-sort-key'))
-                            : null;
-                        if (_csk) {
-                            const _skVal = _csk.textContent.trim();
-                            match = _fIsCase
-                                ? _skVal === f.val
-                                : _skVal.toLowerCase() === f.val.toLowerCase();
-                        }
-                    }
+                    // ── NO CAA/EAA sort-key bypass here, deliberately ───────────────
+                    // `.mb-caa-sort-key`/`.mb-eaa-sort-key` hold the artwork-presence
+                    // sentinel 'yes'/'no'. A bypass here used to exact-match a TYPED
+                    // filter against it, which meant typing 'no' into the CAA column
+                    // silently returned two unrelated things at once: the rows whose
+                    // image types/comments genuinely contain "no" (e.g. "Matrix/Runout")
+                    // AND every row with no artwork at all. Same for 'yes'.
+                    // Artwork PRESENCE is now exclusively the job of the unique-values
+                    // dropdown's '✓ has artwork'/'✗ no artwork' entries, which do not
+                    // come through here at all — they are structure modes resolved by
+                    // `_classifyCollapseCell()`. A typed filter matches only what the
+                    // cell actually says.
+                    // This also removes a real inconsistency: both sentinel bypasses
+                    // live in this non-regexp branch, so an anchored `^no$` never
+                    // reached them and matched nothing, while a plain `no` matched
+                    // presence — the "not yet root-caused" behaviour
+                    // `bodeansArtistReleasesFixture.js` had recorded. Plain and regexp
+                    // now agree.
+                    // The sentinel itself is still load-bearing for SORTING (see
+                    // `_sortCellText()`) and for the saved-HTML `hasSortYes` probes.
                 }
             }
             // Respect per-filter exclude flag (may differ from global isExclude on
@@ -56664,8 +56736,9 @@ a { color: #1565c0; }`;
      * merely reopening the same column's dropdown does not, so it is reused.
      *
      * Deliberately kept as a standalone helper rather than inlined:
-     * PERFORMANCE.org Step 3 (caching `_updateAllColHeaderCounts()`, not part
-     * of this branch) is designed to key off this exact same primitive.
+     * PERFORMANCE.org Step 3 (caching `_updateAllColHeaderCounts()`, still
+     * TODO — not yet implemented anywhere) is designed to key off this exact
+     * same primitive.
      *
      * Note the signature is order-DEPENDENT — it concatenates in DOM order,
      * so a sort that reorders the same rows produces a different string and
@@ -71895,14 +71968,24 @@ a { color: #1565c0; }`;
      * The span carries text 'caa-inline-yes' when the front-image was successfully
      * fetched, or 'caa-inline-no' when the fetch resulted in a 404 / error.
      *
-     * Because `getCleanColumnText()` walks display:none spans (they are only
-     * excluded from the FILTER_REJECT set inside the TreeWalker; the clone-and-
-     * strip pass targets named decorative classes that do NOT include this span's
-     * class), a column filter set to the exact sentinel value 'caa-inline-yes' /
-     * 'caa-inline-no' drives the column filter pipeline exactly like the invisible
-     * `mb-caa-sort-key` span already does for the CAA / EAA icon columns.  No
-     * bypass mode (mbInlineArtMode) or special DOM-walk is
-     * required — Escape, ✕, and all "clear" buttons reset everything automatically.
+     * A column filter set to the exact sentinel value 'caa-inline-yes' /
+     * 'caa-inline-no' does filter this column, but NOT by falling out of the
+     * ordinary text pipeline: `.mb-inline-art-sort-key` IS one of
+     * `_CLEAN_STRIP_SEL`'s named classes, so `getCleanColumnText()` strips it
+     * (both via the clone-and-strip pass and the TreeWalker's FILTER_REJECT
+     * guard) and never sees this text. It works because `testRowMatch()`
+     * carries an explicit exact-match bypass straight against the span — see
+     * the "Inline-art sort-key bypass" block there.
+     *
+     * That bypass is kept deliberately, unlike the CAA/EAA presence one that
+     * sat right next to it and was removed: 'caa-inline-yes'/'caa-inline-no'
+     * are strings nobody types by accident, whereas 'yes'/'no' collide with
+     * ordinary English and so made one typed word mean two unrelated things.
+     * Note the bypass lives in the NON-regexp branch, so an anchored regexp
+     * against these sentinels matches nothing.
+     *
+     * No bypass MODE (mbInlineArtMode) or special DOM-walk is required —
+     * Escape, ✕, and all "clear" buttons reset everything automatically.
      *
      * The helper is idempotent: if a span with class `mb-inline-art-sort-key`
      * already exists inside `td` its text is updated in place; otherwise a new
