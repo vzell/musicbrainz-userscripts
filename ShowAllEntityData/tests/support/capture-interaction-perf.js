@@ -22,13 +22,18 @@
  * interaction's timing bracket never includes another sample's leftover
  * state.
  *
- * There is deliberately no separate "header-count cold vs warm" metric.
- * `_updateAllColHeaderCounts()` is not reachable from `openUniqDrop()` at
- * all, so it cannot show up in the uniq-drop numbers; and on the branches
- * that do change how often it runs (`perf-steps-1-4`, where Step 1 removed
- * the per-keystroke call; a future Step 3, which would cache it) its cost
- * differential is already folded into the filter/sort numbers below, not a
- * separable signal.
+ * `headerCountsInitial`/`headerCountsRestore` time the column-header count
+ * scan (`_updateAllColHeaderCounts()`) directly, by waiting on the `Event`
+ * badge reaching its true 4158 rather than on a status string. They replace
+ * an earlier note here claiming no such metric was possible because the
+ * scan's cost "is already folded into the filter/sort numbers" — that is true
+ * but not sufficient. The five metrics below observe it only indirectly, as
+ * main-thread pressure delaying a CDP poll of `#mb-filter-status-display`,
+ * which understates it and cannot separate it from the render it follows.
+ * PERFORMANCE.org Step 3 caches exactly this scan, so it needs a metric that
+ * looks at the scan itself. Note `_updateAllColHeaderCounts()` is still not
+ * reachable from `openUniqDrop()`, so it remains absent from the uniq-drop
+ * numbers, which stay Step 4's.
  *
  * Currently only supports `--pageType=artist-events`; the interactions
  * (filter column/values, sort column, uniq-drop column) are specific to
@@ -48,9 +53,12 @@ const { chromium } = require('playwright');
 const { loadFromDiskFixture } = require('./diskFixture');
 const { seedGmValues } = require('./gmStubs');
 const { waitForRenderComplete } = require('./browser');
-const { waitForFilterSettled, waitForSortSettled } = require('./filterSortAssertions');
+const {
+    waitForFilterSettled, waitForSortSettled, waitForColHeaderUniqCount,
+} = require('./filterSortAssertions');
 const {
     URL, FIXTURE_PATH, SEED_GM_VALUES, FILTER_COLUMN, FILTER_VALUE, SORT_COLUMN, UNIQ_DROP_COLUMN,
+    UNIQ_COUNT_COLUMN, UNIQ_COUNT_TOTAL, UNIQ_COUNT_FILTER_VALUE, UNIQ_COUNT_FILTER_UNIQ,
 } = require('./artistEventsFixture');
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
@@ -73,12 +81,36 @@ const ARTIST_EVENTS = {
     filterValues: [FILTER_VALUE, 'Germany', 'Canada', 'Spain', 'Italy'],
     sortColumn: SORT_COLUMN,
     uniqDropColumn: UNIQ_DROP_COLUMN,
+    // The header-count metrics assert an EXACT badge value rather than
+    // "stopped changing": a scan that is superseded and abandoned leaves the
+    // badges stable-but-wrong, which a stability heuristic would happily
+    // time as a fast result. Same reasoning as artist-events-interactions
+    // .spec.js's own preference for waitForColHeaderUniqCount().
+    headerCountColumn: UNIQ_COUNT_COLUMN,
+    headerCountTotal: UNIQ_COUNT_TOTAL,
+    headerCountFilterValue: UNIQ_COUNT_FILTER_VALUE,
+    headerCountFilterUniq: UNIQ_COUNT_FILTER_UNIQ,
 };
 
-/** @param {string[]} argv @returns {{ pageType: string|null }} */
+/**
+ * `--label=<name>` overrides the branch-derived output filename. Needed to
+ * measure a DIFFERENT script than the branch implies — the established
+ * technique for a baseline arm is to check out `main`'s
+ * `ShowAllEntityData.user.js` alone into the feature branch's working tree
+ * (see PERFORMANCE.org's own "the working tree with only
+ * ShowAllEntityData.user.js stashed" note), which would otherwise write
+ * `main`'s numbers under the branch's name.
+ *
+ * @param {string[]} argv
+ * @returns {{ pageType: string|null, label: string|null }}
+ */
 function parseArgs(argv) {
     const arg = argv.find((a) => a.startsWith('--pageType='));
-    return { pageType: arg ? arg.slice('--pageType='.length) : null };
+    const labelArg = argv.find((a) => a.startsWith('--label='));
+    return {
+        pageType: arg ? arg.slice('--pageType='.length) : null,
+        label: labelArg ? labelArg.slice('--label='.length) : null,
+    };
 }
 
 /** @returns {string} */
@@ -204,6 +236,87 @@ async function measureUniqDropColdWarmOnce(browser, config) {
 }
 
 /**
+ * One column's ✕ clear button, scoped through its enclosing
+ * `.mb-col-filter-wrapper` rather than indexed — a checkbox column gets a bare
+ * `<th>` with no input and no ✕, so the ✕ list is not index-aligned with the
+ * column list. Same helper as artist-events-interactions.spec.js's own.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} colIdx
+ * @returns {import('@playwright/test').Locator}
+ */
+function columnFilterClear(page, colIdx) {
+    return page.locator(
+        `table.tbl thead .mb-col-filter-wrapper:has(.mb-col-filter-input[data-col-idx="${colIdx}"]) .mb-col-filter-clear`
+    ).first();
+}
+
+/**
+ * Time from "the page says it has finished rendering" to "the header-count
+ * scan has actually finished", measured as the `Event` badge reaching its true
+ * unique count over all 4174 rows.
+ *
+ * This gap is real and large on `main`: the committed
+ * `tests/snapshots/artist-events/rendered.html` baseline — captured right after
+ * the same `waitForRenderComplete()` this function awaits — has 1 of its 21
+ * `.mb-col-uniq-count` badges populated, because the scan is still working
+ * through its per-column slices.
+ *
+ * @param {import('playwright').Browser} browser
+ * @param {typeof ARTIST_EVENTS} config
+ * @returns {Promise<number>}
+ */
+async function measureHeaderCountsInitialOnce(browser, config) {
+    const page = await loadPage(browser, config);
+    const start = Date.now();
+    await waitForColHeaderUniqCount(page, config.headerCountColumn, config.headerCountTotal, { timeout: 120000 });
+    const ms = Date.now() - start;
+    await page.close();
+    return ms;
+}
+
+/**
+ * Time to restore the full-table header counts after clearing a narrow column
+ * filter — the cleanest read on PERFORMANCE.org Step 3's cache, because the row
+ * set being restored to is exactly the one the initial render already scanned.
+ *
+ * Deliberately waits for the initial scan to COMPLETE before starting: without
+ * that, the filter would race a still-running full-table pass and the bracket
+ * would time two overlapping scans instead of one.
+ *
+ * @param {import('playwright').Browser} browser
+ * @param {typeof ARTIST_EVENTS} config
+ * @returns {Promise<number>}
+ */
+async function measureHeaderCountsRestoreOnce(browser, config) {
+    const page = await loadPage(browser, config);
+    await waitForColHeaderUniqCount(page, config.headerCountColumn, config.headerCountTotal, { timeout: 120000 });
+
+    const colIdx = await page.evaluate((name) => {
+        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+        return Array.from(document.querySelectorAll('table.tbl thead th')).findIndex((t) => strip(t.textContent) === name);
+    }, config.headerCountColumn);
+
+    // .click() then .pressSequentially() — column filter inputs are
+    // readonly-until-a-genuine-trusted-interaction (anti-autofill hardening),
+    // and .fill() is rejected by _isGenuineFilterInputEvent().
+    const colInput = page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
+    await colInput.click();
+    await waitForFilterSettled(page, () => colInput.pressSequentially(config.headerCountFilterValue));
+    await waitForColHeaderUniqCount(page, config.headerCountColumn, config.headerCountFilterUniq, { timeout: 120000 });
+
+    // The per-column ✕ clears the value, re-focuses the input and calls
+    // runFilter() immediately — undebounced, unlike typing, so the bracket
+    // below is the re-render plus the header-count scan and nothing else.
+    const start = Date.now();
+    await columnFilterClear(page, colIdx).click();
+    await waitForColHeaderUniqCount(page, config.headerCountColumn, config.headerCountTotal, { timeout: 120000 });
+    const ms = Date.now() - start;
+    await page.close();
+    return ms;
+}
+
+/**
  * @param {import('playwright').Browser} browser
  * @param {typeof ARTIST_EVENTS} config
  * @returns {Promise<Object>}
@@ -214,6 +327,8 @@ async function runAll(browser, config) {
     const sortMs = [];
     const uniqDropColdMs = [];
     const uniqDropWarmMs = [];
+    const headerCountsInitialMs = [];
+    const headerCountsRestoreMs = [];
 
     for (let i = 0; i < SAMPLES; i++) {
         globalFilterMs.push(await measureGlobalFilterOnce(browser, config, config.filterValues[i]));
@@ -222,6 +337,8 @@ async function runAll(browser, config) {
         const { coldMs, warmMs } = await measureUniqDropColdWarmOnce(browser, config);
         uniqDropColdMs.push(coldMs);
         uniqDropWarmMs.push(warmMs);
+        headerCountsInitialMs.push(await measureHeaderCountsInitialOnce(browser, config));
+        headerCountsRestoreMs.push(await measureHeaderCountsRestoreOnce(browser, config));
     }
 
     return {
@@ -230,33 +347,37 @@ async function runAll(browser, config) {
         sort: { medianMs: median(sortMs), samples: SAMPLES },
         uniqDropCold: { medianMs: median(uniqDropColdMs), samples: SAMPLES },
         uniqDropWarm: { medianMs: median(uniqDropWarmMs), samples: SAMPLES },
+        headerCountsInitial: { medianMs: median(headerCountsInitialMs), samples: SAMPLES },
+        headerCountsRestore: { medianMs: median(headerCountsRestoreMs), samples: SAMPLES },
     };
 }
 
 (async () => {
-    const { pageType } = parseArgs(process.argv.slice(2));
+    const { pageType, label } = parseArgs(process.argv.slice(2));
     if (pageType !== 'artist-events') {
         console.error('Only --pageType=artist-events is currently supported.');
         process.exit(1);
     }
 
     const branch = readCurrentBranch();
+    const outName = label || branch;
     const browser = await chromium.launch();
     try {
         const interactions = await runAll(browser, ARTIST_EVENTS);
 
-        const outPath = path.join(SNAPSHOTS_DIR, ARTIST_EVENTS.pageType, `interaction-perf-${branch}.json`);
+        const outPath = path.join(SNAPSHOTS_DIR, ARTIST_EVENTS.pageType, `interaction-perf-${outName}.json`);
         fs.mkdirSync(path.dirname(outPath), { recursive: true });
         fs.writeFileSync(outPath, JSON.stringify({
             pageType: ARTIST_EVENTS.pageType,
             url: ARTIST_EVENTS.url,
-            branch,
+            branch: outName,
+            gitBranch: branch,
             capturedAt: new Date().toISOString().slice(0, 10),
             scriptVersion: readScriptVersion(),
             interactions,
         }, null, 2) + '\n');
 
-        console.log(`${ARTIST_EVENTS.pageType} [interaction-perf, branch ${branch}]:`);
+        console.log(`${ARTIST_EVENTS.pageType} [interaction-perf, ${outName}]:`);
         for (const [name, { medianMs }] of Object.entries(interactions)) {
             console.log(`  ${name}: ${medianMs.toFixed(1)}ms`);
         }
