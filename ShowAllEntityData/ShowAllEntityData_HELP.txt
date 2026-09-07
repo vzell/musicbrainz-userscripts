@@ -992,6 +992,12 @@ CAA/EAA ILLUSTRATED DISCOGRAPHY  (🖼️ in ⚙️ Settings)
   archive is merely unreachable or erroring, the image is retried normally.
   If you upload artwork while the page is open, press ⟳ to clear the
   remembered absences (or simply reload).
+• Artwork already on screen stays on screen.  Sorting or filtering rebuilds
+  the table rows, and both the small icon and the inline thumbnail now come
+  back already showing their image instead of blanking and repainting a
+  moment later.  This applies on grouped (multi-section) pages too — release
+  groups, artist discographies, relationship pages — in every discography
+  view, including the merged one.
 • Inline thumbnails — display context-aware tooltips (driven by tooltipColumns
   in the page definition) when hovering; tooltip shows name, comment, artist,
   format, etc. depending on the page type.

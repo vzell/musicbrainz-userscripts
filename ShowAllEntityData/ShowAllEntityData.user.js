@@ -42281,12 +42281,14 @@ a { color: #1565c0; }`;
                     // keep their markers so subsequent runFilter calls (user typing) are
                     // still served from cache without redundant network calls.
                     //
-                    // preserveLiveArt: the source rows now carry a mirrored icon
-                    // background for any artwork already resolved this session
-                    // (see _artMirrorIconToSourceRow()), so this clone can keep
-                    // it instead of arriving blank and being repainted a tick
-                    // later from the Tier-1 memory cache. Before the mirror this
-                    // option was a no-op here — there was never anything on a
+                    // preserveLiveArt: the source rows now carry BOTH halves of
+                    // any artwork already resolved this session — the mirrored
+                    // icon background (_artMirrorIconToSourceRow) and the
+                    // mirrored inline-thumbnail placeholder
+                    // (_artMirrorInlineThumbToSourceRow) — so this clone can keep
+                    // them instead of arriving blank and being repainted a tick
+                    // later from the Tier-1 memory cache. Before those mirrors
+                    // this option was a no-op here: there was never anything on a
                     // multi-table clone to preserve.
                     //
                     // It does NOT preserve the enrichment markers stripped
@@ -42469,11 +42471,14 @@ a { color: #1565c0; }`;
                 // being blanked and immediately repainted with the identical
                 // URL from the Tier-1 memory cache. That repaint is what made
                 // the whole icon column flash empty on every keystroke and
-                // every sort. Only the single-table path opts in: on
-                // tableMode:'multi' the source rows are permanently separate
-                // elements that never carry any artwork to preserve (see
-                // _artSyncSearchTextToSourceRow()'s JSDoc), and the three
-                // serialising call sites must never opt in at all (see
+                // every sort. The multi-table branch opts in too, since
+                // 9.99.1038: its source rows are permanently separate elements
+                // that carry no artwork of their own, so the mirrors
+                // (_artMirrorIconToSourceRow, _artMirrorInlineThumbToSourceRow)
+                // write the live icon background and the live inline-thumbnail
+                // placeholder back onto them precisely so this option has
+                // something to preserve there as well. The three serialising
+                // call sites must still never opt in (see
                 // _stripTransientCellState()'s own JSDoc).
                 Array.from(clone.cells).forEach(td => _stripTransientCellState(td, { preserveLiveArt: true }));
                 // Restore art-cell expand state from the authoritative expandedCells
@@ -68195,6 +68200,35 @@ a { color: #1565c0; }`;
      * @returns {HTMLElement|null} The source-row counterpart, or null.
      */
     function _artResolveSourceCounterpart(liveEl, selector) {
+        const resolved = _artResolveSourceCell(liveEl);
+        if (!resolved) return null;
+        const { liveCell, sourceCell } = resolved;
+        const pos = Array.from(liveCell.querySelectorAll(selector)).indexOf(liveEl);
+        if (pos === -1) return null;
+        return sourceCell.querySelectorAll(selector)[pos] || null;
+    }
+
+    /**
+     * Resolves the `<td>` on the SOURCE row that corresponds to `liveEl`'s own
+     * `<td>` on a rendered row, matching by `data-mb-row-idx` + cell index.
+     *
+     * The half of `_artResolveSourceCounterpart()` that does not require the
+     * mirrored thing to already EXIST on the source row. `_artMirrorIconToSourceRow()`
+     * copies a value (`background-image`) onto an element the source cell already
+     * has, so it can go straight to the element; `_artMirrorInlineThumbToSourceRow()`
+     * has to CONSTRUCT its placeholder, because `_artInitInlinePics()` only ever
+     * injects one into the live rows — hence this split.
+     *
+     * Uses `_findMasterRowByIdx()`, and that is load-bearing for the same reason
+     * spelled out on `_artResolveSourceCounterpart()`: merged discography view folds
+     * other groups' rows into the first-occurrence table, so the group-index lookup
+     * `_artSyncSearchTextToSourceRow()` uses returns early for exactly those rows.
+     *
+     * @param {HTMLElement} liveEl  Element on the connected, rendered row.
+     * @returns {{sourceRow: HTMLTableRowElement, liveCell: HTMLTableCellElement,
+     *           sourceCell: HTMLTableCellElement}|null}
+     */
+    function _artResolveSourceCell(liveEl) {
         if (!activeDefinition || activeDefinition.tableMode !== 'multi') return null;
         const liveRow = liveEl.closest('tr');
         if (!liveRow) return null;
@@ -68208,9 +68242,7 @@ a { color: #1565c0; }`;
         if (!liveCell) return null;
         const sourceCell = sourceRow.cells[liveCell.cellIndex];
         if (!sourceCell) return null;
-        const pos = Array.from(liveCell.querySelectorAll(selector)).indexOf(liveEl);
-        if (pos === -1) return null;
-        return sourceCell.querySelectorAll(selector)[pos] || null;
+        return { sourceRow, liveCell, sourceCell };
     }
 
     /**
@@ -68258,6 +68290,102 @@ a { color: #1565c0; }`;
         if (!target) return;
         target.style.setProperty('background-size',  'contain');
         target.style.setProperty('background-image', bg);
+    }
+
+    /**
+     * Mirrors a just-loaded inline thumbnail onto the matching SOURCE row, so the
+     * next `runFilter()` re-render's clone arrives with the image already showing.
+     *
+     * ## Why this needs its own function rather than the icon mirror
+     *
+     * `_artMirrorIconToSourceRow()` copies a VALUE onto an element the source cell
+     * already owns — `span.caa-icon` comes from the fetched page markup, so
+     * `cloneNode(true)` carries the painted `background-image` through unchanged.
+     * An inline thumbnail is a NODE this script injects, and `_artInitInlinePics()`
+     * only ever walks `document.querySelectorAll('table.tbl')` — i.e. the live
+     * clones. On `tableMode: 'multi'` the source rows in `groupedRows[i].rows`
+     * therefore never hold a `.mb-caa-inline-ph` at all, which is why
+     * `_stripTransientCellState()`'s `preserveLiveArt` placeholder branch had
+     * nothing to match and every thumbnail was torn down and re-resolved on every
+     * sort and every filter keystroke. Measured before this: 0 of 124 inline
+     * thumbnails present at row insertion on `releasegroup-releases`.
+     *
+     * ## What the mirrored placeholder does on the next render
+     *
+     * `renderGroupedTable()`'s row insertion clones the source row WITHOUT
+     * stripping it, so the live row arrives with the placeholder and its image in
+     * place. `_stripTransientCellState()` still deletes the `done` marker, so
+     * `_artInitInlinePics()` sees "placeholder present, marker absent" and takes
+     * **Case C1** — which re-wires the hover preview and the bigbox tooltip
+     * (`cloneNode(true)` copies no listeners), keeps the live image, and only then
+     * re-stamps the marker. That is precisely the branch Case C1 was written for.
+     *
+     * ## Placement
+     *
+     * Uses the same rule as the live injection: after the container's own
+     * `[data-erg-btn]` when there is one, else as its first child. Source rows carry
+     * no ERG button (`initExpandRGsFeature()` injects into the live DOM), so the
+     * mirrored placeholder lands first — and on the next render ERG runs BEFORE the
+     * inline-thumbnail pass in `renderGroupedTable()`'s tail and prepends its button
+     * ahead of it, giving the same ▶-then-thumbnail order as a freshly built page.
+     *
+     * ## Why no dead object URL and no Save-to-Disk hazard
+     *
+     * Only a URL still in `_artIdbBlobUrls` is mirrored, and `_artInlinePhIsLiveBlob()`
+     * re-checks membership during the next strip — a revoked URL fails both tests,
+     * so the placeholder is dropped and re-fetched exactly as before. Serialisation
+     * (`getCleanCellHtml()` → `_stripTransientCellState()` WITHOUT `preserveLiveArt`)
+     * removes the placeholder outright, so nothing reaches a saved file.
+     *
+     * @param {HTMLElement} livePh  The rendered `.mb-caa-inline-ph` / `.mb-eaa-inline-ph`
+     *   span whose `<img>` has just become visible.
+     * @param {Object} ctx  CAA_CTX or EAA_CTX.
+     */
+    function _artMirrorInlineThumbToSourceRow(livePh, ctx) {
+        if (!livePh || !_artInlinePhIsLiveBlob(livePh)) return;
+        const resolved = _artResolveSourceCell(livePh);
+        if (!resolved) return;
+        const { liveCell, sourceCell } = resolved;
+
+        // Resolve the counterpart container. Multi-item cells give every <li> its
+        // own placeholder, so the <li> INDEX is what identifies it; single-item
+        // cells use the <td> itself, exactly as the injection side does.
+        const liveLi = livePh.closest('li');
+        let sourceContainer = sourceCell;
+        if (liveLi && liveCell.contains(liveLi)) {
+            const liveItems   = Array.from(liveCell.querySelectorAll('ul > li'));
+            const sourceItems = Array.from(sourceCell.querySelectorAll('ul > li'));
+            const liIdx = liveItems.indexOf(liveLi);
+            if (liIdx === -1 || !sourceItems[liIdx]) return;
+            sourceContainer = sourceItems[liIdx];
+        }
+
+        const existing = sourceContainer.querySelector('.' + ctx.inlinePh);
+        const liveImg  = livePh.querySelector('img');
+        if (!liveImg) return;
+
+        if (existing) {
+            const img = existing.querySelector('img');
+            if (!img) return;
+            img.src = liveImg.src;
+            img.style.display = 'inline';
+            return;
+        }
+
+        const clone = livePh.cloneNode(true);
+        // Cosmetic per-render state that must not ride along: the cache-hint emoji
+        // is rebuilt from the tier the NEXT load resolved through (and
+        // _stripTransientCellState removes it unconditionally anyway), and the
+        // hover-wired marker would make Case C1's re-wire guard read as satisfied.
+        clone.querySelectorAll('.mb-art-cache-hint-inline').forEach(h => h.remove());
+        delete clone.dataset[ctx.key + 'HoverWired'];
+
+        const ergBtn = sourceContainer.querySelector('[data-erg-btn]');
+        if (ergBtn) {
+            ergBtn.after(clone);
+        } else {
+            sourceContainer.insertBefore(clone, sourceContainer.firstChild);
+        }
     }
 
     function _artBuildMultiRowArtCell(ctx, artCell, images) {
@@ -71727,6 +71855,11 @@ a { color: #1565c0; }`;
                                 // Stamp the marker so future same-session calls hit Case A.
                                 td.dataset[ctx.inlineDoneAttr] = '1';
                                 _artSetInlineSortKey(ctx, td, true);
+                                // Mirror onto the multi-table source row so the next
+                                // re-render's clone arrives with the thumbnail already
+                                // showing — see _artMirrorInlineThumbToSourceRow().
+                                // No-op on single-table pages and for dead blob URLs.
+                                _artMirrorInlineThumbToSourceRow(existingPh, ctx);
                                 skippedDone++;
                                 // Update (or inject) the cache-hint overlay to 'memory' —
                                 // the blob is alive in _artIdbBlobUrls which means it was
@@ -71794,6 +71927,7 @@ a { color: #1565c0; }`;
                                                 // pass) do not inherit a premature 'done' marker.
                                                 td.dataset[ctx.inlineDoneAttr] = '1';
                                                 _artSetInlineSortKey(ctx, td, true);
+                                                _artMirrorInlineThumbToSourceRow(existingPh, ctx);
 
                                                 // ── Cache-hint indicator (C2 restore) ──────────────
                                                 if (Lib.settings.sa_rt_enable && Lib.settings.sa_rt_show_inline) {
@@ -71833,6 +71967,7 @@ a { color: #1565c0; }`;
                                             this.style.display = 'inline';
                                             td.dataset[ctx.inlineDoneAttr] = '1';
                                             _artSetInlineSortKey(ctx, td, true);
+                                            _artMirrorInlineThumbToSourceRow(existingPh, ctx);
                                             // ── Bigbox tooltip (C2 native restore) ─────────────
                                             _wireInlineThumbnailBigboxTooltip(existingPh);
                                         }
@@ -71959,6 +72094,7 @@ a { color: #1565c0; }`;
                                     // path comment for the full rationale).
                                     td.dataset[ctx.inlineDoneAttr] = '1';
                                     _artSetInlineSortKey(ctx, td, true);
+                                    _artMirrorInlineThumbToSourceRow(ph, ctx);
 
                                     // ── Hover preview wiring (inline thumbnail column) ─
                                     if (Lib.settings.sa_caa_hover_preview) {
@@ -72036,6 +72172,7 @@ a { color: #1565c0; }`;
                                     // cloned img permanently at display:none/src=''.
                                     td.dataset[ctx.inlineDoneAttr] = '1';
                                     _artSetInlineSortKey(ctx, td, true);
+                                    _artMirrorInlineThumbToSourceRow(ph, ctx);
 
                                     // ── Hover preview wiring (inline thumbnail column) ─────
                                     // Attach mouseenter/mouseleave to `ph` (the placeholder span

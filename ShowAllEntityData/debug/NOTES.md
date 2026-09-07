@@ -7500,3 +7500,80 @@ hidden copy. It did — the run picked a row inside a hidden table and failed on
 the filter input's visibility, nowhere near what it meant to assert. The
 working signal is the section's category ORDINAL: merged view moves exactly the
 rows in the 2nd, 3rd, … occurrence of a category.
+
+## 2026-09-07 — inline cover-art thumbnails torn down on every multi-table re-render (fixed)
+
+The second of the two items 9.99.1038 carried forward. Its sibling — the icon
+column — was fixed by `_artMirrorIconToSourceRow()`; the inline thumbnails were
+not, and the changelog said why in one line: *"it needs the placeholder
+constructed, not just a value copied."*
+
+### Why the icon fix could not be reused
+
+`_artMirrorIconToSourceRow()` writes a VALUE (`background-image`) onto a
+`span.caa-icon` the source row already owns, because that span comes from
+MusicBrainz's own markup and `cloneNode(true)` carries inline styles through.
+
+An inline thumbnail is a NODE this script creates. `_artInitInlinePics()` walks
+`document.querySelectorAll('table.tbl')` — the live clones — so on
+`tableMode: 'multi'` the rows in `groupedRows[i].rows` have never held a
+`.mb-caa-inline-ph` at all. `_stripTransientCellState()`'s `preserveLiveArt`
+placeholder branch (which is what makes single-table work) therefore had nothing
+to match, and every thumbnail was deleted and re-resolved on every sort and
+every filter keystroke.
+
+### The fix
+
+`_artMirrorInlineThumbToSourceRow(livePh, ctx)` clones the whole placeholder
+onto the matching source cell. `_artResolveSourceCounterpart()` was split so its
+row/cell half (`_artResolveSourceCell()`) can be reused by a caller that has to
+BUILD its target rather than find it. Both keep `_findMasterRowByIdx()` — merged
+view folds other groups' rows into the first-occurrence table, so a group-index
+lookup misses exactly those rows.
+
+`renderGroupedTable()`'s row insertion clones the source row WITHOUT stripping
+it, so the live row arrives with the image already showing and lands in
+`_artInitInlinePics()`'s Case C1 — hover + bigbox tooltip re-wired, live image
+kept, nothing re-resolved. That branch already existed for exactly this shape.
+
+### Measured
+
+```
+                        small RG (7 rows)   Springsteen RG (124 rows / 3 tables)
+inlineThumbsAtInsert    0/7  ->  7/7        0/119  ->  119/119
+iconsPaintedAtInsert    7/7 (unchanged)     119/124 (unchanged)
+archiveFetches          0                   0
+```
+
+`discography-view-artwork.spec.js`: all four views green, 0 archive requests in
+each. `save-to-disk-strips-live-artwork.spec.js` green with a new assertion that
+no `mb-*-inline-ph` reaches the payload; saved JSON stayed 66 082 bytes, so the
+strip really does remove them. Mutation-verified: an early `return` in the mirror
+makes the new assertion fire.
+
+### Two placement traps, both checked rather than assumed
+
+- **ERG button ordering.** The live injection puts the placeholder after the
+  cell's `[data-erg-btn]`. Source rows have no such button (`initExpandRGsFeature()`
+  injects into the live DOM), so the mirrored placeholder lands first — and that
+  is correct, because ERG runs BEFORE the inline-thumbnail pass in
+  `renderGroupedTable()`'s tail and prepends its ▶ ahead of it
+  (`parent.insertBefore(button, parent.firstChild)`), reproducing a fresh page's
+  order.
+- **The `_hadInlineArtPh` jesus2099 gate.** Planting a placeholder on a source
+  cell arms that gate for the cell at serialisation time, where it was previously
+  never armed. It cannot misfire: `ColumnDataExtractor.caa`'s Path A *moves*
+  (not copies) a jesus2099 anchor into the synthetic "CAA" column — "detach from
+  source so the title cell is clean" — and no page definition names "CAA" as its
+  `addCAA`/`addEAA` column (the eight distinct values are Release, Title, Release
+  group, Name, Entered from release, Release title, Release groups, Event). So
+  the protected anchor and the mirrored placeholder are never in the same source
+  cell.
+
+### Still open
+
+Sorting one sub-table still re-renders all of them (`rowsInserted` 124 for a
+sort of the 119-row sub-table; `survivingTaggedTables` 3/3 — the `<table>`
+elements are reused, only their rows are replaced). It costs no network traffic
+now that both mirrors have landed, so this is CPU/DOM waste rather than anything
+visible.
