@@ -13358,7 +13358,25 @@
                     // pointing at the wrong cells throughout — including the CAA hover
                     // tooltip, which showed only "Artist" and never the release group's
                     // own name. Confirmed live against a real /user/<name>/ratings page.
-                    injectedColumns: [ 'Relationships' ],
+                    //
+                    // NO injectedColumns here — deliberately (removed; see debug/
+                    // user-rating-no-relationship.html). The 'Relationships' column
+                    // is designed for single-entity-type pages only: (1)
+                    // buildActiveInjectedColumns() picks the WS2 entity type/inc
+                    // options by pageType alone, and 'user-ratings-type' falls
+                    // through to its generic 'release' branch — wrong entity
+                    // namespace for a release-group MBID; (2) renderGroupedTable's
+                    // per-group thead rebuild never re-derives activeInjectedColumns
+                    // per group (unlike activeColumnExtractors etc.), so the
+                    // declaration was silently never picked up anyway; and (3) even
+                    // fixing both, _initRelationshipsColumnImpl()'s _ensureRelCell
+                    // scans EVERY table.tbl row on the page unconditionally, so a
+                    // single global entityType would tag Artist/Event/Label/Place/
+                    // Recording/Work ratings rows as release-groups too. Making this
+                    // genuinely work would need a per-table-scoped redesign — see the
+                    // setting's own description, which already limits it to
+                    // artist-releasegroups/artist-releases/label-releases/
+                    // releasegroup-releases.
                     addCAA: 'Release group',
                     tooltipColumns: [ 'Artist', 'MB-Name' ]
                 },
@@ -13445,7 +13463,25 @@
                     // pointing at the wrong cells throughout — including the CAA hover
                     // tooltip, which showed only "Artist" and never the release group's
                     // own name. Confirmed live against a real /user/<name>/ratings page.
-                    injectedColumns: [ 'Relationships' ],
+                    //
+                    // NO injectedColumns here — deliberately (removed; see debug/
+                    // user-rating-no-relationship.html). The 'Relationships' column
+                    // is designed for single-entity-type pages only: (1)
+                    // buildActiveInjectedColumns() picks the WS2 entity type/inc
+                    // options by pageType alone, and 'user-ratings' falls through
+                    // to its generic 'release' branch — wrong entity namespace for
+                    // a release-group MBID; (2) renderGroupedTable's per-group
+                    // thead rebuild never re-derives activeInjectedColumns per
+                    // group (unlike activeColumnExtractors etc.), so the
+                    // declaration was silently never picked up anyway; and (3) even
+                    // fixing both, _initRelationshipsColumnImpl()'s _ensureRelCell
+                    // scans EVERY table.tbl row on the page unconditionally, so a
+                    // single global entityType would tag Artist/Event/Label/Place/
+                    // Recording/Work ratings rows as release-groups too. Making this
+                    // genuinely work would need a per-table-scoped redesign — see
+                    // the setting's own description, which already limits it to
+                    // artist-releasegroups/artist-releases/label-releases/
+                    // releasegroup-releases.
                     addCAA: 'Release group',
                     tooltipColumns: [ 'Artist', 'MB-Name' ]
                 },
