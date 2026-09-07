@@ -1,5 +1,20 @@
 [
   {
+    "version": "9.99.1048",
+    "date": "2026-09-07",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Two long-lived project documents were renamed, and every live cross-reference to them inside the userscript's own comments and JSDoc was retargeted: `debug/NOTES.md` → `DEBUG-NOTES.md` (24 references) and `pageTypes-testing-reference.org` → `PAGETYPES-TESTING-REFERENCE.org` (1 reference). Comment-only; no runtime behaviour changes.",
+          "`DEBUG-NOTES.md` moved out of `debug/` deliberately. That directory is excluded by a bare `debug/` in the root `.gitignore`, and the file was tracked only because it had been force-added to the index — there is no `!` negation for it, and one could not work, since git never descends into an excluded directory. At the top level it no longer depends on that fragile arrangement.",
+          "Fixed a stale symbol name in a comment: `_msIdbPutLength` → `_msIdbPutLengths` (the function has been plural since it was written; the singular form appears nowhere in the code).",
+          "The changelog's own historical entries were deliberately left pointing at the old filenames — they describe what shipped at those versions, and rewriting them would falsify the record."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1047",
     "date": "2026-09-07",
     "sections": [
