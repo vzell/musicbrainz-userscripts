@@ -11,7 +11,7 @@ history of what was tried and why is the point of this file.
 is on ~main~. Several steps below were implemented and measured on a branch
 that was never merged; those stay TODO and say so in their own text, so that
 "what is true of the script people actually run" is readable straight off the
-keywords. As of this revision the DONE set is exactly Steps 4, 18 and 19.
+keywords. As of this revision the DONE set is exactly Steps 3, 4, 18, 19, 21 and 22.
 
 *One canonical numbering.* Three copies of this file drifted into three
 incompatible schemes — ~main~, ~perf-steps-1-4~ and
@@ -90,8 +90,11 @@ It runs at the tail of ~initCollapsableColumns()~ (~:56878~), reached from
 
 Scaled to 5,000 rows that is roughly 19-75 s of background work re-triggered
 on most of those actions — larger than the cloneNode/DOM-rebuild cost the old
-branch was framed around. Step 3 is the remedy and is still TODO; Step 18
-removed one slice of it (see that step, and Step 3's own note).
+branch was framed around. Step 3 is the remedy and landed in 9.99.1049; Step
+18 had already removed one slice of it (see that step, and Step 3's own note).
+Read the call-site table above as the pre-9.99.1049 state it describes — the
+same sites still fire, but a scan whose visible row set is unchanged since the
+last completed one now costs O(columns) instead of O(rows x columns).
 
 ** Ranked areas + estimated impact (5,000-row, ~20-column table)
 
@@ -177,15 +180,15 @@ old branch (its WIP.1 only touched ~runFilter()~). Apply the same
 "rows are live DOM nodes, reorder in place, don't re-run the hook chain
 unless something actually changed" treatment to the sort-apply path.
 
-*** TODO Step 3: Cache ~_updateAllColHeaderCounts~
+*** DONE Step 3: Cache ~_updateAllColHeaderCounts~
 
 Memoize per-column unique-value/multi-row counts, invalidated only when the
 visible row set actually changes (not on every trigger). Needed even after
 Steps 1-2, since global expand/collapse-all clicks and multi-table renders
 still call it unconditionally.
 
-*Was entirely unlanded through 9.99.1048; implemented on branch
-~perf-step-3-header-count-cache~ — see "Implemented" below.* Before that,
+*Landed on* ~main~ *in 9.99.1049* (merge ~aef7faf~, branch
+~perf-step-3-header-count-cache~, now deleted) — see "Implemented" below. Before that,
 ~_updateAllColHeaderCounts()~ had exactly two mitigations and neither was a
 cache: a coalescing token (~_colHeaderCountsToken~, since replaced by a
 per-table ~WeakMap~ — see Step 22) so back-to-back schedules cost one scan
@@ -494,8 +497,11 @@ while rebasing onto ~main~).
 - *The one thing Step 4 needed from Step 3* is the helper
   ~_visibleRowSetSignature(table)~ — a cheap O(rows) join of the visible
   rows' ~data-mb-row-idx~ values, which is the cache key. It is carried here
-  standalone (9-line function); Step 3, if it lands later, keys off the same
-  primitive with no change.
+  standalone (9-line function). Step 3 was expected to key off the same
+  primitive when it landed; it did not, and deliberately — the header counts
+  are order-INDEPENDENT, so they need a signature that a sort does not change,
+  which this one is not. See ~_colHeaderCountsRowSetSignature()~ and Step 3's
+  own "Implemented" section.
 - *Implementation shape*, deliberately minimal: a per-(table, column)
   ~WeakMap~ (~_uniqDropDataCache~) whose entries are tagged with the
   signature they were computed against. All 5 passes are gated behind a
@@ -578,9 +584,9 @@ while rebasing onto ~main~).
 - The 10-symbol gap above is a LIVE bug on ~perf-steps-1-4~ (and on
   ~perf-steps-3-4~), not merely a porting hazard — it should be fixed there
   too, or those branches rebased onto this one.
-- Step 3 (~_updateAllColHeaderCounts~ caching) remains unlanded on ~main~
-  and can now be added on top of this branch's ~_visibleRowSetSignature~
-  with no further groundwork.
+- Step 3 (~_updateAllColHeaderCounts~ caching) landed in 9.99.1049 — on its
+  own signature rather than this branch's ~_visibleRowSetSignature~, for the
+  reason given in the bullet above.
 - The full multi-step analysis — Steps 1/2/5's measurements, the traced
   forced-reflow root cause, the CSS-containment negative result, and the
   2026-08-25 code-review findings — used to live only on the
@@ -610,13 +616,28 @@ relative to them.
 proposal: no implementation exists on that branch or on ~main~.
 
 *Severity differs between* ~main~ *and that branch, and the branch text below
-overstates it for* ~main~. On ~perf-steps-1-4~ Steps 1, 3 and 4 are all landed,
-so an order-dependent signature really does throw away two shipped caching wins
-on every sort — hence "highest-impact regression" below. On ~main~ only Step 4
-is landed, and ~main~'s own note (see Step 4, "Not included") is the accurate
-one: /"On ~main~ (no Step 1) a sort rebuilds the tbody anyway, so this is a
-missed extra win, not a regression versus ~main~."/ Read the branch's severity
-claim as conditional — it becomes true here the moment Step 1 lands.
+overstates it for* ~main~ *twice over.* On ~perf-steps-1-4~ Steps 1, 3 and 4 are
+all landed, so an order-dependent signature really does throw away two shipped
+caching wins on every sort — hence "highest-impact regression" below.
+
+Neither half of that holds here:
+
+- *It costs Step 3 nothing, at all.* The branch text assumes Step 3 keys off
+  this same helper, which was this file's own plan until Step 3 actually landed
+  in 9.99.1049 and deliberately did not. It carries
+  ~_colHeaderCountsRowSetSignature()~, which sorts before joining precisely so a
+  sort is a HIT. Step 3 is not a stakeholder in this step and was never blocked
+  on it — the "Step 6 must land with or before this" note that used to sit in
+  Step 3's follow-ups was wrong.
+- *For Step 4 it stays a missed win, not a regression*, per ~main~'s own note
+  (see Step 4, "Not included"): /"On ~main~ (no Step 1) a sort rebuilds the
+  tbody anyway."/ That becomes a real regression the moment Step 1 lands.
+
+So this is now a single-caller fix benefiting ~openUniqDrop()~ alone, and the
+one thing it must NOT do is unify the two signatures: Step 4's cached values
+(~entityNameGlyphMap~, ~valueItemSequence~ and friends) are
+first-seen-in-row-order, which is exactly why it still has an order-dependent
+key while Step 3 does not.
 
 Root-cause fix for the highest-impact regression found in the 2026-08-25
 code-review (see "Findings from performance code-review" below, regression
@@ -669,10 +690,13 @@ invalidation call either. Same fix shape: call
 *Half of this is already on* ~main~. The uniq-drop cache half shipped with Step
 4, with invalidations at every site named above plus three the branch text did
 not know about — see Step 4's "Correctness hazard 2", which cites this step by
-number and lists what it folded in. What remains is the header-count half, and
-that is moot until Step 3 exists: there is no header-count cache on ~main~ to
-invalidate. Read this as "finish it when Step 3 lands", not as an outstanding
-bug against ~main~.
+number and lists what it folded in. The header-count half came with Step 3 in
+9.99.1049, and by construction rather than by another audit:
+~_invalidateUniqDropDataCache()~/~…ForTable()~ now also drop the header-count
+entry, which is sound because the header counts' inputs are a strict subset of
+the uniq-drop bundle's. That fold also turned up one site invalidating NEITHER
+cache — ~_maybeCorrectAreaFlagRegion()~ — fixed in the same release. *Nothing
+remains of this step.*
 
 *** TODO Step 9: Invalidate ~_rowTextCache~ for async-populated columns
 
@@ -1520,11 +1544,11 @@ that the row count survives — which is precisely the gap "Why it went
 unnoticed" identifies above. Verified failing before the change, with the
 presence sequence after an ascending sort coming back fully unsorted.
 
-Point 3's third item (~:56576~) was narrower than filed: Step 3 is still
-~TODO~, so only the parenthetical "not part of this branch" was stale, not
-the cross-reference itself.
+Point 3's third item (~:56576~) was narrower than filed: Step 3 was still
+~TODO~ at the time, so only the parenthetical "not part of this branch" was
+stale, not the cross-reference itself. Step 3 has since landed (9.99.1049).
 
-*** TODO Step 22: One coalescing token per table, not one per page
+*** DONE Step 22: One coalescing token per table, not one per page
 
 Found while implementing Step 3, and shipped for as long as
 ~_scheduleColHeaderCounts()~ has existed.

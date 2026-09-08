@@ -57,7 +57,19 @@ At merge time (on `main`):
 2. Update any `WIP.N` cross-references inside the entry text to the real versions.
 3. Prepend the entries to `<project>_CHANGELOG.json`.
 4. Bump `// @version` to the highest assigned number.
-5. Delete `<project>_CHANGELOG.wip.json`.
+5. Set each folded entry's `date` to the SHIP date — the day the merge lands on
+   `main` — not the day the WIP entry was written. It must match the
+   `+YYYY-MM-DD` stamp in `// @version`, which is what every existing entry
+   does. A branch that took three days to write still ships on one of them, and
+   `scripts/fold-wip-changelog.py` carries the WIP file's authoring date
+   through, so this is a real step and not an automatic one.
+6. Delete `<project>_CHANGELOG.wip.json`.
+7. Re-read `<project>_HELP.txt` against what actually shipped, and reconcile it.
+   Not "did I remember to update HELP" — read the sections the change touches
+   and confirm they still describe the code. A change can make HELP wrong
+   without adding anything to it, and a change can need no HELP edit at all;
+   both are fine, but say which, so the next reader knows it was checked rather
+   than skipped.
 
 ---
 
