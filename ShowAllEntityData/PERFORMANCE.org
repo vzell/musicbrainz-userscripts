@@ -284,10 +284,10 @@ represent real extra main-thread work.
 The table above was captured at v9.99.976 and never re-run, so it could not
 say whether the +34%/+42%/+37% was still real. It is. Same harness, same
 fixture, same machine, median of 5 — and this arm IS committed, as
-~interaction-perf-main-9.99.1045.json~ (the plain ~interaction-perf-main.json~
-name has since been overwritten by later arms and finally retired in favour
-of a version+date[-host]-qualified name for every arm — see the "Baselines
-on disk" table below):
+~interaction-perf-main-9.99.1045-2026-09-07.json~ (the plain
+~interaction-perf-main.json~ name has since been overwritten by later arms
+and finally retired in favour of a version+date[-host]-qualified name for
+every arm — see the "Baselines on disk" table below):
 
 | Interaction         | pre-fix (v9.99.976) | post-fix (v9.99.976) | now (v9.99.1045) | vs pre-fix |
 |---------------------+---------------------+----------------------+------------------+------------|
@@ -386,7 +386,7 @@ arm never recorded its host, what differed cannot be recovered. See
 *Read every row but the last as noise.* ~main~ alone was captured three times
 across the two sessions — 3757/3503/3033 on the global filter, 7393/6932/6410 on
 sort — a spread wider than any delta above except ~headerCountsRestore~. The
-2026-09-07 arm, kept as ~interaction-perf-main-2026-09-07-9.99.1048.json~, showed the same
+2026-09-07 arm, kept as ~interaction-perf-main-9.99.1048-2026-09-07.json~, showed the same
 shape with a +6.2% column filter that did not reproduce here (+1.3%).
 
 ***** The win is narrow, and where it lands is the interesting part
@@ -473,7 +473,7 @@ while rebasing onto ~main~).
   The ~main~ column was measured for this comparison and NOT committed — the
   2026-08-24 / 9.99.953 capture from a different machine
   (1418/1595/2994/29802/29700) was deliberately left untouched, and now lives
-  at ~interaction-perf-main-2026-08-24-v9.99.953.json~ (renamed when a real
+  at ~interaction-perf-main-9.99.953-2026-08-24.json~ (renamed when a real
   current-~main~ capture finally took the plain ~interaction-perf-main.json~
   name — see Step 18's "Measurement coverage" note; that plain name has since
   been retired too, in favour of a version+date[-host]-qualified name for
@@ -1288,7 +1288,7 @@ Baselines on disk, and their real vintage:
 
 | File (under ~tests/snapshots/~)                                        |   Captured |  Version | What it is                                                                                     |
 |------------------------------------------------------------------------+------------+----------+------------------------------------------------------------------------------------------------|
-| ~artist-events/interaction-perf-main-2026-08-24-v9.99.953.json~                             | 2026-08-24 | 9.99.953 | pre-Step-4, pre-chunked-render-fix, pre-Step-18; a different machine                           |
+| ~artist-events/interaction-perf-main-9.99.953-2026-08-24.json~                              | 2026-08-24 | 9.99.953 | pre-Step-4, pre-chunked-render-fix, pre-Step-18; a different machine                           |
 | ~artist-events/interaction-perf-fix-chunked-render-header-counts-9.99.976-2026-08-31.json~  | 2026-08-31 | 9.99.976 | the de-facto current-~main~ row for a long time, filed under a branch since merged and deleted |
 | ~artist-events/interaction-perf-worktree-perf-step-4-9.99.970-2026-08-31.json~              | 2026-08-31 | 9.99.970 | Step 4's own branch arm                                                                        |
 | ~artist-releasegroups/perf-baseline.json~ (+ dated archival copies alongside it)             |   see file | see file | initial fetch+render wall time, from ~capture-snapshots.js --perf~                             |
@@ -1298,9 +1298,10 @@ enough to mislead (the ~main~ interaction row was 87 versions old and predated
 Step 4, and the fetch baseline was 109 versions old):
 
 - ~interaction-perf-main.json~ (since renamed to
-  ~interaction-perf-main-9.99.1045.json~ — see Step 3's re-measurement note
-  above) was now a genuine current-~main~ capture. Its numbers are in Step
-  3's re-measurement table, which is where they answer something.
+  ~interaction-perf-main-9.99.1045-2026-09-07.json~ — see Step 3's
+  re-measurement note above) was now a genuine current-~main~ capture. Its
+  numbers are in Step 3's re-measurement table, which is where they answer
+  something.
 - ~perf-baseline.json~: median wall *33 436 ms → 26 378 ms*, fetch
   *23 059 ms → 16 692 ms*, render *502 ms → 533 ms*, itemCount 2142 → 2143.
   Verdict ~ok~.

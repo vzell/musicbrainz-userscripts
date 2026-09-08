@@ -95,19 +95,47 @@ from the background task's own output file. The harness now records
 | 2026-09-08 | 08:27      | =petri=                      | 9.99.1048 | step3, shipped (tier 1 only)     |   3168 |   3337 | 6469 |     46516 |      1747 | 7980     | 8977        |
 | 2026-09-08 | 17:01      | =petri=                      | 9.99.1045 | bisect — same script as row 4    |   3117 |   3285 | 6044 |     42948 |      1640 | 7779     | 11175       |
 | 2026-09-08 | 20:23      | =NB-3641=                    | 9.99.1049 | main, first arm on this machine  |   1996 |   1706 | 4392 |     30347 |       985 | 4704     | 5689        |
+| 2026-09-08 | 21:07      | =petri=                      | 9.99.1049 | main, pairs with the NB-3641 row |   3634 |   3158 | 6903 |     46549 |      1722 | 8191     | 8594        |
 
 Committed as =tests/snapshots/artist-events/interaction-perf-*.json=.
 
-*=NB-3641= row is not directly comparable to any =petri= row above* — it is
-BOTH a different machine and a different script version (9.99.1049 vs
-9.99.1045/1048), so the two variables are confounded and no ratio here isolates
-the machine. Recorded per this file's own "record every arm" rule, not as a
-machine comparison. Worth noting anyway: every metric came back faster than
-=petri='s closest arm (9.99.1045, row 4) despite the extra 4 versions, most
-strikingly =headerCountsInitial=/=headerCountsRestore= (4704/5689 vs
-7779/11175) — a >30% gap in the same direction as this file's other unexplained
-gaps. Re-measure 9.99.1049 (or later) on =petri= before drawing any conclusion
-from that; until then this is an observation, not a finding.
+*=NB-3641= vs =petri=, same script version — asked 2026-09-08, answered the
+same evening.* The =NB-3641= arm was confounded on arrival: a different machine
+AND a different script version (9.99.1049 vs 9.99.1045/1048), so no ratio
+isolated the machine. This file asked for a 9.99.1049 =petri= arm before anyone
+drew a conclusion. That arm is the row below it, and it unconfounds cleanly —
+=petri= at 9.99.1049 sits within noise of =petri= at 9.99.1048 everywhere
+except the one metric Step 3 targets, so the script version contributes
+essentially nothing and the whole remaining gap is the machine:
+
+| Metric                | =petri= 9.99.1049 | =NB-3641= 9.99.1049 | petri / NB |
+|-----------------------+-------------------+---------------------+------------|
+| =globalFilter=        |              3634 |                1996 |      1.82x |
+| =columnFilter=        |              3158 |                1706 |      1.85x |
+| =sort=                |              6903 |                4392 |      1.57x |
+| =uniqDropCold=        |             46549 |               30347 |      1.53x |
+| =uniqDropWarm=        |              1722 |                 985 |      1.75x |
+| =headerCountsInitial= |              8191 |                4704 |      1.74x |
+| =headerCountsRestore= |              8594 |                5689 |      1.51x |
+
+*What this does and does not settle.* It settles that the machine is a real,
+large variable and that quoting an absolute across hosts is meaningless — the
+rule this file already carried, now with a measured magnitude behind it. It
+does NOT settle WHY. Three candidates, and they are not exclusive:
+
+- *Hardware.* =NB-3641= has 28 cores to =petri='s 24 and a slightly newer node
+  (v24.19.0 vs v24.16.0). Real, but 28/24 is 1.17x and does not obviously buy
+  1.5-1.85x.
+- *Uptime / reboot recency.* =NB-3641= was reported freshly rebooted before
+  its arm; =petri= had been up 18 days. Nothing in either JSON recorded it at
+  the time, which is why the harness now does. This candidate explains the
+  cross-machine gap and =petri='s own step change with one mechanism.
+- *Something resident on =petri=.* This cannot be hardware, because =petri=
+  changed against ITSELF: the same 9.99.1045 script measured 1735 on the
+  morning of 2026-09-07 and 3117 on 2026-09-08. Note where =petri='s own fast
+  arm sits — 1735, close to =NB-3641='s 1996. If whatever changed that
+  afternoon were removed, the cross-machine gap above would largely dissolve
+  too. See the Environment log's open question.
 
 *** What these rows establish
 
@@ -118,8 +146,13 @@ from that; until then this is an observation, not a finding.
   It contributed nothing, and removing it cost nothing.
 - *Noise band*: =main= alone measured 1735 / 3503 / 3033 on the global filter
   and 3968 / 6932 / 6410 on sort. Any delta under ~10% is not a result.
+- *Step 3 reproduces post-merge on =petri=.* =headerCountsRestore= 12319
+  (9.99.1048 =main=) -> 8594 (9.99.1049 =main=), -30%, against the -27% the
+  branch arm measured. The win survived the merge and is not branch-specific.
 - *The 9.99.1045 -> 9.99.1048 gap is NOT the script.* Bisected 2026-09-08; see
   below.
+- *The machine is worth 1.5-1.85x* at identical script version. See the
+  =NB-3641= vs =petri= table above.
 
 * Bisect: the 9.99.1045 -> 9.99.1048 gap
 
@@ -318,3 +351,95 @@ and it exposed a documentation error worth keeping visible: =loadFromDiskFixture
 is *not* offline. It makes the table DATA deterministic, but passes no
 =fixtureFile= to =loadUserscriptPage()=, so no route is registered and the page
 SHELL is fetched from the live site. "No network" only ever described the data.
+
+** OPEN — what changed on =petri= on 2026-09-07: a resident session, or uptime?
+
+*Status: hypothesis, untested. Do not cite it as a cause.* Written 2026-09-08.
+
+*The observation.* =petri= changed against itself on the afternoon of
+2026-09-07 and never changed back — the same 9.99.1045 script measured 1735 on
+the global filter at <= 11:41 and 3117 on 2026-09-08 at 17:01. The bisect ruled
+out the script. Nothing has explained the step since.
+
+While looking at something else on 2026-09-08, =ps= showed a =claude= process
+(PID 1667367) that had been up since *Mon Sep 7 16:40:22* — inside the
+11:41-to-18:58 bracket the step change falls in — still resident 30 hours
+later, holding 10 idle Bash-tool shells (state =Ss=, blocked in =do_wait=,
+1-3 s of CPU each). Every arm from 18:58 onward, including the 2026-09-08
+bisect, was captured with that session resident.
+
+*Why it is only a hypothesis.* The footprint does not obviously buy 2x: 2.8%
+lifetime CPU, ~468 MB RSS, 19 GB free, on 24 cores. The idle shells contribute
+nothing measurable. A start time inside the bracket is a coincidence until it
+is tested — this file's own bisect entry exists because an environment guess
+was believed once before and turned out to be a guess.
+
+*Why it is worth testing anyway.* It is the first candidate that fits every
+data point, and it would unify two separate puzzles: =petri='s own fast arm
+(1735) sits close to =NB-3641='s 1996, so if the resident session explains
+=petri='s step change, it also largely explains the 1.5-1.85x cross-machine gap
+in the Results section above, which is otherwise pinned on 24-vs-28 cores that
+should be worth ~1.17x.
+
+*A second candidate, raised 2026-09-08 and possibly the stronger one:
+=UPTIME=.* =NB-3641= was *reported by the user* to have been freshly rebooted
+before its fast arm — reported, not measured; nothing in its JSON could confirm
+it, which is exactly the gap the new =uptimeHours=/=claudeResident= fields
+close. =petri= had been up 18 days at the time of its slow arms and has not
+rebooted since 2026-08-20, so the 2026-09-07 step change happened INSIDE one
+uptime. Note that "=NB-3641= is 1.5-1.85x faster than =petri=" and "a freshly
+booted box is 1.5-1.85x faster than an 18-day-old one" fit the Results table
+identically — and only the second also explains =petri= changing against
+itself, which hardware cannot.
+
+*Protocol.* Four arms, all on =petri=, all at one script version, all via
+=node tests/support/capture-interaction-perf.js --pageType=artist-events=:
+
+| Arm                    | Condition                                        | Label                     |
+|------------------------+--------------------------------------------------+---------------------------|
+| C (in hand, 9.99.1049) | 18d uptime, 30-hour-old session resident         | =main= (2026-09-08 21:07) |
+| A                      | 18d uptime, NO =claude= process at all           | =--label=no-claude=       |
+| B                      | 18d uptime, freshly started session              | =--label=fresh-claude=    |
+| D                      | AFTER a reboot, no =claude= process              | =--label=rebooted=        |
+
+*Order matters, and the reboot goes LAST.* Rebooting before arm A would remove
+the resident session AND 18 days of accumulated state in one move, leaving a
+fast result that cannot be attributed to either — the same many-variables-at-
+once mistake this file already records twice. A and B change exactly one thing
+each against C and need no reboot, so take them first; reboot once, then take
+D. Arm A cannot be run from inside Claude Code at all: run it from a plain
+terminal after confirming =pgrep -a claude= is silent.
+
+From 2026-09-08 the harness records =uptimeHours= and =claudeResident=
+(=count=, =oldestSessionHours=) in every arm's =machine= block, so each of
+these describes its own conditions instead of relying on anyone remembering
+them. =claudeResident: null= means the check could not run — distinct from
+=count: 0=, which means it ran and found none.
+
+*Reading the result.* Against arm C's 3634 global filter:
+
+- A comes back ~1700-2000 -> the resident session is the cause. Say so here,
+  and add "no Claude Code session resident" to what every future arm records.
+- A stays ~3600 -> the session is exonerated; the step change is something else
+  that started that afternoon, and =petri= is simply ~1.7x slower than
+  =NB-3641=. Record the negative result — it is the second environment guess
+  this file will have tested and killed, and that is worth knowing.
+- A ~1800 and B ~3600 -> it is Claude Code generally, not session age.
+- A ~1800 and B ~1800 -> it is accumulated session state (leaked shells, heap
+  growth), and a periodic restart is the cheap fix.
+- A ~3600 and D ~1800 -> it is UPTIME, not Claude Code at all. That would also
+  reframe the cross-machine table in the Results section — =NB-3641='s
+  advantage would be its reboot, not its 28 cores — and the fix is "reboot
+  before a measurement session", recorded as a standing rule.
+- A ~3600 and D ~3600 -> both candidates dead. =petri= is simply slower than
+  =NB-3641=, and the 2026-09-07 step change stays unexplained; say so plainly
+  rather than reaching for a third guess.
+
+*One caveat that applies to all four.* =petri= shows no process leak or memory
+pressure to point at — 104 processes, 0 orphaned shell-snapshot shells, 19 GB
+free, no swap in use — so neither candidate has an obvious mechanism yet. A
+positive result here is a reproducible correlation worth acting on, not an
+explanation.
+
+Whatever comes back, record every arm run in the Results table with its
+hostname and time, per this file's own rule — including the negatives.

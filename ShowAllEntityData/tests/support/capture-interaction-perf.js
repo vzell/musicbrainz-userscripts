@@ -58,8 +58,9 @@
  *
  * Output: `tests/snapshots/<pageType>/interaction-perf-<branch>-<version>-
  * <capturedAt>[-<hostname>].json`, where `<branch>` is the current git
- * branch (auto-detected), `<version>` and `<capturedAt>` come from the
- * userscript header and the run's own date, and `<hostname>` is appended
+ * branch (auto-detected), `<version>` is the userscript header's version
+ * NUMBER without its `+YYYY-MM-DD` ship stamp (see `versionForFilename()`),
+ * `<capturedAt>` is the run's own date, and `<hostname>` is appended
  * only when `os.hostname()` resolves to something meaningful (see
  * `sanitizeForFilename()`/`hostnameForFilename()`) — an unresolvable host is
  * left OUT of the name rather than guessed, matching CLAUDE.md's "mark an
@@ -147,6 +148,52 @@ function readScriptVersion() {
 }
 
 /**
+ * Host conditions that are not hardware but move timings anyway: how long the
+ * box has been up, and whether a Claude Code session is resident while the
+ * run happens.
+ *
+ * Both exist because of a real, still-unresolved gap. `petri` measured 1735 ms
+ * on the global filter on the morning of 2026-09-07 and ~3100 ms for the SAME
+ * script version afterwards, with no reboot in between (18 days of uptime by
+ * the time it was noticed) and a `claude` process that had started that same
+ * afternoon and stayed up. A separate host, `NB-3641`, measured ~1.8x faster
+ * at an identical script version — and was reportedly freshly rebooted, which
+ * nothing in its JSON could confirm. Uptime and reboot recency are therefore
+ * live candidate variables that no committed arm records, which is the same
+ * defect that made `hostname` and `startedAt` necessary.
+ *
+ * `claudeResident` is `null` when the check could not run at all (`ps -C` is
+ * Linux-shaped and unsupported on BSD/macOS `ps`) — deliberately distinct from
+ * `{count: 0}`, which means "checked, none running", per CLAUDE.md's "mark an
+ * unknown as unknown rather than inferring it".
+ *
+ * @returns {{uptimeHours: number,
+ *   claudeResident: {count: number, oldestSessionHours: number|null}|null}}
+ */
+function hostRuntimeState() {
+    const uptimeHours = Math.round(os.uptime() / 360) / 10;
+    let claudeResident = null;
+    try {
+        const out = execSync('ps -C claude -o etimes=', {
+            stdio: ['ignore', 'pipe', 'ignore'],
+        }).toString().trim();
+        const ages = out ? out.split('\n').map((n) => parseInt(n, 10)).filter(Number.isFinite) : [];
+        claudeResident = {
+            count: ages.length,
+            oldestSessionHours: ages.length ? Math.round(Math.max(...ages) / 360) / 10 : null,
+        };
+    } catch (err) {
+        // `ps -C` exits 1 with empty output when nothing matches — that is a
+        // real "none running" answer, not a failed check. Anything else means
+        // the check itself did not work, which stays unknown.
+        claudeResident = (err.status === 1 && !String(err.stdout || '').trim())
+            ? { count: 0, oldestSessionHours: null }
+            : null;
+    }
+    return { uptimeHours, claudeResident };
+}
+
+/**
  * Identifies the machine a run happened on, so absolutes are never compared
  * across machines by accident.
  *
@@ -157,8 +204,12 @@ function readScriptVersion() {
  * settle it next time: host, core count, and the two versions that actually
  * move browser timings.
  *
+ * Also folds in `hostRuntimeState()`'s uptime/resident-session fields — see
+ * that helper for why those belong in the machine block.
+ *
  * @returns {{hostname: string, platform: string, release: string, cpus: number,
- *   totalMemGb: number, node: string, playwright: string}}
+ *   totalMemGb: number, node: string, playwright: string, uptimeHours: number,
+ *   claudeResident: {count: number, oldestSessionHours: number|null}|null}}
  */
 function machineInfo() {
     let playwright = 'unknown';
@@ -173,6 +224,7 @@ function machineInfo() {
         totalMemGb: Math.round(os.totalmem() / 1024 ** 3),
         node: process.version,
         playwright,
+        ...hostRuntimeState(),
     };
 }
 
@@ -200,6 +252,25 @@ function sanitizeForFilename(s) {
 function hostnameForFilename(hostname) {
     if (!hostname || /^(localhost|unknown)$/i.test(hostname)) return null;
     return sanitizeForFilename(hostname);
+}
+
+/**
+ * Filename form of the userscript version: the `M.MM.NNN` number alone,
+ * without the `+YYYY-MM-DD` release stamp the header carries.
+ *
+ * That stamp is the version's own SHIP date, which is not the capture date
+ * and reads as one. Sanitizing turns `9.99.1049+2026-09-08` into
+ * `9.99.1049-2026-09-08`, so a name that already ends in `<capturedAt>`
+ * carried two same-shaped dates — and disagreed with every hand-named
+ * archive and with CLAUDE.md's documented `<version>-<capturedAt>` pattern.
+ * The full version is not lost: it stays verbatim in the JSON's own
+ * `scriptVersion` field, which is what anything precise should read.
+ *
+ * @param {string} version
+ * @returns {string}
+ */
+function versionForFilename(version) {
+    return sanitizeForFilename(version.split('+')[0]);
 }
 
 /** @returns {string} */
@@ -497,7 +568,7 @@ async function runAll(browser, config) {
         const fileNameParts = [
             'interaction-perf',
             sanitizeForFilename(outName),
-            sanitizeForFilename(scriptVersion),
+            versionForFilename(scriptVersion),
             capturedAt,
         ];
         if (host) fileNameParts.push(host);

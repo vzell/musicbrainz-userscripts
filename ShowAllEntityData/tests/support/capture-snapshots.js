@@ -23,6 +23,7 @@
 
 const fs = require('fs');
 const os = require('os');
+const { execSync } = require('child_process');
 const path = require('path');
 const { chromium } = require('playwright');
 const { loadUserscriptPage } = require('./loadPage');
@@ -379,14 +380,75 @@ function hostnameForFilename(hostname) {
 }
 
 /**
+ * Host conditions that are not hardware but move timings anyway: how long the
+ * box has been up, and whether a Claude Code session is resident while the
+ * run happens.
+ *
+ * Both exist because of a real, still-unresolved gap. `petri` measured 1735 ms
+ * on the global filter on the morning of 2026-09-07 and ~3100 ms for the SAME
+ * script version afterwards, with no reboot in between (18 days of uptime by
+ * the time it was noticed) and a `claude` process that had started that same
+ * afternoon and stayed up. A separate host, `NB-3641`, measured ~1.8x faster
+ * at an identical script version — and was reportedly freshly rebooted, which
+ * nothing in its JSON could confirm. Uptime and reboot recency are therefore
+ * live candidate variables that no committed arm records, which is the same
+ * defect that made `hostname` and `startedAt` necessary.
+ *
+ * `claudeResident` is `null` when the check could not run at all (`ps -C` is
+ * Linux-shaped and unsupported on BSD/macOS `ps`) — deliberately distinct from
+ * `{count: 0}`, which means "checked, none running", per CLAUDE.md's "mark an
+ * unknown as unknown rather than inferring it".
+ *
+ * @returns {{uptimeHours: number,
+ *   claudeResident: {count: number, oldestSessionHours: number|null}|null}}
+ */
+function hostRuntimeState() {
+    const uptimeHours = Math.round(os.uptime() / 360) / 10;
+    let claudeResident = null;
+    try {
+        const out = execSync('ps -C claude -o etimes=', {
+            stdio: ['ignore', 'pipe', 'ignore'],
+        }).toString().trim();
+        const ages = out ? out.split('\n').map((n) => parseInt(n, 10)).filter(Number.isFinite) : [];
+        claudeResident = {
+            count: ages.length,
+            oldestSessionHours: ages.length ? Math.round(Math.max(...ages) / 360) / 10 : null,
+        };
+    } catch (err) {
+        // `ps -C` exits 1 with empty output when nothing matches — that is a
+        // real "none running" answer, not a failed check. Anything else means
+        // the check itself did not work, which stays unknown.
+        claudeResident = (err.status === 1 && !String(err.stdout || '').trim())
+            ? { count: 0, oldestSessionHours: null }
+            : null;
+    }
+    return { uptimeHours, claudeResident };
+}
+
+/**
+ * The `M.MM.NNN` version number alone, without the header's `+YYYY-MM-DD`
+ * ship stamp — see `capture-interaction-perf.js`'s identically-named helper
+ * for why a filename that already carries `<capturedAt>` must not also
+ * carry that stamp.
+ *
+ * @param {string} version
+ * @returns {string}
+ */
+function versionForFilename(version) {
+    return sanitizeForFilename(version.split('+')[0]);
+}
+
+/**
  * Runs `measureOnce()` 5 times for `config`, takes the median of each
  * metric (live MB response times vary run to run — a single sample isn't
  * trustworthy), compares against the committed baseline at
  * `tests/snapshots/<pageType>/perf-baseline.json`, and writes a fresh one —
  * PLUS an archival copy named `perf-baseline-<version>-<capturedAt>[-
  * <hostname>].json` alongside it, so every arm survives the next `--perf`
- * run rather than only the single mutable comparison target. `hostname` is
- * omitted when it isn't a meaningful identifier (see `hostnameForFilename()`).
+ * run rather than only the single mutable comparison target. `<version>` is
+ * the version number without its `+YYYY-MM-DD` ship stamp (see
+ * `versionForFilename()`); `hostname` is omitted when it isn't a meaningful
+ * identifier (see `hostnameForFilename()`).
  *
  * Thresholds (>25% slower → warning, >3x slower → failure/non-zero exit)
  * are a starting point, not tuned — expect to revisit once there are a few
@@ -435,6 +497,7 @@ async function runPerf(browser, config) {
             hostname,
             cpus: os.cpus().length,
             node: process.version,
+            ...hostRuntimeState(),
         },
         scriptVersion,
         itemCount,
@@ -450,7 +513,7 @@ async function runPerf(browser, config) {
     fs.writeFileSync(baselinePath, JSON.stringify(baselineContent, null, 2) + '\n');
 
     const archiveHost = hostnameForFilename(hostname);
-    const archiveNameParts = ['perf-baseline', sanitizeForFilename(scriptVersion), capturedAt];
+    const archiveNameParts = ['perf-baseline', versionForFilename(scriptVersion), capturedAt];
     if (archiveHost) archiveNameParts.push(archiveHost);
     const archivePath = path.join(SNAPSHOTS_DIR, config.pageType, `${archiveNameParts.join('-')}.json`);
     fs.writeFileSync(archivePath, JSON.stringify(baselineContent, null, 2) + '\n');

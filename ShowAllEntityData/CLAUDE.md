@@ -311,10 +311,12 @@ much, and what the alternative would be.
   by hand.** It has drifted twice, in both directions.
 - **Record the machine and the wall-clock time. Every timing, every time.**
   `capture-interaction-perf.js` and `capture-snapshots.js` write a `machine`
-  block (hostname, cores, node and Playwright versions) plus UTC
-  `startedAt`/`finishedAt` into their JSON, and every measurement that ends up
-  in prose — a commit message, `PERFORMANCE.org`, `DEBUG-NOTES.md` — must name
-  the host and when it ran. The time matters because every sample fetches its
+  block (hostname, cores, node and Playwright versions, plus `uptimeHours` and
+  `claudeResident` — host conditions that are not hardware but move timings,
+  added after a same-version cross-machine arm came back 1.5-1.85x apart with
+  neither box's uptime on record) plus UTC `startedAt`/`finishedAt` into their
+  JSON, and every measurement that ends up in prose — a commit message,
+  `PERFORMANCE.org`, `DEBUG-NOTES.md` — must name the host and when it ran. The time matters because every sample fetches its
   page shell from the live site, so "was MusicBrainz busy at that hour" is a
   standing hypothesis for any unexplained difference — one that can only be
   tested against runs that recorded when they happened. A number with no machine attached cannot be compared to a later one,
