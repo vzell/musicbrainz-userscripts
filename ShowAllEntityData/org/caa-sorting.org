@@ -1,0 +1,1370 @@
+* CAA/EAA sorting analysis
+** i
+
+Currently when a pageType renders CAA/EAA artifacts, either the CAA/EAA column directly if present or the CAA/EAA inline
+images, whenever we sort on a column, the images seem to be refetched, at least this is how it looks like to the end-user.
+
+also take into account possible differences between single- and multi table pageTypes
+
+** revise
+
+Use baselines that actually carry CAA/EAA markup with force "sa_enable_caa_pics: true" by using the following pageTypes
+and URLs for testing (currently NOT done)
+
+#+begin_example
+multi-table - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
+single-table (but stop reading from the network after fetching 3 paginated pages) - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases
+#+end_example
+
+These could also be used for performance testing aspects
+
+** anything wanting a large-artist CAA baseline needs that investigated first
+
+ * A larger artist was tried first and rejected on evidence: on
+ * `/artist/70248960-…/releases` (Bruce Springsteen) the live fetch did not
+ * advance past its FIRST page within 200 s through this harness — the
+ * `#mb-fetch-progress-fill` bar stayed at 0% and `#mb-fetch-progress-label`
+ * stayed empty the whole time, so `stopAfterPages()` had nothing to wait on.
+ * That is a property of the harness/page, not of this fix; anything wanting
+ * a large-artist CAA baseline needs that investigated first.
+
+** D and E are committed and pushed. Branch at 218b708, tree clean.
+
+218b708 fix: inline CAA/EAA thumbnails no longer vanish on every sort
+fbba3ce refactor: split _artWireImageLi() out of _artBuildImageLi()
+81f9542 fix: stop re-announcing "all artwork loaded" after every sort
+3de2bec fix: CAA/EAA icon column no longer blanks on every sort (single-table)
+d45904e refactor: add an opt-in preserveLiveArt option to _stripTransientCellState()
+
+E turned out smaller than planned, in two directions — both worth your attention.
+
+One part was unnecessary. The plan had E "skip the <li> collapse and make _restoreArtExpandState() bidirectional." Reading the code, that collapse runs on the detached clone, and _restoreArtExpandState() corrects it before insertion — so it is never visible. I left both alone rather than adding a bidirectional restore nothing needed.
+
+One part I deliberately did not do, and it's your call. The plan also had E preserve the art <li>s. That turns out to be entangled: those <li>s are destroyed and rebuilt by _artBuildMultiRowArtCell()'s REBUILD branch, which runs because data-caa-enriched is stripped — and the plan itself forbids preserving that marker, since it's the only path to _artHighlightArtCell() and the uniq-dropdown cache invalidation. So preserving them means changing the REBUILD branch to reuse-and-re-wire instead.
+
+I stopped there because the payoff is narrow: art <li>s render collapsed by default, and collapsed means display:none +
+loading="lazy" — no visible flash, no requests. The rebuild is only visible in cells the user explicitly
+expanded. That's a small win inside the most bug-prone function in this area, and the plan says stop and measure after
+commit 5.
+
+Mutation evidence for what did ship: 36 inline thumbnails present before the sort, 0 arriving at insertion without the fix, all 36 with it.
+
+Verification: 129/129 fixtures; 9 CAA live specs; artist-releases-filter-sort 8 passed / 2 skipped.
+
+Where that leaves things — all five planned commits are in, and on single-table pages the sort no longer blanks the icon
+column, no longer drops the inline thumbnails, and no longer claims a completed download. Still open: measuring (no
+artwork-on perf baseline exists yet), the Springsteen fetch stall blocking your CAA-on baselines, the multi-table
+redesign, and optionally the art-<li> reuse I've described above.
+
+** DONE all fixed, no more blanking of the inline and CAA column icons
+
+all fixed, no more blanking of the inline and CAA column icons, but the in big picture image stripe, during every sort,
+all the rendered images quickly vanish first, leaving just a sand-glass for each image, until each one is re-rendered.
+
+This again looks like they need to be refetched from an end-user perspective
+
+** Committed and pushed. Local and remote at cbdeb2b, tree clean.
+
+cbdeb2b fix: big-picture stripe no longer empties to hourglasses on a sort
+218b708 fix: inline CAA/EAA thumbnails no longer vanish on every sort
+fbba3ce refactor: split _artWireImageLi() out of _artBuildImageLi()
+81f9542 fix: stop re-announcing "all artwork loaded" after every sort
+3de2bec fix: CAA/EAA icon column no longer blanks on every sort (single-table)
+d45904e refactor: add an opt-in preserveLiveArt option to _stripTransientCellState()
+
+All four artwork surfaces you reported are now addressed on single-table pages — icon column, inline thumbnails, big-picture stripe, and the toast that kept announcing a download that never happened. Each one is mutation-verified, so reverting any of them fails a specific test.
+
+Worth flagging from this last round: the fix landed only because your existing suite caught my first attempt. subtable-filter-sort-caa-interaction.spec.js failed with a global badge of 7 against a baseline of 6 — that spec was written for the v9.99.960 STF bug and it just paid for itself again. I'd treat it as load-bearing for anything touching this area.
+
+Two loose ends I'd suggest before this branch merges:
+
+- Nothing has been measured. The plan called for stopping to measure after these commits, and there's still no artwork-on perf baseline to measure against — the PERFORMANCE.org numbers were all captured with CAA off.
+- The Springsteen /releases stall still blocks the CAA-on baselines you asked for. That's independent of this work, but it's the thing standing between you and the measurement above.
+
+Also still untouched by design: multi-table pages. They get the icon-column fix, but per-sub-table scoping needs the render redesign — sorting one sub-table still re-renders them all, because those source rows carry no artwork to preserve.
+
+** TODO technically WHY do images which we knwo do NO exist are retried and refetched during sort in the big picture image stipe
+
+*** i
+
+Regarding
+
+#+begin_example
+The stripe is the one artwork surface that legitimately is rebuilt on every re-render — it has to follow the table's new row order.
+#+end_example
+
+Technically WHY do images which we know do NO exist are retried and refetched during sort in the big picture image
+stripe, whats the differecen between an image in memory an NO image
+
+*** a
+
+Confirmed. Here's the technical answer.
+
+There is no negative cache for image bytes
+
+_artFetchCachedImage() has three tiers, and all three only ever record successes:
+
+const blob   = await _artGmFetchBlob(normUrl);   // ← 404 REJECTS here
+const objUrl = URL.createObjectURL(blob);
+_artIdbBlobUrls.add(objUrl);
+_artIdbMemCache.set(normUrl, objUrl);            // ← never reached
+_artIdbPut('images', { url: normUrl, blob, … }); // ← never reached
+
+_artGmFetchBlob rejects on any non-2xx (:65919), and that rejection propagates out before any of the caching lines run. Tier 2 (IDB images) is written on the same line, so it's skipped too.
+
+So the two states are, at the cache layer, literally identical:
+
+┌─────────────────────┬─────────┬────────┬────────────────────────────────────────────────────────────┐
+│                     │ Tier 1  │ Tier 2 │                    Result on re-render                     │
+├─────────────────────┼─────────┼────────┼────────────────────────────────────────────────────────────┤
+│ Image exists        │ Map hit │ —      │ synchronous lookup, painted at build time                  │
+├─────────────────────┼─────────┼────────┼────────────────────────────────────────────────────────────┤
+│ Image doesn't exist │ miss    │ miss   │ falls through to a network request → 404 → wrapper removed │
+└─────────────────────┴─────────┴────────┴────────────────────────────────────────────────────────────┘
+
+A missing memory entry means "never successfully fetched" — which covers both "we've never asked" and "we asked and it doesn't exist." Nothing distinguishes them, so the second is retried forever.
+
+The galling part: that information already exists, one layer up
+
+_artEnrichIcon() does cache negatives, at the metadata layer (:68701-68705):
+
+// Cache sentinel (0) to suppress repeated failed requests
+// across sort/filter re-renders for the same entity.
+ctx.countCache.set(entityPath, 0);
+ctx.imagesCache.set(entityPath, []);
+
+— with a comment naming this exact problem, and it persists the zero to IndexedDB as well.
+
+But _artInitBigPics() never reads it. I grepped its whole body: zero references to countCache/imagesCache. Its build loop (:69157) walks every art anchor in the table, derives front-{size} from the href, and builds a wrapper + fetch unconditionally. The metadata layer knows the release has no artwork; the stripe builder never asks.
+
+So on the pilot page, each sort fires 20 requests to coverartarchive.org that are known in advance to 404 — and those 20 are exactly the hourglasses you'd still see.
+
+Two independent fixes, one nearly free
+
+1. Have the stripe consult ctx.countCache before building a wrapper. The data is already in RAM by then (_artEnrichIcon runs on the same render). A count === 0 entity gets no wrapper, no fetch, no hourglass. Narrow and cheap.
+2. Give _artFetchCachedImage a negative cache — record 404s (not transport failures) so any caller stops re-asking. Broader, and it'd fix the icon column and inline thumbnails too. The precedent already exists in this codebase: ms-rec-len deliberately caches null for "no sub-second length on record", and _msFetchWs2RecordingLengths is careful to cache a successful-but-empty answer while never caching a transport error — exactly the distinction needed here.
+
+Worth noting these are pre-existing, not something the recent work introduced — it just made them the last visible symptom. Want me to do (1), or both?
+
+*** both
+
+Both fixes are in and verified, on branch fix/art-negative-cache. Nothing committed yet.
+
+Direct answer to your question
+
+There was no negative cache for image bytes at any tier. All three tiers of _artFetchCachedImage() record successes only — the _artIdbMemCache.set() and _artIdbPut('images', …) lines sit after the await that throws on a 404. So the two states were literally the same state:
+
+┌─────────────────────┬────────┬────────┬──────────────────────────────────────┐
+│                     │ Tier 1 │ Tier 2 │               Meaning                │
+├─────────────────────┼────────┼────────┼──────────────────────────────────────┤
+│ image exists        │ hit    │ —      │ painted from memory                  │
+├─────────────────────┼────────┼────────┼──────────────────────────────────────┤
+│ image doesn't exist │ miss   │ miss   │ indistinguishable from "never asked" │
+└─────────────────────┴────────┴────────┴──────────────────────────────────────┘
+
+An absent memory entry can only mean "not fetched yet", and the only possible response to that is to ask again — forever, once per render.
+
+Meanwhile the answer already existed one layer up: _artEnrichIcon() has always stored countCache = 0 for art-less entities (persisted to IDB, with a comment about suppressing exactly these repeats). The stripe builder simply never read it.
+
+What changed
+
+_artMissCache — a per-session Set recording only definitive absences (404/410). A 5xx, network error or timeout is deliberately not cached; the archive fails in bursts, and treating a bad minute as "this doesn't exist" would hide real artwork for the session. Same distinction _msFetchWs2RecordingLengths() already draws. _artGmFetchBlob() now puts the HTTP status on its rejection so the two are distinguishable at all.
+
+_artInitBigPics() consults ctx.countCache before building a wrapper. Self-correcting by ordering: it runs before _artEnrichTable(), so the first render still tries everything and only re-renders skip.
+
+The overlap is deliberate — and I checked it
+
+Mutation testing showed each covers a case the other can't:
+
+- Miss cache alone → 0 hourglasses. It even covers an entity that has images but no front cover (non-zero count, so the metadata check waves it through).
+- Metadata check alone → 1 hourglass survives, exactly that no-front-cover entity.
+- Metadata check's unique job: an art-less entity whose image URL answers 5xx, which the miss cache must never record. Pinned by a new fixtures test — 2 wrappers rebuilt without it, 0 with it.
+
+Worth saying plainly: my first attempt at proving fix 1 was wrong. I counted archive requests, but the icon column legitimately re-requests every render (its loads are re-enqueued to re-attach hover listeners), so the signal was buried in expected noise. The test now asserts what fix 1 actually controls — whether a wrapper gets built.
+
+Result
+
+┌────────┬──────────────────────┬───────────────────────────┐
+│        │ hourglasses per sort │ archive requests per sort │
+├────────┼──────────────────────┼───────────────────────────┤
+│ before │ 20                   │ 20                        │
+├────────┼──────────────────────┼───────────────────────────┤
+│ after  │ 0                    │ 0                         │
+└────────┴──────────────────────┴───────────────────────────┘
+
+The live spec now asserts both, including a direct count of archive requests via the __realGmFetch bridge — the honest measure of "is this refetching?"
+
+133/133 fixtures, 17 live passed / 2 skipped. Say the word to commit and push.
+
+*** end
+
+Committed and pushed. Branch fix/art-negative-cache at f15a1f7, local and remote in sync, tree clean.
+
+PR link if you want one:
+https://github.com/vzell/musicbrainz-userscripts/pull/new/fix/art-negative-cache
+
+The answer to your question, now enforced by tests: "no image" and "not fetched yet" were the same state. Every cache tier recorded successes only, so a 404 left no trace anywhere — and an absent memory entry can only be read as "ask again." Fixed at both layers, with each layer's unique case pinned by mutation testing.
+
+┌────────┬──────────────────────┬───────────────────────────┐
+│        │ hourglasses per sort │ archive requests per sort │
+├────────┼──────────────────────┼───────────────────────────┤
+│ before │ 20                   │ 20                        │
+├────────┼──────────────────────┼───────────────────────────┤
+│ after  │ 0                    │ 0                         │
+└────────┴──────────────────────┴───────────────────────────┘
+
+133/133 fixtures, 17 live passed / 2 skipped.
+
+Two notes for when you decide to merge:
+
+- This branch carries a fresh WIP.1. Main is at 9.99.1036, so the fold will make it 9.99.1037 — but check for movement
+  again first; main moved under me last time.
+- The ⟳ retry-button interaction was the one thing I had to reason about rather than observe: it clears the miss cache
+  wholesale, since its ?_cb= URLs sidestep the cache but the un-busted URL would stay marked missing. No test covers
+  that path — it needs a real click on a real failing image, which none of the current harnesses set up. Worth knowing
+  it's reasoned, not proven.
+
+Still outstanding from before, unchanged: the multi-table per-sub-table redesign, the Springsteen fetch stall blocking
+your CAA-on baselines, and the fact that none of this has been measured against a perf baseline yet.
+
+*** merge
+
+Merged, folded, pushed, branch removed.
+
+SHAs
+- Merge: 1e79730 — [ShowAllEntityData] Merge fix/art-negative-cache into main
+- Fold: ae6ff82 — [ShowAllEntityData] docs: bump to 9.99.1037, fold WIP changelog
+
+Mapping: WIP.1 → 9.99.1037 — stop re-requesting artwork already known not to exist. Cross-references rewritten: none.
+
+main had not moved this time (still 0f5ff42 from the previous merge), so no fast-forward was needed. Clean auto-merge, and neither @version nor ShowAllEntityData_CHANGELOG.json appeared in it — the branch respected the "main only" rule.
+
+Tests: 133 passed on the merged tree, plus node --check clean. audit-changelog.py exits 0 — 1208 entries, all versions unique and strictly descending, no unrewritten placeholders.
+
+HELP resync — the branch had skipped it. I flagged the ⟳ interaction as reasoned-but-unproven when I handed the branch
+over, and reading the folded entry against ShowAllEntityData_HELP.txt showed the same gap in the docs: the CAA/EAA
+section described ⟳ as forcing "a fresh network fetch with IDB cache invalidation" — still true, but no longer the whole
+story. Added the user-facing consequence, including the one case that would otherwise be baffling: if you upload artwork
+while the page is open, the remembered absence means it won't appear until you press ⟳ or reload.
+
+End state: on main, in sync with origin/main, version 9.99.1037+2026-09-06, no WIP file, branch gone from both places.
+
+Carrying forward, unchanged: the ⟳ miss-cache path still has no test (it needs a real click on a real failing image,
+which no current harness sets up), the multi-table per-sub-table redesign, the Springsteen fetch stall blocking your
+CAA-on baselines, and the fact that none of the last six releases has been measured against a perf baseline.
+
+** The Springsteen /releases stall still blocks the CAA-on baselines
+
+OK there is NO way around it, we need to make sure that the Springsteen related big pages
+
+#+begin_example
+multi-table - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
+single-table (but stop reading from the network after fetching 2 paginated pages) - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases
+#+end_example
+
+finally work.
+ 
+Now the "The Springsteen /releases stall still blocks the CAA-on baselines", please check why it wasn't working the first time, I really need these baselines
+
+** Also still untouched by design: multi-table pages. They get the icon-column fix, but per-sub-table scoping needs the render redesign — sorting one sub-table still re-renders them all, because those source rows carry no artwork to preserve.
+*** i
+
+Regarding
+
+#+begin_example
+Also still untouched by design: multi-table pages. They get the icon-column fix, but per-sub-table scoping needs the render redesign — sorting one sub-table still re-renders them all, because those source rows carry no artwork to preserve.
+#+end_example
+
+It looks like the latest fixes also fixes what we are still about to do. Al least visually when on a multi-table
+pageType e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships and sort a sub-table it
+behaves like a single-table, no icon is vanishing, no visual refetching in the big picture image stripe.
+
+And it also looks like the other sub-tables (which are NOT sorted) are not influenced at all.
+
+*** a
+
+Your read of the symptoms is accurate — but the numbers say it's masked, not fixed. I wrote a multi-table counterpart to the single-table sort spec and measured the page you'd expect: release-group/f83d2211… (multi, 2 sub-tables, 7 rows), sorting only the 6-row one.
+
+bigboxHourglasses        0        ← fixed, and mutation-verified
+archiveFetches           0        ← fixed
+completionToastReFired   0        ← fixed
+iconsPaintedAtInsert     0 / 7    ← NOT fixed (7 were painted before the sort)
+inlineThumbsAtInsert     0 / 7    ← NOT fixed
+rowsInserted             7        ← both sub-tables' rows, not just the sorted one's
+tablesInserted           0        ← <table> elements are reused; only their rows are replaced
+
+Why it looks fixed. All three things you can actually see were fixed page-wide, not single-table-only: the stripe paints memory-cached images at build time instead of parking them behind ⌛, _artMissCache stops the re-requests, and the toast no longer re-fires on a pass that fetched nothing. None of those went through preserveLiveArt.
+
+What's still happening. The icons and inline thumbnails on a multi page are still torn down and rebuilt on every sort — they just repaint out of the Tier-1 memory cache fast enough to be invisible at this size. And every sub-table's rows are still re-inserted when you sort one. So "the other sub-tables are not influenced" is true visually and false structurally.
+
+Why flipping the flag wouldn't close it. preserveLiveArt is opted into only from runFilter()'s single-table branch, and on the multi branch it would be a no-op: since v9.99.960 the source rows in groupedRows never carry artwork at all (enrichment lands on the inserted clone), so the clone arrives blank with nothing to preserve. The measured 0/7 is exactly that. Fixing it means cloning the rendered rows or writing art state back to the source — the render redesign, unchanged in scope.
+
+Springsteen /relationships could not be measured, and that's a finding. It renders 24 sub-tables with 418 synthetic CAA anchors (artist-relationships has no native icons — the extractor's Path C fabricates them) plus 338 stripe wrappers, ~750 artwork items. Cold, the archive served 56 requests in the first 45 s — its rate limit — 50 of them OK, with zero icons painted and zero stripe images loaded; a first run waited the full 300 s for #mb-info-display-caa and it never appeared, because the queue never drained. Your browser feels fine there because its IndexedDB cache is warm from previous visits; a fresh harness profile has none. That's the same wall as the /releases stall, and it's why that page still can't serve as a baseline without pre-warming the cache first.
+
+New file, untracked, not committed: tests/live/caa-icon-survives-sort-multi.spec.js (@extended). Green in 1.3 min; forcing the hourglass back on makes it fail with the right assertion. Test-only, so no version bump. Fixture suite: 133 passed — one run had a single release-tracks-ms-length-overflow failure that passed in isolation and on a clean re-run, so a flake, but flagging it rather than burying it.
+
+Two asides: your saved MusicBrainz session expired 2026-09-06, so live runs are logged out (npm run auth:login); and the deferred per-sub-table scoping item stays open — I'd suggest updating its rationale to cite these numbers rather than closing it.
+
+Want me to put the spec on a branch and commit it?
+
+*** ok, try the following multi-table Springsteen pageType which has 119 images in 124 rows over 3 sub-tables, https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
+
+Ok, try the following multi-table Springsteen pageType which has 119 images in 124 rows over 3 sub-tables, https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
+Give it enough time to complete
+
+*** a
+
+Result at 17× the scale — and the structural picture is identical to the small page.
+
+                          this page      small page
+beforePainted             119            7
+iconsSeen                 124            7
+iconsPaintedAtInsert        0            0     ← still torn down
+inlineThumbsAtInsert        0            0     ← still torn down
+rowsInserted              124            7     ← ALL 3 sub-tables, not just the sorted one
+bigboxHourglasses           0            0     ← guaranteed
+archiveFetches              0            0     ← guaranteed
+completionToastReFired      0            0     ← guaranteed
+survivingTaggedTables     3/3          2/2
+
+Initial load settled at 357 artwork items in 103 s (119 icons + 119 inline thumbnails + 119 stripe images); the sorted
+sub-table was "Official release", 119 rows of the 124.
+
+This confirms what you're seeing, and why it isn't the deferred item. At 119 images, sorting one sub-table issues zero
+archive requests and produces zero hourglasses — so there is nothing to see. That's the real fix, and it scales. But all
+124 rows across all 3 sub-tables are still re-cloned and re-inserted with their artwork stripped (0/124 painted on
+arrival, against 119 painted a moment earlier), then repainted out of the Tier-1 memory cache. The blanking is still
+there; it just completes faster than the eye catches at this size. The 3/3 line is the same story for your second
+observation: the untouched sub-tables look undisturbed, but every one of their rows was rebuilt.
+
+One new thing this scale surfaced. bigboxImgsAdded is 238 — exactly 2 × 119. The small page showed 14, exactly 2 × 7. So
+the big-picture stripe is being built twice per sort, at both sizes. I haven't chased the cause, so I'm flagging it as a
+measurement rather than a diagnosis — but it's a real doubling of the most expensive DOM work on the page, and it was
+invisible until there were 119 images to count.
+
+The test passed (1.8 min). ShowAllEntityData.user.js is untouched — the only change in the tree is the still-untracked
+spec, which now takes MULTI_CAA_URL/MULTI_CAA_SETTLE_MS so this page can be re-measured on demand.
+
+Worth doing next, in the order I'd rank them: chase the 2× stripe rebuild (concrete, bounded, and probably the largest
+remaining cost); measure the repaint latency after a sort, which is the number that decides whether "masked" ever stops
+being good enough on a bigger page; and commit the spec on a branch. Say which and I'll go.
+
+*** ok
+
+ok, also try the big single-table page again, now that we are logged in, but stop after 2 paginated pages instead of
+three, so that we have two base measurements with big tables, multi- and single-table, before we go on with implementations
+
+#+begin_example
+single-table (but stop reading from the network after fetching 2 paginated pages) - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases
+#+end_example
+
+*** answer
+
+Both baselines are captured. 300 rows, 296 with artwork (stopAfterPages(2) yields three pages — the loop finishes its in-flight page after the flag is set, as stopButton.js documents).
+
+                          SINGLE            MULTI
+                          artist-releases   releasegroup-releases
+                          300 rows          124 rows / 3 sub-tables
+                          296 with art      119 with art
+──────────────────────────────────────────────────────────────────
+iconsPaintedAtInsert      296 / 300           0 / 124
+inlineThumbsAtInsert      296                 0
+bigboxHourglasses           0                 0
+archiveFetches              0                 0
+bigboxImgsAdded           296  (1× per img)  238  (2× per img)
+rowsInserted              300                124  (all 3 sub-tables)
+
+The single-table fix holds at scale. 296 of 300 rows arrive with their thumbnails already painted — every row that had artwork keeps it across the sort, at 43× the row count of the BoDeans page it was originally verified on. Zero archive requests, zero hourglasses.
+
+The two remaining defects are both multi-table-only, and the second one is now sharply localised. The 0/124 confirms artwork is still torn down and repainted on the grouped path. And the stripe doubling I flagged earlier is not a general property: single-table builds exactly 296 images for 296 wrappers — 1× — while multi builds 2× at both sizes tested (238 for 119, 14 for 7). So the duplication lives in the grouped render path specifically, not in _artInitBigPics() itself. That's a much smaller search area than I could offer before this run.
+
+Correcting the record on the two abandoned attempts. The page was never stalling: the script found 82 pages, saw that exceed sa_max_page, and opened its own "⚠️ High Page Count — Proceed?" modal, then waited. The symptom is indistinguishable from a dead fetch, and I misattributed it twice — first to the harness, then to MusicBrainz's bot-verification gateway. That gateway exists and served my cookie-less curl a proof-of-work page, but the harness clears it: context.request shares the browser's cookie jar including __meb_verified, and returns the real 101-row page. The script behaved correctly throughout.
+
+Three test-only changes, no runtime code touched:
+
+- tests/support/realNetworkGmXhr.js — added settingsOverride, which it lacked (unlike its fixture sibling). Live specs previously had no way to set a setting; that gap is why the modal took three runs to find instead of one.
+- tests/live/caa-icon-survives-sort.spec.js — SINGLE_CAA_URL/STOP_PAGES/MAX_PAGE/SETTLE_MS, all defaulting to committed behaviour, with the modal trap documented in place.
+- tests/live/caa-icon-survives-sort-multi.spec.js — new, untracked, mutation-verified.
+
+A default-settings run of the modified single-table spec is going now to confirm the parameterization didn't disturb the committed path; I'll flag it if it comes back unhappy. After that the obvious next move is the multi-table stripe doubling — it's the one defect that's both quantified and narrowed, and unlike the teardown it probably doesn't need the render redesign.
+
+✻ Sautéed for 42s · done 10:18 PM · 2 monitors still running
+
+● Background command "Re-run the single-table spec with committed defaults" completed (exit code 0)
+
+  Ran 1 shell command
+
+Default-settings run is green in 39 s, and the numbers match the spec's own documented history exactly — BoDeans 56 icons, 36 painted, 36 painted at insertion. The parameterization is behaviour-preserving.
+
+That also gives a third data point on the stripe: 1× at 36, 1× at 296 (single) vs 2× at 7, 2× at 119 (multi). Four measurements, two page shapes, consistent split — the doubling is a property of the grouped render path, not of size or of _artInitBigPics().
+
+Working tree, all test-only, no runtime code touched:
+
+ M tests/live/caa-icon-survives-sort.spec.js      parameterized + modal trap documented
+ M tests/support/realNetworkGmXhr.js              settingsOverride added
+ ?? tests/live/caa-icon-survives-sort-multi.spec.js   new, mutation-verified
+
+Baselines are done, so the ground is ready for implementation. My recommendation for what to take first: the multi-table stripe doubling. It's quantified, it's narrowed to one code path, and unlike the artwork teardown it looks independent of the per-sub-table render redesign — which makes it the one piece of this that can land on its own. The teardown (0/124) still needs that redesign, and I'd rather not start it in the same change.
+
+Say the word on which, and whether to commit these three files to a branch first.
+
+✻ Baked for 17s · done 10:18 PM · 2 monitors still running
+
+● Monitor event: "Springsteen release-group artwork probe progress"
+
+That's the stale monitor from the release-group run expiring — that run finished successfully some time ago and its numbers are already in the baseline table above. Nothing is pending and nothing needs re-arming.
+
+Still waiting on your call: multi-table stripe doubling first (my recommendation), and whether to commit the three test files to a branch beforehand.
+
+*** multi-table stripe doubling first
+
+multi-table stripe doubling first
+
+*** I need to correct something I told you, before the re-measurement lands
+
+The multi-table stripe doubling does not exist. It was a bug in my probe, not in your code. I reported it as a finding, ranked it as the top implementation candidate, and told you it was "quantified and narrowed" — none of that was real.
+
+What actually happened: my multi-table probe watched document.body and attributed any added node to the strip via node.closest('.mb-caa-bigbox'). During a grouped render an entire bigbox <div> is re-inserted into the DOM, and that single mutation record carries all the images the box already had — querySelectorAll('img') on it dutifully reported 114 of them as newly added, on top of the 119 wrappers genuinely being built. Hence 238. The single-table spec never showed the inflation only because its observer is bound to the boxes themselves, so it never sees a box get re-parented.
+
+Three independent checks agree the strip is built once: 119 wrappers and 119 images through a box-scoped observer, exactly 119 images in the DOM afterwards, each box cleared exactly once, and _artInitPics entered twice total — once for CAA, once for EAA, as designed.
+
+The tell was there in my own data and I read past it: single-table measured 1× while multi measured 2×, at every size. I treated a split between two page shapes as a fact about the code, when the probes for those two shapes were also different. Two observers on one page settles it in 90 seconds, which is what I should have run before reporting it rather than after.
+
+What survives from the earlier numbers: the single-table guarantees at 300 rows, and the multi-table 0/124 teardown with all sub-tables rebuilt. Those came from assertions and counters the side-by-side run confirms.
+
+I've made the multi probe box-scoped, added bigboxWrappersAdded, and written the trap into the spec so it can't be rediscovered the hard way. Re-running both pages now to replace the numbers I gave you. The remaining real defect is the one that needs the render redesign — so unless you'd rather take that on, there's nothing left here that lands on its own.
+
+✻ Cooked for 7m 30s · done 10:31 PM · 1 monitor still running
+
+● Background command "Re-run multi probe on both pages with the fixed observer" completed (exit code 0)
+
+  Searched for 1 pattern
+
+Corrected numbers, both pages green: 7 images / 7 wrappers on the small page and 119 / 119 on yours — 1× at both sizes, matching single-table. Re-verifying the hourglass guarantee still bites, since I changed the observer it depends on:
+
+  Ran 1 shell command
+
+Mutation-verified with the new observer: 7 hourglasses detected, assertion fires, userscript restored clean.
+
+Corrected baselines
+
+                          SINGLE                        MULTI
+                          artist-releases (Springsteen)  releasegroup-releases
+                          300 rows / 296 with art        124 rows / 119 with art / 3 sub-tables
+────────────────────────────────────────────────────────────────────────────────
+iconsPaintedAtInsert      296 / 300                        0 / 124
+inlineThumbsAtInsert      296                              0
+bigboxHourglasses           0                              0
+archiveFetches              0                              0
+bigboxImgsAdded           296  (1×)                      119  (1×)
+bigboxWrappersAdded         —                            119  (1×)
+rowsInserted              300                            124   (all 3 sub-tables)
+survivingTaggedTables       —                            3/3
+
+The stripe row now reads 1× on both, as it always did in reality.
+
+Where that leaves the work
+
+The task you picked doesn't exist, so there's nothing to implement under it. One real defect remains on the multi path, and it's the one I've said twice needs the render redesign: rows arrive stripped (0/124) and every sub-table is rebuilt when one is sorted. It can't be fixed by flipping preserveLiveArt — on the grouped path the source rows never carry artwork at all, so the clone has nothing to preserve. Fixing it means cloning the rendered rows or writing art state back to the source.
+
+Worth weighing before you commit to it: at 119 images the user-visible symptoms are already gone — zero archive requests, zero hourglasses, no repeated toast. The teardown is real but currently invisible, so this is a robustness fix against future scale, not a fix for something you can see today.
+
+Three test files are uncommitted, all test-only, no runtime changes:
+
+ M tests/live/caa-icon-survives-sort.spec.js      parameterized; modal trap documented
+ M tests/support/realNetworkGmXhr.js              settingsOverride added
+ ?? tests/live/caa-icon-survives-sort-multi.spec.js   new; mutation-verified
+
+They're worth keeping regardless of what comes next — they're what caught my own error, and the sa_max_page modal and
+the observer-scoping trap are both written down in them now. Want them on a branch, and do you want the render redesign
+scoped, or parked?
+
+*** add to plan
+
+make sure to also test the pageType 'artist-releasegroups'
+e.g. https://musicbrainz.org/artist/5d02f264-e225-41ff-83f7-d9b1f0b1874a as it's special regarding it's different view
+architecture. It has 123 rows with 85 images in 17 sub-tables on the "Complete" view.
+
+First create a baseline measurement and later test also the different view switches if nothing breakes when switching
+and sorting/filtering
+
+*** a
+
+Merged, folded, pushed, branch removed.
+
+SHAs
+- Merge: 0cb5cb1 — [ShowAllEntityData] Merge fix/multi-table-art-render-scoping into main
+- Fold: d0dc290 — [ShowAllEntityData] docs: bump to 9.99.1038, fold WIP changelog
+
+Mapping: WIP.1 → 9.99.1038 — CAA/EAA icons survive a multi-table re-render. Cross-references rewritten: none.
+
+main was not behind origin, so no fast-forward was needed. Clean auto-merge, and neither @version nor ShowAllEntityData_CHANGELOG.json appeared in it — the branch respected the main-only rule. git branch -d accepted the delete without complaint, confirming everything was fully merged.
+
+Tests: 133 passed on the merged tree, plus node --check clean. audit-changelog.py exits 0 — 1209 entries, versions unique and strictly descending, no unrewritten placeholders.
+
+One correction made during the fold. The entry carried 2026-09-06 (when I authored the WIP file) while the fold stamped @version 9.99.1038+2026-09-07. I set the entry date to 2026-09-07 so the release record matches its own version string; the change is 15 insertions with no reformatting of the other 1208 entries, and the audit re-ran clean afterwards.
+
+HELP needed no resync — I checked for claims about artwork reloading on sort, and its only "reload" mention concerns URL-filter stripping, which is unrelated.
+
+End state: on main, in sync with origin/main at d0dc290, version 9.99.1038+2026-09-07, no WIP file, branch gone from both places.
+
+Carried forward, both documented in the shipped changelog entry: inline thumbnails are still rebuilt on a re-render
+(their placeholder is injected into live rows only, so there's no source-row counterpart to mirror — it needs the
+placeholder constructed, not just a value copied), and sorting one sub-table still re-renders all of them. Neither
+issues a network request.
+
+*** All three missing steps are done, on test/multi-art-verification-steps (commit ab983d9). The userscript is byte-identical to main — tests and docs only, so no version bump and no changelog entry
+
+Step 7 — CAA-column filter-text integrity: 3 passed. releasegroup-releases-caa-type-comment-filter.spec.js, green as committed. This is the spec that exercises _artSyncSearchTextToSourceRow(), the mirror's direct sibling writing to the same source cells.
+
+Step 5 remainder — single-table artwork: 1 passed. 36/36 icons painted at insertion, 0 archive requests. The mirror is inert on that path, as intended.
+
+Step 6 — new spec, save-to-disk-strips-live-artwork.spec.js. Measured: 7 painted icons, 7 painted at insertion, 66 KB of JSON, 0 blob:, and the saved file reloads to all 7 rows across both groups.
+
+The hazard turned out to be real, not theoretical. Mutation-verified by making getCleanCellHtml() pass preserveLiveArt: true: the payload leaked exactly 7 blob: URLs — one per painted icon — and grew 434 bytes. So the mirror genuinely does put live blob URLs on the rows Save-to-Disk serializes, and only the unconditional strip stops them reaching disk. That contract now has a test instead of a comment; nothing previously gunzipped a saved payload at all.
+
+I built the spec so it can't pass vacuously: it sorts a sub-table and asserts rows arrive already painted before saving. Rows can only do that if the mirror wrote blob URLs to the source rows, so a page with no artwork fails loudly rather than reporting a trivially clean payload.
+
+133 fixtures pass on the final tree, node --check clean.
+
+Two things I fixed along the way, both in the commit:
+
+- registry.org was missing rows for all three artwork specs from this series, and still claimed
+  subtable-filter-sort-caa-interaction was the "Only live spec needing REAL CAA network access" — five specs now do.
+- debug/NOTES.md records an open gap I found while verifying step 7: _artSyncSearchTextToSourceRow() resolves its source
+  row by table position, so merged discography view — which combines groups' rows into the first-occurrence table —
+  silently never syncs CAA search text for the moved rows, and a type/comment filter finds nothing for exactly
+  those. The fix is one line (_findMasterRowByIdx(), what the icon mirror already uses), but it's a userscript change
+  needing its own branch, bump and fails-before test, so I left it recorded rather than bundled. No existing spec sits
+  at that intersection — merged view plus a typed CAA filter.
+
+One correction to my earlier framing: the multi-table spec defaults to the 7-row pilot page, not the 124-row one, so the 124/119 figure in the fix commit is reachable via MULTI_CAA_URL but isn't asserted anywhere. That's noted in its registry row now.
+
+Not pushed and not merged — say the word and I'll do either.
+
+*** /plan act on
+
+act on
+
+#+begin_example
+- debug/NOTES.md records an open gap I found while verifying step 7: _artSyncSearchTextToSourceRow() resolves its source
+  row by table position, so merged discography view — which combines groups' rows into the first-occurrence table —
+  silently never syncs CAA search text for the moved rows, and a type/comment filter finds nothing for exactly
+  those. The fix is one line (_findMasterRowByIdx(), what the icon mirror already uses), but it's a userscript change
+  needing its own branch, bump and fails-before test, so I left it recorded rather than bundled. No existing spec sits
+  at that intersection — merged view plus a typed CAA filter.
+#+end_example
+
+*** /plan: now the missing steps
+
+act on the following missing steps:
+
+#+begin_example
+Carried forward, both documented in the shipped changelog entry: inline thumbnails are still rebuilt on a re-render
+(their placeholder is injected into live rows only, so there's no source-row counterpart to mirror — it needs the
+placeholder constructed, not just a value copied), and sorting one sub-table still re-renders all of them. Neither
+issues a network request.
+#+end_example
+
+** DONE final
+
+Both carried-forward items are closed and shipped.
+
+9.99.1039 — inline thumbnails survive a multi-table re-render
+
+The icon mirror couldn't cover this: painting an icon writes a value onto an element the source row already owns, and cloneNode(true) carries values through. An inline thumbnail is a node _artInitInlinePics() only ever injects into live rows, so groupedRows[i].rows never had one and preserveLiveArt's placeholder branch had nothing to match.
+
+_artMirrorInlineThumbToSourceRow() clones the whole placeholder onto the source cell; the next render's clone then lands in Case C1 — hover/tooltip re-wired, live image kept, nothing re-resolved.
+
+┌────────────────────────────┬───────────┬───────────────────────────┐
+│                            │ small RG  │ Springsteen RG (124 rows) │
+├────────────────────────────┼───────────┼───────────────────────────┤
+│ inline thumbs at insertion │ 0/7 → 7/7 │ 0/119 → 119/119           │
+├────────────────────────────┼───────────┼───────────────────────────┤
+│ archive requests           │ 0         │ 0                         │
+└────────────────────────────┴───────────┴───────────────────────────┘
+
+Two placement traps I checked rather than assumed: ERG button ordering comes out right because ERG runs before the inline pass and prepends; and the _hadInlineArtPh jesus2099 gate can't misfire, because ColumnDataExtractor.caa's Path A moves that anchor into the synthetic CAA column and no page names CAA as its addCAA column.
+
+9.99.1040 — a sort re-renders only the sorted sub-table
+
+_renderDirtyGroupIdxs + _invalidateFilterCacheForGroups(). Merged view is carved out — then measured, and its co-contributors turned out to insert nothing, so the specs needed no merged-view exception.
+
+┌─────────────────────────────────────────────┬──────────┬────────┐
+│       artist discography, 17 sections       │ unscoped │ scoped │
+├─────────────────────────────────────────────┼──────────┼────────┤
+│ rows re-inserted (sorting a 61-row section) │ 123      │ 61     │
+├─────────────────────────────────────────────┼──────────┼────────┤
+│ sort duration, median of 3                  │ 114 ms   │ 83 ms  │
+└─────────────────────────────────────────────┴──────────┴────────┘
+
+One thing worth your attention: the saved payload grew ~20%. I chased it rather than waving it off — captured a payload from each arm and diffed by key. It's the 📊 unique-value count badges now surviving a sort of an unrelated section (19/22 populated vs 0/22 before) instead of blanking and being re-scheduled. Correct as well as cheaper, since a sort changes row order but never the row set, and filters never take the scoped path. It's in the changelog and NOTES.
+
+Two test-side consequences: both artwork specs compared insertion-time tallies against page-wide counts, which is wrong once untouched sub-tables aren't re-inserted; and discography-view-artwork.spec.js was sorting "the first visible section", which under scoping is a 1-row table here — its artwork check had silently become 1-of-1 (and 0-of-0 in Non-Official). Both fixed, with a non-vacuity floor added.
+
+Also recorded, not buried: tag-value-sort-overflow-row.spec.js failed twice in one window on a page-level SyntaxError: Unexpected token '<' (its own assertions passed; only the final pageErrors check). It did not reproduce — 4/4 on the branch, 3/3 on the unmodified tree — consistent with MusicBrainz serving an HTML error page during a burst.
+
+Both branches merged, pushed, and deleted; main is at 9.99.1040 in sync with origin. 133 fixtures and 16 live specs green, both fixes mutation-verified.
+
+One process slip on my side: I used an inline python3 -c / node -e once for JSON validation before switching to script files as the repo requires.
+
+
+* TODO /plan do these latest CAA/EAA sorting changes affect what is written in the PERFORMANCE.org file, or do they even complement it
+** i
+
+Check the latest CAA/EAA sorting changes on multi- and single-table pageTypes in Git history and code base:
+
+1.)
+
+Do these latest CAA/EAA sorting changes affect what is written in the PERFORMANCE.org file, or do they even complement
+it
+
+2.)
+
+Can we somehow measure if there have been any performance gains regarding our latest CAA/EAA sorting changes
+
+3.)
+
+Does the surviving PERFORMANCE.org file needs to be rewritten
+
+4.)
+
+Is it still worth keeping the other performance related branches around after all our changes or is it really better to
+write a new PERFORMANCE.org file based on the current state of affairs
+
+5.)
+
+Also check the following you mentioned one time:
+
+#+begin_example
+- The measured cost is real. Global filter 1307 → 1752 ms, column filter 1335 → 1891 ms, sort 3103 → 4241 ms on this
+  machine. That's the header-count scan now covering all 4174 rows instead of a 500-row prefix. It's recorded in
+  PERFORMANCE.org under Step 3, whose memoization is the direct remedy if the extra latency bothers you in daily use.
+#+end_example
+
+Is this still true
+
+** questions
+
+Check the latest CAA/EAA sorting changes on multi- and single-table pageTypes in Git history and code base:
+
+1.)
+
+Do these latest CAA/EAA sorting changes affect what is written in the PERFORMANCE.org file, or do they even complement
+it
+
+2.)
+
+Can we somehow measure if there have been any performance gains regarding our latest CAA/EAA sorting changes
+
+3.)
+
+Does the surviving PERFORMANCE.org file needs to be rewritten
+
+4.)
+
+Is it still worth keeping the other performance related branches around after all our changes or is it really better to
+write a new PERFORMANCE.org file based on the current state of affairs
+
+5.)
+
+Also check the following you mentioned one time:
+
+#+begin_example
+- The measured cost is real. Global filter 1307 → 1752 ms, column filter 1335 → 1891 ms, sort 3103 → 4241 ms on this
+  machine. That's the header-count scan now covering all 4174 rows instead of a 500-row prefix. It's recorded in
+  PERFORMANCE.org under Step 3, whose memoization is the direct remedy if the extra latency bothers you in daily use.
+#+end_example
+
+Is this still true
+
+←  ☒ Doc scope  ☒ Sort bug  ☐ Measurement  ☐ Branches  ✔ Submit  →
+
+│ The existing interaction-perf harness cannot see any of the CAA/EAA work — it is hardcoded to `artist-events`, which is `tableMode: 'single'` AND seeds `sa_enable_caa_pics: false`. How far should the measurement work go?
+
+❯ 1. Cheap refresh only (Recommended)                 
+  2. Also build the CAA-on baseline                      
+  3. No measurement now
+                                  │ WHAT EXISTS TODAY                                     │
+                                  │ interaction-perf-main.json                            │
+                                  │   2026-08-24  v9.99.953   <- 87 versions stale        │
+                                  │   1418 / 1595 / 2994                                  │
+                                  │                                                       │
+                                  │ interaction-perf-fix-chunked-...json                  │
+                                  │   2026-08-31  v9.99.976                               │
+                                  │   1752 / 1891 / 4241                                  │
+                                  │   ^ de-facto current main, filed under a              │
+                                  │     branch name that no longer exists                 │
+                                  │                                                       │
+                                  │ perf-baseline.json (artist-releasegroups)             │
+                                  │   2026-08-23  v9.99.936   <- 104 versions             │
+                                  │                                                       │
+                                  │ TWO RUNS, no new harness code.                        │
+                                  │ Neither can see the CAA/EAA work.                     │
+                                  └───────────────────────────────────────────────────────┘
+
+
+  1. Cheap refresh only (Recommended)                 
+❯ 2. Also build the CAA-on baseline                      
+  3. No measurement now
+                                  │ THE BLOCKER (caa-sorting.org:256-267)                 │
+                                  │   Springsteen /relationships, cold:                   │
+                                  │   24 sub-tables, 418 synthetic CAA anchors,           │
+                                  │   338 stripe wrappers, ~750 art items.                │
+                                  │   Archive served 56 requests in 45 s                  │
+                                  │   (its rate limit), 0 icons painted.                  │
+                                  │   A 300 s wait never saw the toast.                   │
+                                  │                                                       │
+                                  │ THE REMEDY, already in-repo                           │
+                                  │                                                       │
+                                  │   capture-idb-fixture.js                              │
+                                  │     -> real {url, base64, contentType}[]              │
+                                  │   idbFixture.js seedArtIdbFixture()                   │
+                                  │     -> rebuilds real Blobs in-page,                   │
+                                  │        before the userscript opens the DB             │
+                                  │                                                       │
+                                  │ Work: extend the capture to a big                     │
+                                  │ multi-table page, add a CAA-on arm to                 │
+                                  │ capture-interaction-perf.js (today it                 │
+                                  │ hardcodes artist-events).                             │
+                                  └───────────────────────────────────────────────────────┘				  
+
+** plan outcome
+
+Here is Claude's plan:
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ PERFORMANCE.org: repair the numbering, harvest the branch prose, refresh the stale baselines
+
+ Verified against main at 9.99.1045+2026-09-07 (1983985), after pulling the
+ 8 commits made on the other machine. PERFORMANCE.org itself is untouched since
+ 186ac6d, so every finding below still holds; line numbers are refreshed.
+
+ Context
+
+ Versions 9.99.1032 → 9.99.1040 (2026-09-06/07, thirteen commits) landed the
+ CAA/EAA artwork-preservation series and finished with 186ac6d, which scoped a
+ multi-table sort's re-render to the sorted sub-table. That last commit added a
+ new DONE Step 6 to PERFORMANCE.org, but nothing else in the file was
+ revisited, and the artwork series itself is absent apart from one aside.
+
+ Investigating the five questions in debug/caa-sorting.org:612-644 surfaced
+ three documentation defects (one of which has already broken a live code
+ cross-reference), two stale on-disk baselines, and one unrelated pre-existing
+ code bug. This plan repairs the documentation, refreshes the baselines, and
+ records the code bug for a later session. It does not implement any step and it
+ does not change the userscript.
+
+ What was established
+
+ The changes complement the file where it says so, and contradict it where it
+ doesn't. PERFORMANCE.org:317-357 records the scoping with a measured A/B
+ (123 → 61 rows re-inserted, 114 ms → 83 ms median of 3, Simon & Garfunkel
+ artist-releasegroups, 17 sub-tables). But:
+
+ - A three-way Step-6 collision. main's Step 6 is the sub-table sort
+   scoping; perf-steps-1-4's Step 6 is "Fix _visibleRowSetSignature
+   order-dependence"; filter-performance-fix-caa-throughput's Step 6 is
+   "CAA/EAA request-throughput tuning". ShowAllEntityData.user.js:56582 reads
+   "making it order-independent is PERFORMANCE.org Step 6" — which on main
+   now points at the sub-table sort work.
+ - A dangling Step 8. PERFORMANCE.org:252 cites "PERFORMANCE.org's own
+   Step 8 for the uniq-drop cache"; main's copy has no Step 8.
+ - Findings and "dominant cost" now overstate main. :37 says the
+   multi-table branch re-clones per group (true for filters, no longer for a
+   sort) and :55-57 lists initCollapsableColumns() firing on "every
+   multi-table render". Verified in code: runFilter():42450-42451 and
+   renderGroupedTable():49379 both skip undisturbed groups, so an untouched
+   sub-table's whole decorate pass — _scheduleColHeaderCounts() included — is
+   skipped. That is a partial, sort-only, multi-table-only delivery of Step 3's
+   goal, mentioned in debug/NOTES.md:7685-7695 and nowhere in PERFORMANCE.org.
+ - The artwork series' own performance content is missing — 9.99.1037's
+   _artMissCache ("20 doomed archive requests per sort → 0") and 9.99.1036's
+   memory-cached stripe both overlap Step 5's territory.
+
+ Question 5's claim holds, at a stale version. Verified in code: the
+ full-table scan is real (_scheduleColHeaderCounts():56650 awaits
+ _renderSettled in a do…while (awaited !== _renderSettled) loop; no cap,
+ slice or prefix exists in the path), and the memoization remedy is genuinely
+ absent — _updateAllColHeaderCounts():56710 has token coalescing and per-column
+ _yieldToEventLoop() but no cache, while _visibleRowSetSignature():56589 sits
+ ready and is consumed only by Step 4's _uniqDropDataCache. The numbers
+ (1307→1752 / 1335→1891 / 3103→4241) are quoted accurately from :137-143 but
+ were measured at v9.99.976 — now 69 versions behind main — and the "before"
+ column was never committed as JSON. What the claim doesn't know is that Step 6
+ has since removed a slice of that cost, but only for multi-table sorts, and
+ artist-events is tableMode: 'single', so the quoted numbers are untouched.
+
+ The branch prose is worth more than the branch code. git cherry -v main perf-steps-1-4 marks all 23 non-merge commits +; it is now 170 commits behind
+ and PERFORMANCE.org:305-307 records a live 10-symbol bug on it. But its copy of
+ the file is 894 lines against main's 374, and the difference is negative
+ results and traced root causes. Decisive case:
+ filter-performance-fix-caa-throughput holds "Manual validation gate result
+ (2026-08-20): FAILED — do not implement as designed" for
+ content-visibility: auto on <tr>, while debug/perf.org (2026-08-24)
+ records a request to "first patch Steps 1/2 with the content-visibility idea and
+ re-measure" — the same experiment, proposed for a redo, with no trace of the
+ failure on main.
+
+ Branch, version, changelog
+
+ - Work on a new branch off main: docs/performance-org-consolidation.
+ - No // @version bump and no changelog entry, because this touches no
+   userscript code. Files changed: PERFORMANCE.org, debug/NOTES.md
+   (gitignored), two files under tests/, and JSON under tests/snapshots/.
+   Per CLAUDE.md, tests/ changes carry no bump, and there is no user-visible
+   change to describe.
+ - No ShowAllEntityData_CHANGELOG.wip.json — that file tracks userscript
+   changes, and there are none.
+ - Do not touch any branch. No deletes, no pushes to the perf branches.
+
+ Step 1 — Adopt one canonical Step numbering, every step written out
+
+ Do not invent a new scheme. Steps 1-5 are identical in all three copies, so
+ they keep their numbers. For 6-14, adopt perf-steps-1-4's numbering
+ verbatim — it is the most-developed scheme, and main's own code (:56582)
+ and prose (:252) already reference it, so both become correct with no edit.
+ Only caa-throughput's 6/7/8 and main's brand-new Step 6 have to move.
+
+ Every step below gets its own explicit *** TODO/DONE Step N: <title> heading
+ in PERFORMANCE.org — none collapsed into a range:
+
+ ┌─────┬──────────────────────────────────────────────────────────────────────────────────────────┬─────────────┬───────────────────────────────────────────────────────────────────────────────┐
+ │  #  │                                          Title                                           │   Origin    │                                Status on main                                 │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 1   │ Filter re-render (Fix C) — single-table only                                             │ all copies  │ TODO                                                                          │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 2   │ Extend the Fix-C approach to Sort                                                        │ all copies  │ TODO                                                                          │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 3   │ Cache _updateAllColHeaderCounts                                                          │ all copies  │ TODO — partially mitigated by 18                                              │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 4   │ openUniqDrop() per-open caching                                                          │ all copies  │ DONE                                                                          │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 5   │ Lazy CAA/EAA loading (IntersectionObserver)                                              │ all copies  │ TODO                                                                          │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 6   │ Fix _visibleRowSetSignature order-dependence                                             │ p-s-1-4 §6  │ TODO — see harvest hazard below                                               │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 7   │ Fix Step 5's multi-table lazy-load gate (_useIO reads allRows.length, always 0 in multi) │ p-s-1-4 §7  │ TODO, moot until 5 lands                                                      │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 8   │ Invalidate Step 3/4 caches for async-populated columns                                   │ p-s-1-4 §8  │ uniq-drop half already DONE as part of 4 (:252-277); Step-3 half moot until 3 │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 9   │ Invalidate _rowTextCache for async-populated columns                                     │ p-s-1-4 §9  │ verify — :268-274 says one site landed with 4                                 │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 10  │ Precompute sort keys before sortLargeArray                                               │ p-s-1-4 §10 │ TODO                                                                          │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 11  │ Combine applyExtractTrackTitleData's presence-check scans                                │ p-s-1-4 §11 │ TODO (release-tracks only)                                                    │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 12  │ Fix undeclared _caaImgQueue/_caaMetaQueue crash in Step 5                                │ p-s-1-4 §12 │ DONE on branch only, moot until 5                                             │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 13  │ Restore cdtoc sub-row expansion state across a filter hide→show cycle                    │ p-s-1-4 §13 │ TODO (nit; cdtoc only)                                                        │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 14  │ In-flight de-duplication for the shared CAA/EAA image cache                              │ p-s-1-4 §14 │ DONE on branch only (caa-eaa-icon-fetch-dedup)                                │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 15  │ CAA/EAA request-throughput tuning (split _caaQueue into img + meta)                      │ caa-thr §6  │ DONE on branch only                                                           │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 16  │ Decouple IDB caching from the icon-render hot path                                       │ caa-thr §7  │ DONE on branch only                                                           │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 17  │ content-visibility: auto for off-screen rows                                             │ caa-thr §8  │ TODO, approach FAILED — see below                                             │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 18  │ Scope a multi-table sort's re-render to the sorted sub-table                             │ main §6     │ DONE                                                                          │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 19  │ CAA/EAA artwork preservation across re-render (9.99.1032-1039)                           │ new         │ DONE                                                                          │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 20  │ Re-enrichment re-fetch on every filter pass                                              │ new         │ open, mitigated                                                               │
+ ├─────┼──────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼───────────────────────────────────────────────────────────────────────────────┤
+ │ 21  │ Artwork-presence sort keys stripped from the sort path                                   │ new         │ open                                                                          │
+ └─────┴──────────────────────────────────────────────────────────────────────────────────────────┴─────────────┴───────────────────────────────────────────────────────────────────────────────┘
+
+ So on main the DONE set is exactly {4, 18, 19}. Steps 1, 2, 3 and 5 are all
+ TODO — Step 3 in particular, which is the whole answer to question 5.
+
+ Step 17 must keep its exact status wording. Its own text says "it remains
+ TODO, not DONE — no settings, helper functions, or render-path hooks … were ever
+ written to the userscript. No code changes resulted from this step." Carry that
+ verbatim, along with its named fallback direction (wrap each row's heavy cell
+ content in a nested non-table-row <div> and contain that instead, sidestepping
+ the internal-table-box constraint) and that the fallback is unstarted.
+
+ Harvest hazard on Step 6 — the two copies genuinely disagree, and main is
+ right. perf-steps-1-4 calls it "the highest-impact regression … it silently
+ undoes Steps 3 and 4's caching wins after any sort", because on that branch
+ Steps 1, 3 and 4 are all landed. main's own note (:294-301) says "On main
+ (no Step 1) a sort rebuilds the tbody anyway, so this is a missed extra win, not
+ a regression versus main." Keep main's framing as the status and record the
+ branch's as conditional — "becomes a real regression once Step 1 lands". Do not
+ paste the branch's severity claim as though it applied to main today.
+
+ Add a Step-number provenance table mapping (branch, old number) → canonical.
+ Required, not decorative: branch commit messages reference "PERFORMANCE.org
+ Step 5/7/12/14" and would otherwise dangle.
+
+ Two references to main's old Step 6 become Step 18 — both under tests/, so no
+ version bump:
+
+ - tests/live/caa-icon-survives-sort-multi.spec.js:97
+ - tests/live/registry.org:38
+
+ The changelog cites only "PERFORMANCE.org Step 3" and "Step 4" (both keep their
+ numbers), so it needs no retroactive edit.
+
+ Step 2 — Repair main's existing sections
+
+ In PERFORMANCE.org, using Edit (never Write — see CLAUDE.md's File
+ Safety rule):
+
+ - :37 (Findings) — qualify "the multi-table branch does the same per
+   group": true for filters, no longer for a sort. Cite :42450 and :49379.
+ - :55-57 (dominant cost) — the call-site list still claims "every
+   multi-table render". Note the scoped-sort exception and its one genuine
+   consequence: the 📊 badges now survive a sort of an unrelated sub-section
+   (19 of 22 populated, against 0 of 22 before), because a sort changes row
+   order but never the row set.
+ - Step 3 — add the "partially mitigated by Step 18" note, scoped precisely:
+   multi-table sorts only, therefore invisible in the artist-events numbers
+   recorded directly above it. Keep the measured table; add the version it was
+   taken at (v9.99.976) and that main is now v9.99.1045 with no re-measurement.
+ - :252 — the "Step 8" reference becomes correct once Step 1's numbering is
+   adopted; verify rather than edit.
+ - :294-301 — the "belongs in its own step" note should now name Step 6.
+ - Step 4's interaction-perf-main.json citation — repoint to the preserved
+   filename from Step 5.
+ - Reorder so Step 18 no longer sits physically between Steps 4 and 5.
+
+ Step 3 — Harvest the branch-only prose
+
+ Read both branch copies without checking them out:
+
+ git show perf-steps-1-4:ShowAllEntityData/PERFORMANCE.org
+ git show origin/filter-performance-fix-caa-throughput:ShowAllEntityData/PERFORMANCE.org
+
+ Bring across, each under its canonical number and each explicitly marked
+ "measured on branch X at version Y; the code is NOT on main":
+
+ - From perf-steps-1-4: Steps 6-14's bodies, plus the traced forced-reflow root
+   cause (34.8 → 219.3 ms), "Attempted mitigation: CSS containment — did not
+   work", the filter-selectivity flip (narrow 230 → 321-348 ms slower; wide
+   977 → 397 ms, 2.5× faster), the internal-vs-external performance.now()
+   methodology lesson, the 2026-08-25 code-review and cloud-ultra-review
+   findings, and the flag-image rasterization limits.
+ - From filter-performance-fix-caa-throughput: Steps 15/16's bodies (including
+   Step 15's trigger — the debug/jesus-coverart.js comparison) and Step 17 with
+   its full FAILED gate.
+
+ Add the two missing main items:
+
+ - Step 19 — the artwork series. Its measurements are counts, not
+   milliseconds, and should say so: iconsPaintedAtInsert 0/123 → 85/123,
+   inlineThumbsAtInsert 0/119 → 119/119, archive requests 20 → 0 per sort. For
+   work whose point is eliminating requests, the count is the better metric.
+ - Step 20 — the 2026-08-29 finding (debug/NOTES.md:6771-6791):
+   runFilter() strips data-caa-enriched to force highlight re-application,
+   which also makes _artEnrichIcon re-queue a full enrichment re-fetch —
+   measured at 220 pending + 4 running tasks after a single disk-load
+   runFilter(). Record its status honestly: the mirrors and _artMissCache
+   removed the observable cost on the paths now covered, but the
+   strip-and-re-enrich shape is unchanged, so the item is mitigated, not closed.
+
+ Step 4 — Record the artwork-presence sort-key regression as Step 21 (no code fix)
+
+ Pre-existing and unrelated to the 9.99.1032-1040 series — the pickaxe bottoms
+ out at cf5042c (2026-05-16, a repo-wide rename), so it predates the visible
+ history.
+
+ An audit of every sort-key class the script creates shows the damage is
+ confined to the two artwork ones:
+
+ ┌────────────────────────────────┬─────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+ │         Sort-key class         │         In          │                                                                 Sort contract                                                                 │
+ │                                │  _CLEAN_STRIP_SEL?  │                                                                                                                                               │
+ ├────────────────────────────────┼─────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ │ mb-caa-sort-key (serves EAA    │ yes, :38166         │ broken — JSDoc :3614 falsely claims "no" < "yes" works                                                                                        │
+ │ too)                           │                     │                                                                                                                                               │
+ ├────────────────────────────────┼─────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ │ mb-inline-art-sort-key         │ yes, :38150         │ filter-only by design, so no sort contract broken — but _artSetInlineSortKey's JSDoc falsely claims the strip pass excludes its class, and    │
+ │                                │                     │ that no bypass is required                                                                                                                    │
+ ├────────────────────────────────┼─────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ │ mb-cancelled-sort-key          │ no                  │ intact — JSDoc :3827 correct                                                                                                                  │
+ ├────────────────────────────────┼─────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ │ mb-video-sort-key              │ no                  │ intact — JSDoc :3525 correct                                                                                                                  │
+ └────────────────────────────────┴─────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+ Verified mechanism:
+
+ - _CLEAN_STRIP_SEL:38143 contains '.mb-caa-sort-key,.mb-eaa-sort-key,'
+   (:38166) and '.mb-inline-art-sort-key,' (:38150), plus .caa-icon,
+   .artwork-icon, .mb-caa-count-badge and the cache-hint wrappers — so a
+   plain CAA/EAA icon cell has no surviving text at all.
+ - getCleanVisibleText():38082 removes all of it by clone-and-remove before
+   the TreeWalker, with a FILTER_REJECT belt-and-braces at :38108.
+ - createSortComparator():18563 (:18565-18566) and
+   createMultiColumnComparator():18598 (:18604-18605) read only
+   getCleanVisibleText. _sortColumnKind():16552 has no CAA/EAA branch and
+   classifies these columns 'text'.
+ - The filter path got an explicit bypass (testRowMatch():41738-41749, whose own
+   comment states the spans "are now in _CLEAN_STRIP_SEL so
+   getCleanColumnText never sees them"); the dropdown was migrated to
+   structure-mode relabeling. The sort path got neither.
+ - .mb-eaa-sort-key is in the strip selector but never created — EAA reuses
+   mb-caa-sort-key, consistent with CLAUDE.md.
+
+ No spec asserts that a CAA/EAA column orders by artwork presence, which is why
+ this went unnoticed.
+
+ Write it up in debug/NOTES.md (append via Edit) and as Step 21,
+ including the fix shape — a branch in both comparators reading
+ .mb-caa-sort-key directly, mirroring :41749 — and the three JSDoc
+ corrections it must carry: :3614's false sort contract,
+ _artSetInlineSortKey's two false claims, and :56576's stale "not part of
+ this branch" framing (the one remaining code cross-reference Step 1 does not
+ fix). All are userscript JSDoc, so bundling them with the code fix keeps this
+ session free of a version bump.
+
+ Step 5 — Refresh the two stale baselines
+
+ Both existing files must be preserved before running, because both scripts
+ overwrite and PERFORMANCE.org cites both.
+
+ 1. Rename tests/snapshots/artist-events/interaction-perf-main.json →
+    interaction-perf-main-2026-08-24-v9.99.953.json, repoint Step 4's citation,
+    then on main with a clean tree:
+    node tests/support/capture-interaction-perf.js --pageType=artist-events.
+    Loads the committed artist-events.json.gz disk fixture — no network,
+    deterministic.
+ 2. Copy tests/snapshots/artist-releasegroups/perf-baseline.json aside as
+    perf-baseline-2026-08-23-v9.99.936.json, then
+    node tests/support/capture-snapshots.js --perf.
+    Caveats: live 2142-item fetch (medianWallMs 33436 × 5 samples),
+    MusicBrainz rate-limits, and the saved session expired 2026-09-06 per
+    debug/caa-sorting.org:306 — run npm run auth:login first if needed.
+
+ Frame the results as a regression check, not a gain measurement. Neither run
+ can attribute anything to the CAA/EAA work: capture-interaction-perf.js is
+ hardcoded to artist-events, which is tableMode: 'single' and seeds
+ sa_enable_caa_pics: false. Record that limitation alongside the numbers,
+ together with what a CAA-on run would require (pre-warm the artwork IDB via the
+ existing tests/support/capture-idb-fixture.js + idbFixture.js's
+ seedArtIdbFixture(), which rebuilds real Blobs in-page before the userscript
+ opens the DB) and why the Springsteen pages stall without it
+ (debug/caa-sorting.org:256-267: 56 archive requests in the first 45 s at the
+ rate limit, zero icons painted, a 300 s wait that never saw the completion
+ toast). Leave that as a described, unstarted step.
+
+ Also record that interaction-perf-fix-chunked-render-header-counts.json
+ (v9.99.976) is the de-facto current-main row today, filed under a branch name
+ that no longer exists — and that the new run supersedes it.
+
+ Verification
+
+ 1. Every canonical number 1-21 has exactly one explicit heading.
+    grep -n '^\*\*\* \(TODO\|DONE\) Step' PERFORMANCE.org must return 21 lines,
+    numbered 1-21 with no gaps, no duplicates, and no collapsed ranges. Confirm
+    the DONE set is exactly {4, 18, 19} and that 1, 2, 3 and 5 all read TODO.
+ 2. Numbering is closed. grep -rn "PERFORMANCE.org Step" ShowAllEntityData.user.js tests/ plus every Step N inside PERFORMANCE.org: each resolves to exactly
+    one canonical step. Specifically :56582 → Step 6 (order-independence) and
+    PERFORMANCE.org:252 → Step 8, both now correct unedited; both tests/
+    references say Step 18.
+ 3. Statuses are honest about dependencies. Steps 7 and 12 say "moot until
+    Step 5 lands"; Step 8 says its uniq-drop half is already DONE via Step 4;
+    Step 17 says "TODO, approach FAILED, no code was ever written"; Step 6 carries
+    main's "missed win, not a regression" framing with the branch's severity
+    marked conditional on Step 1.
+ 4. Provenance table round-trips. Pick three branch commit messages citing a
+    Step ("Step 5", "Step 12", "Step 14") and confirm each maps through the table.
+ 5. The harvest is complete and correctly attributed. The content-visibility
+    FAILED gate, the forced-reflow root cause, the CSS-containment negative result
+    and the selectivity flip are all present, each marked "code NOT on main".
+    Sanity-check against git show perf-steps-1-4:ShowAllEntityData/PERFORMANCE.org | wc -l (894) and the caa-throughput copy (674).
+ 6. No userscript change. git diff --stat origin/main -- ShowAllEntityData.user.js
+    must be empty, confirming no bump or changelog entry is owed.
+ 7. Tests still pass. npm test after the two tests/ reference edits. The
+    suite grew with the pulled commits — it now includes
+    user-ratings-multigroup.spec.js and
+    tag-value-entity-extractmaincolumn-zero.spec.js.
+ 8. Baselines refreshed without data loss. Both preserved files exist under
+    their version-stamped names, both new captures exist, and PERFORMANCE.org
+    cites the preserved names where it previously cited the mutable ones.
+ 9. Step 21 is reproducible from the write-up alone — a reader should confirm
+    it by reading :38143-38166, :38082, :18563 and :41738-41749, with no
+    re-derivation.
+    
+** question
+
+1.)
+
+pull in the latest changes first I did in other claude sessions on another machine
+
+2.)
+
+regarding
+
+#+begin_example
+ │ 1-5       │ all copies agree                                         │ 4 DONE, rest TODO                      │
+#+end_example
+
+I thought that Step 1-3 are not DONE yes
+
+** explicitly list all steps
+
+regarding
+
+#+begin_example
+│ 6-14      │ perf-steps-1-4 verbatim                                               │ TODO on main; 12 and 14 are DONE on that branch only │
+#+end_example
+
+please list all these steps 6-16 also explicitely in the PERFORMANCE.org file
+
+** final
+
+Done. Three commits on docs/performance-org-consolidation, not pushed (awaiting your review per the repo's rules).
+
+What the measurements settled
+
+I refreshed both stale baselines, and the artist-events run answers your question 5 with a current number rather than a 69-version-old one:
+
+┌─────────────────┬─────────────────────┬──────────────────────┬──────────────────┬────────────┐
+│   Interaction   │ pre-fix (v9.99.976) │ post-fix (v9.99.976) │ now (v9.99.1045) │ vs pre-fix │
+├─────────────────┼─────────────────────┼──────────────────────┼──────────────────┼────────────┤
+│ Global filter   │ 1307 ms             │ 1752 ms              │ 1735 ms          │ +33%       │
+├─────────────────┼─────────────────────┼──────────────────────┼──────────────────┼────────────┤
+│ Column filter   │ 1335 ms             │ 1891 ms              │ 1730 ms          │ +30%       │
+├─────────────────┼─────────────────────┼──────────────────────┼──────────────────┼────────────┤
+│ Sort            │ 3103 ms             │ 4241 ms              │ 3968 ms          │ +28%       │
+├─────────────────┼─────────────────────┼──────────────────────┼──────────────────┼────────────┤
+│ Uniq-drop, warm │ 553 ms              │ 914 ms               │ 863 ms           │ +56%       │
+└─────────────────┴─────────────────────┴──────────────────────┴──────────────────┴────────────┘
+
+Yes, still true. The cost is still being paid in full — 69 versions of other work moved it a few percent. Step 3's memoization is still owed, and I verified in code that no cache exists: _updateAllColHeaderCounts has only a coalescing token and per-column yielding.
+
+The artist-releasegroups fetch baseline came out 21% faster (33 436 → 26 378 ms), but I recorded that as not a win — the whole difference is in the fetch stage, i.e. musicbrainz.org's response time. The stage this codebase controls, render, is flat at ~500 ms. Its real content is negative: no regression across 109 versions.
+
+And Steps 18/19 are invisible in those numbers exactly as predicted, since artist-events is tableMode: 'single' and the harness seeds sa_enable_caa_pics: false. The flatness is evidence for that prediction, not against the work.
+
+Two things worth your attention
+
+The numbering fix was cheaper than expected, because of which scheme I picked. Adopting perf-steps-1-4's 6-14 verbatim made ShowAllEntityData.user.js:56582's "Step 6" and the dangling "Step 8" both correct with no edit — they were already pointing at that scheme. Only caa-throughput's 6/7/8 (→15/16/17) and your one-day-old Step 6 (→18) had to move, plus two tests/ references. The userscript is byte-identical to origin/main, so no version bump is owed.
+
+Verification caught three things I'd got wrong, all now fixed: Steps 7, 8 and 12 read as three outstanding bugs when in fact two are moot until Step 5 lands and one is half-shipped with Step 4; and I had .mb-inline-art-sort-key at :38150 when it's at :38155. A spot-check script confirms all 38 freshly-written line references resolve — the harvested branch text keeps its own branch-era numbers by design, marked with the version they were read at.
+
+Two doc inaccuracies I noticed but left alone
+
+Both outside the plan's scope, so flagging rather than fixing:
+
+- ShowAllEntityData/CLAUDE.md says the userscript is "~63,500 lines, ~3.4 MB". It's now 74,023 lines, 4.1 MB.
+- The same file says "debug/ folders are gitignored" — true of the directory, but debug/NOTES.md is tracked, which is why my entry committed normally.
+
+Nothing was pushed, and I touched none of the perf branches. Once you've read the harvested sections, deleting
+perf-steps-3-4 and filter-performance-fix becomes a safe separate call — both are strict subsets of what's now on main.
+
+** final test runs
+
+That one's running now (up to ~5 min — 124 rows at the archive's ~1.2 req/s).
+
+To be clear about what's already settled versus what this last run adds:
+
+Settled — the fix is verified. The regression spec fails before and passes after on the pilot page, 140/140 fixture tests pass, and every one of the extended suite's 10 failures is explained (8 pass on re-run, 2 fail identically on reverted code).
+
+What's running is a bonus check on your specific page, to show you the per-entry numbers there. It's not a gate on the
+fix — the mechanism is page-independent, and your page differs from the pilot only in having rows without artwork, which
+is the ✗ no artwork case that already worked.
+
+One useful thing that fell out of this triage, worth telling you regardless of the fix:
+releasegroup-releases-filter-sort.spec.js and tag-value-sort-overflow-row.spec.js are failing on clean main. The first
+is a harness bug — its setup waits on #mb-info-display-caa/-rel toasts that never fire on a 124-row page, the exact trap
+caa-icon-survives-sort-multi.spec.js documents and works around with a settle poll. The second fails fast (57 s) with
+its sort-status span never populating, which smells like real drift rather than rate-limiting. Both are separate from
+this bug; say the word and I'll look at either, but I'd rather not fold them into this branch.
+
+Nothing committed yet. When the run reports I'll delete the throwaway spec and show you the full git diff for review before any commit.
+
+** memory
+
+Note this in CLAUDE.md
+
+#+begin_example
+That turns out to be a known trap, already documented in caa-icon-survives-sort-multi.spec.js: on large pages that toast
+never fires — "still empty and hidden after 300 s even though artwork was visibly painting the whole time." Your page
+has 124 rows, so at the archive's ~1.2 req/s it's exactly that case. I used the wrong wait; my real spec uses a
+settle-poll instead, which is why it works.
+#+end_example
+
+as we already stumbled on it lot's of time
+
+
+* TODO on https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships tooltips show tracklist when "Titel" is uncollapsed
+
+on https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships tooltips show tracklist when
+"Titel" is uncollapsed
+
+
+* CAA filtering
+** i
+
+On e.g. https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c when trying to filter on the "CAA"
+column via the unique value drop down column menu, I get the following
+
+#+begin_example
+only the "x no artwork" actually works
+all entries from the differetn structure sections do NO work - no row filtered
+also all entries from native entries do NOT work - no row filtered
+#+end_example
+
+What actually works is direct substring filtering in the column input box directly
+
+** a
+
+two more things
+
+1.)
+
+when filtering with the string "no" directly in the column input filter field of the "CAA" column, I get rows filtered
+which explicitly have the filter string in some of their image comments, see @debug/CAA-no-filter.html but the "no"
+string also seems to implicitely filter row which have NO images. The same holds true for the filter sting "yes".
+
+I only want rows WITH and WITHOUT artwork filtered by the special entries in the unique value drop down "has artwork"/"no artwork"
+
+2.)
+
+I'm not sure what's the decision is based on when sorting the "CAA" column. I would expect sorting via
+
+ascending:
+#+begin_example
+no artwork 
+has artwork
+#+end_example
+
+descending:
+#+begin_example
+has artwork
+no artwork 
+#+end_example
+
+** final
+
+Committed. Working tree clean, nothing pushed (your config).
+
+Where things stand
+
+fix/caa-uniqdrop-source-row-sync (off main) — 2 commits
+- da53604 — dropdown entries filter on tableMode: 'multi' pages (WIP.1)
+- 6148738 — CLAUDE.md: the waitForCaaEaaComplete() toast trap
+
+fix/caa-column-filter-and-sort-semantics (stacked on the above) — 1 commit
+- 1304eb9 — typed filter matches real text; column sorts by artwork presence (WIP.2)
+
+The stacking is worth flagging: branch 2 sits on top of branch 1, so it carries branch 1's commits too. Merge branch 1 first, or merge them together — ShowAllEntityData_CHANGELOG.wip.json holds WIP.2 + WIP.1 and expects both to get real version numbers in one pass.
+
+Three loose ends, none of them mine to close silently
+
+1. CAA_TYPE_FILTER = 'Front' is unverified by a run — reasoned from a panel read, flagged in its own JSDoc and in the
+   commit message. It can't be verified until #2 below is fixed.
+2. releasegroup-releases-filter-sort.spec.js fails on main — its setupExpandedGreetingsPage() waits on the
+   #mb-info-display-caa/-rel toasts, which never fire on a 124-row page. Six tests die in setup regardless of the code
+   under test. The fix is mechanical: swap the toast waits for a settle-poll, as caa-icon-survives-sort-multi.spec.js
+   already does. Now documented in CLAUDE.md.
+3. tag-value-sort-overflow-row.spec.js also fails on main — and this one is not the toast trap. It fails in 57 s with
+   its sort-status span never populating at all, which reads like real drift on /tag/rock. Genuinely unexamined.
+   
+
+* recheck CLAUDE.md for correctness
+
+** i
+
+Recheck CLAUDE.md given that we did a lot of work meanwhile
+
+1.)
+
+Check if all the info in there is still neccessary or if there are other new aspects worth mentioning
+
+2.)
+
+Make sure to explicitly mention the following things which are important to me
+
+- don't break the currently working single- and multi-table sorting regarding CAA/EAA images (inline, CAA/EAA columns and big image stripes)
+- the more tests the better, each implementation should have test cases
+- performance aspects should always be a priority, so when an implementation would make everything worse at least flag it before implementing
+- when testing make sure that threshold popups never stall a test and when CAA/EAA images are involved make sure that
+  the big image image stripes are always uncollapased in both single- and multi-table pageTypes
+
+3.)
+
+move (rename) the @debug/NOTES.md to @DEBUG-NOTES.md and fix all eventual references accordingly and adjust .gitignore
+
+4.)
+
+rename the pageTypes-testing-reference.org to the uppercase variant PAGETYPES-TESTING-REFERENCE.org and fix all eventual references accordingly
+  
+5.)
+
+Flag things in CLAUDE.md which you think are not important anymore to me before rewriting
+
+6.)
+
+Create a @debug/tests/README.org with a high level description about the testing framework for end-users. Also mention
+typical timing information, so e.g. how long each test tyically lasts
+
+Please adjust
+
+a.) actually it should be @tests/README.org
+
+b.)
+
+- does the File structure line-number table even make sense in CLAUDE.md, as it gets stale on every edit
+- same for version, it can always be deduced when needed
+- snapshot coverage number ? really needed?, it can always be deduced when needed or it should alwasy be edited in PLACE when some implmentation actually changes it
+- skills, really needed ?, as I understand skills are automatically known by their specific location
+
+c.) leave the old changelogs and update only live references
+
+Make sure the teshhold stuff is documented so when a new test is written or an old is executed, make sure that this info is checked
+
+** Out of scope — flagged, not fixed
+
+ The || default truthiness defect on sa_render_threshold (:46374) and
+ sa_chunked_render_threshold (:48153, :49862) makes both settings'
+ documented "0 to disable" impossible. It is a real behavioral bug with a
+ user-visible settings implication, so it wants its own session with its own
+ fixture test — not a fold-in to a docs pass. Part 5d documents the workaround
+ (seed a large number, not 0) so no test is written against the broken premise
+ meanwhile.
+
+** final
+
+All work is done and staged on docs/claude-md-refresh-and-doc-renames. I have not committed — that's yours to approve.
+
+Renames. Both via git mv, detected as pure renames (zero content change), so history follows. 48 live references updated across 17 files: 25 userscript JSDoc/comment lines, CLAUDE.md, PERFORMANCE.org, 4 skill files, 8 test files. The 7 changelog entries and the README.org transcript were left alone as agreed. .gitignore needed no change — and moving DEBUG-NOTES.md to the top level actually removes its dependence on that force-added index entry.
+
+CLAUDE.md. All seven derived-fact blocks removed as you directed. The replacement for the line-number table is a grep-anchor inventory, and I added a check script that asserts every anchor still resolves uniquely and that the table's row order still matches the file's real order. That check immediately earned its keep twice: it caught two rows I'd listed out of order, and one row that abbreviated function initEaaPics to bare initEaaPips-style shorthand, which made it ungreppable — exactly the class of defect the table is supposed to stop.
+
+Two things I found while writing, worth flagging:
+
+The big-image-strip ids (#mb-caa-toggle-btn-global) are constructed, not literal — ctx.btnPrefix + '-global'. Grepping the userscript for the full id finds only JSDoc. That's the same trap as the caa/eaa debug channels being emitted via Lib.debug(ctx.key, …), and I documented both, since a naive search tells you a real identifier doesn't exist.
+
+sa_render_threshold: 0 cannot disable that dialog — || 5000 turns 0 back into 5000, contradicting its own "0 to disable" description. sa_chunked_render_threshold has it too; sa_render_warning_threshold uses ?? and is fine. Documented the working workaround, left the bug for its own session as planned.
+
+Verification. npm test → 140 passed (72 s; I corrected the README's figure to a 65–75 s range rather than quoting the single 66 s measurement). §C2 — the CAA/EAA artwork-presence sort assertion — passes in 5.2 s, so your first priority is verifiably intact. Four check scripts all pass and are committed as re-runnable guards.
+
+One incidental find: your saved MusicBrainz session expired at 14:07 today, so live specs currently run logged out. npm run auth:login fixes it. The warning that surfaced this is quoted verbatim in the README's login section.
+
+Where I diverged from the plan: I estimated the CLAUDE.md edit as roughly size-neutral. It isn't — 1028 → 1279 lines (64 KB → ~80 KB). The removals came to ~50 lines against ~290 lines of new content for your four priorities. That content is all substantive, but if the session-context cost matters more to you than having it auto-loaded, the CAA/EAA and testing sections are the two natural candidates to move into their own docs with pointers from CLAUDE.md.
+
+To review and commit:
+
+git diff --cached -- ShowAllEntityData/CLAUDE.md
+git diff --cached -- ShowAllEntityData/ShowAllEntityData.user.js   # 26 comment lines
+
+Say the word and I'll commit, or run /merge-push-remove to fold WIP.1 into the real changelog, bump // @version to 9.99.1048, and merge to main.
+ 
+* TODO tag-value-sort-overflow-row.spec.js also fails on main
+
+and this one is not the toast trap. It fails in 57 s with its sort-status span never populating at all, which reads like
+real drift on /tag/rock. Genuinely unexamined.
+
+End state
+
+main in sync with origin/main (526c552..d9dd871 pushed). Both branches deleted locally with -d, no refusal. Neither existed on origin — I never pushed them, per your "never push without instruction" rule — so there was nothing to delete remotely and I skipped that step rather than running a command that would have errored.
+
+Two things I'd flag before you close this out:
+
+1. The three commits are on main but only the fixture suite gates them. The live specs I ran were on the branch. The two pre-existing main failures I found earlier (releasegroup-releases-filter-sort.spec.js, tag-value-sort-overflow-row.spec.js) are still failing on main now — they were failing before this work and I didn't touch them.
+2. CAA_TYPE_FILTER = 'Front' shipped unverified, flagged in its own JSDoc. It's inside releasegroup-releases-filter-sort.spec.js's blast radius, which is exactly the spec that can't run — so it stays unverified until that spec's toast waits are replaced with a settle-poll.
+
+   

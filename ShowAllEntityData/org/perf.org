@@ -1,0 +1,32 @@
+* ideas
+** ● A few honest thoughts:
+
+  Steps 1/2: I wouldn't scratch them outright — the underlying idea (avoid a full rebuild every keystroke) is sound, and it's specifically a heavily-narrowing filter on a huge table where it loses. But shipping them as-is would be a net regression for the most common real case
+  (typing a specific search term), so they shouldn't stay "DONE" either. I'd mark them PAUSED/needs-rework in PERFORMANCE.org with a pointer to the NOTES.md root-cause entry, not delete — the fix is likely tractable (e.g. content-visibility: auto on the hidden rows, which the doc
+  already floats for a related cost) and could turn this into a real win rather than a wash.
+
+  Other areas worth a look: two things fell out of this investigation for free — (1) sort always pays a full runFilter() pass internally even with zero filter active (nothing to hide, nothing to re-highlight), so skipping that call entirely when unfiltered seems like a narrow,
+  low-risk win independent of Steps 1/2's approach; (2) Step 5 (lazy CAA/EAA via IntersectionObserver) is completely untested by any of this — artist-events has CAA disabled, so we've never actually measured it, and it's independent of the Steps 1/2 regression.
+
+  Want me to dig into either of those, or first patch Steps 1/2 with the content-visibility idea and re-measure?
+
+** go for it
+
+OK,
+
+1.)
+
+first patch Steps 1/2 with the content-visibility idea and re-measure.
+
+2.)
+
+also measure with a filter which is not so narrow
+
+3.)
+
+also measure with "skipping that call entirely when unfiltered"
+
+4.)
+
+also measure the impact of Step 5 (lazy CAA/EAA via IntersectionObserver)
+

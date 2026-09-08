@@ -1,0 +1,95 @@
+﻿* Bug with tag rock page
+
+The pageType 'tag-value' for e.g. the URL https://musicbrainz.org/tag/rock has the following bug when sorting a
+sub-table which has an associated overflow table.
+
+Write a live test script which confirms first my findings when I execute the below steps in a real browser (also execute
+the script with image download enabled from the EAA and CAA archive).
+
+The following are the exact steps to reproduce:
+
+1.)
+
+Start with https://musicbrainz.org/tag/rock
+
+a.)
+
+remember for each h3 section like e.g. "Artists" where the last list element looks like the following ("See all <n> <entities>")
+
+#+begin_example
+<li><em><a href="/tag/rock/artist">See all 17,873 artists</a></em></li>
+#+end_example
+
+basically which has a link to an overflow table, the number of real entities (in the "Artists" case 17873 rows in the
+overflow table). This number will be compared on the final rendered page to the number stored on the h3 overflow button
+in each rendered corresponding sub-table (which relates to the above section with the list elements)
+
+See @debug/tag-rock-initial.html for the raw HTML
+
+b.)
+
+finally emulate pressing the "Show all Entities tagged" button
+
+2.)
+
+On the final rendered page
+
+a.)
+
+emulate pressing the button for uncollapsing all section/sub-tables '<button class="mb-master-toggle"'
+
+b.)
+
+emulate pressing the buttons for showing both CAA and EAA images for all sub-tables:
+
+#+begin_example
+<button id="mb-caa-toggle-btn-global"
+<button id="mb-eaa-toggle-btn-global"
+#+end_example
+
+3.)
+
+For each sub-table with the following kind of button
+
+#+begin_example
+<button type="button" class="mb-show-all-subtable-btn" title="Click to show all 17,873 artists in a new browser tab for this sub-section (MusicBrainz Tag-Values pages have currently a limit of 10 rows rendered at most per entity type section)" style="background: rgb(255, 224, 178);">Show all 17,873 rows</button>
+#+end_example
+
+compare the number of rows shown as button text, e.g "Show all 17,873 rows" ==> 17873
+with the corresponding number from the initial page. They should be the same.
+
+4.)
+
+Emulate uncollapsing the "Artists" sub-table by clicking it's h3 header line
+
+See @debug/tag-rock-final-uncollapsed.org
+
+5.)
+
+Now the bug:
+
+In the e.g, "Comment" column, click on the "sort ascending" glyph. A new row appears which represents the "See all <n> <entities>" initial link, which shouldn't be present
+
+#+begin_example
+<tr data-mb-row-idx="13" class="odd"><td style="position: sticky; left: 0px; z-index: 1; background: rgb(255, 255, 255);" data-mb-rest-bg="#ffffff" data-mb-sticky-bg="#ffffff" class="mb-sticky-col"><em><a href="/tag/rock/artist">See all 17,873 artists</a></em></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);">See all 17,873 artists</td><td class="mb-mscol-0a" data-mb-rest-bg="rgba(255, 200, 80, 0.22)" style="background: rgba(255, 200, 80, 0.22);"></td><td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"></td></tr>
+#+end_example
+
+See the complete raw HTML at @debug/tag-rock-final-uncollapsed-sorted.org
+
+6.)
+
+This happens to ALL other sub-tables which have overflow buttons too, at the very moment a sorting is down on whatever column in whatever uncollapsed sub-table.
+
+Also the row count stats now shows "(11 of 10)"
+
+#+begin_example
+<span class="mb-row-count-stat" data-mbtt="There are &lt;span class=&quot;mb-mbtt-count&quot;&gt;11&lt;/span&gt; rows of 10 rows visible in this sub-table">(11 of 10)</span>
+#+end_example
+
+in all sub-table with overflow buttons/tables
+
+7.)
+
+after confirming my findings with a test script, implement a fix in a new branch from main and execute the test script again
+
+

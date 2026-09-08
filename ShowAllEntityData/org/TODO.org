@@ -1,0 +1,4 @@
+* data quality is missing on e.g. pages which have release info reached rom artist-relationships
+
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?direction=1&link_type_id=44&page=1
+

@@ -1,0 +1,772 @@
+* create a comprehensive filter sort test on a single table pageType
+** DONE i
+
+The goal is to create a comprehensive filter and sort test on a single table pageType which exercises all possible
+filter possibilites with additional sorting regression.
+
+1.)
+
+Analyze the following raw HTML for the pageType 'artist-releases' and URL
+https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases (see @debug/BoDeans-artist-releases.html)
+to get a complete overview of the data and statistics involved table wide but also per column. These data and stats will
+later be used on the final rendered page to exercise filter conditions against the single table and compare the
+resulting filter stats against the data which was accumulated earlier.
+
+2.)
+
+Start by downloading the URL https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases with network
+access to get also all CAA images and relationships. Wait until all the toasts appear and compare with the raw HTML above.
+
+3.)
+
+Create all possible different filter conditions
+
+- global filter alone
+- column filters for each column separately
+- combination of multiple column filters
+- combination of global filter + column filter(s), also test the order of filters (global filter first then column filter(s) and the other way around
+- exercise additionally the effects of the filter checkboxes ("Cc", "Rx", "Ex") separately on the above filters
+
+For each filter configuration wait till all CAA images and relationships are downloaded again (or better are read from
+the IndexedDB or browser cache) before comparing the result stats
+
+#+begin_example
+actual row count in the table
+<span class="mb-row-count-stat" - (<n> of <m>)
+<button id="mb-caa-toggle-btn-0" - number of CAA cover art images
+for collapsable columns the number of <span class="mb-col-collapse-hdr-btn"
+<span class="mb-col-uniq-wrap" - unique column value counts
+etc.
+#+end_example
+
+with what would be expected according to the data and stats analyses on the raw HTML and verified page
+
+4.)
+
+After every filter test also quickly check if a potential sort doesn't change the filter stats but ONLY eventually row
+placement and reset the sorting to the original sort
+
+5.)
+
+clear all filters and emulate clicking the unique drop down in each column and compare the rendered pull down list
+result with the expected data
+
+6.)
+
+Generate an .org overview document which explains the tests executed
+
+7.)
+
+Generate a final HTML based summary report of all filters executed with a stats summary
+
+---
+
+add the following two points
+
+8.)
+
+Actually also exercise 5.) once, but without clearing all filters, with one of the filters present (choose a meaning
+full one) and emulate clicking the unique drop down in each column and compare the rendered pull down list result with
+the expected data
+
+9.)
+
+what do you mean by the line
+
+#+begin_example
+│ CAA           │ ⚠                   │ plain          │ 20 (19+1)   │ includes the anomalous "yes Back" mixed state                                               │
+#+end_example
+
+a.)
+
+what is the anomalous "yes Back" mixed state
+
+b.)
+
+shoudn't there are 36 CAA images in the "CAA" column (at least thats what I get when looking in a real browser) and
+where are the "20 (19+1)" coming from
+
+10.)
+
+What do you mean by "Country/Date filter case needs re-deriving from scratch" ?
+
+I probably would ever filter by what is rendered/visible in the columns cells itself e.g. "US 1986"
+
+11.)
+
+OK, thx for the info about the visible columns. So scratch the @debug/BoDeans-artist-releases.html and instead take the
+@debug/BoDeans-artist-releases-final.html for granted. Recheck if both @debug/BoDeans-artist-releases-initial.html and
+@debug/BoDeans-artist-releases-final.html already agree
+
+12.)
+
+Explicitly do the following column filter tests on the "Country/Date" column with the following values
+
+#+begin_example
+US
+1986
+05
+Tue
+US 2009-03-10 Tue
+US 1986
+#+end_example
+
+13.)
+
+For every filter test also check if the corresponding expected highlightning will actually happen on the filtered data
+
+14.)
+
+Columns which have optional comments '<span class="comment">' on their cell data should be treated special, by adding additional filter tests.
+The filter string should also be a string which filters on part of the <bdi> content plus part of the comment like e.g.
+
+"Release" column:
+#+begin_example
+In (Disc
+#+end_example
+
+""Label" column:
+#+begin_example
+Slash (US
+#+end_example
+
+15.)
+
+Up to now, all filterstrings for all test cases should have been done (or better are scripted in the test script) by
+typing in the specific filterstrings from the plans tables directly in the global/column filter input fields.
+
+Also add tests by specifying the filter strings by using the unique value drop down menu on a column and choosing the
+presented values from there.
+
+a.)
+
+test by choosing just one value at a time (normal value or structural values from the different sections)
+
+b.)
+
+test by choosing a combination of values (normal value or structural values from the different sections)
+
+c.)
+
+in all cases check again if the highlightning is present afterwards in the filtered rows
+
+16.)
+
+for the "typed in" filter tests, also additionally use as filterstring just substrings of the complete data cell values,
+to better test overlapping
+
+** DONE q
+
+Shouldn't this complete very fast given that we only read once from network and then later for all tests directly from
+disc, as the actual table is not very big
+
+** DONE add
+
+addjust the plan to
+
+1.)
+
+add timing information to the individual tests
+
+2.)
+
+check the different buttons which display stats information or text titles + tooltips depending on if filtering/sorting
+is active, if they match with the expectation
+
+3.)
+
+load from disk with a pre-filter and repeat all the filter/sort tests
+
+4.)
+
+also exercise the column visibility architecture during the tests, by temporarily removing columns, retest and then readd the removed columns again
+
+5.)
+
+are iro/pako really needed on every single test, or can we somehow do it just once, as long as the tests themselves do not
+depend on this libraries
+
+6.)
+
+make step 3, 4 configurable during testing
+
+** DONE a
+
+● I've now root-caused everything. Let me summarize what I found before continuing:
+
+  Confirmed correct (not bugs — my test assumptions were wrong):
+  - CAA "no" → 28, not 19: "Matrix/Runout" (a CAA image type on 9 "yes" rows) contains the substring "no" — genuine collision, not a bug. I'll fix the test to expect 28 for plain no, and add an anchored ^no$ case for the stable 19, mirroring the DD 1/^1$ pattern already in the
+    plan.
+  - Country/Date has no space between country code and date ("US1986-05" not "US 1986-05") and no weekday abbreviation for regular rows in the live-rendered fixture — my earlier analysis was based on -final.html, which apparently reflects a different render state (likely the
+    "(show N more)" JSON-reconstruction path) than a fresh disk-fixture load produces. I'll redesign all six Country/Date cases around the real structure.
+  - Format/Label/Country dropdowns have no flat "Values" list at all — they're fully faceted (confirmed via live getUniqDropSections()). §D/§E/§F need redesigning around the real facets.
+  - A bug in my own test code: clearGlobalFilter/clearColumnFilter don't reliably clear a readonly-hardened input without an initial .click() to lift readonly first — explains the §C timeout.
+
+  A likely genuine bug in the userscript itself: filtering the Release column for "In (Disc" correctly narrows to 1 row, but produces zero .mb-column-filter-highlight spans — confirmed via direct DOM inspection. Tracing the source, highlightCrossTag()'s own JSDoc explicitly
+  describes this exact scenario ("cells that combine an [data-erg-btn] toggle + .mb-caa-inline-ph thumbnail — e.g. the Release column") as the motivating bug report for an "alignment" fix that's already in the code — but my comment-boundary-crossing case (<bdi> + a separate <span
+  class="comment">) appears to be a gap the existing fix doesn't cover.
+
+** DONE f
+
+● Confirmed — the completion signals don't fire on disk-fixture restores (matches the established pattern in
+artist-events-interactions.spec.js, which never passes those flags either). Let me use a short settle delay instead.
+
+** DONE q
+
+you mentioned
+
+#+begin_example
+● Confirmed — the completion signals don't fire on disk-fixture restores (matches the established pattern in
+artist-events-interactions.spec.js, which never passes those flags either). Let me use a short settle delay instead.
+#+end_example
+
+Shouldn't this be fixed instead ?
+
+** DONE findings
+
+One real product finding, documented per your decision (not fixed): a plain-text filter match spanning from an entity's
+<bdi> name into a sibling <span class="comment"> (joined only by a synthesized space/&nbsp;) correctly narrows the row
+count but never highlights — confirmed on Release, Label, and Country/Date. highlightCrossTag()'s own JSDoc describes
+fixing this exact shape of bug already; this comment-boundary variant looks like a gap in that existing fix. Every
+affected test case documents this with knownHighlightGap: true and cites the location.
+
+** DONE fix
+
+fix the following finding on a new branch
+
+#+begin_example
+a plain-text filter match spanning from an entity's
+<bdi> name into a sibling <span class="comment"> (joined only by a synthesized space/&nbsp;) correctly narrows the row
+count but never highlights — confirmed on Release, Label, and Country/Date. highlightCrossTag()'s own JSDoc describes
+fixing this exact shape of bug already; this comment-boundary variant looks like a gap in that existing fix. Every
+affected test case documents this with knownHighlightGap: true and cites the location.
+#+end_example
+
+** DONE add more tests
+
+adjust the plan for our former session with
+
+1.)
+
+on the "CAA" column add more typed in tests for the following filter strings
+
+#+begin_example
+Booklet
+Booklet Page 5
+Booklet Booklet Page 5
+let Boo
+#+end_example
+
+to test for explicit filtering of CAA types, comments and combined "type+comment"
+
+"let Boo" as substring should filter all rows where the type ends with "let" (e.g. "Booklet" and the comment starts with "Boo" e.g. "Booklet")
+
+2.)
+
+on the "Country/Date" column add more typed in tests for the following filter strings (weekday matching, created by another userscript, typically colorized)
+
+#+begin_example
+Tue
+#+end_example
+
+3.)
+
+on the "Catalog#" column add more typed in tests for the following filter strings (substring matching)
+
+#+begin_example
+25876
+#+end_example
+
+Check for highlightning not only of the substring itself in the visible part of the column data cells, but also the
+yellow background of the multi-row cell indicator if the filtered substring is not visible, because the data cell is
+collapsed
+
+#+begin_example
+<span class="mb-cell-collapse-toggle mb-collapse-toggle-has-match" title="Show all multi-row cell items (2)" role="button" aria-expanded="false" aria-label="Expand: 2 items are collapsed"><span class="mb-cell-collapse-glyph">▶</span><span class="mb-cell-collapse-count">2</span><span class="mb-cell-collapse-rack">▤</span></span>
+#+end_example
+
+There should be just ONE multi-row cell indicator colorized for this testcase
+
+4.)
+
+on the "Relationships" column add more typed in tests for the following filter strings (substring matches inside the relationships URLs)
+
+#+begin_example
+release
+#+end_example
+
+Should be 27 for this test case
+
+5.)
+
+check when filtering is in effect
+
+a.)
+
+if the stats (optionally the tooltip) in
+
+#+begin_example
+<span class="mb-row-count-stat" data-mbtt="There are &lt;span class=&quot;mb-mbtt-count&quot;&gt;6&lt;/span&gt; rows visible after &lt;span class=&quot;mb-mbtt-cf&quot;&gt;column&lt;/span&gt; filters &lt;span class=&quot;mb-mbtt-colname&quot;&gt;'Release'&lt;/span&gt;:&lt;span class=&quot;mbtt-cf&quot;&gt;dr&lt;/span&gt; from &lt;span class=&quot;mb-mbtt-count&quot;&gt;55&lt;/span&gt; total rows in this table">(6 of 55)</span>
+<button id="mb-caa-toggle-btn-0" 
+#+end_example
+
+are correct with the expectation
+
+b.)
+
+if the following buttons are present
+
+#+begin_example
+<button id="mb-toggle-filter-highlight-btn"
+<button id="mb-clear-column-filters-btn"
+#+end_example
+
+and in the case of loading from disk and pre-filtering the following button with the right text (<n> of <m> rows prefiltered "BoDeans")
+
+#+begin_example
+<button id="mb-toggle-prefilter-btn"
+#+end_example
+
+c.)
+
+if the status display correctly shows the expected status message e.g.
+
+#+begin_example
+<span id="mb-filter-status-display" class="mb-filter-status" style="color: green;">✓ Filtered 6 rows in 17ms [1 COLUMN FILTER ['Release':"dr"]]</span>
+#+end_example
+
+6.)
+
+Rerun the complete test suite, this time with the two optional tests enabled
+
+a.)
+
+Load from Disk:
+- when loading from disk enter "BoDeans" in the filter inout field '<div id="sa-ld-filter-row-inner">' and enable the Case sensitive" checkbox '<input type="checkbox" id="sa-load-case">'
+- then press the '<button id="sa-filter-confirm">' button
+- confirm the additional highlightning of the loading filter sting after loading and rendering the final page
+  
+b.)
+
+Column visibility:
+- remove the following columns
+
+#+begin_example
+DD
+MM
+YYYY
+Day
+Month
+MB-Name
+Comment
+Primary Alias
+Relationships
+#+end_example
+
+** DONE c
+
+All 6 requested extensions to the artist-releases filter/sort test suite are implemented, live-verified, and pushed.
+
+What was done (branch worktree-extend-artist-releases-filter-sort-tests, commit c661e22):
+
+1. CAA — 4 new typed-filter cases (Booklet→20, Booklet Page 5→3, Booklet Booklet Page 5→3, let Boo→18 rows, all live-verified). Discovered CAA per-image highlighting is genuinely unstable across repeated filter cycles (0→12→388 spans depending on how many prior CAA cases ran first — likely an async thumbnail-retry pipeline re-highlighting without clearing old spans); documented as a real, deferred defect rather than papered over.
+2. Country/Date — a real chaban day-of-week interop test (Tue→16 rows, cross-checked against the existing Day~"Tuesday" case). The standard post-render script-injection pattern doesn't survive a filter re-render for this column (it's a collapsableColumns entry that rebuilds from stored source HTML each cycle), so I built chabanDayOfWeekFixture.js to patch the weekday span into the fixture's HTML before load instead.
+3. Catalog# — "25876" case (4 rows) plus a new assertion on .mb-collapse-toggle-has-match (exactly 1 indicator, on the one collapsed cell with a hidden match).
+4. Relationships — "release" case (27 rows, live-verified; documented the /release/ vs /release-group/ substring collision).
+5. Stats/tooltip/buttons — folded into every §A/§B/§C case via new assertFilterUiState()/assertFilterUiCleared() helpers. This surfaced two real asymmetries in the underlying script: the tooltip trims a column filter's value but the status text doesn't; the status text lowercases a case-insensitive global query but the tooltip doesn't.
+6. §J/§K — §J now genuinely drives the dialog's real filtered-load path (it silently hadn't before); §K now hides/shows the 9 requested columns via getByLabel() (the old .mb-colvis-menu-item selector never matched real DOM, so §K had never actually run against live markup).
+
+All 9 tests pass individually, together (npm run test:live:artist-releases:full), and alongside the full test:live:extended suite (32 passed, 2 correctly skipped by default). Report regenerated, registry updated, branch pushed — PR link: https://github.com/vzell/musicbrainz-userscripts/pull/new/worktree-extend-artist-releases-filter-sort-tests
+
+result: Extended and live-verified the artist-releases filter/sort Playwright suite per all 6 requests (CAA/Catalog#/Relationships/weekday cases, folded-in stats/UI assertions, and a genuine §J/§K exercise), fixing two real §J/§K bugs and documenting a CAA-highlighting instability found along the way; committed and pushed to worktree-extend-artist-releases-filter-sort-tests.
+
+** DONE CAA highlightning
+
+1.)
+
+What does that mean:
+
+#+begin_example
+Discovered CAA per-image highlighting is genuinely unstable across repeated filter cycles (0→12→388 spans depending on
+how many prior CAA cases ran first — likely an async thumbnail-retry pipeline re-highlighting without clearing old
+spans); documented as a real, deferred defect rather than papered over.
+#+end_example
+
+Is there anything to fix here ? As I can see the highlighning seems to actually work, see screenshot [Image #1]
+
+See also point 2.)
+
+2.)
+
+Add one more test. Expand the CAA column
+
+#+begin_example
+<span class="mb-caa-col-hdr-btn" role="button" data-caa-ctx="caa" data-caa-col-hdr-state="collapsed" title="Show all CAA images in this column" aria-expanded="false"><span>▶</span><img alt="" src="//coverartarchive.org/release/9d451257-ebce-44ec-aad8-b48609bfaf7a/front-250" style="width: 16px; height: 16px; object-fit: cover; border-radius: 2px; vertical-align: middle; display: inline-block;"></span>
+#+end_example
+
+Then filter again with the following filter strings on the CAA column
+
+#+begin_example
+Booklet
+Booklet Page 5
+Booklet Booklet Page 5
+let Boo
+#+end_example
+
+and observe if the highlightning is correctly applied
+
+3.)
+
+If you need to fix something do this in a branch off from main
+
+4.)
+
+While you're at it, remove the artificial " – " between the image type and the comment in e.g. 'Front</span></span> – <span class="mb-caa-art-comment">1000 x 1000 px'
+
+#+begin_example
+<li class="mb-caa-art-li mb-caa-art-li-image" data-li-tooltip-types="Front" data-li-tooltip-comment="1000 x 1000 px" style=""><img src="//coverartarchive.org/release/3cbfd334-370b-421f-b1d5-ff999fadb64a/16243589621-250.jpg" alt="" loading="lazy" style="cursor: crosshair;"><span class="mb-caa-type-badge"><span style="display: inline-block; background: rgb(200, 200, 200); color: rgb(34, 34, 34); border-radius: 3px; padding: 1px 5px; font-size: 0.85em; font-weight: 600; line-height: 1.5; white-space: nowrap; cursor: default;">Front</span></span> – <span class="mb-caa-art-comment">1000 x 1000 px</span></li>
+#+end_example
+
+Leave just on blank between the image type and comment
+
+** DONE disk-fixture path
+
+Can this be fixed too
+
+#+begin_example
+the disk-fixture path has a separate, pre-existing gap where this highlighting never fires at all — documented, not fixed, out of scope
+#+end_example
+
+or what do you mean by this
+
+
+* TODO merge with the "perf-steps-1-4" branch
+
+
+* TODO Run our current filter/sort test against the "perf-steps-1-4" branch
+** i
+
+1.)
+
+Merge main into the "perf-steps-1-4" branch. If there are conflicts make sure that all our changes in main are still
+integrated into the "perf-steps-1-4" branch
+
+2.)
+
+Run all of our tests specifically our current filter/sort test (plus the two optional ones) against the "perf-steps-1-4"
+branch to see if any current functionality which is working on main breaks. This is a regression test before we later
+test the actual performance aspects of the "perf-steps-1-4" branch
+
+3.)
+
+Given
+
+#+begin_example
+   - npm run test:live:report:artist-releases — the core filter/sort suite
+     (tests/live/artist-releases-filter-sort.spec.js) against real
+     musicbrainz.org, generating the JSON report via
+     generate-filtersort-report.js.
+   - npm run test:live:artist-releases:full — same spec with both optional
+     sections enabled (TEST_PREFILTER_LOAD=1 for §J Load-from-Disk
+     prefiltered path, TEST_COLVIS=1 for §K column-visibility toggling) —
+     "the two optional ones."
+#+end_example
+
+Is the second run 'npm run test:live:artist-releases:full' not the same as the first one plus the optional tests. If
+yes, then it doesn't make sense to run it twice. Could the report not bbe generated also on the second npm run
+
+** a
+
+#+begin_example
+TEST_PREFILTER_LOAD=1 TEST_COLVIS=1 \
+   npx playwright test tests/live/artist-releases-filter-sort.spec.js \
+   --project=chromium-live --reporter=json \
+   | node tests/support/generate-filtersort-report.js
+#+end_example
+
+** f
+
+68/72 passed — 4 failed. Let me check which ones, since the registry notes mention 4 known-unstable CAA highlighting
+cases that already use skipHighlightCheck: true — need to confirm these failures are that known issue, not a merge
+regression.
+
+** Investigate the CAA highlight span flakiness
+
+1.)
+
+According to the file @tests/live/registry.org
+
+#+begin_example
+CAA per-image type/comment highlighting is a confirmed-live UNSTABLE quirk (0 spans on a fresh load, a growing count the
+more CAA-column filter cycles precede it — likely an async thumbnail-retry pipeline re-highlighting without clearing
+prior spans) — those 4 cases use `skipHighlightCheck: true` rather than assert an unreliable number; flagged as a real,
+deferred CAA-highlighting defect, not fixed here.
+#+end_example
+
+Is the 'skipHighlightCheck: true' still needed now that we have commit "fbb5355"
+
+2.)
+
+Investigate the CAA highlight span flakiness
+
+** f
+
+One separate thing surfaced during verification: §A3's waitForRenderComplete timed out waiting for #mb-info-display-caa
+(the CAA queue's completion signal) on two isolated reruns — but the page itself rendered correctly (56/56 rows, CAA
+icons visible, no errors). This didn't happen in the original full-suite run, and only appeared after I'd hit
+coverartarchive.org repeatedly within a short window across several manual reruns — most likely transient
+rate-limiting/network slowness from my own testing cadence, not a code issue. Worth a clean re-run later if you want
+full confirmation, but it's unrelated to the two questions asked.
+
+** bug
+
+1.)
+
+The report files are again NOT created for the tests against the perf-steps-1-4 branch
+
+2.)
+
+While you are at it change the duration display from seconds to minutes + seconds in the report
+
+#+begin_example
+| **Complete test run duration (wall-clock)** | **422.4s** |
+| Sum of individual case/step durations | 773.7s (steps nest inside their parent test, so this over-counts vs. wall-clock — informational only) |
+#+end_example
+
+3.)
+
+Is it possible to cherry pick the registry.org fix and also apply it to the main branch + the fix for 2.)
+
+4.)
+
+Also cherry pick the change to "package.json" and apply it to main
+
+** git error
+
+I get
+
+#+begin_example
+128 git … checkout perf-steps-1-4
+fatal: 'perf-steps-1-4' is already used by worktree at '/home/vzell/git/musicbrainz-userscripts/.claude/worktrees/merge-main-into-perf-steps-1-4'
+#+end_example
+
+when I manually try to checkout perf-steps-1-4
+
+
+* create report
+
+#+begin_src bash
+npm run test:live:report:artist-releases
+#+end_src
+
+#+begin_src bash
+npm run test:live:artist-releases:full
+#+end_src
+
+
+* TODO repeat this for a multi-table scenario with pagination of two (Bruce Springsteen related)
+** i
+
+The goal is to create a comprehensive filter/sort/highlight/uniq-dropdown regression coverage on a multi table pageType
+which exercises all possible filter possibilities with additional sorting regression, basically what we have already
+done for the single-table case (@tests/live/artist-releases-filter-sort.spec.js) extended now to a multi-table example.
+
+1.)
+
+Analyze the following raw HTML for the pageType 'releasegroup-releases' and URL
+https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c (see
+@debug/Greetings-releasegroup-releases-initial-page-1.html and
+@debug/Greetings-releasegroup-releases-initial-page-2.html the two paginated pages) to get a complete overview of the
+data and statistics involved table wide but also per column. These data and stats will later be used on the final
+rendered page to exercise filter conditions against the following two sub-tables ("Official release" and "Promotion
+release") and compare the resulting filter stats against the data which was accumulated earlier.
+
+2.)
+
+Start by downloading the URL https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c with network
+access to get also all CAA images and relationships. Wait until all the toasts appear and compare with the raw HTML of
+the final rendered page @debug/Greetings-releasegroup-releases-final.html.
+
+3.)
+
+Uncollapse all sub-tables/sections and make all big picture image stripes visible + enable all section level filter
+input fields in the h3 section lines
+
+4.)
+
+Use the two sub-tables "Official release" and "Promotion release" to do the filter and sorting tests
+
+a.)
+
+start by filtering globally, then on sub-table level + column filters
+
+b.)
+
+revert the order:
+
+column filters, then sub-table filters, then global filters
+
+c.)
+
+some other arbitrary order
+
+5.)
+
+make sure that the two report files .org/.html are written and while you're at it, change the report filenames to
+include a timestamp, so that they don't get overwritten each time
+
+6.)
+
+generalize the reporting so that it works also for future new tests on other pages
+
+** run
+
+#+begin_src bash
+cd ~/git/musicbrainz-userscripts/ShowAllEntityData
+#+end_src
+
+#+begin_src bash
+npm run test:live:extended
+#+end_src
+
+#+begin_src bash
+npx playwright show-report
+#+end_src
+
+** f
+
+Add a new live test for the multi-table pageType "releasegroup-releases" specifically the URL
+"/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c" (the one which already covers small simple live tests) to confirm
+the findings from the releasegroup-releases-filter-sort.spec.js about the CAA column highlightning
+
+#+begin_example
+// ALSO apply the CAA presence filter ("yes"/"no", the only
+// plain-text-matchable state this column exposes — its rich
+// per-image type/comment text, e.g. "Front"/"Booklet", is a
+// DROPDOWN-DRIVEN exact-value feature instead, confirmed
+// live: a typed substring search against it produces ZERO
+// matches and ZERO .mb-column-filter-highlight spans,
+// regardless of column). This narrows further and confirms
+// the CAA presence column survives a sort/filter
+// interaction on this multi-table page too — a full
+// v9.99.970-style CAA highlight-duplication guard would
+// need the dropdown-driven mechanism instead (not
+// implemented here — see this comment as the TODO).
+#+end_example
+
+Make sure that the CAA images load from the network, uncollpase the CAA column in the "Official release" sub-table and
+filter on the CAA column with the filter string "ont cass" . Currently when doing this in a real browser now row is
+selected, but it should be one.
+
+Highlightning works for single-table pageTypes (see the test artist-releases-filter-sort.spec.js)
+
+After confirming it, create a new branch and implement a fix, then retest 
+
+** bug
+
+The highlighning works now, but compared to the single-table case, when the CAA column cells are ALL uncollapsed and
+then a filter string is typed in, it collapses the data cells, but at least the '<span data-caa-expand-btn="collapsed"'
+handle is highlighted with the yellow background and when uncollapsing the data cells, the highlightning of the actual
+filter string can be seen. This works right on the single-table case
+
+** still
+
+the bug actually is, that when the CAA column is completey uncollapsed and you start typing in the CAA column filter
+field, it automatically collapses everything, which it SHOULDN't when I explicitly had it open before.
+This is what I mean works in the single table case.
+
+* TODO findings for future implementations
+** I found and fixed the missing piece, but it uncovered something bigger. Let me lay out both findings clearly:
+
+1. Fixed (small, clean, already applied on the branch): runFilter()'s CAA/EAA init block never registered
+   _caaQueue.onIdle(_showCaaCompletionToast) — the equivalent registration startFetchingProcess() has. This means the
+   completion toast and #mb-info-display-caa never fired after any call to runFilter(), not just disk-restore — that
+   includes every ordinary filter/sort action on a live-fetched page too. This part is a genuine, isolated bug and the
+   fix is correct and safe (onIdle() already handles "queue already idle" safely via its own setTimeout(cb, 0) path).
+
+2. A separate, bigger issue this exposed: runFilter() intentionally strips each cloned row's "already enriched" CAA/EAA
+   markers on every re-render — not a bug, it's needed so _artHighlightImageLi can re-apply the active filter's
+   highlights to art cells. But the side effect is that this also forces _artEnrichIcon to treat every cell as
+   unenriched, re-triggering a full re-fetch of every image's enrichment data (real network calls) on every single
+   filter/sort — including the very first runFilter() call right after a disk-restore, even though that data was already
+   fully populated and saved in the fixture. In my test this queued 220 tasks that take real time to drain. Unlike
+   Relationships (which correctly skips cells already marked relDone), CAA/EAA has no equivalent "skip re-fetch, just
+   re-apply highlights" path — re-enrichment and highlight-reapplication are currently the same step.
+
+That second one is a real architectural gap, not a quick fix — it'd mean separating "re-apply highlights" from "re-fetch
+enrichment data," which needs its own careful design and testing, not something to improvise right now.
+
+
+
+* tests
+** doc
+
+How to run the tests
+
+All commands run from ShowAllEntityData/ via npm scripts in package.json:
+
+┌───────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                Command                │                                                               What it runs                                                               │
+├───────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ npm test                              │ chromium-fixtures project — local HTML fixtures, no network. Default/CI-safe.                                                            │
+├───────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ npm run test:live                     │ chromium-live, @core tag only — filter/sort/fetch/pagination sanity net.                                                                 │
+├───────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ npm run test:live:extended            │ chromium-live, @core+@extended — adds bespoke/pageType edge cases (Stop-button, IDB cache tiers, third-party interop, sub-table filter). │
+├───────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ npm run test:live:perf                │ chromium-live, @perf tag only — the perf-comparison instrumentation spec.                                                                │
+├───────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ npm run test:all                      │ Every project (fixtures + live), no tag filter.                                                                                          │
+├───────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ npm run test:ui / npm run test:headed │ Playwright's interactive UI runner / headed browser mode.                                                                                │
+├───────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ npm run test:live:save-html           │ chromium-live with SAVE_HTML=1 (dumps rendered HTML for inspection).                                                                     │
+├───────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ npm run report                        │ Opens the last HTML run report (playwright-report/, from the config's ['html', {open:'never'}] reporter).                                │
+├───────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ npm run auth:login                    │ Interactive real login, saves session to playwright/.auth/vzell.json so chromium-live runs logged-in.                                    │
+└───────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+Live specs are tag-gated (@core/@extended/@perf) via --grep; snapshot regression coverage is separate (node tests/support/capture-snapshots.js [--only=<pageType>] [--headed] [--perf]), not wired into package.json.
+
+The two .org/.html reports
+
+Two npm scripts generate a timestamped .org/.html pair in debug/ (e.g. debug/artist-releases-filterSort-test-report-<ISO-stamp>.org/.html), via the shared engine in tests/support/filtersortReportGenerator.js:
+
+- npm run test:live:report:artist-releases
+- npm run test:live:artist-releases:full (same, with TEST_PREFILTER_LOAD=1 TEST_COLVIS=1)
+- npm run test:live:report:releasegroup-releases
+
+Mechanism: playwright test ... --reporter=list,json with PLAYWRIGHT_JSON_OUTPUT_NAME=<file> writes the JSON results to a file (list still prints to the console); the exit code is captured (e=$?); then node tests/support/generate-*-report.js < <file> reads that JSON via stdin redirection and writes the .org/.html pair; the script re-exits with the saved playwright exit code. debug/ is gitignored, so reports accumulate with no cleanup needed.
+
+package.json: main vs. perf-steps-1-4
+
+perf-steps-1-4 fixed the three test:live:report:*/test:live:artist-releases:full scripts — main still uses the older, fragile form: playwright test ... --reporter=json | node .... That's broken two ways main doesn't have fixed: mixing list+json reporters would interleave both on stdout if you also wanted console output, and piping loses playwright test's own exit code (the pipe's exit status is the last command's, i.e. the report generator, which always exits 0). No other differences in package.json between the branches.
+
+** BoDeans - artist-releases - perf branch
+
+npm run test:live:artist-releases:full
+
+> show-all-entity-data-tests@1.0.0 test:live:artist-releases:full
+> TEST_PREFILTER_LOAD=1 TEST_COLVIS=1 PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/artist-releases-full.json playwright test tests/live/artist-releases-filter-sort.spec.js --project=chromium-live --reporter=list,json; e=$?; node tests/support/generate-filtersort-report.js < test-results/artist-releases-full.json; exit $e
+
+
+Running 10 tests using 1 worker
+
+  ✓   1 [chromium-live] › tests/live/artist-releases-filter-sort.spec.js:297:1 › §A per-column typed filter cases @extended (2.8m)
+  ✓   2 [chromium-live] › tests/live/artist-releases-filter-sort.spec.js:346:1 › §A2 chaban day-of-week third-party interop: Country/Date ~ "Tue" @extended (10.8s)
+  ✓   3 [chromium-live] › tests/live/artist-releases-filter-sort.spec.js:426:1 › §A3 CAA column expanded — type/comment highlighting is correct (live fetch) @extended (1.3m)
+  ✓   4 [chromium-live] › tests/live/artist-releases-filter-sort.spec.js:481:1 › §B combo and global+column order-pair cases @extended (42.0s)
+  ✓   5 [chromium-live] › tests/live/artist-releases-filter-sort.spec.js:566:1 › §C sort-then-restore checkpoints preserve row count across every scenario @extended (48.0s)
+  ✓   6 [chromium-live] › tests/live/artist-releases-filter-sort.spec.js:619:1 › §D uniq-dropdown contents (filters cleared) are self-consistent and survive a reopen @extended (9.1s)
+  ✓   7 [chromium-live] › tests/live/artist-releases-filter-sort.spec.js:696:1 › §E uniq-dropdown contents with the Format~CD filter left active @extended (7.7s)
+  ✓   8 [chromium-live] › tests/live/artist-releases-filter-sort.spec.js:735:1 › §F uniq-dropdown-DRIVEN filtering (single value, combination, cross-column) @extended (42.2s)
+  ✓   9 [chromium-live] › tests/live/artist-releases-filter-sort.spec.js:826:5 › §J pre-filtered disk-load repeat › re-runs a representative subset of §A/§B against a genuine "BoDeans" pre-filtered load @extended (37.1s)
+  ✓  10 [chromium-live] › tests/live/artist-releases-filter-sort.spec.js:922:5 › §K column-visibility architecture exercise › hiding then re-showing 9 columns does not break filtering on other columns @extended (15.8s)
+
+  Slow test file: [chromium-live] › tests/live/artist-releases-filter-sort.spec.js (7.7m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  10 passed (7.7m)
+Wrote /home/vzell/git/musicbrainz-userscripts/ShowAllEntityData/debug/artist-releases-filterSort-test-report-2026-08-31T12-01-24-844Z.org
+Wrote /home/vzell/git/musicbrainz-userscripts/ShowAllEntityData/debug/artist-releases-filterSort-test-report-2026-08-31T12-01-24-844Z.html
+98/98 passed in 7m 44.5s

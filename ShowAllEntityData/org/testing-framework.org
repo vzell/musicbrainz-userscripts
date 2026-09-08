@@ -1,0 +1,194 @@
+* Testing framework
+
+** i
+
+1.)
+
+Is it a good idea to add more (or even complete) data to the current testing framework in @tests:
+
+#+begin_example
+tests/snapshots
+tests/fixtures/saved-data
+tests/fixtures/local-large
+tests/fixtures/*.html
+tests/live/registry.org
+#+end_example
+
+Covering everything mentioned in @pageTypes-testing-reference.org
+
+2.)
+
+But when implementing new features, or fixing bugs only executing the neccesary tests, so that it doesn't take too long
+for the tests execution and minimize MusicBrainz hits for live tests
+
+3.)
+
+Please brainstorm and ask questions so that I maybe get some more ideas
+
+** a
+
+## 1) Chasing "complete" coverage
+
+No — I'd push back on treating `pageTypes-testing-reference.org`'s 86-type list as a completion target. A few reasons:
+
+- **The doc itself already tells you not to.** The "Cluster coverage table" groups near-identical shapes (11 `*-tags` pages, 7 relationship/-filtered pairs, 5 discography-style pages, …) and picks 1-2 representatives per cluster deliberately — capturing all 11 `*-tags` variants would mostly be re-testing the same `listToTable`/generic pipeline 11 times for near-zero marginal signal.
+- **Snapshot tests decay.** Each captured baseline is a bet that musicbrainz.org's DOM for that page won't drift. More baselines = more periodic re-verification burden, not a one-time cost. 86 of them is a maintenance tax, not a safety net, if most are never touched again.
+- **Coverage should track risk × change-frequency, not enumeration.** You already have 10/86 captured (ahead of the `CLAUDE.md` note claiming 4 — worth a quick doc fix separately), concentrated exactly where the bespoke code lives: `release-tracks` (its own AR engine), `user-tags` (container re-root), `notes-received`/`user-open-edits` (custom-dialog pagination fix). That's the right instinct — bespoke/high-blast-radius code got tests; generic-pipeline pageTypes are still "planned" and lower-value.
+
+**Recommendation:** keep using the reference doc as a *backlog*, not a checklist — pull from "Global/admin, single instances" and cheap planned rows opportunistically (as the doc itself says), but don't schedule a project to clear it out. Prioritize a planned row only when: (a) you're about to touch code that row exercises, or (b) it's genuinely cheap (tiny catalog, no pagination/login gating) and you have a few spare minutes.
+
+## 2) Running only necessary tests
+
+This is already the harness's design intent, not a gap:
+
+- **Default dev loop:** `npm test` (chromium-fixtures) — zero network, zero MB hits. This should be the loop for any column-extractor/DOM-logic change with fixture coverage.
+- **Scoped live runs:** instead of `npm run test:live` (whole `@core` tag set), target the file(s) that exercise the pageType/mechanism you changed: `playwright test tests/live/release-tracks-part-of-series-multirow.spec.js --project=chromium-live`. `@extended`/`@perf` are explicitly opt-in tiers — don't run them on routine bug fixes.
+- **Snapshot regression** (`tests/snapshots/`) only needs re-running when you touch `renderFinalTable`/`renderGroupedTable`/DOM pre-processing shared by many pageTypes, or the specific pageType's own definition.
+
+The missing piece is a fast way to answer "which spec files actually exercise the code I just changed" — right now that mapping lives only in your head / `tests/live/registry.org`. See brainstorm below.
+
+## 3) Brainstorm / questions for you
+
+**Ideas:**
+- **Build a change→test map.** A small table (pageType/mechanism → touched functions/features → spec files) would let you compute "minimal test set for this diff" mechanically instead of remembering it. Could be a lightweight `tests/coverage-map.json` alongside `pagetypes.json`, or even just a `## Touches` line added to each live spec's header comment that a script greps.
+- **Lean harder on the gz fixtures for `@core`.** `tests/fixtures/saved-data`/`local-large` already replay real MB JSON without hitting the network — expanding that set (more pageTypes' raw responses captured once, replayed forever) reduces live-hit pressure for filter/sort logic tests specifically, reserving true live hits for things that must be live (auth-gated pages, pagination-widget edge cases, third-party-script interop).
+- **Canary/drift detection instead of exhaustive snapshots.** Rather than 86 static baselines, a periodic (weekly?) scheduled run of just the *existing* captured set, alerting on diff, catches MB layout drift on your real investment without inflating it. Happy to wire that up with the `schedule` skill if useful.
+- **Invariant tests over enumeration.** For the "planned, opportunistic, non-bespoke" bucket, a handful of cross-pageType property assertions (every rendered `table.tbl` has a filter bar, header count matches row cell count, sort click doesn't throw) run against a small sample might catch more real bugs per test-minute than one more `*-tags` snapshot.
+
+**Questions:**
+- When you say "add more/complete data" — is the actual pain point *coverage gaps* you've hit in practice (a bug slipped through untested), or just the doc showing lots of `planned` rows and it bugging you?
+- Do you want a mechanical "minimal test set for this diff" helper, or is manually picking specs from `registry.org` fast enough already?
+- Is a scheduled/periodic live-canary run (catching MB-side drift between your own edits) something you'd actually want, given it's unattended MB traffic on a cron?
+- For login-gated pageTypes (`user-open-edits`, `notes-received`, future `edits`) — any concern about live tests depending on your personal MB account's live data staying in a testable shape over time?
+
+** more q
+
+I will answer the question later. Some more questions:
+
+What is the best way to cope with third-party userscripts which I have installed a lot in my live browsers.  They
+typically have influence on the final rendered page output. Some of them even run asynchrounusly on the final rendered
+page.
+
+Is it possible to add support for third-party userscripts to be configurable added to our test framework, so we can
+measure their influence on our final pages.
+
+** more a
+
+Good news: you've already partly built this. `tests/support/thirdPartyScripts.js` +
+`tests/fixtures/thirdPartyScripts/*.js` (`jesus2099-title-mismatch.js`, `rogue-filter-writer.js`,
+`streaming-downloads-nested-in-ars.js`) is exactly a "configurable third-party script injection" mechanism, and
+`gmStubs.js` already stubs the whole Tampermonkey `GM_*` surface a real userscript would call. The design choice already
+made, worth knowing before I answer: these are **hand-built simulators of one specific observed side-effect**,
+explicitly *not* vendored copies of the real scripts' source (see the JSDoc in `jesus2099-title-mismatch.js`). The main
+script itself follows the same discipline elsewhere — lines 1996-2024 *adapt* small pieces of jesus2099's logic with
+attribution comments, rather than importing his file wholesale.
+
+## Coping with them live (workflow, not code)
+
+- **Isolate before diagnosing.** When a live page looks wrong, toggle other Tampermonkey scripts off for musicbrainz.org
+  (per-site, in Tampermonkey's dashboard) before assuming it's a ShowAllEntityData bug. `tests/snapshots/*/raw.html` is
+  captured "with only this script loaded" specifically so you have a known-clean baseline to diff a live anomaly
+  against.
+- **Async ones are the hard case** — a script that mutates the DOM *after* your render (e.g. jesus2099's cover-art icon
+  re-injection, `sa_enable_caa_inline_jesus2099_observer`) can't be caught by a one-shot snapshot; it needs either a
+  `MutationObserver` on your side (which you already do for that one case) or a live Playwright test that injects the
+  simulator *after* your render completes (`when: 'now'`, the default) and asserts your script tolerates it — same
+  pattern as `third-party-rogue-filter-write.spec.js`.
+- **Capture, then generalize.** The existing pipeline for a newly discovered interaction: reproduce it live → save a
+  `debug/*.html` snapshot + note in `debug/NOTES.md` → write a minimal `tests/fixtures/thirdPartyScripts/<name>.js`
+  reproducing just that one DOM signature → wire a `tests/live/third-party-*.spec.js` around it. That's the same shape
+  as `add-live-behavior-test`, just triggered by "another script broke me" instead of "MB changed."
+
+## Can real installed userscripts go into the test framework?
+
+Technically yes — `page.addInitScript()`/`page.addScriptTag()` could load an actual `.user.js` body (stripped of the `==UserScript==` header) alongside `gmStubs.js`. I'd steer away from committing that, though:
+
+- **Licensing/distribution.** Vendoring another author's full script into this repo's git history needs their license to
+  actually permit redistribution — the current codebase deliberately avoids this even for logic it *adapts* (attribution
+  comments instead of copy-paste).
+- **Version drift = false confidence.** A committed copy goes stale the moment its author updates it on Greasy Fork;
+  your real browser always runs the latest, so a passing test against a frozen vendored copy stops meaning much.
+- **Own dependency chains.** Real scripts often have their own `@require`s/remote asset fetches that would need
+  `page.route()` interception per script — real complexity for something you're not trying to *test*, just tolerate.
+
+The simulator pattern you already have sidesteps all three and is IMO the right primary mechanism — it directly tests
+"does my code survive this specific mutation," which is the actual thing that matters, and it's what caught the two real
+regressions you already have coverage for.
+
+**If you specifically want to measure influence across your whole real extension set** (not just the 1-2 known
+offenders), a lighter option than vendoring: a local-only, gitignored `debug/live-interop/` harness — a small script
+that loads a live MB page with your *actual* Tampermonkey scripts injected verbatim (read from wherever you keep their
+source locally, never committed, same treatment as `debug/`), for ad hoc manual comparison against a `tests/snapshots/`
+baseline. Gives you the "how does my real browser differ from the clean baseline" answer without the licensing/drift
+problems, at the cost of it staying a manual/local tool rather than a CI-safe committed test.
+
+**Question back:** are there other real userscripts (beyond jesus2099's) actually installed in your live browser that
+you've noticed interacting with ShowAllEntityData's output, or is jesus2099's the only one in practice? That determines
+whether it's worth building out the local-only harness now or waiting until a second real offender shows up.
+
+** a
+
+yes there are:
+
+1.)
+
+I want to setup a local gitigniored directory with all the userscripts my live browser interacts
+
+2.)
+
+I still want a "debug/live-interop/" harness — a small script that loads a live MB page with my actual Tampermonkey
+scripts injected verbatim
+
+Is that possible, so that at least the test framework for third-party userscripts is in git
+
+** a
+
+I would like both. But there must be a configurable option to specifiy which userscripts in combination should run
+together with our script. Is that possible and how should this work ?
+
+** add
+
+I just copied some userscripts to @tests/fixtures/live-userscripts
+
+1.)
+
+Scan them and add the @author and @version to the script registration in manifest.json
+
+2.)
+
+Add a "touches:" field which explains briefly (by scanning the userscript code) what we should expect visually and maybe
+non-visually as the outcome of a third-party userscript run
+
+3.)
+
+create a skill so when I add new userscripts the above steps will be automated
+
+** more
+
+1.)
+
+make the "touches:" a list instead of one long text line so that every single aspect is clearly known
+
+
+2.)
+
+Should the "≠" title-mismatch also documented in our userscript code, or isn't it mentioned there
+
+** adjust
+
+adjust the skill to recheck "touches:" and "version" whenever a userscript gets update by me
+
+** now do a live run with "jesus2099-inline-stuff" to check why the "Length" column starts out in millisecods mode on pageType 'place-performances' 
+
+now do a live run with "jesus2099-inline-stuff" to check why the "Length" column starts out in milliseconds mode on
+pageType 'place-performances' e.g.  https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/performances
+
+** bugs
+
+The "Show milliseconds" buttons in all cases are always in the "Show" state and never in the "Hide" state, so they work after pressing twice
+
+#+begin_example
+place-perf-initial-with-jesus-milliseconds.html - initial page, jesus userscript run and all milliseconds are already show on behalf on HIS script
+place-perf-final.html - final renderd page after our script run
+place-perf-single-tabbed-final.html - single-table tabbed page after pressing the "Show all <> rows" button on the "Recording location for recording" sub-table ==> first paginated page had the milliseconds and seond not before the final rendering, as can be seen here
+#+end_example

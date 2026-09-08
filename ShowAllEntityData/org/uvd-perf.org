@@ -1,0 +1,731 @@
+* UVD
+** i
+
+Read @PERFORMANCE.org
+
+Is it possible to only implement 'Step 4: ~openUniqDrop()~ per-open caching' on a new branch starting from main, given
+the results in that file that this is one of the winner when it comes to performance.
+
+** avoid the native "Page unresponsive" browser popup
+
+Avoid the native "Page unresponsive" browser popup when clicking on the unique value drop down glyph in a column of
+table which has a very large rowset (typically the popup shows up when the number of rows > 4000)
+
+** f
+
+Everything installed, run, and measured.
+
+Test results
+
+┌────────────────────────────────┬───────────────────────────────────────────────────┐
+│             Suite              │                      Result                       │
+├────────────────────────────────┼───────────────────────────────────────────────────┤
+│ npm test (fixtures)            │ 3 passed                                          │
+├────────────────────────────────┼───────────────────────────────────────────────────┤
+│ npm run test:live:perf (@perf) │ 5 passed — includes the cache-invalidation guard  │
+├────────────────────────────────┼───────────────────────────────────────────────────┤
+│ npm run test:live:extended     │ 35 passed, 2 skipped, 4 failed — all pre-existing │
+└────────────────────────────────┴───────────────────────────────────────────────────┘
+
+The 4 failures resolved as follows: three CAA specs (subtable-… ×2, tag-value-…) all pass on re-run — flaky, bound to
+real musicbrainz.org CAA fetch timing. The fourth, §F uniq-dropdown-DRIVEN filtering, failed twice on my branch, and
+since I'd found that openUniqDrop() re-runs on every item click — putting the cache genuinely on that path — I checked
+out main's userscript in the same worktree and ran the same test: identical failure, same combo step, same line 765,
+same CD item resolved-but-not-visible, same 180s timeout. Pre-existing. (Separate finding: §F is broken on main right
+now.)
+
+Perf — same machine, same session, script 9.99.970 both sides
+
+┌─────────────────────┬───────────┬─────────────┬────────────┐
+│     Interaction     │   main    │ this branch │     Δ      │
+├─────────────────────┼───────────┼─────────────┼────────────┤
+│ Global filter       │ 1242 ms   │ 1292 ms     │ noise      │
+├─────────────────────┼───────────┼─────────────┼────────────┤
+│ Column filter       │ 1201 ms   │ 1239 ms     │ noise      │
+├─────────────────────┼───────────┼─────────────┼────────────┤
+│ Sort                │ 2995 ms   │ 2906 ms     │ noise      │
+├─────────────────────┼───────────┼─────────────┼────────────┤
+│ Uniq-dropdown, cold │ 30 649 ms │ 32 985 ms   │ +7.6 %     │
+├─────────────────────┼───────────┼─────────────┼────────────┤
+│ Uniq-dropdown, warm │ 31 347 ms │ 581 ms      │ 54x faster │
+└─────────────────────┴───────────┴─────────────┴────────────┘
+
+I re-measured main myself rather than diffing against the committed interaction-perf-main.json, because that baseline is
+2026-08-24 / script 9.99.953 from a different machine — main has since gained 17 versions of extra dropdown work that a
+cold open pays for. I left that committed baseline untouched.
+
+On the cold +7.6 %: I'm calling it noise, and saying so explicitly in the docs rather than burying it. Observed
+run-to-run spread for that same 30-second 5-pass scan is 27.3–33.0 s (~20 %), and a cache miss adds only one O(rows)
+signature build plus one Map.set — there's no mechanism that costs seconds. It appeared in the slower direction twice,
+so I noted it as worth re-checking if it ever reproduces consistently.
+
+I updated PERFORMANCE.org and the WIP changelog to carry these fresh numbers instead of the inherited 29 700 → 739
+figures, since those came from a different branch, machine and script version.
+
+Two loose ends for you:
+
+- The perf JSON landed as interaction-perf-worktree-perf-step-4.json (the harness derives the name from the branch). It matches the existing branch-named convention, so I left it — rename if you'd prefer perf-step-4.
+- node_modules/ and test-results/ are now populated but both gitignored.
+
+Still nothing committed — 5 modified files, 2 new.
+
+** merge
+
+would the current main branch merge cleanly into worktree-perf-step-4
+
+** DONE bug - comment + primary alias do not highlight when filtered
+*** i
+
+The following column filter string for example "USA, bleach" doesn't get highlighted in the "Event" column of
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events
+
+It looks like it's a comment + primary alias issue.
+
+Write a test case before fixing it
+
+*** Fixed and pushed. Summary:
+
+  Root cause: highlightCrossTag() (the function that highlights filter matches inside table cells) built its own version of the cell's text by joining every DOM text node with an unconditional space. getCleanColumnText() — which decides whether a row matches the filter in the
+  first place — does the same join but then strips the space immediately before a ,/)/] (and after (/[). For the Event column's native MB comment markup (<i title="Primary alias">…USA</i>, Bleachers)), that meant the row correctly matched "USA, bleach" but the highlighter's own
+  text still had a space before the comma, so its regex never matched — zero highlight spans on a correctly-matched row.
+
+  Fix: highlightCrossTag() now applies the same comma/paren/bracket rule at each text-node join point, and the offset/fullText bookkeeping was folded into a single pass so the two can't drift apart again.
+
+  Test-first: Added a regression test to tests/live/artist-events-interactions.spec.js reusing the existing disk fixture for that exact artist/URL — confirmed it failed (0 spans) before the fix and passes (['USA', ', Bleach']) after.
+
+  Regression checks: full artist-events-interactions.spec.js suite, artist-releases-filter-sort.spec.js §A (the heavy existing consumer of this function, including its own In (Disc/Slash (US/US 1986 cross-tag cases), and event-parts-extraction.spec.js all pass. One unrelated
+  pre-existing flaky test (uniq-value dropdown cache...) was verified to fail identically on unmodified code, so it's not a regression from this change.
+
+  Branch: fix/event-column-comma-highlight, pushed to origin (already up to date with main, so no merge-back is needed). Per project convention, no @version bump or CHANGELOG.json entry on this branch — added a WIP entry to ShowAllEntityData_CHANGELOG.wip.json instead, to be
+  folded in at merge time. Also documented the root cause as a follow-up entry in debug/NOTES.md
+
+*** merge into main and remove the branch  
+
+** DONE bug "k, n" (Asbury Park, New Jersey), highlighted inside comments, but not across areas
+
+The following column filter string for example "k, n" matching e.g. "(Asbury Park, New Jersey)" highlighted inside
+comments, but not across areas in the "Event" column of
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events
+
+It looks like the same core issue like what we fixed in a25ed83
+
+Write a test case before fixing it
+
+** DONE some more
+*** "Recording artists"
+
+"Neville with" - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
+
+*** "Authors"
+
+"ua (com" for e.g. 'Eduardo Di Capua (composer)'
+
+** DONE create a skill for what we have done in the last tow sessions
+*** i
+
+1.)
+
+create a skill for what we have done in the last two sessions commited as "a25ed83" and "ee5b2eb"
+
+2.)
+
+show me how I best formulate such a request for that skill
+
+3.)
+g
+What would have been the best questioning/formulation/instruction for you to solve what we have commited in "a25ed83" and "ee5b2eb".
+
+Check my original instructions, they probably should have been much clearer to get you right to work
+
+*** answer - How to invoke the skill
+
+  2. How to invoke the skill
+
+  You can either name it directly or just describe the symptom — the skill's description frontmatter is written to match natural bug reports, so either works:
+
+  Explicit:
+
+  ▎ /fix-highlight-alignment-gap — filtering the Label column for "Sub Pop, Reprise" doesn't highlight anything on https://musicbrainz.org/release-group/<mbid>, even though the row is there.
+
+  Natural language (it'll still trigger):
+
+  ▎ "Filtering the Label column for 'Sub Pop, Reprise' doesn't highlight on this release-group page — same class of bug as ee5b2eb. Write a test first, then fix it."
+
+  The load-bearing pieces to include, based on what actually helped vs. what cost time in the two real sessions:
+  - The literal query string, verbatim.
+  - The URL.
+  - The column name — or, if you're not 100% sure it's the right name, say so ("it's the column showing the label(s), might be called something else"). That one hedge would have saved the re-diagnosis pass in session 2.
+  - Whether you're looking at the page live right now, or recalling it — tells me whether to trust the committed snapshot/fixture or go re-capture live data.
+  - The prior-commit reference (a25ed83/ee5b2eb) if it's the same shape — that's what let me skip straight to "same bug class" instead of treating it as unknown.
+
+  3. Retrospective on the original instructions
+
+  Honestly, both of your original instructions were already good — specific, testable, and "write a test case before fixing it" was exactly right. I don't want to overstate the improvement available here. But there was one real, identifiable friction point, only in session 2:
+
+  ▎ "matching e.g. (Asbury Park, New Jersey) ... in the 'Event' column"
+
+  Neither part of that was quite true against the actual live data: the literal phrase (Asbury Park, New Jersey) didn't exist verbatim anywhere in the page, and the real cross-tag area-chain content turned out to be in the Location column, not Event. That cost a live re-capture,
+  a broad grep sweep, and a diagnostic test just to relocate the real example — none of which was needed in session 1, where "USA, bleach" / Event / Bleachers matched the committed fixture exactly on the first grep.
+
+  That's not a phrasing problem so much as a "description reconstructed from memory vs. copied from the browser" problem. The fix isn't more words — it's one different source: copy the actual cell text or column header from the live page (select it, or Ctrl+F to confirm it's
+  really there) rather than describing it from recollection. That single change would have taken session 2 from "re-derive the example" straight to "confirm and fix," the same speed as session 1.
+
+  Two smaller, minor helps, for completeness:
+  - Telling me "I just looked at this live" vs. "I noticed this a while back" tells me whether to trust the committed fixture or go straight to a live re-capture.
+  - I'll also own part of the session-2 friction myself — I ran capture-snapshots.js --help on a script with no --help flag, which silently kicked off a full multi-pageType capture I had to kill. That's now called out as a known pitfall in the skill, not something your
+    instructions could have prevented.
+
+
+* DONE filtering shows "ARs" columns
+** i
+
+When using the URL https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897 (snapshoted at
+@tests/snapshots/release-tracks) and filter whatever column, e.g. "Compilation of" with the filter string "part 1) by B"
+the cell data from the hidden "ARs" got visible again but in this case in the "Streaming/Downloads" column, see
+@debug/btr-bug.html for the renderd HTML after filtering
+
+Write a test case before fixing it
+
+** still buggy
+
+OK, I used now a browser with the "MB: Inline per-recording streaming & download links" third-party userscript NOT installed
+and still can produce the column filtering bug showing "ARs" column cell data also the "ARs" column itself is declared
+as "non-visible" (see screenshot [Image #8])
+
+#+begin_example
+@debug/r-initial.html - initial raw HTML of https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897
+@debug/r-final.html - final rendered page unfiltered
+@debug/r-final-filtered.html - filtering the "Title" column with "to"
+#+end_example
+
+
+* TODO no highlighning - "Release events"
+** no highlighning
+
+"Release events" column filtered like "US 2" in the sub-table "Recording location for release"
+https://musicbrainz.org/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances
+
+** singel-table view in new tab
+*** when pressing single table and the sub-table is filtered ==>
+
+https://musicbrainz.org/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances?link_type_id=1 ==> "Release events" is
+empty and so are all the derived date columns. The picard data is in the "Release country" column
+
+*** when pressing single table and the sub-table is NOT filtered ==>
+
+https://musicbrainz.org/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances?link_type_id=1 ==> "Release events" is
+empty but the data went to the "Relationships" column and all the derived date columns are there.
+
+
+** DONE bug - do not show the collapse/uncollapse symbol in the CAA/EAA columns when the counts are not yet retrieved
+
+#+begin_example
+<span class="mb-caa-col-hdr-btn" role="button" data-caa-ctx="caa" data-caa-col-hdr-state="collapsed" title="Show all CAA images in this column" aria-expanded="false"><span>▶</span>
+#+end_example
+
+** one issue left
+
+- perf-steps-1-4 still carries the 10-symbol cache bug. That branch is still in the repo and has the broken version of
+  this same caching code. It'll want a rebase onto the new main or the same fix applied.
+
+** DONE investigate
+
+investigate
+
+#+begin_example
+§F uniq-dropdown-DRIVEN filtering is broken on main. Confirmed pre-existing via the A/B against unmodified main — it
+fails at the combo step (line 765, CD item resolved-but-not-visible, 180s timeout).
+#+end_example
+
+when implementing a fix do it on a new branch
+
+** DONE bug - 'artist-events' - unique value count stalls at 1500 after running a filter once
+
+'artist-events' e-g https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events - unique value count
+stalls at 1500/2000/2500 after running a filter once
+
+** DONE bug on large single table page types
+*** i
+
+There is a bug on large single table page types, e.g. 'artist-events' - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events
+
+I can reproduce it either using the network load path of all 42 paginated pages or the load from disk
+path.
+
+- When loading the above URL from the network, initially it shows 4177 rows total '<span class="mb-row-count-stat" data-mbtt="There are &lt;span class=&quot;mb-mbtt-count&quot;&gt;4177&lt;/span&gt; rows total unfiltered in this table">(4177)</span>'
+and 4161 unique values in the "Event" columns unique dropdown glyph '<span class="mb-col-uniq-count">4161</span>'.
+
+- After filtering the "Event" column with the string "Bon Jovi" it correctly shows '<span class="mb-row-count-stat" data-mbtt="There are &lt;span class=&quot;mb-mbtt-count&quot;&gt;3&lt;/span&gt; rows visible after &lt;span class=&quot;mb-mbtt-cf&quot;&gt;column&lt;/span&gt; filters &lt;span class=&quot;mb-mbtt-colname&quot;&gt;'Event'&lt;/span&gt;:&lt;span class=&quot;mbtt-cf&quot;&gt;Bon Jovi&lt;/span&gt; from &lt;span class=&quot;mb-mbtt-count&quot;&gt;4177&lt;/span&gt; total rows in this table">(3 of 4177)</span>'
+and 3 unique values in the "Event" columns unique dropdown glyph '<span class="mb-col-uniq-count">3</span>'
+
+- After clearing the column filter it consistently shows 4177 rows total again but ONLY 1500 unique value count in the "Event" column
+
+- From then on whatever filtering I do and clearing again, the 1500 unique value count stays. On another machine with another browser, I had the same effect, but the unique value count was 2500 a time, and during another test 2000.
+
+- It somehow looks like it's a multiple of 500
+
+To reproduce it create a test which uses the "Load from disk" path:
+
+1.)
+
+Use the load from disk path with @tests/fixtures/saved-data/artist-events.json.gz
+
+2.)
+
+In my case I get directly the 1000 unique value count in the "Event" column. The total rows is 4174 because the "Save to
+disk" had been done before new data has been entered in MusicBrainz.
+
+3.)
+
+After filtering and clearing the filter again for example with "Bon Jovi", I could reproduce the number 2000.
+
+*** p
+
+ - D. Yield between columns inside _updateAllColHeaderCounts(). Today the
+   full-table scan is only ever paid on the live-fetch initial render (:40918,
+   after an awaited render, at the end of a 42-page fetch where seconds are
+   invisible). This fix moves it onto every filter apply and clear: 4174
+   rows × 21 columns ≈ 88k getCleanColumnText() calls in one unbroken
+   macrotask. setTimeout(0) does not help — it relocates the block, it does
+   not break it up. The function's own comment (:50075) warns of "30–120 s"
+   for 8k-row tables.
+
+** DONE done
+
+Done. main is at 076a33d, working tree clean, branch deleted.
+
+076a33d [ShowAllEntityData] docs: bump to 9.99.977, merge WIP changelog
+28fbe2c [ShowAllEntityData] fix: run post-render passes on the finished table, not the first 500-row chunk
+f5dacd3 [ShowAllEntityData] docs: bump to 9.99.976, merge WIP changelog   ← previous head
+
+The merge fast-forwarded (main hadn't moved). Then, per the project's WIP flow: WIP.1 → 9.99.977 / 2026-09-01, prepended to ShowAllEntityData_CHANGELOG.json, // @version bumped to 9.99.977+2026-09-01, WIP file deleted. The changelog rewrite touched only the 24 new lines — the existing 1.4 MB kept byte-identical formatting.
+
+Post-merge sanity check on main: fixtures 3/3, and the three badge/decoration regression tests 3/3.
+
+Nothing was pushed — origin/main is still at f5dacd3, so git push is yours to run when you want it.
+
+
+* Two things worth keeping on your radar
+
+- The measured cost is real. Global filter 1307 → 1752 ms, column filter 1335 → 1891 ms, sort 3103 → 4241 ms on this
+  machine. That's the header-count scan now covering all 4174 rows instead of a 500-row prefix. It's recorded in
+  PERFORMANCE.org under Step 3, whose memoization is the direct remedy if the extra latency bothers you in daily use.
+  
+- rendered.html / raw.html are now slightly stale by design. Today's live page has drifted to 4178 rows / 4162 uniques
+  versus the committed 4174-row disk fixture. I left them at the old capture so they stay consistent with the fixture
+  that TOTAL_ROWS, UNIQ_COUNT_TOTAL = 4158 and every artist-events test derive from. Re-capturing them means
+  re-capturing artist-events.json.gz and re-deriving those constants together — a separate change.
+  
+  
+* https://musicbrainz.org/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances
+
+
+* DONE Configure the 'Part of series' column as collapsable
+** DONE i
+
+On pageType 'release-tracks', e.g. https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897 (see
+@debug/r-final.html for the raw HTML on the final rendered page), configure the 'Part of series' column as collapsable in the pageType
+configuration "collapsableColumns".
+
+1.)
+
+Split the following elements from a typical column cell, e.g.
+
+#+begin_example
+<td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"><ul><li><span class="serieslink"></span><a class="wrap-anywhere" href="/series/40b6461b-45aa-41c8-84f4-c6271c9c5212"><bdi>Helsingin Sanomat: 100 maailman parasta laulua</bdi></a>&nbsp;<span class="comment"><bdi>(2022-1-15)</bdi></span> <!-- -->(number: 27)<!-- -->, <span class="serieslink"></span><a class="wrap-anywhere" href="/series/b3484a66-a4de-444d-93d3-c99a73656905"><bdi>Rolling Stone: 500 Greatest Songs of All Time</bdi></a>&nbsp;<span class="comment"><bdi>(as at 2016-06-10)</bdi></span> <!-- -->(number: 86)<!-- --> and <span class="serieslink"></span><a class="wrap-anywhere" href="/series/355b26c9-001e-4728-852e-82b4379adb82"><bdi>Rolling Stone: 500 Greatest Songs of All Time: 2021 edition</bdi></a> <!-- -->(number: 111)</li></ul></td>
+#+end_example
+
+when separated by either a ", " or " and " but leave the following artifacts as a multi-row entry inside the resulting multi-row cell
+
+#+begin_example
+<span class="serieslink"></span>
+<a class="wrap-anywhere" href="/series/40b6461b-45aa-41c8-84f4-c6271c9c5212"><bdi>Helsingin Sanomat: 100 maailman parasta laulua</bdi></a>
+<span class="comment"><bdi>(2022-1-15)</bdi></span>
+(number: 27)
+#+end_example
+
+2.)
+
+Also check how the splitting typically has been done for other multi-row cells
+
+3.)
+
+Extract a skill for this action so that it's easier in the future to instruct you what to do
+
+** DONE /uniq-dropdown-section
+
+On pageType 'release-tracks', e.g. https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897 (see
+@debug/r-final.html for the raw HTML on the final rendered page) add sections to the unique-values dropdown of the 'Part of series'
+column for the different parts of the multi-row cell entries like e.g.
+
+#+begin_example
+series name - Helsingin Sanomat: 100 maailman parasta laulua
+date - 2022-1-15
+number - number: 27 
+#+end_example
+
+* DONE wrong date extraction on the "Recorded at place" column on
+
+Wrong date extraction on the "Recorded at place" column on the pageType 'release-tracks',
+e.g. https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897 (see @debug/r-initial.html for the initial page and @debug/r-final.html for the raw HTML on the final rendered page)
+
+Currently a data cell like e.g. from the initial page which has two place entries with a date expression
+
+#+begin_example
+<dt>recorded at:</dt>
+<dd><span class="placelink"></span><a class="wrap-anywhere" href="/place/be30acd4-eba7-4b38-8429-b4f5840ef782"><bdi>914 Sound Studios</bdi></a> in <span class="arealink"></span><a href="/area/75e398a3-5f3f-4224-9cd8-0fe44715bc95"><bdi>New York</bdi></a>, <span class="flag flag-US"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><bdi>United States</bdi></a></span> <!-- -->(from 1974-10 until 1975-03)<!-- --> and <span class="placelink"></span><a class="wrap-anywhere" href="/place/da7b57fc-8997-407c-8a1d-bdd7bb32b87a"><bdi>The Record Plant</bdi></a> <span class="comment">(<bdi>New York</bdi>)</span> in <span class="arealink"></span><a href="/area/edd27a39-ff8a-4af4-8bbf-f369b0fb1899"><bdi>Midtown Manhattan</bdi></a>, <span class="arealink"></span><a href="/area/74e50e58-5deb-4b99-93a2-decbb365c07f"><bdi>New York</bdi></a>, <span class="arealink"></span><a href="/area/75e398a3-5f3f-4224-9cd8-0fe44715bc95"><bdi>New York</bdi></a>, <span class="flag flag-US"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><bdi>United States</bdi></a></span> <!-- -->(from 1975-04-18 until 1975-07-16)</dd>
+#+end_example
+
+ends up split into two separate multi-row entries (which is fine), but the first one has the date expression from both entries appended
+
+#+begin_example
+914 Sound Studios in New York, United States (from 1974-10 until 1975-03) (from 1975-04-18 until 1975-07-16)
+The Record Plant (New York) in Midtown Manhattan, New York City New York, New York New York, United States (from 1975-04-18 until 1975-07-16)
+#+end_example
+
+* DONE /uniq-dropdown-section
+
+On pageType 'recording-fingerprints', e.g. https://musicbrainz.org/recording/7ada2178-c1db-4a24-9760-810681e95308/fingerprints
+@debug/rec-fingerprint.html.html for the raw HTML on the final rendered page) add a section to the unique-values dropdown of the 'AcoustID'
+column for the Linked/Unlinked acoustids. Use the same glyphs/classes as the MusicBrianz page in the dropdown as icons
+
+* DONE Why is "David Bowie" NOT in the "Entity info - Artist name" section included and it's comment "English singer‐songwriter" NOT in the "Entity info - Comment" section
+** i
+
+On the URL https://musicbrainz.org/tag/rock/recording
+why is "David Bowie" NOT in the "Entity info - Artist name" section included and it's comment "English singer‐songwriter" NOT in the "Entity info - Comment" section ?
+
+See @debug/rock-on-recordings.html
+
+** bug
+
+OK, the example with "David Bowie" together in the data cell "Queen (UK rock group) & David Bowie (English singer‐songwriter)" works now.
+
+But when choosing "David Bowie" now from the "Entity info - Artist name" section, the following line see
+@debug/row-not-filtered.html but also some others, see the screenshot [Image #20] when filtering just for plain "david"
+are not filtered, just the one with "Queen (UK rock group) & David Bowie (English singer‐songwriter)" see [Image #21]
+* DONE /uniq-dropdown-section
+
+On pageType 'artist-aliases', e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/aliases for the label "label: 'Show all Aliases for Artist'"
+(see @debug/artist-aliases.html for the raw HTML on the final rendered page) add a section to the unique-values dropdown of the 'Locale'
+column for the locale language and if it's a primary or not
+
+* DONE /uniq-dropdown-section user-ratings-entity
+
+/uniq-dropdown-section On pageType https://musicbrainz.org/user/vzell/ratings/event/ see @debug/user-ratings-event.html for the raw HTML of the
+final rendered page, when a data cell in the "Event" column has an optional "<bdi>cancelled</bdi>" red marked text, it
+should also be included in the unique value drop down in it's own "Event info - Cancelled" section
+
+* DONE /uniq-dropdown-section instruments
+
+On the multi-table pageType https://musicbrainz.org/instruments see @debug/instruments.html for the raw HTML of the
+final rendered page, for the first column in each sub-table, add the following sections in the unique value drop down
+
+#+begin_example
+has comment - when ther is a <span class="comment">
+has description - when there is a description after the " — "
+#+end_example
+
+* DONE different areas with the same name
+
+When there are different areas with the same name, e.g. on the pageType
+https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf (see also @debug/2-ny.html the raw HTM of the final
+rendered page), currently only one is shown in the unique value dropdown menu of such a column, e.g. the columns "Region" or "Location"
+see also the screenshot
+
+* DONE Artists with collaboration relationships
+
+Artists with collaboration relationships, the special report URL
+https://musicbrainz.org/report/CollaborationRelationships (@debug/collaboration.html raw HTML of the first paginated
+page, screenshot [Image #31]) should be handled like e.g.
+
+#+begin_example
+https://musicbrainz.org/report/DiscogsLinksWithMultipleReleaseGroups
+https://musicbrainz.org/report/ASINsWithMultipleReleases
+https://musicbrainz.org/report/DiscogsLinksWithMultipleArtists
+etc.
+#+end_example
+
+Currently on the final rendered page, the "Collaboration" column is empty see also [Image #32]
+* DONE cancelled in red
+
+On pageType https://musicbrainz.org/user/vzell/ratings/event/ see @debug/user-ratings-event.html for the raw HTML of the
+final rendered page, when a data cell in the "Event" column has an optional "<bdi>cancelled</bdi>" red marked text, it
+should also be rendered in red in the unique value drop down
+* DONE currently the column header collapse glyph for CAA/EAA column is always rendered. is it possible to defer the visibility until all image meta inf is loaded
+
+currently the column header collapse glyph for CAA/EAA column is always rendered. is it possible to defer the visibility
+until all image meta info is loaded
+
+* DONE SKILL: merge into main, push and remove the branch
+** i
+
+mkdir -p .claude/skills/merge-push-remove && cat > .claude/skills/merge-push-remove/SKILL.md <<'EOF'
+---
+name: merge-push-remove
+description: Merge to main, push and remove feature branch
+---
+1. Confirm we are NOT on main; if we are, switch to our feature branch named after the change.
+2. Merge our feature branch into main
+3. Push
+4. Remove the branch local and remote
+EOF
+
+** commit and push the untracked files ".claude/skills/merge-push-remove/"
+
+commit and push the untracked files ".claude/skills/merge-push-remove/"
+
+
+* DONE same area name bug makes other pageTypes even worse
+
+In commit "ea666ff" you fixed the following bugs:
+
+#+begin_example
+MusicBrainz can give two genuinely different area entities the exact
+same display name (e.g. a county/city both named "New York" and the
+state "New York" - see debug/2-ny.html). This collapsed two bugs into
+one report: _routeAreaLink()/_maybeCorrectAreaFlagRegion() force-routed
+the city into the Region column alongside the state (compared the
+anchor's own ambiguous bare text instead of the flag-decorating icon's
+own disambiguated alt/title), and the unique-values dropdown's "Entity
+info" family is keyed by name only, so even independent of the routing
+bug, two different hrefs sharing a name always collapsed into one
+checkbox.
+#+end_example
+
+Specifically the 'the unique-values dropdown's "Entity info" family is keyed by name only' fix seems to produce strange
+results on other pageTypes where non area entities are involved:
+
+For example on the pageType 'work-recordings' e.g. https://musicbrainz.org/work/1f573511-eb4b-3106-8fb2-f15de52e4868 see
+also @debug/work.recordings.html for the raw HTML of the final renderded page and the screenshot of the unique value
+drop down memu on the "Title" column [Image #1]. There are lot's of entries like 'recording name: 4th of July, Asbury Park (Sandy) (x)' where x starts with 1 up to 93.
+
+The previous fix should ONLY by applied to the unique value drop down of columns like "Location" where same named area
+names are involved and where these names have completely different meanings, as opposed to columns like the "Title" column where it actually should look like this [Image #2],
+so I don't want a different entry in the "Entity info - Recording name" section.
+
+Only special case this behaviour where areas are involved. Check with test scripts, fix and retest.
+
+* DONE label-relationships and "Release events" columns
+** i
+
+1.)
+
+Currently the following pageTypes e.g.
+
+#+begin_example
+label-relationships - https://musicbrainz.org/label/0b805b9c-ea03-4fc1-b50d-6dcef76433e0/relationships - @debug/label-rels-initial.html - initial page
+label-relationships - https://musicbrainz.org/label/0b805b9c-ea03-4fc1-b50d-6dcef76433e0/relationships - @debug/label-rels-final.html - final rendered page
+#+end_example
+
+both declare 'Release events' as an injected column
+
+#+begin_example
+                injectedColumns: [ 'Release events', 'Relationships' ],
+#+end_example
+
+annd it renders fine with all the cell data correct and the injectedColumnExtractors applied
+
+#+begin_example
+                injectedColumnExtractors: [
+                    { sourceColumn: 'Release events', extractor: 'splitCountryDate', syntheticColumns: ['Release country', 'Release date'] },
+                    { sourceColumn: 'Release date',   extractor: 'dateParts',        syntheticColumns: ['R-DD', 'R-MM', 'R-YYYY', 'R-Day', 'R-Month'] }
+                 ],
+#+end_example
+
+2.)
+
+Now the bug:
+
+When clicking the button '<button id="mb-stf-distributed_release-single-table-btn"' on the final rendered page, a new page is rendered on a new tab
+
+#+begin_example
+label-relationships-filtered - https://musicbrainz.org/label/0b805b9c-ea03-4fc1-b50d-6dcef76433e0/relationships?link_type_id=1 - @debug/label-rels-final-complete.html
+#+end_example
+
+but the "Release events" column doesn't have the right cell data instead it has the data from the "Relationships" column.
+
+** bug
+
+Now the "Relationships" columns starts fetching double values for a single unique relationship in a data cell, starting from
+that row up to where the fetching for relationships already happened on the page where we clicked the '<button id="mb-stf-distributed_release-single-table-btn"' button
+
+@debug/work-rec-double-relationships.html - renderded page which shows the relationships doubled icons, not all rows have been fetched yet when I saved the raw HTML
+
+
+
+* The video glyph 'class="video"' in the "Video" column of different pageTypes e.g https://musicbrainz.org/work/8727a75a-8d33-3a2c-912a-f57952773201 should be centered
+** DONE i
+
+The video glyph 'class="video"' in the "Video" column of different pageTypes e.g
+https://musicbrainz.org/work/8727a75a-8d33-3a2c-912a-f57952773201 should be centered instead of being left aligned inside the data cells
+
+Here a current typical rendered data cell from the above URL
+
+#+begin_example
+<td data-mb-rest-bg="rgb(242, 242, 242)" style="background: rgb(242, 242, 242);"><span class="video" title="This recording is a video"></span><span class="mb-video-sort-key" aria-hidden="true" style="display: none;">video</span></td>
+#+end_example
+
+and the complete final raw HTML of the above URL @debug/work-rec.html
+
+** /uniq-dropdown-section - add the glyph to the udvm
+
+
+* /uniq-dropdown-section "Length" column - create a new section in the unique value drop down with unique songs which last between 0 to 1 minutes, between 1 to 2 minutes, between 2 to 3 minutes and so on
+** DONE i
+
+"Length" column - create a new section in the unique value drop down with unique songs which last between 0 to 1 minutes, between 1 to 2 minutes, between 2 to 3 minutes and so on
+
+"?:??" should map to unknown track lenght
+
+Example page - https://musicbrainz.org/work/8727a75a-8d33-3a2c-912a-f57952773201 @debug/work-rec.html
+
+** DONE bug when filtering directly with arbitray column-filter string in the "Length" column
+
+1.)
+
+"Length info - Duration" implementation works now
+
+2.)
+
+bug when filtering directly with arbitray column-filter string in the "Length" column, e.g. with "5:0". Now row is filtered at all.
+
+Here how a typical data cell looks like
+
+#+begin_example
+<td data-mb-int-col-styled="1" style="text-align: center; background: rgb(255, 255, 255);" data-mb-rest-bg="#ffffff"><span class="mb-ic-wrap" style="display: inline-block; white-space: nowrap;"><span class="mb-ic-left" style="display: inline-block; text-align: right; font-variant-numeric: tabular-nums; min-width: 1ch;">5</span><span class="mb-ic-sep">:</span><span class="mb-ic-right" style="display: inline-block; text-align: left; font-variant-numeric: tabular-nums; min-width: 2ch;">05</span></span></td>
+#+end_example
+
+** DONE "Length info - Deviation"
+*** DONE i
+
+Please re-evaluate the plan as I made some important additions/changes.
+
+Add a new unique column value section named "Length info - Deviation" to the "Length" column (in addition to the curretn
+"Length info - Duration") and display length values which deviate different percentages from the average value. Choose
+meaningfull values, as typically the length of a song should be quite comparable, except when it's flagged as live in
+the "Attributes" column. Live recordings tend to be much longer because of generic intro/outro sections either musically
+or somtimes added speeches/talks. Account for this "live" facts.
+
+It's possible that other pageTypes also have a "Length" column and maybe an equivalent column where the "live" attribute
+is present besides the "Attributes" column in the pageType
+https://musicbrainz.org/work/8727a75a-8d33-3a2c-912a-f57952773201. So make it configurable per pageType which column
+should be choosen for the evaluation of the "live" attribute presence, but the default should always be the "Attributes"
+column if NOT specifically specified or if NOT present in the same table where the "Length" column is found.
+
+Also account for this fact, so basically the "live" attribute should be optional and not assumed to be always present,
+sometimes even it's NOT associated yet at all in the current MusicBrainz data.
+
+Make the whole "Length info - Deviation" feature configurable (default: true), as it will be architecturally different
+from every existing dropdown section, and maybe it's a performance killer, so the enduser should get the choice.
+
+*** DONE a
+
+● Shipped as v9.99.1001 on main. Summary:
+
+  "Length info - Deviation" — a new sibling section to "Length info - Duration" in the "Length" column's 📊 dropdown,
+  bucketing rows into 7 fixed signed ranges (within 10%, 10–25%, 25–50%, 50%+ shorter/longer than the page's average
+  Length).
+
+  Live-recording awareness: rows flagged "live" (default column name "Attributes", per-pageType-overridable via a new
+  features.lengthDeviationLiveColumn key) are excluded from the reference average but still bucketed against it —
+  confirmed the real text shape ("live", "cover and live") against debug/work-rec.html's actual work-recordings page
+  content, not guessed.
+
+  Toggleable: new sa_enable_length_deviation_section setting (default on), since this is architecturally the first
+  dropdown section needing a table-wide average rather than a pure per-cell function.
+
+  Two real bugs surfaced and fixed during implementation via TDD-style debugging:
+  1. Caching the average against _visibleRowSetSignature (visible rows only) created a feedback loop — the filter itself hides rows, shrinking the "visible" set mid-pass and silently changing the average a row was judged against. Fixed by scanning all rows regardless of
+     visibility.
+  2. testRowMatch()'s highlight pass runs on a cloneNode(true) row not yet in the document, so cell.closest('table') returned null, silently killing every match. Fixed by threading the live table through explicitly (ctx.table, set by runFilter()) instead of DOM-deriving it.
+
+  All 28 fixture tests pass, including the 6 new ones covering bucket counts, filter+highlight round-trips, the settings toggle, and the per-pageType override mechanism.
+  
+*** DONE live
+
+I want the "Live-recording awareness" to also be visible in it's own section
+
+** TODO A non "Attributes" live column would be as an example on e.g. https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/performances?direction=1&link_type_id=693&page=1 - place-performances
+
+
+
+* From https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/recordings to single-table tab view of "Recording location of recording"
+
+From https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/recordings to single-table tab view of "Recording
+location of recording" broken, misses one column "Credited as", https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/recordings?direction=1&link_type_id=698&page=1
+
+
+* TODO Support the following date expression: (live, 1992–1994: USA)
+
+Support the following date expressions:
+
+#+begin_example
+live, 1992–1994: USA - "–"
+unicode or not, also highligh different if not the right unicode symbol
+#+end_example
+
+
+* DONE Currently when length include thousends of a second, then it's not highlighted when choosen from the section lists
+* DONE Implement our own version of jesus2099 track length ms precision
+
+
+https://musicbrainz.org/work/8727a75a-8d33-3a2c-912a-f57952773201
+
+
+* TODO On the CD stubs page render the "Title" italic info on the final rendered page as a typical entity with a comment would do, as a comment.
+** i
+
+Currently it get's extracted in the "Primary alias" column
+
+https://musicbrainz.org/cdstub/browse
+
+** /uvd - create section for "added" and "modified"
+
+* TODO currently when MusicBrainz entities have still open edits, they are wrapped with '<span class="mp">'
+** DONE i
+
+currently when MusicBrainz entities have still open edits, they are wrapped with '<span class="mp">', e.g.
+
+#+begin_example
+<span class="mp"><a href="/artist/20ff3303-4fe2-4a47-a1b6-291e26aa3438" title="Brown, James (The Godfather of Soul)"><bdi>James Brown</bdi></a></span>
+#+end_example
+
+add a new section (configurable: true) to the unique value drop down for EACH column, to make thes open edits filerable
+
+** DONE redesign
+
+Currently whe have on multi-table pageTypes like
+e.g. https://musicbrainz.org/area/a36544c1-cb40-4f44-9e0e-7a5a69e403a8/recordings (see also @debug/multi-filter.html)
+all sub-table filter artifacts inside a container '<span class="mb-subtable-filter-container visible"' which I think is useful.
+
+On single table pageTypes e.g. https://musicbrainz.org/report/LowDataQualityReleases there all table filter artifacts
+are NOT include in an outer container e.g
+
+#+begin_example
+<span id="mb-global-filter-wrapper"
+<label id="mb-global-filter-case-label"
+etc.
+#+end_example
+
+The global filter arificats on multi-table pageTypes exhibit the same problem too e.g. starting from '<span id="mb-global-filter-wrapper"'
+
+1.)
+
+Is it a good idea to consolidate this, basically give the singel/multi-table case also it's own containers
+
+2.)
+
+This would then come in handy to position a new toggle button right after that containers, which should appear as soon
+as there are pending edits on a table/sub-table. When pressing it, these rows should be pre-filtered (on multi-table
+pageTypes, there should be a toogle button on the sub-table level and on the global level and they should stay synced
+with proper tooltips.
+
+** Neither existing multi fixture has several sub-tables. Let me probe what place-performances actually renders
+
+Neither existing multi fixture has several sub-tables. Would this be useful
+
+** but when the 7 day review period for pending edits is over, do we have to re-capture again
+
+but when the 7 day review period for pending edits is over, do we have to re-capture again
+

@@ -1,0 +1,54 @@
+* /uniq-dropdown-section On original date based columns, add a new section which renders unique values for complete date expression, partial ones and date ranges where each date again could be a partial expression
+** I
+
+On original date based columns on each pageType, add a new section to the unique value dropdown menu which renders
+unique values for complete date expressions, partial ones and date ranges where each date again could be a partial
+expression
+
+#+begin_example
+<td>2020-04-08</td>
+<td>1974-08</td>
+<td>1974</td>
+<td>1973-08-09 – 1973-09-23</td>
+etc. plus combinations in the case there are date ranges (do nut assume that we always have complete dates like in the first case
+#+end_example
+
+example page at @debug/date-uvd.html - https://musicbrainz.org/work/1f573511-eb4b-3106-8fb2-f15de52e4868
+
+** bug
+
+Actually currently all the dates rendered in the new sections are just doubling what we already have in the native
+section.
+
+This is NOT what I want, instead I want
+
+1.)
+
+unique counts for
+
+#+begin_example
+complete dates
+partial dates which look like 1974-08 or just the year 1974
+same for date ranges
+#+end_example
+
+They should all go into one new section (choose a representative name)
+
+2.)
+
+a new section which shows dates per 10 year range, like from e.g. 1990-2000, 2000-2010, etc
+
+2.)
+
+a new section which shows dates per month, but not the integer value, instead the rela month name, e.g, 1=January,2=February,etc
+
+** highlight bug
+
+Currently when filtering for "Date info - Decade" and "Date info - Month" highlightning always highlights the complete
+date expression in the filtered rows, instead onl the following parts should actually be highlighted:
+
+#+begin_example
+"Date info - Decade": e.g. in "2008-07-15" just the year part, in this case "2008"
+"Date info - Month": e.g. in "2008-07-15" just the month integer part, in this case "07"
+#+end_example
+

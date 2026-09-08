@@ -1,0 +1,28 @@
+* TODO Create new sections in the unique value drop down
+
+On the pageTypes e.g. 'work-recordings' and 'work-recordings-filtered'
+
+1.)
+
+add a unique-values dropdown section for the 'Attributes' column — one entry per unique recording attribute (cover,
+live, medley, instrumental, demo, partial, …),
+
+Typical cell entries are
+
+#+begin_example
+cover - single entry
+cover and live - exactly two entries
+cover, medley and partial - multiple entries
+#+end_example
+
+2.)
+
+additionally add a unique-values dropdown section named "Event parts" for the 'Title' and "Comment" column — one entry per
+extracted synthetic value from the 'eventParts' syntheticColumnExtractor.
+
+3.)
+
+the unique-values dropdown section named "Event parts" should also be present on other pageTypes where the 'eventParts'
+syntheticColumnExtractor is defined on the "Comment" column plus the associated mainColumn from where the "Comment"
+column is derived/extracted
+

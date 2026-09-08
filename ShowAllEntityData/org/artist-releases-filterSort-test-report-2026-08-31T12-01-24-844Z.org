@@ -1,0 +1,175 @@
+#+TITLE: artist-releases (BoDeans) filter/sort/highlight regression report
+#+DATE: 2026-08-31T12:01:24.845Z
+
+* Methodology
+
+This report is generated from an actual run of
+tests/live/artist-releases-filter-sort.spec.js (via a `generate-*-filtersort-report.js` entry script
+built on the shared `tests/support/filtersortReportGenerator.js` engine,
+reading Playwright's own --reporter=json output) — every row below reflects
+a real pass/fail outcome, never a hand-typed expectation.
+
+** Ground-truth provenance
+
+Every expected count in the spec (see
+tests/support/bodeansArtistReleasesFixture.js) was derived directly from
+debug/BoDeans-artist-releases-final.html (the committed rendered baseline,
+captured with real CAA/Relationships network access) and cross-checked
+against debug/BoDeans-artist-releases-original.html (the true raw,
+pre-script MusicBrainz HTML) — 8 of 8 core stats matched exactly between
+the two files (Artist 55/1 case-variant split, all 9 Format buckets,
+Label/Catalog#/Barcode breakdowns, CAA's 37/19 sort-key split).
+
+** Single Cc/Rx/Ex checkbox triad
+
+`artist-releases` is tableMode: 'single', so there is only ONE Cc/Rx/Ex
+checkbox triad on the whole page — it governs the global filter AND every
+column filter identically. There is no per-column-filter-row override (that
+only exists on tableMode: 'multi' pages' Sub-Table Filter panel).
+
+** Section key
+
+- §A — per-column typed filter cases (plus highlight assertion, and — since the same test.step loop also folds in §I — the filter-status text/row-count tooltip/highlight-toggle-button UI-state assertions, and a multi-row collapse-indicator (`.mb-collapse-toggle-has-match`) check on the Catalog# case)
+- §A2 — chaban day-of-week third-party-interop case (Country/Date ~ "Tue")
+- §A3 — CAA column expanded, type/comment highlighting (live fetch only — see that test's own JSDoc for why the disk-fixture path can't cover this)
+- §B — combo / global+column-order-pair cases (also folds in §I)
+- §C — sort-then-restore checkpoints (also folds in §I where a filter is active)
+- §D — uniq-dropdown checks, filters cleared
+- §E — uniq-dropdown checks, one filter left active
+- §F — uniq-dropdown-DRIVEN filtering (checking items, not typing)
+- §J — pre-filtered disk-load repeat (opt-in, TEST_PREFILTER_LOAD=1)
+- §K — column-visibility exercise (opt-in, TEST_COLVIS=1)
+
+* Summary
+
+| Metric | Value |
+|---|---|
+| Total cases | 98 |
+| Passed | 98 |
+| Failed | 0 |
+| Other (skipped/timedOut/interrupted) | 0 |
+| **Complete test run duration (wall-clock)** | **7m 44.5s** |
+| Sum of individual case/step durations | 14m 0.8s (steps nest inside their parent test, so this over-counts vs. wall-clock — informational only) |
+
+* Coverage by category
+
+Purely pattern-classified from each case/step's own title (section markers
++ keywords, see the suite's own `classifyCase()`) — not a separate
+assertion, just a breakdown of what kind of behavior each already-run case
+covers.
+
+#+CAPTION: Cases grouped by what they actually verify
+| Category | Total | Passed | Failed | Other |
+|---|---|---|---|---|
+| Typed column filter | 43 | 43 | 0 | 0 |
+| Uniq-dropdown contents | 23 | 23 | 0 | 0 |
+| Pre-filtered disk-load (§J) | 10 | 10 | 0 | 0 |
+| Sort-then-restore | 7 | 7 | 0 | 0 |
+| Highlighting (CAA expanded) | 6 | 6 | 0 | 0 |
+| Combo / global+column order | 6 | 6 | 0 | 0 |
+| Third-party interop | 2 | 2 | 0 | 0 |
+| Column visibility (§K) | 1 | 1 | 0 | 0 |
+
+* Case-by-case results
+
+#+CAPTION: Every case executed, in run order
+| Case | Category | Status | Duration (ms) | Error |
+|---|---|---|---|---|
+| §A per-column typed filter cases | Typed column filter | passed | 170733 |  |
+| §A per-column typed filter cases › Release ~ "Black and White" -> 4 rows | Typed column filter | passed | 5238 |  |
+| §A per-column typed filter cases › Release ~ "In (Disc" -> 1 rows | Typed column filter | passed | 3873 |  |
+| §A per-column typed filter cases › Artist ~ "bodeans" -> 56 rows | Typed column filter | passed | 3696 |  |
+| §A per-column typed filter cases › Artist ~ "BoDeans" [Cc] -> 55 rows | Typed column filter | passed | 4300 |  |
+| §A per-column typed filter cases › Format ~ "CD" -> 42 rows | Typed column filter | passed | 3361 |  |
+| §A per-column typed filter cases › Format ~ "CD" [Ex] -> 14 rows | Typed column filter | passed | 3488 |  |
+| §A per-column typed filter cases › Tracks ~ " + " -> 6 rows | Typed column filter | passed | 3345 |  |
+| §A per-column typed filter cases › Country/Date ~ "US" -> 32 rows | Typed column filter | passed | 3035 |  |
+| §A per-column typed filter cases › Country/Date ~ "1986" -> 2 rows | Typed column filter | passed | 3925 |  |
+| §A per-column typed filter cases › Country/Date ~ "05" -> 4 rows | Typed column filter | passed | 2957 |  |
+| §A per-column typed filter cases › Country/Date ~ "XW" -> 3 rows | Typed column filter | passed | 3028 |  |
+| §A per-column typed filter cases › Country/Date ~ "US 2009-03-10" -> 1 rows | Typed column filter | passed | 4420 |  |
+| §A per-column typed filter cases › Country/Date ~ "US 1986" -> 2 rows | Typed column filter | passed | 3645 |  |
+| §A per-column typed filter cases › Label ~ "Reprise" -> 11 rows | Typed column filter | passed | 3524 |  |
+| §A per-column typed filter cases › Label ~ "Slash (US" -> 26 rows | Typed column filter | passed | 3728 |  |
+| §A per-column typed filter cases › Catalog# ~ "9 25876-2" -> 2 rows | Typed column filter | passed | 3759 |  |
+| §A per-column typed filter cases › Catalog# ~ "25876" -> 4 rows | Typed column filter | passed | 3291 |  |
+| §A per-column typed filter cases › Barcode ~ "[none]" -> 8 rows | Typed column filter | passed | 4175 |  |
+| §A per-column typed filter cases › CAA ~ "no" -> 28 rows | Typed column filter | passed | 3071 |  |
+| §A per-column typed filter cases › CAA ~ "yes" -> 37 rows | Typed column filter | passed | 3091 |  |
+| §A per-column typed filter cases › CAA ~ "Booklet" -> 20 rows | Typed column filter | passed | 4554 |  |
+| §A per-column typed filter cases › CAA ~ "Booklet Page 5" -> 3 rows | Typed column filter | passed | 4157 |  |
+| §A per-column typed filter cases › CAA ~ "Booklet Booklet Page 5" -> 3 rows | Typed column filter | passed | 5051 |  |
+| §A per-column typed filter cases › CAA ~ "let Boo" -> 18 rows | Typed column filter | passed | 3558 |  |
+| §A per-column typed filter cases › Country ~ "United States (US)" -> 32 rows | Typed column filter | passed | 4738 |  |
+| §A per-column typed filter cases › Country ~ "United States" -> 34 rows | Typed column filter | passed | 4954 |  |
+| §A per-column typed filter cases › Date ~ "^\d{4}-\d{2}-\d{2}$" [Rx] -> 22 rows | Typed column filter | passed | 6067 |  |
+| §A per-column typed filter cases › Total Tracks ~ "11" -> 4 rows | Typed column filter | passed | 3252 |  |
+| §A per-column typed filter cases › DD ~ "1" -> 11 rows | Typed column filter | passed | 2920 |  |
+| §A per-column typed filter cases › DD ~ "^1$" [Rx] -> 1 rows | Typed column filter | passed | 3640 |  |
+| §A per-column typed filter cases › MM ~ "6" -> 7 rows | Typed column filter | passed | 2969 |  |
+| §A per-column typed filter cases › YYYY ~ "2022" -> 3 rows | Typed column filter | passed | 3297 |  |
+| §A per-column typed filter cases › Day ~ "Tuesday" -> 16 rows | Typed column filter | passed | 3726 |  |
+| §A per-column typed filter cases › Month ~ "June" -> 7 rows | Typed column filter | passed | 3413 |  |
+| §A per-column typed filter cases › MB-Name ~ "Outside Looking In" -> 4 rows | Typed column filter | passed | 5995 |  |
+| §A per-column typed filter cases › Comment ~ "BMG" -> 2 rows | Typed column filter | passed | 3133 |  |
+| §A per-column typed filter cases › Primary alias ~ "x" -> 0 rows | Typed column filter | passed | 2945 |  |
+| §A per-column typed filter cases › Relationships ~ "amazon.com" -> 14 rows | Typed column filter | passed | 6962 |  |
+| §A per-column typed filter cases › Relationships ~ "release" -> 21 rows | Typed column filter | passed | 6807 |  |
+| §A per-column typed filter cases › Format ~ "gital Me" -> 8 rows | Typed column filter | passed | 3728 |  |
+| §A per-column typed filter cases › Release ~ "s: The Best Of" -> 1 rows | Typed column filter | passed | 4354 |  |
+| §A per-column typed filter cases › Release ~ "tside Look" -> 4 rows | Typed column filter | passed | 5054 |  |
+| §A2 chaban day-of-week third-party interop: Country/Date ~ "Tue" | Third-party interop | passed | 10802 |  |
+| §A2 chaban day-of-week third-party interop: Country/Date ~ "Tue" › Country/Date ~ "Tue" narrows to the same count as Day ~ "Tuesday" | Third-party interop | passed | 3781 |  |
+| §A3 CAA column expanded — type/comment highlighting is correct (live fetch) | Highlighting (CAA expanded) | passed | 78954 |  |
+| §A3 CAA column expanded — type/comment highlighting is correct (live fetch) › expand the CAA column | Highlighting (CAA expanded) | passed | 579 |  |
+| §A3 CAA column expanded — type/comment highlighting is correct (live fetch) › CAA ~ "Booklet" -> 20 rows, 194 highlight spans | Highlighting (CAA expanded) | passed | 12181 |  |
+| §A3 CAA column expanded — type/comment highlighting is correct (live fetch) › CAA ~ "Booklet Page 5" -> 3 rows, 3 highlight spans | Highlighting (CAA expanded) | passed | 13073 |  |
+| §A3 CAA column expanded — type/comment highlighting is correct (live fetch) › CAA ~ "Booklet Booklet Page 5" -> 3 rows, 6 highlight spans | Highlighting (CAA expanded) | passed | 12896 |  |
+| §A3 CAA column expanded — type/comment highlighting is correct (live fetch) › CAA ~ "let Boo" -> 18 rows, 166 highlight spans | Highlighting (CAA expanded) | passed | 11512 |  |
+| §B combo and global+column order-pair cases | Combo / global+column order | passed | 42026 |  |
+| §B combo and global+column order-pair cases › combo: Combo A -> 28 rows | Combo / global+column order | passed | 8481 |  |
+| §B combo and global+column order-pair cases › combo: Combo B -> 1 rows | Combo / global+column order | passed | 6077 |  |
+| §B combo and global+column order-pair cases › combo: Combo C -> 9 rows | Combo / global+column order | passed | 11253 |  |
+| §B combo and global+column order-pair cases › global+column order pair: global first, then column | Combo / global+column order | passed | 6860 |  |
+| §B combo and global+column order-pair cases › global+column order pair: column first, then global | Combo / global+column order | passed | 5538 |  |
+| §C sort-then-restore checkpoints preserve row count across every scenario | Sort-then-restore | passed | 48037 |  |
+| §C sort-then-restore checkpoints preserve row count across every scenario › checkpoint: baseline | Sort-then-restore | passed | 3967 |  |
+| §C sort-then-restore checkpoints preserve row count across every scenario › checkpoint: after Format~CD | Sort-then-restore | passed | 5575 |  |
+| §C sort-then-restore checkpoints preserve row count across every scenario › checkpoint: after Combo A | Sort-then-restore | passed | 7552 |  |
+| §C sort-then-restore checkpoints preserve row count across every scenario › checkpoint: after Artist Cc-on | Sort-then-restore | passed | 12023 |  |
+| §C sort-then-restore checkpoints preserve row count across every scenario › checkpoint: after CAA no | Sort-then-restore | passed | 7845 |  |
+| §C sort-then-restore checkpoints preserve row count across every scenario › checkpoint: after order-pair result | Sort-then-restore | passed | 7480 |  |
+| §D uniq-dropdown contents (filters cleared) are self-consistent and survive a reopen | Uniq-dropdown contents | passed | 9098 |  |
+| §D uniq-dropdown contents (filters cleared) are self-consistent and survive a reopen › "Format" dropdown is non-empty and survives a reopen | Uniq-dropdown contents | passed | 520 |  |
+| §D uniq-dropdown contents (filters cleared) are self-consistent and survive a reopen › "Artist" dropdown is non-empty and survives a reopen | Uniq-dropdown contents | passed | 538 |  |
+| §D uniq-dropdown contents (filters cleared) are self-consistent and survive a reopen › "CAA" dropdown is non-empty and survives a reopen | Uniq-dropdown contents | passed | 459 |  |
+| §D uniq-dropdown contents (filters cleared) are self-consistent and survive a reopen › "Country" dropdown is non-empty and survives a reopen | Uniq-dropdown contents | passed | 990 |  |
+| §D uniq-dropdown contents (filters cleared) are self-consistent and survive a reopen › "Primary alias" dropdown is non-empty and survives a reopen | Uniq-dropdown contents | passed | 329 |  |
+| §D uniq-dropdown contents (filters cleared) are self-consistent and survive a reopen › "Label" dropdown is non-empty and survives a reopen | Uniq-dropdown contents | passed | 444 |  |
+| §D uniq-dropdown contents (filters cleared) are self-consistent and survive a reopen › Format "Type" facet has the expected exact counts | Uniq-dropdown contents | passed | 98 |  |
+| §D uniq-dropdown contents (filters cleared) are self-consistent and survive a reopen › Artist dropdown flags the one name-variation row | Uniq-dropdown contents | passed | 86 |  |
+| §D uniq-dropdown contents (filters cleared) are self-consistent and survive a reopen › CAA Structure section has/no-artwork counts | Uniq-dropdown contents | passed | 143 |  |
+| §D uniq-dropdown contents (filters cleared) are self-consistent and survive a reopen › Primary alias Structure section is 100% empty | Uniq-dropdown contents | passed | 90 |  |
+| §D uniq-dropdown contents (filters cleared) are self-consistent and survive a reopen › Label Structure section empty-count is 5 | Uniq-dropdown contents | passed | 103 |  |
+| §E uniq-dropdown contents with the Format~CD filter left active | Uniq-dropdown contents | passed | 7733 |  |
+| §E uniq-dropdown contents with the Format~CD filter left active › "Format" dropdown while Format~CD is active | Uniq-dropdown contents | passed | 102 |  |
+| §E uniq-dropdown contents with the Format~CD filter left active › "Barcode" dropdown while Format~CD is active | Uniq-dropdown contents | passed | 91 |  |
+| §F uniq-dropdown-DRIVEN filtering (single value, combination, cross-column) | Uniq-dropdown contents | passed | 42209 |  |
+| §F uniq-dropdown-DRIVEN filtering (single value, combination, cross-column) › single value: Format check "CD" -> 42 rows | Uniq-dropdown contents | passed | 3685 |  |
+| §F uniq-dropdown-DRIVEN filtering (single value, combination, cross-column) › single value: Label check "Slash" -> 26 rows | Uniq-dropdown contents | passed | 4025 |  |
+| §F uniq-dropdown-DRIVEN filtering (single value, combination, cross-column) › single value: Country check "United States (US)" -> 32 rows | Uniq-dropdown contents | passed | 6066 |  |
+| §F uniq-dropdown-DRIVEN filtering (single value, combination, cross-column) › single value: Primary alias check "○ empty cells" -> 56 rows | Uniq-dropdown contents | passed | 4066 |  |
+| §F uniq-dropdown-DRIVEN filtering (single value, combination, cross-column) › combination: Format OR -> 50 rows | Uniq-dropdown contents | passed | 5423 |  |
+| §F uniq-dropdown-DRIVEN filtering (single value, combination, cross-column) › combination: CAA arttype OR -> 37 rows | Uniq-dropdown contents | passed | 4950 |  |
+| §F uniq-dropdown-DRIVEN filtering (single value, combination, cross-column) › cross-column combo: Format CD (dropdown) AND Country United States (US) (dropdown) | Uniq-dropdown contents | passed | 9364 |  |
+| re-runs a representative subset of §A/§B against a genuine "BoDeans" pre-filtered load | Pre-filtered disk-load (§J) | passed | 37114 |  |
+| re-runs a representative subset of §A/§B against a genuine "BoDeans" pre-filtered load › pre-filtered: Barcode ~ "[none]" | Pre-filtered disk-load (§J) | passed | 3139 |  |
+| re-runs a representative subset of §A/§B against a genuine "BoDeans" pre-filtered load › pre-filtered: CAA ~ "no" | Pre-filtered disk-load (§J) | passed | 2443 |  |
+| re-runs a representative subset of §A/§B against a genuine "BoDeans" pre-filtered load › pre-filtered: CAA ~ "yes" | Pre-filtered disk-load (§J) | passed | 2701 |  |
+| re-runs a representative subset of §A/§B against a genuine "BoDeans" pre-filtered load › pre-filtered: CAA ~ "Booklet" | Pre-filtered disk-load (§J) | passed | 3775 |  |
+| re-runs a representative subset of §A/§B against a genuine "BoDeans" pre-filtered load › pre-filtered: CAA ~ "Booklet Page 5" | Pre-filtered disk-load (§J) | passed | 4294 |  |
+| re-runs a representative subset of §A/§B against a genuine "BoDeans" pre-filtered load › pre-filtered: CAA ~ "Booklet Booklet Page 5" | Pre-filtered disk-load (§J) | passed | 4554 |  |
+| re-runs a representative subset of §A/§B against a genuine "BoDeans" pre-filtered load › pre-filtered: CAA ~ "let Boo" | Pre-filtered disk-load (§J) | passed | 2957 |  |
+| re-runs a representative subset of §A/§B against a genuine "BoDeans" pre-filtered load › pre-filtered: Country ~ "United States (US)" | Pre-filtered disk-load (§J) | passed | 4183 |  |
+| re-runs a representative subset of §A/§B against a genuine "BoDeans" pre-filtered load › pre-filtered: Country ~ "United States" | Pre-filtered disk-load (§J) | passed | 3745 |  |
+| hiding then re-showing 9 columns does not break filtering on other columns | Column visibility (§K) | passed | 15824 |  |

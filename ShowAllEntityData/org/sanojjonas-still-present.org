@@ -1,0 +1,23 @@
+* DONE the artifacts of the userscript of @sanojjonas are still present
+** i
+
+The artifacts of the userscript of @sanojjonas are still present sometimes on the final renderd page, although commit
+"8fea175" claims that it's solved.
+
+Take for example the URL https://musicbrainz.org/artist/b3c01c39-429c-4b1e-8ad4-c7b04b601ca4
+
+It looks like the problem lies in the async execution of the other userscript
+
+1.)
+
+When the sanojjonas container '<div id="sanojjonasRoot" class="sanojjonasRoot">' is already present on the initial page, see @debug/s-present-on-initial.html
+and then pressing the action button, it's not present on the final rendered page.
+
+2.)
+
+When the action button is pressed before the sanojjonas container is rendered on the initial page, it eventually is rended on the finla page, see @debug/s-present-on-final.html
+
+** confirmed
+
+I confirmed the plain "Load from Disk" path also has this problem when loading from disk on the initial page very fast
+and the other userscript hasn't rendered its container yet. please fix too.

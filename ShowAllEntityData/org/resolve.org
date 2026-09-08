@@ -1,0 +1,56 @@
+﻿❯ Currently I used Claude Code to implement two different features at the same time on different machines, starting from
+  the same version "9.99.926" How should I proceed to get these in sync again. On both machines nothing is commited/pushed yet
+
+● This is a real git-workflow question, not a code task, so let me get the key facts before giving exact steps — the right sequence of commands depends on how you're set up.
+
+● Bash(cd /home/vzell/git/musicbrainz-userscripts && git remote -v && echo "---" && git log --oneline -3 && echo "---" && git branch -vv)
+  ⎿  origin     git@github.com:vzell/musicbrainz-userscripts.git (fetch)
+     origin     git@github.com:vzell/musicbrainz-userscripts.git (push)
+     ---
+     … +10 lines (ctrl+o to expand)
+  ⎿  Shell cwd was reset to /home/vzell/git/musicbrainz-userscripts/ShowAllEntityData
+  ⎿  Allowed by auto mode classifier
+
+● User answered Claude's questions:
+  ⎿  · Is the other machine's feature also uncommitted directly on `main` (like this one), or is it on its own feature branch? → Also directly on main
+     · Which feature should become the 'real' 9.99.926 (lands first), and which becomes 9.99.927 (rebased on top)? Both machines currently have uncommitted changes claiming version 9.99.926. → This machine's CAA/EAA debug-logging toggles = 9.99.926
+
+● Bash(git status --short . && git diff --stat .)
+  ⎿   M ShowAllEntityData.user.js
+      M ShowAllEntityData_CHANGELOG.json
+      ShowAllEntityData/ShowAllEntityData.user.js        | 307 ++++++++++++++-------
+     … +2 lines (ctrl+o to expand)
+
+● Plan
+
+  Since this machine's feature keeps 9.99.926 and lands first, here's the sequence:
+
+  1. This machine — commit and push now
+  git add ShowAllEntityData/ShowAllEntityData.user.js ShowAllEntityData/ShowAllEntityData_CHANGELOG.json
+  git commit -m "[ShowAllEntityData] feat: add CAA/EAA per-image-fetch debug logging toggles"
+  git push origin main
+
+  2. Other machine — reconcile onto the new base
+  git stash push -u -m "wip: <other feature>"
+  git pull
+  git stash pop
+  The pull will fast-forward cleanly (nothing pushed there yet). The stash pop will merge the two diffs via a real 3-way merge — most of it (your actual feature code) will apply without issue since it touches different parts of the file. Two spots need attention:
+
+  - // @version line: both edits changed 9.99.925+DATE → 9.99.926+DATE identically, so it should merge with no conflict — but it's now wrong (claims the version this machine already shipped). Manually bump it to 9.99.927+<today's date>.
+  - Changelog top entry: both inserted a new array element at the same position (right after [), so this will conflict. Resolve by keeping both entries — the incoming 9.99.926 entry stays where it landed, and your own entry goes above it, renumbered "version": "9.99.927".
+
+  After resolving:
+  node --check ShowAllEntityData/ShowAllEntityData.user.js
+  node -e "JSON.parse(require('fs').readFileSync('ShowAllEntityData/ShowAllEntityData_CHANGELOG.json','utf8'))"
+  git add ShowAllEntityData/ShowAllEntityData.user.js ShowAllEntityData/ShowAllEntityData_CHANGELOG.json
+  git commit -m "[ShowAllEntityData] feat: <other feature description>"
+  git push origin main
+
+  For next time: this collision is exactly what the project's <project>_CHANGELOG.wip.json + feature-branch convention (in the repo's CLAUDE.md) is designed to prevent — work in a feature branch per machine, log entries under placeholder WIP.N versions instead of touching //
+  @version/the real changelog, and only assign the real version number once, at merge time on main. Two machines can then merge independently without ever colliding on the same version number.
+
+  Want me to go ahead and commit + push from this machine now?
+
+✻ Brewed for 1m 49s
+
+❯ yes, go ahead

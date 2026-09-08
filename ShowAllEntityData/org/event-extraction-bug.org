@@ -1,0 +1,43 @@
+* event-extraction-bug
+** i
+
+For example on the pageType 'artist-recordings', e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings
+there is the following syntheticColumnExtractors defined on the column "Comment"
+
+#+begin_example
+                syntheticColumnExtractors: [
+                    { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
+                ],
+#+end_example
+
+The following raw HTML snippets showing two rows, one with a buggy extraction, where e.g, the synthetic column "Event-Country" has the country + youtube info in it's data cell. Compare to the good one
+
+#+begin_example
+@debug/event-extraction-ok.html - this one is ok and has everything after the ";" in the "Event-Additional-Info" column
+@debug/event-extraction-bug.html - this one has a buggy extraction
+#+end_example
+
+** create a live test with the following URL https://musicbrainz.org/work/8727a75a-8d33-3a2c-912a-f57952773201 (pageType: work-recordings)
+
+create a live test with the following URL https://musicbrainz.org/work/8727a75a-8d33-3a2c-912a-f57952773201 (pageType: work-recordings)
+
+** allow more date expressions
+
+Allow more date expressions when extracting the "Event-Date" column in the 'eventParts' extractor:
+
+Sometimes a recording date is listed as multiple dates separated with a "/" (typically when it's not clear when exactly that recording was made) like e.g. "live, 2001-12-22/23"
+See @debug/multiple-dates.html where currently "2001-12-22/23" is extracted under "Event-Detail"
+
+** create multi-row cells
+
+In the following URL https://musicbrainz.org/work/8727a75a-8d33-3a2c-912a-f57952773201 (pageType: work-recordings):
+
+Split the entry "live, 2001-03-17: Webster Hall, Manhattan, New York, NY, USA or 2001-03-19: Olympia Theatre, Dublin, Ireland" in multi-row cells
+
+See @debug/multiple-dates-multi-row-cell.html
+
+** flag the minus/hyphen in dates visually
+
+(live, 2012-09: L'Olympia Bruno Coquatrix, Paris, France)
+(live, 2024‐05‐12: Nowlan Park, Kilkenny, Ireland; YouTube – Calum Harkness)
+

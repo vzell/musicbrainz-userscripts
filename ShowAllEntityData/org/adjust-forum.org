@@ -1,0 +1,36 @@
+* Resync HELP and create forum post
+** i
+
+1.)
+
+Resync ShowAllEntityData_HELP.txt against every user-facing change since 9.99.887
+
+2.)
+
+For my upcoming MusicBrainz article about the latest updates in my userscript, generate a list of new
+features/fixes/enhancements.
+
+For this use the different tags in the git history of this whole project, but avoid using very technicals terms in the
+list like we use in the changelog, instead create a high level descriptions.
+
+Start from the following changelog entry
+
+#+begin_example
+"version": "9.99.888",
+"date": "2026-08-17",
+#+end_example
+    
+3.)
+
+Add this to the file @forum.org as I haven't actually posted the last generated list of changes
+
+#+begin_example
+## Changes since last version (9.99.746 -> 9.99.887)
+#+end_example
+
+in that file yet.
+
+** instead
+
+instead of appending the new forum entry to forum.org, merge into the old one, as that was never using facing, because I
+actually did NOT post it yet.

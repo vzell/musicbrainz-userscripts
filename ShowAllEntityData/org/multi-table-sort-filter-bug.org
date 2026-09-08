@@ -1,0 +1,460 @@
+* DONE multi-table-sort-filter-bug
+** i
+
+There are bugs in filtering/sorting multi-table pageTypes e.g. https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c
+
+I can reproduce it with the "Official release" sub-table of the above release. Before implementing any fixes, write
+comprehensive sorting/filtering tests against a multi-table pageType and report back if you get the same results as me,
+when executing inside a real browser. The tests should cover
+
+- filtering and checking the row counts and the correct highlightning of the filter strings in the filtered rendered
+  rows + checking if the big picture image stripe (and CAA stats) also shows just the big images for the filtered rows
+
+For this tests to work you should fetch real images from the CAA network.
+
+Elements which display row count and CAA count statistics:
+
+#+begin_example
+<span class="mb-row-count-stat" - both the global one and the per sub-table on
+<button id="mb-caa-toggle-btn-global" - global CAA statistics
+<button id="mb-caa-toggle-btn-0" - sub-table CAA statistics
+#+end_example
+
+- sorting (even when filtering is in effect) should never change the row count statistics, only eventually the order of
+  the rows in a sub-table and the corresponding CAA images in the big picture image strip
+
+Initial row statistics when on the final rendered page of the above release:
+
+7 rows total
+"Official release" sub-table - 6 rows | 6 images in the big picture image stripe
+"Promotion release" sub-table - 1 row | 1 image in the big picture image stripe
+
+Steps to reproduce the bugs:
+
+1.)
+
+Start with https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c and emulate pressing the "Show all Releases for ReleaseGroup" button
+
+2.)
+
+On the final rendered page emulate pressing the button
+
+#+begin_example
+<button class="mb-master-toggle" type="button" data-state="collapsed" title="Click to uncollapse all sub-sections (Ctrl+Click to uncollapse ALL sub-sections)">Show all sub-sections</button>
+#+end_example
+
+to show all sub-sections/tables and then the '<button id="mb-caa-toggle-btn-global"' toogle to show all CAA images on all sections.
+
+Finally toggle the filter elements for the "Official release" sub-section on
+
+#+begin_example
+<span class="mb-subtable-filter-toggle-icon" title="Toggle filter elements for sub-section &quot;Official release&quot;" role="button" aria-label="Toggle sub-table filter for &quot;Official release&quot;">🔍</span>
+#+end_example
+
+See [Image #11]
+
+3.)
+
+Enter a filter expression of "cd" in the opened sub-section filter input box:
+
+ - there are 3 rows correctly filtered in the "Official release" sub-table
+ - the filter string is correctly highlighted in all 3 rows
+ - the row counts are correct: global shows (4 of 7) and sub-table shows (3 of 6)
+ - all three filtered rows have a CAA inline image and the CAA counts are also correct: global shows 7 and sub-table shows 3
+ - the big image stripe also correctly shows 3 big CAA images
+
+See [Image #12]
+   
+4.)
+
+Now filter ascending on the "Label" column by emulating pressing the "▲" glyph
+
+#+begin_example
+<span class="sort-icon-btn" title="Sort ascending — Ctrl+Click to add to multi-column sort / Alt+Click to sort by column length — keyboard: Ctrl+ArrowUp when a column filter is focused">▲</span>
+#+end_example
+
+There is already a bug showing up:
+
+ - the sorting itself works and there are still 3 rows displayed with the right row count statistics plus the filter string is still highlighted
+ - BUT, the big picture image stripe now shows again ALL 6 rows and also the CAA count stat shows 6 again
+
+See [Image #13], sorting shouldn't change anything in the count stats, ONLY the order of rows in the sub-table and the
+big picture images in the stripe should eventually be affected
+
+5.)
+
+Now clear the sub-table filter by emulating a click on the "✕" glyph inside the filter input box
+
+#+begin_example
+<button id="mb-stf-Official_release-clear" type="button" tabindex="-1" title="Clear filter for &quot;Official release&quot;" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; cursor: pointer; color: rgb(192, 57, 43); font-size: 1em; font-weight: bold; line-height: 1; padding: 2px 3px; border-radius: 3px; display: block;">✕</button>
+#+end_example
+
+Another bug:
+
+ - there are still JUST the previous filtered 3 rows displayed instead of ALL
+ - the row counts still reflect the old ones active during filtering: global shows (4 of 7) and sub-table shows (3 of 6)
+ - highlightning of the now vanished filter string is STILL active
+ - the big picture image stripe also only shows 3 images
+ - but the worst, there is no way to get ALL rows displayed again, as there are no buttons left to clear the now empty filters
+   
+See [Image #14]
+
+6.)
+
+Debug material in @debug/
+
+#+begin_example
+release-initial.html - raw initial HTML of https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c - see 1.)
+release-final.html - final rendered page with all subsections and CAA image strips uncollapsed and the filter elements shown for the "Official release" sub-section - see 2.)
+release-filtered.html - final rendered page filtered with "cd" on the "Official release" sub-section - see 3.)
+release-filtered-sorted-bug.html - see 4.)
+release-filtered-cleared-bug.html - see 5.)
+#+end_example
+
+** findings
+
+● All fixes are implemented, verified against the real page, and stable across repeated runs. Summary of what happened:
+
+  Root causes found (more precise than my initial hypothesis — verified line-by-line against the actual code):
+  1. A input[type="text"] vs input[type="search"] selector bug, present in 14 places. The real sub-table-filter (STF) input's type is forced to "search" by an autofill-hardening call, so every STF-active check using the wrong selector was silently dead — including the internal
+     "reapply STF after a re-render" mechanism (reapplyAllSubTableFilters(), which never fired at all) and the h3 "Clear all filters" button visibility check.
+  2. First-render row aliasing: the very first render of a multi-table page inserted row elements by reference instead of cloning them, while every later filter/sort re-render already cloned. STF's own row-hiding mutated those live rows in place, and once a sort triggered a
+     rebuild from that now-contaminated canonical array, the contamination became permanent — explaining the "stuck forever, no way back" clear-button bug.
+  3. The CAA "big picture" stripe/badge revert was a separate, narrower issue: the full rebuild pass that follows any re-render was blind to STF-hidden rows.
+
+  Fixes (all in ShowAllEntityData.user.js, on branch fix/multi-table-sort-filter-caa):
+  - New _getStfInput()/_getAllStfInputs() helpers, replacing all 14 broken selector call sites.
+  - CAA/EAA bigbox wrappers now start hidden for STF-filtered-out rows (rather than being skipped entirely, which I initially tried — that broke the global badge's page-wide-total semantics, caught by the live test and corrected).
+  - Row insertion on first render now clones, matching every later re-render.
+  - STF filters are now reapplied synchronously inside renderGroupedTable() itself, before the CAA rebuild — replacing the dead debounced mechanism (deleted).
+  - A defense-in-depth guard so a late-arriving image load can't creep a per-table badge count back up.
+
+  Testing: new tests/live/subtable-filter-sort-caa-interaction.spec.js (using real CAA network access, per the .org file's requirement) reproduced all 3 reported bugs pre-fix, and now passes post-fix — run twice for stability. All 17 existing @core/@extended live specs and the
+  fixture suite still pass.
+
+  One out-of-scope finding worth flagging: _applyDiscographyViewFilter (the artist-releasegroups "official/merged/non-official" view switcher) has its own, separate direct-reference row insertion that could reintroduce the same aliasing hazard class if that feature runs. It's
+  unrelated to this bug report and untouched by my changes — a candidate for a future follow-up if you want it looked at.
+
+** noticed
+*** 1
+
+Also noticed: interesting bonus — this reveals closeToggle in createSubTableFilterContainer calls clearSubFilter()
+directly (line 42799), important context but not part of our fix. Now let's handle the remaining two occurrences.
+
+*** q
+
+what do you meant with
+
+#+begin_example
+Also noticed: interesting bonus — this reveals closeToggle in createSubTableFilterContainer calls clearSubFilter()
+directly (line 42799), important context but not part of our fix.
+#+end_example
+
+*** 2
+
+One out-of-scope finding worth flagging: _applyDiscographyViewFilter (the artist-releasegroups
+"official/merged/non-official" view switcher) has its own, separate direct-reference row insertion that could
+reintroduce the same aliasing hazard class if that feature runs. It's unrelated to this bug report and untouched by my
+changes — a candidate for a future follow-up if you want it looked at.
+
+*** q
+
+check the discography-view row aliasing issue too, but first show me how I could check it beforehand on the pageType
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+
+*** a
+
+● Here's how you can check it yourself in a real browser first:
+
+  1. Get to the multi-table view
+  Go to https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f and click the "🧮 Artist RGs" button the userscript injects (this is the artist-releasegroups pageType, fetched with all=1&va=0).
+
+  2. Find the view-switch buttons
+  Once rendered, four buttons appear in the control bar:
+  - 📋 Complete Discography (default view)
+  - 📀 Official Discography
+  - 📼 Non-Official Discography
+  - 🗂️ Complete Discography (merged)
+
+  These switch between sections by calling _applyDiscographyViewFilter() — the function whose row-insertion code I flagged as a risk.
+
+  3. Trigger the repro
+  - Click through "Official"/"Non-Official" once to spot a category name that appears in both (e.g. "Album" — the code itself calls this case out as one to watch).
+  - Back on "Complete Discography", click the 🔍 icon on that "Album" sub-table's header, type a partial filter (e.g. a few letters) so some rows get hidden/highlighted, and note the row-count text like "(N of M)".
+  - Without clearing that filter, rapidly click: 🗂️ merged → 📀 Official → 🗂️ merged → 📋 Complete Discography.
+
+  4. Inspect the result
+  Open devtools and check:
+  - document.querySelectorAll('tr[data-mb-stf-hidden]').length and .mb-subtable-filter-highlight — do stale markers survive or duplicate across the switches?
+  - Does the "Album" table's .mb-row-count-stat text still match the number of actually-visible <tr> rows in that table?
+
+  I'll go check the actual code now to see whether this is a real, triggerable bug or just a latent-but-currently-safe pattern.
+
+** what I did
+
+what I did:
+
+1.) and 2.)
+
+3.)
+
+- I spotted "Album" to appear in both
+- I clicked 🔍 icon on that "Album" sub-table's header two times, once in the "Album" section of the official
+  release-groups (21 rows) and once in the unofficial "Albums" section (2 rows). I then filtered the official one by "to" (8 of 21) and the unoffical one by "&" (1 of 2)
+- then without clearing that filter, rapidly clicked: 🗂️ merged (23 rows, filter input box is closed, no highlight
+  survived) → 📀 Official (21 rows, filter input box is gone, no highlight survived) → 🗂️ merged (23 rows, filter input
+  box is gone, no highlight survived) → 📋 Complete Discography (21 rows in the official "Album" section, 2 rows in the unofficail "Albums" section, both filters cleared, both filter input boxes closed)
+
+4.)
+
+- document.querySelectorAll('tr[data-mb-stf-hidden]').length  --> 0
+- .mb-subtable-filter-highlight --> Uncaught SyntaxError: Unexpected token '.'
+
+- Does the "Album" table's .mb-row-count-stat text still match the number of actually-visible <tr> rows in that table? --> Yes but the filters are not in effect after the first view switch already  
+
+
+Is this the expected behaviour according to the code ? Do not implement anything yet, just analyze
+
+** a
+
+● Good news on what you tested, but I traced the actual mechanism further and found a real, more specific risk you didn't test yet. Here's the full picture:
+
+  Your STF test came back clean — and that's exactly what the code is designed to do. _applyDiscographyViewFilter() unconditionally calls _resetDiscographyViewState() as its very first action on every view switch (line 44984, comment: "Always start from a clean baseline...
+  prevents stale highlights, wrong row counts, and out-of-order rows from leaking across view transitions"). That reset function's step 3 (lines 44799-44847) walks every <h3> and, per table, explicitly:
+  - restores any tr[data-mb-stf-hidden] rows from the live DOM,
+  - strips .mb-subtable-filter-highlight spans from the live DOM,
+  - clears the STF input's value and closes its panel.
+
+  This all runs on the currently-live DOM, before anything touches groupedRows. So by the time the risky row-remapping step (step 5) runs, there's nothing STF-dirty left to alias — your test result (data-mb-stf-hidden count 0, no mb-subtable-filter-highlight elements, correct row
+  counts) is exactly what this code guarantees. My earlier flag framed the risk around STF specifically, which was the wrong shape — that path is safe.
+
+  The real risk is a sort, not a filter — and I haven't seen you test it yet. Step 5 (lines 44878-44898) re-inserts groupedRows[idx].rows into each table's <tbody> to undo any prior sort order — but it does this via _tbody.appendChild(_frag) without clearing _tbody first (no
+  .innerHTML = ''). Tracing what groupedRows[idx].rows[j] actually are at that point: any sort click reorders that array in place, then triggers runFilter() → renderGroupedTable(), which inserts clones of those rows into the live <tbody> (this is true both before and after my
+  recent fix — cloning-on-re-render already existed for every render after the first). The canonical groupedRows[idx].rows[j] objects themselves are never re-attached — they become detached, orphaned nodes the moment the sort's clones take their place.
+
+  So if step 5 later appends those detached originals into a <tbody> that still holds the sort's live clones, without clearing it first, that table should end up with duplicate rows — the sorted clones plus the freshly re-attached originals, on top of each other.
+
+  This is unrelated to my STF fix (Fix 3 doesn't touch this — it only ever affects what happens on the very first render). It's a pre-existing, independent code path.
+
+  Worth testing next, purely to confirm: sort a column in the "Album" (official) section — no STF needed — then click any discography-view-switch button, and check whether that table's row count/content duplicates. I haven't changed anything; this is analysis only, per your
+  instruction.
+
+** what I did
+
+OK, I did sort the official "Album" section (21 rows) ascending and that table's row count/content never duplicated when
+switching between all the different views. Even when on the merged view, ALL the now combined rows (23 rows) where still
+sorted in ascending order. Is that what should happen according to the current code (so NO reset in the case when
+sorting is in effect and switching views).
+
+There is one visual defect, after switching the first time, see [Image #17] taken when e.g. on the merged view. The
+"Releases" column header (NOT the column cells) where I did the sorting on, got an orange like background (and stays
+like this whatever switch we do from now on) AND it's NOT obvious anymore from the sorting glyphs which one was actually
+clicked on (it usually gets a yellow background on click see e.g. the screenshot [Image #19] of
+https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c where I sorted the "Official release"
+sub-table on the "Label" column)
+
+Do not implement anything yet, just analyze
+
+** a
+
+● Good question — let's take these one at a time.
+
+  1. Sort order persisting across views — this IS the designed behavior
+
+  _resetDiscographyViewState() explicitly resets the global filter, column filters, STF filters, sort UI indicators (glyph highlighting, sort-status text), and collapse state on every view switch — but it never resets groupedRows[idx].rows's actual array order. A sort mutates
+  that array in place (targetGroup.rows = sortedData) and nothing ever un-sorts it back. So every subsequent render (including the ones triggered by a view switch) rebuilds each table's rows from that still-sorted array, faithfully reproducing the sort order.
+
+  For the merged view specifically, there's a dedicated mechanism for this: mergedSortComparatorRegistry (registered once per table by makeTableSortableUnified, line 50530). When rows from multiple same-named groups get combined into one table, _applyDiscographyViewFilter()
+  (lines 45093-45106) explicitly re-sorts the combined set using whichever comparator is currently registered for the first-occurrence table — "Without this, switching into merged view on an already-sorted table would show non-first-occurrence contributors' rows in their original
+  concatenation order instead of the active sort" (its own comment). This is why your merged view's 23 rows stayed correctly sorted even though they came from two different source tables.
+
+  So: no, nothing should reset the sort order across a view switch, and nothing does. This matches what you observed and is intentional.
+
+  2. The stuck orange header — this is a real, confirmed defect
+
+  I traced this precisely. makeTableSortableUnified() — the function that builds the multi-sort tint classes (mb-mscol-hdr-0, amber, applied to the <th>) and registers the closures that can clear them (multiSortTintRegistry) — is only ever called once, on a table's very first
+  render. Every render after that (sort, filter, or a discography-view switch) goes through the "reuse" branch, which explicitly does not call it again — confirmed by the code's own comment at line 43556-43559: "re-apply any active multi-sort tints... covers the
+  reuse-existing-table branch (query truthy) where makeTableSortableUnified is NOT called, so the trailing restore block never fires."
+
+  That reuse-branch workaround only re-applies a tint (via multiSortTintRegistry.get(tintKey).applyTints()) — it never registers a new closure. Meanwhile _resetDiscographyViewState()'s step 5d does multiSortTintRegistry.clear() unconditionally, on every view switch. Since nothing
+  ever repopulates that registry entry afterward, this table's tint-clearing capability is destroyed the moment you switch views — permanently. That's exactly why it "stays like this whatever switch we do from now on."
+
+  Two separate, independent visual systems represent "this column is sorted": the glyph's sort-icon-active class (cleared correctly, every time, by _resetDiscographyViewState() step 5b — hence the glyphs losing their highlight, as you noticed) and the header's mb-mscol-hdr-0 tint
+  class (governed by the fragile, one-shot registry above). They're not kept in sync, which is why you end up with an inconsistent state: glyphs say "nothing sorted," header background says otherwise.
+
+  What I haven't pinned down with full certainty is whether step 5a's own clearTints() attempt (which runs once, right before the registry gets wiped) actually throws on that first switch (its try/catch explicitly anticipates failure — "table may be mid-rebuild" — silently
+  swallowed, no log) or simply doesn't fire for some other reason. Confirming that exactly would need a live breakpoint/console check rather than static reading. Either way, it doesn't change the core finding: this is a structurally one-shot cleanup mechanism with no way to retry
+  or recover once the registry entry is gone — a real bug, independent of the STF fix, and unrelated to the row-aliasing question you originally asked me to check.
+
+  Nothing has been changed — this is analysis only, as requested.
+
+** go
+
+go into plan mode, fix the bug in a new branch and if the row-aliasing stuff is still pending fix it along the way
+
+** do the followig
+
+1.)
+
+for the test case you write to check for these implementation changes use the following URL
+https://musicbrainz.org/artist/5d02f264-e225-41ff-83f7-d9b1f0b1874a?all=1&va=0 which has only 123 rows (85 rows with
+inline images) in all sub-tables
+
+2.)
+
+clarify the following: I expect the following when sorting a sub-table on a column and then switching views,
+
+- that the sorting is still in effect
+- that the header column still carries the orange background
+- that the sorting glyph which was reponsible for the actual sort direction carries it's yellow background
+- and that the zebra striping in the sorted column is still in effect (basically changing the background color back and
+  forth between two shades when the cell data values change per row)
+
+** new bug
+
+Actually by testing in a real browser with
+https://musicbrainz.org/artist/5d02f264-e225-41ff-83f7-d9b1f0b1874a?all=1&va=0 I found another bug when switching
+specifically to the "Non-Official Discography" which should be fixed right away. It's even present when no sorting is in
+effect at all on a sub-table.
+
+Adjust the test case to also confirm my own observations in a real browser before implementing the additional fix.
+
+These are the steps to reproduce the bug:
+
+1.)
+
+Start with https://musicbrainz.org/artist/5d02f264-e225-41ff-83f7-d9b1f0b1874a and emulate pressing the "Artist RGs" button
+
+@debug/cd-initial.html - final rendered page after pressing the "Artist RGs" button
+
+2.)
+
+On the final rendered page make sure that all sub-tables are uncollapsed.
+
+Because we have the following setting
+
+#+begin_example
+        sa_auto_expand: {
+            label: "Auto-Expand Rows in Multi-Table page types",
+            type: "number",
+            default: 50,
+            description: "Row count threshold to auto-expand tables of 'album'/'official' category in multi-table page types"
+        },
+#+end_example
+
+which auto expands the "Album"/"Official" category, we need to make sure to emulate pressing the following button twice
+
+#+begin_example
+<button class="mb-master-toggle" type="button" data-state="expanded" title="Click to collapse all sub-sections (Ctrl+Click to collapse ALL sub-sections)">Hide all sub-sections</button>
+#+end_example
+
+The first time to hide the current open "Album" sub-table, then a second time to actually SHOW ALL sub-sections.
+
+#+begin_example
+<button class="mb-master-toggle" type="button" data-state="collapsed" title="Click to uncollapse all sub-sections (Ctrl+Click to uncollapse ALL sub-sections)">Show all sub-sections</button>
+#+end_example
+
+Observe that ALL sub-tables have their own h3 header line '<h3 class="mb-toggle-h3"'
+
+@debug/cd-initial-uncollapsed.html
+
+3.)
+
+Switch to the "Official Discography" view by emulating a button click on the "Official Discography"-button
+
+Repeat the collapsing and uncollapiong of all sections.
+
+Observe that ALL sub-tables have their own h3 header lines '<h3 class="mb-toggle-h3"'
+
+4.)
+
+Switch to the "Non-Official Discography" view by emulating a button click on the "Non-Official Discography"-button
+
+Now the bugs:
+
+a.)
+
+Actually note that there is NO "Album" sub-section in the non-official discography view for this specific URL, so all
+sections/sub-tables are already collapsed but the mb-master-toggle button text still reads "Hide all sub-sections"
+
+#+begin_example
+<button class="mb-master-toggle" type="button" data-state="expanded" title="Click to collapse all sub-sections (Ctrl+Click to collapse ALL sub-sections)">Hide all sub-sections</button>
+#+end_example
+
+so it's not in sync with the collapse state of the sections somehow.
+
+@debug/nod-collapsed.html
+
+b.)
+
+Even worth, and this ONLY happens for the "Non-Official Discography" view, after clicking the "Hide all sub-sections"
+button once, so that it switches to the text "Show all sub-sections" ALL the h3 header lines '<h3 class="mb-toggle-h3"' before each sub-table are gone (or at least not rendered anymore)
+
+@debug/nod-uncollapsed.html
+
+See also screenshot [Image #22]
+
+** bug
+
+1.)
+
+The Master-toggle desync + hidden-view leak is FIXED
+
+2.)
+
+When sorting on a column or multiple columns, then switch views multiple times, the column headers always consistenly
+get their respective background colors set and the sort symbol glyphs also have their background in yellow to show which
+direction has been sorted on, but the column cells eventually loose their zebra striping.
+
+a.)
+
+Start by sorting on the "Artist" column in the "Album" section/sub-table of the "Complete Discography" view on a fresh
+initial rendered page ==> zebra striping present
+
+b.)
+
+Switch view to "Official Discography" ==> zebra striping present
+
+c.)
+
+Switch view back to "Complete Discography" ==> zebra striping present
+
+d.)
+
+Switch to "Complete Discography (merged)" ==> zebra striping NOT present
+
+e.)
+
+Switch view back to "Complete Discography" ==> zebra striping NOT present
+
+f.)
+
+Switch to "Official Discography" ==> zebra striping present again
+
+3.)
+
+Basically it looks like after switching to the "Complete Discography (merged)", the zebra striping seems to persistently
+be NOT present.  When then switching back to another view which has the "Album" section, that view DOES NOT show the
+zebra striping, but then the switching again to another view with the "Album" section, shows the zebra striping again. Also switching back and forth to a view other then the 
+"Complete Discography (merged)", always shows the zebra striping
+
+** shorten the "Discograpy" button texts
+
+On the 'artist-releasegroups' pageType shorten the "... Discography ..." button texts
+
+by placing the String " Discography: " (same font/size as the button text) after the divider
+
+#+begin_example
+<span id="mb-disc-btn-divider" style="color: rgb(153, 153, 153); margin: 0px 4px;"> | </span>
+#+end_example
+
+and remove the "Discography" string from the current four action button texts
+
+#+begin_example
+Complete Discography ==> Complete
+Offical Discography ==> Offical
+Non-Official Discography ==> Non-Official
+Complete Discography (merged) ==> Complete (merged)
+#+end_example
+
+Make sure that the tests do not explicitly use the old texts.

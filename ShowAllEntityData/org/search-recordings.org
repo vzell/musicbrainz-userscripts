@@ -1,0 +1,6 @@
+* TODO Search results for recordings
+
+https://musicbrainz.org/search?query=roulette&type=recording&method=indexed
+
+multiple releases sharing the same recording rendering withour repeating the recordsing name and relate dinfo ==>
+Release/track/medium/Type should be a multi-row columns

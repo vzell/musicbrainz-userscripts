@@ -1,0 +1,202 @@
+* rerun
+** final
+
+Done. Working tree clean, worktree removed, 7 commits on perf-step-3-header-count-cache. Nothing pushed — say the word and I'll push, or run /merge-push-remove to fold the WIP changelog into a real version and merge.
+
+  Performance statistics, before/after
+
+  artist-events disk fixture (4174 rows × 21 columns), median of 5, same machine and session, main = 9.99.1048 with only the userscript swapped:
+
+  ┌────────────────────────┬──────────┬──────────┬────────┐
+  │      Interaction       │   main   │  branch  │   Δ    │
+  ├────────────────────────┼──────────┼──────────┼────────┤
+  │ Global filter          │ 3503 ms  │ 3669 ms  │ +4.7%  │
+  ├────────────────────────┼──────────┼──────────┼────────┤
+  │ Column filter          │ 3311 ms  │ 3515 ms  │ +6.2%  │
+  ├────────────────────────┼──────────┼──────────┼────────┤
+  │ Sort                   │ 6932 ms  │ 6917 ms  │ −0.2%  │
+  ├────────────────────────┼──────────┼──────────┼────────┤
+  │ Uniq-dropdown, cold    │ 48844 ms │ 48563 ms │ −0.6%  │
+  ├────────────────────────┼──────────┼──────────┼────────┤
+  │ Uniq-dropdown, warm    │ 1903 ms  │ 1678 ms  │ −11.8% │
+  ├────────────────────────┼──────────┼──────────┼────────┤
+  │ Header counts, initial │ 8507 ms  │ 8066 ms  │ −5.2%  │
+  ├────────────────────────┼──────────┼──────────┼────────┤
+  │ Header counts, restore │ 12631 ms │ 8944 ms  │ −29.2% │
+  └────────────────────────┴──────────┴──────────┴────────┘
+
+  Two caveats that matter more than the numbers:
+
+  - These are not comparable to the 9.99.1045 figures in PERFORMANCE.org (1735/1730/3968/31149/863). Same machine, same fixture, ~2× slower this session on both arms. main's own two runs were 7% apart on the global filter, so the two filter rows are noise, not a regression.
+  - The last two rows are metrics I added, because the existing five only see this scan as main-thread pressure on a status-text poll.
+
+  The finding, which isn't the number
+
+  Only headerCountsRestore moved — about 3.7 s of scan removed from a filter-clear. That's correct, not disappointing: a full-table scan happens at exactly two moments, initial render (a cold miss) and a filter cleared back to the full set (a cache hit). Every other scan runs
+  over an already-filtered row set that's small by construction. The plan predicted the filter metrics would improve; they can't.
+
+  That's also why I removed the per-cell tier you'd approved — it can only help a miss, and the only full-table miss is the cold one where it's still empty.
+
+  Also fixed: a shipped bug (new Step 22)
+
+  _colHeaderCountsToken was one page-wide counter while renderGroupedTable() schedules a scan per sub-table, so every sub-table but the last cancelled itself before writing a badge. Silently — an unwritten badge is an empty <span>. Your committed baselines record it: 1 of 423
+  unique-count badges populated on artist-releasegroups, 14 of 42 on releasegroup-releases. Token is now per-table; the fix costs multi-table pages ~1 scan → N.
+
+  Things I got wrong and corrected mid-session
+
+  - My first version of the new metric waited only for the Event column and reported 1884 ms while most of the header was blank. The same too-narrow wait made my sort test report "sorting changed 15 badges" when the sort had merely finished a scan the test caught mid-flight.
+  - loadFromDiskFixture() is not offline — it page.goto()s the real site for the page shell. Two 20-minute runs died on that; the harness now retries.
+
+  Follow-ups: re-capture the shipped configuration's own perf arm (MusicBrainz went unreachable before I could), re-capture the multi-table snapshot baselines to pick up the newly-populated badges, and playwright/.auth/vzell.json expired this morning if you want live specs logged
+  in.
+
+
+** q
+
+1.)
+
+Which page (exact URL and subtable name) can I run to expose the "The shared-token bug" visually to confirm the before/after this implementation
+
+2.)
+
+I authorized again, rerun the tests again, as it seems the MusicBrainz site is stable again.
+
+3.)
+
+when finished running the live suites, run them completely serialized, to see if that makes any difference and also raise the timeouts
+
+** a
+
+  Reproducing the shared-token bug visually
+
+  Quick check — 2 sub-tables, loads in seconds:
+
+  https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c
+  Click "Show all Releases", then expand the sub-sections (they render collapsed). Look at the 📊 icon in each column header — the number before it is the unique-value badge.
+
+  - Sub-table "Official release" (the first) — before the fix: every badge blank. After: populated.
+  - Sub-table "Promotion release" (the last) — populated either way.
+
+  That asymmetry is the bug: only the last-scheduled scan survived the shared token. Measured off your committed baseline tests/snapshots/releasegroup-releases/rendered.html: table 1 has 0 of 21 badges filled, table 2 has 14 of 21.
+
+  Dramatic check — 47 sub-tables:
+
+  https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0
+  Click "Show all Release Groups". Before the fix, exactly one sub-table has any badge at all, and it's the last one, "Other + Audiobook (1)" — 1 of its 9 columns. The other 46 sub-tables ("Album", "Album + Live", "Single", …) are entirely blank: 1 of 423. After the fix, all 47
+  fill in.
+
+  Two things to expect when you compare, so neither reads as a defect:
+
+  - Even the surviving sub-table is only partially filled (1 of 9 there, 14 of 21 on the release group). The scan is sliced one column per event-loop turn, so the snapshot catches it mid-pass. Give it a few seconds to settle before judging.
+  - On the 47-table page the fix means 47 scans instead of ~1, so the badges take visibly longer to finish appearing. That's the cost I flagged; the cache is what keeps it tolerable.
+
+  To see "before", git stash the branch or check out main — the userscript on main at 9.99.1048 still has the page-wide token.
+
+ 
+** last final
+
+Both captures done, committed and pushed. Tree clean, 141/141 fixtures still green.
+
+  Capture 1 — the shipped configuration's own perf arm
+
+  main and branch captured back-to-back on an idle machine:
+
+  ┌────────────────────────┬──────────┬──────────┬────────┐
+  │      Interaction       │   main   │  branch  │   Δ    │
+  ├────────────────────────┼──────────┼──────────┼────────┤
+  │ Global filter          │ 3033 ms  │ 3168 ms  │ +4.5%  │
+  ├────────────────────────┼──────────┼──────────┼────────┤
+  │ Column filter          │ 3295 ms  │ 3337 ms  │ +1.3%  │
+  ├────────────────────────┼──────────┼──────────┼────────┤
+  │ Sort                   │ 6410 ms  │ 6469 ms  │ +0.9%  │
+  ├────────────────────────┼──────────┼──────────┼────────┤
+  │ Uniq-dropdown, cold    │ 45996 ms │ 46516 ms │ +1.1%  │
+  ├────────────────────────┼──────────┼──────────┼────────┤
+  │ Uniq-dropdown, warm    │ 1676 ms  │ 1747 ms  │ +4.2%  │
+  ├────────────────────────┼──────────┼──────────┼────────┤
+  │ Header counts, initial │ 8033 ms  │ 7980 ms  │ −0.7%  │
+  ├────────────────────────┼──────────┼──────────┼────────┤
+  │ Header counts, restore │ 12319 ms │ 8977 ms  │ −27.1% │
+  └────────────────────────┴──────────┴──────────┴────────┘
+
+  Two things this settled:
+
+  - Dropping tier 2 was free. The arm carrying it restored the counts in 8944 ms; the shipped tier-1-only code does it in 8977 ms — 0.4% apart, against a comparator spread several times that. It contributed nothing, and removing it cost nothing.
+  - I was wrong about the 2× gap. I'd attributed it to yesterday's session running under load. Today's idle main lands within ~13% of yesterday's, so that explanation doesn't hold — this is simply what the machine does, and the committed 9.99.1045 figures are the outlier that has
+    never been reproduced here. Corrected in PERFORMANCE.org and on the archived arm.
+  - Yesterday's +6.2% column filter didn't reproduce (+1.3%), confirming it as noise.
+
+  Capture 2 — multi-table baselines re-based
+
+  ┌─────────────────────────────────────┬─────────────┬────────┬───────┐
+  │              Baseline               │ uniq badges │ before │ after │
+  ├─────────────────────────────────────┼─────────────┼────────┼───────┤
+  │ artist-releasegroups/rendered.html  │ 423         │ 1      │ 286   │
+  ├─────────────────────────────────────┼─────────────┼────────┼───────┤
+  │ releasegroup-releases/rendered.html │ 42          │ 14     │ 32    │
+  └─────────────────────────────────────┴─────────────┴────────┴───────┘
+
+  Not the full 423 — a column with no distinct values writes an empty badge by design. What changed is that 46 of 47 sub-tables previously had nothing at all; now every one shows a steady 6 of 9.
+
+  This needed a harness fix first, or the re-capture would have shown nothing: captureOne() snapshotted straight after waitForRenderComplete(), baking in a mid-scan thead — which is precisely why artist-events/rendered.html records 1 of 21 despite being single-table with no
+  cancellation bug at all. It now waits on waitForColHeaderCountsStable(), non-fatally, so a page whose scan outruns 180 s is still captured with a warning naming the empty count. The 47-table page settled inside that budget.
+
+  Both snapshot diffs also carry drift that isn't mine — td[data-mb-len-flag]'s tint rules gained !important on main after the 9.99.953 baseline, and the Springsteen Wikipedia extract flapped again. Both are flagged in tests/snapshots/registry.org so a future reader doesn't
+  misread them.
+
+  Branch is at fff2f57, 10 commits, origin in sync. Ready for /merge-push-remove whenever you want the version bump and changelog fold.
+
+  
+** add to CLAUDE.md
+
+1.)
+
+add to CLAUDE.md:
+
+- Entry date: Should be the shipped date
+- No HELP resync: make sure the HELP file is consistent with what has been implemented
+
+2.)
+
+Flipp to DONE in @PERFORMANCE.org
+
+3.)
+
+commit,push
+
+4.)
+
+Add to CLAUDE.md:
+
+When implementing stuff and merging always recheck PERFORMANCE.org if still valid, otherwise adjust
+
+5.)
+
+yes, bisect it and always record the hostname of the machine where the measurements are done in all future tests, also
+put this in CLAUDE.md.
+
+Also create a @tests/MEASUREMENTS.org file and add this kind of timing information together with the actual hostname of
+execution and when mentioning things like "artist-releasegroups/rendered.html" or URLs add new columns, with the
+corresponding pageType (singel or multi) and the page title
+
+So we don't loose this kind of information
+yes, bisect it and always record the hostname of the machine where the measurements are done in all future tests, also
+put this in CLAUDE.md.
+
+Also create a @tests/MEASUREMENTS.org file and add this kind of timing information together with the actual hostname of
+execution and when mentioning things like "artist-releasegroups/rendered.html" or URLs add new columns, with the
+corresponding pageType (singel or multi) and the page title
+
+So we don't loose this kind of information. Also add column what the test was about to measure.
+
+If you think we forgot something to note, add it too but first ask me right now
+
+6.)
+
+a.) total end-user timing per each test
+b.) how long different steps take to execute
+- page fetching time (inklusive paginated fetch), numner of pages fetched
+- rendering times for large tables (maybe even for small ones)
+- sorting times
+- filtering times
+- time to compute the unique value drop down menu (when tested)
