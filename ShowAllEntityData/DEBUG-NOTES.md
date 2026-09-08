@@ -7875,6 +7875,20 @@ second staleness surface. See PERFORMANCE.org Step 3's own section.
   retries a failed sample; `tests/README.org` records the distinction.
 
 **Pre-existing, not caused by this work:** the five `pending-edits-filter.spec.js`
-multi-table cases time out at the 30 s default under heavy machine load —
-reproduced identically on `main` in the same conditions, and passing on both when
-the machine is quiet. Worth raising the timeout for that file if it recurs.
+multi-table cases timed out at the 30 s default during this session —
+reproduced identically on `main` in the same conditions.
+
+Re-measured the next day on an idle machine, and the first reading of this was
+wrong: those five run in **6.7-7.8 s each**, nowhere near 30 s. They were not
+marginal, they were starved — this session had perf captures and test suites
+running concurrently on a machine already measuring ~2x slow. `--workers=1`
+makes no difference to pass/fail either way (141/141 both serialized and
+parallel), so the earlier "worth raising the timeout for that file" note was
+treating a symptom of my own concurrency. Do not raise it.
+
+`tests/live/artist-events-interactions.spec.js` is a genuine case by contrast,
+and got a file-level 300 s budget: measured serially on an idle machine its
+tests run 20.9 s to 90 s against chromium-live's 120 s default, so the top of
+that range crosses under any load at all. The slowest of them is a pre-existing
+case, which is why the budget is file-level rather than two ad-hoc
+`test.setTimeout()` calls on the tests added here.

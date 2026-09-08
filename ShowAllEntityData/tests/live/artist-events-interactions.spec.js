@@ -36,6 +36,21 @@ const {
  * work running during these interaction assertions.
  */
 
+// Every test here re-renders all 4174 rows at least once and then waits out
+// the header-count scan, so the file as a whole sits close to chromium-live's
+// 120 s default rather than comfortably inside it. Measured serially on an idle
+// machine: 20.9 s / 32.7 s / 36.5 s / 37.7 s / 45.4 s / 49.1 s / 49.9 s / 66 s /
+// 72 s / 78 s / 90 s — the slowest being a pre-existing case, not one of the
+// newer ones. Under any real load (another suite, a perf capture) the top of
+// that range crosses 120 s and the file fails for reasons that have nothing to
+// do with the code under test.
+//
+// Raised for the whole file rather than per test: two ad-hoc test.setTimeout()
+// calls were tried first and were the wrong shape — they singled out two cases
+// that are not even the slowest here, on a duration mismeasured while the
+// machine was busy.
+test.describe.configure({ timeout: 300000 });
+
 async function loadArtistEvents(page) {
     await seedGmValues(page, SEED_GM_VALUES);
     await loadFromDiskFixture(page, { url: ARTIST_EVENTS_URL, fixturePath: FIXTURE_PATH, testMode: true });
@@ -378,12 +393,6 @@ test('sorting does not disturb any column-header count badge', { tag: '@perf' },
     //     B -> A" case below exists alongside it.
     //   - a cache HIT must re-apply the numbers rather than leave whatever the
     //     re-rendered header happened to carry.
-    // Well above chromium-live's 120 s default, and needed. This case drives
-    // two full 4174-row re-renders and waits out the header-count scan after
-    // each, which measured 114 s on an idle machine — inside the default, but
-    // only just, so it failed whenever the machine was busy. The other cases in
-    // this file run serially before it and are enough to do that.
-    test.setTimeout(300000);
     const pageErrors = collectPageErrors(page);
     await loadArtistEvents(page);
     // BOTH waits, and the second is not optional: waitForColHeaderUniqCount()
@@ -427,9 +436,6 @@ test('re-applying a filter reproduces its own header counts exactly', { tag: '@p
     // between two different filters of the same table and serves B's numbers
     // for A. `_filterResultCache` guarantees the second A is a genuinely
     // different code path from the first, not a no-op.
-    // See the sort case above: three full-table renders plus three
-    // header-count settles do not fit chromium-live's 120 s default.
-    test.setTimeout(300000);
     const pageErrors = collectPageErrors(page);
     await loadArtistEvents(page);
     await waitForColHeaderUniqCount(page, UNIQ_COUNT_COLUMN, UNIQ_COUNT_TOTAL);
