@@ -379,8 +379,12 @@ read 1735/1730/3968/31149/863 — roughly half of what the same ~main~ produces
 here. *That gap has since been bisected and is not the script*: the SAME
 9.99.1045 userscript, re-run on ~petri~ on 2026-09-08, produced
 3117/3285/6044/42948/1640 — within noise of 9.99.1048, exonerating the CAA/EAA
-fixes in 9.99.1046-1047. The environment carries all of it, and since the older
-arm never recorded its host, what differed cannot be recovered. See
+fixes in 9.99.1046-1047. The environment carries all of it, and WHICH part of
+the environment was narrowed on 2026-09-08: rebooting ~petri~ restored
+1.37-1.77x across every metric, while removing a resident Claude Code session
+changed essentially nothing. Reboot recency is the leading candidate; the
+older arm still never recorded its host, so that is a mechanism which
+reproduces, not a confirmed account of that particular arm. See
 ~tests/MEASUREMENTS.org~. Only a within-session ratio means anything.
 
 *Read every row but the last as noise.* ~main~ alone was captured three times

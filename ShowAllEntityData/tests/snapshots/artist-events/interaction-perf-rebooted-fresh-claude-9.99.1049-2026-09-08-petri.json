@@ -1,0 +1,54 @@
+{
+  "pageType": "artist-events",
+  "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events",
+  "branch": "rebooted-fresh-claude",
+  "gitBranch": "main",
+  "capturedAt": "2026-09-08",
+  "startedAt": "2026-09-08T22:33:10.471Z",
+  "finishedAt": "2026-09-08T22:44:03.792Z",
+  "machine": {
+    "hostname": "petri",
+    "platform": "linux",
+    "release": "6.18.33.2-microsoft-standard-WSL2",
+    "cpus": 24,
+    "totalMemGb": 31,
+    "node": "v24.16.0",
+    "playwright": "1.62.1",
+    "uptimeHours": 0.3,
+    "claudeResident": {
+      "count": 1,
+      "oldestSessionHours": 0.2
+    }
+  },
+  "scriptVersion": "9.99.1049+2026-09-08",
+  "interactions": {
+    "globalFilter": {
+      "medianMs": 2388,
+      "samples": 5
+    },
+    "columnFilter": {
+      "medianMs": 2013,
+      "samples": 5
+    },
+    "sort": {
+      "medianMs": 4462,
+      "samples": 5
+    },
+    "uniqDropCold": {
+      "medianMs": 26244,
+      "samples": 5
+    },
+    "uniqDropWarm": {
+      "medianMs": 1068,
+      "samples": 5
+    },
+    "headerCountsInitial": {
+      "medianMs": 5844,
+      "samples": 5
+    },
+    "headerCountsRestore": {
+      "medianMs": 6264,
+      "samples": 5
+    }
+  }
+}

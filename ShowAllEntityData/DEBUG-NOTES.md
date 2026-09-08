@@ -7892,3 +7892,70 @@ tests run 20.9 s to 90 s against chromium-live's 120 s default, so the top of
 that range crosses under any load at all. The slowest of them is a pre-existing
 case, which is why the budget is file-level rather than two ad-hoc
 `test.setTimeout()` calls on the tests added here.
+
+## 2026-09-08 — `petri`'s 2x perf step change: a resident Claude Code session, exonerated; reboot recency implicated (measured, mechanism still unknown)
+
+No code change. Ran the protocol `tests/MEASUREMENTS.org` pre-registered for
+its open question "what changed on `petri` on 2026-09-07: a resident session,
+or uptime?". Full workings, all arms and every caveat live in that file's
+"The answer, 2026-09-08" subsection; recorded here because it was an
+investigation with a result, and because it falsified prose elsewhere.
+
+Three arms, all `petri`, all 9.99.1049, `artist-events` disk fixture,
+`globalFilter` shown (the other six metrics move the same way):
+
+- **C** — 18 d uptime, 30 h-old session resident: 3634 ms
+- **A** — 18 d uptime, no `claude` process at all: 2820 ms (user-run from a
+  plain terminal; cannot be run from inside Claude Code). Reached by closing
+  C's 30 h session, not by never having run one — `claudeResident: 0` cannot
+  distinguish those, so A tests "not running", not "never ran".
+- **R** — 10 min after a full host reboot, fresh session resident: 2388 ms
+
+**The LIVE session is not the cause.** A moved four of seven metrics not at
+all or slightly the *wrong* way against C. R is faster than A on all seven
+(1.18-1.68x) *while carrying a session A does not have* — the fastest `petri`
+arm ever recorded at this version had Claude Code running during it.
+
+**But a session's RESIDUE is not exonerated, and I first said it was.** Arm A
+reached `claudeResident: 0` by closing C's session, not by never having run
+one. If a session leaves something that outlives the process and only a reboot
+clears, the measured ordering (C 3634 residue+live, A 2820 residue only, R 2388
+live only) is exactly what you would expect — and the 30 h session started
+`Mon Sep 7 16:40:22`, inside the 11:41-18:58 bracket the step change falls in.
+Generic uptime accumulation fits equally well and arm D separates neither.
+Only an **arm E** does: ~18 days of uptime on a `petri` that has never run
+Claude Code.
+
+**Reboot recency reproduces the whole ~2x**, and it also kills the
+cross-machine conclusion recorded the previous evening: rebooted `petri` sits
+at 0.86-1.24x of `NB-3641` against the 1.17x that 28-vs-24 cores predicts, so
+the "1.5-1.85x is the machine" table was measuring reboot recency with a
+machine ratio inside it. Corrected in place in `tests/MEASUREMENTS.org` and
+`PERFORMANCE.org`.
+
+**What it does not explain**, and the reason this is not closed: `petri` was up
+18 days *across* 2026-09-07 and never rebooted, so the step change happened
+inside one uptime. "Uptime" names what **clears** the slow state, not what
+causes it, and there is still no process leak or memory pressure to point at.
+
+**Two process notes worth carrying forward.** Arm B (18 d uptime + fresh
+session) is permanently unobtainable — an unplanned host reboot landed 31 min
+after arm A finished, and that uptime cannot be recreated. And arm C, captured
+21:07 UTC, predates by 29 minutes the commit that added `uptimeHours`/
+`claudeResident` to the `machine` block, so the one arm whose conditions the
+whole question turns on records them nowhere in its own JSON. That is exactly
+the gap those fields were added to close, missed by a single arm.
+
+Three arms outstanding:
+
+- **D** — rebooted `petri`, no `claude` process. Closes the 2x2 cell; R
+  bounds it at <= 2388 but does not replace it. One run.
+- **E** — ~18 days of uptime on a `petri` that has never run Claude Code.
+  The only arm that separates "a session leaves residue" from "uptime
+  accumulates on its own". Costs 18 days of discipline, not runtime.
+- **F** — `NB-3641`, freshly rebooted, `--label=rebooted`. Every
+  cross-machine ratio in `tests/MEASUREMENTS.org` rests on one `NB-3641`
+  arm captured ~73 min before `uptimeHours` existed, so its "freshly
+  rebooted" condition is recollection, not measurement. If that box was
+  also slowed, the post-reboot 0.86-1.24x understates the machine gap
+  instead of settling it. One run.

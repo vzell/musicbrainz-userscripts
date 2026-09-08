@@ -458,6 +458,10 @@ Then restart and paste:
 ▎ running, before starting you. Capture arm B (--label=fresh-claude) yourself now, then record all arms in the Results table with host and UTC time, and answer the question the section poses — including if the answer is negative. Arm D needs a reboot, so tell me when to do
 ▎ that rather than assuming it's done.
 
+
+** Actually these are the results AFTER closing claude and BEFORE rebooting, I forgot to enter them in my .org files:
+
+arm B:
 #+begin_example
 artist-events [interaction-perf, no-claude] on petri (24 cores, node v24.16.0, playwright 1.62.1):
   globalFilter: 2820.0ms                                                                          
@@ -468,3 +472,152 @@ artist-events [interaction-perf, no-claude] on petri (24 cores, node v24.16.0, p
   headerCountsInitial: 8250.0ms                                                                   
   headerCountsRestore: 8915.0ms                                                                   
 #+end_example
+
+** After reboot
+
+Done. Here's what happened and what it answers.
+
+  The protocol didn't survive contact — the reboot had already happened
+
+  A full Windows host reboot landed at 22:23 UTC, 31 min after your arm A finished and before you started me. Verified two ways: Win32_OperatingSystem.LastBootUpTime = 2026-09-09 00:23:56 local, WSL uptime -s = 00:24:25. Not a WSL VM restart.
+
+  So arm B is permanently unobtainable — it needs the 18-day uptime, which no longer exists. I captured what the machine could actually give instead: arm R, rebooted + fresh session, labelled rebooted-fresh-claude. Writing fresh-claude onto a file whose uptimeHours reads 0.3
+  would have been the mislabel this file warns about twice.
+
+  The answer: not the session. Reboot recency.
+
+  All petri, all 9.99.1049:
+
+  ┌─────┬─────────┬──────────────┬────────┬────────┬──────┬───────────┬───────────┬──────────┬─────────────┐
+  │ Arm │ Uptime  │    claude    │ global │ column │ sort │ uniq cold │ uniq warm │ hdr init │ hdr restore │
+  ├─────┼─────────┼──────────────┼────────┼────────┼──────┼───────────┼───────────┼──────────┼─────────────┤
+  │ C   │    18 d │ 1, 30 h old  │   3634 │   3158 │ 6903 │     46549 │      1722 │     8191 │        8594 │
+  ├─────┼─────────┼──────────────┼────────┼────────┼──────┼───────────┼───────────┼──────────┼─────────────┤
+  │ A   │ 459.6 h │ 0            │   2820 │   3028 │ 7065 │     41723 │      1798 │     8250 │        8915 │
+  ├─────┼─────────┼──────────────┼────────┼────────┼──────┼───────────┼───────────┼──────────┼─────────────┤
+  │ R   │   0.3 h │ 1, 0.2 h old │   2388 │   2013 │ 4462 │     26244 │      1068 │     5844 │        6264 │
+  └─────┴─────────┴──────────────┴────────┴────────┴──────┴───────────┴───────────┴──────────┴─────────────┘
+
+  The resident session is exonerated. Arm A moved four of seven metrics the wrong way — sort, uniqDropWarm, and both header-count metrics all came back slightly slower with no claude process at all. Only globalFilter cleared the ~10% noise band, at 22%. Your pre-registered
+  threshold was "~1700-2000 → the session is the cause"; 2820 isn't that.
+
+  And R is faster than A on all seven metrics (1.18–1.68x) while carrying a session A doesn't have. The fastest petri arm ever recorded at this version had Claude Code running during it.
+
+  A side effect worth more than the original question: rebooted petri sits at 0.86–1.24x of NB-3641, against the 1.17x that 28-vs-24 cores predicts. So last night's "the whole remaining gap is the machine" was wrong — that table was measuring reboot recency with a machine ratio
+  inside it. Corrected in place in both files.
+
+  What it does not explain, and why I didn't mark the section closed: petri was up 18 days across 2026-09-07 and never rebooted, so the step change happened inside one uptime. "Uptime" names what clears the slow state, not what causes it. Still no leak or memory pressure to point
+  at. n=1, one reboot; and A→R are 52 min apart on a live-site-dependent harness, which fits badly but isn't excluded.
+
+  Files
+
+  M tests/MEASUREMENTS.org (2 Results rows, cross-machine correction, section → ANSWERED, the answer + caveats), M PERFORMANCE.org (its "what differed cannot be recovered" is now false), M DEBUG-NOTES.md (dated entry), plus the new arm JSON. No version bump or changelog — no
+  userscript runtime change, and tests/ is carved out anyway. Nothing committed; git diff is ready for your review.
+
+  Arm D — you don't need to reboot
+
+  The reboot is spent. Arm D just needs no claude process, so exit me, then from a plain terminal:
+
+  pgrep -a claude          # must be silent
+  node tests/support/capture-interaction-perf.js --pageType=artist-events --label=rebooted
+
+  Sooner is better — uptime is ~1 h now vs R's 0.3 h. R bounds D at ≤ 2388 (a resident session can't make the box faster), so D confirms rather than decides; it's what turns the provisional "reboot before a measurement session" into a rule worth putting in CLAUDE.md. I
+  deliberately left that rule marked provisional and did not touch CLAUDE.md.
+
+** so what, are the results now better then NB-3641 or worse
+
+Still worse — but barely, and one metric flipped.
+
+  ┌─────────────────────┬──────────────────┬─────────┬───────┬──────────────────────┐
+  │       Metric        │ petri (rebooted) │ NB-3641 │  was  │         now          │
+  ├─────────────────────┼──────────────────┼─────────┼───────┼──────────────────────┤
+  │ globalFilter        │             2388 │    1996 │ 1.82x │                1.20x │
+  ├─────────────────────┼──────────────────┼─────────┼───────┼──────────────────────┤
+  │ columnFilter        │             2013 │    1706 │ 1.85x │                1.18x │
+  ├─────────────────────┼──────────────────┼─────────┼───────┼──────────────────────┤
+  │ sort                │             4462 │    4392 │ 1.57x │         1.02x — tied │
+  ├─────────────────────┼──────────────────┼─────────┼───────┼──────────────────────┤
+  │ uniqDropCold        │            26244 │   30347 │ 1.53x │ 0.86x — petri faster │
+  ├─────────────────────┼──────────────────┼─────────┼───────┼──────────────────────┤
+  │ uniqDropWarm        │             1068 │     985 │ 1.75x │                1.08x │
+  ├─────────────────────┼──────────────────┼─────────┼───────┼──────────────────────┤
+  │ headerCountsInitial │             5844 │    4704 │ 1.74x │                1.24x │
+  ├─────────────────────┼──────────────────┼─────────┼───────┼──────────────────────┤
+  │ headerCountsRestore │             6264 │    5689 │ 1.51x │                1.10x │
+  └─────────────────────┴──────────────────┴─────────┴───────┴──────────────────────┘
+
+  Slower on 5 of 7, tied on 1, faster on 1. The range collapsed from 1.51–1.85x to 0.86–1.24x.
+
+  The interesting part is where it lands: 28-vs-24 cores predicts 1.17x, and the surviving gap averages right around that. So after the reboot, petri performs about exactly as its core count says it should relative to NB-3641 — the leftover is plausibly just hardware, with
+  nothing unexplained left over.
+
+  One caveat you should weigh before treating this as settled. NB-3641's arm has no uptimeHours in its machine block — captured 20:23 UTC, an hour before the fields landed. Its "freshly rebooted" status is your report, not a measurement. So this is a like-for-like
+  reboot-vs-reboot comparison only if that recollection is right. If NB-3641 was not freshly booted when it produced 1996, then it was slowed the same way petri was, and a rebooted NB-3641 would be faster still — meaning petri would be worse than 1.20x, not better.
+
+  That's cheap to close, and worth doing before anyone concludes the machines are near-equivalent: one --label=rebooted arm on NB-3641, which will now record its own uptime. Want me to note that as an outstanding arm alongside D and E?
+
+  
+** Arm F is recorded. Summary of where the outstanding arms now stand:
+
+  ┌─────┬─────────────────────────────────────────────┬───────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Arm │                    Where                    │         Cost          │                                     What it decides                                     │
+  ├─────┼─────────────────────────────────────────────┼───────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┤
+  │ D   │ petri, rebooted, no claude                  │ one run               │ Closes the 2×2 cell. R bounds it at ≤ 2388; separates nothing on its own                │
+  ├─────┼─────────────────────────────────────────────┼───────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┤
+  │ E   │ petri, ~18 d uptime, never ran Claude Code  │ 18 days of discipline │ The only arm separating "a session leaves residue" from "uptime accumulates on its own" │
+  ├─────┼─────────────────────────────────────────────┼───────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┤
+  │ F   │ NB-3641, freshly rebooted, --label=rebooted │ one run               │ Whether the cross-machine ratio is reboot-vs-reboot at all                              │
+  └─────┴─────────────────────────────────────────────┴───────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Arm F is recorded in three places, because the claim it guards is spread across the file:
+
+  - Under the Results table, attached directly to the corrected 0.86–1.24x ratio — that block now states the ratio is reboot-vs-reboot only if NB-3641 really was freshly booted, that its machine block carries neither uptimeHours nor claudeResident (captured ~73 min before those
+    fields existed), and that if the box was also slowed then 0.86–1.24x understates the machine gap rather than settling it.
+  - In the answer section, as a bullet beside E.
+  - In DEBUG-NOTES.md, in a three-arm outstanding list.
+
+  Section heading is now PARTLY ANSWERED (arms D, E and F outstanding).
+
+  The asymmetry worth keeping in view: D and F are 16 minutes each and both currently gate a conclusion already written into the file. E is the one that would actually explain the step change, and it's the one that can't be bought with runtime.
+
+  Nothing committed. Working tree: M tests/MEASUREMENTS.org, M PERFORMANCE.org, M DEBUG-NOTES.md, plus untracked interaction-perf-rebooted-fresh-claude-9.99.1049-2026-09-08-petri.json. No version bump or changelog — no userscript runtime change.
+
+  
+** Short answer: not yet — a third machine is the lowest-value option on the table right now, and one arm on it would answer nothing. Two things are more urgent, one of which is time-limited.
+
+  Do D now — the window is open and closing
+
+  petri is at 0.8 h uptime, load 0.04. That's still "freshly rebooted" (R was 0.3 h). This is the only chance to get the D cell until the next reboot — wait a day and you'd need to reboot again to capture it. 16 minutes:
+
+  # exit this session first
+  pgrep -a claude          # must be silent
+  node tests/support/capture-interaction-perf.js --pageType=artist-events --label=rebooted
+
+  F on NB-3641 is the other 16-minute run, not time-limited, and it currently gates a conclusion already written into the file.
+
+  Why a third machine doesn't pay yet
+
+  It depends entirely on what the box is:
+
+  - Another WSL2 machine — adds a row to a cross-machine table that isn't the open question. The interesting question is why a box degrades against itself, and a new host with no history can't speak to that.
+  - Native Linux, or bare metal, or macOS — now it's interesting, because it tests a hypothesis nothing has tested: is this WSL2-specific? Both petri and NB-3641 run the identical 6.18.33.2-microsoft-standard-WSL2 kernel. "Guest degrades over days, reboot fixes it" is far more
+    characteristic of a virtualized guest — host paging, memory ballooning, dynamic memory reclaim — than of bare metal.
+
+  But even then, one arm tells you nothing, because you'd have no baseline for that box. Testing "is it WSL" needs the third machine measured fresh and aged — the same 18-day discipline as E, just relocated.
+
+  What would actually answer it: a drift curve, not more machines
+
+  The unexplained part is that the 09-07 change was a step inside a smooth 18 days, not a drift. Nothing has ever measured petri between fresh and 18 days — you have 0.3 h and 430 h and nothing in between. So:
+
+  Take one 16-minute arm on petri every few days at the same version. That gives you when degradation starts, whether it's a step or a ramp, and whether it reproduces at all. The harness now records uptimeHours and claudeResident in every arm, so the series self-describes.
+
+  And if you can keep Claude Code off petri between captures, that series is arm E — you get the residue answer for free instead of paying 18 days for a single data point. If you can't (likely, it's your main box), run it anyway with normal usage: if a step reappears and lines up
+  with a session's start, that's strong evidence for residue; if it appears with no session behind it, uptime accumulates on its own.
+
+  One cheap instrumentation gap worth closing first
+
+  Arm A's whole ambiguity was that claudeResident: {count: 0} can't distinguish "never ran" from "closed it". Every future arm in that series will hit the same wall. A claudeSinceBoot field — inferred from whether anything under /tmp/claude-* has an mtime after boot — would make
+  the series self-describing instead of depending on you remembering. It's a small change to capture-interaction-perf.js and a heuristic rather than proof, but it beats recollection, which is what just cost us arm A's precision.
+
+  Want me to add that field before you start the series? It's the only thing here I can do from inside the session — D, F and E all require me not to be running.
+  
