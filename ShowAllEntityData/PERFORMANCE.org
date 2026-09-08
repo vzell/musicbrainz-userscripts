@@ -11,7 +11,7 @@ history of what was tried and why is the point of this file.
 is on ~main~. Several steps below were implemented and measured on a branch
 that was never merged; those stay TODO and say so in their own text, so that
 "what is true of the script people actually run" is readable straight off the
-keywords. As of this revision the DONE set is exactly Steps 3, 4, 18, 19, 21 and 22.
+keywords. As of this revision the DONE set is exactly Steps 3, 4, 8, 18, 19, 21 and 22.
 
 *One canonical numbering.* Three copies of this file drifted into three
 incompatible schemes — ~main~, ~perf-steps-1-4~ and
@@ -665,10 +665,11 @@ check means something there too.
 ~main~ — so there is nothing here to fix yet. Fold it into Step 5 when that
 step is reimplemented; it is not independent work.
 
-*** TODO Step 8: Invalidate Step 3/4 caches for async-populated columns
+*** DONE Step 8: Invalidate Step 3/4 caches for async-populated columns
 
-/Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31, script
-v9.99.976). A proposal: no implementation exists on that branch or on ~main~.
+/Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31, script v9.99.976),
+where it was a proposal with no implementation. Both halves are now on ~main~
+— see the closing note.
 
 ~initReleaseEventsColumn()~ invalidates Step 3's header-count cache but not
 Step 4's uniq-drop cache (regression #3); ~initRelationshipsColumn()~/
@@ -687,8 +688,8 @@ that ~openUniqDrop~'s inline-art scan reads, with no corresponding
 invalidation call either. Same fix shape: call
 ~_invalidateUniqDropDataCache(table, colIndex)~ there too.
 
-*Half of this is already on* ~main~. The uniq-drop cache half shipped with Step
-4, with invalidations at every site named above plus three the branch text did
+*All of this is on* ~main~, in two releases. The uniq-drop cache half shipped
+with Step 4, with invalidations at every site named above plus three the branch text did
 not know about — see Step 4's "Correctness hazard 2", which cites this step by
 number and lists what it folded in. The header-count half came with Step 3 in
 9.99.1049, and by construction rather than by another audit:
