@@ -260,7 +260,7 @@ working tree with only ~ShowAllEntityData.user.js~ stashed) vs this branch's:
 | Uniq-dropdown, warm | 553 ms   | 914 ms      |        +65% |
 
 *Both columns are v9.99.976 numbers, and only the right-hand one was ever
-committed* — as ~interaction-perf-fix-chunked-render-header-counts.json~,
+committed* — as ~interaction-perf-fix-chunked-render-header-counts-9.99.976-2026-08-31.json~,
 under the name of a branch that has since been merged and deleted. The ~main~
 column exists only as this table. Neither has been re-measured since, so read
 them as "the cost of the chunked-render fix, at the version it landed", not as
@@ -284,7 +284,10 @@ represent real extra main-thread work.
 The table above was captured at v9.99.976 and never re-run, so it could not
 say whether the +34%/+42%/+37% was still real. It is. Same harness, same
 fixture, same machine, median of 5 — and this arm IS committed, as
-~interaction-perf-main.json~:
+~interaction-perf-main-9.99.1045.json~ (the plain ~interaction-perf-main.json~
+name has since been overwritten by later arms and finally retired in favour
+of a version+date[-host]-qualified name for every arm — see the "Baselines
+on disk" table below):
 
 | Interaction         | pre-fix (v9.99.976) | post-fix (v9.99.976) | now (v9.99.1045) | vs pre-fix |
 |---------------------+---------------------+----------------------+------------------+------------|
@@ -358,8 +361,8 @@ seconds after render — fixed here.
 ~tests/support/capture-interaction-perf.js --pageType=artist-events~ (4174 rows,
 21 columns, fresh page per sample). ~main~ is 9.99.1048 with only
 ~ShowAllEntityData.user.js~ swapped, so both arms share the harness. This pair is
-the SHIPPED configuration — committed as ~interaction-perf-main.json~ and
-~interaction-perf-perf-step-3-header-count-cache.json~.
+the SHIPPED configuration — committed as ~interaction-perf-main-9.99.1048-2026-09-08.json~ and
+~interaction-perf-perf-step-3-header-count-cache-9.99.1048-2026-09-08.json~.
 
 | Interaction            |   ~main~ | this branch |        Δ |
 |------------------------+----------+-------------+----------|
@@ -383,7 +386,7 @@ arm never recorded its host, what differed cannot be recovered. See
 *Read every row but the last as noise.* ~main~ alone was captured three times
 across the two sessions — 3757/3503/3033 on the global filter, 7393/6932/6410 on
 sort — a spread wider than any delta above except ~headerCountsRestore~. The
-2026-09-07 arm, kept as ~interaction-perf-main-2026-09-07.json~, showed the same
+2026-09-07 arm, kept as ~interaction-perf-main-2026-09-07-9.99.1048.json~, showed the same
 shape with a +6.2% column filter that did not reproduce here (+1.3%).
 
 ***** The win is narrow, and where it lands is the interesting part
@@ -423,7 +426,7 @@ every arm, so it compresses a ratio and never inflates one.
 
 An additional tier memoized ~getCleanColumnText()~ per ~data-mb-row-idx~, to
 make a cache MISS cheap. The arm above was captured with it
-(~interaction-perf-step3-l1-l2.json~). It earned nothing — for the reason in
+(~interaction-perf-step3-l1-l2-9.99.1048-2026-09-07.json~). It earned nothing — for the reason in
 "where the win lands": the only full-table scans are a cold miss, where the memo
 is empty and pure overhead, and an LRU hit, where it is never read. Against that
 it cost roughly a string per rendered cell (~88 000 on this page) and a second
@@ -466,13 +469,15 @@ while rebasing onto ~main~).
   | *Uniq-dropdown, warm* | 31347 ms | *581 ms*    | *54x faster*      |
 
   The branch result is committed as
-  ~tests/snapshots/artist-events/interaction-perf-worktree-perf-step-4.json~.
+  ~tests/snapshots/artist-events/interaction-perf-worktree-perf-step-4-9.99.970-2026-08-31.json~.
   The ~main~ column was measured for this comparison and NOT committed — the
   2026-08-24 / 9.99.953 capture from a different machine
   (1418/1595/2994/29802/29700) was deliberately left untouched, and now lives
   at ~interaction-perf-main-2026-08-24-v9.99.953.json~ (renamed when a real
   current-~main~ capture finally took the plain ~interaction-perf-main.json~
-  name — see Step 18's "Measurement coverage" note). It is not directly
+  name — see Step 18's "Measurement coverage" note; that plain name has since
+  been retired too, in favour of a version+date[-host]-qualified name for
+  every arm). It is not directly
   comparable, since ~main~ had since grown 17 versions of extra dropdown work
   (~roleTokenValueCounts~, the editor/changelog/data-quality scans, several
   ~SYN_SECTION_META~ splits) that a cold open has to pay.
@@ -1283,18 +1288,19 @@ Baselines on disk, and their real vintage:
 
 | File (under ~tests/snapshots/~)                                        |   Captured |  Version | What it is                                                                                     |
 |------------------------------------------------------------------------+------------+----------+------------------------------------------------------------------------------------------------|
-| ~artist-events/interaction-perf-main-2026-08-24-v9.99.953.json~        | 2026-08-24 | 9.99.953 | pre-Step-4, pre-chunked-render-fix, pre-Step-18; a different machine                           |
-| ~artist-events/interaction-perf-fix-chunked-render-header-counts.json~ | 2026-08-31 | 9.99.976 | the de-facto current-~main~ row for a long time, filed under a branch since merged and deleted |
-| ~artist-events/interaction-perf-worktree-perf-step-4.json~             | 2026-08-31 | 9.99.970 | Step 4's own branch arm                                                                        |
-| ~artist-releasegroups/perf-baseline.json~                              |   see file | see file | initial fetch+render wall time, from ~capture-snapshots.js --perf~                             |
+| ~artist-events/interaction-perf-main-2026-08-24-v9.99.953.json~                             | 2026-08-24 | 9.99.953 | pre-Step-4, pre-chunked-render-fix, pre-Step-18; a different machine                           |
+| ~artist-events/interaction-perf-fix-chunked-render-header-counts-9.99.976-2026-08-31.json~  | 2026-08-31 | 9.99.976 | the de-facto current-~main~ row for a long time, filed under a branch since merged and deleted |
+| ~artist-events/interaction-perf-worktree-perf-step-4-9.99.970-2026-08-31.json~              | 2026-08-31 | 9.99.970 | Step 4's own branch arm                                                                        |
+| ~artist-releasegroups/perf-baseline.json~ (+ dated archival copies alongside it)             |   see file | see file | initial fetch+render wall time, from ~capture-snapshots.js --perf~                             |
 
 Refreshed 2026-09-07 at 9.99.1045, since both files above had gone stale
 enough to mislead (the ~main~ interaction row was 87 versions old and predated
 Step 4, and the fetch baseline was 109 versions old):
 
-- ~interaction-perf-main.json~ is now a genuine current-~main~ capture. Its
-  numbers are in Step 3's re-measurement table, which is where they answer
-  something.
+- ~interaction-perf-main.json~ (since renamed to
+  ~interaction-perf-main-9.99.1045.json~ — see Step 3's re-measurement note
+  above) was now a genuine current-~main~ capture. Its numbers are in Step
+  3's re-measurement table, which is where they answer something.
 - ~perf-baseline.json~: median wall *33 436 ms → 26 378 ms*, fetch
   *23 059 ms → 16 692 ms*, render *502 ms → 533 ms*, itemCount 2142 → 2143.
   Verdict ~ok~.
@@ -1612,7 +1618,7 @@ understate real perceived latency when a forced-reflow call is what's
 being removed). Full methodology, test files, and raw JSON:
 ~tests/live/artist-events-interactions.spec.js~,
 ~tests/support/capture-interaction-perf.js~,
-~tests/snapshots/artist-events/interaction-perf-<branch>.json~.
+~tests/snapshots/artist-events/interaction-perf-<branch>-<version>-<capturedAt>[-<hostname>].json~.
 
 *** Headline: narrow filter (real usage: a specific, mostly-complete search term)
 

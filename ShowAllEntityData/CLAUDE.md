@@ -324,6 +324,18 @@ much, and what the alternative would be.
   concurrent load, both guesses, and the second was disproved. Mark an unknown
   host as unknown rather than inferring it — at least one archived arm is known
   to be from a different machine.
+- **Filenames carry version, capture date, and hostname too, not just the
+  JSON content.** `interaction-perf-<branch>-<version>-<capturedAt>[-
+  <hostname>].json` and `perf-baseline-<version>-<capturedAt>[-
+  <hostname>].json` (the latter written alongside the single mutable
+  `perf-baseline.json` that `--perf`'s own WARN/FAIL verdict compares
+  against — that one file's name stays plain since it is the comparison
+  target, not an archived arm). `<hostname>` is omitted, not guessed, when
+  `os.hostname()` isn't a meaningful identifier. This exists because the
+  branch-only naming let a same-named file get silently overwritten by a
+  later machine's run — `interaction-perf-main.json` had already lost its
+  original 9.99.1045 data to a 9.99.1048 overwrite once, and had no
+  `machine` block at all by the time it was finally retired.
 - **`tests/MEASUREMENTS.org` is the log**: every timing, wall clock and count,
   with its host, what it was probing, and — for anything naming a page, a URL or
   a `rendered.html` — that page's pageType, `tableMode` and human title. Add a
@@ -332,7 +344,8 @@ much, and what the alternative would be.
 - The `run-perf-comparison` skill runs and interprets the instrumentation.
 - Committed baselines: `tests/snapshots/artist-events/interaction-perf-*.json`
   (interaction latency) and `tests/snapshots/artist-releasegroups/perf-baseline*.json`
-  (end-to-end fetch/render). Both are medians of 5 samples, kept per-branch.
+  (end-to-end fetch/render). Both are medians of 5 samples, kept as one file
+  per arm (branch/label + version + capture date [+ hostname]).
 - Current `main` reference point, on the 4174-row `artist-events` disk fixture,
   captured 2026-09-08 at 9.99.1048: global filter ~3033 ms, column filter
   ~3295 ms, sort ~6410 ms, uniq-dropdown ~45 996 ms cold / ~1676 ms warm,

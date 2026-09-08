@@ -28,12 +28,20 @@ across enough real runs. Don't wire either script into a required check.
 ```
 node tests/support/capture-snapshots.js --perf
 ```
-Runs 5 samples, takes the median of wall/fetch/render time, writes
-`tests/snapshots/artist-releasegroups/perf-baseline.json`, and prints a
-verdict against whatever baseline was already committed:
+Runs 5 samples, takes the median of wall/fetch/render time, writes/updates
+the single mutable `tests/snapshots/artist-releasegroups/perf-baseline.json`
+(the comparison TARGET every run's verdict is checked against) and prints a
+verdict against whatever was already committed there:
 - `ok` — within 25% of the committed baseline.
 - `WARN (>25% slower than baseline)`.
 - `FAIL (>3x baseline)` — also sets a non-zero exit code.
+
+It ALSO writes an archival copy of that same content, named
+`perf-baseline-<version>-<capturedAt>[-<hostname>].json`, so every arm
+survives the next `--perf` run rather than only the one mutable target.
+`<hostname>` is appended only when `os.hostname()` resolves to something
+meaningful — an unresolvable host is left OUT of the name rather than
+guessed.
 
 These thresholds are a starting point, not tuned (few real runs exist yet)
 — treat a `WARN`/`FAIL` as "go look," not as ground truth on its own.
@@ -44,10 +52,13 @@ node tests/support/capture-interaction-perf.js --pageType=artist-events
 Runs each interaction fresh per sample (no shared page state between
 samples) via the committed `tests/fixtures/saved-data/artist-events.json.gz`
 disk fixture — deterministic, no live 42-page fetch. Writes
-`tests/snapshots/artist-events/interaction-perf-<branch>.json`, where
-`<branch>` is auto-detected from the current git branch — **kept side by
-side per branch, never overwritten** — so a `main` run and a
-`perf-steps-1-4` run can be diffed directly.
+`tests/snapshots/artist-events/interaction-perf-<branch>-<version>-
+<capturedAt>[-<hostname>].json`, where `<branch>` is auto-detected from the
+current git branch (or `--label=<name>` overrides just this prefix) and
+`<hostname>` is appended only when meaningful (same rule as the baseline
+archive above) — **kept side by side per arm, never overwritten** — so a
+`main` run and a `perf-steps-1-4` run, or the same branch captured on two
+different machines, can be diffed directly.
 
 ## Comparing branches (the actual A/B workflow)
 
@@ -55,10 +66,11 @@ side per branch, never overwritten** — so a `main` run and a
    see the repo-wide "before any command that could discard uncommitted
    work" convention), run
    `node tests/support/capture-interaction-perf.js --pageType=artist-events`.
-   Confirms/produces `tests/snapshots/artist-events/interaction-perf-main.json`.
+   Produces `tests/snapshots/artist-events/interaction-perf-main-<version>-
+   <capturedAt>[-<hostname>].json`.
 2. On the perf branch: `git checkout perf-steps-1-4`, run the same command.
-   Produces `interaction-perf-perf-steps-1-4.json` alongside, not
-   overwriting step 1's file.
+   Produces `interaction-perf-perf-steps-1-4-<version>-<capturedAt>
+   [-<hostname>].json` alongside, not overwriting step 1's file.
 3. Diff the two JSON files directly (`globalFilter`/`columnFilter`/`sort`/
    `uniqDropCold`/`uniqDropWarm` fields) — this is the actual "did the perf
    branch move the needle" answer. `PERFORMANCE.org`'s "Ranked areas +
@@ -66,10 +78,11 @@ side per branch, never overwritten** — so a `main` run and a
    (engineering estimates from operation-count analysis, not measured
    profiles) to sanity-check the real numbers against.
 4. For the initial-fetch (not interaction) side, do the same with
-   `capture-snapshots.js --perf`'s `perf-baseline.json` — but note it's a
+   `capture-snapshots.js --perf`'s `perf-baseline.json` — it's still a
    single mutable file per pageType (not branch-suffixed like the
    interaction-perf files), so capture `main`'s number and record it
-   manually (or copy the file aside) before switching branches to re-run.
+   manually, or rely on the dated archival copy `--perf` now writes
+   alongside it, before switching branches to re-run.
 
 ## Adding a new perf-comparison target pageType
 

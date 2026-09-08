@@ -56,11 +56,17 @@
  * (filter column/values, sort column, uniq-drop column) are specific to
  * that page's own data, not read from `tests/pagetypes.json`.
  *
- * Output: `tests/snapshots/<pageType>/interaction-perf-<branch>.json`, where
- * `<branch>` is the current git branch (auto-detected) — kept side by side
- * per branch rather than a single mutable file, so a `main` run and a
- * `perf-steps-1-4` run can be compared directly without one overwriting the
- * other.
+ * Output: `tests/snapshots/<pageType>/interaction-perf-<branch>-<version>-
+ * <capturedAt>[-<hostname>].json`, where `<branch>` is the current git
+ * branch (auto-detected), `<version>` and `<capturedAt>` come from the
+ * userscript header and the run's own date, and `<hostname>` is appended
+ * only when `os.hostname()` resolves to something meaningful (see
+ * `sanitizeForFilename()`/`hostnameForFilename()`) — an unresolvable host is
+ * left OUT of the name rather than guessed, matching CLAUDE.md's "mark an
+ * unknown host as unknown" rule. This is kept side by side per arm rather
+ * than a single mutable file, so a `main` run and a `perf-steps-1-4` run —
+ * or the same branch captured on two different machines — can be compared
+ * directly without one overwriting the other.
  */
 
 const fs = require('fs');
@@ -112,9 +118,10 @@ const ARTIST_EVENTS = {
 };
 
 /**
- * `--label=<name>` overrides the branch-derived output filename. Needed to
- * measure a DIFFERENT script than the branch implies — the established
- * technique for a baseline arm is to check out `main`'s
+ * `--label=<name>` overrides the branch-derived PREFIX of the output
+ * filename (the `<version>-<capturedAt>[-<hostname>]` suffix is still
+ * appended). Needed to measure a DIFFERENT script than the branch implies —
+ * the established technique for a baseline arm is to check out `main`'s
  * `ShowAllEntityData.user.js` alone into the feature branch's working tree
  * (see PERFORMANCE.org's own "the working tree with only
  * ShowAllEntityData.user.js stashed" note), which would otherwise write
@@ -167,6 +174,32 @@ function machineInfo() {
         node: process.version,
         playwright,
     };
+}
+
+/**
+ * Filesystem-safe form of an arbitrary string for use inside a filename:
+ * anything other than letters/digits/dot/underscore/hyphen becomes `-`.
+ *
+ * @param {string} s
+ * @returns {string}
+ */
+function sanitizeForFilename(s) {
+    return s.replace(/[^A-Za-z0-9._-]+/g, '-');
+}
+
+/**
+ * `os.hostname()` can come back empty, `localhost`, or some other
+ * non-identifying placeholder depending on the environment. Only a
+ * meaningful hostname earns a place in the filename — anything else is
+ * left out rather than baked in as a false identifier, per CLAUDE.md's
+ * "mark an unknown host as unknown rather than inferring it".
+ *
+ * @param {string} hostname
+ * @returns {string|null}
+ */
+function hostnameForFilename(hostname) {
+    if (!hostname || /^(localhost|unknown)$/i.test(hostname)) return null;
+    return sanitizeForFilename(hostname);
 }
 
 /** @returns {string} */
@@ -454,18 +487,28 @@ async function runAll(browser, config) {
     const branch = readCurrentBranch();
     const outName = label || branch;
     const startedAt = new Date();
+    const capturedAt = startedAt.toISOString().slice(0, 10);
+    const scriptVersion = readScriptVersion();
+    const host = hostnameForFilename(machineInfo().hostname);
     const browser = await chromium.launch();
     try {
         const interactions = await runAll(browser, ARTIST_EVENTS);
 
-        const outPath = path.join(SNAPSHOTS_DIR, ARTIST_EVENTS.pageType, `interaction-perf-${outName}.json`);
+        const fileNameParts = [
+            'interaction-perf',
+            sanitizeForFilename(outName),
+            sanitizeForFilename(scriptVersion),
+            capturedAt,
+        ];
+        if (host) fileNameParts.push(host);
+        const outPath = path.join(SNAPSHOTS_DIR, ARTIST_EVENTS.pageType, `${fileNameParts.join('-')}.json`);
         fs.mkdirSync(path.dirname(outPath), { recursive: true });
         fs.writeFileSync(outPath, JSON.stringify({
             pageType: ARTIST_EVENTS.pageType,
             url: ARTIST_EVENTS.url,
             branch: outName,
             gitBranch: branch,
-            capturedAt: new Date().toISOString().slice(0, 10),
+            capturedAt,
             // Full timestamps, not just the date. A run is ~20 minutes of real
             // requests to musicbrainz.org for its page shells, so time of day
             // is a candidate explanation for arm-to-arm differences that the
@@ -475,7 +518,7 @@ async function runAll(browser, config) {
             startedAt: startedAt.toISOString(),
             finishedAt: new Date().toISOString(),
             machine: machineInfo(),
-            scriptVersion: readScriptVersion(),
+            scriptVersion,
             interactions,
         }, null, 2) + '\n');
 
