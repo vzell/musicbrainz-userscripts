@@ -621,3 +621,16 @@ Still worse — but barely, and one metric flipped.
 
   Want me to add that field before you start the series? It's the only thing here I can do from inside the session — D, F and E all require me not to be running.
   
+** after reboot (leider nicht direkt)
+
+vzell@petri:~/git/musicbrainz-userscripts/ShowAllEntityData$ node tests/support/capture-interaction-perf.js --pageType=artist-events --label=rebooted
+
+[interaction-perf, rebooted] on petri (24 cores, node v24.16.0, playwright 1.62.1):
+  globalFilter: 2328.0ms
+  columnFilter: 2116.0ms
+  sort: 4465.0ms
+  uniqDropCold: 24456.0ms
+  uniqDropWarm: 1304.0ms
+  headerCountsInitial: 5661.0ms
+  headerCountsRestore: 6078.0ms
+Written to /home/vzell/git/musicbrainz-userscripts/ShowAllEntityData/tests/snapshots/artist-events/interaction-perf-rebooted-9.99.1049-2026-09-08-petri.json
