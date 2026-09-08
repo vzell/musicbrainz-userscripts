@@ -350,31 +350,37 @@ uncovered one site that invalidated *neither* cache —
 ~_maybeCorrectAreaFlagRegion()~, which rewrites two cells' text up to six
 seconds after render — fixed here.
 
-***** Measured, 2026-09-07, same machine / same session, median of 5
+***** Measured, 2026-09-08, same machine / same session, median of 5
 
 ~tests/support/capture-interaction-perf.js --pageType=artist-events~ (4174 rows,
 21 columns, fresh page per sample). ~main~ is 9.99.1048 with only
-~ShowAllEntityData.user.js~ swapped, so both arms share the harness.
+~ShowAllEntityData.user.js~ swapped, so both arms share the harness. This pair is
+the SHIPPED configuration — committed as ~interaction-perf-main.json~ and
+~interaction-perf-perf-step-3-header-count-cache.json~.
 
 | Interaction            |   ~main~ | this branch |        Δ |
 |------------------------+----------+-------------+----------|
-| Global filter          |  3503 ms |     3669 ms |    +4.7% |
-| Column filter          |  3311 ms |     3515 ms |    +6.2% |
-| Sort                   |  6932 ms |     6917 ms |    -0.2% |
-| Uniq-dropdown, cold    | 48844 ms |    48563 ms |    -0.6% |
-| Uniq-dropdown, warm    |  1903 ms |     1678 ms |   -11.8% |
-| Header counts, initial |  8507 ms |     8066 ms |    -5.2% |
-| Header counts, restore | 12631 ms |     8944 ms | *-29.2%* |
+| Global filter          |  3033 ms |     3168 ms |    +4.5% |
+| Column filter          |  3295 ms |     3337 ms |    +1.3% |
+| Sort                   |  6410 ms |     6469 ms |    +0.9% |
+| Uniq-dropdown, cold    | 45996 ms |    46516 ms |    +1.1% |
+| Uniq-dropdown, warm    |  1676 ms |     1747 ms |    +4.2% |
+| Header counts, initial |  8033 ms |     7980 ms |    -0.7% |
+| Header counts, restore | 12319 ms |     8977 ms | *-27.1%* |
 
-*These are NOT comparable to the 9.99.1045 figures earlier in this file.* That
-capture read 1735/1730/3968/31149/863; this session's machine ran roughly twice
-as slow throughout, on both arms. Only the within-session ratio means anything.
+*These are NOT comparable to the 9.99.1045 figures earlier in this file*, which
+read 1735/1730/3968/31149/863 — roughly half of what the same ~main~ produces
+here. That gap was first written off as this session running under load; a fresh
+idle-machine capture the next day disproved it, landing within ~13% of the
+loaded one. Both are simply what this machine does, and the 9.99.1045 capture is
+the outlier that has never been reproduced on it. Only a within-session ratio
+means anything.
 
-*Read the two filter rows as noise, not a regression.* ~main~ was captured twice
-in this session and its own spread covers them: global filter 3757 then 3503 (a
-7% swing), sort 7393 then 6932, cold 52514 then 48844. Column filter was the
-steadier of the two (3327/3311) and the +6.2% sits just outside it, so it is the
-one number worth re-checking if it ever reproduces.
+*Read every row but the last as noise.* ~main~ alone was captured three times
+across the two sessions — 3757/3503/3033 on the global filter, 7393/6932/6410 on
+sort — a spread wider than any delta above except ~headerCountsRestore~. The
+2026-09-07 arm, kept as ~interaction-perf-main-2026-09-07.json~, showed the same
+shape with a +6.2% column filter that did not reproduce here (+1.3%).
 
 ***** The win is narrow, and where it lands is the interesting part
 
@@ -419,12 +425,11 @@ is empty and pure overhead, and an LRU hit, where it is never read. Against that
 it cost roughly a string per rendered cell (~88 000 on this page) and a second
 staleness surface. Removed.
 
-*The shipped configuration therefore has no arm of its own*: musicbrainz.org
-became unreachable before one could be captured (the disk fixture supplies the
-table data, not the page shell — see ~tests/README.org~). The table above is the
-closest available evidence, and it can only understate the shipped code, since
-every measured win came from tier-1 hits and the tier that was removed only ever
-added work to the miss path. Re-capturing it is a follow-up.
+*Both configurations have now been measured, and they agree.* The 2026-09-07
+arm carrying the per-cell tier restored the header counts in 8944 ms; the
+shipped tier-1-only code does it in 8977 ms — a 0.4% difference against a
+comparator spread several times that. The tier contributed nothing, exactly as
+predicted from where the win lands, and its removal cost nothing.
 
 *** DONE Step 4: ~openUniqDrop()~ per-open caching
 

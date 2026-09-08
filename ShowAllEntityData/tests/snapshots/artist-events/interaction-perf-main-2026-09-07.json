@@ -1,0 +1,39 @@
+{
+  "pageType": "artist-events",
+  "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events",
+  "branch": "main-2026-09-07",
+  "gitBranch": "HEAD",
+  "capturedAt": "2026-09-07",
+  "scriptVersion": "9.99.1048+2026-09-07",
+  "interactions": {
+    "globalFilter": {
+      "medianMs": 3503,
+      "samples": 5
+    },
+    "columnFilter": {
+      "medianMs": 3311,
+      "samples": 5
+    },
+    "sort": {
+      "medianMs": 6932,
+      "samples": 5
+    },
+    "uniqDropCold": {
+      "medianMs": 48844,
+      "samples": 5
+    },
+    "uniqDropWarm": {
+      "medianMs": 1903,
+      "samples": 5
+    },
+    "headerCountsInitial": {
+      "medianMs": 8507,
+      "samples": 5
+    },
+    "headerCountsRestore": {
+      "medianMs": 12631,
+      "samples": 5
+    }
+  },
+  "note": "Kept as the matched comparator for interaction-perf-step3-l1-l2.json, which was captured in the same session. Superseded as the current main reference by interaction-perf-main.json. Note this arm was first archived under the belief that the session was running ~2x slow under load; a fresh idle-machine capture of the same main the next day read 3033/3295/6410/45996/1676/8033/12319 \u2014 within ~13% of it \u2014 so that was wrong. Both are simply what this machine does; it is the older 9.99.1045 figures (1735/1730/3968/31149/863) that are the outlier, and they were never reproduced here."
+}
