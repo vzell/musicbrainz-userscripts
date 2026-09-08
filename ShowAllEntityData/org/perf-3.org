@@ -442,3 +442,29 @@ Recorded. Here's the state and your restart instructions.
 
   Two questions before I run it: include org/perf-3.org (your notes) in the same commit or leave it for you? And — worth noting — you're on main, and CLAUDE.md says never commit feature work directly to main. This is docs and test tooling, which is the category that's normally
   fine on main, but say if you'd rather I branch.
+
+** let's do it
+
+pgrep -a claude          # must print NOTHING
+cd /home/vzell/git/musicbrainz-userscripts/ShowAllEntityData
+node tests/support/capture-interaction-perf.js --pageType=artist-events --label=no-claude
+
+This will be the first end-to-end run of the fixed script, so two things to glance at when it prints: the filename should read interaction-perf-no-claude-9.99.1049-<date>-petri.json with the date appearing once, and the JSON's machine block should show "claudeResident":
+{"count": 0, ...} — which is itself the proof that arm A really ran under the condition it claims. If it says count: 1, a session was still alive and the arm is void.
+
+Then restart and paste:
+
+▎ This is petri. Read the "OPEN — what changed on petri on 2026-09-07: a resident session, or uptime?" section in ShowAllEntityData/tests/MEASUREMENTS.org and run its protocol. Arm A (--label=no-claude) is already captured — I ran it from a plain terminal with no claude process
+▎ running, before starting you. Capture arm B (--label=fresh-claude) yourself now, then record all arms in the Results table with host and UTC time, and answer the question the section poses — including if the answer is negative. Arm D needs a reboot, so tell me when to do
+▎ that rather than assuming it's done.
+
+#+begin_example
+artist-events [interaction-perf, no-claude] on petri (24 cores, node v24.16.0, playwright 1.62.1):
+  globalFilter: 2820.0ms                                                                          
+  columnFilter: 3028.0ms                                                                          
+  sort: 7065.0ms                                                                                  
+  uniqDropCold: 41723.0ms                                                                         
+  uniqDropWarm: 1798.0ms                                                                          
+  headerCountsInitial: 8250.0ms                                                                   
+  headerCountsRestore: 8915.0ms                                                                   
+#+end_example
