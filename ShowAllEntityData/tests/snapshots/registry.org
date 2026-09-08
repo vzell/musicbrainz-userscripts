@@ -51,6 +51,46 @@ Not affected, and worth knowing so the diff is not over-read:
     `npm test` reads a snapshot baseline at all. The review window expiring can
     never turn the suite red.
 
+** Column-header count badges filling in
+
+Unlike everything else in this section, this one is OUR movement, not
+MusicBrainz's — recorded here because a re-capture makes it look like a large,
+alarming diff spread across every =<thead>=.
+
+The =.mb-col-uniq-count= badges are written by =_updateAllColHeaderCounts()=,
+which used to abandon itself on multi-table pages: one module-level coalescing
+token, one schedule per sub-table, so every sub-table but the last cancelled
+before writing anything (PERFORMANCE.org Step 22). What the current baselines
+therefore record is mostly EMPTY badges:
+
+| Baseline                            | uniq badges | before | after |
+|-------------------------------------+-------------+--------+-------|
+| artist-releasegroups/rendered.html  |         423 |      1 |   286 |
+| releasegroup-releases/rendered.html |          42 |     14 |    32 |
+
+Both were re-captured on 2026-09-08 and those are the committed numbers now.
+Badges going the other way, from populated to empty, is a real regression.
+
+*"After" is not the full 423, and that is correct*: =_updateAllColHeaderCounts()=
+writes an empty badge when a column has no distinct values to count
+(=textContent = n > 0 ? String(n) : ''=). What Step 22 fixed is entire
+sub-tables reading empty — artist-releasegroups went from 46 of its 47 tables
+having nothing at all to every one of them populated, a steady 6 of 9 columns
+each.
+
+Two things had to change before a re-capture could show any of this:
+=captureOne()= now waits on =waitForColHeaderCountsStable()= before snapshotting
+(it previously took the snapshot straight after =waitForRenderComplete()=, which
+is why =artist-events/rendered.html= records 1 of 21 despite that page having a
+single table and no cancellation problem at all — its scan was simply still
+running). The wait is non-fatal: a page whose scan outlasts 180 s is captured
+anyway, with a warning naming how many badges are still empty.
+
+Expect unrelated drift in the same re-capture, already seen in this one: the
+=td[data-mb-len-flag]= tint rules gained =!important= and an explanatory comment
+on =main= long after the 9.99.953 baseline, and the Wikipedia extract flapped
+per the section below.
+
 ** Wikipedia extract on the Springsteen pages
 
 artist-releasegroups/raw.html embeds MusicBrainz's own sidebar Wikipedia

@@ -304,6 +304,16 @@ much, and what the alternative would be.
   global filter ~1735 ms, column filter ~1730 ms, sort ~3968 ms, uniq-dropdown
   ~31 100 ms cold / ~863 ms warm. Re-measure rather than trusting these if a
   decision hinges on them.
+- **Those absolutes are machine-state-dependent to a degree that swamps most
+  changes — always capture your own `main` arm in the same session.** A
+  2026-09-07 capture of the same `main`, same fixture, same machine read
+  3503/3311/6932/48844/1903, i.e. roughly twice the figures above, and `main`'s
+  own two runs within that one session differed by 7% on the global filter. Only
+  a within-session A/B ratio is worth quoting.
+- `capture-interaction-perf.js` also reports `headerCountsInitial` and
+  `headerCountsRestore` — the column-header count scan timed directly rather
+  than as main-thread pressure on a status-text poll. Both carry a ~1 s floor
+  from `waitForColHeaderCountsStable()`, identical on every arm.
 
 Note the warm uniq-dropdown figure: it was ~29 700 ms before caching landed. A
 change that reverts a win that large should be impossible to make by accident,

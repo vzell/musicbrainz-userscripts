@@ -40,6 +40,19 @@ new test belongs unless it genuinely cannot be reproduced offline.
 flaky through no fault of the code (MusicBrainz 503s under load, and the Cover
 Art Archive serves at roughly 1.2 requests/second), and some are login-gated.
 
+*A disk fixture is not the same thing as a fixture spec, and the difference
+bites.* =loadFromDiskFixture()= (=tests/support/diskFixture.js=) restores a
+saved =*.json.gz= payload through the real Load-from-disk pipeline, which makes
+the TABLE DATA deterministic and free of MusicBrainz data drift. It does not
+make the run offline: it calls =loadUserscriptPage()= with no =fixtureFile=, so
+no =page.route()= is registered and the page SHELL is still fetched from the
+live site. Anything built on it — =tests/live/artist-events-interactions.spec.js=,
+=capture-interaction-perf.js= — therefore needs musicbrainz.org to be reachable,
+and belongs in =tests/live/= for exactly that reason. Two complete 20-minute
+perf runs were lost to a single 30 s navigation timeout while roughly one probe
+in three to the host was timing out; =capture-interaction-perf.js= now retries a
+failed sample rather than abandoning the run.
+
 Note =fullyParallel: false= in =playwright.config.js=: tests *within* one file
 run serially, but separate files still run in parallel across workers.
 Playwright defaults to half the machine's cores.

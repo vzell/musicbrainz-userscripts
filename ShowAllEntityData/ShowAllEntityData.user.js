@@ -47940,6 +47940,15 @@ a { color: #1565c0; }`;
             _areaFlagRegionCorrected.add(key);
             const masterRow = _findMasterRowByIdx(rowIdx);
             if (masterRow && masterRow !== tr) _forceLocalityToRegion(masterRow, trio);
+            // Two cells' text just changed with no row show/hide of any kind,
+            // and this fires up to six seconds after the render (it waits on a
+            // third-party flag userscript's own decoration). Both the
+            // uniq-dropdown bundle and the column-header counts key off a
+            // visible-row-set signature that cannot see a content edit, so they
+            // have to be told — see _invalidateUniqDropDataCacheForTable()'s own
+            // JSDoc for the general contract, which every other async cell
+            // populator already honours and this one did not.
+            _invalidateUniqDropDataCacheForTable(tr.closest('table.tbl'));
             Lib.debug('render', `_maybeCorrectAreaFlagRegion: moved Locality->Region for rowIdx=${rowIdx} (${countryName})`);
         });
     }
@@ -52406,6 +52415,13 @@ a { color: #1565c0; }`;
      * index isn't known), exactly like the async column populators already
      * do — see that function's own JSDoc.
      *
+     * Also drops the column-header count cache for this table
+     * (PERFORMANCE.org Step 3). That cache's inputs are a strict SUBSET of
+     * this one's, so every site that has to invalidate here has to invalidate
+     * there too — routing it through this function is what stops the two
+     * audits from drifting apart. See `_invalidateColHeaderCountsCache()` for
+     * the full argument, including why the reverse delegation would be wrong.
+     *
      * @param {?HTMLTableElement} table
      * @param {number} colIndex
      */
@@ -52413,6 +52429,7 @@ a { color: #1565c0; }`;
         if (!table) return;
         const perCol = _uniqDropDataCache.get(table);
         if (perCol) perCol.delete(colIndex);
+        _invalidateColHeaderCountsCache(table);
     }
 
     /**
@@ -52430,11 +52447,107 @@ a { color: #1565c0; }`;
      * index isn't conveniently at hand), so they invalidate the whole table
      * rather than enumerating column indices.
      *
+     * Drops the column-header count cache for the same table, for the same
+     * reason and by the same subset argument as
+     * `_invalidateUniqDropDataCache()` above.
+     *
      * @param {?HTMLTableElement} table
      */
     function _invalidateUniqDropDataCacheForTable(table) {
         if (!table) return;
         _uniqDropDataCache.delete(table);
+        _invalidateColHeaderCountsCache(table);
+    }
+
+    /**
+     * Per-table memo of `_updateAllColHeaderCounts()`'s results
+     * (PERFORMANCE.org Step 3). Keyed by the live `<table>` element, so a
+     * brand-new table — a fresh fetch, a disk-load, another multi-table
+     * sub-table — is a miss for free with no manual reset anywhere.
+     *
+     * Entry shape:
+     *   {
+     *     results: Map<sig, Map<colIndex, {
+     *       uniq, multiRow, hasInlineArt,   // the three measured values
+     *       hadUniq, hadCollapse            // which header spans they were measured FOR
+     *     }>>
+     *   }
+     *
+     * Keyed by the row-set signature, holding the last
+     * `_COL_HEADER_COUNTS_SIG_LRU` of them rather than only the newest: the
+     * cycle a person actually performs is filter -> clear -> filter, and with a
+     * single slot every leg of that misses. The signatures are the only real
+     * weight (one row-index list each), so the cap is small and the map is
+     * pruned in insertion order, oldest first.
+     *
+     * **A per-cell tier was built here and then removed — do not re-add it
+     * without measuring first.** The idea was to memoize
+     * `getCleanColumnText()` per `data-mb-row-idx` so that a MISS stopped
+     * re-deriving text, on the reasoning that it would speed up filtering. It
+     * does not, and cannot: a full-table scan happens at exactly two moments —
+     * the initial render, where the memo is empty and is pure overhead, and a
+     * filter cleared back to the full set, which this signature cache already
+     * answers as a hit. Every other scan runs over an already-filtered row set
+     * that is small by construction. Measured on the 4174-row `artist-events`
+     * fixture it moved nothing outside `main`'s own run-to-run spread, while
+     * costing roughly a string per rendered cell (~88 000 of them) and a second
+     * staleness surface to keep correct. See PERFORMANCE.org Step 3.
+     *
+     * `hadUniq`/`hadCollapse` exist because header buttons are injected at
+     * different times — `initCollapsableColumns()` builds the collapse button,
+     * the CAA/EAA column button appears on a deferred visibility check — so a
+     * column measured before its button existed must not answer for it later
+     * with a confident 0. Such a column recomputes and upgrades its own record
+     * in place, leaving the rest of the table's cache intact.
+     *
+     * `sig` is written only when a scan runs to COMPLETION. A scan that hands
+     * back at a column boundary and finds its token superseded has updated
+     * only the columns it reached, so storing the signature up front would
+     * publish a half-filled result as authoritative and leave every remaining
+     * column showing the previous pass's number for as long as the row set
+     * stayed put. (That is the defect in the never-merged `perf-steps-3-4`
+     * sketch of this step, commit 8132bcd, which set the key before the loop.)
+     */
+    const _colHeaderCountsCache = new WeakMap();
+
+    /**
+     * How many distinct visible-row-set results `_colHeaderCountsCache` keeps
+     * per table. Four covers "unfiltered, filter A, filter B, filter A again"
+     * — the shape of ordinary use — without the map becoming something that
+     * needs its own eviction policy.
+     */
+    const _COL_HEADER_COUNTS_SIG_LRU = 4;
+
+    /**
+     * Forces the next `_updateAllColHeaderCounts(table)` pass to recompute
+     * instead of reusing its cached counts.
+     *
+     * The signature above tracks only WHICH rows are visible, never what their
+     * cells contain — so every call site that rewrites cell content in place,
+     * with no accompanying row show/hide, has to come through here.
+     *
+     * Rather than re-audit those sites, this is called from
+     * `_invalidateUniqDropDataCache()` / `_invalidateUniqDropDataCacheForTable()`,
+     * which already have that audit. The delegation is sound by a subset
+     * argument, not by coincidence: this cache reads clean cell text
+     * (`getCleanColumnText()`), list/prose structure (`_classifyCollapseCell()`)
+     * and inline-art placeholder presence — and `openUniqDrop()`'s bundle reads
+     * all three of those and more. Anything that must invalidate that cache
+     * must therefore invalidate this one, so wiring the two together is what
+     * makes "a future call site forgets one of them" impossible.
+     *
+     * The converse does not hold, and the over-invalidation is deliberate:
+     * `expandedCells` changes affect only the uniq-drop bundle (a collapse
+     * hides `<li>`s with `display:none`, leaving the nodes — and therefore both
+     * of this cache's inputs — untouched). Dropping a column's counts on a
+     * collapse click costs one recomputation that nothing was going to read
+     * before the next real scan anyway.
+     *
+     * @param {?HTMLTableElement} table
+     */
+    function _invalidateColHeaderCountsCache(table) {
+        if (!table) return;
+        _colHeaderCountsCache.delete(table);
     }
 
     // Per-table memo of _getLengthColumnAverages()'s own computed averages
@@ -56735,17 +56848,16 @@ a { color: #1565c0; }`;
      * changes the string, so the cached row-scan bundle is recomputed;
      * merely reopening the same column's dropdown does not, so it is reused.
      *
-     * Deliberately kept as a standalone helper rather than inlined:
-     * PERFORMANCE.org Step 3 (caching `_updateAllColHeaderCounts()`, still
-     * TODO — not yet implemented anywhere) is designed to key off this exact
-     * same primitive.
-     *
      * Note the signature is order-DEPENDENT — it concatenates in DOM order,
      * so a sort that reorders the same rows produces a different string and
      * forces a recompute. That is a missed optimisation, not a correctness
      * problem, and making it order-independent is PERFORMANCE.org Step 6
      * (out of scope here — several cached values, e.g. `entityNameGlyphMap`
      * and `valueItemSequence`, are themselves first-seen-in-row-order).
+     *
+     * PERFORMANCE.org Step 3 was long planned to share this exact helper, and
+     * deliberately does NOT — see `_colHeaderCountsRowSetSignature()` right
+     * below for the one-paragraph reason. Do not "unify" the two.
      *
      * @param {HTMLTableElement} table
      * @returns {string}
@@ -56761,13 +56873,100 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Monotonically-increasing token identifying the newest header-count scan
-     * scheduled by `_scheduleColHeaderCounts()`. A scan carrying an older token
-     * abandons itself at its next column boundary, so back-to-back schedules
-     * (`initReleaseEventsColumn()` alone fires `initCollapsableColumns()` up to
-     * three times in a row) cost one full scan, not three.
+     * `_updateAllColHeaderCounts()`'s own cache key: an ORDER-INDEPENDENT
+     * signature of which rows of `table` are currently visible.
+     *
+     * Deliberately separate from `_visibleRowSetSignature()` above, which is
+     * order-dependent, even though the two answer nearly the same question.
+     * The difference is not an oversight, and merging them would break one
+     * caller or the other:
+     *
+     *   - The header counts are a distinct-value count, a multi-row-cell count
+     *     and an inline-art flag. All three are pure functions of the visible
+     *     row SET, so a sort — which changes order and nothing else — must be a
+     *     cache HIT here, or this cache buys nothing on the single most
+     *     expensive interaction on the page.
+     *   - `openUniqDrop()`'s bundle (Step 4) genuinely is order-sensitive:
+     *     `entityNameGlyphMap`, `entityNameTypeMap`, `entityNameFlagMap` and
+     *     `valueItemSequence` are all first-seen-in-row-order. Making its key
+     *     order-independent is its own open work item (Step 6) precisely
+     *     because those have to be dealt with first.
+     *
+     * So this sorts the visible `data-mb-row-idx` values before joining — any
+     * total order will do, since the sort exists only to canonicalise, which is
+     * why plain lexicographic sorting of the raw strings is enough. That is
+     * O(rows log rows) against the O(rows × columns) `getCleanColumnText()`
+     * scan it guards — around a millisecond against seconds on the 4174-row
+     * `artist-events` fixture — and unlike a commutative digest
+     * (count/sum/xor) it cannot collide, which matters because a collision
+     * here surfaces as a silently wrong number in a column header.
+     *
+     * Sorted as strings rather than coerced to numbers on purpose: a row with
+     * no `data-mb-row-idx` would coerce to `NaN`, whose comparator result is
+     * itself `NaN` and leaves the sort order implementation-defined. Such a row
+     * contributes a literal `?` here instead, so the signature stays a
+     * deterministic function of the row set.
+     *
+     * @param {HTMLTableElement} table
+     * @returns {string}
      */
-    let _colHeaderCountsToken = 0;
+    function _colHeaderCountsRowSetSignature(table) {
+        const tbody = table.tBodies[0];
+        if (!tbody) return '';
+        const idxs = [];
+        for (const row of tbody.rows) {
+            if (row.style.display !== 'none') idxs.push(row.dataset.mbRowIdx || '?');
+        }
+        idxs.sort();
+        return idxs.join(',');
+    }
+
+    /**
+     * Newest header-count scan token, PER TABLE. A scan carrying an older token
+     * for its own table abandons itself at its next column boundary, so
+     * back-to-back schedules over the same table (`initReleaseEventsColumn()`
+     * alone fires `initCollapsableColumns()` up to three times in a row) cost
+     * one full scan, not three.
+     *
+     * Per table, and not one counter for the whole page, because
+     * `renderGroupedTable()` schedules a scan once per sub-table from inside its
+     * own loop — as does `syncCollapseButtonsWithColumnVisibility()` across
+     * every `table.tbl` on the page. Under a shared counter each of those
+     * schedules superseded the one before it, so on a multi-table page every
+     * sub-table except the last abandoned its scan before writing a single
+     * badge, silently: an unwritten badge is an empty `<span>`, not an error.
+     * The committed baselines still record it —
+     * `tests/snapshots/artist-releasegroups/rendered.html` has 1 of 423
+     * `.mb-col-uniq-count` spans populated across its 47 tables. See
+     * PERFORMANCE.org Step 22, and
+     * `tests/fixtures/user-ratings-multigroup.spec.js`'s per-sub-table
+     * assertion, which fails against the shared-counter version.
+     *
+     * @type {WeakMap<HTMLTableElement, number>}
+     */
+    const _colHeaderCountsTokens = new WeakMap();
+
+    /**
+     * Issues the next scan token for `table` and records it as the newest.
+     * @param {HTMLTableElement} table
+     * @returns {number}
+     */
+    function _nextColHeaderCountsToken(table) {
+        const next = (_colHeaderCountsTokens.get(table) || 0) + 1;
+        _colHeaderCountsTokens.set(table, next);
+        return next;
+    }
+
+    /**
+     * True when `token` is no longer the newest one issued for `table` — i.e. a
+     * later schedule has superseded this scan and it should stop.
+     * @param {HTMLTableElement} table
+     * @param {number} [token]
+     * @returns {boolean}
+     */
+    function _colHeaderCountsTokenStale(table, token) {
+        return token !== undefined && token !== _colHeaderCountsTokens.get(table);
+    }
 
     /**
      * Hands control back to the browser for one turn, preferring idle time but
@@ -56802,8 +57001,12 @@ a { color: #1565c0; }`;
      *      call sites go through `runFilter()` (`initReleaseEventsColumn()` and
      *      `syncCollapseButtonsWithColumnVisibility()` do not), so the guard has
      *      to live here rather than at the render call site.
-     *   2. **Coalesces.** Only the newest schedule survives; older in-flight scans
-     *      stop at their next column boundary.
+     *   2. **Coalesces, per table.** Only the newest schedule for a GIVEN table
+     *      survives; older in-flight scans of that table stop at their next
+     *      column boundary. Scans of different tables never cancel each other —
+     *      `renderGroupedTable()` schedules one per sub-table from inside its
+     *      own loop, and a shared counter meant all but the last abandoned
+     *      themselves (PERFORMANCE.org Step 22).
      *
      * Fire-and-forget: no call site awaits the returned promise, so it swallows
      * and logs any error rather than surfacing an unhandled rejection.
@@ -56812,7 +57015,7 @@ a { color: #1565c0; }`;
      * @returns {Promise<void>}
      */
     async function _scheduleColHeaderCounts(table) {
-        const token = ++_colHeaderCountsToken;
+        const token = _nextColHeaderCountsToken(table);
         try {
             // A render STARTED while we were waiting replaces _renderSettled with
             // its own pending promise, so keep waiting until the one we awaited is
@@ -56824,7 +57027,7 @@ a { color: #1565c0; }`;
                 await awaited;
             } while (awaited !== _renderSettled);
             await _yieldToEventLoop();
-            if (token !== _colHeaderCountsToken) return;
+            if (_colHeaderCountsTokenStale(table, token)) return;
             await _updateAllColHeaderCounts(table, token);
         } catch (err) {
             Lib.warn('collapse', '_scheduleColHeaderCounts: header-count scan failed:', err);
@@ -56863,18 +57066,62 @@ a { color: #1565c0; }`;
      * Consequence worth knowing: a scan cancelled mid-way leaves the columns it
      * already reached updated and the rest showing the previous pass's numbers,
      * until the newer scan catches up. Transient, and strictly better than the
-     * permanently-wrong counts this replaced.
+     * permanently-wrong counts this replaced. Such a pass writes NOTHING to
+     * `_colHeaderCountsCache` — see that cache's own comment for why publishing
+     * a half-filled result would make the transient state permanent.
+     *
+     * PERFORMANCE.org Step 3: the whole two-walks-per-column body below is
+     * skipped when the visible row set is unchanged since the last COMPLETED
+     * pass, which covers a sort (order changes, set does not), a filter cleared
+     * back to a row set already seen, a column show/hide, and every repeat
+     * schedule the coalescing token does not already absorb. The key is
+     * `_colHeaderCountsRowSetSignature()` — order-independent, and deliberately
+     * not the order-dependent `_visibleRowSetSignature()` Step 4 uses.
      *
      * @param {HTMLTableElement} table
-     * @param {number} [token] - The `_colHeaderCountsToken` value this scan was
-     *   issued under. When it no longer matches, a newer scan has superseded this
-     *   one and it stops at the next column boundary.
+     * @param {number} [token] - The token this scan was issued under, from
+     *   `_nextColHeaderCountsToken(table)`. When it is no longer the newest one
+     *   for THIS table, a later schedule has superseded this scan and it stops
+     *   at the next column boundary.
      * @returns {Promise<void>}
      */
     async function _updateAllColHeaderCounts(table, token) {
         const tbody = table.tBodies[0];
         const headers = Array.from(table.querySelectorAll('thead tr:first-child th'));
         if (!tbody || headers.length === 0) return;
+
+        const _sig = _colHeaderCountsRowSetSignature(table);
+        let _tableEntry = _colHeaderCountsCache.get(table);
+        if (!_tableEntry) {
+            _tableEntry = { results: new Map() };
+            _colHeaderCountsCache.set(table, _tableEntry);
+        }
+        const _hit = _tableEntry.results.get(_sig) || null;
+        if (_hit) {
+            // Re-insert to refresh recency — Map iterates in insertion order,
+            // which is what the prune below evicts by.
+            _tableEntry.results.delete(_sig);
+            _tableEntry.results.set(_sig, _hit);
+        }
+        // A miss accumulates into a DETACHED map that is only published under
+        // `_sig` once every column has been visited. That is what stops a pass
+        // abandoned at a column boundary from being served as a complete
+        // answer — the defect in the never-merged perf-steps-3-4 sketch of this
+        // step, which stored its key before the loop rather than after it.
+        const _results = _hit || new Map();
+
+        // Table-wide early-out for the per-cell inline-art probe below. A page
+        // with no addCAA/addEAA inline thumbnails anywhere — which is most of
+        // them — otherwise pays one querySelector per cell (~88 000 on
+        // `artist-events`) to keep answering "no". Probed lazily, so a pass
+        // whose columns all hit the cache never runs it either.
+        let _inlineArtProbe = null;
+        const _tableHasInlineArt = () => {
+            if (_inlineArtProbe === null) {
+                _inlineArtProbe = !!tbody.querySelector('.mb-caa-inline-ph, .mb-eaa-inline-ph');
+            }
+            return _inlineArtProbe;
+        };
 
         // One pass per column: collect unique-value count and multi-row count.
         for (const [colIndex, th] of headers.entries()) {
@@ -56890,48 +57137,75 @@ a { color: #1565c0; }`;
                 activeDefinition.features.collapsableColumns.includes(_cleanColName));
             const _isCaaOrEaaCol = _cleanColName === 'CAA' || _cleanColName === 'EAA';
 
+            // ── Cache lookup for this column ───────────────────────────────────
+            // A cached entry is only USABLE for a header span that already
+            // existed when it was computed. Several header buttons are injected
+            // after a first pass could have run — `initCollapsableColumns()`
+            // builds `.mb-col-collapse-hdr-btn`, the CAA/EAA column button
+            // appears on a deferred visibility check — and answering a
+            // newly-present span from an entry that never measured it would
+            // publish a confident 0. Such a column simply recomputes and
+            // upgrades its entry in place.
+            const collapseBtn = th.querySelector('.mb-col-collapse-hdr-btn');
+            const countSpan = collapseBtn ? collapseBtn.querySelector('.mb-col-collapse-count') : null;
+            const uniqCountSpan = th.querySelector('.mb-col-uniq-count');
+            const _entry = _hit ? _hit.get(colIndex) : null;
+            const _usable = !!_entry &&
+                (!countSpan || _entry.hadCollapse) &&
+                (!uniqCountSpan || _entry.hadUniq);
+
+            let multiRowCount = _usable ? _entry.multiRow : 0;
+            let uniqCount     = _usable ? _entry.uniq : 0;
+            let hasInlineArt  = _usable ? _entry.hasInlineArt : false;
+
             // ── 1. Multi-row (collapsable) cell count ──────────────────────────
             // Computed FIRST (moved ahead of the unique-value count below) so
             // its result is available for the "Cell structure" tooltip hint
             // without re-reading a possibly stale DOM count from a prior render.
-            const collapseBtn = th.querySelector('.mb-col-collapse-hdr-btn');
-            let multiRowCount = 0;
-            if (collapseBtn) {
-                const countSpan = collapseBtn.querySelector('.mb-col-collapse-count');
-                if (countSpan) {
+            if (countSpan) {
+                if (!_usable) {
                     // _classifyCollapseCell unifies list cells and prose cells
                     // (e.g. "Annotation") under one multi-row concept — matches
                     // the collapsibleCount computed by initCollapsableColumns.
-                    Array.from(tbody.rows).forEach(row => {
-                        if (row.style.display === 'none') return;
+                    // Iterated live rather than through Array.from(): the old
+                    // shape materialised the whole row list up to twice per
+                    // column (42 times per pass on `artist-events`).
+                    for (const row of tbody.rows) {
+                        if (row.style.display === 'none') continue;
                         const cell = row.cells[colIndex];
-                        if (!cell) return;
+                        if (!cell) continue;
                         if (_classifyCollapseCell(cell).isMultiRow) multiRowCount++;
-                    });
-                    countSpan.textContent = String(multiRowCount);
+                    }
                 }
+                countSpan.textContent = String(multiRowCount);
             }
 
             // ── 2. Unique-value count ───────────────────────────────────────────
-            const uniqCountSpan = th.querySelector('.mb-col-uniq-count');
             if (uniqCountSpan) {
-                const seen = new Set();
-                let hasInlineArt = false;
-                Array.from(tbody.rows).forEach(row => {
-                    if (row.style.display === 'none') return;
-                    const cell = row.cells[colIndex];
-                    if (!cell) return;
-                    const v = getCleanColumnText(cell);
-                    if (v) seen.add(v);
-                    // Piggy-back on this existing per-row scan (rather than a
-                    // third full table pass) to detect the addCAA/addEAA
-                    // inline-thumbnail entries openUniqDrop()'s "Structure"
-                    // section shows for this column.
-                    if (!hasInlineArt && cell.querySelector('.mb-caa-inline-ph, .mb-eaa-inline-ph')) {
-                        hasInlineArt = true;
+                if (!_usable) {
+                    const seen = new Set();
+                    for (const row of tbody.rows) {
+                        if (row.style.display === 'none') continue;
+                        const cell = row.cells[colIndex];
+                        if (!cell) continue;
+                        const v = getCleanColumnText(cell);
+                        if (v) seen.add(v);
+                        // Piggy-back on this existing per-row scan (rather than a
+                        // third full table pass) to detect the addCAA/addEAA
+                        // inline-thumbnail entries openUniqDrop()'s "Structure"
+                        // section shows for this column. Gated on the table-wide
+                        // probe above, so a page with no inline art anywhere
+                        // never runs this per cell — and memoized per row for the
+                        // pages that do, where every column that ISN'T the art
+                        // column would otherwise probe every one of its cells.
+                        if (!hasInlineArt && _tableHasInlineArt() &&
+                            cell.querySelector('.mb-caa-inline-ph, .mb-eaa-inline-ph')) {
+                            hasInlineArt = true;
+                        }
                     }
-                });
-                const n = seen.size;
+                    uniqCount = seen.size;
+                }
+                const n = uniqCount;
                 uniqCountSpan.textContent = n > 0 ? String(n) : '';
                 // Single tooltip on the wrapper (not the count span) so it shows
                 // wherever the user hovers within the clickable unit.
@@ -56955,13 +57229,40 @@ a { color: #1565c0; }`;
                 }
             }
 
+            // Record what this column actually measured, including WHICH header
+            // spans it measured for — that pair is what `_usable` above checks.
+            // `_results` is the very Map a hit was read from, so a column that
+            // recomputed upgrades the live entry in place.
+            if (!_usable) {
+                _results.set(colIndex, {
+                    uniq: uniqCount, multiRow: multiRowCount, hasInlineArt,
+                    hadUniq: !!uniqCountSpan, hadCollapse: !!countSpan,
+                });
+            }
+
             // Slice boundary: hand the thread back so a full-table scan can never
             // run as one multi-second unbroken task, and drop out entirely if a
-            // newer scan has been scheduled in the meantime.
+            // newer scan has been scheduled in the meantime. A column answered
+            // from cache walked no rows, so it neither needs the yield nor risks
+            // a long task — and yielding there would let a superseding scan
+            // abandon a pass that had nothing left to do but write numbers it
+            // already had.
+            if (_usable) continue;
             await _yieldToEventLoop();
-            if (token !== undefined && token !== _colHeaderCountsToken) {
+            if (_colHeaderCountsTokenStale(table, token)) {
                 Lib.debug('collapse', `_updateAllColHeaderCounts: token ${token} superseded — aborting scan.`);
                 return;
+            }
+        }
+
+        // Reached only by a pass that visited every column — see the cache's own
+        // comment on why a partial pass must not publish. The per-cell tier is
+        // already stored either way: those values are correct the moment they
+        // are derived, regardless of whether the aggregate pass finished.
+        if (!_hit) {
+            _tableEntry.results.set(_sig, _results);
+            while (_tableEntry.results.size > _COL_HEADER_COUNTS_SIG_LRU) {
+                _tableEntry.results.delete(_tableEntry.results.keys().next().value);
             }
         }
     }

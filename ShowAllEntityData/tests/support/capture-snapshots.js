@@ -123,6 +123,28 @@ async function captureOne(browser, config) {
     await showAllBtn.click();
     await dismissCustomConfirmDialog(page);
     await waitForRenderComplete(page, { hasCaaOrEaa, hasRelationships, waitForAutoResize, timeout: renderTimeout });
+    // The column-header count badges land AFTER every other "render done"
+    // signal: `_scheduleColHeaderCounts()` waits out the render and then slices
+    // one event-loop turn per column, per table. Without this wait a baseline
+    // records whatever the badges happened to read mid-scan — which is exactly
+    // what the committed artist-events/rendered.html did (1 of 21 populated),
+    // and what `_waitForFullRebuildSettled()` already guards against for that
+    // pageType's own post-filter/post-sort captures.
+    //
+    // Deliberately non-fatal. On a multi-table page every sub-table now runs
+    // its own scan (PERFORMANCE.org Step 22), and 47 of them may legitimately
+    // outlast any sane budget; losing the whole capture over that would be
+    // worse than recording it with a loud warning and letting whoever reviews
+    // the diff judge it.
+    try {
+        await waitForColHeaderCountsStable(page, { timeout: 180000 });
+    } catch {
+        const empty = await page.evaluate(() => Array.from(
+            document.querySelectorAll('.mb-col-uniq-count')
+        ).filter((el) => !el.textContent.trim()).length);
+        console.warn(`  ${pageType}: header-count scan did not settle within 180 s `
+            + `(${empty} unique-count badges still empty) — captured thead may be mid-scan.`);
+    }
 
     const renderedHtml = scrub(await captureRendered(page), pageType);
     writeSnapshot(renderedPath, renderedHtml);

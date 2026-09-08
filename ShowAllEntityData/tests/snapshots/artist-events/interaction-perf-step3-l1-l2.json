@@ -1,38 +1,39 @@
 {
   "pageType": "artist-events",
   "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events",
-  "branch": "main",
+  "branch": "step3-l1-l2",
   "gitBranch": "perf-step-3-header-count-cache",
-  "capturedAt": "2026-09-08",
+  "capturedAt": "2026-09-07",
   "scriptVersion": "9.99.1048+2026-09-07",
   "interactions": {
     "globalFilter": {
-      "medianMs": 3033,
+      "medianMs": 3669,
       "samples": 5
     },
     "columnFilter": {
-      "medianMs": 3295,
+      "medianMs": 3515,
       "samples": 5
     },
     "sort": {
-      "medianMs": 6410,
+      "medianMs": 6917,
       "samples": 5
     },
     "uniqDropCold": {
-      "medianMs": 45996,
+      "medianMs": 48563,
       "samples": 5
     },
     "uniqDropWarm": {
-      "medianMs": 1676,
+      "medianMs": 1678,
       "samples": 5
     },
     "headerCountsInitial": {
-      "medianMs": 8033,
+      "medianMs": 8066,
       "samples": 5
     },
     "headerCountsRestore": {
-      "medianMs": 12319,
+      "medianMs": 8944,
       "samples": 5
     }
-  }
+  },
+  "note": "Measured with BOTH cache tiers. The shipped configuration is tier 1 only (the per-cell memo was dropped after this arm showed every win landing on tier-1 hits); its own arm could not be captured because musicbrainz.org became unreachable. See PERFORMANCE.org Step 3."
 }

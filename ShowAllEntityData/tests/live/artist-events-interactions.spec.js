@@ -8,6 +8,7 @@ const { collectPageErrors } = require('../support/liveAssertions');
 const {
     waitForFilterSettled, waitForSortSettled, getPageRowCount,
     waitForActualRowCount, waitForColHeaderUniqCount, getColumnHighlightTexts,
+    waitForColHeaderCountsStable,
 } = require('../support/filterSortAssertions');
 const {
     URL: ARTIST_EVENTS_URL, FIXTURE_PATH, SEED_GM_VALUES, TOTAL_ROWS,
@@ -34,6 +35,21 @@ const {
  * this row count, and leaving it on would leave background artwork-fetch
  * work running during these interaction assertions.
  */
+
+// Every test here re-renders all 4174 rows at least once and then waits out
+// the header-count scan, so the file as a whole sits close to chromium-live's
+// 120 s default rather than comfortably inside it. Measured serially on an idle
+// machine: 20.9 s / 32.7 s / 36.5 s / 37.7 s / 45.4 s / 49.1 s / 49.9 s / 66 s /
+// 72 s / 78 s / 90 s — the slowest being a pre-existing case, not one of the
+// newer ones. Under any real load (another suite, a perf capture) the top of
+// that range crosses 120 s and the file fails for reasons that have nothing to
+// do with the code under test.
+//
+// Raised for the whole file rather than per test: two ad-hoc test.setTimeout()
+// calls were tried first and were the wrong shape — they singled out two cases
+// that are not even the slowest here, on a duration mismeasured while the
+// machine was busy.
+test.describe.configure({ timeout: 300000 });
 
 async function loadArtistEvents(page) {
     await seedGmValues(page, SEED_GM_VALUES);
@@ -99,6 +115,44 @@ function columnFilterClear(page, colIdx) {
 function collapseBadge(page, colName) {
     return page.locator('table.tbl thead th', { hasText: colName }).first()
         .locator('.mb-col-collapse-count');
+}
+
+/**
+ * One column's `.mb-col-uniq-count` badge text, as a number.
+ *
+ * `waitForColHeaderUniqCount()` needs an expected value; a test that filters to
+ * a row set whose unique count is not a named fixture constant has to read the
+ * value once and wait for THAT, or it reads the badges again while the scan is
+ * still mid-flight and compares two half-written vectors.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} colName
+ * @returns {Promise<number>}
+ */
+async function uniqBadgeValue(page, colName) {
+    const text = await page.locator('table.tbl thead th', { hasText: colName }).first()
+        .locator('.mb-col-uniq-count').textContent();
+    return Number(text.trim());
+}
+
+/**
+ * Every column-header count badge on the page, in document order, as one
+ * comparable vector — `.mb-col-uniq-count` and `.mb-col-collapse-count`
+ * together, each prefixed with its own class so a blank uniq badge and a blank
+ * collapse badge can never coincidentally line up.
+ *
+ * The whole vector, rather than one named column, is deliberate: the
+ * header-count cache introduced by PERFORMANCE.org Step 3 stores a per-column
+ * record, so a keying or invalidation bug can leave one arbitrary column stale
+ * while the column a spec happened to name stays right.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<string[]>}
+ */
+function allHeaderBadges(page) {
+    return page.evaluate(() => Array.from(
+        document.querySelectorAll('.mb-col-uniq-count, .mb-col-collapse-count')
+    ).map((el) => `${el.className}=${el.textContent.trim()}`));
 }
 
 test('global filter narrows the row count and clearing it restores the full set', { tag: '@perf' }, async ({ page }) => {
@@ -323,6 +377,106 @@ test('uniq-value dropdown cache reflects a cell expand/collapse (does not go sta
     const expandedAfter = structureAfter.items.find((i) => i.label.includes('expanded'));
     expect(collapsedAfter.count).toBe(UNIQ_DROP_COLLAPSABLE_CELL_COUNT - 1);
     expect(expandedAfter.count).toBe(1);
+
+    expect(pageErrors).toEqual([]);
+});
+
+test('sorting does not disturb any column-header count badge', { tag: '@perf' }, async ({ page }) => {
+    // A sort changes row ORDER and never row SET, so every badge on the page
+    // must read exactly the same afterwards. Two things this pins, both
+    // introduced by PERFORMANCE.org Step 3's cache:
+    //
+    //   - the cache key must be order-INDEPENDENT
+    //     (`_colHeaderCountsRowSetSignature()`, not the order-dependent
+    //     `_visibleRowSetSignature()` Step 4 uses). With an order-dependent
+    //     key this still passes, just slowly — which is why the "filter A ->
+    //     B -> A" case below exists alongside it.
+    //   - a cache HIT must re-apply the numbers rather than leave whatever the
+    //     re-rendered header happened to carry.
+    const pageErrors = collectPageErrors(page);
+    await loadArtistEvents(page);
+    // BOTH waits, and the second is not optional: waitForColHeaderUniqCount()
+    // resolves as soon as the `Event` column is right, and on this page the
+    // initial scan is still working through the other twenty at that moment.
+    // Capturing `before` there recorded a half-filled vector, which the sort's
+    // own pass then legitimately completed — reported as "sorting changed 15
+    // badges" when nothing was wrong at all.
+    await waitForColHeaderUniqCount(page, UNIQ_COUNT_COLUMN, UNIQ_COUNT_TOTAL);
+    await waitForColHeaderCountsStable(page);
+
+    const before = await allHeaderBadges(page);
+    expect(before.length).toBeGreaterThan(0);
+    // Guard the guard: a vector that is mostly blank would make the equality
+    // assertions below pass without proving anything.
+    expect(before.filter((b) => b.endsWith('=')).length).toBeLessThan(before.length / 2);
+
+    // waitForColHeaderCountsStable(), not just waitForColHeaderUniqCount():
+    // the whole point of the cache is that a hit never blanks a badge, so the
+    // value-based wait resolves instantly on the PRE-sort number and would let
+    // the assertion run before the post-sort scan had done anything at all.
+    // "Stopped changing" is the weaker signal in general, but it is the correct
+    // one for "this interaction must leave the numbers alone".
+    const columnTh = page.locator('table.tbl thead th', { hasText: SORT_COLUMN }).first();
+    await waitForSortSettled(page, () => columnTh.locator('.sort-icon-btn', { hasText: '▲' }).first().click());
+    await waitForColHeaderCountsStable(page);
+    expect(await allHeaderBadges(page)).toEqual(before);
+
+    await waitForSortSettled(page, () => columnTh.locator('.sort-icon-btn', { hasText: '▼' }).first().click());
+    await waitForColHeaderCountsStable(page);
+    expect(await allHeaderBadges(page)).toEqual(before);
+
+    expect(pageErrors).toEqual([]);
+});
+
+test('re-applying a filter reproduces its own header counts exactly', { tag: '@perf' }, async ({ page }) => {
+    // filter A -> filter B -> filter A. The second A must reproduce the first
+    // A's badges for EVERY column. This is the case that actually pins the
+    // header-count cache's key: any key weaker than the true visible row set
+    // (a row COUNT, a commutative digest, a "has a filter" flag) collides
+    // between two different filters of the same table and serves B's numbers
+    // for A. `_filterResultCache` guarantees the second A is a genuinely
+    // different code path from the first, not a no-op.
+    const pageErrors = collectPageErrors(page);
+    await loadArtistEvents(page);
+    await waitForColHeaderUniqCount(page, UNIQ_COUNT_COLUMN, UNIQ_COUNT_TOTAL);
+
+    const colIdx = await columnIndex(page, FILTER_COLUMN);
+    const colInput = page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
+    await colInput.click();
+
+    await waitForFilterSettled(page, () => colInput.pressSequentially(FILTER_VALUE));
+    await waitForActualRowCount(page, FILTER_VALUE_COUNT);
+    // The row count settles strictly before the header-count scan does, so the
+    // badge vector has to be read behind its own wait — read the Event badge
+    // once, then use it as the settle target on the way back.
+    await expect
+        .poll(() => uniqBadgeValue(page, UNIQ_COUNT_COLUMN))
+        .toBeLessThan(UNIQ_COUNT_TOTAL);
+    await waitForColHeaderCountsStable(page);
+    const eventUniqA = await uniqBadgeValue(page, UNIQ_COUNT_COLUMN);
+    const badgesA = await allHeaderBadges(page);
+
+    await columnFilterClear(page, colIdx).click();
+    await waitForActualRowCount(page, TOTAL_ROWS);
+    await waitForColHeaderUniqCount(page, UNIQ_COUNT_COLUMN, UNIQ_COUNT_TOTAL);
+    await colInput.click();
+    await waitForFilterSettled(page, () => colInput.pressSequentially('Germany'));
+    const rowsB = await getPageRowCount(page);
+    expect(rowsB.filtered).not.toBe(FILTER_VALUE_COUNT);
+    await expect
+        .poll(() => uniqBadgeValue(page, UNIQ_COUNT_COLUMN))
+        .not.toBe(UNIQ_COUNT_TOTAL);
+    expect(await allHeaderBadges(page)).not.toEqual(badgesA);
+
+    await columnFilterClear(page, colIdx).click();
+    await waitForActualRowCount(page, TOTAL_ROWS);
+    await waitForColHeaderUniqCount(page, UNIQ_COUNT_COLUMN, UNIQ_COUNT_TOTAL);
+    await colInput.click();
+    await waitForFilterSettled(page, () => colInput.pressSequentially(FILTER_VALUE));
+    await waitForActualRowCount(page, FILTER_VALUE_COUNT);
+    await waitForColHeaderUniqCount(page, UNIQ_COUNT_COLUMN, eventUniqA);
+    await waitForColHeaderCountsStable(page);
+    expect(await allHeaderBadges(page)).toEqual(badgesA);
 
     expect(pageErrors).toEqual([]);
 });
