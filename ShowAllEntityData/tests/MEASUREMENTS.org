@@ -37,6 +37,7 @@ be compared to a later one, so it is not evidence, it is decoration.
 | Host      | OS                               | Cores | RAM   | Node     | Playwright |
 |-----------+----------------------------------+-------+-------+----------+------------|
 | =petri=   | WSL2 (Linux 6.18.33.2-microsoft) | 24    | 31 GB | v24.16.0 | 1.62.1     |
+| =NB-3641= | WSL2 (Linux 6.18.33.2-microsoft) | 28    | 31 GB | v24.19.0 | 1.62.1     |
 | (unknown) | —                                | —     | —     | —        | —          |
 
 Rows marked =(unknown)= were captured before the harness recorded a host. The
@@ -93,8 +94,20 @@ from the background task's own output file. The harness now records
 | 2026-09-08 | 08:11      | =petri=                      | 9.99.1048 | main                             |   3033 |   3295 | 6410 |     45996 |      1676 | 8033     | 12319       |
 | 2026-09-08 | 08:27      | =petri=                      | 9.99.1048 | step3, shipped (tier 1 only)     |   3168 |   3337 | 6469 |     46516 |      1747 | 7980     | 8977        |
 | 2026-09-08 | 17:01      | =petri=                      | 9.99.1045 | bisect — same script as row 4    |   3117 |   3285 | 6044 |     42948 |      1640 | 7779     | 11175       |
+| 2026-09-08 | 20:23      | =NB-3641=                    | 9.99.1049 | main, first arm on this machine  |   1996 |   1706 | 4392 |     30347 |       985 | 4704     | 5689        |
 
 Committed as =tests/snapshots/artist-events/interaction-perf-*.json=.
+
+*=NB-3641= row is not directly comparable to any =petri= row above* — it is
+BOTH a different machine and a different script version (9.99.1049 vs
+9.99.1045/1048), so the two variables are confounded and no ratio here isolates
+the machine. Recorded per this file's own "record every arm" rule, not as a
+machine comparison. Worth noting anyway: every metric came back faster than
+=petri='s closest arm (9.99.1045, row 4) despite the extra 4 versions, most
+strikingly =headerCountsInitial=/=headerCountsRestore= (4704/5689 vs
+7779/11175) — a >30% gap in the same direction as this file's other unexplained
+gaps. Re-measure 9.99.1049 (or later) on =petri= before drawing any conclusion
+from that; until then this is an observation, not a finding.
 
 *** What these rows establish
 

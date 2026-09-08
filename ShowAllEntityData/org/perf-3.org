@@ -200,3 +200,15 @@ b.) how long different steps take to execute
 - sorting times
 - filtering times
 - time to compute the unique value drop down menu (when tested)
+
+* make another performance measurement on this different machine
+
+Check the following commits what we just discussed
+
+#+begin_example
+359470c
+037d803
+e8c553c
+#+end_example
+
+and make another performance measurement on this different machine

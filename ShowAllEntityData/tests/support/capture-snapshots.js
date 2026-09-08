@@ -354,10 +354,39 @@ async function measureOnce(browser, config) {
 }
 
 /**
+ * Filesystem-safe form of an arbitrary string for use inside a filename:
+ * anything other than letters/digits/dot/underscore/hyphen becomes `-`.
+ * Mirrors `capture-interaction-perf.js`'s own helper of the same name.
+ *
+ * @param {string} s
+ * @returns {string}
+ */
+function sanitizeForFilename(s) {
+    return s.replace(/[^A-Za-z0-9._-]+/g, '-');
+}
+
+/**
+ * Only a meaningful hostname earns a place in a filename — see
+ * `capture-interaction-perf.js`'s identically-named helper for the
+ * "mark an unknown host as unknown" rationale.
+ *
+ * @param {string} hostname
+ * @returns {string|null}
+ */
+function hostnameForFilename(hostname) {
+    if (!hostname || /^(localhost|unknown)$/i.test(hostname)) return null;
+    return sanitizeForFilename(hostname);
+}
+
+/**
  * Runs `measureOnce()` 5 times for `config`, takes the median of each
  * metric (live MB response times vary run to run — a single sample isn't
  * trustworthy), compares against the committed baseline at
- * `tests/snapshots/<pageType>/perf-baseline.json`, and writes a fresh one.
+ * `tests/snapshots/<pageType>/perf-baseline.json`, and writes a fresh one —
+ * PLUS an archival copy named `perf-baseline-<version>-<capturedAt>[-
+ * <hostname>].json` alongside it, so every arm survives the next `--perf`
+ * run rather than only the single mutable comparison target. `hostname` is
+ * omitted when it isn't a meaningful identifier (see `hostnameForFilename()`).
  *
  * Thresholds (>25% slower → warning, >3x slower → failure/non-zero exit)
  * are a starting point, not tuned — expect to revisit once there are a few
@@ -388,11 +417,13 @@ async function runPerf(browser, config) {
         else if (ratio > 1.25) verdict = 'WARN (>25% slower than baseline)';
     }
 
-    fs.mkdirSync(path.dirname(baselinePath), { recursive: true });
-    fs.writeFileSync(baselinePath, JSON.stringify({
+    const capturedAt = new Date().toISOString().slice(0, 10);
+    const scriptVersion = readScriptVersion();
+    const hostname = os.hostname();
+    const baselineContent = {
         pageType: config.pageType,
         url: config.url,
-        capturedAt: new Date().toISOString().slice(0, 10),
+        capturedAt,
         // Full UTC timestamp, not just the date: this one times a LIVE fetch,
         // so MusicBrainz's own load at the hour of the run is directly in the
         // number.
@@ -401,11 +432,11 @@ async function runPerf(browser, config) {
         // machine attached cannot be compared to anything later, and guessing
         // at the difference afterwards has already gone wrong once.
         machine: {
-            hostname: os.hostname(),
+            hostname,
             cpus: os.cpus().length,
             node: process.version,
         },
-        scriptVersion: readScriptVersion(),
+        scriptVersion,
         itemCount,
         medianWallMs,
         // No "sort" stage — see measureOnce()'s own JSDoc for why. Kept as
@@ -413,7 +444,16 @@ async function runPerf(browser, config) {
         // consistent with the task doc's originally-specified format.
         stages: { fetch: medianFetchMs, sort: 0, render: medianRenderMs },
         samples: samples.length,
-    }, null, 2) + '\n');
+    };
+
+    fs.mkdirSync(path.dirname(baselinePath), { recursive: true });
+    fs.writeFileSync(baselinePath, JSON.stringify(baselineContent, null, 2) + '\n');
+
+    const archiveHost = hostnameForFilename(hostname);
+    const archiveNameParts = ['perf-baseline', sanitizeForFilename(scriptVersion), capturedAt];
+    if (archiveHost) archiveNameParts.push(archiveHost);
+    const archivePath = path.join(SNAPSHOTS_DIR, config.pageType, `${archiveNameParts.join('-')}.json`);
+    fs.writeFileSync(archivePath, JSON.stringify(baselineContent, null, 2) + '\n');
 
     console.log(
         `${config.pageType} [perf]: median wall ${medianWallMs}ms `
