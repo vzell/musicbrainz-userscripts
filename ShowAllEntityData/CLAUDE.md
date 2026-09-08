@@ -309,11 +309,15 @@ much, and what the alternative would be.
   flipping a keyword.
 - **Derive the "DONE set is exactly Steps …" sentence from the keywords, never
   by hand.** It has drifted twice, in both directions.
-- **Record the machine. Every timing, every time.** `capture-interaction-perf.js`
-  and `capture-snapshots.js` write a `machine` block (hostname, cores, node and
-  Playwright versions) into their JSON, and every measurement that ends up in
-  prose — a commit message, `PERFORMANCE.org`, `DEBUG-NOTES.md` — must name the
-  host too. A number with no machine attached cannot be compared to a later one,
+- **Record the machine and the wall-clock time. Every timing, every time.**
+  `capture-interaction-perf.js` and `capture-snapshots.js` write a `machine`
+  block (hostname, cores, node and Playwright versions) plus UTC
+  `startedAt`/`finishedAt` into their JSON, and every measurement that ends up
+  in prose — a commit message, `PERFORMANCE.org`, `DEBUG-NOTES.md` — must name
+  the host and when it ran. The time matters because every sample fetches its
+  page shell from the live site, so "was MusicBrainz busy at that hour" is a
+  standing hypothesis for any unexplained difference — one that can only be
+  tested against runs that recorded when they happened. A number with no machine attached cannot be compared to a later one,
   so it is not evidence. This rule exists because a 1.5-2x gap between two
   `main` arms could not be resolved at all: nothing recorded which machine
   either ran on, so it was attributed first to machine state and then to

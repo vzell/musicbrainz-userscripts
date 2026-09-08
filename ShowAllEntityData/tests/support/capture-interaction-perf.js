@@ -453,6 +453,7 @@ async function runAll(browser, config) {
 
     const branch = readCurrentBranch();
     const outName = label || branch;
+    const startedAt = new Date();
     const browser = await chromium.launch();
     try {
         const interactions = await runAll(browser, ARTIST_EVENTS);
@@ -465,6 +466,14 @@ async function runAll(browser, config) {
             branch: outName,
             gitBranch: branch,
             capturedAt: new Date().toISOString().slice(0, 10),
+            // Full timestamps, not just the date. A run is ~20 minutes of real
+            // requests to musicbrainz.org for its page shells, so time of day
+            // is a candidate explanation for arm-to-arm differences that the
+            // script cannot account for — MusicBrainz is busier at some hours
+            // than others. Both ends are recorded because the window matters,
+            // not the instant. UTC, so arms from different timezones compare.
+            startedAt: startedAt.toISOString(),
+            finishedAt: new Date().toISOString(),
             machine: machineInfo(),
             scriptVersion: readScriptVersion(),
             interactions,

@@ -393,6 +393,10 @@ async function runPerf(browser, config) {
         pageType: config.pageType,
         url: config.url,
         capturedAt: new Date().toISOString().slice(0, 10),
+        // Full UTC timestamp, not just the date: this one times a LIVE fetch,
+        // so MusicBrainz's own load at the hour of the run is directly in the
+        // number.
+        capturedAtUtc: new Date().toISOString(),
         // Same reason capture-interaction-perf.js records it: a timing with no
         // machine attached cannot be compared to anything later, and guessing
         // at the difference afterwards has already gone wrong once.
