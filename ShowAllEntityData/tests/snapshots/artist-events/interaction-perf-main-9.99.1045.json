@@ -1,0 +1,33 @@
+{
+  "pageType": "artist-events",
+  "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events",
+  "branch": "main-9.99.1045",
+  "capturedAt": "2026-09-07",
+  "scriptVersion": "9.99.1045+2026-09-07",
+  "interactions": {
+    "globalFilter": {
+      "medianMs": 1735,
+      "samples": 5
+    },
+    "columnFilter": {
+      "medianMs": 1730,
+      "samples": 5
+    },
+    "sort": {
+      "medianMs": 3968,
+      "samples": 5
+    },
+    "uniqDropCold": {
+      "medianMs": 31149,
+      "samples": 5
+    },
+    "uniqDropWarm": {
+      "medianMs": 863,
+      "samples": 5
+    }
+  },
+  "machine": {
+    "hostname": "unknown \u2014 predates machine recording"
+  },
+  "note": "Recovered from git (2db4497) after being overwritten in place on 2026-09-08. This is the arm PERFORMANCE.org and CLAUDE.md quote as the old main reference, and the low end of the unexplained ~2x gap to 9.99.1048. Kept as its own file so the data point survives the next overwrite of interaction-perf-main.json."
+}

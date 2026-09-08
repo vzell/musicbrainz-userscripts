@@ -309,6 +309,22 @@ much, and what the alternative would be.
   flipping a keyword.
 - **Derive the "DONE set is exactly Steps …" sentence from the keywords, never
   by hand.** It has drifted twice, in both directions.
+- **Record the machine. Every timing, every time.** `capture-interaction-perf.js`
+  and `capture-snapshots.js` write a `machine` block (hostname, cores, node and
+  Playwright versions) into their JSON, and every measurement that ends up in
+  prose — a commit message, `PERFORMANCE.org`, `DEBUG-NOTES.md` — must name the
+  host too. A number with no machine attached cannot be compared to a later one,
+  so it is not evidence. This rule exists because a 1.5-2x gap between two
+  `main` arms could not be resolved at all: nothing recorded which machine
+  either ran on, so it was attributed first to machine state and then to
+  concurrent load, both guesses, and the second was disproved. Mark an unknown
+  host as unknown rather than inferring it — at least one archived arm is known
+  to be from a different machine.
+- **`tests/MEASUREMENTS.org` is the log**: every timing, wall clock and count,
+  with its host, what it was probing, and — for anything naming a page, a URL or
+  a `rendered.html` — that page's pageType, `tableMode` and human title. Add a
+  row there when you measure something, rather than leaving it in a commit
+  message where the next person will not find it.
 - The `run-perf-comparison` skill runs and interprets the instrumentation.
 - Committed baselines: `tests/snapshots/artist-events/interaction-perf-*.json`
   (interaction latency) and `tests/snapshots/artist-releasegroups/perf-baseline*.json`
@@ -320,14 +336,15 @@ much, and what the alternative would be.
   trusting these if a decision hinges on them.
 - **Never quote an absolute across versions or sessions — capture your own
   `main` arm alongside your branch's, in one session.** `main` measured
-  1735/1730/3968/31149/863 at 9.99.1045 and 3033/3295/6410/45996/1676 at
-  9.99.1048, both on 2026-09-07/08 on this machine: roughly 1.5-2x apart, three
-  versions apart, and unexplained. A loaded-machine theory was floated and
-  disproved (an idle capture landed within 13% of the supposedly loaded one).
-  It may be environment, or it may be a real regression in 9.99.1046-1047 —
-  nobody has bisected it, and until someone does, only a within-session A/B
-  ratio means anything. **If you are about to attribute a gap like this to
-  "machine state", measure the older script instead.**
+  1735/1730/3968/31149/863 at 9.99.1045 and roughly twice that at 9.99.1048,
+  which looked like a regression across three versions. It was not: re-running
+  the SAME 9.99.1045 script on `petri` produced 3117/3285/6044/42948/1640,
+  within noise of 9.99.1048. The whole ~2x is environment, and the older arm
+  never recorded its host, so what changed cannot now be recovered. Two things
+  follow — quote only within-session A/B ratios, and **bisect before attributing
+  a gap to anything, in either direction**; the environment guess happened to be
+  right here, and was still a guess until it was measured. Full workings in
+  `tests/MEASUREMENTS.org`.
 - `capture-interaction-perf.js` also reports `headerCountsInitial` and
   `headerCountsRestore` — the column-header count scan timed directly rather
   than as main-thread pressure on a status-text poll. Both carry a ~1 s floor

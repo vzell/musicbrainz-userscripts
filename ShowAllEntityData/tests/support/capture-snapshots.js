@@ -22,6 +22,7 @@
  */
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { chromium } = require('playwright');
 const { loadUserscriptPage } = require('./loadPage');
@@ -392,6 +393,14 @@ async function runPerf(browser, config) {
         pageType: config.pageType,
         url: config.url,
         capturedAt: new Date().toISOString().slice(0, 10),
+        // Same reason capture-interaction-perf.js records it: a timing with no
+        // machine attached cannot be compared to anything later, and guessing
+        // at the difference afterwards has already gone wrong once.
+        machine: {
+            hostname: os.hostname(),
+            cpus: os.cpus().length,
+            node: process.version,
+        },
         scriptVersion: readScriptVersion(),
         itemCount,
         medianWallMs,

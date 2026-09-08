@@ -64,6 +64,7 @@
  */
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { execSync } = require('child_process');
 const { chromium } = require('playwright');
@@ -136,6 +137,36 @@ function readScriptVersion() {
     const header = fs.readFileSync(USERSCRIPT_PATH, 'utf8').slice(0, 2000);
     const m = header.match(/\/\/ @version\s+(\S+)/);
     return m ? m[1] : 'unknown';
+}
+
+/**
+ * Identifies the machine a run happened on, so absolutes are never compared
+ * across machines by accident.
+ *
+ * This exists because two `main` captures three script versions apart were
+ * 1.5-2x apart, and "which machine was that on" could not be answered from the
+ * committed JSON at all — the gap got attributed to machine state, then to
+ * load, before anyone checked. Both turned out to be guesses. Record enough to
+ * settle it next time: host, core count, and the two versions that actually
+ * move browser timings.
+ *
+ * @returns {{hostname: string, platform: string, release: string, cpus: number,
+ *   totalMemGb: number, node: string, playwright: string}}
+ */
+function machineInfo() {
+    let playwright = 'unknown';
+    try {
+        playwright = require('playwright/package.json').version;
+    } catch { /* leave unknown */ }
+    return {
+        hostname: os.hostname(),
+        platform: os.platform(),
+        release: os.release(),
+        cpus: os.cpus().length,
+        totalMemGb: Math.round(os.totalmem() / 1024 ** 3),
+        node: process.version,
+        playwright,
+    };
 }
 
 /** @returns {string} */
@@ -434,11 +465,14 @@ async function runAll(browser, config) {
             branch: outName,
             gitBranch: branch,
             capturedAt: new Date().toISOString().slice(0, 10),
+            machine: machineInfo(),
             scriptVersion: readScriptVersion(),
             interactions,
         }, null, 2) + '\n');
 
-        console.log(`${ARTIST_EVENTS.pageType} [interaction-perf, ${outName}]:`);
+        const m = machineInfo();
+        console.log(`${ARTIST_EVENTS.pageType} [interaction-perf, ${outName}] `
+            + `on ${m.hostname} (${m.cpus} cores, node ${m.node}, playwright ${m.playwright}):`);
         for (const [name, { medianMs }] of Object.entries(interactions)) {
             console.log(`  ${name}: ${medianMs.toFixed(1)}ms`);
         }

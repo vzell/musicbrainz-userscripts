@@ -216,6 +216,7 @@ becomes 5000 again, despite the setting's description promising "0 to disable".
 | =tests/live/registry.org=                   | Every live spec: pageType, URL, what it verifies, known quirks                                                        |
 | =tests/snapshots/registry.org=              | Every snapshot baseline, plus an *"Expected drift"* section to read before treating a re-capture diff as a regression |
 | =tests/pagetypes.json=                      | The 11 pageTypes wired into the snapshot harness, with their settings seeds                                           |
+| =tests/MEASUREMENTS.org=                    | Every timing, wall clock and count measured, with the HOST it ran on                                                  |
 | =PAGETYPES-TESTING-REFERENCE.org=           | Every pageType, a real URL for each, and the coverage plan                                                            |
 | =tests/fixtures/live-userscripts/README.md= | The real-third-party-userscript interop harness                                                                       |
 

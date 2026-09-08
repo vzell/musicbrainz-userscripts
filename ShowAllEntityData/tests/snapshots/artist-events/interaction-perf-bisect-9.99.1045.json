@@ -1,0 +1,48 @@
+{
+  "pageType": "artist-events",
+  "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events",
+  "branch": "bisect-9.99.1045",
+  "gitBranch": "main",
+  "capturedAt": "2026-09-08",
+  "machine": {
+    "hostname": "petri",
+    "platform": "linux",
+    "release": "6.18.33.2-microsoft-standard-WSL2",
+    "cpus": 24,
+    "totalMemGb": 31,
+    "node": "v24.16.0",
+    "playwright": "1.62.1"
+  },
+  "scriptVersion": "9.99.1045+2026-09-07",
+  "interactions": {
+    "globalFilter": {
+      "medianMs": 3117,
+      "samples": 5
+    },
+    "columnFilter": {
+      "medianMs": 3285,
+      "samples": 5
+    },
+    "sort": {
+      "medianMs": 6044,
+      "samples": 5
+    },
+    "uniqDropCold": {
+      "medianMs": 42948,
+      "samples": 5
+    },
+    "uniqDropWarm": {
+      "medianMs": 1640,
+      "samples": 5
+    },
+    "headerCountsInitial": {
+      "medianMs": 7779,
+      "samples": 5
+    },
+    "headerCountsRestore": {
+      "medianMs": 11175,
+      "samples": 5
+    }
+  },
+  "note": "Bisect arm. The 9.99.1045 userscript (commit 1983985, before the CAA/EAA fixes that became 9.99.1046-1047) re-measured on petri alongside 9.99.1048, to test whether the ~2x gap to the 2026-09-07 9.99.1045 arm was a script regression. It is not \u2014 this lands within noise of 9.99.1048. See tests/MEASUREMENTS.org."
+}

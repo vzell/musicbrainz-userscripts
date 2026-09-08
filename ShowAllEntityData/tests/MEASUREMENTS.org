@@ -1,0 +1,275 @@
+#+TITLE: Measurement log
+#+STARTUP: showall
+
+Every timing, wall clock and count this project has measured, with the machine
+it was measured on.
+
+*Why this file exists.* Timings were previously scattered across
+=PERFORMANCE.org=, =DEBUG-NOTES.md=, commit messages and the
+=interaction-perf-*.json= arms, and none of them recorded the HOST. That gap
+cost real work: two =main= captures three script versions apart came out 1.5-2x
+different, and because nothing said which machine either ran on, the difference
+was attributed first to machine state and then to concurrent load — both
+guesses, and the second was disproved. A number with no machine attached cannot
+be compared to a later one, so it is not evidence, it is decoration.
+
+*Rules for adding a row.*
+
+- *Record the hostname*, from the run itself and not from memory.
+  =capture-interaction-perf.js= and =capture-snapshots.js= now write a
+  =machine= block into their JSON; copy it from there.
+- *Say what the measurement was PROBING*, not just which command produced it.
+  "Sort click to settled status text" is a measurement; "sort" is a label.
+- *Name the page*: pageType, its =tableMode= (single/multi) and its human page
+  title, the same four columns =tests/snapshots/registry.org= uses. A bare URL
+  or a bare =rendered.html= is unreadable a month later.
+- *Mark an unknown host as unknown.* Do not infer it. Rows below that predate
+  machine recording say so, and one of them is known to be from a DIFFERENT
+  machine.
+
+* Machines
+
+| Host      | OS                              | Cores | RAM   | Node     | Playwright |
+|-----------+---------------------------------+-------+-------+----------+------------|
+| =petri=   | WSL2 (Linux 6.18.33.2-microsoft) |    24 | 30 GB | v24.16.0 |     1.62.1 |
+| (unknown) | —                               |     — | —     | —        | —          |
+
+Rows marked =(unknown)= were captured before the harness recorded a host. The
+2026-08-24 arm is additionally known to be from a *different machine* than the
+later ones (PERFORMANCE.org, Step 4's own note), so it is not comparable to them
+even in ratio.
+
+* Interaction latency — =artist-events=
+
+| pageType      | tableMode | page title        | URL                                                  |
+|---------------+-----------+-------------------+------------------------------------------------------|
+| artist-events | single    | Bruce Springsteen | /artist/70248960-cb53-4ea4-943a-edb18f7d336f/events |
+
+4174 rows x 21 columns, loaded from the committed
+=tests/fixtures/saved-data/artist-events.json.gz= disk fixture. Median of 5,
+fresh page per sample. Produced by =node tests/support/capture-interaction-perf.js
+--pageType=artist-events=.
+
+** What each metric probes
+
+| Metric                 | What it measures                                                                                      |
+|------------------------+-------------------------------------------------------------------------------------------------------|
+| =globalFilter=         | Typing "United Kingdom" into the page-wide filter until =#mb-filter-status-display= settles            |
+| =columnFilter=         | The same, typed into the Country column's own filter input                                             |
+| =sort=                 | One sort-icon click until =#mb-sort-status-display= settles                                            |
+| =uniqDropCold=         | First 📊 open on the Location column — five full =tbody.rows= passes, nothing cached                   |
+| =uniqDropWarm=         | Re-opening the same dropdown — Step 4's per-open cache, so this is the cache-hit path                  |
+| =headerCountsInitial=  | Render-complete to the Event badge reading its true 4158 AND every badge holding still                 |
+| =headerCountsRestore=  | Clearing the "Bon Jovi" column filter to the full 4174 rows, until the badges are back — Step 3's case |
+
+The last two were added 2026-09-07; the five before them see the header-count
+scan only as main-thread pressure delaying a CDP poll. Both carry a ~1 s floor
+from =waitForColHeaderCountsStable()=, identical on every arm.
+
+** Results
+
+All times in ms.
+
+| Date       | Host      | Script     | Arm                              | global | column |  sort | uniq cold | uniq warm | hdr init | hdr restore |
+|------------+-----------+------------+----------------------------------+--------+--------+-------+-----------+-----------+----------+-------------|
+| 2026-08-24 | (unknown, DIFFERENT machine) | 9.99.953 | main | 1418 | 1595 | 2994 | 29802 | 29700 | — | — |
+| 2026-08-31 | (unknown) |   9.99.970 | worktree-perf-step-4             |   1292 |   1239 |  2906 |     32985 |       581 |        — |           — |
+| 2026-08-31 | (unknown) |   9.99.976 | fix-chunked-render-header-counts |   1752 |   1891 |  4241 |     30920 |       914 |        — |           — |
+| 2026-09-07 | (unknown) |  9.99.1045 | main                             |   1735 |   1730 |  3968 |     31149 |       863 |        — |           — |
+| 2026-09-07 | (unknown) |  9.99.1048 | main                             |   3503 |   3311 |  6932 |     48844 |      1903 |     8507 |       12631 |
+| 2026-09-07 | (unknown) |  9.99.1048 | step3, both cache tiers          |   3669 |   3515 |  6917 |     48563 |      1678 |     8066 |        8944 |
+| 2026-09-08 | =petri=   |  9.99.1048 | main                             |   3033 |   3295 |  6410 |     45996 |      1676 |     8033 |       12319 |
+| 2026-09-08 | =petri=   |  9.99.1048 | step3, shipped (tier 1 only)     |   3168 |   3337 |  6469 |     46516 |      1747 |     7980 |        8977 |
+| 2026-09-08 | =petri=   |  9.99.1045 | bisect — same script as row 4     |   3117 |   3285 |  6044 |     42948 |      1640 |     7779 |       11175 |
+
+Committed as =tests/snapshots/artist-events/interaction-perf-*.json=.
+
+*** What these rows establish
+
+- *Step 3 (9.99.1049)*: =headerCountsRestore= 12319 -> 8977 ms, -27%. Nothing
+  else moves outside the noise band below. See PERFORMANCE.org Step 3 for why
+  the win lands there and nowhere else.
+- *The dropped second cache tier*: 8944 (with) vs 8977 (without), 0.4% apart.
+  It contributed nothing, and removing it cost nothing.
+- *Noise band*: =main= alone measured 1735 / 3503 / 3033 on the global filter
+  and 3968 / 6932 / 6410 on sort. Any delta under ~10% is not a result.
+- *The 9.99.1045 -> 9.99.1048 gap is NOT the script.* Bisected 2026-09-08; see
+  below.
+
+* Bisect: the 9.99.1045 -> 9.99.1048 gap
+
+*Question*: is =main= genuinely ~1.5-2x slower at 9.99.1048 than at 9.99.1045,
+or was the older arm measured in a different environment?
+
+*Answer: the environment. The script is not the cause.* Both endpoints
+re-measured on =petri= on 2026-09-08, same session, same harness, machine idle:
+
+| Script    | Commit    | What it contains                                              | global | column |  sort | uniq cold | hdr restore |
+|-----------+-----------+---------------------------------------------------------------+--------+--------+-------+-----------+-------------|
+| 9.99.1045 | =1983985= | before the CAA/EAA dropdown + sort fixes that became 1046/1047 |   3117 |   3285 |  6044 |     42948 |       11175 |
+| 9.99.1048 | =2db4497= | after them, plus the doc renames                              |   3033 |   3295 |  6410 |     45996 |       12319 |
+| Δ         |           |                                                               |  -2.7% |  +0.3% | +6.1% |     +7.1% |      +10.2% |
+
+Every delta sits inside the noise band. The SAME 9.99.1045 script measured 1735
+/ 1730 / 3968 / 31149 / 863 in the 2026-09-07 arm — roughly half — so the ~2x is
+carried entirely by the environment, and 9.99.1046-1047 are exonerated.
+
+What the environment difference actually WAS remains unknown and is no longer a
+code question: the older arm's host was never recorded, which is the whole
+reason the =machine= block now exists. The plausible-cost table below is kept
+because the reasoning was sound even though the answer was no — in particular
+=_sortCellText()= (9.99.1047) is on the sort comparator's per-cell path and was
+the one candidate that could have shown up here.
+
+| Version   | Change                                                                                          | Could it explain the gap?                                   |
+|-----------+-------------------------------------------------------------------------------------------------+-------------------------------------------------------------|
+| 9.99.1046 | CAA/EAA uniq-dropdown entries filter on multi-table pages; =_artSyncSearchTextToSourceRow()= mirrors four structural facts onto source cells | No — multi-table only, and this page runs =sa_enable_caa_pics: false= |
+| 9.99.1047 | CAA/EAA presence sorting fixed; both comparators route through a shared =_sortCellText()=        | Sort only; measured +6.1%, i.e. no                          |
+| 9.99.1048 | Doc renames and JSDoc corrections only                                                          | No                                                          |
+
+The shape was always against a single script cause: =_sortCellText()= cannot
+touch =globalFilter= or =uniqDropCold=, and both moved as much as sort did.
+
+* Snapshot baselines — column-header badge coverage
+
+Counts of populated =.mb-col-uniq-count= spans in the committed
+=rendered.html= baselines, before and after PERFORMANCE.org Step 22 (the
+coalescing token became per-table in 9.99.1049). Produced by
+=python3 scripts/analyze-badge-per-table.py <baseline>=.
+
+| pageType             | tableMode | page title            | URL                                                     | artifact       | badges | before | after |
+|----------------------+-----------+-----------------------+---------------------------------------------------------+----------------+--------+--------+-------|
+| artist-releasegroups | multi     | Bruce Springsteen     | /artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0 | =rendered.html= |    423 |      1 |   286 |
+| releasegroup-releases | multi    | Tougher Than the Rest | /release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c     | =rendered.html= |     42 |     14 |    32 |
+| artist-events        | single    | Bruce Springsteen     | /artist/70248960-cb53-4ea4-943a-edb18f7d336f/events     | =rendered.html= |     21 |      1 |     — |
+
+"After" is not the full badge count and should not be: a column with no distinct
+values writes an empty badge by design. What Step 22 fixed is whole sub-tables
+reading empty — artist-releasegroups went from 46 of its 47 tables having
+nothing at all to every one populated, a steady 6 of 9 columns each.
+
+The =artist-events= row is a different, benign case that Step 22 does not
+address: one table, so nothing cancels its scan. =captureOne()= simply
+snapshotted before the scan finished, which is now fixed
+(=waitForColHeaderCountsStable()=), so a re-capture will populate it.
+
+* Test-suite wall clocks
+
+Measured 2026-09-08 on =petri=, machine otherwise idle.
+
+| Suite                                             | Workers | Timeout | Result | Wall clock |
+|---------------------------------------------------+---------+---------+--------+------------|
+| =npm test= (chromium-fixtures)                    | default |    30 s | 141 ok |      1.2 m |
+| =npm test=, serialized                            |       1 |   120 s | 141 ok |      5.0 m |
+| =npm run test:live= (=@core=)                     |       9 |   120 s |  10 ok |      1.2 m |
+| =npm run test:live:perf= (=@perf=)                |       1 |   120 s |   9 ok |      8.7 m |
+| live =@core= + =@perf=, serialized                |       1 |   300 s |  19 ok |     10.5 m |
+| =artist-events-interactions.spec.js= alone        |       1 |   300 s |  11 ok |     10.3 m |
+
+*Serialization changes no pass/fail outcome.* It was tried because five
+=pending-edits-filter.spec.js= multi-table cases had failed at the 30 s default
+during a busy session; on an idle machine those same five run in *6.7-7.8 s
+each*. They were starved by concurrent perf captures, not marginal. Do not raise
+that file's timeout.
+
+** Per-test durations — =artist-events-interactions.spec.js=
+
+Serially on an idle =petri=, and the reason that file carries a file-level
+=test.describe.configure({ timeout: 300000 })= against chromium-live's 120 s
+default:
+
+| Seconds | Test                                                                    |
+|---------+-------------------------------------------------------------------------|
+|    20.9 | column-header counts cover the whole table at initial render            |
+|    32.7 | Event column filter highlights across a comment-comma boundary          |
+|    36.5 | Location column filter highlights across a comma-separator text node    |
+|    37.7 | column filter on Country narrows to the same value as the global filter |
+|    45.4 | global filter narrows and clearing restores the full set                |
+|    49.1 | every row keeps its row-level decoration through a chunked re-render    |
+|    49.9 | column-header counts survive a chunked re-render                        |
+|      66 | sorting a column reorders rows without changing the row count           |
+|      72 | re-applying a filter reproduces its own header counts exactly           |
+|      78 | sorting does not disturb any column-header count badge                  |
+|      90 | uniq-value dropdown cache reflects a cell expand/collapse               |
+
+The slowest is a pre-existing case, not one of the newer ones — which is why the
+budget is file-level rather than two ad-hoc =test.setTimeout()= calls.
+
+* Cost model — the column-header count scan
+
+The number PERFORMANCE.org Step 3 exists to attack, recorded here because it
+otherwise lives only in the userscript's own comments.
+
+| Quantity                                   | Value                             | Source                                       |
+|--------------------------------------------+-----------------------------------+----------------------------------------------|
+| =getCleanColumnText()= calls per full pass | ~88 000 (4174 rows x 21 columns) | =artist-events=, counted from the dimensions |
+| Synchronous cost at 8 k+ rows              | 30-120 s                          | =_updateAllColHeaderCounts()='s own comments |
+
+At that size the pass was enough to trigger Chrome's "Page Unresponsive"
+dialog, which is why it is deferred behind =_scheduleColHeaderCounts()= and
+sliced one event-loop turn per column rather than fixed at the root. Step 3
+memoizes it; the slicing and deferral remain.
+
+* Third-party service limits
+
+Measured, not documented by the services. Each is load-bearing for a design
+decision, so re-measure before changing one.
+
+| Service                     | Limit                                                        | How it was established                                       |
+|-----------------------------+--------------------------------------------------------------+--------------------------------------------------------------|
+| Cover Art Archive           | ~1.2 requests/second                                         | observed across artwork specs; sets their settle budgets      |
+| MB WS2 =rid:= batch         | *100* MBIDs                                                  | =scripts/probe-ms-rid-batch-size.py=                          |
+| MB WS2 =rid:= at 150        | accepted but SILENTLY capped by the endpoint's own =limit=    | same probe — the failure mode that makes 100 a hard ceiling   |
+| MB WS2 =rid:= at 200        | =HTTP 414 URI Too Long=                                      | same probe                                                    |
+| MB WS2 browse (=?artist==)  | 746 requests for Bruce Springsteen                           | =recording-count: 74540=, paged at 100                        |
+
+The last row is why the millisecond-length feature uses the SEARCH endpoint and
+not browse: browse costs =ceil(the artist's whole catalogue / 100)= whether the
+page shows ten rows or ten thousand, and cannot serve instrument/isrc/search at
+all. Search costs =ceil(rendered rows / 100)=.
+
+* Waits that do not fire, and how long they do not fire for
+
+Recorded so nobody reaches for them again on a large page.
+
+| Wait                             | Signal it polls                              | Measured outcome                                                        |
+|----------------------------------+----------------------------------------------+-------------------------------------------------------------------------|
+| =waitForCaaEaaComplete()=        | =#mb-info-display-caa= becoming visible      | still empty and hidden after *300 s / 529 polls* on =artist-releasegroups=, artwork visibly painting throughout |
+| =waitForCaaEaaComplete()=        | same                                         | same on =releasegroup-releases=' 124-row "Greetings From Asbury Park, N.J." page |
+| =waitForRelationshipsComplete()= | =#mb-info-display-rel=                       | same shape, same reason                                                 |
+
+The toast these poll is written on the queue's =onIdle=; at the archive's
+~1.2 req/s a per-entity metadata sweep of that size simply outlasts any sane
+timeout. Poll the thing you care about until it stops changing instead —
+=caa-icon-survives-sort-multi.spec.js='s =waitForArtworkSettled()= is the worked
+example.
+
+*Consequence worth knowing before blaming a change*:
+=releasegroup-releases-filter-sort.spec.js= still waits on both toasts in
+=setupExpandedGreetingsPage()=, so all six of its tests fail in setup on that
+page regardless of the code under test. A "toast never appeared" timeout is
+evidence about the page's size, never about your change.
+
+* Environment log
+
+Conditions that made runs fail for reasons unrelated to the code. Dated, so a
+future flaky run can be compared against a known-bad day instead of blamed on a
+change.
+
+| Date       | Host    | Condition                                                                                                     |
+|------------+---------+---------------------------------------------------------------------------------------------------------------|
+| 2026-09-07 | =petri= | musicbrainz.org intermittently unreachable — roughly 1 probe in 3 timing out, ending in =ERR_CONNECTION_RESET=. Two complete 20-minute perf runs lost to a single 30 s navigation timeout. |
+
+*Known intermittent, not load-explained*: =release-tracks-ms-length-overflow.spec.js='s
+"a row already stamped by the embedded payload is never re-sent to the network"
+has failed three times under the parallel =npm test= run and passed every time
+in isolation (3.2-4.0 s against a 30 s budget), on both =main= and a feature
+branch. Unlike the =pending-edits-filter= five, an idle machine does not make it
+go away — it just makes it rarer. Re-run the file alone before believing it
+caught anything; if it starts reproducing, that is new information worth a look.
+
+That outage is what prompted =capture-interaction-perf.js='s per-sample retry,
+and it exposed a documentation error worth keeping visible: =loadFromDiskFixture()=
+is *not* offline. It makes the table DATA deterministic, but passes no
+=fixtureFile= to =loadUserscriptPage()=, so no route is registered and the page
+SHELL is fetched from the live site. "No network" only ever described the data.
