@@ -296,20 +296,38 @@ much, and what the alternative would be.
 
 - `PERFORMANCE.org` holds the measurements and the numbered Steps. Its
   TODO/DONE keyword tracks "landed on `main`", not effort.
+- **Re-read `PERFORMANCE.org` for what your change made FALSE — when you
+  implement, and again when you merge — and fix what it says, not just the
+  keyword.** The file is written as prediction and plan, so landing a Step
+  routinely invalidates prose several sections away that nothing will flag: a
+  sibling Step's prerequisite, a "still TODO" aside, a stated blocker, a
+  prediction about which primitive you would reuse. Merging 9.99.1049 (Steps 3
+  and 22) falsified six such statements — Step 8 became fully DONE by
+  construction, Step 6's scope narrowed to a single caller, and Step 4's "Step 3
+  will key off the same primitive" turned out backwards, since Step 3 needs an
+  order-INDEPENDENT key and Step 4 cannot have one. None of that surfaces from
+  flipping a keyword.
+- **Derive the "DONE set is exactly Steps …" sentence from the keywords, never
+  by hand.** It has drifted twice, in both directions.
 - The `run-perf-comparison` skill runs and interprets the instrumentation.
 - Committed baselines: `tests/snapshots/artist-events/interaction-perf-*.json`
   (interaction latency) and `tests/snapshots/artist-releasegroups/perf-baseline*.json`
   (end-to-end fetch/render). Both are medians of 5 samples, kept per-branch.
-- Current `main` reference point, on the 4174-row `artist-events` disk fixture:
-  global filter ~1735 ms, column filter ~1730 ms, sort ~3968 ms, uniq-dropdown
-  ~31 100 ms cold / ~863 ms warm. Re-measure rather than trusting these if a
-  decision hinges on them.
-- **Those absolutes are machine-state-dependent to a degree that swamps most
-  changes — always capture your own `main` arm in the same session.** A
-  2026-09-07 capture of the same `main`, same fixture, same machine read
-  3503/3311/6932/48844/1903, i.e. roughly twice the figures above, and `main`'s
-  own two runs within that one session differed by 7% on the global filter. Only
-  a within-session A/B ratio is worth quoting.
+- Current `main` reference point, on the 4174-row `artist-events` disk fixture,
+  captured 2026-09-08 at 9.99.1048: global filter ~3033 ms, column filter
+  ~3295 ms, sort ~6410 ms, uniq-dropdown ~45 996 ms cold / ~1676 ms warm,
+  header counts ~8033 ms initial / ~12 319 ms restore. Re-measure rather than
+  trusting these if a decision hinges on them.
+- **Never quote an absolute across versions or sessions — capture your own
+  `main` arm alongside your branch's, in one session.** `main` measured
+  1735/1730/3968/31149/863 at 9.99.1045 and 3033/3295/6410/45996/1676 at
+  9.99.1048, both on 2026-09-07/08 on this machine: roughly 1.5-2x apart, three
+  versions apart, and unexplained. A loaded-machine theory was floated and
+  disproved (an idle capture landed within 13% of the supposedly loaded one).
+  It may be environment, or it may be a real regression in 9.99.1046-1047 —
+  nobody has bisected it, and until someone does, only a within-session A/B
+  ratio means anything. **If you are about to attribute a gap like this to
+  "machine state", measure the older script instead.**
 - `capture-interaction-perf.js` also reports `headerCountsInitial` and
   `headerCountsRestore` — the column-header count scan timed directly rather
   than as main-thread pressure on a status-text poll. Both carry a ~1 s floor
@@ -322,6 +340,7 @@ which is the reason these baselines are committed.
 ## Git Workflow
 - Never commit feature work directly to `main`. Always create a feature branch first (`git checkout -b <topic>`), commit there, then merge via PR or fast-forward and push.
 - Every user-visible change requires: version bump in the userscript header, a CHANGELOG entry, and a HELP/docs resync in the same commit.
+- At merge time, re-read `PERFORMANCE.org` for statements your change made false — see "Performance is a priority" above. Flipping a Step's keyword is the easy half; the prose that predicted your change is the half that rots silently.
 - After finishing a task, always commit AND push; then offer to merge `main` into the active perf/feature branch to keep it current.
 
 ## File Safety
