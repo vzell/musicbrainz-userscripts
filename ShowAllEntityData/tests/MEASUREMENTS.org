@@ -98,6 +98,7 @@ from the background task's own output file. The harness now records
 | 2026-09-08 | 21:07      | =petri=                      | 9.99.1049 | main, pairs with the NB-3641 row |   3634 |   3158 | 6903 |     46549 |      1722 | 8191     | 8594        |
 | 2026-09-08 | 21:52      | =petri=                      | 9.99.1049 | A — 18d uptime, no =claude=      |   2820 |   3028 | 7065 |     41723 |      1798 | 8250     | 8915        |
 | 2026-09-08 | 22:44      | =petri=                      | 9.99.1049 | R — rebooted, fresh session      |   2388 |   2013 | 4462 |     26244 |      1068 | 5844     | 6264        |
+| 2026-09-08 | 23:40      | =NB-3641=                    | 9.99.1049 | F — rebooted, 0.2h uptime        |   1664 |   1757 | 3622 |     29531 |       823 | 4334     | 5319        |
 
 Committed as =tests/snapshots/artist-events/interaction-perf-*.json=.
 
@@ -146,30 +147,71 @@ does NOT settle WHY. Three candidates, and they are not exclusive:
 back 1.37-1.77x faster than the =petri= row above. Re-reading the ratio table
 with that arm instead:
 
-| Metric                | =petri= rebooted | =NB-3641= | petri / NB |
-|-----------------------+------------------+-----------+------------|
-| =globalFilter=        |             2388 |      1996 |      1.20x |
-| =columnFilter=        |             2013 |      1706 |      1.18x |
-| =sort=                |             4462 |      4392 |      1.02x |
-| =uniqDropCold=        |            26244 |     30347 |      0.86x |
-| =uniqDropWarm=        |             1068 |       985 |      1.08x |
-| =headerCountsInitial= |             5844 |      4704 |      1.24x |
-| =headerCountsRestore= |             6264 |      5689 |      1.10x |
+| Metric                | =petri= rebooted | =NB-3641= (unverified boot) | petri / NB |
+|-----------------------+------------------+-----------------------------+------------|
+| =globalFilter=        |             2388 |                        1996 |      1.20x |
+| =columnFilter=        |             2013 |                        1706 |      1.18x |
+| =sort=                |             4462 |                        4392 |      1.02x |
+| =uniqDropCold=        |            26244 |                       30347 |      0.86x |
+| =uniqDropWarm=        |             1068 |                         985 |      1.08x |
+| =headerCountsInitial= |             5844 |                        4704 |      1.24x |
+| =headerCountsRestore= |             6264 |                        5689 |      1.10x |
 
 0.86-1.24x, against the 1.17x that 28-vs-24 cores predicts. The *Hardware*
 bullet was right about its own magnitude all along, and the 1.5-1.85x it could
 not account for was reboot recency, not silicon. The *Something resident*
 bullet is dead — see the section below for the arm that killed it. Do not cite
-the 1.5-1.85x table as a machine ratio.
+the 1.5-1.85x table as a machine ratio, and see the correction immediately
+below — this table's own =NB-3641= column turned out not to be at its floor
+either.
 
-*This ratio is reboot-vs-reboot only if =NB-3641= really was freshly booted,
-and that is NOT measured.* Its arm was captured 20:23 UTC, about 73 minutes
-before the commit that added =uptimeHours=/=claudeResident=, so its =machine=
-block carries neither — the condition is user recollection, exactly the kind
-of unrecorded claim this file exists to stop trusting. If =NB-3641= was NOT
-freshly booted at 20:23, it was slowed the same way =petri= was, its 1996 is
-not its floor, and the 0.86-1.24x above UNDERSTATES the machine gap rather
-than settling it. Arm F closes this for 16 minutes of runtime.
+*This ratio was reboot-vs-reboot only if =NB-3641= really was freshly booted,
+and that was NOT measured at the time.* The 20:23 arm was captured about 73
+minutes before the commit that added =uptimeHours=/=claudeResident=, so its
+=machine= block carried neither — the condition was user recollection, exactly
+the kind of unrecorded claim this file exists to stop trusting.
+
+*Arm F, 2026-09-08 23:40 — =NB-3641= was NOT at its floor either.* Same
+machine, same script version, =--label=rebooted=, =uptimeHours: 0.2=,
+=claudeResident: {count: 0}= — this time recorded, not recollected. Against
+the unverified 20:23 arm:
+
+| Metric                | =NB-3641= 20:23 (unverified) | =NB-3641= F (rebooted, verified) | 20:23 / F |
+|-----------------------+-------------------------------+-----------------------------------+-----------|
+| =globalFilter=        |                          1996 |                               1664 |     1.20x |
+| =columnFilter=        |                          1706 |                               1757 |     0.97x |
+| =sort=                |                          4392 |                               3622 |     1.21x |
+| =uniqDropCold=        |                         30347 |                              29531 |     1.03x |
+| =uniqDropWarm=        |                           985 |                                823 |     1.20x |
+| =headerCountsInitial= |                          4704 |                               4334 |     1.09x |
+| =headerCountsRestore= |                          5689 |                               5319 |     1.07x |
+
+Not uniform, and not as clean as =petri='s R-vs-C reboot effect (1.37-1.77x on
+every metric) — =columnFilter= and =uniqDropCold= sit inside this file's ~10%
+noise band, unchanged. But =globalFilter=, =sort= and =uniqDropWarm= clear it
+at ~20-21%, and =headerCountsInitial=/=headerCountsRestore= sit at the edge
+(7-9%). Three of seven metrics moving outside noise means the pre-registered
+"~1996 -> already at its floor" reading is wrong: the 20:23 arm was partially
+slowed, the same direction as =petri=, just not to the same degree or on the
+same metrics. Re-reading the cross-machine ratio with the verified floor on
+both sides:
+
+| Metric                | =petri= rebooted (R) | =NB-3641= rebooted (F) | petri / NB |
+|-----------------------+-----------------------+-------------------------+------------|
+| =globalFilter=        |                  2388 |                    1664 |      1.43x |
+| =columnFilter=        |                  2013 |                    1757 |      1.15x |
+| =sort=                |                  4462 |                    3622 |      1.23x |
+| =uniqDropCold=        |                 26244 |                   29531 |      0.89x |
+| =uniqDropWarm=        |                  1068 |                     823 |      1.30x |
+| =headerCountsInitial= |                  5844 |                    4334 |      1.35x |
+| =headerCountsRestore= |                  6264 |                    5319 |      1.18x |
+
+0.89-1.43x, mean ~1.22x — close to the 1.17x that 28-vs-24 cores predicts on
+average, but WIDER than the 0.86-1.24x spread the unverified arm gave, not
+narrower. Reboot recency was real on both machines, and correcting for it
+widened the residual scatter instead of collapsing it to core-count alone —
+there is still an unexplained per-metric spread this file has no candidate
+for. Do not report a single cross-machine ratio; report the range.
 
 *** What these rows establish
 
@@ -386,16 +428,16 @@ is *not* offline. It makes the table DATA deterministic, but passes no
 =fixtureFile= to =loadUserscriptPage()=, so no route is registered and the page
 SHELL is fetched from the live site. "No network" only ever described the data.
 
-** PARTLY ANSWERED (arms D, E and F outstanding) — what changed on =petri= on 2026-09-07: a resident session, or uptime?
+** PARTLY ANSWERED (arms D and E outstanding; F answered) — what changed on =petri= on 2026-09-07: a resident session, or uptime?
 
-*Status: written 2026-09-08 as an untested hypothesis; arms A and R were run
+*Status: written 2026-09-08 as an untested hypothesis; arms A, R and F were run
 on 2026-09-08. A RUNNING =claude= process is exonerated — it costs 22% on one
 metric and nothing on six, and the fastest arm on record carries one. A
 reboot reproduces the whole ~2x. But arm A reached "no =claude=" by CLOSING a
 session, so what a session LEAVES BEHIND is untested and fits every data
-point, including the step-change timing. Arm B is now impossible; D and the
-new E and F are outstanding — read "The answer" before citing anything in
-between.*
+point, including the step-change timing. Arm B is now impossible; arm F is
+answered (below); D and the new E are outstanding — read "The answer" before
+citing anything in between.*
 
 *The observation.* =petri= changed against itself on the afternoon of
 2026-09-07 and never changed back — the same 9.99.1045 script measured 1735 on
@@ -538,21 +580,25 @@ is a second one, which repairs a different claim this file now leans on:
   Fast (~2400) means uptime alone is harmless and the residue hypothesis
   stands. Slow (~2800) means uptime accumulates on its own and Claude Code is
   fully cleared.
-- *Arm F — =NB-3641=, freshly rebooted, 9.99.1049, =--label=rebooted=.* Not
-  about the step change at all; it repairs the CROSS-MACHINE comparison. Every
-  petri/NB ratio in this file rests on one =NB-3641= arm whose reboot status
-  was never recorded (see the correction under the Results table). F comes
-  back ~1996 -> that arm was already at its floor, the surviving 0.86-1.24x
-  is real, and it sits about where 28-vs-24 cores predicts (1.17x).
-  Materially faster -> =NB-3641= was slowed too, and =petri= is further
-  behind than the table says. F now records its own uptime either way, so it
-  also retires the recollection.
+- *Arm F — =NB-3641=, freshly rebooted, 9.99.1049, =--label=rebooted=. RUN
+  2026-09-08 23:40.* Not about the step change at all; it repaired the
+  CROSS-MACHINE comparison. Every petri/NB ratio in this file rested on one
+  =NB-3641= arm whose reboot status was never recorded. Result: NOT ~1996 —
+  =globalFilter=/=sort=/=uniqDropWarm= came back ~20% faster (1664/3622/823),
+  =columnFilter=/=uniqDropCold= were flat, =headerCountsInitial=/
+  =headerCountsRestore= ~7-9% faster. So the 20:23 arm was NOT already at its
+  floor; it was partially slowed, the same direction as =petri='s step change
+  but smaller and not uniform across metrics. The corrected petri/NB range is
+  0.89-1.43x (mean ~1.22x) — see the Results-table correction above. F now
+  records its own uptime (0.2h) and =claudeResident= (count 0), retiring the
+  recollection either way.
 
 E costs 18 days of discipline rather than 16 minutes of runtime, which is why
-it has not been run. D and F are both a single run. Until it is, "reboot recency" remains the accurate
-description of what CLEARS the slow state, and *"a Claude Code session leaves
-something behind" is a live, unfalsified candidate for what CAUSES it* — not
-the exonerated one this section's first reading claimed.
+it has not been run. D remains outstanding and is a single run. Until it runs,
+"reboot recency" remains the accurate description of what CLEARS the slow
+state, and *"a Claude Code session leaves something behind" is a live,
+unfalsified candidate for what CAUSES it* — not the exonerated one this
+section's first reading claimed.
 
 | Arm | Finished (UTC)   | Uptime  | =claude= resident        | global | column | sort | uniq cold | uniq warm | hdr init | hdr restore |
 |-----+------------------+---------+--------------------------+--------+--------+------+-----------+-----------+----------+-------------|

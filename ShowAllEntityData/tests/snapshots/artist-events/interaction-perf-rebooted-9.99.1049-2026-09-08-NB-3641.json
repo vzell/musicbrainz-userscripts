@@ -1,0 +1,54 @@
+{
+  "pageType": "artist-events",
+  "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events",
+  "branch": "rebooted",
+  "gitBranch": "main",
+  "capturedAt": "2026-09-08",
+  "startedAt": "2026-09-08T23:29:55.582Z",
+  "finishedAt": "2026-09-08T23:40:03.464Z",
+  "machine": {
+    "hostname": "NB-3641",
+    "platform": "linux",
+    "release": "6.18.33.2-microsoft-standard-WSL2",
+    "cpus": 28,
+    "totalMemGb": 31,
+    "node": "v24.19.0",
+    "playwright": "1.62.1",
+    "uptimeHours": 0.2,
+    "claudeResident": {
+      "count": 0,
+      "oldestSessionHours": null
+    }
+  },
+  "scriptVersion": "9.99.1049+2026-09-08",
+  "interactions": {
+    "globalFilter": {
+      "medianMs": 1664,
+      "samples": 5
+    },
+    "columnFilter": {
+      "medianMs": 1757,
+      "samples": 5
+    },
+    "sort": {
+      "medianMs": 3622,
+      "samples": 5
+    },
+    "uniqDropCold": {
+      "medianMs": 29531,
+      "samples": 5
+    },
+    "uniqDropWarm": {
+      "medianMs": 823,
+      "samples": 5
+    },
+    "headerCountsInitial": {
+      "medianMs": 4334,
+      "samples": 5
+    },
+    "headerCountsRestore": {
+      "medianMs": 5319,
+      "samples": 5
+    }
+  }
+}

@@ -634,3 +634,25 @@ vzell@petri:~/git/musicbrainz-userscripts/ShowAllEntityData$ node tests/support/
   headerCountsInitial: 5661.0ms
   headerCountsRestore: 6078.0ms
 Written to /home/vzell/git/musicbrainz-userscripts/ShowAllEntityData/tests/snapshots/artist-events/interaction-perf-rebooted-9.99.1049-2026-09-08-petri.json
+
+** after NB-3641 reboot
+
+vzell@NB-3641:~/git/musicbrainz-userscripts/ShowAllEntityData$ node tests/support/capture-interaction-perf.js --pageType=artist-events --label=rebooted
+artist-events [interaction-perf, rebooted] on NB-3641 (28 cores, node v24.19.0, playwright 1.62.1):
+  globalFilter: 1664.0ms
+  columnFilter: 1757.0ms
+  sort: 3622.0ms
+  uniqDropCold: 29531.0ms
+  uniqDropWarm: 823.0ms
+  headerCountsInitial: 4334.0ms
+  headerCountsRestore: 5319.0ms
+Written to /home/vzell/git/musicbrainz-userscripts/ShowAllEntityData/tests/snapshots/artist-events/interaction-perf-rebooted-9.99.1049-2026-09-08-NB-3641.json
+
+Arm F (the missing NB-3641 reboot arm) is now closed out in tests/MEASUREMENTS.org:
+
+- Added the new row to the Results table (23:40 UTC, global 1664 / column 1757 / sort 3622 / uniqCold 29531 / uniqWarm 823 / hdrInit 4334 / hdrRestore 5319).
+- Added a new comparison table: the original 20:23 NB-3641 arm vs. verified-rebooted arm F. Result was not "already at floor" — globalFilter/sort/uniqDropWarm came back ~20% faster, headerCountsInitial/headerCountsRestore ~7-9% faster, columnFilter/uniqDropCold flat (inside the ~10% noise band). So the pre-registered "F comes back ~1996" branch was wrong; the original arm was partially slowed.
+- Recomputed the cross-machine petri/NB ratio using both machines' verified reboot floors (R vs F): 0.89-1.43x, mean ~1.22x — wider scatter than the earlier 0.86-1.24x, not narrower, so there's still an unexplained per-metric spread even after controlling for reboot recency on both sides.
+- Updated the "PARTLY ANSWERED" section header and status line to mark F answered (D and E still outstanding), and rewrote the Arm F bullet with the actual result instead of the pre-registered branches.
+
+Files touched: tests/MEASUREMENTS.org only (the .json capture and org/perf-3.org log entry were already in place from your capture run). Not committed — let me know if you want that done.
