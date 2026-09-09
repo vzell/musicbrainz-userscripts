@@ -38,6 +38,7 @@ be compared to a later one, so it is not evidence, it is decoration.
 |-----------+----------------------------------+-------+-------+----------+------------|
 | =petri=   | WSL2 (Linux 6.18.33.2-microsoft) | 24    | 31 GB | v24.16.0 | 1.62.1     |
 | =NB-3641= | WSL2 (Linux 6.18.33.2-microsoft) | 28    | 31 GB | v24.19.0 | 1.62.1     |
+| =vzell-lap= | WSL2 (Linux 6.18.33.2-microsoft-standard-WSL2) | 4 | 16 GB | v24.11.1 | 1.62.1 |
 | (unknown) | —                                | —     | —     | —        | —          |
 
 Rows marked =(unknown)= were captured before the harness recorded a host. The
@@ -99,6 +100,7 @@ from the background task's own output file. The harness now records
 | 2026-09-08 | 21:52      | =petri=                      | 9.99.1049 | A — 18d uptime, no =claude=      |   2820 |   3028 | 7065 |     41723 |      1798 | 8250     | 8915        |
 | 2026-09-08 | 22:44      | =petri=                      | 9.99.1049 | R — rebooted, fresh session      |   2388 |   2013 | 4462 |     26244 |      1068 | 5844     | 6264        |
 | 2026-09-08 | 23:40      | =NB-3641=                    | 9.99.1049 | F — rebooted, 0.2h uptime        |   1664 |   1757 | 3622 |     29531 |       823 | 4334     | 5319        |
+| 2026-09-09 | 00:18      | =vzell-lap=                  | 9.99.1049 | rebooted, 0.4h uptime, first arm on this machine |   3490 |   2898 | 8622 |     59767 |      2196 | 8245     | 10457       |
 
 Committed as =tests/snapshots/artist-events/interaction-perf-*.json=.
 
@@ -229,6 +231,42 @@ for. Do not report a single cross-machine ratio; report the range.
   below.
 - *The machine is worth 1.5-1.85x* at identical script version. See the
   =NB-3641= vs =petri= table above.
+
+*** =vzell-lap=, 2026-09-09 00:18 — a third machine, freshly rebooted, no prior baseline
+
+First-ever arm on this host: 9.99.1049, =--label=rebooted=, =uptimeHours: 0.4=,
+=claudeResident: {count: 0}= — the same two conditions (fresh reboot, no
+resident session) that produced =petri='s fastest arm (R) and =NB-3641='s
+fastest arm (F). It does not answer arms D or E: both of those are specifically
+about =petri= changing against ITSELF, and there is no earlier =vzell-lap= run
+to compare against. What it does do is test whether "freshly rebooted" alone
+predicts a floor across machines, independent of hardware.
+
+| Metric                | =vzell-lap= (rebooted) | =petri= R (rebooted) | =NB-3641= F (rebooted) | vzell / R | vzell / F |
+|-----------------------+-------------------------+-----------------------+-------------------------+-----------+-----------|
+| =globalFilter=        |                    3490 |                  2388 |                    1664 |     1.46x |     2.10x |
+| =columnFilter=        |                    2898 |                  2013 |                    1757 |     1.44x |     1.65x |
+| =sort=                |                    8622 |                  4462 |                    3622 |     1.93x |     2.38x |
+| =uniqDropCold=        |                   59767 |                 26244 |                   29531 |     2.28x |     2.02x |
+| =uniqDropWarm=        |                    2196 |                  1068 |                     823 |     2.06x |     2.67x |
+| =headerCountsInitial= |                    8245 |                  5844 |                    4334 |     1.41x |     1.90x |
+| =headerCountsRestore= |                   10457 |                  6264 |                    5319 |     1.67x |     1.97x |
+
+1.41-2.28x slower than =petri='s own reboot floor, 1.65-2.67x slower than
+=NB-3641='s — well outside the 0.89-1.43x reboot-vs-reboot spread measured
+between those two. For reference, =vzell-lap= (rebooted) sits close to
+=petri= arm C — 18 days uptime, a 30-hour resident session, the WORST =petri=
+arm on record (3634/3158/6903/46549/1722/8191/8594): 0.92-1.28x on every
+metric except =sort= and =uniqDropCold=/=uniqDropWarm=, where =vzell-lap= is
+actually slower than =petri= fully loaded.
+
+*Reading.* A fresh reboot does not put a machine at a shared floor — it puts
+it at ITS OWN floor. =vzell-lap= has 4 cores/16 GB against =petri='s 24/31 and
+=NB-3641='s 28/31, and that gap dwarfs the ~1.2-1.8x reboot-recency effect
+measured on the other two hosts. This is a new absolute baseline for
+=vzell-lap=, not a data point for the residue/uptime hypothesis in the
+PARTLY ANSWERED section above — that question still needs arm D or E, run on
+=petri= itself.
 
 * Bisect: the 9.99.1045 -> 9.99.1048 gap
 
