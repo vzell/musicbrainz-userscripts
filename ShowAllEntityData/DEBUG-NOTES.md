@@ -7998,3 +7998,293 @@ a `flag-` class) and a trailing sibling after the label carries the real
 `flag flag-XX` class. Verified failing against the pre-fix code (reverted
 `ShowAllEntityData.user.js` via `git stash`, re-ran, confirmed the "flag
 replaces glyph" assertion failed) before restoring the fix.
+
+## 2026-09-09 — uniq-dropdown "Entity info - Area name" never showed a flag for a SUBDIVISION, only the country (fixed)
+
+Follow-up to the same-day fix above. That fix generalized correctly to any
+`kind === 'name'` entry with a `flagNode`, but `flagNode` itself was only
+ever populated for the country segment, because the underlying icon
+detection (`_routeAreaLink()`'s inline check, `_findCellEntityRefs()`'s
+`flagEl` expression, and `_buildFlagSegmentsForRoot()`'s `iconSel`) only
+recognized `a.closest('.flag')` (native) and a sibling `span.area-icon`
+(an old third-party shape) — neither of which either CURRENTLY registered
+interop fixture actually produces.
+
+Read the real fixture sources rather than trusting the existing JSDoc,
+which named `span.area-icon` as "More Flags Everywhere"'s shape:
+
+- `tests/fixtures/live-userscripts/MusicBrainz_More_Flags_Everywhere.user.js`'s
+  `createFlagIcon()` now builds `<span class="custom-area-icon"><img
+  class="flag-custom-region"></span>`, inserted as
+  `a.previousElementSibling` — same POSITION as the old shape, renamed
+  class. The old `area-icon` name is not dead, though: the existing
+  `tests/fixtures/area-name-collision.html` fixture (New York
+  city/state collision) still uses it, so both class names needed to stay
+  recognized, not swap one for the other.
+- `tests/fixtures/live-userscripts/MusicBrainz_Right_Side_Flags_Everywhere.user.js`
+  (per the user: intended to eventually replace More Flags Everywhere)
+  produces a THIRD, structurally different shape via `insertFlags()`: the
+  anchor is wrapped in `<span class="mfe-flag-wrapper">`, with the icon as
+  a TRAILING `<img class="mb-hq-flag-img">` sibling *inside* that same
+  wrapper, after the anchor — not a preceding sibling at all.
+
+The main table cell never showed this gap because both third-party
+scripts run their own page-wide `MutationObserver` and repaint whatever
+DOM currently holds a `/area/` anchor (including this script's own
+rendered cells) on every mutation — so the visible table looks right
+regardless of what this script's own selectors match. The dropdown has no
+such live repaint; it bakes a one-time snapshot into `entityNameFlagMap`,
+so its gap was directly visible: a subdivision like "Catalunya" never got
+a `flagNode` with either script active.
+
+Fix: one new shared helper, `_findAreaLinkIcon(anchor)` (grep anchor
+`function _findAreaLinkIcon`), recognizing all three shapes plus the
+native flag, built from three named selector constants
+(`AREA_ICON_PRECEDING_SIBLING_SEL`, `AREA_ICON_WRAPPER_SEL`,
+`AREA_ICON_TRAILING_IMG_SEL`) so `_buildFlagSegmentsForRoot()`'s `iconSel`
+is built from the SAME constants instead of an independently-typed copy —
+directly closing the "two implementations quietly disagree" gap that
+caused this bug (the MFE class rename landed in neither of them).
+`_routeAreaLink()` and `_findCellEntityRefs()` now both call the shared
+helper instead of their own inline checks. `_bakeFlagIconNode()`'s
+verbatim-clone branch was widened from `classList.contains('area-icon')`
+alone to also cover `custom-area-icon` and any bare `<img>` (RSFE's
+shape), same verbatim-clone treatment as before — no new cross-document
+portability guarantee, matching the pre-existing limitation of the legacy
+shape.
+
+No change needed to `makeValueSynItem()` — the rendering already keyed off
+`flagNode` generically per entry, not per country.
+
+New regression coverage:
+`tests/fixtures/uniq-drop-area-name-flag-thirdparty-shapes.spec.js` (+
+`uniq-drop-area-name-flag-mfe-shape.html` /
+`uniq-drop-area-name-flag-rsfe-shape.html`) — one case per third-party
+shape, each asserting the leading `arealink` glyph plus a trailing icon
+matching that shape's own class (`img.flag-custom-region` /
+`img.mb-hq-flag-img`). Verified both fail against the pre-fix code (`git
+stash` on `ShowAllEntityData.user.js` alone) before restoring the fix.
+
+## 2026-09-09 — `#sanojjonasRoot` survived on a fully-rendered `artist-events` page (fixed)
+
+Unrelated to the two entries above — reported separately in the same
+session ("why is `#sanojjonasRoot` still there, it should have been
+removed by now with one of our sanojjonas fixes").
+
+Root cause, found by grepping every `removeSanojjonasContainers()` /
+`_watchForLateSanojjonasInjections()` call site: two of them —
+`performClutterCleanup()` and `startFetchingProcess()`'s normal fetch
+path — were gated on `pageType === 'events' || _isReleaseGroupsMultiMode()`.
+**`pageType` is never literally `'events'`.** Grepping `pageDefinitions`
+confirms it only ever assigns `'artist-events'`, `'area-events'`, or
+`'place-events'` — no entry anywhere uses the bare string. Both guards
+were therefore dead code on every real events page: the one-shot
+`removeSanojjonasContainers()` call there never ran, and — the part that
+actually surfaces as a bug — `_watchForLateSanojjonasInjections()` never
+got armed either.
+
+That watcher's `MutationObserver` is the ONLY thing that can catch
+sanojjonas injecting its container AFTER this script's own render has
+finished; its own JSDoc already documented this exact race (confirmed via
+the referenced `debug/s-present-on-final.html`, 2026-08-28: a
+fully-rendered `artist-releasegroups` page with `#sanojjonasRoot` still
+present because the button was pressed before sanojjonas had rendered
+anything). `finalCleanup()` has its own UNCONDITIONAL one-shot check
+(`if (_findSanojjonasContainers().length > 0) removeSanojjonasContainers();`),
+which is why the container isn't ALWAYS left behind — only when
+sanojjonas' own async script finishes after that check has already run,
+which is exactly the scenario the never-armed watcher was supposed to
+cover on events pages and silently didn't.
+
+Fix: introduced `_shouldCleanupSanojjonas()` (grep anchor `function
+_shouldCleanupSanojjonas`), checking membership in a new
+`EVENTS_PAGE_TYPES = ['area-events', 'place-events', 'artist-events']`
+array (the same three values already used correctly elsewhere in this
+file for the `_eventCancelledKind` derivation — left that other call site
+alone; same underlying fact, unrelated concern) `|| _isReleaseGroupsMultiMode()`.
+Both call sites now go through this one helper instead of repeating the
+condition inline — directly closing the "two guards can silently drift
+apart" shape that caused this bug in the first place. Updated the stale
+JSDoc on `performClutterCleanup()` and `_watchForLateSanojjonasInjections()`
+that had described the broken condition as intentional.
+
+New regression coverage: `tests/fixtures/sanojjonas-events-late-injection.spec.js`,
+reusing the existing `artist-events-cancelled.html` fixture. Loads the
+page, clicks the button, waits for render complete (past the point where
+`finalCleanup()`'s one-shot check has already run and found nothing),
+THEN injects a `<div id="sanojjonasRoot">` — simulating sanojjonas'
+own script finishing late — and asserts it gets removed within 3s
+(`_watchForLateSanojjonasInjections()`'s `MutationObserver` reacts on the
+next microtask after the mutation, so this resolves in milliseconds once
+armed). Verified failing against the pre-fix code first (`git stash` on
+`ShowAllEntityData.user.js` alone): the injected node was never removed
+and the test timed out, confirming this is a real, currently-failing case
+and not a no-op assertion.
+
+## 2026-09-09 — "Right Side Flags Everywhere": hollow-duplicate flag icon + artificial "Isra el" space (fixed)
+
+Reported with a real capture, `debug/Israel-flag.html` (`artist-events`,
+Location column filtered to "isra"), and a screenshot showing what looked
+like two flag icons around "Israel" plus a visible gap splitting the
+name. Root-caused by reproducing the EXACT captured markup in a fixture
+and dumping the actual rendered dropdown DOM rather than guessing from
+the screenshot alone — two genuinely separate bugs, both in code touched
+by the same-day subdivision-flag fix above.
+
+**Bug 1 — hollow native flag treated as a real icon.** The captured HTML
+for the "Location" cell:
+```html
+<span class="flag flag-IL" data-hq-processed="1"
+      style="background-image: none !important; padding: 0 !important; margin: 0 !important;">
+  <span class="mfe-flag-wrapper">
+    <a class="arealink" data-flag-processed="1"><bdi>Israel</bdi></a>
+    <img class="mb-hq-flag-img" data-hq-flag="IL" src="…Flag_of_Israel.svg">
+  </span>
+</span>
+```
+Reading RSFE's own source (`processFlags()`) explains this exactly: *"If
+this flag wraps an area link that will be handled by insertFlags,
+suppress it"* — RSFE deliberately neutralizes a native `.flag` span's own
+background rather than removing it, when it's about to wrap that same
+anchor in its own `mfe-flag-wrapper` + trailing `img.mb-hq-flag-img`.
+`_findAreaLinkIcon()` checked `.closest('.flag')` BEFORE checking for
+RSFE's wrapper, so it returned the hollow, backgroundless outer span
+instead of RSFE's real icon — confirmed via a debug dump: the dropdown's
+"Entity info - Area name" trailing icon baked to an empty
+`<span class="flag flag-IL"></span>` (no image, no background) instead of
+the real flag `<img>`.
+
+**Bug 1b — the SAME hollow span also got double-matched by
+`_buildFlagSegmentsForRoot()`'s `iconSel`.** Its native-flag fragment was
+a bare `span[class*="flag-"]` SUBSTRING check — which also matches
+`class="mfe-flag-wrapper"` purely because that string CONTAINS the
+characters "flag-" (`m-f-e-‑flag-‑wrapper`), with no relation to the
+wrapper actually being a flag. Dumped preview row before the fix:
+`Cinema City Hall in <span class="flag flag-IL"></span><span
+class="mfe-flag-wrapper"></span>Isra el<img class="mb-hq-flag-img">` — TWO
+bogus, empty icon segments in front of the name, each carrying its own
+`margin-right: 4px`, before the one real icon at the end.
+
+Fix: `_findAreaLinkIcon()` now checks `AREA_ICON_WRAPPER_SEL` FIRST,
+before the native `.flag` ancestor — RSFE's own real icon wins whenever
+it's present. `iconSel` was tightened from `span[class*="flag-"]` to
+`span.flag[class*="flag-"]:not(:has(${AREA_ICON_WRAPPER_SEL}))` — the
+`.flag` CLASS-TOKEN selector (not a substring match) already excludes
+`mfe-flag-wrapper` on its own (it has no `flag` token, just one compound
+class name), and the `:not(:has(...))` clause additionally skips a native
+flag span RSFE has hollowed out, so only the real trailing `<img>` is
+ever matched for that anchor.
+
+**Bug 2 — artificial space when a highlight splits a country name.**
+Filtering "Location" to "isra" wraps the matched prefix:
+`<bdi><span class="mb-column-filter-highlight">Isra</span>el</bdi>` — two
+sibling text nodes ("Isra" inside the highlight span, "el" right after)
+with nothing between them in the source. `_buildFlagSegmentsForRoot()`
+collected each as a SEPARATE `textParts` entry and joined them with
+`textParts.join(' ')`, unconditionally inserting a space at every
+boundary — "Isra" + " " + "el" = "Isra el". Confirmed via a debug dump
+that the dropdown's OWN "Entity info - Area name" LABEL never had this
+problem (it reads from an already-correct, separately-built value) — only
+the cell-preview row's rendered text did, which is why the bug was easy
+to overlook from the label alone.
+
+`getCleanColumnText()` already solves this exact class of bug (its own
+JSDoc names it directly: *"Illinois" → "I" + "llino" + "is" → "I llino
+is"*) by cloning the element, UNWRAPPING `_COLLAPSE_MATCH_SEL`/`.mb-ic-wrap`
+spans into plain text nodes, and calling `.normalize()` to merge adjacent
+text-node siblings back into one — so `join(' ')` only ever fires at a
+REAL inter-element boundary. `_buildFlagSegmentsForRoot()` never had this
+treatment ported over, and couldn't simply reuse it verbatim: its icon
+segments need `_bakeFlagIconNode()`'s `getComputedStyle()` read on a
+LIVE, attached element (a detached clone has no computed style at all,
+which would have broken the ALREADY-correct native-flag baking).
+
+Fix: bake every icon from the LIVE root first, in document order
+(`Array.from(root.querySelectorAll(iconSel)).map(_bakeFlagIconNode)`),
+*then* build a clone with the same unwrap-and-normalize treatment as
+`getCleanColumnText()`, and walk THAT for text — consuming the pre-baked
+icons by position as the walker re-encounters each icon-matching element
+in the clone. Safe specifically because `_COLLAPSE_MATCH_SEL`/`.mb-ic-wrap`
+never overlap `iconSel` — unwrapping them can never change how many icon
+elements exist or their relative order, so pairing live-baked icons to
+clone-walked positions by simple ordinal index is exact.
+
+New regression coverage: `tests/fixtures/uniq-drop-israel-flag-artifacts.spec.js`
+(+ matching `.html` fixture, built directly from `debug/Israel-flag.html`'s
+own markup) — one case per bug. The first asserts exactly one trailing
+icon (a real `<img>`, never an empty `<span class="flag">`) in both the
+entity-info row and the cell-preview row. The second types "isra" into
+the Location filter and asserts the preview's RENDERED TEXT (not its
+`title`, which was never wrong) never contains "Isra el". Both verified
+failing against the pre-fix code first (`git stash` on
+`ShowAllEntityData.user.js` alone) — the first attempt at the second test
+mistakenly asserted on `.title` and passed even pre-fix, a genuine false
+negative caught only by dumping the real pre-fix DOM and checking which
+field actually carried the bug.
+
+## 2026-09-09 — "Locality"/"Region" columns render the SAME area's icon in a different order on different rows (fixed)
+
+Reported with `debug/Czech-flag.html` (`artist-events`, filtered to "cz")
+and a screenshot showing "Praha" with its icon BEFORE the name in one row
+and AFTER it in another — same area, same page, same script version.
+
+Traced by extracting both rows' native "Location" cell and their derived
+"Locality" cell side by side. The NATIVE cells were byte-identical (RSFE
+had already fully decorated both, `<span class="mfe-flag-wrapper"><a>
+Praha</a><img class="mb-hq-flag-img"></span>`). The DERIVED "Locality"
+cells differed:
+- Row 1: `<img class="mb-hq-flag-img"> <a data-flag-processed="1">
+  Praha</a>` — `_routeAreaLink()`'s own icon-then-anchor rendering,
+  unwrapped, never touched again.
+- Row 2: `<span class="mfe-flag-wrapper"><a data-flag-processed="1">
+  Praha</a><img class="mb-hq-flag-img"></span>` — RSFE's OWN native
+  shape, wrapper and all — meaning RSFE had re-decorated this specific
+  clone AFTER `_routeAreaLink()` built it.
+
+Root cause: `_routeAreaLink()`'s `clonedA = a.cloneNode(true)` only
+inherits `data-flag-processed="1"` when the SOURCE anchor already had it
+at extraction time. Both MFE and RSFE skip an anchor outright when that
+attribute is already truthy (confirmed in both scripts' own per-anchor
+loops — not a coincidence, same author, RSFE is MFE's intended
+successor per the user). Whether a given row's SOURCE anchor had already
+been decorated by the time OUR extraction ran is a pure timing race
+against each script's own asynchronous, continuous
+`document.body`-wide `MutationObserver` — and once a freshly-cloned,
+still-unflagged anchor lands in our own "Locality"/"Region" column, that
+SAME live observer notices it too and decorates it AGAIN, in whatever
+order it natively uses, permanently overwriting `_routeAreaLink()`'s own
+rendering for that one row. Two rows built from identically-shaped input
+can therefore settle into two different, PERMANENT states depending
+purely on scheduling — not something `_routeAreaLink()`'s own logic ever
+controlled non-deterministically on its own.
+
+Per the user's explicit direction (asked rather than guessed, given the
+two legitimate resolutions — converge on our own order, or let the
+third-party script's order always win): force our own order, always, and
+put the icon AFTER the name (matching the dropdown's already-established
+"name, then flag" convention from the two entries above).
+
+Fix, in `_routeAreaLink()`:
+- Swapped the append order: `clonedA` first, then the icon.
+- Stamp `clonedA.dataset.flagProcessed = '1'` whenever an icon was found
+  and rendered — the exact attribute both MFE and RSFE check, so neither
+  ever re-decorates this clone again. Only stamped when an icon was
+  actually found; a clone with no icon yet is left alone, so a script
+  that decorates the SOURCE only later still gets a chance to add one.
+
+This surfaced a real regression in `_findAreaLinkIcon()`, caught by
+`area-name-collision.spec.js`'s existing `splitLocationAreas()` test:
+that function's own re-detection of "does this reconstructed cell have a
+flag" (`_findCellEntityRefs()` → `_findAreaLinkIcon()`) only ever checked
+`anchor.previousElementSibling` for the legacy `area-icon`/
+`custom-area-icon` shape — which is exactly the position `_routeAreaLink()`
+no longer uses now that the icon comes after. Fixed by also checking
+`anchor.nextElementSibling` (renamed `AREA_ICON_PRECEDING_SIBLING_SEL` →
+`AREA_ICON_SIBLING_SEL` throughout, since it's no longer preceding-only).
+
+New regression coverage: `tests/fixtures/uniq-drop-locality-flag-order.spec.js`
+(+ matching `.html` fixture, using `debug/Czech-flag.html`'s own "Praha"
+markup) — asserts the icon lands AFTER the anchor via
+`Node.compareDocumentPosition()`, and that the anchor is stamped
+`data-flag-processed="1"`. Verified failing against the pre-fix code
+first (`git stash` on `ShowAllEntityData.user.js` alone).

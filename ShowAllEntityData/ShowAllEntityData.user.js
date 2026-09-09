@@ -3161,7 +3161,11 @@
      * carries neither `alt` nor `title` (e.g. no flag-decorating userscript
      * installed, or a shape it doesn't decorate this way).
      *
-     * @param {?Element} iconSpan - `span.area-icon` immediately preceding `a`, or null.
+     * @param {?Element} iconSpan - the icon element returned by
+     *   `_findAreaLinkIcon(a)`, or null. When `iconSpan` has no `<img>`
+     *   descendant of its own (e.g. it IS the `<img>`, as with "Right Side
+     *   Flags Everywhere"'s shape) `querySelector('img')` simply returns
+     *   null and this falls through to the anchor-text fallback below.
      * @param {HTMLAnchorElement} a
      * @returns {string} Trimmed, lowercased label.
      */
@@ -3169,6 +3173,90 @@
         const img   = iconSpan ? iconSpan.querySelector('img') : null;
         const label = (img && (img.getAttribute('alt') || img.getAttribute('title'))) || a.textContent;
         return label.trim().toLowerCase();
+    }
+
+    // Subdivision-icon shapes recognized across every third-party script this
+    // project interoperates with, kept as named fragments so every consumer
+    // (`_findAreaLinkIcon()` below, and `_buildFlagSegmentsForRoot()`'s
+    // `iconSel`) builds its selector from the SAME source instead of
+    // re-typing it — two independently-typed copies of this list is exactly
+    // how the MFE shape drifted out of detection once already (its icon
+    // class was renamed `area-icon` -> `custom-area-icon` in one place and
+    // never updated in the other).
+    //   - AREA_ICON_SIBLING_SEL: an icon element sitting as either
+    //     `anchor.previousElementSibling` OR `anchor.nextElementSibling` —
+    //     the legacy "Canadian Province Flags Everywhere" / older "More
+    //     Flags Everywhere" shape (`span.area-icon`), and current
+    //     "MusicBrainz: More Flags Everywhere"'s renamed
+    //     `span.custom-area-icon` (containing its own `img.flag-custom-
+    //     region`) — same two class names either way. BOTH sides are
+    //     checked because `_routeAreaLink()` itself re-emits this shape
+    //     AFTER the anchor (name, then icon — see its own JSDoc), so this
+    //     same function must also recognize its OWN synthetic-column
+    //     output, not only a live source page's native BEFORE-anchor
+    //     placement.
+    //   - AREA_ICON_WRAPPER_SEL / AREA_ICON_TRAILING_IMG_SEL: "MusicBrainz:
+    //     Right Side Flags Everywhere"'s shape instead WRAPS the anchor in
+    //     `span.mfe-flag-wrapper`, with the icon as a TRAILING
+    //     `img.mb-hq-flag-img` sibling *inside* that same wrapper, after the
+    //     anchor rather than before it.
+    const AREA_ICON_SIBLING_SEL      = 'span.area-icon, span.custom-area-icon';
+    const AREA_ICON_WRAPPER_SEL      = 'span.mfe-flag-wrapper';
+    const AREA_ICON_TRAILING_IMG_SEL = 'img.mb-hq-flag-img';
+
+    /**
+     * Given a '/area/' anchor, returns the DOM element carrying that area's
+     * flag/subdivision icon — across the native MusicBrainz shape and every
+     * third-party userscript shape this project recognizes — or `null` if
+     * the area has no icon at all (the common case with no such script
+     * installed, for every area except the country itself).
+     *
+     * Checked in order:
+     *   1. `anchor.closest(AREA_ICON_WRAPPER_SEL)`'s own
+     *      `AREA_ICON_TRAILING_IMG_SEL` descendant — "Right Side Flags
+     *      Everywhere" shape (icon trails the anchor, inside a shared
+     *      wrapper). Checked FIRST and deliberately BEFORE the native flag
+     *      below: when RSFE wraps an anchor that already sits inside a
+     *      native `<span class="flag flag-XX">`, it explicitly neutralizes
+     *      that native flag's own background (`background-image: none
+     *      !important`, marked `data-hq-processed` — see its own
+     *      `processFlags()`'s "this flag wraps an area link that will be
+     *      handled by insertFlags, suppress it" comment) rather than
+     *      removing the now-empty wrapping span. Checking `.flag` first
+     *      would return that hollowed-out shell instead of RSFE's real
+     *      icon — confirmed via debug/Israel-flag.html, where doing so
+     *      produced a second, empty "flag" icon segment in front of the
+     *      country name (see DEBUG-NOTES.md's dated entry).
+     *   2. `anchor.closest('.flag')` — native MusicBrainz country flag, a
+     *      `<span class="flag flag-XX">` WRAPPING the anchor. The icon IS
+     *      this element itself (a CSS background-image sprite).
+     *   3. `anchor.previousElementSibling` OR `anchor.nextElementSibling`
+     *      matching `AREA_ICON_SIBLING_SEL` — legacy / current "More Flags
+     *      Everywhere" shape, unwrapped. A live source page only ever
+     *      places this BEFORE the anchor; AFTER is checked too because
+     *      `_routeAreaLink()` re-emits this exact shape itself, in ITS OWN
+     *      "name, then icon" order — so this function must recognize its
+     *      own synthetic-column output as readily as a live source cell.
+     *
+     * @param {HTMLAnchorElement} anchor
+     * @returns {?Element}
+     */
+    function _findAreaLinkIcon(anchor) {
+        const rsfeWrapper = anchor.closest(AREA_ICON_WRAPPER_SEL);
+        if (rsfeWrapper) {
+            const img = rsfeWrapper.querySelector(AREA_ICON_TRAILING_IMG_SEL);
+            if (img) return img;
+        }
+
+        const flagAncestor = anchor.closest('.flag');
+        if (flagAncestor) return flagAncestor;
+
+        const prev = anchor.previousElementSibling;
+        if (prev && prev.matches(AREA_ICON_SIBLING_SEL)) return prev;
+        const next = anchor.nextElementSibling;
+        if (next && next.matches(AREA_ICON_SIBLING_SEL)) return next;
+
+        return null;
     }
 
     /**
@@ -3179,14 +3267,11 @@
      *
      * The real country flag is always `a.closest('.flag')` — a
      * `<span class="flag flag-XX">` WRAPPING the anchor. This must not be
-     * confused with subdivision-flag decorations added by the
-     * separately-installed "MusicBrainz: More Flags Everywhere" userscript
-     * (@Lotheric, see debug/flags.org for its full country list) — which
-     * renders a SIBLING `<span class="area-icon"><img class="flag ..."></span>`
-     * immediately before the subdivision's own (unwrapped) anchor. Because
-     * `a.closest('.flag')` only walks the anchor's own ancestor chain, that
-     * sibling icon never matches it, so the subdivision anchor correctly falls
-     * into the Locality/Region branch below, with its icon carried along.
+     * confused with subdivision-flag icons added by any of the
+     * separately-installed userscripts `_findAreaLinkIcon()` recognizes
+     * (see its own JSDoc for the exact shapes) — none of those wrap the
+     * anchor in `.flag`, so the subdivision anchor correctly falls into the
+     * Locality/Region branch below, with its icon carried along.
      *
      * Non-flag (Locality/Region) links are positional, not semantic: the
      * FIRST one seen (per `areaState.count === 0`) is the most specific
@@ -3236,13 +3321,11 @@
             }
             containerC.appendChild(span);
         } else {
-            // Subdivision flag icon (Canadian Province / More Flags Everywhere
-            // userscripts) sits as a sibling <span class="area-icon">
-            // immediately before the area link — carry it along so it isn't
-            // dropped by the split, and use its presence to decide whether the
-            // "first link" slot should be forced into Region instead of Locality.
-            const iconSpan = a.previousElementSibling && a.previousElementSibling.matches('span.area-icon')
-                ? a.previousElementSibling : null;
+            // Subdivision flag/icon, in any shape _findAreaLinkIcon()
+            // recognizes — carry it along so it isn't dropped by the split,
+            // and use its presence to decide whether the "first link" slot
+            // should be forced into Region instead of Locality.
+            const iconSpan = _findAreaLinkIcon(a);
             const subdivisionSet = _flagRegionSubdivisionSet(areaState.countryName);
             const forceRegion = areaState.count === 0 && iconSpan && areaState.countryName && (
                 subdivisionSet
@@ -3252,11 +3335,33 @@
             const container = (areaState.count === 0 && !forceRegion) ? containerL : containerR;
             areaState.count++;
             if (container.hasChildNodes()) container.appendChild(document.createTextNode(', '));
-            if (iconSpan) {
-                container.appendChild(iconSpan.cloneNode(true));
-                container.appendChild(document.createTextNode(' '));
-            }
             container.appendChild(clonedA);
+            if (iconSpan) {
+                container.appendChild(document.createTextNode(' '));
+                container.appendChild(iconSpan.cloneNode(true));
+                // Both "More Flags Everywhere" and "Right Side Flags
+                // Everywhere" skip an anchor outright when
+                // `anchor.dataset.flagProcessed` is already truthy (see
+                // their own per-anchor loops — this convention is shared
+                // between the two, not a coincidence: same author, RSFE is
+                // the intended successor). `clonedA` only inherits that
+                // attribute when the SOURCE anchor already had it — for a
+                // brand-new clone whose source hadn't been decorated yet at
+                // extraction time, this would otherwise leave the clone
+                // looking "unprocessed" the moment it lands in the DOM,
+                // and either script's own live MutationObserver would pick
+                // it up and re-wrap it in ITS OWN shape, silently
+                // overriding the "name, then icon" order just built above.
+                // That's a genuine race — not hypothetical: confirmed via
+                // debug/Czech-flag.html, where two rows for the exact same
+                // area ("Praha") ended up in two DIFFERENT, PERMANENT
+                // orders depending purely on which side of this race each
+                // row's clone happened to land on. Stamping it here removes
+                // the race entirely: since this function already rendered
+                // an icon for this anchor, there's nothing for a
+                // third-party script to usefully add by re-processing it.
+                clonedA.dataset.flagProcessed = '1';
+            }
         }
     }
 
@@ -20209,10 +20314,7 @@
                 ? nameVariationSpan
                 : (parentBdi ? a : bdi);
             const container = a.closest('li') || cell;
-            const flagEl = m[1] !== 'area' ? null :
-                (a.closest('.flag') ||
-                 (a.previousElementSibling && a.previousElementSibling.matches('span.area-icon')
-                     ? a.previousElementSibling : null));
+            const flagEl = m[1] !== 'area' ? null : _findAreaLinkIcon(a);
             out.push({
                 type: m[1], glyphClass, href, name, nameNode,
                 isBare: getCleanColumnText(container) === name,
@@ -37427,6 +37529,38 @@ a { color: #1565c0; }`;
                 activeDefinition && activeDefinition.tableMode === 'multi');
     }
 
+    // The three real events pageTypes — `pageDefinitions` has no entry
+    // literally typed `'events'` (that string never matches anything; see
+    // `_shouldCleanupSanojjonas()`'s own JSDoc). Kept as its own array
+    // rather than folded into `_shouldCleanupSanojjonas()` inline so a
+    // future events pageType only needs updating here.
+    const EVENTS_PAGE_TYPES = ['area-events', 'place-events', 'artist-events'];
+
+    /**
+     * Whether sanojjonas cleanup (`removeSanojjonasContainers()` /
+     * `_watchForLateSanojjonasInjections()`) should run for the CURRENT
+     * page — sanojjonas only ever appears on events pages or
+     * `_isReleaseGroupsMultiMode()` pages.
+     *
+     * This exists specifically because `pageType === 'events'` — the
+     * condition every sanojjonas call site used to check inline — is NEVER
+     * true: `pageDefinitions` only has `type: 'artist-events'`,
+     * `'area-events'`, `'place-events'`, never the bare string `'events'`.
+     * Both guarded call sites silently never ran on a real events page,
+     * which is exactly why `_watchForLateSanojjonasInjections()` (the one
+     * thing that can catch sanojjonas injecting its container AFTER this
+     * script's own render finishes — see its own JSDoc for the race) never
+     * got armed there, letting `#sanojjonasRoot` survive on a
+     * fully-rendered `artist-events` page. Centralized into one helper,
+     * rather than repeating the corrected condition at each call site, so
+     * the two guards can't drift apart from each other again the same way.
+     *
+     * @returns {boolean}
+     */
+    function _shouldCleanupSanojjonas() {
+        return EVENTS_PAGE_TYPES.includes(pageType) || _isReleaseGroupsMultiMode();
+    }
+
     /**
      * Removes various clutter elements from the MusicBrainz page to prepare for
      * the consolidated view. Each task is independently guarded and logs only
@@ -37439,8 +37573,7 @@ a { color: #1565c0; }`;
      *   - Slick slider containers (matched by a `700px`-width wrapper style).
      *   - `<details>` blocks containing more than 5 `<img>`s (the cover-art
      *     gallery widget).
-     *   - `removeSanojjonasContainers()`, but only on `events` pages or when
-     *     `_isReleaseGroupsMultiMode()` is true.
+     *   - `removeSanojjonasContainers()`, gated by `_shouldCleanupSanojjonas()`.
      *   - `cleanupBarcodeHighlights()`, unconditionally.
      */
     function performClutterCleanup() {
@@ -37491,7 +37624,7 @@ a { color: #1565c0; }`;
         });
         if (removedDetailsCount > 0) Lib.debug('cleanup', `Removed ${removedDetailsCount} gallery/details blocks.`);
 
-        if (pageType === 'events' || _isReleaseGroupsMultiMode()) {
+        if (_shouldCleanupSanojjonas()) {
             removeSanojjonasContainers();
         }
 
@@ -44798,7 +44931,7 @@ a { color: #1565c0; }`;
         // Run refactored clutter removal
         performClutterCleanup();
 
-        if (pageType === 'events' || _isReleaseGroupsMultiMode()) {
+        if (_shouldCleanupSanojjonas()) {
             removeSanojjonasContainers();
             _watchForLateSanojjonasInjections();
         }
@@ -47719,9 +47852,13 @@ a { color: #1565c0; }`;
      * `_hydrateAndRenderFromSnapshotData()`), the plain "Load from Disk"
      * path (unconditionally, right before that same function's other
      * caller in `reader.onload`), and `startFetchingProcess()`'s normal
-     * fetch path (gated `pageType === 'events' || _isReleaseGroupsMultiMode()`,
-     * the same condition already guarding every other sanojjonas call site,
-     * since sanojjonas only ever appears on those page shapes).
+     * fetch path (gated by `_shouldCleanupSanojjonas()`, the same
+     * condition already guarding every other sanojjonas call site, since
+     * sanojjonas only ever appears on those page shapes — this WAS
+     * `pageType === 'events' || _isReleaseGroupsMultiMode()` inline at
+     * each site, but `pageType` is never literally `'events'` — see
+     * `_shouldCleanupSanojjonas()`'s own JSDoc — so this fetch-path arming
+     * silently never happened on a real events page until that was fixed).
      *
      * Disconnects itself after `SA_SANOJJONAS_WATCH_MS` — longer than
      * jesus2099's own 5000ms window specifically because sanojjonas' own
@@ -54172,15 +54309,24 @@ a { color: #1565c0; }`;
 
         /**
          * Produces a single ready-to-clone icon node for one flag/area-icon
-         * element found in a LIVE table cell — either a verbatim clone (the
-         * self-contained "More Flags Everywhere"/"Canadian Province Flags
-         * Everywhere" `<span class="area-icon"><img></span>`) or a freshly
-         * baked, childless span (native MusicBrainz `<span class="flag
-         * flag-XX">`, resolved via resolveFlagVisual()'s getComputedStyle()
-         * baking — see its own JSDoc — so the CSS-sprite background survives
-         * being detached from the page's stylesheet cascade into the
-         * dropdown, which is parented outside #content in a shrunk
-         * font-size context; see getUniqDropEl()).
+         * element found in a LIVE table cell — either a verbatim clone (any
+         * self-contained third-party icon shape `_findAreaLinkIcon()`
+         * recognizes: "More Flags Everywhere"/"Canadian Province Flags
+         * Everywhere"'s `<span class="area-icon"|"custom-area-icon"><img></span>`,
+         * or "Right Side Flags Everywhere"'s bare `<img class="mb-hq-flag-img">`)
+         * or a freshly baked, childless span (native MusicBrainz `<span
+         * class="flag flag-XX">`, resolved via resolveFlagVisual()'s
+         * getComputedStyle() baking — see its own JSDoc — so the CSS-sprite
+         * background survives being detached from the page's stylesheet
+         * cascade into the dropdown, which is parented outside #content in a
+         * shrunk font-size context; see getUniqDropEl()). Third-party icons
+         * are cloned verbatim (no computed-style baking) because they already
+         * carry their own visual inline/self-contained (a real `<img>`, or a
+         * span merely wrapping one) — this is unchanged from the existing
+         * legacy `area-icon` handling, so it inherits the same known
+         * limitation: an icon sourced from a `blob:` object URL (as MFE's is)
+         * stays valid only within the document that created it, same as
+         * before this function recognized the newer shapes.
          *
          * Child nodes are deliberately dropped for the native-flag case (we
          * only want the CSS background, not the link text inside, e.g.
@@ -54192,11 +54338,14 @@ a { color: #1565c0; }`;
          * dropdown render (renderItems() runs on every quickfilter
          * keystroke) rather than re-baking from the live cell each time.
          *
-         * @param {Element} el - a live `.area-icon` or `.flag.flag-XX` span
+         * @param {Element} el - a live icon element, as returned by
+         *   `_findAreaLinkIcon()` or matched by `iconSel` above: a
+         *   `.flag.flag-XX` span, an `.area-icon`/`.custom-area-icon` span,
+         *   or a bare `img.mb-hq-flag-img`
          * @returns {HTMLElement} a detached node ready for repeated cloning
          */
         function _bakeFlagIconNode(el) {
-            if (el.classList.contains('area-icon')) {
+            if (el.classList.contains('area-icon') || el.classList.contains('custom-area-icon') || el.tagName === 'IMG') {
                 return el.cloneNode(true);
             }
             const flagClone = document.createElement('span');
@@ -54306,7 +54455,32 @@ a { color: #1565c0; }`;
         const flagIconMap = _uniqCacheHit ? _uniqCacheHit.flagIconMap : hasFlagIcons ? (() => {
             const segMap = new Map();
             if (!tbody) return segMap;
-            const iconSel = 'span[class*="flag-"], span.area-icon';
+            // Built from the SAME named selector fragments _findAreaLinkIcon()
+            // uses, so this TreeWalker recognizes exactly the same icon
+            // shapes that function does — see its JSDoc for what each
+            // matches. The walker is already document-order-preserving, so
+            // both a PRECEDING icon (legacy/MFE) and a TRAILING one (RSFE's
+            // img inside its shared wrapper) fall out correctly with no
+            // extra ordering logic here.
+            //
+            // The native-flag fragment requires the literal `flag` CLASS
+            // TOKEN (`span.flag`), not merely the SUBSTRING "flag-" anywhere
+            // in the class attribute — a bare `span[class*="flag-"]` also
+            // matches "Right Side Flags Everywhere"'s OWN
+            // `class="mfe-flag-wrapper"` (which merely CONTAINS the
+            // characters "flag-", coincidentally, as part of one compound
+            // class name with no "flag" token of its own), wrongly treating
+            // that wrapper itself as a second icon. `:not(:has(...))`
+            // additionally excludes a native flag span whose OWN background
+            // RSFE has neutralized because it wraps the anchor in its own
+            // `AREA_ICON_WRAPPER_SEL` — matching `_findAreaLinkIcon()`'s own
+            // priority order, so this walker doesn't produce an extra,
+            // empty icon segment for a flag RSFE has already hollowed out.
+            // Confirmed via debug/Israel-flag.html (see DEBUG-NOTES.md's
+            // dated entry): before this fix, "Cinema City Hall in Israel"
+            // rendered with the hollow native flag AND the wrapper itself
+            // both matching as bogus icon segments in front of the name.
+            const iconSel = `span.flag[class*="flag-"]:not(:has(${AREA_ICON_WRAPPER_SEL})), ${AREA_ICON_SIBLING_SEL}, ${AREA_ICON_TRAILING_IMG_SEL}`;
 
             /**
              * Builds ONE root element's (a single `<li>` item, or a whole
@@ -54319,10 +54493,44 @@ a { color: #1565c0; }`;
              * sibling elements with no whitespace text node between them in
              * the source DOM (e.g. .release-country/.release-date) still
              * read with a space instead of raw per-node concatenation.
+             *
+             * Icons are baked from the LIVE `root` FIRST, in document
+             * order, before any cloning below — `_bakeFlagIconNode()`'s
+             * native-flag branch needs `getComputedStyle()` on a real,
+             * attached, styled element; a detached clone has no computed
+             * style at all. `walkRoot` is then a clone with any live
+             * `_COLLAPSE_MATCH_SEL` (column-filter highlight) or
+             * `.mb-ic-wrap` span UNWRAPPED and `.normalize()`d — same idiom
+             * `getCleanColumnText()` already uses, for the same reason:
+             * without it, a still-live highlight span split across a
+             * matched substring (e.g. filtering "isra" highlights "Isra"
+             * inside "Israel", leaving "el" as a separate sibling text
+             * node) leaves TWO adjacent text nodes with nothing between
+             * them in the source, and the `join(' ')` below inserts an
+             * artificial space at that boundary — "Isra el" — confirmed via
+             * debug/Israel-flag.html. Neither `_COLLAPSE_MATCH_SEL` nor
+             * `.mb-ic-wrap` ever matches `iconSel`, so unwrapping them never
+             * changes how many icon elements exist or their relative
+             * order — which is what makes it safe to just consume
+             * `bakedIcons` by position below instead of re-baking from the
+             * (detached, unstyled) clone.
              * @param {Element} root
              * @returns {Array<{type:'text',text:string}|{type:'icon',node:HTMLElement}>}
              */
             function _buildFlagSegmentsForRoot(root) {
+                const bakedIcons = Array.from(root.querySelectorAll(iconSel)).map(_bakeFlagIconNode);
+                let iconIdx = 0;
+
+                let walkRoot = root;
+                if (root.querySelector(_COLLAPSE_MATCH_SEL) || root.querySelector('.mb-ic-wrap')) {
+                    walkRoot = root.cloneNode(true);
+                    walkRoot.querySelectorAll(_COLLAPSE_MATCH_SEL).forEach(el =>
+                        el.replaceWith(document.createTextNode(el.textContent)));
+                    walkRoot.querySelectorAll('.mb-ic-wrap').forEach(el =>
+                        el.replaceWith(document.createTextNode(el.textContent)));
+                    walkRoot.normalize();
+                }
+
                 const segments = [];
                 let textParts = [];
                 const flushText = () => {
@@ -54338,7 +54546,7 @@ a { color: #1565c0; }`;
                     segments.push({ type: 'text', text: clean });
                     textParts = [];
                 };
-                const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+                const walker = document.createTreeWalker(walkRoot, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
                     acceptNode(node) {
                         if (node.nodeType === Node.ELEMENT_NODE) {
                             const tag = node.tagName.toLowerCase();
@@ -54353,7 +54561,7 @@ a { color: #1565c0; }`;
                     if (node.nodeType === Node.ELEMENT_NODE) {
                         if (node.matches(iconSel)) {
                             flushText();
-                            segments.push({ type: 'icon', node: _bakeFlagIconNode(node) });
+                            segments.push({ type: 'icon', node: bakedIcons[iconIdx++] });
                         }
                         continue;
                     }

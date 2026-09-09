@@ -503,11 +503,13 @@ visible while it is engaged and releases it, page-wide.
   flag icon shown in the table cell, for Country/Area/Locality/Region/
   Location/Place/Country-Date columns (including release-tracks' "Recorded
   at place"/"Mixed at place" columns, and subdivision icons added by
-  separately-installed userscripts such as "More Flags Everywhere"). An
-  "Entity info - Area name" entry for a country always keeps its generic
-  area icon in front of the name; the real flag, when that area has one,
-  is appended AFTER the name instead of replacing the generic icon — e.g.
-  "» area name: Spain 🇪🇸".
+  separately-installed userscripts such as "More Flags Everywhere" or
+  "Right Side Flags Everywhere"). An "Entity info - Area name" entry for
+  ANY area — a country or a subdivision such as a state/province/region —
+  always keeps its generic area icon in front of the name; a real flag or
+  subdivision icon, when that area has one, is appended AFTER the name
+  instead of replacing the generic icon — e.g. "» area name: Spain 🇪🇸" or
+  "» area name: Catalunya 🇪🇸".
 
 PRE-FILTER (Load from Disk — three-phase dialog)
 -------------------------------------------------
@@ -749,7 +751,11 @@ COLUMN MANAGEMENT
       MusicBrainz area links carry no type information. A bare subdivision
       flag icon added by a separately-installed userscript, with no city
       ever entered, is routed to Region instead of Locality for United
-      States/United Kingdom/Canada/Australia.)
+      States/United Kingdom/Canada/Australia. When a subdivision has such
+      an icon, it always renders AFTER the area name in these split
+      columns — "Praha [icon]", not "[icon] Praha" — regardless of which
+      side the decorating userscript itself places it on, so the order
+      stays the same on every row.)
     — "Total Tracks"            computed from track-count data on release pages
     — "Format Types"            strips quantity prefixes (e.g. "8×") from
                                 the Format column on release-group, label, and
