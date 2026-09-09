@@ -1,0 +1,90 @@
+* DONE country flags to the right
+** i
+
+Currently the country flag (Spain) in the unique value drop down of the "Location" column at the URL
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events (pageType: artist-events) is rendered like in
+the screenshot [Image #1]
+
+I want it to be to the right of the country name and additionally the original MusicBrainz area glyph taking it's place, e.g.
+
+#+begin_example
+<area glyph> » area name: Spain <country flag>
+#+end_example
+
+See also the raw HTML files
+
+#+begin_example
+@debug/originally-country-flag-right.html - final rendered page
+@debug/originally-country-flag-right-uvdd.html - opened unique value dropdown
+#+end_example
+
+** add more flags support
+
+Our script should equally work when either one of the following third-prty user scripts is installed, which it actually
+does right now when it comes to country flag support. So either displaying
+
+- the native MusicBrainz country flag when neither is installed
+- the native MusicBrainz country flag when the "MusicBrainz: More Flags Everywhere" is installed
+- the third-party user flag when the "MusicBrainz: Right Side Flags Everywhere" userscript is installed
+
+#+begin_example
+MusicBrainz: More Flags Everywhere - tests/fixtures/live-userscripts/MusicBrainz_More_Flags_Everywhere.user.js - [Image #3] - @debug/More-Flags-Everywhere.html
+MusicBrainz: Right Side Flags Everywhere - tests/fixtures/live-userscripts/MusicBrainz_Right_Side_Flags_Everywhere.user.js - [Image #3] - 
+#+end_example
+
+1.)
+
+I additionally want the area flags also rendered in the unqiue value drop down after the area names, so e.g.
+
+#+begin_example
+<area glyph> » area name: Catalunya <Catalunya area flag>
+#+end_example
+
+2.)
+
+Why is the
+
+#+begin_example
+<div id="sanojjonasRoot" class="sanojjonasRoot">
+#+end_example
+
+container still there also it should have been removed by now with one of our sanojjonas fixes
+
+** bug
+
+In the case of the userscript "MusicBrainz: Right Side Flags Everywhere" there is a double country flag rendering bug +
+an artificial blank in the country name, see [Image #6] and raw HTML at @debug/Israel-flag.html
+
+The country flag in front of the country name shouldn't be there
+
+** bug in "Locality" column
+
+Why in the "Locality" column, are the glyphs rendered in a different order in the two rows in the screenshot, see also raw HTML @debug/Czech-flag.html
+
+** bug
+
+The case of the userscript "MusicBrainz: Right Side Flags Everywhere" now works perfect, see commit "c2c53e0".
+
+1.)
+
+Dont't break the working "MusicBrainz: Right Side Flags Everywhere" userscript case
+
+2.)
+
+But there is still a bug with the older "MusicBrainz: More Flags Everywhere" as can be seen in the screenshot [Image #11]
+and the raw HTML @debug/More-Flags-Everywhere-bug.html
+
+a.)
+
+It looks like it's only manifests itself for rows from the very first paginated page on the URL
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events AND ONLY for the synthetic columns derived
+from the "Location" column, as there everything renders fine.
+
+b.)
+
+Sometimes flags gets doubled, e.g "Manhatten" and "Brookly" in the "Locality" column get an area flag on the right side
+of their name, also the flag should ONLY be on FIRST "New York" area in the "Region" column.  Same for "Gelsenkirchen"
+in the "Locality" columns, there is a flag DOUBLED on the right side of the "Locality" name, but it's rendered the right
+way in the "Region" column after "Nordrhein-Westfalen"
+
+
