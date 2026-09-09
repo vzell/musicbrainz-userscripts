@@ -104,6 +104,7 @@ from the background task's own output file. The harness now records
 | 2026-09-09 |      00:18 | =vzell-lap=                  | 9.99.1049 | rebooted, 0.4h uptime, first arm on this machine |   3490 |   2898 | 8622 |     59767 |      2196 |     8245 |       10457 |
 | 2026-09-09 |      05:33 | =petri=                      | 9.99.1049 | D2 — SECOND independent reboot, no =claude=      |   2301 |   2322 | 4146 |     25583 |      1312 |     6078 |        6304 |
 | 2026-09-09 |      07:15 | =NB-3641=                    | 9.99.1049 | same reboot as F, +7h uptime, resident session   |   1693 |   1660 | 3391 |     30469 |       824 |     4580 |        5260 |
+| 2026-09-09 |      06:38 | =vzell-lap=                  | 9.99.1049 | same reboot as row above, 2.2h uptime, no =claude= |   3286 |   2624 | 7869 |     54511 |      1581 |     7109 |        9549 |
 
 Committed as =tests/snapshots/artist-events/interaction-perf-*.json=.
 
@@ -270,6 +271,37 @@ measured on the other two hosts. This is a new absolute baseline for
 =vzell-lap=, not a data point for the residue/uptime hypothesis in the
 PARTLY ANSWERED section above — that question still needs arm E, run on
 =petri= itself.
+
+**** Second arm, 2026-09-09 06:38 — same reboot, no drift, and one label/measurement mismatch worth flagging
+
+Labeled =--label=8h-up=, but the JSON's own =uptimeHours= reads *2.2*, not 8 —
+exactly the kind of unrecorded-condition gap this file exists to catch. Trust
+the measured field, not the label: no =claudeSinceBoot= in this JSON either
+(captured 06:19-06:38 UTC, before the commit that added the field landed at
+07:19 UTC, so this predates it — not a bug). Against the first =vzell-lap=
+arm (0.4h uptime, same reboot, also no =claude=):
+
+| Metric                | =vzell-lap= 0.4h | =vzell-lap= 2.2h | 0.4h / 2.2h |
+|-----------------------+-------------------+--------------------+-------------|
+| =globalFilter=        |              3490 |               3286 |       1.06x |
+| =columnFilter=        |              2898 |               2624 |       1.10x |
+| =sort=                |              8622 |               7869 |       1.10x |
+| =uniqDropCold=        |             59767 |              54511 |       1.10x |
+| =uniqDropWarm=        |              2196 |               1581 |       1.39x |
+| =headerCountsInitial= |              8245 |               7109 |       1.16x |
+| =headerCountsRestore= |             10457 |               9549 |       1.10x |
+
+1.06-1.39x — the LATER arm is consistently FASTER, the opposite direction
+from any uptime/residue-accumulation hypothesis, which predicts slower over
+time. Read as noise, not a finding: it does not corroborate anything seen on
+=petri= (D and D2, at 1h and 0.2h respectively, landed within 0.91-1.08x of
+each other — flat, not trending) or =NB-3641= (F and its +7h resident-session
+follow-up were likewise flat, 0.94-1.06x). A single 4-core laptop rerun
+moving 6-39% in the "wrong" direction is more consistent with this machine
+carrying more measurement variance than the other two than with any real
+drift, but it is exactly the kind of curve arm E's own periodic-capture design
+(see PARTLY ANSWERED) is meant to average out rather than read from one pair
+of points.
 
 *** =NB-3641=, 2026-09-09 07:15 — same reboot as F, +7h uptime, resident session: no drift yet
 

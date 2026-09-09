@@ -687,3 +687,18 @@ Written to /home/vzell/git/musicbrainz-userscripts/ShowAllEntityData/tests/snaps
 
 claudeSinceBoot: true, correctly — this session had been resident 6.9h at capture time. Same reboot as arm F (uptimeHours 0.2 -> 7.2, no reboot in between), so this doubles as a real data point rather than a throwaway: F vs this arm is 0.94-1.06x, mean ~1.00x, flat. Folded into tests/MEASUREMENTS.org as a new subsection after the vzell-lap one — a resident session costs nothing on NB-3641 either (replicating petri's R vs D), though 7 hours says nothing about an 18-day drift; that's still arm E's question, on petri specifically.
 
+** second VZELL-LAP arm, same reboot, 2.2h uptime
+
+vzell@vzell-lap:~/git/musicbrainz-userscripts/ShowAllEntityData$ node tests/support/capture-interaction-perf.js --pageType=artist-events --label=8h-up
+artist-events [interaction-perf, 8h-up] on vzell-lap (4 cores, node v24.11.1, playwright 1.62.1):
+  globalFilter: 3286.0ms
+  columnFilter: 2624.0ms
+  sort: 7869.0ms
+  uniqDropCold: 54511.0ms
+  uniqDropWarm: 1581.0ms
+  headerCountsInitial: 7109.0ms
+  headerCountsRestore: 9549.0ms
+Written to /home/vzell/git/musicbrainz-userscripts/ShowAllEntityData/tests/snapshots/artist-events/interaction-perf-8h-up-9.99.1049-2026-09-09-vzell-lap.json
+
+Label says 8h-up; the JSON's own uptimeHours says 2.2. Trust the measured field. No claudeSinceBoot in this JSON — captured 06:19-06:38 UTC, before the field-adding commit landed at 07:19 UTC, so it predates it rather than being broken. Against the first vzell-lap arm (0.4h uptime, same reboot, also no claude): 1.06-1.39x, with the LATER arm consistently FASTER — the opposite direction from an uptime/residue hypothesis. Read as this machine's own measurement noise (it did not corroborate anything seen on petri's D/D2 or NB-3641's F-plus-7h, both of which were flat), not a finding. Folded into tests/MEASUREMENTS.org as a new subsection right after the first vzell-lap arm.
+
