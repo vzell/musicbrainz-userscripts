@@ -8288,3 +8288,91 @@ markup) — asserts the icon lands AFTER the anchor via
 `Node.compareDocumentPosition()`, and that the anchor is stamped
 `data-flag-processed="1"`. Verified failing against the pre-fix code
 first (`git stash` on `ShowAllEntityData.user.js` alone).
+
+## 2026-09-09 — "More Flags Everywhere": Locality/Region columns render a misattributed/borrowed flag icon (fixed)
+
+Reported with `debug/More-Flags-Everywhere-bug.html` (`artist-events`,
+MBID 70248960-cb53-4ea4-943a-edb18f7d336f) and a screenshot showing
+"Manhattan"/"Brooklyn"/"Gelsenkirchen" in the Locality column each
+carrying a flag that reads as doubled, and the Region column showing
+"New York, New York" each with an icon in a way that looked duplicated.
+
+Traced against the actual captured row markup (row-idx 6, Madison Square
+Garden). The NATIVE "Location" cell chains THREE `/area/` anchors:
+`Midtown Manhattan` (MBID `edd27a39-…`) → `[icon alt="New York City"]` →
+`New York` the COUNTY (MBID `74e50e58-…`) → `[icon alt="New York"]` →
+`New York` the STATE (MBID `75e398a3-…`) → `.flag` United States. Two
+genuinely different MusicBrainz areas share the display name "New York"
+(same collision `area-name-collision.spec.js` already covers), but here
+they're preceded by a THIRD anchor, "Midtown Manhattan", which has no
+flag of its own — its MBID isn't in "More Flags Everywhere"'s region map,
+confirmed directly from the real script,
+`tests/fixtures/live-userscripts/MusicBrainz_More_Flags_Everywhere.user.js`'s
+`processLink()`: `if (match) { … }` never runs for it, so no icon and no
+`data-flag-processed` are ever added.
+
+Root cause: `_findAreaLinkIcon()` matches a candidate icon via EITHER
+`anchor.previousElementSibling` OR `anchor.nextElementSibling`. The real
+script always inserts its icon `insertBefore(iconSpan, wrapper)` —
+immediately BEFORE the anchor it decorates, never after — confirmed
+directly from `processLink()`. So the icon that legitimately belongs to
+the COUNTY anchor (`74e50e58`, via its own `previousElementSibling`) is
+ALSO `Midtown Manhattan`'s `nextElementSibling` — and since Manhattan is
+processed FIRST by `_processNode()`'s per-anchor loop, its `next`
+fallback wrongly "borrowed" the county's icon before the county anchor
+was ever reached. That clone landed in Locality; the county anchor
+separately got its own (correct) copy in Region — net effect, one icon
+cloned into two different output columns. The exact same shape
+reproduces with the simpler 2-anchor Gelsenkirchen row (row-idx 73):
+`Gelsenkirchen` (a city, not in the region map) borrows
+`Nordrhein-Westfalen`'s icon.
+
+A second, mirror-image manifestation exists in the READ-BACK direction:
+`_findCellEntityRefs()` (behind the 📊 dropdown and
+`splitLocationAreas()`) calls `_findAreaLinkIcon()` on cells this script
+has ALREADY rendered, where the convention is reversed — icon follows
+its anchor, per `_routeAreaLink()`'s own "name, then icon" order
+(previous entry above). Once the fix below makes Region legitimately
+hold two icon-bearing entries side by side, the SECOND anchor's
+`previousElementSibling` is the FIRST anchor's own trailing icon, not
+its own — the mirror of the same ambiguity.
+
+Fix, in `_findAreaLinkIcon()`/`_routeAreaLink()`:
+- `_findAreaLinkIcon(anchor, excludeFromNext)` gained an optional
+  `excludeFromNext` param, consulted only in the `next` branch.
+- New `_collectPrecedingAreaIcons(node)` pre-scans every `/area/` anchor
+  in a cell/`<li>` ONCE, up front, collecting each anchor's own
+  `previousElementSibling` icon (if any) into a `Set` — the anchors that
+  DO legitimately own an icon. `splitLocation()`'s `_processNode()` and
+  `splitArea()` now build this set and thread it through as
+  `areaState.precedingIcons`, so an ambiguous `next` match is rejected
+  whenever some OTHER (later) anchor already owns that icon via `prev`.
+- For the read-back direction: `_routeAreaLink()` now marks every icon
+  clone it emits with `iconClone.dataset.mbRouted = '1'`.
+  `_findAreaLinkIcon()`'s `prev` branch rejects a candidate carrying that
+  marker unconditionally (no exclude set needed — a genuine NATIVE icon
+  is never marked this way, so the guard only ever fires against another
+  anchor's own trailing clone).
+- Neither change touches the RSFE-wrapper branch or the native `.flag`
+  country branch — both return before the ambiguous `prev`/`next` check
+  is ever reached, so RSFE's currently-working handling
+  (`c2c53e0` and predecessors) is untouched by construction.
+
+`window.__saTest.splitLocationAreas()`'s `refsOf()` wrapper gained a
+`flagLabel` field (the matched icon's own `<img alt>`, or `null`) — a
+"has a flag" boolean alone can't distinguish a CORRECT icon from a
+BORROWED one, since a misattributed icon still reports `hasFlag: true`.
+`area-name-collision.spec.js`'s existing assertions were updated to
+include the new field (mechanical fallout, not a behavior change there —
+that fixture's chains never hit the 3-anchor ambiguity, confirmed
+unaffected by hand-tracing and by the full suite staying green).
+
+New regression coverage: `tests/fixtures/mfe-icon-misattribution.spec.js`
+(+ matching `.html` fixture, using `debug/More-Flags-Everywhere-bug.html`'s
+own Manhattan/New-York-county/New-York-state and Gelsenkirchen/
+Nordrhein-Westfalen markup) — asserts Locality gets no icon for the
+unflagged leading anchor and Region gets each subsequent anchor's own,
+distinct icon (via `flagLabel`, not just `hasFlag`). Verified failing
+against the pre-fix code first (`git stash` on `ShowAllEntityData.user.js`
+alone) — both new tests failed with `hasFlag: true` on the unflagged
+anchor, exactly reproducing the reported bug.

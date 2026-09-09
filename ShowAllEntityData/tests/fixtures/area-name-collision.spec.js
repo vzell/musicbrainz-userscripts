@@ -40,16 +40,19 @@ test.describe('Two different MusicBrainz areas sharing the exact same display na
         const split = await page.evaluate(() => window.__saTest.splitLocationAreas('#loc-cell'));
 
         expect(split.place).toEqual([
-            { type: 'place', glyphClass: 'placelink', href: '/place/481c1e71-8707-407d-aaae-452a5cc96f84', name: 'SiriusXM Studio', isBare: true, hasFlag: false },
+            { type: 'place', glyphClass: 'placelink', href: '/place/481c1e71-8707-407d-aaae-452a5cc96f84', name: 'SiriusXM Studio', isBare: true, hasFlag: false, flagLabel: null },
         ]);
         expect(split.locality).toEqual([
-            { type: 'area', glyphClass: 'arealink', href: CITY_HREF, name: 'New York', isBare: true, hasFlag: true },
+            { type: 'area', glyphClass: 'arealink', href: CITY_HREF, name: 'New York', isBare: true, hasFlag: true, flagLabel: 'New York City' },
         ]);
         expect(split.region).toEqual([
-            { type: 'area', glyphClass: 'arealink', href: STATE_HREF, name: 'New York', isBare: true, hasFlag: true },
+            { type: 'area', glyphClass: 'arealink', href: STATE_HREF, name: 'New York', isBare: true, hasFlag: true, flagLabel: 'New York' },
         ]);
         expect(split.country).toEqual([
-            { type: 'area', glyphClass: 'arealink', href: '/area/489ce91b-6658-3307-9877-795b68554c98', name: 'United States', isBare: true, hasFlag: true },
+            // Native country flag is a CSS background-image sprite (`.flag
+            // flag-XX`), not an `<img>` — `flagLabel` (sourced from an
+            // `<img alt>`) is null even though `hasFlag` is true.
+            { type: 'area', glyphClass: 'arealink', href: '/area/489ce91b-6658-3307-9877-795b68554c98', name: 'United States', isBare: true, hasFlag: true, flagLabel: null },
         ]);
     });
 
