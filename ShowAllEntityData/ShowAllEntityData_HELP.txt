@@ -503,7 +503,11 @@ visible while it is engaged and releases it, page-wide.
   flag icon shown in the table cell, for Country/Area/Locality/Region/
   Location/Place/Country-Date columns (including release-tracks' "Recorded
   at place"/"Mixed at place" columns, and subdivision icons added by
-  separately-installed userscripts such as "More Flags Everywhere").
+  separately-installed userscripts such as "More Flags Everywhere"). An
+  "Entity info - Area name" entry for a country always keeps its generic
+  area icon in front of the name; the real flag, when that area has one,
+  is appended AFTER the name instead of replacing the generic icon — e.g.
+  "» area name: Spain 🇪🇸".
 
 PRE-FILTER (Load from Disk — three-phase dialog)
 -------------------------------------------------
