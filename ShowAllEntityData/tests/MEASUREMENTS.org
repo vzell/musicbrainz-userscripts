@@ -34,12 +34,12 @@ be compared to a later one, so it is not evidence, it is decoration.
 
 * Machines
 
-| Host      | OS                               | Cores | RAM   | Node     | Playwright |
-|-----------+----------------------------------+-------+-------+----------+------------|
-| =petri=   | WSL2 (Linux 6.18.33.2-microsoft) | 24    | 31 GB | v24.16.0 | 1.62.1     |
-| =NB-3641= | WSL2 (Linux 6.18.33.2-microsoft) | 28    | 31 GB | v24.19.0 | 1.62.1     |
-| =vzell-lap= | WSL2 (Linux 6.18.33.2-microsoft-standard-WSL2) | 4 | 16 GB | v24.11.1 | 1.62.1 |
-| (unknown) | —                                | —     | —     | —        | —          |
+| Host        | OS                                             | Cores | RAM   | Node     | Playwright |
+|-------------+------------------------------------------------+-------+-------+----------+------------|
+| =petri=     | WSL2 (Linux 6.18.33.2-microsoft)               |    24 | 31 GB | v24.16.0 |     1.62.1 |
+| =NB-3641=   | WSL2 (Linux 6.18.33.2-microsoft)               |    28 | 31 GB | v24.19.0 |     1.62.1 |
+| =vzell-lap= | WSL2 (Linux 6.18.33.2-microsoft-standard-WSL2) |     4 | 16 GB | v24.11.1 |     1.62.1 |
+| (unknown)   | —                                              |     — | —     | —        |          — |
 
 Rows marked =(unknown)= were captured before the harness recorded a host. The
 2026-08-24 arm is additionally known to be from a *different machine* than the
@@ -64,7 +64,7 @@ fresh page per sample. Produced by =node tests/support/capture-interaction-perf.
 | =globalFilter=        | Typing "United Kingdom" into the page-wide filter until =#mb-filter-status-display= settles            |
 | =columnFilter=        | The same, typed into the Country column's own filter input                                             |
 | =sort=                | One sort-icon click until =#mb-sort-status-display= settles                                            |
-| =uniqDropCold=        | First 📊 open on the Location column — five full =tbody.rows= passes, nothing cached                    |
+| =uniqDropCold=        | First 📊 open on the Location column — five full =tbody.rows= passes, nothing cached                   |
 | =uniqDropWarm=        | Re-opening the same dropdown — Step 4's per-open cache, so this is the cache-hit path                  |
 | =headerCountsInitial= | Render-complete to the Event badge reading its true 4158 AND every badge holding still                 |
 | =headerCountsRestore= | Clearing the "Bon Jovi" column filter to the full 4174 rows, until the badges are back — Step 3's case |
@@ -83,24 +83,24 @@ timestamp recording; theirs are recovered from the commit that captured them
 from the background task's own output file. The harness now records
 =startedAt=/=finishedAt= itself.
 
-|       Date | Time (UTC) | Host                         |    Script | Arm                              | global | column | sort | uniq cold | uniq warm | hdr init | hdr restore |
-|------------+------------+------------------------------+-----------+----------------------------------+--------+--------+------+-----------+-----------+----------+-------------|
-| 2026-08-24 | <= 23:46   | (unknown, DIFFERENT machine) |  9.99.953 | main                             |   1418 |   1595 | 2994 |     29802 |     29700 | —        | —           |
-| 2026-08-31 | (unknown)  | (unknown)                    |  9.99.970 | worktree-perf-step-4             |   1292 |   1239 | 2906 |     32985 |       581 | —        | —           |
-| 2026-08-31 | (unknown)  | (unknown)                    |  9.99.976 | fix-chunked-render-header-counts |   1752 |   1891 | 4241 |     30920 |       914 | —        | —           |
-| 2026-09-07 | <= 11:41   | (unknown)                    | 9.99.1045 | main                             |   1735 |   1730 | 3968 |     31149 |       863 | —        | —           |
-| 2026-09-07 | 18:58      | (unknown)                    | 9.99.1048 | main (narrow metric, discarded)  |   3757 |   3327 | 7393 |     52514 |      1900 | 1884     | 7806        |
-| 2026-09-07 | 19:36      | (unknown)                    | 9.99.1048 | main                             |   3503 |   3311 | 6932 |     48844 |      1903 | 8507     | 12631       |
-| 2026-09-07 | 19:56      | (unknown)                    | 9.99.1048 | step3, both cache tiers          |   3669 |   3515 | 6917 |     48563 |      1678 | 8066     | 8944        |
-| 2026-09-08 | 08:11      | =petri=                      | 9.99.1048 | main                             |   3033 |   3295 | 6410 |     45996 |      1676 | 8033     | 12319       |
-| 2026-09-08 | 08:27      | =petri=                      | 9.99.1048 | step3, shipped (tier 1 only)     |   3168 |   3337 | 6469 |     46516 |      1747 | 7980     | 8977        |
-| 2026-09-08 | 17:01      | =petri=                      | 9.99.1045 | bisect — same script as row 4    |   3117 |   3285 | 6044 |     42948 |      1640 | 7779     | 11175       |
-| 2026-09-08 | 20:23      | =NB-3641=                    | 9.99.1049 | main, first arm on this machine  |   1996 |   1706 | 4392 |     30347 |       985 | 4704     | 5689        |
-| 2026-09-08 | 21:07      | =petri=                      | 9.99.1049 | main, pairs with the NB-3641 row |   3634 |   3158 | 6903 |     46549 |      1722 | 8191     | 8594        |
-| 2026-09-08 | 21:52      | =petri=                      | 9.99.1049 | A — 18d uptime, no =claude=      |   2820 |   3028 | 7065 |     41723 |      1798 | 8250     | 8915        |
-| 2026-09-08 | 22:44      | =petri=                      | 9.99.1049 | R — rebooted, fresh session      |   2388 |   2013 | 4462 |     26244 |      1068 | 5844     | 6264        |
-| 2026-09-08 | 23:40      | =NB-3641=                    | 9.99.1049 | F — rebooted, 0.2h uptime        |   1664 |   1757 | 3622 |     29531 |       823 | 4334     | 5319        |
-| 2026-09-09 | 00:18      | =vzell-lap=                  | 9.99.1049 | rebooted, 0.4h uptime, first arm on this machine |   3490 |   2898 | 8622 |     59767 |      2196 | 8245     | 10457       |
+|       Date | Time (UTC) | Host                         |    Script | Arm                                              | global | column | sort | uniq cold | uniq warm | hdr init | hdr restore |
+|------------+------------+------------------------------+-----------+--------------------------------------------------+--------+--------+------+-----------+-----------+----------+-------------|
+| 2026-08-24 |   <= 23:46 | (unknown, DIFFERENT machine) |  9.99.953 | main                                             |   1418 |   1595 | 2994 |     29802 |     29700 |        — |           — |
+| 2026-08-31 |  (unknown) | (unknown)                    |  9.99.970 | worktree-perf-step-4                             |   1292 |   1239 | 2906 |     32985 |       581 |        — |           — |
+| 2026-08-31 |  (unknown) | (unknown)                    |  9.99.976 | fix-chunked-render-header-counts                 |   1752 |   1891 | 4241 |     30920 |       914 |        — |           — |
+| 2026-09-07 |   <= 11:41 | (unknown)                    | 9.99.1045 | main                                             |   1735 |   1730 | 3968 |     31149 |       863 |        — |           — |
+| 2026-09-07 |      18:58 | (unknown)                    | 9.99.1048 | main (narrow metric, discarded)                  |   3757 |   3327 | 7393 |     52514 |      1900 |     1884 |        7806 |
+| 2026-09-07 |      19:36 | (unknown)                    | 9.99.1048 | main                                             |   3503 |   3311 | 6932 |     48844 |      1903 |     8507 |       12631 |
+| 2026-09-07 |      19:56 | (unknown)                    | 9.99.1048 | step3, both cache tiers                          |   3669 |   3515 | 6917 |     48563 |      1678 |     8066 |        8944 |
+| 2026-09-08 |      08:11 | =petri=                      | 9.99.1048 | main                                             |   3033 |   3295 | 6410 |     45996 |      1676 |     8033 |       12319 |
+| 2026-09-08 |      08:27 | =petri=                      | 9.99.1048 | step3, shipped (tier 1 only)                     |   3168 |   3337 | 6469 |     46516 |      1747 |     7980 |        8977 |
+| 2026-09-08 |      17:01 | =petri=                      | 9.99.1045 | bisect — same script as row 4                    |   3117 |   3285 | 6044 |     42948 |      1640 |     7779 |       11175 |
+| 2026-09-08 |      20:23 | =NB-3641=                    | 9.99.1049 | main, first arm on this machine                  |   1996 |   1706 | 4392 |     30347 |       985 |     4704 |        5689 |
+| 2026-09-08 |      21:07 | =petri=                      | 9.99.1049 | main, pairs with the NB-3641 row                 |   3634 |   3158 | 6903 |     46549 |      1722 |     8191 |        8594 |
+| 2026-09-08 |      21:52 | =petri=                      | 9.99.1049 | A — 18d uptime, no =claude=                      |   2820 |   3028 | 7065 |     41723 |      1798 |     8250 |        8915 |
+| 2026-09-08 |      22:44 | =petri=                      | 9.99.1049 | R — rebooted, fresh session                      |   2388 |   2013 | 4462 |     26244 |      1068 |     5844 |        6264 |
+| 2026-09-08 |      23:40 | =NB-3641=                    | 9.99.1049 | F — rebooted, 0.2h uptime                        |   1664 |   1757 | 3622 |     29531 |       823 |     4334 |        5319 |
+| 2026-09-09 |      00:18 | =vzell-lap=                  | 9.99.1049 | rebooted, 0.4h uptime, first arm on this machine |   3490 |   2898 | 8622 |     59767 |      2196 |     8245 |       10457 |
 
 Committed as =tests/snapshots/artist-events/interaction-perf-*.json=.
 
@@ -179,14 +179,14 @@ machine, same script version, =--label=rebooted=, =uptimeHours: 0.2=,
 the unverified 20:23 arm:
 
 | Metric                | =NB-3641= 20:23 (unverified) | =NB-3641= F (rebooted, verified) | 20:23 / F |
-|-----------------------+-------------------------------+-----------------------------------+-----------|
-| =globalFilter=        |                          1996 |                               1664 |     1.20x |
-| =columnFilter=        |                          1706 |                               1757 |     0.97x |
-| =sort=                |                          4392 |                               3622 |     1.21x |
-| =uniqDropCold=        |                         30347 |                              29531 |     1.03x |
-| =uniqDropWarm=        |                           985 |                                823 |     1.20x |
-| =headerCountsInitial= |                          4704 |                               4334 |     1.09x |
-| =headerCountsRestore= |                          5689 |                               5319 |     1.07x |
+|-----------------------+------------------------------+----------------------------------+-----------|
+| =globalFilter=        |                         1996 |                             1664 |     1.20x |
+| =columnFilter=        |                         1706 |                             1757 |     0.97x |
+| =sort=                |                         4392 |                             3622 |     1.21x |
+| =uniqDropCold=        |                        30347 |                            29531 |     1.03x |
+| =uniqDropWarm=        |                          985 |                              823 |     1.20x |
+| =headerCountsInitial= |                         4704 |                             4334 |     1.09x |
+| =headerCountsRestore= |                         5689 |                             5319 |     1.07x |
 
 Not uniform, and not as clean as =petri='s R-vs-C reboot effect (1.37-1.77x on
 every metric) — =columnFilter= and =uniqDropCold= sit inside this file's ~10%
@@ -199,14 +199,14 @@ same metrics. Re-reading the cross-machine ratio with the verified floor on
 both sides:
 
 | Metric                | =petri= rebooted (R) | =NB-3641= rebooted (F) | petri / NB |
-|-----------------------+-----------------------+-------------------------+------------|
-| =globalFilter=        |                  2388 |                    1664 |      1.43x |
-| =columnFilter=        |                  2013 |                    1757 |      1.15x |
-| =sort=                |                  4462 |                    3622 |      1.23x |
-| =uniqDropCold=        |                 26244 |                   29531 |      0.89x |
-| =uniqDropWarm=        |                  1068 |                     823 |      1.30x |
-| =headerCountsInitial= |                  5844 |                    4334 |      1.35x |
-| =headerCountsRestore= |                  6264 |                    5319 |      1.18x |
+|-----------------------+----------------------+------------------------+------------|
+| =globalFilter=        |                 2388 |                   1664 |      1.43x |
+| =columnFilter=        |                 2013 |                   1757 |      1.15x |
+| =sort=                |                 4462 |                   3622 |      1.23x |
+| =uniqDropCold=        |                26244 |                  29531 |      0.89x |
+| =uniqDropWarm=        |                 1068 |                    823 |      1.30x |
+| =headerCountsInitial= |                 5844 |                   4334 |      1.35x |
+| =headerCountsRestore= |                 6264 |                   5319 |      1.18x |
 
 0.89-1.43x, mean ~1.22x — close to the 1.17x that 28-vs-24 cores predicts on
 average, but WIDER than the 0.86-1.24x spread the unverified arm gave, not
@@ -243,14 +243,14 @@ to compare against. What it does do is test whether "freshly rebooted" alone
 predicts a floor across machines, independent of hardware.
 
 | Metric                | =vzell-lap= (rebooted) | =petri= R (rebooted) | =NB-3641= F (rebooted) | vzell / R | vzell / F |
-|-----------------------+-------------------------+-----------------------+-------------------------+-----------+-----------|
-| =globalFilter=        |                    3490 |                  2388 |                    1664 |     1.46x |     2.10x |
-| =columnFilter=        |                    2898 |                  2013 |                    1757 |     1.44x |     1.65x |
-| =sort=                |                    8622 |                  4462 |                    3622 |     1.93x |     2.38x |
-| =uniqDropCold=        |                   59767 |                 26244 |                   29531 |     2.28x |     2.02x |
-| =uniqDropWarm=        |                    2196 |                  1068 |                     823 |     2.06x |     2.67x |
-| =headerCountsInitial= |                    8245 |                  5844 |                    4334 |     1.41x |     1.90x |
-| =headerCountsRestore= |                   10457 |                  6264 |                    5319 |     1.67x |     1.97x |
+|-----------------------+------------------------+----------------------+------------------------+-----------+-----------|
+| =globalFilter=        |                   3490 |                 2388 |                   1664 |     1.46x |     2.10x |
+| =columnFilter=        |                   2898 |                 2013 |                   1757 |     1.44x |     1.65x |
+| =sort=                |                   8622 |                 4462 |                   3622 |     1.93x |     2.38x |
+| =uniqDropCold=        |                  59767 |                26244 |                  29531 |     2.28x |     2.02x |
+| =uniqDropWarm=        |                   2196 |                 1068 |                    823 |     2.06x |     2.67x |
+| =headerCountsInitial= |                   8245 |                 5844 |                   4334 |     1.41x |     1.90x |
+| =headerCountsRestore= |                  10457 |                 6264 |                   5319 |     1.67x |     1.97x |
 
 1.41-2.28x slower than =petri='s own reboot floor, 1.65-2.67x slower than
 =NB-3641='s — well outside the 0.89-1.43x reboot-vs-reboot spread measured
@@ -276,11 +276,11 @@ or was the older arm measured in a different environment?
 *Answer: the environment. The script is not the cause.* Both endpoints
 re-measured on =petri= on 2026-09-08, same session, same harness, machine idle:
 
-| Script    | Commit    | What it contains                                               | global | column |  sort | uniq cold | hdr restore |
+|    Script | Commit    | What it contains                                               | global | column |  sort | uniq cold | hdr restore |
 |-----------+-----------+----------------------------------------------------------------+--------+--------+-------+-----------+-------------|
 | 9.99.1045 | =1983985= | before the CAA/EAA dropdown + sort fixes that became 1046/1047 |   3117 |   3285 |  6044 |     42948 |       11175 |
 | 9.99.1048 | =2db4497= | after them, plus the doc renames                               |   3033 |   3295 |  6410 |     45996 |       12319 |
-| Δ         |           |                                                                |  -2.7% |  +0.3% | +6.1% |     +7.1% |      +10.2% |
+|         Δ |           |                                                                |  -2.7% |  +0.3% | +6.1% |     +7.1% |      +10.2% |
 
 Every delta sits inside the noise band. The SAME 9.99.1045 script measured 1735
 / 1730 / 3968 / 31149 / 863 in the 2026-09-07 arm — roughly half — so the ~2x is
@@ -331,9 +331,9 @@ coalescing token became per-table in 9.99.1049). Produced by
 
 | pageType              | tableMode | page title            | URL                                                     | artifact        | badges | before | after |
 |-----------------------+-----------+-----------------------+---------------------------------------------------------+-----------------+--------+--------+-------|
-| artist-releasegroups  | multi     | Bruce Springsteen     | /artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0 | =rendered.html= |    423 |      1 | 286   |
-| releasegroup-releases | multi     | Tougher Than the Rest | /release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c     | =rendered.html= |     42 |     14 | 32    |
-| artist-events         | single    | Bruce Springsteen     | /artist/70248960-cb53-4ea4-943a-edb18f7d336f/events     | =rendered.html= |     21 |      1 | —     |
+| artist-releasegroups  | multi     | Bruce Springsteen     | /artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0 | =rendered.html= |    423 |      1 |   286 |
+| releasegroup-releases | multi     | Tougher Than the Rest | /release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c     | =rendered.html= |     42 |     14 |    32 |
+| artist-events         | single    | Bruce Springsteen     | /artist/70248960-cb53-4ea4-943a-edb18f7d336f/events     | =rendered.html= |     21 |      1 |     — |
 
 "After" is not the full badge count and should not be: a column with no distinct
 values writes an empty badge by design. What Step 22 fixed is whole sub-tables
@@ -351,12 +351,13 @@ Measured 2026-09-08 on =petri=, machine otherwise idle.
 
 | Suite                                      | Workers | Timeout | Result | Wall clock |
 |--------------------------------------------+---------+---------+--------+------------|
-| =npm test= (chromium-fixtures)             | default |    30 s | 141 ok | 1.2 m      |
-| =npm test=, serialized                     | 1       |   120 s | 141 ok | 5.0 m      |
-| =npm run test:live= (=@core=)              | 9       |   120 s | 10 ok  | 1.2 m      |
-| =npm run test:live:perf= (=@perf=)         | 1       |   120 s | 9 ok   | 8.7 m      |
-| live =@core= + =@perf=, serialized         | 1       |   300 s | 19 ok  | 10.5 m     |
-| =artist-events-interactions.spec.js= alone | 1       |   300 s | 11 ok  | 10.3 m     |
+| npm test = chromium - fixtures             | default | 30 s    | 141 ok | 1.2 m      |
+| =npm test=, serialized                     |       1 | 120 s   | 141 ok | 5.0 m      |
+| =npm run test:live= (=@core=)              |       9 | 120 s   | 10 ok  | 1.2 m      |
+| =npm run test:live:perf= (=@perf=)         |       1 | 120 s   | 9 ok   | 8.7 m      |
+| live =@core= + =@perf=, serialized         |       1 | 300 s   | 19 ok  | 10.5 m     |
+| =artist-events-interactions.spec.js= alone |       1 | 300 s   | 11 ok  | 10.3 m     |
+#+TBLFM: $1=npm test= (chromium-fixtures)
 
 *Serialization changes no pass/fail outcome.* It was tried because five
 =pending-edits-filter.spec.js= multi-table cases had failed at the 30 s default
@@ -516,12 +517,12 @@ itself, which hardware cannot.
 *Protocol.* Four arms, all on =petri=, all at one script version, all via
 =node tests/support/capture-interaction-perf.js --pageType=artist-events=:
 
-| Arm                    | Condition                                        | Label                     |
-|------------------------+--------------------------------------------------+---------------------------|
-| C (in hand, 9.99.1049) | 18d uptime, 30-hour-old session resident         | =main= (2026-09-08 21:07) |
-| A                      | 18d uptime, NO =claude= process at all           | =--label=no-claude=       |
-| B                      | 18d uptime, freshly started session              | =--label=fresh-claude=    |
-| D                      | AFTER a reboot, no =claude= process              | =--label=rebooted=        |
+| Arm                    | Condition                                | Label                     |
+|------------------------+------------------------------------------+---------------------------|
+| C (in hand, 9.99.1049) | 18d uptime, 30-hour-old session resident | =main= (2026-09-08 21:07) |
+| A                      | 18d uptime, NO =claude= process at all   | =--label=no-claude=       |
+| B                      | 18d uptime, freshly started session      | =--label=fresh-claude=    |
+| D                      | AFTER a reboot, no =claude= process      | =--label=rebooted=        |
 
 *What actually ran* (2026-09-08, all on =petri=, all at 9.99.1049): C and A
 as specified; then an UNPLANNED full host reboot at 22:23 UTC — 31 minutes
@@ -640,10 +641,10 @@ section's first reading claimed.
 
 | Arm | Finished (UTC)   | Uptime  | =claude= resident        | global | column | sort | uniq cold | uniq warm | hdr init | hdr restore |
 |-----+------------------+---------+--------------------------+--------+--------+------+-----------+-----------+----------+-------------|
-| C   | 2026-09-08 21:07 |    18 d | 1, 30 h old (prose only) |   3634 |   3158 | 6903 |     46549 |      1722 |     8191 |        8594 |
+| C   | 2026-09-08 21:07 | 18 d    | 1, 30 h old (prose only) |   3634 |   3158 | 6903 |     46549 |      1722 |     8191 |        8594 |
 | A   | 2026-09-08 21:52 | 459.6 h | 0                        |   2820 |   3028 | 7065 |     41723 |      1798 |     8250 |        8915 |
-| R   | 2026-09-08 22:44 |   0.3 h | 1, 0.2 h old             |   2388 |   2013 | 4462 |     26244 |      1068 |     5844 |        6264 |
-| D   | outstanding      |       — | 0                        |      — |      — |    — |         — |         — |        — |           — |
+| R   | 2026-09-08 22:44 | 0.3 h   | 1, 0.2 h old             |   2388 |   2013 | 4462 |     26244 |      1068 |     5844 |        6264 |
+| D   | outstanding      | —       | 0                        |      — |      — |    — |         — |         — |        — |           — |
 
 *The running session is exonerated.* A changed exactly one thing against C
 and moved almost nothing: four of seven metrics came back FLAT or slightly
