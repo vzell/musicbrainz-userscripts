@@ -656,3 +656,144 @@ Arm F (the missing NB-3641 reboot arm) is now closed out in tests/MEASUREMENTS.o
 - Updated the "PARTLY ANSWERED" section header and status line to mark F answered (D and E still outstanding), and rewrote the Arm F bullet with the actual result instead of the pre-registered branches.
 
 Files touched: tests/MEASUREMENTS.org only (the .json capture and org/perf-3.org log entry were already in place from your capture run). Not committed — let me know if you want that done.
+
+
+* Tier 0 is done, on docs/filter-perf-plan, two commits, working tree clean.
+
+  What landed
+
+  tests/support/domCounters.js wraps the DOM APIs from the test side rather than adding __saTest counters to the userscript. That keeps it genuinely tests/-only (no version bump, as the step promised) and means a step can't accidentally invalidate its own instrument.
+  capture-pass-cost.js drives four phases on the artist-events fixture; runMetadata.js holds the machine block and filename convention, extracted so two capture scripts can't drift apart.
+
+  One thing to know: never run it alongside capture-interaction-perf.js — it wraps hot DOM APIs, so it makes timings meaningless. Both files say so.
+
+  What the first arm found — including two of my estimates it falsified
+
+  - _stripTransientCellState is the filter path's dominant cost, and I ranked it wrong. I'd filed it as one of five comparable walks. It's 97.5% of a filter clear's 1,078,372 querySelectorAll calls — ~1.05 million, twelve per cell, against ~27,000 for everything else in that
+    phase combined. Filed as Step 34, now leading Tier 1.
+
+    The sharp detail: the measured page has artwork switched off and still pays every CAA/EAA query. Most of that million is asking twelve times per cell whether there's any work, not doing any.
+  - Step 25 was ~8× too high. I claimed ~87,700 querySelectorAll per pass for _countLiveDateFlags. Real figure: 10,500 on a clear. And 10,500 = 500 × 21 — the chunked-render prefix — so it's scanning a partially rendered tbody, a second defect on top of the live-tbody tally I'd
+    already filed. Still worth fixing; it drops below Step 24.
+  - Step 24 was exactly right. 87,654 getComputedStyle, 1.00 per cell to the digit, attributed to applyStickyColumn's inner _apply.
+
+  Two corrections to things I said earlier in this session
+
+  My "counts are deterministic" claim was overstated. Measured: 28 of 32 counters are bit-identical across runs; four move by a few percent. Not noise — the deltas hold a 4:1 ratio in multiples of 158 (the filtered row count), i.e. one getCleanColumnText call's worth of
+  header-count scan sliding across a phase boundary. Both JSDocs now say this.
+
+  Also, .fill('') silently never clears a column filter — _isGenuineFilterInputEvent() rejects it. I hit this, and the reason is now recorded on the shared columnFilterClear helper.
+
+  Scope note: I promoted columnIndex/columnFilterInput/columnFilterClear into filterSortAssertions.js rather than write a third copy. That touched the timing script and one live spec. 141 fixture tests pass; the live spec is syntax-checked but not run (needs network + auth).
+
+  Tier 1 is now 34, 23, 24, 25, 26. Still unpushed.
+
+  
+* Here's the picture for 1–22 specifically.
+
+  Seven are DONE (3, 4, 8, 18, 19, 21, 22) and three aren't orderable work: 7 and 12 both fix code inside Step 5's IntersectionObserver, which doesn't exist on main — they fold into 5 rather than queue behind it. 17 was manually validated and failed; it's blocked pending a
+  redesign, not waiting its turn.
+
+  That leaves twelve, in three tracks that don't compete for the same code:
+
+  Filter/sort path — interleaves with the new steps
+
+  ┌───────┬─────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Order │              Step               │                                                                Where it sits now                                                                 │
+  ├───────┼─────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ 1     │ 6 — order-independent signature │ Tier 2, after 27/28. One function; makes the 📊 warm cache survive a sort                                                                        │
+  ├───────┼─────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ 2     │ 9 — _rowTextCache invalidation  │ Tier 3. Do it with Step 29, not after — 29 leans harder on that cache and turns a stale entry from "mis-matches a row" into "mis-highlights one" │
+  ├───────┼─────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ 3     │ 10 — precompute sort keys       │ Tier 3. Sort-only, self-contained, ~10–20× fewer comparator extractions                                                                          │
+  ├───────┼─────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ 4     │ 1/2 — Fix C                     │ Tier 4, re-judge only after Tier 1 + Step 30                                                                                                     │
+  └───────┴─────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Artwork/CAA-EAA — one track, do it in one stretch or not at all
+
+  5 (+7+12) → 15 → 16 → 14 → 20.
+
+  Step 5 first even though 15 is smaller and already written, because of an ordering trap: 15 raises image concurrency from 4 to 12, and the archive is measured at ~1.2 req/s. Firing more concurrently before Step 5 makes you fire fewer overall is the wrong way round. The
+  counter-argument is real but weaker — landing 15 first would make Step 12 disappear by construction, since 12's bug is code referencing _caaImgQueue/_caaMetaQueue, which is exactly what 15 creates.
+
+  Then 16 (IDB off the hot path), 14 (in-flight dedup — its own notes say the race is narrow and hard to reproduce), 20 last since Step 19 already mitigated it.
+
+  One-offs, opportunistic
+
+  11 (release-tracks only) and 13 (a cdtoc nit, one-click recoverable). 13 is worth folding into whoever next touches runFilter's single-table branch rather than scheduling.
+
+  One thing Tier 0 changed that isn't in the doc yet: Step 34 and Step 1 overlap. Step 1 stops cloning rows entirely, so the ~1.05 million _stripTransientCellState calls Step 34 targets would vanish with it. That doesn't reorder anything — 34 is cheap and safe, 1 is neither — but
+  it does mean landing 34 shrinks Step 1's remaining case, on top of Step 30 removing the reflow term it lost on. Step 1 should be re-judged against a fresh count, not against the old 40–60% framing.
+
+  Want me to fold this consolidated 1–22 view into the Recommended order section? Right now those steps are correctly placed but scattered across four tiers, which is exactly the question you just had to ask.
+
+* Folded in, as *** The original Steps 1-22, consolidated under Recommended order.
+
+  What it says: seven need nothing (DONE), three aren't orderable work (7 and 12 fold into Step 5; 17 is blocked), and the remaining twelve split into three non-competing tracks — filter/sort, artwork, and opportunistic — each with its own internal order. Verified every step 1–22
+  is accounted for.
+
+  Three orderings got written down with their reasoning, since none is obvious from the individual steps:
+
+  - 5 before 15, despite 15 being smaller and already written — it raises image concurrency 4→12 against an archive measured at ~1.2 req/s. I recorded the counter-argument too, because it's genuinely good: 15-first would make Step 12 vanish by construction, since 12's bug is code
+    referencing the queues 15 creates.
+  - 9 lands with 29, not after. Step 9's own "lower priority" note is accurate for main today and stops being accurate the moment 29 feeds _rowTextCache into the highlight pass — a stale entry goes from silently missing a match to visibly mis-highlighting one.
+  - 34 overlaps 1 and shrinks it. Combined with Step 30 taking the forced-reflow term Fix C actually lost on, both of Step 1's headline arguments will have been claimed by cheaper steps before it's reachable.
+
+  Cross-references added on Steps 1, 9 and 34 so each says this at its own site, not only in the summary. The diff is pure addition — no pre-existing table reflowed.
+
+  One thing to check: org/perf-3.org has 71 lines of modifications I didn't write — it looks like your own pasted session output from the Step 3 work. I left it unstaged rather than sweeping it into my commit. It's still sitting modified in the working tree.
+
+  Branch docs/filter-perf-plan now has three commits from this session, still unpushed.
+
+  
+* capture-pass-cost.js measures counts, not wall-clock time
+
+  it runs four phases on the artist-events fixture (initialRender, filterApply, filterClear, postClearSettle) and counts how many times each hot DOM API gets called in each phase (getComputedStyle, querySelector(All),
+  cloneNode, createTreeWalker, createElement, addEventListener, getBoundingClientRect, the layout-forcing getters, etc.) via the instrumentation in domCounters.js.
+
+  The warning is about why it can't coexist with capture-interaction-perf.js (the one that measures milliseconds): domCounters.js works by monkey-patching those DOM APIs — every call gets an extra function-call layer, a counter increment, and for selector APIs a Map lookup keyed
+  by the selector string, plus occasional stack-trace sampling for attribution. That overhead is negligible for the purpose of counting calls, but on a walk that fires ~88,000 times (e.g. applyStickyColumn's per-cell walk) it adds real, measurable latency.
+
+  So if you ran capture-interaction-perf.js in the same process/page where capture-pass-cost.js's instrument was installed, the timing numbers you'd get back would include that patching overhead — they'd no longer reflect the userscript's real speed, just "real speed +
+  instrumentation tax." That's the "makes any timing meaningless" part: it doesn't corrupt the counts (those stay accurate and reproducible — the file notes 28 of 32 phase counters matched exactly across two runs), it corrupts any timing measurement taken while it's active.
+
+  Practical implication: run the two scripts as separate, non-overlapping invocations — never wrap one page load in both instruments at once. Counts answer "did this walk go away"; timings (from the uninstrumented script) answer "how long did it take."
+  
+
+* working on MEASUREMENTS.org and PERFORMANCE.org at the same time
+
+My plan is to work on @tests/MEASUREMENTS.org and @PERFORMANCE.org at the same time:
+
+What and how should I do it to achieve the following:
+
+1.)
+
+Measuring each day in the morning/evening on PETRI the arm E case (rebooting and testing without a claude session) based on version "9.99.1049"
+
+2.)
+
+in between working on implementing new performance aspects
+
+3.)
+
+Is it neccessary to checkout a specific commit, can we automate this
+
+4.)
+
+actually I think I shouldn't reboot after every morning/evening measurement at least for the next 18 days, right ? to finally close the arm E gap
+
+* Everything's set up. Summary:
+
+  Built:
+  - Branch measure/9.99.1049-arm-e pinned at a56f1b1 (the 9.99.1049 commit), checked out in its own worktree at /home/vzell/git/saed-perf-9.99.1049-arm-e — isolated from your docs/filter-perf-plan work here and from whatever main does next.
+  - tests/support/run-perf-arm-e.sh in that worktree: refuses to run if any claude process is resident (verified live against this session's own PID — it correctly logged SKIPPED), otherwise runs capture-interaction-perf.js, records uptime, and self-commits the result.
+  - Cron entries at 07:00 and 19:00 daily, running under cron.service (enabled+active via systemd, survives a WSL restart — but not a Windows sleep/hibernate/wsl --shutdown, so avoid those on petri for the 18 days).
+  - Documented the whole setup as a new subsection in tests/MEASUREMENTS.org (uncommitted, along with your pre-existing org/perf-3.org change — I didn't commit either, per your commit-only-when-told convention).
+
+  Still on you:
+  1. One manual reboot of petri to zero the clock — then no more reboots for 18 days.
+  2. Keep every Claude Code session off petri for those 18 days (this one included, once you're done here) — implementation work goes to NB-3641 instead, per your answer.
+  3. After 18 days: pull measure/9.99.1049-arm-e, read arm-e-runs.log for the day-by-day trend, fold the real numbers into MEASUREMENTS.org (the section I added is a signpost, not data).
+
+  Want me to also review/commit the tests/MEASUREMENTS.org change now, or leave both pending files for you to review together?
