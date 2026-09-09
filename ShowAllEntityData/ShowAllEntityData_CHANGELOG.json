@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1050",
+    "date": "2026-09-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The 📊 unique-values dropdown's \"Entity info - Area name\" section rendered a country's real flag icon in place of the generic area glyph, and before the name (e.g. \"[flag] » area name: Spain\"). The generic glyph is now always shown, and the flag — when the area has one — is appended after the name instead: \"[glyph] » area name: Spain [flag]\"."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1049",
     "date": "2026-09-08",
     "sections": [
