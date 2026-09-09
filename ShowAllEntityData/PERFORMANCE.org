@@ -1468,12 +1468,12 @@ What each step was measured with instead:
 
 Baselines on disk, and their real vintage:
 
-| File (under ~tests/snapshots/~)                                        |   Captured |  Version | What it is                                                                                     |
-|------------------------------------------------------------------------+------------+----------+------------------------------------------------------------------------------------------------|
-| ~artist-events/interaction-perf-main-9.99.953-2026-08-24.json~                              | 2026-08-24 | 9.99.953 | pre-Step-4, pre-chunked-render-fix, pre-Step-18; a different machine                           |
-| ~artist-events/interaction-perf-fix-chunked-render-header-counts-9.99.976-2026-08-31.json~  | 2026-08-31 | 9.99.976 | the de-facto current-~main~ row for a long time, filed under a branch since merged and deleted |
-| ~artist-events/interaction-perf-worktree-perf-step-4-9.99.970-2026-08-31.json~              | 2026-08-31 | 9.99.970 | Step 4's own branch arm                                                                        |
-| ~artist-releasegroups/perf-baseline.json~ (+ dated archival copies alongside it)             |   see file | see file | initial fetch+render wall time, from ~capture-snapshots.js --perf~                             |
+| File (under ~tests/snapshots/~)                                                            |   Captured |  Version | What it is                                                                                     |
+|--------------------------------------------------------------------------------------------+------------+----------+------------------------------------------------------------------------------------------------|
+| ~artist-events/interaction-perf-main-9.99.953-2026-08-24.json~                             | 2026-08-24 | 9.99.953 | pre-Step-4, pre-chunked-render-fix, pre-Step-18; a different machine                           |
+| ~artist-events/interaction-perf-fix-chunked-render-header-counts-9.99.976-2026-08-31.json~ | 2026-08-31 | 9.99.976 | the de-facto current-~main~ row for a long time, filed under a branch since merged and deleted |
+| ~artist-events/interaction-perf-worktree-perf-step-4-9.99.970-2026-08-31.json~             | 2026-08-31 | 9.99.970 | Step 4's own branch arm                                                                        |
+| ~artist-releasegroups/perf-baseline.json~ (+ dated archival copies alongside it)           |   see file | see file | initial fetch+render wall time, from ~capture-snapshots.js --perf~                             |
 
 Refreshed 2026-09-07 at 9.99.1045, since both files above had gone stale
 enough to mislead (the ~main~ interaction row was 87 versions old and predated
@@ -1761,8 +1761,8 @@ writing a single badge.
 The failure is silent — an unwritten badge is an empty ~<span>~, not an error —
 but it is sitting in the committed baselines:
 
-| Baseline                                                    | ~.mb-col-uniq-count~ spans | populated |
-|-------------------------------------------------------------+----------------------------+-----------|
+| Baseline                                                     | ~.mb-col-uniq-count~ spans | populated |
+|--------------------------------------------------------------+----------------------------+-----------|
 | ~tests/snapshots/artist-releasegroups/rendered.html~         |                        423 |         1 |
 | ~tests/snapshots/releasegroup-releases/rendered.html~        |                         42 |        14 |
 | ~tests/snapshots/artist-events/rendered.html~ (single-table) |                         21 |         1 |
