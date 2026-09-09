@@ -3238,10 +3238,47 @@
      *      "name, then icon" order — so this function must recognize its
      *      own synthetic-column output as readily as a live source cell.
      *
+     *      Both directions are ambiguous on a CHAIN of 2+ area anchors, and
+     *      each needs its own, independent guard (confirmed against
+     *      debug/More-Flags-Everywhere-bug.html's "Midtown Manhattan" →
+     *      "New York" county → "New York" state chain):
+     *
+     *      - `next`: MFE always inserts an icon immediately BEFORE the
+     *        anchor it decorates (confirmed from the real script,
+     *        `MusicBrainz_More_Flags_Everywhere.user.js`'s `processLink()`),
+     *        so an icon sitting between anchor A (no icon of its own) and
+     *        anchor B (B's own icon) is B's `previousElementSibling` AND
+     *        also A's `nextElementSibling` — without `excludeFromNext`, A
+     *        would wrongly "borrow" B's icon when a NATIVE cell is scanned
+     *        (`_routeAreaLink()`'s own callers, extraction time).
+     *        `excludeFromNext` lets a caller that already knows which icons
+     *        are some OTHER anchor's own `previousElementSibling` (built
+     *        once per cell/`<li>`, see `_collectPrecedingAreaIcons()`) block
+     *        exactly that borrowing.
+     *      - `prev`: the mirror image, hit when READING BACK this script's
+     *        OWN already-rendered "name, then icon" output instead (e.g.
+     *        `_findCellEntityRefs()` scanning a rendered Region `<td>` that
+     *        legitimately holds two icon-bearing entries side by side, one
+     *        per `_routeAreaLink()` call). There, anchor B's icon sits
+     *        `next` to B (correct, own convention) but ALSO `prev` to
+     *        whichever anchor follows B in the same cell — which would
+     *        otherwise be checked and returned FIRST, before `next` is ever
+     *        tried. `_routeAreaLink()` marks every icon clone it emits with
+     *        `dataset.mbRouted` for exactly this: a `prev` candidate
+     *        carrying that marker is never a stray native icon, so it is
+     *        always some OTHER, earlier anchor's own trailing icon — reject
+     *        it unconditionally (no exclude set needed; a native icon,
+     *        which is a valid `prev` match, is never marked this way).
+     *
      * @param {HTMLAnchorElement} anchor
+     * @param {?Set<Element>} [excludeFromNext] - icons to reject from the
+     *   `next` fallback because some other anchor already legitimately owns
+     *   them via its own `previousElementSibling` match. Omitted by every
+     *   caller that isn't scanning a whole chain of sibling area anchors up
+     *   front (unaffected, same as today).
      * @returns {?Element}
      */
-    function _findAreaLinkIcon(anchor) {
+    function _findAreaLinkIcon(anchor, excludeFromNext) {
         const rsfeWrapper = anchor.closest(AREA_ICON_WRAPPER_SEL);
         if (rsfeWrapper) {
             const img = rsfeWrapper.querySelector(AREA_ICON_TRAILING_IMG_SEL);
@@ -3252,11 +3289,36 @@
         if (flagAncestor) return flagAncestor;
 
         const prev = anchor.previousElementSibling;
-        if (prev && prev.matches(AREA_ICON_SIBLING_SEL)) return prev;
+        if (prev && prev.matches(AREA_ICON_SIBLING_SEL) && !prev.dataset.mbRouted) return prev;
         const next = anchor.nextElementSibling;
-        if (next && next.matches(AREA_ICON_SIBLING_SEL)) return next;
+        if (next && next.matches(AREA_ICON_SIBLING_SEL) && !(excludeFromNext && excludeFromNext.has(next))) return next;
 
         return null;
+    }
+
+    /**
+     * Pre-scans every '/area/' anchor within `node` and collects the set of
+     * icon elements legitimately owned by ONE of those anchors via its own
+     * `previousElementSibling` — MFE's real insertion convention (icon
+     * always precedes the anchor it decorates; confirmed from the real
+     * script, see `_findAreaLinkIcon()`'s JSDoc). Callers pass the result as
+     * `areaState.precedingIcons` so that `_routeAreaLink()`'s calls, further
+     * down the SAME node, can never let an EARLIER anchor "borrow" a LATER
+     * anchor's icon through `_findAreaLinkIcon()`'s ambiguous `next`
+     * fallback (confirmed bug: debug/More-Flags-Everywhere-bug.html's
+     * "Midtown Manhattan" borrowing the following "New York" county
+     * anchor's icon this way).
+     *
+     * @param {HTMLElement} node
+     * @returns {Set<Element>}
+     */
+    function _collectPrecedingAreaIcons(node) {
+        const icons = new Set();
+        node.querySelectorAll('a[href*="/area/"]').forEach(a => {
+            const prev = a.previousElementSibling;
+            if (prev && prev.matches(AREA_ICON_SIBLING_SEL)) icons.add(prev);
+        });
+        return icons;
     }
 
     /**
@@ -3298,10 +3360,13 @@
      * @param {HTMLElement} containerL - Locality output container (<li> or <td>)
      * @param {HTMLElement} containerR - Region output container (<li> or <td>)
      * @param {HTMLElement} containerC - Country output container (<li> or <td>)
-     * @param {{count: number, countryName: string|null}} areaState - mutable
+     * @param {{count: number, countryName: string|null, precedingIcons: Set<Element>}} areaState - mutable
      *   state, fresh per source cell / per-<li> (the caller creates one,
      *   populates `countryName` via `_findRowCountryName`, and reuses it
-     *   across every anchor found in that node)
+     *   across every anchor found in that node). `precedingIcons` is built
+     *   once by the caller from every area anchor's own
+     *   `previousElementSibling` — see `_findAreaLinkIcon()`'s
+     *   `excludeFromNext` param for why this is needed.
      */
     function _routeAreaLink(a, containerL, containerR, containerC, areaState) {
         const clonedA   = a.cloneNode(true);
@@ -3325,7 +3390,7 @@
             // recognizes — carry it along so it isn't dropped by the split,
             // and use its presence to decide whether the "first link" slot
             // should be forced into Region instead of Locality.
-            const iconSpan = _findAreaLinkIcon(a);
+            const iconSpan = _findAreaLinkIcon(a, areaState.precedingIcons);
             const subdivisionSet = _flagRegionSubdivisionSet(areaState.countryName);
             const forceRegion = areaState.count === 0 && iconSpan && areaState.countryName && (
                 subdivisionSet
@@ -3338,7 +3403,18 @@
             container.appendChild(clonedA);
             if (iconSpan) {
                 container.appendChild(document.createTextNode(' '));
-                container.appendChild(iconSpan.cloneNode(true));
+                const iconClone = iconSpan.cloneNode(true);
+                // Marks this clone as OUR OWN "name, then icon" emission —
+                // see `_findAreaLinkIcon()`'s `prev`-branch guard, which
+                // rejects a candidate carrying this marker so that a LATER
+                // anchor in the same rendered cell (e.g. Region's second
+                // "New York" entry) can never re-claim an EARLIER anchor's
+                // own trailing icon via its `previousElementSibling` — the
+                // read-back mirror of the extraction-time bug
+                // `excludeFromNext`/`precedingIcons` above already guards
+                // against (see debug/More-Flags-Everywhere-bug.html).
+                iconClone.dataset.mbRouted = '1';
+                container.appendChild(iconClone);
                 // Both "More Flags Everywhere" and "Right Side Flags
                 // Everywhere" skip an anchor outright when
                 // `anchor.dataset.flagProcessed` is already truthy (see
@@ -3478,7 +3554,7 @@
              * subsequent one to containerR.
              */
             const _processNode = (node, containerP, containerL, containerR, containerC) => {
-                const areaState = { count: 0, countryName: _findRowCountryName(node) };
+                const areaState = { count: 0, countryName: _findRowCountryName(node), precedingIcons: _collectPrecedingAreaIcons(node) };
                 node.querySelectorAll('a').forEach(a => {
                     const href = a.getAttribute('href');
                     if (href && href.includes('/place/')) {
@@ -3548,7 +3624,7 @@
             const tdR = document.createElement('td');
             const tdC = document.createElement('td');
             if (sourceCell) {
-                const areaState = { count: 0, countryName: _findRowCountryName(sourceCell) };
+                const areaState = { count: 0, countryName: _findRowCountryName(sourceCell), precedingIcons: _collectPrecedingAreaIcons(sourceCell) };
                 sourceCell.querySelectorAll('a').forEach(a => {
                     const href = a.getAttribute('href');
                     if (href && href.includes('/area/')) {
@@ -74735,6 +74811,13 @@ a { color: #1565c0; }`;
                 const refsOf = (td) => _findCellEntityRefs(td).map(ref => ({
                     type: ref.type, glyphClass: ref.glyphClass, href: ref.href,
                     name: ref.name, isBare: ref.isBare, hasFlag: !!ref.flagEl,
+                    // Precise identity of the matched icon (not just its
+                    // presence) — lets a test tell "this entity's own icon"
+                    // apart from a MISATTRIBUTED neighbor's icon, which
+                    // `hasFlag` alone cannot: a borrowed icon still reports
+                    // `hasFlag: true`. See the icon-misattribution fix's
+                    // regression test.
+                    flagLabel: ref.flagEl ? (ref.flagEl.querySelector('img')?.alt || null) : null,
                 }));
                 return { place: refsOf(tdP), locality: refsOf(tdL), region: refsOf(tdR), country: refsOf(tdC) };
             },

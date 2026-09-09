@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Test Artist - Recordings - MusicBrainz</title>
+</head>
+<body>
+    <div id="content">
+        <div class="artistheader">
+            <h1><bdi>Test Artist</bdi></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350/recordings">Recordings</a></li></ul>
+        </div>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Length</th>
+                    <th>Artist</th>
+                    <th>Release groups</th>
+                    <th>Rating</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/ac413c4f-f270-4c32-8adc-a17e3bd7b60f"><bdi>Test Recording</bdi></a></td>
+                    <td>3:45</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+        <ul class="pagination"></ul>
+
+        <!--
+            Standalone regression cells for the "More Flags Everywhere" icon
+            MISATTRIBUTION bug: an area anchor with NO flag of its own,
+            immediately followed by a DIFFERENT, flagged area anchor, wrongly
+            "borrows" that neighbor's icon via `_findAreaLinkIcon()`'s
+            ambiguous `nextElementSibling` fallback. Markup distilled
+            verbatim from debug/More-Flags-Everywhere-bug.html (artist-events
+            page for MBID 70248960-cb53-4ea4-943a-edb18f7d336f) and confirmed
+            against the REAL third-party script,
+            tests/fixtures/live-userscripts/MusicBrainz_More_Flags_Everywhere.user.js
+            (`processLink()`: `wrapper.parentNode.insertBefore(iconSpan, wrapper)`
+            — icon always precedes the anchor it decorates, so an icon
+            between two chained anchors is only ever the SECOND anchor's own).
+
+            - #loc-cell-3anchor: row-idx 6 of that capture (Madison Square
+              Garden, 2026-07-26). "Midtown Manhattan" (MBID edd27a39, not in
+              MFE's region map — gets no icon and no `data-flag-processed` of
+              its own) is chained directly before "New York" the COUNTY
+              (MBID 74e50e58, icon alt "New York City") and "New York" the
+              STATE (MBID 75e398a3, icon alt "New York") — two genuinely
+              different MusicBrainz areas sharing one display name (same
+              collision `area-name-collision.html` covers, but here preceded
+              by an unflagged anchor, which is what triggers the borrowing).
+
+            - #loc-cell-2anchor: row-idx 73 of the same capture (Veltins-
+              Arena, Gelsenkirchen, 2025-06-27). "Gelsenkirchen" (a city, not
+              in MFE's region map) is chained directly before "Nordrhein-
+              Westfalen" (icon alt "Nordrhein-Westfalen") — the simpler,
+              2-anchor shape most rows on this page actually hit.
+        -->
+        <table id="mfe-misattribution-test-cells">
+            <tbody>
+                <tr>
+                    <td id="loc-cell-3anchor"><a href="/place/a727b970-8ea0-4f75-abc8-db131f72aecb"><bdi>Madison Square Garden</bdi></a> in <a href="/area/edd27a39-ff8a-4af4-8bbf-f369b0fb1899"><bdi>Midtown Manhattan</bdi></a>, <span class="custom-area-icon" data-mb-flag="1"><img class="flag-custom-region" alt="New York City" title="New York City"></span> <a href="/area/74e50e58-5deb-4b99-93a2-decbb365c07f" data-flag-processed="1"><bdi>New York</bdi></a>, <span class="custom-area-icon" data-mb-flag="1"><img class="flag-custom-region" alt="New York" title="New York"></span> <a href="/area/75e398a3-5f3f-4224-9cd8-0fe44715bc95" data-flag-processed="1"><bdi>New York</bdi></a>, <span class="flag flag-US"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><bdi>United States</bdi></a></span></td>
+                </tr>
+                <tr>
+                    <td id="loc-cell-2anchor"><a href="/place/ab4ff442-468b-48ff-85e9-c3f363a52aba"><bdi>Veltins‐Arena</bdi></a> in <a href="/area/47cf7072-da93-4354-85ec-7852c338ec87"><bdi>Gelsenkirchen</bdi></a>, <span class="custom-area-icon" data-mb-flag="1"><img class="flag-custom-region" alt="Nordrhein-Westfalen" title="Nordrhein-Westfalen"></span> <a href="/area/1de7fa77-cb52-40a2-b82a-251c7818249d" data-flag-processed="1"><bdi>Nordrhein-Westfalen</bdi></a>, <span class="flag flag-DE"><a href="/area/85752fda-13c4-31a3-bee5-0e5cb1f51dad"><bdi>Germany</bdi></a></span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
