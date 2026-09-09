@@ -23,7 +23,6 @@
 
 const fs = require('fs');
 const os = require('os');
-const { execSync } = require('child_process');
 const path = require('path');
 const { chromium } = require('playwright');
 const { loadUserscriptPage } = require('./loadPage');
@@ -41,11 +40,12 @@ const {
     FILTER_COLUMN: ARTIST_EVENTS_FILTER_COLUMN, FILTER_VALUE: ARTIST_EVENTS_FILTER_VALUE, SORT_COLUMN: ARTIST_EVENTS_SORT_COLUMN,
     TOTAL_ROWS: ARTIST_EVENTS_TOTAL_ROWS,
 } = require('./artistEventsFixture');
+const {
+    readScriptVersion, hostRuntimeState, hostnameForFilename, versionForFilename,
+} = require('./runMetadata');
 
-const REPO_ROOT = path.join(__dirname, '..', '..');
 const SNAPSHOTS_DIR = path.join(__dirname, '..', 'snapshots');
 const PAGETYPES_PATH = path.join(__dirname, '..', 'pagetypes.json');
-const USERSCRIPT_PATH = path.join(REPO_ROOT, 'ShowAllEntityData.user.js');
 
 /**
  * @param {string[]} argv - `process.argv.slice(2)`
@@ -58,18 +58,6 @@ function parseArgs(argv) {
         headed: argv.includes('--headed'),
         perf: argv.includes('--perf'),
     };
-}
-
-/**
- * Reads the current `// @version` from the userscript header, for stamping
- * into a perf baseline JSON file.
- *
- * @returns {string}
- */
-function readScriptVersion() {
-    const header = fs.readFileSync(USERSCRIPT_PATH, 'utf8').slice(0, 2000);
-    const m = header.match(/\/\/ @version\s+(\S+)/);
-    return m ? m[1] : 'unknown';
 }
 
 /**
@@ -352,134 +340,6 @@ async function measureOnce(browser, config) {
         renderMs: byName['sa-render-phase'] ?? null,
         itemCount,
     };
-}
-
-/**
- * Filesystem-safe form of an arbitrary string for use inside a filename:
- * anything other than letters/digits/dot/underscore/hyphen becomes `-`.
- * Mirrors `capture-interaction-perf.js`'s own helper of the same name.
- *
- * @param {string} s
- * @returns {string}
- */
-function sanitizeForFilename(s) {
-    return s.replace(/[^A-Za-z0-9._-]+/g, '-');
-}
-
-/**
- * Only a meaningful hostname earns a place in a filename — see
- * `capture-interaction-perf.js`'s identically-named helper for the
- * "mark an unknown host as unknown" rationale.
- *
- * @param {string} hostname
- * @returns {string|null}
- */
-function hostnameForFilename(hostname) {
-    if (!hostname || /^(localhost|unknown)$/i.test(hostname)) return null;
-    return sanitizeForFilename(hostname);
-}
-
-/**
- * Whether a Claude Code session has run on this box since it last booted —
- * distinct from `claudeResident`, which only sees one running RIGHT NOW.
- *
- * This closes a gap `tests/MEASUREMENTS.org`'s "PARTLY ANSWERED" arm A hit:
- * `claudeResident: {count: 0}` cannot tell "never ran a session" apart from
- * "ran one, then closed it" — and arm E (18 days of uptime with `claude`
- * never run at all, to isolate plain uptime accumulation from session
- * residue) needs exactly that distinction on every capture in its series, not
- * just remembered by the person running it.
- *
- * Every Claude Code session creates a directory under `/tmp/claude-<uid>/`
- * (this repo's own scratchpad path lives under one). If anything under
- * `/tmp/claude-*` has an mtime after boot, a session ran since the last
- * reboot, whether or not one is resident now.
- *
- * Linux-only, like `claudeResident` above (BSD/macOS `find` has no
- * `-newermt`) — `null` on any other platform or if the check itself fails,
- * kept distinct from `false` ("checked, found nothing since boot").
- *
- * @param {number} uptimeHours
- * @returns {boolean|null}
- */
-function claudeSinceBoot(uptimeHours) {
-    if (os.platform() !== 'linux') return null;
-    const bootEpochSeconds = Math.floor(Date.now() / 1000 - uptimeHours * 3600);
-    try {
-        const out = execSync(
-            `find /tmp/claude-* -newermt '@${bootEpochSeconds}' -print -quit 2>/dev/null`,
-            { stdio: ['ignore', 'pipe', 'ignore'] },
-        ).toString().trim();
-        return out.length > 0;
-    } catch (err) {
-        // `find` exits 1 with empty stdout both when no `/tmp/claude-*`
-        // directory exists at all (the glob expands to nothing) and when one
-        // exists but nothing inside is newer than boot — either way that IS
-        // "no session since boot", not a failed check. Same reasoning as
-        // claudeResident's own `ps` check below.
-        return (err.status === 1 && !String(err.stdout || '').trim()) ? false : null;
-    }
-}
-
-/**
- * Host conditions that are not hardware but move timings anyway: how long the
- * box has been up, and whether a Claude Code session is resident while the
- * run happens.
- *
- * Both exist because of a real, still-unresolved gap. `petri` measured 1735 ms
- * on the global filter on the morning of 2026-09-07 and ~3100 ms for the SAME
- * script version afterwards, with no reboot in between (18 days of uptime by
- * the time it was noticed) and a `claude` process that had started that same
- * afternoon and stayed up. A separate host, `NB-3641`, measured ~1.8x faster
- * at an identical script version — and was reportedly freshly rebooted, which
- * nothing in its JSON could confirm. Uptime and reboot recency are therefore
- * live candidate variables that no committed arm records, which is the same
- * defect that made `hostname` and `startedAt` necessary.
- *
- * `claudeResident` is `null` when the check could not run at all (`ps -C` is
- * Linux-shaped and unsupported on BSD/macOS `ps`) — deliberately distinct from
- * `{count: 0}`, which means "checked, none running", per CLAUDE.md's "mark an
- * unknown as unknown rather than inferring it". `claudeSinceBoot` is the same
- * distinction one level up — see that function's own JSDoc.
- *
- * @returns {{uptimeHours: number,
- *   claudeResident: {count: number, oldestSessionHours: number|null}|null,
- *   claudeSinceBoot: boolean|null}}
- */
-function hostRuntimeState() {
-    const uptimeHours = Math.round(os.uptime() / 360) / 10;
-    let claudeResident = null;
-    try {
-        const out = execSync('ps -C claude -o etimes=', {
-            stdio: ['ignore', 'pipe', 'ignore'],
-        }).toString().trim();
-        const ages = out ? out.split('\n').map((n) => parseInt(n, 10)).filter(Number.isFinite) : [];
-        claudeResident = {
-            count: ages.length,
-            oldestSessionHours: ages.length ? Math.round(Math.max(...ages) / 360) / 10 : null,
-        };
-    } catch (err) {
-        // `ps -C` exits 1 with empty output when nothing matches — that is a
-        // real "none running" answer, not a failed check. Anything else means
-        // the check itself did not work, which stays unknown.
-        claudeResident = (err.status === 1 && !String(err.stdout || '').trim())
-            ? { count: 0, oldestSessionHours: null }
-            : null;
-    }
-    return { uptimeHours, claudeResident, claudeSinceBoot: claudeSinceBoot(uptimeHours) };
-}
-
-/**
- * The `M.MM.NNN` version number alone, without the header's `+YYYY-MM-DD`
- * ship stamp — see `capture-interaction-perf.js`'s identically-named helper
- * for why a filename that already carries `<capturedAt>` must not also
- * carry that stamp.
- *
- * @param {string} version
- * @returns {string}
- */
-function versionForFilename(version) {
-    return sanitizeForFilename(version.split('+')[0]);
 }
 
 /**
