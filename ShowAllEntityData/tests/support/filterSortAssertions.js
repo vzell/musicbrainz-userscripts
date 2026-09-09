@@ -571,6 +571,58 @@ async function getPrefilterButtonState(page) {
     return { visible: display !== 'none', text: (text || '').trim() };
 }
 
+/**
+ * Zero-based index of the column whose header reads `colName`, with the
+ * sort/filter/collapse glyphs and the unique-value count stripped off.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} colName
+ * @returns {Promise<number>} the index, or -1 when no header matches.
+ */
+function columnIndex(page, colName) {
+    return page.evaluate((name) => {
+        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+        return Array.from(document.querySelectorAll('table.tbl thead th'))
+            .findIndex((t) => strip(t.textContent) === name);
+    }, colName);
+}
+
+/**
+ * One column's filter `<input>`.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} colIdx
+ * @returns {import('@playwright/test').Locator}
+ */
+function columnFilterInput(page, colIdx) {
+    return page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
+}
+
+/**
+ * One column's ✕ clear button.
+ *
+ * Scoped through the enclosing `.mb-col-filter-wrapper` rather than indexed with
+ * `.nth(colIdx)`: `addColumnFilterRow()` gives a checkbox column a bare `<th>`
+ * with no input and no ✕ at all, so the ✕ list is not index-aligned with the
+ * column list.
+ *
+ * Clicking it is also the ONLY way a test can clear a column filter.
+ * `locator.fill('')` is rejected by the userscript's own
+ * `_isGenuineFilterInputEvent()` guard, and the inputs are
+ * readonly-until-a-genuine-trusted-interaction (anti-autofill hardening), so a
+ * filled-then-emptied field silently never re-runs the filter. The ✕ calls
+ * `runFilter()` directly and undebounced.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} colIdx
+ * @returns {import('@playwright/test').Locator}
+ */
+function columnFilterClear(page, colIdx) {
+    return page.locator(
+        `table.tbl thead .mb-col-filter-wrapper:has(.mb-col-filter-input[data-col-idx="${colIdx}"]) .mb-col-filter-clear`
+    ).first();
+}
+
 module.exports = {
     waitForFilterSettled,
     waitForSortSettled,
@@ -590,4 +642,7 @@ module.exports = {
     getFilterButtonsState,
     getPrefilterButtonState,
     escapeRegExp,
+    columnIndex,
+    columnFilterInput,
+    columnFilterClear,
 };

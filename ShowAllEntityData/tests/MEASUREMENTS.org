@@ -73,6 +73,22 @@ The last two were added 2026-09-07; the five before them see the header-count
 scan only as main-thread pressure delaying a CDP poll. Both carry a ~1 s floor
 from =waitForColHeaderCountsStable()=, identical on every arm.
 
+*Every filter number in this file is a SINGLE-PASS number* — recorded 2026-09-09,
+because it is not obvious from the metric names and it bounds what these rows can
+answer. =measureGlobalFilterOnce=/=measureColumnFilterOnce= type via
+=input.pressSequentially(value)= with no per-character delay, so all fourteen
+characters of "United Kingdom" land within a few ms. =runFilter()= is debounced at
+a 300 ms floor (=_adaptiveFilterDelay()=, whose adaptive term is only 184 ms at
+4174 rows), so the debounce swallows every keystroke but the last and exactly one
+filter pass is timed.
+
+That makes these rows a fair measure of *one pass*, and no measure at all of
+progressive typing — where a pause over ~300 ms, and every backspace, starts
+another pass. PERFORMANCE.org's "Findings: the per-keystroke filter cost" section
+is about the repeated-pass behaviour, and nothing here observes it. A
+=--typing-delay= arm would; it is deliberately not built yet, since the steps it
+would judge are verifiable by count instead (see that file's Tier 0).
+
 ** Results
 
 All times in ms.
@@ -474,6 +490,75 @@ dialog, which is why it is deferred behind =_scheduleColHeaderCounts()= and
 sliced one event-loop turn per column rather than fixed at the root. Step 3
 memoizes it; the slicing and deferral remain.
 
+* DOM operation counts — =artist-events=
+
+PERFORMANCE.org's Tier 0. Produced by =node tests/support/capture-pass-cost.js=,
+committed as =tests/snapshots/artist-events/pass-cost-*.json=. COUNTS, not
+timings: the instrument wraps hot DOM APIs, so it must never be run alongside
+=capture-interaction-perf.js=.
+
+The page is 4174 rows x 21 columns, so *87 654 cells* — the number every
+per-cell walk lands on, and the reason a raw count is legible at all.
+
+Times are UTC and mark when the run FINISHED, as in the interaction-latency
+table above. The 2026-09-09 arm ran on =petri= at 2.5 h uptime with one
+resident =claude= session — recorded because every arm records it, not because
+either matters to a count. Uptime moves timings by up to 1.8x (see the bisect
+section); it does not move a count at all, which is a large part of the point.
+
+| Date       | Time (UTC) | Host    | Script    | Arm  | Phase           |    gCS |     qsa |     qs | clone(tr) | walker | layout |
+|------------+------------+---------+-----------+------+-----------------+--------+---------+--------+-----------+--------+--------|
+| 2026-09-09 | 07:46      | =petri= | 9.99.1049 | main | initialRender   | 175309 | 2364742 | 322478 |      4174 |      0 |   8374 |
+| 2026-09-09 | 07:46      | =petri= | 9.99.1049 | main | filterApply     |   3318 |   52892 |  45303 |       158 |   5596 |    316 |
+| 2026-09-09 | 07:46      | =petri= | 9.99.1049 | main | filterClear     |      0 | 1078372 | 113612 |      4174 |   4474 |      0 |
+| 2026-09-09 | 07:46      | =petri= | 9.99.1049 | main | postClearSettle |  87654 |  134077 | 134474 |         0 |   4174 |   8373 |
+
+=gCS= =getComputedStyle=, =qsa= =querySelectorAll=, =qs= =querySelector=,
+=walker= =createTreeWalker=, =layout= the four layout-forcing getters
+(=offsetWidth=/=offsetHeight=/=scrollHeight=/=clientHeight= and their siblings).
+
+** How reproducible a count is — measured, not assumed
+
+Two back-to-back runs, same host, same script, agreed *exactly* on 28 of the
+32 phase counters — every =gCS=, =qsa=, =cloneNode= and =layout= figure among
+them. Only four moved:
+
+| Phase       | Counter            | run 1  | run 2  | Δ     |
+|-------------+--------------------+--------+--------+-------|
+| filterApply | =querySelector=    | 44669  | 45303  | +634  |
+| filterApply | =createTreeWalker= | 5438   | 5596   | +158  |
+| filterClear | =querySelector=    | 114880 | 113612 | -1268 |
+| filterClear | =createTreeWalker= | 4790   | 4474   | -316  |
+
+Opposite directions, 4:1 ratio in both cases, and both amounts a multiple of
+158 — the filtered row count. That is one =getCleanColumnText()= call (~4
+=querySelector= plus one TreeWalker) times 158 or 316 rows: a slice of the
+deferred header-count scan sliding across a phase boundary, not noise. Read
+those two counters with a few percent of slack and the other 28 as exact.
+
+** What the first arm establishes
+
+- *=_stripTransientCellState= is the dominant cost of a filter pass, by an
+  order of magnitude.* Stack sampling attributes *97.5%* of =filterClear='s
+  1 078 372 =querySelectorAll= calls to it — roughly *1.05 million*, twelve
+  per cell, against ~27 000 for everything else in that phase combined. It was
+  filed in PERFORMANCE.org as one of five equal walks; it is not. See Step 34.
+- *=applyStickyColumn= costs exactly one =getComputedStyle= per cell*: 87 654
+  in =postClearSettle=, 1.00 per cell to the digit, attributed to its inner
+  =_apply=. Step 24's estimate was right on the number.
+- *=_countLiveDateFlags= was overestimated ~8x.* PERFORMANCE.org's Step 25 said
+  ~87 700 =querySelectorAll('.mb-live-date-flag')= per pass. Measured: *10 500*
+  on a clear, 3318 on an apply, 98 154 across the initial render. 10 500 is
+  500 x 21 — the =renderRowsChunked= prefix — so it scans a PARTIALLY rendered
+  tbody, which is a second bug on top of the live-tbody tally Step 25 already
+  files. Still worth fixing, and no longer a Tier 1 headline.
+- *Deferred work crosses phase boundaries, and the boundary is informative.*
+  =filterClear= records =gCS= 0 while =postClearSettle= records all 87 654: on
+  a CLEAR the sticky-column pass runs after the status line settles. On an
+  APPLY it lands inside =filterApply= (3318 = 158 x 21) purely because 158 rows
+  finish first. Compare an arm on the two phases together, never on
+  =filterClear= alone.
+
 * Third-party service limits
 
 Measured, not documented by the services. Each is load-bearing for a design
@@ -827,3 +912,44 @@ not an automatic consequence of this file.
 
 *Consequence for the Results table above*: the =NB-3641= vs =petri= 1.5-1.85x
 is not a machine ratio. See the correction under that table.
+
+*** Arm E tooling — reboot once, then 18 days with zero Claude Code on petri
+
+Set up 2026-09-09, to run unattended rather than depend on 18 days of manual
+discipline. *The protocol is one reboot to zero the clock, then NO further
+reboots and NO Claude Code session of any kind on petri for the full 18
+days* — a repeated reboot-then-measure cycle would test something else
+entirely (that shape is closer to arm D, repeated) and would not close this
+gap.
+
+- *Script pin*: branch =measure/9.99.1049-arm-e=, created at =a56f1b1= (the
+  commit that bumped =// @version= to =9.99.1049=), checked out into its own
+  worktree at =/home/vzell/git/saed-perf-9.99.1049-arm-e=. Never merge =main=
+  into this branch — the whole point is a script held byte-identical across
+  all 18 days so only uptime varies. Verify with
+  =git diff a56f1b1 -- ShowAllEntityData.user.js= (must stay empty) before
+  trusting any sample on it.
+- *Gate*: =tests/support/run-perf-arm-e.sh <morning|evening>=, in that
+  worktree. Checks =pgrep -x claude= first and refuses to run (logging
+  =SKIPPED= with the offending PIDs) if anything is resident — verified
+  working 2026-09-09 against this very session's own PID. On success it runs
+  =capture-interaction-perf.js --pageType=artist-events --label=arm-e-<slot>=,
+  records =uptimeHours= from =/proc/uptime=, and self-commits the resulting
+  JSON plus =tests/snapshots/artist-events/arm-e-runs.log= on that branch.
+- *Schedule*: cron, 07:00 and 19:00 daily (=crontab -l= on petri). Cron runs
+  under systemd (=cron.service= enabled+active), so it survives a WSL
+  restart, but the whole 18-day clock does NOT survive a Windows sleep,
+  hibernate, or an explicit =wsl --shutdown= — avoid those on petri for the
+  duration, same as the reboot restriction.
+- *Log*: =tests/snapshots/artist-events/arm-e-runs.log= (one line per
+  attempt, =OK=/=SKIPPED=/=FAILED= + uptime) and
+  =arm-e-runs.log.capture-output= (raw script stdout/stderr), both in the
+  pinned worktree, both self-committed by the wrapper.
+- *Still manual*: the one reboot that starts the clock, and keeping every
+  Claude Code session — including implementation work on the new Steps in
+  point (2) below — off petri entirely for the 18 days. That work is
+  happening on =NB-3641= instead, decided 2026-09-09.
+- *Folding back*: after 18 days, pull =measure/9.99.1049-arm-e='s commits,
+  read =arm-e-runs.log= for the day-by-day =uptimeHours= trend (smooth climb
+  vs. a step, per the open question above), and add the results here as a
+  proper dated table — this bullet list is signpost, not the data.

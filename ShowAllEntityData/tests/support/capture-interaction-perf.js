@@ -59,37 +59,37 @@
  * Output: `tests/snapshots/<pageType>/interaction-perf-<branch>-<version>-
  * <capturedAt>[-<hostname>].json`, where `<branch>` is the current git
  * branch (auto-detected), `<version>` is the userscript header's version
- * NUMBER without its `+YYYY-MM-DD` ship stamp (see `versionForFilename()`),
- * `<capturedAt>` is the run's own date, and `<hostname>` is appended
- * only when `os.hostname()` resolves to something meaningful (see
- * `sanitizeForFilename()`/`hostnameForFilename()`) — an unresolvable host is
- * left OUT of the name rather than guessed, matching CLAUDE.md's "mark an
- * unknown host as unknown" rule. This is kept side by side per arm rather
+ * NUMBER without its `+YYYY-MM-DD` ship stamp, `<capturedAt>` is the run's
+ * own date, and `<hostname>` is appended only when the host resolves to
+ * something meaningful — an unresolvable host is left OUT of the name rather
+ * than guessed, matching CLAUDE.md's "mark an unknown host as unknown" rule.
+ * All of that naming, and the `machine` block below, live in
+ * `runMetadata.js`, shared with `capture-pass-cost.js` so the two capture
+ * scripts cannot drift apart on the convention. This is kept side by side per arm rather
  * than a single mutable file, so a `main` run and a `perf-steps-1-4` run —
  * or the same branch captured on two different machines — can be compared
  * directly without one overwriting the other.
  */
 
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
-const { execSync } = require('child_process');
 const { chromium } = require('playwright');
 const { loadFromDiskFixture } = require('./diskFixture');
 const { seedGmValues } = require('./gmStubs');
 const { waitForRenderComplete } = require('./browser');
 const {
     waitForFilterSettled, waitForSortSettled, waitForColHeaderUniqCount,
-    waitForColHeaderCountsStable,
+    waitForColHeaderCountsStable, columnIndex, columnFilterInput, columnFilterClear,
 } = require('./filterSortAssertions');
 const {
     URL, FIXTURE_PATH, SEED_GM_VALUES, FILTER_COLUMN, FILTER_VALUE, SORT_COLUMN, UNIQ_DROP_COLUMN,
     UNIQ_COUNT_COLUMN, UNIQ_COUNT_TOTAL, UNIQ_COUNT_FILTER_VALUE, UNIQ_COUNT_FILTER_UNIQ,
 } = require('./artistEventsFixture');
+const {
+    readScriptVersion, machineInfo, hostnameForFilename, versionForFilename, readCurrentBranch,
+} = require('./runMetadata');
 
-const REPO_ROOT = path.join(__dirname, '..', '..');
 const SNAPSHOTS_DIR = path.join(__dirname, '..', 'snapshots');
-const USERSCRIPT_PATH = path.join(REPO_ROOT, 'ShowAllEntityData.user.js');
 const SAMPLES = 5;
 
 const ARTIST_EVENTS = {
@@ -138,193 +138,6 @@ function parseArgs(argv) {
         pageType: arg ? arg.slice('--pageType='.length) : null,
         label: labelArg ? labelArg.slice('--label='.length) : null,
     };
-}
-
-/** @returns {string} */
-function readScriptVersion() {
-    const header = fs.readFileSync(USERSCRIPT_PATH, 'utf8').slice(0, 2000);
-    const m = header.match(/\/\/ @version\s+(\S+)/);
-    return m ? m[1] : 'unknown';
-}
-
-/**
- * Whether a Claude Code session has run on this box since it last booted —
- * distinct from `claudeResident`, which only sees one running RIGHT NOW.
- *
- * This closes a gap `tests/MEASUREMENTS.org`'s "PARTLY ANSWERED" arm A hit:
- * `claudeResident: {count: 0}` cannot tell "never ran a session" apart from
- * "ran one, then closed it" — and arm E (18 days of uptime with `claude`
- * never run at all, to isolate plain uptime accumulation from session
- * residue) needs exactly that distinction on every capture in its series, not
- * just remembered by the person running it.
- *
- * Every Claude Code session creates a directory under `/tmp/claude-<uid>/`
- * (this repo's own scratchpad path lives under one). If anything under
- * `/tmp/claude-*` has an mtime after boot, a session ran since the last
- * reboot, whether or not one is resident now.
- *
- * Linux-only, like `claudeResident` above (BSD/macOS `find` has no
- * `-newermt`) — `null` on any other platform or if the check itself fails,
- * kept distinct from `false` ("checked, found nothing since boot").
- *
- * @param {number} uptimeHours
- * @returns {boolean|null}
- */
-function claudeSinceBoot(uptimeHours) {
-    if (os.platform() !== 'linux') return null;
-    const bootEpochSeconds = Math.floor(Date.now() / 1000 - uptimeHours * 3600);
-    try {
-        const out = execSync(
-            `find /tmp/claude-* -newermt '@${bootEpochSeconds}' -print -quit 2>/dev/null`,
-            { stdio: ['ignore', 'pipe', 'ignore'] },
-        ).toString().trim();
-        return out.length > 0;
-    } catch (err) {
-        // `find` exits 1 with empty stdout both when no `/tmp/claude-*`
-        // directory exists at all (the glob expands to nothing) and when one
-        // exists but nothing inside is newer than boot — either way that IS
-        // "no session since boot", not a failed check. Same reasoning as
-        // claudeResident's own `ps` check below.
-        return (err.status === 1 && !String(err.stdout || '').trim()) ? false : null;
-    }
-}
-
-/**
- * Host conditions that are not hardware but move timings anyway: how long the
- * box has been up, and whether a Claude Code session is resident while the
- * run happens.
- *
- * Both exist because of a real, still-unresolved gap. `petri` measured 1735 ms
- * on the global filter on the morning of 2026-09-07 and ~3100 ms for the SAME
- * script version afterwards, with no reboot in between (18 days of uptime by
- * the time it was noticed) and a `claude` process that had started that same
- * afternoon and stayed up. A separate host, `NB-3641`, measured ~1.8x faster
- * at an identical script version — and was reportedly freshly rebooted, which
- * nothing in its JSON could confirm. Uptime and reboot recency are therefore
- * live candidate variables that no committed arm records, which is the same
- * defect that made `hostname` and `startedAt` necessary.
- *
- * `claudeResident` is `null` when the check could not run at all (`ps -C` is
- * Linux-shaped and unsupported on BSD/macOS `ps`) — deliberately distinct from
- * `{count: 0}`, which means "checked, none running", per CLAUDE.md's "mark an
- * unknown as unknown rather than inferring it". `claudeSinceBoot` is the same
- * distinction one level up — see that function's own JSDoc.
- *
- * @returns {{uptimeHours: number,
- *   claudeResident: {count: number, oldestSessionHours: number|null}|null,
- *   claudeSinceBoot: boolean|null}}
- */
-function hostRuntimeState() {
-    const uptimeHours = Math.round(os.uptime() / 360) / 10;
-    let claudeResident = null;
-    try {
-        const out = execSync('ps -C claude -o etimes=', {
-            stdio: ['ignore', 'pipe', 'ignore'],
-        }).toString().trim();
-        const ages = out ? out.split('\n').map((n) => parseInt(n, 10)).filter(Number.isFinite) : [];
-        claudeResident = {
-            count: ages.length,
-            oldestSessionHours: ages.length ? Math.round(Math.max(...ages) / 360) / 10 : null,
-        };
-    } catch (err) {
-        // `ps -C` exits 1 with empty output when nothing matches — that is a
-        // real "none running" answer, not a failed check. Anything else means
-        // the check itself did not work, which stays unknown.
-        claudeResident = (err.status === 1 && !String(err.stdout || '').trim())
-            ? { count: 0, oldestSessionHours: null }
-            : null;
-    }
-    return { uptimeHours, claudeResident, claudeSinceBoot: claudeSinceBoot(uptimeHours) };
-}
-
-/**
- * Identifies the machine a run happened on, so absolutes are never compared
- * across machines by accident.
- *
- * This exists because two `main` captures three script versions apart were
- * 1.5-2x apart, and "which machine was that on" could not be answered from the
- * committed JSON at all — the gap got attributed to machine state, then to
- * load, before anyone checked. Both turned out to be guesses. Record enough to
- * settle it next time: host, core count, and the two versions that actually
- * move browser timings.
- *
- * Also folds in `hostRuntimeState()`'s uptime/resident-session fields — see
- * that helper for why those belong in the machine block.
- *
- * @returns {{hostname: string, platform: string, release: string, cpus: number,
- *   totalMemGb: number, node: string, playwright: string, uptimeHours: number,
- *   claudeResident: {count: number, oldestSessionHours: number|null}|null,
- *   claudeSinceBoot: boolean|null}}
- */
-function machineInfo() {
-    let playwright = 'unknown';
-    try {
-        playwright = require('playwright/package.json').version;
-    } catch { /* leave unknown */ }
-    return {
-        hostname: os.hostname(),
-        platform: os.platform(),
-        release: os.release(),
-        cpus: os.cpus().length,
-        totalMemGb: Math.round(os.totalmem() / 1024 ** 3),
-        node: process.version,
-        playwright,
-        ...hostRuntimeState(),
-    };
-}
-
-/**
- * Filesystem-safe form of an arbitrary string for use inside a filename:
- * anything other than letters/digits/dot/underscore/hyphen becomes `-`.
- *
- * @param {string} s
- * @returns {string}
- */
-function sanitizeForFilename(s) {
-    return s.replace(/[^A-Za-z0-9._-]+/g, '-');
-}
-
-/**
- * `os.hostname()` can come back empty, `localhost`, or some other
- * non-identifying placeholder depending on the environment. Only a
- * meaningful hostname earns a place in the filename — anything else is
- * left out rather than baked in as a false identifier, per CLAUDE.md's
- * "mark an unknown host as unknown rather than inferring it".
- *
- * @param {string} hostname
- * @returns {string|null}
- */
-function hostnameForFilename(hostname) {
-    if (!hostname || /^(localhost|unknown)$/i.test(hostname)) return null;
-    return sanitizeForFilename(hostname);
-}
-
-/**
- * Filename form of the userscript version: the `M.MM.NNN` number alone,
- * without the `+YYYY-MM-DD` release stamp the header carries.
- *
- * That stamp is the version's own SHIP date, which is not the capture date
- * and reads as one. Sanitizing turns `9.99.1049+2026-09-08` into
- * `9.99.1049-2026-09-08`, so a name that already ends in `<capturedAt>`
- * carried two same-shaped dates — and disagreed with every hand-named
- * archive and with CLAUDE.md's documented `<version>-<capturedAt>` pattern.
- * The full version is not lost: it stays verbatim in the JSON's own
- * `scriptVersion` field, which is what anything precise should read.
- *
- * @param {string} version
- * @returns {string}
- */
-function versionForFilename(version) {
-    return sanitizeForFilename(version.split('+')[0]);
-}
-
-/** @returns {string} */
-function readCurrentBranch() {
-    try {
-        return execSync('git rev-parse --abbrev-ref HEAD', { cwd: REPO_ROOT }).toString().trim();
-    } catch {
-        return 'unknown';
-    }
 }
 
 /**
@@ -389,19 +202,6 @@ async function loadPage(browser, config) {
     return page;
 }
 
-/**
- * @param {import('@playwright/test').Page} page
- * @param {string} colName
- * @returns {Promise<import('@playwright/test').Locator>}
- */
-async function colFilterInputLocator(page, colName) {
-    const colIdx = await page.evaluate((name) => {
-        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
-        return Array.from(document.querySelectorAll('table.tbl thead th')).findIndex((t) => strip(t.textContent) === name);
-    }, colName);
-    return page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
-}
-
 /** @param {import('playwright').Browser} browser @param {typeof ARTIST_EVENTS} config @param {string} value @returns {Promise<number>} */
 async function measureGlobalFilterOnce(browser, config, value) {
     const page = await loadPage(browser, config);
@@ -417,7 +217,7 @@ async function measureGlobalFilterOnce(browser, config, value) {
 /** @param {import('playwright').Browser} browser @param {typeof ARTIST_EVENTS} config @param {string} value @returns {Promise<number>} */
 async function measureColumnFilterOnce(browser, config, value) {
     const page = await loadPage(browser, config);
-    const input = await colFilterInputLocator(page, config.filterColumn);
+    const input = columnFilterInput(page, await columnIndex(page, config.filterColumn));
     await input.click();
     const start = Date.now();
     await waitForFilterSettled(page, () => input.pressSequentially(value));
@@ -468,22 +268,6 @@ async function measureUniqDropColdWarmOnce(browser, config) {
 }
 
 /**
- * One column's ✕ clear button, scoped through its enclosing
- * `.mb-col-filter-wrapper` rather than indexed — a checkbox column gets a bare
- * `<th>` with no input and no ✕, so the ✕ list is not index-aligned with the
- * column list. Same helper as artist-events-interactions.spec.js's own.
- *
- * @param {import('@playwright/test').Page} page
- * @param {number} colIdx
- * @returns {import('@playwright/test').Locator}
- */
-function columnFilterClear(page, colIdx) {
-    return page.locator(
-        `table.tbl thead .mb-col-filter-wrapper:has(.mb-col-filter-input[data-col-idx="${colIdx}"]) .mb-col-filter-clear`
-    ).first();
-}
-
-/**
  * Time from "the page says it has finished rendering" to "the header-count
  * scan has actually finished", measured as the `Event` badge reaching its true
  * unique count over all 4174 rows.
@@ -526,15 +310,12 @@ async function measureHeaderCountsRestoreOnce(browser, config) {
     await waitForColHeaderUniqCount(page, config.headerCountColumn, config.headerCountTotal, { timeout: 120000 });
     await waitForColHeaderCountsStable(page);
 
-    const colIdx = await page.evaluate((name) => {
-        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
-        return Array.from(document.querySelectorAll('table.tbl thead th')).findIndex((t) => strip(t.textContent) === name);
-    }, config.headerCountColumn);
+    const colIdx = await columnIndex(page, config.headerCountColumn);
 
     // .click() then .pressSequentially() — column filter inputs are
     // readonly-until-a-genuine-trusted-interaction (anti-autofill hardening),
     // and .fill() is rejected by _isGenuineFilterInputEvent().
-    const colInput = page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
+    const colInput = columnFilterInput(page, colIdx);
     await colInput.click();
     await waitForFilterSettled(page, () => colInput.pressSequentially(config.headerCountFilterValue));
     await waitForColHeaderUniqCount(page, config.headerCountColumn, config.headerCountFilterUniq, { timeout: 120000 });
