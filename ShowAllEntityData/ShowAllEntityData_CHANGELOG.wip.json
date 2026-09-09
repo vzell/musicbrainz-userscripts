@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The 📊 unique-values dropdown's \"Entity info - Area name\" section only ever showed a trailing flag for the country-level area (e.g. \"Spain\"), never a subdivision (e.g. \"Catalunya\"), even with a flag-decorating userscript installed. Root cause: the icon-detection logic only recognized the OLD `span.area-icon` shape, not \"MusicBrainz: More Flags Everywhere\"'s current `span.custom-area-icon` shape or \"MusicBrainz: Right Side Flags Everywhere\"'s `span.mfe-flag-wrapper` + trailing `img.mb-hq-flag-img` shape. A new shared `_findAreaLinkIcon()` helper now recognizes all three shapes (plus the native country flag), used consistently by the table's own area-chain rendering, the entity-info dropdown population, and the dropdown's cell preview icons — so a subdivision now renders \"[glyph] » area name: Catalunya [icon]\" whenever either userscript decorates it."
+        ]
+      }
+    ]
+  }
+]

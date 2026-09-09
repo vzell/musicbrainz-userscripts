@@ -7998,3 +7998,69 @@ a `flag-` class) and a trailing sibling after the label carries the real
 `flag flag-XX` class. Verified failing against the pre-fix code (reverted
 `ShowAllEntityData.user.js` via `git stash`, re-ran, confirmed the "flag
 replaces glyph" assertion failed) before restoring the fix.
+
+## 2026-09-09 — uniq-dropdown "Entity info - Area name" never showed a flag for a SUBDIVISION, only the country (fixed)
+
+Follow-up to the same-day fix above. That fix generalized correctly to any
+`kind === 'name'` entry with a `flagNode`, but `flagNode` itself was only
+ever populated for the country segment, because the underlying icon
+detection (`_routeAreaLink()`'s inline check, `_findCellEntityRefs()`'s
+`flagEl` expression, and `_buildFlagSegmentsForRoot()`'s `iconSel`) only
+recognized `a.closest('.flag')` (native) and a sibling `span.area-icon`
+(an old third-party shape) — neither of which either CURRENTLY registered
+interop fixture actually produces.
+
+Read the real fixture sources rather than trusting the existing JSDoc,
+which named `span.area-icon` as "More Flags Everywhere"'s shape:
+
+- `tests/fixtures/live-userscripts/MusicBrainz_More_Flags_Everywhere.user.js`'s
+  `createFlagIcon()` now builds `<span class="custom-area-icon"><img
+  class="flag-custom-region"></span>`, inserted as
+  `a.previousElementSibling` — same POSITION as the old shape, renamed
+  class. The old `area-icon` name is not dead, though: the existing
+  `tests/fixtures/area-name-collision.html` fixture (New York
+  city/state collision) still uses it, so both class names needed to stay
+  recognized, not swap one for the other.
+- `tests/fixtures/live-userscripts/MusicBrainz_Right_Side_Flags_Everywhere.user.js`
+  (per the user: intended to eventually replace More Flags Everywhere)
+  produces a THIRD, structurally different shape via `insertFlags()`: the
+  anchor is wrapped in `<span class="mfe-flag-wrapper">`, with the icon as
+  a TRAILING `<img class="mb-hq-flag-img">` sibling *inside* that same
+  wrapper, after the anchor — not a preceding sibling at all.
+
+The main table cell never showed this gap because both third-party
+scripts run their own page-wide `MutationObserver` and repaint whatever
+DOM currently holds a `/area/` anchor (including this script's own
+rendered cells) on every mutation — so the visible table looks right
+regardless of what this script's own selectors match. The dropdown has no
+such live repaint; it bakes a one-time snapshot into `entityNameFlagMap`,
+so its gap was directly visible: a subdivision like "Catalunya" never got
+a `flagNode` with either script active.
+
+Fix: one new shared helper, `_findAreaLinkIcon(anchor)` (grep anchor
+`function _findAreaLinkIcon`), recognizing all three shapes plus the
+native flag, built from three named selector constants
+(`AREA_ICON_PRECEDING_SIBLING_SEL`, `AREA_ICON_WRAPPER_SEL`,
+`AREA_ICON_TRAILING_IMG_SEL`) so `_buildFlagSegmentsForRoot()`'s `iconSel`
+is built from the SAME constants instead of an independently-typed copy —
+directly closing the "two implementations quietly disagree" gap that
+caused this bug (the MFE class rename landed in neither of them).
+`_routeAreaLink()` and `_findCellEntityRefs()` now both call the shared
+helper instead of their own inline checks. `_bakeFlagIconNode()`'s
+verbatim-clone branch was widened from `classList.contains('area-icon')`
+alone to also cover `custom-area-icon` and any bare `<img>` (RSFE's
+shape), same verbatim-clone treatment as before — no new cross-document
+portability guarantee, matching the pre-existing limitation of the legacy
+shape.
+
+No change needed to `makeValueSynItem()` — the rendering already keyed off
+`flagNode` generically per entry, not per country.
+
+New regression coverage:
+`tests/fixtures/uniq-drop-area-name-flag-thirdparty-shapes.spec.js` (+
+`uniq-drop-area-name-flag-mfe-shape.html` /
+`uniq-drop-area-name-flag-rsfe-shape.html`) — one case per third-party
+shape, each asserting the leading `arealink` glyph plus a trailing icon
+matching that shape's own class (`img.flag-custom-region` /
+`img.mb-hq-flag-img`). Verified both fail against the pre-fix code (`git
+stash` on `ShowAllEntityData.user.js` alone) before restoring the fix.
