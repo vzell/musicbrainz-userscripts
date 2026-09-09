@@ -72,6 +72,22 @@ The last two were added 2026-09-07; the five before them see the header-count
 scan only as main-thread pressure delaying a CDP poll. Both carry a ~1 s floor
 from =waitForColHeaderCountsStable()=, identical on every arm.
 
+*Every filter number in this file is a SINGLE-PASS number* — recorded 2026-09-09,
+because it is not obvious from the metric names and it bounds what these rows can
+answer. =measureGlobalFilterOnce=/=measureColumnFilterOnce= type via
+=input.pressSequentially(value)= with no per-character delay, so all fourteen
+characters of "United Kingdom" land within a few ms. =runFilter()= is debounced at
+a 300 ms floor (=_adaptiveFilterDelay()=, whose adaptive term is only 184 ms at
+4174 rows), so the debounce swallows every keystroke but the last and exactly one
+filter pass is timed.
+
+That makes these rows a fair measure of *one pass*, and no measure at all of
+progressive typing — where a pause over ~300 ms, and every backspace, starts
+another pass. PERFORMANCE.org's "Findings: the per-keystroke filter cost" section
+is about the repeated-pass behaviour, and nothing here observes it. A
+=--typing-delay= arm would; it is deliberately not built yet, since the steps it
+would judge are verifiable by count instead (see that file's Tier 0).
+
 ** Results
 
 All times in ms.
