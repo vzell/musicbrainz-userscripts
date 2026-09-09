@@ -272,14 +272,19 @@ measured on the other two hosts. This is a new absolute baseline for
 PARTLY ANSWERED section above — that question still needs arm E, run on
 =petri= itself.
 
-**** Second arm, 2026-09-09 06:38 — same reboot, no drift, and one label/measurement mismatch worth flagging
+**** Second arm, 2026-09-09 06:38 — same reboot, no drift
 
-Labeled =--label=8h-up=, but the JSON's own =uptimeHours= reads *2.2*, not 8 —
-exactly the kind of unrecorded-condition gap this file exists to catch. Trust
-the measured field, not the label: no =claudeSinceBoot= in this JSON either
-(captured 06:19-06:38 UTC, before the commit that added the field landed at
-07:19 UTC, so this predates it — not a bug). Against the first =vzell-lap=
-arm (0.4h uptime, same reboot, also no =claude=):
+Committed as =interaction-perf-2h-up-9.99.1049-2026-09-09-vzell-lap.json=.
+Originally run with =--label=8h-up=, which did not match the JSON's own
+=uptimeHours= (2.2, not 8) — corrected after the fact: the file was renamed
+and its =branch= field fixed to =2h-up= to match the measured value, per this
+file's own rule to trust the measured field over a hand-typed label. The raw
+capture log in =org/perf-3.org= still shows the original =8h-up= label and
+filename, since that is what the terminal actually printed at the time. No
+=claudeSinceBoot= in this JSON either (captured 06:19-06:38 UTC, before the
+commit that added the field landed at 07:19 UTC, so this predates it rather
+than being broken). Against the first =vzell-lap= arm (0.4h uptime, same
+reboot, also no =claude=):
 
 | Metric                | =vzell-lap= 0.4h | =vzell-lap= 2.2h | 0.4h / 2.2h |
 |-----------------------+-------------------+--------------------+-------------|

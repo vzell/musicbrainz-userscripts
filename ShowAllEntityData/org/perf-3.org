@@ -702,3 +702,7 @@ Written to /home/vzell/git/musicbrainz-userscripts/ShowAllEntityData/tests/snaps
 
 Label says 8h-up; the JSON's own uptimeHours says 2.2. Trust the measured field. No claudeSinceBoot in this JSON — captured 06:19-06:38 UTC, before the field-adding commit landed at 07:19 UTC, so it predates it rather than being broken. Against the first vzell-lap arm (0.4h uptime, same reboot, also no claude): 1.06-1.39x, with the LATER arm consistently FASTER — the opposite direction from an uptime/residue hypothesis. Read as this machine's own measurement noise (it did not corroborate anything seen on petri's D/D2 or NB-3641's F-plus-7h, both of which were flat), not a finding. Folded into tests/MEASUREMENTS.org as a new subsection right after the first vzell-lap arm.
 
+*** fixing the 8h-up label
+
+Renamed the committed file to interaction-perf-2h-up-9.99.1049-2026-09-09-vzell-lap.json and corrected its branch field from "8h-up" to "2h-up" to match the JSON's own measured uptimeHours (2.2h), rather than the mistyped --label value at capture time. This transcript above is left as-is — it is what the terminal actually printed that morning, and the filename it names is now stale; tests/MEASUREMENTS.org's own subsection has been updated to cite the corrected filename.
+
