@@ -1,5 +1,54 @@
 [
   {
+    "version": "9.99.1054",
+    "date": "2026-09-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The synthetic \"Locality\"/\"Region\" columns (split from \"Location\") could render the same area's flag/subdivision icon in a DIFFERENT order on different rows — e.g. \"Praha\" with the icon before the name on one row and after it on another. Root cause: a race between this script's own synchronous extraction and a flag-decorating userscript's asynchronous, continuous re-scanning of the page for undecorated `/area/` anchors — including anchors this script had just cloned into its own synthetic columns. Fixed two ways: `_routeAreaLink()` now always renders the area name BEFORE its icon (matching the dropdown's own \"name, then flag\" convention), and stamps the cloned anchor with the same `data-flag-processed` marker \"MusicBrainz: More Flags Everywhere\" and \"Right Side Flags Everywhere\" both already check, so neither script re-decorates it afterward in a different order. `_findAreaLinkIcon()` was widened to recognize an icon on either side of the anchor, since it now needs to recognize its own reordered output as readily as a live source page's native placement."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1053",
+    "date": "2026-09-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"MusicBrainz: Right Side Flags Everywhere\" wraps a country's area anchor in its own `span.mfe-flag-wrapper` and, when that anchor already sat inside a native `<span class=\"flag flag-XX\">`, explicitly neutralizes that native flag's background rather than removing the now-empty span. `_findAreaLinkIcon()` checked the (now hollow) native flag ancestor before RSFE's own wrapper, so the dropdown's \"Entity info - Area name\" trailing icon — and the cell-preview row's icon segments — showed a blank/duplicate flag in front of the name instead of RSFE's real icon after it. Fixed by checking RSFE's wrapper first. Separately, `_buildFlagSegmentsForRoot()`'s `iconSel` used a bare `span[class*=\"flag-\"]` substring check, which also accidentally matched RSFE's own `mfe-flag-wrapper` class (it merely contains the characters \"flag-\"), adding a second bogus icon segment; tightened to require the literal `flag` class token, and to skip a native flag span RSFE has already hollowed out via `:not(:has(...))`.",
+          "The unique-values dropdown's cell-preview row could also render a country name with an artificial space in the middle (e.g. \"Israel\" → \"Isra el\") when a partial column-filter match highlighted part of it, splitting one logical word across two adjacent DOM text nodes that `_buildFlagSegmentsForRoot()`'s `textParts.join(' ')` then joined with a synthetic space. `getCleanColumnText()` already solves this exact class of bug (clone + unwrap the highlight/`.mb-ic-wrap` spans + `.normalize()`), but that function's text-only approach can't be reused directly here since flag-icon baking needs `getComputedStyle()` on the LIVE, attached elements. Fixed by baking every icon from the live root first (in document order), then walking a normalized clone for text only and consuming the pre-baked icons by position — icon-matching elements never overlap the unwrapped selectors, so their count and order are unaffected by the clone."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1052",
+    "date": "2026-09-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A `<div id=\"sanojjonasRoot\">` (a third-party userscript's container) could survive indefinitely on a fully-rendered `artist-events`/`area-events`/`place-events` page. Root cause: the guard on both sanojjonas-cleanup call sites checked `pageType === 'events'`, a value that never actually occurs — `pageDefinitions` only ever assigns `'artist-events'`/`'area-events'`/`'place-events'`. This silently disarmed `_watchForLateSanojjonasInjections()`'s MutationObserver on every real events page, the one mechanism that catches sanojjonas injecting its container AFTER this script's own one-shot cleanup has already run. Both call sites now go through a single `_shouldCleanupSanojjonas()` helper checking the real pageType values."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1051",
+    "date": "2026-09-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The 📊 unique-values dropdown's \"Entity info - Area name\" section only ever showed a trailing flag for the country-level area (e.g. \"Spain\"), never a subdivision (e.g. \"Catalunya\"), even with a flag-decorating userscript installed. Root cause: the icon-detection logic only recognized the OLD `span.area-icon` shape, not \"MusicBrainz: More Flags Everywhere\"'s current `span.custom-area-icon` shape or \"MusicBrainz: Right Side Flags Everywhere\"'s `span.mfe-flag-wrapper` + trailing `img.mb-hq-flag-img` shape. A new shared `_findAreaLinkIcon()` helper now recognizes all three shapes (plus the native country flag), used consistently by the table's own area-chain rendering, the entity-info dropdown population, and the dropdown's cell preview icons — so a subdivision now renders \"[glyph] » area name: Catalunya [icon]\" whenever either userscript decorates it."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1050",
     "date": "2026-09-09",
     "sections": [
