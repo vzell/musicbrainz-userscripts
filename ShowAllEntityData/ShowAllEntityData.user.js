@@ -37483,6 +37483,38 @@ a { color: #1565c0; }`;
                 activeDefinition && activeDefinition.tableMode === 'multi');
     }
 
+    // The three real events pageTypes — `pageDefinitions` has no entry
+    // literally typed `'events'` (that string never matches anything; see
+    // `_shouldCleanupSanojjonas()`'s own JSDoc). Kept as its own array
+    // rather than folded into `_shouldCleanupSanojjonas()` inline so a
+    // future events pageType only needs updating here.
+    const EVENTS_PAGE_TYPES = ['area-events', 'place-events', 'artist-events'];
+
+    /**
+     * Whether sanojjonas cleanup (`removeSanojjonasContainers()` /
+     * `_watchForLateSanojjonasInjections()`) should run for the CURRENT
+     * page — sanojjonas only ever appears on events pages or
+     * `_isReleaseGroupsMultiMode()` pages.
+     *
+     * This exists specifically because `pageType === 'events'` — the
+     * condition every sanojjonas call site used to check inline — is NEVER
+     * true: `pageDefinitions` only has `type: 'artist-events'`,
+     * `'area-events'`, `'place-events'`, never the bare string `'events'`.
+     * Both guarded call sites silently never ran on a real events page,
+     * which is exactly why `_watchForLateSanojjonasInjections()` (the one
+     * thing that can catch sanojjonas injecting its container AFTER this
+     * script's own render finishes — see its own JSDoc for the race) never
+     * got armed there, letting `#sanojjonasRoot` survive on a
+     * fully-rendered `artist-events` page. Centralized into one helper,
+     * rather than repeating the corrected condition at each call site, so
+     * the two guards can't drift apart from each other again the same way.
+     *
+     * @returns {boolean}
+     */
+    function _shouldCleanupSanojjonas() {
+        return EVENTS_PAGE_TYPES.includes(pageType) || _isReleaseGroupsMultiMode();
+    }
+
     /**
      * Removes various clutter elements from the MusicBrainz page to prepare for
      * the consolidated view. Each task is independently guarded and logs only
@@ -37495,8 +37527,7 @@ a { color: #1565c0; }`;
      *   - Slick slider containers (matched by a `700px`-width wrapper style).
      *   - `<details>` blocks containing more than 5 `<img>`s (the cover-art
      *     gallery widget).
-     *   - `removeSanojjonasContainers()`, but only on `events` pages or when
-     *     `_isReleaseGroupsMultiMode()` is true.
+     *   - `removeSanojjonasContainers()`, gated by `_shouldCleanupSanojjonas()`.
      *   - `cleanupBarcodeHighlights()`, unconditionally.
      */
     function performClutterCleanup() {
@@ -37547,7 +37578,7 @@ a { color: #1565c0; }`;
         });
         if (removedDetailsCount > 0) Lib.debug('cleanup', `Removed ${removedDetailsCount} gallery/details blocks.`);
 
-        if (pageType === 'events' || _isReleaseGroupsMultiMode()) {
+        if (_shouldCleanupSanojjonas()) {
             removeSanojjonasContainers();
         }
 
@@ -44854,7 +44885,7 @@ a { color: #1565c0; }`;
         // Run refactored clutter removal
         performClutterCleanup();
 
-        if (pageType === 'events' || _isReleaseGroupsMultiMode()) {
+        if (_shouldCleanupSanojjonas()) {
             removeSanojjonasContainers();
             _watchForLateSanojjonasInjections();
         }
@@ -47775,9 +47806,13 @@ a { color: #1565c0; }`;
      * `_hydrateAndRenderFromSnapshotData()`), the plain "Load from Disk"
      * path (unconditionally, right before that same function's other
      * caller in `reader.onload`), and `startFetchingProcess()`'s normal
-     * fetch path (gated `pageType === 'events' || _isReleaseGroupsMultiMode()`,
-     * the same condition already guarding every other sanojjonas call site,
-     * since sanojjonas only ever appears on those page shapes).
+     * fetch path (gated by `_shouldCleanupSanojjonas()`, the same
+     * condition already guarding every other sanojjonas call site, since
+     * sanojjonas only ever appears on those page shapes — this WAS
+     * `pageType === 'events' || _isReleaseGroupsMultiMode()` inline at
+     * each site, but `pageType` is never literally `'events'` — see
+     * `_shouldCleanupSanojjonas()`'s own JSDoc — so this fetch-path arming
+     * silently never happened on a real events page until that was fixed).
      *
      * Disconnects itself after `SA_SANOJJONAS_WATCH_MS` — longer than
      * jesus2099's own 5000ms window specifically because sanojjonas' own

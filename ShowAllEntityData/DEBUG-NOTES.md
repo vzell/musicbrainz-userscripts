@@ -8064,3 +8064,59 @@ shape, each asserting the leading `arealink` glyph plus a trailing icon
 matching that shape's own class (`img.flag-custom-region` /
 `img.mb-hq-flag-img`). Verified both fail against the pre-fix code (`git
 stash` on `ShowAllEntityData.user.js` alone) before restoring the fix.
+
+## 2026-09-09 — `#sanojjonasRoot` survived on a fully-rendered `artist-events` page (fixed)
+
+Unrelated to the two entries above — reported separately in the same
+session ("why is `#sanojjonasRoot` still there, it should have been
+removed by now with one of our sanojjonas fixes").
+
+Root cause, found by grepping every `removeSanojjonasContainers()` /
+`_watchForLateSanojjonasInjections()` call site: two of them —
+`performClutterCleanup()` and `startFetchingProcess()`'s normal fetch
+path — were gated on `pageType === 'events' || _isReleaseGroupsMultiMode()`.
+**`pageType` is never literally `'events'`.** Grepping `pageDefinitions`
+confirms it only ever assigns `'artist-events'`, `'area-events'`, or
+`'place-events'` — no entry anywhere uses the bare string. Both guards
+were therefore dead code on every real events page: the one-shot
+`removeSanojjonasContainers()` call there never ran, and — the part that
+actually surfaces as a bug — `_watchForLateSanojjonasInjections()` never
+got armed either.
+
+That watcher's `MutationObserver` is the ONLY thing that can catch
+sanojjonas injecting its container AFTER this script's own render has
+finished; its own JSDoc already documented this exact race (confirmed via
+the referenced `debug/s-present-on-final.html`, 2026-08-28: a
+fully-rendered `artist-releasegroups` page with `#sanojjonasRoot` still
+present because the button was pressed before sanojjonas had rendered
+anything). `finalCleanup()` has its own UNCONDITIONAL one-shot check
+(`if (_findSanojjonasContainers().length > 0) removeSanojjonasContainers();`),
+which is why the container isn't ALWAYS left behind — only when
+sanojjonas' own async script finishes after that check has already run,
+which is exactly the scenario the never-armed watcher was supposed to
+cover on events pages and silently didn't.
+
+Fix: introduced `_shouldCleanupSanojjonas()` (grep anchor `function
+_shouldCleanupSanojjonas`), checking membership in a new
+`EVENTS_PAGE_TYPES = ['area-events', 'place-events', 'artist-events']`
+array (the same three values already used correctly elsewhere in this
+file for the `_eventCancelledKind` derivation — left that other call site
+alone; same underlying fact, unrelated concern) `|| _isReleaseGroupsMultiMode()`.
+Both call sites now go through this one helper instead of repeating the
+condition inline — directly closing the "two guards can silently drift
+apart" shape that caused this bug in the first place. Updated the stale
+JSDoc on `performClutterCleanup()` and `_watchForLateSanojjonasInjections()`
+that had described the broken condition as intentional.
+
+New regression coverage: `tests/fixtures/sanojjonas-events-late-injection.spec.js`,
+reusing the existing `artist-events-cancelled.html` fixture. Loads the
+page, clicks the button, waits for render complete (past the point where
+`finalCleanup()`'s one-shot check has already run and found nothing),
+THEN injects a `<div id="sanojjonasRoot">` — simulating sanojjonas'
+own script finishing late — and asserts it gets removed within 3s
+(`_watchForLateSanojjonasInjections()`'s `MutationObserver` reacts on the
+next microtask after the mutation, so this resolves in milliseconds once
+armed). Verified failing against the pre-fix code first (`git stash` on
+`ShowAllEntityData.user.js` alone): the injected node was never removed
+and the test timed out, confirming this is a real, currently-failing case
+and not a no-op assertion.

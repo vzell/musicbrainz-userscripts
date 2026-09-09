@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-09-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A `<div id=\"sanojjonasRoot\">` (a third-party userscript's container) could survive indefinitely on a fully-rendered `artist-events`/`area-events`/`place-events` page. Root cause: the guard on both sanojjonas-cleanup call sites checked `pageType === 'events'`, a value that never actually occurs — `pageDefinitions` only ever assigns `'artist-events'`/`'area-events'`/`'place-events'`. This silently disarmed `_watchForLateSanojjonasInjections()`'s MutationObserver on every real events page, the one mechanism that catches sanojjonas injecting its container AFTER this script's own one-shot cleanup has already run. Both call sites now go through a single `_shouldCleanupSanojjonas()` helper checking the real pageType values."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-09-09",
     "sections": [
