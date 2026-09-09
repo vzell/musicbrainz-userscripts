@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-09-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The synthetic \"Locality\"/\"Region\" columns (split from \"Location\") could render the same area's flag/subdivision icon in a DIFFERENT order on different rows — e.g. \"Praha\" with the icon before the name on one row and after it on another. Root cause: a race between this script's own synchronous extraction and a flag-decorating userscript's asynchronous, continuous re-scanning of the page for undecorated `/area/` anchors — including anchors this script had just cloned into its own synthetic columns. Fixed two ways: `_routeAreaLink()` now always renders the area name BEFORE its icon (matching the dropdown's own \"name, then flag\" convention), and stamps the cloned anchor with the same `data-flag-processed` marker \"MusicBrainz: More Flags Everywhere\" and \"Right Side Flags Everywhere\" both already check, so neither script re-decorates it afterward in a different order. `_findAreaLinkIcon()` was widened to recognize an icon on either side of the anchor, since it now needs to recognize its own reordered output as readily as a live source page's native placement."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-09-09",
     "sections": [

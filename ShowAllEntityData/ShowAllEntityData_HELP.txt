@@ -751,7 +751,11 @@ COLUMN MANAGEMENT
       MusicBrainz area links carry no type information. A bare subdivision
       flag icon added by a separately-installed userscript, with no city
       ever entered, is routed to Region instead of Locality for United
-      States/United Kingdom/Canada/Australia.)
+      States/United Kingdom/Canada/Australia. When a subdivision has such
+      an icon, it always renders AFTER the area name in these split
+      columns — "Praha [icon]", not "[icon] Praha" — regardless of which
+      side the decorating userscript itself places it on, so the order
+      stays the same on every row.)
     — "Total Tracks"            computed from track-count data on release pages
     — "Format Types"            strips quantity prefixes (e.g. "8×") from
                                 the Format column on release-group, label, and

@@ -3183,20 +3183,26 @@
     // how the MFE shape drifted out of detection once already (its icon
     // class was renamed `area-icon` -> `custom-area-icon` in one place and
     // never updated in the other).
-    //   - AREA_ICON_PRECEDING_SIBLING_SEL: an icon element sitting as
-    //     `anchor.previousElementSibling` — the legacy "Canadian Province
-    //     Flags Everywhere" / older "More Flags Everywhere" shape
-    //     (`span.area-icon`), and current "MusicBrainz: More Flags
-    //     Everywhere"'s renamed `span.custom-area-icon` (containing its own
-    //     `img.flag-custom-region`) — same position, two class names.
+    //   - AREA_ICON_SIBLING_SEL: an icon element sitting as either
+    //     `anchor.previousElementSibling` OR `anchor.nextElementSibling` —
+    //     the legacy "Canadian Province Flags Everywhere" / older "More
+    //     Flags Everywhere" shape (`span.area-icon`), and current
+    //     "MusicBrainz: More Flags Everywhere"'s renamed
+    //     `span.custom-area-icon` (containing its own `img.flag-custom-
+    //     region`) — same two class names either way. BOTH sides are
+    //     checked because `_routeAreaLink()` itself re-emits this shape
+    //     AFTER the anchor (name, then icon — see its own JSDoc), so this
+    //     same function must also recognize its OWN synthetic-column
+    //     output, not only a live source page's native BEFORE-anchor
+    //     placement.
     //   - AREA_ICON_WRAPPER_SEL / AREA_ICON_TRAILING_IMG_SEL: "MusicBrainz:
     //     Right Side Flags Everywhere"'s shape instead WRAPS the anchor in
     //     `span.mfe-flag-wrapper`, with the icon as a TRAILING
     //     `img.mb-hq-flag-img` sibling *inside* that same wrapper, after the
     //     anchor rather than before it.
-    const AREA_ICON_PRECEDING_SIBLING_SEL = 'span.area-icon, span.custom-area-icon';
-    const AREA_ICON_WRAPPER_SEL           = 'span.mfe-flag-wrapper';
-    const AREA_ICON_TRAILING_IMG_SEL      = 'img.mb-hq-flag-img';
+    const AREA_ICON_SIBLING_SEL      = 'span.area-icon, span.custom-area-icon';
+    const AREA_ICON_WRAPPER_SEL      = 'span.mfe-flag-wrapper';
+    const AREA_ICON_TRAILING_IMG_SEL = 'img.mb-hq-flag-img';
 
     /**
      * Given a '/area/' anchor, returns the DOM element carrying that area's
@@ -3224,9 +3230,13 @@
      *   2. `anchor.closest('.flag')` — native MusicBrainz country flag, a
      *      `<span class="flag flag-XX">` WRAPPING the anchor. The icon IS
      *      this element itself (a CSS background-image sprite).
-     *   3. `anchor.previousElementSibling` matching
-     *      `AREA_ICON_PRECEDING_SIBLING_SEL` — legacy / current "More Flags
-     *      Everywhere" shape (icon precedes the anchor, unwrapped).
+     *   3. `anchor.previousElementSibling` OR `anchor.nextElementSibling`
+     *      matching `AREA_ICON_SIBLING_SEL` — legacy / current "More Flags
+     *      Everywhere" shape, unwrapped. A live source page only ever
+     *      places this BEFORE the anchor; AFTER is checked too because
+     *      `_routeAreaLink()` re-emits this exact shape itself, in ITS OWN
+     *      "name, then icon" order — so this function must recognize its
+     *      own synthetic-column output as readily as a live source cell.
      *
      * @param {HTMLAnchorElement} anchor
      * @returns {?Element}
@@ -3242,7 +3252,9 @@
         if (flagAncestor) return flagAncestor;
 
         const prev = anchor.previousElementSibling;
-        if (prev && prev.matches(AREA_ICON_PRECEDING_SIBLING_SEL)) return prev;
+        if (prev && prev.matches(AREA_ICON_SIBLING_SEL)) return prev;
+        const next = anchor.nextElementSibling;
+        if (next && next.matches(AREA_ICON_SIBLING_SEL)) return next;
 
         return null;
     }
@@ -3323,11 +3335,33 @@
             const container = (areaState.count === 0 && !forceRegion) ? containerL : containerR;
             areaState.count++;
             if (container.hasChildNodes()) container.appendChild(document.createTextNode(', '));
-            if (iconSpan) {
-                container.appendChild(iconSpan.cloneNode(true));
-                container.appendChild(document.createTextNode(' '));
-            }
             container.appendChild(clonedA);
+            if (iconSpan) {
+                container.appendChild(document.createTextNode(' '));
+                container.appendChild(iconSpan.cloneNode(true));
+                // Both "More Flags Everywhere" and "Right Side Flags
+                // Everywhere" skip an anchor outright when
+                // `anchor.dataset.flagProcessed` is already truthy (see
+                // their own per-anchor loops — this convention is shared
+                // between the two, not a coincidence: same author, RSFE is
+                // the intended successor). `clonedA` only inherits that
+                // attribute when the SOURCE anchor already had it — for a
+                // brand-new clone whose source hadn't been decorated yet at
+                // extraction time, this would otherwise leave the clone
+                // looking "unprocessed" the moment it lands in the DOM,
+                // and either script's own live MutationObserver would pick
+                // it up and re-wrap it in ITS OWN shape, silently
+                // overriding the "name, then icon" order just built above.
+                // That's a genuine race — not hypothetical: confirmed via
+                // debug/Czech-flag.html, where two rows for the exact same
+                // area ("Praha") ended up in two DIFFERENT, PERMANENT
+                // orders depending purely on which side of this race each
+                // row's clone happened to land on. Stamping it here removes
+                // the race entirely: since this function already rendered
+                // an icon for this anchor, there's nothing for a
+                // third-party script to usefully add by re-processing it.
+                clonedA.dataset.flagProcessed = '1';
+            }
         }
     }
 
@@ -54446,7 +54480,7 @@ a { color: #1565c0; }`;
             // dated entry): before this fix, "Cinema City Hall in Israel"
             // rendered with the hollow native flag AND the wrapper itself
             // both matching as bogus icon segments in front of the name.
-            const iconSel = `span.flag[class*="flag-"]:not(:has(${AREA_ICON_WRAPPER_SEL})), ${AREA_ICON_PRECEDING_SIBLING_SEL}, ${AREA_ICON_TRAILING_IMG_SEL}`;
+            const iconSel = `span.flag[class*="flag-"]:not(:has(${AREA_ICON_WRAPPER_SEL})), ${AREA_ICON_SIBLING_SEL}, ${AREA_ICON_TRAILING_IMG_SEL}`;
 
             /**
              * Builds ONE root element's (a single `<li>` item, or a whole

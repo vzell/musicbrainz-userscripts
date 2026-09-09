@@ -8221,3 +8221,70 @@ failing against the pre-fix code first (`git stash` on
 mistakenly asserted on `.title` and passed even pre-fix, a genuine false
 negative caught only by dumping the real pre-fix DOM and checking which
 field actually carried the bug.
+
+## 2026-09-09 — "Locality"/"Region" columns render the SAME area's icon in a different order on different rows (fixed)
+
+Reported with `debug/Czech-flag.html` (`artist-events`, filtered to "cz")
+and a screenshot showing "Praha" with its icon BEFORE the name in one row
+and AFTER it in another — same area, same page, same script version.
+
+Traced by extracting both rows' native "Location" cell and their derived
+"Locality" cell side by side. The NATIVE cells were byte-identical (RSFE
+had already fully decorated both, `<span class="mfe-flag-wrapper"><a>
+Praha</a><img class="mb-hq-flag-img"></span>`). The DERIVED "Locality"
+cells differed:
+- Row 1: `<img class="mb-hq-flag-img"> <a data-flag-processed="1">
+  Praha</a>` — `_routeAreaLink()`'s own icon-then-anchor rendering,
+  unwrapped, never touched again.
+- Row 2: `<span class="mfe-flag-wrapper"><a data-flag-processed="1">
+  Praha</a><img class="mb-hq-flag-img"></span>` — RSFE's OWN native
+  shape, wrapper and all — meaning RSFE had re-decorated this specific
+  clone AFTER `_routeAreaLink()` built it.
+
+Root cause: `_routeAreaLink()`'s `clonedA = a.cloneNode(true)` only
+inherits `data-flag-processed="1"` when the SOURCE anchor already had it
+at extraction time. Both MFE and RSFE skip an anchor outright when that
+attribute is already truthy (confirmed in both scripts' own per-anchor
+loops — not a coincidence, same author, RSFE is MFE's intended
+successor per the user). Whether a given row's SOURCE anchor had already
+been decorated by the time OUR extraction ran is a pure timing race
+against each script's own asynchronous, continuous
+`document.body`-wide `MutationObserver` — and once a freshly-cloned,
+still-unflagged anchor lands in our own "Locality"/"Region" column, that
+SAME live observer notices it too and decorates it AGAIN, in whatever
+order it natively uses, permanently overwriting `_routeAreaLink()`'s own
+rendering for that one row. Two rows built from identically-shaped input
+can therefore settle into two different, PERMANENT states depending
+purely on scheduling — not something `_routeAreaLink()`'s own logic ever
+controlled non-deterministically on its own.
+
+Per the user's explicit direction (asked rather than guessed, given the
+two legitimate resolutions — converge on our own order, or let the
+third-party script's order always win): force our own order, always, and
+put the icon AFTER the name (matching the dropdown's already-established
+"name, then flag" convention from the two entries above).
+
+Fix, in `_routeAreaLink()`:
+- Swapped the append order: `clonedA` first, then the icon.
+- Stamp `clonedA.dataset.flagProcessed = '1'` whenever an icon was found
+  and rendered — the exact attribute both MFE and RSFE check, so neither
+  ever re-decorates this clone again. Only stamped when an icon was
+  actually found; a clone with no icon yet is left alone, so a script
+  that decorates the SOURCE only later still gets a chance to add one.
+
+This surfaced a real regression in `_findAreaLinkIcon()`, caught by
+`area-name-collision.spec.js`'s existing `splitLocationAreas()` test:
+that function's own re-detection of "does this reconstructed cell have a
+flag" (`_findCellEntityRefs()` → `_findAreaLinkIcon()`) only ever checked
+`anchor.previousElementSibling` for the legacy `area-icon`/
+`custom-area-icon` shape — which is exactly the position `_routeAreaLink()`
+no longer uses now that the icon comes after. Fixed by also checking
+`anchor.nextElementSibling` (renamed `AREA_ICON_PRECEDING_SIBLING_SEL` →
+`AREA_ICON_SIBLING_SEL` throughout, since it's no longer preceding-only).
+
+New regression coverage: `tests/fixtures/uniq-drop-locality-flag-order.spec.js`
+(+ matching `.html` fixture, using `debug/Czech-flag.html`'s own "Praha"
+markup) — asserts the icon lands AFTER the anchor via
+`Node.compareDocumentPosition()`, and that the anchor is stamped
+`data-flag-processed="1"`. Verified failing against the pre-fix code
+first (`git stash` on `ShowAllEntityData.user.js` alone).
