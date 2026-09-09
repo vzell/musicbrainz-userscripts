@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1055",
+    "date": "2026-09-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"More Flags Everywhere\": an area anchor with no flag of its own (e.g. a neighbourhood/city not in that userscript's region map, like \"Midtown Manhattan\" or \"Gelsenkirchen\"), chained immediately before a DIFFERENT, flagged area anchor, no longer wrongly \"borrows\" that neighbour's flag icon into its own Locality cell. Region correctly keeps both distinct areas, each with its own correct icon."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1054",
     "date": "2026-09-09",
     "sections": [
