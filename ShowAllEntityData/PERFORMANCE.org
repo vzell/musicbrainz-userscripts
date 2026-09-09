@@ -78,15 +78,15 @@ calls* per full pass.
 It runs at the tail of ~initCollapsableColumns()~ (~:56878~), reached from
 ~_scheduleColHeaderCounts()~ (~:56650~), which today fires from:
 
-| Call site | Function | Frequency |
-|-----------+----------+-----------|
-| ~:42747~ | ~runFilter()~, single-table branch | *every keystroke and every sort* |
-| ~:49738~ | ~renderGroupedTable()~, reuse branch, per sub-table | every multi-table render — *except undisturbed groups on a sort, since Step 18* |
-| ~:50271~ | ~renderGroupedTable()~, new-table branch, per sub-table | every multi-table render |
-| ~:19699~ | ~syncCollapseButtonsWithColumnVisibility()~ | every column show/hide, page-wide |
-| ~:61362~, ~:61377~ | ~initReleaseEventsColumn()~ | up to 3x in a row post-fetch (what the coalescing token exists for) |
-| ~:46421~ | ~startFetchingProcess()~ | once per fetch |
-| ~:73505~ | ~initPicardTaggerColumn()~ | post-render |
+| Call site          | Function                                                | Frequency                                                                       |
+|--------------------+---------------------------------------------------------+---------------------------------------------------------------------------------|
+| ~:42747~           | ~runFilter()~, single-table branch                      | *every keystroke and every sort*                                                |
+| ~:49738~           | ~renderGroupedTable()~, reuse branch, per sub-table     | every multi-table render — *except undisturbed groups on a sort, since Step 18* |
+| ~:50271~           | ~renderGroupedTable()~, new-table branch, per sub-table | every multi-table render                                                        |
+| ~:19699~           | ~syncCollapseButtonsWithColumnVisibility()~             | every column show/hide, page-wide                                               |
+| ~:61362~, ~:61377~ | ~initReleaseEventsColumn()~                             | up to 3x in a row post-fetch (what the coalescing token exists for)             |
+| ~:46421~           | ~startFetchingProcess()~                                | once per fetch                                                                  |
+| ~:73505~           | ~initPicardTaggerColumn()~                              | post-render                                                                     |
 
 Scaled to 5,000 rows that is roughly 19-75 s of background work re-triggered
 on most of those actions — larger than the cloneNode/DOM-rebuild cost the old
