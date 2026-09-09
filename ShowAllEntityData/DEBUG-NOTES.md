@@ -7959,3 +7959,42 @@ Three arms outstanding:
   rebooted" condition is recollection, not measurement. If that box was
   also slowed, the post-reboot 0.86-1.24x understates the machine gap
   instead of settling it. One run.
+
+## 2026-09-09 — uniq-dropdown "Entity info - Area name" flag replaced the generic glyph and rendered before the name (fixed)
+
+Reported via two debug snapshots of `artist-events`
+(`https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events`):
+`debug/originally-country-flag-right.html` (final rendered page) and
+`debug/originally-country-flag-right-uvdd.html` (the "Location" column's 📊
+dropdown opened, filtered to "Spain"). The dropdown's "Entity info - Area
+name" section rendered the country entry as `[🇪🇸] » area name: Spain` — the
+real country flag had taken the generic area glyph's slot, before the name,
+rather than appearing alongside it.
+
+Root cause: `makeValueSynItem()` (ShowAllEntityData.user.js, grep
+`const makeValueSynItem = (kind, value, count, glyphClass, entityType, flagNode, hrefOverride) =>`)
+built one `markerSlot` before the label and filled it with a strict
+either/or — `flagNode` (a baked `<span class="flag flag-XX">`, from
+`entityNameFlagMap`/`_bakeFlagIconNode()`) when present, else the generic
+`glyphClass` marker (`arealink`). The main table's own area-chain rendering
+(`_routeAreaLink()`/`_buildFlagSegmentsForRoot()`) never has this conflict —
+confirmed against `debug/originally-country-flag-right.html`'s native
+`<span class="flag flag-ES"><a…><bdi>Spain</bdi></a></span>`, which simply
+IS the country segment, with no separate generic-glyph slot to compete
+with.
+
+Fix: `markerSlot` now always renders the generic glyph for `kind ===
+'name'`; when `flagNode` exists, a second, separate marker span is appended
+AFTER the label instead, cloning `flagNode` the same way `flagIconMap`
+already does elsewhere. Result:
+`[area glyph] » area name: Spain [🇪🇸]`. `revcountry`/`countrycode` kind
+entries are untouched (their `glyphClass` already IS the combined `flag
+flag-XX` string — there is no separate generic glyph to preserve there).
+
+New regression coverage:
+`tests/fixtures/uniq-drop-area-name-flag-position.spec.js` (+ matching
+`.html` fixture) — asserts the leading marker slot carries `arealink` (not
+a `flag-` class) and a trailing sibling after the label carries the real
+`flag flag-XX` class. Verified failing against the pre-fix code (reverted
+`ShowAllEntityData.user.js` via `git stash`, re-ran, confirmed the "flag
+replaces glyph" assertion failed) before restoring the fix.

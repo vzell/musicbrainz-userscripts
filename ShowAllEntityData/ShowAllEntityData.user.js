@@ -55031,11 +55031,8 @@ a { color: #1565c0; }`;
             if ((kind === 'name' || kind === 'revcountry' || kind === 'countrycode') && glyphClass) {
                 // Fixed-width, centered slot so the label text right after
                 // it (starting with "» ") always starts at the same
-                // horizontal position regardless of whether this entry ends
-                // up showing the generic glyph icon or a baked flag icon —
-                // the two render at different native pixel sizes (see
-                // entityNameFlagMap's own JSDoc) and would otherwise make
-                // the "»" prefix jump left/right between entries.
+                // horizontal position across entries, regardless of which
+                // entityType's own native glyph class is shown here.
                 const markerSlot = document.createElement('span');
                 markerSlot.setAttribute('aria-hidden', 'true');
                 markerSlot.style.display        = 'inline-flex';
@@ -55044,22 +55041,20 @@ a { color: #1565c0; }`;
                 markerSlot.style.width          = '16px';
                 markerSlot.style.marginRight    = '4px';
                 markerSlot.style.verticalAlign  = 'middle';
-                if (kind === 'name' && flagNode) {
-                    // Real flag takes priority over the generic area glyph
-                    // — clone the shared master node (flagIconMap's own
-                    // convention; see _bakeFlagIconNode()'s JSDoc).
-                    markerSlot.appendChild(flagNode.cloneNode(true));
-                } else {
-                    // For 'revcountry'/'countrycode', glyphClass is the
-                    // combined `flag flag-XX` class string (both native
-                    // classes together, matching the native `class="flag
-                    // flag-XX"` shape) — see the two country-code
-                    // aggregation call sites in openUniqDrop().
-                    const marker = document.createElement('span');
-                    marker.className = glyphClass;
-                    _guardGlyphAgainstEmptySelectorHiding(marker);
-                    markerSlot.appendChild(marker);
-                }
+                // For 'revcountry'/'countrycode', glyphClass is the
+                // combined `flag flag-XX` class string (both native
+                // classes together, matching the native `class="flag
+                // flag-XX"` shape) — see the two country-code
+                // aggregation call sites in openUniqDrop(). For 'name',
+                // this is always the entity's own generic native glyph
+                // (e.g. 'arealink') — a real country flag, when one
+                // exists (`flagNode`), is appended AFTER the label below
+                // instead of taking this slot's place, so both are visible
+                // together: "[glyph] » area name: Spain [flag]".
+                const marker = document.createElement('span');
+                marker.className = glyphClass;
+                _guardGlyphAgainstEmptySelectorHiding(marker);
+                markerSlot.appendChild(marker);
                 item.appendChild(markerSlot);
             }
             const _synLabelPrefix =
@@ -55134,6 +55129,20 @@ a { color: #1565c0; }`;
                 // musicbrainz.org's own styling for it ever changes.
                 if (kind === 'entitycancelled' || kind === 'eventcancelled') {
                     _labelSpan.classList.add('cancelled');
+                }
+                if (kind === 'name' && flagNode) {
+                    // Real country flag, when this area name has one —
+                    // rendered AFTER the name rather than replacing the
+                    // generic glyph in markerSlot above (see that slot's
+                    // comment): "[glyph] » area name: Spain [flag]".
+                    const trailingFlagSlot = document.createElement('span');
+                    trailingFlagSlot.setAttribute('aria-hidden', 'true');
+                    trailingFlagSlot.style.display       = 'inline-flex';
+                    trailingFlagSlot.style.alignItems    = 'center';
+                    trailingFlagSlot.style.marginLeft    = '4px';
+                    trailingFlagSlot.style.verticalAlign = 'middle';
+                    trailingFlagSlot.appendChild(flagNode.cloneNode(true));
+                    item.appendChild(trailingFlagSlot);
                 }
             }
 
