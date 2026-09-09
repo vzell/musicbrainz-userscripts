@@ -9,6 +9,7 @@ const {
     waitForFilterSettled, waitForSortSettled, getPageRowCount,
     waitForActualRowCount, waitForColHeaderUniqCount, getColumnHighlightTexts,
     waitForColHeaderCountsStable,
+    columnIndex, columnFilterInput, columnFilterClear,
 } = require('../support/filterSortAssertions');
 const {
     URL: ARTIST_EVENTS_URL, FIXTURE_PATH, SEED_GM_VALUES, TOTAL_ROWS,
@@ -68,40 +69,6 @@ async function loadArtistEvents(page) {
     // never flips to "Restore…" after a disk-fixture load regardless of
     // row count, so this wait would otherwise hang until timeout.
     await waitForRenderComplete(page, { waitForAutoResize: false, timeout: 60000 });
-}
-
-/**
- * Resolves a column's zero-based index from its decoration-stripped header text
- * — the value the column-filter inputs carry in `data-col-idx`.
- *
- * @param {import('@playwright/test').Page} page
- * @param {string} colName
- * @returns {Promise<number>}
- */
-function columnIndex(page, colName) {
-    return page.evaluate((name) => {
-        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
-        return Array.from(document.querySelectorAll('table.tbl thead th'))
-            .findIndex((t) => strip(t.textContent) === name);
-    }, colName);
-}
-
-/**
- * One column's ✕ clear button.
- *
- * Scoped through the enclosing `.mb-col-filter-wrapper` rather than indexed with
- * `.nth(colIdx)`: `addColumnFilterRow()` gives a checkbox column a bare `<th>`
- * with no input and no ✕ at all, so the ✕ list is not index-aligned with the
- * column list.
- *
- * @param {import('@playwright/test').Page} page
- * @param {number} colIdx
- * @returns {import('@playwright/test').Locator}
- */
-function columnFilterClear(page, colIdx) {
-    return page.locator(
-        `table.tbl thead .mb-col-filter-wrapper:has(.mb-col-filter-input[data-col-idx="${colIdx}"]) .mb-col-filter-clear`
-    ).first();
 }
 
 /**
@@ -195,7 +162,7 @@ test('column filter on Country narrows the row count to the same value as the gl
     // Column filter inputs are readonly-until-a-genuine-trusted-interaction
     // (anti-autofill hardening) — .click() lifts that, and typing must go
     // through .pressSequentially() (real per-key events), never .fill().
-    const colInput = page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
+    const colInput = columnFilterInput(page, colIdx);
     await colInput.click();
     await waitForFilterSettled(page, () => colInput.pressSequentially(FILTER_VALUE));
 
@@ -286,7 +253,7 @@ test('column-header counts survive a chunked re-render (column filter applied, t
     // .click() then .pressSequentially() — column filter inputs are
     // readonly-until-a-genuine-trusted-interaction (anti-autofill hardening),
     // and .fill() is rejected by _isGenuineFilterInputEvent().
-    const colInput = page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
+    const colInput = columnFilterInput(page, colIdx);
     await colInput.click();
     await waitForFilterSettled(page, () => colInput.pressSequentially(UNIQ_COUNT_FILTER_VALUE));
 
@@ -336,7 +303,7 @@ test('every row keeps its row-level decoration through a chunked re-render', { t
     expect(togglesBefore).toBeGreaterThan(0);
 
     const colIdx = await columnIndex(page, UNIQ_COUNT_COLUMN);
-    const colInput = page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
+    const colInput = columnFilterInput(page, colIdx);
     await colInput.click();
     await waitForFilterSettled(page, () => colInput.pressSequentially(UNIQ_COUNT_FILTER_VALUE));
     await waitForActualRowCount(page, UNIQ_COUNT_FILTER_ROWS);
@@ -441,7 +408,7 @@ test('re-applying a filter reproduces its own header counts exactly', { tag: '@p
     await waitForColHeaderUniqCount(page, UNIQ_COUNT_COLUMN, UNIQ_COUNT_TOTAL);
 
     const colIdx = await columnIndex(page, FILTER_COLUMN);
-    const colInput = page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
+    const colInput = columnFilterInput(page, colIdx);
     await colInput.click();
 
     await waitForFilterSettled(page, () => colInput.pressSequentially(FILTER_VALUE));
@@ -504,7 +471,7 @@ test('Event column filter highlights a match spanning a comment-comma boundary',
     const colIdx = await columnIndex(page, 'Event');
     expect(colIdx).toBeGreaterThanOrEqual(0);
 
-    const colInput = page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
+    const colInput = columnFilterInput(page, colIdx);
     await colInput.click();
     await waitForFilterSettled(page, () => colInput.pressSequentially('USA, bleach'));
 
@@ -561,7 +528,7 @@ test('Location column filter highlights a match spanning a real comma-separator 
     // the sticky Event column that its `<th>` intercepts the click at the
     // headless viewport's default width; this is a pre-existing test-harness
     // quirk unrelated to the bug under test.
-    const colInput = page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
+    const colInput = columnFilterInput(page, colIdx);
     await colInput.click({ force: true });
     await waitForFilterSettled(page, () => colInput.pressSequentially('k, n'));
 
