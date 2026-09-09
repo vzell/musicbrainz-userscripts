@@ -748,3 +748,44 @@ CLAUDE.md until D confirms it.
 
 *Consequence for the Results table above*: the =NB-3641= vs =petri= 1.5-1.85x
 is not a machine ratio. See the correction under that table.
+
+*** Arm E tooling — reboot once, then 18 days with zero Claude Code on petri
+
+Set up 2026-09-09, to run unattended rather than depend on 18 days of manual
+discipline. *The protocol is one reboot to zero the clock, then NO further
+reboots and NO Claude Code session of any kind on petri for the full 18
+days* — a repeated reboot-then-measure cycle would test something else
+entirely (that shape is closer to arm D, repeated) and would not close this
+gap.
+
+- *Script pin*: branch =measure/9.99.1049-arm-e=, created at =a56f1b1= (the
+  commit that bumped =// @version= to =9.99.1049=), checked out into its own
+  worktree at =/home/vzell/git/saed-perf-9.99.1049-arm-e=. Never merge =main=
+  into this branch — the whole point is a script held byte-identical across
+  all 18 days so only uptime varies. Verify with
+  =git diff a56f1b1 -- ShowAllEntityData.user.js= (must stay empty) before
+  trusting any sample on it.
+- *Gate*: =tests/support/run-perf-arm-e.sh <morning|evening>=, in that
+  worktree. Checks =pgrep -x claude= first and refuses to run (logging
+  =SKIPPED= with the offending PIDs) if anything is resident — verified
+  working 2026-09-09 against this very session's own PID. On success it runs
+  =capture-interaction-perf.js --pageType=artist-events --label=arm-e-<slot>=,
+  records =uptimeHours= from =/proc/uptime=, and self-commits the resulting
+  JSON plus =tests/snapshots/artist-events/arm-e-runs.log= on that branch.
+- *Schedule*: cron, 07:00 and 19:00 daily (=crontab -l= on petri). Cron runs
+  under systemd (=cron.service= enabled+active), so it survives a WSL
+  restart, but the whole 18-day clock does NOT survive a Windows sleep,
+  hibernate, or an explicit =wsl --shutdown= — avoid those on petri for the
+  duration, same as the reboot restriction.
+- *Log*: =tests/snapshots/artist-events/arm-e-runs.log= (one line per
+  attempt, =OK=/=SKIPPED=/=FAILED= + uptime) and
+  =arm-e-runs.log.capture-output= (raw script stdout/stderr), both in the
+  pinned worktree, both self-committed by the wrapper.
+- *Still manual*: the one reboot that starts the clock, and keeping every
+  Claude Code session — including implementation work on the new Steps in
+  point (2) below — off petri entirely for the 18 days. That work is
+  happening on =NB-3641= instead, decided 2026-09-09.
+- *Folding back*: after 18 days, pull =measure/9.99.1049-arm-e='s commits,
+  read =arm-e-runs.log= for the day-by-day =uptimeHours= trend (smooth climb
+  vs. a step, per the open question above), and add the results here as a
+  proper dated table — this bullet list is signpost, not the data.
