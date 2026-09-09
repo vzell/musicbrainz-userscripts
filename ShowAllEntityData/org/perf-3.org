@@ -670,3 +670,20 @@ artist-events [interaction-perf, rebooted] on vzell-lap (4 cores, node v24.11.1,
   headerCountsRestore: 10457.0ms
 Written to /home/vzell/git/musicbrainz-userscripts/ShowAllEntityData/tests/snapshots/artist-events/interaction-perf-rebooted-9.99.1049-2026-09-08-vzell-lap.json
 
+** claudeSinceBoot field verification, NB-3641, +7h after F's reboot
+
+Added a claudeSinceBoot field to hostRuntimeState() in both capture-interaction-perf.js and capture-snapshots.js (arm E needs it: claudeResident: {count: 0} alone can't tell "never ran" apart from "ran, then closed" — see tests/MEASUREMENTS.org's PARTLY ANSWERED section). Verified with a real capture rather than just unit-testing the find command in isolation:
+
+vzell@NB-3641:~/git/musicbrainz-userscripts/ShowAllEntityData/tests/support$ node capture-interaction-perf.js --pageType=artist-events --label=verify-field-check
+artist-events [interaction-perf, verify-field-check] on NB-3641 (28 cores, node v24.19.0, playwright 1.62.1):
+  globalFilter: 1693.0ms
+  columnFilter: 1660.0ms
+  sort: 3391.0ms
+  uniqDropCold: 30469.0ms
+  uniqDropWarm: 824.0ms
+  headerCountsInitial: 4580.0ms
+  headerCountsRestore: 5260.0ms
+Written to /home/vzell/git/musicbrainz-userscripts/ShowAllEntityData/tests/snapshots/artist-events/interaction-perf-verify-field-check-9.99.1049-2026-09-09-NB-3641.json
+
+claudeSinceBoot: true, correctly — this session had been resident 6.9h at capture time. Same reboot as arm F (uptimeHours 0.2 -> 7.2, no reboot in between), so this doubles as a real data point rather than a throwaway: F vs this arm is 0.94-1.06x, mean ~1.00x, flat. Folded into tests/MEASUREMENTS.org as a new subsection after the vzell-lap one — a resident session costs nothing on NB-3641 either (replicating petri's R vs D), though 7 hours says nothing about an 18-day drift; that's still arm E's question, on petri specifically.
+

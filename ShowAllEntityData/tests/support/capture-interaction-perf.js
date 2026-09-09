@@ -148,6 +148,48 @@ function readScriptVersion() {
 }
 
 /**
+ * Whether a Claude Code session has run on this box since it last booted —
+ * distinct from `claudeResident`, which only sees one running RIGHT NOW.
+ *
+ * This closes a gap `tests/MEASUREMENTS.org`'s "PARTLY ANSWERED" arm A hit:
+ * `claudeResident: {count: 0}` cannot tell "never ran a session" apart from
+ * "ran one, then closed it" — and arm E (18 days of uptime with `claude`
+ * never run at all, to isolate plain uptime accumulation from session
+ * residue) needs exactly that distinction on every capture in its series, not
+ * just remembered by the person running it.
+ *
+ * Every Claude Code session creates a directory under `/tmp/claude-<uid>/`
+ * (this repo's own scratchpad path lives under one). If anything under
+ * `/tmp/claude-*` has an mtime after boot, a session ran since the last
+ * reboot, whether or not one is resident now.
+ *
+ * Linux-only, like `claudeResident` above (BSD/macOS `find` has no
+ * `-newermt`) — `null` on any other platform or if the check itself fails,
+ * kept distinct from `false` ("checked, found nothing since boot").
+ *
+ * @param {number} uptimeHours
+ * @returns {boolean|null}
+ */
+function claudeSinceBoot(uptimeHours) {
+    if (os.platform() !== 'linux') return null;
+    const bootEpochSeconds = Math.floor(Date.now() / 1000 - uptimeHours * 3600);
+    try {
+        const out = execSync(
+            `find /tmp/claude-* -newermt '@${bootEpochSeconds}' -print -quit 2>/dev/null`,
+            { stdio: ['ignore', 'pipe', 'ignore'] },
+        ).toString().trim();
+        return out.length > 0;
+    } catch (err) {
+        // `find` exits 1 with empty stdout both when no `/tmp/claude-*`
+        // directory exists at all (the glob expands to nothing) and when one
+        // exists but nothing inside is newer than boot — either way that IS
+        // "no session since boot", not a failed check. Same reasoning as
+        // claudeResident's own `ps` check below.
+        return (err.status === 1 && !String(err.stdout || '').trim()) ? false : null;
+    }
+}
+
+/**
  * Host conditions that are not hardware but move timings anyway: how long the
  * box has been up, and whether a Claude Code session is resident while the
  * run happens.
@@ -165,10 +207,12 @@ function readScriptVersion() {
  * `claudeResident` is `null` when the check could not run at all (`ps -C` is
  * Linux-shaped and unsupported on BSD/macOS `ps`) — deliberately distinct from
  * `{count: 0}`, which means "checked, none running", per CLAUDE.md's "mark an
- * unknown as unknown rather than inferring it".
+ * unknown as unknown rather than inferring it". `claudeSinceBoot` is the same
+ * distinction one level up — see that function's own JSDoc.
  *
  * @returns {{uptimeHours: number,
- *   claudeResident: {count: number, oldestSessionHours: number|null}|null}}
+ *   claudeResident: {count: number, oldestSessionHours: number|null}|null,
+ *   claudeSinceBoot: boolean|null}}
  */
 function hostRuntimeState() {
     const uptimeHours = Math.round(os.uptime() / 360) / 10;
@@ -190,7 +234,7 @@ function hostRuntimeState() {
             ? { count: 0, oldestSessionHours: null }
             : null;
     }
-    return { uptimeHours, claudeResident };
+    return { uptimeHours, claudeResident, claudeSinceBoot: claudeSinceBoot(uptimeHours) };
 }
 
 /**
@@ -209,7 +253,8 @@ function hostRuntimeState() {
  *
  * @returns {{hostname: string, platform: string, release: string, cpus: number,
  *   totalMemGb: number, node: string, playwright: string, uptimeHours: number,
- *   claudeResident: {count: number, oldestSessionHours: number|null}|null}}
+ *   claudeResident: {count: number, oldestSessionHours: number|null}|null,
+ *   claudeSinceBoot: boolean|null}}
  */
 function machineInfo() {
     let playwright = 'unknown';

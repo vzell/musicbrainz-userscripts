@@ -99,8 +99,11 @@ from the background task's own output file. The harness now records
 | 2026-09-08 |      21:07 | =petri=                      | 9.99.1049 | main, pairs with the NB-3641 row                 |   3634 |   3158 | 6903 |     46549 |      1722 |     8191 |        8594 |
 | 2026-09-08 |      21:52 | =petri=                      | 9.99.1049 | A — 18d uptime, no =claude=                      |   2820 |   3028 | 7065 |     41723 |      1798 |     8250 |        8915 |
 | 2026-09-08 |      22:44 | =petri=                      | 9.99.1049 | R — rebooted, fresh session                      |   2388 |   2013 | 4462 |     26244 |      1068 |     5844 |        6264 |
+| 2026-09-08 |      23:25 | =petri=                      | 9.99.1049 | D — same reboot as R, no =claude=, 1h uptime     |   2328 |   2116 | 4465 |     24456 |      1304 |     5661 |        6078 |
 | 2026-09-08 |      23:40 | =NB-3641=                    | 9.99.1049 | F — rebooted, 0.2h uptime                        |   1664 |   1757 | 3622 |     29531 |       823 |     4334 |        5319 |
 | 2026-09-09 |      00:18 | =vzell-lap=                  | 9.99.1049 | rebooted, 0.4h uptime, first arm on this machine |   3490 |   2898 | 8622 |     59767 |      2196 |     8245 |       10457 |
+| 2026-09-09 |      05:33 | =petri=                      | 9.99.1049 | D2 — SECOND independent reboot, no =claude=      |   2301 |   2322 | 4146 |     25583 |      1312 |     6078 |        6304 |
+| 2026-09-09 |      07:15 | =NB-3641=                    | 9.99.1049 | same reboot as F, +7h uptime, resident session   |   1693 |   1660 | 3391 |     30469 |       824 |     4580 |        5260 |
 
 Committed as =tests/snapshots/artist-events/interaction-perf-*.json=.
 
@@ -235,12 +238,12 @@ for. Do not report a single cross-machine ratio; report the range.
 *** =vzell-lap=, 2026-09-09 00:18 — a third machine, freshly rebooted, no prior baseline
 
 First-ever arm on this host: 9.99.1049, =--label=rebooted=, =uptimeHours: 0.4=,
-=claudeResident: {count: 0}= — the same two conditions (fresh reboot, no
-resident session) that produced =petri='s fastest arm (R) and =NB-3641='s
-fastest arm (F). It does not answer arms D or E: both of those are specifically
-about =petri= changing against ITSELF, and there is no earlier =vzell-lap= run
-to compare against. What it does do is test whether "freshly rebooted" alone
-predicts a floor across machines, independent of hardware.
+=claudeResident: {count: 0}= — the same conditions (fresh reboot, no resident
+session) as =petri='s own arm D and =NB-3641='s arm F. It does not answer arm
+E: that one is specifically about =petri= changing against ITSELF, and there
+is no earlier =vzell-lap= run to compare against. What it does do is test
+whether "freshly rebooted" alone predicts a floor across machines, independent
+of hardware.
 
 | Metric                | =vzell-lap= (rebooted) | =petri= R (rebooted) | =NB-3641= F (rebooted) | vzell / R | vzell / F |
 |-----------------------+------------------------+----------------------+------------------------+-----------+-----------|
@@ -265,8 +268,39 @@ it at ITS OWN floor. =vzell-lap= has 4 cores/16 GB against =petri='s 24/31 and
 =NB-3641='s 28/31, and that gap dwarfs the ~1.2-1.8x reboot-recency effect
 measured on the other two hosts. This is a new absolute baseline for
 =vzell-lap=, not a data point for the residue/uptime hypothesis in the
-PARTLY ANSWERED section above — that question still needs arm D or E, run on
+PARTLY ANSWERED section above — that question still needs arm E, run on
 =petri= itself.
+
+*** =NB-3641=, 2026-09-09 07:15 — same reboot as F, +7h uptime, resident session: no drift yet
+
+Captured while verifying the new =claudeSinceBoot= field (added specifically
+for arm E's series — see the PARTLY ANSWERED section) actually works in a real
+run: =claudeSinceBoot: true=, correctly, with a session 6.9h old. Same reboot
+as arm F — =uptimeHours= grew from 0.2 to 7.2 with no reboot in between — so
+this is F, seven hours later, with a Claude Code session resident the whole
+time. Against F:
+
+| Metric                | =NB-3641= F (rebooted, no claude) | =NB-3641= +7h (resident session) | ratio |
+|-----------------------+------------------------------------+------------------------------------+-------|
+| =globalFilter=        |                               1664 |                               1693 | 1.02x |
+| =columnFilter=        |                               1757 |                               1660 | 0.95x |
+| =sort=                |                               3622 |                               3391 | 0.94x |
+| =uniqDropCold=        |                              29531 |                              30469 | 1.03x |
+| =uniqDropWarm=        |                                823 |                                824 | 1.00x |
+| =headerCountsInitial= |                               4334 |                               4580 | 1.06x |
+| =headerCountsRestore= |                               5319 |                               5260 | 0.99x |
+
+0.94-1.06x, mean ~1.00x — flat, no consistent direction. Two things this does
+and does not show:
+
+- *A resident Claude Code session costs nothing here either* — the same
+  conclusion R vs D already reached on =petri=, now replicated on a second
+  machine.
+- *This is 7 hours, not 18 days.* It says nothing about whether =NB-3641=
+  would show the same slow drift =petri= did over an 18-day uptime — it is a
+  genuine negative result at the timescale it covers (no drift within a
+  workday), not a substitute for arm E, which stays specifically about
+  =petri='s own 18-day history.
 
 * Bisect: the 9.99.1045 -> 9.99.1048 gap
 
@@ -467,16 +501,21 @@ is *not* offline. It makes the table DATA deterministic, but passes no
 =fixtureFile= to =loadUserscriptPage()=, so no route is registered and the page
 SHELL is fetched from the live site. "No network" only ever described the data.
 
-** PARTLY ANSWERED (arms D and E outstanding; F answered) — what changed on =petri= on 2026-09-07: a resident session, or uptime?
+** PARTLY ANSWERED (arm E outstanding; D and F answered, D replicated) — what changed on =petri= on 2026-09-07: a resident session, or uptime?
 
 *Status: written 2026-09-08 as an untested hypothesis; arms A, R and F were run
-on 2026-09-08. A RUNNING =claude= process is exonerated — it costs 22% on one
-metric and nothing on six, and the fastest arm on record carries one. A
-reboot reproduces the whole ~2x. But arm A reached "no =claude=" by CLOSING a
-session, so what a session LEAVES BEHIND is untested and fits every data
-point, including the step-change timing. Arm B is now impossible; arm F is
-answered (below); D and the new E are outstanding — read "The answer" before
-citing anything in between.*
+on 2026-09-08, arm D followed the same evening (23:25, same reboot as R), and
+a second, independent reboot (D2, 2026-09-09) replicated D the next morning. A
+RUNNING =claude= process is exonerated — it costs 22% on one metric and
+nothing on six pre-reboot (A vs C), and 0-7% with no clear direction
+post-reboot (R vs D) — the fastest arm on record carries a resident session.
+A reboot reproduces the whole ~2x, and D2 shows that floor is reproducible
+across two independent reboot events, not a one-off. What a closed session
+LEAVES BEHIND (as opposed to whether one is currently running) is still
+untested — arm A carries exactly that confound — and is what arm E would
+settle. Arm B is impossible; arms D and F are answered, D is replicated by
+D2; only E is outstanding — read "The answer" before citing anything in
+between.*
 
 *The observation.* =petri= changed against itself on the afternoon of
 2026-09-07 and never changed back — the same 9.99.1045 script measured 1735 on
@@ -528,11 +567,16 @@ itself, which hardware cannot.
 as specified; then an UNPLANNED full host reboot at 22:23 UTC — 31 minutes
 after arm A finished, before the next session started — which permanently
 foreclosed arm B, whose 18-day uptime cannot be recreated, and made a fifth
-arm available instead: *R*, rebooted + freshly started session. A, R and C
-form a 2x2 missing only the D cell. Verified as a HOST reboot rather than a
-WSL VM restart, which matters because only the former resets Windows-side
-state too: Windows =Win32_OperatingSystem.LastBootUpTime= 2026-09-09
-00:23:56 local, WSL =uptime -s= 00:24:25 local.
+arm available instead: *R*, rebooted + freshly started session. Arm D followed
+40 minutes later, same reboot, session closed (=claudeResident: {count: 0}=,
+=uptimeHours: 1=) — A, R, C and D now form the full 2x2. Verified as a HOST
+reboot rather than a WSL VM restart, which matters because only the former
+resets Windows-side state too: Windows =Win32_OperatingSystem.LastBootUpTime=
+2026-09-09 00:23:56 local, WSL =uptime -s= 00:24:25 local.
+
+A SECOND, independent reboot the next morning (2026-09-09, =uptimeHours: 0.2=)
+produced *D2*, run purely to test whether D's floor was itself a fluke — see
+"The answer", below.
 
 *Order matters, and the reboot goes LAST.* Rebooting before arm A would remove
 the resident session AND 18 days of accumulated state in one move, leaving a
@@ -567,6 +611,12 @@ them. =claudeResident: null= means the check could not run — distinct from
   =NB-3641=, and the 2026-09-07 step change stays unexplained; say so plainly
   rather than reaching for a third guess.
 
+*What actually came back*: A landed at 2820 (closer to ~3600 than ~1800, but
+softer than either pre-registered anchor), D at 2328 (close to the ~1800
+anchor, and to R's 2388). Neither pre-registered branch matches cleanly —
+compare A and D directly rather than against these anchors; see "The answer"
+below.
+
 *One caveat that applies to all four.* =petri= shows no process leak or memory
 pressure to point at — 104 processes, 0 orphaned shell-snapshot shells, 19 GB
 free, no swap in use — so neither candidate has an obvious mechanism yet. A
@@ -576,7 +626,7 @@ explanation.
 Whatever comes back, record every arm run in the Results table with its
 hostname and time, per this file's own rule — including the negatives.
 
-*** The answer, 2026-09-08: not the RUNNING session. A reboot clears it; what causes it is still open.
+*** The answer, updated 2026-09-09: not the RUNNING session, and the reboot floor is reproducible. What causes the step is still open.
 
 All =petri=, all 9.99.1049, all in the Results table above with their UTC
 finish times. Uptime and =claude= counts are each arm's OWN recorded values,
@@ -612,13 +662,34 @@ a STEP inside a smooth 18 days.
 
 *Generic uptime accumulation fits C/A/R just as well*, so the two are not
 separated by anything measured so far. *Arm D does not separate them either* —
-a rebooted box has neither residue nor uptime. The arm that does is new — as
-is a second one, which repairs a different claim this file now leans on:
+a rebooted box has neither residue nor uptime, and both candidates predict the
+same fast result there. What DOES separate them is arm E — see below, still
+outstanding.
 
+- *Arm D — =petri=, same reboot as R, no =claude= process, RUN 2026-09-08
+  23:25.* =uptimeHours: 1=, =claudeResident: {count: 0}=. This is the literal
+  missing cell of the A/R/C 2x2: same reboot event as R (22:23 UTC), captured
+  ~40 minutes after R once that session had closed. Result: 2328/2116/4465/
+  24456/1304/5661/6078 — indistinguishable from R (2388/2013/4462/26244/1068/
+  5844/6264) on every metric, 0.82-1.07x either direction, no consistent
+  sign. A resident =claude= session costs nothing measurable on a freshly
+  rebooted box, matching what A vs C already showed pre-reboot at a smaller
+  scale. See "The running session is exonerated," below, now confirmed on the
+  completed 2x2 rather than inferred from R vs A alone.
+- *Arm D2 — =petri=, a SECOND independent reboot, no =claude= process, RUN
+  2026-09-09 05:33.* =uptimeHours: 0.2=, =claudeResident: {count: 0}=. Run to
+  close the "n=1 per cell, one reboot" caveat below. Result: 2301/2322/4146/
+  25583/1312/6078/6304 — within 0.91-1.08x of arm D (mean 0.98x), i.e. inside
+  this file's own ~10% noise band on every metric. The rebooted floor
+  reproduces across two independent reboot events on two different days; it
+  is not a one-off.
 - *Arm E — ~18 days of uptime on a =petri= that has never run Claude Code.*
-  Fast (~2400) means uptime alone is harmless and the residue hypothesis
-  stands. Slow (~2800) means uptime accumulates on its own and Claude Code is
-  fully cleared.
+  Still outstanding. Fast (~2400) means uptime alone is harmless and the
+  residue hypothesis stands. Slow (~2800) means uptime accumulates on its own
+  and Claude Code is fully cleared. Now that D confirms the reboot floor is
+  real and reproducible, E is the ONLY remaining arm that can separate "uptime
+  in general" from "residue a Claude Code session leaves behind" — every other
+  cell of the matrix has run.
 - *Arm F — =NB-3641=, freshly rebooted, 9.99.1049, =--label=rebooted=. RUN
   2026-09-08 23:40.* Not about the step change at all; it repaired the
   CROSS-MACHINE comparison. Every petri/NB ratio in this file rested on one
@@ -633,40 +704,51 @@ is a second one, which repairs a different claim this file now leans on:
   recollection either way.
 
 E costs 18 days of discipline rather than 16 minutes of runtime, which is why
-it has not been run. D remains outstanding and is a single run. Until it runs,
-"reboot recency" remains the accurate description of what CLEARS the slow
-state, and *"a Claude Code session leaves something behind" is a live,
-unfalsified candidate for what CAUSES it* — not the exonerated one this
-section's first reading claimed.
+it has not been run. D and D2 are both in hand now: "reboot recency" is the
+accurate, REPRODUCED description of what CLEARS the slow state, and *"a
+Claude Code session leaves something behind" is still a live, unfalsified
+candidate for what CAUSES it* — not the exonerated one this section's first
+reading claimed. D cannot distinguish that candidate from plain uptime
+accumulation (a rebooted box has neither); only E can.
 
 | Arm | Finished (UTC)   | Uptime  | =claude= resident        | global | column | sort | uniq cold | uniq warm | hdr init | hdr restore |
 |-----+------------------+---------+--------------------------+--------+--------+------+-----------+-----------+----------+-------------|
 | C   | 2026-09-08 21:07 | 18 d    | 1, 30 h old (prose only) |   3634 |   3158 | 6903 |     46549 |      1722 |     8191 |        8594 |
 | A   | 2026-09-08 21:52 | 459.6 h | 0                        |   2820 |   3028 | 7065 |     41723 |      1798 |     8250 |        8915 |
 | R   | 2026-09-08 22:44 | 0.3 h   | 1, 0.2 h old             |   2388 |   2013 | 4462 |     26244 |      1068 |     5844 |        6264 |
-| D   | outstanding      | —       | 0                        |      — |      — |    — |         — |         — |        — |           — |
+| D   | 2026-09-08 23:25 | 1 h     | 0                        |   2328 |   2116 | 4465 |     24456 |      1304 |     5661 |        6078 |
+| D2  | 2026-09-09 05:33 | 0.2 h   | 0                        |   2301 |   2322 | 4146 |     25583 |      1312 |     6078 |        6304 |
 
-*The running session is exonerated.* A changed exactly one thing against C
-and moved almost nothing: four of seven metrics came back FLAT or slightly
-SLOWER with no =claude= process at all (=sort= 7065 vs 6903, =uniqDropWarm=
-1798 vs 1722, =headerCountsInitial= 8250 vs 8191, =headerCountsRestore= 8915
-vs 8594). Only =globalFilter= cleared this file's own ~10% noise band, at
-22%. The pre-registered reading was "A comes back ~1700-2000 -> the resident
-session is the cause"; 2820 is not that. The step change to explain is ~2x;
-the session is worth 22% on a single metric and nothing on the other six.
-This is the SECOND environment guess this file has tested and killed.
+*The running session is exonerated — pre-reboot.* A changed exactly one thing
+against C and moved almost nothing: four of seven metrics came back FLAT or
+slightly SLOWER with no =claude= process at all (=sort= 7065 vs 6903,
+=uniqDropWarm= 1798 vs 1722, =headerCountsInitial= 8250 vs 8191,
+=headerCountsRestore= 8915 vs 8594). Only =globalFilter= cleared this file's
+own ~10% noise band, at 22%. The pre-registered reading was "A comes back
+~1700-2000 -> the resident session is the cause"; 2820 is not that. The step
+change to explain is ~2x; the session is worth 22% on a single metric and
+nothing on the other six. This is the SECOND environment guess this file has
+tested and killed.
 
-*R closes the direction off.* R has a =claude= session resident and is
-still faster than A, which has none, on all seven metrics — by 1.18-1.68x.
-The fastest =petri= arm ever recorded at this script version was captured
-with Claude Code running. Whatever the 2026-09-07 step change was, it is not
-this.
+*R closes the direction off, and D confirms it directly, post-reboot.* R has
+a =claude= session resident and is still faster than A, which has none, on
+all seven metrics — by 1.18-1.68x. The fastest =petri= arm ever recorded at
+this script version was captured with Claude Code running. And D — the same
+reboot as R, session closed 40 minutes later — lands within 0.82-1.07x of R
+on every metric, no consistent direction. Two independent checks (A vs C
+pre-reboot, D vs R post-reboot) now agree: a resident =claude= process is not
+the variable. Whatever the 2026-09-07 step change was, it is not this.
 
-*Reboot recency reproduces the whole effect.* R vs C is 1.37-1.77x across
-every metric; R vs A — which isolates the reboot everywhere except that R
-pays for a resident session A does not — is 1.18-1.68x. Both bracket the ~2x
-step change. In the pre-registered terms this is the "it is UPTIME, not
-Claude Code at all" branch, reached via R rather than D.
+*Reboot recency reproduces the whole effect, and reproduces it TWICE.* R vs C
+is 1.37-1.77x across every metric; R vs A — which isolates the reboot
+everywhere except that R pays for a resident session A does not — is
+1.18-1.68x; D vs C, holding the reboot but removing the resident session
+entirely, is 1.32-1.90x. All three bracket the ~2x step change. D2, a second
+independent reboot the next morning, lands within 0.91-1.08x of D — the fast
+floor is not one lucky sample, it is where this machine sits immediately after
+ANY reboot. In the pre-registered terms this is the "it is UPTIME, not Claude
+Code at all" branch, now reached via D directly rather than inferred from R
+vs A.
 
 *What this does NOT explain, and saying so is the point.* =petri= was up 18
 days across 2026-09-07 and did not reboot, so the step change happened INSIDE
@@ -680,25 +762,31 @@ for the cause — a Claude Code session leaving residue behind — but it arrive
 after this paragraph was first written; see "How arm A reached =count: 0=
 matters" above, and arm E.
 
-*Three caveats, none of which change the conclusion.*
+*Three caveats from the first reading — now resolved or narrowed.*
 
-- *n=1 per cell, one reboot.* A second reboot cycle would make this
-  reproducible rather than observed once.
+- *n=1 per cell, one reboot — RESOLVED.* Arm D2 is a second, independent
+  reboot cycle (2026-09-09, a different day, not a continuation of the
+  22:23 UTC reboot that produced R/D) and lands within 0.91-1.08x of D. The
+  floor is reproducible, not a one-off.
 - *R differs from A in two variables*, uptime AND session presence — the
-  many-variables-at-once mistake this file records twice. It survives only
-  because the second variable pushes the WRONG WAY: a resident session cannot
-  make the box faster (A vs C measured its cost at 0 to +22%), so R bounds
-  arm D at <= 2388 rather than confounding it. D still closes the cell
-  properly and is worth running.
+  many-variables-at-once mistake this file records twice. This is why D was
+  worth running specifically, and it has now run: D isolates the reboot from
+  session presence directly (same reboot as R, session closed) and lands at
+  0.82-1.07x of R, confirming the prediction that a resident session cannot
+  make the box faster.
 - *A and R are 52 minutes apart on the wall clock*, and every sample fetches
   its page shell from the live site, so site load is live here as it is
   everywhere in this file. It fits badly — a uniform 1.18-1.68x across seven
-  metrics, five of which touch no network inside their timing bracket — but
-  it is not excluded.
+  metrics, five of which touch no network inside their timing bracket — and
+  D2, captured on an entirely different morning, reproducing the same floor
+  makes a shared time-of-day artifact even less plausible. Still not formally
+  excluded.
 
-*Provisional standing rule, pending arm D*: reboot before a measurement
-session, and record =uptimeHours= with every arm. Do not promote this into
-CLAUDE.md until D confirms it.
+*Standing rule, confirmed by D and D2*: reboot before a measurement session,
+and record =uptimeHours= with every arm. This was written as provisional
+"pending arm D"; D has run, and D2 replicated it on an independent reboot. Not
+yet promoted into CLAUDE.md — that is a separate decision to make explicitly,
+not an automatic consequence of this file.
 
 *Consequence for the Results table above*: the =NB-3641= vs =petri= 1.5-1.85x
 is not a machine ratio. See the correction under that table.
