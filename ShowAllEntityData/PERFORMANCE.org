@@ -405,6 +405,91 @@ harder on ~_rowTextCache~.
 | 13, 20      | Nit; already mitigated by Step 19.                                                                    |
 | 17          | Validated manually and FAILED on ~<tr>~. Blocked — read that step's gate before spending time here.   |
 
+*** The original Steps 1-22, consolidated
+
+The tiers above are ordered by what to do next, which scatters the ORIGINAL
+steps across four of them. This section is the same plan read the other way —
+by step number — because "where did Step 9 go" is otherwise a search.
+
+*Seven need nothing*: 3, 4, 8, 18, 19, 21 and 22 are DONE. *Three are not
+orderable work*:
+
+| Step | Why it is not in the running order                                                                         |
+|------+------------------------------------------------------------------------------------------------------------|
+|    7 | Fixes a gate INSIDE Step 5's ~IntersectionObserver~ code. No observer exists on ~main~ — fold it into 5.   |
+|   12 | Fixes a ~ReferenceError~ in ~_artProcessIoEntriesBatched()~, which likewise only exists on the old branch. |
+|   17 | Manually validated and FAILED on ~<tr>~. Blocked pending a redesign, not waiting its turn.                 |
+
+The remaining twelve fall into three tracks that do not compete for the same
+code, so they can be worked in any interleaving — but each track has its own
+internal order.
+
+**** Track A — filter and sort path
+
+Interleaved with the new steps, in the tiers above:
+
+| Order | Step | Sits in | Note                                                                       |
+|-------+------+---------+----------------------------------------------------------------------------|
+|     1 | 6    | Tier 2  | One function. Makes the 📊 warm cache survive a sort.                      |
+|     2 | 9    | Tier 3  | Do it WITH Step 29, not after — see below.                                 |
+|     3 | 10   | Tier 3  | Sort only, self-contained, ~10-20x fewer comparator text extractions.      |
+|     4 | 1/2  | Tier 4  | Re-judge only after Tier 1 and Step 30, and see the Step 34 overlap below. |
+
+*Step 9 pairs with Step 29 rather than following it.* Today a stale
+~_rowTextCache~ entry only mis-matches a row. Step 29 feeds that same cache
+into the highlight pass, at which point a stale entry also mis-HIGHLIGHTS one —
+a wrong answer the user can see. The invalidation should land in the same
+change, not as a follow-up.
+
+**** Track B — CAA/EAA artwork
+
+One track, five steps, best done in one stretch:
+
+*5 (+7, +12) -> 15 -> 16 -> 14 -> 20.*
+
+*Why 5 before 15, even though 15 is smaller and already written.* Step 15
+raises image concurrency from 4 to 12 (~sa_caa_img_concurrency~), and the Cover
+Art Archive is measured at *~1.2 requests/second* (~tests/MEASUREMENTS.org~,
+"Third-party service limits"). Firing more requests concurrently before Step 5
+has reduced how many are fired at all is the wrong way round on exactly the
+large pages both steps target.
+
+The counter-argument is real but weaker, and worth recording because it is not
+obvious: *landing 15 first would make Step 12 disappear by construction.* Step
+12's bug is code referencing ~_caaImgQueue~/~_caaMetaQueue~, which is precisely
+what Step 15 creates — the crash exists only because that code was written
+expecting 15 to have landed. Either order resolves it; 15-first resolves it
+without a rename.
+
+Then 16 (IDB off the icon-render hot path, deliberately separated from 15 for
+its own risk profile), 14 (in-flight de-duplication — its own verification note
+records that the race is narrow and could not be reproduced end-to-end), and 20
+last, since Step 19 already removed its observable cost on every path it covers.
+
+**** Track C — opportunistic
+
+- *11* — ~release-tracks~ only, independent of everything. Do it when that
+  pageType is the priority, not before.
+- *13* — a cdtoc nit, one-click recoverable. Worth folding into whoever next
+  touches ~runFilter()~'s single-table branch rather than scheduling on its own.
+
+**** Step 34 overlaps Step 1, and shrinks it
+
+Recorded here because it changes how Step 1 should be judged, and because
+nothing in Step 1's own text could have predicted it.
+
+Step 1 stops cloning rows altogether. The ~1.05 million ~querySelectorAll~
+calls Step 34 targets are made by ~_stripTransientCellState~ on those clones —
+so *Step 1 would remove Step 34's cost as a side effect*, and equally, landing
+Step 34 first removes most of what Step 1 still has to win.
+
+That does not reorder anything: Step 34 is cheap and safe, Step 1 measured a net
+loss on narrow filters and is neither. But it is the second thing to move under
+Step 1's feet, after Step 30 removes the forced-reflow term it actually lost on.
+*Re-judge Step 1 against a fresh count, not against this file's original 40-60%
+framing* — by the time it is reachable, both of its headline arguments will
+have been claimed by cheaper steps.
+
 ** Implementation steps
 
 *** TODO Step 1: Filter re-render (Fix C) — single-table mode only
@@ -420,6 +505,15 @@ has changed to apply it directly). Branch: ~filter-performance-fix~.
 Scope: single-table mode only (~runFilter()~'s non-multi branch). Multi-table
 mode is out of scope for this step — see the "Show single-table" button
 note above for why single-table-first still covers the important case.
+
+*Two cheaper steps have since claimed both of this one's headline arguments.*
+Step 30 removes the unconditional ~window.scrollTo()~ forced reflow, which is
+the term Fix C measurably LOST on (219 ms against ~main~'s 35 ms). Step 34
+removes the ~1.05 million ~querySelectorAll~ that ~_stripTransientCellState~
+issues on the clones this step would stop making — so most of what Fix C would
+win, a far cheaper step wins first. Neither is a reason to drop this step, but
+it must be re-judged on a fresh count rather than on this file's original
+40-60% framing. See "Step 34 overlaps Step 1, and shrinks it" above.
 
 *** TODO Step 2: Extend the Fix-C approach to Sort
 
@@ -970,6 +1064,12 @@ pre-population placeholder content, no invalidation hook when the async
 column later fills in). Lower priority than Steps 6-8 — only bites when a
 user filters before an async column finishes loading, a narrower window
 than the always-on caches above.
+
+*Land this WITH Step 29, not after it.* Today a stale ~_rowTextCache~ entry
+only mis-matches a row. Step 29 feeds that same cache into the highlight pass,
+at which point a stale entry also mis-HIGHLIGHTS one — a visibly wrong answer
+rather than a silently missing match. The severity assessment above is accurate
+for ~main~ today and stops being accurate the moment Step 29 lands.
 
 *** TODO Step 10: Precompute sort keys before ~sortLargeArray~
 
@@ -2165,6 +2265,12 @@ Two fixes, independent and both worth having:
 comparing ~filterClear~'s ~querySelectorAll~ against
 ~pass-cost-main-9.99.1049-2026-09-09-petri.json~. That counter is one of the 28
 that are bit-identical across runs, so any movement in it is real.
+
+*It also shrinks Step 1.* Fix C stops cloning rows, and these calls are made
+on the clones — so Step 1 would remove this cost as a side effect, and landing
+this step first removes most of what Step 1 still has to win. Cheap and safe
+beats large and risky, so the order stands; see "Step 34 overlaps Step 1, and
+shrinks it" above for what that does to Step 1's case.
 
 *Do not fold this into Step 23.* Both touch per-pass cell work and it is
 tempting, but they are different mechanisms with different risk: Step 23 changes
