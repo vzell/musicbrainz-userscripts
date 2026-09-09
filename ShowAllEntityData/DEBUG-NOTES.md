@@ -8120,3 +8120,104 @@ armed). Verified failing against the pre-fix code first (`git stash` on
 `ShowAllEntityData.user.js` alone): the injected node was never removed
 and the test timed out, confirming this is a real, currently-failing case
 and not a no-op assertion.
+
+## 2026-09-09 — "Right Side Flags Everywhere": hollow-duplicate flag icon + artificial "Isra el" space (fixed)
+
+Reported with a real capture, `debug/Israel-flag.html` (`artist-events`,
+Location column filtered to "isra"), and a screenshot showing what looked
+like two flag icons around "Israel" plus a visible gap splitting the
+name. Root-caused by reproducing the EXACT captured markup in a fixture
+and dumping the actual rendered dropdown DOM rather than guessing from
+the screenshot alone — two genuinely separate bugs, both in code touched
+by the same-day subdivision-flag fix above.
+
+**Bug 1 — hollow native flag treated as a real icon.** The captured HTML
+for the "Location" cell:
+```html
+<span class="flag flag-IL" data-hq-processed="1"
+      style="background-image: none !important; padding: 0 !important; margin: 0 !important;">
+  <span class="mfe-flag-wrapper">
+    <a class="arealink" data-flag-processed="1"><bdi>Israel</bdi></a>
+    <img class="mb-hq-flag-img" data-hq-flag="IL" src="…Flag_of_Israel.svg">
+  </span>
+</span>
+```
+Reading RSFE's own source (`processFlags()`) explains this exactly: *"If
+this flag wraps an area link that will be handled by insertFlags,
+suppress it"* — RSFE deliberately neutralizes a native `.flag` span's own
+background rather than removing it, when it's about to wrap that same
+anchor in its own `mfe-flag-wrapper` + trailing `img.mb-hq-flag-img`.
+`_findAreaLinkIcon()` checked `.closest('.flag')` BEFORE checking for
+RSFE's wrapper, so it returned the hollow, backgroundless outer span
+instead of RSFE's real icon — confirmed via a debug dump: the dropdown's
+"Entity info - Area name" trailing icon baked to an empty
+`<span class="flag flag-IL"></span>` (no image, no background) instead of
+the real flag `<img>`.
+
+**Bug 1b — the SAME hollow span also got double-matched by
+`_buildFlagSegmentsForRoot()`'s `iconSel`.** Its native-flag fragment was
+a bare `span[class*="flag-"]` SUBSTRING check — which also matches
+`class="mfe-flag-wrapper"` purely because that string CONTAINS the
+characters "flag-" (`m-f-e-‑flag-‑wrapper`), with no relation to the
+wrapper actually being a flag. Dumped preview row before the fix:
+`Cinema City Hall in <span class="flag flag-IL"></span><span
+class="mfe-flag-wrapper"></span>Isra el<img class="mb-hq-flag-img">` — TWO
+bogus, empty icon segments in front of the name, each carrying its own
+`margin-right: 4px`, before the one real icon at the end.
+
+Fix: `_findAreaLinkIcon()` now checks `AREA_ICON_WRAPPER_SEL` FIRST,
+before the native `.flag` ancestor — RSFE's own real icon wins whenever
+it's present. `iconSel` was tightened from `span[class*="flag-"]` to
+`span.flag[class*="flag-"]:not(:has(${AREA_ICON_WRAPPER_SEL}))` — the
+`.flag` CLASS-TOKEN selector (not a substring match) already excludes
+`mfe-flag-wrapper` on its own (it has no `flag` token, just one compound
+class name), and the `:not(:has(...))` clause additionally skips a native
+flag span RSFE has hollowed out, so only the real trailing `<img>` is
+ever matched for that anchor.
+
+**Bug 2 — artificial space when a highlight splits a country name.**
+Filtering "Location" to "isra" wraps the matched prefix:
+`<bdi><span class="mb-column-filter-highlight">Isra</span>el</bdi>` — two
+sibling text nodes ("Isra" inside the highlight span, "el" right after)
+with nothing between them in the source. `_buildFlagSegmentsForRoot()`
+collected each as a SEPARATE `textParts` entry and joined them with
+`textParts.join(' ')`, unconditionally inserting a space at every
+boundary — "Isra" + " " + "el" = "Isra el". Confirmed via a debug dump
+that the dropdown's OWN "Entity info - Area name" LABEL never had this
+problem (it reads from an already-correct, separately-built value) — only
+the cell-preview row's rendered text did, which is why the bug was easy
+to overlook from the label alone.
+
+`getCleanColumnText()` already solves this exact class of bug (its own
+JSDoc names it directly: *"Illinois" → "I" + "llino" + "is" → "I llino
+is"*) by cloning the element, UNWRAPPING `_COLLAPSE_MATCH_SEL`/`.mb-ic-wrap`
+spans into plain text nodes, and calling `.normalize()` to merge adjacent
+text-node siblings back into one — so `join(' ')` only ever fires at a
+REAL inter-element boundary. `_buildFlagSegmentsForRoot()` never had this
+treatment ported over, and couldn't simply reuse it verbatim: its icon
+segments need `_bakeFlagIconNode()`'s `getComputedStyle()` read on a
+LIVE, attached element (a detached clone has no computed style at all,
+which would have broken the ALREADY-correct native-flag baking).
+
+Fix: bake every icon from the LIVE root first, in document order
+(`Array.from(root.querySelectorAll(iconSel)).map(_bakeFlagIconNode)`),
+*then* build a clone with the same unwrap-and-normalize treatment as
+`getCleanColumnText()`, and walk THAT for text — consuming the pre-baked
+icons by position as the walker re-encounters each icon-matching element
+in the clone. Safe specifically because `_COLLAPSE_MATCH_SEL`/`.mb-ic-wrap`
+never overlap `iconSel` — unwrapping them can never change how many icon
+elements exist or their relative order, so pairing live-baked icons to
+clone-walked positions by simple ordinal index is exact.
+
+New regression coverage: `tests/fixtures/uniq-drop-israel-flag-artifacts.spec.js`
+(+ matching `.html` fixture, built directly from `debug/Israel-flag.html`'s
+own markup) — one case per bug. The first asserts exactly one trailing
+icon (a real `<img>`, never an empty `<span class="flag">`) in both the
+entity-info row and the cell-preview row. The second types "isra" into
+the Location filter and asserts the preview's RENDERED TEXT (not its
+`title`, which was never wrong) never contains "Isra el". Both verified
+failing against the pre-fix code first (`git stash` on
+`ShowAllEntityData.user.js` alone) — the first attempt at the second test
+mistakenly asserted on `.title` and passed even pre-fix, a genuine false
+negative caught only by dumping the real pre-fix DOM and checking which
+field actually carried the bug.

@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-09-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"MusicBrainz: Right Side Flags Everywhere\" wraps a country's area anchor in its own `span.mfe-flag-wrapper` and, when that anchor already sat inside a native `<span class=\"flag flag-XX\">`, explicitly neutralizes that native flag's background rather than removing the now-empty span. `_findAreaLinkIcon()` checked the (now hollow) native flag ancestor before RSFE's own wrapper, so the dropdown's \"Entity info - Area name\" trailing icon — and the cell-preview row's icon segments — showed a blank/duplicate flag in front of the name instead of RSFE's real icon after it. Fixed by checking RSFE's wrapper first. Separately, `_buildFlagSegmentsForRoot()`'s `iconSel` used a bare `span[class*=\"flag-\"]` substring check, which also accidentally matched RSFE's own `mfe-flag-wrapper` class (it merely contains the characters \"flag-\"), adding a second bogus icon segment; tightened to require the literal `flag` class token, and to skip a native flag span RSFE has already hollowed out via `:not(:has(...))`.",
+          "The unique-values dropdown's cell-preview row could also render a country name with an artificial space in the middle (e.g. \"Israel\" → \"Isra el\") when a partial column-filter match highlighted part of it, splitting one logical word across two adjacent DOM text nodes that `_buildFlagSegmentsForRoot()`'s `textParts.join(' ')` then joined with a synthetic space. `getCleanColumnText()` already solves this exact class of bug (clone + unwrap the highlight/`.mb-ic-wrap` spans + `.normalize()`), but that function's text-only approach can't be reused directly here since flag-icon baking needs `getComputedStyle()` on the LIVE, attached elements. Fixed by baking every icon from the live root first (in document order), then walking a normalized clone for text only and consuming the pre-baked icons by position — icon-matching elements never overlap the unwrapped selectors, so their count and order are unaffected by the clone."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-09-09",
     "sections": [

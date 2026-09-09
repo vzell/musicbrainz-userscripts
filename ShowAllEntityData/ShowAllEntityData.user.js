@@ -3206,32 +3206,44 @@
      * installed, for every area except the country itself).
      *
      * Checked in order:
-     *   1. `anchor.closest('.flag')` — native MusicBrainz country flag, a
-     *      `<span class="flag flag-XX">` WRAPPING the anchor. The icon IS
-     *      this element itself (a CSS background-image sprite).
-     *   2. `anchor.previousElementSibling` matching
-     *      `AREA_ICON_PRECEDING_SIBLING_SEL` — legacy / current "More Flags
-     *      Everywhere" shape (icon precedes the anchor, unwrapped).
-     *   3. `anchor.closest(AREA_ICON_WRAPPER_SEL)`'s own
+     *   1. `anchor.closest(AREA_ICON_WRAPPER_SEL)`'s own
      *      `AREA_ICON_TRAILING_IMG_SEL` descendant — "Right Side Flags
      *      Everywhere" shape (icon trails the anchor, inside a shared
-     *      wrapper).
+     *      wrapper). Checked FIRST and deliberately BEFORE the native flag
+     *      below: when RSFE wraps an anchor that already sits inside a
+     *      native `<span class="flag flag-XX">`, it explicitly neutralizes
+     *      that native flag's own background (`background-image: none
+     *      !important`, marked `data-hq-processed` — see its own
+     *      `processFlags()`'s "this flag wraps an area link that will be
+     *      handled by insertFlags, suppress it" comment) rather than
+     *      removing the now-empty wrapping span. Checking `.flag` first
+     *      would return that hollowed-out shell instead of RSFE's real
+     *      icon — confirmed via debug/Israel-flag.html, where doing so
+     *      produced a second, empty "flag" icon segment in front of the
+     *      country name (see DEBUG-NOTES.md's dated entry).
+     *   2. `anchor.closest('.flag')` — native MusicBrainz country flag, a
+     *      `<span class="flag flag-XX">` WRAPPING the anchor. The icon IS
+     *      this element itself (a CSS background-image sprite).
+     *   3. `anchor.previousElementSibling` matching
+     *      `AREA_ICON_PRECEDING_SIBLING_SEL` — legacy / current "More Flags
+     *      Everywhere" shape (icon precedes the anchor, unwrapped).
      *
      * @param {HTMLAnchorElement} anchor
      * @returns {?Element}
      */
     function _findAreaLinkIcon(anchor) {
+        const rsfeWrapper = anchor.closest(AREA_ICON_WRAPPER_SEL);
+        if (rsfeWrapper) {
+            const img = rsfeWrapper.querySelector(AREA_ICON_TRAILING_IMG_SEL);
+            if (img) return img;
+        }
+
         const flagAncestor = anchor.closest('.flag');
         if (flagAncestor) return flagAncestor;
 
         const prev = anchor.previousElementSibling;
         if (prev && prev.matches(AREA_ICON_PRECEDING_SIBLING_SEL)) return prev;
 
-        const rsfeWrapper = anchor.closest(AREA_ICON_WRAPPER_SEL);
-        if (rsfeWrapper) {
-            const img = rsfeWrapper.querySelector(AREA_ICON_TRAILING_IMG_SEL);
-            if (img) return img;
-        }
         return null;
     }
 
@@ -54416,7 +54428,25 @@ a { color: #1565c0; }`;
             // both a PRECEDING icon (legacy/MFE) and a TRAILING one (RSFE's
             // img inside its shared wrapper) fall out correctly with no
             // extra ordering logic here.
-            const iconSel = `span[class*="flag-"], ${AREA_ICON_PRECEDING_SIBLING_SEL}, ${AREA_ICON_TRAILING_IMG_SEL}`;
+            //
+            // The native-flag fragment requires the literal `flag` CLASS
+            // TOKEN (`span.flag`), not merely the SUBSTRING "flag-" anywhere
+            // in the class attribute — a bare `span[class*="flag-"]` also
+            // matches "Right Side Flags Everywhere"'s OWN
+            // `class="mfe-flag-wrapper"` (which merely CONTAINS the
+            // characters "flag-", coincidentally, as part of one compound
+            // class name with no "flag" token of its own), wrongly treating
+            // that wrapper itself as a second icon. `:not(:has(...))`
+            // additionally excludes a native flag span whose OWN background
+            // RSFE has neutralized because it wraps the anchor in its own
+            // `AREA_ICON_WRAPPER_SEL` — matching `_findAreaLinkIcon()`'s own
+            // priority order, so this walker doesn't produce an extra,
+            // empty icon segment for a flag RSFE has already hollowed out.
+            // Confirmed via debug/Israel-flag.html (see DEBUG-NOTES.md's
+            // dated entry): before this fix, "Cinema City Hall in Israel"
+            // rendered with the hollow native flag AND the wrapper itself
+            // both matching as bogus icon segments in front of the name.
+            const iconSel = `span.flag[class*="flag-"]:not(:has(${AREA_ICON_WRAPPER_SEL})), ${AREA_ICON_PRECEDING_SIBLING_SEL}, ${AREA_ICON_TRAILING_IMG_SEL}`;
 
             /**
              * Builds ONE root element's (a single `<li>` item, or a whole
@@ -54429,10 +54459,44 @@ a { color: #1565c0; }`;
              * sibling elements with no whitespace text node between them in
              * the source DOM (e.g. .release-country/.release-date) still
              * read with a space instead of raw per-node concatenation.
+             *
+             * Icons are baked from the LIVE `root` FIRST, in document
+             * order, before any cloning below — `_bakeFlagIconNode()`'s
+             * native-flag branch needs `getComputedStyle()` on a real,
+             * attached, styled element; a detached clone has no computed
+             * style at all. `walkRoot` is then a clone with any live
+             * `_COLLAPSE_MATCH_SEL` (column-filter highlight) or
+             * `.mb-ic-wrap` span UNWRAPPED and `.normalize()`d — same idiom
+             * `getCleanColumnText()` already uses, for the same reason:
+             * without it, a still-live highlight span split across a
+             * matched substring (e.g. filtering "isra" highlights "Isra"
+             * inside "Israel", leaving "el" as a separate sibling text
+             * node) leaves TWO adjacent text nodes with nothing between
+             * them in the source, and the `join(' ')` below inserts an
+             * artificial space at that boundary — "Isra el" — confirmed via
+             * debug/Israel-flag.html. Neither `_COLLAPSE_MATCH_SEL` nor
+             * `.mb-ic-wrap` ever matches `iconSel`, so unwrapping them never
+             * changes how many icon elements exist or their relative
+             * order — which is what makes it safe to just consume
+             * `bakedIcons` by position below instead of re-baking from the
+             * (detached, unstyled) clone.
              * @param {Element} root
              * @returns {Array<{type:'text',text:string}|{type:'icon',node:HTMLElement}>}
              */
             function _buildFlagSegmentsForRoot(root) {
+                const bakedIcons = Array.from(root.querySelectorAll(iconSel)).map(_bakeFlagIconNode);
+                let iconIdx = 0;
+
+                let walkRoot = root;
+                if (root.querySelector(_COLLAPSE_MATCH_SEL) || root.querySelector('.mb-ic-wrap')) {
+                    walkRoot = root.cloneNode(true);
+                    walkRoot.querySelectorAll(_COLLAPSE_MATCH_SEL).forEach(el =>
+                        el.replaceWith(document.createTextNode(el.textContent)));
+                    walkRoot.querySelectorAll('.mb-ic-wrap').forEach(el =>
+                        el.replaceWith(document.createTextNode(el.textContent)));
+                    walkRoot.normalize();
+                }
+
                 const segments = [];
                 let textParts = [];
                 const flushText = () => {
@@ -54448,7 +54512,7 @@ a { color: #1565c0; }`;
                     segments.push({ type: 'text', text: clean });
                     textParts = [];
                 };
-                const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+                const walker = document.createTreeWalker(walkRoot, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
                     acceptNode(node) {
                         if (node.nodeType === Node.ELEMENT_NODE) {
                             const tag = node.tagName.toLowerCase();
@@ -54463,7 +54527,7 @@ a { color: #1565c0; }`;
                     if (node.nodeType === Node.ELEMENT_NODE) {
                         if (node.matches(iconSel)) {
                             flushText();
-                            segments.push({ type: 'icon', node: _bakeFlagIconNode(node) });
+                            segments.push({ type: 'icon', node: bakedIcons[iconIdx++] });
                         }
                         continue;
                     }
