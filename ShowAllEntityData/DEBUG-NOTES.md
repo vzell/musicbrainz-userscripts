@@ -8966,3 +8966,123 @@ on this box, `petri`). Not fixed because no reproducible mechanism was
 found — if it recurs, check first whether `arm-e-cron.log`/`capture-output`
 are non-empty this time (narrows "died before producing any output" vs "died
 after").
+
+## 2026-09-10 — PERFORMANCE.org Tier 1 re-ordered: Step 23 moved from second to last (docs only)
+
+Asked to "start with Step 23" from Tier 1 and to re-check whether the tier's
+order (`34, 23, 24, 25, 26`) still held. It did not, and Step 23 is what moved.
+No code changed — this entry records why, and the code-grounded findings the
+re-read produced, so the next session does not re-derive them.
+
+**Step 23's headline argument had already been taken by Step 32.** It sat
+second as one of "the two defects", on the strength of restoring Step 3's
+−27…−30% on `headerCountsRestore` "for every release-listing pageType, where
+today it never applies at all". 9.99.1057 gated that cache drop on a row having
+actually changed; with the column collapsed — now the default — the cache
+survives a keystroke entirely, measured at **1.01×** of a page with no Picard
+column. The drop that remains on an *expanded* column is correct behaviour, not
+a defect, so the step no longer contains a defect at all and Step 25 is now
+Tier 1's only one. Reordered to **`34, 24, 25, 26, 23`**.
+
+Two further reasons to take it last rather than merely later, both "otherwise
+you write the same code twice":
+
+- Four of the twelve per-cell scans **Step 34** collapses *are* the ERG arm of
+  `_stripTransientCellState` (▼→▶ glyph reset, ghost-table strip, two
+  `data-erg-injected` sweeps).
+- Step 23's sticky-column member lives inside `applyStickyColumn`, which
+  **Step 24** must open anyway. Folded into Step 24, with the two things that
+  make it non-obvious: `mouseenter`/`mouseleave` do not bubble, so it needs
+  `mouseover`/`mouseout` plus a `relatedTarget` row-boundary gate (without it,
+  moving between two `<td>`s of one row fires an out/over pair and visibly
+  repaints, because `_leave` restores rest backgrounds before `_enter`
+  re-applies hover — and the existing CAA/EAA bigbox tbody delegation omits
+  exactly that gate, so it is *not* a usable template); and three writers of
+  `data-mb-rest-bg` must stay in sync with any change to *when* the stamp is
+  written.
+
+**ERG is a redesign, not a re-wire** — the finding that most changes Step 23's
+cost/risk shape. `initExpandRGsFeature()` selects
+`:is(#content,#page) table.tbl > tbody > tr > td a[href^="/release"]` and
+injects into `link.parentNode`, i.e. **live rows only**, so in
+`tableMode: 'multi'` the master rows never own the button — the identical gap
+behind the 2026-09-10 Picard bug two entries up. Delegating without mirroring
+onto the source rows first would make the buttons *disappear* after the first
+re-render rather than merely go inert. Step 23's own correction #2 claimed that
+prerequisite was "now met"; it is met for Picard, not for ERG. Two more:
+`link.parentNode` is a `<td>` on a flat cell, an `<li>` in a multi-row cell and
+`li.mb-caa-art-li-summary` in a CAA art cell — and art cells are built on the
+live rows *after* any mirror would have run, with `[data-erg-btn]` itself the
+insertion anchor for this script's inline thumbnails (`ergBtn.after(ph)`); and
+the fetch lifecycle is encoded in the **listener set** (`loadOnce` removes
+itself; a one-shot `retrySetup` re-arms it), so "have I fetched yet" is
+unrepresentable after a clone and needs an explicit `data-erg-state`.
+
+By contrast **Picard's half is small and mostly already built**: the per-cell
+button closure holds exactly three data values (`guid`, `entityType`, display
+`name`), host is read from settings at click time, port comes from a module
+memo, and all three visual states are already in the DOM as `img.src` +
+`title`. So it is three `data-*` attributes plus a second `closest()` arm inside
+`_picardHdrDelegateHandler` — reusing the listener `_picardEnsureHdrDelegate`
+has had installed on the `<table>` since 9.99.1057.
+
+**Two latent ERG bugs, filed not fixed** (both live in the code Step 23
+rewrites; neither has been reported):
+
+1. The ghost-table strip is `Array.from(el.children)` — **direct children of
+   the `<td>` only** — but `ergInjectReleaseGroupButton`'s `<li>` arm inserts
+   with `parent.after(table)` and `ergInjectReleaseButton` with
+   `resolvedTableParent.appendChild(...)` where the parent IS the `<li>`, i.e.
+   inside the `<ul>`. Such a table survives `cloneNode(true)`, and its own
+   `/release/` anchors then match `initExpandRGsFeature`'s *descendant*
+   selector and get their own fresh buttons on the next pass.
+2. `_applyDiscographyViewFilter()` re-wires Picard at its tail (it re-clones
+   source rows into live tbodies twice without going through
+   `renderGroupedTable()`) but has no matching `initExpandRGsFeature()` call, so
+   a view switch leaves inert `[data-erg-btn]` clones behind until the next
+   full render.
+
+**Neither ERG nor Picard is visible on the primary baseline page**, which is
+worth knowing before reading any committed number as covering them:
+`artist-events` has no `/release/` link anywhere, so ERG early-returns on
+`links.length` and Picard skips every table. The ERG-carrying baselines are
+`artist-releasegroups` (4286 `[data-erg-btn]`, 6429 `data-erg-injected`, 47
+sub-tables), `artist-releases-dylan` (~2301), `series-releases` (24),
+`releasegroup-releases` (14), `notes-received` (7).
+
+**The whole family is invisible to the test suite.** Nothing in `tests/` clicks
+`.mb-picard-btn`, `[data-erg-btn]`, `h2.mb-toggle-h2`, a cdtoc toggle, a row
+hover, or a barcode cell — every assertion that touches them is an element
+count, a class check or a `title` read, all of which survive `cloneNode(true)`
+whether or not the listeners do. So **every current test would stay green if
+Step 23 delegated the listeners and got it wrong.** The required assertions are
+now tabulated in the step. (The barcode one is not currently writable at all:
+no committed fixture carries `input[name="add-to-merge"]`, so that handler is
+never even attached.)
+
+**Two harness gaps recorded in Tier 1**, both invisible from Tier 0's single
+arm because that arm is the one page with neither feature:
+`capture-pass-cost.js` is hardcoded to `artist-events` (a `const PAGE_TYPE`
+plus a direct `artistEventsFixture` require — no `--pageType=`), and its
+`addEventListener`/`byEventType` counters are the only instrument that can
+prove a listener count went to zero; and **no `tableMode: 'multi'` pageType is
+instrumented for interaction perf at all**, though `renderGroupedTable`'s
+always-clone path is where the family costs most. A pageType also has to be
+registered in three places today (`ARMS`, `probe-fixture-columns.js`'s
+`DESCRIPTORS`, that `const PAGE_TYPE`) — the drift `runMetadata.js` was
+extracted to prevent. Both are closed by the next commit.
+
+Also corrected in the same pass, per this repo's "re-read the file for what
+your change made false" rule: the "Two of these are defects" subsection heading
+(one is discharged), the Findings-section aside that has ERG *and* Picard
+rebuilding every interactive cell (Picard collapsed builds nothing), Tier 1's
+closing "restores the cache on a fourth" sentence, Step 32's "Ordering against
+Step 23" outcome, and Step 34's verify instruction — which pointed at a
+three-versions-old baseline as the sole comparison target and needed the
+"capture a fresh `main` arm in the same session" and "read `filterClear`
+together with `postClearSettle`" qualifications. Step 23's and Step 24's stale
+`:NNNNN` line anchors (~700 and ~200-400 lines off at 9.99.1058) were replaced
+with grep anchors.
+
+No `// @version` bump and no changelog entry: `PERFORMANCE.org` and this file
+only.
