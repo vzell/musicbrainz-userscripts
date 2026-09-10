@@ -2244,6 +2244,61 @@ cloned DOM. Real, but well behind Steps 24-26. *Measure it first with the
 setting that already exists*, and only design a toggle if the number justifies
 the index churn.
 
+**** A NARROWER design was accepted 2026-09-10 — do not re-derive the deferral
+
+/The deferral above stands for what it actually rejected, and rejects something
+this design does not do. Read this before concluding "Step 32 says no"./
+
+Everything above argues against *inserting or removing a COLUMN at runtime*,
+and that argument is sound: the column count is what every index churns off.
+The accepted design never changes it. **The ~<th>~ and every ~<td>~ always
+exist; only the CELL CONTENT is deferred** — a collapsed cell is an empty
+~<td>~ that is still rightmost and still counted. So:
+
+- ~data-col-idx~ on the column-filter inputs, sort state, the sticky index, the
+  per-~colIndex~ ~_uniqDropDataCache~/~_colHeaderCountsCache~, the
+  colon-alignment descriptors and the saved widths *all keep their meaning*.
+- ~addColumnFilterRow~'s ghost-filter-cell self-healing still runs *exactly
+  once*, at injection: its check compares filter-row cells to HEADER cells, and
+  neither count moves. The bullet above predicting that path would "run
+  repeatedly" does not apply.
+- "'Build it or don't' is already a setting" is the one bullet this genuinely
+  falsifies. A press does not re-render: it fills or empties N cells in place,
+  which is what the existing rewire pass already does on every keystroke.
+
+What it buys, and why it is worth having even though it is not a walk
+reduction: ~_picardExtractRowEntities()~ is the *unconditional first line* of
+the per-row work, so a collapsed column skips the whole per-row anchor subtree
+walk plus the ~<ul>~/~<li>~/~<button>~/~<img>~ construction and the
+~addEventListener~ per button. The column stays in the five walks — the residue
+sentence above is unchanged.
+
+*Still not measured.* The free measurement this section already prescribes —
+flip ~sa_enable_picard_tagger~ off and re-run the same filter on a real
+release-listing page — has still never been run, and it remains the number that
+sizes Step 23, this design, and the residue together.
+
+***** Ordering against Step 23
+
+These two overlap and the order matters, so record the choice rather than
+discovering it. Step 23 makes the Picard buttons survive ~cloneNode(true)~, at
+which point there is little left per keystroke for an on-demand column to
+defer — its remaining win is the FIRST build. Conversely this design, landing
+first, does not block Step 23: it adds a per-table state flag Step 23's
+delegation must respect, nothing more. Part of Step 23's Picard win is in any
+case already banked by the ~_mbPicardWired~ marker (see that step).
+
+The usability argument is independent of both and is why this is being built:
+on a release listing the ♪ column is populated whether or not the user wants
+it, and there was no way to say no short of turning the whole feature off in
+settings.
+
+*Design detail worth pinning here because it is not obvious from the outside:*
+the initial state is a persisted setting defaulting to *collapsed*, and the
+per-table toggle is always present regardless. Setting it false therefore
+reproduces today's behaviour exactly (cells built at render) while keeping the
+toggle available. Full design in ~org/picard.org~.
+
 *** TODO Step 33: Lazy Relationships-column fetch
 
 ~_initRelationshipsColumnImpl()~ (~:62582~) collects every unpopulated

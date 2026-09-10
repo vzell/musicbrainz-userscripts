@@ -1,72 +1,418 @@
 * picard
-** i
 
-1.)
+Session notes for the Picard-column work. Part 1 shipped in *9.99.1056*; Part 2
+is the open item and its full plan is below.
 
-What exactly would happen when implementing "Step 23: Convert the re-wire-after-clone family to event delegation"
+The three questions this started from:
 
-2.)
+1. What exactly would happen when implementing "Step 23: Convert the
+   re-wire-after-clone family to event delegation"?
+2. A bug on multi-table pageTypes, e.g.
+   https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c —
+   initially the Picard column shows the right glyph "♪" in e.g. the sub-table
+   "Official release", but as soon as a sorting/filtering is done on that
+   sub-table the glyph is not rendered anymore. See ~debug/picard-missing.html~.
+3. Can we implement in the "Picard" column header, like in the "Length" column
+   (e.g. https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f),
+   a collapse/uncollapse picard glyph which only renders the picard data cell
+   "♪" when an end-user clicks it?
 
-There is already a bug for multi-table pageTypes like e.g https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
+** Answered — question 1 (Step 23)
 
-Initially the picard column shows the right glyph "♪" in e.g the sub-table "Official release", but as soon as
-a sorting/filtering is done on that sub-table, the glpyh is not rendered anymore, see @debug/picard-missing.html
+Not implemented, and no work planned. The findings are recorded where they
+belong rather than here: ~PERFORMANCE.org~ Step 32 has the ordering decision
+against Step 23, and Step 32's own "A NARROWER design was accepted" subsection
+plus Step 23's "Three corrections found while fixing the Picard multi-table
+clone bug" carry the rest — the roster is 7 functions not 4,
+~initAnnotationCompareRadios()~ cannot be fixed by delegation at all,
+~_cdtocInitTracklistToggles()~ yields nothing, and the real prize is the
+~_colHeaderCountsCache~ drop that the current perf harness structurally cannot
+see (~artist-events~ has no ~/release/~ links).
 
-3.)
+** DONE — question 2, shipped in 9.99.1056
 
-can we implement in the "Picard" column header kind of like in the "Lenght" column for e.g. https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f
-a collapse/uncollpase picard glyph which only renders the picard data cell "♪" when an end-user clicks it
+Root cause, fix, the four adjacent defects it also fixed, and the verification
+are all in ~DEBUG-NOTES.md~ under *## 2026-09-10 — Picard column emptied on
+every multi-table re-render (fixed)*. Read that, not a summary.
 
-** f
+The one-line version: ~renderFinalTable~ MOVES the rows it is handed while
+~renderGroupedTable~ ALWAYS CLONES, so in ~tableMode: 'multi'~ the Picard
+~<td>~ only ever landed on the rendered clones and ~groupedRows[i].rows~ never
+received it. That asymmetry is now written up in ~CLAUDE.md~'s "Common
+pitfalls".
 
-Done with Part 1. Here's where things stand.
+** TODO — question 3: per-sub-table ▶♪/▼♪ header toggle
 
-The bug is fixed and the fix is verified. Root cause was an asymmetry I hadn't expected to find documented elsewhere in the file: renderFinalTable moves the rows it's handed, so on single-table pages the Picard <td> lands on the source rows for free — but renderGroupedTable always clones, including on the first render. So groupedRows[i].rows never got the cell, and every re-render cloned blank rows. The code's own comment asserted the opposite, which is why it went unnoticed; the artwork code states the same fact correctly right next door.
+Own branch, started fresh after 9.99.1056. Own
+~ShowAllEntityData_CHANGELOG.wip.json~ at ~WIP.1~; do NOT touch ~// @version~
+or ~ShowAllEntityData_CHANGELOG.json~ on the branch.
 
-Two things worth flagging that changed my understanding of your report:
+*Line numbers are deliberately absent.* Everything below is a grep anchor,
+per ~CLAUDE.md~'s own file-inventory rule. The earlier draft of this plan
+carried offsets read at 9.99.1055 and three of them had already drifted by the
+time Part 1 merged (~initPicardTaggerColumn~ 74176 → 74300).
 
-- It wasn't sort-specific. runFilter's multi branch re-clones every group, so the column emptied page-wide on the first filter keystroke. Your snapshot showed one affected sub-table only because the scoped-sort path had narrowed that particular render.
-- The mirror had to clone the built cell, not rebuild it. _picardExtractRowEntities skips .mb-sticky-col, and only live rows carry that class. On your page td[0] (sticky) and td[18] both hold /release/76415396-…, so rebuilding on the master row would have harvested the other cell — same release, different tooltip text.
+*** Decisions already taken with the user — do not re-litigate
 
-Perf, per the gate you approved: restoring the cells means multi-table keystrokes rebuild them again. Smaller than the review claimed, though — _picardExtractRowEntities was already the unconditional first line, so the expensive per-row anchor walk was always being paid; only the DOM construction is new. The _mbPicardWired marker means a scoped sub-table sort now pays only for the group it sorted.
+- *Scope: PER SUB-TABLE.* Each table's header button toggles only its own
+  cells. Follow ~_artInitCaaColHeaderToggle~ (grep ~mb-caa-col-hdr-btn~), not
+  ~_msRepaintColHdrBtns~'s page-wide repaint. Add the page-wide companion
+  following ~_artInitGlobalCaaColHdrToggle~.
+- *ONE setting, default ~true~, and ~true~ means the column renders
+  COLLAPSED.* So on the final rendered page the Picard header shows the
+  collapsed glyph (~▶♪~) and every Picard ~<td>~ is empty until the user
+  presses it.
+- *The toggle itself is always present*, independent of that setting — the
+  setting decides only the STARTING state, exactly as ~*_initially_collapsed~
+  reads elsewhere. Consequence worth stating in the setting's own description:
+  turning it off reproduces the pre-9.99.1057 behaviour exactly (cells built at
+  render) while keeping the toggle available. This is the reading of "make the
+  feature configurable (default: true)" that was implemented; the alternative —
+  a hard feature on/off that removes the button entirely — was not, because the
+  always-present button is what the ⏱ and 🖼 precedents both do.
+- *Part 2 depends on Part 1 having shipped*, which it has. A toggle that fills
+  cells on demand is meaningless while the next sort destroys them.
 
-I also fixed four adjacent defects the change would otherwise have made worse — most importantly the discography-view path, which re-clones rows without going through renderGroupedTable and would have started serving inert ♪ buttons instead of missing ones.
+*** The setting
 
-Verification: new network-free spec, mutation-checked — reverting exactly the mirror gives Expected: 6, Received: 0 on both tests while the initial-render assertions still pass, so they pin the re-render specifically. 152 fixture tests green.
+Add to ~configSchema~'s Picard block — grep ~divider_picard_tagger~ — directly
+after ~sa_enable_picard_tagger~ and before the port keys, mirroring where
+~sa_caa_pics_initially_collapsed~ sits relative to its own master. Name it in
+both house styles at once: ~sa_picard_tagger_initially_collapsed~,
+~type: 'checkbox'~, ~default: true~.
 
-Two notes:
+~sa_enable_picard_tagger~ (default true) stays the master gate and is
+unchanged: off means no column, no cells, no button.
 
-1. I found a separate pre-existing bug and left it alone: on search?type=recording the continuation-row merge doesn't
-   survive a filter re-render — 3 merged rows become 6 again. Confirmed identical on HEAD, so it's not from this
-   change. It's recorded in DEBUG-NOTES.md; it deserves its own session.
-2. I have not pushed. Your global instructions say never push without explicit instruction, while the project guide says
-   always push after a task — so I've committed to fix/picard-multi-table-source-rows and stopped there. Say the word
-   and I'll push, then fold the WIP changelog and version bump on main.
+*** Why this is NOT what PERFORMANCE.org Step 32 deferred
 
-Part 2 (the per-sub-table ▶♪ header toggle, collapsed by default) is untouched, as agreed — that's a fresh branch once this one lands.
+Read Step 32's "A NARROWER design was accepted" subsection first — it is the
+authority and it already carries the argument. Short form: Step 32 rejected
+inserting/removing a COLUMN at runtime because the column count is what every
+index churns off. Here the ~<th>~ and every ~<td>~ always exist and only the
+cell CONTENT is deferred, so no index moves and
+~addColumnFilterRow~'s ghost-cell path still runs exactly once.
 
-** f2
+*** Where the state lives, and the proof it survives
 
-Pushed. fix/picard-multi-table-source-rows is on origin at 2cf1d24, local and remote refs match, and the working tree is clean apart from your own untracked org/picard.org.
+~<table>.dataset~ — grep ~picardThInjected~ for the existing precedent on the
+same element.
 
-GitHub offered a PR link if you want one:
-https://github.com/vzell/musicbrainz-userscripts/pull/new/fix/picard-multi-table-source-rows
+Do NOT model this on ~data-mb-ms-shown~ (grep ~_msLengthPrecisionShown~). That
+flag is INFERRED from cell content, and for Picard "no content" is ambiguous:
+~tests/snapshots/notes-received/rendered.html~ carries *1688*
+~mb-picard-cell~ against only *8* ~mb-picard-btn~, because 1680 of those rows
+have no taggable release. A collapsed cell and an "expanded, nothing to tag"
+cell are byte-identical, so the state has to be stored explicitly.
 
-Next steps, whenever you want them:
+Survival, from the code rather than by inference: ~renderGroupedTable~'s reuse
+branch is ~table = existingTables[index]~ followed by ~tbody.innerHTML = ''~ —
+the ~<table>~, its ~dataset~ and its ~<thead>~ are never replaced — and
+~runFilter~'s multi branch always passes a truthy query
+(~globalQuery || 're-run'~), so every keystroke, sort and view switch takes
+that branch. Independently measured by
+~tests/live/caa-icon-survives-sort-multi.spec.js~'s ~tagSubTables()~, whose own
+comment records its ~data-probeTag~ survival as always N/N. State is lost only
+on the ~!query~ new-table branch — an initial render, a fresh fetch, or a
+disk-load — which IS the "initially collapsed" contract.
 
-- Merge to main — that's where the version bump and changelog fold belong. The merge-push-remove skill covers exactly
-  this: fold ShowAllEntityData_CHANGELOG.wip.json's five WIP.1 items into the real changelog, bump // @version to
-  9.99.1056+<ship date>, delete the WIP file, and remove the branch. Note the WIP file's date is 2026-09-10; if the
-  merge lands on a different day, the folded entry's date must match the +YYYY-MM-DD stamp in the header, not the
-  authoring date.
-- Part 2 — the per-sub-table ▶♪ toggle, collapsed by default, on a fresh branch after this lands. The plan file already
-  has its design, including the two traps I verified: the header glyph has to come from CSS rather than text (or
-  initCollapsableColumns' _cleanColHeaderText lookup stops matching 'Picard' and silently kills the multi-row collapse
-  toggles), and the toggle state belongs on the <table> element, which the reuse branch preserves.
-- The search?type=recording continuation/filter bug I turned up is in DEBUG-NOTES.md awaiting its own session.
+Read-and-stamp on first sight inside the per-table loop so the value is
+explicit from then on, defaulting from the setting.
 
-* pre-existing bug and left it alone
+*** The header control — glyph from CSS, never from text
 
-on search?type=recording the continuation-row merge doesn't survive a filter re-render — 3 merged rows become 6
-again. Confirmed identical on HEAD, so it's not from this change. It's recorded in DEBUG-NOTES.md; it deserves its own
-session.
+This is the trap that would otherwise ship silently.
+
+The Picard ~<th>~ is a bare ~<th class="mb-picard-th">Picard</th>~ (grep
+~mb-picard-th~) with no ~.mb-col-hdr-flex~, no ~dataset.colName~, no sort icons
+and no 📊 — because ~makeTableSortableUnified~ always runs BEFORE Picard
+injects, so it never sees that header. It is the one header in the file without
+the contract every other column has.
+
+Therefore ~_cleanColHeaderText~ resolves it via its *step-3 clone-and-strip
+fallback*, whose selector today is only
+~.mb-col-uniq-wrap, .sort-icon-btn, .column-resizer, .mb-col-hdr-flex~ — and
+whose last-resort glyph strip does not include ~♪~ and is never reached anyway,
+because the fallback is non-empty. A TEXT glyph in that ~<th>~ would make
+~th.textContent~ read ~"▶♪Picard"~, and then:
+
+- ~initCollapsableColumns~'s ~headers.findIndex(th => _cleanColHeaderText(th)
+  === colName)~ stops matching ~'Picard'~ → *the multi-row Picard cells
+  silently lose their collapse toggles*, which
+  ~tests/fixtures/search-recordings-continuation.spec.js~ currently pins;
+- ~_exportCleanHeaderText~ → CSV/JSON/Org/HTML export headers read
+  ~"Picard ♪"~ (~dataset.colName~ is only its fallback for EMPTY text);
+- ~openUniqDrop~'s ~isCollapsableCol~ reads raw ~th.textContent~;
+- ~_updateAllColHeaderCounts~'s ~_cleanColName~ likewise.
+
+So: prepend a bare ~<span class="mb-picard-col-hdr-btn" role="button"
+tabindex="0">~ and put the glyph in CSS ~::before~ keyed on ~[aria-pressed]~,
+leaving ~textContent~ exactly ~"Picard"~. Same argument ~CLAUDE.md~ already
+makes for the length-mismatch flag being attributes-only with the glyph from
+CSS. Add ~.mb-picard-col-hdr-btn~ to ~_cleanColHeaderText~'s step-3 strip
+selector as belt-and-braces, and fix that function's stale JSDoc claim that
+step 3 removes "all ~[class^="mb-"]~ children" — it removes four named
+selectors and never did more.
+
+*Do NOT* set ~th.dataset.colName = 'Picard'~ to fix the lookup instead: it
+flips this ~<th>~ from "original" to "extracted" in three Statistics-panel
+heuristics. *Do NOT* give it ~.mb-col-hdr-flex~, and *do not* name the button
+~.mb-col-collapse-hdr-btn~ or ~.mb-caa-col-hdr-btn~ — ~initCollapsableColumns~'
+idempotent cleanup removes both classes table-wide and
+~initPicardTaggerColumn~ re-runs it (grep
+~_picardRegisterCollapsableColumn~), so the toggle would delete itself on the
+pass that built it.
+
+CSS: new rules directly after the ~.mb-ms-col-hdr-btn~ block, same box metrics
+and the same hover/~:focus-visible~/engaged-tint idiom. These will be the
+*first* ~.mb-picard-*~ rules in the file — everything Picard is inline-styled
+today. Leave the existing inline styles alone; they survive ~cloneNode~ and the
+save/load round trip, and moving them is out of scope.
+
+Element shape: ~<span role="button" tabindex="0">~ with ~click~ + ~keydown~
+(Enter/Space) through one ~activate~ that ~preventDefault()~/
+~stopPropagation()~s — copy ~.mb-ms-col-hdr-btn~'s. A ~<span>~ not a
+~<button>~: the navigation guard's merge-form branch already has to exempt
+~.mb-picard-btn~ from an ~e.target.closest('button')~ check, and a span
+sidesteps that.
+
+*** Listener survival — delegate on the <table>
+
+~renderGroupedTable~ rebuilds a per-group ~<thead>~ from
+~templateHead.cloneNode(true)~, so a span wired with ~addEventListener~ can
+arrive as a live-looking dead clone. A "wired" MARKER on the span would be
+copied by ~cloneNode~ and would lie.
+
+Delegate on the ~<table>~ element, guarded by
+~table.dataset.mbPicardHdrDelegate~, testing
+~ev.target.closest('.mb-picard-col-hdr-btn')~. The table element and that guard
+have identical lifetimes, so the guard cannot lie. The ~<thead>~ is NOT a safe
+host — unlike the ~<tbody>~, it IS replaced.
+
+Follow ~ensureCollapseDelegate~ but *do not copy its latent bug*: it sets
+~table.dataset.mbCollapseDelegate~ BEFORE its ~tbody~ null-check, so a table
+with no tbody is permanently marked and never gets a listener. Set the guard
+only after ~addEventListener~ has actually run. (Fixing that bug in
+~ensureCollapseDelegate~ itself is a separate change — mention it, don't fold
+it in.)
+
+Create/refresh the span from a new ~_initPicardColHeaderToggle(table)~ called
+from inside ~initPicardTaggerColumn~'s per-table loop on EVERY pass, both
+modes, idempotent via a presence check — the "reuse existing button if present"
+shape ~_artInitCaaColHeaderToggle~ uses. Not from the ~<th>~-creation block,
+which runs once in full mode only.
+
+Two defensive one-liners while there, both covering "a second full render on a
+page that already injected Picard": have ~makeTableSortableUnified~'s header
+loop skip ~th.mb-picard-th~ so it can never wipe the toggle or hand this column
+sort icons and a 📊 dropdown; Part 1 already added the DOM-presence half of the
+header guard and the thead-template strip.
+
+*** What "collapsed" must actually skip — the whole point
+
+Restructure so the entity scan sits BEHIND the state check. Today
+~_picardExtractRowEntities()~ is the first line of ~_picardFillCell~ (grep
+~_picardFillCell~), which is why a collapsed column has to short-circuit
+earlier:
+
+#+begin_src js
+resolve/create the <td>                       // unchanged — the column always exists
+if (!expanded) { if (td.firstChild) td.textContent = ''; return; }
+const entities = _picardExtractRowEntities(tr); …   // only when expanded
+#+end_src
+
+Skipped per row when collapsed: a full
+~tr.querySelectorAll('td:not(.mb-sticky-col):not(.mb-rel-cell) a[href]')~
+subtree walk, a regex per anchor, and the construction of a ~<ul>~, N ~<li>~,
+N ~<button>~, N ~<img>~ and N ~addEventListener~ calls.
+
+*Additional win, and it is the one Step 23 calls "Picard defeats Steps 3 and
+4":* ~initPicardTaggerColumn~ calls
+~_invalidateUniqDropDataCacheForTable(table)~ unconditionally on every pass,
+which also drops ~_colHeaderCountsCache~. Track a per-table "something actually
+changed" flag and invalidate only then. Correct by that helper's own JSDoc,
+which exists for populators that fill previously-empty cells. *Do not
+retrofit this into Part 1* — there, every pass really does rebuild.
+
+*** Toggling — mutate in place, do not call runFilter()
+
+On the toggled table only: flip the dataset flag; walk its ~tbody tr~ applying
+the new state to the live cell AND to its master via Part 1's
+~_buildMasterRowIndex~ + ~_picardEnsureRow~ (both already extracted for exactly
+this reuse), plus the owner sweep; on expand call
+~_picardRegisterCollapsableColumn~ (also already extracted) because while
+collapsed ~_anyMultiRowPicardCell~ is never set and the multi-button cells
+would get no per-cell toggle; then
+~_invalidateUniqDropDataCacheForTable(table)~; then repaint that table's own
+header span.
+
+*Both directions must mirror.* If collapse only emptied the live cells, the
+next re-render would clone still-populated masters and the column would
+silently re-appear while the header read "collapsed".
+
+Why not ~runFilter()~: ~_msApplyLengthPrecision~ has to call it because the
+Length column's rendered TEXT is what sorting, filtering, highlighting and the
+colon-alignment finalizers all read. A Picard cell contributes to none of them
+— its content is a ~<button>~ + ~<img alt="♪">~, so ~getCleanColumnText~ was
+always ~''~ for the whole column — it has no ~dataset.colName~ and no filter
+input, and it is never a sort key. In-place mutation is also what the existing
+re-wire path already does on every keystroke. And ~runFilter()~ is page-wide,
+which would defeat the per-table scope outright.
+
+The ~<td>~ must stay for one more reason: ~applyStickyColumn~ stamps a
+rest-background on every cell of every row (grep ~mbRestBg~ — it reaches the
+DOM as ~data-mb-rest-bg~, so the source spelling is the greppable one), so because the cell already
+exists and already has its rest-bg, uncollapsing needs no sticky re-run and
+cannot desynchronise the hover colour map.
+
+*** Consequences of an empty cell — mostly already answered
+
+Sorting, column filtering and the 📊 dropdown *do not apply to this column at
+all* and so cannot regress: no ~.sort-icon-btn~, no ~.mb-col-uniq-wrap~, no
+~dataset.colName~, and ~addColumnFilterRow~ gives the filter row a bare
+~<th class="mb-picard-th"></th>~ with no input and no ~data-col-idx~ — all four
+confirmed in ~debug/picard-missing.html~.
+
+Left to confirm during implementation, and in every case the collapsed column
+should look exactly like today's already-supported "no row has a taggable
+release" case (which ~notes-received~ proves is real, 1680 times over): the
+collapse-count badge path (~_classifyCollapseCell~ /
+~_updateAllColHeaderCounts~), export, and the statistics panel.
+
+*** The page-wide companion
+
+~_picardInitGlobalColHdrToggle()~ modelled on ~_artInitGlobalCaaColHdrToggle~,
+called after the per-table loop.
+
+- *Multi-table only* — early-return on ~activeDefinition.tableMode !== 'multi'~,
+  as the CAA global does. A single-table page has exactly one Picard header, so
+  its own toggle already IS the page-wide control.
+- Rendered only while at least one ~.mb-picard-col-hdr-btn~ exists; aggregate
+  state from the per-table spans; click fans out ~.click()~ to those not
+  already in the target state, then re-syncs itself.
+- *Placement needs care.* The CAA/EAA globals insert with
+  ~globalCollapseBtn.after(btn)~ into ~.mb-global-actions-container~
+  immediately after ~#mb-col-collapse-all-btn~. Because
+  ~initPicardTaggerColumn~ runs AFTER ~renderGroupedTable~'s artwork tail, a
+  naive ~.after()~ would wedge the Picard button BETWEEN collapse-all and the
+  CAA one. Insert after the LAST existing ~[data-mb-caa-col-all-ctx]~ button if
+  any, else after ~#mb-col-collapse-all-btn~, for a deterministic reading order
+  — collapse-all, CAA-all, EAA-all, Picard-all — whichever pass ran first.
+  Idempotent via a fixed ~id~.
+
+*** Tests
+
+~tests/fixtures/search-recordings-continuation.spec.js~ *must be updated — it
+fails otherwise.* Both its tests assert Picard buttons at initial render: the
+three exact ~picardTitles~, the ~picardLiCount === releaseLiCount~ invariant,
+and the whole ~▶3▤~ / ~▼3▤~ premise of the second test. Seed
+~settingsOverride: { sa_picard_tagger_initially_collapsed: false }~ in both
+~loadUserscriptPage~ calls — that keeps every existing assertion verbatim,
+documents the new key, and is honest about what those tests pin. Do *not* edit
+the assertions away; ~DEBUG-NOTES.md~ records them as a deliberate, measured
+guarantee.
+
+Then ADD a third test to that same file at the default (collapsed) — it is the
+ideal host, an existing committed fixture whose rows already produce 1- and
+3-entity Picard cells. Assert in order: ~mb-picard-th~ and one
+~td.mb-picard-cell~ per row exist; *zero* ~button.mb-picard-btn~ and zero
+~td.mb-picard-cell ul~ anywhere; per-row ~<td>~ count still equals ~<th>~ count
+and the picard cell is still last; the header carries a
+~.mb-picard-col-hdr-btn~ with ~aria-pressed="false"~; and no page-wide button
+(single-table page). Then click the toggle and assert the three ~picardTitles~
+come back exactly as test 1 expects and the ~▶3▤~ per-cell toggle appears
+(proving the ~collapsableColumns~ re-registration fired on expand). Then click
+again and assert it returns to empty.
+
+Extend ~tests/fixtures/picard-cells-survive-rerender.spec.js~ (Part 1's spec,
+already network-free on ~releasegroup-releases~) with a per-table-scope test:
+expand table 0 only → table 0 has buttons, table 1 has none and its header
+still reads collapsed; then a global-filter keystroke and a scoped sort of
+table 0 → table 0 still expanded, table 1 still collapsed (this is what proves
+~<table>.dataset~ survives, and it fails if the state is stored anywhere that
+gets rebuilt); then the page-wide button exists here and one click brings both
+to expanded.
+
+*Two harness facts that each cost a run in Part 1*, both already in that spec:
+~releasegroup-releases~ renders sub-sections COLLAPSED so anything inside a
+sub-table is 0x0 until ~clickMasterToggleAndExpandAll()~ has run; and
+~waitForFilterSettled~/~waitForSortSettled~ watch a status text that settles
+BEFORE the tbody insertion loop finishes, so every filter/sort needs
+~waitForActualRowCount~ as a second signal or the spec is intermittently red
+only under full-suite parallel load.
+
+Consider a ~__saTest~ hook exposing "was ~_picardExtractRowEntities~ called",
+since the perf claim is the point of the feature and is otherwise invisible in
+the DOM — the way ~msPendingLengthLookups()~ exposes the millisecond feature's
+state.
+
+*Baselines re-capture:* the three ~rendered.html~ carrying picard markup —
+~releasegroup-releases~ (7 ~mb-picard-btn~ → 0), ~series-releases~ (12 → 0),
+~notes-received~ (8 → 0; its 1688 cells stay, they were already empty) — plus
+one empty ~<span>~ added to each ~mb-picard-th~. Add an "Expected drift" entry
+to ~tests/snapshots/registry.org~ with those exact numbers, flagged as OUR
+movement not MusicBrainz's. Do NOT seed the setting off in
+~tests/pagetypes.json~ to dodge the re-capture: the baselines should show what
+a user actually sees.
+
+*** Docs
+
+- ~ShowAllEntityData_HELP.txt~: add the missing *PICARD TAGGER COLUMN (🎵
+  PICARD TAGGER in ⚙️ Settings)* section — there is none today, a pre-existing
+  gap. Model it on ~TRACK LENGTH PRECISION~, with the same header diagram
+  (~▶♪ Picard~ / ~▼♪ Picard~). Document the release-link guard, the
+  per-sub-table toggle, the page-wide companion (multi-table only), the new
+  default and why, and the port/host settings that are also undocumented. Add
+  the 🎵 PICARD TAGGER entry to HELP's settings list, which is likewise absent.
+  Extend the existing multi-row Picard paragraph under the recording-search
+  section with "once the column is uncollapsed", and fix the cross-tab snapshot
+  claim that Picard icons "work identically to the live page" — the toggle
+  state does NOT travel, because ~captureSubtableSnapshot~ strips both
+  ~mb-picard-th~ and ~mb-picard-cell~, so the destination tab applies its own
+  default.
+- ~sa_enable_picard_tagger~'s own description is *stale* and should be fixed in
+  the same pass: it claims the column "is only visible on pages whose URL
+  matches the supported page types (releases, release-groups, recordings,
+  series, collections, cdtoc, taglookup, search, artist/*/releases)", but the
+  guard became purely data-driven ("does this tbody contain a
+  ~/release/<mbid>~ link") and is explicitly page-type-agnostic.
+- ~PERFORMANCE.org~: flip Step 32's keyword when this lands, and fold its
+  "A NARROWER design was accepted" subsection into the body rather than leaving
+  it as an addendum. Step 23's ~initPicardTaggerColumn(true)~ row and its "on a
+  release-listing page the first two both fire on every keystroke" claim both
+  need "…unless the column is collapsed, which is now the default". Record
+  whether the cache-invalidation gate above was taken.
+- ~CLAUDE.md~: add the new key to the settings list next to
+  ~sa_enable_picard_tagger~; qualify the re-wire-after-clone entry with "a
+  per-row no-op while collapsed"; and add a short Picard paragraph in the
+  spirit of the "Track length precision" section — the per-table state element
+  and its survival proof, why content-inferred state is wrong here (the
+  ~notes-received~ counter-example), why the ~<td>~ must never be removed
+  (Step 32's index churn), why the header glyph is CSS-only
+  (~_cleanColHeaderText~), and why the toggle mutates in place rather than
+  calling ~runFilter()~.
+- ~DEBUG-NOTES.md~: dated entry.
+- ~tests/MEASUREMENTS.org~: a row for the collapsed-vs-expanded keystroke
+  comparison if measured — host, UTC time, version, pageType, ~tableMode~,
+  human title, per the standing rule.
+
+*** Verification
+
+~node --check~, then ~npm test~ (the fixture suite) on the merged tree — and
+mutation-check the new tests by reverting the state check, per ~CLAUDE.md~'s
+"verify the fails-before half". Then manually on
+https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
+(multi, three sub-tables) and
+https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f (single).
+
+** Open, not in scope for Part 2
+
+~search?type=recording~: the continuation-row merge does NOT survive a filter
+re-render — the table renders 3 merged rows and a global-filter keystroke
+brings back all 6 source rows (3 base + 3 continuation). Confirmed pre-existing
+against the pre-9.99.1056 code, so it is not from the Picard work. Found while
+trying to extend ~search-recordings-continuation.spec.js~; the attempt was
+backed out rather than encoding the bug into a test. Likely shape:
+~mergeContinuationRows~ runs during row assembly against the ~DOMParser~
+document while ~allRows~ keeps the unmerged rows. Deserves its own session —
+see ~DEBUG-NOTES.md~'s 2026-09-10 entry for the measurement.
