@@ -11,7 +11,8 @@ history of what was tried and why is the point of this file.
 is on ~main~. Several steps below were implemented and measured on a branch
 that was never merged; those stay TODO and say so in their own text, so that
 "what is true of the script people actually run" is readable straight off the
-keywords. As of this revision the DONE set is exactly Steps 3, 4, 8, 18, 19, 21, 22 and 32.
+keywords. As of this revision the DONE set is exactly Steps 3, 4, 8, 18, 19, 21,
+22, 32 and 34.
 
 *One canonical numbering.* Three copies of this file drifted into three
 incompatible schemes — ~main~, ~perf-steps-1-4~ and
@@ -176,7 +177,7 @@ With ~M~ = matching rows and ~C~ = columns, ~runFilter()~ (~:42388-43190~) does:
 
 | # | Walk                                                | Per-cell cost                      | Reached from                                    |
 |---+-----------------------------------------------------+------------------------------------+-------------------------------------------------|
-| 1 | ~cloneNode(true)~ + ~_stripTransientCellState(td)~  | *12* ~querySelectorAll~/cell       | ~:42814~ single, ~:42620~ multi                 |
+| 1 | ~cloneNode(true)~ + ~_stripTransientCellState(td)~  | *1* ~querySelectorAll~/cell, and none at all for a cell with no element children — was *12* until Step 34 landed at 9.99.1059 | ~:42814~ single, ~:42620~ multi                 |
 | 2 | ~testRowMatch(clone, ctx)~ + ~highlightText(…, -1)~ | ~normalize()~ + text-node TreeWalk | ~:42854~ → ~:41688~, ~:38622~, ~:38785~         |
 | 3 | ~applyStickyColumn~ hover-background snapshot       | style write → ~getComputedStyle~   | ~:19262-19268~, via ~_applyPostRenderRowPasses~ |
 | 4 | ~_countLiveDateFlags()~                             | one failing ~querySelectorAll~     | ~:32881~, via ~updateFilterButtonsVisibility~   |
@@ -187,10 +188,17 @@ Walks 2 and 5 re-extract text that walk 1's own cached ~matchOnly~ pass
 Walk 3 is a write-then-read layout-thrash loop. Walk 4 produces nothing at all
 on every pageType that carries no live-date flags, which is nearly all of them.
 
-*The five are not equals, and this section first implied they were.* Measured
-2026-09-09, walk 1 alone is ~1.05 million ~querySelectorAll~ per filter clear —
+*The five were not equals, and this section first implied they were.* Measured
+2026-09-09, walk 1 alone was ~1.05 million ~querySelectorAll~ per filter clear —
 97.5% of that phase — against ~27 000 for everything else in it combined. See
-"Measured, 2026-09-09" below, and Step 34.
+"Measured, 2026-09-09" below.
+
+*Step 34 has since removed 996 196 of those* (landed 9.99.1059), so *walk 1 is
+no longer the dominant one* and the five are closer to equals than either
+version of this section had them. On the multi-table arm walk 1 is now fourth,
+behind ~normalizeCommentSpans~ — one of walk 3's own siblings inside
+~_applyPostRenderRowPasses()~, and Step 27's target. Walk 3 is untouched and is
+what remains of the headline: 87 654 ~getComputedStyle~ per pass, Step 24.
 
 Note walk 2's shape specifically: ~testRowMatch~ runs *twice* per surviving row —
 once with ~matchOnly=true~ on the source row, where every read goes through
@@ -258,11 +266,14 @@ first arm is =pass-cost-main-9.99.1049-2026-09-09-petri.json=. Full table and
 the reproducibility check in =tests/MEASUREMENTS.org=. Three results, two of
 which contradict the estimates above — which is what the tier was for.
 
-*=_stripTransientCellState= dominates, and this section under-ranked it.* Stack
-sampling attributes *97.5%* of a filter clear's 1 078 372 =querySelectorAll=
+*=_stripTransientCellState= dominated, and this section under-ranked it.* Stack
+sampling attributed *97.5%* of a filter clear's 1 078 372 =querySelectorAll=
 calls to it: roughly *1.05 million*, twelve per cell, against ~27 000 for
-everything else in the phase combined. Walk 1 is not one of five comparable
-walks, it is the walk. Filed as Step 34, which now leads Tier 1.
+everything else in the phase combined. Walk 1 was not one of five comparable
+walks, it was the walk. Filed as Step 34, which led Tier 1 — /and has since
+landed, at 9.99.1059, taking 996 196 of those calls. This paragraph is kept in
+the past tense as the finding that produced the step; for what the phase costs
+now, read Step 34's own MEASURED subsection./
 
 *Walk 3's estimate was exactly right.* =applyStickyColumn= costs 87 654
 =getComputedStyle= calls — 1.00 per cell to the digit, attributed to its inner
@@ -396,9 +407,12 @@ the same code twice:
   row-boundary gate, since ~mouseenter~/~mouseleave~ do not bubble; the existing
   CAA/EAA bigbox tbody delegation omits that gate and is *not* a usable template.
 
-- *34* removes ~1.05 million ~querySelectorAll~ per filter clear — 97.5% of
-  that phase's total, twelve per cell, against ~27 000 for everything else in
-  the phase combined.
+- *34* /LANDED at 9.99.1059./ Removed *996 196* ~querySelectorAll~ from a
+  filter clear on ~artist-events~ (1 079 876 -> 83 680, *-92.3%*) and *216 323*
+  on the multi-table ~artist-releasegroups~ arm (323 422 -> 107 099, *-66.9%*),
+  measured against same-version ~main~ arms. It had been 97.5% and 71% of those
+  phases; it is now 65% of a phase a twelfth the size, and on the multi-table
+  arm not the leader at all.
 - *24* removes ~87 700 write→~getComputedStyle~ pairs per pass — the most
   expensive per-visit operation of the five walks — and, with Step 23's sticky
   member folded in, ~8 350 listener add/remove pairs per pass along with them.
@@ -434,12 +448,16 @@ magnitude — but the ordering DID change on the strength of these numbers, whic
 is what the "why Step 23 moved" paragraph above records.
 
 Together Tier 1 removes three of the per-cell walks outright; the cache on a
-fourth was already restored, for the default configuration, by Step 32. With
-Step 34 measured rather than estimated the headline is sharper than the original
-40-60%: a filter clear currently issues ~1.08 million ~querySelectorAll~ and
-87 654 ~getComputedStyle~, and Steps 34 and 24 alone account for ~1.14 million
-of that. Confirm each by count as it lands, then take ONE A/B timing arm at the
-end of the tier.
+fourth was already restored, for the default configuration, by Step 32.
+
+*Step 34 has landed, so the tier's headline figure is now history and is kept
+only as a starting point:* before it, a filter clear on ~artist-events~ issued
+~1.08 million ~querySelectorAll~ and 87 654 ~getComputedStyle~, of which Steps
+34 and 24 accounted for ~1.14 million. Step 34 took 996 196 of the
+~querySelectorAll~. *What is left of that headline is Step 24's 87 654
+~getComputedStyle~*, which Step 34 did not touch by construction — every
+non-query counter came out bit-identical. Confirm each remaining step by count
+as it lands, then take ONE A/B timing arm at the end of the tier.
 
 *Both harness gaps below are now CLOSED*, 2026-09-10 — ~capture-pass-cost.js~
 takes ~--pageType=~/~--arm=~, and ~artist-releasegroups~ is instrumented as the
@@ -595,9 +613,11 @@ Recorded here because it changes how Step 1 should be judged, and because
 nothing in Step 1's own text could have predicted it.
 
 Step 1 stops cloning rows altogether. The ~1.05 million ~querySelectorAll~
-calls Step 34 targets are made by ~_stripTransientCellState~ on those clones —
-so *Step 1 would remove Step 34's cost as a side effect*, and equally, landing
-Step 34 first removes most of what Step 1 still has to win.
+calls Step 34 targeted were made by ~_stripTransientCellState~ on those clones —
+so *Step 1 would have removed Step 34's cost as a side effect*, and equally,
+landing Step 34 first removed most of what Step 1 still had to win. /That is now
+settled rather than predicted: Step 34 landed at 9.99.1059 and took 996 196 of
+those calls, so this particular argument for Step 1 is spent./
 
 That does not reorder anything: Step 34 is cheap and safe, Step 1 measured a net
 loss on narrow filters and is neither. But it is the second thing to move under
@@ -622,13 +642,15 @@ Scope: single-table mode only (~runFilter()~'s non-multi branch). Multi-table
 mode is out of scope for this step — see the "Show single-table" button
 note above for why single-table-first still covers the important case.
 
-*Two cheaper steps have since claimed both of this one's headline arguments.*
-Step 30 removes the unconditional ~window.scrollTo()~ forced reflow, which is
-the term Fix C measurably LOST on (219 ms against ~main~'s 35 ms). Step 34
-removes the ~1.05 million ~querySelectorAll~ that ~_stripTransientCellState~
-issues on the clones this step would stop making — so most of what Fix C would
-win, a far cheaper step wins first. Neither is a reason to drop this step, but
-it must be re-judged on a fresh count rather than on this file's original
+*Two cheaper steps have since claimed both of this one's headline arguments,
+and ONE OF THEM HAS ALREADY LANDED.* Step 30 removes the unconditional
+~window.scrollTo()~ forced reflow, which is the term Fix C measurably LOST on
+(219 ms against ~main~'s 35 ms). *Step 34 landed at 9.99.1059* and removed
+996 196 of the ~1.05 million ~querySelectorAll~ that ~_stripTransientCellState~
+was issuing on the clones this step would stop making — so most of what Fix C
+would have won is already banked, by a far cheaper and far safer change. Neither
+is a reason to drop this step, but it must be re-judged on a fresh count rather
+than on this file's original
 40-60% framing. See "Step 34 overlaps Step 1, and shrinks it" above.
 
 *** TODO Step 2: Extend the Fix-C approach to Sort
@@ -2673,7 +2695,7 @@ endpoint can serve ~inc=…-rels~ too is unknown and untested —
 ~scripts/probe-ms-rid-batch-size.py~ and ~scripts/probe-ms-browse-endpoints.py~
 are the model for finding out before assuming it.
 
-*** TODO Step 34: Collapse ~_stripTransientCellState~'s twelve per-cell scans into one
+*** DONE Step 34: Collapse ~_stripTransientCellState~'s twelve per-cell scans into one
 
 /Found 2026-09-09 by Tier 0's first arm, not by reading the code./ It is the
 largest single cost on the filter path by an order of magnitude, and this file
